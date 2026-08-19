@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "iecharge-official-france",
+  "generatedAt": "2026-08-19T21:58:40.376634Z",
+  "operator": "IECharge",
+  "country": "FR",
+  "classification": {
+    "singleNationalDirectTariff": true,
+    "stationLevelPriceLookupRequiredForIEChargeDirect": false,
+    "thirdPartyEmspPriceCanDiffer": true
+  },
+  "operatorDirect": {
+    "highPowerFrance": {
+      "eurPerKwh": 0.25,
+      "maxPowerKwPublished": 320,
+      "geography": "France",
+      "paymentMethods": [
+        "IECharge app",
+        "bank card"
+      ],
+      "subscriptionRequired": false
+    },
+    "bankCard": {
+      "eurPerKwh": 0.25,
+      "preauthorizationOrReservationEur": 20.0,
+      "unusedAmountReleaseStatedWithinHours": 24
+    }
+  },
+  "roaming": {
+    "classification": "third_party_eMSP",
+    "operatorDirect": false,
+    "rfidSupported": true,
+    "providerMayChargeDifferentTariff": true
+  },
+  "fees": {
+    "idleOrOccupation": {
+      "status": "not_stated_network_wide_on_current_official_pricing_or_faq",
+      "eurPerMin": null
+    },
+    "parking": {
+      "status": "site_specific_not_asserted_network_wide"
+    }
+  },
+  "network": {
+    "officialMapProvidesLiveStatus": true,
+    "liveStationCountObserved": 151,
+    "typicalPointsPerStationPublished": 4,
+    "publishedStationDesign": {
+      "points320Kw": 2,
+      "points160Kw": 2,
+      "sourceIsOfficialNetworkDesignArticle": true
+    }
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "pricing",
+        "url": "https://iecharge.io/fr/prix/",
+        "httpStatus": 200
+      },
+      {
+        "key": "faq",
+        "url": "https://iecharge.io/fr/faq-fr/",
+        "httpStatus": 200
+      },
+      {
+        "key": "stations",
+        "url": "https://iecharge.io/fr/stations/",
+        "httpStatus": 200
+      },
+      {
+        "key": "networkDesign",
+        "url": "https://iecharge.io/fr/emplacement-stations-iecharge-en-france/",
+        "httpStatus": 200
+      },
+      {
+        "key": "current2026",
+        "url": "https://iecharge.io/fr/numero-un-en-rapport-qualite-prix/",
+        "httpStatus": 200
+      }
+    ],
+    "relevantTariffFingerprintSha256": "90e0a41738a8ae876b0450ba47e5a27f6e10a3b9b8c80c484737f512a2a84980"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "0.25 EUR/kWh is the current published IECharge direct France high-power tariff.",
+    "Third-party RFID/eMSP pricing must remain separate because the provider may charge a different rate.",
+    "No network-wide idle or parking fee is asserted without explicit current official evidence.",
+    "The live station count is an observed website counter and may change independently of tariff evidence."
+  ]
+}
