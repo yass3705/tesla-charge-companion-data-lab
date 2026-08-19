@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Extract public IZIVIA charging-pricing facts from official IZIVIA pages.
 
-IZIVIA is both a CPO/operator and an eMSP (Pass IZIVIA). Unlike Lidl Plus, there is
-no single national IZIVIA tariff. This extractor therefore keeps operator-direct
-networks (FAST, Express, Grand Lyon) separate from Pass IZIVIA roaming policy.
-It intentionally does not use authenticated APIs, private cookies or user data.
+IZIVIA is both a CPO/operator and an eMSP (Pass IZIVIA). Unlike Lidl Plus,
+there is no single national IZIVIA tariff. This extractor keeps operator-direct
+networks (FAST, Express, Grand Lyon) separate from Pass IZIVIA roaming.
+
+Only public official pages are used. For dynamic Grand Lyon pages, the script
+first tries a normal HTTP fetch and falls back to a headless browser render.
 """
 from __future__ import annotations
 
@@ -14,6 +16,7 @@ import hashlib
 import html
 import json
 import re
+import time
 import unicodedata
 import urllib.request
 import zlib
@@ -59,6 +62,51 @@ def fetch(url: str) -> tuple[int, str]:
         return int(getattr(resp, "status", 200)), raw.decode(charset, errors="replace")
 
 
+def fetch_rendered(url: str, wait_markers: tuple[str, ...]) -> str:
+    """Render an official page in local Chrome when its pricing is JS/dynamic."""
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+
+    opts = Options()
+    opts.add_argument("--headless=new")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--disable-gpu")
+    opts.add_argument("--window-size=1440,2400")
+    opts.add_argument(f"--user-agent={UA}")
+    opts.add_argument("--lang=fr-FR")
+
+    driver = webdriver.Chrome(options=opts)
+    try:
+        driver.set_page_load_timeout(35)
+        driver.get(url)
+
+        def ready(d):
+            try:
+                body = d.find_element(By.TAG_NAME, "body").text
+            except Exception:
+                body = ""
+            low = body.lower()
+            return any(m.lower() in low for m in wait_markers)
+
+        try:
+            WebDriverWait(driver, 15).until(ready)
+        except Exception:
+            # Give late JS one last short chance before capturing the DOM anyway.
+            time.sleep(2)
+
+        try:
+            body = driver.find_element(By.TAG_NAME, "body").text
+        except Exception:
+            body = ""
+        dom = driver.page_source or ""
+        return f"{body}\n{dom}"
+    finally:
+        driver.quit()
+
+
 def visible_text(raw_html: str) -> str:
     s = re.sub(r"<script\b[^>]*>.*?</script>", " ", raw_html, flags=re.I | re.S)
     s = re.sub(r"<style\b[^>]*>.*?</style>", " ", s, flags=re.I | re.S)
@@ -68,7 +116,6 @@ def visible_text(raw_html: str) -> str:
 
 
 def extractable_text(raw_html: str) -> str:
-    """Keep visible text plus script/JSON text as a fallback for dynamic pages."""
     visible = visible_text(raw_html)
     raw_flat = html.unescape(re.sub(r"<[^>]+>", " ", raw_html))
     raw_flat = raw_flat.replace("\\u20ac", "€").replace("\\/", "/")
@@ -83,6 +130,7 @@ def norm(s: str) -> str:
     for ch in ("\u2010", "\u2011", "\u2012", "\u2013", "\u2014", "\u2015", "\u2212"):
         s = s.replace(ch, "-")
     s = s.lower().replace("’", "'")
+    s = s.replace("\u00a0", " ").replace("\u202f", " ")
     return re.sub(r"\s+", " ", s).strip()
 
 
@@ -104,30 +152,28 @@ def parse_fast(text: str) -> dict:
     n = norm(text)
     require(n, "izivia fast", "FAST")
     require(n, "happy hour", "FAST")
-    m_price = re.search(r"kwh a partir de\s*(\d+(?:[.,]\d+)?)\s*€\s*en happy hour", n)
-    if not m_price:
+    m = re.search(r"(?:kwh\s+)?a partir de\s*(\d+(?:[.,]\d+)?)\s*€(?:\s*/\s*kwh)?\s*en happy hour", n)
+    if not m:
+        m = re.search(r"(\d+(?:[.,]\d+)?)\s*€\s*/\s*kwh[^.]{0,100}happy hour", n)
+    if not m:
         raise RuntimeError("FAST: current official page no longer exposes the Happy Hour floor price")
-    pows = [int(x) for x in re.findall(r"(?:de|a)\s*(\d{2,3})\s*kw", n)]
+    pows = [int(x) for x in re.findall(r"(?:de|a|jusqu'a)\s*(\d{2,3})\s*kw", n)]
     for lo, hi in re.findall(r"(\d{2,3})\s*kw\s*a\s*(\d{2,3})\s*kw", n):
         pows.extend([int(lo), int(hi)])
-    powers = sorted({x for x in pows if 50 <= x <= 400})
     return {
         "network": "IZIVIA FAST",
         "scope": "McDonald's France parking network",
         "operatorDirect": True,
         "stationLevelPriceLookupRequired": True,
-        "powerKwObserved": powers,
+        "powerKwObserved": sorted({x for x in pows if 50 <= x <= 400}),
         "pricing": {
-            "happyHourFloorEurPerKwh": eur(m_price.group(1)),
+            "happyHourFloorEurPerKwh": eur(m.group(1)),
             "standardTariff": None,
             "happyHourSchedule": None,
             "currentOfficialPageCompleteness": "partial",
         },
-        "parkingFees": {"status": "not_stated_on_current_network_page"},
-        "notes": [
-            "Current official network page confirms only a Happy Hour price floor, not the complete tariff schedule.",
-            "Do not infer a station tariff solely from the network-level floor price.",
-        ],
+        "parkingFees": {"status": "station_specific_not_stated_on_network_page"},
+        "notes": ["Do not infer a station tariff solely from the network-level Happy Hour floor price."],
     }
 
 
@@ -137,15 +183,12 @@ def parse_express(text: str) -> dict:
     m = re.search(r"tarifs sont fixes entre\s*(\d+(?:[.,]\d+)?)\s*a\s*(\d+(?:[.,]\d+)?)\s*€\s*ttc\s*par\s*kwh", n)
     if not m:
         raise RuntimeError("Express: official tariff range not found")
-    max_power = None
     mp = re.search(r"jusqu'a\s*(\d{2,3})\s*kw", n)
-    if mp:
-        max_power = int(mp.group(1))
     return {
         "network": "IZIVIA Express",
         "operatorDirect": True,
         "stationLevelPriceLookupRequired": True,
-        "powerKwMax": max_power,
+        "powerKwMax": int(mp.group(1)) if mp else None,
         "pricing": {
             "minEurPerKwh": eur(m.group(1)),
             "maxEurPerKwh": eur(m.group(2)),
@@ -153,7 +196,7 @@ def parse_express(text: str) -> dict:
             "currency": "EUR",
         },
         "paymentMethods": ["Pass IZIVIA", "roaming badge", "bank card / online payment where supported"],
-        "parkingFees": {"status": "not_stated_on_current_network_page"},
+        "parkingFees": {"status": "station_specific_not_stated_on_network_page"},
     }
 
 
@@ -161,7 +204,7 @@ def parse_grand_lyon(text: str, offers_text: str) -> dict:
     n = norm(text)
     no = norm(offers_text)
 
-    tariff_patterns = [
+    patterns = [
         (r"3[.,]50\s*€\s*/\s*h", "3.50 EUR/h"),
         (r"2[.,]50\s*€\s*/\s*h", "2.50 EUR/h"),
         (r"1[.,]50\s*€\s*/\s*h", "1.50 EUR/h"),
@@ -178,11 +221,11 @@ def parse_grand_lyon(text: str, offers_text: str) -> dict:
         (r"5\s*€\s*\+\s*0[.,]38\s*€\s*/\s*kwh\s*apres\s*20\s*kwh", "night standard 5 + 0.38"),
         (r"4\s*€\s*\+\s*0[.,]38\s*€\s*/\s*kwh\s*apres\s*20\s*kwh", "night frequency 4 + 0.38"),
     ]
-    for pattern, label in tariff_patterns:
+    for pattern, label in patterns:
         require_regex(n, pattern, "Grand Lyon", label)
 
+    require(no, "paynow", "Grand Lyon offers")
     require(no, "stationnement n'est pas payant ni limite dans le temps", "Grand Lyon offers")
-    require(no, "paynow.izivia.com", "Grand Lyon offers")
 
     return {
         "network": "IZIVIA Grand Lyon",
@@ -206,16 +249,14 @@ def parse_grand_lyon(text: str, offers_text: str) -> dict:
         },
         "parking": {
             "separateParkingFee": False,
-            "officialNote": "Stationnement non payant et non limité; seul le service de recharge est payant.",
+            "billingNote": "Daytime charging service is time-based for <=24 kW; parking itself is not separately charged or time-limited on these dedicated charging spaces.",
         },
-        "adHoc": {"supported": True, "channel": "paynow.izivia.com", "usesVisitorTariff": True},
+        "adHoc": {"supported": True, "channel": "paynow.izivia.com / app", "usesVisitorTariff": True},
     }
 
 
 def parse_pass(pass_text: str, roaming_text: str, paynow_text: str) -> dict:
-    p = norm(pass_text)
-    r = norm(roaming_text)
-    q = norm(paynow_text)
+    p, r, q = map(norm, (pass_text, roaming_text, paynow_text))
     require(p, "sans abonnement", "Pass IZIVIA")
     m_pass = re.search(r"(\d+(?:[.,]\d+)?)\s*€\s*ttc\s*le pass izivia", p)
     if not m_pass:
@@ -244,68 +285,120 @@ def parse_pass(pass_text: str, roaming_text: str, paynow_text: str) -> dict:
     }
 
 
+def marker_summary(text: str) -> dict:
+    n = norm(text)
+    markers = ["3,50", "0,45", "0,20", "0,38", "paynow", "stationnement"]
+    return {m: (m in n) for m in markers}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="out/izivia")
     args = ap.parse_args()
-
-    pages = {}
-    statuses = {}
-    for key, url in SOURCES.items():
-        status, raw = fetch(url)
-        if status != 200:
-            raise RuntimeError(f"{key}: unexpected HTTP status {status}")
-        pages[key] = extractable_text(raw)
-        statuses[key] = status
-
-    fast = parse_fast(pages["fast"])
-    express = parse_express(pages["express"])
-    grand = parse_grand_lyon(pages["grand_lyon"], pages["grand_lyon_offers"])
-    pass_rule = parse_pass(pages["pass"], pages["roaming_fee"], pages["paynow"])
-
-    facts = {"fast": fast, "express": express, "grandLyon": grand, "passIzivia": pass_rule}
-    fingerprint_payload = json.dumps(facts, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-    payload = {
-        "schemaVersion": "1.0.0",
-        "dataset": "izivia-official-france",
-        "generatedAt": now_iso(),
-        "operator": "IZIVIA / EDF business services",
-        "country": "FR",
-        "classification": {
-            "singleNationalOperatorTariff": False,
-            "reason": "IZIVIA operates multiple networks with distinct tariff grids and also acts as an eMSP via Pass IZIVIA.",
-        },
-        "operatorDirectNetworks": [fast, express, grand],
-        "mobilityProvider": pass_rule,
-        "sourceEvidence": {
-            "officialOnly": True,
-            "sources": [{"key": k, "url": SOURCES[k], "httpStatus": statuses[k]} for k in SOURCES],
-            "relevantTariffFingerprintSha256": hashlib.sha256(fingerprint_payload.encode("utf-8")).hexdigest(),
-        },
-        "publicationStatus": "candidate_validated_source",
-        "notes": [
-            "FAST and Express require station-level tariff lookup for exact trip simulation.",
-            "Grand Lyon has a complete official network-level tariff grid and can be modelled without station-specific price lookup, subject to power class and time window.",
-            "Pass IZIVIA roaming must never be confused with the direct CPO tariff of the station operator.",
-        ],
-    }
-
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "izivia_official_france.json").write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
-    summary = (
-        "# IZIVIA official tariff check\n\n"
-        f"- FAST: Happy Hour floor **{fast['pricing']['happyHourFloorEurPerKwh']:.2f} EUR/kWh**; exact current station tariff still requires lookup.\n"
-        f"- Express: official range **{express['pricing']['minEurPerKwh']:.2f}-{express['pricing']['maxEurPerKwh']:.2f} EUR/kWh**; station lookup required.\n"
-        "- Grand Lyon: complete official visitor / Standard / Frequency day-night matrix captured.\n"
-        f"- Pass IZIVIA Access: **{pass_rule['purchasePriceEur']:.2f} EUR**, no subscription; third-party service fee currently **{pass_rule['thirdPartyNetworks']['currentDefaultServiceFeePercent']:.0f}%**.\n"
-        "- Ad-hoc: supported on compatible stations via app / PayNow; no national ad-hoc tariff.\n"
-        f"- Fingerprint: `{payload['sourceEvidence']['relevantTariffFingerprintSha256']}`\n"
-    )
-    (out / "SUMMARY.md").write_text(summary, encoding="utf-8")
-    print(summary)
+
+    pages: dict[str, str] = {}
+    statuses: dict[str, int] = {}
+    diagnostics: dict[str, dict] = {}
+
+    try:
+        for key, url in SOURCES.items():
+            status, raw = fetch(url)
+            if status != 200:
+                raise RuntimeError(f"{key}: unexpected HTTP status {status}")
+            text = extractable_text(raw)
+            pages[key] = text
+            statuses[key] = status
+            diagnostics[key] = {
+                "transport": "direct_http",
+                "httpStatus": status,
+                "rawLength": len(raw),
+                "textLength": len(text),
+                "markers": marker_summary(text),
+                "sha256": hashlib.sha256(raw.encode("utf-8", errors="replace")).hexdigest(),
+            }
+
+        # Grand Lyon is currently served dynamically to some clients. If the
+        # public tariff matrix is absent from the direct response, render the
+        # official page with Chrome instead of weakening the tariff checks.
+        gl_norm = norm(pages["grand_lyon"])
+        if not ("3,50" in gl_norm and "0,45" in gl_norm and "0,38" in gl_norm):
+            rendered = fetch_rendered(SOURCES["grand_lyon"], ("3,50", "0,45", "tarifs de jour"))
+            rendered_text = extractable_text(rendered)
+            pages["grand_lyon"] = rendered_text
+            diagnostics["grand_lyon_rendered"] = {
+                "transport": "headless_chrome",
+                "textLength": len(rendered_text),
+                "markers": marker_summary(rendered_text),
+                "sha256": hashlib.sha256(rendered.encode("utf-8", errors="replace")).hexdigest(),
+            }
+
+        offers_norm = norm(pages["grand_lyon_offers"])
+        if not ("paynow" in offers_norm and "stationnement" in offers_norm):
+            rendered = fetch_rendered(SOURCES["grand_lyon_offers"], ("paynow", "stationnement"))
+            rendered_text = extractable_text(rendered)
+            pages["grand_lyon_offers"] = rendered_text
+            diagnostics["grand_lyon_offers_rendered"] = {
+                "transport": "headless_chrome",
+                "textLength": len(rendered_text),
+                "markers": marker_summary(rendered_text),
+                "sha256": hashlib.sha256(rendered.encode("utf-8", errors="replace")).hexdigest(),
+            }
+
+        fast = parse_fast(pages["fast"])
+        express = parse_express(pages["express"])
+        grand = parse_grand_lyon(pages["grand_lyon"], pages["grand_lyon_offers"])
+        pass_rule = parse_pass(pages["pass"], pages["roaming_fee"], pages["paynow"])
+
+        facts = {"fast": fast, "express": express, "grandLyon": grand, "passIzivia": pass_rule}
+        fingerprint_payload = json.dumps(facts, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        payload = {
+            "schemaVersion": "1.1.0",
+            "dataset": "izivia-official-france",
+            "generatedAt": now_iso(),
+            "operator": "IZIVIA / EDF business services",
+            "country": "FR",
+            "classification": {
+                "singleNationalOperatorTariff": False,
+                "reason": "IZIVIA operates multiple networks with distinct tariff grids and also acts as an eMSP via Pass IZIVIA.",
+            },
+            "operatorDirectNetworks": [fast, express, grand],
+            "mobilityProvider": pass_rule,
+            "sourceEvidence": {
+                "officialOnly": True,
+                "sources": [{"key": k, "url": SOURCES[k], "httpStatus": statuses[k]} for k in SOURCES],
+                "dynamicBrowserFallbackUsed": "grand_lyon_rendered" in diagnostics or "grand_lyon_offers_rendered" in diagnostics,
+                "relevantTariffFingerprintSha256": hashlib.sha256(fingerprint_payload.encode("utf-8")).hexdigest(),
+            },
+            "publicationStatus": "candidate_validated_source",
+            "notes": [
+                "FAST and Express require station-level tariff lookup for exact trip simulation.",
+                "Grand Lyon has a complete official network-level tariff grid subject to power class and time window.",
+                "Pass IZIVIA roaming must never be confused with the direct CPO tariff of the station operator.",
+            ],
+        }
+
+        (out / "izivia_official_france.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        (out / "DIAGNOSTIC.json").write_text(json.dumps({"generatedAt": now_iso(), "success": True, "sources": diagnostics}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        summary = (
+            "# IZIVIA official tariff check\n\n"
+            f"- FAST: Happy Hour floor **{fast['pricing']['happyHourFloorEurPerKwh']:.2f} EUR/kWh**; exact station tariff still requires lookup.\n"
+            f"- Express: official range **{express['pricing']['minEurPerKwh']:.2f}-{express['pricing']['maxEurPerKwh']:.2f} EUR/kWh**; station lookup required.\n"
+            "- Grand Lyon: complete official visitor / Standard / Frequency day-night matrix captured.\n"
+            f"- Pass IZIVIA Access: **{pass_rule['purchasePriceEur']:.2f} EUR**, no subscription; third-party service fee **{pass_rule['thirdPartyNetworks']['currentDefaultServiceFeePercent']:.0f}%**.\n"
+            "- Ad-hoc: supported on compatible stations via app / PayNow; no national ad-hoc tariff.\n"
+            f"- Browser fallback used: **{payload['sourceEvidence']['dynamicBrowserFallbackUsed']}**\n"
+            f"- Fingerprint: `{payload['sourceEvidence']['relevantTariffFingerprintSha256']}`\n"
+        )
+        (out / "SUMMARY.md").write_text(summary, encoding="utf-8")
+        print(summary)
+
+    except Exception as exc:
+        diag = {"generatedAt": now_iso(), "success": False, "error": f"{type(exc).__name__}: {exc}", "sources": diagnostics}
+        (out / "DIAGNOSTIC.json").write_text(json.dumps(diag, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(diag, ensure_ascii=False, indent=2))
+        raise
 
 
 if __name__ == "__main__":
