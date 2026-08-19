@@ -79,7 +79,7 @@ def require(text: str, needles: tuple[str, ...], label: str) -> None:
 
 def numeric_tokens(text: str) -> list[float]:
     out = []
-    for m in re.finditer(r"(?<!\d)(\d+[,.]\d+)(?!\d)", norm(text)):
+    for m in re.finditer(r"(?<![\d,.])(\d+(?:[,.]\d+)?)(?![\d,.])", norm(text)):
         try:
             out.append(float(m.group(1).replace(",", ".")))
         except ValueError:
