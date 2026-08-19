@@ -32,12 +32,40 @@ jobs:
         run: python scripts/public_safety_check.py .
 
       - name: Extract official Fastned France tariffs
+        id: extract
         run: |
+          set -o pipefail
+          mkdir -p out/fastned
           python -m py_compile scripts/fastned_official.py
-          python scripts/fastned_official.py --out out/fastned
+          python scripts/fastned_official.py --out out/fastned 2> >(tee out/fastned/error.log >&2)
           cat out/fastned/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Publish sanitized diagnostic after extraction failure
+        if: failure() && steps.extract.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          mkdir -p reports/fastned
+          python - <<'PY'
+          import json, re
+          from pathlib import Path
+          src=Path('out/fastned/error.log')
+          text=src.read_text(errors='replace') if src.exists() else 'extractor failed without stderr capture'
+          text=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+', r'\1=[REDACTED]', text)
+          lines=[x for x in text.splitlines() if x.strip()][-30:]
+          payload={'dataset':'fastned-extraction-diagnostic','sanitized':True,'errorTail':lines}
+          Path('reports/fastned/latest_diagnostic.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/fastned/latest_diagnostic.json
+          if ! git diff --cached --quiet; then
+            git commit -m "diag(fastned): publish extraction diagnostic [run ${GITHUB_RUN_ID}]"
+            git push origin HEAD:main
+          fi
+
       - name: Validate classification and tariff bounds
+        if: success()
         run: |
           python - <<'PY'
           import json
@@ -64,6 +92,7 @@ jobs:
 
       - name: Publish only when tariff evidence changes
         id: publish
+        if: success()
         run: |
           python - <<'PY'
           import json, shutil
@@ -105,7 +134,7 @@ jobs:
           python scripts/public_safety_check.py .
 
       - name: Commit validated Fastned rule set
-        if: steps.publish.outputs.changed == '1'
+        if: success() && steps.publish.outputs.changed == '1'
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
