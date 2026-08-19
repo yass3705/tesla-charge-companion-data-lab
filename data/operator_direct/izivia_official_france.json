@@ -1,0 +1,198 @@
+{
+  "schemaVersion": "1.1.0",
+  "dataset": "izivia-official-france",
+  "generatedAt": "2026-08-19T20:07:58.181066Z",
+  "operator": "IZIVIA / EDF business services",
+  "country": "FR",
+  "classification": {
+    "singleNationalOperatorTariff": false,
+    "reason": "IZIVIA operates multiple networks with distinct tariff grids and also acts as an eMSP via Pass IZIVIA."
+  },
+  "operatorDirectNetworks": [
+    {
+      "network": "IZIVIA FAST",
+      "scope": "McDonald's France parking network",
+      "operatorDirect": true,
+      "stationLevelPriceLookupRequired": true,
+      "powerKwObserved": [
+        150,
+        200
+      ],
+      "pricing": {
+        "happyHourFloorEurPerKwh": 0.3,
+        "standardTariff": null,
+        "happyHourSchedule": null,
+        "currentOfficialPageCompleteness": "partial"
+      },
+      "parkingFees": {
+        "status": "station_specific_not_stated_on_network_page"
+      },
+      "notes": [
+        "Do not infer a station tariff solely from the network-level Happy Hour floor price."
+      ]
+    },
+    {
+      "network": "IZIVIA Express",
+      "operatorDirect": true,
+      "stationLevelPriceLookupRequired": true,
+      "powerKwMax": 150,
+      "pricing": {
+        "minEurPerKwh": 0.4,
+        "maxEurPerKwh": 0.55,
+        "billingUnit": "kWh",
+        "currency": "EUR"
+      },
+      "paymentMethods": [
+        "Pass IZIVIA",
+        "roaming badge",
+        "bank card / online payment where supported"
+      ],
+      "parkingFees": {
+        "status": "station_specific_not_stated_on_network_page"
+      }
+    },
+    {
+      "network": "IZIVIA Grand Lyon",
+      "operatorDirect": true,
+      "stationLevelPriceLookupRequired": false,
+      "dayWindow": "08:00-20:00",
+      "nightWindow": "20:00-08:00",
+      "pricing": {
+        "day": {
+          "upTo7Kw": {
+            "visitorEurPerHour": 3.5,
+            "standardEurPerHour": 2.5,
+            "frequencyEurPerHour": 1.5
+          },
+          "upTo24Kw": {
+            "visitorEurPerHour": 6.0,
+            "standardEurPerHour": 5.0,
+            "frequencyEurPerHour": 4.0
+          },
+          "upTo50Kw": {
+            "visitorEurPerKwh": 0.45,
+            "standardEurPerKwh": 0.4,
+            "frequencyEurPerKwh": 0.3,
+            "afterMinutes": 45,
+            "idleEurPerMin": 0.2
+          },
+          "from100Kw": {
+            "visitorEurPerKwh": 0.55,
+            "standardEurPerKwh": 0.5,
+            "frequencyEurPerKwh": 0.4,
+            "afterMinutes": 45,
+            "idleEurPerMin": 0.2
+          }
+        },
+        "night": {
+          "upTo7Kw": {
+            "visitorConnectionEur": 6.0,
+            "standardConnectionEur": 5.0,
+            "frequencyConnectionEur": 4.0,
+            "includedKwh": 20,
+            "afterIncludedEurPerKwh": 0.38
+          },
+          "upTo24Kw": {
+            "visitorConnectionEur": 6.0,
+            "standardConnectionEur": 5.0,
+            "frequencyConnectionEur": 4.0,
+            "includedKwh": 20,
+            "afterIncludedEurPerKwh": 0.38
+          },
+          "upTo50Kw": {
+            "visitorEurPerKwh": 0.45,
+            "standardEurPerKwh": 0.4,
+            "frequencyEurPerKwh": 0.3,
+            "afterMinutes": 45,
+            "idleEurPerMin": 0.2
+          },
+          "from100Kw": {
+            "visitorEurPerKwh": 0.55,
+            "standardEurPerKwh": 0.5,
+            "frequencyEurPerKwh": 0.4,
+            "afterMinutes": 45,
+            "idleEurPerMin": 0.2
+          }
+        }
+      },
+      "parking": {
+        "separateParkingFee": false,
+        "billingNote": "Daytime charging service is time-based for <=24 kW; parking itself is not separately charged or time-limited on these dedicated charging spaces."
+      },
+      "adHoc": {
+        "supported": true,
+        "channel": "paynow.izivia.com / app",
+        "usesVisitorTariff": true
+      }
+    }
+  ],
+  "mobilityProvider": {
+    "product": "Pass IZIVIA Access",
+    "classification": "eMSP_roaming",
+    "operatorDirect": false,
+    "purchasePriceEur": 15.0,
+    "subscriptionEurPerMonth": 0.0,
+    "thirdPartyNetworks": {
+      "stationLevelPriceLookupRequired": true,
+      "currentDefaultServiceFeePercent": 15.0,
+      "rule": "third-party operator tariff plus IZIVIA service fee"
+    },
+    "adHocWithoutPass": {
+      "supportedOnCompatibleStations": true,
+      "channels": [
+        "IZIVIA app",
+        "paynow.izivia.com / station QR code"
+      ],
+      "nationalTariff": null,
+      "stationLevelPriceLookupRequired": true
+    }
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "fast",
+        "url": "https://izivia.com/installation-bornes-de-recharge/izivia-bornes-recharge-ultra-rapide-mcdonalds-france",
+        "httpStatus": 200
+      },
+      {
+        "key": "express",
+        "url": "https://izivia.com/installation-bornes-de-recharge/izivia-express",
+        "httpStatus": 200
+      },
+      {
+        "key": "grand_lyon",
+        "url": "https://grandlyon.izivia.com/",
+        "httpStatus": 200
+      },
+      {
+        "key": "grand_lyon_offers",
+        "url": "https://grandlyon.izivia.com/nos-offres/",
+        "httpStatus": 200
+      },
+      {
+        "key": "pass",
+        "url": "https://izivia.com/pass-de-recharge-voitures-electriques",
+        "httpStatus": 200
+      },
+      {
+        "key": "roaming_fee",
+        "url": "https://izivia.com/questions-frequentes/service-recharge-izivia/quel-est-le-prix-d-une-recharge-hors-bornes-izivia",
+        "httpStatus": 200
+      },
+      {
+        "key": "paynow",
+        "url": "https://izivia.com/questions-frequentes/comment-utiliser-bornes-electriques/utiliser-borne-electrique-sans-carte-de-recharge",
+        "httpStatus": 200
+      }
+    ],
+    "dynamicBrowserFallbackUsed": true,
+    "relevantTariffFingerprintSha256": "23a65232f7c51c0462321e83e3d10260c4ac8353bd65d50cf40f4df51d3511d4"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "FAST and Express require station-level tariff lookup for exact trip simulation.",
+    "Grand Lyon has a complete official network-level tariff grid subject to power class and time window.",
+    "Pass IZIVIA roaming must never be confused with the direct CPO tariff of the station operator."
+  ]
+}
