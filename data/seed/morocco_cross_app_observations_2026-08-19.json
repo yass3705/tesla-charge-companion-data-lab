@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "country": "MA",
-  "observed_at_local": "2026-08-19T21:17:00+02:00",
+  "observed_at_local": "2026-08-19T21:20:00+02:00",
   "source_method": "manual_cross_app_observation",
   "privacy": {
     "screenshots_committed": false,
@@ -81,6 +81,17 @@
       "assessment": "EVOne station/status data may be cached, delayed, incomplete or sourced from a roaming feed with lower freshness than EVGO native data.",
       "modeling_consequence": "Prefer native CPO/app status for live availability when available. Keep roaming-app status as a separately timestamped source rather than overwriting native status.",
       "evidence_level": "user_cross_app_observation"
+    },
+    {
+      "app_source": "EVOne",
+      "case": "availability_filter_behavior",
+      "scope": "Morocco map viewport",
+      "observation": "With the EVOne Available filter enabled, the dense nationwide set of station clusters shrank to a small subset; disabling the filter restored many more clusters across Morocco.",
+      "what_this_proves": "EVOne exposes a station/connector availability state that is actually used by the client-side map filter.",
+      "what_this_does_not_prove": "The filter reduction alone does not establish that the statuses are stale; unavailable, occupied, faulted, offline or unknown stations can legitimately disappear.",
+      "freshness_assessment": "Combined with the Marjane Mohammedia mismatch versus the EVGO native app, the result strengthens the hypothesis that EVOne roaming/aggregated status can be delayed or lower-freshness than native CPO status.",
+      "modeling_consequence": "Store source-specific status plus fetched_at/observed_at and apply source precedence rules; do not flatten all app statuses into one availability value.",
+      "evidence_level": "strong_manual_ui_behavior_evidence"
     }
   ]
 }
