@@ -9,12 +9,14 @@ not a guessed station-level scrape.
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import html
 import json
 import re
 import unicodedata
 import urllib.request
+import zlib
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -33,11 +35,17 @@ def fetch(url: str) -> tuple[int, str]:
             "User-Agent": UA,
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.6",
+            "Accept-Encoding": "gzip, deflate",
             "Cache-Control": "no-cache",
         },
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
         raw = resp.read()
+        encoding = (resp.headers.get("Content-Encoding") or "").lower().strip()
+        if encoding == "gzip" or raw[:2] == b"\x1f\x8b":
+            raw = gzip.decompress(raw)
+        elif encoding == "deflate":
+            raw = zlib.decompress(raw)
         charset = resp.headers.get_content_charset() or "utf-8"
         return int(getattr(resp, "status", 200)), raw.decode(charset, errors="replace")
 
