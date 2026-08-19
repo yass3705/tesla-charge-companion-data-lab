@@ -55,6 +55,11 @@ TARGETS = {
         "marker": "data/operator_direct/ionity_official_france.json",
         "legacy_workflows": [],
     },
+    "powerdot": {
+        "workflow": "powerdot-official-tariffs.yml",
+        "marker": "data/operator_direct/powerdot_official_france.json",
+        "legacy_workflows": [],
+    },
 }
 
 API = "https://api.github.com"
