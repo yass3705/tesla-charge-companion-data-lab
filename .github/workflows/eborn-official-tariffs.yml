@@ -1,0 +1,155 @@
+name: eborn official tariffs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 8 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/eborn_official.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/eborn-official-tariffs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: eborn-official-tariffs
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Extract eborn official rules
+        id: extract
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/eborn
+          python -m py_compile scripts/eborn_official.py
+          python scripts/eborn_official.py --out out/eborn 2> >(tee out/eborn/error.log >&2)
+          cat out/eborn/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish sanitized diagnostic after extraction failure
+        if: failure() && steps.extract.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/eborn
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          p=Path('out/eborn/error.log')
+          text=p.read_text(errors='replace') if p.exists() else 'extractor failed without stderr capture'
+          text=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',text)
+          Path('reports/eborn/latest_diagnostic.json').write_text(json.dumps({'dataset':'eborn-extraction-diagnostic','sanitized':True,'errorTail':[x for x in text.splitlines() if x.strip()][-50:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/eborn/latest_diagnostic.json
+          if ! git diff --cached --quiet; then
+            git commit -m "diag(eborn): publish extraction diagnostic [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
+
+      - name: Validate classification and tariffs
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/eborn/eborn_official_france.json').read_text())
+          assert p['dataset'] == 'eborn-official-france-regional'
+          assert p['country'] == 'FR'
+          assert p['classification']['singleFlatTariff'] is False
+          plans=p['operatorDirect']['subscriptionPlans']
+          assert plans['aLaCarte']['feeEurPerYear'] == 14.0
+          assert plans['forfait']['feeEurPerMonth'] == 49.0
+          assert plans['forfait']['includedKwhPerMonth'] == 250.0
+          bands=p['operatorDirect']['powerBands']
+          assert bands['acceleratedUpTo25Kw']['aLaCarteEurPerKwh'] == 0.310
+          assert bands['acceleratedUpTo25Kw']['nonSubscriberEurPerKwh'] == 0.433
+          assert bands['fastAbove25To60Kw']['aLaCarteEurPerKwh'] == 0.433
+          assert bands['fastAbove25To60Kw']['nonSubscriberEurPerKwh'] == 0.573
+          assert bands['ultraFastAbove60Kw']['aLaCarteEurPerKwh'] == 0.588
+          assert bands['ultraFastAbove60Kw']['nonSubscriberEurPerKwh'] == 0.650
+          assert p['fees']['postCharge']['graceMinutesAfterChargeEnd'] == 30
+          assert p['fees']['postCharge']['acceleratedOnlyBetween0800And2000'] is True
+          assert p['operatorDirect']['bankCardPreauthorization']['possibleAmountsEur'] == [40.0, 50.0]
+          assert p['failedSession']['energyLessThanKwh'] == 0.5
+          assert p['failedSession']['durationLessThanMinutes'] == 2
+          outgoing=p['roaming']['outgoingEbornPass']
+          assert outgoing['operatorDirect'] is False
+          assert outgoing['markupPercentOverPartnerNetworkTariff'] == 15
+          assert outgoing['markupEffectiveFrom'] == '2025-03-31'
+          assert p['roaming']['incomingThirdPartyBadge']['operatorDirect'] is False
+          assert p['network']['publishedPointsMinimum'] == 3000
+          assert p['sourceEvidence']['officialOnly'] is True
+          print('Validated eborn power-band, subscription, post-charge and roaming layers')
+          PY
+
+      - name: Publish only when tariff evidence changes
+        id: publish
+        if: success()
+        run: |
+          python - <<'PY'
+          import json,shutil
+          from pathlib import Path
+          src=Path('out/eborn/eborn_official_france.json')
+          dst=Path('data/operator_direct/eborn_official_france.json')
+          rep=Path('reports/eborn/latest_summary.md')
+          new=json.loads(src.read_text())
+          def sig(d):
+              return {
+                  'classification':d.get('classification'),
+                  'operatorDirect':d.get('operatorDirect'),
+                  'fees':d.get('fees'),
+                  'failedSession':d.get('failedSession'),
+                  'reservation':d.get('reservation'),
+                  'roaming':d.get('roaming'),
+                  'network':d.get('network'),
+                  'fingerprint':(d.get('sourceEvidence') or {}).get('relevantTariffFingerprintSha256'),
+                  'publicationStatus':d.get('publicationStatus'),
+              }
+          changed=not dst.exists() or sig(json.loads(dst.read_text())) != sig(new)
+          Path('changed.flag').write_text('1' if changed else '0')
+          if changed:
+              dst.parent.mkdir(parents=True,exist_ok=True)
+              rep.parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(src,dst)
+              shutil.copy2('out/eborn/SUMMARY.md',rep)
+          PY
+          echo "changed=$(cat changed.flag)" >> "$GITHUB_OUTPUT"
+          python scripts/public_safety_check.py .
+
+      - name: Commit validated eborn rule set
+        if: success() && steps.publish.outputs.changed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/eborn_official_france.json reports/eborn/latest_summary.md
+          git commit -m "data(eborn): publish official France regional tariff rules [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
