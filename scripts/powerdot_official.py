@@ -170,15 +170,19 @@ def main() -> None:
     inventory = parse_inventory(inv_csv)
 
     faq = norm(fetched["faq"])
-    require_any(faq, ("scannant le qr code", "scannez le qr code"), "Powerdot FAQ QR")
+    require_any(faq, ("scannant le qr code", "scannez le qr code", "scannant le qr"), "Powerdot FAQ QR")
     require_any(faq, ("tarifs exacts du connecteur", "tarif exact"), "Powerdot FAQ station tariff")
     require_any(faq, ("chargemap", "electromaps", "miio"), "Powerdot FAQ eMSP")
 
     leasing = norm(fetched["leasingSocial"])
-    if not re.search(r"0[,.]30\s*€\s*/\s*kwh(?:\s*ttc)?", leasing, flags=re.I):
-        raise RuntimeError("Powerdot Leasing Social: 0.30 EUR/kWh evidence missing")
-    if "3 mois" not in leasing or "premiere session" not in leasing:
-        raise RuntimeError("Powerdot Leasing Social: special programme conditions missing")
+    if "leasing social" not in leasing:
+        raise RuntimeError("Powerdot Leasing Social: programme marker missing")
+    if not re.search(r"(?<!\d)0[,.]29(?!\d)", leasing) or "kwh" not in leasing:
+        raise RuntimeError("Powerdot Leasing Social: current 0.29 EUR/kWh evidence missing")
+    if "3 mois" not in leasing or not re.search(r"(?<!\d)9[,.]99(?!\d)", leasing):
+        raise RuntimeError("Powerdot Leasing Social: current 3-month / 9.99 EUR conditions missing")
+    if "sans engagement" not in leasing:
+        raise RuntimeError("Powerdot Leasing Social: no-commitment evidence missing")
 
     electro = norm(fetched["electroverseSubscription"])
     if "powerdot" not in electro or "france : 28 %" not in electro:
@@ -187,6 +191,13 @@ def main() -> None:
         raise RuntimeError("Electroverse Powerdot monthly fee evidence missing")
 
     august_credit = 10.0 if ("aout 2026" in electro and "10 €" in electro) else None
+
+    preauth_amounts = []
+    for amount in (15, 25, 35):
+        if re.search(rf"\b{amount}\b", faq):
+            preauth_amounts.append(float(amount))
+    if preauth_amounts != [15.0, 25.0, 35.0] or "pre-autorisation" not in faq:
+        raise RuntimeError("Powerdot FAQ: current preauthorization evidence missing")
 
     facts = {
         "classification": {
@@ -227,10 +238,13 @@ def main() -> None:
             "leasingSocial": {
                 "classification": "eligibility_limited_special_program",
                 "operatorDirect": True,
-                "eurPerKwh": 0.30,
-                "firstSessionFree": True,
+                "eurPerKwh": 0.29,
                 "freeSubscriptionMonths": 3,
+                "monthlyFeeAfterFreePeriodEur": 9.99,
+                "commitment": "sans engagement",
                 "generalPublicTariff": False,
+                "status": "published_on_current_official_leasing_social_page",
+                "note": "The same page still describes an older launch discount until July; only the current 0.29 EUR/kWh subscription terms are stored as the active published programme terms.",
             },
         },
         "fees": {
@@ -242,6 +256,12 @@ def main() -> None:
                 "status": "site_or_landowner_specific_check_required",
                 "note": "Parking rules are not modeled as a Powerdot-wide fee.",
             },
+            "paymentPreauthorization": {
+                "possibleAmountsEur": preauth_amounts,
+                "purpose": "payment method / sufficient-credit verification",
+                "unusedBalanceRefunded": True,
+                "statedRefundDelayDays": {"min": 5, "max": 10},
+            },
         },
         "inventory": inventory,
     }
@@ -251,7 +271,7 @@ def main() -> None:
     ).hexdigest()
 
     payload = {
-        "schemaVersion": "1.0.0",
+        "schemaVersion": "1.1.0",
         "dataset": "powerdot-official-france",
         "generatedAt": now_iso(),
         "operator": "Powerdot",
@@ -271,7 +291,8 @@ def main() -> None:
         "notes": [
             "Do not invent a national Powerdot direct kWh price: the current official FAQ requires exact connector lookup.",
             "Electroverse subscription is an eMSP/member layer and must remain separate from Powerdot direct/ad-hoc pricing.",
-            "Leasing Social 0.30 EUR/kWh is eligibility-limited and must not be shown as the default public tariff.",
+            "Leasing Social 0.29 EUR/kWh is eligibility-limited and must not be shown as the default public tariff.",
+            "Powerdot currently states payment preauthorizations of 15, 25 or 35 EUR depending on the transaction flow.",
             "The Power Dot France publisher IRVE file is useful for static IDs/locations but is stale and must not be treated as live availability.",
         ],
     }
@@ -285,7 +306,8 @@ def main() -> None:
         "- Direct/ad-hoc route: **QR code / station-specific price**.\n"
         "- Electroverse Powerdot subscription (France): **1.99 EUR/month, 28% discount** (eMSP, not CPO-direct).\n"
         f"- Temporary August 2026 Electroverse credit detected: **{august_credit} EUR**.\n"
-        "- Leasing Social special programme: **0.30 EUR/kWh**, first session free, 3 subscription months free.\n"
+        "- Leasing Social current published programme: **0.29 EUR/kWh**, 3 months free, then **9.99 EUR/month**, no commitment.\n"
+        "- Payment preauthorization amounts: **15 / 25 / 35 EUR**.\n"
         "- Network-wide idle fee: **not asserted from current Powerdot CPO FAQ**.\n"
         "- Parking: **site/landowner-specific check required**.\n"
         f"- Power Dot France publisher IRVE rows: **{inventory['rowCount']}**; freshness: **{inventory['freshnessStatus']}**.\n"
