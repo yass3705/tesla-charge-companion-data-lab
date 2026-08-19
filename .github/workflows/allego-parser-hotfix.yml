@@ -24,28 +24,16 @@ jobs:
 
           p = Path('scripts/allego_official.py')
           s = p.read_text(encoding='utf-8')
-          old = '''    patterns = {
-              "ultraFast": r"(?:chargement ultra-rapide|ultra-fast charging)\\s+€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*kwh",
-              "fast": r"(?:chargement rapide|fast charging)\\s+€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*kwh",
-              "regular": r"(?:chargement regulier|regular charging)\\s+€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*kwh",
-          }
-          '''
-          # Match the exact block regardless of indentation captured above.
-          old = '''    patterns = {
-              "ultraFast": r"(?:chargement ultra-rapide|ultra-fast charging)\\s+€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*kwh",
-              "fast": r"(?:chargement rapide|fast charging)\\s+€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*kwh",
-              "regular": r"(?:chargement regulier|regular charging)\\s+€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*kwh",
+          fn = s.index('def parse_country_direct')
+          start = s.index('    patterns = {', fn)
+          end = s.index('    out = {}', start)
+          new = '''    patterns = {
+              "ultraFast": r"(?:(?:charg(?:ement|e)|recharge)\\s+)?(?:ultra(?:-|\\s)?rapide|ultra(?:-|\\s)?fast(?:\\s+charging)?).{0,180}?(?:€\\s*)?(\\d+(?:[.,]\\d+)?)\\s*(?:€\\s*)?/\\s*kwh",
+              "fast": r"(?:(?:charg(?:ement|e)|recharge)\\s+rapide|(?<!ultra-)fast\\s+charging).{0,180}?(?:€\\s*)?(\\d+(?:[.,]\\d+)?)\\s*(?:€\\s*)?/\\s*kwh",
+              "regular": r"(?:(?:charg(?:ement|e)|recharge)\\s+(?:regulier|normal(?:e)?)|regular\\s+charging).{0,180}?(?:€\\s*)?(\\d+(?:[.,]\\d+)?)\\s*(?:€\\s*)?/\\s*kwh",
           }
 '''.replace('              ', '        ')
-          new = '''    patterns = {
-        "ultraFast": r"(?:(?:charg(?:ement|e)|recharge)\\s+)?(?:ultra(?:-|\\s)?rapide|ultra(?:-|\\s)?fast(?:\\s+charging)?).{0,180}?(?:€\\s*)?(\\d+(?:[.,]\\d+)?)\\s*(?:€\\s*)?/\\s*kwh",
-        "fast": r"(?:(?:charg(?:ement|e)|recharge)\\s+rapide|(?<!ultra-)fast\\s+charging).{0,180}?(?:€\\s*)?(\\d+(?:[.,]\\d+)?)\\s*(?:€\\s*)?/\\s*kwh",
-        "regular": r"(?:(?:charg(?:ement|e)|recharge)\\s+(?:regulier|normal(?:e)?)|regular\\s+charging).{0,180}?(?:€\\s*)?(\\d+(?:[.,]\\d+)?)\\s*(?:€\\s*)?/\\s*kwh",
-    }
-'''
-          if old not in s:
-              raise SystemExit('Expected Allego pricing pattern block not found; refusing broad edit')
-          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          p.write_text(s[:start] + new + s[end:], encoding='utf-8')
           PY
           python -m py_compile scripts/allego_official.py
 
