@@ -1,0 +1,90 @@
+name: Lidl direct smoke validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/lidl_direct_public.py"
+      - "scripts/public_safety_check.py"
+      - "data/seed/lidl_smoke_seed.json"
+      - ".github/workflows/lidl-direct-smoke.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lidl-direct-smoke
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Compile extractor
+        run: python -m py_compile scripts/lidl_direct_public.py
+
+      - name: Probe reference EVSEs
+        run: |
+          mkdir -p shards out
+          python scripts/lidl_direct_public.py \
+            --mode shard \
+            --seed data/seed/lidl_smoke_seed.json \
+            --shard-index 0 \
+            --shard-count 1 \
+            --delay 0.1 \
+            --retries 2 \
+            --out shards
+          python scripts/lidl_direct_public.py \
+            --mode merge \
+            --seed data/seed/lidl_smoke_seed.json \
+            --shards-dir shards \
+            --out out
+
+      - name: Build public smoke report
+        run: |
+          mkdir -p reports/lidl-direct data/operator_direct
+          cp out/lidl_operator_direct_candidate.json data/operator_direct/lidl_smoke_candidate.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path('out/lidl_direct_full_report.json').read_text())
+          ref='FR*LDL*E00002411'
+          row=next((x for x in report['examples']['priorityLocalValidation'] if x['evseId']==ref), None)
+          price=((row or {}).get('direct') or {}).get('pricePerKwh')
+          payload={
+            'schemaVersion':'1.0.0',
+            'dataset':'lidl-direct-smoke-validation',
+            'referenceEvse':ref,
+            'manualReferenceEurPerKwh':0.29,
+            'publicDirectPricePerKwh':price,
+            'matchesManualReference': isinstance(price,(int,float)) and abs(price-0.29)<0.0005,
+            'stats':report['stats'],
+            'referenceResult':row,
+          }
+          Path('reports/lidl-direct/smoke_latest.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(payload,ensure_ascii=False,indent=2))
+          PY
+          python scripts/public_safety_check.py .
+
+      - name: Publish smoke result
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/lidl-direct/smoke_latest.json data/operator_direct/lidl_smoke_candidate.json
+          if git diff --cached --quiet; then
+            echo "No smoke-result change"
+          else
+            git commit -m "data(lidl): publish public direct smoke validation [run ${GITHUB_RUN_ID}]"
+            git push origin HEAD:main
+          fi
