@@ -50,6 +50,11 @@ TARGETS = {
         "marker": "data/operator_direct/totalenergies_official_france.json",
         "legacy_workflows": [],
     },
+    "ionity": {
+        "workflow": "ionity-official-tariffs.yml",
+        "marker": "data/operator_direct/ionity_official_france.json",
+        "legacy_workflows": [],
+    },
 }
 
 API = "https://api.github.com"
@@ -90,10 +95,7 @@ def list_runs(workflow_file: str) -> list[dict]:
     runs: list[dict] = []
     page = 1
     while page <= 10:
-        data = api_request(
-            "GET",
-            f"actions/workflows/{encoded}/runs?per_page=100&page={page}",
-        )
+        data = api_request("GET", f"actions/workflows/{encoded}/runs?per_page=100&page={page}")
         batch = list((data or {}).get("workflow_runs") or [])
         runs.extend(batch)
         if len(batch) < 100:
@@ -107,18 +109,13 @@ def delete_run(run_id: int) -> None:
 
 
 def choose_reference_success(runs: list[dict], keep_run_id: int | None) -> dict | None:
-    completed_successes = [
-        r for r in runs
-        if r.get("status") == "completed" and r.get("conclusion") == "success"
-    ]
+    completed_successes = [r for r in runs if r.get("status") == "completed" and r.get("conclusion") == "success"]
     if not completed_successes:
         return None
-
     if keep_run_id is not None:
         for run in completed_successes:
             if int(run.get("id")) == keep_run_id:
                 return run
-
     completed_successes.sort(key=lambda r: r.get("created_at") or "", reverse=True)
     return completed_successes[0]
 
@@ -131,7 +128,6 @@ def cleanup_legacy_workflows(key: str, workflows: list[str]) -> int:
         except Exception as exc:
             print(f"[{key}] legacy workflow {workflow}: unable to list ({exc}); skipping")
             continue
-
         workflow_deleted = 0
         for run in runs:
             if run.get("status") != "completed":
@@ -141,10 +137,7 @@ def cleanup_legacy_workflows(key: str, workflows: list[str]) -> int:
                 delete_run(run_id)
                 workflow_deleted += 1
                 deleted += 1
-                print(
-                    f"[{key}] deleted legacy run {run_id} from {workflow} "
-                    f"({run.get('conclusion')}, {run.get('created_at') or ''})"
-                )
+                print(f"[{key}] deleted legacy run {run_id} from {workflow} ({run.get('conclusion')}, {run.get('created_at') or ''})")
             except Exception as exc:
                 print(f"[{key}] could not delete legacy run {run_id}: {exc}")
         print(f"[{key}] legacy workflow {workflow}: deleted {workflow_deleted} completed run(s)")
@@ -155,7 +148,6 @@ def cleanup_target(key: str, keep_run_id: int | None = None) -> tuple[int, int |
     cfg = TARGETS[key]
     marker = Path(cfg["marker"])
     workflow = cfg["workflow"]
-
     if not marker.exists():
         print(f"[{key}] marker missing ({marker}); operator not validated yet -> preserving all runs")
         return 0, None
@@ -169,27 +161,20 @@ def cleanup_target(key: str, keep_run_id: int | None = None) -> tuple[int, int |
     ref_id = int(reference["id"])
     ref_created = reference.get("created_at") or ""
     deleted = 0
-
     for run in runs:
         run_id = int(run.get("id"))
-        if run_id == ref_id:
-            continue
-        if run.get("status") != "completed":
+        if run_id == ref_id or run.get("status") != "completed":
             continue
         created = run.get("created_at") or ""
         if created >= ref_created:
             continue
         delete_run(run_id)
         deleted += 1
-        print(
-            f"[{key}] deleted old active run {run_id} "
-            f"({run.get('conclusion')}, {created})"
-        )
+        print(f"[{key}] deleted old active run {run_id} ({run.get('conclusion')}, {created})")
 
     legacy = list(cfg.get("legacy_workflows") or [])
     if legacy:
         deleted += cleanup_legacy_workflows(key, legacy)
-
     print(f"[{key}] kept reference success run {ref_id}; deleted {deleted} obsolete run(s)")
     return deleted, ref_id
 
@@ -201,7 +186,6 @@ def prune_cleanup_workflow(current_run_id: int | None) -> int:
     except Exception as exc:
         print(f"[cleanup] unable to list cleanup workflow history: {exc}")
         return 0
-
     deleted = 0
     for run in runs:
         run_id = int(run.get("id"))
@@ -220,27 +204,19 @@ def prune_cleanup_workflow(current_run_id: int | None) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--target",
-        choices=["all", *TARGETS.keys()],
-        default="all",
-        help="Operator to clean; all only cleans operators with validated marker files.",
-    )
+    parser.add_argument("--target", choices=["all", *TARGETS.keys()], default="all")
     parser.add_argument("--keep-run-id", type=int, default=None)
     parser.add_argument("--current-cleanup-run-id", type=int, default=None)
     parser.add_argument("--prune-self", action="store_true")
     args = parser.parse_args()
-
     keys = list(TARGETS) if args.target == "all" else [args.target]
     total = 0
     for key in keys:
         keep = args.keep_run_id if len(keys) == 1 else None
         deleted, _ = cleanup_target(key, keep_run_id=keep)
         total += deleted
-
     if args.prune_self:
         total += prune_cleanup_workflow(args.current_cleanup_run_id)
-
     print(f"Cleanup complete: {total} run(s) deleted")
     return 0
 
