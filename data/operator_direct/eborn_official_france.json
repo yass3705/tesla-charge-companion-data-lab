@@ -1,0 +1,149 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "eborn-official-france-regional",
+  "generatedAt": "2026-08-19T22:53:04.578703Z",
+  "operator": "eborn",
+  "country": "FR",
+  "classification": {
+    "network": "eborn",
+    "regionalPublicNetwork": true,
+    "country": "FR",
+    "operationalManager": "Easy Charge (VINCI group)",
+    "singleFlatTariff": false,
+    "tariffDependsOnPowerAndCustomerProfile": true,
+    "territoryDepartments": [
+      "Allier",
+      "Alpes-de-Haute-Provence",
+      "Hautes-Alpes",
+      "Ardèche",
+      "Drôme",
+      "Isère",
+      "Loire",
+      "Haute-Loire",
+      "Savoie",
+      "Haute-Savoie",
+      "Var"
+    ]
+  },
+  "operatorDirect": {
+    "subscriptionPlans": {
+      "aLaCarte": {
+        "feeEurPerYear": 14.0
+      },
+      "forfait": {
+        "feeEurPerMonth": 49.0,
+        "includedKwhPerMonth": 250.0,
+        "beyondIncludedKwhUsesALaCarteTariff": true,
+        "unusedKwhCarryOver": false
+      }
+    },
+    "powerBands": {
+      "acceleratedUpTo25Kw": {
+        "aLaCarteEurPerKwh": 0.31,
+        "forfaitEnergyIncludedWithinMonthlyAllowance": true,
+        "nonSubscriberEurPerKwh": 0.433,
+        "postChargeSubscriberEurPerMinute": 0.05,
+        "postChargeNonSubscriberEurPerMinute": 0.075
+      },
+      "fastAbove25To60Kw": {
+        "aLaCarteEurPerKwh": 0.433,
+        "forfaitEnergyIncludedWithinMonthlyAllowance": true,
+        "nonSubscriberEurPerKwh": 0.573,
+        "postChargeSubscriberEurPerMinute": 0.075,
+        "postChargeNonSubscriberEurPerMinute": 0.12
+      },
+      "ultraFastAbove60Kw": {
+        "aLaCarteEurPerKwh": 0.588,
+        "forfaitEnergyIncludedWithinMonthlyAllowance": true,
+        "nonSubscriberEurPerKwh": 0.65,
+        "postChargeSubscriberEurPerMinute": 0.075,
+        "postChargeNonSubscriberEurPerMinute": 0.12
+      }
+    },
+    "paymentMethods": [
+      "eborn pass",
+      "eborn app",
+      "QR web payment",
+      "contactless bank card where equipped"
+    ],
+    "bankCardPreauthorization": {
+      "possibleAmountsEur": [
+        40.0,
+        50.0
+      ],
+      "singleNetworkWideAmount": false
+    }
+  },
+  "fees": {
+    "postCharge": {
+      "graceMinutesAfterChargeEnd": 30,
+      "basis": "time parked/connected after charge end",
+      "acceleratedOnlyBetween0800And2000": true,
+      "fastAndUltraFastTimeWindowRestrictionPublished": false,
+      "amountDependsOnPowerAndCustomerProfile": true
+    },
+    "parking": {
+      "networkWideIncluded": false,
+      "siteOrMunicipalitySpecific": true,
+      "mayBePaidOrTimeLimited": true
+    }
+  },
+  "failedSession": {
+    "notBilledWhenBothConditionsMet": true,
+    "energyLessThanKwh": 0.5,
+    "durationLessThanMinutes": 2
+  },
+  "reservation": {
+    "subscriberOnly": true,
+    "acceleratedChargers": true,
+    "reservationWindowMinutes": 30
+  },
+  "roaming": {
+    "incomingThirdPartyBadge": {
+      "classification": "third_party_eMSP",
+      "operatorDirect": false,
+      "priceSetByThirdPartyMobilityProvider": true
+    },
+    "outgoingEbornPass": {
+      "classification": "eborn_eMSP_on_partner_CPO",
+      "operatorDirect": false,
+      "partnerNetworkAccessPointsPublished": 430000,
+      "markupPercentOverPartnerNetworkTariff": 15,
+      "markupEffectiveFrom": "2025-03-31",
+      "exactTariffSource": "eborn app selected third-party charging point"
+    }
+  },
+  "network": {
+    "publishedPointsMinimum": 3000,
+    "publishedMaxPowerKw": 120,
+    "liveAvailabilityInOfficialApp": true
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "tariffs",
+        "url": "https://www.eborn.fr/tarifs/",
+        "httpStatus": 200
+      },
+      {
+        "key": "faq",
+        "url": "https://www.eborn.fr/foire-aux-questions/",
+        "httpStatus": 200
+      },
+      {
+        "key": "chargeGuide",
+        "url": "https://www.eborn.fr/la-recharge-de-votre-vehicule/",
+        "httpStatus": 200
+      }
+    ],
+    "relevantTariffFingerprintSha256": "fd9d5735bf633b926ef90b94225a01df4767ffc698a58a70ba8d44abaaa12f67"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "The 49 EUR/month plan is modeled as a 250 kWh monthly allowance, not as a fake per-kWh tariff.",
+    "Post-charge fees start 30 minutes after charge-end detection; accelerated chargers apply them only from 08:00 to 20:00.",
+    "Third-party badges on eborn remain eMSP pricing; outgoing eborn roaming is modeled separately with the published 15% markup.",
+    "Municipal or private parking costs remain site-specific and are not folded into the network energy tariff."
+  ]
+}
