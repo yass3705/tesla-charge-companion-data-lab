@@ -1,0 +1,161 @@
+{
+  "schemaVersion": "1.1.0",
+  "dataset": "powerdot-official-france",
+  "generatedAt": "2026-08-19T21:41:00.742527Z",
+  "operator": "Powerdot",
+  "country": "FR",
+  "classification": {
+    "singleGuaranteedNationalTariff": false,
+    "stationLevelPriceLookupRequiredForExactSimulation": true,
+    "reason": "Powerdot directs users to the exact connector tariff via QR code or mobility-provider app; price varies by location/connector."
+  },
+  "operatorDirect": {
+    "adHocQr": {
+      "available": true,
+      "priceModel": "station_connector_specific",
+      "exactPriceLookupRequired": true,
+      "nationalEurPerKwh": null
+    },
+    "ownConsumerApp": {
+      "status": "not_identified_on_current_powerdot_official_user_faq",
+      "note": "Current Powerdot FAQ directs drivers to QR payment or third-party mobility apps/badges."
+    }
+  },
+  "mobilityProviders": {
+    "generalRoaming": {
+      "classification": "third_party_eMSP",
+      "operatorDirect": false,
+      "stationLevelPriceLookupRequired": true,
+      "examplesNamedByPowerdot": [
+        "Chargemap",
+        "Electromaps",
+        "Miio"
+      ]
+    },
+    "electroversePowerdotSubscription": {
+      "classification": "third_party_eMSP_subscription",
+      "operatorDirect": false,
+      "monthlyFeeEur": 1.99,
+      "franceDiscountPercent": 28.0,
+      "temporaryAugust2026CreditEur": 10.0,
+      "exactResultingEurPerKwh": null,
+      "note": "Discount applies to the Electroverse price and must not be converted into a Powerdot CPO-direct national tariff."
+    }
+  },
+  "specialPrograms": {
+    "leasingSocial": {
+      "classification": "eligibility_limited_special_program",
+      "operatorDirect": true,
+      "eurPerKwh": 0.29,
+      "freeSubscriptionMonths": 3,
+      "monthlyFeeAfterFreePeriodEur": 9.99,
+      "commitment": "sans engagement",
+      "generalPublicTariff": false,
+      "status": "published_on_current_official_leasing_social_page",
+      "note": "The same page still describes an older launch discount until July; only the current 0.29 EUR/kWh subscription terms are stored as the active published programme terms."
+    }
+  },
+  "fees": {
+    "idleOrConnectionFee": {
+      "status": "not_asserted_network_wide_from_current_powerdot_cpo_faq",
+      "eurPerMin": null
+    },
+    "parking": {
+      "status": "site_or_landowner_specific_check_required",
+      "note": "Parking rules are not modeled as a Powerdot-wide fee."
+    },
+    "paymentPreauthorization": {
+      "possibleAmountsEur": [
+        15.0,
+        25.0,
+        35.0
+      ],
+      "purpose": "payment method / sufficient-credit verification",
+      "unusedBalanceRefunded": true,
+      "statedRefundDelayDays": {
+        "min": 5,
+        "max": 10
+      }
+    }
+  },
+  "inventory": {
+    "rowCount": 6636,
+    "samples": [
+      {
+        "targetCity": "Guyancourt",
+        "stationName": "Grand Frais - Guyancourt",
+        "address": "5-7 Rue de Dampierre, 78280 Guyancourt, France",
+        "city": null,
+        "postalCode": null,
+        "powerKwObserved": 240.0,
+        "evseId": "FRPD1EASCGUYBBC0011"
+      },
+      {
+        "targetCity": "Villabe",
+        "stationName": "Villabé Restauration",
+        "address": "3 Rue de la Plaine, 91100 Villabé, France",
+        "city": null,
+        "postalCode": null,
+        "powerKwObserved": 100.0,
+        "evseId": "FRPD1EDUVVRSKP0013"
+      },
+      {
+        "targetCity": null,
+        "stationName": "Carrefour Contact - Salies-du-Salat",
+        "address": "1 Avenue de la Gare",
+        "city": null,
+        "postalCode": null,
+        "powerKwObserved": null,
+        "evseId": "FRPD1ECACSDSIES50013"
+      }
+    ],
+    "publisherLastUpdateKnown": "2025-09-14",
+    "freshnessStatus": "stale_publisher_dataset_not_live_availability"
+  },
+  "sourceEvidence": {
+    "cpoFactsFromPowerdotOfficial": true,
+    "emspFactsFromElectroverseOfficial": true,
+    "technicalInventoryPublishedByPowerDotFranceOnDataGouv": true,
+    "sources": [
+      {
+        "key": "faq",
+        "url": "https://www.powerdot.eu/fr/vos-questions",
+        "httpStatus": 200
+      },
+      {
+        "key": "home",
+        "url": "https://www.powerdot.eu/fr",
+        "httpStatus": 200
+      },
+      {
+        "key": "leasingSocial",
+        "url": "https://www.powerdot.eu/fr/leasing-social",
+        "httpStatus": 200
+      },
+      {
+        "key": "electroverseSubscription",
+        "url": "https://electroverse.com/fr-FR/community/electroverse-features/abonnements-electroverse-qu-est-ce-que-c-est-et-comment-s-inscrire",
+        "httpStatus": 200
+      },
+      {
+        "key": "powerdotInventoryDataset",
+        "url": "https://www.data.gouv.fr/datasets/bornes-de-recharge-pour-ve-du-reseau-power-dot-france-1",
+        "httpStatus": null
+      },
+      {
+        "key": "powerdotInventoryCsv",
+        "url": "https://www.data.gouv.fr/api/1/datasets/r/1bf98bac-94a9-4909-8726-47a203038a40",
+        "httpStatus": 200
+      }
+    ],
+    "relevantTariffFingerprintSha256": "33798b13248c1e5ee218a7f86701883d9299b0328847f5c990c843b59980a90d"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "Do not invent a national Powerdot direct kWh price: the current official FAQ requires exact connector lookup.",
+    "Electroverse subscription is an eMSP/member layer and must remain separate from Powerdot direct/ad-hoc pricing.",
+    "Leasing Social 0.29 EUR/kWh is eligibility-limited and must not be shown as the default public tariff.",
+    "Powerdot currently states payment preauthorizations of 15, 25 or 35 EUR depending on the transaction flow.",
+    "The Power Dot France publisher IRVE file is useful for static IDs/locations but is stale and must not be treated as live availability."
+  ]
+}
