@@ -1,0 +1,109 @@
+name: IZIVIA official tariffs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 6 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/izivia_official.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/izivia-official-tariffs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: izivia-official-tariffs
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Extract official IZIVIA tariff families
+        run: |
+          python -m py_compile scripts/izivia_official.py
+          python scripts/izivia_official.py --out out/izivia
+          cat out/izivia/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate classification and tariff bounds
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/izivia/izivia_official_france.json').read_text())
+          assert p['classification']['singleNationalOperatorTariff'] is False, p['classification']
+          nets={x['network']:x for x in p['operatorDirectNetworks']}
+          assert {'IZIVIA FAST','IZIVIA Express','IZIVIA Grand Lyon'} <= set(nets), nets.keys()
+          fast=nets['IZIVIA FAST']['pricing']['happyHourFloorEurPerKwh']
+          assert 0.10 <= fast <= 1.50, fast
+          exp=nets['IZIVIA Express']['pricing']
+          assert 0.10 <= exp['minEurPerKwh'] <= exp['maxEurPerKwh'] <= 1.50, exp
+          gl=nets['IZIVIA Grand Lyon']['pricing']
+          assert gl['day']['upTo50Kw']['visitorEurPerKwh'] > 0, gl
+          assert gl['day']['from100Kw']['idleEurPerMin'] >= 0, gl
+          roaming=p['mobilityProvider']['thirdPartyNetworks']['currentDefaultServiceFeePercent']
+          assert 0 <= roaming <= 50, roaming
+          assert p['mobilityProvider']['thirdPartyNetworks']['stationLevelPriceLookupRequired'] is True
+          print('Validated IZIVIA tariff families')
+          PY
+
+      - name: Publish only when tariff evidence changes
+        id: publish
+        run: |
+          python - <<'PY'
+          import json, shutil
+          from pathlib import Path
+
+          new_path=Path('out/izivia/izivia_official_france.json')
+          dest=Path('data/operator_direct/izivia_official_france.json')
+          report_dest=Path('reports/izivia/latest_summary.md')
+          new=json.loads(new_path.read_text())
+
+          def signature(d):
+              return {
+                  'classification': d.get('classification'),
+                  'operatorDirectNetworks': d.get('operatorDirectNetworks'),
+                  'mobilityProvider': d.get('mobilityProvider'),
+                  'fingerprint': (d.get('sourceEvidence') or {}).get('relevantTariffFingerprintSha256'),
+                  'publicationStatus': d.get('publicationStatus'),
+              }
+
+          changed=True
+          if dest.exists():
+              old=json.loads(dest.read_text())
+              changed=signature(old)!=signature(new)
+
+          Path('changed.flag').write_text('1' if changed else '0')
+          if changed:
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              report_dest.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(new_path, dest)
+              shutil.copy2('out/izivia/SUMMARY.md', report_dest)
+              print('IZIVIA tariff evidence changed: publication prepared')
+          else:
+              print('IZIVIA tariff evidence unchanged: no repository commit needed')
+          PY
+          echo "changed=$(cat changed.flag)" >> "$GITHUB_OUTPUT"
+          python scripts/public_safety_check.py .
+
+      - name: Commit validated IZIVIA rule set
+        if: steps.publish.outputs.changed == '1'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/izivia_official_france.json reports/izivia/latest_summary.md
+          git commit -m "data(izivia): publish official tariff families [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:main
