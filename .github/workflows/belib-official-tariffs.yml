@@ -1,0 +1,156 @@
+name: Belib official Paris tariffs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7 8 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/belib_official.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/belib-official-tariffs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: belib-official-tariffs
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Install PDF text extractor
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils
+
+      - name: Extract Belib official Paris rules
+        id: extract
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/belib
+          python -m py_compile scripts/belib_official.py
+          python scripts/belib_official.py --out out/belib 2> >(tee out/belib/error.log >&2)
+          cat out/belib/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish sanitized diagnostic after extraction failure
+        if: failure() && steps.extract.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/belib
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          p=Path('out/belib/error.log')
+          text=p.read_text(errors='replace') if p.exists() else 'extractor failed without stderr capture'
+          text=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',text)
+          Path('reports/belib/latest_diagnostic.json').write_text(json.dumps({'dataset':'belib-extraction-diagnostic','sanitized':True,'errorTail':[x for x in text.splitlines() if x.strip()][-50:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belib/latest_diagnostic.json
+          if ! git diff --cached --quiet; then
+            git commit -m "diag(belib): publish extraction diagnostic [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
+
+      - name: Validate classification and tariffs
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/belib/belib_official_paris.json').read_text())
+          assert p['dataset'] == 'belib-official-paris'
+          assert p['city'] == 'Paris'
+          assert p['classification']['localPublicConcession'] is True
+          assert p['classification']['singleFlatTariff'] is False
+          assert p['visitor']['moto']['eurPerKwh'] == 0.33
+          assert p['visitor']['moto']['eurPer15MinConnected'] == 0.22
+          assert p['visitor']['flex']['eurPer15MinConnected'] == 0.57
+          assert p['visitor']['boost']['eurPer15MinConnected'] == 2.30
+          assert p['visitor']['boostPlus']['eurPerMinuteConnected'] == 0.42
+          assert p['subscriptions']['annualFeeEur'] == 7.0
+          assert p['subscriptions']['nonResident']['boostPlus']['eurPerMinuteConnected'] == 0.38
+          assert p['subscriptions']['residentParis']['night2300To0800']['flex']['eurPerKwh'] == 0.25
+          assert p['reservation']['boostPlusEur'] == 5.70
+          assert p['fees']['longConnection']['thresholdHours'] == 14
+          assert p['fees']['longConnection']['eurPerHourAfterThreshold'] == 10.0
+          assert p['roaming']['outgoingBelibBadge']['serviceFeeEurPerSession'] == 1.49
+          assert p['inventory']['officialLiveAvailabilityDataset'] is True
+          assert p['inventory']['staticPointCountObserved'] >= 1000
+          assert p['inventory']['livePointCountObserved'] >= 1000
+          assert p['sourceEvidence']['officialOnly'] is True
+          print('Validated Belib Paris tariff, reservation, long-connection and roaming layers')
+          PY
+
+      - name: Publish only when tariff evidence changes
+        id: publish
+        if: success()
+        run: |
+          python - <<'PY'
+          import json,shutil
+          from pathlib import Path
+          src=Path('out/belib/belib_official_paris.json')
+          dst=Path('data/operator_direct/belib_official_paris.json')
+          rep=Path('reports/belib/latest_summary.md')
+          new=json.loads(src.read_text())
+          def sig(d):
+              return {
+                  'classification':d.get('classification'),
+                  'chargerClasses':d.get('chargerClasses'),
+                  'visitor':d.get('visitor'),
+                  'subscriptions':d.get('subscriptions'),
+                  'reservation':d.get('reservation'),
+                  'fees':d.get('fees'),
+                  'roaming':d.get('roaming'),
+                  'bookingPdfSha256':(d.get('sourceEvidence') or {}).get('bookingPdfSha256'),
+                  'chargingPdfSha256':(d.get('sourceEvidence') or {}).get('chargingPdfSha256'),
+                  'fingerprint':(d.get('sourceEvidence') or {}).get('relevantTariffFingerprintSha256'),
+                  'publicationStatus':d.get('publicationStatus'),
+              }
+          changed=not dst.exists() or sig(json.loads(dst.read_text())) != sig(new)
+          Path('changed.flag').write_text('1' if changed else '0')
+          if changed:
+              dst.parent.mkdir(parents=True,exist_ok=True)
+              rep.parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(src,dst)
+              shutil.copy2('out/belib/SUMMARY.md',rep)
+          PY
+          echo "changed=$(cat changed.flag)" >> "$GITHUB_OUTPUT"
+          python scripts/public_safety_check.py .
+
+      - name: Commit validated Belib rule set
+        if: success() && steps.publish.outputs.changed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/belib_official_paris.json reports/belib/latest_summary.md
+          git commit -m "data(belib): publish official Paris tariff rules [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
