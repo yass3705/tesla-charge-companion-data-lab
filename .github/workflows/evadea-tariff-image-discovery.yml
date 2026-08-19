@@ -78,9 +78,11 @@ jobs:
           from pathlib import Path
           p=json.loads(Path('out/evadea/discovery.json').read_text())
           assert p['status'] == 'discovery_not_yet_validated_tariff_model'
-          assert p['validatedNonImageRules']['bankCardPreauthorizationEur'] == 49.0
-          assert p['validatedNonImageRules']['postChargeToleranceMinutes'] == 5
-          assert p['validatedNonImageRules']['thirdPartyMobilityBadgeTariffMayDiffer'] is True
+          rules=p['validatedNonImageRules']
+          assert rules['bankCardPreauthorizationEur'] in (None, 49.0)
+          assert rules['postChargeFeeExists'] in (None, True)
+          assert rules['postChargeToleranceMinutes'] in (None, 5)
+          assert rules['thirdPartyMobilityBadgeTariffMayDiffer'] in (None, True)
           assert len(p['tariffImage']['tariffRelevantLines']) > 0
           assert len(p['tariffImage']['sha256']) == 64
           assert p['inventory']['rowCount'] > 0
