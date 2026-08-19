@@ -1,0 +1,95 @@
+name: Cleanup operator runs
+
+on:
+  workflow_run:
+    workflows:
+      - Lidl Plus official tariff
+      - IZIVIA official tariffs
+      - Fastned official tariffs
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Operator workflow to clean
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - lidl
+          - izivia
+          - fastned
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/cleanup_operator_runs.py"
+      - ".github/workflows/cleanup-operator-runs.yml"
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: cleanup-operator-runs
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve cleanup target
+        id: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="all"
+          keep_run=""
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            target="${{ inputs.target }}"
+          elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            keep_run="${{ github.event.workflow_run.id }}"
+            case "${{ github.event.workflow_run.name }}" in
+              "Lidl Plus official tariff") target="lidl" ;;
+              "IZIVIA official tariffs") target="izivia" ;;
+              "Fastned official tariffs") target="fastned" ;;
+              *)
+                echo "Unknown operator workflow; nothing to clean"
+                exit 0
+                ;;
+            esac
+          fi
+
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "keep_run=$keep_run" >> "$GITHUB_OUTPUT"
+          echo "Resolved cleanup target: $target"
+          [[ -n "$keep_run" ]] && echo "Reference successful run: $keep_run"
+
+      - name: Prune obsolete completed runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(
+            --target "${{ steps.target.outputs.target }}"
+            --prune-self
+            --current-cleanup-run-id "$GITHUB_RUN_ID"
+          )
+          if [[ -n "${{ steps.target.outputs.keep_run }}" ]]; then
+            args+=(--keep-run-id "${{ steps.target.outputs.keep_run }}")
+          fi
+          python scripts/cleanup_operator_runs.py "${args[@]}" | tee cleanup.log
+
+          {
+            echo "## Operator workflow cleanup"
+            echo
+            echo '```text'
+            cat cleanup.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
