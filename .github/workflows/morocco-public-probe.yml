@@ -1,0 +1,85 @@
+name: Morocco public CPO probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/morocco_public_probe.py"
+      - "scripts/public_safety_check.py"
+      - "data/seed/morocco_manual_app_observations.json"
+      - ".github/workflows/morocco-public-probe.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-public-cpo-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate public-repo safety and syntax
+        run: |
+          python scripts/public_safety_check.py .
+          python -m py_compile scripts/morocco_public_probe.py
+
+      - name: Run read-only Morocco probe
+        run: python scripts/morocco_public_probe.py
+
+      - name: Safety-check generated output
+        run: |
+          test -s artifacts/morocco-public-probe/summary.json
+          python scripts/public_safety_check.py artifacts/morocco-public-probe
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('artifacts/morocco-public-probe/summary.json').read_text())
+          assert p['policy']['read_only'] is True
+          assert p['policy']['no_login'] is True
+          assert p['policy']['no_mutations'] is True
+          assert p['policy']['raw_android_packages_persisted'] is False
+          assert p['policy']['raw_client_keys_persisted'] is False
+          expected={'fastvolt','kilowatt','evone','total_club_ev','shell_vivo','evgo'}
+          assert expected <= set(p['apps']), p['apps'].keys()
+          print('Sanitized Morocco probe validated for:', ', '.join(sorted(expected)))
+          PY
+
+      - name: Prepare sanitized report
+        run: |
+          mkdir -p reports/morocco
+          cp artifacts/morocco-public-probe/summary.json reports/morocco/latest-summary.json
+          python scripts/public_safety_check.py .
+
+      - name: Upload sanitized probe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: morocco-public-cpo-probe
+          path: artifacts/morocco-public-probe/summary.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Persist sanitized report when changed
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/latest-summary.json
+          if git diff --cached --quiet; then
+            echo "No report change to commit"
+            exit 0
+          fi
+          git commit -m "data(morocco): update sanitized public CPO report [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:${GITHUB_REF_NAME}
