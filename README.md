@@ -14,19 +14,20 @@ A safety scanner runs before generated data is published.
 
 ## Current scope: Lidl France
 
-The first public pipeline probes Lidl EVSEs through the public Intercharge direct-payment flow.
+Two distinct public tariff channels are intentionally kept separate:
 
-Important source classification: this public payment flow is **not treated as Lidl Plus pricing**. The first manual validation showed that `FR*LDL*E00002411` is **0.29 EUR/kWh in Lidl Plus** while the public Intercharge ad-hoc payment page returned **0.39 EUR/kWh** at the same EVSE. These two tariff sources must therefore remain separate.
+1. **Lidl Plus / operator_direct** — sourced from Lidl France's official public E-Mobility page. Lidl explicitly states that the same per-kWh tariff applies everywhere in France, so this is modeled as a national network rule rather than 6,334 duplicated EVSE tariffs. The monitor extracts AC/DC prices, preauthorisation amounts and promotion status without using an authenticated Lidl account or private API.
+2. **Intercharge ad-hoc payment / adhoc_payment** — EVSE-level public direct-payment pricing. This is not assumed to equal Lidl Plus. A smoke validation showed that `FR*LDL*E00002411` can return a different ad-hoc price from the Lidl Plus app tariff.
 
-The current smoke seed contains only a small sanitized EVSE sample. National extraction will be enabled only after the source classification and publication model are validated.
+The official Lidl Plus rule is written to `data/operator_direct/lidl_plus_france.json` only when the tariff evidence changes. A lightweight public GitHub Action checks the official page daily without creating needless daily commits when the tariff is unchanged.
 
-Generated public-payment data is stored as **candidate ad-hoc pricing**, never as a Lidl Plus operator-direct tariff.
+Generated public-payment data remains candidate data until representative checks confirm the intended source interpretation.
 
 ## Repository layout
 
 - `data/seed/` — sanitized public extraction seeds
 - `data/adhoc_payment/` — public ad-hoc payment candidates
-- `data/operator_direct/` — reserved for operator/app tariffs that are actually validated as such
+- `data/operator_direct/` — validated-source operator/app tariff rules
 - `scripts/` — public extraction and safety tooling
 - `reports/` — concise extraction/validation reports
 - `.github/workflows/` — reproducible public Actions pipelines
