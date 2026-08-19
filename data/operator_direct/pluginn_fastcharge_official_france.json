@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "pluginn-fastcharge-official-france",
+  "generatedAt": "2026-08-19T22:30:59.302588Z",
+  "operator": "Plug Inn fast charge",
+  "country": "FR",
+  "classification": {
+    "cpoNetwork": "Plug Inn fast charge",
+    "formerName": "Mobilize Fast Charge",
+    "renamedInFrance": "2026-04",
+    "singleNationalBankCardDirectTariff": true,
+    "chargePassIsMobilityServiceLayer": true,
+    "thirdPartyPassTariffCanDiffer": true
+  },
+  "operatorDirect": {
+    "bankCard": {
+      "eurPerKwh": 0.59,
+      "subscriptionRequired": false,
+      "geography": "France"
+    },
+    "network": {
+      "maxPowerKwPublished": 320,
+      "open247": true,
+      "allVehicleBrands": true,
+      "highPowerConnector": "CCS2"
+    }
+  },
+  "mobilityService": {
+    "product": "Charge Pass",
+    "classification": "same_group_eMSP_member_pricing",
+    "mustRemainSeparateFromPublicBankCardCpoTariff": true,
+    "basic": {
+      "monthlyFeeEur": 0.0,
+      "plugInnEurPerKwh": 0.46
+    },
+    "intense": {
+      "monthlyFeeEur": 5.99,
+      "commitment": "none",
+      "plugInnEurPerKwh": 0.39,
+      "temporaryPromo": {
+        "eurPerMonth": 1.99,
+        "durationMonths": 6,
+        "observedOnCurrentOfficialPage": true,
+        "mustNotReplaceRecurringFee": true
+      }
+    }
+  },
+  "roaming": {
+    "classification": "third_party_eMSP",
+    "operatorDirect": false,
+    "exactTariffSource": "third-party mobility app/pass",
+    "examplesPublishedByOperator": [
+      "Chargemap Pass",
+      "Fulli",
+      "Ulys",
+      "Freshmile",
+      "IZIVIA",
+      "Plugsurfing",
+      "Total Charge"
+    ]
+  },
+  "fees": {
+    "overstayOrParkingDuration": {
+      "thresholdMinutes": 60,
+      "eurPerMinuteAfterThreshold": 0.3,
+      "wording": "stationnement beyond one hour",
+      "appliesToPublishedPlugInnTariffs": true,
+      "doNotModelAsChargeEndedOnly": true
+    },
+    "bankCardPreauthorization": {
+      "status": "amount_not_stated_on_current_fast_charge_page",
+      "amountEur": null
+    }
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "fastCharge",
+        "url": "https://www.renault.fr/solutions-de-recharge/plug-inn-fast-charge.html",
+        "httpStatus": 200
+      },
+      {
+        "key": "chargePass",
+        "url": "https://www.renault.fr/solutions-de-recharge/charge-pass.html",
+        "httpStatus": 200
+      },
+      {
+        "key": "rename",
+        "url": "https://media.renaultgroup.com/?p=256599",
+        "httpStatus": 200
+      }
+    ],
+    "relevantTariffFingerprintSha256": "a7860da34173d0ff43531efe38e449227b717e61184a660a963b612e6bd778eb"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "The public CPO bank-card tariff is kept separate from Charge Pass mobility-service/member prices.",
+    "The 0.30 EUR/min fee is described as applying beyond one hour of parking/stationnement; it is not modeled as charge-ended-only.",
+    "Third-party passes remain eMSP roaming and their prices must be resolved in the relevant app.",
+    "Mobilize Fast Charge is retained only as the former network name for matching legacy station records."
+  ]
+}
