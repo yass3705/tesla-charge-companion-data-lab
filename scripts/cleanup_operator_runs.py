@@ -39,6 +39,7 @@ TARGETS = {
     "evadea": {"workflow": "evadea-official-tariffs.yml", "marker": "data/operator_direct/evadea_official_france.json", "legacy_workflows": ["evadea-tariff-image-discovery.yml"]},
     "atlante": {"workflow": "atlante-official-tariffs.yml", "marker": "data/operator_direct/atlante_official_france.json", "legacy_workflows": []},
     "pluginn": {"workflow": "pluginn-fastcharge-official-tariffs.yml", "marker": "data/operator_direct/pluginn_fastcharge_official_france.json", "legacy_workflows": []},
+    "zunder": {"workflow": "zunder-official-tariffs.yml", "marker": "data/operator_direct/zunder_official_france.json", "legacy_workflows": []},
 }
 
 API = "https://api.github.com"
