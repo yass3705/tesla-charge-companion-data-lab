@@ -1,0 +1,78 @@
+name: EVGO Morocco public discovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/evgo_public_discovery.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/evgo-public-discovery.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: evgo-morocco-public-discovery
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate public-repo safety and syntax
+        run: |
+          python scripts/public_safety_check.py .
+          python -m py_compile scripts/evgo_public_discovery.py
+
+      - name: Discover EVGO public client signals
+        run: python scripts/evgo_public_discovery.py
+
+      - name: Validate and sanitize output
+        run: |
+          test -s artifacts/evgo-public-discovery/summary.json
+          python scripts/public_safety_check.py artifacts/evgo-public-discovery
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('artifacts/evgo-public-discovery/summary.json').read_text())
+          assert p['package']=='ma.evgo.cp.app'
+          assert p['policy']['read_only'] is True
+          assert p['policy']['no_login'] is True
+          assert p['policy']['no_mutations'] is True
+          assert p['policy']['raw_package_persisted'] is False
+          assert p['policy']['raw_credentials_persisted'] is False
+          assert p['policy']['query_strings_persisted'] is False
+          print('EVGO sanitized discovery validated')
+          PY
+
+      - name: Persist sanitized report
+        run: |
+          mkdir -p reports/morocco/evgo
+          cp artifacts/evgo-public-discovery/summary.json reports/morocco/evgo/latest-discovery.json
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/evgo/latest-discovery.json
+          if git diff --cached --quiet; then
+            echo "No EVGO discovery change"
+            exit 0
+          fi
+          git commit -m "data(morocco): update EVGO public discovery [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:${GITHUB_REF_NAME}
+
+      - name: Upload sanitized artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: evgo-morocco-public-discovery
+          path: artifacts/evgo-public-discovery/summary.json
+          retention-days: 14
