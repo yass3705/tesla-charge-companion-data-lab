@@ -1,5 +1,5 @@
 name: Operator batch item
-run-name: Operator batch item · ${{ inputs.operator }}
+run-name: Operator batch item · ${{ inputs.operator || 'bootstrap' }}
 
 on:
   workflow_dispatch:
@@ -12,6 +12,10 @@ on:
           - ouestcharge
           - mobive
           - alize_toulouse
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/operator-batch-item.yml"
 
 permissions:
   contents: write
@@ -30,18 +34,48 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Resolve operator
+        id: choose
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            key="${{ inputs.operator }}"
+          else
+            key=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          cfg=json.loads(Path('config/operator_batch.json').read_text())
+          key=''
+          for item in cfg.get('queue',[]):
+              if not Path(item['marker']).exists():
+                  key=item['key']
+                  break
+          print(key)
+          PY
+            )
+          fi
+          if [[ -z "$key" ]]; then
+            echo "No pending operator in batch."
+            exit 0
+          fi
+          echo "operator=$key" >> "$GITHUB_OUTPUT"
+          echo "Resolved operator: $key"
+
       - name: Public-safety scan
+        if: steps.choose.outputs.operator != ''
         run: python scripts/public_safety_check.py .
 
       - name: Resolve manifest metadata
         id: meta
+        if: steps.choose.outputs.operator != ''
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           from pathlib import Path
-          key = "${{ inputs.operator }}"
+          key = "${{ steps.choose.outputs.operator }}"
           m = json.loads((Path('config/operator_manifests') / f'{key}.json').read_text())
           print(f"output_file={m['outputFile']}")
           print(f"dataset={m['dataset']}")
@@ -49,10 +83,11 @@ jobs:
 
       - name: Extract and validate official evidence
         id: extract
+        if: steps.choose.outputs.operator != ''
         shell: bash
         run: |
           set -o pipefail
-          key="${{ inputs.operator }}"
+          key="${{ steps.choose.outputs.operator }}"
           mkdir -p "out/$key"
           python -m py_compile scripts/operator_manifest_runner.py
           python scripts/operator_manifest_runner.py --operator "$key" --out "out/$key" 2> >(tee "out/$key/error.log" >&2)
@@ -63,12 +98,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          key="${{ inputs.operator }}"
+          key="${{ steps.choose.outputs.operator }}"
           mkdir -p "reports/$key"
           python - <<'PY'
           import json,re
           from pathlib import Path
-          key = "${{ inputs.operator }}"
+          key = "${{ steps.choose.outputs.operator }}"
           p=Path('out')/key/'error.log'
           text=p.read_text(errors='replace') if p.exists() else 'extractor failed without stderr capture'
           text=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',text)
@@ -96,13 +131,13 @@ jobs:
           fi
 
       - name: Validate output envelope
-        if: success()
+        if: success() && steps.choose.outputs.operator != ''
         shell: bash
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          key='${{ inputs.operator }}'
+          key='${{ steps.choose.outputs.operator }}'
           m=json.loads((Path('config/operator_manifests')/f'{key}.json').read_text())
           p=json.loads((Path('out')/key/m['outputFile']).read_text())
           assert p['dataset'] == m['dataset']
@@ -117,15 +152,15 @@ jobs:
 
       - name: Publish validated marker only when model changes
         id: publish
-        if: success()
+        if: success() && steps.choose.outputs.operator != ''
         shell: bash
         run: |
           set -euo pipefail
-          key="${{ inputs.operator }}"
+          key="${{ steps.choose.outputs.operator }}"
           python - <<'PY'
           import json,shutil
           from pathlib import Path
-          key='${{ inputs.operator }}'
+          key='${{ steps.choose.outputs.operator }}'
           m=json.loads((Path('config/operator_manifests')/f'{key}.json').read_text())
           src=Path('out')/key/m['outputFile']
           dst=Path('data/operator_direct')/m['outputFile']
@@ -150,11 +185,11 @@ jobs:
           python scripts/public_safety_check.py .
 
       - name: Commit validated operator rule set
-        if: success() && steps.publish.outputs.changed == '1'
+        if: success() && steps.choose.outputs.operator != '' && steps.publish.outputs.changed == '1'
         shell: bash
         run: |
           set -euo pipefail
-          key="${{ inputs.operator }}"
+          key="${{ steps.choose.outputs.operator }}"
           output="${{ steps.meta.outputs.output_file }}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
