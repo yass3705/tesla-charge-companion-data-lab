@@ -70,7 +70,9 @@ def visible_text(raw_html: str) -> str:
 def norm(s: str) -> str:
     s = unicodedata.normalize("NFKD", s)
     s = "".join(ch for ch in s if not unicodedata.combining(ch))
-    s = s.lower().replace("’", "'").replace("–", "-").replace("—", "-")
+    for ch in ("\u2010", "\u2011", "\u2012", "\u2013", "\u2014", "\u2015", "\u2212"):
+        s = s.replace(ch, "-")
+    s = s.lower().replace("’", "'")
     return re.sub(r"\s+", " ", s).strip()
 
 
@@ -83,6 +85,11 @@ def require(text: str, phrase: str, source: str) -> None:
         raise RuntimeError(f"{source}: missing expected official phrase: {phrase}")
 
 
+def require_regex(text: str, pattern: str, source: str, label: str) -> None:
+    if not re.search(pattern, norm(text), flags=re.I):
+        raise RuntimeError(f"{source}: missing expected official tariff token: {label}")
+
+
 def parse_fast(text: str) -> dict:
     n = norm(text)
     require(n, "izivia fast", "FAST")
@@ -91,7 +98,8 @@ def parse_fast(text: str) -> dict:
     if not m_price:
         raise RuntimeError("FAST: current official page no longer exposes the Happy Hour floor price")
     pows = [int(x) for x in re.findall(r"(?:de|a)\s*(\d{2,3})\s*kw", n)]
-    pows += [int(x) for x in re.findall(r"(\d{2,3})\s*kw\s*a\s*(\d{2,3})\s*kw", n) for x in x]
+    for lo, hi in re.findall(r"(\d{2,3})\s*kw\s*a\s*(\d{2,3})\s*kw", n):
+        pows.extend([int(lo), int(hi)])
     powers = sorted({x for x in pows if 50 <= x <= 400})
     return {
         "network": "IZIVIA FAST",
@@ -142,23 +150,39 @@ def parse_express(text: str) -> dict:
 def parse_grand_lyon(text: str, offers_text: str) -> dict:
     n = norm(text)
     no = norm(offers_text)
-    require(n, "tarifs de recharge - reseau izivia grand lyon", "Grand Lyon")
-    require(n, "tarifs de jour (8h00 - 20h00)", "Grand Lyon")
-    require(n, "tarifs de nuit (20h00 - 8h00)", "Grand Lyon")
-    # These values are deliberately asserted as a complete matrix. If the official
-    # page changes, the workflow fails instead of silently publishing stale prices.
-    expected = [
-        "3,50€ /h", "2,50€ /h", "1,50€ /h",
-        "6€ /h", "5€ /h", "4€ /h",
-        "0,45€ /kwh", "0,40€ /kwh", "0,30€ /kwh",
-        "0,55€ /kwh", "0,50€ /kwh",
-        "+0,20€/min apres 45 min",
-        "6€ + 0,38€/kwh apres 20 kwh", "5€ + 0,38€/kwh apres 20 kwh", "4€ + 0,38€/kwh apres 20 kwh",
+
+    # Keep the semantic guardrails, but do not depend on one specific dash glyph
+    # or exact title punctuation from the WordPress theme.
+    require(n, "tarifs de recharge", "Grand Lyon")
+    require(n, "izivia grand lyon", "Grand Lyon")
+    require(n, "tarifs de jour", "Grand Lyon")
+    require(n, "8h00 - 20h00", "Grand Lyon")
+    require(n, "tarifs de nuit", "Grand Lyon")
+    require(n, "20h00 - 8h00", "Grand Lyon")
+
+    tariff_patterns = [
+        (r"3[.,]50\s*€\s*/\s*h", "3.50 EUR/h"),
+        (r"2[.,]50\s*€\s*/\s*h", "2.50 EUR/h"),
+        (r"1[.,]50\s*€\s*/\s*h", "1.50 EUR/h"),
+        (r"6\s*€\s*/\s*h", "6 EUR/h"),
+        (r"5\s*€\s*/\s*h", "5 EUR/h"),
+        (r"4\s*€\s*/\s*h", "4 EUR/h"),
+        (r"0[.,]45\s*€\s*/\s*kwh", "0.45 EUR/kWh"),
+        (r"0[.,]40\s*€\s*/\s*kwh", "0.40 EUR/kWh"),
+        (r"0[.,]30\s*€\s*/\s*kwh", "0.30 EUR/kWh"),
+        (r"0[.,]55\s*€\s*/\s*kwh", "0.55 EUR/kWh"),
+        (r"0[.,]50\s*€\s*/\s*kwh", "0.50 EUR/kWh"),
+        (r"\+?\s*0[.,]20\s*€\s*/\s*min\s*apres\s*45\s*min", "idle 0.20 EUR/min after 45 min"),
+        (r"6\s*€\s*\+\s*0[.,]38\s*€\s*/\s*kwh\s*apres\s*20\s*kwh", "night visitor 6 + 0.38"),
+        (r"5\s*€\s*\+\s*0[.,]38\s*€\s*/\s*kwh\s*apres\s*20\s*kwh", "night standard 5 + 0.38"),
+        (r"4\s*€\s*\+\s*0[.,]38\s*€\s*/\s*kwh\s*apres\s*20\s*kwh", "night frequency 4 + 0.38"),
     ]
-    for phrase in expected:
-        require(n, phrase, "Grand Lyon")
+    for pattern, label in tariff_patterns:
+        require_regex(n, pattern, "Grand Lyon", label)
+
     require(no, "stationnement n'est pas payant ni limite dans le temps", "Grand Lyon offers")
     require(no, "tarifs pour les paiements en ligne sur paynow.izivia.com", "Grand Lyon offers")
+
     return {
         "network": "IZIVIA Grand Lyon",
         "operatorDirect": True,
