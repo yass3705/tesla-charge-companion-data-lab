@@ -1,0 +1,101 @@
+name: Lidl Plus official tariff
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/lidl_plus_official.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/lidl-plus-official-tariff.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lidl-plus-official-tariff
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Extract official Lidl Plus tariff
+        run: |
+          python -m py_compile scripts/lidl_plus_official.py
+          python scripts/lidl_plus_official.py --out out/lidl-plus
+          cat out/lidl-plus/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate source classification
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/lidl-plus/lidl_plus_france.json').read_text())
+          assert p['source']=='operator_direct', p
+          assert p['provider']=='Lidl Plus', p
+          assert p['networkScope']['confirmedByOfficialSource'] is True, p
+          prices={x['currentType']:x['pricePerKwh'] for x in p['pricing']}
+          assert set(prices)=={'AC','DC'}, prices
+          assert all(0.05 <= x <= 2.0 for x in prices.values()), prices
+          print('Validated:', prices)
+          PY
+
+      - name: Publish only when tariff evidence changes
+        id: publish
+        run: |
+          python - <<'PY'
+          import json, shutil
+          from pathlib import Path
+
+          new_path=Path('out/lidl-plus/lidl_plus_france.json')
+          dest=Path('data/operator_direct/lidl_plus_france.json')
+          report_dest=Path('reports/lidl-plus/latest_summary.md')
+          new=json.loads(new_path.read_text())
+
+          def signature(d):
+              return {
+                  'networkScope': d.get('networkScope'),
+                  'pricing': d.get('pricing'),
+                  'fingerprint': (d.get('sourceEvidence') or {}).get('relevantTariffFingerprintSha256'),
+                  'publicationStatus': d.get('publicationStatus'),
+              }
+
+          changed=True
+          if dest.exists():
+              old=json.loads(dest.read_text())
+              changed=signature(old)!=signature(new)
+
+          Path('changed.flag').write_text('1' if changed else '0')
+          if changed:
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              report_dest.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(new_path, dest)
+              shutil.copy2('out/lidl-plus/SUMMARY.md', report_dest)
+              print('Tariff evidence changed: publication prepared')
+          else:
+              print('Tariff evidence unchanged: no repository commit needed')
+          PY
+          echo "changed=$(cat changed.flag)" >> "$GITHUB_OUTPUT"
+          python scripts/public_safety_check.py .
+
+      - name: Commit validated operator-direct rule
+        if: steps.publish.outputs.changed == '1'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/lidl_plus_france.json reports/lidl-plus/latest_summary.md
+          git commit -m "data(lidl): publish official Lidl Plus national tariff [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:main
