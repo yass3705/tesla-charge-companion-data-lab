@@ -68,7 +68,9 @@ jobs:
           echo "target=$target" >> "$GITHUB_OUTPUT"
           echo "keep_run=$keep_run" >> "$GITHUB_OUTPUT"
           echo "Resolved cleanup target: $target"
-          [[ -n "$keep_run" ]] && echo "Reference successful run: $keep_run"
+          if [[ -n "$keep_run" ]]; then
+            echo "Reference successful run: $keep_run"
+          fi
 
       - name: Prune obsolete completed runs
         env:
