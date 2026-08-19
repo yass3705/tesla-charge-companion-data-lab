@@ -122,7 +122,6 @@ def parse_inventory(csv_text: str) -> dict:
                 "evseId": first_matching(match, ("id_pdc_itinerance", "id_pdc_local", "id_pdc")),
             })
 
-    # Fallback samples if target towns are absent in this older publisher file.
     if len(samples) < 3:
         for row in rows:
             if len(samples) >= 3:
@@ -176,7 +175,7 @@ def main() -> None:
     require_any(faq, ("chargemap", "electromaps", "miio"), "Powerdot FAQ eMSP")
 
     leasing = norm(fetched["leasingSocial"])
-    if "0,30 €/kwh" not in leasing and "0,30 €/kwh ttc" not in leasing:
+    if not re.search(r"0[,.]30\s*€\s*/\s*kwh(?:\s*ttc)?", leasing, flags=re.I):
         raise RuntimeError("Powerdot Leasing Social: 0.30 EUR/kWh evidence missing")
     if "3 mois" not in leasing or "premiere session" not in leasing:
         raise RuntimeError("Powerdot Leasing Social: special programme conditions missing")
@@ -187,7 +186,6 @@ def main() -> None:
     if "1,99 € par mois" not in electro:
         raise RuntimeError("Electroverse Powerdot monthly fee evidence missing")
 
-    # August 2026 temporary credit is deliberately represented as a time-limited promotion.
     august_credit = 10.0 if ("aout 2026" in electro and "10 €" in electro) else None
 
     facts = {
