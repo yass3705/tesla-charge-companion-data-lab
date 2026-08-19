@@ -1,0 +1,169 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "allego-official-france",
+  "generatedAt": "2026-08-19T21:10:59.432513Z",
+  "operator": "Allego",
+  "country": "FR",
+  "classification": {
+    "countryDefaultTariffPublished": true,
+    "singleGuaranteedNationalTariff": false,
+    "stationLevelPriceLookupRequiredForExactSimulation": true,
+    "reason": "Allego publishes France default tariffs but explicitly states charge-point prices may vary by charger type and location/tender."
+  },
+  "operatorDirect": {
+    "allegoDirectCountryDefault": {
+      "currency": "EUR",
+      "billingUnit": "kWh",
+      "ultraFastEurPerKwh": 0.59,
+      "fastEurPerKwh": 0.49,
+      "regularEurPerKwh": 0.39,
+      "stationLevelPriceLookupRequired": true
+    },
+    "allegoApp": {
+      "status": "not_retrieved",
+      "countrySpecificRates": null,
+      "plusMonthlyFeeEur": 9.99
+    },
+    "allegoPlusPromotion": {
+      "name": "Allego Plus summer 2026",
+      "signupDeadline": "2026-08-31",
+      "freeMonths": 2,
+      "statedPromotionValueEur": 19.98,
+      "derivedStandardMonthlyFeeEur": 9.99,
+      "savingsUpToPercent": 34.0,
+      "promotionEndAfterActivation": "2 months after activation"
+    }
+  },
+  "fees": {
+    "hpcIdle": {
+      "eurPerMin": 0.248,
+      "onlyWhenChargingEnded": true,
+      "gracePeriodFromSessionStartMinutes": 45,
+      "scope": "Allego-owned HPC chargers"
+    },
+    "regularChargingOverstay": {
+      "eurPerMin": 0.05,
+      "appliesAfterSessionStartMinutes": 300,
+      "chargeWindowLocalTime": "07:00-23:00",
+      "notApplicableWindowLocalTime": "23:00-07:00",
+      "maximumChargedHours": 16,
+      "status": "validated_from_current_france_pricing_page"
+    }
+  },
+  "roaming": {
+    "classification": "third_party_eMSP",
+    "operatorDirect": false,
+    "priceOwnedBy": "mobility service provider / MSP",
+    "stationLevelPriceLookupRequired": true,
+    "note": "MSP final tariff may differ from Allego default tariff."
+  },
+  "stationValidationSamples": [
+    {
+      "key": "fenouillet",
+      "url": "https://www.allego.eu/fr/charging-station/rue-des-usines-fenouillet/",
+      "powerKwObserved": [
+        22,
+        300
+      ],
+      "evseIdsSample": [
+        "frallego8000581",
+        "frallego8000582",
+        "frallego8001691",
+        "frallego8001692",
+        "frallego8001701",
+        "frallego8001702",
+        "frallego8002841",
+        "frallego8002842",
+        "frallego8002851",
+        "frallego8002852"
+      ]
+    },
+    {
+      "key": "vauxbuin",
+      "url": "https://www.allego.eu/fr/charging-station/rue-du-sentier-vauxbuin/",
+      "powerKwObserved": [
+        22,
+        150
+      ],
+      "evseIdsSample": [
+        "frallego8000191",
+        "frallego8000192",
+        "frallego8000881",
+        "frallego8000882"
+      ]
+    },
+    {
+      "key": "saran",
+      "url": "https://www.allego.eu/fr/charging-station/2380-route-nationale_20-route-de-paris-saran/",
+      "powerKwObserved": [
+        22,
+        300
+      ],
+      "evseIdsSample": [
+        "frallego8002321",
+        "frallego8002322",
+        "frallego8002381",
+        "frallego8002382",
+        "frallego8008621",
+        "frallego8008622"
+      ]
+    }
+  ],
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "pricing",
+        "url": "https://www.allego.eu/fr/tarifs/",
+        "httpStatus": 200
+      },
+      {
+        "key": "overstay",
+        "url": "https://www.allego.eu/fr/overstay-fee/",
+        "httpStatus": 200
+      },
+      {
+        "key": "faq",
+        "url": "https://www.allego.eu/fr/faq/",
+        "httpStatus": 200
+      },
+      {
+        "key": "app",
+        "url": "https://app.allego.eu/",
+        "httpStatus": null
+      },
+      {
+        "key": "station:fenouillet",
+        "url": "https://www.allego.eu/fr/charging-station/rue-des-usines-fenouillet/",
+        "httpStatus": 200
+      },
+      {
+        "key": "station:vauxbuin",
+        "url": "https://www.allego.eu/fr/charging-station/rue-du-sentier-vauxbuin/",
+        "httpStatus": 200
+      },
+      {
+        "key": "station:saran",
+        "url": "https://www.allego.eu/fr/charging-station/2380-route-nationale_20-route-de-paris-saran/",
+        "httpStatus": 200
+      }
+    ],
+    "pricingRender": {
+      "accessMode": "official_static_html_country_index",
+      "selectedCountry": "France",
+      "countryIndex": 5,
+      "countryOptionCount": 15,
+      "tariffBlockCount": 15
+    },
+    "appRender": null,
+    "appRenderError": "ModuleNotFoundError: No module named 'selenium'",
+    "relevantTariffFingerprintSha256": "d747a0979951f38ddbf04db4bc02cc5efa0df138ec34ebc187d8538c638384f1"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "Allego Direct country prices are defaults, not a guarantee for every Allego charge point.",
+    "HPC idle fee is charged only after active charging has ended; the first 45 minutes from session start are exempt.",
+    "Regular-charging overstay fee is modeled separately from the HPC idle fee.",
+    "Third-party MSP pricing must not be treated as Allego Direct/App pricing."
+  ]
+}
