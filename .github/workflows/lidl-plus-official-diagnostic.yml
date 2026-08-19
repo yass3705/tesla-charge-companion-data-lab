@@ -30,9 +30,43 @@ jobs:
         run: |
           mkdir -p reports/lidl-plus diagnostic-out
           python - <<'PY'
-          import json, subprocess
+          import html, json, re, subprocess, urllib.request
           from datetime import datetime, timezone
           from pathlib import Path
+
+          URL='https://www.lidl.fr/c/e-mobilite/s10037236'
+          UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
+
+          probe={}
+          try:
+              req=urllib.request.Request(URL,headers={
+                  'User-Agent':UA,
+                  'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                  'Accept-Language':'fr-FR,fr;q=0.9,en;q=0.6',
+              })
+              with urllib.request.urlopen(req,timeout=30) as r:
+                  raw=r.read().decode(r.headers.get_content_charset() or 'utf-8',errors='replace')
+                  status=int(getattr(r,'status',200))
+                  final_url=r.geturl()
+              visible=re.sub(r'<script\b[^>]*>.*?</script>',' ',raw,flags=re.I|re.S)
+              visible=re.sub(r'<style\b[^>]*>.*?</style>',' ',visible,flags=re.I|re.S)
+              visible=re.sub(r'<[^>]+>',' ',visible)
+              visible=html.unescape(visible)
+              visible=re.sub(r'\s+',' ',visible).strip()
+              scripts=re.findall(r'<script[^>]+src=["\']([^"\']+)',raw,flags=re.I)
+              probe={
+                  'httpStatus':status,
+                  'finalUrl':final_url,
+                  'htmlLength':len(raw),
+                  'visibleLength':len(visible),
+                  'containsTarifDc':'Tarifs bornes de recharge DC' in visible,
+                  'containsLidlPlus':'Lidl Plus' in visible,
+                  'containsEmobilite':'E-Mobilité' in visible or 'E-Mobilite' in visible,
+                  'visiblePrefix':visible[:1800],
+                  'scriptSrcs':scripts[:20],
+              }
+          except Exception as e:
+              probe={'fetchError':repr(e)}
 
           cmd=['python','scripts/lidl_plus_official.py','--out','diagnostic-out']
           proc=subprocess.run(cmd, text=True, capture_output=True, timeout=180)
@@ -53,6 +87,7 @@ jobs:
               'stdout':proc.stdout[-6000:],
               'stderr':proc.stderr[-6000:],
               'outputExists':out.exists(),
+              'pageProbe':probe,
               'parsedSummary': None if not isinstance(parsed,dict) else {
                   'provider':parsed.get('provider'),
                   'source':parsed.get('source'),
@@ -67,6 +102,8 @@ jobs:
               f"- success: **{payload['success']}**\n"
               f"- exit code: `{payload['exitCode']}`\n"
               f"- output exists: **{payload['outputExists']}**\n"
+              f"- page HTTP: `{probe.get('httpStatus')}`\n"
+              f"- page contains tariff section: **{probe.get('containsTarifDc')}**\n"
           )
           print(json.dumps(payload,ensure_ascii=False,indent=2))
           PY
