@@ -1,5 +1,5 @@
 name: Operator batch item
-run-name: Operator batch item · ${{ inputs.operator || 'bootstrap' }}
+run-name: Operator batch item · ${{ inputs.operator }}
 
 on:
   workflow_dispatch:
@@ -12,10 +12,6 @@ on:
           - ouestcharge
           - mobive
           - alize_toulouse
-  push:
-    branches: ["main"]
-    paths:
-      - ".github/workflows/operator-batch-item.yml"
 
 permissions:
   contents: write
@@ -39,36 +35,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            key="${{ inputs.operator }}"
-          else
-            key=$(python - <<'PY'
-          import json
-          from pathlib import Path
-          cfg=json.loads(Path('config/operator_batch.json').read_text())
-          key=''
-          for item in cfg.get('queue',[]):
-              if not Path(item['marker']).exists():
-                  key=item['key']
-                  break
-          print(key)
-          PY
-            )
-          fi
-          if [[ -z "$key" ]]; then
-            echo "No pending operator in batch."
-            exit 0
-          fi
+          key="${{ inputs.operator }}"
+          test -n "$key"
+          test -f "config/operator_manifests/$key.json"
           echo "operator=$key" >> "$GITHUB_OUTPUT"
           echo "Resolved operator: $key"
 
       - name: Public-safety scan
-        if: steps.choose.outputs.operator != ''
         run: python scripts/public_safety_check.py .
 
       - name: Resolve manifest metadata
         id: meta
-        if: steps.choose.outputs.operator != ''
         shell: bash
         run: |
           set -euo pipefail
@@ -83,7 +60,6 @@ jobs:
 
       - name: Extract and validate official evidence
         id: extract
-        if: steps.choose.outputs.operator != ''
         shell: bash
         run: |
           set -o pipefail
@@ -131,7 +107,7 @@ jobs:
           fi
 
       - name: Validate output envelope
-        if: success() && steps.choose.outputs.operator != ''
+        if: success()
         shell: bash
         run: |
           python - <<'PY'
@@ -152,7 +128,7 @@ jobs:
 
       - name: Publish validated marker only when model changes
         id: publish
-        if: success() && steps.choose.outputs.operator != ''
+        if: success()
         shell: bash
         run: |
           set -euo pipefail
@@ -185,7 +161,7 @@ jobs:
           python scripts/public_safety_check.py .
 
       - name: Commit validated operator rule set
-        if: success() && steps.choose.outputs.operator != '' && steps.publish.outputs.changed == '1'
+        if: success() && steps.publish.outputs.changed == '1'
         shell: bash
         run: |
           set -euo pipefail
