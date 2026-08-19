@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SOURCE_URL = "https://www.lidl.fr/c/e-mobilite/s10037236"
-UA = "TeslaChargeCompanion-DataLab/1.0 (+public tariff research)"
+UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
 
 
 def now_iso() -> str:
@@ -31,8 +31,9 @@ def fetch(url: str) -> tuple[int, str]:
         url,
         headers={
             "User-Agent": UA,
-            "Accept": "text/html,application/xhtml+xml",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.6",
+            "Cache-Control": "no-cache",
         },
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
