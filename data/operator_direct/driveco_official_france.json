@@ -1,0 +1,159 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "driveco-official-france",
+  "generatedAt": "2026-08-19T21:55:10.557212Z",
+  "operator": "DRIVECO",
+  "country": "FR",
+  "classification": {
+    "singleGuaranteedNationalTariff": false,
+    "stationLevelPriceLookupRequiredForExactSimulation": true,
+    "reason": "DRIVECO publishes consumer reference prices but explicitly states that each charger has its own tariff grid and exact pricing is shown before charging."
+  },
+  "publishedReferencePricing": {
+    "classification": "operator_published_reference_not_station_guarantee",
+    "slow": {
+      "eurPerKwh": 0.39
+    },
+    "fast": {
+      "eurPerKwh": 0.51
+    },
+    "ultraFast": {
+      "eurPerKwhMin": 0.55,
+      "eurPerKwhMax": 0.59
+    },
+    "mustNotReplaceExactStationPrice": true
+  },
+  "operatorDirect": {
+    "application": {
+      "available": true,
+      "exactStationPriceShownBeforeCharge": true
+    },
+    "qrWebPortal": {
+      "available": true,
+      "exactStationPriceShownBeforeCharge": true
+    },
+    "bankCard": {
+      "availableWhereTerminalPresent": true
+    },
+    "drivecoBadge": {
+      "available": true,
+      "requiresPaymentMethodOnAccount": true
+    },
+    "autocharge": {
+      "availableWhereConfigured": true
+    }
+  },
+  "roaming": {
+    "classification": "third_party_eMSP",
+    "operatorDirect": false,
+    "badgeInteroperabilitySupported": true,
+    "priceControlledByThirdPartyProvider": true,
+    "mustNotBeClassifiedAsDrivecoDirect": true
+  },
+  "fees": {
+    "extendedParking": {
+      "status": "station_specific_possible",
+      "networkWideAmountEur": null,
+      "trigger": "use beyond time strictly necessary for full recharge",
+      "amountShownInSelectedChargePointTariff": true,
+      "localThirdPartyParkingPenaltiesMayAlsoApply": true
+    },
+    "paymentPreauthorization": {
+      "status": "amount_displayed_in_app_or_web_portal",
+      "networkWideAmountEur": null,
+      "canCapAndAutomaticallyStopSession": true
+    }
+  },
+  "sessionRules": {
+    "billingStartsAfterEnergyDeliveredKwhExceeds": 0.1,
+    "sessionCanStopAt": [
+      "cable_disconnection",
+      "preauthorization_amount_reached",
+      "remote_stop_by_driveco"
+    ]
+  },
+  "inventory": {
+    "rowCount": 5442,
+    "publisher": "DRIVECO",
+    "publisherLastUpdateKnown": "2026-07-21",
+    "freshnessStatus": "official_static_inventory_recent_not_live_availability",
+    "samples": [
+      {
+        "stationName": "Fiat - Coignières - powered by DRIVECO",
+        "address": "3 Rue Joseph Marie Jacquard, 78310 Coignières",
+        "postalCode": null,
+        "city": null,
+        "powerKwObserved": 22.08,
+        "evseId": "FRSSDE10482P1",
+        "stationId": "FRSSDPPRIODFIAT783101",
+        "targetDepartment": "78"
+      },
+      {
+        "stationName": "Fiat - Viry-Châtillon - powered by DRIVECO",
+        "address": "4 avenue de la madeleine, 91170 Viry-Châtillon",
+        "postalCode": null,
+        "city": null,
+        "powerKwObserved": 22.08,
+        "evseId": "FRSSDE10485P1",
+        "stationId": "FRSSDPPRIODFIAT911701",
+        "targetDepartment": "91"
+      },
+      {
+        "stationName": "Leroy Merlin - Reau - powered by DRIVECO",
+        "address": "2000 Rue Denis Papin, 77550 Réau",
+        "postalCode": null,
+        "city": null,
+        "powerKwObserved": 22.08,
+        "evseId": "FRE11E10293P1",
+        "stationId": "FRE11PLMREAU775501",
+        "targetDepartment": "77"
+      }
+    ]
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "drivecoOfficialPages": true,
+    "technicalInventoryPublishedByDrivecoOnDataGouv": true,
+    "sources": [
+      {
+        "key": "pricing",
+        "url": "https://driveco.com/borne-recharge-voiture-electrique/",
+        "httpStatus": 200
+      },
+      {
+        "key": "drivers",
+        "url": "https://driveco.com/conducteurs/",
+        "httpStatus": 200
+      },
+      {
+        "key": "howTo",
+        "url": "https://driveco.com/comment-recharger-borne-de-recharge-driveco/",
+        "httpStatus": 200
+      },
+      {
+        "key": "terms",
+        "url": "https://driveco.com/cgvu/",
+        "httpStatus": 200
+      },
+      {
+        "key": "inventoryDataset",
+        "url": "https://www.data.gouv.fr/datasets/liste-des-bornes-de-recharge-ouvertes-au-public",
+        "httpStatus": 200
+      },
+      {
+        "key": "inventoryCsv",
+        "url": "https://www.data.gouv.fr/api/1/datasets/r/775dd5a9-c0e4-4bb7-8995-f4b5a4148836",
+        "httpStatus": 200
+      }
+    ],
+    "relevantTariffFingerprintSha256": "8e5025a030516c5a93ca1d0b1358196a66286e545554e6deeb8075070c049db2"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "Do not use the 0.39/0.51/0.55-0.59 EUR/kWh consumer references as universal station tariffs.",
+    "Exact DRIVECO direct price must be resolved from the selected charge point before simulation.",
+    "Third-party badge pricing belongs to the eMSP and must remain separate from DRIVECO direct pricing.",
+    "Extended-parking fees and local parking penalties require station/site-level resolution.",
+    "The official static IRVE inventory is recent but is not live availability."
+  ]
+}
