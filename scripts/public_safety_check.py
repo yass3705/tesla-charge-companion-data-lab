@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Block obvious secrets/credentials from the intentionally public Data Lab."""
+"""Block obvious secrets, credentials and raw app packages from the public Data Lab."""
 import argparse
 import re
 from pathlib import Path
@@ -12,8 +12,11 @@ PATTERNS = [
     (re.compile(rb"Authorization\s*:\s*Bearer\s+\S+", re.I), "Authorization bearer header"),
     (re.compile(rb"Cookie\s*:\s*\S+", re.I), "Cookie header"),
     (re.compile(rb"(?:client_secret|api_key|access_token|refresh_token)\s*[:=]\s*[\"'][^\"']{8,}[\"']", re.I), "embedded credential"),
+    (re.compile(rb"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"), "JWT-like token"),
+    (re.compile(rb"sb_(?:publishable|anon)_[A-Za-z0-9_-]{12,}", re.I), "Supabase public client key"),
 ]
 SKIP_PARTS = {".git", "__pycache__", ".pytest_cache", ".venv", "venv"}
+FORBIDDEN_SUFFIXES = {".apk", ".xapk", ".aab", ".ipa"}
 
 
 def iter_files(root):
@@ -28,6 +31,9 @@ def main():
     args = ap.parse_args()
     hits = []
     for path in iter_files(args.root):
+        if path.suffix.lower() in FORBIDDEN_SUFFIXES:
+            hits.append((str(path), "raw mobile application package"))
+            continue
         try:
             data = path.read_bytes()
         except Exception:
