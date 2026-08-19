@@ -1,0 +1,109 @@
+name: e-Vadea tariff image discovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/evadea_tariff_image_discovery.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/evadea-tariff-image-discovery.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: evadea-tariff-image-discovery
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Install OCR language data
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq tesseract-ocr tesseract-ocr-fra
+
+      - name: Read official image-only tariff table
+        id: discover
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/evadea
+          python -m py_compile scripts/evadea_tariff_image_discovery.py
+          python scripts/evadea_tariff_image_discovery.py --out out/evadea 2> >(tee out/evadea/error.log >&2)
+
+      - name: Publish sanitized failure diagnostic
+        if: failure() && steps.discover.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/evadea
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          p=Path('out/evadea/error.log')
+          text=p.read_text(errors='replace') if p.exists() else 'discovery failed without stderr capture'
+          text=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',text)
+          Path('reports/evadea/latest_discovery_diagnostic.json').write_text(json.dumps({'dataset':'evadea-discovery-diagnostic','sanitized':True,'errorTail':[x for x in text.splitlines() if x.strip()][-50:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/evadea/latest_discovery_diagnostic.json
+          if ! git diff --cached --quiet; then
+            git commit -m "diag(evadea): publish tariff image discovery diagnostic [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
+
+      - name: Validate discovery envelope
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/evadea/discovery.json').read_text())
+          assert p['status'] == 'discovery_not_yet_validated_tariff_model'
+          assert p['validatedNonImageRules']['bankCardPreauthorizationEur'] == 49.0
+          assert p['validatedNonImageRules']['postChargeToleranceMinutes'] == 5
+          assert p['validatedNonImageRules']['thirdPartyMobilityBadgeTariffMayDiffer'] is True
+          assert len(p['tariffImage']['tariffRelevantLines']) > 0
+          assert len(p['tariffImage']['sha256']) == 64
+          assert p['inventory']['rowCount'] > 0
+          print('e-Vadea official tariff image discovery envelope validated')
+          PY
+
+      - name: Publish discovery evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/evadea
+          cp out/evadea/discovery.json reports/evadea/latest_tariff_image_discovery.json
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/evadea/latest_tariff_image_discovery.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data(evadea): publish official tariff image discovery [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
