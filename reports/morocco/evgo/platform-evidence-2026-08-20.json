@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "operator_brand": "EVGO",
+  "app_package": "ma.evgo.cp.app",
+  "finding": "The public EVGO Android client contains strong AMPECO platform evidence and tenant-domain strings consistent with an AMPECO Charge deployment.",
+  "evidence": {
+    "source_report": "reports/morocco/evgo/latest-vendor-domain-lite.json",
+    "ampeco_keyword_occurrences": 128,
+    "evgo_keyword_occurrences": 55,
+    "candidate_tenant_domains": [
+      "evgo.eu-evgo.charge.ampeco.tech",
+      "echo.eu-evgo.charge.ampeco.tech"
+    ],
+    "additional_ampeco_signal": "ampeco-charge-10.firebasestorage.app",
+    "relevant_client_markers": [
+      "evses/search",
+      "locations/withEVSE",
+      "ongoingSessionByEvseId",
+      "session:start:pricing",
+      "idle-fee",
+      "pricingPeriods"
+    ]
+  },
+  "official_platform_docs": {
+    "provider": "AMPECO",
+    "docs_domain": "developers.ampeco.com",
+    "documented_public_api_examples": [
+      "GET https://{tenantUrl}/public-api/resources/charge-points/v2.0/{chargePoint}/evses",
+      "GET/other resource routes under https://{tenantUrl}/public-api/resources/..."
+    ],
+    "authentication_note": "AMPECO public API documentation shows Bearer authentication for resource endpoints; no credential is stored or inferred here."
+  },
+  "interpretation": {
+    "platform_confidence": "high",
+    "tenant_domain_confidence": "strong_client_string_evidence_not_yet_network_validated",
+    "cpo_consequence": "Nareva Services / EVGO remains the operator candidate; AMPECO is modeled as the backend/platform provider, not as the CPO.",
+    "next_step": "Use the AMPECO tenant-domain evidence to target only sanitized read-only discovery of the mobile-app base URL/request shape. Do not call authenticated or mutating endpoints."
+  },
+  "privacy": {
+    "credentials_committed": false,
+    "tokens_committed": false,
+    "raw_app_strings_committed": false
+  }
+}
