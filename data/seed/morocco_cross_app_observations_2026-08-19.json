@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "observed_at_local": "2026-08-19T21:17:00+02:00",
+  "source_method": "manual_cross_app_observation",
+  "privacy": {
+    "screenshots_committed": false,
+    "personal_data_committed": false,
+    "note": "Only charging-infrastructure facts transcribed from user-verified app screens/statements are stored."
+  },
+  "modeling_rule": "operator/CPO, site_brand, app_source/access_network, tariff_channel and status_source must be modeled separately. A roaming/eMSP app may expose a different tariff and a less fresh status than the native operator app.",
+  "observations": [
+    {
+      "native_app": "EVGO",
+      "site_name": "Marjane Mohammedia",
+      "site_brand": ["Marjane"],
+      "locality": "Mohammedia",
+      "connector": {
+        "id": "3",
+        "type": "Type2",
+        "native_status": "Occupied",
+        "native_session_state_visible": true,
+        "native_session_elapsed": "2h29m",
+        "native_start_charge_button_present": true,
+        "native_start_charge_button_disabled_reason": "Occupied by another user",
+        "native_tariff": {
+          "type": "free",
+          "amount": 0.0,
+          "currency": "MAD"
+        }
+      },
+      "power_kw": 22.0,
+      "power_evidence": "user_statement_not_visible_on_native_screen",
+      "status_freshness_assessment": "native_app_appears_live_or_near_live",
+      "evidence_level": "strong_manual_app_evidence"
+    },
+    {
+      "app_source": "EVOne",
+      "access_network": "EVOne",
+      "site_name": "Marjane Ain Sebaa",
+      "site_brand": ["Marjane"],
+      "locality": "Ain Sebaa, Casablanca",
+      "cpo_candidate": "EVGO",
+      "cpo_status": "strong_equipment_brand_evidence_not_api_confirmed",
+      "equipment_brand_evidence": "EVGO branding visible on charging equipment/site photo displayed by EVOne",
+      "connectors": [
+        {
+          "id": "1004 #1",
+          "type": "Type2",
+          "power_kw": 22.0,
+          "status": "Unavailable",
+          "tariff": {
+            "type": "time",
+            "amount": 180.0,
+            "unit": "hour",
+            "currency": "MAD",
+            "channel": "EVOne_roaming_or_emsp_display"
+          }
+        },
+        {
+          "id": "1005 #1",
+          "type": "Type2",
+          "power_kw": 22.0,
+          "status": "Unavailable",
+          "tariff": {
+            "type": "time",
+            "amount": 180.0,
+            "unit": "hour",
+            "currency": "MAD",
+            "channel": "EVOne_roaming_or_emsp_display"
+          }
+        }
+      ],
+      "tariff_interpretation": "Do not treat 180 MAD/hour as EVGO operator-direct pricing unless confirmed in the EVGO native app/API. It is currently an EVOne-displayed access/roaming tariff.",
+      "evidence_level": "strong_manual_app_evidence"
+    },
+    {
+      "cross_app_case": "EVGO_vs_EVOne_status_freshness",
+      "site_name": "Marjane Mohammedia",
+      "user_observation": "EVOne showed Marjane Mohammedia as offline/unavailable while the EVGO native app exposed connector occupancy/session state and the charge-start workflow.",
+      "assessment": "EVOne station/status data may be cached, delayed, incomplete or sourced from a roaming feed with lower freshness than EVGO native data.",
+      "modeling_consequence": "Prefer native CPO/app status for live availability when available. Keep roaming-app status as a separately timestamped source rather than overwriting native status.",
+      "evidence_level": "user_cross_app_observation"
+    }
+  ]
+}
