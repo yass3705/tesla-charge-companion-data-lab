@@ -1,4 +1,4 @@
-name: Lidl direct smoke validation
+name: Lidl ad-hoc smoke validation
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: lidl-direct-smoke
+  group: lidl-adhoc-smoke
   cancel-in-progress: true
 
 jobs:
@@ -50,24 +50,34 @@ jobs:
             --shards-dir shards \
             --out out
 
-      - name: Build public smoke report
+      - name: Build public ad-hoc report
         run: |
-          mkdir -p reports/lidl-direct data/operator_direct
-          cp out/lidl_operator_direct_candidate.json data/operator_direct/lidl_smoke_candidate.json
+          mkdir -p reports/lidl-direct data/adhoc_payment
           python - <<'PY'
           import json
           from pathlib import Path
+          candidate=json.loads(Path('out/lidl_operator_direct_candidate.json').read_text())
+          candidate['dataset']='adhoc-payment-lidl-france-candidate'
+          candidate['provider']='Lidl / Intercharge ad-hoc'
+          candidate['source']='adhoc_payment'
+          for r in candidate.get('records',[]):
+              r['provider']='Lidl / Intercharge ad-hoc'
+              r['source']='adhoc_payment'
+              r['tariffSource']='public_intercharge_adhoc_payment'
+          Path('data/adhoc_payment/lidl_smoke_candidate.json').write_text(json.dumps(candidate,ensure_ascii=False,separators=(',',':'))+'\n')
+
           report=json.loads(Path('out/lidl_direct_full_report.json').read_text())
           ref='FR*LDL*E00002411'
           row=next((x for x in report['examples']['priorityLocalValidation'] if x['evseId']==ref), None)
           price=((row or {}).get('direct') or {}).get('pricePerKwh')
           payload={
             'schemaVersion':'1.0.0',
-            'dataset':'lidl-direct-smoke-validation',
+            'dataset':'lidl-adhoc-smoke-validation',
+            'sourceClassification':'public_intercharge_adhoc_payment_not_lidl_plus',
             'referenceEvse':ref,
-            'manualReferenceEurPerKwh':0.29,
-            'publicDirectPricePerKwh':price,
-            'matchesManualReference': isinstance(price,(int,float)) and abs(price-0.29)<0.0005,
+            'lidlPlusManualReferenceEurPerKwh':0.29,
+            'publicAdhocPricePerKwh':price,
+            'sameAsLidlPlus': isinstance(price,(int,float)) and abs(price-0.29)<0.0005,
             'stats':report['stats'],
             'referenceResult':row,
           }
@@ -81,10 +91,10 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports/lidl-direct/smoke_latest.json data/operator_direct/lidl_smoke_candidate.json
+          git add reports/lidl-direct/smoke_latest.json data/adhoc_payment/lidl_smoke_candidate.json
           if git diff --cached --quiet; then
             echo "No smoke-result change"
           else
-            git commit -m "data(lidl): publish public direct smoke validation [run ${GITHUB_RUN_ID}]"
+            git commit -m "data(lidl): publish ad-hoc smoke validation [run ${GITHUB_RUN_ID}]"
             git push origin HEAD:main
           fi
