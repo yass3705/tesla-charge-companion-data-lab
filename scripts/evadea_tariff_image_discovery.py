@@ -183,9 +183,15 @@ def main() -> None:
     how = norm(text_from_html(how_raw, how_charset))
     if faq_status != 200 or how_status != 200 or csv_status != 200:
         raise RuntimeError("one or more official supporting sources failed")
-    for needle in ("49,00", "forfait post-charge", "tolerance de 5mn"):
-        if norm(needle) not in faq:
-            raise RuntimeError(f"FAQ evidence missing: {needle}")
+
+    # Current FAQ wording can render punctuation/spacing differently across responses.
+    # Validate the meaning instead of one exact HTML representation.
+    if "pre-autorisation" not in faq or not re.search(r"\b49(?:[,.]00)?\s*€", faq):
+        raise RuntimeError("FAQ evidence missing: 49 EUR card preauthorization")
+    if "forfait post-charge" not in faq and "forfait post charge" not in faq:
+        raise RuntimeError("FAQ evidence missing: post-charge fee")
+    if not re.search(r"tolerance\s+de\s+5\s*(?:mn|min|minutes?)\b", faq):
+        raise RuntimeError("FAQ evidence missing: 5-minute post-charge tolerance")
     if "tarif different" not in how or "operateur de mobilite" not in how:
         raise RuntimeError("eMSP roaming separation evidence missing")
 
