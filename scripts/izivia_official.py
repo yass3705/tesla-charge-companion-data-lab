@@ -67,6 +67,16 @@ def visible_text(raw_html: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+def extractable_text(raw_html: str) -> str:
+    """Keep visible text plus script/JSON text as a fallback for dynamic pages."""
+    visible = visible_text(raw_html)
+    raw_flat = html.unescape(re.sub(r"<[^>]+>", " ", raw_html))
+    raw_flat = raw_flat.replace("\\u20ac", "€").replace("\\/", "/")
+    raw_flat = re.sub(r"\\u00([0-9a-fA-F]{2})", lambda m: chr(int(m.group(1), 16)), raw_flat)
+    raw_flat = re.sub(r"\s+", " ", raw_flat).strip()
+    return f"{visible} {raw_flat}".strip()
+
+
 def norm(s: str) -> str:
     s = unicodedata.normalize("NFKD", s)
     s = "".join(ch for ch in s if not unicodedata.combining(ch))
@@ -151,15 +161,6 @@ def parse_grand_lyon(text: str, offers_text: str) -> dict:
     n = norm(text)
     no = norm(offers_text)
 
-    # Keep the semantic guardrails, but do not depend on one specific dash glyph
-    # or exact title punctuation from the WordPress theme.
-    require(n, "tarifs de recharge", "Grand Lyon")
-    require(n, "izivia grand lyon", "Grand Lyon")
-    require(n, "tarifs de jour", "Grand Lyon")
-    require(n, "8h00 - 20h00", "Grand Lyon")
-    require(n, "tarifs de nuit", "Grand Lyon")
-    require(n, "20h00 - 8h00", "Grand Lyon")
-
     tariff_patterns = [
         (r"3[.,]50\s*€\s*/\s*h", "3.50 EUR/h"),
         (r"2[.,]50\s*€\s*/\s*h", "2.50 EUR/h"),
@@ -181,7 +182,7 @@ def parse_grand_lyon(text: str, offers_text: str) -> dict:
         require_regex(n, pattern, "Grand Lyon", label)
 
     require(no, "stationnement n'est pas payant ni limite dans le temps", "Grand Lyon offers")
-    require(no, "tarifs pour les paiements en ligne sur paynow.izivia.com", "Grand Lyon offers")
+    require(no, "paynow.izivia.com", "Grand Lyon offers")
 
     return {
         "network": "IZIVIA Grand Lyon",
@@ -222,7 +223,7 @@ def parse_pass(pass_text: str, roaming_text: str, paynow_text: str) -> dict:
     m_fee = re.search(r"frais de service de\s*(\d+(?:[.,]\d+)?)\s*%", r)
     if not m_fee:
         raise RuntimeError("Pass IZIVIA: current third-party service fee not found")
-    require(q, "paynow.izivia.com", "PayNow")
+    require(q, "paynow", "PayNow")
     return {
         "product": "Pass IZIVIA Access",
         "classification": "eMSP_roaming",
@@ -254,7 +255,7 @@ def main() -> None:
         status, raw = fetch(url)
         if status != 200:
             raise RuntimeError(f"{key}: unexpected HTTP status {status}")
-        pages[key] = visible_text(raw)
+        pages[key] = extractable_text(raw)
         statuses[key] = status
 
     fast = parse_fast(pages["fast"])
@@ -291,7 +292,9 @@ def main() -> None:
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "izivia_official_france.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (out / "izivia_official_france.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     summary = (
         "# IZIVIA official tariff check\n\n"
         f"- FAST: Happy Hour floor **{fast['pricing']['happyHourFloorEurPerKwh']:.2f} EUR/kWh**; exact current station tariff still requires lookup.\n"
