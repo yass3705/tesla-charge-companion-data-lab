@@ -1,0 +1,167 @@
+name: Allego official tariffs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "57 6 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/allego_official.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/allego-official-tariffs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: allego-official-tariffs
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Prepare browser rendering
+        run: |
+          python -m pip install --disable-pip-version-check "selenium>=4.20,<5"
+          (google-chrome --version || chromium --version || true)
+
+      - name: Extract official Allego France tariffs
+        id: extract
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/allego
+          python -m py_compile scripts/allego_official.py
+          python scripts/allego_official.py --out out/allego 2> >(tee out/allego/error.log >&2)
+          cat out/allego/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish sanitized diagnostic after extraction failure
+        if: failure() && steps.extract.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/allego
+          python - <<'PY'
+          import json, re
+          from pathlib import Path
+          src=Path('out/allego/error.log')
+          text=src.read_text(errors='replace') if src.exists() else 'extractor failed without stderr capture'
+          text=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+', r'\1=[REDACTED]', text)
+          lines=[x for x in text.splitlines() if x.strip()][-35:]
+          payload={'dataset':'allego-extraction-diagnostic','sanitized':True,'errorTail':lines}
+          Path('reports/allego/latest_diagnostic.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/allego/latest_diagnostic.json
+          if ! git diff --cached --quiet; then
+            git commit -m "diag(allego): publish extraction diagnostic [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              echo "Diagnostic push attempt ${attempt} failed; retrying"
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
+
+      - name: Validate classification and tariff bounds
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/allego/allego_official_france.json').read_text())
+          c=p['classification']
+          assert c['countryDefaultTariffPublished'] is True
+          assert c['singleGuaranteedNationalTariff'] is False
+          assert c['stationLevelPriceLookupRequiredForExactSimulation'] is True
+          d=p['operatorDirect']['allegoDirectCountryDefault']
+          for key in ('ultraFastEurPerKwh','fastEurPerKwh','regularEurPerKwh'):
+              assert 0.10 <= d[key] <= 2.0, (key,d[key])
+          assert d['stationLevelPriceLookupRequired'] is True
+          h=p['fees']['hpcIdle']
+          assert 0 <= h['eurPerMin'] <= 2.0
+          assert h['onlyWhenChargingEnded'] is True
+          assert h['gracePeriodFromSessionStartMinutes'] == 45
+          r=p['fees']['regularChargingOverstay']
+          if r['eurPerMin'] is not None:
+              assert 0 <= r['eurPerMin'] <= 1.0
+              assert r['appliesAfterSessionStartMinutes'] == 300
+          assert p['roaming']['operatorDirect'] is False
+          assert len(p['stationValidationSamples']) >= 3
+          app=p['operatorDirect']['allegoApp']
+          rates=app.get('countrySpecificRates')
+          if rates:
+              for family, tiers in rates.items():
+                  for tier, price in tiers.items():
+                      vals=[v for k,v in price.items() if k.endswith('EurPerKwh')]
+                      assert vals and all(0.05 <= v <= 2.0 for v in vals), (family,tier,price)
+          print('Validated Allego France tariff classification, fees and station samples')
+          PY
+
+      - name: Publish only when tariff evidence changes
+        id: publish
+        if: success()
+        run: |
+          python - <<'PY'
+          import json, shutil
+          from pathlib import Path
+          new_path=Path('out/allego/allego_official_france.json')
+          dest=Path('data/operator_direct/allego_official_france.json')
+          report_dest=Path('reports/allego/latest_summary.md')
+          new=json.loads(new_path.read_text())
+          def signature(d):
+              return {
+                  'classification': d.get('classification'),
+                  'operatorDirect': d.get('operatorDirect'),
+                  'fees': d.get('fees'),
+                  'roaming': d.get('roaming'),
+                  'stationValidationSamples': d.get('stationValidationSamples'),
+                  'fingerprint': (d.get('sourceEvidence') or {}).get('relevantTariffFingerprintSha256'),
+                  'publicationStatus': d.get('publicationStatus'),
+              }
+          changed=True
+          if dest.exists():
+              changed=signature(json.loads(dest.read_text())) != signature(new)
+          Path('changed.flag').write_text('1' if changed else '0')
+          if changed:
+              dest.parent.mkdir(parents=True,exist_ok=True)
+              report_dest.parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(new_path,dest)
+              shutil.copy2('out/allego/SUMMARY.md',report_dest)
+              print('Allego tariff evidence changed: publication prepared')
+          else:
+              print('Allego tariff evidence unchanged: no repository commit needed')
+          PY
+          echo "changed=$(cat changed.flag)" >> "$GITHUB_OUTPUT"
+          python scripts/public_safety_check.py .
+
+      - name: Commit validated Allego rule set
+        if: success() && steps.publish.outputs.changed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/allego_official_france.json reports/allego/latest_summary.md
+          git commit -m "data(allego): publish official France tariffs [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            echo "Data push attempt ${attempt} failed; retrying"
+            sleep $((attempt * 2))
+          done
+          exit 1
