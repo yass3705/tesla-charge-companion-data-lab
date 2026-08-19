@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "1.0.0",
+  "key": "mobive",
+  "dataset": "mobive-official-france-regional",
+  "operator": "Mobive",
+  "country": "FR",
+  "outputFile": "mobive_official_france.json",
+  "sources": [
+    {
+      "key": "tariffs",
+      "url": "https://mobive.fr/nos-offres-et-tarifs/",
+      "requiredPhrases": [
+        "Tarif à compter du 5/05/2025",
+        "départements 16, 17, 19, 23, 24, 33, 40, 47 et 87",
+        "0,68 € TTC/kWh",
+        "Montant maximal de la transaction : 90,00 € TTC",
+        "Je m'abonne pour seulement 18€/an",
+        "Tarif à compter du 3/07/2023 pour l’utilisation des bornes Mobive dans le département 64",
+        "Pas de plus-value de nuit"
+      ],
+      "requiredNumbers": [0.35, 0.4, 0.44, 0.45, 0.48, 0.5, 0.53, 0.55, 0.57, 0.59, 0.64, 0.68, 0.07, 0.08, 0.09, 0.1, 0.12, 18, 30, 50, 90]
+    },
+    {
+      "key": "faq",
+      "url": "https://mobive.fr/faq/",
+      "requiredPhrases": [
+        "L’ABONNEMENT ANNUEL COUTE 18€",
+        "vous pouvez utiliser l’application ou scanner le QR code",
+        "pass d’un autre opérateur"
+      ]
+    }
+  ],
+  "facts": {
+    "classification": {
+      "regionalPublicNetwork": true,
+      "singleFlatTariff": false,
+      "tariffDependsOnDepartmentPowerCustomerAndConnectionTime": true,
+      "mainGridDepartments": [16, 17, 19, 23, 24, 33, 40, 47, 87],
+      "separateGridDepartment": 64
+    },
+    "subscription": {"annualFeeEur": 18.0},
+    "operatorDirect": {
+      "mainGrid": {
+        "effectiveFrom": "2025-05-05",
+        "nonSubscriber": {
+          "acUpTo8Kva": {"eurPerKwh": 0.4, "connectionSurchargeAfterMinutes": 600, "surchargeEurPerMinute": 0.1, "surchargeWindow": "07:00-22:00"},
+          "acAbove8Kva": {"eurPerKwh": 0.4, "connectionSurchargeAfterMinutes": 150, "surchargeEurPerMinute": 0.1, "surchargeWindow": "07:00-22:00"},
+          "dc22To39Kva": {"eurPerKwh": 0.5, "connectionSurchargeAfterMinutes": 90, "surchargeEurPerMinute": 0.12},
+          "dc40To60Kva": {"eurPerKwh": 0.55, "connectionSurchargeAfterMinutes": 60, "surchargeEurPerMinute": 0.12},
+          "dcAbove60Kva": {"eurPerKwh": 0.68, "connectionSurchargeAfterMinutes": 30, "surchargeEurPerMinute": 0.12},
+          "maxTransactionEur": 90.0
+        },
+        "subscriber": {
+          "acUpTo8Kva": {"eurPerKwh": 0.35, "connectionSurchargeAfterMinutes": 600, "surchargeEurPerMinute": 0.08, "surchargeWindow": "07:00-22:00"},
+          "acAbove8Kva": {"eurPerKwh": 0.35, "connectionSurchargeAfterMinutes": 150, "surchargeEurPerMinute": 0.08, "surchargeWindow": "07:00-22:00"},
+          "dc22To39Kva": {"eurPerKwh": 0.4, "connectionSurchargeAfterMinutes": 90, "surchargeEurPerMinute": 0.1},
+          "dc40To60Kva": {"eurPerKwh": 0.45, "connectionSurchargeAfterMinutes": 60, "surchargeEurPerMinute": 0.1},
+          "dcAbove60Kva": {"eurPerKwh": 0.57, "connectionSurchargeAfterMinutes": 30, "surchargeEurPerMinute": 0.1},
+          "maxTransactionEur": 50.0
+        }
+      },
+      "department64": {
+        "effectiveFrom": "2023-07-03",
+        "nonSubscriber": {
+          "acUpTo7Kva": {"eurPerKwh": 0.44, "connectionSurchargeAfterMinutes": 600, "surchargeEurPerMinute": 0.09, "surchargeWindow": "07:00-23:00"},
+          "acAbove7Kva": {"eurPerKwh": 0.55, "connectionSurchargeAfterMinutes": 180, "surchargeEurPerMinute": 0.09, "surchargeWindow": "07:00-23:00"},
+          "dc22To39Kva": {"eurPerKwh": 0.59, "connectionSurchargeAfterMinutes": 60, "surchargeEurPerMinute": 0.09},
+          "dc40To60Kva": {"eurPerKwh": 0.64, "connectionSurchargeAfterMinutes": 60, "surchargeEurPerMinute": 0.09},
+          "dcAbove60Kva": {"eurPerKwh": 0.68, "connectionSurchargeAfterMinutes": 30, "surchargeEurPerMinute": 0.09},
+          "maxTransactionEur": 50.0
+        },
+        "subscriber": {
+          "acUpTo7Kva": {"eurPerKwh": 0.35, "connectionSurchargeAfterMinutes": 600, "surchargeEurPerMinute": 0.07, "surchargeWindow": "07:00-23:00"},
+          "acAbove7Kva": {"eurPerKwh": 0.44, "connectionSurchargeAfterMinutes": 180, "surchargeEurPerMinute": 0.07, "surchargeWindow": "07:00-23:00"},
+          "dc22To39Kva": {"eurPerKwh": 0.48, "connectionSurchargeAfterMinutes": 60, "surchargeEurPerMinute": 0.07},
+          "dc40To60Kva": {"eurPerKwh": 0.53, "connectionSurchargeAfterMinutes": 60, "surchargeEurPerMinute": 0.07},
+          "dcAbove60Kva": {"eurPerKwh": 0.57, "connectionSurchargeAfterMinutes": 30, "surchargeEurPerMinute": 0.07},
+          "maxTransactionEur": 30.0
+        }
+      },
+      "paymentMethods": ["Mobive pass", "Mobive app", "QR card payment"]
+    },
+    "billing": {
+      "successfulSessionsOnly": true,
+      "startedKwhAndMinuteAreBilled": true,
+      "acNightHasNoConnectionSurcharge": true
+    },
+    "roaming": {
+      "incomingThirdPartyPassSupported": true,
+      "classification": "third_party_eMSP",
+      "mustRemainSeparateFromMobiveDirectTariff": true
+    }
+  },
+  "notes": [
+    "Department 64 remains on its own officially published grid and is never merged into the 2025 main grid.",
+    "Connection-time surcharges are modeled separately from energy and disappear at night for the AC bands where the official page says so.",
+    "Third-party passes are roaming/eMSP access and must not be labeled as Mobive direct subscription pricing."
+  ],
+  "summaryLines": [
+    "Annual Mobive subscription: 18 EUR.",
+    "Main 2025 grid covers departments 16,17,19,23,24,33,40,47,87; department 64 keeps a separate grid.",
+    "Energy and connection-time surcharge bands are modeled separately for subscribers and non-subscribers.",
+    "Transaction caps: main grid 50 EUR subscriber / 90 EUR non-subscriber; department 64 30 / 50 EUR.",
+    "Third-party passes remain roaming/eMSP pricing."
+  ]
+}
