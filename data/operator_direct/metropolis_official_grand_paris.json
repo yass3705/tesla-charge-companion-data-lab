@@ -1,0 +1,120 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "metropolis-official-grand-paris",
+  "generatedAt": "2026-08-19T22:48:41.077641Z",
+  "operator": "Métropolis Recharge",
+  "country": "FR",
+  "classification": {
+    "network": "Métropolis Recharge",
+    "localPublicNetwork": true,
+    "geography": "Métropole du Grand Paris and participating nearby communes",
+    "singleFlatPublicTariff": false,
+    "tariffDependsOnSelectedOrDeliveredPower": true,
+    "postChargeRulesHaveLocalExceptions": true
+  },
+  "operatorDirect": {
+    "publicNoSubscription": {
+      "proximityUpTo3_7Kw": {
+        "eurPerKwh": 0.44
+      },
+      "cityAbove3_7To22_25Kw": {
+        "eurPerKwh": 0.53
+      },
+      "express150To180Kw": {
+        "eurPerKwh": 0.63
+      }
+    },
+    "subscriptions": {
+      "liberte": {
+        "feeEurPerYear": 10.0,
+        "energyTariff": "public_tariff",
+        "reservationAvailable": true,
+        "reservationLeadMinutes": 30,
+        "freePostChargeHoursPerMonth": 2,
+        "nightPostChargeForfaitEur": 2.0,
+        "nightWindow": "20:00-08:00",
+        "nightForfaitExcludesExpress": true
+      },
+      "mensuel": {
+        "feeEurPerMonth": 9.9,
+        "expressEurPerKwh": 0.53,
+        "otherEnergyTariffs": "public_tariff",
+        "includesLiberteBenefits": true,
+        "freePostChargeHoursPerMonth": 2,
+        "nightPostChargeForfaitEur": 2.0,
+        "nightWindow": "20:00-08:00",
+        "nightForfaitExcludesExpress": true
+      }
+    },
+    "paymentMethods": [
+      "contactless bank card",
+      "Apple Pay",
+      "Google Pay",
+      "bank card via web/app/QR",
+      "Métropolis RFID badge"
+    ],
+    "bankCardPreauthorizationEur": 49.0
+  },
+  "fees": {
+    "postCharge": {
+      "trigger": "after_10_minutes_without_charging_while_vehicle_remains_on_space",
+      "graceMinutes": 10,
+      "default": {
+        "proximityUpTo3_7KwEurPerMinute": 0.1,
+        "cityAbove3_7To22_25KwEurPerMinute": 0.1,
+        "express150To180KwEurPerMinute": 0.2
+      },
+      "exceptions": {
+        "neuillySurSeine": {
+          "day0800To2000EurPerMinute": 0.2,
+          "night2000To0800EurPerMinute": 0.1
+        },
+        "22KwOnExpressSitesEurPerMinute": 0.2
+      },
+      "subscriptionBenefitsMustBeAppliedSeparately": true
+    }
+  },
+  "roaming": {
+    "incomingThirdPartyBadge": {
+      "classification": "third_party_eMSP",
+      "operatorDirect": false,
+      "thirdPartyProviderMayAddFees": true,
+      "mustNotOverwriteMétropolisDirectTariff": true
+    },
+    "outgoingMétropolisBadge": {
+      "usableOnOtherNetworksCurrentOfficialFaq": false,
+      "gireveMembershipMentioned": true
+    }
+  },
+  "network": {
+    "publishedChargerClasses": {
+      "proximityMaxKw": 7.4,
+      "cityMaxKw": 22,
+      "expressMaxKw": 180
+    },
+    "exactStationSource": "Métropolis Recharge map/app"
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "home",
+        "url": "https://www.metropolis-recharge.fr/",
+        "httpStatus": 200
+      },
+      {
+        "key": "faq",
+        "url": "https://www.metropolis-recharge.fr/faq/",
+        "httpStatus": 200
+      }
+    ],
+    "relevantTariffFingerprintSha256": "1af6cffa6d7a7ba8c551a67ed5d7446d5f2bc4c2814eb085d7d6b6449222767a"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "Energy charging is billed per kWh; time billing is modeled only as post-charge occupation after 10 minutes without charging.",
+    "The tariff table currently prints 0.63 €/kW on the Express row, but the official FAQ explicitly states 0.63 €/kWh; the dataset uses the FAQ-disambiguated energy unit.",
+    "Neuilly-sur-Seine and 22 kW connectors located on Express stations have explicit post-charge exceptions.",
+    "Third-party interoperability badges remain eMSP pricing and may add fees; the Métropolis badge itself is not currently usable on other networks according to the official FAQ."
+  ]
+}
