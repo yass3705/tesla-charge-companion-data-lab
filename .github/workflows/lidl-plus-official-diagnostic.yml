@@ -1,0 +1,97 @@
+name: Lidl Plus official tariff diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/lidl_plus_official.py"
+      - ".github/workflows/lidl-plus-official-tariff.yml"
+      - ".github/workflows/lidl-plus-official-diagnostic.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lidl-plus-official-diagnostic
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run extractor and capture diagnostics
+        run: |
+          mkdir -p reports/lidl-plus diagnostic-out
+          python - <<'PY'
+          import json, subprocess
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          cmd=['python','scripts/lidl_plus_official.py','--out','diagnostic-out']
+          proc=subprocess.run(cmd, text=True, capture_output=True, timeout=180)
+          out=Path('diagnostic-out/lidl_plus_france.json')
+          parsed=None
+          if out.exists():
+              try:
+                  parsed=json.loads(out.read_text())
+              except Exception as e:
+                  parsed={'parseError':repr(e)}
+
+          payload={
+              'schemaVersion':'1.0.0',
+              'dataset':'lidl-plus-official-diagnostic',
+              'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),
+              'exitCode':proc.returncode,
+              'success':proc.returncode==0 and isinstance(parsed,dict) and parsed.get('provider')=='Lidl Plus',
+              'stdout':proc.stdout[-6000:],
+              'stderr':proc.stderr[-6000:],
+              'outputExists':out.exists(),
+              'parsedSummary': None if not isinstance(parsed,dict) else {
+                  'provider':parsed.get('provider'),
+                  'source':parsed.get('source'),
+                  'networkScope':parsed.get('networkScope'),
+                  'pricing':parsed.get('pricing'),
+                  'sourceEvidence':parsed.get('sourceEvidence'),
+              },
+          }
+          Path('reports/lidl-plus/diagnostic_latest.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+          Path('reports/lidl-plus/diagnostic_latest.md').write_text(
+              '# Lidl Plus official tariff diagnostic\n\n'
+              f"- success: **{payload['success']}**\n"
+              f"- exit code: `{payload['exitCode']}`\n"
+              f"- output exists: **{payload['outputExists']}**\n"
+          )
+          print(json.dumps(payload,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Publish diagnostic
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/lidl-plus/diagnostic_latest.json reports/lidl-plus/diagnostic_latest.md
+          if git diff --cached --quiet; then
+            echo "No diagnostic change"
+          else
+            git commit -m "diag(lidl): publish official tariff diagnostic [run ${GITHUB_RUN_ID}]"
+            git push origin HEAD:main
+          fi
+
+      - name: Fail if extractor failed
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('reports/lidl-plus/diagnostic_latest.json').read_text())
+          raise SystemExit(0 if p.get('success') else 1)
+          PY
