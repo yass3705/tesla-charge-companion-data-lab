@@ -1,0 +1,164 @@
+name: TotalEnergies official tariffs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 7 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/totalenergies_official.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/totalenergies-official-tariffs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: totalenergies-official-tariffs
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Extract official TotalEnergies France tariffs
+        id: extract
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/totalenergies
+          python -m py_compile scripts/totalenergies_official.py
+          python scripts/totalenergies_official.py --out out/totalenergies 2> >(tee out/totalenergies/error.log >&2)
+          cat out/totalenergies/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish sanitized diagnostic after extraction failure
+        if: failure() && steps.extract.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/totalenergies
+          python - <<'PY'
+          import json, re
+          from pathlib import Path
+          src=Path('out/totalenergies/error.log')
+          text=src.read_text(errors='replace') if src.exists() else 'extractor failed without stderr capture'
+          text=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+', r'\1=[REDACTED]', text)
+          payload={
+              'dataset':'totalenergies-extraction-diagnostic',
+              'sanitized':True,
+              'errorTail':[x for x in text.splitlines() if x.strip()][-40:],
+          }
+          Path('reports/totalenergies/latest_diagnostic.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/totalenergies/latest_diagnostic.json
+          if ! git diff --cached --quiet; then
+            git commit -m "diag(totalenergies): publish extraction diagnostic [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              echo "Diagnostic push attempt ${attempt} failed; retrying"
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
+
+      - name: Validate classification and tariff bounds
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/totalenergies/totalenergies_official_france.json').read_text())
+          assert p['classification']['singleNationalOperatorTariff'] is False
+          d=p['operatorDirect']['stationServiceFrance']
+          assert 0.10 <= d['upToAndIncluding50KwEurPerKwh'] <= 2.0
+          assert 0.10 <= d['over50KwEurPerKwh'] <= 2.0
+          assert d['over50KwEurPerKwh'] >= d['upToAndIncluding50KwEurPerKwh']
+          assert d['sessionFeeEur'] == 0.0
+          idle=d['occupationFee']
+          assert 0 <= idle['eurPerMin'] <= 2.0
+          assert idle['startsAfterConsecutiveConnectedMinutes'] == 45
+          cp=p['mobilityProvider']['chargePlus']
+          assert cp['classification'] == 'eMSP_roaming'
+          assert cp['operatorDirect'] is False
+          assert cp['zen']['monthlyFeeEur'] > 0
+          assert cp['zen']['discountPercent'] == 15.0
+          assert cp['zen']['minimumPowerKw'] == 50
+          city=p['localNetworks']['aixMarseilleProvenceCity']
+          assert city['monthlyFeeEur'] == 5.0
+          assert city['ac']['cityNightEurPerKwh'] <= city['ac']['cityDayEurPerKwh'] <= city['ac']['publicEurPerKwh']
+          assert city['idle']['startsMinutesAfterChargeEnd'] == 30
+          assert p['zenEligibleInventory']['officialTableRowCount'] >= 50
+          assert len(p['stationValidationSamples']) >= 3
+          assert all(x['hasZenEligiblePowerAtOrAbove50Kw'] for x in p['stationValidationSamples'])
+          print('Validated TotalEnergies France CPO, Charge+ eMSP, Zen, City and station samples')
+          PY
+
+      - name: Publish only when tariff evidence changes
+        id: publish
+        if: success()
+        run: |
+          python - <<'PY'
+          import json, shutil
+          from pathlib import Path
+          new_path=Path('out/totalenergies/totalenergies_official_france.json')
+          dest=Path('data/operator_direct/totalenergies_official_france.json')
+          report_dest=Path('reports/totalenergies/latest_summary.md')
+          new=json.loads(new_path.read_text())
+          def signature(d):
+              return {
+                  'classification': d.get('classification'),
+                  'operatorDirect': d.get('operatorDirect'),
+                  'mobilityProvider': d.get('mobilityProvider'),
+                  'localNetworks': d.get('localNetworks'),
+                  'officialCpoEmspModel': d.get('officialCpoEmspModel'),
+                  'zenEligibleInventory': d.get('zenEligibleInventory'),
+                  'stationValidationSamples': d.get('stationValidationSamples'),
+                  'fingerprint': (d.get('sourceEvidence') or {}).get('relevantTariffFingerprintSha256'),
+                  'publicationStatus': d.get('publicationStatus'),
+              }
+          changed=True
+          if dest.exists():
+              changed=signature(json.loads(dest.read_text())) != signature(new)
+          Path('changed.flag').write_text('1' if changed else '0')
+          if changed:
+              dest.parent.mkdir(parents=True,exist_ok=True)
+              report_dest.parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(new_path,dest)
+              shutil.copy2('out/totalenergies/SUMMARY.md',report_dest)
+              print('TotalEnergies tariff evidence changed: publication prepared')
+          else:
+              print('TotalEnergies tariff evidence unchanged: no repository commit needed')
+          PY
+          echo "changed=$(cat changed.flag)" >> "$GITHUB_OUTPUT"
+          python scripts/public_safety_check.py .
+
+      - name: Commit validated TotalEnergies rule set
+        if: success() && steps.publish.outputs.changed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/totalenergies_official_france.json reports/totalenergies/latest_summary.md
+          git commit -m "data(totalenergies): publish official France tariffs [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            echo "Data push attempt ${attempt} failed; retrying"
+            sleep $((attempt * 2))
+          done
+          exit 1
