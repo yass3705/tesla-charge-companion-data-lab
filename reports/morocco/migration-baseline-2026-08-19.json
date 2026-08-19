@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "created_at": "2026-08-19T20:55:00+02:00",
+  "migration": {
+    "from_private_research": true,
+    "raw_private_history_copied": false,
+    "raw_android_packages_copied": false,
+    "raw_client_keys_copied": false,
+    "screenshots_copied": false,
+    "purpose": "Preserve the useful Morocco investigation state in the public Data Lab before continuing tests there."
+  },
+  "operator_status": {
+    "FastVolt": {
+      "package": "ma.fastgo",
+      "backend": "https://mobile.ev.fastvolt.ma",
+      "verified_client_signals": [
+        "/app/charging_stations/",
+        "/user/get_charging_station_details/",
+        "charger_name",
+        "connector_id",
+        "fixed_starting_fee",
+        "idle_price",
+        "GetChargingStationsCall"
+      ],
+      "anonymous_behavior": "Station endpoints observed returning HTTP 401 with a Business/Organisation authorization requirement.",
+      "current_blocker": "Legitimate client organisation/context header not yet reproduced from public app material.",
+      "tariff_samples": "See data/seed/morocco_manual_app_observations.json for app-verified IKEA Zenata samples."
+    },
+    "Kilowatt": {
+      "package": "ma.kilowatt.app",
+      "backend": "https://jmrgknphxsviooizyilj.supabase.co",
+      "verified_client_signals": [
+        "Supabase client architecture",
+        "station/map UI",
+        "live connector statuses",
+        "per-session tariffs",
+        "post-charge idle fees"
+      ],
+      "anonymous_behavior": "Supabase REST root returns HTTP 401 without the public client key expected by the app.",
+      "current_blocker": "Public client key/table mapping has not yet been recovered in a reproducible sanitized way.",
+      "modeling_warning": "A station visible in Kilowatt must not automatically be labeled CPO=Kilowatt. TotalEnergies Al Waha is the priority attribution test.",
+      "tariff_samples": "See Sela Gallery, Aswak Assalam Hayriad, Almaz and TotalEnergies Al Waha in the manual observations seed."
+    },
+    "EVPlug_EvOne": {
+      "package": "ma.evplug",
+      "backend": "https://mobile.evplugv2.bornerecharge.ma",
+      "verified_client_signals": [
+        "/app/charging_stations/",
+        "/user/get_charging_station_details/",
+        "connector_id",
+        "fixed_starting_fee",
+        "idle_price",
+        "Charging Price",
+        "Prix de charge"
+      ],
+      "anonymous_behavior": "Station endpoints observed returning HTTP 401 with a Business/Organisation authorization requirement.",
+      "current_blocker": "Legitimate client organisation/context header not yet reproduced from public app material.",
+      "tariff_warning": "Numeric strings seen in the Android bundle are not accepted as tariffs unless linked to a specific station/connector response."
+    },
+    "TotalEnergies_Club_EV_Charge": {
+      "package": "com.namp.totalev",
+      "backend": "https://csmstotalenergiesma.numocity.com",
+      "verified_client_signals": [
+        "/api/qr-connector-list",
+        "/api/get-connector-status",
+        "Numocity backend"
+      ],
+      "anonymous_behavior": "Simple GET attempts did not yet reproduce the app request shape; observed responses include route/method-style failures.",
+      "current_blocker": "Exact read-only request method/parameters/client context still need to be recovered.",
+      "tariff_samples": "See TotalEnergies Relais Al Baida in the manual observations seed."
+    },
+    "Shell_Recharge_Vivo_Energy": {
+      "package": "com.shell.shell_loyalty_app.morocco",
+      "verified_client_signals": [],
+      "current_blocker": "The Morocco Shell loyalty app scan did not expose Shell Recharge/EV-specific client strings or a usable EV station backend.",
+      "tariff_status": "unknown",
+      "manual_note": "No tariff for Shell Al Jazira was found during the current manual verification."
+    },
+    "EVGO": {
+      "package": "ma.evgo.cp.app",
+      "status": "new_target_added_after_manual_app_verification",
+      "verified_client_signals": [
+        "station detail visible before login",
+        "connector occupancy visible",
+        "free tariff visible at Marjane Mohammedia"
+      ],
+      "current_blocker": "Backend/API has not yet been mapped. The public Data Lab probe now includes the app for the next run.",
+      "tariff_samples": "See Marjane Mohammedia in the manual observations seed."
+    }
+  },
+  "next_priorities": [
+    "Run the sanitized public probe in tesla-charge-companion-data-lab and persist only safe summaries.",
+    "Map EVGO backend first because station details appear available before login.",
+    "Recover Kilowatt public Supabase client context without persisting the raw key and resolve CPO attribution for TotalEnergies Al Waha.",
+    "Recover legitimate Business/Organisation context for FastVolt and EvOne from public client configuration only.",
+    "Recover the exact read-only Numocity request shape for TotalEnergies Club EV-Charge.",
+    "Keep Shell Al Jazira tariff unknown until an app/API/public source provides a verifiable value."
+  ]
+}

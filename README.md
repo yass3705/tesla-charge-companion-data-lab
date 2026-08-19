@@ -10,9 +10,9 @@ Only public charging-infrastructure identifiers, public source URLs, generic ext
 
 Do **not** commit credentials, API keys, cookies, authenticated-account exports, screenshots, personal information, private debug logs or copied history from private repositories.
 
-A safety scanner runs before generated data is published.
+A safety scanner runs before generated data is published. Public mobile-app research must additionally avoid persisting raw APK/XAPK files, JWTs, Supabase client keys, tenant/organisation identifiers or authenticated request material. Such material may only be used transiently at runtime when it is explicitly public client configuration and only for read-only requests permitted by the client/backend.
 
-## Current scope: Lidl France
+## France scope: Lidl
 
 Two distinct public tariff channels are intentionally kept separate:
 
@@ -23,9 +23,19 @@ The official Lidl Plus rule is written to `data/operator_direct/lidl_plus_france
 
 Generated public-payment data remains candidate data until representative checks confirm the intended source interpretation.
 
+## Morocco scope
+
+The Morocco public lab currently tracks **FastVolt, Kilowatt, EVPlug/EvOne, TotalEnergies Club EV-Charge, Shell Recharge/Vivo Energy and EVGO**. Tesla is intentionally outside this non-Tesla investigation.
+
+The key modeling rule is that **CPO/operator, site brand and app/access network are different concepts**. A station appearing inside Kilowatt, EVGO or another app does not by itself prove that the app provider is the charging-point operator. For example, `TotalEnergies Al Waha` is visible in Kilowatt with a free 22 kW connector while it was not found in the TotalEnergies Club EV-Charge station list during the same manual check; its CPO therefore remains unresolved until backend/operator metadata confirms it.
+
+Sanitized manual app observations are stored in `data/seed/morocco_manual_app_observations.json`. Screenshots themselves are deliberately not committed. The migration baseline and current blockers are documented under `reports/morocco/`.
+
+The public workflow `.github/workflows/morocco-public-probe.yml` downloads public Android packages only into temporary storage, mines charging-infrastructure signals, performs explicit read-only probes, removes all raw client material and persists only a field-whitelisted summary.
+
 ## Repository layout
 
-- `data/seed/` — sanitized public extraction seeds
+- `data/seed/` — sanitized public extraction seeds and manually verified observations
 - `data/adhoc_payment/` — public ad-hoc payment candidates
 - `data/operator_direct/` — validated-source operator/app tariff rules
 - `scripts/` — public extraction and safety tooling
