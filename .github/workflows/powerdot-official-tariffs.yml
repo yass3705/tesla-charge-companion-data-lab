@@ -81,12 +81,17 @@ jobs:
           assert p['mobilityProviders']['electroversePowerdotSubscription']['operatorDirect'] is False
           assert p['mobilityProviders']['electroversePowerdotSubscription']['monthlyFeeEur'] == 1.99
           assert p['mobilityProviders']['electroversePowerdotSubscription']['franceDiscountPercent'] == 28.0
-          assert p['specialPrograms']['leasingSocial']['generalPublicTariff'] is False
-          assert p['specialPrograms']['leasingSocial']['eurPerKwh'] == 0.30
+          leasing=p['specialPrograms']['leasingSocial']
+          assert leasing['generalPublicTariff'] is False
+          assert leasing['eurPerKwh'] == 0.29
+          assert leasing['freeSubscriptionMonths'] == 3
+          assert leasing['monthlyFeeAfterFreePeriodEur'] == 9.99
+          assert leasing['commitment'] == 'sans engagement'
+          assert p['fees']['paymentPreauthorization']['possibleAmountsEur'] == [15.0, 25.0, 35.0]
           assert p['inventory']['rowCount'] > 100
           assert len(p['inventory']['samples']) >= 3
           assert p['sourceEvidence']['cpoFactsFromPowerdotOfficial'] is True
-          print('Validated Powerdot tariff-layer separation and static inventory evidence')
+          print('Validated Powerdot current tariff-layer separation, Leasing Social terms and static inventory evidence')
           PY
 
       - name: Publish only when evidence changes
