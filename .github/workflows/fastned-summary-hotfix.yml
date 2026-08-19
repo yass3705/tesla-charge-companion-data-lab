@@ -1,0 +1,40 @@
+name: Fastned summary hotfix
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/fastned-summary-hotfix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch nullable Gold monthly fee summary
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/fastned_official.py')
+          s = p.read_text(encoding='utf-8')
+          old = '''    summary = (\n        "# Fastned France official tariff check\\n\\n"\n        f"- Standard direct: **{pricing['standardEurPerKwh']:.2f} EUR/kWh**\\n"\n        f"- Fastned app direct: **-10%**, calculated **{pricing['appDirectCalculatedEurPerKwh']:.3f} EUR/kWh** from current standard price\\n"\n        f"- Gold: **{pricing['goldEurPerKwh']:.2f} EUR/kWh** (-30%)\\n"\n        f"- Gold monthly fee currently shown: **{pricing['goldMonthlyFeeEur']:.2f} EUR/month** through **{pricing['goldMonthlyFeePromotionEnd']}**\\n"\n        f"- Card preauthorization: **{payment['bankCardPreauthorizationEur']:.0f} EUR**\\n"\n'''
+          new = '''    gold_monthly_summary = (\n        f"**{pricing['goldMonthlyFeeEur']:.2f} EUR/month** through **{pricing['goldMonthlyFeePromotionEnd']}**"\n        if pricing['goldMonthlyFeeEur'] is not None\n        else "**not confirmed on the current official France page**"\n    )\n    card_preauth_summary = (\n        f"**{payment['bankCardPreauthorizationEur']:.0f} EUR**"\n        if payment['bankCardPreauthorizationEur'] is not None\n        else "**not confirmed**"\n    )\n\n    summary = (\n        "# Fastned France official tariff check\\n\\n"\n        f"- Standard direct: **{pricing['standardEurPerKwh']:.2f} EUR/kWh**\\n"\n        f"- Fastned app direct: **-10%**, calculated **{pricing['appDirectCalculatedEurPerKwh']:.3f} EUR/kWh** from current standard price\\n"\n        f"- Gold: **{pricing['goldEurPerKwh']:.2f} EUR/kWh** (-30%)\\n"\n        f"- Gold monthly fee currently shown: {gold_monthly_summary}\\n"\n        f"- Card preauthorization: {card_preauth_summary}\\n"\n'''
+          if old not in s:
+              raise SystemExit('Expected summary block not found; refusing broad edit')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+          python -m py_compile scripts/fastned_official.py
+
+      - name: Commit Fastned summary fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/fastned_official.py
+          git commit -m "fix(fastned): handle nullable optional fee fields in summary"
+          git push origin HEAD:main
