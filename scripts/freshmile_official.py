@@ -117,11 +117,9 @@ def main() -> None:
     require_any(emp_terms, ("tarif fixe par ce dernier et affiche sur l'application et le site internet",), "Freshmile eMSP third-party pricing")
 
     require_any(cpo_terms, ("client professionnel propose a freshmile les tarifs de recharge",), "Freshmile CPO owner-defined tariff")
-    require_any(cpo_terms, ("au kwh", "au temps", "au forfait"), "Freshmile CPO multi-component tariff")
 
     require_any(map_article, ("verifier leur disponibilite et consulter leur tarif",), "Freshmile map price/availability")
 
-    # Local-network memberships sold through Freshmile are separate from general Freshmile account/pass pricing.
     partner_subscriptions = []
     if "connect and go moselle metz" in shop and "3.00 € / mois" in shop:
         partner_subscriptions.append({"network": "Connect and Go Moselle Metz", "feeEur": 3.0, "period": "month"})
@@ -143,7 +141,8 @@ def main() -> None:
                 "nationalEurPerKwh": None,
                 "exactPriceLookupRequired": True,
                 "priceDefinedPerNetworkOrSite": True,
-                "supportedTariffComponents": ["kWh", "time", "power", "flat_fee", "cap", "night_tariff"],
+                "validatedTariffComponents": ["energy_if_applicable", "connection_time_if_applicable"],
+                "otherComponentsRequireExactStationEvidence": True,
             },
             "appOrGuestPayment": {
                 "classification": "operator_direct_app_or_guest",
@@ -213,7 +212,7 @@ def main() -> None:
     ).hexdigest()
 
     payload = {
-        "schemaVersion": "1.0.0",
+        "schemaVersion": "1.0.1",
         "dataset": "freshmile-official-france",
         "generatedAt": now_iso(),
         "operator": "Freshmile",
