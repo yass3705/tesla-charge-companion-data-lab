@@ -1,0 +1,148 @@
+name: ENGIE Vianeo official tariffs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "27 7 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/vianeo_official.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/vianeo-official-tariffs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vianeo-official-tariffs
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Extract official ENGIE Vianeo France rules
+        id: extract
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/vianeo
+          python -m py_compile scripts/vianeo_official.py
+          python scripts/vianeo_official.py --out out/vianeo 2> >(tee out/vianeo/error.log >&2)
+          cat out/vianeo/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish sanitized diagnostic after extraction failure
+        if: failure() && steps.extract.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/vianeo
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          p=Path('out/vianeo/error.log')
+          text=p.read_text(errors='replace') if p.exists() else 'extractor failed without stderr capture'
+          text=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',text)
+          Path('reports/vianeo/latest_diagnostic.json').write_text(json.dumps({'dataset':'vianeo-extraction-diagnostic','sanitized':True,'errorTail':[x for x in text.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/vianeo/latest_diagnostic.json
+          if ! git diff --cached --quiet; then
+            git commit -m "diag(vianeo): publish extraction diagnostic [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
+
+      - name: Validate classification
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/vianeo/vianeo_official_france.json').read_text())
+          assert p['classification']['singleGuaranteedNationalPublicTariff'] is False
+          assert p['classification']['stationLevelPriceLookupRequiredForExactSimulation'] is True
+          assert p['classification']['nationalSubscriptionTariffExists'] is True
+          m=p['operatorDirect']['vianeoMax']
+          assert m['monthlyFeeEur'] == 9.99
+          assert m['eurPerKwh'] == 0.33
+          assert m['dailyEnergyCapKwh'] == 200
+          assert m['stationMinuteFeesCanStillApply'] is True
+          a=p['operatorDirect']['appNoSubscription']
+          assert a['discountPercentVsPublic'] == 10.0
+          assert a['highwayEurPerKwhFrom'] == 0.54
+          c=p['operatorDirect']['bankCardOrQr']
+          assert c['highwayEurPerKwhFrom'] == 0.60
+          assert c['preauthorizationEur'] == 50.0
+          assert p['roaming']['operatorDirect'] is False
+          assert p['fees']['minuteOrOccupation']['exactStationLookupRequired'] is True
+          promo=p['promotions']['superHeuresCreuses']
+          assert promo['eurPerKwh'] == 0.29 and promo['validThrough'] == '2026-12-31'
+          assert len(p['inventory']['sampleStationsForManualCheck']) >= 3
+          assert p['sourceEvidence']['officialOnly'] is True
+          print('Validated ENGIE Vianeo direct/subscription/roaming/promotion separation')
+          PY
+
+      - name: Publish only when evidence changes
+        id: publish
+        if: success()
+        run: |
+          python - <<'PY'
+          import json,shutil
+          from pathlib import Path
+          src=Path('out/vianeo/vianeo_official_france.json')
+          dst=Path('data/operator_direct/vianeo_official_france.json')
+          rep=Path('reports/vianeo/latest_summary.md')
+          new=json.loads(src.read_text())
+          def sig(d):
+              return {
+                  'classification':d.get('classification'),
+                  'operatorDirect':d.get('operatorDirect'),
+                  'roaming':d.get('roaming'),
+                  'fees':d.get('fees'),
+                  'promotions':d.get('promotions'),
+                  'inventory':d.get('inventory'),
+                  'fingerprint':(d.get('sourceEvidence') or {}).get('relevantTariffFingerprintSha256'),
+                  'publicationStatus':d.get('publicationStatus'),
+              }
+          changed=not dst.exists() or sig(json.loads(dst.read_text())) != sig(new)
+          Path('changed.flag').write_text('1' if changed else '0')
+          if changed:
+              dst.parent.mkdir(parents=True,exist_ok=True)
+              rep.parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(src,dst)
+              shutil.copy2('out/vianeo/SUMMARY.md',rep)
+          PY
+          echo "changed=$(cat changed.flag)" >> "$GITHUB_OUTPUT"
+          python scripts/public_safety_check.py .
+
+      - name: Commit validated ENGIE Vianeo rule set
+        if: success() && steps.publish.outputs.changed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/vianeo_official_france.json reports/vianeo/latest_summary.md
+          git commit -m "data(vianeo): publish official France tariff rules [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
