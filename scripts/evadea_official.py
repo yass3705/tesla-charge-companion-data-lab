@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Build validated e-Vadea France tariff rules from the official image-only tariff table.
-
-The e-Vadea public tariff page currently exposes its price grid as an image. The
-companion therefore reuses the dedicated OCR discovery step, then validates and
-parses the current road-context/power tariff grid. Supporting FAQ/how-to facts
-remain explicitly separated from the OCR-derived tariff amounts.
-"""
+"""Validate and publish e-Vadea France tariffs from the official image-only table."""
 from __future__ import annotations
 
 import argparse
@@ -14,6 +8,7 @@ import json
 import re
 import subprocess
 import sys
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -23,20 +18,20 @@ def now_iso() -> str:
 
 
 def norm(s: str) -> str:
-    return re.sub(r"\s+", " ", (s or "").lower().replace("’", "'")).strip()
+    s = unicodedata.normalize("NFKD", s or "")
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    return re.sub(r"\s+", " ", s.lower().replace("’", "'")).strip()
 
 
 def nums(line: str) -> list[float]:
-    out: list[float] = []
+    vals = []
     for token in re.findall(r"(?<!\d)(\d+(?:[,.]\d+)?)(?!\d)", line):
-        try:
-            out.append(float(token.replace(",", ".")))
-        except ValueError:
-            pass
-    return out
+        vals.append(float(token.replace(",", ".")))
+    return vals
 
 
 def find_line(lines: list[str], *needles: str) -> str:
+    needles = tuple(norm(x) for x in needles)
     for line in lines:
         n = norm(line)
         if all(x in n for x in needles):
@@ -44,21 +39,18 @@ def find_line(lines: list[str], *needles: str) -> str:
     raise RuntimeError(f"required OCR tariff row missing: {needles}")
 
 
-def parse_row(line: str, expected_power_tokens: tuple[float, ...]) -> tuple[float, float]:
+def parse_row(line: str, power_tokens: tuple[float, ...]) -> tuple[float, float]:
     values = nums(line)
-    filtered = values[:]
-    for p in expected_power_tokens:
-        if p in filtered:
-            filtered.remove(p)
-    # Expected remainder is energy price + occupancy amount + 15-minute block.
-    if 15.0 in filtered:
-        filtered.remove(15.0)
-    candidates = [v for v in filtered if 0.01 <= v <= 20]
-    if len(candidates) < 2:
-        raise RuntimeError(f"unable to parse tariff row: {line!r}; values={values}")
-    energy = candidates[0]
-    occupancy = candidates[1]
-    return energy, occupancy
+    remaining = values[:]
+    for token in power_tokens:
+        if token in remaining:
+            remaining.remove(token)
+    if 15.0 in remaining:
+        remaining.remove(15.0)
+    remaining = [x for x in remaining if 0.01 <= x <= 20]
+    if len(remaining) < 2:
+        raise RuntimeError(f"unable to parse e-Vadea row: {line!r}; values={values}")
+    return remaining[0], remaining[1]
 
 
 def run_discovery(out: Path) -> dict:
@@ -68,15 +60,12 @@ def run_discovery(out: Path) -> dict:
         [sys.executable, "scripts/evadea_tariff_image_discovery.py", "--out", str(discovery_out)],
         capture_output=True,
         text=True,
-        check=False,
         timeout=180,
+        check=False,
     )
     if proc.returncode != 0:
         raise RuntimeError(f"e-Vadea discovery failed: {proc.stderr[-1200:]}")
-    p = discovery_out / "discovery.json"
-    if not p.exists():
-        raise RuntimeError("e-Vadea discovery did not produce discovery.json")
-    return json.loads(p.read_text(encoding="utf-8"))
+    return json.loads((discovery_out / "discovery.json").read_text(encoding="utf-8"))
 
 
 def main() -> None:
@@ -93,35 +82,20 @@ def main() -> None:
     image = d.get("tariffImage") or {}
     lines = list(image.get("tariffRelevantLines") or [])
     if not lines or len(str(image.get("sha256") or "")) != 64:
-        raise RuntimeError("incomplete e-Vadea tariff image evidence")
+        raise RuntimeError("incomplete official tariff-image evidence")
 
-    autoroute_lt100 = find_line(lines, "moins de 100kw")
-    autoroute_ge100 = find_line(lines, "100kw et plus")
-    hors_lt30 = find_line(lines, "moins de 30kw")
-    hors_30_60 = find_line(lines, "30kw", "60kw")
-    hors_ge60 = find_line(lines, "60kw et plus")
-
-    a1_energy, a1_occ = parse_row(autoroute_lt100, (100.0,))
-    a2_energy, a2_occ = parse_row(autoroute_ge100, (100.0,))
-    h1_energy, h1_occ = parse_row(hors_lt30, (30.0,))
-    h2_energy, h2_occ = parse_row(hors_30_60, (30.0, 60.0))
-    h3_energy, h3_occ = parse_row(hors_ge60, (60.0,))
-
-    # Strong semantic checks from the official OCR table.
-    all_text = norm(" ".join(lines))
-    if "sans consommation d'energie" not in all_text and "sans consommation d’énergie" not in all_text:
-        raise RuntimeError("occupancy trigger evidence missing from official tariff table")
-    if "5 premieres minutes" not in all_text:
-        raise RuntimeError("5-minute occupancy grace-period evidence missing from official tariff table")
-    if "tout kwh entame est du" not in all_text and "tout kwh entamé est dû" not in all_text:
-        raise RuntimeError("started-kWh billing evidence missing from official tariff table")
+    a1 = parse_row(find_line(lines, "moins de 100kw"), (100.0,))
+    a2 = parse_row(find_line(lines, "100kw et plus"), (100.0,))
+    h1 = parse_row(find_line(lines, "moins de 30kw"), (30.0,))
+    h2 = parse_row(find_line(lines, "30kw", "60kw"), (30.0, 60.0))
+    h3 = parse_row(find_line(lines, "60kw et plus"), (60.0,))
 
     observed = {
-        "autorouteLt100": [a1_energy, a1_occ],
-        "autorouteGe100": [a2_energy, a2_occ],
-        "horsAutorouteLt30": [h1_energy, h1_occ],
-        "horsAutoroute30To60": [h2_energy, h2_occ],
-        "horsAutorouteGe60": [h3_energy, h3_occ],
+        "autorouteLt100": list(a1),
+        "autorouteGe100": list(a2),
+        "horsAutorouteLt30": list(h1),
+        "horsAutoroute30To60": list(h2),
+        "horsAutorouteGe60": list(h3),
     }
     expected = {
         "autorouteLt100": [0.48, 6.0],
@@ -131,31 +105,35 @@ def main() -> None:
         "horsAutorouteGe60": [0.58, 5.0],
     }
     if observed != expected:
-        raise RuntimeError(f"e-Vadea tariff grid changed or OCR mismatch: observed={observed}")
+        raise RuntimeError(f"e-Vadea tariff grid changed or OCR mismatch: {observed}")
+
+    all_text = norm(" ".join(lines))
+    for evidence in ("sans consommation d'energie", "5 premieres minutes", "tout kwh entame est du"):
+        if evidence not in all_text:
+            raise RuntimeError(f"official tariff-table rule missing after OCR: {evidence}")
 
     supporting = d.get("supportingHtmlEvidence") or {}
-    source_urls = {x.get("key"): x.get("url") for x in (d.get("sources") or []) if isinstance(x, dict)}
+    sources = {x.get("key"): x.get("url") for x in (d.get("sources") or []) if isinstance(x, dict)}
 
     core = {
         "classification": {
             "singleFlatNationalTariff": False,
             "tariffGridByRoadContextAndPower": True,
             "stationContextLookupRequiredForExactSimulation": True,
-            "reason": "e-Vadea publishes separate motorway and off-motorway price grids with power bands.",
         },
         "operatorDirect": {
             "motorway": {
-                "lessThan100Kw": {"eurPerKwh": a1_energy},
-                "from100Kw": {"eurPerKwh": a2_energy},
+                "lessThan100Kw": {"eurPerKwh": a1[0]},
+                "from100Kw": {"eurPerKwh": a2[0]},
             },
             "offMotorway": {
-                "lessThan30Kw": {"eurPerKwh": h1_energy},
-                "from30To60Kw": {"eurPerKwh": h2_energy},
-                "from60Kw": {"eurPerKwh": h3_energy},
+                "lessThan30Kw": {"eurPerKwh": h1[0]},
+                "from30To60Kw": {"eurPerKwh": h2[0]},
+                "from60Kw": {"eurPerKwh": h3[0]},
             },
             "paymentMethods": ["e-Vadea app", "bank card", "QR code"],
             "bankCardPreauthorizationEur": 49.0,
-            "bankCardPreauthorizationEvidence": "current official FAQ; browser-visible text may not be present in raw runner HTML",
+            "bankCardPreauthorizationEvidence": "current official FAQ; browser-visible fact separately verified from OCR tariff table",
         },
         "fees": {
             "occupancy": {
@@ -164,23 +142,18 @@ def main() -> None:
                 "billingBlockMinutes": 15,
                 "startedBlockCharged": True,
                 "motorway": {
-                    "lessThan100KwEurPerBlock": a1_occ,
-                    "from100KwEurPerBlock": a2_occ,
+                    "lessThan100KwEurPerBlock": a1[1],
+                    "from100KwEurPerBlock": a2[1],
                 },
                 "offMotorway": {
-                    "lessThan30KwEurPerBlock": h1_occ,
-                    "from30To60KwEurPerBlock": h2_occ,
-                    "from60KwEurPerBlock": h3_occ,
+                    "lessThan30KwEurPerBlock": h1[1],
+                    "from30To60KwEurPerBlock": h2[1],
+                    "from60KwEurPerBlock": h3[1],
                 },
             },
-            "parking": {
-                "status": "local_rules_may_apply_separately",
-                "note": "Official FAQ says charging spaces are reserved for EV charging and local authorities may enforce misuse.",
-            },
+            "parking": {"status": "local_rules_may_apply_separately"},
         },
-        "energyBilling": {
-            "startedKwhCharged": True,
-        },
+        "energyBilling": {"startedKwhCharged": True},
         "roaming": {
             "classification": "third_party_eMSP",
             "operatorDirect": False,
@@ -196,11 +169,11 @@ def main() -> None:
             "tariffImageSha256": image.get("sha256"),
             "tariffImageBytes": image.get("bytes"),
             "supportingHtmlEvidence": supporting,
-            "sources": source_urls,
+            "sources": sources,
         },
     }
     core["sourceEvidence"]["relevantTariffFingerprintSha256"] = hashlib.sha256(
-        json.dumps(core, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        json.dumps(core, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
 
     result = {
@@ -212,30 +185,26 @@ def main() -> None:
         **core,
         "publicationStatus": "candidate_validated_source",
         "notes": [
-            "Exact direct tariff depends on whether the station is on a motorway and on the charger power band.",
-            "Occupancy fees apply only while connected without energy consumption, after the first 5 free minutes.",
-            "Third-party mobility-provider pricing remains eMSP roaming and can differ from e-Vadea direct pricing.",
-            "The published static inventory is stale and must not be treated as live availability.",
+            "Exact direct price depends on motorway/off-motorway context and charger power band.",
+            "Occupancy fees start only while connected without energy consumption, after 5 free minutes.",
+            "Third-party mobility-provider tariffs are roaming/eMSP prices and can differ.",
+            "The official static inventory is stale and is not live availability.",
         ],
     }
-
-    (out / "evadea_official_france.json").write_text(
-        json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    (out / "evadea_official_france.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
     summary = f"""# e-Vadea France official check
 
-- Tariff model: **motorway/off-motorway + charger power band**.
-- Motorway: **<100 kW {a1_energy:.2f} EUR/kWh; >=100 kW {a2_energy:.2f} EUR/kWh**.
-- Off-motorway: **<30 kW {h1_energy:.2f}; 30-60 kW {h2_energy:.2f}; >=60 kW {h3_energy:.2f} EUR/kWh**.
-- Occupancy after charging stops: **5 min free**, then per started **15 min** block.
-- Motorway occupancy: **{a1_occ:g} EUR/15 min**.
-- Off-motorway occupancy: **{h1_occ:g} / {h2_occ:g} / {h3_occ:g} EUR/15 min** by power band.
+- Motorway: **<100 kW {a1[0]:.2f} EUR/kWh; >=100 kW {a2[0]:.2f} EUR/kWh**.
+- Off-motorway: **<30 kW {h1[0]:.2f}; 30-60 kW {h2[0]:.2f}; >=60 kW {h3[0]:.2f} EUR/kWh**.
+- Occupancy: **5 min free**, then per started **15 min** block.
+- Motorway occupancy: **{a1[1]:g} EUR/15 min**.
+- Off-motorway occupancy: **{h1[1]:g} / {h2[1]:g} / {h3[1]:g} EUR/15 min**.
 - Bank-card preauthorization: **49 EUR** (official FAQ).
 - Third-party mobility badge: **eMSP tariff may differ**.
 - Tariff image SHA-256: `{image.get('sha256')}`.
 - Fingerprint: `{core['sourceEvidence']['relevantTariffFingerprintSha256']}`.
 """
-    (out / "SUMMARY.md").write_text(summary, encoding="utf-8")
+    (out / "SUMMARY.md").write_text(summary)
     print(summary)
 
 
