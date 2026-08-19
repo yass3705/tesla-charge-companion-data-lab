@@ -1,0 +1,97 @@
+name: Allego render diagnostic
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/allego-render-diagnostic.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare browser
+        run: |
+          python -m pip install --disable-pip-version-check "selenium>=4.20,<5"
+          (google-chrome --version || chromium --version || true)
+
+      - name: Render France pricing block
+        run: |
+          set -euo pipefail
+          mkdir -p reports/allego
+          python - <<'PY'
+          import json, re, time, unicodedata
+          from pathlib import Path
+          from selenium import webdriver
+          from selenium.webdriver.common.by import By
+          from selenium.webdriver.support.ui import Select, WebDriverWait
+
+          URL='https://www.allego.eu/fr/tarifs/'
+          def norm(s):
+              s=unicodedata.normalize('NFKD',s)
+              s=''.join(ch for ch in s if not unicodedata.combining(ch))
+              return re.sub(r'\s+',' ',s.lower()).strip()
+
+          opts=webdriver.ChromeOptions()
+          for arg in ('--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--window-size=1440,2400','--lang=fr-FR'):
+              opts.add_argument(arg)
+          d=webdriver.Chrome(options=opts)
+          meta={'url':URL,'selected':None,'method':None}
+          try:
+              d.get(URL)
+              WebDriverWait(d,20).until(lambda x: len((x.find_element(By.TAG_NAME,'body').text or '').strip())>100)
+              for el in d.find_elements(By.TAG_NAME,'select'):
+                  try:
+                      sel=Select(el)
+                      match=next((o for o in sel.options if norm(o.text)=='france'),None)
+                      if not match: continue
+                      sel.select_by_visible_text(match.text)
+                      d.execute_script("arguments[0].dispatchEvent(new Event('change',{bubbles:true}));",el)
+                      time.sleep(3)
+                      meta['selected']=Select(el).first_selected_option.text
+                      meta['method']='native_select'
+                      break
+                  except Exception:
+                      pass
+              body=d.find_element(By.TAG_NAME,'body').text or ''
+              n=norm(body)
+              idx=n.find('ultra')
+              if idx < 0: idx=0
+              excerpt=n[max(0,idx-350):idx+3000]
+              prices=re.findall(r'(?:€\s*)?(\d+(?:[.,]\d+)?)\s*(?:€\s*)?/\s*kwh',n,re.I)
+              fees=re.findall(r'(?:idle fee|overstay fee).{0,80}?(?:€\s*)?(\d+(?:[.,]\d+)?)\s*(?:€\s*)?/\s*min',n,re.I)
+              payload={
+                  'dataset':'allego-render-diagnostic',
+                  'sanitized':True,
+                  'meta':meta,
+                  'bodyLength':len(body),
+                  'normalizedExcerpt':excerpt,
+                  'eurPerKwhTokens':prices[:40],
+                  'feeTokens':fees[:20],
+              }
+              Path('reports/allego/render_diagnostic.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+          finally:
+              d.quit()
+          PY
+
+      - name: Publish diagnostic
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/allego/render_diagnostic.json
+          git commit -m "diag(allego): publish rendered France pricing block"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
