@@ -68,9 +68,21 @@ def require_any(text: str, needles: tuple[str, ...], label: str) -> None:
 
 
 def find_price(text: str, value: str) -> bool:
-    # Accept comma/dot decimal and arbitrary spacing around EUR/kWh rendering.
     major, minor = value.split(".")
     return bool(re.search(rf"(?<!\d){major}[,.]{minor}(?!\d)\s*€?\s*/?\s*kwh", norm(text), flags=re.I))
+
+
+def find_price_range(text: str, low: str, high: str) -> bool:
+    lmaj, lmin = low.split(".")
+    hmaj, hmin = high.split(".")
+    n = norm(text)
+    return bool(
+        re.search(
+            rf"(?<!\d){lmaj}[,.]{lmin}(?!\d).{{0,24}}(?<!\d){hmaj}[,.]{hmin}(?!\d).{{0,24}}kwh",
+            n,
+            flags=re.I,
+        )
+    )
 
 
 def first_matching(row: dict[str, str], names: tuple[str, ...]) -> str | None:
@@ -179,9 +191,11 @@ def main() -> None:
     how_to = texts["howTo"]
     terms = texts["terms"]
 
-    for value in ("0.39", "0.51", "0.55", "0.59"):
+    for value in ("0.39", "0.51"):
         if not find_price(pricing, value):
             raise RuntimeError(f"DRIVECO published reference price {value} EUR/kWh not found")
+    if not find_price_range(pricing, "0.55", "0.59"):
+        raise RuntimeError("DRIVECO published ultrafast 0.55-0.59 EUR/kWh range not found")
 
     require_any(drivers, ("chaque borne possede sa propre grille tarifaire",), "DRIVECO station-specific tariff")
     require_any(drivers, ("affiches avant le demarrage de la recharge", "affiche avant le demarrage de la recharge"), "DRIVECO pre-charge price display")
