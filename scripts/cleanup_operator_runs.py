@@ -36,6 +36,7 @@ TARGETS = {
     "freshmile": {"workflow": "freshmile-official-tariffs.yml", "marker": "data/operator_direct/freshmile_official_france.json", "legacy_workflows": []},
     "driveco": {"workflow": "driveco-official-tariffs.yml", "marker": "data/operator_direct/driveco_official_france.json", "legacy_workflows": []},
     "iecharge": {"workflow": "iecharge-official-tariffs.yml", "marker": "data/operator_direct/iecharge_official_france.json", "legacy_workflows": []},
+    "evadea": {"workflow": "evadea-official-tariffs.yml", "marker": "data/operator_direct/evadea_official_france.json", "legacy_workflows": ["evadea-tariff-image-discovery.yml"]},
 }
 
 API = "https://api.github.com"
