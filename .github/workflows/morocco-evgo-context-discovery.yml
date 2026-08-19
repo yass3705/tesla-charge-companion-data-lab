@@ -1,0 +1,51 @@
+name: Morocco EVGO route-context discovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/evgo_context_discovery.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/morocco-evgo-context-discovery.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-evgo-context-discovery
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate
+        run: |
+          python scripts/public_safety_check.py .
+          python -m py_compile scripts/evgo_context_discovery.py
+      - name: Discover EVGO route context
+        run: python scripts/evgo_context_discovery.py
+      - name: Validate sanitized output
+        run: |
+          test -s artifacts/evgo-context-discovery/summary.json
+          python scripts/public_safety_check.py artifacts/evgo-context-discovery
+      - name: Persist sanitized discovery
+        run: |
+          mkdir -p reports/morocco/evgo
+          cp artifacts/evgo-context-discovery/summary.json reports/morocco/evgo/latest-context.json
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/evgo/latest-context.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(morocco): update EVGO route context [run ${GITHUB_RUN_ID}]"
+          git pull --rebase origin main
+          git push origin HEAD:main
