@@ -1,0 +1,165 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "zunder-official-france",
+  "generatedAt": "2026-08-19T22:38:04.844114Z",
+  "operator": "Zunder",
+  "country": "FR",
+  "classification": {
+    "singleFlatNationalPublicTariff": false,
+    "stationLevelPriceLookupRequiredForExactPublicPrice": true,
+    "subscriptionPricesApplyAcrossZunderFrance": true,
+    "specialConcessionAndDynamicTariffsExist": true
+  },
+  "operatorDirect": {
+    "franceReferencePublic": {
+      "upTo50KwEurPerKwh": 0.42,
+      "above50KwEurPerKwh": 0.59,
+      "exactPriceSource": "Zunder app selected charging point"
+    },
+    "specialFranceGrids": {
+      "alicorne": {
+        "acEurPerKwh": 0.33,
+        "upTo150KwEurPerKwh": 0.578,
+        "above150KwEurPerKwh": 0.595
+      },
+      "vinci": {
+        "acEurPerKwh": 0.44,
+        "upTo150KwEurPerKwh": 0.44,
+        "above150KwEurPerKwh": 0.59
+      },
+      "a63": {
+        "acEurPerKwh": 0.4,
+        "upTo150KwEurPerKwh": 0.4,
+        "above150KwEurPerKwh": 0.564
+      },
+      "risle": {
+        "upTo50KwEurPerKwh": 0.32,
+        "above50KwEurPerKwh": 0.57
+      },
+      "troyes": {
+        "dynamicRangeEurPerKwh": [
+          0.4,
+          0.49
+        ],
+        "day0800To1800EurPerKwh": 0.49,
+        "night1800To0800EurPerKwh": 0.4
+      },
+      "charmes": {
+        "dynamicRangeEurPerKwh": [
+          0.35,
+          0.49
+        ]
+      }
+    },
+    "subscriptions": {
+      "none": {
+        "monthlyFeeEur": 0.0,
+        "creditPercent": 1
+      },
+      "easy": {
+        "monthlyFeeEur": 1.99,
+        "eurPerKwh": 0.51,
+        "creditPercent": 3,
+        "commitment": "none"
+      },
+      "pro": {
+        "monthlyFeeEur": 11.99,
+        "eurPerKwh": 0.39,
+        "creditPercent": 5,
+        "commitment": "none"
+      }
+    },
+    "paymentMethods": [
+      "Zunder app",
+      "TPE bank card",
+      "Zunder RFID/eZCard",
+      "Plug&Charge/Autocharge"
+    ],
+    "bankCardPrepayment": {
+      "fixedNetworkWideAmountEur": null,
+      "model": "user_selects_prepaid_amount_then_unused_balance_refunded"
+    }
+  },
+  "specialPrograms": {
+    "socialLeasing2026": {
+      "generalPublicTariff": false,
+      "eligibilityLimited": true,
+      "upTo50KwEurPerKwh": 0.39,
+      "above50KwEurPerKwh": 0.45,
+      "validUntil": "2026-12-31",
+      "mustNotReplaceGeneralPublicTariff": true
+    }
+  },
+  "loyalty": {
+    "classification": "future_charge_credit",
+    "mustRemainSeparateFromBaseEnergyTariff": true,
+    "noPlanPercent": 1,
+    "easyPercent": 3,
+    "proPercent": 5
+  },
+  "roaming": {
+    "classification": "Zunder_eMSP_on_third_party_CPO",
+    "operatorDirect": false,
+    "zunderServiceFeeEurPerSession": 0.99,
+    "plusCpoPrice": true,
+    "mustNotOverwriteThirdPartyCpoDirectTariff": true
+  },
+  "fees": {
+    "idleOrOccupation": {
+      "status": "not_stated_network_wide_on_current_checked_official_pricing_pages",
+      "networkWideAmount": null
+    },
+    "parking": {
+      "status": "site_specific_not_asserted_network_wide"
+    }
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "drivers",
+        "url": "https://www.zunder.com/fr/utilisateur-ve/",
+        "httpStatus": 200
+      },
+      {
+        "key": "subscriptions",
+        "url": "https://www.zunder.com/fr/suscripciones/",
+        "httpStatus": 200
+      },
+      {
+        "key": "leasingSocial",
+        "url": "https://www.zunder.com/fr/leasing-social",
+        "httpStatus": 200
+      },
+      {
+        "key": "leasingTerms",
+        "url": "https://www.zunder.com/_landings/leasing-social/Conditions_Legales_Club_Social_Leasing_13042026.html",
+        "httpStatus": 200
+      },
+      {
+        "key": "payment",
+        "url": "https://www.zunder.com/fr/faqs/comment-puis-je-payer-pour-un-chargement-sur-zunder/",
+        "httpStatus": 200
+      },
+      {
+        "key": "activation",
+        "url": "https://www.zunder.com/fr/faqs/comment-activer-une-charge-sur-zunder/",
+        "httpStatus": 200
+      },
+      {
+        "key": "dynamic",
+        "url": "https://www.zunder.com/fr/zunder-deploie-de-nouveaux-tarifs-dynamiques-dans-laube-et-les-vosges/",
+        "httpStatus": 200
+      }
+    ],
+    "relevantTariffFingerprintSha256": "2cec01529dc42dd2634716d39e295fe60f2614d5856f1f9c991a9e67a80bfbe9"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "Zunder public France pricing is not represented as one national flat price because power, concession and location-specific tariffs exist.",
+    "Easy/Pro subscription pricing and loyalty credit are kept separate from the public station grid.",
+    "Social Leasing is eligibility-limited and must never be shown as a general-public default.",
+    "When Zunder is used on another CPO through roaming, the 0.99 EUR/session eMSP fee is added to that CPO's price.",
+    "No network-wide idle/occupation fee is asserted without current official evidence."
+  ]
+}
