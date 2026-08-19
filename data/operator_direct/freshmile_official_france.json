@@ -1,0 +1,150 @@
+{
+  "schemaVersion": "1.0.1",
+  "dataset": "freshmile-official-france",
+  "generatedAt": "2026-08-19T21:50:37.779596Z",
+  "operator": "Freshmile",
+  "country": "FR",
+  "classification": {
+    "singleGuaranteedNationalTariff": false,
+    "stationLevelPriceLookupRequiredForExactSimulation": true,
+    "freshmileActsAsCpoAndEmsp": true,
+    "reason": "Freshmile states that charging prices vary by network/station and are displayed in its app/map; CPO and eMSP roles must remain separate."
+  },
+  "operatorDirect": {
+    "freshmileManagedStations": {
+      "classification": "cpo_station_or_network_specific",
+      "nationalEurPerKwh": null,
+      "exactPriceLookupRequired": true,
+      "priceDefinedPerNetworkOrSite": true,
+      "validatedTariffComponents": [
+        "energy_if_applicable",
+        "connection_time_if_applicable"
+      ],
+      "otherComponentsRequireExactStationEvidence": true
+    },
+    "appOrGuestPayment": {
+      "classification": "operator_direct_app_or_guest",
+      "accountRequired": false,
+      "priceShownBeforeCharge": true,
+      "exactStationPriceLookupRequired": true
+    },
+    "bankCard": {
+      "classification": "operator_direct_card_where_supported",
+      "tpeAvailableOnSomeStations": true,
+      "preauthorizationEur": 50.0,
+      "onlyActualSessionAmountCaptured": true
+    }
+  },
+  "mobilityProvider": {
+    "freshmileAccount": {
+      "classification": "emsp_account",
+      "registrationFeeEur": 0.0,
+      "monthlyFeeEur": 0.0
+    },
+    "freshmilePass": {
+      "classification": "emsp_rfid_pass",
+      "purchasePriceEur": 4.99,
+      "monthlyFeeEur": 0.0,
+      "coveragePointsEuropePublished": 650000,
+      "thirdPartyRoamingPriceSetByFreshmileAndShownInApp": true,
+      "mustNotBeClassifiedAsThirdPartyCpoDirect": true
+    },
+    "incomingRoamingOnFreshmileCpo": {
+      "classification": "third_party_emsp",
+      "operatorDirect": false,
+      "priceOwnedBy": "third-party mobility provider"
+    }
+  },
+  "fees": {
+    "connectionTime": {
+      "status": "station_tariff_specific",
+      "networkWideEurPerMin": null,
+      "canContinueAfterEnergyStops": true,
+      "exactStationLookupRequired": true
+    },
+    "parking": {
+      "status": "local_parking_policy",
+      "networkWideParkingFee": null,
+      "checkLocalSigns": true
+    }
+  },
+  "sessionRules": {
+    "failedShortSessions": {
+      "scope": "most_stations_not_guaranteed_all",
+      "typicallyNotBilledIfDurationUnderMinutes": 2,
+      "orEnergyUnderKwh": 0.5
+    }
+  },
+  "liveMap": {
+    "officialUrl": "https://charge.freshmile.com/map",
+    "realTimeStatusAvailable": true,
+    "tariffDisplayed": true,
+    "powerAndConnectorDetailsDisplayed": true,
+    "preferredSourceForExactPriceAndAvailability": true
+  },
+  "partnerNetworkSubscriptions": [
+    {
+      "network": "Connect and Go Moselle Metz",
+      "feeEur": 3.0,
+      "period": "month"
+    },
+    {
+      "network": "Morbihan Energies",
+      "feeEur": 20.0,
+      "period": "year"
+    },
+    {
+      "network": "Connect and Go Meurthe-et-Moselle",
+      "feeEur": 3.0,
+      "period": "month"
+    }
+  ],
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "help",
+        "url": "https://www.freshmile.com/aide-contact/",
+        "httpStatus": 200
+      },
+      {
+        "key": "pass",
+        "url": "https://www.freshmile.com/nos-solutions/cartes-de-recharge/cartes-de-recharge-particuliers/",
+        "httpStatus": 200
+      },
+      {
+        "key": "passOverview",
+        "url": "https://www.freshmile.com/nos-solutions/cartes-de-recharge/",
+        "httpStatus": 200
+      },
+      {
+        "key": "empTerms",
+        "url": "https://www.freshmile.com/cgu-cgv/cgu-emp/",
+        "httpStatus": 200
+      },
+      {
+        "key": "cpoTerms",
+        "url": "https://www.freshmile.com/cgu-cgv/cgv/",
+        "httpStatus": 200
+      },
+      {
+        "key": "mapArticle",
+        "url": "https://www.freshmile.com/articles/tout-savoir-sur-la-carte-des-bornes/",
+        "httpStatus": 200
+      },
+      {
+        "key": "shop",
+        "url": "https://charge.freshmile.com/shop",
+        "httpStatus": 200
+      }
+    ],
+    "relevantTariffFingerprintSha256": "fd9c736546e2c04740f43ec9d78e0bab12cf80033b51d1672a43e0c24c0eb1aa"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "Do not invent a national Freshmile kWh price: the official help page says tariffs vary by network/station.",
+    "Freshmile CPO-managed-station pricing and Freshmile eMSP roaming pricing are distinct layers.",
+    "Connection-time components and parking rules must be resolved at station/local-policy level.",
+    "The official Freshmile map is the preferred source for exact price and live availability before simulation."
+  ]
+}
