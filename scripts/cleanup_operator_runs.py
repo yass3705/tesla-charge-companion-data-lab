@@ -33,6 +33,7 @@ TARGETS = {
     "ionity": {"workflow": "ionity-official-tariffs.yml", "marker": "data/operator_direct/ionity_official_france.json", "legacy_workflows": []},
     "powerdot": {"workflow": "powerdot-official-tariffs.yml", "marker": "data/operator_direct/powerdot_official_france.json", "legacy_workflows": []},
     "vianeo": {"workflow": "vianeo-official-tariffs.yml", "marker": "data/operator_direct/vianeo_official_france.json", "legacy_workflows": []},
+    "freshmile": {"workflow": "freshmile-official-tariffs.yml", "marker": "data/operator_direct/freshmile_official_france.json", "legacy_workflows": []},
 }
 
 API = "https://api.github.com"
