@@ -40,6 +40,7 @@ TARGETS = {
     "atlante": {"workflow": "atlante-official-tariffs.yml", "marker": "data/operator_direct/atlante_official_france.json", "legacy_workflows": []},
     "pluginn": {"workflow": "pluginn-fastcharge-official-tariffs.yml", "marker": "data/operator_direct/pluginn_fastcharge_official_france.json", "legacy_workflows": []},
     "zunder": {"workflow": "zunder-official-tariffs.yml", "marker": "data/operator_direct/zunder_official_france.json", "legacy_workflows": []},
+    "belib": {"workflow": "belib-official-tariffs.yml", "marker": "data/operator_direct/belib_official_paris.json", "legacy_workflows": []},
 }
 
 API = "https://api.github.com"
