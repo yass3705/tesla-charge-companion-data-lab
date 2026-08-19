@@ -55,9 +55,15 @@ def norm(s: str) -> str:
 
 
 def has_price(text: str, value: float) -> bool:
-    whole, frac = f"{value:.3f}".split(".")
-    frac = frac.rstrip("0")
-    return bool(re.search(rf"(?<!\d){whole}[,.]{frac}(?!\d)\s*€?\s*/?\s*kwh", norm(text), flags=re.I))
+    """Match a €/kWh amount by numeric value, independent of decimal formatting."""
+    n = norm(text)
+    for token in re.findall(r"(?<!\d)(\d+(?:[,.]\d{1,3})?)(?!\d)\s*€?\s*/?\s*kwh", n, flags=re.I):
+        try:
+            if abs(float(token.replace(",", ".")) - value) < 0.0005:
+                return True
+        except ValueError:
+            pass
+    return False
 
 
 def require(text: str, needles: tuple[str, ...], label: str) -> None:
