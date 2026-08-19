@@ -73,7 +73,6 @@ def find_tariff_image(html_raw: str, base_url: str) -> str:
         m = re.search(pat, html_raw, flags=re.I | re.S)
         if m:
             return urllib.parse.urljoin(base_url, html.unescape(m.group(1)))
-    # Current official image path fallback, still verified by the page fingerprint below.
     m = re.search(r'(["\'])(/storage/text_images/[^"\']+\.(?:png|jpg|jpeg|webp))\1', html_raw, flags=re.I)
     if m:
         return urllib.parse.urljoin(base_url, html.unescape(m.group(2)))
@@ -89,7 +88,6 @@ def tariff_lines(ocr: str) -> list[str]:
         n = norm(line)
         if any(tok in n for tok in ("€", "eur", "kwh", "kw", "min", "heure", "forfait", "post", "tarif")) or re.search(r"\b0[,.]\d{2,3}\b", n):
             keep.append(line[:300])
-    # de-duplicate preserving order
     out = []
     seen = set()
     for line in keep:
@@ -119,7 +117,7 @@ def inventory_summary(raw: bytes) -> dict:
         dialect = csv.Sniffer().sniff(text[:20000], delimiters=",;\t")
         rows = list(csv.DictReader(io.StringIO(text), dialect=dialect))
     except csv.Error:
-        rows = list(csv.DictReader(io.StringIO(text), delimiter=";"))
+        rows = list(csv.DictReader(io.StringIO(text), delimiter=";") )
     samples = []
     for row in rows[:1000]:
         lower = {str(k).strip().lower(): (v or "").strip() for k, v in row.items() if k is not None}
@@ -179,24 +177,26 @@ def main() -> None:
     faq_status, faq_raw, faq_charset = fetch(SOURCES["faq"])
     how_status, how_raw, how_charset = fetch(SOURCES["howTo"])
     csv_status, csv_raw, _ = fetch(SOURCES["inventoryCsv"])
-    faq = norm(text_from_html(faq_raw, faq_charset))
-    how = norm(text_from_html(how_raw, how_charset))
     if faq_status != 200 or how_status != 200 or csv_status != 200:
         raise RuntimeError("one or more official supporting sources failed")
+    faq = norm(text_from_html(faq_raw, faq_charset))
+    how = norm(text_from_html(how_raw, how_charset))
 
-    # Current FAQ wording can render punctuation/spacing differently across responses.
-    # Validate the meaning instead of one exact HTML representation.
-    if "pre-autorisation" not in faq or not re.search(r"\b49(?:[,.]00)?\s*€", faq):
-        raise RuntimeError("FAQ evidence missing: 49 EUR card preauthorization")
-    if "forfait post-charge" not in faq and "forfait post charge" not in faq:
-        raise RuntimeError("FAQ evidence missing: post-charge fee")
-    if not re.search(r"tolerance\s+de\s+5\s*(?:mn|min|minutes?)\b", faq):
-        raise RuntimeError("FAQ evidence missing: 5-minute post-charge tolerance")
-    if "tarif different" not in how or "operateur de mobilite" not in how:
-        raise RuntimeError("eMSP roaming separation evidence missing")
+    # These supporting pages are partly rendered differently between crawler/browser
+    # and the raw GitHub-runner response. Record what the runner can prove, but do
+    # not block the image-discovery workflow on secondary HTML evidence.
+    preauth_evidence = bool(
+        "pre-autorisation" in faq
+        and re.search(r"\b49(?:[,.]00)?(?:\s*€|\s*eur)?\b", faq)
+    )
+    post_charge_evidence = "forfait post-charge" in faq or "forfait post charge" in faq
+    tolerance_evidence = bool(re.search(r"tolerance\s+de\s+5\s*(?:mn|min|minutes?)\b", faq))
+    roaming_evidence = "tarif different" in how and "operateur de mobilite" in how
+    guest_evidence = "invite" in faq or "invité" in faq
+    live_evidence = "disponibilite en temps reel" in how
 
     report = {
-        "schemaVersion": "1.0.0",
+        "schemaVersion": "1.1.0",
         "dataset": "evadea-official-tariff-image-discovery",
         "generatedAt": now_iso(),
         "operator": "e-Vadea",
@@ -210,21 +210,27 @@ def main() -> None:
             "tariffRelevantLines": lines,
             "numericCandidates": numeric_candidates(lines),
         },
+        "supportingHtmlEvidence": {
+            "bankCardPreauthorization49EurObservedInRawFaq": preauth_evidence,
+            "postChargeFeeObservedInRawFaq": post_charge_evidence,
+            "postChargeTolerance5MinutesObservedInRawFaq": tolerance_evidence,
+            "thirdPartyMobilityTariffMayDifferObservedInRawHowTo": roaming_evidence,
+            "guestModeObservedInRawFaq": guest_evidence,
+            "liveAvailabilityObservedInRawHowTo": live_evidence,
+        },
         "validatedNonImageRules": {
-            "bankCardPreauthorizationEur": 49.0,
-            "postChargeFeeExists": True,
-            "postChargeToleranceMinutes": 5,
-            "thirdPartyMobilityBadgeTariffMayDiffer": True,
-            "appGuestModeAvailable": True,
-            "liveAvailabilityViaSmartphone": True,
+            "bankCardPreauthorizationEur": 49.0 if preauth_evidence else None,
+            "postChargeFeeExists": True if post_charge_evidence else None,
+            "postChargeToleranceMinutes": 5 if tolerance_evidence else None,
+            "thirdPartyMobilityBadgeTariffMayDiffer": True if roaming_evidence else None,
+            "appGuestModeAvailable": True if guest_evidence else None,
+            "liveAvailabilityViaSmartphone": True if live_evidence else None,
         },
         "inventory": inventory_summary(csv_raw),
-        "sources": [
-            {"key": k, "url": v}
-            for k, v in SOURCES.items()
-        ],
+        "sources": [{"key": k, "url": v} for k, v in SOURCES.items()],
         "notes": [
             "Tariff amounts remain discovery candidates until the OCR table structure is reviewed.",
+            "Secondary FAQ/how-to facts are nullable when the raw GitHub-runner HTML does not expose browser-rendered text.",
             "No older third-party price is promoted to current official pricing.",
             "The e-Vadea publisher inventory is stale and must not be used as live availability.",
         ],
@@ -235,6 +241,7 @@ def main() -> None:
         "imageSha256": report["tariffImage"]["sha256"],
         "numericCandidates": report["tariffImage"]["numericCandidates"],
         "tariffRelevantLines": lines,
+        "supportingHtmlEvidence": report["supportingHtmlEvidence"],
         "inventoryRows": report["inventory"]["rowCount"],
     }, ensure_ascii=False, indent=2))
 
