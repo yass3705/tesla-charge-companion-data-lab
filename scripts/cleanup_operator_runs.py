@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+"""Prune obsolete GitHub Actions runs for validated operator workflows.
+
+Policy:
+- Never clean an operator until its validated marker JSON exists in the repo.
+- While an operator is failing, keep its failed runs for diagnosis.
+- After a successful run, keep that successful run as the reference and delete
+  only older completed runs for the same workflow.
+- Never delete runs newer than the reference success.
+
+The script is intentionally limited to the operator workflows listed in TARGETS.
+Add new operators here when their validation workflow is introduced.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+TARGETS = {
+    "lidl": {
+        "workflow": "lidl-plus-official-tariff.yml",
+        "marker": "data/operator_direct/lidl_plus_france.json",
+    },
+    "izivia": {
+        "workflow": "izivia-official-tariffs.yml",
+        "marker": "data/operator_direct/izivia_official_france.json",
+    },
+    "fastned": {
+        "workflow": "fastned-official-tariffs.yml",
+        "marker": "data/operator_direct/fastned_official_france.json",
+    },
+}
+
+API = "https://api.github.com"
+
+
+def api_request(method: str, path: str):
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    if not token:
+        raise RuntimeError("GH_TOKEN/GITHUB_TOKEN is required")
+    if not repo:
+        raise RuntimeError("GITHUB_REPOSITORY is required")
+
+    url = f"{API}/repos/{repo}/{path.lstrip('/')}"
+    req = urllib.request.Request(
+        url,
+        method=method,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "tesla-charge-companion-data-lab-run-cleanup",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            raw = resp.read()
+            if not raw:
+                return None
+            return json.loads(raw.decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"GitHub API {method} {path} failed: HTTP {exc.code}: {detail[:500]}") from exc
+
+
+def list_runs(workflow_file: str) -> list[dict]:
+    encoded = urllib.parse.quote(workflow_file, safe="")
+    runs: list[dict] = []
+    page = 1
+    while page <= 10:
+        data = api_request(
+            "GET",
+            f"actions/workflows/{encoded}/runs?per_page=100&page={page}",
+        )
+        batch = list((data or {}).get("workflow_runs") or [])
+        runs.extend(batch)
+        if len(batch) < 100:
+            break
+        page += 1
+    return runs
+
+
+def delete_run(run_id: int) -> None:
+    api_request("DELETE", f"actions/runs/{run_id}")
+
+
+def choose_reference_success(runs: list[dict], keep_run_id: int | None) -> dict | None:
+    completed_successes = [
+        r for r in runs
+        if r.get("status") == "completed" and r.get("conclusion") == "success"
+    ]
+    if not completed_successes:
+        return None
+
+    if keep_run_id is not None:
+        for run in completed_successes:
+            if int(run.get("id")) == keep_run_id:
+                return run
+
+    completed_successes.sort(key=lambda r: r.get("created_at") or "", reverse=True)
+    return completed_successes[0]
+
+
+def cleanup_target(key: str, keep_run_id: int | None = None) -> tuple[int, int | None]:
+    cfg = TARGETS[key]
+    marker = Path(cfg["marker"])
+    workflow = cfg["workflow"]
+
+    if not marker.exists():
+        print(f"[{key}] marker missing ({marker}); operator not validated yet -> preserving all runs")
+        return 0, None
+
+    runs = list_runs(workflow)
+    reference = choose_reference_success(runs, keep_run_id)
+    if not reference:
+        print(f"[{key}] no successful completed run found -> preserving all runs")
+        return 0, None
+
+    ref_id = int(reference["id"])
+    ref_created = reference.get("created_at") or ""
+    deleted = 0
+
+    for run in runs:
+        run_id = int(run.get("id"))
+        if run_id == ref_id:
+            continue
+        if run.get("status") != "completed":
+            continue
+        created = run.get("created_at") or ""
+        # Preserve anything newer than the reference success. This matters if a
+        # fresh failure occurs after a previously validated run.
+        if created >= ref_created:
+            continue
+        delete_run(run_id)
+        deleted += 1
+        print(
+            f"[{key}] deleted old run {run_id} "
+            f"({run.get('conclusion')}, {created})"
+        )
+
+    print(f"[{key}] kept reference success run {ref_id}; deleted {deleted} older completed run(s)")
+    return deleted, ref_id
+
+
+def prune_cleanup_workflow(current_run_id: int | None) -> int:
+    """Keep the current cleanup run by deleting older completed cleanup runs."""
+    workflow = "cleanup-operator-runs.yml"
+    try:
+        runs = list_runs(workflow)
+    except Exception as exc:
+        print(f"[cleanup] unable to list cleanup workflow history: {exc}")
+        return 0
+
+    deleted = 0
+    for run in runs:
+        run_id = int(run.get("id"))
+        if current_run_id is not None and run_id == current_run_id:
+            continue
+        if run.get("status") != "completed":
+            continue
+        try:
+            delete_run(run_id)
+            deleted += 1
+            print(f"[cleanup] deleted previous cleanup run {run_id}")
+        except Exception as exc:
+            print(f"[cleanup] could not delete previous cleanup run {run_id}: {exc}")
+    return deleted
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--target",
+        choices=["all", *TARGETS.keys()],
+        default="all",
+        help="Operator to clean; all only cleans operators with validated marker files.",
+    )
+    parser.add_argument("--keep-run-id", type=int, default=None)
+    parser.add_argument("--current-cleanup-run-id", type=int, default=None)
+    parser.add_argument("--prune-self", action="store_true")
+    args = parser.parse_args()
+
+    keys = list(TARGETS) if args.target == "all" else [args.target]
+    total = 0
+    for key in keys:
+        keep = args.keep_run_id if len(keys) == 1 else None
+        deleted, _ = cleanup_target(key, keep_run_id=keep)
+        total += deleted
+
+    if args.prune_self:
+        total += prune_cleanup_workflow(args.current_cleanup_run_id)
+
+    print(f"Cleanup complete: {total} run(s) deleted")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
