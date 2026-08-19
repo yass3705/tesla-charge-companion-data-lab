@@ -1,0 +1,112 @@
+{
+  "schemaVersion": "1.0.0",
+  "key": "alize_toulouse",
+  "dataset": "alize-toulouse-official",
+  "operator": "Alizé Toulouse",
+  "country": "FR",
+  "outputFile": "alize_toulouse_official.json",
+  "sources": [
+    {
+      "key": "tariffs",
+      "url": "https://toulouse.alizecharge.com/offres-et-tarifs/",
+      "requiredPhrases": [
+        "Tarifs publics pour les utilisateurs Alizé Liberté",
+        "Stations Normales (<22kW)",
+        "0,40€/kWh",
+        "0,10€/min entre 07h - 22h au-delà de 2h de session",
+        "Stations Ultra-Rapides (<90kW)",
+        "0,49€/kWh",
+        "0,48€/min au-delà de 45mins",
+        "Hubs Ultra-Rapides (>90kW)",
+        "0,55€/kWh",
+        "0,65€/min au-delà de 30mins",
+        "Abonnement de 4€/mois",
+        "0,32€/kWh",
+        "0,075€/min entre 07h - 22h",
+        "0,45€/kWh",
+        "0,50€/kWh",
+        "Commandez (12€) et activez votre badge",
+        "Nous vous invitons à contacter votre opérateur afin de connaitre les tarifs appliqués"
+      ],
+      "requiredNumbers": [0.32, 0.4, 0.45, 0.48, 0.49, 0.5, 0.55, 0.65, 0.075, 0.1, 2, 3, 4, 12, 30, 45, 90]
+    }
+  ],
+  "facts": {
+    "classification": {
+      "localPublicNetwork": true,
+      "geography": "Toulouse and nearby participating network",
+      "singleFlatTariff": false,
+      "tariffDependsOnPowerAndSubscription": true
+    },
+    "operatorDirect": {
+      "alizeLibertePublic": {
+        "monthlyFeeEur": 0.0,
+        "normalBelow22Kw": {
+          "eurPerKwh": 0.4,
+          "connectionSurchargeEurPerMinute": 0.1,
+          "surchargeAfterMinutes": 120,
+          "surchargeWindow": "07:00-22:00"
+        },
+        "ultraRapidBelow90Kw": {
+          "eurPerKwh": 0.49,
+          "connectionSurchargeEurPerMinute": 0.48,
+          "surchargeAfterMinutes": 45,
+          "connectors": ["CCS", "CHAdeMO"]
+        },
+        "hubAbove90Kw": {
+          "eurPerKwh": 0.55,
+          "connectionSurchargeEurPerMinute": 0.65,
+          "surchargeAfterMinutes": 30,
+          "connectors": ["CCS"]
+        }
+      },
+      "preferredSubscription": {
+        "monthlyFeeEur": 4.0,
+        "normalBelow22Kw": {
+          "eurPerKwh": 0.32,
+          "connectionSurchargeEurPerMinute": 0.075,
+          "surchargeAfterMinutes": 180,
+          "weekdayAndSaturdayWindow": "07:00-22:00",
+          "sundayWindowStarts": "09:00"
+        },
+        "ultraRapidBelow90Kw": {
+          "eurPerKwh": 0.45,
+          "connectionSurchargeEurPerMinute": 0.48,
+          "surchargeAfterMinutes": 45,
+          "connectors": ["CCS", "CHAdeMO"]
+        },
+        "hubAbove90Kw": {
+          "eurPerKwh": 0.5,
+          "connectionSurchargeEurPerMinute": 0.65,
+          "surchargeAfterMinutes": 30,
+          "connectors": ["CCS"]
+        }
+      },
+      "badgePriceEur": 12.0,
+      "accessMethods": ["Alizé app", "Alizé badge", "QR card payment", "contactless bank card on ultra-rapid stations"]
+    },
+    "twoWheelers": {
+      "powerKw": 3.7,
+      "eurPerHour": 1.5,
+      "capEur": 4.5
+    },
+    "roaming": {
+      "incomingThirdPartyOperator": true,
+      "thirdPartyProviderSetsCustomerPrice": true,
+      "mustRemainSeparateFromAlizeToulouseDirectTariff": true,
+      "outgoingAlizePartnerAccess": true
+    }
+  },
+  "notes": [
+    "The public Alizé Liberté tariff and the 4 EUR/month preferred offer are distinct direct layers.",
+    "Connection-time components are modeled as time-based surcharges after the published thresholds, not as energy prices.",
+    "Third-party mobility operators may apply their own customer tariff and are therefore kept separate from Alizé Toulouse direct pricing."
+  ],
+  "summaryLines": [
+    "Alizé Liberté public: 0.40 EUR/kWh normal, 0.49 below 90 kW, 0.55 above 90 kW, with connection-time surcharges.",
+    "Preferred offer: 4 EUR/month; 0.32 / 0.45 / 0.50 EUR/kWh by class with the published time surcharges.",
+    "Badge: 12 EUR; QR and contactless access supported where published.",
+    "Two-wheelers 3.7 kW: 1.50 EUR/hour capped at 4.50 EUR.",
+    "Third-party eMSP pricing stays separate."
+  ]
+}
