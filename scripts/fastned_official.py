@@ -315,13 +315,24 @@ def main() -> None:
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
 
+    gold_monthly_summary = (
+        f"**{pricing['goldMonthlyFeeEur']:.2f} EUR/month** through **{pricing['goldMonthlyFeePromotionEnd']}**"
+        if pricing['goldMonthlyFeeEur'] is not None
+        else "**not confirmed on the current official France page**"
+    )
+    card_preauth_summary = (
+        f"**{payment['bankCardPreauthorizationEur']:.0f} EUR**"
+        if payment['bankCardPreauthorizationEur'] is not None
+        else "**not confirmed**"
+    )
+
     summary = (
         "# Fastned France official tariff check\n\n"
         f"- Standard direct: **{pricing['standardEurPerKwh']:.2f} EUR/kWh**\n"
         f"- Fastned app direct: **-10%**, calculated **{pricing['appDirectCalculatedEurPerKwh']:.3f} EUR/kWh** from current standard price\n"
         f"- Gold: **{pricing['goldEurPerKwh']:.2f} EUR/kWh** (-30%)\n"
-        f"- Gold monthly fee currently shown: **{pricing['goldMonthlyFeeEur']:.2f} EUR/month** through **{pricing['goldMonthlyFeePromotionEnd']}**\n"
-        f"- Card preauthorization: **{payment['bankCardPreauthorizationEur']:.0f} EUR**\n"
+        f"- Gold monthly fee currently shown: {gold_monthly_summary}\n"
+        f"- Card preauthorization: {card_preauth_summary}\n"
         f"- Official French station samples matching national tariff: **{len(station_checks)}**\n"
         "- Third-party charge cards: roaming/eMSP price, Fastned discounts do not apply\n"
         f"- Fingerprint: `{payload['sourceEvidence']['relevantTariffFingerprintSha256']}`\n"
