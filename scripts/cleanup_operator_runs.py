@@ -42,6 +42,7 @@ TARGETS = {
     "zunder": {"workflow": "zunder-official-tariffs.yml", "marker": "data/operator_direct/zunder_official_france.json", "legacy_workflows": []},
     "belib": {"workflow": "belib-official-tariffs.yml", "marker": "data/operator_direct/belib_official_paris.json", "legacy_workflows": []},
     "metropolis": {"workflow": "metropolis-official-tariffs.yml", "marker": "data/operator_direct/metropolis_official_grand_paris.json", "legacy_workflows": []},
+    "eborn": {"workflow": "eborn-official-tariffs.yml", "marker": "data/operator_direct/eborn_official_france.json", "legacy_workflows": []},
 }
 
 API = "https://api.github.com"
