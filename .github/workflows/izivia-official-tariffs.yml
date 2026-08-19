@@ -21,7 +21,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
 
     steps:
       - uses: actions/checkout@v4
@@ -31,13 +31,36 @@ jobs:
       - name: Public-safety scan
         run: python scripts/public_safety_check.py .
 
+      - name: Prepare browser fallback
+        run: |
+          python -m pip install --disable-pip-version-check --quiet "selenium>=4.20,<5"
+          (google-chrome --version || chromium --version || chromium-browser --version || true)
+
       - name: Extract official IZIVIA tariff families
+        id: extract
         run: |
           python -m py_compile scripts/izivia_official.py
           python scripts/izivia_official.py --out out/izivia
           cat out/izivia/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Publish sanitized diagnostic after extraction failure
+        if: failure() && steps.extract.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          test -f out/izivia/DIAGNOSTIC.json || exit 0
+          mkdir -p reports/izivia
+          cp out/izivia/DIAGNOSTIC.json reports/izivia/latest_diagnostic.json
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/izivia/latest_diagnostic.json
+          if ! git diff --cached --quiet; then
+            git commit -m "diag(izivia): publish extraction diagnostic [run ${GITHUB_RUN_ID}]"
+            git push origin HEAD:main
+          fi
+
       - name: Validate classification and tariff bounds
+        if: success()
         run: |
           python - <<'PY'
           import json
@@ -51,8 +74,10 @@ jobs:
           exp=nets['IZIVIA Express']['pricing']
           assert 0.10 <= exp['minEurPerKwh'] <= exp['maxEurPerKwh'] <= 1.50, exp
           gl=nets['IZIVIA Grand Lyon']['pricing']
-          assert gl['day']['upTo50Kw']['visitorEurPerKwh'] > 0, gl
-          assert gl['day']['from100Kw']['idleEurPerMin'] >= 0, gl
+          assert gl['day']['upTo50Kw']['visitorEurPerKwh'] == 0.45, gl
+          assert gl['day']['from100Kw']['visitorEurPerKwh'] == 0.55, gl
+          assert gl['day']['from100Kw']['idleEurPerMin'] == 0.20, gl
+          assert gl['night']['upTo7Kw']['afterIncludedEurPerKwh'] == 0.38, gl
           roaming=p['mobilityProvider']['thirdPartyNetworks']['currentDefaultServiceFeePercent']
           assert 0 <= roaming <= 50, roaming
           assert p['mobilityProvider']['thirdPartyNetworks']['stationLevelPriceLookupRequired'] is True
@@ -60,6 +85,7 @@ jobs:
           PY
 
       - name: Publish only when tariff evidence changes
+        if: success()
         id: publish
         run: |
           python - <<'PY'
@@ -99,7 +125,7 @@ jobs:
           python scripts/public_safety_check.py .
 
       - name: Commit validated IZIVIA rule set
-        if: steps.publish.outputs.changed == '1'
+        if: success() && steps.publish.outputs.changed == '1'
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
