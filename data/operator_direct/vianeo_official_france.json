@@ -1,0 +1,158 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "engie-vianeo-official-france",
+  "generatedAt": "2026-08-19T21:44:00.155275Z",
+  "operator": "ENGIE Vianeo",
+  "country": "FR",
+  "classification": {
+    "singleGuaranteedNationalPublicTariff": false,
+    "stationLevelPriceLookupRequiredForExactSimulation": true,
+    "nationalSubscriptionTariffExists": true,
+    "reason": "Public/app/card prices vary by station, power and time, while Vianeo Max publishes one France-wide subscription kWh tariff."
+  },
+  "operatorDirect": {
+    "vianeoMax": {
+      "classification": "operator_direct_subscription",
+      "monthlyFeeEur": 9.99,
+      "eurPerKwh": 0.33,
+      "geography": "France",
+      "allVianeoPassengerVehicleStationsFrance": true,
+      "appOnly": true,
+      "noCommitment": true,
+      "dailyEnergyCapKwh": 200,
+      "excludesHeavyGoodsDedicatedPoints": true,
+      "stationMinuteFeesCanStillApply": true
+    },
+    "appNoSubscription": {
+      "classification": "operator_direct_app",
+      "discountPercentVsPublic": 10.0,
+      "highwayEurPerKwhFrom": 0.54,
+      "nonHighwayAverageEurPerKwhPublished": 0.53,
+      "exactStationPriceLookupRequired": true
+    },
+    "bankCardOrQr": {
+      "classification": "operator_direct_ad_hoc",
+      "highwayEurPerKwhFrom": 0.6,
+      "nonHighwayAverageEurPerKwhPublished": 0.59,
+      "exactStationPriceLookupRequired": true,
+      "paymentMethods": [
+        "contactless bank card where present",
+        "QR/web card payment",
+        "Apple Pay / Google Pay where supported"
+      ],
+      "preauthorizationEur": 50.0
+    }
+  },
+  "roaming": {
+    "classification": "third_party_eMSP",
+    "operatorDirect": false,
+    "priceOwnedBy": "RFID/card provider",
+    "exactPriceLookupRequired": true
+  },
+  "fees": {
+    "minuteOrOccupation": {
+      "networkWideRateEurPerMin": null,
+      "status": "station_specific",
+      "canApplyDuringOrAfterCharge": true,
+      "exactStationLookupRequired": true
+    },
+    "parking": {
+      "status": "site_or_landowner_rules_apply",
+      "networkWideParkingFee": null
+    }
+  },
+  "promotions": {
+    "superHeuresCreuses": {
+      "classification": "temporary_operator_direct_promotion",
+      "eurPerKwh": 0.29,
+      "localTimeWindow": "22:00-08:00",
+      "validThrough": "2026-12-31",
+      "selectedStationsOnly": true,
+      "appOnly": true,
+      "vianeoPlusMembershipRequired": true,
+      "notGeneralTariff": true
+    },
+    "selectedFastDcSites": {
+      "classification": "selected_site_promotion",
+      "publishedEurPerKwh": 0.351,
+      "stationLevelScope": true,
+      "notGeneralTariff": true,
+      "sampleEligibleStations": [
+        "Igny Palaiseau",
+        "Lieusaint Carré Sénart",
+        "Noisy-le-Grand"
+      ]
+    }
+  },
+  "inventory": {
+    "publisher": "Engie Mobilites Electriques",
+    "source": "data.gouv.fr organization datasets",
+    "latestDatasetMarkerObserved": "IRVE_STatique_ENGIE_Vianeo_All_Juillet 2026",
+    "freshnessStatus": "official_static_inventory_monthly_dataset_marker",
+    "sampleStationsForManualCheck": [
+      {
+        "station": "Igny Palaiseau",
+        "region": "Ile-de-France",
+        "selectedSitePromotionPage": true
+      },
+      {
+        "station": "Lieusaint Carré Sénart",
+        "region": "Ile-de-France",
+        "selectedSitePromotionPage": true
+      },
+      {
+        "station": "Noisy-le-Grand",
+        "region": "Ile-de-France",
+        "selectedSitePromotionPage": true
+      }
+    ]
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "pricing",
+        "url": "https://www.engie-vianeo.com/tarifs-recharge-voiture-electrique/",
+        "httpStatus": 200
+      },
+      {
+        "key": "maxSubscription",
+        "url": "https://www.engie-vianeo.com/abonnement-recharge-voiture-electrique/",
+        "httpStatus": 200
+      },
+      {
+        "key": "help",
+        "url": "https://www.engie-vianeo.com/aide/",
+        "httpStatus": 200
+      },
+      {
+        "key": "terms",
+        "url": "https://www.engie-vianeo.com/cguv/",
+        "httpStatus": 200
+      },
+      {
+        "key": "superOffPeak",
+        "url": "https://www.engie-vianeo.com/super-heures-creuses/",
+        "httpStatus": 200
+      },
+      {
+        "key": "selection",
+        "url": "https://www.engie-vianeo.com/selection/",
+        "httpStatus": 200
+      },
+      {
+        "key": "inventoryOrg",
+        "url": "https://www.data.gouv.fr/organizations/engie-mobilites-electriques/datasets",
+        "httpStatus": 200
+      }
+    ],
+    "relevantTariffFingerprintSha256": "8f0429e913de319c4e0157835189b5cd323d9fdf5429f3d1378b539f4fae4123"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "Do not use the 0.54/0.60 highway figures as universal national tariffs: they are published as starting prices.",
+    "Do not convert RFID roaming prices into ENGIE Vianeo direct prices.",
+    "Minute/occupation fees require station-level lookup even with Vianeo Max.",
+    "Temporary 0.29 and selected-site 0.351 EUR/kWh offers remain separate from standard tariff families."
+  ]
+}
