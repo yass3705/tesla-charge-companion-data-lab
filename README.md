@@ -14,24 +14,19 @@ A safety scanner runs before generated data is published.
 
 ## Current scope: Lidl France
 
-The first pipeline researches operator-direct Lidl charging tariffs at EVSE level through a public direct-payment flow.
+The first public pipeline probes Lidl EVSEs through the public Intercharge direct-payment flow.
 
-Sanitized seed snapshot:
+Important source classification: this public payment flow is **not treated as Lidl Plus pricing**. The first manual validation showed that `FR*LDL*E00002411` is **0.29 EUR/kWh in Lidl Plus** while the public Intercharge ad-hoc payment page returned **0.39 EUR/kWh** at the same EVSE. These two tariff sources must therefore remain separate.
 
-- 1,405 physical Lidl charging sites represented in the source snapshot
-- 6,334 `FR*LDL*…` EVSE identifiers
-- source snapshot generated 2026-08-18
-- committed seed contains only the EVSE identifier list in compressed text form
-- no private repository history, account data, screenshots, cookies, tokens or authenticated exports are copied here
+The current smoke seed contains only a small sanitized EVSE sample. National extraction will be enabled only after the source classification and publication model are validated.
 
-The national extraction produces a separate **candidate** operator-direct dataset. It is not production data until representative stations have been manually validated.
-
-Reference manual check currently used for validation: `FR*LDL*E00002411` should return **0.29 EUR/kWh** for the Lidl Rue de l'Aerostation Maritime site when the public source and Lidl Plus tariff are aligned.
+Generated public-payment data is stored as **candidate ad-hoc pricing**, never as a Lidl Plus operator-direct tariff.
 
 ## Repository layout
 
 - `data/seed/` — sanitized public extraction seeds
-- `data/operator_direct/` — generated candidate operator-direct datasets
+- `data/adhoc_payment/` — public ad-hoc payment candidates
+- `data/operator_direct/` — reserved for operator/app tariffs that are actually validated as such
 - `scripts/` — public extraction and safety tooling
 - `reports/` — concise extraction/validation reports
 - `.github/workflows/` — reproducible public Actions pipelines
