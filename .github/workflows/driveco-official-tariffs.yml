@@ -1,0 +1,144 @@
+name: DRIVECO official tariffs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "27 8 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/driveco_official.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/driveco-official-tariffs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: driveco-official-tariffs
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Extract official DRIVECO France rules
+        id: extract
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/driveco
+          python -m py_compile scripts/driveco_official.py
+          python scripts/driveco_official.py --out out/driveco 2> >(tee out/driveco/error.log >&2)
+          cat out/driveco/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish sanitized diagnostic after extraction failure
+        if: failure() && steps.extract.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/driveco
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          p=Path('out/driveco/error.log')
+          text=p.read_text(errors='replace') if p.exists() else 'extractor failed without stderr capture'
+          text=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',text)
+          Path('reports/driveco/latest_diagnostic.json').write_text(json.dumps({'dataset':'driveco-extraction-diagnostic','sanitized':True,'errorTail':[x for x in text.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/driveco/latest_diagnostic.json
+          if ! git diff --cached --quiet; then
+            git commit -m "diag(driveco): publish extraction diagnostic [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
+
+      - name: Validate classification
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/driveco/driveco_official_france.json').read_text())
+          assert p['classification']['singleGuaranteedNationalTariff'] is False
+          assert p['classification']['stationLevelPriceLookupRequiredForExactSimulation'] is True
+          assert p['publishedReferencePricing']['slow']['eurPerKwh'] == 0.39
+          assert p['publishedReferencePricing']['fast']['eurPerKwh'] == 0.51
+          assert p['publishedReferencePricing']['ultraFast']['eurPerKwhMin'] == 0.55
+          assert p['publishedReferencePricing']['ultraFast']['eurPerKwhMax'] == 0.59
+          assert p['publishedReferencePricing']['mustNotReplaceExactStationPrice'] is True
+          assert p['roaming']['operatorDirect'] is False
+          assert p['roaming']['priceControlledByThirdPartyProvider'] is True
+          assert p['fees']['extendedParking']['status'] == 'station_specific_possible'
+          assert p['fees']['paymentPreauthorization']['networkWideAmountEur'] is None
+          assert p['sessionRules']['billingStartsAfterEnergyDeliveredKwhExceeds'] == 0.1
+          assert p['inventory']['rowCount'] > 1000
+          assert len(p['inventory']['samples']) >= 3
+          assert p['sourceEvidence']['officialOnly'] is True
+          print('Validated DRIVECO direct/reference/roaming/fee separation')
+          PY
+
+      - name: Publish only when evidence changes
+        id: publish
+        if: success()
+        run: |
+          python - <<'PY'
+          import json,shutil
+          from pathlib import Path
+          src=Path('out/driveco/driveco_official_france.json')
+          dst=Path('data/operator_direct/driveco_official_france.json')
+          rep=Path('reports/driveco/latest_summary.md')
+          new=json.loads(src.read_text())
+          def sig(d):
+              return {
+                  'classification':d.get('classification'),
+                  'publishedReferencePricing':d.get('publishedReferencePricing'),
+                  'operatorDirect':d.get('operatorDirect'),
+                  'roaming':d.get('roaming'),
+                  'fees':d.get('fees'),
+                  'sessionRules':d.get('sessionRules'),
+                  'inventory':d.get('inventory'),
+                  'fingerprint':(d.get('sourceEvidence') or {}).get('relevantTariffFingerprintSha256'),
+                  'publicationStatus':d.get('publicationStatus'),
+              }
+          changed=not dst.exists() or sig(json.loads(dst.read_text())) != sig(new)
+          Path('changed.flag').write_text('1' if changed else '0')
+          if changed:
+              dst.parent.mkdir(parents=True,exist_ok=True)
+              rep.parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(src,dst)
+              shutil.copy2('out/driveco/SUMMARY.md',rep)
+          PY
+          echo "changed=$(cat changed.flag)" >> "$GITHUB_OUTPUT"
+          python scripts/public_safety_check.py .
+
+      - name: Commit validated DRIVECO rule set
+        if: success() && steps.publish.outputs.changed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/driveco_official_france.json reports/driveco/latest_summary.md
+          git commit -m "data(driveco): publish official France tariff rules [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
