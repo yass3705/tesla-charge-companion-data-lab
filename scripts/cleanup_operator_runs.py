@@ -45,6 +45,11 @@ TARGETS = {
             "allego-static-pricing-hotfix.yml",
         ],
     },
+    "totalenergies": {
+        "workflow": "totalenergies-official-tariffs.yml",
+        "marker": "data/operator_direct/totalenergies_official_france.json",
+        "legacy_workflows": [],
+    },
 }
 
 API = "https://api.github.com"
@@ -124,7 +129,6 @@ def cleanup_legacy_workflows(key: str, workflows: list[str]) -> int:
         try:
             runs = list_runs(workflow)
         except Exception as exc:
-            # A workflow file may already have been removed after migration.
             print(f"[{key}] legacy workflow {workflow}: unable to list ({exc}); skipping")
             continue
 
@@ -173,8 +177,6 @@ def cleanup_target(key: str, keep_run_id: int | None = None) -> tuple[int, int |
         if run.get("status") != "completed":
             continue
         created = run.get("created_at") or ""
-        # Preserve anything newer than the reference success: a new failure after
-        # validation remains visible for diagnosis.
         if created >= ref_created:
             continue
         delete_run(run_id)
@@ -193,7 +195,6 @@ def cleanup_target(key: str, keep_run_id: int | None = None) -> tuple[int, int |
 
 
 def prune_cleanup_workflow(current_run_id: int | None) -> int:
-    """Keep the current cleanup run by deleting older completed cleanup runs."""
     workflow = "cleanup-operator-runs.yml"
     try:
         runs = list_runs(workflow)
