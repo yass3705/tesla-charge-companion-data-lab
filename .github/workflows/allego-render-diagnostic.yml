@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
           mkdir -p reports/allego
           python - <<'PY'
-          import json, re, time, unicodedata
+          import json, re, time, traceback, unicodedata
           from pathlib import Path
           from selenium import webdriver
           from selenium.webdriver.common.by import By
@@ -36,50 +36,74 @@ jobs:
 
           URL='https://www.allego.eu/fr/tarifs/'
           def norm(s):
-              s=unicodedata.normalize('NFKD',s)
+              s=unicodedata.normalize('NFKD',s or '')
               s=''.join(ch for ch in s if not unicodedata.combining(ch))
               return re.sub(r'\s+',' ',s.lower()).strip()
 
-          opts=webdriver.ChromeOptions()
-          for arg in ('--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--window-size=1440,2400','--lang=fr-FR'):
-              opts.add_argument(arg)
-          d=webdriver.Chrome(options=opts)
-          meta={'url':URL,'selected':None,'method':None}
+          payload={
+              'dataset':'allego-render-diagnostic',
+              'sanitized':True,
+              'meta':{'url':URL,'selected':None,'method':None},
+              'bodyLength':None,
+              'normalizedExcerpt':None,
+              'eurPerKwhTokens':[],
+              'feeTokens':[],
+              'error':None,
+          }
+          d=None
           try:
+              opts=webdriver.ChromeOptions()
+              for arg in ('--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--window-size=1440,2400','--lang=fr-FR'):
+                  opts.add_argument(arg)
+              d=webdriver.Chrome(options=opts)
               d.get(URL)
               WebDriverWait(d,20).until(lambda x: len((x.find_element(By.TAG_NAME,'body').text or '').strip())>100)
-              for el in d.find_elements(By.TAG_NAME,'select'):
+
+              selects=d.find_elements(By.TAG_NAME,'select')
+              payload['meta']['selectCount']=len(selects)
+              payload['meta']['selectOptions']=[]
+              for el in selects:
                   try:
                       sel=Select(el)
+                      options=[o.text for o in sel.options]
+                      payload['meta']['selectOptions'].append(options[:30])
                       match=next((o for o in sel.options if norm(o.text)=='france'),None)
-                      if not match: continue
+                      if not match:
+                          continue
                       sel.select_by_visible_text(match.text)
                       d.execute_script("arguments[0].dispatchEvent(new Event('change',{bubbles:true}));",el)
                       time.sleep(3)
-                      meta['selected']=Select(el).first_selected_option.text
-                      meta['method']='native_select'
+                      payload['meta']['selected']=Select(el).first_selected_option.text
+                      payload['meta']['method']='native_select'
                       break
-                  except Exception:
-                      pass
+                  except Exception as exc:
+                      payload['meta'].setdefault('selectErrors',[]).append(f'{type(exc).__name__}: {exc}'[:500])
+
               body=d.find_element(By.TAG_NAME,'body').text or ''
               n=norm(body)
               idx=n.find('ultra')
-              if idx < 0: idx=0
-              excerpt=n[max(0,idx-350):idx+3000]
-              prices=re.findall(r'(?:€\s*)?(\d+(?:[.,]\d+)?)\s*(?:€\s*)?/\s*kwh',n,re.I)
-              fees=re.findall(r'(?:idle fee|overstay fee).{0,80}?(?:€\s*)?(\d+(?:[.,]\d+)?)\s*(?:€\s*)?/\s*min',n,re.I)
-              payload={
-                  'dataset':'allego-render-diagnostic',
-                  'sanitized':True,
-                  'meta':meta,
-                  'bodyLength':len(body),
-                  'normalizedExcerpt':excerpt,
-                  'eurPerKwhTokens':prices[:40],
-                  'feeTokens':fees[:20],
-              }
-              Path('reports/allego/render_diagnostic.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+              if idx < 0:
+                  idx=0
+              payload['bodyLength']=len(body)
+              payload['normalizedExcerpt']=n[max(0,idx-350):idx+3500]
+              payload['eurPerKwhTokens']=re.findall(r'(?:€\s*)?(\d+(?:[.,]\d+)?)\s*(?:€\s*)?/\s*kwh',n,re.I)[:50]
+              payload['feeTokens']=re.findall(r'(?:idle fee|overstay fee).{0,100}?(?:€\s*)?(\d+(?:[.,]\d+)?)\s*(?:€\s*)?/\s*min',n,re.I)[:30]
+          except Exception as exc:
+              payload['error']=f'{type(exc).__name__}: {exc}'
+              payload['traceTail']=traceback.format_exc().splitlines()[-12:]
+              if d is not None:
+                  try:
+                      body=d.find_element(By.TAG_NAME,'body').text or ''
+                      n=norm(body)
+                      payload['bodyLength']=len(body)
+                      payload['normalizedExcerpt']=n[:3500]
+                  except Exception:
+                      pass
           finally:
-              d.quit()
+              if d is not None:
+                  try: d.quit()
+                  except Exception: pass
+              Path('reports/allego/render_diagnostic.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
           PY
 
       - name: Publish diagnostic
@@ -88,6 +112,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add reports/allego/render_diagnostic.json
+          if git diff --cached --quiet; then
+            echo "No diagnostic change"
+            exit 0
+          fi
           git commit -m "diag(allego): publish rendered France pricing block"
           for attempt in 1 2 3; do
             git pull --rebase origin main
