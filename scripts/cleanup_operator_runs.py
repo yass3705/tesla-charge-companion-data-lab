@@ -3,13 +3,11 @@
 
 Policy:
 - Never clean an operator until its validated marker JSON exists in the repo.
-- While an operator is failing, keep its failed runs for diagnosis.
-- After a successful run, keep that successful run as the reference and delete
-  only older completed runs for the same workflow.
-- Never delete runs newer than the reference success.
-
-The script is intentionally limited to the operator workflows listed in TARGETS.
-Add new operators here when their validation workflow is introduced.
+- Keep the latest successful run of the active workflow as the reference.
+- Preserve any active-workflow run newer than that reference success.
+- Delete older completed active-workflow runs.
+- Once an operator has migrated to a replacement workflow, delete completed runs
+  from explicitly listed legacy workflows. In-progress legacy runs are preserved.
 """
 from __future__ import annotations
 
@@ -26,14 +24,26 @@ TARGETS = {
     "lidl": {
         "workflow": "lidl-plus-official-tariff.yml",
         "marker": "data/operator_direct/lidl_plus_france.json",
+        "legacy_workflows": [],
     },
     "izivia": {
         "workflow": "izivia-official-tariffs.yml",
         "marker": "data/operator_direct/izivia_official_france.json",
+        "legacy_workflows": [],
     },
     "fastned": {
         "workflow": "fastned-official-tariffs.yml",
         "marker": "data/operator_direct/fastned_official_france.json",
+        "legacy_workflows": [],
+    },
+    "allego": {
+        "workflow": "allego-official-tariffs-v2.yml",
+        "marker": "data/operator_direct/allego_official_france.json",
+        "legacy_workflows": [
+            "allego-official-tariffs.yml",
+            "allego-render-diagnostic.yml",
+            "allego-static-pricing-hotfix.yml",
+        ],
     },
 }
 
@@ -108,6 +118,35 @@ def choose_reference_success(runs: list[dict], keep_run_id: int | None) -> dict 
     return completed_successes[0]
 
 
+def cleanup_legacy_workflows(key: str, workflows: list[str]) -> int:
+    deleted = 0
+    for workflow in workflows:
+        try:
+            runs = list_runs(workflow)
+        except Exception as exc:
+            # A workflow file may already have been removed after migration.
+            print(f"[{key}] legacy workflow {workflow}: unable to list ({exc}); skipping")
+            continue
+
+        workflow_deleted = 0
+        for run in runs:
+            if run.get("status") != "completed":
+                continue
+            run_id = int(run.get("id"))
+            try:
+                delete_run(run_id)
+                workflow_deleted += 1
+                deleted += 1
+                print(
+                    f"[{key}] deleted legacy run {run_id} from {workflow} "
+                    f"({run.get('conclusion')}, {run.get('created_at') or ''})"
+                )
+            except Exception as exc:
+                print(f"[{key}] could not delete legacy run {run_id}: {exc}")
+        print(f"[{key}] legacy workflow {workflow}: deleted {workflow_deleted} completed run(s)")
+    return deleted
+
+
 def cleanup_target(key: str, keep_run_id: int | None = None) -> tuple[int, int | None]:
     cfg = TARGETS[key]
     marker = Path(cfg["marker"])
@@ -120,7 +159,7 @@ def cleanup_target(key: str, keep_run_id: int | None = None) -> tuple[int, int |
     runs = list_runs(workflow)
     reference = choose_reference_success(runs, keep_run_id)
     if not reference:
-        print(f"[{key}] no successful completed run found -> preserving all runs")
+        print(f"[{key}] no successful completed run found -> preserving active and legacy runs")
         return 0, None
 
     ref_id = int(reference["id"])
@@ -134,18 +173,22 @@ def cleanup_target(key: str, keep_run_id: int | None = None) -> tuple[int, int |
         if run.get("status") != "completed":
             continue
         created = run.get("created_at") or ""
-        # Preserve anything newer than the reference success. This matters if a
-        # fresh failure occurs after a previously validated run.
+        # Preserve anything newer than the reference success: a new failure after
+        # validation remains visible for diagnosis.
         if created >= ref_created:
             continue
         delete_run(run_id)
         deleted += 1
         print(
-            f"[{key}] deleted old run {run_id} "
+            f"[{key}] deleted old active run {run_id} "
             f"({run.get('conclusion')}, {created})"
         )
 
-    print(f"[{key}] kept reference success run {ref_id}; deleted {deleted} older completed run(s)")
+    legacy = list(cfg.get("legacy_workflows") or [])
+    if legacy:
+        deleted += cleanup_legacy_workflows(key, legacy)
+
+    print(f"[{key}] kept reference success run {ref_id}; deleted {deleted} obsolete run(s)")
     return deleted, ref_id
 
 
