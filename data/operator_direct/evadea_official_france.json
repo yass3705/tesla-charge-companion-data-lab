@@ -1,0 +1,126 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "evadea-official-france",
+  "generatedAt": "2026-08-19T22:14:34.827340Z",
+  "operator": "e-Vadea",
+  "country": "FR",
+  "classification": {
+    "singleFlatNationalTariff": false,
+    "tariffGridByRoadContextAndPower": true,
+    "stationContextLookupRequiredForExactSimulation": true
+  },
+  "operatorDirect": {
+    "motorway": {
+      "lessThan100Kw": {
+        "eurPerKwh": 0.48
+      },
+      "from100Kw": {
+        "eurPerKwh": 0.62
+      }
+    },
+    "offMotorway": {
+      "lessThan30Kw": {
+        "eurPerKwh": 0.4
+      },
+      "from30To60Kw": {
+        "eurPerKwh": 0.48
+      },
+      "from60Kw": {
+        "eurPerKwh": 0.58
+      }
+    },
+    "paymentMethods": [
+      "e-Vadea app",
+      "bank card",
+      "QR code"
+    ],
+    "bankCardPreauthorizationEur": 49.0,
+    "bankCardPreauthorizationEvidence": "current official FAQ; browser-visible fact separately verified from OCR tariff table"
+  },
+  "fees": {
+    "occupancy": {
+      "trigger": "vehicle remains connected without energy consumption",
+      "gracePeriodMinutes": 5,
+      "billingBlockMinutes": 15,
+      "startedBlockCharged": true,
+      "motorway": {
+        "lessThan100KwEurPerBlock": 6.0,
+        "from100KwEurPerBlock": 6.0
+      },
+      "offMotorway": {
+        "lessThan30KwEurPerBlock": 0.5,
+        "from30To60KwEurPerBlock": 5.0,
+        "from60KwEurPerBlock": 5.0
+      }
+    },
+    "parking": {
+      "status": "local_rules_may_apply_separately"
+    }
+  },
+  "energyBilling": {
+    "startedKwhCharged": true
+  },
+  "roaming": {
+    "classification": "third_party_eMSP",
+    "operatorDirect": false,
+    "providerMayChargeDifferentTariff": true,
+    "mustNotBeClassifiedAsEVadeaDirect": true
+  },
+  "inventory": {
+    "rowCount": 331,
+    "publisherLastUpdateKnown": "2024-02-09",
+    "freshnessStatus": "stale_official_static_inventory_not_live_availability",
+    "samples": [
+      {
+        "stationName": "e-Vadea - Jasseron - A40 Teyssonge",
+        "address": "A40 - Aire de Bourg Teyssonge 01250 JASSERON (01)",
+        "evseId": "FREVAE01195AB1CCS",
+        "powerObservedRaw": "50"
+      },
+      {
+        "stationName": "e-Vadea - Jasseron - A40 Teyssonge",
+        "address": "A40 - Aire de Bourg Teyssonge 01250 JASSERON (01)",
+        "evseId": "FREVAE01195AB1CHADEMO",
+        "powerObservedRaw": "50"
+      },
+      {
+        "stationName": "e-Vadea - Jasseron - A40 Teyssonge",
+        "address": "A40 - Aire de Bourg Teyssonge 01250 JASSERON (01)",
+        "evseId": "FREVAE01195AB1T2",
+        "powerObservedRaw": "43"
+      }
+    ]
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "tariffTableImageOnly": true,
+    "ocrRequired": true,
+    "tariffImageUrl": "https://www.e-vadea.fr/storage/text_images/692846b3d90b5/6dd3f9e8d5e7fd54897e9bf465962778.png",
+    "tariffImageSha256": "268f220aa35c9f492178797c3959c3eb64fbf848f7972b3b5b6fea00f60669d8",
+    "tariffImageBytes": 917648,
+    "supportingHtmlEvidence": {
+      "bankCardPreauthorization49EurObservedInRawFaq": false,
+      "postChargeFeeObservedInRawFaq": false,
+      "postChargeTolerance5MinutesObservedInRawFaq": false,
+      "thirdPartyMobilityTariffMayDifferObservedInRawHowTo": true,
+      "guestModeObservedInRawFaq": false,
+      "liveAvailabilityObservedInRawHowTo": true
+    },
+    "sources": {
+      "tariffs": "https://www.e-vadea.fr/fr/tarifs",
+      "faq": "https://www.e-vadea.fr/fr/faq",
+      "howTo": "https://www.e-vadea.fr/fr/comment-ca-marche",
+      "map": "https://www.e-vadea.fr/fr/carte-des-bornes",
+      "dataset": "https://www.data.gouv.fr/datasets/e-vadea-stations-de-recharge-pour-les-vehicules-electriques",
+      "inventoryCsv": "https://www.data.gouv.fr/api/1/datasets/r/29f5db7c-5148-4353-a78c-25085a119394"
+    },
+    "relevantTariffFingerprintSha256": "2bdc2f3fa25cc2db239e9e701f4643a58fb1584cd37044c22642899f7fc7613c"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "Exact direct price depends on motorway/off-motorway context and charger power band.",
+    "Occupancy fees start only while connected without energy consumption, after 5 free minutes.",
+    "Third-party mobility-provider tariffs are roaming/eMSP prices and can differ.",
+    "The official static inventory is stale and is not live availability."
+  ]
+}
