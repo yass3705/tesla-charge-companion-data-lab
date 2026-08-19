@@ -4,7 +4,8 @@
 This script is designed for an intentionally public repository.
 It downloads publicly distributed Android packages into a temporary directory,
 extracts only charging-infrastructure signals, and never persists APK/XAPK files,
-raw client keys, JWTs, cookies, credentials, account data, or payment data.
+raw client keys, JWTs, cookies, credentials, account data, payment data, tenant IDs,
+or organisation/auth-context identifiers.
 
 Network requests are limited to explicit read-only station/configuration endpoints.
 No login, credential guessing, charging/payment operation, or mutation is performed.
@@ -49,10 +50,10 @@ INTERESTING_FIELDS = {
     "latitude", "longitude", "lat", "lng", "address", "city", "status", "availability",
     "available", "power", "power_kw", "max_power", "rate", "price", "tariff", "tariffs",
     "currency", "idle_price", "fixed_starting_fee", "session_fee", "time_fee", "energy_fee",
-    "free", "operator", "cpo", "network", "tenant", "organisation", "organization",
+    "free", "operator", "cpo", "network",
 }
 SENSITIVE_FIELDS = re.compile(
-    r"(password|secret|token|authorization|cookie|email|phone|mobile|wallet|invoice|payment|card|account|user_id|customer)",
+    r"(password|secret|token|authorization|cookie|email|phone|mobile|wallet|invoice|payment|card|account|user_id|customer|tenant|organisation|organization|business)",
     re.I,
 )
 
@@ -203,12 +204,16 @@ def non_sensitive_signals(lines: list[str]) -> dict:
     for line in lines:
         for url in URL_RX.findall(line):
             url = url.rstrip(".,;:)]}")
-            if any(x in url.lower() for x in ("fastvolt", "bornerecharge", "supabase", "numocity", "kilowatt", "total", "shell", "vivo", "evgo")) and url not in urls:
-                urls.append(redact_text(url))
+            if any(x in url.lower() for x in ("fastvolt", "bornerecharge", "supabase", "numocity", "kilowatt", "total", "shell", "vivo", "evgo")):
+                clean = redact_text(url.split("?", 1)[0])
+                if clean not in urls:
+                    urls.append(clean)
     paths = []
     for path in PATH_RX.findall(joined):
-        if re.search(r"(station|charger|connector|status|location|tariff|price)", path, re.I) and path not in paths:
-            paths.append(path)
+        if re.search(r"(station|charger|connector|status|location|tariff|price)", path, re.I):
+            clean = path.split("?", 1)[0]
+            if clean not in paths:
+                paths.append(clean)
     fields = sorted({field for field in INTERESTING_FIELDS if re.search(rf"(?i)(?:^|[^A-Za-z0-9_]){re.escape(field)}(?:$|[^A-Za-z0-9_])", joined)})
     jwt_candidates = JWT_RX.findall(joined)
     sb_candidates = SB_RX.findall(joined)
@@ -289,6 +294,7 @@ def main() -> None:
             "no_mutations": True,
             "raw_android_packages_persisted": False,
             "raw_client_keys_persisted": False,
+            "auth_context_identifiers_persisted": False,
             "successful_json_is_field_whitelisted": True,
         },
         "apps": {},
