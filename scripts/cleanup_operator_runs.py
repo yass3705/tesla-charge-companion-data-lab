@@ -21,45 +21,18 @@ import urllib.request
 from pathlib import Path
 
 TARGETS = {
-    "lidl": {
-        "workflow": "lidl-plus-official-tariff.yml",
-        "marker": "data/operator_direct/lidl_plus_france.json",
-        "legacy_workflows": [],
-    },
-    "izivia": {
-        "workflow": "izivia-official-tariffs.yml",
-        "marker": "data/operator_direct/izivia_official_france.json",
-        "legacy_workflows": [],
-    },
-    "fastned": {
-        "workflow": "fastned-official-tariffs.yml",
-        "marker": "data/operator_direct/fastned_official_france.json",
-        "legacy_workflows": [],
-    },
+    "lidl": {"workflow": "lidl-plus-official-tariff.yml", "marker": "data/operator_direct/lidl_plus_france.json", "legacy_workflows": []},
+    "izivia": {"workflow": "izivia-official-tariffs.yml", "marker": "data/operator_direct/izivia_official_france.json", "legacy_workflows": []},
+    "fastned": {"workflow": "fastned-official-tariffs.yml", "marker": "data/operator_direct/fastned_official_france.json", "legacy_workflows": []},
     "allego": {
         "workflow": "allego-official-tariffs-v2.yml",
         "marker": "data/operator_direct/allego_official_france.json",
-        "legacy_workflows": [
-            "allego-official-tariffs.yml",
-            "allego-render-diagnostic.yml",
-            "allego-static-pricing-hotfix.yml",
-        ],
+        "legacy_workflows": ["allego-official-tariffs.yml", "allego-render-diagnostic.yml", "allego-static-pricing-hotfix.yml"],
     },
-    "totalenergies": {
-        "workflow": "totalenergies-official-tariffs.yml",
-        "marker": "data/operator_direct/totalenergies_official_france.json",
-        "legacy_workflows": [],
-    },
-    "ionity": {
-        "workflow": "ionity-official-tariffs.yml",
-        "marker": "data/operator_direct/ionity_official_france.json",
-        "legacy_workflows": [],
-    },
-    "powerdot": {
-        "workflow": "powerdot-official-tariffs.yml",
-        "marker": "data/operator_direct/powerdot_official_france.json",
-        "legacy_workflows": [],
-    },
+    "totalenergies": {"workflow": "totalenergies-official-tariffs.yml", "marker": "data/operator_direct/totalenergies_official_france.json", "legacy_workflows": []},
+    "ionity": {"workflow": "ionity-official-tariffs.yml", "marker": "data/operator_direct/ionity_official_france.json", "legacy_workflows": []},
+    "powerdot": {"workflow": "powerdot-official-tariffs.yml", "marker": "data/operator_direct/powerdot_official_france.json", "legacy_workflows": []},
+    "vianeo": {"workflow": "vianeo-official-tariffs.yml", "marker": "data/operator_direct/vianeo_official_france.json", "legacy_workflows": []},
 }
 
 API = "https://api.github.com"
@@ -72,24 +45,17 @@ def api_request(method: str, path: str):
         raise RuntimeError("GH_TOKEN/GITHUB_TOKEN is required")
     if not repo:
         raise RuntimeError("GITHUB_REPOSITORY is required")
-
     url = f"{API}/repos/{repo}/{path.lstrip('/')}"
-    req = urllib.request.Request(
-        url,
-        method=method,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "tesla-charge-companion-data-lab-run-cleanup",
-        },
-    )
+    req = urllib.request.Request(url, method=method, headers={
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "tesla-charge-companion-data-lab-run-cleanup",
+    })
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             raw = resp.read()
-            if not raw:
-                return None
-            return json.loads(raw.decode("utf-8"))
+            return None if not raw else json.loads(raw.decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"GitHub API {method} {path} failed: HTTP {exc.code}: {detail[:500]}") from exc
@@ -114,15 +80,15 @@ def delete_run(run_id: int) -> None:
 
 
 def choose_reference_success(runs: list[dict], keep_run_id: int | None) -> dict | None:
-    completed_successes = [r for r in runs if r.get("status") == "completed" and r.get("conclusion") == "success"]
-    if not completed_successes:
+    successes = [r for r in runs if r.get("status") == "completed" and r.get("conclusion") == "success"]
+    if not successes:
         return None
     if keep_run_id is not None:
-        for run in completed_successes:
+        for run in successes:
             if int(run.get("id")) == keep_run_id:
                 return run
-    completed_successes.sort(key=lambda r: r.get("created_at") or "", reverse=True)
-    return completed_successes[0]
+    successes.sort(key=lambda r: r.get("created_at") or "", reverse=True)
+    return successes[0]
 
 
 def cleanup_legacy_workflows(key: str, workflows: list[str]) -> int:
@@ -156,13 +122,11 @@ def cleanup_target(key: str, keep_run_id: int | None = None) -> tuple[int, int |
     if not marker.exists():
         print(f"[{key}] marker missing ({marker}); operator not validated yet -> preserving all runs")
         return 0, None
-
     runs = list_runs(workflow)
     reference = choose_reference_success(runs, keep_run_id)
     if not reference:
         print(f"[{key}] no successful completed run found -> preserving active and legacy runs")
         return 0, None
-
     ref_id = int(reference["id"])
     ref_created = reference.get("created_at") or ""
     deleted = 0
@@ -176,7 +140,6 @@ def cleanup_target(key: str, keep_run_id: int | None = None) -> tuple[int, int |
         delete_run(run_id)
         deleted += 1
         print(f"[{key}] deleted old active run {run_id} ({run.get('conclusion')}, {created})")
-
     legacy = list(cfg.get("legacy_workflows") or [])
     if legacy:
         deleted += cleanup_legacy_workflows(key, legacy)
@@ -185,9 +148,8 @@ def cleanup_target(key: str, keep_run_id: int | None = None) -> tuple[int, int |
 
 
 def prune_cleanup_workflow(current_run_id: int | None) -> int:
-    workflow = "cleanup-operator-runs.yml"
     try:
-        runs = list_runs(workflow)
+        runs = list_runs("cleanup-operator-runs.yml")
     except Exception as exc:
         print(f"[cleanup] unable to list cleanup workflow history: {exc}")
         return 0
