@@ -1,0 +1,115 @@
+name: Fastned official tariffs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "47 6 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/fastned_official.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/fastned-official-tariffs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fastned-official-tariffs
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Extract official Fastned France tariffs
+        run: |
+          python -m py_compile scripts/fastned_official.py
+          python scripts/fastned_official.py --out out/fastned
+          cat out/fastned/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate classification and tariff bounds
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/fastned/fastned_official_france.json').read_text())
+          assert p['classification']['singleNationalOperatorTariff'] is True
+          assert p['classification']['stationLevelPriceLookupRequiredForFastnedDirect'] is False
+          std=p['operatorDirect']['standard']['pricePerKwh']
+          app=p['operatorDirect']['appDirect']
+          gold=p['operatorDirect']['gold']
+          assert 0.10 <= gold['pricePerKwh'] <= std <= 1.50
+          assert app['discountPercent'] == 10.0
+          assert gold['discountPercent'] == 30.0
+          assert abs(app['calculatedPricePerKwh'] - round(std*0.9, 3)) < 1e-9
+          assert p['payment']['bankCardPreauthorizationEur'] is None or 0 <= p['payment']['bankCardPreauthorizationEur'] <= 200
+          assert p['roaming']['fastnedDiscountsApply'] is False
+          samples=p['stationValidationSamples']
+          assert len(samples) >= 4
+          for s in samples:
+              assert abs(s['standardEurPerKwh']-std) < 0.001, s
+              assert abs(s['goldEurPerKwh']-gold['pricePerKwh']) < 0.001, s
+          print('Validated Fastned France national tariff and station samples')
+          PY
+
+      - name: Publish only when tariff evidence changes
+        id: publish
+        run: |
+          python - <<'PY'
+          import json, shutil
+          from pathlib import Path
+
+          new_path=Path('out/fastned/fastned_official_france.json')
+          dest=Path('data/operator_direct/fastned_official_france.json')
+          report_dest=Path('reports/fastned/latest_summary.md')
+          new=json.loads(new_path.read_text())
+
+          def signature(d):
+              return {
+                  'classification': d.get('classification'),
+                  'operatorDirect': d.get('operatorDirect'),
+                  'payment': d.get('payment'),
+                  'roaming': d.get('roaming'),
+                  'fees': d.get('fees'),
+                  'stationValidationSamples': d.get('stationValidationSamples'),
+                  'fingerprint': (d.get('sourceEvidence') or {}).get('relevantTariffFingerprintSha256'),
+                  'publicationStatus': d.get('publicationStatus'),
+              }
+
+          changed=True
+          if dest.exists():
+              old=json.loads(dest.read_text())
+              changed=signature(old)!=signature(new)
+
+          Path('changed.flag').write_text('1' if changed else '0')
+          if changed:
+              dest.parent.mkdir(parents=True, exist_ok=True)
+              report_dest.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(new_path, dest)
+              shutil.copy2('out/fastned/SUMMARY.md', report_dest)
+              print('Fastned tariff evidence changed: publication prepared')
+          else:
+              print('Fastned tariff evidence unchanged: no repository commit needed')
+          PY
+          echo "changed=$(cat changed.flag)" >> "$GITHUB_OUTPUT"
+          python scripts/public_safety_check.py .
+
+      - name: Commit validated Fastned rule set
+        if: steps.publish.outputs.changed == '1'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/fastned_official_france.json reports/fastned/latest_summary.md
+          git commit -m "data(fastned): publish official France tariffs [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:main
