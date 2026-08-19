@@ -35,6 +35,7 @@ TARGETS = {
     "vianeo": {"workflow": "vianeo-official-tariffs.yml", "marker": "data/operator_direct/vianeo_official_france.json", "legacy_workflows": []},
     "freshmile": {"workflow": "freshmile-official-tariffs.yml", "marker": "data/operator_direct/freshmile_official_france.json", "legacy_workflows": []},
     "driveco": {"workflow": "driveco-official-tariffs.yml", "marker": "data/operator_direct/driveco_official_france.json", "legacy_workflows": []},
+    "iecharge": {"workflow": "iecharge-official-tariffs.yml", "marker": "data/operator_direct/iecharge_official_france.json", "legacy_workflows": []},
 }
 
 API = "https://api.github.com"
