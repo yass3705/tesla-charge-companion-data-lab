@@ -15,7 +15,7 @@ on:
 
 permissions:
   actions: write
-  contents: read
+  contents: write
 
 concurrency:
   group: operator-batch-controller
@@ -28,11 +28,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Stop the batch after a failed item
+        id: halt
         if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success'
         shell: bash
         run: |
+          echo "halted=1" >> "$GITHUB_OUTPUT"
           echo "## Operator batch halted" >> "$GITHUB_STEP_SUMMARY"
           echo >> "$GITHUB_STEP_SUMMARY"
           echo "Previous item: ${{ github.event.workflow_run.display_title }}" >> "$GITHUB_STEP_SUMMARY"
@@ -54,6 +58,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Dispatch next operator immediately
+        id: dispatch
         if: steps.next.outputs.enabled == '1' && steps.next.outputs.next != ''
         env:
           GH_TOKEN: ${{ github.token }}
@@ -74,6 +79,7 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${REPO}/actions/workflows/operator-batch-item.yml/dispatches" \
             -d "$payload")
+          echo "http_code=$code" >> "$GITHUB_OUTPUT"
           if [[ "$code" != "204" ]]; then
             echo "Workflow dispatch failed with HTTP $code"
             cat response.txt
@@ -86,3 +92,49 @@ jobs:
         if: steps.next.outputs.done == '1'
         run: |
           echo "Batch complete: all configured operator markers are present." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish controller telemetry
+        if: always()
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_ID_VALUE: ${{ github.run_id }}
+          NEXT_VALUE: ${{ steps.next.outputs.next }}
+          DONE_VALUE: ${{ steps.next.outputs.done }}
+          DISPATCH_OUTCOME: ${{ steps.dispatch.outcome }}
+          DISPATCH_HTTP: ${{ steps.dispatch.outputs.http_code }}
+          HALTED_VALUE: ${{ steps.halt.outputs.halted }}
+          PREVIOUS_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          PREVIOUS_TITLE: ${{ github.event.workflow_run.display_title }}
+        run: |
+          set -euo pipefail
+          mkdir -p reports/batch
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          payload={
+            "dataset":"operator-batch-controller-state",
+            "controllerRunId":os.environ.get("RUN_ID_VALUE"),
+            "event":os.environ.get("EVENT_NAME"),
+            "next":os.environ.get("NEXT_VALUE") or None,
+            "done":os.environ.get("DONE_VALUE") == "1",
+            "halted":os.environ.get("HALTED_VALUE") == "1",
+            "dispatchOutcome":os.environ.get("DISPATCH_OUTCOME") or None,
+            "dispatchHttpCode":os.environ.get("DISPATCH_HTTP") or None,
+            "previousConclusion":os.environ.get("PREVIOUS_CONCLUSION") or None,
+            "previousTitle":os.environ.get("PREVIOUS_TITLE") or None,
+          }
+          Path('reports/batch/latest_controller_state.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/batch/latest_controller_state.json
+          if ! git diff --cached --quiet; then
+            git commit -m "state(batch): publish controller telemetry [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
