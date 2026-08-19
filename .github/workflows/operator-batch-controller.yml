@@ -131,19 +131,6 @@ jobs:
             -d "$payload")
           echo "http_code=$code" >> "$GITHUB_OUTPUT"
           if [[ "$code" != "204" ]]; then
-            python - <<'PY'
-          import json, os
-          from pathlib import Path
-          p=Path('reports/batch/runtime_state.json')
-          s=json.loads(p.read_text())
-          if s.get('inFlight') == os.environ['NEXT_OPERATOR']:
-              s['inFlight']=None
-          s['halted']=True
-          s['failedOperator']=os.environ['NEXT_OPERATOR']
-          s['failureReason']=f"workflow_dispatch_http_{os.environ.get('code_for_python','unknown')}"
-          s['dispatchStatus']='failed'
-          p.write_text(json.dumps(s,ensure_ascii=False,indent=2)+'\n')
-          PY
             echo "Workflow dispatch failed with HTTP $code"
             cat response.txt
             exit 1
