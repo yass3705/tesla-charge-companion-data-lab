@@ -10,7 +10,7 @@ on:
       - ".github/workflows/exact-price-public-discovery.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: exact-price-public-discovery
@@ -70,3 +70,71 @@ jobs:
           path: out/exact-price/${{ matrix.target }}/
           if-no-files-found: error
           retention-days: 7
+
+  publish:
+    name: Publish sanitized discovery summaries
+    needs: probe
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: exact-price-*
+          path: out/exact-price
+          merge-multiple: false
+
+      - name: Build public sanitized reports
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/exact-price
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for target in ('freshmile','qovoltis'):
+              matches=list(Path('out/exact-price').glob(f'exact-price-{target}/{target}_public_exact_price_probe.json'))
+              if len(matches)!=1:
+                  raise SystemExit(f'{target}: artifact result not found')
+              d=json.loads(matches[0].read_text())
+              public={
+                  'schemaVersion':'1.0.0',
+                  'dataset':d['dataset'],
+                  'generatedAt':d['generatedAt'],
+                  'target':d['target'],
+                  'pages':d['pages'],
+                  'sameVendorScriptsInspected':d['sameVendorScriptsInspected'],
+                  'candidateEndpoints':d['candidateEndpoints'],
+                  'candidateEndpointCount':d['candidateEndpointCount'],
+                  'pricingCandidateCount':d['pricingCandidateCount'],
+                  'stationCandidateCount':d['stationCandidateCount'],
+                  'freshmileLegacyWebMapRetired':d['freshmileLegacyWebMapRetired'],
+                  'conclusion':d['conclusion'],
+                  'errors':d['errors'],
+                  'safety':d['method'],
+              }
+              Path(f'reports/exact-price/{target}_latest.json').write_text(json.dumps(public,ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py reports/exact-price
+
+      - name: Commit reports when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/exact-price/freshmile_latest.json reports/exact-price/qovoltis_latest.json
+          if git diff --cached --quiet; then
+            echo "No discovery report change"
+            exit 0
+          fi
+          git commit -m "data(pricing): publish Freshmile Qovoltis public discovery [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
