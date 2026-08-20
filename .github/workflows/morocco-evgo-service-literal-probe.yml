@@ -1,0 +1,53 @@
+name: Morocco EVGO service literal probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/morocco_evgo_service_literal_probe.py"
+      - ".github/workflows/morocco-evgo-service-literal-probe.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-evgo-service-literal-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate public safety and syntax
+        run: |
+          python scripts/public_safety_check.py .
+          python -m py_compile scripts/morocco_evgo_service_literal_probe.py
+      - name: Run sanitized static probe
+        run: python scripts/morocco_evgo_service_literal_probe.py
+      - name: Validate generated output
+        run: |
+          test -s artifacts/morocco-evgo-service-literals/summary.json
+          python scripts/public_safety_check.py artifacts/morocco-evgo-service-literals
+      - name: Persist sanitized report
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/evgo
+          cp artifacts/morocco-evgo-service-literals/summary.json reports/morocco/evgo/latest-service-literals.json
+          python scripts/public_safety_check.py reports/morocco/evgo/latest-service-literals.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/evgo/latest-service-literals.json
+          if git diff --cached --quiet; then
+            echo "No report change"
+            exit 0
+          fi
+          git commit -m "data(morocco): update EVGO service literals [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:${GITHUB_REF_NAME}
