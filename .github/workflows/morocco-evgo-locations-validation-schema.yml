@@ -1,0 +1,65 @@
+name: Morocco EVGO locations validation schema
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/morocco_evgo_locations_validation_schema.py"
+      - ".github/workflows/morocco-evgo-locations-validation-schema.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-evgo-locations-validation-schema
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate safety and syntax
+        run: |
+          python scripts/public_safety_check.py .
+          python -m py_compile scripts/morocco_evgo_locations_validation_schema.py
+
+      - name: Probe validation schema
+        run: python scripts/morocco_evgo_locations_validation_schema.py
+
+      - name: Validate and publish sanitized report
+        run: |
+          test -s artifacts/morocco-evgo-locations-validation-schema/summary.json
+          python scripts/public_safety_check.py artifacts/morocco-evgo-locations-validation-schema
+          python - <<'PY'
+          import json, shutil
+          from pathlib import Path
+          src=Path('artifacts/morocco-evgo-locations-validation-schema/summary.json')
+          p=json.loads(src.read_text())
+          assert p['policy']['read_only_query_endpoint'] is True
+          assert p['policy']['empty_json_body_only'] is True
+          assert p['policy']['no_credentials'] is True
+          assert {x['path'] for x in p['probes']} == {'/api/v1/app/locations','/api/v2/app/locations'}
+          dest=Path('reports/morocco/evgo/latest-locations-validation-schema.json')
+          dest.parent.mkdir(parents=True, exist_ok=True)
+          shutil.copy2(src,dest)
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/evgo/latest-locations-validation-schema.json
+          if git diff --cached --quiet; then
+            echo "No report change"
+            exit 0
+          fi
+          git commit -m "data(morocco): update EVGO locations validation schema [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:${GITHUB_REF_NAME}
