@@ -1,0 +1,116 @@
+{
+  "schemaVersion": "1.0.0",
+  "key": "sied70",
+  "dataset": "sied70-official-haute-saone",
+  "operator": "SIED 70",
+  "country": "FR",
+  "outputFile": "sied70_official_haute_saone.json",
+  "sources": [
+    {
+      "key": "officialNetworkAndTariffs",
+      "url": "https://www.sied70.fr/irve",
+      "requiredPhrases": [
+        "Évolution des tarifs au 1er juillet 2026",
+        "puissance inférieure à 50 kW",
+        "0,36 €TTC / kWh",
+        "0,20 € / minute",
+        "30 minutes après la fin de la charge",
+        "ne s’applique pas entre 22 heures et 8 heures",
+        "puissance supérieure ou égale à 50 kW",
+        "0,54 €TTC / kWh",
+        "Pour 2,99 € TTC par mois",
+        "remise de 0,05 € TTC par kWh",
+        "remise de 0,10 € TTC par kWh",
+        "Le paiement par carte bancaire est possible sur toutes les bornes de recharge"
+      ],
+      "requiredNumbers": [2026, 50, 0.36, 0.20, 30, 22, 8, 0.54, 2.99, 0.05, 0.10, 3.7, 24, 150]
+    },
+    {
+      "key": "officialTariffChangeNotice",
+      "url": "https://www.sied70.fr/actualite/2026-07-01_evolution_des_tarifs_irve_au_1er_juillet_2026",
+      "requiredPhrases": [
+        "à compter du 1er juillet 2026",
+        "0,36 €TTC / kWh",
+        "0,54 €TTC / kWh",
+        "pénalité de 0,20 € / minute",
+        "abonnement départemental",
+        "2,99 € TTC par mois"
+      ],
+      "requiredNumbers": [2026, 0.36, 0.54, 0.20, 2.99]
+    }
+  ],
+  "facts": {
+    "classification": {
+      "regionalPublicNetwork": true,
+      "scope": "Haute-Saône",
+      "networkOwnerOperator": "SIED 70",
+      "currentGridEffectiveFrom": "2026-07-01",
+      "exactTariffMachineVerified": true
+    },
+    "operatorDirect": {
+      "acceleratedBelow50Kw": {
+        "powerRule": "<50 kW",
+        "eurPerKwh": 0.36,
+        "postChargeFee": {
+          "basis": "after_charge_end_while_connected",
+          "graceMinutes": 30,
+          "eurPerMinute": 0.20,
+          "exemptWindow": "22:00-08:00"
+        }
+      },
+      "rapid50KwOrMore": {
+        "powerRule": ">=50 kW",
+        "eurPerKwh": 0.54,
+        "postChargeFee": {
+          "basis": "after_charge_end_while_connected",
+          "graceMinutes": 0,
+          "eurPerMinute": 0.20,
+          "exemptWindow": null
+        }
+      }
+    },
+    "membership": {
+      "departmentalSubscription": {
+        "eligibleResidents": "Haute-Saône residents with proof of address",
+        "eurPerMonth": 2.99,
+        "acceleratedDiscountEurPerKwh": 0.05,
+        "rapidDiscountEurPerKwh": 0.10,
+        "derivedAcceleratedEurPerKwh": 0.31,
+        "derivedRapidEurPerKwh": 0.44
+      }
+    },
+    "access": {
+      "bankCardAllStations": true,
+      "rfidBadges": true,
+      "smartphone": true,
+      "electromapsAppAndPassReferenced": true,
+      "interoperability": true
+    },
+    "technical": {
+      "acceleratedStationCountObservedOnOfficialPage": 38,
+      "rapidStationCountObservedOnOfficialPage": 11,
+      "normalAcKw": 3.7,
+      "acceleratedAcKw": 22,
+      "newGenerationDcKw": 24,
+      "rapidDcUpToKw": 150
+    },
+    "roaming": {
+      "supported": true,
+      "partnerRetailPriceMayDiffer": true,
+      "mustRemainSeparateFromDirectTariff": true
+    }
+  },
+  "notes": [
+    "The 0.31 and 0.44 EUR/kWh subscriber values are arithmetic derivations from the official public prices and official subscription discounts, not separately quoted tariffs.",
+    "The 0.20 EUR/min component is an occupancy/post-charge fee triggered by remaining connected after charge end; it is not an energy charging-time price.",
+    "Third-party RFID/eMSP retail pricing must remain separate from SIED 70 direct pricing."
+  ],
+  "summaryLines": [
+    "SIED 70 current grid is effective from 1 July 2026 in Haute-Saône.",
+    "Direct accelerated <50 kW: 0.36 EUR/kWh; after charge end, 30 minutes grace then 0.20 EUR/min, with no penalty from 22:00 to 08:00.",
+    "Direct rapid >=50 kW: 0.54 EUR/kWh; 0.20 EUR/min immediately after charge end while the vehicle remains connected.",
+    "Haute-Saône resident subscription: 2.99 EUR/month with proof of address; discounts 0.05 EUR/kWh accelerated and 0.10 EUR/kWh rapid, yielding 0.31 and 0.44 EUR/kWh respectively.",
+    "Bank-card payment is available on every station; RFID, smartphone/Electromaps and roaming access are also supported.",
+    "Roaming/eMSP retail prices remain separate from SIED 70 direct tariffs."
+  ]
+}
