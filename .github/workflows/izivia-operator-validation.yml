@@ -1,0 +1,84 @@
+name: IZIVIA operator validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "config/operator_manifests/izivia.json"
+      - "scripts/operator_manifest_runner.py"
+      - ".github/workflows/izivia-operator-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: izivia-operator-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Fetch and validate official IZIVIA evidence
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/operator_manifest_runner.py
+          mkdir -p out/izivia
+          python scripts/operator_manifest_runner.py --operator izivia --out out/izivia
+          cat out/izivia/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate normalized envelope and conservative uncertainty rules
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/izivia/izivia_official_france.json').read_text())
+          assert p['dataset']=='izivia-official-france-multinetwork'
+          assert p['operator']=='IZIVIA / EDF business services'
+          assert p['country']=='FR'
+          assert p['publicationStatus']=='candidate_validated_source'
+          assert p['sourceEvidence']['officialOnly'] is True
+          assert len(p['sourceEvidence']['sources']) >= 6
+          d=p['operatorDirect']
+          assert d['fast']['currentOfficialMinimumEurPerKwh'] == 0.30
+          assert d['fast']['standardPriceCurrentOfficiallyConfirmed'] is False
+          assert d['fast']['happyHourScheduleCurrentOfficiallyConfirmed'] is False
+          assert d['express']['eurPerKwhRange'] == {'min':0.40,'max':0.55}
+          assert d['grandLyon']['rapidOverstay'] == {'afterMinutes':45,'eurPerMinute':0.20}
+          assert p['roaming']['iziviaServiceFeePercent'] == 15.0
+          assert p['technicalSources']['documentedPublicOcpiApiFound'] is False
+          print('IZIVIA envelope and uncertainty guards: OK')
+          PY
+
+      - name: Publish candidate and concise report
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/izivia
+          cp out/izivia/izivia_official_france.json data/operator_direct/izivia_official_france.json
+          cp out/izivia/SUMMARY.md reports/izivia/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/izivia_official_france.json reports/izivia/latest_summary.md
+          if git diff --cached --quiet; then
+            echo "IZIVIA official candidate unchanged"
+          else
+            git commit -m "data(izivia): publish verified official tariff model [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
