@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "alize-toulouse-official",
+  "generatedAt": "2026-08-20T10:32:51.714696Z",
+  "operator": "Alizé Toulouse",
+  "country": "FR",
+  "classification": {
+    "localPublicNetwork": true,
+    "geography": "Toulouse and nearby participating network",
+    "singleFlatTariff": false,
+    "tariffDependsOnPowerAndSubscription": true
+  },
+  "operatorDirect": {
+    "alizeLibertePublic": {
+      "monthlyFeeEur": 0.0,
+      "normalBelow22Kw": {
+        "eurPerKwh": 0.4,
+        "connectionSurchargeEurPerMinute": 0.1,
+        "surchargeAfterMinutes": 120,
+        "surchargeWindow": "07:00-22:00"
+      },
+      "ultraRapidBelow90Kw": {
+        "eurPerKwh": 0.49,
+        "connectionSurchargeEurPerMinute": 0.48,
+        "surchargeAfterMinutes": 45,
+        "connectors": [
+          "CCS",
+          "CHAdeMO"
+        ]
+      },
+      "hubAbove90Kw": {
+        "eurPerKwh": 0.55,
+        "connectionSurchargeEurPerMinute": 0.65,
+        "surchargeAfterMinutes": 30,
+        "connectors": [
+          "CCS"
+        ]
+      }
+    },
+    "preferredSubscription": {
+      "monthlyFeeEur": 4.0,
+      "normalBelow22Kw": {
+        "eurPerKwh": 0.32,
+        "connectionSurchargeEurPerMinute": 0.075,
+        "surchargeAfterMinutes": 180,
+        "weekdayAndSaturdayWindow": "07:00-22:00",
+        "sundayWindowStarts": "09:00"
+      },
+      "ultraRapidBelow90Kw": {
+        "eurPerKwh": 0.45,
+        "connectionSurchargeEurPerMinute": 0.48,
+        "surchargeAfterMinutes": 45,
+        "connectors": [
+          "CCS",
+          "CHAdeMO"
+        ]
+      },
+      "hubAbove90Kw": {
+        "eurPerKwh": 0.5,
+        "connectionSurchargeEurPerMinute": 0.65,
+        "surchargeAfterMinutes": 30,
+        "connectors": [
+          "CCS"
+        ]
+      }
+    },
+    "badgePriceEur": 12.0,
+    "accessMethods": [
+      "Alizé app",
+      "Alizé badge",
+      "QR card payment",
+      "contactless bank card on ultra-rapid stations"
+    ]
+  },
+  "twoWheelers": {
+    "powerKw": 3.7,
+    "eurPerHour": 1.5,
+    "capEur": 4.5
+  },
+  "roaming": {
+    "incomingThirdPartyOperator": true,
+    "thirdPartyProviderSetsCustomerPrice": true,
+    "mustRemainSeparateFromAlizeToulouseDirectTariff": true,
+    "outgoingAlizePartnerAccess": true
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "tariffs",
+        "url": "https://toulouse.alizecharge.com/offres-et-tarifs/",
+        "httpStatus": 200,
+        "rawSha256": "e50e932df883a347d6e2d63eb3c56c828c5001b4f9f0fc3cfdcf479ef7260dd5"
+      }
+    ],
+    "relevantTariffFingerprintSha256": "646990535eead2e63a7e3c8be178722a10c6eb00b588533f42f06fa9ad51140b"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "The public Alizé Liberté tariff and the 4 EUR/month preferred offer are distinct direct layers.",
+    "Connection-time components are modeled as time-based surcharges after the published thresholds, not as energy prices.",
+    "Third-party mobility operators may apply their own customer tariff and are therefore kept separate from Alizé Toulouse direct pricing."
+  ]
+}
