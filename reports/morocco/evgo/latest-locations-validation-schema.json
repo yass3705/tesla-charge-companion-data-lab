@@ -1,10 +1,11 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-08-20T09:42:59.991582+00:00",
+  "schema_version": 2,
+  "generated_at": "2026-08-20T09:43:51.835498+00:00",
   "host": "evgo.eu-evgo.charge.ampeco.tech",
   "policy": {
     "read_only_query_endpoint": true,
-    "empty_json_body_only": true,
+    "validation_only_payloads": true,
+    "no_real_coordinates_or_identifiers": true,
     "no_login": true,
     "no_credentials": true,
     "no_account_or_session_mutations": true,
@@ -13,6 +14,48 @@
   "probes": [
     {
       "path": "/api/v1/app/locations",
+      "payload_case": "empty_object",
+      "status": 412,
+      "content_type": "application/json",
+      "safe_validation_shape": {
+        "json": true,
+        "top_level_keys": [
+          "message"
+        ],
+        "message": "Missing or invalid locations list"
+      }
+    },
+    {
+      "path": "/api/v1/app/locations",
+      "payload_case": "empty_locations",
+      "status": 200,
+      "content_type": "application/json",
+      "safe_validation_shape": {
+        "json": true,
+        "top_level_keys": [
+          "currencies",
+          "locations",
+          "tariffs"
+        ]
+      }
+    },
+    {
+      "path": "/api/v1/app/locations",
+      "payload_case": "empty_location_item",
+      "status": 200,
+      "content_type": "application/json",
+      "safe_validation_shape": {
+        "json": true,
+        "top_level_keys": [
+          "currencies",
+          "locations",
+          "tariffs"
+        ]
+      }
+    },
+    {
+      "path": "/api/v2/app/locations",
+      "payload_case": "empty_object",
       "status": 412,
       "content_type": "application/json",
       "safe_validation_shape": {
@@ -25,14 +68,30 @@
     },
     {
       "path": "/api/v2/app/locations",
-      "status": 412,
+      "payload_case": "empty_locations",
+      "status": 200,
       "content_type": "application/json",
       "safe_validation_shape": {
         "json": true,
         "top_level_keys": [
-          "message"
-        ],
-        "message": "Missing or invalid locations list"
+          "currencies",
+          "locations",
+          "tariffs"
+        ]
+      }
+    },
+    {
+      "path": "/api/v2/app/locations",
+      "payload_case": "empty_location_item",
+      "status": 200,
+      "content_type": "application/json",
+      "safe_validation_shape": {
+        "json": true,
+        "top_level_keys": [
+          "currencies",
+          "locations",
+          "tariffs"
+        ]
       }
     }
   ]
