@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "1.0.0",
+  "key": "siceco_cotedor",
+  "dataset": "siceco-cotedor-official-france",
+  "operator": "SICECO Côte-d'Or",
+  "country": "FR",
+  "outputFile": "siceco_cotedor_official.json",
+  "sources": [
+    {
+      "key": "officialBfcCurrentTariffPage",
+      "url": "https://www.territoiredenergie-bourgogne-franche-comte.com/nos-offres-et-tarifs/",
+      "requiredPhrases": [
+        "SICECO Territoire d’Energie",
+        "Côte-d’Or",
+        "Charge lente",
+        "Charge rapide",
+        "Freshmile",
+        "Electromaps"
+      ],
+      "requiredNumbers": [1.50, 12, 0.40, 0.005, 2.00, 0.50, 0.025]
+    },
+    {
+      "key": "officialSicecoTariffExplanation",
+      "url": "https://www.siceco.fr/nouveaux-tarifs-pour-le-reseau-public-de-bornes-de-charge-pour-vehicules-electriques-en-cote-dor-3",
+      "requiredPhrases": [
+        "Depuis le 16 janvier 2023",
+        "prix forfaitaire",
+        "facturation de l’énergie délivrée",
+        "prix d’occupation de la place",
+        "forfait de 10 €",
+        "plus de 12h",
+        "nouvelle session"
+      ],
+      "requiredNumbers": [2023, 10, 1, 12]
+    }
+  ],
+  "facts": {
+    "classification": {
+      "regionalPublicNetwork": true,
+      "scope": "Côte-d'Or",
+      "networkOwner": "SICECO",
+      "currentGridMachineVerified": true
+    },
+    "operatorDirect": {
+      "normalUpTo22Kva": {
+        "powerRule": "up to 22 kVA",
+        "fixedFeeEurPer12Hours": 1.50,
+        "eurPerKwh": 0.40,
+        "eurPerMinute": 0.005,
+        "timeComponentBasis": "connected_duration"
+      },
+      "rapidUpTo50Kva": {
+        "powerRule": "up to 50 kVA",
+        "fixedFeeEurPer12Hours": 2.00,
+        "eurPerKwh": 0.50,
+        "eurPerMinute": 0.025,
+        "timeComponentBasis": "connected_duration"
+      },
+      "sessionRules": {
+        "billingPeriodHours": 12,
+        "newSessionAndFixedFeeAfterEachPeriod": true,
+        "paymentFailureFeeEur": 10.00,
+        "paymentFailureFeeAppliesWhenEnergyAboveKwh": 1.0
+      }
+    },
+    "access": {
+      "regionalQrAdHocAvailable": true,
+      "registrationRequiredForQr": false,
+      "electromapsAppReferencedByRegionalService": true
+    },
+    "roaming": {
+      "freshmileTariffCurrentlyNotAlignedWithUnionPublishedTariff": true,
+      "otherEmspRetailPriceMayDiffer": true,
+      "mustRemainSeparateFromSicecoPublishedTariff": true
+    },
+    "technical": {
+      "normalPowerUpToKva": 22,
+      "rapidPowerUpToKva": 50
+    }
+  },
+  "notes": [
+    "The SICECO tariff combines a fixed fee per 12-hour period, energy price and a per-minute connected-time component.",
+    "A connection lasting more than 12 hours starts a new billing session and therefore charges a new fixed fee.",
+    "The official SICECO explanation states a 10 EUR fee when the payment procedure fails for a charge above 1 kWh.",
+    "The current regional service warns that Freshmile retail tariffs are no longer aligned with the tariffs communicated by the energy unions; such eMSP pricing must remain separate."
+  ],
+  "summaryLines": [
+    "SICECO Côte-d'Or current published public tariff is machine-verified on the regional official tariff page.",
+    "Normal charge up to 22 kVA: 1.50 EUR per 12-hour period + 0.40 EUR/kWh + 0.005 EUR/minute.",
+    "Rapid charge up to 50 kVA: 2.00 EUR per 12-hour period + 0.50 EUR/kWh + 0.025 EUR/minute.",
+    "After more than 12 hours connected, a new billing session starts and a new fixed fee is charged.",
+    "A 10 EUR fee is published for payment-procedure failure when more than 1 kWh was charged.",
+    "Freshmile/eMSP retail pricing is not assumed to equal the SICECO published network tariff."
+  ]
+}
