@@ -1,0 +1,114 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "electric55-official-france",
+  "generatedAt": "2026-08-20T15:00:16.658765Z",
+  "operator": "Electric 55 Charging (E55C)",
+  "country": "FR",
+  "classification": {
+    "singleGuaranteedNationalConsumerDirectTariff": false,
+    "exactAdHocConsumerPriceLookupRequired": true,
+    "reason": "E55C's current charging tutorial states that the applicable ad-hoc bank-card price is displayed before payment; no single nationwide consumer amount is published there."
+  },
+  "operatorDirect": {
+    "adHocBankCard": {
+      "available": true,
+      "accountRequired": false,
+      "appRequired": false,
+      "badgeRequired": false,
+      "priceDisplayedBeforePayment": true,
+      "exactPriceLookupRequired": true,
+      "nationalConsumerEurPerKwh": null,
+      "nationalConsumerEurPerMinute": null
+    }
+  },
+  "mobilityProviders": {
+    "compatibleAppOrBadge": true,
+    "consumerRetailPriceMayVaryByMobilityProvider": true,
+    "examplesPublishedByE55C": [
+      "Plugsurfing",
+      "OVO Charge",
+      "Monta Charge"
+    ],
+    "exactRetailPriceAuthority": "selected mobility provider/app"
+  },
+  "indicativeWholesaleTariffsToMobilityOperators": {
+    "consumerTariff": false,
+    "billingUnit": "EUR/minute",
+    "dayWindow": "07:00-23:00",
+    "nightWindow": "23:00-07:00",
+    "dayEurPerMinuteByPowerKw": {
+      "3": 0.025,
+      "7": 0.038,
+      "11": 0.056,
+      "22": 0.084
+    },
+    "nightEurPerMinuteByPowerKw": {
+      "3": 0.02,
+      "7": 0.028,
+      "11": 0.034,
+      "22": 0.062
+    },
+    "note": "E55C explicitly says these TTC amounts are billed to mobility operators and do not determine the final user price."
+  },
+  "fees": {
+    "networkWideIdleOrOccupancyFee": null,
+    "parking": {
+      "status": "not_asserted_network_wide_from_current_general_sources"
+    },
+    "note": "Any additional direct-session, occupancy or site parking rule must be resolved from the pre-payment station flow or another explicit site source."
+  },
+  "technical": {
+    "currentPublishedTariffReferencePowerClassesKw": [
+      3,
+      7,
+      11,
+      22
+    ],
+    "faqConnectorGuidance": "Type 2 cable"
+  },
+  "sourceConflict": {
+    "legacyFaqContradictsCurrentAdHocFlow": true,
+    "legacyFaqStatement": "FAQ says E55C does not offer direct billing and direct bank-card payment is not authorised on the network.",
+    "currentTutorialStatement": "Current tutorial offers pay-as-you-go bank-card charging without registration, app or badge and shows the tariff before payment.",
+    "resolution": "Use the current operational tutorial for present ad-hoc access; retain the FAQ contradiction as a monitored stale-content signal."
+  },
+  "inventory": {
+    "officialDataGouvDataset": true,
+    "officialStaticIrveResource": true,
+    "officialDynamicIrveResourcePresent": true,
+    "datasetLastUpdate": "2026-08-20T06:40:04.822000+00:00",
+    "nationalStationDatabaseBuiltByThisValidator": false,
+    "note": "Official E55C data.gouv resources are used only as network/inventory evidence in this operator-rule validator."
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "tutorial",
+        "url": "https://www.e55c.com/tutoriel-de-recharge/",
+        "httpStatus": 200,
+        "contentType": "text/html"
+      },
+      {
+        "key": "faq",
+        "url": "https://www.e55c.com/comment-recharger-sa-voiture/",
+        "httpStatus": 200,
+        "contentType": "text/html"
+      },
+      {
+        "key": "dataGouv",
+        "url": "https://www.data.gouv.fr/api/1/datasets/caracteristiques-des-points-de-charge-pour-vehicules-electriques-electric-55-charging-e55c-ouverts-au-public/",
+        "httpStatus": 200,
+        "contentType": "application/json"
+      }
+    ],
+    "relevantTariffFingerprintSha256": "b5f5617fde57008ec4fc446b85d845b1a9af4e1bca9347fe4e1e16d50b35240e"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "This validator intentionally does not build a national station database.",
+    "Do not use E55C's indicative operator wholesale minute rates as the final Charge Companion consumer tariff.",
+    "For direct ad-hoc bank-card charging, resolve the exact station/session price from E55C's pre-payment flow.",
+    "The contradictory legacy FAQ is preserved as monitored evidence rather than silently overriding the current ad-hoc flow."
+  ]
+}
