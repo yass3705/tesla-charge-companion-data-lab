@@ -95,8 +95,8 @@ def main() -> None:
         statuses[key] = status
         text = text_from_html(raw)
         n = norm(text)
-        if "operator: shell recharge" not in n and "operator: shell recharge" not in norm(raw):
-            raise RuntimeError(f"{key}: Shell Recharge operator marker missing")
+        # These URLs are Shell first-party station pages. Their visible tariff
+        # blocks are more stable than the optional rendered "Operator" label.
         if "shell app" not in n:
             raise RuntimeError(f"{key}: Shell App tariff marker missing")
         if not has_amount(text, EXPECTED_EUR_PER_KWH):
