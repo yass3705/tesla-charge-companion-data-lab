@@ -1,0 +1,80 @@
+name: SIGEIF operator validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "config/operator_manifests/sigeif.json"
+      - "scripts/operator_manifest_runner.py"
+      - ".github/workflows/sigeif-operator-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sigeif-operator-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Fetch and validate official SIGEIF evidence
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/operator_manifest_runner.py
+          mkdir -p out/sigeif
+          python scripts/operator_manifest_runner.py --operator sigeif --out out/sigeif
+          cat out/sigeif/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate conservative tariff envelope
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/sigeif/sigeif_official_ile_de_france.json').read_text())
+          assert p['dataset']=='sigeif-official-ile-de-france'
+          assert p['country']=='FR'
+          assert p['publicationStatus']=='candidate_validated_source'
+          assert p['sourceEvidence']['officialOnly'] is True
+          d=p['operatorDirect']
+          assert d['normal7Or22Kw']['eurPerKwh'] == 0.39
+          f=d['normal7Or22Kw']['connectionOrParkingFee']
+          assert f['freeMinutes'] == 180 and f['eurPerMinuteAfter'] == 0.05 and f['nightCapEur'] == 4.0
+          assert d['rapid22To50Kw']['currentExactTariffMachineVerified'] is False
+          assert d['above50Kw']['currentExactTariffMachineVerified'] is False
+          assert p['roaming']['mustRemainSeparateFromDirectTariff'] is True
+          print('SIGEIF conservative envelope: OK')
+          PY
+
+      - name: Publish validated candidate
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/sigeif
+          cp out/sigeif/sigeif_official_ile_de_france.json data/operator_direct/sigeif_official_ile_de_france.json
+          cp out/sigeif/SUMMARY.md reports/sigeif/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/sigeif_official_ile_de_france.json reports/sigeif/latest_summary.md
+          if git diff --cached --quiet; then
+            echo "SIGEIF official candidate unchanged"
+          else
+            git commit -m "data(sigeif): publish verified official tariff model [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
