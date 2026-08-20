@@ -39,6 +39,7 @@ TARGETS = {
     "sdey": {"workflow": "sdey-official-tariffs.yml", "marker": "data/operator_direct/sdey_official_yonne.json", "legacy_workflows": []},
     "syded_doubs": {"workflow": "syded-doubs-official-tariffs.yml", "marker": "data/operator_direct/syded_doubs_official.json", "legacy_workflows": []},
     "siceco_cotedor": {"workflow": "siceco-cotedor-official-tariffs.yml", "marker": "data/operator_direct/siceco_cotedor_official.json", "legacy_workflows": []},
+    "sieeen_nievre": {"workflow": "sieeen-nievre-official-tariffs.yml", "marker": "data/operator_direct/sieeen_nievre_official.json", "legacy_workflows": []},
 }
 
 API = "https://api.github.com"
