@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "sied70-official-haute-saone",
+  "generatedAt": "2026-08-20T11:22:53.345517Z",
+  "operator": "SIED 70",
+  "country": "FR",
+  "classification": {
+    "regionalPublicNetwork": true,
+    "scope": "Haute-Saône",
+    "networkOwnerOperator": "SIED 70",
+    "currentGridEffectiveFrom": "2026-07-01",
+    "exactTariffMachineVerified": true
+  },
+  "operatorDirect": {
+    "acceleratedBelow50Kw": {
+      "powerRule": "<50 kW",
+      "eurPerKwh": 0.36,
+      "postChargeFee": {
+        "basis": "after_charge_end_while_connected",
+        "graceMinutes": 30,
+        "eurPerMinute": 0.2,
+        "exemptWindow": "22:00-08:00"
+      }
+    },
+    "rapid50KwOrMore": {
+      "powerRule": ">=50 kW",
+      "eurPerKwh": 0.54,
+      "postChargeFee": {
+        "basis": "after_charge_end_while_connected",
+        "graceMinutes": 0,
+        "eurPerMinute": 0.2,
+        "exemptWindow": null
+      }
+    }
+  },
+  "membership": {
+    "departmentalSubscription": {
+      "eligibleResidents": "Haute-Saône residents with proof of address",
+      "eurPerMonth": 2.99,
+      "acceleratedDiscountEurPerKwh": 0.05,
+      "rapidDiscountEurPerKwh": 0.1,
+      "derivedAcceleratedEurPerKwh": 0.31,
+      "derivedRapidEurPerKwh": 0.44
+    }
+  },
+  "access": {
+    "bankCardAllStations": true,
+    "rfidBadges": true,
+    "smartphone": true,
+    "electromapsAppAndPassReferenced": true,
+    "interoperability": true
+  },
+  "technical": {
+    "acceleratedStationCountObservedOnOfficialPage": 38,
+    "rapidStationCountObservedOnOfficialPage": 11,
+    "normalAcKw": 3.7,
+    "acceleratedAcKw": 22,
+    "newGenerationDcKw": 24,
+    "rapidDcUpToKw": 150
+  },
+  "roaming": {
+    "supported": true,
+    "partnerRetailPriceMayDiffer": true,
+    "mustRemainSeparateFromDirectTariff": true
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "officialNetworkAndTariffs",
+        "url": "https://www.sied70.fr/irve",
+        "httpStatus": 200,
+        "rawSha256": "7d3a1a8aa6feecbef0a597e028b2bd161ba6ca727b09f76030af30787e3dbe3a"
+      },
+      {
+        "key": "officialTariffChangeNotice",
+        "url": "https://www.sied70.fr/actualite/2026-07-01_evolution_des_tarifs_irve_au_1er_juillet_2026",
+        "httpStatus": 200,
+        "rawSha256": "d393a94ca9f66caba5b985449006e45a718823462575ab456dfff6b0ff732dcb"
+      }
+    ],
+    "relevantTariffFingerprintSha256": "e25c0e301dd954527229c1123acc17d406808faadfbdd2a5dee9d4d98d9f7ccd"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "The 0.31 and 0.44 EUR/kWh subscriber values are arithmetic derivations from the official public prices and official subscription discounts, not separately quoted tariffs.",
+    "The 0.20 EUR/min component is an occupancy/post-charge fee triggered by remaining connected after charge end; it is not an energy charging-time price.",
+    "Third-party RFID/eMSP retail pricing must remain separate from SIED 70 direct pricing."
+  ]
+}
