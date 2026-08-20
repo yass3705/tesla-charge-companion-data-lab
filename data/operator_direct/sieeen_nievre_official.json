@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "sieeen-nievre-official-france",
+  "generatedAt": "2026-08-20T12:07:12.944927Z",
+  "operator": "SIEEEN Nièvre",
+  "country": "FR",
+  "classification": {
+    "regionalPublicNetwork": true,
+    "scope": "Nièvre",
+    "networkOwner": "SIEEEN",
+    "currentTariffChannel": "Electromaps/BFC regional service",
+    "exactTariffMachineVerified": true
+  },
+  "operatorDirect": {
+    "accelerated22Kw": {
+      "powerKw": 22,
+      "day": {
+        "window": "06:00-24:00",
+        "eurPerStartedKwh": 0.4,
+        "energyBillingBasis": "started_kwh",
+        "timeChargeTiers": [
+          {
+            "fromMinute": 0,
+            "toMinuteExclusive": 60,
+            "eurPerMinute": 0.0
+          },
+          {
+            "fromMinute": 60,
+            "toMinuteExclusive": 120,
+            "eurPerMinute": 0.08
+          },
+          {
+            "fromMinute": 120,
+            "toMinuteExclusive": null,
+            "eurPerMinute": 0.16
+          }
+        ],
+        "timeChargeBasis": "charging_duration"
+      },
+      "night": {
+        "window": "00:00-06:00",
+        "eurPerStartedKwh": 0.25,
+        "energyBillingBasis": "started_kwh",
+        "timeChargePublished": false
+      }
+    },
+    "rapid50Kw": {
+      "powerKw": 50,
+      "day": {
+        "window": "06:00-24:00",
+        "eurPerStartedKwh": 0.5,
+        "energyBillingBasis": "started_kwh",
+        "timeChargeTiers": [
+          {
+            "fromMinute": 0,
+            "toMinuteExclusive": 60,
+            "eurPerMinute": 0.0
+          },
+          {
+            "fromMinute": 60,
+            "toMinuteExclusive": 120,
+            "eurPerMinute": 0.08
+          },
+          {
+            "fromMinute": 120,
+            "toMinuteExclusive": null,
+            "eurPerMinute": 0.16
+          }
+        ],
+        "timeChargeBasis": "charging_duration"
+      },
+      "night": {
+        "window": "00:00-06:00",
+        "eurPerStartedKwh": 0.35,
+        "energyBillingBasis": "started_kwh",
+        "timeChargePublished": false
+      }
+    }
+  },
+  "roaming": {
+    "freshmileTariffCurrentlyNotAlignedWithUnionPublishedTariff": true,
+    "thirdPartyOperatorMayAddCommission": true,
+    "mustRemainSeparateFromSieeenPublishedTariff": true
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "officialBfcCurrentTariffPage",
+        "url": "https://www.territoiredenergie-bourgogne-franche-comte.com/nos-offres-et-tarifs/",
+        "httpStatus": 200,
+        "rawSha256": "c80f00db41a4e498544d7fb0c94ae6c5d0b21d6832b3fcab406383ff6f3a9cbf"
+      },
+      {
+        "key": "officialSieeenNetworkPage",
+        "url": "https://sieeen.fr/nos-missions/bornes-de-charge",
+        "httpStatus": 200,
+        "rawSha256": "2747bf55b1bf04a8f0ca9c1fef392e53516e0fdc7fbf01140773f4e0d8dc736e"
+      }
+    ],
+    "relevantTariffFingerprintSha256": "e2f4a35c21b546372fc995816fe6f479390408d9ad82e892c5cd34eab6c00671"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "The regional page explicitly uses 'kWh entamé'; the energy component is therefore preserved as a started-kWh billing basis rather than silently normalized to continuous metering.",
+    "For daytime charging, 0.08 EUR/min starts with the second hour of charge and 0.16 EUR/min starts with the third hour; this is a charging-duration component, not a post-charge idle fee.",
+    "For the published 00:00-06:00 night window, the official grid shows only the energy price and does not publish an additional per-minute component.",
+    "Freshmile and other eMSP retail prices must remain separate from the union-published direct grid because the regional service warns that Freshmile is no longer aligned and third parties may add commission."
+  ]
+}
