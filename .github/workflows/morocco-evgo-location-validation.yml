@@ -1,0 +1,50 @@
+name: Morocco EVGO location validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/morocco_evgo_location_validation_probe.py"
+      - ".github/workflows/morocco-evgo-location-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-evgo-location-validation
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Safety and syntax
+        run: |
+          python scripts/public_safety_check.py .
+          python -m py_compile scripts/morocco_evgo_location_validation_probe.py
+      - name: Probe public location routes
+        run: python scripts/morocco_evgo_location_validation_probe.py
+      - name: Validate and publish sanitized report
+        run: |
+          test -s artifacts/morocco-evgo-location-validation/summary.json
+          python scripts/public_safety_check.py artifacts/morocco-evgo-location-validation
+          mkdir -p reports/morocco/evgo
+          cp artifacts/morocco-evgo-location-validation/summary.json reports/morocco/evgo/latest-location-validation.json
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/evgo/latest-location-validation.json
+          if git diff --cached --quiet; then
+            echo "No report change"
+            exit 0
+          fi
+          git commit -m "data(morocco): update EVGO location validation [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:${GITHUB_REF_NAME}
