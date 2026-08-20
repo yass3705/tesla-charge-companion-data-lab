@@ -75,16 +75,22 @@ jobs:
           import json
           from pathlib import Path
           p=json.loads(Path('out/shell_recharge/shell_recharge_official_france.json').read_text())
-          assert p['classification']['singleGuaranteedNationalCpoDirectTariff'] is False
-          assert p['classification']['commonObservedDirectTariffAcrossSamples'] is True
-          d=p['operatorDirect']['shellApp']
-          assert d['observedEurPerKwh'] == 0.64
-          assert d['observedSessionFeeEur'] == 0.35
-          assert d['sampleCount'] >= 5
-          assert d['sampleConsistency'] == 'all_samples_match'
-          assert {50,150,300}.issubset(set(p['technical']['samplePowerClassesKw']))
-          assert p['fees']['additionalFees']['exactSiteCheckRequired'] is True
-          print('Validated Shell Recharge common French station tariff and site-fee caution')
+          c=p['classification']
+          assert c['singleGuaranteedNationalCpoDirectKwhTariff'] is False
+          assert c['stationLevelPriceLookupRequiredForExactCpoDirect'] is True
+          direct=p['operatorDirect']['shellRechargeFranceNetwork']
+          assert direct['monthlyFixedFeeEur'] == 0.0
+          assert direct['representativeCurrentShellAppEurPerKwh'] == 0.64
+          assert direct['representativeSampleCount'] >= 5
+          assert p['fees']['shellRechargeCardTransactionFeeEur'] == 0.35
+          assert p['payment']['preauthorization']['shellCardOrAppEur'] == 45.0
+          assert p['payment']['preauthorization']['bankCardEur'] == 65.0
+          assert p['payment']['contactlessBankCard'] is True
+          assert p['roaming']['operatorDirect'] is False
+          assert p['roaming']['shellCommissionPerTransactionEur'] == 0.35
+          assert p['roaming']['exactPartnerPriceLookupRequired'] is True
+          assert {50,150,300}.issubset(set(p['technical']['representativePowerClassesKw']))
+          print('Validated Shell Recharge France payment, per-point price lookup and roaming rules')
           PY
 
       - name: Publish only when evidence changes
@@ -102,10 +108,11 @@ jobs:
               return {
                   'classification':d.get('classification'),
                   'operatorDirect':d.get('operatorDirect'),
-                  'fees':d.get('fees'),
                   'payment':d.get('payment'),
+                  'fees':d.get('fees'),
+                  'roaming':d.get('roaming'),
+                  'representativeStationChecks':d.get('representativeStationChecks'),
                   'technical':d.get('technical'),
-                  'stationValidationSamples':d.get('stationValidationSamples'),
                   'fingerprint':(d.get('sourceEvidence') or {}).get('relevantTariffFingerprintSha256'),
                   'publicationStatus':d.get('publicationStatus'),
               }
