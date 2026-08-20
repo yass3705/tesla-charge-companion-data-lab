@@ -1,0 +1,137 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "etotem-official-france",
+  "generatedAt": "2026-08-20T13:51:47.499455Z",
+  "operator": "e-Totem",
+  "country": "FR",
+  "classification": {
+    "singleGuaranteedNationalCpoDirectTariff": false,
+    "stationOrNetworkLevelLookupRequiredForExactCpoDirect": true,
+    "reason": "Current sources show several e-Totem-managed networks and distinct local tariff schedules; one universal CPO-direct France tariff must not be assumed."
+  },
+  "operatorDirect": {
+    "directlyOperatedNetworks": {
+      "publicPointsClaimed": 900,
+      "publicPointsClaimedQualifier": "more_than",
+      "badgeCommissionPercent": 0.0,
+      "badgeMonthlyFeeEur": 0.0,
+      "exactPriceModel": "network_or_site_specific",
+      "exactPriceLookupRequired": true
+    },
+    "nationalLibertyOffer": {
+      "scope": "national_mobility_offer",
+      "billingUnit": "kWh",
+      "monthlySubscriptionFeeEur": 0.0,
+      "exactCurrentNationwideEurPerKwh": null,
+      "exactCurrentNationwidePriceStatus": "not_exposed_as_one_universal_rate_on_current_first_party_html_pages"
+    }
+  },
+  "mobilityProviderLayer": {
+    "badgeCompatiblePointsClaimed": 250000,
+    "classification": "eTotem_eMSP_and_partner_network_access",
+    "partnerExamples": [
+      "IONITY",
+      "TotalEnergies",
+      "Freshmile",
+      "Shell Recharge",
+      "Metropolis",
+      "eborn"
+    ],
+    "exactCurrentPartnerTariffStatus": "do_not_promote_historical_2024_uniform_rates_without_current_first_party_reconfirmation"
+  },
+  "regionalOffers": {
+    "SEMOB": {
+      "scope": "Saint-Etienne Metropole only",
+      "monthlyMinimumEur": 45.0,
+      "includedKwh": 100.0,
+      "effectiveEurPerKwh": 0.45,
+      "eurPerKwhAboveIncluded": 0.45,
+      "referenceNonSubscriberEurPerKwh": 0.59,
+      "otherNetworksFallback": "Liberty offer",
+      "generalNationalTariff": false
+    }
+  },
+  "fees": {
+    "networkWideIdleOrPostChargeFee": null,
+    "networkWideIdleFeeStatus": "not_asserted_from_current_first_party_sources",
+    "parking": {
+      "status": "local_network_or_site_specific"
+    }
+  },
+  "representativeNetworkChecks": [
+    {
+      "network": "Saint-Louis Agglomeration",
+      "operator": "e-Totem",
+      "sourceType": "official_local_authority",
+      "tariffs": {
+        "eCityEco3_7KwEurPerKwh": 0.3,
+        "eCityNormalBoost7_4To22KwEurPerKwh": 0.39,
+        "eFast50To99KwEurPerKwh": 0.45,
+        "eFast100To180KwEurPerKwh": 0.49
+      },
+      "postCharge": {
+        "graceMinutes": 10,
+        "eCityEurPer15Min": 1.0,
+        "eFastEurPer15Min": 3.0,
+        "overnightCapEur": 2.0,
+        "overnightWindow": "22:00-08:00"
+      }
+    }
+  ],
+  "managedNetworkIdsObserved": [
+    "FR*ESE",
+    "FR*P01",
+    "FR*ETI",
+    "FR*G10",
+    "FR*CAR",
+    "FR*SUA"
+  ],
+  "sourceEvidence": {
+    "firstPartyCurrentSources": [
+      "users",
+      "mobility",
+      "home"
+    ],
+    "officialLocalAuthorityValidation": [
+      "saintLouis"
+    ],
+    "publicNetworkTopologyEvidence": [
+      "dataGouvOrg"
+    ],
+    "sources": [
+      {
+        "key": "users",
+        "url": "https://www.e-totem.eu/utilisateurs-particuliers/",
+        "httpStatus": 200
+      },
+      {
+        "key": "mobility",
+        "url": "https://www.e-totem.eu/services/operateur-ou-delegataire-de-service/",
+        "httpStatus": 200
+      },
+      {
+        "key": "home",
+        "url": "https://www.e-totem.eu/",
+        "httpStatus": 200
+      },
+      {
+        "key": "saintLouis",
+        "url": "https://www.agglo-saint-louis.fr/fr/au-quotidien/mobilite/bornes-electriques/",
+        "httpStatus": 200
+      },
+      {
+        "key": "dataGouvOrg",
+        "url": "https://www.data.gouv.fr/organizations/e-totem/datasets",
+        "httpStatus": 200
+      }
+    ],
+    "relevantTariffFingerprintSha256": "a0958e9073372b4f25405f2990704a868b985742f01b57d2fe7dcd30b8cdd1fc"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "This validator intentionally does not build a national station database.",
+    "Do not reuse the historical 2024 0.39/0.49 CPO or 0.49/0.59 partner-network announcements as universal current tariffs without current first-party confirmation.",
+    "SEMOB is a regional offer and must not be shown as a nationwide e-Totem subscription.",
+    "Saint-Louis Agglomeration demonstrates that e-Totem-managed direct tariffs and post-charge fees can be local-network specific."
+  ]
+}
