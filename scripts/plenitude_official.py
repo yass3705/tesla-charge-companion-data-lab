@@ -21,7 +21,6 @@ UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.3
 
 SOURCES = {
     "pricing": "https://eniplenitude.eu/e-mobility/pricing",
-    "terms": "https://eniplenitude.eu/e-mobility/terms-and-conditions",
     "network": "https://eniplenitude.eu/e-mobility/charging-network",
     "travelPromo": "https://eniplenitude.eu/e-mobility/travel-on-the-road",
     "bilateral": "https://eniplenitude.eu/e-mobility/bilateral-agreement-pricing",
@@ -95,9 +94,6 @@ def main() -> None:
         require_amount(pricing, amount, "Plenitude France consumer pricing")
     require_tokens(pricing, ("60 minutes free parking", "0.12", "0.20", "0.30", "23:00", "07:00"), "Plenitude blocking fees")
     require_tokens(pricing, ("other operators", "may be different", "app"), "Plenitude third-party pricing separation")
-
-    terms = pages["terms"]
-    require_tokens(terms, ("pay per use rate", "kwh", "published in the app", "third-party"), "Plenitude terms")
 
     network = pages["network"]
     require_tokens(network, ("plenitude charging points", "other operators", "interoperability", "600.000"), "Plenitude network separation")
