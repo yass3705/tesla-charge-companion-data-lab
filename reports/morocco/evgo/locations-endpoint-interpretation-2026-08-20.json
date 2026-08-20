@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "operator_brand": "EVGO",
+  "platform": "AMPECO",
+  "finding": "POST /api/v1|v2/app/locations is a valid anonymous read endpoint that hydrates requested locations and returns three linked collections: locations, tariffs and currencies.",
+  "evidence": {
+    "empty_object": "HTTP 412: Missing or invalid locations list",
+    "empty_locations_array": "HTTP 200 with locations=[], tariffs=[], currencies=[]",
+    "empty_location_object": "HTTP 200 with the same three empty collections",
+    "scalar_identifier_tests": {
+      "string_zero": "HTTP 200, all collections empty",
+      "numeric_zero": "HTTP 200, all collections empty",
+      "Marjane Mohammedia": "HTTP 200, all collections empty",
+      "EVOne public id 1004": "HTTP 200, all collections empty"
+    }
+  },
+  "interpretation": {
+    "confidence": "high",
+    "locations_parameter_role": "The locations array is very likely a list of internal AMPECO location identifiers to hydrate, not a free-text station search or EVOne connector identifier input.",
+    "important_schema_signal": "A successful response is explicitly partitioned into locations, tariffs and currencies, which is directly useful for Charge Companion once valid internal location IDs are discovered.",
+    "next_step": "Find the anonymous map/discovery request that supplies internal AMPECO location IDs, then feed only those public IDs into /app/locations and sanitize station/status/tariff fields."
+  },
+  "policy": {
+    "no_credentials": true,
+    "no_login": true,
+    "no_mutations": true,
+    "no_private_data": true
+  }
+}
