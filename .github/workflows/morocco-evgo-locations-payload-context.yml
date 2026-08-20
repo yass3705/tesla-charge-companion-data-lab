@@ -1,0 +1,51 @@
+name: Morocco EVGO locations payload context
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/morocco_evgo_locations_payload_context_probe.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/morocco-evgo-locations-payload-context.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-evgo-locations-payload-context
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate public safety and syntax
+        run: |
+          python scripts/public_safety_check.py .
+          python -m py_compile scripts/morocco_evgo_locations_payload_context_probe.py
+      - name: Run sanitized static payload-context probe
+        run: python scripts/morocco_evgo_locations_payload_context_probe.py
+      - name: Validate and persist sanitized report
+        run: |
+          test -s artifacts/morocco-evgo-locations-payload-context/summary.json
+          python scripts/public_safety_check.py artifacts/morocco-evgo-locations-payload-context
+          mkdir -p reports/morocco/evgo
+          cp artifacts/morocco-evgo-locations-payload-context/summary.json reports/morocco/evgo/latest-locations-payload-context.json
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/evgo/latest-locations-payload-context.json
+          if git diff --cached --quiet; then
+            echo "No report change"
+            exit 0
+          fi
+          git commit -m "data(morocco): update EVGO locations payload context [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:${GITHUB_REF_NAME}
