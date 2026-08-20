@@ -40,6 +40,8 @@ TARGETS = {
     "syded_doubs": {"workflow": "syded-doubs-official-tariffs.yml", "marker": "data/operator_direct/syded_doubs_official.json", "legacy_workflows": []},
     "siceco_cotedor": {"workflow": "siceco-cotedor-official-tariffs.yml", "marker": "data/operator_direct/siceco_cotedor_official.json", "legacy_workflows": []},
     "sieeen_nievre": {"workflow": "sieeen-nievre-official-tariffs.yml", "marker": "data/operator_direct/sieeen_nievre_official.json", "legacy_workflows": []},
+    "qwello_saone_et_loire": {"workflow": "qwello-saone-et-loire-official-tariffs.yml", "marker": "data/operator_direct/qwello_saone_et_loire_official.json", "legacy_workflows": []},
+    "tde90_belfort": {"workflow": "tde90-belfort-official-tariffs.yml", "marker": "data/operator_direct/tde90_belfort_official.json", "legacy_workflows": []},
 }
 
 API = "https://api.github.com"
