@@ -1,0 +1,75 @@
+name: Bump exact price public discovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/bump_public_exact_price_probe.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/bump-exact-price-public-discovery.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bump-exact-price-public-discovery
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Compile probe
+        run: python -m py_compile scripts/bump_public_exact_price_probe.py
+
+      - name: Probe Bump public station/tariff surface
+        run: |
+          python scripts/bump_public_exact_price_probe.py
+          cat out/exact-price/bump/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate sanitized output
+        run: |
+          python scripts/public_safety_check.py out/exact-price/bump
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/exact-price/bump/bump_public_exact_price_probe.json').read_text())
+          assert p['method']['authenticated'] is False
+          assert p['method']['mobilePackageUsed'] is False
+          assert p['method']['paymentSubmitted'] is False
+          assert p['method']['chargingSessionStarted'] is False
+          assert p['method']['persistRawBodies'] is False
+          assert p['method']['httpMethods'] == ['GET']
+          print(p['conclusion'])
+          PY
+
+      - name: Publish sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/exact-price
+          cp out/exact-price/bump/bump_public_exact_price_probe.json reports/exact-price/bump_latest.json
+          python scripts/public_safety_check.py reports/exact-price/bump_latest.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/exact-price/bump_latest.json
+          if git diff --cached --quiet; then
+            echo "No report changes"
+            exit 0
+          fi
+          git commit -m "data(pricing): publish Bump exact-price discovery [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
