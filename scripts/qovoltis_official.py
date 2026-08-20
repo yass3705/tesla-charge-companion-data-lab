@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 """Validate current Qovoltis France public-charging tariff rules.
 
-Model intentionally follows the operator-rule validators used for Powerdot/IZIVIA/Fastned:
-- no national station database is built;
-- exact CPO-direct price remains station/location specific when official terms say so;
-- ad-hoc bank-card access is kept separate from account offers;
-- partner roaming is kept separate from Qovoltis-direct pricing;
-- historical tariff sheets are not promoted as current nationwide prices.
+Operator-rule validator only: no national station database is built. Current official
+terms are used to classify station-specific direct pricing, ad-hoc access and roaming.
+Historical tariff-grid amounts are deliberately not promoted as current nationwide prices.
 """
 from __future__ import annotations
 
@@ -21,7 +18,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
-
 SOURCES = {
     "nomadTerms": "https://cdn.qovoltis.com/CGV_CP_VF.html",
     "adHoc": "https://chargenow.qovoltis.com/",
@@ -34,15 +30,12 @@ def now_iso() -> str:
 
 
 def fetch(url: str) -> tuple[int, str]:
-    req = urllib.request.Request(
-        url,
-        headers={
-            "User-Agent": UA,
-            "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
-            "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.6",
-            "Cache-Control": "no-cache",
-        },
-    )
+    req = urllib.request.Request(url, headers={
+        "User-Agent": UA,
+        "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.6",
+        "Cache-Control": "no-cache",
+    })
     with urllib.request.urlopen(req, timeout=35) as resp:
         raw = resp.read()
         charset = resp.headers.get_content_charset() or "utf-8"
@@ -60,6 +53,7 @@ def text_from_html(raw: str) -> str:
 def norm(s: str) -> str:
     s = unicodedata.normalize("NFKD", s or "")
     s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    s = s.replace("ﬁ", "fi").replace("ﬂ", "fl")
     s = s.lower().replace("’", "'")
     return re.sub(r"\s+", " ", s).strip()
 
@@ -68,6 +62,13 @@ def require_any(text: str, phrases: tuple[str, ...], label: str) -> None:
     n = norm(text)
     if not any(norm(p) in n for p in phrases):
         raise RuntimeError(f"{label}: expected evidence not found")
+
+
+def require_tokens(text: str, tokens: tuple[str, ...], label: str) -> None:
+    n = norm(text)
+    missing = [token for token in tokens if norm(token) not in n]
+    if missing:
+        raise RuntimeError(f"{label}: missing markers: {', '.join(missing)}")
 
 
 def main() -> None:
@@ -90,42 +91,33 @@ def main() -> None:
     adhoc = norm(texts["adHoc"])
     datagouv = norm(texts["dataGouvOrg"])
 
-    # Current published Nomad terms explicitly point exact Qovoltis and partner prices
-    # to the application's Location page rather than defining one national tariff.
-    require_any(
+    # The official terms are generated from a PDF and contain occasional spacing
+    # artefacts (for example "App lication"), so validate semantic markers rather
+    # than one brittle full sentence.
+    require_tokens(
         terms,
-        (
-            "les tarifs au kwh des bornes de recharge qovoltis ouvertes au public sont disponibles sur la page « localisation » de l'application",
-            "les tarifs au kwh des bornes de recharge qovoltis ouvertes au public sont disponibles sur la page \"localisation\" de l'application",
-            "tarifs au kwh des bornes de recharge qovoltis ouvertes au public",
-        ),
+        ("tarifs", "bornes de recharge qovoltis", "ouvertes au public", "localisation"),
         "Qovoltis direct station pricing",
     )
-    require_any(
+    require_tokens(
         terms,
-        (
-            "conditions tarifaires d'utilisation des bornes de recharge partenaire",
-            "bornes de recharge partenaire",
-            "operateurs partenaires",
-        ),
+        ("bornes de recharge partenaire", "operateurs partenaires", "localisation"),
         "Qovoltis partner roaming",
     )
     require_any(terms, ("nomad open", "offre nomad open"), "Nomad Open")
     require_any(terms, ("nomad gold", "offre nomad gold"), "Nomad Gold")
-    require_any(
+    require_tokens(
         terms,
-        ("sans frais d'acces", "sans frais d’accès"),
-        "Nomad Gold no-access-fee rule",
+        ("nomad gold", "sans frais d'acces", "tarifs applicables pour la borne concernee"),
+        "Nomad Gold station-specific/no-access-fee rule",
     )
 
-    # Public no-account card flow.
     require_any(
         adhoc,
         ("je recharge par carte bancaire sans compte qovoltis", "carte bancaire sans compte qovoltis"),
         "Qovoltis ad-hoc card access",
     )
 
-    # Official organisation publishes IRVE static datasets. These are inventory evidence only.
     require_any(datagouv, ("irve qovoltis", "irve statique"), "Qovoltis data.gouv inventory")
     if "qovoltis" not in datagouv:
         raise RuntimeError("Qovoltis data.gouv organisation marker missing")
@@ -172,22 +164,19 @@ def main() -> None:
             "networkWideIdleOrDurationFee": None,
             "networkWideIdleFeeStatus": "not_asserted_from_current_general_terms",
             "durationMayAppearAsInvoiceComponent": True,
-            "parking": {
-                "status": "site_or_landowner_specific_check_required",
-            },
+            "parking": {"status": "site_or_landowner_specific_check_required"},
         },
         "inventory": {
             "officialDataGouvOrganisation": True,
             "staticInventoryOnly": True,
             "liveAvailability": False,
-            "note": "Qovoltis publishes official IRVE static datasets on data.gouv.fr; these are not used as a national station database in this validator.",
+            "note": "Qovoltis publishes official IRVE static datasets on data.gouv.fr; these are inventory evidence only in this validator.",
         },
     }
 
     fingerprint = hashlib.sha256(
         json.dumps(facts, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).hexdigest()
-
     payload = {
         "schemaVersion": "1.0.0",
         "dataset": "qovoltis-official-france",
@@ -197,10 +186,7 @@ def main() -> None:
         **facts,
         "sourceEvidence": {
             "officialOnly": True,
-            "sources": [
-                {"key": key, "url": url, "httpStatus": statuses[key]}
-                for key, url in SOURCES.items()
-            ],
+            "sources": [{"key": k, "url": u, "httpStatus": statuses[k]} for k, u in SOURCES.items()],
             "relevantTariffFingerprintSha256": fingerprint,
         },
         "publicationStatus": "candidate_validated_source",
