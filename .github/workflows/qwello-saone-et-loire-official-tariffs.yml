@@ -36,7 +36,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq poppler-utils
 
-      - name: Extract and validate official Qwello evidence
+      - name: Extract and validate official SYDESL/Qwello evidence
         id: extract
         shell: bash
         run: |
@@ -100,15 +100,17 @@ jobs:
           assert c['qwelloOwnsNewAndInheritedSydeslStations'] is True
           assert c['publishedInitialTariffMachineVerified'] is True
           assert c['networkWideCurrentUniformTariffAsserted'] is False
+          assert c['exactCurrentStationTariffLookupRequired'] is True
           t=p['operatorDirect']['saoneEtLoire22KwInitialPublishedTariff']
           assert t['powerKw'] == 22
           assert t['eurPerKwh'] == 0.30
           assert t['eurPerMinute'] == 0.02
           assert t['vatIncluded'] is True
-          assert p['access']['registrationRequired'] is False
-          assert p['access']['contactlessPayment'] is True
-          assert p['roaming']['mustRemainSeparateFromQwelloDirectTariff'] is True
-          assert p['operatorDirect']['officialQwelloSiteExample']['mustNotBeGeneralizedToAllStations'] is True
+          assert p['operatorDirect']['currentTariffModel']['exactCurrentPriceMachineVerified'] is False
+          assert p['operatorDirect']['currentTariffModel']['stationOrAppLookupRequired'] is True
+          assert p['access']['currentDirectAccessMethodsMachineVerified'] is False
+          assert p['roaming']['retailPriceMachineVerifiedInThisRun'] is False
+          assert p['roaming']['mustRemainSeparateFromDirectTariff'] is True
           print('Validated Qwello Saône-et-Loire output envelope')
           PY
 
