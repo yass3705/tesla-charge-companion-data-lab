@@ -1,0 +1,112 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "bump-official-france",
+  "generatedAt": "2026-08-20T14:30:56.797536Z",
+  "operator": "Bump",
+  "country": "FR",
+  "classification": {
+    "singleGuaranteedNationalCpoDirectTariff": false,
+    "stationLevelPriceLookupRequiredForExactCpoDirect": true,
+    "reason": "Bump states that tariffs on Bump-operated stations are defined by the site manager and displayed in the app; prices can therefore differ between stations."
+  },
+  "operatorDirect": {
+    "bumpOperatedStations": {
+      "priceModel": "site_specific",
+      "exactPriceLookupRequired": true,
+      "priceDisplay": "Bump app / station display where available",
+      "nationalEurPerKwh": null
+    },
+    "paymentMethods": {
+      "bumpApp": true,
+      "bumpCardOrPass": true,
+      "compatibleRfid": true,
+      "bankCardDirect": true
+    }
+  },
+  "roaming": {
+    "classification": "partner_network_eMSP_layer",
+    "operatorDirect": false,
+    "partnerStationsAccessible": true,
+    "partnerPriceOwner": "partner network operator",
+    "bumpCanModifyPartnerPrice": false,
+    "exactPartnerTariffLookupRequired": true
+  },
+  "fees": {
+    "minimumTariff": {
+      "networkWide": false,
+      "status": "some_stations_only",
+      "generalStartingAmountEur": 0.5,
+      "canApplyWithZeroEnergyDelivered": true,
+      "nonRefundableWhenApplied": true,
+      "additionalFeesMayAlsoApply": [
+        "parking",
+        "duration"
+      ]
+    },
+    "durationOrOccupancy": {
+      "networkWideFixedAmount": null,
+      "status": "station_or_operator_specific",
+      "note": "Bump explicitly warns that duration and post-charge occupancy may affect the tariff; exact conditions are shown per station."
+    },
+    "parking": {
+      "status": "station_or_site_specific"
+    },
+    "paymentPreauthorization": {
+      "minEur": 15.0,
+      "maxEur": 45.0,
+      "stationDependent": true
+    }
+  },
+  "technical": {
+    "representativePowerClassesMentionedByBump": [
+      22,
+      150
+    ],
+    "ultraFastPowerQualifier": "150_kW_and_above"
+  },
+  "inventory": {
+    "officialDataGouvDataset": true,
+    "staticInventoryOnly": true,
+    "publisherSaysUpdatedDaily": true,
+    "liveAvailability": false,
+    "note": "The official Bump data.gouv dataset is used only as topology/freshness evidence in this validator, not to build a national station database."
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "pricing",
+        "url": "https://help.bump-charge.com/en/articles/9811842",
+        "httpStatus": 200
+      },
+      {
+        "key": "minimumTariff",
+        "url": "https://help.bump-charge.com/en/articles/9811586",
+        "httpStatus": 200
+      },
+      {
+        "key": "usage",
+        "url": "https://help.bump-charge.com/en/articles/4104642",
+        "httpStatus": 200
+      },
+      {
+        "key": "sessionTroubleshooting",
+        "url": "https://help.bump-charge.com/en/articles/9237698",
+        "httpStatus": 200
+      },
+      {
+        "key": "dataGouvDataset",
+        "url": "https://www.data.gouv.fr/datasets/irve-statique-organisation-bump-1",
+        "httpStatus": 200
+      }
+    ],
+    "relevantTariffFingerprintSha256": "dc224f0c26a259fd6e578c722e919165b9129880a52d015815eb8ffe3f2a91d2"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "This validator intentionally does not build a national station database.",
+    "Do not invent a France-wide Bump CPO-direct kWh price: current Bump guidance says Bump-operated prices are site-defined.",
+    "Partner-network pricing is a separate roaming layer and must not be treated as Bump CPO-direct pricing.",
+    "The 0.50 EUR minimum tariff is not network-wide; Bump describes it as a general starting amount used by some stations."
+  ]
+}
