@@ -1,0 +1,67 @@
+name: Register SIGEIF cleanup once
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/register-sigeif-cleanup-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Register SIGEIF in cleanup and remove bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path('scripts/cleanup_operator_runs.py')
+          s=p.read_text()
+          needle='    "alize_toulouse": {"workflow": "alize-toulouse-official-tariffs.yml", "marker": "data/operator_direct/alize_toulouse_official.json", "legacy_workflows": []},\n'
+          add='    "sigeif": {"workflow": "sigeif-operator-validation.yml", "marker": "data/operator_direct/sigeif_official_ile_de_france.json", "legacy_workflows": []},\n'
+          if add not in s:
+              if needle not in s:
+                  raise SystemExit('cleanup target anchor missing')
+              s=s.replace(needle, needle+add)
+              p.write_text(s)
+
+          w=Path('.github/workflows/cleanup-operator-runs.yml')
+          y=w.read_text()
+          a='      - Alizé Toulouse official tariffs\n'
+          b='      - SIGEIF official tariffs\n'
+          if b not in y:
+              if a not in y: raise SystemExit('workflow list anchor missing')
+              y=y.replace(a, a+b, 1)
+          a='          - alize_toulouse\n'
+          b='          - sigeif\n'
+          if b not in y:
+              if a not in y: raise SystemExit('choice anchor missing')
+              y=y.replace(a, a+b, 1)
+          a='              "Alizé Toulouse official tariffs") target="alize_toulouse" ;;\n'
+          b='              "SIGEIF official tariffs") target="sigeif" ;;\n'
+          if b not in y:
+              if a not in y: raise SystemExit('case anchor missing')
+              y=y.replace(a, a+b, 1)
+          w.write_text(y)
+          PY
+
+          git rm .github/workflows/register-sigeif-cleanup-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/cleanup_operator_runs.py .github/workflows/cleanup-operator-runs.yml
+          git commit -m "cleanup(sigeif): register validated operator"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
