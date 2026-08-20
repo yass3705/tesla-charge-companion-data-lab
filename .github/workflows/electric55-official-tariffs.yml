@@ -1,0 +1,146 @@
+name: Electric 55 official tariffs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "47 8 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/electric55_official.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/electric55-official-tariffs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: electric55-official-tariffs
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Extract official Electric 55 France rules
+        id: extract
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/electric55
+          python -m py_compile scripts/electric55_official.py
+          python scripts/electric55_official.py --out out/electric55 2> >(tee out/electric55/error.log >&2)
+          cat out/electric55/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish sanitized diagnostic after extraction failure
+        if: failure() && steps.extract.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/electric55
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          p=Path('out/electric55/error.log')
+          text=p.read_text(errors='replace') if p.exists() else 'extractor failed without stderr capture'
+          text=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',text)
+          Path('reports/electric55/latest_diagnostic.json').write_text(json.dumps({'dataset':'electric55-extraction-diagnostic','sanitized':True,'errorTail':[x for x in text.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electric55/latest_diagnostic.json
+          if ! git diff --cached --quiet; then
+            git commit -m "diag(e55c): publish extraction diagnostic [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
+
+      - name: Validate Electric 55 classification
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/electric55/electric55_official_france.json').read_text())
+          assert p['classification']['singleGuaranteedNationalConsumerDirectTariff'] is False
+          assert p['classification']['exactAdHocConsumerPriceLookupRequired'] is True
+          direct=p['operatorDirect']['adHocBankCard']
+          assert direct['available'] is True
+          assert direct['accountRequired'] is False
+          assert direct['appRequired'] is False
+          assert direct['badgeRequired'] is False
+          assert direct['priceDisplayedBeforePayment'] is True
+          mp=p['mobilityProviders']
+          assert mp['consumerRetailPriceMayVaryByMobilityProvider'] is True
+          wholesale=p['indicativeWholesaleTariffsToMobilityOperators']
+          assert wholesale['consumerTariff'] is False
+          assert wholesale['dayEurPerMinuteByPowerKw']['22'] == 0.084
+          assert wholesale['nightEurPerMinuteByPowerKw']['22'] == 0.062
+          assert p['inventory']['officialStaticIrveResource'] is True
+          assert p['inventory']['nationalStationDatabaseBuiltByThisValidator'] is False
+          print('Validated E55C current ad-hoc access, mobility-provider separation and wholesale tariff grid')
+          PY
+
+      - name: Publish only when evidence changes
+        id: publish
+        if: success()
+        run: |
+          python - <<'PY'
+          import json,shutil
+          from pathlib import Path
+          src=Path('out/electric55/electric55_official_france.json')
+          dst=Path('data/operator_direct/electric55_official_france.json')
+          rep=Path('reports/electric55/latest_summary.md')
+          new=json.loads(src.read_text())
+          def sig(d):
+              return {
+                  'classification':d.get('classification'),
+                  'operatorDirect':d.get('operatorDirect'),
+                  'mobilityProviders':d.get('mobilityProviders'),
+                  'indicativeWholesaleTariffsToMobilityOperators':d.get('indicativeWholesaleTariffsToMobilityOperators'),
+                  'fees':d.get('fees'),
+                  'technical':d.get('technical'),
+                  'sourceConflict':d.get('sourceConflict'),
+                  'inventory':d.get('inventory'),
+                  'fingerprint':(d.get('sourceEvidence') or {}).get('relevantTariffFingerprintSha256'),
+                  'publicationStatus':d.get('publicationStatus'),
+              }
+          changed=not dst.exists() or sig(json.loads(dst.read_text())) != sig(new)
+          Path('changed.flag').write_text('1' if changed else '0')
+          if changed:
+              dst.parent.mkdir(parents=True,exist_ok=True)
+              rep.parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(src,dst)
+              shutil.copy2('out/electric55/SUMMARY.md',rep)
+          PY
+          echo "changed=$(cat changed.flag)" >> "$GITHUB_OUTPUT"
+          python scripts/public_safety_check.py .
+
+      - name: Commit validated Electric 55 rule set
+        if: success() && steps.publish.outputs.changed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/electric55_official_france.json reports/electric55/latest_summary.md
+          git commit -m "data(e55c): publish official France tariff rules [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
