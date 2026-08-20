@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""Read-only validation-schema probe for EVGO/AMPECO map locations.
+
+The mobile app exposes /api/v1|v2/app/locations as POST-only. This script submits
+an empty JSON object only to discover required validation field names. It does not
+start charging, mutate account/session state, authenticate, or persist raw bodies.
+"""
+from __future__ import annotations
+
+import datetime as dt
+import json
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+HOST = "https://evgo.eu-evgo.charge.ampeco.tech"
+PATHS = ["/api/v1/app/locations", "/api/v2/app/locations"]
+OUT = Path("artifacts/morocco-evgo-locations-validation-schema")
+OUT.mkdir(parents=True, exist_ok=True)
+UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.0)"
+
+
+def safe_shape(body: str) -> dict:
+    try:
+        obj = json.loads(body)
+    except Exception:
+        return {"json": False}
+    out = {"json": True}
+    if isinstance(obj, dict):
+        out["top_level_keys"] = sorted(str(k) for k in obj.keys())[:50]
+        errors = obj.get("errors")
+        if isinstance(errors, dict):
+            out["error_fields"] = sorted(str(k) for k in errors.keys())[:100]
+            out["error_messages"] = {
+                str(k): [str(x)[:300] for x in v[:5]] if isinstance(v, list) else str(v)[:300]
+                for k, v in list(errors.items())[:100]
+            }
+        msg = obj.get("message")
+        if isinstance(msg, str):
+            out["message"] = msg[:600]
+    return out
+
+
+def probe(path: str) -> dict:
+    data = b"{}"
+    req = urllib.request.Request(
+        HOST + path,
+        data=data,
+        method="POST",
+        headers={
+            "User-Agent": UA,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+    )
+    status = None
+    content_type = ""
+    body = ""
+    try:
+        with urllib.request.urlopen(req, timeout=25) as res:
+            status = res.status
+            content_type = res.headers.get("content-type", "")
+            body = res.read(120_000).decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:
+        status = exc.code
+        content_type = exc.headers.get("content-type", "") if exc.headers else ""
+        try:
+            body = exc.read(120_000).decode("utf-8", "replace")
+        except Exception:
+            body = ""
+    except Exception as exc:
+        return {"path": path, "status": None, "error_type": type(exc).__name__}
+    return {
+        "path": path,
+        "status": status,
+        "content_type": content_type,
+        "safe_validation_shape": safe_shape(body),
+    }
+
+
+def main() -> None:
+    report = {
+        "schema_version": 1,
+        "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "host": HOST.removeprefix("https://"),
+        "policy": {
+            "read_only_query_endpoint": True,
+            "empty_json_body_only": True,
+            "no_login": True,
+            "no_credentials": True,
+            "no_account_or_session_mutations": True,
+            "raw_response_bodies_persisted": False,
+        },
+        "probes": [probe(p) for p in PATHS],
+    }
+    target = OUT / "summary.json"
+    target.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+    print(json.dumps({"statuses": {x["path"]: x.get("status") for x in report["probes"]}}, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()
