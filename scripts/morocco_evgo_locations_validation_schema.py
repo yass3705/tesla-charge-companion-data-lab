@@ -2,8 +2,10 @@
 """Read-only validation-schema probe for EVGO/AMPECO map locations.
 
 The mobile app exposes /api/v1|v2/app/locations as POST-only. This script submits
-an empty JSON object only to discover required validation field names. It does not
-start charging, mutate account/session state, authenticate, or persist raw bodies.
+only deliberately non-actionable validation payloads ({}, an empty locations list,
+and a list containing an empty object) to discover the expected request shape.
+It does not start charging, mutate account/session state, authenticate, or persist
+raw response bodies.
 """
 from __future__ import annotations
 
@@ -15,6 +17,11 @@ from pathlib import Path
 
 HOST = "https://evgo.eu-evgo.charge.ampeco.tech"
 PATHS = ["/api/v1/app/locations", "/api/v2/app/locations"]
+PAYLOADS = [
+    ("empty_object", {}),
+    ("empty_locations", {"locations": []}),
+    ("empty_location_item", {"locations": [{}]}),
+]
 OUT = Path("artifacts/morocco-evgo-locations-validation-schema")
 OUT.mkdir(parents=True, exist_ok=True)
 UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.0)"
@@ -41,8 +48,8 @@ def safe_shape(body: str) -> dict:
     return out
 
 
-def probe(path: str) -> dict:
-    data = b"{}"
+def probe(path: str, label: str, payload: dict) -> dict:
+    data = json.dumps(payload, separators=(",", ":")).encode()
     req = urllib.request.Request(
         HOST + path,
         data=data,
@@ -69,9 +76,10 @@ def probe(path: str) -> dict:
         except Exception:
             body = ""
     except Exception as exc:
-        return {"path": path, "status": None, "error_type": type(exc).__name__}
+        return {"path": path, "payload_case": label, "status": None, "error_type": type(exc).__name__}
     return {
         "path": path,
+        "payload_case": label,
         "status": status,
         "content_type": content_type,
         "safe_validation_shape": safe_shape(body),
@@ -79,23 +87,25 @@ def probe(path: str) -> dict:
 
 
 def main() -> None:
+    probes = [probe(path, label, payload) for path in PATHS for label, payload in PAYLOADS]
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "host": HOST.removeprefix("https://"),
         "policy": {
             "read_only_query_endpoint": True,
-            "empty_json_body_only": True,
+            "validation_only_payloads": True,
+            "no_real_coordinates_or_identifiers": True,
             "no_login": True,
             "no_credentials": True,
             "no_account_or_session_mutations": True,
             "raw_response_bodies_persisted": False,
         },
-        "probes": [probe(p) for p in PATHS],
+        "probes": probes,
     }
     target = OUT / "summary.json"
     target.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
-    print(json.dumps({"statuses": {x["path"]: x.get("status") for x in report["probes"]}}, ensure_ascii=False))
+    print(json.dumps({"statuses": [{"path": x["path"], "case": x["payload_case"], "status": x.get("status")} for x in probes]}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
