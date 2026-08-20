@@ -1,0 +1,62 @@
+name: EVGO map discovery context
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/evgo_map_discovery_context_probe.py"
+      - ".github/workflows/evgo-map-discovery-context.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: evgo-map-discovery-context
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate public safety and syntax
+        run: |
+          python scripts/public_safety_check.py .
+          python -m py_compile scripts/evgo_map_discovery_context_probe.py
+      - name: Run static read-only map discovery probe
+        run: python scripts/evgo_map_discovery_context_probe.py
+      - name: Validate sanitized result
+        run: |
+          test -s artifacts/evgo-map-discovery-context/summary.json
+          python scripts/public_safety_check.py artifacts/evgo-map-discovery-context
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('artifacts/evgo-map-discovery-context/summary.json').read_text())
+          assert p['policy']['static_analysis_only'] is True
+          assert p['policy']['backend_requests_made'] is False
+          assert p['policy']['no_login'] is True
+          assert p['policy']['raw_package_persisted'] is False
+          print('contexts', len(p.get('contexts', [])), 'routes', len(p.get('candidate_routes', [])))
+          PY
+      - name: Persist sanitized report
+        run: |
+          mkdir -p reports/morocco/evgo
+          cp artifacts/evgo-map-discovery-context/summary.json reports/morocco/evgo/latest-map-discovery-context.json
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/evgo/latest-map-discovery-context.json
+          if git diff --cached --quiet; then
+            echo "No report change"
+            exit 0
+          fi
+          git commit -m "data(morocco): update EVGO map discovery context [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:${GITHUB_REF_NAME}
