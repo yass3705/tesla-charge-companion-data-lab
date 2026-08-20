@@ -104,7 +104,7 @@ def main() -> None:
 
     usage = pages["usage"]
     require_tokens(usage, ("22 kw", "150 kw", "carte bancaire", "badge rfid"), "Bump payment and power")
-    require_any(usage, ("application bump", "app bump"), "Bump app charging")
+    require_any(usage, ("l'application bump", "lancez votre charge avec l'application bump", "app bump"), "Bump app charging")
 
     troubleshooting = pages["sessionTroubleshooting"]
     require_tokens(troubleshooting, ("pre-autorisation", "15", "45"), "Bump preauthorization")
