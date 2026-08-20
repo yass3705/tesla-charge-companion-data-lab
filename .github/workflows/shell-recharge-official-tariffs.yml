@@ -76,21 +76,24 @@ jobs:
           from pathlib import Path
           p=json.loads(Path('out/shell_recharge/shell_recharge_official_france.json').read_text())
           c=p['classification']
-          assert c['singleGuaranteedNationalCpoDirectKwhTariff'] is False
-          assert c['stationLevelPriceLookupRequiredForExactCpoDirect'] is True
-          direct=p['operatorDirect']['shellRechargeFranceNetwork']
-          assert direct['monthlyFixedFeeEur'] == 0.0
-          assert direct['representativeCurrentShellAppEurPerKwh'] == 0.64
-          assert direct['representativeSampleCount'] >= 5
-          assert p['fees']['shellRechargeCardTransactionFeeEur'] == 0.35
+          assert c['singleNationalFastShellRechargeCardTariffRule'] is True
+          assert c['exactCurrentKwhAmountAutoExtracted'] is False
+          direct=p['operatorDirect']['fastShellRechargeWithShellCard']
+          assert direct['uniformAcrossFastShellRechargeStations'] is True
+          assert direct['representativeCurrentEurPerKwh'] == 0.64
+          assert direct['monthlySubscriptionFeeEur'] == 0.0
+          assert direct['cardOrderFeeEur'] == 0.0
+          assert p['operatorDirect']['renderedFirstPartySamples']['count'] >= 5
+          assert p['fees']['representativeShellAppSessionFeeEur'] == 0.35
           assert p['payment']['preauthorization']['shellCardOrAppEur'] == 45.0
           assert p['payment']['preauthorization']['bankCardEur'] == 65.0
-          assert p['payment']['contactlessBankCard'] is True
+          assert p['payment']['adHocQrOnline'] is True
+          assert p['payment']['contactlessBankCardFastChargers'] is True
           assert p['roaming']['operatorDirect'] is False
-          assert p['roaming']['shellCommissionPerTransactionEur'] == 0.35
+          assert p['roaming']['shellTransactionFeePerSessionEur'] == 0.35
           assert p['roaming']['exactPartnerPriceLookupRequired'] is True
           assert {50,150,300}.issubset(set(p['technical']['representativePowerClassesKw']))
-          print('Validated Shell Recharge France payment, per-point price lookup and roaming rules')
+          print('Validated Shell Recharge uniform fast-rate rule, payment, preauthorization and roaming separation')
           PY
 
       - name: Publish only when evidence changes
