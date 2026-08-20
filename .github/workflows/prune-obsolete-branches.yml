@@ -1,0 +1,47 @@
+name: Prune obsolete branches
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/prune-obsolete-branches.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Delete obsolete branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          for branch in "lab/e-totem-national" "morocco-public-migration"; do
+            if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+              echo "Deleting $branch"
+              git push origin --delete "$branch"
+            else
+              echo "$branch already absent"
+            fi
+          done
+
+      - name: Verify cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          failed=0
+          for branch in "lab/e-totem-national" "morocco-public-migration"; do
+            if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+              echo "Branch still exists: $branch"
+              failed=1
+            else
+              echo "Confirmed absent: $branch"
+            fi
+          done
+          exit "$failed"
