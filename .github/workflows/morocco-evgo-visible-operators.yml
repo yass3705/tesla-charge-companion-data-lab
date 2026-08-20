@@ -1,0 +1,62 @@
+name: Morocco EVGO visible operators probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/morocco_evgo_visible_operators_probe.py"
+      - ".github/workflows/morocco-evgo-visible-operators.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-evgo-visible-operators
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate safety and syntax
+        run: |
+          python scripts/public_safety_check.py .
+          python -m py_compile scripts/morocco_evgo_visible_operators_probe.py
+
+      - name: Run read-only visible-operators probe
+        run: python scripts/morocco_evgo_visible_operators_probe.py
+
+      - name: Validate and persist sanitized report
+        run: |
+          set -euo pipefail
+          test -s artifacts/morocco-evgo-visible-operators/summary.json
+          python scripts/public_safety_check.py artifacts/morocco-evgo-visible-operators
+          mkdir -p reports/morocco/evgo
+          cp artifacts/morocco-evgo-visible-operators/summary.json reports/morocco/evgo/latest-visible-operators.json
+          python scripts/public_safety_check.py reports/morocco/evgo/latest-visible-operators.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/evgo/latest-visible-operators.json
+          if git diff --cached --quiet; then
+            echo "No report change to commit"
+            exit 0
+          fi
+          git commit -m "data(morocco): update EVGO visible operators [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:${GITHUB_REF_NAME}
+
+      - name: Upload sanitized artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: morocco-evgo-visible-operators
+          path: artifacts/morocco-evgo-visible-operators/summary.json
+          retention-days: 14
