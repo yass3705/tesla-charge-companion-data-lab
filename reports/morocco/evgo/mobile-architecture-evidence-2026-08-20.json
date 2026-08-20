@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "operator_brand": "EVGO",
+  "platform_provider": "AMPECO",
+  "finding": "Official AMPECO documentation describes the Driver App map flow as a two-stage architecture: a custom backend fetches locations and charge points from the authenticated AMPECO Public API, then the Driver App requests those saved locations and charge points from the custom backend. This explains why the EVGO mobile routes under /api/v1|v2/app/... do not behave like the documented /public-api/resources/... endpoints and why POST /app/locations behaves like a hydration endpoint for pre-discovered internal location IDs.",
+  "official_evidence": {
+    "driver_app_map_flow": "https://developers.ampeco.com/docs/select-a-charge-point-connector-on-a-map-in-the-driver-app",
+    "documented_locations_api": "https://developers.ampeco.com/reference/locationslistingdeprecated",
+    "documented_public_api_locations_route": "GET https://{tenantUrl}/public-api/resources/locations/v1.0",
+    "documented_flow_summary": [
+      "Custom backend retrieves location data from the AMPECO Public API.",
+      "Custom backend retrieves charge-point data including locationId, status, access type, network/hardware status and EVSEs.",
+      "Driver App then requests the saved locations and charge points from the custom backend."
+    ]
+  },
+  "repo_observations_consistent_with_architecture": {
+    "mobile_tenant": "evgo.eu-evgo.charge.ampeco.tech",
+    "working_mobile_search_routes": [
+      "/api/v1/app/evses/search",
+      "/api/v2/app/evses/search"
+    ],
+    "locations_hydration_routes": [
+      "/api/v1/app/locations",
+      "/api/v2/app/locations"
+    ],
+    "locations_response_collections": [
+      "locations",
+      "tariffs",
+      "currencies"
+    ],
+    "observed_behavior": "POST /app/locations accepts a locations array and returns HTTP 200; arbitrary public names/IDs produce empty collections, consistent with the endpoint expecting internal location identifiers obtained by another discovery/map call."
+  },
+  "modeling_consequence": {
+    "cpo": "Nareva Services / EVGO remains the operator candidate.",
+    "platform_provider": "AMPECO is the backend/platform provider, not the CPO.",
+    "next_target": "Identify the anonymous/custom-backend map discovery call that supplies internal location IDs, rather than probing authenticated /public-api/resources endpoints."
+  },
+  "safety": {
+    "credentials_stored": false,
+    "tokens_stored": false,
+    "authenticated_endpoints_called": false,
+    "mutating_endpoints_called": false
+  }
+}
