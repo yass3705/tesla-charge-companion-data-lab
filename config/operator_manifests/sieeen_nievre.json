@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "1.0.0",
+  "key": "sieeen_nievre",
+  "dataset": "sieeen-nievre-official-france",
+  "operator": "SIEEEN Nièvre",
+  "country": "FR",
+  "outputFile": "sieeen_nievre_official.json",
+  "sources": [
+    {
+      "key": "officialBfcCurrentTariffPage",
+      "url": "https://www.territoiredenergie-bourgogne-franche-comte.com/nos-offres-et-tarifs/",
+      "requiredPhrases": [
+        "SIEEEN",
+        "Nièvre",
+        "Charge accélérée 22kW",
+        "De 6h à minuit",
+        "De minuit à 6h",
+        "Charge rapide 50 kW",
+        "Opérateur tiers",
+        "Freshmile"
+      ],
+      "requiredNumbers": [22, 50, 0.40, 0.08, 0.16, 0.25, 0.50, 0.35, 2, 3, 6]
+    },
+    {
+      "key": "officialSieeenNetworkPage",
+      "url": "https://sieeen.fr/nos-missions/bornes-de-charge",
+      "requiredPhrases": [
+        "Bornes de charge",
+        "Nièvre",
+        "22 kVA",
+        "43-50 KVA",
+        "territoiredenergie-bourgogne-franche-comte.com"
+      ],
+      "requiredNumbers": [22, 40, 43, 50]
+    }
+  ],
+  "facts": {
+    "classification": {
+      "regionalPublicNetwork": true,
+      "scope": "Nièvre",
+      "networkOwner": "SIEEEN",
+      "currentTariffChannel": "Electromaps/BFC regional service",
+      "exactTariffMachineVerified": true
+    },
+    "operatorDirect": {
+      "accelerated22Kw": {
+        "powerKw": 22,
+        "day": {
+          "window": "06:00-24:00",
+          "eurPerStartedKwh": 0.40,
+          "energyBillingBasis": "started_kwh",
+          "timeChargeTiers": [
+            {"fromMinute": 0, "toMinuteExclusive": 60, "eurPerMinute": 0.0},
+            {"fromMinute": 60, "toMinuteExclusive": 120, "eurPerMinute": 0.08},
+            {"fromMinute": 120, "toMinuteExclusive": null, "eurPerMinute": 0.16}
+          ],
+          "timeChargeBasis": "charging_duration"
+        },
+        "night": {
+          "window": "00:00-06:00",
+          "eurPerStartedKwh": 0.25,
+          "energyBillingBasis": "started_kwh",
+          "timeChargePublished": false
+        }
+      },
+      "rapid50Kw": {
+        "powerKw": 50,
+        "day": {
+          "window": "06:00-24:00",
+          "eurPerStartedKwh": 0.50,
+          "energyBillingBasis": "started_kwh",
+          "timeChargeTiers": [
+            {"fromMinute": 0, "toMinuteExclusive": 60, "eurPerMinute": 0.0},
+            {"fromMinute": 60, "toMinuteExclusive": 120, "eurPerMinute": 0.08},
+            {"fromMinute": 120, "toMinuteExclusive": null, "eurPerMinute": 0.16}
+          ],
+          "timeChargeBasis": "charging_duration"
+        },
+        "night": {
+          "window": "00:00-06:00",
+          "eurPerStartedKwh": 0.35,
+          "energyBillingBasis": "started_kwh",
+          "timeChargePublished": false
+        }
+      }
+    },
+    "roaming": {
+      "freshmileTariffCurrentlyNotAlignedWithUnionPublishedTariff": true,
+      "thirdPartyOperatorMayAddCommission": true,
+      "mustRemainSeparateFromSieeenPublishedTariff": true
+    }
+  },
+  "notes": [
+    "The regional page explicitly uses 'kWh entamé'; the energy component is therefore preserved as a started-kWh billing basis rather than silently normalized to continuous metering.",
+    "For daytime charging, 0.08 EUR/min starts with the second hour of charge and 0.16 EUR/min starts with the third hour; this is a charging-duration component, not a post-charge idle fee.",
+    "For the published 00:00-06:00 night window, the official grid shows only the energy price and does not publish an additional per-minute component.",
+    "Freshmile and other eMSP retail prices must remain separate from the union-published direct grid because the regional service warns that Freshmile is no longer aligned and third parties may add commission."
+  ],
+  "summaryLines": [
+    "SIEEEN Nièvre current tariff grid is machine-verified from official regional sources.",
+    "22 kW daytime 06:00-24:00: 0.40 EUR per started kWh; from minute 60 add 0.08 EUR/min, from minute 120 add 0.16 EUR/min.",
+    "22 kW night 00:00-06:00: 0.25 EUR per started kWh, with no time component published in the current grid.",
+    "50 kW daytime 06:00-24:00: 0.50 EUR per started kWh with the same 0.08/0.16 EUR/min duration tiers.",
+    "50 kW night 00:00-06:00: 0.35 EUR per started kWh, with no time component published in the current grid.",
+    "Time surcharges are charging-duration fees, not post-charge occupancy fees; third-party roaming remains separate."
+  ]
+}
