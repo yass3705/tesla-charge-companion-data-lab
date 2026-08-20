@@ -5,8 +5,7 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "config/operator_manifests/sigeif.json"
-      - "scripts/operator_manifest_runner.py"
+      - "scripts/sigeif_official.py"
       - "scripts/public_safety_check.py"
       - ".github/workflows/sigeif-operator-validation.yml"
 
@@ -29,14 +28,19 @@ jobs:
       - name: Public-safety scan
         run: python scripts/public_safety_check.py .
 
+      - name: Install PDF text extractor
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils
+
       - name: Fetch and validate official SIGEIF evidence
         id: extract
         shell: bash
         run: |
           set -o pipefail
-          python -m py_compile scripts/operator_manifest_runner.py
+          python -m py_compile scripts/sigeif_official.py
           mkdir -p out/sigeif
-          python scripts/operator_manifest_runner.py --operator sigeif --out out/sigeif 2> >(tee out/sigeif/error.log >&2)
+          python scripts/sigeif_official.py 2> >(tee out/sigeif/error.log >&2)
           cat out/sigeif/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish sanitized diagnostic on failure
@@ -73,7 +77,7 @@ jobs:
             exit 1
           fi
 
-      - name: Validate conservative tariff envelope
+      - name: Validate current tariff envelope
         if: success()
         run: |
           set -euo pipefail
@@ -85,14 +89,19 @@ jobs:
           assert p['country']=='FR'
           assert p['publicationStatus']=='candidate_validated_source'
           assert p['sourceEvidence']['officialOnly'] is True
+          assert p['classification']['exactTariffFullyMachineVerifiedForAllPowerClasses'] is True
           d=p['operatorDirect']
-          assert d['normal7Or22Kw']['eurPerKwh'] == 0.39
-          f=d['normal7Or22Kw']['connectionOrParkingFee']
-          assert f['freeMinutes'] == 180 and f['eurPerMinuteAfter'] == 0.05 and f['nightCapEur'] == 4.0
-          assert d['rapid22To50Kw']['currentExactTariffMachineVerified'] is False
-          assert d['above50Kw']['currentExactTariffMachineVerified'] is False
+          assert d['upTo7Kw']['eurPerKwh'] == 0.39
+          assert d['upTo22Kw']['eurPerKwh'] == 0.39
+          assert d['upTo24Kw']['eurPerKwh'] == 0.45
+          assert d['upTo50Kw']['eurPerKwh'] == 0.49
+          assert d['upTo100Kw']['eurPerKwh'] == 0.49
+          assert d['upTo7Kw']['connectionOrParkingFee']['freeMinutes'] == 180
+          assert d['upTo24Kw']['connectionOrParkingFee']['freeMinutes'] == 120
+          assert d['upTo50Kw']['connectionOrParkingFee']['freeMinutes'] == 60
+          assert d['upTo100Kw']['connectionOrParkingFee']['eurPerMinuteAfter'] == 0.30
           assert p['roaming']['mustRemainSeparateFromDirectTariff'] is True
-          print('SIGEIF conservative envelope: OK')
+          print('SIGEIF current official envelope: OK')
           PY
 
       - name: Publish validated candidate only when model changes
