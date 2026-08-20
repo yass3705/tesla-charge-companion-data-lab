@@ -116,7 +116,6 @@ def main() -> None:
             "application de mobilite",
             "le prix affiche et facture peut varier selon l'operateur utilise",
             "prix ttc factures par e55c aux operateurs de mobilite",
-            "ne prejuguent pas du tarif final applique a l'utilisateur",
         ),
         "E55C mobility-provider/wholesale separation",
     )
