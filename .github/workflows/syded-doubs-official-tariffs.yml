@@ -1,0 +1,159 @@
+name: SYDED Doubs official tariffs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "59 8 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/syded-doubs-official-tariffs.yml"
+      - "config/operator_manifests/syded_doubs.json"
+      - "scripts/operator_manifest_runner.py"
+      - "scripts/public_safety_check.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: syded-doubs-official-tariffs
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Extract and validate official evidence
+        id: extract
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/syded_doubs
+          python -m py_compile scripts/operator_manifest_runner.py
+          python scripts/operator_manifest_runner.py --operator syded_doubs --out out/syded_doubs 2> >(tee out/syded_doubs/error.log >&2)
+          cat out/syded_doubs/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish sanitized diagnostic on failure
+        if: failure() && steps.extract.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/syded_doubs
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          p=Path('out/syded_doubs/error.log')
+          text=p.read_text(errors='replace') if p.exists() else 'extractor failed without stderr capture'
+          text=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',text)
+          Path('reports/syded_doubs/latest_diagnostic.json').write_text(json.dumps({
+              'dataset':'syded-doubs-individual-diagnostic',
+              'operator':'SYDED Doubs',
+              'sanitized':True,
+              'runId':'${{ github.run_id }}',
+              'errorTail':[x for x in text.splitlines() if x.strip()][-60:]
+          },ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/syded_doubs/latest_diagnostic.json
+          if ! git diff --cached --quiet; then
+            git commit -m "diag(syded): publish operator diagnostic [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
+
+      - name: Validate output envelope
+        if: success()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          m=json.loads(Path('config/operator_manifests/syded_doubs.json').read_text())
+          p=json.loads((Path('out/syded_doubs')/m['outputFile']).read_text())
+          assert p['dataset'] == 'syded-doubs-official-france'
+          assert p['operator'] == 'SYDED Doubs'
+          assert p['country'] == 'FR'
+          assert p['publicationStatus'] == 'candidate_validated_source'
+          assert p['sourceEvidence']['officialOnly'] is True
+          assert p['classification']['currentTariffAccessOperator'] == 'Electromaps'
+          assert p['operatorDirect']['accelerated22Kw']['eurPerKwh'] == 0.40
+          assert p['operatorDirect']['accelerated22Kw']['connectionDurationFee']['thresholdMinutes'] == 180
+          assert p['operatorDirect']['accelerated22Kw']['connectionDurationFee']['eurPerMinute'] == 0.02
+          assert p['operatorDirect']['rapid50Kw']['eurPerKwh'] == 0.50
+          assert p['operatorDirect']['rapid50Kw']['connectionDurationFee']['thresholdMinutes'] == 90
+          assert p['operatorDirect']['rapid50Kw']['connectionDurationFee']['eurPerMinute'] == 0.03
+          assert p['operatorDirect']['rapid100Kw']['eurPerKwh'] == 0.60
+          assert p['operatorDirect']['rapid100Kw']['connectionDurationFee']['thresholdMinutes'] == 60
+          assert p['operatorDirect']['rapid100Kw']['connectionDurationFee']['eurPerMinute'] == 0.05
+          assert p['roaming']['mustRemainSeparateFromSydedPublishedTariff'] is True
+          print('Validated SYDED Doubs output envelope')
+          PY
+
+      - name: Publish validated rule set only when model changes
+        id: publish
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,shutil
+          from pathlib import Path
+          m=json.loads(Path('config/operator_manifests/syded_doubs.json').read_text())
+          src=Path('out/syded_doubs')/m['outputFile']
+          dst=Path('data/operator_direct')/m['outputFile']
+          rep=Path('reports/syded_doubs/latest_summary.md')
+          new=json.loads(src.read_text())
+          def sig(d):
+              return {
+                  'dataset':d.get('dataset'),
+                  'operator':d.get('operator'),
+                  'facts':{k:v for k,v in d.items() if k not in {'generatedAt','sourceEvidence'}},
+                  'fingerprint':(d.get('sourceEvidence') or {}).get('relevantTariffFingerprintSha256'),
+              }
+          changed=not dst.exists() or sig(json.loads(dst.read_text())) != sig(new)
+          Path('changed.flag').write_text('1' if changed else '0')
+          if changed:
+              dst.parent.mkdir(parents=True,exist_ok=True)
+              rep.parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(src,dst)
+              shutil.copy2(Path('out/syded_doubs/SUMMARY.md'),rep)
+          PY
+          echo "changed=$(cat changed.flag)" >> "$GITHUB_OUTPUT"
+          python scripts/public_safety_check.py .
+
+      - name: Commit validated SYDED Doubs rule set
+        if: success() && steps.publish.outputs.changed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          output=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          print(json.loads(Path('config/operator_manifests/syded_doubs.json').read_text())['outputFile'])
+          PY
+          )
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "data/operator_direct/$output" reports/syded_doubs/latest_summary.md
+          git commit -m "data(syded): publish official tariff rules [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
