@@ -50,6 +50,7 @@ TARGETS = {
     "reveo": {"workflow": "reveo-official-tariffs.yml", "marker": "data/operator_direct/reveo_official_france.json", "legacy_workflows": []},
     "sied70": {"workflow": "sied70-official-tariffs.yml", "marker": "data/operator_direct/sied70_official_haute_saone.json", "legacy_workflows": []},
     "sdey": {"workflow": "sdey-official-tariffs.yml", "marker": "data/operator_direct/sdey_official_yonne.json", "legacy_workflows": []},
+    "syded_doubs": {"workflow": "syded-doubs-official-tariffs.yml", "marker": "data/operator_direct/syded_doubs_official.json", "legacy_workflows": []},
 }
 
 API = "https://api.github.com"
