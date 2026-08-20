@@ -121,7 +121,7 @@ def main() -> int:
     require(how, [
         "Scanner le QR code",
         "tarif public",
-        "sans s’abonner",
+        "utilisateur occasionnel",
         "réseaux partenaires",
     ], "how")
     require(roaming, [
