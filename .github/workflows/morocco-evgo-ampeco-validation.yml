@@ -1,0 +1,62 @@
+name: Morocco EVGO AMPECO validation schema
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/morocco_evgo_ampeco_validation_probe.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/morocco-evgo-ampeco-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-evgo-ampeco-validation
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Safety and syntax
+        run: |
+          python scripts/public_safety_check.py .
+          python -m py_compile scripts/morocco_evgo_ampeco_validation_probe.py
+      - name: Probe already-resolved EVGO AMPECO routes
+        run: python scripts/morocco_evgo_ampeco_validation_probe.py
+      - name: Validate sanitized output
+        run: |
+          test -s artifacts/morocco-evgo-ampeco-validation/summary.json
+          python scripts/public_safety_check.py artifacts/morocco-evgo-ampeco-validation
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('artifacts/morocco-evgo-ampeco-validation/summary.json').read_text())
+          assert p['policy']['read_only'] is True
+          assert p['policy']['no_credentials'] is True
+          assert p['policy']['raw_response_bodies_persisted'] is False
+          assert {x['path'] for x in p['probes']} == {'/api/v1/app/evses/search','/api/v2/app/evses/search'}
+          PY
+      - name: Publish sanitized report
+        run: |
+          mkdir -p reports/morocco/evgo
+          cp artifacts/morocco-evgo-ampeco-validation/summary.json reports/morocco/evgo/latest-ampeco-validation.json
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/evgo/latest-ampeco-validation.json
+          if git diff --cached --quiet; then
+            echo "No report change"
+            exit 0
+          fi
+          git commit -m "data(morocco): update EVGO AMPECO validation schema [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:${GITHUB_REF_NAME}
