@@ -1,0 +1,117 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "plenitude-on-the-road-official-france",
+  "generatedAt": "2026-08-20T14:39:14.339971Z",
+  "operator": "Plenitude On The Road",
+  "country": "FR",
+  "classification": {
+    "consumerDirectTariffPublishedForFranceByPowerClass": true,
+    "singleFlatAllPowerNationalTariff": false,
+    "stationLevelLookupRequiredForThirdPartyRoaming": true,
+    "reason": "Plenitude publishes France Pay Per Use prices for its owned charging points by power class; third-party operator prices in the app may differ."
+  },
+  "operatorDirect": {
+    "payPerUseFranceOwnedNetwork": {
+      "billingUnit": "kWh",
+      "quickAcUpTo22KwEurPerKwh": 0.45,
+      "fastDcUpTo75KwEurPerKwh": 0.55,
+      "fastPlusUltraFastDcFrom75KwEurPerKwh": 0.55,
+      "paymentMethods": [
+        "Plenitude On The Road app",
+        "RFID card"
+      ],
+      "priceSource": "current consumer pricing page",
+      "note": "The published class wording overlaps at exactly 75 kW (Fast up to 75; Fast+/UltraFast from 75); use the station/app class at that boundary."
+    }
+  },
+  "roaming": {
+    "classification": "third_party_operator_points_available_in_plenitude_app",
+    "operatorDirect": false,
+    "exactPartnerTariffLookupRequired": true,
+    "priceSetByPlenitudeForItsAppMayDifferFromOtherOperatorsOwnPayPerUse": true,
+    "consumerPriceAuthority": "Plenitude On The Road app for selected third-party station"
+  },
+  "fees": {
+    "blockingFee": {
+      "graceMinutesAfterEndOfCharge": 60,
+      "quickAcUpTo22Kw": {
+        "eurPerMin": 0.12,
+        "appliesBetween": "07:00-23:00",
+        "nightExemption": "23:00-07:00"
+      },
+      "fastDcUpTo75Kw": {
+        "eurPerMin": 0.2,
+        "applies": "24h"
+      },
+      "fastPlusUltraFastDcOver75Kw": {
+        "eurPerMin": 0.3,
+        "applies": "24h"
+      },
+      "boundary75Kw": "use station/app classification because published class wording overlaps at 75 kW"
+    },
+    "parkingOutsideChargingOperatorFee": {
+      "status": "site_or_landowner_specific_check_required"
+    }
+  },
+  "temporaryPromotions": {
+    "AUGUST26": {
+      "activeAsOfGeneratedDate": true,
+      "discountPercent": 40.0,
+      "maxChargingSessions": 3,
+      "countries": [
+        "FR",
+        "AT",
+        "CH"
+      ],
+      "validThrough": "2026-08-31T23:59:00",
+      "payPerUseOnly": true,
+      "personal": true,
+      "combinable": false,
+      "defaultTariff": false
+    }
+  },
+  "b2bInteroperability": {
+    "publishedBilateralPricingExists": true,
+    "consumerTariff": false,
+    "pricesExcludeVat": true,
+    "note": "Bilateral OCPI/operator prices are MSP/CPO settlement terms and must not be used as the end-user Charge Companion tariff."
+  },
+  "network": {
+    "ownedAndManagedPointsSeparateFromOtherOperators": true,
+    "appAccessiblePointsClaimedApprox": 600000,
+    "nationalStationDatabaseBuiltByThisValidator": false
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "pricing",
+        "url": "https://eniplenitude.eu/e-mobility/pricing",
+        "httpStatus": 200
+      },
+      {
+        "key": "network",
+        "url": "https://eniplenitude.eu/e-mobility/charging-network",
+        "httpStatus": 200
+      },
+      {
+        "key": "travelPromo",
+        "url": "https://eniplenitude.eu/e-mobility/travel-on-the-road",
+        "httpStatus": 200
+      },
+      {
+        "key": "bilateral",
+        "url": "https://eniplenitude.eu/e-mobility/bilateral-agreement-pricing",
+        "httpStatus": 200
+      }
+    ],
+    "relevantTariffFingerprintSha256": "85789b85adb8ba053064615509fda673dc89a005c6f2552bf9645f8b5a4607c1"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "This validator intentionally does not build a national station database.",
+    "Keep Plenitude-owned consumer Pay Per Use prices separate from third-party roaming prices shown in the app.",
+    "Do not use bilateral wholesale prices as consumer tariffs.",
+    "AUGUST26 is a temporary promotion and must not replace the normal tariff baseline."
+  ]
+}
