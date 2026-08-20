@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "sdey-official-yonne",
+  "generatedAt": "2026-08-20T11:39:28.446015Z",
+  "operator": "SDEY",
+  "country": "FR",
+  "classification": {
+    "regionalPublicNetwork": true,
+    "scope": "Yonne",
+    "networkOwner": "SDEY",
+    "currentServiceOperator": "Electromaps",
+    "formerServiceOperator": "Freshmile",
+    "exactTariffMachineVerified": true
+  },
+  "operatorDirect": {
+    "normalBelow25Kw": {
+      "publishedPowerRule": "<25 kW",
+      "eurPerKwh": 0.4,
+      "connectedWithoutConsumptionFee": {
+        "basis": "connected_without_energy_consumption",
+        "graceMinutes": 15,
+        "eurPerMinute": 0.3
+      }
+    },
+    "rapidAbove25Kw": {
+      "publishedPowerRule": ">25 kW",
+      "eurPerKwh": 0.5,
+      "connectedWithoutConsumptionFee": {
+        "basis": "connected_without_energy_consumption",
+        "graceMinutes": 15,
+        "eurPerMinute": 0.4
+      }
+    },
+    "ultraRapidAbove100Kw": {
+      "publishedPowerRule": ">100 kW",
+      "eurPerKwh": 0.6,
+      "connectedWithoutConsumptionFee": {
+        "basis": "connected_without_energy_consumption",
+        "graceMinutes": 15,
+        "eurPerMinute": 0.5
+      }
+    },
+    "tierResolution": "For >100 kW, the separately published ultra-rapid tier supersedes the broader >25 kW rapid label."
+  },
+  "membership": {
+    "departmentalSubscription": {
+      "eurPerMonth": 2.99,
+      "noCommitment": true,
+      "normalBelow25KwEurPerKwh": 0.35,
+      "rapidAbove25KwEurPerKwh": 0.4,
+      "ultraRapidAbove100KwEurPerKwh": 0.5
+    },
+    "electromapsBfcBadge": {
+      "offeredToYonneResidents": true
+    }
+  },
+  "access": {
+    "qrSmartphone": true,
+    "electromapsApp": true,
+    "electromapsBfcRfid": true,
+    "bankCardCurrentlyUnavailableOnSdeyNetwork": true,
+    "subscriptionRequired": false
+  },
+  "technical": {
+    "normalAcKw": 22,
+    "rapidLowPowerAcDcKw": [
+      22,
+      24
+    ],
+    "rapidHighPowerDcPublishedRangeKw": [
+      50,
+      100
+    ],
+    "rapidHardwareUpgradeableUpToKw": 120
+  },
+  "roaming": {
+    "thirdPartyOperatorSupported": true,
+    "thirdPartyMayAddCommission": true,
+    "mustRemainSeparateFromSdeyDirectTariff": true
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "officialSdeyNetworkPage",
+        "url": "https://www.sdey.fr/nos-missions/mobilite-electrique/",
+        "httpStatus": 200,
+        "rawSha256": "f48809b5caea09cc24c5f23bedf8775d1225fef7dceb9f8918401d7136487560"
+      },
+      {
+        "key": "officialBfcTariffPage",
+        "url": "https://www.territoiredenergie-bourgogne-franche-comte.com/nos-offres-et-tarifs/",
+        "httpStatus": 200,
+        "rawSha256": "c80f00db41a4e498544d7fb0c94ae6c5d0b21d6832b3fcab406383ff6f3a9cbf"
+      }
+    ],
+    "relevantTariffFingerprintSha256": "9f4e3c37f7d76db493611402cbbfb2f2fbf98ace0dd3f44d64762fd2b991fa33"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "The occupancy component is published as a fee for remaining connected without energy consumption: 15 free minutes, then a power-tier-dependent per-minute fee.",
+    "The official BFC page publishes both >25 kW rapid and >100 kW ultra-rapid labels; the ultra-rapid tier is treated as the more specific rule for powers above 100 kW.",
+    "Electromaps is the current service operator for the SDEY network; third-party eMSP/operator retail prices may include an additional commission and must remain separate from SDEY direct pricing.",
+    "The SDEY page explicitly states that bank-card payment is currently unavailable on its network despite generic BFC guidance mentioning card terminals on some network stations."
+  ]
+}
