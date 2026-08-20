@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "qovoltis-official-france",
+  "generatedAt": "2026-08-20T13:58:34.883470Z",
+  "operator": "Qovoltis",
+  "country": "FR",
+  "classification": {
+    "singleGuaranteedNationalCpoDirectTariff": false,
+    "stationLevelPriceLookupRequiredForExactCpoDirect": true,
+    "reason": "Current Qovoltis Nomad terms direct users to the application's Location page for the applicable Qovoltis-station kWh tariff."
+  },
+  "operatorDirect": {
+    "nomadOpen": {
+      "available": true,
+      "priceModel": "station_specific",
+      "exactPriceLookupRequired": true,
+      "nationalEurPerKwh": null,
+      "currentAccessFeeEur": null,
+      "currentAccessFeeStatus": "not_asserted_from_current_terms_without_current_tariff_grid"
+    },
+    "nomadGold": {
+      "available": true,
+      "subscriptionTier": true,
+      "monthlyFeeEur": null,
+      "monthlyFeeStatus": "not_asserted_from_current_terms_without_current_tariff_grid",
+      "accessFeeOnQovoltisNetworkEur": 0.0,
+      "priceModel": "station_specific_kwh_tariff",
+      "exactPriceLookupRequired": true
+    },
+    "adHocBankCard": {
+      "available": true,
+      "accountRequired": false,
+      "priceModel": "station_specific",
+      "exactPriceLookupRequired": true
+    }
+  },
+  "roaming": {
+    "classification": "partner_network_eMSP_layer",
+    "operatorDirect": false,
+    "partnerStationsSupported": true,
+    "exactPartnerTariffLookupRequired": true,
+    "priceDisplayLocation": "Qovoltis application Location page"
+  },
+  "fees": {
+    "networkWideIdleOrDurationFee": null,
+    "networkWideIdleFeeStatus": "not_asserted_from_current_general_terms",
+    "durationMayAppearAsInvoiceComponent": true,
+    "parking": {
+      "status": "site_or_landowner_specific_check_required"
+    }
+  },
+  "inventory": {
+    "officialDataGouvOrganisation": true,
+    "staticInventoryOnly": true,
+    "liveAvailability": false,
+    "note": "Qovoltis publishes official IRVE static datasets on data.gouv.fr; these are inventory evidence only in this validator."
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "nomadTerms",
+        "url": "https://cdn.qovoltis.com/CGV_CP_VF.html",
+        "httpStatus": 200
+      },
+      {
+        "key": "adHoc",
+        "url": "https://chargenow.qovoltis.com/",
+        "httpStatus": 200
+      },
+      {
+        "key": "dataGouvOrg",
+        "url": "https://www.data.gouv.fr/organizations/qovoltis/datasets",
+        "httpStatus": 200
+      }
+    ],
+    "relevantTariffFingerprintSha256": "4b56494e21cee47e46bad932030b16fffaf18346f06724a5cf58e3d4603c9527"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "This validator intentionally does not build a national station database.",
+    "Do not promote historical Nomad tariff-grid amounts as current nationwide prices without a current official tariff grid.",
+    "Exact Qovoltis-direct and partner-network prices must be resolved at station/location level in the Qovoltis app.",
+    "Ad-hoc bank-card charging without a Qovoltis account is currently exposed by the official ChargeNow flow."
+  ]
+}
