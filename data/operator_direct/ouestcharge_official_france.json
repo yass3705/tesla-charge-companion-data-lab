@@ -1,0 +1,168 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "ouestcharge-official-france-regional",
+  "generatedAt": "2026-08-20T10:11:47.129380Z",
+  "operator": "Ouest Charge",
+  "country": "FR",
+  "classification": {
+    "regionalPublicNetwork": true,
+    "singleFlatTariff": false,
+    "tariffDependsOnDepartmentAndStationClass": true,
+    "ownTariffDepartments": [
+      22,
+      29,
+      35,
+      44,
+      49
+    ],
+    "partnerDepartmentsReferencedSeparately": [
+      53,
+      56,
+      72,
+      85
+    ]
+  },
+  "operatorDirect": {
+    "nonSubscriberSessionFeeEur": 1.0,
+    "departments": {
+      "49": {
+        "normal": {
+          "eurPerKwh": 0.35,
+          "overstayAfterMinutes": 300,
+          "overstayEurPerMinute": 0.2,
+          "overstayWindow": "07:00-21:00"
+        },
+        "fast": {
+          "eurPerKwh": 0.45,
+          "overstayAfterMinutes": 60,
+          "overstayEurPerMinute": 0.2,
+          "overstayWindow": "07:00-21:00"
+        },
+        "ultraFast": {
+          "eurPerKwh": 0.55,
+          "overstayAfterMinutes": 45,
+          "overstayEurPerMinute": 0.2,
+          "overstayWindow": "07:00-21:00"
+        }
+      },
+      "44": {
+        "normal": {
+          "eurPerKwh": 0.35,
+          "overstayAfterMinutes": 240,
+          "overstayEurPerMinute": 0.2,
+          "overstayWindow": "07:00-21:00"
+        },
+        "fast": {
+          "eurPerKwh": 0.5,
+          "overstayAfterMinutes": 60,
+          "overstayEurPerMinute": 0.2,
+          "overstayWindow": "07:00-21:00"
+        }
+      },
+      "35": {
+        "normal": {
+          "eurPerKwh": 0.4,
+          "overstayAfterMinutes": 300,
+          "overstayEurPerMinute": 0.2,
+          "overstayWindow": "07:00-21:00",
+          "overstayCapEur": 50.0
+        },
+        "fast": {
+          "eurPerKwh": 0.55,
+          "overstayAfterMinutes": 60,
+          "overstayEurPerMinute": 0.2,
+          "overstayCapEur": 50.0
+        },
+        "ultraFast": {
+          "eurPerKwh": 0.55,
+          "overstayAfterMinutes": 60,
+          "overstayEurPerMinute": 0.2,
+          "overstayCapEur": 50.0
+        }
+      },
+      "29": {
+        "normal": {
+          "eurPerKwh": 0.4,
+          "overstay": null
+        },
+        "fast": {
+          "eurPerKwh": 0.55,
+          "overstayAfterMinutes": 60,
+          "overstayEurPerMinute": 0.2,
+          "overstayCapEur": 50.0
+        },
+        "ultraFast": {
+          "eurPerKwh": 0.55,
+          "overstayAfterMinutes": 60,
+          "overstayEurPerMinute": 0.2,
+          "overstayCapEur": 50.0
+        }
+      },
+      "22": {
+        "normal": {
+          "eurPerKwh": 0.4,
+          "overstayAfterMinutes": 300,
+          "overstayEurPerMinute": 0.2,
+          "overstayWindow": "07:00-21:00",
+          "overstayCapEur": 50.0
+        },
+        "fast": {
+          "eurPerKwh": 0.55,
+          "overstayAfterMinutes": 60,
+          "overstayEurPerMinute": 0.2,
+          "overstayCapEur": 50.0
+        },
+        "ultraFast": {
+          "eurPerKwh": 0.55,
+          "overstayAfterMinutes": 60,
+          "overstayEurPerMinute": 0.2
+        }
+      }
+    },
+    "qrCardPreauthorizationEur": 85.0
+  },
+  "billing": {
+    "overstayBasis": "connection_time",
+    "sessionContinuesWhileVehicleRemainsPlugged": true,
+    "energyComponentBasedOnDeliveredEnergy": true
+  },
+  "parking": {
+    "networkWideIncluded": false,
+    "siteOrMunicipalitySpecific": true
+  },
+  "roaming": {
+    "incomingThirdPartyEMSP": true,
+    "thirdPartyProviderSetsCustomerPrice": true,
+    "mustRemainSeparateFromOuestChargeDirectTariff": true
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "tariffs",
+        "url": "https://ouestcharge.fr/tarifs-borne-ouest-charge/",
+        "httpStatus": 200,
+        "rawSha256": "7a84c6d072337e16a5af514b76dab2ce5cb634b32faf2901718a6f6b65981ebd"
+      },
+      {
+        "key": "billingFaq",
+        "url": "https://ouestcharge.fr/faq-facturation/",
+        "httpStatus": 200,
+        "rawSha256": "5a1a312033466251b8b9ee2362e7ee2943ac00ee55db14c89e0e0ac55668c4c0"
+      },
+      {
+        "key": "pricingSemantics",
+        "url": "https://support.ouestcharge.fr/support/solutions/articles/103000164806-comment-est-calcul%C3%A9-le-prix-de-la-recharge-",
+        "httpStatus": 200,
+        "rawSha256": "9df2068d2798a48ea039dbe6c52aafe81a967a7dc111c9f89062dcbfe2983db6"
+      }
+    ],
+    "relevantTariffFingerprintSha256": "dfc4a4500e89998d814458f6f21b2083ea3aa3879efbf9215e43991d01881c05"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "Ouest Charge own tariff grids are modeled only for departments explicitly priced on the official page; partner departments remain separate networks.",
+    "The 1 EUR non-subscriber fee is kept separate from the energy and overstay components.",
+    "Parking remains site-specific and third-party eMSP pricing must not overwrite Ouest Charge direct pricing."
+  ]
+}
