@@ -46,9 +46,11 @@ jobs:
           src=Path('artifacts/morocco-evgo-locations-validation-schema/summary.json')
           p=json.loads(src.read_text())
           assert p['policy']['read_only_query_endpoint'] is True
-          assert p['policy']['empty_json_body_only'] is True
+          assert p['policy']['validation_only_payloads'] is True
+          assert p['policy']['no_real_coordinates_or_identifiers'] is True
           assert p['policy']['no_credentials'] is True
           assert {x['path'] for x in p['probes']} == {'/api/v1/app/locations','/api/v2/app/locations'}
+          assert {x['payload_case'] for x in p['probes']} == {'empty_object','empty_locations','empty_location_item'}
           dest=Path('reports/morocco/evgo/latest-locations-validation-schema.json')
           dest.parent.mkdir(parents=True, exist_ok=True)
           shutil.copy2(src,dest)
