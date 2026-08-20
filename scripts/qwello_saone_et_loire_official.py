@@ -14,10 +14,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
-QWELLO_HOME = "https://qwello.fr/fr"
-QWELLO_EXPERIENCE = "https://qwello.fr/fr/experience"
 SYDESL_MOBILITY = "https://sydesl.fr/mobilite-durable/"
 SYDESL_TARIFF_PDF = "https://sydesl.fr/wp-content/uploads/2026/05/AG-CT01-autunois.pdf"
+QWELLO_PUBLIC_TARIFF_URL = "https://qwello.fr/fr"
+QWELLO_PUBLIC_EXPERIENCE_URL = "https://qwello.fr/fr/experience"
 
 
 def now_iso() -> str:
@@ -81,15 +81,11 @@ def require_regex(text: str, pattern: str, label: str) -> None:
 
 
 def main() -> int:
-    home_raw, home_status = fetch_bytes(QWELLO_HOME)
-    experience_raw, experience_status = fetch_bytes(QWELLO_EXPERIENCE)
     sydesl_raw, sydesl_status = fetch_bytes(SYDESL_MOBILITY)
     pdf_raw, pdf_status = fetch_bytes(SYDESL_TARIFF_PDF)
-    if min(home_status, experience_status, sydesl_status, pdf_status) != 200:
-        raise RuntimeError("One or more official Qwello/SYDESL sources returned non-200")
+    if min(sydesl_status, pdf_status) != 200:
+        raise RuntimeError("One or more official SYDESL sources returned non-200")
 
-    home = html_text(home_raw)
-    experience = html_text(experience_raw)
     sydesl = html_text(sydesl_raw)
     tariff_pdf = pdf_text(pdf_raw)
 
@@ -98,21 +94,7 @@ def main() -> int:
         "désormais le propriétaire des bornes déployées",
         "repris les bornes installées initialement par le SYDESL",
     )
-    require(home,
-        "redevance d'infrastructure",
-        "0,30€/kWh",
-        "0,02€/min",
-        "tarifs d'itinérance",
-    )
-    require(experience,
-        "Application Qwello",
-        "Sans contact",
-        "même si vous n'êtes pas encore enregistré",
-    )
-    require(tariff_pdf,
-        "QWELLO",
-        "22 kW AC",
-    )
+    require(tariff_pdf, "QWELLO", "22 kW AC")
     require_regex(
         tariff_pdf,
         r"tarif initial de 0[,.]3\s*€/kwh\s*\+\s*0[,.]02\s*€/min\s*ttc\s*pour qwello",
@@ -135,38 +117,25 @@ def main() -> int:
                 "eurPerKwh": 0.30,
                 "eurPerMinute": 0.02,
                 "vatIncluded": True,
-                "timeComponentBasis": "infrastructure_usage_time",
+                "timeComponentBasis": "connection_or_infrastructure_time",
                 "tariffStatus": "initial_published_tariff",
             },
-            "pricingFramework": {
-                "energyComponent": True,
-                "infrastructureTimeComponent": True,
-                "officialSiteShowsTariffByLocation": True,
-                "perStationCurrentPriceMustBeChecked": True,
-            },
-            "officialQwelloSiteExample": {
-                "location": "Amanlis",
-                "eurPerKwh": 0.30,
-                "eurPerMinute": 0.02,
-                "nightCapEur": 3.60,
-                "nightCapAppliesToInfrastructureFee": True,
-                "mustNotBeGeneralizedToAllStations": True,
+            "currentTariffModel": {
+                "exactCurrentPriceMachineVerified": False,
+                "stationOrAppLookupRequired": True,
+                "publicTariffPage": QWELLO_PUBLIC_TARIFF_URL,
             },
         },
         "access": {
-            "registrationRequired": False,
-            "qwelloApp": True,
-            "contactlessPayment": True,
-            "qwelloCard": True,
+            "currentDirectAccessMethodsMachineVerified": False,
+            "publicExperiencePage": QWELLO_PUBLIC_EXPERIENCE_URL,
         },
         "roaming": {
-            "supported": True,
-            "thirdPartyMobilityProviderTariffMayVary": True,
-            "mustRemainSeparateFromQwelloDirectTariff": True,
+            "retailPriceMachineVerifiedInThisRun": False,
+            "mustRemainSeparateFromDirectTariff": True,
         },
         "technical": {
             "saoneEtLoireQwelloDeploymentPowerKw": 22,
-            "type2": True,
         },
     }
 
@@ -184,8 +153,6 @@ def main() -> int:
         "sourceEvidence": {
             "officialOnly": True,
             "sources": [
-                {"key": "qwelloOfficialHome", "url": QWELLO_HOME, "httpStatus": home_status, "rawSha256": hashlib.sha256(home_raw).hexdigest()},
-                {"key": "qwelloOfficialExperience", "url": QWELLO_EXPERIENCE, "httpStatus": experience_status, "rawSha256": hashlib.sha256(experience_raw).hexdigest()},
                 {"key": "sydeslOfficialMobility", "url": SYDESL_MOBILITY, "httpStatus": sydesl_status, "rawSha256": hashlib.sha256(sydesl_raw).hexdigest()},
                 {"key": "sydeslOfficial2026TariffPresentation", "url": SYDESL_TARIFF_PDF, "httpStatus": pdf_status, "rawSha256": hashlib.sha256(pdf_raw).hexdigest()},
             ],
@@ -193,27 +160,28 @@ def main() -> int:
         },
         "publicationStatus": "candidate_validated_source",
         "notes": [
-            "SYDESL is kept as the public coordinating authority/source context, not as the current charge-point operator for these stations.",
-            "The 0.30 EUR/kWh + 0.02 EUR/min figure is preserved exactly as the official SYDESL 2026 presentation labels it: an initial Qwello tariff for 22 kW AC in Saône-et-Loire.",
-            "Qwello's official site confirms an energy-plus-infrastructure-time pricing model, but displays tariffs by location; therefore a single permanent France-wide tariff is not asserted.",
-            "The Amanlis night cap is stored only as an official Qwello site example and must not be copied to Saône-et-Loire stations without station-level confirmation.",
-            "Roaming/eMSP retail prices remain separate from Qwello direct pricing.",
+            "SYDESL is the public coordinating authority/source context, not the current CPO for the Qwello stations it coordinated.",
+            "The 0.30 EUR/kWh + 0.02 EUR/min figure is preserved exactly as an initial 2026 Qwello tariff for 22 kW AC in the official SYDESL presentation.",
+            "Qwello public pages are JavaScript-rendered and are intentionally not blocking machine evidence in this GitHub workflow.",
+            "A permanent France-wide Qwello tariff is not asserted; exact current pricing must be checked at station/app level.",
+            "Direct-access and roaming retail details are not machine-validated in this run and must remain separate until independently verified.",
         ],
     }
 
     out = Path("out/qwello_saone_et_loire")
     out.mkdir(parents=True, exist_ok=True)
-    output = out / "qwello_saone_et_loire_official.json"
-    output.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (out / "qwello_saone_et_loire_official.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
     summary = [
         "# Qwello Saône-et-Loire official check",
         "",
-        "- Qwello, not SYDESL, is the current CPO/owner for the inherited and new SYDESL-coordinated 22 kW network.",
+        "- Qwello, not SYDESL, is the current CPO/owner for inherited and new SYDESL-coordinated stations.",
         "- Official SYDESL 2026 initial tariff: 0.30 EUR/kWh + 0.02 EUR/min TTC for Qwello 22 kW AC.",
-        "- Qwello direct pricing combines energy and infrastructure-time components.",
-        "- No preregistration is required; app and contactless payment are supported.",
-        "- Exact current tariff remains station/location-specific; roaming prices stay separate.",
+        "- Exact current Qwello station price is intentionally not generalized from that initial tariff.",
+        "- Qwello JS-rendered pages are non-blocking; station/app lookup remains required for the current price.",
+        "- Roaming retail remains separate and unasserted until independently machine-verified.",
         f"- Fingerprint: `{fingerprint}`",
     ]
     (out / "SUMMARY.md").write_text("\n".join(summary) + "\n", encoding="utf-8")
