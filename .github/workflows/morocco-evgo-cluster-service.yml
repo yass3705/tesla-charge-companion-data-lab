@@ -1,0 +1,65 @@
+name: Morocco EVGO cluster-service probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/morocco_evgo_cluster_service_probe.py"
+      - ".github/workflows/morocco-evgo-cluster-service.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-evgo-cluster-service
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate public safety and syntax
+        run: |
+          python scripts/public_safety_check.py .
+          python -m py_compile scripts/morocco_evgo_cluster_service_probe.py
+
+      - name: Run static EVGO cluster-service probe
+        run: python scripts/morocco_evgo_cluster_service_probe.py
+
+      - name: Validate and persist sanitized report
+        run: |
+          set -euo pipefail
+          test -s artifacts/morocco-evgo-cluster-service/summary.json
+          python scripts/public_safety_check.py artifacts/morocco-evgo-cluster-service
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('artifacts/morocco-evgo-cluster-service/summary.json').read_text())
+          assert p['policy']['static_analysis_only'] is True
+          assert p['policy']['backend_requests_made'] is False
+          assert p['policy']['credentials_persisted'] is False
+          assert p['policy']['coordinates_persisted'] is False
+          assert p['policy']['query_values_persisted'] is False
+          PY
+          mkdir -p reports/morocco/evgo
+          cp artifacts/morocco-evgo-cluster-service/summary.json reports/morocco/evgo/latest-cluster-service.json
+          python scripts/public_safety_check.py reports/morocco/evgo/latest-cluster-service.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/evgo/latest-cluster-service.json
+          if git diff --cached --quiet; then
+            echo "No report change"
+            exit 0
+          fi
+          git commit -m "data(morocco): update EVGO cluster-service discovery [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:${GITHUB_REF_NAME}
