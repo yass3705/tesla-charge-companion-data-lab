@@ -71,6 +71,17 @@ def require_tokens(text: str, tokens: tuple[str, ...], label: str) -> None:
         raise RuntimeError(f"{label}: missing markers: {', '.join(missing)}")
 
 
+def require_compact(text: str, phrases: tuple[str, ...], label: str) -> None:
+    compact = re.sub(r"\s+", "", norm(text))
+    missing = []
+    for phrase in phrases:
+        target = re.sub(r"\s+", "", norm(phrase))
+        if target not in compact:
+            missing.append(phrase)
+    if missing:
+        raise RuntimeError(f"{label}: missing compact markers: {', '.join(missing)}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="out/qovoltis")
@@ -91,9 +102,7 @@ def main() -> None:
     adhoc = norm(texts["adHoc"])
     datagouv = norm(texts["dataGouvOrg"])
 
-    # The official terms are generated from a PDF and contain occasional spacing
-    # artefacts (for example "App lication"), so validate semantic markers rather
-    # than one brittle full sentence.
+    # The official terms are generated from a PDF and contain occasional split words.
     require_tokens(
         terms,
         ("tarifs", "bornes de recharge qovoltis", "ouvertes au public", "localisation"),
@@ -106,9 +115,9 @@ def main() -> None:
     )
     require_any(terms, ("nomad open", "offre nomad open"), "Nomad Open")
     require_any(terms, ("nomad gold", "offre nomad gold"), "Nomad Gold")
-    require_tokens(
+    require_compact(
         terms,
-        ("nomad gold", "sans frais d'acces", "tarifs applicables pour la borne concernee"),
+        ("sans frais d'acces", "tarifs applicables pour la borne concernee"),
         "Nomad Gold station-specific/no-access-fee rule",
     )
 
