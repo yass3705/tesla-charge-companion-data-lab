@@ -46,6 +46,9 @@ TARGETS = {
     "ouestcharge": {"workflow": "ouestcharge-official-tariffs.yml", "marker": "data/operator_direct/ouestcharge_official_france.json", "legacy_workflows": []},
     "mobive": {"workflow": "mobive-official-tariffs.yml", "marker": "data/operator_direct/mobive_official_france.json", "legacy_workflows": []},
     "alize_toulouse": {"workflow": "alize-toulouse-official-tariffs.yml", "marker": "data/operator_direct/alize_toulouse_official.json", "legacy_workflows": []},
+    "sigeif": {"workflow": "sigeif-operator-validation.yml", "marker": "data/operator_direct/sigeif_official_ile_de_france.json", "legacy_workflows": []},
+    "reveo": {"workflow": "reveo-official-tariffs.yml", "marker": "data/operator_direct/reveo_official_france.json", "legacy_workflows": []},
+    "sied70": {"workflow": "sied70-official-tariffs.yml", "marker": "data/operator_direct/sied70_official_haute_saone.json", "legacy_workflows": []},
 }
 
 API = "https://api.github.com"
