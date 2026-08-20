@@ -1,0 +1,72 @@
+name: Exact price public discovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/public_exact_price_probe.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/exact-price-public-discovery.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exact-price-public-discovery
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    name: Probe ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [freshmile, qovoltis]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Compile probe
+        run: python -m py_compile scripts/public_exact_price_probe.py
+
+      - name: Discover public exact-price endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "out/exact-price/${{ matrix.target }}"
+          python scripts/public_exact_price_probe.py \
+            --target "${{ matrix.target }}" \
+            --out "out/exact-price/${{ matrix.target }}"
+          cat "out/exact-price/${{ matrix.target }}/SUMMARY.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate sanitized output
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/public_safety_check.py out/exact-price
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          target='${{ matrix.target }}'
+          p=Path(f'out/exact-price/{target}/{target}_public_exact_price_probe.json')
+          d=json.loads(p.read_text())
+          assert d['method']['authenticated'] is False
+          assert d['method']['mobilePackageUsed'] is False
+          assert d['method']['persistRawHtmlOrJs'] is False
+          assert d['method']['httpMethods'] == ['GET']
+          assert all('?' not in x['url'] and '#' not in x['url'] for x in d['candidateEndpoints'])
+          print(json.dumps(d['conclusion'], ensure_ascii=False))
+          PY
+
+      - name: Upload discovery result
+        uses: actions/upload-artifact@v4
+        with:
+          name: exact-price-${{ matrix.target }}
+          path: out/exact-price/${{ matrix.target }}/
+          if-no-files-found: error
+          retention-days: 7
