@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "syded-doubs-official-france",
+  "generatedAt": "2026-08-20T11:51:00.768034Z",
+  "operator": "SYDED Doubs",
+  "country": "FR",
+  "classification": {
+    "regionalPublicNetwork": true,
+    "scope": "Doubs",
+    "networkOwner": "SYDED",
+    "currentTariffAccessOperator": "Electromaps",
+    "exactTariffMachineVerified": true
+  },
+  "operatorDirect": {
+    "accelerated22Kw": {
+      "powerKw": 22,
+      "eurPerKwh": 0.4,
+      "connectionDurationFee": {
+        "basis": "connected_duration_after_threshold",
+        "thresholdMinutes": 180,
+        "eurPerMinute": 0.02
+      }
+    },
+    "rapid50Kw": {
+      "powerKw": 50,
+      "eurPerKwh": 0.5,
+      "connectionDurationFee": {
+        "basis": "connected_duration_after_threshold",
+        "thresholdMinutes": 90,
+        "eurPerMinute": 0.03
+      }
+    },
+    "rapid100Kw": {
+      "powerKw": 100,
+      "eurPerKwh": 0.6,
+      "connectionDurationFee": {
+        "basis": "connected_duration_after_threshold",
+        "thresholdMinutes": 60,
+        "eurPerMinute": 0.05
+      }
+    }
+  },
+  "access": {
+    "electromapsCurrentPublishedTariffChannel": true,
+    "otherOperatorsSupported": true
+  },
+  "roaming": {
+    "thirdPartyRetailPriceMayDiffer": true,
+    "mustRemainSeparateFromSydedPublishedTariff": true
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "officialSydedTariffPage",
+        "url": "https://www.syded.fr/bornes-de-recharge-pour-vehicules-electriques/",
+        "httpStatus": 200,
+        "rawSha256": "c27010ba5e12cf719a3516a74a4b842baa9a53cce139f4d9c97ec26b2a58a5fe"
+      }
+    ],
+    "relevantTariffFingerprintSha256": "950502c96d7a8aa6b6a925826fc888e65a5e7d64899237fecd0a5a81e036113d"
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "The per-minute components are triggered by total connection duration after the published threshold, not specifically by the end of energy delivery.",
+    "The SYDED page states that the displayed tariffs are accessible via Electromaps. Users of another operator/eMSP must check that provider's own retail price.",
+    "The SYDED operator page is the machine-validated source of truth for the complete 22/50/100 kW tariff grid; the regional BFC page is intentionally not required because its rendered content is unstable in GitHub Actions.",
+    "Third-party roaming prices must therefore remain separate from the SYDED/Electromaps published tariff grid."
+  ]
+}
