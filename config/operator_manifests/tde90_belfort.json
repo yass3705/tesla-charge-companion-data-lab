@@ -1,0 +1,122 @@
+{
+  "schemaVersion": "1.0.0",
+  "key": "tde90_belfort",
+  "dataset": "tde90-belfort-official-france",
+  "operator": "Territoire d'Énergie 90",
+  "country": "FR",
+  "outputFile": "tde90_belfort_official.json",
+  "sources": [
+    {
+      "key": "tde90OfficialMobility",
+      "url": "https://www.territoiredenergie90.fr/la-mobilite-electrique/",
+      "requiredPhrases": [
+        "Tarifs des bornes publiques de TDE 90",
+        "Bornes accélérées",
+        "Tarif nuit",
+        "Bornes rapides",
+        "Bornes ultra rapides",
+        "ELECTROMAPS"
+      ],
+      "requiredNumbers": [22, 0.60, 0.02, 180, 19, 9, 50, 0.03, 90, 100, 0.05, 60]
+    },
+    {
+      "key": "bfcOfficialTariffs",
+      "url": "https://www.territoiredenergie-bourgogne-franche-comte.com/nos-offres-et-tarifs/",
+      "requiredPhrases": [
+        "Territoire d'Energie 90",
+        "Aucune tarification au temps",
+        "Opérateur tiers",
+        "Electromaps"
+      ],
+      "requiredNumbers": [22, 0.60, 0.02, 50, 0.03, 100, 0.05]
+    },
+    {
+      "key": "bfcOfficialService",
+      "url": "https://www.territoiredenergie-bourgogne-franche-comte.com/",
+      "requiredPhrases": [
+        "pas d’inscription obligatoire",
+        "QR code",
+        "Electromaps"
+      ]
+    },
+    {
+      "key": "bfcOfficialUserJourney",
+      "url": "https://www.territoiredenergie-bourgogne-franche-comte.com/comment-ca-marche/",
+      "requiredPhrases": [
+        "Scan the QR Code",
+        "Payment terminal",
+        "contactless credit card"
+      ]
+    }
+  ],
+  "facts": {
+    "classification": {
+      "regionalPublicNetwork": true,
+      "scope": "Territoire de Belfort",
+      "networkOwner": "Territoire d'Énergie 90",
+      "serviceProvider": "Electromaps",
+      "exactPublishedGridMachineVerified": true,
+      "thirdPartyRetailMustRemainSeparate": true
+    },
+    "operatorDirect": {
+      "accelerated22Kw": {
+        "powerKw": 22,
+        "eurPerKwh": 0.60,
+        "connectionTimeFee": {
+          "freeMinutes": 180,
+          "eurPerMinuteAfter": 0.02,
+          "basis": "connection_time",
+          "nightWindow": "19:00-09:00",
+          "nightTimeFeeWaived": true,
+          "energyChargeStillAppliesAtNight": true
+        }
+      },
+      "rapid50Kw": {
+        "powerKw": 50,
+        "eurPerKwh": 0.60,
+        "connectionTimeFee": {
+          "freeMinutes": 90,
+          "eurPerMinuteAfter": 0.03,
+          "basis": "connection_time",
+          "nightTimeFeeWaived": false
+        }
+      },
+      "ultraRapid100Kw": {
+        "powerKw": 100,
+        "eurPerKwh": 0.60,
+        "connectionTimeFee": {
+          "freeMinutes": 60,
+          "eurPerMinuteAfter": 0.05,
+          "basis": "connection_time",
+          "nightTimeFeeWaived": false
+        }
+      }
+    },
+    "access": {
+      "electromaps": true,
+      "qrAdHoc": true,
+      "qrRegistrationRequired": false,
+      "contactlessBankCardOnEquippedStations": true,
+      "contactlessBankCardUniversal": false
+    },
+    "roaming": {
+      "otherOperatorBadgeSupported": true,
+      "otherOperatorTariffMayDiffer": true,
+      "thirdPartyMayAddCommission": true,
+      "mustRemainSeparateFromTde90PublishedTariff": true
+    }
+  },
+  "notes": [
+    "The published 22 kW night rule waives only the time component from 19:00 to 09:00; the 0.60 EUR/kWh energy component remains payable.",
+    "The 0.02/0.03/0.05 EUR per-minute components are connection-time charges after 180/90/60 minutes respectively, not post-charge-only idle fees.",
+    "Contactless bank-card payment is modeled only for stations equipped with a payment terminal; it is not asserted as universal across TDE 90.",
+    "Third-party mobility-provider retail prices must remain separate from the TDE 90 / Electromaps published tariff."
+  ],
+  "summaryLines": [
+    "22 kW: 0.60 EUR/kWh; after 180 minutes of connection add 0.02 EUR/min; time fee waived from 19:00 to 09:00.",
+    "50 kW: 0.60 EUR/kWh; after 90 minutes of connection add 0.03 EUR/min; no night waiver published.",
+    "100 kW: 0.60 EUR/kWh; after 60 minutes of connection add 0.05 EUR/min; no night waiver published.",
+    "Electromaps/QR access is supported; contactless bank card applies only where a payment terminal is installed.",
+    "Third-party roaming tariffs remain separate and may include an additional commission."
+  ]
+}
