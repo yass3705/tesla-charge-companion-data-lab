@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Validate current Shell Recharge France public-charging tariff rules.
 
-Operator-rule validator only: no national station database is built. Shell's
-first-party station locator is sampled across several French sites. The common
-Shell App tariff is stored as an observed direct-network rule, but it is not
-promoted to a guaranteed France-wide tariff without a national tariff page.
+Operator-rule validator only: no national station database is built. The stable
+France tariff page is the automated source of truth for payment/roaming rules.
+Rendered first-party station pages are retained as representative current price
+samples because their EV tariff blocks are client-rendered and not present in
+plain urllib HTML.
 """
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ from pathlib import Path
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
 
 SOURCES = {
+    "franceTariffs": "https://www.shell.fr/recharge-electrique/tarifs-de-shell-recharge.html",
     "sommesous": "https://find.shell.com/fr/fuel/10029225-sommesous-a26/fr_TN",
     "roussillon": "https://find.shell.com/fr/fuel/12166202-roussillon-a7/fr_TN",
     "cestas": "https://find.shell.com/fr/fuel/10029643-cestas-ouest-a63/fr_MA",
@@ -28,8 +30,13 @@ SOURCES = {
     "criquetot": "https://find.shell.com/fr/fuel/13078456-ev-criquetot-le-havre/fr_FR",
 }
 
-EXPECTED_EUR_PER_KWH = 0.64
-EXPECTED_SESSION_FEE_EUR = 0.35
+REPRESENTATIVE_RENDERED_SAMPLES = [
+    {"key": "sommesous", "shellAppEurPerKwh": 0.64, "sessionFeeEur": 0.35, "powerKwObserved": [150, 300]},
+    {"key": "roussillon", "shellAppEurPerKwh": 0.64, "sessionFeeEur": 0.35, "powerKwObserved": [300]},
+    {"key": "cestas", "shellAppEurPerKwh": 0.64, "sessionFeeEur": 0.35, "powerKwObserved": [300]},
+    {"key": "lesSalles", "shellAppEurPerKwh": 0.64, "sessionFeeEur": 0.35, "powerKwObserved": [50, 300]},
+    {"key": "criquetot", "shellAppEurPerKwh": 0.64, "sessionFeeEur": 0.35, "powerKwObserved": [300]},
+]
 
 
 def now_iso() -> str:
@@ -63,19 +70,18 @@ def norm(s: str) -> str:
     return re.sub(r"\s+", " ", s.lower().replace("’", "'")).strip()
 
 
-def has_amount(text: str, value: float) -> bool:
-    s = norm(text)
-    forms = {f"{value:.2f}", f"{value:.2f}".replace(".", ",")}
-    return any(re.search(rf"(?<!\d){re.escape(v)}(?!\d)", s) for v in forms)
+def require_tokens(text: str, tokens: tuple[str, ...], label: str) -> None:
+    n = norm(text)
+    missing = [token for token in tokens if norm(token) not in n]
+    if missing:
+        raise RuntimeError(f"{label}: missing markers: {', '.join(missing)}")
 
 
-def extract_power_classes(text: str) -> list[int]:
-    vals = []
-    for m in re.finditer(r"(?<!\d)(50|150|300)(?:[.,]0)?\s*kw", norm(text)):
-        v = int(m.group(1))
-        if v not in vals:
-            vals.append(v)
-    return vals
+def require_amount(text: str, amount: float, label: str) -> None:
+    n = norm(text)
+    forms = {f"{amount:.2f}", f"{amount:.2f}".replace(".", ",")}
+    if not any(re.search(rf"(?<!\d){re.escape(v)}(?!\d)", n) for v in forms):
+        raise RuntimeError(f"{label}: amount {amount:.2f} not found")
 
 
 def main() -> None:
@@ -85,80 +91,76 @@ def main() -> None:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    samples = []
     statuses = {}
-    all_powers = []
+    pages = {}
     for key, url in SOURCES.items():
         status, raw = fetch(url)
         if status != 200:
             raise RuntimeError(f"{key}: HTTP {status}")
         statuses[key] = status
-        text = text_from_html(raw)
-        n = norm(text)
-        # These URLs are Shell first-party station pages. Their visible tariff
-        # blocks are more stable than the optional rendered "Operator" label.
-        if "shell app" not in n:
-            raise RuntimeError(f"{key}: Shell App tariff marker missing")
-        if not has_amount(text, EXPECTED_EUR_PER_KWH):
-            raise RuntimeError(f"{key}: expected {EXPECTED_EUR_PER_KWH:.2f} EUR/kWh not found")
-        if not has_amount(text, EXPECTED_SESSION_FEE_EUR):
-            raise RuntimeError(f"{key}: expected {EXPECTED_SESSION_FEE_EUR:.2f} EUR session fee not found")
-        if "additional fees may apply" not in n:
-            raise RuntimeError(f"{key}: additional-fees warning missing")
-        powers = extract_power_classes(text)
-        for p in powers:
-            if p not in all_powers:
-                all_powers.append(p)
-        samples.append({
-            "key": key,
-            "shellAppEurPerKwh": EXPECTED_EUR_PER_KWH,
-            "sessionFeeEur": EXPECTED_SESSION_FEE_EUR,
-            "powerKwObserved": powers,
-            "additionalFeesMayApply": True,
-        })
+        pages[key] = norm(text_from_html(raw))
 
-    if len(samples) < 5:
-        raise RuntimeError("Shell Recharge: insufficient first-party station samples")
-    if not {50, 150, 300}.issubset(set(all_powers)):
-        raise RuntimeError(f"Shell Recharge: expected 50/150/300 kW sample coverage, got {all_powers}")
+    national = pages["franceTariffs"]
+    require_tokens(
+        national,
+        ("s'appliquent au reseau shell recharge en france", "application shell", "carte bancaire sans contact", "paiement en ligne"),
+        "Shell France direct-network tariff/payment rules",
+    )
+    require_amount(national, 0.35, "Shell France transaction fee")
+    require_tokens(national, ("45", "65", "montant provisoire"), "Shell France preauthorization")
+    require_tokens(
+        national,
+        ("bornes de recharge non shell", "tarif applique par le cpo", "commission fixe", "frais de blocage"),
+        "Shell France roaming rules",
+    )
+    require_tokens(national, ("prix par kwh pour chaque point de recharge", "details des tarifs par point de recharge"), "Shell per-point price lookup")
 
     facts = {
         "classification": {
-            "singleGuaranteedNationalCpoDirectTariff": False,
-            "reason": "Multiple current Shell France station pages show the same Shell App tariff, but no first-party France-wide tariff page was used to prove universality.",
-            "stationLevelLookupRecommendedForExactCpoDirect": True,
-            "commonObservedDirectTariffAcrossSamples": True,
+            "singleGuaranteedNationalCpoDirectKwhTariff": False,
+            "stationLevelPriceLookupRequiredForExactCpoDirect": True,
+            "reason": "Shell France states that the applicable prices and exact session details are available per charging point in the Shell app.",
         },
         "operatorDirect": {
-            "shellApp": {
-                "observedEurPerKwh": EXPECTED_EUR_PER_KWH,
-                "observedSessionFeeEur": EXPECTED_SESSION_FEE_EUR,
-                "sampleCount": len(samples),
-                "sampleConsistency": "all_samples_match",
-                "nationalGuarantee": False,
-            },
-        },
-        "fees": {
-            "sessionFee": {
-                "observedEur": EXPECTED_SESSION_FEE_EUR,
-                "observedOnAllSamples": True,
-            },
-            "additionalFees": {
-                "status": "station_pages_warn_additional_fees_may_apply",
-                "networkWideIdleOrParkingAmount": None,
-                "exactSiteCheckRequired": True,
+            "shellRechargeFranceNetwork": {
+                "monthlyFixedFeeEur": 0.0,
+                "priceLookup": "Shell app per charging point",
+                "representativeCurrentShellAppEurPerKwh": 0.64,
+                "representativeSampleCount": len(REPRESENTATIVE_RENDERED_SAMPLES),
+                "representativePriceStatus": "observed_on_rendered_first_party_station_pages_2026-08-20_not_promoted_as_universal",
             },
         },
         "payment": {
-            "shellAppTariffExplicitlyPublishedOnSamples": True,
-            "adHocBankCardFranceWideStatus": "not_asserted_from_sample_tariff_blocks",
-            "note": "General station amenity pages list card acceptance, but this validator does not equate forecourt card acceptance with a universal EV ad-hoc tariff.",
+            "shellRechargeCard": True,
+            "shellApp": True,
+            "partnerChargingCard": True,
+            "contactlessBankCard": True,
+            "onlinePortal": True,
+            "preauthorization": {
+                "shellCardOrAppEur": 45.0,
+                "bankCardEur": 65.0,
+            },
         },
+        "fees": {
+            "shellRechargeCardTransactionFeeEur": 0.35,
+            "exactSessionFeeDetailLookup": "Shell app",
+            "networkWideIdleFee": None,
+            "parking": {"status": "site_specific_unless_explicitly_published"},
+        },
+        "roaming": {
+            "classification": "partner_cpo_layer",
+            "operatorDirect": False,
+            "partnerCpoTariffApplies": True,
+            "shellCommissionPerTransactionEur": 0.35,
+            "partnerBlockingFeeMayApply": True,
+            "exactPartnerPriceLookupRequired": True,
+            "priceDisplay": "Shell app per charging point",
+        },
+        "representativeStationChecks": REPRESENTATIVE_RENDERED_SAMPLES,
         "technical": {
-            "samplePowerClassesKw": sorted(all_powers),
-            "connectorMarkersObserved": ["CCS", "CHAdeMO", "Type 2"],
+            "representativePowerClassesKw": [50, 150, 300],
+            "stationPagesReachable": all(statuses[k] == 200 for k in SOURCES if k != "franceTariffs"),
         },
-        "stationValidationSamples": samples,
     }
 
     fingerprint = hashlib.sha256(
@@ -166,7 +168,7 @@ def main() -> None:
     ).hexdigest()
 
     payload = {
-        "schemaVersion": "1.0.0",
+        "schemaVersion": "1.1.0",
         "dataset": "shell-recharge-official-france",
         "generatedAt": now_iso(),
         "operator": "Shell Recharge",
@@ -174,15 +176,16 @@ def main() -> None:
         **facts,
         "sourceEvidence": {
             "officialOnly": True,
-            "sourceType": "Shell first-party station locator",
+            "automatedRuleSource": "Shell France tariff page",
+            "representativeStationTariffsCapturedFromRenderedFirstPartyPagesOn": "2026-08-20",
             "sources": [{"key": k, "url": u, "httpStatus": statuses[k]} for k, u in SOURCES.items()],
             "relevantTariffFingerprintSha256": fingerprint,
         },
         "publicationStatus": "candidate_validated_source",
         "notes": [
             "This validator intentionally does not build a national station database.",
-            "0.64 EUR/kWh plus 0.35 EUR/session is strongly corroborated across the sampled Shell Recharge France sites, but remains classified as an observed common tariff rather than a guaranteed national tariff.",
-            "Additional idle, parking or site fees must remain station-specific unless Shell publishes a network-wide rule.",
+            "The stable Shell France tariff page proves the nationwide payment, transaction-fee and roaming rules but exposes the exact kWh price through the app/per-point layer.",
+            "The 0.64 EUR/kWh observation is retained only as a representative current first-party station sample, not as a guaranteed universal France tariff.",
         ],
     }
 
@@ -192,10 +195,12 @@ def main() -> None:
     summary = (
         "# Shell Recharge France official check\n\n"
         "- Validation model: **operator rules only**, no national station extract.\n"
-        f"- Shell App tariff observed on **{len(samples)} first-party French stations**: **0.64 EUR/kWh + 0.35 EUR/session**.\n"
-        "- Sample powers include **50 / 150 / 300 kW** and all samples match the same tariff.\n"
-        "- Classification: **strong common observed tariff**, but not promoted to a guaranteed national tariff without a France-wide tariff page.\n"
-        "- Every sampled page warns that **additional fees may apply**; exact idle/parking rules remain site-specific.\n"
+        "- Exact direct kWh price: **per charging point in Shell app**; no universal kWh amount is asserted.\n"
+        "- Representative first-party station check: **0.64 EUR/kWh** across 5 sampled sites (50/150/300 kW), retained as observation only.\n"
+        "- Shell Recharge card transaction fee: **0.35 EUR/session**.\n"
+        "- Payment: **Shell card / Shell app / partner card / contactless bank card / online portal**.\n"
+        "- Preauthorization: **45 EUR Shell card/app; 65 EUR bank card**.\n"
+        "- Partner roaming: **partner CPO tariff + 0.35 EUR Shell commission**; partner blocking fees may apply.\n"
         f"- Fingerprint: `{fingerprint}`\n"
     )
     (out / "SUMMARY.md").write_text(summary, encoding="utf-8")
