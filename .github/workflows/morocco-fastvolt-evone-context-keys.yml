@@ -1,0 +1,53 @@
+name: Morocco FastVolt EVOne context-key probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/morocco_fastvolt_evone_context_key_probe.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/morocco-fastvolt-evone-context-keys.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-fastvolt-evone-context-keys
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate safety and syntax
+        run: |
+          python scripts/public_safety_check.py .
+          python -m py_compile scripts/morocco_fastvolt_evone_context_key_probe.py
+      - name: Run static-only context-key probe
+        run: python scripts/morocco_fastvolt_evone_context_key_probe.py
+      - name: Validate sanitized report
+        run: |
+          test -s artifacts/morocco-fastvolt-evone-context-keys/summary.json
+          python scripts/public_safety_check.py artifacts/morocco-fastvolt-evone-context-keys
+      - name: Persist report
+        run: |
+          mkdir -p reports/morocco/fastvolt-evone
+          cp artifacts/morocco-fastvolt-evone-context-keys/summary.json reports/morocco/fastvolt-evone/latest-context-keys.json
+          python scripts/public_safety_check.py reports/morocco/fastvolt-evone/latest-context-keys.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/fastvolt-evone/latest-context-keys.json
+          if git diff --cached --quiet; then
+            echo "No report change"
+            exit 0
+          fi
+          git commit -m "data(morocco): update FastVolt EVOne context keys [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:${GITHUB_REF_NAME}
