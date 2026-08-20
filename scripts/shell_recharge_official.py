@@ -21,11 +21,11 @@ from pathlib import Path
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
 
 SOURCES = {
-    "uniformFastRate": "https://support.shell.fr/hc/fr-fr/articles/40801882587409-Le-prix-par-kWh-est-il-le-m%C3%AAme-%C3%A0-toutes-les-bornes-rapides-Shell-Recharge",
-    "payment": "https://support.shell.fr/hc/fr-fr/articles/46950711091729-Quels-sont-les-moyens-de-paiement-pour-recharger-avec-Shell-Recharge",
-    "preauthorization": "https://support.shell.fr/hc/fr-fr/articles/41384776749457-Montant-de-pr%C3%A9-autorisation",
-    "roamingCost": "https://support.shell.fr/hc/fr-fr/articles/40801847438225-Combien-co%C3%BBte-la-recharge-avec-la-carte-Shell-Recharge-sur-d-autres-bornes",
-    "directCost": "https://support.shell.fr/hc/fr-fr/articles/40801845990161-Combien-co%C3%BBte-la-recharge-rapide-aux-bornes-Shell-Recharge-dans-les-stations-Shell",
+    "uniformFastRate": "https://support.shell.fr/api/v2/help_center/fr-fr/articles/40801882587409.json",
+    "payment": "https://support.shell.fr/api/v2/help_center/fr-fr/articles/46950711091729.json",
+    "preauthorization": "https://support.shell.fr/api/v2/help_center/fr-fr/articles/41384776749457.json",
+    "roamingCost": "https://support.shell.fr/api/v2/help_center/fr-fr/articles/40801847438225.json",
+    "directCost": "https://support.shell.fr/api/v2/help_center/fr-fr/articles/40801845990161.json",
     "sommesous": "https://find.shell.com/fr/fuel/10029225-sommesous-a26/fr_TN",
     "roussillon": "https://find.shell.com/fr/fuel/12166202-roussillon-a7/fr_TN",
     "cestas": "https://find.shell.com/fr/fuel/10029643-cestas-ouest-a63/fr_MA",
@@ -51,7 +51,7 @@ def now_iso() -> str:
 def fetch(url: str) -> tuple[int, str]:
     req = urllib.request.Request(url, headers={
         "User-Agent": UA,
-        "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
+        "Accept": "application/json,text/html,application/xhtml+xml,*/*;q=0.8",
         "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.6",
         "Cache-Control": "no-cache",
     })
