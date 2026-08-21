@@ -6,6 +6,7 @@ on:
     branches: ["main"]
     paths:
       - "scripts/chargelec36_official.py"
+      - "data/station_verifications/chargelec36_chateauroux_jules_chauvin_negative_2026_08_22.json"
       - ".github/workflows/chargelec36-centre-validation.yml"
 
 permissions:
@@ -48,6 +49,12 @@ jobs:
           assert p['currentPriceEvidence']['semanticsResolved'] is False
           assert p['tccDecision']['defaultDisplay']=='reference_only'
           assert p['tccDecision']['numericPriceRankable'] is False
+          assert p['tccDecision']['excludeJulesChauvinAsLiveTariffWitness'] is True
+          s=p['networkEvidence']['manualStaleCandidateCheck']
+          assert s['visibleOnOfficialMapDuringManualCheck'] is False
+          assert s['presentInCurrentFirstPartyDirectory'] is False
+          assert s['excludeAsLiveWitness'] is True
+          assert s['replacementCurrentFirstPartyWitness']=='CHATEAUROUX - Colbert'
           PY
       - name: Publish validated evidence
         if: success()
