@@ -6,6 +6,7 @@ on:
     paths:
       - 'reports/morocco/evgo/latest-pin-hydration.json'
       - 'scripts/morocco_evgo_normalize_public_inventory.py'
+      - '.github/workflows/morocco-evgo-normalize-public-inventory.yml'
 
 permissions:
   contents: write
@@ -28,7 +29,7 @@ jobs:
 
       - name: Commit normalized report when changed
         run: |
-          if git diff --quiet -- reports/morocco/evgo/latest-normalized-stations.json; then
+          if [ -z "$(git status --porcelain -- reports/morocco/evgo/latest-normalized-stations.json)" ]; then
             echo 'No normalized inventory change.'
             exit 0
           fi
