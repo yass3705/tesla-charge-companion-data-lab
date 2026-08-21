@@ -1,0 +1,105 @@
+name: Grand Est SDED52 validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/sded52_official.py"
+      - ".github/workflows/sded52-grandest-validation.yml"
+
+permissions:
+  contents: write
+concurrency:
+  group: grandest-sded52-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Extract current official rules
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/sded52
+          python -m py_compile scripts/sded52_official.py
+          python scripts/sded52_official.py --out out/sded52 2> >(tee out/sded52/error.log >&2)
+      - name: Validate tariff structure
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/sded52/sded52_official_grandest.json').read_text())
+          assert p['dataset']=='sded52-official-grandest'
+          assert p['effectiveFrom']=='2026-08-01'
+          assert p['operatorDirect']['hautMarnaisFreshmileBadge']['ac']['eurPerKwh']==0.39
+          assert p['operatorDirect']['hautMarnaisFreshmileBadge']['dc']['eurPerKwh']==0.49
+          assert p['operatorDirect']['otherChargingOperator']['ac']['eurPerKwh']==0.49
+          assert p['operatorDirect']['otherChargingOperator']['dc']['eurPerKwh']==0.59
+          assert p['operatorDirect']['hautMarnaisFreshmileBadge']['ac']['idle']['afterConnectionMinutes']==150
+          assert p['operatorDirect']['hautMarnaisFreshmileBadge']['dc']['idle']['afterConnectionMinutes']==60
+          assert p['operatorDirect']['hautMarnaisFreshmileBadge']['ac']['idle']['eurPerBillingBlock']==2.0
+          assert p['operatorDirect']['hautMarnaisFreshmileBadge']['ac']['idle']['billingBlockMinutes']==15
+          assert p['billingNotes']['doNotSilentlyNormalizeToPerMinute'] is True
+          assert p['tccDecision']['operatorValidated'] is True
+          assert p['sourceEvidence']['officialOnly'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/sded52
+          cp out/sded52/sded52_official_grandest.json data/operator_direct/sded52_official_grandest.json
+          cp out/sded52/SUMMARY.md reports/sded52/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/sded52_official_grandest.json reports/sded52/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(sded52): publish official Haute-Marne tariff rules [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/sded52
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/sded52/error.log');s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/sded52/latest_diagnostic.json').write_text(json.dumps({'dataset':'sded52-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env: {JOB_STATUS: "${{ job.status }}"}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/sded52
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/sded52/latest_run_status.json').write_text(json.dumps({'dataset':'sded52-run-status','operator':'SDED 52','region':'Grand Est','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/sded52/latest_run_status.json
+          if [ -f reports/sded52/latest_diagnostic.json ]; then git add reports/sded52/latest_diagnostic.json; fi
+          if ! git diff --cached --quiet; then
+            git commit -m "status(sded52): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+            exit 1
+          fi
