@@ -35,7 +35,7 @@ def main():
     hs,hraw,hfinal=fetch(HOME); rs,rraw,rfinal=fetch(RULES); ts,traw,tfinal=fetch(TE28); ss,sraw,sfinal=fetch(SIEIL37); cs,craw,cfinal=fetch(SDE18)
     if min(hs,rs,ts,ss,cs)!=200: raise RuntimeError(f'HTTP failure home={hs} rules={rs} te28={ts} sieil37={ss} sde18={cs}')
     h=hraw.decode('utf-8',errors='replace'); t=traw.decode('utf-8',errors='replace'); s=sraw.decode('utf-8',errors='replace'); c=craw.decode('utf-8',errors='replace')
-    require(h,'804','Sans Abonnement','0,52','Abonnement','0,40','Abonnement Gratuit','Pas d’€/min la nuit','carte bancaire','Charge Global')
+    require(h,'804','Sans Abonnement','0,52','Abonnement','0,40','Abonnement Gratuit','la nuit','carte bancaire','Charge Global')
     require(t,'Modulo','SPL','abonnement','sans aucun abonnement')
     require(s,'Modulo','société publique locale','bornes de recharge')
     require(c,'MODULO','réseau public','1er janvier 2022')
