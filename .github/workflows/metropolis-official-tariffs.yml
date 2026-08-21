@@ -62,10 +62,9 @@ jobs:
             git commit -m "diag(metropolis): publish extraction diagnostic [run ${GITHUB_RUN_ID}]"
             for attempt in 1 2 3; do
               git pull --rebase origin main
-              if git push origin HEAD:main; then exit 0; fi
+              if git push origin HEAD:main; then break; fi
               sleep $((attempt * 2))
             done
-            exit 1
           fi
 
       - name: Validate classification and tariffs
@@ -142,7 +141,41 @@ jobs:
           git commit -m "data(metropolis): publish official Grand Paris tariff rules [run ${GITHUB_RUN_ID}]"
           for attempt in 1 2 3; do
             git pull --rebase origin main
-            if git push origin HEAD:main; then exit 0; fi
+            if git push origin HEAD:main; then break; fi
             sleep $((attempt * 2))
           done
-          exit 1
+
+      - name: Publish run status for autonomous monitoring
+        if: always()
+        shell: bash
+        env:
+          JOB_STATUS: ${{ job.status }}
+          TARIFF_CHANGED: ${{ steps.publish.outputs.changed }}
+        run: |
+          set -euo pipefail
+          mkdir -p reports/metropolis
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          payload={
+            'dataset':'metropolis-run-status','operator':'Métropolis','region':'Ile-de-France',
+            'runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),
+            'tariffEvidenceChanged':os.environ.get('TARIFF_CHANGED','')=='1',
+            'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          }
+          Path('reports/metropolis/latest_run_status.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/metropolis/latest_run_status.json
+          if ! git diff --cached --quiet; then
+            git commit -m "status(metropolis): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
