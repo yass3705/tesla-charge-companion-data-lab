@@ -1,0 +1,112 @@
+name: Centre Modulo validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/modulo_official.py"
+      - ".github/workflows/modulo-centre-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: centre-modulo-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Install PDF reader
+        run: python -m pip install --disable-pip-version-check 'pypdf>=5,<6'
+      - name: Extract current official rules
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/modulo
+          python -m py_compile scripts/modulo_official.py
+          python scripts/modulo_official.py --out out/modulo 2> >(tee out/modulo/error.log >&2)
+      - name: Validate classification
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/modulo/modulo_official_centre.json').read_text())
+          assert p['dataset']=='modulo-official-centre'
+          assert p['classification']['directAdHoc'] is True
+          assert p['classification']['freeSubscription'] is True
+          assert p['classification']['publishedPricesAreFromValues'] is True
+          assert p['classification']['singleUniversalExactTariff'] is False
+          assert p['classification']['rankableWithoutLocalConfirmation'] is False
+          assert p['publishedCurrentEnvelope']['nonSubscriberFromEurPerKwh']==0.52
+          assert p['publishedCurrentEnvelope']['subscriberFromEurPerKwh']==0.40
+          assert p['publishedCurrentEnvelope']['subscriptionMonthlyFeeEur']==0.0
+          assert p['tccDecision']['defaultDisplay']=='reference_only'
+          assert p['sourceEvidence']['officialOnly'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/modulo
+          cp out/modulo/modulo_official_centre.json data/operator_direct/modulo_official_centre.json
+          cp out/modulo/SUMMARY.md reports/modulo/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/modulo_official_centre.json reports/modulo/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(modulo): publish official Centre pricing envelope [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/modulo
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/modulo/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/modulo/latest_diagnostic.json').write_text(json.dumps({'dataset':'modulo-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/modulo
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/modulo/latest_run_status.json').write_text(json.dumps({'dataset':'modulo-run-status','operator':'Modulo Energies','region':'Centre-Val de Loire','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/modulo/latest_run_status.json reports/modulo/latest_diagnostic.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "status(modulo): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
