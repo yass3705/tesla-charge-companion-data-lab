@@ -1,0 +1,152 @@
+name: Auvergne-Rhone-Alpes regional coverage
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/auvergne_rhone_alpes_regional_coverage.py"
+      - ".github/workflows/auvergne-rhone-alpes-regional-coverage.yml"
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: auvergne-rhone-alpes-regional-coverage
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Best-effort cleanup old Nouvelle-Aquitaine failed runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          for id in 32522524973 32523527607 32524173321; do
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/${id}" >/dev/null 2>&1 || true
+          done
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Install PDF reader
+        run: python -m pip install --disable-pip-version-check 'pypdf>=5,<6'
+      - name: Extract and consolidate current evidence
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/auvergne_rhone_alpes
+          python -m py_compile scripts/auvergne_rhone_alpes_regional_coverage.py
+          python scripts/auvergne_rhone_alpes_regional_coverage.py --out out/auvergne_rhone_alpes 2> >(tee out/auvergne_rhone_alpes/error.log >&2)
+      - name: Validate tariff models and coverage
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('out/auvergne_rhone_alpes')
+          e=json.loads((root/'eborn_official_auvergne_rhone_alpes.json').read_text())
+          assert len(e['departmentsInRegion'])==8
+          assert e['directTariffs']['acceleratedLe25Kw']['nonSubscriberEurPerKwh']==0.433
+          assert e['directTariffs']['ultraRapidGt60Kw']['nonSubscriberEurPerKwh']==0.650
+          assert e['postChargeRules']['graceMinutesAfterChargeEnd']==30
+          l=json.loads((root/'grand_lyon_izivia_official_auvergne_rhone_alpes.json').read_text())
+          assert l['networkSnapshot']['chargePlaces']==769
+          assert l['tariffs']['day']['le24KwEurPerHour']==[6.0,5.0,4.0]
+          assert l['tariffs']['night']['slowExtraEurPerKwhAfter20']==0.38
+          c=json.loads((root/'chargezy_te63_official_auvergne_rhone_alpes.json').read_text())
+          assert c['subscriptionAnnualEur']==25.0
+          assert c['subscriber']['rapidLe50']['energyEurPerKwh']==0.64
+          assert c['nonSubscriber']['rapidLe50']['energyEurPerKwh']==0.69
+          a=json.loads((root/'siea_ain_freshmile_official_auvergne_rhone_alpes.json').read_text())
+          assert a['tccDecision']['doNotApplyVonnasAsDepartmentDefault'] is True
+          assert a['adoptedMunicipalExample']['gt40Kw']['energyEurPerKwh']==0.45
+          s=json.loads((root/'syder_qovoltis_official_auvergne_rhone_alpes.json').read_text())
+          assert s['directTariffs']['le50AcDc']['syderQovoltisCardEurPerKwh']==0.25
+          assert s['directTariffs']['gt50AcDc']['otherUserEurPerKwh']==0.50
+          assert s['rfidCardPurchaseEur']==7.20
+          au=json.loads((root/'aurillac_agglo_etotem_official_auvergne_rhone_alpes.json').read_text())
+          assert au['sites']['parkingRelais']['energyEurPerKwh']==0.20
+          assert au['sites']['parkingGare']['energyEurPerKwhByPower']['22-25']==0.45
+          sd=json.loads((root/'sdec15_cantal_official_auvergne_rhone_alpes.json').read_text())
+          assert sd['tccDecision']['directTariffClassable'] is False
+          p=json.loads((root/'auvergne_rhone_alpes_regional_coverage.json').read_text())
+          assert p['departmentsTotal']==12
+          assert p['coverage']['departmentsAccountedFor']==12
+          assert p['coverage']['regionalPublicNetworkResearchCoverageComplete'] is True
+          assert p['coverage']['ebornDepartmentsInRegion']==8
+          assert p['coverage']['allIdentifiedLiveTariffsResolved'] is False
+          assert p['tccDecision']['doNotInventDepartmentDefaults'] is True
+          assert p['tccDecision']['roamingSeparate'] is True
+          assert p['sourceHealth']['officialSourcesReachableAtRun'] >= 7
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct data/regional_coverage reports/auvergne_rhone_alpes
+          for f in eborn_official_auvergne_rhone_alpes.json grand_lyon_izivia_official_auvergne_rhone_alpes.json chargezy_te63_official_auvergne_rhone_alpes.json siea_ain_freshmile_official_auvergne_rhone_alpes.json syder_qovoltis_official_auvergne_rhone_alpes.json aurillac_agglo_etotem_official_auvergne_rhone_alpes.json sdec15_cantal_official_auvergne_rhone_alpes.json; do
+            cp "out/auvergne_rhone_alpes/$f" "data/operator_direct/$f"
+          done
+          cp out/auvergne_rhone_alpes/auvergne_rhone_alpes_regional_coverage.json data/regional_coverage/
+          cp out/auvergne_rhone_alpes/SUMMARY.md reports/auvergne_rhone_alpes/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/*_auvergne_rhone_alpes.json data/regional_coverage/auvergne_rhone_alpes_regional_coverage.json reports/auvergne_rhone_alpes/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(auvergne-rhone-alpes): publish validated regional public-network evidence [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/auvergne_rhone_alpes
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/auvergne_rhone_alpes/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/auvergne_rhone_alpes/latest_diagnostic.json').write_text(json.dumps({'dataset':'auvergne-rhone-alpes-regional-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-60:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/auvergne_rhone_alpes
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/auvergne_rhone_alpes/latest_run_status.json').write_text(json.dumps({'dataset':'auvergne-rhone-alpes-regional-run-status','region':'Auvergne-Rhône-Alpes','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/auvergne_rhone_alpes/latest_run_status.json
+          if [ "${JOB_STATUS}" = "success" ] && git ls-files --error-unmatch reports/auvergne_rhone_alpes/latest_diagnostic.json >/dev/null 2>&1; then
+            git rm -f reports/auvergne_rhone_alpes/latest_diagnostic.json
+          elif [ -f reports/auvergne_rhone_alpes/latest_diagnostic.json ]; then
+            git add reports/auvergne_rhone_alpes/latest_diagnostic.json
+          fi
+          if ! git diff --cached --quiet; then
+            git commit -m "status(auvergne-rhone-alpes): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
