@@ -1,0 +1,142 @@
+name: Bretagne regional coverage
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/bretagne_regional_coverage.py"
+      - ".github/workflows/bretagne-regional-coverage.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bretagne-regional-coverage
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Extract and consolidate current evidence
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/bretagne
+          python -m py_compile scripts/bretagne_regional_coverage.py
+          python scripts/bretagne_regional_coverage.py --out out/bretagne 2> >(tee out/bretagne/error.log >&2)
+      - name: Validate tariff models and regional coverage
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('out/bretagne')
+          o=json.loads((root/'ouestcharge_bretagne_official.json').read_text())
+          assert o['departments']["Côtes-d'Armor"]['directTariffClassable'] is False
+          assert o['departments']["Côtes-d'Armor"]['pricingRuleStatus']=='first_party_source_conflict'
+          assert o['departments']['Finistère']['tariffs']['normal']['energyEurPerKwh']==0.40
+          assert o['departments']['Finistère']['tariffs']['rapid']['energyEurPerKwh']==0.55
+          assert o['departments']['Ille-et-Vilaine']['tariffs']['normal']['energyEurPerKwh']==0.40
+          assert o['departments']['Ille-et-Vilaine']['tariffs']['rapid']['energyEurPerKwh']==0.55
+          assert o['tccDecision']['cotesArmorDirectClassable'] is False
+          m=json.loads((root/'morbihan_energies_official_bretagne.json').read_text())
+          assert m['subscription']['annualFeeEur']==20.0
+          assert m['directTariffs']['normal']['energyEurPerKwh']==0.40
+          assert m['directTariffs']['normal']['nonSubscriberConnectedTimeEurPerMin']==0.025
+          assert m['directTariffs']['rapid']['energyEurPerKwh']==0.55
+          assert m['directTariffs']['rapid']['nonSubscriberConnectedTimeEurPerMin']==0.10
+          assert m['directTariffs']['normal']['longConnectionThresholdMinutes']==480
+          assert m['directTariffs']['rapid']['longConnectionThresholdMinutes']==240
+          r=json.loads((root/'rennes_cpark_official_bretagne.json').read_text())
+          assert r['cPark']['connectionFeeEur']==1.0
+          assert r['cPark']['energyEurPerKwh']==0.40
+          assert r['cPark']['parkingCostSeparate'] is True
+          assert r['parkAndRide']['chargingFree'] is True
+          b=json.loads((root/'brest_easycharge_transition_bretagne.json').read_text())
+          assert b['rollout']['chargePointsTotal']==72
+          assert b['tccDecision']['directEnergyTariffClassable'] is False
+          p=json.loads((root/'bretagne_regional_coverage.json').read_text())
+          assert p['region']=='Bretagne'
+          assert p['departmentsTotal']==4
+          assert p['coverage']['departmentsAccountedFor']==4
+          assert p['coverage']['regionalPublicNetworkResearchCoverageComplete'] is True
+          assert p['coverage']['identifiedEstablishedPublicNetworkFamiliesAccountedFor'] is True
+          assert p['coverage']['singleUniversalRegionalTariff'] is False
+          assert p['coverage']['allIdentifiedLiveTariffsResolved'] is False
+          assert p['tccDecision']['doNotInventDepartmentDefaults'] is True
+          assert p['tccDecision']['roamingSeparate'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct data/regional_coverage reports/bretagne
+          cp out/bretagne/ouestcharge_bretagne_official.json data/operator_direct/
+          cp out/bretagne/morbihan_energies_official_bretagne.json data/operator_direct/
+          cp out/bretagne/rennes_cpark_official_bretagne.json data/operator_direct/
+          cp out/bretagne/brest_easycharge_transition_bretagne.json data/operator_direct/
+          cp out/bretagne/bretagne_regional_coverage.json data/regional_coverage/
+          cp out/bretagne/SUMMARY.md reports/bretagne/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/ouestcharge_bretagne_official.json data/operator_direct/morbihan_energies_official_bretagne.json data/operator_direct/rennes_cpark_official_bretagne.json data/operator_direct/brest_easycharge_transition_bretagne.json data/regional_coverage/bretagne_regional_coverage.json reports/bretagne/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(bretagne): publish validated regional public-network evidence [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/bretagne
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/bretagne/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/bretagne/latest_diagnostic.json').write_text(json.dumps({'dataset':'bretagne-regional-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-50:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/bretagne
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/bretagne/latest_run_status.json').write_text(json.dumps({'dataset':'bretagne-regional-run-status','region':'Bretagne','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/bretagne/latest_run_status.json
+          if [ "${JOB_STATUS}" = "success" ] && git ls-files --error-unmatch reports/bretagne/latest_diagnostic.json >/dev/null 2>&1; then
+            git rm -f reports/bretagne/latest_diagnostic.json
+          elif [ -f reports/bretagne/latest_diagnostic.json ]; then
+            git add reports/bretagne/latest_diagnostic.json
+          fi
+          if ! git diff --cached --quiet; then
+            git commit -m "status(bretagne): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
