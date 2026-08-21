@@ -1,0 +1,45 @@
+name: Morocco EVGO cluster literal deep probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/morocco_evgo_cluster_literal_deep.py'
+      - '.github/workflows/morocco-evgo-cluster-literal-deep.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-evgo-cluster-literal-deep
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run sanitized static probe
+        run: python3 scripts/morocco_evgo_cluster_literal_deep.py
+      - name: Publish safe report
+        shell: bash
+        run: |
+          set -euo pipefail
+          src='artifacts/morocco-evgo-cluster-literal-deep/summary.json'
+          dst='reports/morocco/evgo/latest-cluster-literal-deep.json'
+          test -f "$src"
+          mkdir -p "$(dirname "$dst")"
+          cp "$src" "$dst"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$dst"
+          if git diff --cached --quiet; then
+            echo 'No report change.'
+            exit 0
+          fi
+          git commit -m "data(morocco): update deep EVGO cluster literals [run $GITHUB_RUN_ID]"
+          git pull --rebase origin "$GITHUB_REF_NAME"
+          git push origin "HEAD:$GITHUB_REF_NAME"
