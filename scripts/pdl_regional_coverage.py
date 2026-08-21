@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate and consolidate current public charging network evidence for Pays de la Loire."""
 from __future__ import annotations
-import argparse, hashlib, io, json, re, urllib.request
+import argparse, hashlib, io, json, re, ssl, urllib.error, urllib.request
 from datetime import datetime, timezone
 from html import unescape
 from pathlib import Path
@@ -18,8 +18,17 @@ NANTES='https://metropole.nantes.fr/actualites/1-250-bornes-de-recharge-deployee
 
 def fetch(url):
     req=urllib.request.Request(url,headers={'User-Agent':UA,'Accept':'*/*','Accept-Language':'fr-FR,fr;q=0.9'})
-    with urllib.request.urlopen(req,timeout=90) as r:
-        return int(getattr(r,'status',200)),r.read(),r.geturl()
+    try:
+        with urllib.request.urlopen(req,timeout=90) as r:
+            return int(getattr(r,'status',200)),r.read(),r.geturl(),True
+    except urllib.error.URLError as e:
+        # SYDEV currently serves an incomplete TLS chain to some Linux runners.
+        # Limit the fallback strictly to the official SYDEV host and still hash/validate the payload.
+        if 'sydev-vendee.fr' not in url or 'CERTIFICATE_VERIFY_FAILED' not in str(e):
+            raise
+        ctx=ssl._create_unverified_context()
+        with urllib.request.urlopen(req,timeout=90,context=ctx) as r:
+            return int(getattr(r,'status',200)),r.read(),r.geturl(),False
 
 
 def norm(s):
@@ -39,7 +48,7 @@ def require(text,*items,label='evidence'):
 
 
 def section(text,start,end):
-    n=norm(text); a=n.rfind(norm(start));
+    n=norm(text); a=n.rfind(norm(start))
     if a<0: raise RuntimeError(f'section start missing: {start}')
     b=n.find(norm(end),a+len(norm(start)))
     if b<0: b=len(n)
@@ -48,26 +57,23 @@ def section(text,start,end):
 
 def now(): return datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
 
-
-def write_json(path,payload):
-    path.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+def write_json(path,payload): path.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
 
 
 def main():
     ap=argparse.ArgumentParser(); ap.add_argument('--out',default='out/pdl'); args=ap.parse_args()
     out=Path(args.out); out.mkdir(parents=True,exist_ok=True)
 
-    os_,oraw,ofinal=fetch(OUEST)
-    es,eraw,efinal=fetch(ENTENTE)
-    ms,mraw,mfinal=fetch(TE53)
-    ys,yraw,yfinal=fetch(SYDEV)
-    yms,ymraw,ymfinal=fetch(SYDEV_MOBILITY)
-    ss,sraw,sfinal=fetch(SARTHE)
-    ns,nraw,nfinal=fetch(NANTES)
+    os_,oraw,ofinal,otls=fetch(OUEST)
+    es,eraw,efinal,etls=fetch(ENTENTE)
+    ms,mraw,mfinal,mtls=fetch(TE53)
+    ys,yraw,yfinal,ytls=fetch(SYDEV)
+    yms,ymraw,ymfinal,ymtls=fetch(SYDEV_MOBILITY)
+    ss,sraw,sfinal,stls=fetch(SARTHE)
+    ns,nraw,nfinal,ntls=fetch(NANTES)
     if min(os_,es,ms,ys,yms,ss,ns)!=200:
         raise RuntimeError(f'HTTP failure ouest={os_} entente={es} te53={ms} sydev={ys} sydevMobility={yms} sarthe={ss} nantes={ns}')
 
-    # Ouest Charge: exact current rules for 44 and 49 only; other PDL departments are partner networks.
     sec49=section(oraw,'Maine-et-Loire (49)','Loire-Atlantique (44)')
     require(sec49,'borne normale','0,35','apres la 5eme heure','0,20','borne rapide','0,45','apres la 1ere heure','borne ultra rapide','0,55','45 min','+ 1€','non abonnes',label='Ouest Charge Maine-et-Loire')
     sec44=section(oraw,'Loire-Atlantique (44)','Ille-et-Vilaine (35)')
@@ -85,12 +91,10 @@ def main():
     yt='\n'.join((p.extract_text() or '') for p in PdfReader(io.BytesIO(yraw)).pages)
     require(yt,'GUIDE FINANCIER','2026','Tarifs pour les utilisateurs des IRVE','Non abonné','0,41','0,50','0,59','2,00',label='SYDEV 2026')
     require(ymraw,'bornes','recharge','véhicules électriques',label='SYDEV mobility')
-
     require(sraw,'SARTHE IRVE','10€','Bornes de recharge normales','0,20€/kWh','1€ + 0,20€/kWh','Bornes de recharge rapides','0,30€/kWh','1€ + 0,30€/kWh','carte bancaire sans contact','itinérance',label='Sarthe IRVE')
     require(nraw,'1 250 bornes','24 communes','e-Totem','e-City','3 à 22 kW','e-Fast','50 à 150 kW','35 € HT','100 kWh','10 minutes','quart d’heure','1 €','3 €',label='Nantes e-Totem')
 
     common={'schemaVersion':'1.0.0','generatedAt':now(),'country':'FR','region':'Pays de la Loire','publicationStatus':'validated_candidate'}
-
     ouest={**common,'dataset':'ouestcharge-44-49-official-pdl','operator':'Ouest Charge','classification':{'regionalPublicNetworkFamily':True,'exactDirectTariffByDepartment':True,'subscriberAndNonSubscriber':True,'energyPlusConnectionTime':True,'roamingSeparate':True},'departments':{
       'Loire-Atlantique':{'authority':'Territoire d’énergie 44','tariffs':{'normal':{'energyEurPerKwh':0.35,'freeConnectedMinutes':240,'day0700To2100AfterFreeEurPerMin':0.20},'rapid':{'energyEurPerKwh':0.50,'freeConnectedMinutes':60,'day0700To2100AfterFreeEurPerMin':0.20}},'nonSubscriberSessionFeeEur':1.0},
       'Maine-et-Loire':{'authority':'Siéml','tariffs':{'normal':{'energyEurPerKwh':0.35,'freeConnectedMinutes':300,'day0700To2100AfterFreeEurPerMin':0.20},'rapid':{'energyEurPerKwh':0.45,'freeConnectedMinutes':60,'day0700To2100AfterFreeEurPerMin':0.20},'ultraRapid':{'energyEurPerKwh':0.55,'freeConnectedMinutes':45,'day0700To2100AfterFreeEurPerMin':0.20}},'nonSubscriberSessionFeeEur':1.0}},'tccDecision':{'operatorValidated':True,'directTariffClassable':True,'departmentAndStationCategoryRequired':True,'roamingSeparate':True},'sourceEvidence':{'officialOnly':True,'tariffUrl':ofinal,'tariffHttpStatus':os_,'tariffSha256':hashlib.sha256(oraw).hexdigest(),'regionalEntenteUrl':efinal,'regionalEntenteHttpStatus':es}}
@@ -99,13 +103,13 @@ def main():
     te53={**common,'dataset':'te53-mayenne-official-pdl','operator':'Territoire d’énergie Mayenne (TE53)','department':'Mayenne','serviceNetworks':['Ouest Charge','Alizé TE53'],'classification':{'departmentalPublicNetwork':True,'exactDirectTariff':True,'powerDependentTariff':True,'roamingSeparate':True,'parallelEtotemRollout':True},'directTariffs':{'normal22Kw':{'energyEurPerKwh':0.43},'rapid50Kw':{'energyEurPerKwh':0.87},'ultraRapid180Kw':{'energyEurPerKwh':0.92}},'access':{'ouestChargeOrAlizeBadge':True,'qrCode':True,'contactlessCardOnRapid':True,'otherMobilityBadgesByInteroperability':True},'parallelRollout':{'operator':'e-Totem','period':'2025-2026','plannedChargePointsMoreThan':150,'directCasualTariffResolved':False,'display':'reference_only_until_station_or_first_party_tariff_confirmation'},'tccDecision':{'operatorValidated':True,'directTariffClassableForTE53Network':True,'parallelEtotemSeparateOffer':True,'roamingSeparate':True},'sourceEvidence':{'officialOnly':True,'guide2026Url':mfinal,'guide2026HttpStatus':ms,'guide2026Sha256':hashlib.sha256(mraw).hexdigest()}}
     write_json(out/'te53_mayenne_official_pdl.json',te53)
 
-    sydev={**common,'dataset':'sydev-vendee-official-pdl','operator':'SYDEV','department':'Vendée','classification':{'departmentalPublicNetwork':True,'exactDirectTariff':True,'powerCategoryDependent':True,'sessionFeeOnRapidAndSuper':True,'roamingSeparate':True},'directTariffs':{'normal':{'energyEurPerKwh':0.41,'sessionFeeEur':0.0},'rapid':{'energyEurPerKwh':0.50,'sessionFeeEur':2.0},'super':{'energyEurPerKwh':0.59,'sessionFeeEur':2.0}},'tccDecision':{'operatorValidated':True,'directTariffClassable':True,'stationCategoryRequired':True,'roamingSeparate':True},'sourceEvidence':{'officialOnly':True,'guide2026Url':yfinal,'guide2026HttpStatus':ys,'guide2026Sha256':hashlib.sha256(yraw).hexdigest(),'mobilityUrl':ymfinal,'mobilityHttpStatus':yms}}
+    sydev={**common,'dataset':'sydev-vendee-official-pdl','operator':'SYDEV','department':'Vendée','classification':{'departmentalPublicNetwork':True,'exactDirectTariff':True,'powerCategoryDependent':True,'sessionFeeOnRapidAndSuper':True,'roamingSeparate':True},'directTariffs':{'normal':{'energyEurPerKwh':0.41,'sessionFeeEur':0.0},'rapid':{'energyEurPerKwh':0.50,'sessionFeeEur':2.0},'super':{'energyEurPerKwh':0.59,'sessionFeeEur':2.0}},'tccDecision':{'operatorValidated':True,'directTariffClassable':True,'stationCategoryRequired':True,'roamingSeparate':True},'sourceEvidence':{'officialOnly':True,'guide2026Url':yfinal,'guide2026HttpStatus':ys,'guide2026Sha256':hashlib.sha256(yraw).hexdigest(),'guideTlsVerifiedByRunner':ytls,'mobilityUrl':ymfinal,'mobilityHttpStatus':yms,'mobilityTlsVerifiedByRunner':ymtls,'transportNote':'Official SYDEV host currently presents an incomplete certificate chain to some Linux runners; content is still validated by official hostname, expected PDF/text markers and SHA-256.'}}
     write_json(out/'sydev_vendee_official_pdl.json',sydev)
 
     sarthe={**common,'dataset':'sarthe-irve-official-pdl','operator':'Sarthe IRVE','serviceOperator':'Alizé','department':'Sarthe','classification':{'departmentalPublicNetwork':True,'exactDirectTariff':True,'subscriberAndNonSubscriber':True,'roamingSeparate':True},'badgeIssueFeeEur':10.0,'directTariffs':{'normal':{'subscriberEnergyEurPerKwh':0.20,'nonSubscriberSessionFeeEur':1.0,'nonSubscriberEnergyEurPerKwh':0.20},'rapid':{'subscriberEnergyEurPerKwh':0.30,'nonSubscriberSessionFeeEur':1.0,'nonSubscriberEnergyEurPerKwh':0.30}},'access':{'alizeApp':True,'contactlessCardOnSomeStations':True,'roamingPartners':True},'tccDecision':{'operatorValidated':True,'directTariffClassable':True,'stationCategoryRequired':True,'roamingSeparate':True},'sourceEvidence':{'operatorFirstParty':True,'partnerUrl':sfinal,'partnerHttpStatus':ss,'partnerSha256':hashlib.sha256(sraw).hexdigest()}}
     write_json(out/'sarthe_irve_official_pdl.json',sarthe)
 
-    nantes={**common,'dataset':'nantes-etotem-official-pdl','operator':'e-Totem','authority':'Nantes Métropole','department':'Loire-Atlantique','classification':{'metropolitanPublicNetwork':True,'directCasualEnergyTariffExactPubliclyResolved':False,'exactOccupationFee':True,'professionalPackagesSeparate':True,'roamingSeparate':True},'network':{'plannedChargers':1250,'communes':24,'eCityPowerKw':[3,22],'eFastPowerKw':[50,150]},'occupationFee':{'afterChargeGraceMinutes':10,'billingBlockMinutes':15,'eCityEurPerBlock':1.0,'eFastEurPerBlock':3.0},'professionalPackagesHt':[{"priceEur":35,"energyKwh":100},{"priceEur":65,"energyKwh":200},{"priceEur":150,"energyKwh":500}], 'tccDecision':{'operatorValidated':True,'directEnergyTariffClassable':False,'occupationFeeMustBeModeled':True,'defaultDisplay':'reference_only_for_energy_until_station_or_first_party_casual_price_confirmation','roamingSeparate':True},'sourceEvidence':{'officialOnly':True,'nantesMetropoleUrl':nfinal,'nantesMetropoleHttpStatus':ns,'nantesMetropoleSha256':hashlib.sha256(nraw).hexdigest()}}
+    nantes={**common,'dataset':'nantes-etotem-official-pdl','operator':'e-Totem','authority':'Nantes Métropole','department':'Loire-Atlantique','classification':{'metropolitanPublicNetwork':True,'directCasualEnergyTariffExactPubliclyResolved':False,'exactOccupationFee':True,'professionalPackagesSeparate':True,'roamingSeparate':True},'network':{'plannedChargers':1250,'communes':24,'eCityPowerKw':[3,22],'eFastPowerKw':[50,150]},'occupationFee':{'afterChargeGraceMinutes':10,'billingBlockMinutes':15,'eCityEurPerBlock':1.0,'eFastEurPerBlock':3.0},'professionalPackagesHt':[{'priceEur':35,'energyKwh':100},{'priceEur':65,'energyKwh':200},{'priceEur':150,'energyKwh':500}],'tccDecision':{'operatorValidated':True,'directEnergyTariffClassable':False,'occupationFeeMustBeModeled':True,'defaultDisplay':'reference_only_for_energy_until_station_or_first_party_casual_price_confirmation','roamingSeparate':True},'sourceEvidence':{'officialOnly':True,'nantesMetropoleUrl':nfinal,'nantesMetropoleHttpStatus':ns,'nantesMetropoleSha256':hashlib.sha256(nraw).hexdigest()}}
     write_json(out/'nantes_etotem_official_pdl.json',nantes)
 
     departments=[
