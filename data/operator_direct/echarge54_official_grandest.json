@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "echarge54-official-grandest",
+  "generatedAt": "2026-08-21T16:22:00.548409Z",
+  "operator": "eCharge54 - SDE54",
+  "serviceOperator": "Citeos / Electromaps",
+  "country": "FR",
+  "region": "Grand Est",
+  "department": "Meurthe-et-Moselle",
+  "classification": {
+    "departmentalPublicNetwork": true,
+    "directPublishedTariffs": true,
+    "multipleLocalTariffGroups": true,
+    "energyBased": true,
+    "timeBased": true,
+    "mixedEnergyTimeTariff": true,
+    "roamingMayAddFees": true,
+    "stationScopeRequired": true
+  },
+  "network": {
+    "publishedStationsAtLeast": 120,
+    "territory": "Meurthe-et-Moselle",
+    "sdirveValidatedByAuthority": true
+  },
+  "operatorDirect": {
+    "cd54": {
+      "scopeLabel": "CD54",
+      "normalAcUpTo22Kw": {
+        "eurPerKwh": 0.2
+      },
+      "highPowerDcAbove25Kw": {
+        "eurPerKwh": 0.4
+      },
+      "sameBasePriceSubscriberAdHocRoaming": true
+    },
+    "groupTime30Min": {
+      "publishedScopes": [
+        "CCCPH",
+        "CCMM",
+        "CCPCST",
+        "Heillecourt",
+        "Ville de Nancy",
+        "T2L"
+      ],
+      "normalAcUpTo22Kw": {
+        "eurPer30Minutes": 0.5,
+        "blockMinutes": 30
+      },
+      "publishedCapHours": 4.0
+    },
+    "groupMixed": {
+      "publishedScopes": [
+        "Blénod-lès-Pont-à-Mousson",
+        "CCBP",
+        "CCPS",
+        "CCTLB",
+        "CCTT",
+        "Dieulouard",
+        "PETR",
+        "SDE54"
+      ],
+      "normalAcUpTo22Kw": {
+        "eurPerKwh": 0.4,
+        "idleAfterConnectionMinutes": 240,
+        "idleEurPerStartedMinute": 0.07,
+        "idleActiveLocalTime": {
+          "start": "08:00",
+          "end": "20:00"
+        }
+      }
+    }
+  },
+  "roaming": {
+    "baseNetworkTariffPublishedSame": true,
+    "emspServiceFeesMayBeAdded": true
+  },
+  "tccDecision": {
+    "operatorValidated": true,
+    "directTariffClassable": true,
+    "requiresStationTariffGroupMapping": true,
+    "thirtyMinuteBlocksMustBeModeled": true,
+    "startedMinuteIdleMustBeModeled": true,
+    "roamingSeparate": true,
+    "stationTestsDeferred": true,
+    "note": "Do not apply one universal eCharge54 tariff. Select the published local tariff group for the station, preserve 30-minute blocks and the 0.07 EUR started-minute idle rule where applicable, and keep eMSP surcharges separate."
+  },
+  "sourceEvidence": {
+    "serviceTariffUrl": "https://www.electromaps.com/fr/partenaires/citeos/meurthe-et-moselle",
+    "serviceTariffHttpStatus": 200,
+    "serviceTariffSha256": "30a8f0edf447d76ce2fd63f49d80c4958667a85f16e165d27d5e266341938b64",
+    "sde54AuthorityUrl": "https://www.sde54.fr/fr/irve-bornes-de-recharge.html",
+    "sde54AuthorityHttpStatus": 200,
+    "sde54AuthoritySha256": "560f8fb1d95d0f64b9d646584aaf14d7ad1f7471892b684f1ae1d67ef3980543",
+    "dataGouvOperatorDatasetUrl": "https://www.data.gouv.fr/datasets/sde54-1",
+    "dataGouvOperatorDatasetHttpStatus": 200,
+    "dataGouvOperatorDatasetSha256": "c36970c675cb365356754a84a41e5614524b1a4a21ec7c5be6313c528e047ace",
+    "sourceModel": "public-authority + operator-published service tariff + operator data.gouv dataset",
+    "relevantTariffFingerprintSha256": "883ee52fc09759cb9b4f3682018ef711f8770397716305ee5f7e7b5333b5c448"
+  },
+  "publicationStatus": "validated_candidate"
+}
