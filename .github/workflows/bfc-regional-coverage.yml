@@ -1,0 +1,107 @@
+name: BFC regional coverage
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/bfc_regional_coverage.py"
+      - ".github/workflows/bfc-regional-coverage.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bfc-regional-coverage
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Consolidate current evidence
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/bfc
+          python -m py_compile scripts/bfc_regional_coverage.py
+          python scripts/bfc_regional_coverage.py --out out/bfc 2> >(tee out/bfc/error.log >&2)
+      - name: Validate coverage
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/bfc/bfc_regional_coverage.json').read_text())
+          assert p['region']=='Bourgogne-Franche-Comté'
+          assert p['departmentsTotal']==8
+          assert p['coverage']['departmentsAccountedFor']==8
+          assert p['coverage']['exactRuleCount']==6
+          assert p['coverage']['referenceOnlyCount']==2
+          assert p['coverage']['regionalResearchCoverageComplete'] is True
+          assert p['coverage']['allDepartmentsRankable'] is False
+          PY
+      - name: Publish validated coverage
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/regional_coverage reports/bfc
+          cp out/bfc/bfc_regional_coverage.json data/regional_coverage/bfc_regional_coverage.json
+          cp out/bfc/SUMMARY.md reports/bfc/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/regional_coverage/bfc_regional_coverage.json reports/bfc/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(bfc): publish regional operator coverage [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/bfc
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/bfc/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/bfc/latest_diagnostic.json').write_text(json.dumps({'dataset':'bfc-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/bfc
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/bfc/latest_run_status.json').write_text(json.dumps({'dataset':'bfc-run-status','region':'Bourgogne-Franche-Comté','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/bfc/latest_run_status.json
+          if [ -f reports/bfc/latest_diagnostic.json ]; then git add reports/bfc/latest_diagnostic.json; fi
+          if ! git diff --cached --quiet; then
+            git commit -m "status(bfc): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
