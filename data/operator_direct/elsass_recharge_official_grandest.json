@@ -1,0 +1,162 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "elsass-recharge-official-grandest",
+  "generatedAt": "2026-08-21T14:47:59.070905Z",
+  "operator": "Elsass Recharge",
+  "serviceOperators": [
+    "ENGIE Vianeo",
+    "Freshmile"
+  ],
+  "country": "FR",
+  "region": "Grand Est",
+  "department": "Bas-Rhin",
+  "territory": "Eurométropole de Strasbourg",
+  "classification": {
+    "localPublicNetwork": true,
+    "directPublishedTariff": true,
+    "energyAndTimeBased": true,
+    "powerDependent": true,
+    "dayNightDependent": true,
+    "appDiscount": true,
+    "highPowerTimeSurcharge": true,
+    "roamingMayDiffer": true
+  },
+  "network": {
+    "publishedPowerClassesKw": [
+      22,
+      24,
+      50,
+      150
+    ],
+    "territoryCommunes": 33,
+    "publicProjectTargetStations": 255,
+    "projectTargetSourceValidatedThisRun": true
+  },
+  "operatorDirect": {
+    "publicTariff": {
+      "upTo22Kw": {
+        "powerKwMax": 22,
+        "energyEurPerKwh": 0.34,
+        "day": {
+          "window": "08:00-20:00",
+          "eurPerMinuteConnected": 0.03
+        },
+        "night": {
+          "window": "20:00-08:00",
+          "eurPerMinuteConnected": 0.0
+        }
+      },
+      "dc24Kw": {
+        "powerKw": 24,
+        "energyEurPerKwh": 0.39,
+        "day": {
+          "eurPerMinuteConnected": 0.03
+        },
+        "night": {
+          "eurPerMinuteConnected": 0.03
+        }
+      },
+      "dc50Kw": {
+        "powerKw": 50,
+        "energyEurPerKwh": 0.49,
+        "time": {
+          "eurPerMinuteFirst60": 0.05,
+          "eurPerMinuteAfter60": 0.3
+        }
+      },
+      "dc150Kw": {
+        "powerKw": 150,
+        "energyEurPerKwh": 0.51,
+        "time": {
+          "eurPerMinuteFirst60": 0.05,
+          "eurPerMinuteAfter60": 0.3
+        }
+      }
+    },
+    "engieVianeoApp": {
+      "discountVsPublicEnergyPercent": 10,
+      "upTo22Kw": {
+        "energyEurPerKwh": 0.306
+      },
+      "dc24Kw": {
+        "energyEurPerKwh": 0.351
+      },
+      "dc50Kw": {
+        "energyEurPerKwh": 0.441
+      },
+      "dc150Kw": {
+        "energyEurPerKwh": 0.459
+      },
+      "timeComponentsSameAsPublic": true
+    },
+    "freshmileGuestCbSupported": true,
+    "freshmilePassSupported": true,
+    "otherMobilityOperatorsSupported": true
+  },
+  "subscription": {
+    "historicalOfficialFreshmileMonthlyEur": null,
+    "historicalPreferentialTariffs": false,
+    "currentlyListedOnProductionFreshmileShop": false,
+    "currentExactMemberTariffValidated": false,
+    "rankableAsSeparateOffer": false,
+    "note": "An older official Freshmile page describes an 8 EUR/month Elsass subscription, but the current exact member tariff and current purchaseability are not proven by the tariff page. Keep the member offer out of ranking until reconfirmed."
+  },
+  "parkingAndOccupancy": {
+    "separateParkingFeeValidated": false,
+    "connectionTimeFeeIsTariffComponent": true,
+    "upTo22KwNoNightConnectionTimeFee": true,
+    "dc50And150TimeRateIncreasesAfter60Min": true,
+    "note": "Model the published connection-time component separately from municipal parking. The official FAQ also states non-connected vehicles may be ticketed."
+  },
+  "tccDecision": {
+    "operatorValidated": true,
+    "publicTariffClassable": true,
+    "engieVianeoAppTariffClassable": true,
+    "subscriptionTariffClassable": false,
+    "roamingSeparate": true,
+    "timeFeeMustBeModeled": true,
+    "note": "Use the current Elsass public tariff and ENGIE Vianeo app -10% energy tariff as separate rankable variants. Keep member and roaming prices separate until current exact pricing is proven."
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "coreSourcesValidated": [
+      "home",
+      "tariffs",
+      "faq"
+    ],
+    "sources": {
+      "home": {
+        "url": "https://www.elsass-recharge.com/",
+        "httpStatus": 200,
+        "sha256": "3d5209d441e1c136fcdd2c602531f62402f5e5b111146a803c43a4f2775909b3"
+      },
+      "tariffs": {
+        "url": "https://www.elsass-recharge.com/tarifs/",
+        "httpStatus": 200,
+        "sha256": "8afd69e416cd90577563c43d1b95618d47273230c73db2d836a338e8eac261d4"
+      },
+      "faq": {
+        "url": "https://www.elsass-recharge.com/faq/",
+        "httpStatus": 200,
+        "sha256": "af4c1f3983f430c71047b79d16a7f3b4eeeb8e9a398d35dd72a73e32229414ff"
+      },
+      "strasbourg": {
+        "url": "https://www.strasbourg.eu/bornes-de-recharges-vehicules-electriques-hybrides",
+        "httpStatus": 200,
+        "sha256": "3599504e8adcbad2ffd5cd19fed7e4fea872797860356473a747bc587021babb"
+      },
+      "freshmileShop": {
+        "url": "https://charge.freshmile.com/shop",
+        "httpStatus": 200,
+        "sha256": "46297f8758b25f641aa7a5e7e681c216997a7722f56d060e0638561e163783f4"
+      },
+      "freshmileArticle": {
+        "url": "https://www.freshmile.com/actualites/decouvrez-le-reseau-de-bornes-elsass-recharge/",
+        "httpStatus": 404,
+        "sha256": null
+      }
+    },
+    "relevantTariffFingerprintSha256": "87d34d0bd46c9a7e3fe6f6f9dbfe29557c120b08c9108b2b48be96d7bcc31a79"
+  },
+  "publicationStatus": "validated_candidate"
+}
