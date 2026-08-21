@@ -1,0 +1,3 @@
+# Pays de la Loire coverage
+
+All five departments are accounted for at public-network research level. Exact direct rules are validated for Ouest Charge in Loire-Atlantique and Maine-et-Loire, TE53 in Mayenne, SYDEV in Vendée, Sarthe IRVE normal charging and the separate Loir-Lucé-Bercé/Freshmile network. Nantes Métropole e-Totem and the parallel Mayenne e-Totem rollout are preserved as separate families without inventing a casual energy price. Sarthe IRVE rapid remains reference-only in CI because the current Alizé partner page is visible publicly but returns 404 to GitHub-hosted runners. Roaming/eMSP prices remain separate.
