@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Static-only TotalEnergies Morocco / Numocity URL-construction probe.
 
-Examines the publicly distributed Android client around known connector routes and the
-public Numocity hostname. Persists only public host/path literals and syntax-like
-identifier names. No backend request, login, credential, real QR, connector ID or raw
+Examines the publicly distributed Android client around known connector/station-state routes and the
+public Numocity hostname. Persists only public host/path literals, HTTP-method-like syntax markers
+and identifier names. No backend request, login, credential, real QR, connector/station ID or raw
 bundle context is persisted.
 """
 from __future__ import annotations
@@ -15,20 +15,30 @@ import subprocess
 import tempfile
 import urllib.request
 import zipfile
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 from urllib.parse import urlsplit
 
 PACKAGE = "com.namp.totalev"
-MARKERS = ("/api/qr-connector", "/api/qr-connector-list", "/api/get-connector-status")
+MARKERS = (
+    "/api/qr-connector",
+    "/api/qr-connector-list",
+    "/api/get-connector-status",
+    "/chargestation/getstationstate",
+)
 HOST_MARKERS = ("csmstotalenergiesma.numocity.com", "numocity.com")
 CONSTRUCTION_MARKERS = (
     "Uri.parse", "Uri.http", "Uri.https", "baseUrl", "baseURL", "apiUrl", "apiURL",
     "ApiClient", "Dio", "BaseOptions", "path", "authority", "scheme", "host",
 )
+METHOD_MARKERS = (
+    "GET", "POST", "PUT", "PATCH", "DELETE",
+    ".get(", ".post(", ".put(", ".patch(", ".delete(",
+    "dio.get", "dio.post", "dio.put", "dio.patch", "dio.delete",
+)
 OUT = Path("artifacts/morocco-numocity-url-construction")
 OUT.mkdir(parents=True, exist_ok=True)
-UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.1)"
+UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.2)"
 
 URL_RX = re.compile(r"https?://[^\s\x00\"'<>\\]{5,500}", re.I)
 HOST_RX = re.compile(r"(?<![A-Za-z0-9.-])(?:[A-Za-z0-9-]+\.)+(?:com|ma|net|tech|io)(?![A-Za-z0-9.-])", re.I)
@@ -37,7 +47,7 @@ IDENT_RX = re.compile(
     r"\b(?:baseURL|baseUrl|base_url|apiURL|apiUrl|api_url|endpoint|apiEndpoint|"
     r"backendURL|backendUrl|backend_url|serverURL|serverUrl|server_url|host|domain|"
     r"authority|scheme|route|path|request|headers?|axios|fetch|client|ApiClient|Dio|"
-    r"BaseOptions|connectorId|connector_id|qrCode|qrcode|qr)\b",
+    r"BaseOptions|connectorId|connector_id|stationId|station_id|qrCode|qrcode|qr)\b",
     re.I,
 )
 SENSITIVE_RX = re.compile(r"password|secret|token|authorization|cookie|email|phone|wallet|payment|card|account|customer|bearer", re.I)
@@ -120,7 +130,7 @@ def keep_path(value: str) -> bool:
 
 def main():
     report = {
-        "schema_version": 2,
+        "schema_version": 3,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "package": PACKAGE,
         "policy": {
@@ -132,6 +142,7 @@ def main():
             "raw_values_persisted": False,
             "credentials_or_real_station_ids_persisted": False,
             "queries_and_fragments_stripped_from_urls": True,
+            "method_detection_is_static_signal_only": True,
         },
         "download_ok": False,
         "marker_hits": [],
@@ -142,6 +153,7 @@ def main():
         "near_host_public_paths": [],
         "nearby_identifier_names": {},
         "construction_marker_counts": {},
+        "method_marker_counts_by_route": {},
     }
     with tempfile.TemporaryDirectory(prefix="tcc-numocity-url-") as td:
         root = Path(td)
@@ -162,6 +174,7 @@ def main():
         host_paths = {}
         identifiers = Counter()
         constructions = Counter()
+        methods_by_route = defaultdict(Counter)
         hits = []
         host_hits = []
 
@@ -183,7 +196,6 @@ def main():
             for _idx, off, _text, marker in host_rows:
                 host_hits.append({"marker": marker, "source": str(file.relative_to(tree)), "offset": off})
 
-            # Around explicit connector routes: collect public URL/path/host literals and construction symbols.
             for idx, off, text, marker in marker_rows:
                 hits.append({"marker": marker, "source": str(file.relative_to(tree)), "offset": off})
                 for j in range(max(0, idx - 220), min(len(rows), idx + 221)):
@@ -208,8 +220,13 @@ def main():
                     for cm in CONSTRUCTION_MARKERS:
                         if cm.lower() in s.lower():
                             constructions[cm] += 1
+                    # Tight method window only: avoids counting unrelated app methods in the same binary.
+                    if distance <= 1024:
+                        low = s.lower()
+                        for mm in METHOD_MARKERS:
+                            if mm.lower() in low:
+                                methods_by_route[marker][mm] += 1
 
-            # Around the known public backend hostname: look specifically for an API prefix/base path.
             for idx, off, text, marker in host_rows:
                 for j in range(max(0, idx - 350), min(len(rows), idx + 351)):
                     noff, s = rows[j]
@@ -225,7 +242,7 @@ def main():
                         if cm.lower() in s.lower():
                             constructions[cm] += 1
 
-        report["marker_hits"] = hits[:100]
+        report["marker_hits"] = hits[:120]
         report["host_marker_hits"] = host_hits[:100]
         report["nearby_public_urls"] = [
             {"value": value, "marker": marker, "distance_bytes": distance}
@@ -237,14 +254,17 @@ def main():
         ]
         report["nearby_public_paths"] = [
             {"value": value, "marker": marker, "distance_bytes": distance}
-            for (value, marker), distance in sorted(paths.items(), key=lambda x: x[1])[:120]
+            for (value, marker), distance in sorted(paths.items(), key=lambda x: x[1])[:140]
         ]
         report["near_host_public_paths"] = [
             {"value": value, "host_marker": marker, "distance_bytes": distance}
-            for (value, marker), distance in sorted(host_paths.items(), key=lambda x: x[1])[:160]
+            for (value, marker), distance in sorted(host_paths.items(), key=lambda x: x[1])[:180]
         ]
-        report["nearby_identifier_names"] = dict(identifiers.most_common(80))
+        report["nearby_identifier_names"] = dict(identifiers.most_common(100))
         report["construction_marker_counts"] = dict(constructions.most_common())
+        report["method_marker_counts_by_route"] = {
+            route: dict(counts.most_common()) for route, counts in sorted(methods_by_route.items())
+        }
 
     (OUT / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps({
@@ -252,7 +272,7 @@ def main():
         "host_markers": len(report["host_marker_hits"]),
         "urls": report["nearby_public_urls"][:8],
         "host_paths": report["near_host_public_paths"][:12],
-        "construction": report["construction_marker_counts"],
+        "methods": report["method_marker_counts_by_route"],
     }))
 
 
