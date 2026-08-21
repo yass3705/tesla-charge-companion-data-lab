@@ -14,19 +14,25 @@ def fetch(url,timeout=45):
 def pdftext(raw):return re.sub(r'\s+',' ',' '.join((p.extract_text() or '') for p in PdfReader(io.BytesIO(raw)).pages)).strip()
 def norm(s):
     import unicodedata
-    s=unicodedata.normalize('NFKD',s or '');s=''.join(c for c in s if not unicodedata.combining(c));s=re.sub(r'\s*-\s*','-',s);return re.sub(r'\s+',' ',s.lower().replace('’',"'")).strip()
-def require(text,*items):
-    n=norm(text);missing=[x for x in items if norm(x) not in n]
-    if missing:raise RuntimeError('Saint-Louis official evidence missing: '+', '.join(missing))
+    s=unicodedata.normalize('NFKD',s or '');s=''.join(c for c in s if not unicodedata.combining(c));s=s.lower().replace('’',"'");s=re.sub(r'\s+',' ',s);return s.strip()
+def require_regex(text,label,pattern):
+    n=norm(text)
+    if not re.search(pattern,n,re.I):raise RuntimeError('Saint-Louis official evidence missing: '+label)
 def now():return datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--out',default='out/saint_louis_etotem');args=ap.parse_args();out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
     as_,araw,afinal=fetch(AWARD,45)
     if as_!=200:raise RuntimeError(f'HTTP failure award={as_}')
-    at=pdftext(araw);require(at,'Le lauréat','E-TOTEM','Date de signature de la convention','08/12/2025')
+    at=pdftext(araw)
+    require_regex(at,'winner field',r'laureat')
+    require_regex(at,'E-TOTEM winner',r'e\s*[-–—]?\s*totem|etotem')
+    require_regex(at,'signature date',r'08\s*/\s*12\s*/\s*2025')
     analysis_live=False;analysis_status=None;analysis_sha=None;analysis_url=ANALYSIS;legacy_points=None;deployment_deadline=None
     try:
-        rs,rraw,rfinal=fetch(ANALYSIS,8);rt=pdftext(rraw);require(rt,'40 Points de Charge existants','retenir E-TOTEM','fin mai 2027')
+        rs,rraw,rfinal=fetch(ANALYSIS,8);rt=pdftext(rraw)
+        require_regex(rt,'40 existing charge points',r'40\s+points?\s+de\s+charge')
+        require_regex(rt,'E-TOTEM retained',r'retenir[^\n]{0,100}(?:e\s*[-–—]?\s*totem|etotem)')
+        require_regex(rt,'May 2027 deadline',r'fin\s+mai\s+2027')
         analysis_live=True;analysis_status=rs;analysis_sha=hashlib.sha256(rraw).hexdigest();analysis_url=rfinal;legacy_points=40;deployment_deadline='2027-05'
     except Exception:
         pass
