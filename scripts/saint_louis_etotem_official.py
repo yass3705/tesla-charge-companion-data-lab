@@ -14,7 +14,7 @@ def fetch(url):
 def pdftext(raw):return re.sub(r'\s+',' ',' '.join((p.extract_text() or '') for p in PdfReader(io.BytesIO(raw)).pages)).strip()
 def norm(s):
     import unicodedata
-    s=unicodedata.normalize('NFKD',s or '');s=''.join(c for c in s if not unicodedata.combining(c));return re.sub(r'\s+',' ',s.lower().replace('’',"'")).strip()
+    s=unicodedata.normalize('NFKD',s or '');s=''.join(c for c in s if not unicodedata.combining(c));s=re.sub(r'\s*-\s*','-',s);return re.sub(r'\s+',' ',s.lower().replace('’',"'")).strip()
 def require(text,*items):
     n=norm(text);missing=[x for x in items if norm(x) not in n]
     if missing:raise RuntimeError('Saint-Louis official evidence missing: '+', '.join(missing))
