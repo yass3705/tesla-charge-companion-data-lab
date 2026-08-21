@@ -1,0 +1,105 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "connectandgo-maizieres-official-grandest",
+  "generatedAt": "2026-08-21T15:40:08.500196Z",
+  "operator": "Connect&go - Maizières-lès-Metz",
+  "serviceOperator": "Freshmile",
+  "country": "FR",
+  "region": "Grand Est",
+  "department": "Moselle",
+  "classification": {
+    "localPublicNetwork": true,
+    "directPublishedTariff": true,
+    "energyAndTimeBased": true,
+    "dayNightDependent": true,
+    "memberTariffAvailable": true,
+    "idleSurcharge": true,
+    "roamingMayDiffer": true,
+    "publishedTariffScope": "below30Kw"
+  },
+  "network": {
+    "homepagePublishedStationCount": 9,
+    "publishedConnectorPowerKw": [
+      22,
+      25,
+      50
+    ],
+    "freshmileAccess": true
+  },
+  "operatorDirect": {
+    "withoutSubscription": {
+      "monthlyEur": 0.0,
+      "day": {
+        "window": "08:30-20:00",
+        "below30Kw": {
+          "eurPerKwh": 0.25,
+          "eurPerMinute": 0.025
+        }
+      },
+      "night": {
+        "window": "20:00-08:30",
+        "below30Kw": {
+          "eurPerKwh": 0.24,
+          "eurPerMinute": 0.0
+        }
+      },
+      "idle": {
+        "below30Kw": {
+          "afterMinutes": 180,
+          "eurPerMinute": 0.16,
+          "condition": "without_consumption"
+        }
+      }
+    },
+    "withSubscription": {
+      "monthlyEur": 3.0,
+      "day": {
+        "window": "09:00-20:00",
+        "below30Kw": {
+          "eurPerKwh": 0.24,
+          "eurPerMinute": 0.02
+        }
+      },
+      "night": {
+        "window": "20:00-09:00",
+        "below30Kw": {
+          "eurPerKwh": 0.2,
+          "eurPerMinute": 0.0
+        }
+      },
+      "idle": {
+        "below30Kw": {
+          "afterMinutes": 240,
+          "eurPerHourAsPublished": 0.13,
+          "condition": "without_consumption",
+          "sourceUnit": "hour"
+        }
+      }
+    }
+  },
+  "rules": {
+    "billingContinuesWhileConnected": true,
+    "higherPowerTariffNotPublishedOnCurrentPage": true,
+    "subscriptionIdleUnitAnomaly": true,
+    "subscriptionIdleUnitNote": "Official page explicitly says 0.13 EUR per hour after 4h; sibling Connect&go networks usually publish per-minute idle fees. Do not silently normalize."
+  },
+  "tccDecision": {
+    "operatorValidated": true,
+    "publicTariffClassableBelow30Kw": true,
+    "subscriptionEnergyTimeClassableBelow30Kw": true,
+    "subscriptionFullyClassableForLongIdleSessions": false,
+    "manualCheckNeeded": "Confirm the published 0.13 EUR/hour subscriber idle unit before ranking long sessions; do not convert it to per-minute without evidence.",
+    "roamingSeparate": true
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "homeUrl": "https://maizieres-les-metz.connectandgo.fr/",
+    "homeHttpStatus": 200,
+    "tariffsUrl": "https://maizieres-les-metz.connectandgo.fr/tarifs/",
+    "tariffsHttpStatus": 200,
+    "homeSha256": "77542e99499231009939cec908cc7e818537d3ca3da90223750c338576066674",
+    "tariffsSha256": "79dbdea42fc128108522c0373f8f2e23224059c336d281e758191436944a4312",
+    "relevantTariffFingerprintSha256": "180b515aad696144ae75dd27a4dcbf6b14c38eb29d3542e063a7dc729179898f"
+  },
+  "publicationStatus": "validated_candidate_with_unit_anomaly"
+}
