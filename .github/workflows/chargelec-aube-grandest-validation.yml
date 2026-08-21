@@ -1,0 +1,111 @@
+name: Grand Est Chargelec Aube validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/chargelec_aube_official.py"
+      - ".github/workflows/chargelec-aube-grandest-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: grandest-chargelec-aube-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Extract current official rules
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/chargelec_aube
+          python -m py_compile scripts/chargelec_aube_official.py
+          python scripts/chargelec_aube_official.py --out out/chargelec_aube 2> >(tee out/chargelec_aube/error.log >&2)
+      - name: Validate tariff structure
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/chargelec_aube/chargelec_aube_official_grandest.json').read_text())
+          assert p['dataset']=='chargelec-aube-official-grandest'
+          assert p['region']=='Grand Est'
+          assert p['department']=='Aube'
+          assert p['billingUnit']['energyKwhPerUnit']==6.0
+          assert p['operatorDirect']['subscriber']['upTo36Kva']['eurPer6KwhUnit']==2.0
+          assert p['operatorDirect']['subscriber']['above36Kva']['eurPer6KwhUnit']==2.5
+          assert p['operatorDirect']['adHoc']['allPowers']['eurPer6KwhUnit']==3.0
+          assert p['tccDecision']['operatorValidated'] is True
+          assert p['tccDecision']['tariffClassableWithUnitBillingSupport'] is True
+          assert p['tccDecision']['continuousPerKwhApproximationForRanking'] is False
+          assert p['sourceEvidence']['officialOnly'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/chargelec_aube
+          cp out/chargelec_aube/chargelec_aube_official_grandest.json data/operator_direct/chargelec_aube_official_grandest.json
+          cp out/chargelec_aube/SUMMARY.md reports/chargelec_aube/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/chargelec_aube_official_grandest.json reports/chargelec_aube/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(chargelec-aube): publish official Grand Est tariff rules [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/chargelec_aube
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/chargelec_aube/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/chargelec_aube/latest_diagnostic.json').write_text(json.dumps({'dataset':'chargelec-aube-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/chargelec_aube
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/chargelec_aube/latest_run_status.json').write_text(json.dumps({'dataset':'chargelec-aube-run-status','operator':'Chargelec - SDEA Aube','region':'Grand Est','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/chargelec_aube/latest_run_status.json
+          if [ -f reports/chargelec_aube/latest_diagnostic.json ]; then git add reports/chargelec_aube/latest_diagnostic.json; fi
+          if ! git diff --cached --quiet; then
+            git commit -m "status(chargelec-aube): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
