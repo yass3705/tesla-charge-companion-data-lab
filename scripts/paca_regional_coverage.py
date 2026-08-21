@@ -119,7 +119,7 @@ def main():
     if src["vaucluse_ulys"]["httpStatus"] == 200:
         require(src["vaucluse_ulys"]["text"], "Vauclus'élec", "1,50", "6", label="Ulys Vauclus'Elec")
     if src["mamp_multi"]["httpStatus"] == 200:
-        require(src["mamp_multi"]["text"], "trois opérateurs", "larecharge", label="MAMP multi-CPO")
+        require(src["mamp_multi"]["text"], "trois opérateurs", label="MAMP multi-CPO")
     if src["mamp_izivia"]["httpStatus"] == 200:
         require(src["mamp_izivia"]["text"], "IZIVIA", "MAMP", "larecharge", label="MAMP IZIVIA")
 
