@@ -1,7 +1,7 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "dataset": "chargelec36-official-centre",
-  "generatedAt": "2026-08-21T22:29:39.326796Z",
+  "generatedAt": "2026-08-21T22:39:07.761564Z",
   "operator": "Chargelec36 / SDEI36",
   "authority": "Syndicat Départemental d’Énergies de l’Indre (SDEI)",
   "country": "FR",
@@ -12,8 +12,10 @@
     "directPublicAccess": true,
     "firstPartyPriceBookLinked": true,
     "firstPartyPriceBookMachineReadableValidated": false,
+    "firstPartyBankCardFlatTariffManuallyValidated": true,
     "currentThirdPartyLocalPriceCorroboration": true,
     "singleUniversalExactTariffValidated": false,
+    "rankableDirectBankCardTariff": true,
     "rankableWithoutFirstPartyPriceConfirmation": false
   },
   "access": {
@@ -26,8 +28,15 @@
     "tourismOfficeObservedEur": 10.0,
     "observationYear": 2026,
     "observationCount": 3,
-    "semanticsResolved": false,
-    "note": "Official tourism-office records repeatedly display 10 EUR for Chargelec36 stations, but their CMS labels it as an adult/base tariff and the first-party price book is currently only exposed through an external Calameo link. Do not infer session/kWh/minute semantics."
+    "semanticsResolved": true,
+    "directBankCard": {
+      "currency": "EUR",
+      "billingModel": "flat_session_fee",
+      "fixedSessionFeeEur": 10.0,
+      "source": "first-party Chargelec36 user guide manually verified"
+    },
+    "badgeAndRoamingSamePriceProven": false,
+    "note": "The 10 EUR amount is now resolved for direct bank-card payment as a fixed session price. Do not propagate this price to RFID/subscriber or roaming access without separate evidence."
   },
   "networkEvidence": {
     "liveFirstPartyStationDirectory": true,
@@ -39,17 +48,30 @@
       "excludeAsLiveWitness": true,
       "replacementCurrentFirstPartyWitness": "CHATEAUROUX - Colbert",
       "verificationFile": "data/station_verifications/chargelec36_chateauroux_jules_chauvin_negative_2026_08_22.json"
+    },
+    "manualCurrentStationCheck": {
+      "station": "CHATEAUROUX - Colbert",
+      "latitude": 46.811115,
+      "longitude": 1.7041603,
+      "evseCount": 2,
+      "powerKVA": 22,
+      "visibleOnOfficialMapDuringManualCheck": true,
+      "verificationFile": "data/station_verifications/chargelec36_chateauroux_colbert_2026_08_22.json"
     }
   },
   "tccDecision": {
     "operatorValidated": true,
-    "defaultDisplay": "reference_only",
-    "numericPriceRankable": false,
+    "defaultDisplay": "direct_bank_card_flat_session",
+    "numericPriceRankable": true,
+    "rankablePaymentMethod": "contactless_bank_card",
+    "billingModel": "flat_session_fee",
+    "fixedSessionFeeEur": 10.0,
     "excludeJulesChauvinAsLiveTariffWitness": true,
-    "reason": "Current 10 EUR amount is strongly corroborated locally but its billing unit/semantics are not first-party machine-readable; exact Chargelec36 offer must remain out of ranking."
+    "badgeAndRoamingTariffNeedsSeparateResolution": true,
+    "reason": "Direct bank-card charging is validated at a fixed 10 EUR per session from the official Chargelec36 guide, with current Colbert station hardware verified manually. Badge/subscriber and roaming pricing remain separate."
   },
   "sourceEvidence": {
-    "firstPartyOnlyForNetworkAndAccess": true,
+    "firstPartyOnlyForNetworkAndAccess": false,
     "homeUrl": "https://www.chargelec36.com/",
     "homeHttpStatus": 200,
     "registrationUrl": "https://www.chargelec36.com/registration/index",
@@ -77,12 +99,13 @@
         "sha256": "4f5f8e46e16a05718589aff224ecb65c63e41c39c02fd201728ea1744aa4e767"
       }
     ],
-    "manualStationVerificationFile": "data/station_verifications/chargelec36_chateauroux_jules_chauvin_negative_2026_08_22.json",
+    "manualStaleStationVerificationFile": "data/station_verifications/chargelec36_chateauroux_jules_chauvin_negative_2026_08_22.json",
+    "manualCurrentStationVerificationFile": "data/station_verifications/chargelec36_chateauroux_colbert_2026_08_22.json",
     "homeSha256": "75342646a0acd975d1e39d969423c551e7177e1c11efc99bdbd8aa6afd62ccc2",
     "registrationSha256": "6eaace79a600a249b0b056e1b13e3761574291a57f31731edb005d52969e03f0",
     "stationsSha256": "c2db6ea48946dce60ba375871c498fb7f6d2f47ee6dd567b217082e95dca6579",
     "guideSha256": "a26c0d3a25cf2328f6fa754024440c84fceb0f534564fa54db6a16dc18825006",
-    "relevantTariffFingerprintSha256": "7cc90224fe6066cf7782f1f4fa8f0cbda6cf5791b22da58387d3199efdfb9611"
+    "relevantTariffFingerprintSha256": "f8e233b2cbc33808819e9a61f2a62fa4168af06794562bff87b689a91303391e"
   },
   "publicationStatus": "validated_candidate"
 }
