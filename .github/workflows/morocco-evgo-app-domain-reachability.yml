@@ -1,0 +1,53 @@
+name: Morocco EVGO app-domain reachability
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/morocco_evgo_app_domain_reachability.py"
+      - ".github/workflows/morocco-evgo-app-domain-reachability.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-evgo-app-domain-reachability
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate syntax and safety
+        run: |
+          python -m py_compile scripts/morocco_evgo_app_domain_reachability.py
+          python scripts/public_safety_check.py .
+      - name: Run read-only public-domain probe
+        run: python scripts/morocco_evgo_app_domain_reachability.py
+      - name: Validate generated output
+        run: |
+          test -s artifacts/morocco-evgo-app-domain-reachability/summary.json
+          python scripts/public_safety_check.py artifacts/morocco-evgo-app-domain-reachability
+      - name: Persist sanitized report
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/evgo
+          cp artifacts/morocco-evgo-app-domain-reachability/summary.json reports/morocco/evgo/latest-app-domain-reachability.json
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/evgo/latest-app-domain-reachability.json
+          if git diff --cached --quiet; then
+            echo "No report change"
+            exit 0
+          fi
+          git commit -m "data(morocco): update EVGO app-domain reachability [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:${GITHUB_REF_NAME}
