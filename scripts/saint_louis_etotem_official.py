@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
 """Validate current official Saint-Louis Agglomération / E-TOTEM charging tariffs."""
 from __future__ import annotations
-import argparse, hashlib, html, json, re, urllib.request
+import argparse, hashlib, html, json, re, time, urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36'
 OFFICIAL='https://www.agglo-saint-louis.fr/fr/au-quotidien/mobilite/bornes-electriques/'
 def fetch(url):
-    req=urllib.request.Request(url,headers={'User-Agent':UA,'Accept':'text/html,*/*','Accept-Language':'fr-FR,fr;q=0.9'})
-    with urllib.request.urlopen(req,timeout=60) as r:return int(getattr(r,'status',200)),r.read(),r.geturl()
+    last=None
+    for attempt in range(1,4):
+        try:
+            req=urllib.request.Request(url,headers={'User-Agent':UA,'Accept':'text/html,*/*','Accept-Language':'fr-FR,fr;q=0.9','Connection':'close'})
+            with urllib.request.urlopen(req,timeout=45) as r:return int(getattr(r,'status',200)),r.read(),r.geturl()
+        except Exception as e:
+            last=e
+            if attempt<3: time.sleep(attempt*3)
+    raise RuntimeError(f'official source fetch failed after 3 attempts: {type(last).__name__}: {last}')
 def plain(raw):
     s=raw.decode('utf-8',errors='replace');s=re.sub(r'(?is)<script.*?</script>|<style.*?</style>',' ',s);s=re.sub(r'(?s)<[^>]+>',' ',s)
     return re.sub(r'\s+',' ',html.unescape(s).replace('\xa0',' ')).strip()
