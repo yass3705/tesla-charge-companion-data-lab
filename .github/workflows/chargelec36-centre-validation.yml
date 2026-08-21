@@ -1,0 +1,109 @@
+name: Centre Chargelec36 validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/chargelec36_official.py"
+      - ".github/workflows/chargelec36-centre-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: centre-chargelec36-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Extract current official evidence
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/chargelec36
+          python -m py_compile scripts/chargelec36_official.py
+          python scripts/chargelec36_official.py --out out/chargelec36 2> >(tee out/chargelec36/error.log >&2)
+      - name: Validate classification
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/chargelec36/chargelec36_official_centre.json').read_text())
+          assert p['dataset']=='chargelec36-official-centre'
+          assert p['classification']['regionalPublicNetwork'] is True
+          assert p['classification']['currentThirdPartyLocalPriceCorroboration'] is True
+          assert p['classification']['singleUniversalExactTariffValidated'] is False
+          assert p['classification']['rankableWithoutFirstPartyPriceConfirmation'] is False
+          assert p['currentPriceEvidence']['tourismOfficeObservedEur']==10.0
+          assert p['currentPriceEvidence']['semanticsResolved'] is False
+          assert p['tccDecision']['defaultDisplay']=='reference_only'
+          assert p['tccDecision']['numericPriceRankable'] is False
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/chargelec36
+          cp out/chargelec36/chargelec36_official_centre.json data/operator_direct/chargelec36_official_centre.json
+          cp out/chargelec36/SUMMARY.md reports/chargelec36/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/chargelec36_official_centre.json reports/chargelec36/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(chargelec36): publish official Centre evidence [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/chargelec36
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/chargelec36/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/chargelec36/latest_diagnostic.json').write_text(json.dumps({'dataset':'chargelec36-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/chargelec36
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/chargelec36/latest_run_status.json').write_text(json.dumps({'dataset':'chargelec36-run-status','operator':'Chargelec36 / SDEI36','region':'Centre-Val de Loire','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/chargelec36/latest_run_status.json
+          if [ -f reports/chargelec36/latest_diagnostic.json ]; then git add reports/chargelec36/latest_diagnostic.json; fi
+          if ! git diff --cached --quiet; then
+            git commit -m "status(chargelec36): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
