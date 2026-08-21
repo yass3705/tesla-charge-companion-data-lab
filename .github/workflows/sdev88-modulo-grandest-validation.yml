@@ -1,0 +1,109 @@
+name: Grand Est SDEV Vosges Modulo validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/sdev88_modulo_official.py"
+      - ".github/workflows/sdev88-modulo-grandest-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: grandest-sdev88-modulo-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Validate official evidence
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/sdev88
+          python -m py_compile scripts/sdev88_modulo_official.py
+          python scripts/sdev88_modulo_official.py --out out/sdev88 2> >(tee out/sdev88/error.log >&2)
+      - name: Validate classification
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/sdev88/sdev88_modulo_official_grandest.json').read_text())
+          assert p['dataset']=='sdev88-modulo-official-grandest'
+          assert p['region']=='Grand Est'
+          assert p['department']=='Vosges'
+          assert p['classification']['networkExistenceValidated'] is True
+          assert p['classification']['moduloAccessValidated'] is True
+          assert p['classification']['adHocCardPaymentValidated'] is True
+          assert p['classification']['directTariffClassable'] is False
+          assert p['tccDecision']['operatorValidated'] is True
+          assert p['tccDecision']['defaultDisplay']=='reference_only'
+          assert p['sourceEvidence']['officialOnly'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/sdev88
+          cp out/sdev88/sdev88_modulo_official_grandest.json data/operator_direct/sdev88_modulo_official_grandest.json
+          cp out/sdev88/SUMMARY.md reports/sdev88/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/sdev88_modulo_official_grandest.json reports/sdev88/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(sdev88): publish Vosges Modulo coverage [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/sdev88
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/sdev88/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/sdev88/latest_diagnostic.json').write_text(json.dumps({'dataset':'sdev88-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/sdev88
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/sdev88/latest_run_status.json').write_text(json.dumps({'dataset':'sdev88-run-status','operator':'SDEV Vosges','region':'Grand Est','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/sdev88/latest_run_status.json reports/sdev88/latest_diagnostic.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "status(sdev88): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
