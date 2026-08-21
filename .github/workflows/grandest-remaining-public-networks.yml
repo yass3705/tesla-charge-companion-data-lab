@@ -34,16 +34,24 @@ jobs:
       - name: Run official validators
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
           mkdir -p out/{fdea_modulo,selestat,obernai,barr,tea_alsace,grand_reims,sdea_elinvest,grand_nancy}
-          python scripts/fdea_modulo_official.py --out out/fdea_modulo
-          python scripts/selestat_freshmile_official.py --out out/selestat
-          python scripts/obernai_municipal_official.py --out out/obernai
-          python scripts/barr_municipal_official.py --out out/barr
-          python scripts/tea_alsace_official.py --out out/tea_alsace
-          python scripts/grand_reims_official.py --out out/grand_reims
-          python scripts/sdea_elinvest_official.py --out out/sdea_elinvest
-          python scripts/grand_nancy_official.py --out out/grand_nancy
+          rc=0
+          run_validator() {
+            label="$1"; shift
+            echo "::group::${label}"
+            if "$@"; then echo "${label}: OK"; else echo "::error::${label}: FAILED"; rc=1; fi
+            echo "::endgroup::"
+          }
+          run_validator fdea_modulo python scripts/fdea_modulo_official.py --out out/fdea_modulo
+          run_validator selestat python scripts/selestat_freshmile_official.py --out out/selestat
+          run_validator obernai python scripts/obernai_municipal_official.py --out out/obernai
+          run_validator barr python scripts/barr_municipal_official.py --out out/barr
+          run_validator tea_alsace python scripts/tea_alsace_official.py --out out/tea_alsace
+          run_validator grand_reims python scripts/grand_reims_official.py --out out/grand_reims
+          run_validator sdea_elinvest python scripts/sdea_elinvest_official.py --out out/sdea_elinvest
+          run_validator grand_nancy python scripts/grand_nancy_official.py --out out/grand_nancy
+          exit "$rc"
       - name: Validate classifications
         if: success()
         run: |
