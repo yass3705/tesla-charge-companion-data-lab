@@ -1,0 +1,35 @@
+name: Morocco FastVolt EVOne Header Validation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/morocco_fastvolt_evone_header_validation.py'
+      - '.github/workflows/morocco-fastvolt-evone-header-validation.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run sanitized read-only probe
+        run: python scripts/morocco_fastvolt_evone_header_validation.py
+      - name: Publish sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/fastvolt-evone
+          cp artifacts/morocco-fastvolt-evone-header-validation/summary.json reports/morocco/fastvolt-evone/latest-header-validation.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/morocco/fastvolt-evone/latest-header-validation.json
+          if git diff --cached --quiet; then
+            echo 'No report change.'
+            exit 0
+          fi
+          git commit -m "data(morocco): update FastVolt EVOne header validation [run $GITHUB_RUN_ID]"
+          git push
