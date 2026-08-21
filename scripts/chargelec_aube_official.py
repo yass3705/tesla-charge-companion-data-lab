@@ -55,26 +55,15 @@ def main():
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
+    # The branded Chargelec portal is dynamic and its server-side HTML can omit
+    # the visible tariff text. Keep it as a reachability/source fingerprint, but
+    # validate tariff values against SDEA's own current authority page.
     ss, sraw, sfinal = fetch(SERVICE)
     as_, araw, afinal = fetch(SDEA)
     if ss != 200 or as_ != 200:
         raise RuntimeError(f"HTTP failure service={ss} sdea={as_}")
 
-    service = plain(sraw)
     authority = plain(araw)
-    require(
-        service,
-        "Syndicat départemental d'énergie de l'Aube",
-        "Freshmile",
-        "Utilisateur inscrit",
-        "2 € l'unité",
-        "2,50 € l'unité",
-        "Utilisateur occasionnel",
-        "3 € l'unité",
-        "Une unité permet d'obtenir 6kWh",
-        "22 kVA",
-        "50 kW",
-    )
     require(
         authority,
         "Plus de 180 bornes de recharge accélérée 22 kVA",
@@ -92,7 +81,6 @@ def main():
         "dataset": "chargelec-aube-official-grandest",
         "generatedAt": now(),
         "operator": "Chargelec - SDEA Aube",
-        "serviceOperator": "Freshmile",
         "country": "FR",
         "region": "Grand Est",
         "department": "Aube",
@@ -107,9 +95,9 @@ def main():
         "network": {
             "publishedAcceleratedStations22Kva": 180,
             "publishedRapidStations50Kva": 14,
-            "freshmileAppAccess": True,
-            "rfidSubscriberAccess": True,
-            "qrAdHocAccess": True,
+            "subscriberAccess": True,
+            "occasionalSmartphoneAccess": True,
+            "roamingAccess": True,
         },
         "billingUnit": {
             "energyKwhPerUnit": 6.0,
@@ -123,7 +111,7 @@ def main():
             "adHoc": {
                 "allPowers": {"eurPer6KwhUnit": 3.0, "nominalEurPerKwh": round(3.0 / 6.0, 6)},
                 "accountRequired": False,
-                "smartphoneQr": True,
+                "smartphoneAccess": True,
             },
         },
         "tccDecision": {
@@ -136,12 +124,19 @@ def main():
         },
         "sourceEvidence": {
             "officialOnly": True,
-            "serviceUrl": sfinal,
-            "serviceHttpStatus": ss,
-            "serviceSha256": hashlib.sha256(sraw).hexdigest(),
-            "authorityUrl": afinal,
-            "authorityHttpStatus": as_,
-            "authoritySha256": hashlib.sha256(araw).hexdigest(),
+            "servicePortal": {
+                "url": sfinal,
+                "httpStatus": ss,
+                "sha256": hashlib.sha256(sraw).hexdigest(),
+                "tariffTextBlockingValidation": False,
+                "note": "Dynamic portal HTML is not used as the blocking tariff authority in CI.",
+            },
+            "authority": {
+                "url": afinal,
+                "httpStatus": as_,
+                "sha256": hashlib.sha256(araw).hexdigest(),
+                "tariffTextBlockingValidation": True,
+            },
         },
         "publicationStatus": "validated_candidate",
     }
@@ -153,7 +148,7 @@ def main():
     (out / "chargelec_aube_official_grandest.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
     (out / "SUMMARY.md").write_text(
         "# Chargelec — SDEA Aube\n\n"
-        "Official SDEA tariff validated. Subscriber pricing is 2 EUR per 6 kWh unit up to 36 kVA and 2.50 EUR per 6 kWh unit above 36 kVA; ad-hoc smartphone charging is 3 EUR per 6 kWh unit at all powers. Freshmile provides app/support access. Preserve the official 6 kWh unit billing rather than converting it into continuous kWh pricing.\n"
+        "Official SDEA tariff validated. Subscriber pricing is 2 EUR per 6 kWh unit up to 36 kVA and 2.50 EUR per 6 kWh unit above 36 kVA; occasional smartphone charging is 3 EUR per 6 kWh unit at all powers. Preserve the official 6 kWh unit billing rather than converting it into continuous kWh pricing.\n"
     )
 
 
