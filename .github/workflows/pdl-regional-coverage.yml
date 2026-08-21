@@ -1,0 +1,141 @@
+name: Pays de la Loire regional coverage
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/pdl_regional_coverage.py"
+      - ".github/workflows/pdl-regional-coverage.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pdl-regional-coverage
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Install PDF reader
+        run: python -m pip install --disable-pip-version-check 'pypdf>=5,<6'
+      - name: Extract and consolidate current evidence
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/pdl
+          python -m py_compile scripts/pdl_regional_coverage.py
+          python scripts/pdl_regional_coverage.py --out out/pdl 2> >(tee out/pdl/error.log >&2)
+      - name: Validate tariff models and regional coverage
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('out/pdl')
+          o=json.loads((root/'ouestcharge_44_49_official_pdl.json').read_text())
+          assert o['departments']['Loire-Atlantique']['tariffs']['normal']['energyEurPerKwh']==0.35
+          assert o['departments']['Loire-Atlantique']['tariffs']['rapid']['energyEurPerKwh']==0.50
+          assert o['departments']['Maine-et-Loire']['tariffs']['rapid']['energyEurPerKwh']==0.45
+          assert o['departments']['Maine-et-Loire']['tariffs']['ultraRapid']['freeConnectedMinutes']==45
+          m=json.loads((root/'te53_mayenne_official_pdl.json').read_text())
+          assert m['directTariffs']['normal22Kw']['energyEurPerKwh']==0.43
+          assert m['directTariffs']['rapid50Kw']['energyEurPerKwh']==0.87
+          assert m['directTariffs']['ultraRapid180Kw']['energyEurPerKwh']==0.92
+          assert m['parallelRollout']['operator']=='e-Totem'
+          y=json.loads((root/'sydev_vendee_official_pdl.json').read_text())
+          assert y['directTariffs']['normal']['energyEurPerKwh']==0.41
+          assert y['directTariffs']['rapid']=={'energyEurPerKwh':0.50,'sessionFeeEur':2.0}
+          assert y['directTariffs']['super']=={'energyEurPerKwh':0.59,'sessionFeeEur':2.0}
+          s=json.loads((root/'sarthe_irve_official_pdl.json').read_text())
+          assert s['directTariffs']['normal']['subscriberEnergyEurPerKwh']==0.20
+          assert s['directTariffs']['rapid']['nonSubscriberEnergyEurPerKwh']==0.30
+          n=json.loads((root/'nantes_etotem_official_pdl.json').read_text())
+          assert n['occupationFee']=={'afterChargeGraceMinutes':10,'billingBlockMinutes':15,'eCityEurPerBlock':1.0,'eFastEurPerBlock':3.0}
+          assert n['tccDecision']['directEnergyTariffClassable'] is False
+          p=json.loads((root/'pays_de_la_loire_regional_coverage.json').read_text())
+          assert p['region']=='Pays de la Loire'
+          assert p['departmentsTotal']==5
+          assert p['coverage']['departmentsAccountedFor']==5
+          assert p['coverage']['regionalPublicNetworkResearchCoverageComplete'] is True
+          assert p['coverage']['allEstablishedPublicNetworkFamiliesAccountedFor'] is True
+          assert p['coverage']['singleUniversalRegionalTariff'] is False
+          assert p['coverage']['allIdentifiedLiveTariffsResolved'] is False
+          assert p['tccDecision']['doNotInventDepartmentDefaults'] is True
+          assert p['tccDecision']['roamingSeparate'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct data/regional_coverage reports/pdl
+          cp out/pdl/ouestcharge_44_49_official_pdl.json data/operator_direct/
+          cp out/pdl/te53_mayenne_official_pdl.json data/operator_direct/
+          cp out/pdl/sydev_vendee_official_pdl.json data/operator_direct/
+          cp out/pdl/sarthe_irve_official_pdl.json data/operator_direct/
+          cp out/pdl/nantes_etotem_official_pdl.json data/operator_direct/
+          cp out/pdl/pays_de_la_loire_regional_coverage.json data/regional_coverage/
+          cp out/pdl/SUMMARY.md reports/pdl/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/ouestcharge_44_49_official_pdl.json data/operator_direct/te53_mayenne_official_pdl.json data/operator_direct/sydev_vendee_official_pdl.json data/operator_direct/sarthe_irve_official_pdl.json data/operator_direct/nantes_etotem_official_pdl.json data/regional_coverage/pays_de_la_loire_regional_coverage.json reports/pdl/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(pdl): publish validated regional public-network evidence [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/pdl
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/pdl/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/pdl/latest_diagnostic.json').write_text(json.dumps({'dataset':'pdl-regional-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-50:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/pdl
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/pdl/latest_run_status.json').write_text(json.dumps({'dataset':'pdl-regional-run-status','region':'Pays de la Loire','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/pdl/latest_run_status.json
+          if [ "${JOB_STATUS}" = "success" ] && git ls-files --error-unmatch reports/pdl/latest_diagnostic.json >/dev/null 2>&1; then
+            git rm -f reports/pdl/latest_diagnostic.json
+          elif [ -f reports/pdl/latest_diagnostic.json ]; then
+            git add reports/pdl/latest_diagnostic.json
+          fi
+          if ! git diff --cached --quiet; then
+            git commit -m "status(pdl): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
