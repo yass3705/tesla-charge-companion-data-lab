@@ -1,0 +1,115 @@
+name: IDF Ecocharge77 validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/ecocharge77_official.py"
+      - ".github/workflows/ecocharge77-idf-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: idf-ecocharge77-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Install PDF reader
+        run: python -m pip install --disable-pip-version-check 'pypdf>=5,<6'
+      - name: Extract current official rules
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/ecocharge77
+          python -m py_compile scripts/ecocharge77_official.py
+          python scripts/ecocharge77_official.py --out out/ecocharge77 2> >(tee out/ecocharge77/error.log >&2)
+      - name: Validate tariff structure
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/ecocharge77/ecocharge77_official_idf.json').read_text())
+          assert p['dataset']=='ecocharge77-official-idf'
+          assert p['effectiveFrom']=='2024-04-01'
+          assert p['classification']['directTariff'] is True
+          assert p['directAccess']['sameLocalTariffForRegisteredAndOccasional'] is True
+          assert p['directTariff']['normalUpTo24Kw']['energyEurPerKwh']==0.36
+          assert p['directTariff']['normalUpTo24Kw']['day0800To2100AdditionalAfterMinutes']==180
+          assert p['directTariff']['normalUpTo24Kw']['dayAdditionalEurPerMinute']==0.036
+          assert p['directTariff']['normalUpTo24Kw']['night2100To0800AdditionalEurPerMinute']==0.0
+          assert p['directTariff']['rapidAtLeast50Kw']['energyEurPerKwh']==0.46
+          assert p['directTariff']['rapidAtLeast50Kw']['additionalAfterMinutes']==60
+          assert p['directTariff']['rapidAtLeast50Kw']['additionalEurPerMinute']==0.20
+          assert p['roaming']['thirdPartyEmpTariffMayDiffer'] is True
+          assert p['parking']['separateParkingFeeValidated'] is False
+          assert p['sourceEvidence']['officialOnly'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/ecocharge77
+          cp out/ecocharge77/ecocharge77_official_idf.json data/operator_direct/ecocharge77_official_idf.json
+          cp out/ecocharge77/SUMMARY.md reports/ecocharge77/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/ecocharge77_official_idf.json reports/ecocharge77/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(ecocharge77): publish official IDF tariff rules [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/ecocharge77
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          p=Path('out/ecocharge77/error.log')
+          s=p.read_text(errors='replace') if p.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/ecocharge77/latest_diagnostic.json').write_text(json.dumps({'dataset':'ecocharge77-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/ecocharge77
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/ecocharge77/latest_run_status.json').write_text(json.dumps({'dataset':'ecocharge77-run-status','operator':'Ecocharge77','region':'Ile-de-France','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/ecocharge77/latest_run_status.json reports/ecocharge77/latest_diagnostic.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "status(ecocharge77): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
