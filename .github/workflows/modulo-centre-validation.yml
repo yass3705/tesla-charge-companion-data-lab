@@ -6,6 +6,10 @@ on:
     branches: ["main"]
     paths:
       - "scripts/modulo_official.py"
+      - "scripts/centre_regional_coverage.py"
+      - "data/operator_direct/chargelec36_official_centre.json"
+      - "data/operator_direct/orleans_metropole_official_centre.json"
+      - "data/operator_direct/sieely_official_idf_centre.json"
       - ".github/workflows/modulo-centre-validation.yml"
 
 permissions:
@@ -104,6 +108,101 @@ jobs:
           git add reports/modulo/latest_run_status.json reports/modulo/latest_diagnostic.json 2>/dev/null || true
           if ! git diff --cached --quiet; then
             git commit -m "status(modulo): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
+
+  regional:
+    needs: validate
+    if: always() && needs.validate.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Refresh main after operator publication
+        run: git pull --ff-only origin main
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Consolidate Centre-Val de Loire coverage
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/centre
+          python -m py_compile scripts/centre_regional_coverage.py
+          python scripts/centre_regional_coverage.py --out out/centre 2> >(tee out/centre/error.log >&2)
+      - name: Validate regional coverage
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/centre/centre_val_de_loire_regional_coverage.json').read_text())
+          assert p['region']=='Centre-Val de Loire'
+          assert p['departmentsTotal']==6
+          assert p['coverage']['departmentsAccountedFor']==6
+          assert p['coverage']['regionalResearchCoverageComplete'] is True
+          assert p['coverage']['singleUniversalRegionalTariff'] is False
+          assert p['coverage']['fullyRankableDepartmentCount']==0
+          assert p['coverage']['exactLocalOfferFamilies']==1
+          assert p['coverage']['partialExactLocalOfferFamilies']==1
+          assert p['tccDecision']['doNotInventDepartmentDefaults'] is True
+          PY
+      - name: Publish regional coverage
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/regional_coverage reports/centre
+          cp out/centre/centre_val_de_loire_regional_coverage.json data/regional_coverage/centre_val_de_loire_regional_coverage.json
+          cp out/centre/SUMMARY.md reports/centre/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/regional_coverage/centre_val_de_loire_regional_coverage.json reports/centre/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(centre): publish regional public-network coverage [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish Centre diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/centre
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/centre/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without consolidator stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/centre/latest_diagnostic.json').write_text(json.dumps({'dataset':'centre-regional-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish Centre run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/centre
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/centre/latest_run_status.json').write_text(json.dumps({'dataset':'centre-regional-run-status','region':'Centre-Val de Loire','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/centre/latest_run_status.json reports/centre/latest_diagnostic.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "status(centre): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
             for attempt in 1 2 3; do
               git pull --rebase origin main
               if git push origin HEAD:main; then exit 0; fi
