@@ -1,0 +1,113 @@
+name: IDF La Borne Bleue validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/labornebleue_official.py"
+      - ".github/workflows/labornebleue-idf-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: idf-labornebleue-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Extract current official rules
+        id: extract
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/labornebleue
+          python -m py_compile scripts/labornebleue_official.py
+          python scripts/labornebleue_official.py --out out/labornebleue 2> >(tee out/labornebleue/error.log >&2)
+      - name: Validate tariff structure
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/labornebleue/labornebleue_official_idf.json').read_text())
+          assert p['dataset']=='labornebleue-official-idf'
+          assert p['classification']['directNonSubscriber'] is True
+          assert p['nonSubscriber']['ac'][0]['day0800To2000EurPerHour']==4.50
+          assert p['nonSubscriber']['ac'][0]['night2000To0800EurPerHour']==3.50
+          assert p['nonSubscriber']['ac'][1]['day0800To2000EurPerHour']==6.50
+          assert p['nonSubscriber']['ac'][2]['day0800To2000EurPerHour']==12.0
+          assert p['nonSubscriber']['dcAbove50Kw']['eurPerKwh']==0.50
+          assert p['nonSubscriber']['dcAbove50Kw']['additionalAfterChargeMinutes']==30
+          assert p['nonSubscriber']['dcAbove50Kw']['additionalEurPerHour']==12.0
+          assert p['subscriber']['annualFeeEur']==10.0
+          assert p['subscriber']['dcAbove50Kw']['eurPerKwh']==0.45
+          assert p['sessionSemantics']['endsAfterSessionClosureAndVehicleUnplugged'] is True
+          assert p['sourceEvidence']['officialOnly'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/labornebleue
+          cp out/labornebleue/labornebleue_official_idf.json data/operator_direct/labornebleue_official_idf.json
+          cp out/labornebleue/SUMMARY.md reports/labornebleue/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/labornebleue_official_idf.json reports/labornebleue/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(labornebleue): publish official IDF tariff rules [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/labornebleue
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          p=Path('out/labornebleue/error.log')
+          s=p.read_text(errors='replace') if p.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/labornebleue/latest_diagnostic.json').write_text(json.dumps({'dataset':'labornebleue-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/labornebleue
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/labornebleue/latest_run_status.json').write_text(json.dumps({'dataset':'labornebleue-run-status','operator':'La Borne Bleue / SIPPEREC','region':'Ile-de-France','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/labornebleue/latest_run_status.json reports/labornebleue/latest_diagnostic.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "status(labornebleue): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
