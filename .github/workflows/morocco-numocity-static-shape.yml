@@ -1,0 +1,59 @@
+name: Morocco Numocity static method shape
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/morocco_numocity_url_construction_probe.py"
+      - ".github/workflows/morocco-numocity-static-shape.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-numocity-static-method-shape
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate public safety and syntax
+        run: |
+          python scripts/public_safety_check.py .
+          python -m py_compile scripts/morocco_numocity_url_construction_probe.py
+
+      - name: Run sanitized static Numocity probe
+        run: python scripts/morocco_numocity_url_construction_probe.py
+
+      - name: Validate sanitized output
+        run: |
+          test -s artifacts/morocco-numocity-url-construction/summary.json
+          python scripts/public_safety_check.py artifacts/morocco-numocity-url-construction
+
+      - name: Persist sanitized report when changed
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          cp artifacts/morocco-numocity-url-construction/summary.json reports/morocco/totalenergies/latest-url-construction.json
+          python scripts/public_safety_check.py reports/morocco/totalenergies
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/totalenergies/latest-url-construction.json
+          if git diff --cached --quiet; then
+            echo "No Numocity report change to commit"
+            exit 0
+          fi
+          git commit -m "data(morocco): update Numocity static method shape [run ${GITHUB_RUN_ID}]"
+          git pull --rebase origin main
+          git push origin HEAD:main
