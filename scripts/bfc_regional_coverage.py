@@ -8,6 +8,7 @@ from pathlib import Path
 UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36'
 BFC='https://www.territoiredenergie-bourgogne-franche-comte.com/nos-offres-et-tarifs/'
 MODULO='https://modulo-energies.fr/'
+MODULO_MEMBERS='https://modulo-energies.fr/collectivites/'
 FILES={
  'Yonne':'sdey_official_yonne.json',
  "Côte-d'Or":'siceco_cotedor_official.json',
@@ -73,10 +74,15 @@ def main():
     if evses != {'FR*LDL*E00003243','FR*LDL*E00003244'}:
         raise RuntimeError('Jura Champagnole Lidl EVSE IDs changed unexpectedly')
 
-    bs,bhtml=fetch(BFC); ms,mhtml=fetch(MODULO)
-    if bs!=200 or ms!=200: raise RuntimeError(f'HTTP failure bfc={bs} modulo={ms}')
+    bs,bhtml=fetch(BFC); ms,mhtml=fetch(MODULO); cms,cmhtml=fetch(MODULO_MEMBERS)
+    if bs!=200 or ms!=200 or cms!=200: raise RuntimeError(f'HTTP failure bfc={bs} modulo={ms} modulo_members={cms}')
     require(bhtml,"Côte-d’Or",'SYDED','SIEEEN','SIED70','SDEY',"Territoire d'Energie 90",'Electromaps')
     require(mhtml,'804','Sans Abonnement','0,52','Abonnement','0,40')
+    require(cmhtml,'SIEIL','SIDELC','SIEM','Les membres fondateurs','Ils nous ont déjà rejoint')
+    current_modulo_members_page_lists_sidec_jura = 'sidec-jura' in cmhtml.lower() or 'sidec du jura' in norm(cmhtml)
+    if current_modulo_members_page_lists_sidec_jura:
+        raise RuntimeError('Modulo current members page now appears to list SIDEC Jura; Jura mapping requires fresh review')
+
     exact=[]; reference=[]
     exact_map={
       'Yonne':'SDEY','Côte-d\'Or':'SICECO','Nièvre':'SIEEEN','Doubs':'SYDED','Haute-Saône':'SIED70','Territoire de Belfort':"Territoire d'Énergie 90"
@@ -100,8 +106,14 @@ def main():
     })
     reference.append({
       'department':'Jura',
-      'operator':'Modulo candidate from SIDEC public history',
-      'tccDecision':'reference_only_with_negative_station_mapping_check',
+      'operator':'current departmental public-network CPO unresolved',
+      'historicalCandidate':'SIDEC / Modulo',
+      'tccDecision':'reference_only_historical_modulo_not_currently_evidenced',
+      'currentModuloMembershipEvidence':{
+        'officialMembersPage':MODULO_MEMBERS,
+        'sidecJuraListed':False,
+        'decision':'do not treat historical SIDEC/Modulo planning as a current live network mapping'
+      },
       'excludedCandidate':{
         'station':'Lidl CHAMPAGNOLE Cassin',
         'city':'Champagnole',
@@ -109,17 +121,17 @@ def main():
         'evseIds':['FR*LDL*E00003243','FR*LDL*E00003244'],
         'reason':'current Charge Global app screenshot identifies this candidate as a Lidl roaming station, not Modulo/SIDEC'
       },
-      'reason':'Modulo current public prices are from-values and current first-party Jura station/operator mapping is still unresolved; Champagnole Cassin has now been explicitly excluded as a false Modulo witness'
+      'reason':'historical SIDEC documents discussed joining Modulo, but the current official Modulo member page does not evidence SIDEC Jura and the manually checked Champagnole candidate is Lidl; no current Jura Modulo tariff should be inferred'
     })
     payload={
       'schemaVersion':'1.0.0','dataset':'bfc-regional-coverage','generatedAt':now(),'region':'Bourgogne-Franche-Comté','country':'FR',
       'departmentsTotal':8,'exactRuleDepartments':exact,'referenceOnlyDepartments':reference,
-      'coverage':{'departmentsAccountedFor':8,'exactRuleCount':6,'referenceOnlyCount':2,'currentStationLevelVerifications':1,'negativeStationMappingVerifications':1,'regionalResearchCoverageComplete':True,'allDepartmentsRankable':False},
-      'sourceEvidence':{'bfcCurrentTariffPage':BFC,'bfcHttpStatus':bs,'moduloCurrentHome':MODULO,'moduloHttpStatus':ms,'validatedLocalFiles':list(FILES.values()),'stationVerificationFiles':list(STATION_VERIFICATIONS.values())},
-      'notes':['Existing exact-rule files were generated from first-party sources on 2026-08-20 and are reused rather than rerun blindly one day later.','Qwello Autun 12 Petite Rue Marchaux is current-station verified at 0.30 EUR/kWh + 0.02 EUR/min with a 3.60 EUR night cap on the minute component from 21:00 to 07:00.','Champagnole Cassin in Jura was manually checked in Charge Global on 2026-08-21 and is Lidl (FR*LDL*E00003243 / FR*LDL*E00003244), so it is explicitly excluded as a Modulo/SIDEC witness.','Saône-et-Loire remains reference-only at department level until more Qwello stations confirm uniformity; Jura/Modulo remains reference-only until a current local Modulo station and exact pricing are confirmed.'],
+      'coverage':{'departmentsAccountedFor':8,'exactRuleCount':6,'referenceOnlyCount':2,'currentStationLevelVerifications':1,'negativeStationMappingVerifications':1,'historicalOperatorMappingsDowngraded':1,'regionalResearchCoverageComplete':True,'allDepartmentsRankable':False},
+      'sourceEvidence':{'bfcCurrentTariffPage':BFC,'bfcHttpStatus':bs,'moduloCurrentHome':MODULO,'moduloHttpStatus':ms,'moduloCurrentMembersPage':MODULO_MEMBERS,'moduloCurrentMembersHttpStatus':cms,'moduloCurrentMembersPageListsSidecJura':False,'validatedLocalFiles':list(FILES.values()),'stationVerificationFiles':list(STATION_VERIFICATIONS.values())},
+      'notes':['Existing exact-rule files were generated from first-party sources on 2026-08-20 and are reused rather than rerun blindly one day later.','Qwello Autun 12 Petite Rue Marchaux is current-station verified at 0.30 EUR/kWh + 0.02 EUR/min with a 3.60 EUR night cap on the minute component from 21:00 to 07:00.','Champagnole Cassin in Jura was manually checked in Charge Global on 2026-08-21 and is Lidl (FR*LDL*E00003243 / FR*LDL*E00003244), so it is explicitly excluded as a Modulo/SIDEC witness.','The current official Modulo members page does not evidence SIDEC Jura. Historical SIDEC/Modulo planning is therefore preserved only as history, not as a current operator mapping.','Saône-et-Loire remains reference-only at department level until more Qwello stations confirm uniformity; Jura remains reference-only until its current public-network operator/station mapping is evidenced.'],
       'publicationStatus':'validated_candidate'
     }
     (out/'bfc_regional_coverage.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
-    (out/'SUMMARY.md').write_text('# Bourgogne-Franche-Comté coverage\n\nAll eight departments are accounted for at research level. Six have current exact operator-rule grids. Saône-et-Loire has one current Qwello station-level tariff verification. Jura/Modulo remains reference-only; Champagnole Cassin has been manually excluded because Charge Global identifies it as Lidl, not Modulo/SIDEC.\n')
+    (out/'SUMMARY.md').write_text('# Bourgogne-Franche-Comté coverage\n\nAll eight departments are accounted for at research level. Six have current exact operator-rule grids. Saône-et-Loire has one current Qwello station-level tariff verification. Jura remains reference-only: the historical SIDEC/Modulo candidate is no longer treated as a current mapping because the current Modulo member page does not evidence SIDEC Jura, and Champagnole Cassin was manually verified as Lidl.\n')
 
 if __name__=='__main__': main()
