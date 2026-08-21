@@ -1,12 +1,12 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-08-21T11:50:35.814621+00:00",
+  "schema_version": 2,
+  "generated_at": "2026-08-21T11:51:33.165934+00:00",
   "package": "ma.kilowatt.app",
   "policy": {
     "read_only": true,
     "no_login": true,
     "no_mutations": true,
-    "public_anon_key_used_in_memory_only": true,
+    "public_client_keys_used_in_memory_only": true,
     "raw_key_persisted": false,
     "raw_package_persisted": false,
     "raw_response_bodies_persisted": false,
@@ -20,23 +20,49 @@
     "project_hosts": [
       "jmrgknphxsviooizyilj.supabase.co"
     ],
-    "anonymous_key_found": true,
-    "jwt_role": "anon",
-    "jwt_ref_matches_project": true,
-    "jwt_claim_names": [
-      "exp",
-      "iat",
-      "iss",
-      "ref",
-      "role"
+    "publishable_key_found": false,
+    "legacy_anon_key_found": true,
+    "legacy_anon_candidates": [
+      {
+        "role": "anon",
+        "ref_matches_project": true,
+        "claim_names": [
+          "exp",
+          "iat",
+          "iss",
+          "ref",
+          "role"
+        ],
+        "has_exp": true,
+        "expired": false
+      }
     ]
   },
+  "auth_mode_probes": [
+    {
+      "mode": "legacy_anon_apikey_only",
+      "status": 401,
+      "content_type": "application/json;charset=UTF-8",
+      "error_type": null,
+      "safe_error": {
+        "message": "Invalid API key",
+        "hint": "Double check your Supabase `anon` or `service_role` API key."
+      }
+    },
+    {
+      "mode": "legacy_anon_apikey_and_bearer",
+      "status": 401,
+      "content_type": "application/json;charset=UTF-8",
+      "error_type": null,
+      "safe_error": {
+        "message": "Invalid API key",
+        "hint": "Double check your Supabase `anon` or `service_role` API key."
+      }
+    }
+  ],
   "rest_discovery": {
-    "status": 401,
-    "content_type": "application/json;charset=UTF-8",
-    "error_type": null,
     "charging_infrastructure_tables": [],
-    "charging_infrastructure_table_count": 0
-  },
-  "table_probes": []
+    "charging_infrastructure_table_count": 0,
+    "blocker": "No recovered public client-key mode authenticated successfully to the REST root."
+  }
 }
