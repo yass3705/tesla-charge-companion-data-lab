@@ -1,0 +1,116 @@
+name: Grand Est eCharge54 validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/echarge54_official.py"
+      - ".github/workflows/echarge54-grandest-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: grandest-echarge54-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+
+      - name: Extract current official tariff groups
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/echarge54
+          python -m py_compile scripts/echarge54_official.py
+          python scripts/echarge54_official.py --out out/echarge54 2> >(tee out/echarge54/error.log >&2)
+
+      - name: Validate classification
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/echarge54/echarge54_official_grandest.json').read_text())
+          assert p['dataset']=='echarge54-official-grandest'
+          assert p['operatorDirect']['cd54']['normalAcUpTo22Kw']['eurPerKwh']==0.20
+          assert p['operatorDirect']['cd54']['highPowerDcAbove25Kw']['eurPerKwh']==0.40
+          assert p['operatorDirect']['groupTime30Min']['normalAcUpTo22Kw']['eurPer30Minutes']==0.50
+          assert p['operatorDirect']['groupTime30Min']['publishedCapHours']==4.0
+          assert p['operatorDirect']['groupMixed']['normalAcUpTo22Kw']['eurPerKwh']==0.40
+          assert p['operatorDirect']['groupMixed']['normalAcUpTo22Kw']['idleAfterConnectionMinutes']==240
+          assert p['operatorDirect']['groupMixed']['normalAcUpTo22Kw']['idleEurPerStartedMinute']==0.07
+          assert p['tccDecision']['directTariffClassable'] is True
+          assert p['tccDecision']['requiresStationTariffGroupMapping'] is True
+          assert p['roaming']['emspServiceFeesMayBeAdded'] is True
+          PY
+
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/echarge54
+          cp out/echarge54/echarge54_official_grandest.json data/operator_direct/echarge54_official_grandest.json
+          cp out/echarge54/SUMMARY.md reports/echarge54/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/echarge54_official_grandest.json reports/echarge54/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(echarge54): publish official Grand Est tariffs [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/echarge54
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/echarge54/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/echarge54/latest_diagnostic.json').write_text(json.dumps({'dataset':'echarge54-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/echarge54
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/echarge54/latest_run_status.json').write_text(json.dumps({'dataset':'echarge54-run-status','operator':'eCharge54 - SDE54','region':'Grand Est','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/echarge54/latest_run_status.json reports/echarge54/latest_diagnostic.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "status(echarge54): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
