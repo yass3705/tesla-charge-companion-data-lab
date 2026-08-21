@@ -1,4 +1,3 @@
-# retrigger after MAMP witness fix
 name: PACA regional coverage
 
 on:
@@ -7,6 +6,7 @@ on:
     branches: ["main", "paca-regional-coverage"]
     paths:
       - "scripts/paca_regional_coverage.py"
+      - "scripts/paca_carf_overlay.py"
       - ".github/workflows/paca-regional-coverage.yml"
       - "data/operator_direct/eborn_official_france.json"
 
@@ -35,8 +35,9 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p out/paca
-          python -m py_compile scripts/paca_regional_coverage.py
+          python -m py_compile scripts/paca_regional_coverage.py scripts/paca_carf_overlay.py
           python scripts/paca_regional_coverage.py --out out/paca 2> >(tee out/paca/error.log >&2)
+          python scripts/paca_carf_overlay.py --out out/paca 2> >(tee -a out/paca/error.log >&2)
           cat out/paca/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate tariff models and regional coverage
@@ -54,11 +55,20 @@ jobs:
           assert p['coverage']['singleUniversalRegionalTariff'] is False
           assert p['coverage']['allIdentifiedLiveTariffsResolved'] is False
           assert p['tccDecision']['keepUnresolvedStationTariffsNullUntilVerified'] is True
-          assert p['sourceHealth']['officialOrOperatorSourcesReachableAtRun'] >= 9
+          assert 'Riviera Française / CARF' in p['departments']['Alpes-Maritimes']['publicNetworkFamilies']
+          assert 'Riviera Française / CARF' in p['coverage']['operatorFamiliesWithExactCurrentPublicGrid']
+          assert p['sourceHealth']['sourcesTotal']==15
+          assert p['sourceHealth']['officialOrOperatorSourcesReachableAtRun'] >= 10
 
           w=json.loads((r/'wiiiz_evzen_official_paca.json').read_text())
           assert w['subscription']=={'monthlyFeeEur':6.0,'registrationFeeEur':15.0,'badgeIncluded':True}
           assert w['directTariff']['dc50Kw']=={'subscriberEurPerKwh':0.24,'nonSubscriberEurPerKwh':0.40,'postChargeEurPerMinute':0.25}
+
+          c=json.loads((r/'riviera_francaise_carf_evzen_official_paca.json').read_text())
+          assert c['effectiveDate']=='2025-07-01'
+          assert c['directTariff']['day0700To2200EurPerHour']==4.0
+          assert c['directTariff']['night2200To0700EurPerHour']==2.0
+          assert c['directTariff']['moulinetStationsFree'] is True
 
           l=json.loads((r/'larecharge_evzen_official_paca.json').read_text())
           assert l['directTariff']['acceleratedUpTo22Kw']=={'day0700To2200EurPerHour':6.0,'night2200To0700EurPerHour':1.5}
@@ -89,7 +99,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p data/operator_direct data/regional_coverage reports/paca
-          for f in wiiiz_evzen_official_paca.json larecharge_evzen_official_paca.json simone_evzen_official_paca.json prise_de_nice_official_paca.json vaucluselec_ulys_official_paca.json; do
+          for f in wiiiz_evzen_official_paca.json riviera_francaise_carf_evzen_official_paca.json larecharge_evzen_official_paca.json simone_evzen_official_paca.json prise_de_nice_official_paca.json vaucluselec_ulys_official_paca.json; do
             cp "out/paca/$f" "data/operator_direct/$f"
           done
           cp out/paca/paca_regional_coverage.json data/regional_coverage/
@@ -97,7 +107,7 @@ jobs:
           python scripts/public_safety_check.py .
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/operator_direct/wiiiz_evzen_official_paca.json data/operator_direct/larecharge_evzen_official_paca.json data/operator_direct/simone_evzen_official_paca.json data/operator_direct/prise_de_nice_official_paca.json data/operator_direct/vaucluselec_ulys_official_paca.json data/regional_coverage/paca_regional_coverage.json reports/paca/latest_summary.md
+          git add data/operator_direct/wiiiz_evzen_official_paca.json data/operator_direct/riviera_francaise_carf_evzen_official_paca.json data/operator_direct/larecharge_evzen_official_paca.json data/operator_direct/simone_evzen_official_paca.json data/operator_direct/prise_de_nice_official_paca.json data/operator_direct/vaucluselec_ulys_official_paca.json data/regional_coverage/paca_regional_coverage.json reports/paca/latest_summary.md
           if ! git diff --cached --quiet; then
             git commit -m "data(paca): publish validated regional public-network evidence [run ${GITHUB_RUN_ID}]"
             for attempt in 1 2 3; do
