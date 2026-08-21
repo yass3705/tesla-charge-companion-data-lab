@@ -1,0 +1,35 @@
+name: Morocco EVGO pin hydration
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/morocco_evgo_pin_hydration_probe.py'
+      - '.github/workflows/morocco-evgo-pin-hydration.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run sanitized read-only probe
+        run: python3 scripts/morocco_evgo_pin_hydration_probe.py
+      - name: Publish sanitized report
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          mkdir -p reports/morocco/evgo
+          cp artifacts/morocco-evgo-pin-hydration/summary.json reports/morocco/evgo/latest-pin-hydration.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/morocco/evgo/latest-pin-hydration.json
+          if git diff --cached --quiet; then
+            echo 'No report changes'
+            exit 0
+          fi
+          git commit -m "data(morocco): update EVGO pin hydration [run ${RUN_ID}]"
+          git push
