@@ -57,7 +57,12 @@ jobs:
           assert y['directTariffs']['super']=={'energyEurPerKwh':0.59,'sessionFeeEur':2.0}
           s=json.loads((root/'sarthe_irve_official_pdl.json').read_text())
           assert s['directTariffs']['normal']['subscriberEnergyEurPerKwh']==0.20
-          assert s['directTariffs']['rapid']['nonSubscriberEnergyEurPerKwh']==0.30
+          assert s['tccDecision']['normalDirectTariffClassable'] is True
+          assert s['tccDecision']['rapidDirectTariffClassable'] is False
+          c=json.loads((root/'loir_luce_berce_official_pdl.json').read_text())
+          assert c['directTariff']['energyEurPerKwh']==0.23
+          assert c['directTariff']['connectedTimeEurPerMin']==0.04
+          assert c['directTariff']['sessionCapEur']==50.0
           n=json.loads((root/'nantes_etotem_official_pdl.json').read_text())
           assert n['occupationFee']=={'afterChargeGraceMinutes':10,'billingBlockMinutes':15,'eCityEurPerBlock':1.0,'eFastEurPerBlock':3.0}
           assert n['tccDecision']['directEnergyTariffClassable'] is False
@@ -82,13 +87,14 @@ jobs:
           cp out/pdl/te53_mayenne_official_pdl.json data/operator_direct/
           cp out/pdl/sydev_vendee_official_pdl.json data/operator_direct/
           cp out/pdl/sarthe_irve_official_pdl.json data/operator_direct/
+          cp out/pdl/loir_luce_berce_official_pdl.json data/operator_direct/
           cp out/pdl/nantes_etotem_official_pdl.json data/operator_direct/
           cp out/pdl/pays_de_la_loire_regional_coverage.json data/regional_coverage/
           cp out/pdl/SUMMARY.md reports/pdl/latest_summary.md
           python scripts/public_safety_check.py .
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/operator_direct/ouestcharge_44_49_official_pdl.json data/operator_direct/te53_mayenne_official_pdl.json data/operator_direct/sydev_vendee_official_pdl.json data/operator_direct/sarthe_irve_official_pdl.json data/operator_direct/nantes_etotem_official_pdl.json data/regional_coverage/pays_de_la_loire_regional_coverage.json reports/pdl/latest_summary.md
+          git add data/operator_direct/ouestcharge_44_49_official_pdl.json data/operator_direct/te53_mayenne_official_pdl.json data/operator_direct/sydev_vendee_official_pdl.json data/operator_direct/sarthe_irve_official_pdl.json data/operator_direct/loir_luce_berce_official_pdl.json data/operator_direct/nantes_etotem_official_pdl.json data/regional_coverage/pays_de_la_loire_regional_coverage.json reports/pdl/latest_summary.md
           if ! git diff --cached --quiet; then
             git commit -m "data(pdl): publish validated regional public-network evidence [run ${GITHUB_RUN_ID}]"
             git pull --rebase origin main
