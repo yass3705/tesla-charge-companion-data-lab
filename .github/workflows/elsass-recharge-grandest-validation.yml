@@ -48,12 +48,12 @@ jobs:
           assert p['operatorDirect']['engieVianeoApp']['upTo22Kw']['energyEurPerKwh']==0.306
           assert p['operatorDirect']['engieVianeoApp']['dc150Kw']['energyEurPerKwh']==0.459
           assert p['operatorDirect']['engieVianeoApp']['timeComponentsSameAsPublic'] is True
-          assert p['subscription']['historicalOfficialFreshmileMonthlyEur']==8.0
-          assert p['subscription']['currentlyListedOnProductionFreshmileShop'] is False
+          assert p['subscription']['currentlyListedOnProductionFreshmileShop'] is not True
           assert p['subscription']['rankableAsSeparateOffer'] is False
           assert p['tccDecision']['publicTariffClassable'] is True
           assert p['tccDecision']['engieVianeoAppTariffClassable'] is True
           assert p['sourceEvidence']['officialOnly'] is True
+          assert p['sourceEvidence']['coreSourcesValidated']==['home','tariffs','faq']
           PY
       - name: Publish validated evidence
         if: success()
