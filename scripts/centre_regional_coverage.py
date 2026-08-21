@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Consolidate validated Centre-Val de Loire public-network evidence without inventing universal tariffs."""
 from __future__ import annotations
-import argparse, json, re, urllib.request
+import argparse, html, json, re, urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -22,9 +22,13 @@ def fetch(url):
 
 def norm(s):
     import unicodedata
-    s=unicodedata.normalize('NFKD',s or '')
+    s=html.unescape(s or '')
+    s=re.sub(r'(?is)<script.*?</script>|<style.*?</style>',' ',s)
+    s=re.sub(r'(?s)<[^>]+>',' ',s)
+    s=unicodedata.normalize('NFKD',s)
     s=''.join(c for c in s if not unicodedata.combining(c))
-    return re.sub(r'\s+',' ',s.lower().replace('\xa0',' ')).strip()
+    s=s.lower().replace('\xa0',' ').replace('’',"'").replace('‘',"'")
+    return re.sub(r'\s+',' ',s).strip()
 
 def require(text,*items):
     n=norm(text); missing=[x for x in items if norm(x) not in n]
@@ -55,7 +59,7 @@ def main():
 
     ls,lhtml,lfinal=fetch(LOIRET); ss,shtml,sfinal=fetch(SIDELC41)
     if ls!=200 or ss!=200: raise RuntimeError(f'HTTP failure loiret={ls} sidelc41={ss}')
-    require(lhtml,'Schéma Directeur','hors territoire d’Orléans Métropole','290 points de charge','3 400 points de charge','opérateurs privés')
+    require(lhtml,'Schéma Directeur',"hors territoire d'Orléans Métropole",'290 points de charge','3 400 points de charge','opérateurs privés')
     require(shtml,'Bornes de recharge','SIDELC','Loir et Cher','Modulo')
 
     departments=[
