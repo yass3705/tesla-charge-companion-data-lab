@@ -2,9 +2,9 @@
 """Static-only TotalEnergies Morocco / Numocity URL-construction probe.
 
 Examines the publicly distributed Android client around known connector/station-state routes and the
-public Numocity hostname. Persists only public host/path literals, HTTP-method-like syntax markers
-and identifier names. No backend request, login, credential, real QR, connector/station ID or raw
-bundle context is persisted.
+public Numocity hostname. Persists only public host/path literals, HTTP-method-like syntax markers,
+safe Numocity domain literals and identifier names. No backend request, login, credential, real QR,
+connector/station ID or raw bundle context is persisted.
 """
 from __future__ import annotations
 
@@ -38,10 +38,11 @@ METHOD_MARKERS = (
 )
 OUT = Path("artifacts/morocco-numocity-url-construction")
 OUT.mkdir(parents=True, exist_ok=True)
-UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.2)"
+UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.3)"
 
 URL_RX = re.compile(r"https?://[^\s\x00\"'<>\\]{5,500}", re.I)
 HOST_RX = re.compile(r"(?<![A-Za-z0-9.-])(?:[A-Za-z0-9-]+\.)+(?:com|ma|net|tech|io)(?![A-Za-z0-9.-])", re.I)
+NUMOCITY_DOMAIN_RX = re.compile(r"(?:[A-Za-z0-9-]+\.)*numocity\.com", re.I)
 PATH_RX = re.compile(r"/(?:[A-Za-z0-9._~-]+/?){1,10}")
 IDENT_RX = re.compile(
     r"\b(?:baseURL|baseUrl|base_url|apiURL|apiUrl|api_url|endpoint|apiEndpoint|"
@@ -130,7 +131,7 @@ def keep_path(value: str) -> bool:
 
 def main():
     report = {
-        "schema_version": 3,
+        "schema_version": 4,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "package": PACKAGE,
         "policy": {
@@ -143,6 +144,7 @@ def main():
             "credentials_or_real_station_ids_persisted": False,
             "queries_and_fragments_stripped_from_urls": True,
             "method_detection_is_static_signal_only": True,
+            "near_route_numocity_domains_are_public_domain_literals_only": True,
         },
         "download_ok": False,
         "marker_hits": [],
@@ -151,6 +153,7 @@ def main():
         "nearby_public_hosts": [],
         "nearby_public_paths": [],
         "near_host_public_paths": [],
+        "near_route_numocity_domains": {},
         "nearby_identifier_names": {},
         "construction_marker_counts": {},
         "method_marker_counts_by_route": {},
@@ -172,6 +175,7 @@ def main():
         hosts = {}
         paths = {}
         host_paths = {}
+        numocity_domains_by_route = defaultdict(Counter)
         identifiers = Counter()
         constructions = Counter()
         methods_by_route = defaultdict(Counter)
@@ -210,6 +214,9 @@ def main():
                     for raw in HOST_RX.findall(s):
                         value = raw.lower()
                         hosts[(value, marker)] = min(distance, hosts.get((value, marker), 10**12))
+                    if distance <= 1024:
+                        for domain in NUMOCITY_DOMAIN_RX.findall(s):
+                            numocity_domains_by_route[marker][domain.lower()] += 1
                     for raw in PATH_RX.findall(s):
                         value = safe_path(raw)
                         if value and keep_path(value):
@@ -220,7 +227,6 @@ def main():
                     for cm in CONSTRUCTION_MARKERS:
                         if cm.lower() in s.lower():
                             constructions[cm] += 1
-                    # Tight method window only: avoids counting unrelated app methods in the same binary.
                     if distance <= 1024:
                         low = s.lower()
                         for mm in METHOD_MARKERS:
@@ -260,6 +266,9 @@ def main():
             {"value": value, "host_marker": marker, "distance_bytes": distance}
             for (value, marker), distance in sorted(host_paths.items(), key=lambda x: x[1])[:180]
         ]
+        report["near_route_numocity_domains"] = {
+            route: dict(counts.most_common()) for route, counts in sorted(numocity_domains_by_route.items())
+        }
         report["nearby_identifier_names"] = dict(identifiers.most_common(100))
         report["construction_marker_counts"] = dict(constructions.most_common())
         report["method_marker_counts_by_route"] = {
@@ -272,6 +281,7 @@ def main():
         "host_markers": len(report["host_marker_hits"]),
         "urls": report["nearby_public_urls"][:8],
         "host_paths": report["near_host_public_paths"][:12],
+        "numocity_domains": report["near_route_numocity_domains"],
         "methods": report["method_marker_counts_by_route"],
     }))
 
