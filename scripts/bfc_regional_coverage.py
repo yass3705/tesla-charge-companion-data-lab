@@ -18,7 +18,8 @@ FILES={
  'Saône-et-Loire':'qwello_saone_et_loire_official.json'
 }
 STATION_VERIFICATIONS={
- 'Saône-et-Loire':'data/station_verifications/qwello_autun_12_petite_rue_marchaux.json'
+ 'Saône-et-Loire':'data/station_verifications/qwello_autun_12_petite_rue_marchaux.json',
+ 'Jura':'data/station_verifications/jura_champagnole_cassin_lidl_negative_mapping.json'
 }
 
 def fetch(url):
@@ -53,12 +54,24 @@ def main():
         p=Path(fn)
         if not p.exists(): raise RuntimeError(f'missing station verification {p}')
         station_checks[dept]=json.loads(p.read_text())
+
     qwello_check=station_checks['Saône-et-Loire']
     if qwello_check.get('operator')!='Qwello': raise RuntimeError('Qwello station verification operator mismatch')
     if qwello_check.get('tccDecision',{}).get('currentStationDirectTariffVerified') is not True: raise RuntimeError('Qwello station tariff is not marked verified')
     tariff=qwello_check.get('directTariff',{})
     if tariff.get('energyEurPerKwh')!=0.30 or tariff.get('timeEurPerMinute')!=0.02 or tariff.get('nightMinuteComponentCapEur')!=3.60:
         raise RuntimeError('Qwello Autun verified tariff changed unexpectedly')
+
+    jura_check=station_checks['Jura']
+    station=jura_check.get('station',{})
+    decision=jura_check.get('mappingDecision',{})
+    if station.get('displayName')!='Lidl CHAMPAGNOLE Cassin' or station.get('operatorDisplayed')!='Lidl':
+        raise RuntimeError('Jura Champagnole negative mapping witness changed unexpectedly')
+    if decision.get('isModuloOrSidecStation') is not False or decision.get('excludeAsJuraModuloWitness') is not True:
+        raise RuntimeError('Jura Champagnole candidate is not marked excluded from Modulo mapping')
+    evses={x.get('evseId') for x in station.get('chargePoints',[])}
+    if evses != {'FR*LDL*E00003243','FR*LDL*E00003244'}:
+        raise RuntimeError('Jura Champagnole Lidl EVSE IDs changed unexpectedly')
 
     bs,bhtml=fetch(BFC); ms,mhtml=fetch(MODULO)
     if bs!=200 or ms!=200: raise RuntimeError(f'HTTP failure bfc={bs} modulo={ms}')
@@ -85,16 +98,28 @@ def main():
       },
       'reason':'current direct tariff is verified for Qwello Autun 12 Petite Rue Marchaux, but network-wide uniformity across Saône-et-Loire is not yet established'
     })
-    reference.append({'department':'Jura','operator':'Modulo candidate from SIDEC public history','tccDecision':'reference_only','reason':'Modulo current public prices are from-values and current first-party Jura station/operator mapping is not yet machine-confirmed'})
+    reference.append({
+      'department':'Jura',
+      'operator':'Modulo candidate from SIDEC public history',
+      'tccDecision':'reference_only_with_negative_station_mapping_check',
+      'excludedCandidate':{
+        'station':'Lidl CHAMPAGNOLE Cassin',
+        'city':'Champagnole',
+        'operatorDisplayed':'Lidl',
+        'evseIds':['FR*LDL*E00003243','FR*LDL*E00003244'],
+        'reason':'current Charge Global app screenshot identifies this candidate as a Lidl roaming station, not Modulo/SIDEC'
+      },
+      'reason':'Modulo current public prices are from-values and current first-party Jura station/operator mapping is still unresolved; Champagnole Cassin has now been explicitly excluded as a false Modulo witness'
+    })
     payload={
       'schemaVersion':'1.0.0','dataset':'bfc-regional-coverage','generatedAt':now(),'region':'Bourgogne-Franche-Comté','country':'FR',
       'departmentsTotal':8,'exactRuleDepartments':exact,'referenceOnlyDepartments':reference,
-      'coverage':{'departmentsAccountedFor':8,'exactRuleCount':6,'referenceOnlyCount':2,'currentStationLevelVerifications':1,'regionalResearchCoverageComplete':True,'allDepartmentsRankable':False},
+      'coverage':{'departmentsAccountedFor':8,'exactRuleCount':6,'referenceOnlyCount':2,'currentStationLevelVerifications':1,'negativeStationMappingVerifications':1,'regionalResearchCoverageComplete':True,'allDepartmentsRankable':False},
       'sourceEvidence':{'bfcCurrentTariffPage':BFC,'bfcHttpStatus':bs,'moduloCurrentHome':MODULO,'moduloHttpStatus':ms,'validatedLocalFiles':list(FILES.values()),'stationVerificationFiles':list(STATION_VERIFICATIONS.values())},
-      'notes':['Existing exact-rule files were generated from first-party sources on 2026-08-20 and are reused rather than rerun blindly one day later.','Qwello Autun 12 Petite Rue Marchaux is now current-station verified at 0.30 EUR/kWh + 0.02 EUR/min with a 3.60 EUR night cap on the minute component from 21:00 to 07:00.','Saône-et-Loire remains reference-only at department level until more Qwello stations confirm uniformity; Jura/Modulo remains reference-only until current local station/operator mapping and exact pricing are confirmed.'],
+      'notes':['Existing exact-rule files were generated from first-party sources on 2026-08-20 and are reused rather than rerun blindly one day later.','Qwello Autun 12 Petite Rue Marchaux is current-station verified at 0.30 EUR/kWh + 0.02 EUR/min with a 3.60 EUR night cap on the minute component from 21:00 to 07:00.','Champagnole Cassin in Jura was manually checked in Charge Global on 2026-08-21 and is Lidl (FR*LDL*E00003243 / FR*LDL*E00003244), so it is explicitly excluded as a Modulo/SIDEC witness.','Saône-et-Loire remains reference-only at department level until more Qwello stations confirm uniformity; Jura/Modulo remains reference-only until a current local Modulo station and exact pricing are confirmed.'],
       'publicationStatus':'validated_candidate'
     }
     (out/'bfc_regional_coverage.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
-    (out/'SUMMARY.md').write_text('# Bourgogne-Franche-Comté coverage\n\nAll eight departments are accounted for at research level. Six have current exact operator-rule grids. Saône-et-Loire now has one current Qwello station-level verification (Autun, 12 Petite Rue Marchaux) but remains reference-only at department level pending more samples. Jura/Modulo remains reference-only.\n')
+    (out/'SUMMARY.md').write_text('# Bourgogne-Franche-Comté coverage\n\nAll eight departments are accounted for at research level. Six have current exact operator-rule grids. Saône-et-Loire has one current Qwello station-level tariff verification. Jura/Modulo remains reference-only; Champagnole Cassin has been manually excluded because Charge Global identifies it as Lidl, not Modulo/SIDEC.\n')
 
 if __name__=='__main__': main()
