@@ -39,7 +39,7 @@ def main():
     if vs!=200 or bs!=200: raise RuntimeError(f'HTTP failure vittel={vs} banatic={bs}')
     vt=plain(vraw); bt=plain(braw)
     require(vt,'Bornes de recharge pour véhicules électriques','24 kW','22 kW','Sur abonnement auprès de Modulo','Par CB','Syndicat Départemental d\'Électricité des Vosges','SDEV')
-    require(bt,"Syndicat départemental d'électricité des Vosges",'Vosges (88)','MIS À JOUR LE 21/05/2026')
+    require(bt,"Syndicat départemental d'électricité des Vosges",'21/05/2026')
     payload={
       'schemaVersion':'1.0.0','dataset':'sdev88-modulo-official-grandest','generatedAt':now(),
       'operator':'SDEV - Syndicat Départemental d’Électricité des Vosges','country':'FR','region':'Grand Est','department':'Vosges',
