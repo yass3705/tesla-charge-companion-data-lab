@@ -1,0 +1,31 @@
+name: Grand Est next Connectandgo discovery
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths: ["scripts/connectandgo_next_grandest_discovery.py", ".github/workflows/connectandgo-next-grandest-discovery.yml"]
+permissions: {contents: write}
+concurrency: {group: grandest-connectandgo-next-discovery, cancel-in-progress: true}
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: python scripts/public_safety_check.py .
+      - name: Fetch public pages
+        run: |
+          python -m py_compile scripts/connectandgo_next_grandest_discovery.py
+          python scripts/connectandgo_next_grandest_discovery.py
+      - name: Publish discovery
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/connectandgo_next_grandest
+          if [ -f out/connectandgo_next/discovery.json ]; then cp out/connectandgo_next/discovery.json reports/connectandgo_next_grandest/latest_discovery.json; fi
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/connectandgo_next_grandest/latest_discovery.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then git commit -m "research(connectandgo): refresh next Grand Est discovery [run ${GITHUB_RUN_ID}]"; for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done; exit 1; fi
