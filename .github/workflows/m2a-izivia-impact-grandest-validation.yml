@@ -1,0 +1,86 @@
+name: Grand Est m2A IZIVIA Impact validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/m2a_izivia_impact_official.py"
+      - ".github/workflows/m2a-izivia-impact-grandest-validation.yml"
+
+permissions:
+  contents: write
+concurrency:
+  group: grandest-m2a-izivia-impact-validation
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Extract current official coverage
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/m2a_izivia_impact
+          python -m py_compile scripts/m2a_izivia_impact_official.py
+          python scripts/m2a_izivia_impact_official.py --out out/m2a_izivia_impact 2> >(tee out/m2a_izivia_impact/error.log >&2)
+      - name: Validate classification
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/m2a_izivia_impact/m2a_izivia_impact_official_grandest.json').read_text())
+          assert p['network']['publishedTargetChargePoints']==338
+          assert p['network']['territoryCommunes']==39
+          assert p['network']['publishedPowerKw']==[22,24,100,150]
+          assert p['tccDecision']['directTariffClassable'] is False
+          assert p['tariff']['reuseNationalIziviaOperatorRules'] is True
+          assert p['sourceEvidence']['officialOnly'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/m2a_izivia_impact
+          cp out/m2a_izivia_impact/m2a_izivia_impact_official_grandest.json data/operator_direct/m2a_izivia_impact_official_grandest.json
+          cp out/m2a_izivia_impact/SUMMARY.md reports/m2a_izivia_impact/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/m2a_izivia_impact_official_grandest.json reports/m2a_izivia_impact/latest_summary.md
+          if ! git diff --cached --quiet; then git commit -m "data(m2a): publish Grand Est IZIVIA Impact coverage [run ${GITHUB_RUN_ID}]"; git pull --rebase origin main; git push origin HEAD:main; fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/m2a_izivia_impact
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/m2a_izivia_impact/error.log'); s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/m2a_izivia_impact/latest_diagnostic.json').write_text(json.dumps({'dataset':'m2a-izivia-impact-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env: {JOB_STATUS: "${{ job.status }}"}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/m2a_izivia_impact
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/m2a_izivia_impact/latest_run_status.json').write_text(json.dumps({'dataset':'m2a-izivia-impact-run-status','operator':'m2A / IZIVIA Impact','region':'Grand Est','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/m2a_izivia_impact/latest_run_status.json reports/m2a_izivia_impact/latest_diagnostic.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then git commit -m "status(m2a): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"; for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done; exit 1; fi
