@@ -1,0 +1,113 @@
+name: Grand Est Modulo coverage validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/modulo_grandest_coverage.py"
+      - ".github/workflows/modulo-grandest-coverage.yml"
+      - "data/operator_direct/modulo_official_centre.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: grandest-modulo-coverage
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Validate official Marne coverage
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/modulo_grandest
+          python -m py_compile scripts/modulo_grandest_coverage.py
+          python scripts/modulo_grandest_coverage.py --out out/modulo_grandest 2> >(tee out/modulo_grandest/error.log >&2)
+      - name: Validate classification
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/modulo_grandest/modulo_grandest_coverage.json').read_text())
+          assert p['dataset']=='modulo-grandest-coverage'
+          assert p['region']=='Grand Est'
+          assert p['department']=='Marne'
+          assert p['coverage']['officiallyConfirmed'] is True
+          assert p['coverage']['siemFoundingMemberOfModulo'] is True
+          assert p['operatorValidationReference']['operatorValidated'] is True
+          assert p['operatorValidationReference']['defaultDisplay']=='reference_only'
+          assert p['tccDecision']['grandEstCoverageValidated'] is True
+          assert p['tccDecision']['reuseExistingModuloOperatorRules'] is True
+          assert p['tccDecision']['createSeparateGrandEstTariff'] is False
+          assert p['tccDecision']['rankableWithoutLocalConfirmation'] is False
+          assert p['sourceEvidence']['officialOnly'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/regional_coverage reports/modulo_grandest
+          cp out/modulo_grandest/modulo_grandest_coverage.json data/regional_coverage/modulo_grandest.json
+          cp out/modulo_grandest/SUMMARY.md reports/modulo_grandest/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/regional_coverage/modulo_grandest.json reports/modulo_grandest/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(modulo): confirm Grand Est Marne coverage [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/modulo_grandest
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/modulo_grandest/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/modulo_grandest/latest_diagnostic.json').write_text(json.dumps({'dataset':'modulo-grandest-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/modulo_grandest
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/modulo_grandest/latest_run_status.json').write_text(json.dumps({'dataset':'modulo-grandest-run-status','operator':'Modulo Energies','region':'Grand Est','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/modulo_grandest/latest_run_status.json
+          if [ -f reports/modulo_grandest/latest_diagnostic.json ]; then git add reports/modulo_grandest/latest_diagnostic.json; fi
+          if ! git diff --cached --quiet; then
+            git commit -m "status(modulo-grandest): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
