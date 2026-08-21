@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "dataset": "bfc-regional-coverage",
-  "generatedAt": "2026-08-21T21:55:16.095811Z",
+  "generatedAt": "2026-08-21T21:57:01.740692Z",
   "region": "Bourgogne-Franche-Comté",
   "country": "FR",
   "departmentsTotal": 8,
@@ -55,8 +55,14 @@
     },
     {
       "department": "Jura",
-      "operator": "Modulo candidate from SIDEC public history",
-      "tccDecision": "reference_only_with_negative_station_mapping_check",
+      "operator": "current departmental public-network CPO unresolved",
+      "historicalCandidate": "SIDEC / Modulo",
+      "tccDecision": "reference_only_historical_modulo_not_currently_evidenced",
+      "currentModuloMembershipEvidence": {
+        "officialMembersPage": "https://modulo-energies.fr/collectivites/",
+        "sidecJuraListed": false,
+        "decision": "do not treat historical SIDEC/Modulo planning as a current live network mapping"
+      },
       "excludedCandidate": {
         "station": "Lidl CHAMPAGNOLE Cassin",
         "city": "Champagnole",
@@ -67,7 +73,7 @@
         ],
         "reason": "current Charge Global app screenshot identifies this candidate as a Lidl roaming station, not Modulo/SIDEC"
       },
-      "reason": "Modulo current public prices are from-values and current first-party Jura station/operator mapping is still unresolved; Champagnole Cassin has now been explicitly excluded as a false Modulo witness"
+      "reason": "historical SIDEC documents discussed joining Modulo, but the current official Modulo member page does not evidence SIDEC Jura and the manually checked Champagnole candidate is Lidl; no current Jura Modulo tariff should be inferred"
     }
   ],
   "coverage": {
@@ -76,6 +82,7 @@
     "referenceOnlyCount": 2,
     "currentStationLevelVerifications": 1,
     "negativeStationMappingVerifications": 1,
+    "historicalOperatorMappingsDowngraded": 1,
     "regionalResearchCoverageComplete": true,
     "allDepartmentsRankable": false
   },
@@ -84,6 +91,9 @@
     "bfcHttpStatus": 200,
     "moduloCurrentHome": "https://modulo-energies.fr/",
     "moduloHttpStatus": 200,
+    "moduloCurrentMembersPage": "https://modulo-energies.fr/collectivites/",
+    "moduloCurrentMembersHttpStatus": 200,
+    "moduloCurrentMembersPageListsSidecJura": false,
     "validatedLocalFiles": [
       "sdey_official_yonne.json",
       "siceco_cotedor_official.json",
@@ -102,7 +112,8 @@
     "Existing exact-rule files were generated from first-party sources on 2026-08-20 and are reused rather than rerun blindly one day later.",
     "Qwello Autun 12 Petite Rue Marchaux is current-station verified at 0.30 EUR/kWh + 0.02 EUR/min with a 3.60 EUR night cap on the minute component from 21:00 to 07:00.",
     "Champagnole Cassin in Jura was manually checked in Charge Global on 2026-08-21 and is Lidl (FR*LDL*E00003243 / FR*LDL*E00003244), so it is explicitly excluded as a Modulo/SIDEC witness.",
-    "Saône-et-Loire remains reference-only at department level until more Qwello stations confirm uniformity; Jura/Modulo remains reference-only until a current local Modulo station and exact pricing are confirmed."
+    "The current official Modulo members page does not evidence SIDEC Jura. Historical SIDEC/Modulo planning is therefore preserved only as history, not as a current operator mapping.",
+    "Saône-et-Loire remains reference-only at department level until more Qwello stations confirm uniformity; Jura remains reference-only until its current public-network operator/station mapping is evidenced."
   ],
   "publicationStatus": "validated_candidate"
 }
