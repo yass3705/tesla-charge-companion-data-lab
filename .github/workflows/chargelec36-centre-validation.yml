@@ -7,6 +7,7 @@ on:
     paths:
       - "scripts/chargelec36_official.py"
       - "data/station_verifications/chargelec36_chateauroux_jules_chauvin_negative_2026_08_22.json"
+      - "data/station_verifications/chargelec36_chateauroux_colbert_2026_08_22.json"
       - ".github/workflows/chargelec36-centre-validation.yml"
 
 permissions:
@@ -43,18 +44,30 @@ jobs:
           assert p['dataset']=='chargelec36-official-centre'
           assert p['classification']['regionalPublicNetwork'] is True
           assert p['classification']['currentThirdPartyLocalPriceCorroboration'] is True
+          assert p['classification']['firstPartyBankCardFlatTariffManuallyValidated'] is True
           assert p['classification']['singleUniversalExactTariffValidated'] is False
+          assert p['classification']['rankableDirectBankCardTariff'] is True
           assert p['classification']['rankableWithoutFirstPartyPriceConfirmation'] is False
           assert p['currentPriceEvidence']['tourismOfficeObservedEur']==10.0
-          assert p['currentPriceEvidence']['semanticsResolved'] is False
-          assert p['tccDecision']['defaultDisplay']=='reference_only'
-          assert p['tccDecision']['numericPriceRankable'] is False
+          assert p['currentPriceEvidence']['semanticsResolved'] is True
+          assert p['currentPriceEvidence']['directBankCard']['billingModel']=='flat_session_fee'
+          assert p['currentPriceEvidence']['directBankCard']['fixedSessionFeeEur']==10.0
+          assert p['currentPriceEvidence']['badgeAndRoamingSamePriceProven'] is False
+          assert p['tccDecision']['defaultDisplay']=='direct_bank_card_flat_session'
+          assert p['tccDecision']['numericPriceRankable'] is True
+          assert p['tccDecision']['rankablePaymentMethod']=='contactless_bank_card'
+          assert p['tccDecision']['fixedSessionFeeEur']==10.0
           assert p['tccDecision']['excludeJulesChauvinAsLiveTariffWitness'] is True
           s=p['networkEvidence']['manualStaleCandidateCheck']
           assert s['visibleOnOfficialMapDuringManualCheck'] is False
           assert s['presentInCurrentFirstPartyDirectory'] is False
           assert s['excludeAsLiveWitness'] is True
           assert s['replacementCurrentFirstPartyWitness']=='CHATEAUROUX - Colbert'
+          c=p['networkEvidence']['manualCurrentStationCheck']
+          assert c['station']=='CHATEAUROUX - Colbert'
+          assert c['visibleOnOfficialMapDuringManualCheck'] is True
+          assert c['evseCount']==2
+          assert c['powerKVA']==22
           PY
       - name: Publish validated evidence
         if: success()
