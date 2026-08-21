@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
-  "generated_at": "2026-08-21T07:42:41.365594+00:00",
+  "schema_version": 3,
+  "generated_at": "2026-08-21T08:48:04.058507+00:00",
   "host": "cp.evgo.ma",
   "source_pin_ids": [
     8,
@@ -9,6 +9,7 @@
   ],
   "policy": {
     "read_only_hydration": true,
+    "get_single_location_read_only": true,
     "no_login": true,
     "no_credentials": true,
     "no_mutations": true,
@@ -17,15 +18,21 @@
     "raw_response_bodies_persisted": false,
     "only_whitelisted_public_charging_fields_sampled": true
   },
-  "cases_tested": [
+  "post_cases_tested": [
     "numeric_ids",
     "string_ids",
     "objects_id",
     "objects_locationId",
     "objects_location_id"
   ],
+  "direct_get_ids_tested": [
+    8,
+    4,
+    19
+  ],
   "probes": [
     {
+      "method": "POST",
       "path": "/api/v1/app/locations",
       "case": "numeric_ids",
       "status": 200,
@@ -50,6 +57,7 @@
       }
     },
     {
+      "method": "POST",
       "path": "/api/v1/app/locations",
       "case": "string_ids",
       "status": 200,
@@ -74,6 +82,7 @@
       }
     },
     {
+      "method": "POST",
       "path": "/api/v1/app/locations",
       "case": "objects_id",
       "status": 200,
@@ -98,6 +107,7 @@
       }
     },
     {
+      "method": "POST",
       "path": "/api/v1/app/locations",
       "case": "objects_locationId",
       "status": 200,
@@ -122,6 +132,7 @@
       }
     },
     {
+      "method": "POST",
       "path": "/api/v1/app/locations",
       "case": "objects_location_id",
       "status": 200,
@@ -146,6 +157,7 @@
       }
     },
     {
+      "method": "POST",
       "path": "/api/v2/app/locations",
       "case": "numeric_ids",
       "status": 200,
@@ -170,6 +182,7 @@
       }
     },
     {
+      "method": "POST",
       "path": "/api/v2/app/locations",
       "case": "string_ids",
       "status": 200,
@@ -194,6 +207,7 @@
       }
     },
     {
+      "method": "POST",
       "path": "/api/v2/app/locations",
       "case": "objects_id",
       "status": 200,
@@ -218,6 +232,7 @@
       }
     },
     {
+      "method": "POST",
       "path": "/api/v2/app/locations",
       "case": "objects_locationId",
       "status": 200,
@@ -242,6 +257,7 @@
       }
     },
     {
+      "method": "POST",
       "path": "/api/v2/app/locations",
       "case": "objects_location_id",
       "status": 200,
@@ -260,6 +276,432 @@
         },
         "collection_item_keys": {},
         "sanitized_public_sample": {
+          "tariffs": [],
+          "currencies": []
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/app/locations/8",
+      "case": "direct_location_8",
+      "status": 200,
+      "content_type": "application/json",
+      "safe_response": {
+        "json": true,
+        "top_level_keys": [
+          "currencies",
+          "locations",
+          "tariffs"
+        ],
+        "collection_counts": {
+          "locations": 1,
+          "tariffs": 0,
+          "currencies": 0
+        },
+        "collection_item_keys": {
+          "locations": [
+            "additional_description",
+            "address",
+            "description",
+            "detailed_description",
+            "facilities",
+            "id",
+            "location",
+            "name",
+            "timezone",
+            "underlyingLocationIds",
+            "updatedAt",
+            "what3words_address",
+            "workingHours",
+            "zones"
+          ]
+        },
+        "sanitized_public_sample": {
+          "locations": [
+            {
+              "id": 8,
+              "name": "Marjane Derb Sultan",
+              "address": "HC64+PJ7 Bd Mohamed VI, Angle Bd Abou Chouaib Doukkali, Casablanca, Maroc",
+              "zones": [
+                {
+                  "id": 11,
+                  "evses": [
+                    {
+                      "id": null,
+                      "maxPower": null,
+                      "status": null,
+                      "connectors": null
+                    },
+                    {
+                      "id": null,
+                      "maxPower": null,
+                      "status": null,
+                      "connectors": null
+                    }
+                  ]
+                }
+              ],
+              "underlyingLocationIds": [
+                8
+              ]
+            }
+          ],
+          "tariffs": [],
+          "currencies": []
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/app/locations/4",
+      "case": "direct_location_4",
+      "status": 200,
+      "content_type": "application/json",
+      "safe_response": {
+        "json": true,
+        "top_level_keys": [
+          "currencies",
+          "locations",
+          "tariffs"
+        ],
+        "collection_counts": {
+          "locations": 1,
+          "tariffs": 0,
+          "currencies": 0
+        },
+        "collection_item_keys": {
+          "locations": [
+            "additional_description",
+            "address",
+            "description",
+            "detailed_description",
+            "facilities",
+            "id",
+            "location",
+            "name",
+            "timezone",
+            "underlyingLocationIds",
+            "updatedAt",
+            "what3words_address",
+            "workingHours",
+            "zones"
+          ]
+        },
+        "sanitized_public_sample": {
+          "locations": [
+            {
+              "id": 4,
+              "name": "Tachfine Center",
+              "address": "Bd Ibn Tachfine, Casablanca 20250, Maroc",
+              "zones": [
+                {
+                  "id": 7,
+                  "evses": [
+                    {
+                      "id": null,
+                      "maxPower": null,
+                      "status": null,
+                      "connectors": null
+                    },
+                    {
+                      "id": null,
+                      "maxPower": null,
+                      "status": null,
+                      "connectors": null
+                    }
+                  ]
+                }
+              ],
+              "underlyingLocationIds": [
+                4
+              ]
+            }
+          ],
+          "tariffs": [],
+          "currencies": []
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/app/locations/19",
+      "case": "direct_location_19",
+      "status": 200,
+      "content_type": "application/json",
+      "safe_response": {
+        "json": true,
+        "top_level_keys": [
+          "currencies",
+          "locations",
+          "tariffs"
+        ],
+        "collection_counts": {
+          "locations": 1,
+          "tariffs": 0,
+          "currencies": 0
+        },
+        "collection_item_keys": {
+          "locations": [
+            "additional_description",
+            "address",
+            "description",
+            "detailed_description",
+            "facilities",
+            "id",
+            "location",
+            "name",
+            "timezone",
+            "underlyingLocationIds",
+            "updatedAt",
+            "what3words_address",
+            "workingHours",
+            "zones"
+          ]
+        },
+        "sanitized_public_sample": {
+          "locations": [
+            {
+              "id": 19,
+              "name": "Marjane El Jadida",
+              "address": "N°12، Marjane، Centre Commercial، Avenue Allal Al Fassi، El Jadida 24000, Maroc",
+              "zones": [
+                {
+                  "id": 24,
+                  "evses": [
+                    {
+                      "id": null,
+                      "maxPower": null,
+                      "status": null,
+                      "connectors": null
+                    },
+                    {
+                      "id": null,
+                      "maxPower": null,
+                      "status": null,
+                      "connectors": null
+                    }
+                  ]
+                }
+              ],
+              "underlyingLocationIds": [
+                19
+              ]
+            }
+          ],
+          "tariffs": [],
+          "currencies": []
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/app/locations/8",
+      "case": "direct_location_8",
+      "status": 200,
+      "content_type": "application/json",
+      "safe_response": {
+        "json": true,
+        "top_level_keys": [
+          "currencies",
+          "locations",
+          "tariffs"
+        ],
+        "collection_counts": {
+          "locations": 1,
+          "tariffs": 0,
+          "currencies": 0
+        },
+        "collection_item_keys": {
+          "locations": [
+            "additional_description",
+            "address",
+            "description",
+            "detailed_description",
+            "facilities",
+            "id",
+            "location",
+            "name",
+            "timezone",
+            "underlyingLocationIds",
+            "updatedAt",
+            "what3words_address",
+            "workingHours",
+            "zones"
+          ]
+        },
+        "sanitized_public_sample": {
+          "locations": [
+            {
+              "id": 8,
+              "name": "Marjane Derb Sultan",
+              "address": "HC64+PJ7 Bd Mohamed VI, Angle Bd Abou Chouaib Doukkali, Casablanca, Maroc",
+              "zones": [
+                {
+                  "id": 11,
+                  "evses": [
+                    {
+                      "id": null,
+                      "maxPower": null,
+                      "status": null,
+                      "connectors": null
+                    },
+                    {
+                      "id": null,
+                      "maxPower": null,
+                      "status": null,
+                      "connectors": null
+                    }
+                  ]
+                }
+              ],
+              "underlyingLocationIds": [
+                8
+              ]
+            }
+          ],
+          "tariffs": [],
+          "currencies": []
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/app/locations/4",
+      "case": "direct_location_4",
+      "status": 200,
+      "content_type": "application/json",
+      "safe_response": {
+        "json": true,
+        "top_level_keys": [
+          "currencies",
+          "locations",
+          "tariffs"
+        ],
+        "collection_counts": {
+          "locations": 1,
+          "tariffs": 0,
+          "currencies": 0
+        },
+        "collection_item_keys": {
+          "locations": [
+            "additional_description",
+            "address",
+            "description",
+            "detailed_description",
+            "facilities",
+            "id",
+            "location",
+            "name",
+            "timezone",
+            "underlyingLocationIds",
+            "updatedAt",
+            "what3words_address",
+            "workingHours",
+            "zones"
+          ]
+        },
+        "sanitized_public_sample": {
+          "locations": [
+            {
+              "id": 4,
+              "name": "Tachfine Center",
+              "address": "Bd Ibn Tachfine, Casablanca 20250, Maroc",
+              "zones": [
+                {
+                  "id": 7,
+                  "evses": [
+                    {
+                      "id": null,
+                      "maxPower": null,
+                      "status": null,
+                      "connectors": null
+                    },
+                    {
+                      "id": null,
+                      "maxPower": null,
+                      "status": null,
+                      "connectors": null
+                    }
+                  ]
+                }
+              ],
+              "underlyingLocationIds": [
+                4
+              ]
+            }
+          ],
+          "tariffs": [],
+          "currencies": []
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/v2/app/locations/19",
+      "case": "direct_location_19",
+      "status": 200,
+      "content_type": "application/json",
+      "safe_response": {
+        "json": true,
+        "top_level_keys": [
+          "currencies",
+          "locations",
+          "tariffs"
+        ],
+        "collection_counts": {
+          "locations": 1,
+          "tariffs": 0,
+          "currencies": 0
+        },
+        "collection_item_keys": {
+          "locations": [
+            "additional_description",
+            "address",
+            "description",
+            "detailed_description",
+            "facilities",
+            "id",
+            "location",
+            "name",
+            "timezone",
+            "underlyingLocationIds",
+            "updatedAt",
+            "what3words_address",
+            "workingHours",
+            "zones"
+          ]
+        },
+        "sanitized_public_sample": {
+          "locations": [
+            {
+              "id": 19,
+              "name": "Marjane El Jadida",
+              "address": "N°12، Marjane، Centre Commercial، Avenue Allal Al Fassi، El Jadida 24000, Maroc",
+              "zones": [
+                {
+                  "id": 24,
+                  "evses": [
+                    {
+                      "id": null,
+                      "maxPower": null,
+                      "status": null,
+                      "connectors": null
+                    },
+                    {
+                      "id": null,
+                      "maxPower": null,
+                      "status": null,
+                      "connectors": null
+                    }
+                  ]
+                }
+              ],
+              "underlyingLocationIds": [
+                19
+              ]
+            }
+          ],
           "tariffs": [],
           "currencies": []
         }
