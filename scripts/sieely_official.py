@@ -37,7 +37,7 @@ def main():
     hs,hraw,hfinal=fetch(HOME); ts,traw,tfinal=fetch(TARIFF); s74,b74,f74=fetch(IMG74); s22,b22,f22=fetch(IMG22); cs,craw,cfinal=fetch(CGV)
     if min(hs,ts,s74,s22,cs)!=200: raise RuntimeError(f'HTTP failure home={hs} tariff={ts} img74={s74} img22={s22} cgv={cs}')
     h=hraw.decode('utf-8',errors='replace'); t=traw.decode('utf-8',errors='replace')
-    require(h,'SIEELY','4','Communes','6','Bornes','11','Points de charge','badge SIEELY','itinérance')
+    require(h,'SIEELY','4','Communes','6','Bornes','11','Points de charge','badge','itinérance')
     require(t,'Tarifs','7,4','22','Tarif_SIEELY_SYN_7','Tarif_SIEELY_SYN_22')
     try:
         from pypdf import PdfReader
