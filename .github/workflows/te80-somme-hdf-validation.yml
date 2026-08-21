@@ -98,7 +98,12 @@ jobs:
           python scripts/public_safety_check.py .
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports/te80_somme/latest_run_status.json reports/te80_somme/latest_diagnostic.json 2>/dev/null || true
+          git add reports/te80_somme/latest_run_status.json
+          if [ "${JOB_STATUS}" = "success" ] && git ls-files --error-unmatch reports/te80_somme/latest_diagnostic.json >/dev/null 2>&1; then
+            git rm -f reports/te80_somme/latest_diagnostic.json
+          elif [ -f reports/te80_somme/latest_diagnostic.json ]; then
+            git add reports/te80_somme/latest_diagnostic.json
+          fi
           if ! git diff --cached --quiet; then
             git commit -m "status(te80-somme-hdf): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
             for attempt in 1 2 3; do
