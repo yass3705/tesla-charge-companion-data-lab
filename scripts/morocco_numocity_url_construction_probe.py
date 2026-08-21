@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Static-only TotalEnergies Morocco / Numocity URL-construction probe.
 
-Examines the publicly distributed Android client around the known connector route
-fragments and persists only public host/path literals and syntax-like identifier
-names. No backend request, login, credential, real QR, connector ID or raw bundle
-context is persisted.
+Examines the publicly distributed Android client around known connector routes and the
+public Numocity hostname. Persists only public host/path literals and syntax-like
+identifier names. No backend request, login, credential, real QR, connector ID or raw
+bundle context is persisted.
 """
 from __future__ import annotations
 
@@ -21,16 +21,23 @@ from urllib.parse import urlsplit
 
 PACKAGE = "com.namp.totalev"
 MARKERS = ("/api/qr-connector", "/api/qr-connector-list", "/api/get-connector-status")
+HOST_MARKERS = ("csmstotalenergiesma.numocity.com", "numocity.com")
+CONSTRUCTION_MARKERS = (
+    "Uri.parse", "Uri.http", "Uri.https", "baseUrl", "baseURL", "apiUrl", "apiURL",
+    "ApiClient", "Dio", "BaseOptions", "path", "authority", "scheme", "host",
+)
 OUT = Path("artifacts/morocco-numocity-url-construction")
 OUT.mkdir(parents=True, exist_ok=True)
-UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.0)"
+UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.1)"
 
 URL_RX = re.compile(r"https?://[^\s\x00\"'<>\\]{5,500}", re.I)
+HOST_RX = re.compile(r"(?<![A-Za-z0-9.-])(?:[A-Za-z0-9-]+\.)+(?:com|ma|net|tech|io)(?![A-Za-z0-9.-])", re.I)
 PATH_RX = re.compile(r"/(?:[A-Za-z0-9._~-]+/?){1,10}")
 IDENT_RX = re.compile(
     r"\b(?:baseURL|baseUrl|base_url|apiURL|apiUrl|api_url|endpoint|apiEndpoint|"
     r"backendURL|backendUrl|backend_url|serverURL|serverUrl|server_url|host|domain|"
-    r"route|path|request|headers?|axios|fetch|client|connectorId|connector_id|qrCode|qrcode|qr)\b",
+    r"authority|scheme|route|path|request|headers?|axios|fetch|client|ApiClient|Dio|"
+    r"BaseOptions|connectorId|connector_id|qrCode|qrcode|qr)\b",
     re.I,
 )
 SENSITIVE_RX = re.compile(r"password|secret|token|authorization|cookie|email|phone|wallet|payment|card|account|customer|bearer", re.I)
@@ -96,22 +103,24 @@ def safe_url(raw: str):
         return None
     if not u.scheme or not u.hostname:
         return None
-    # Strip queries/fragments/userinfo. Hosts and public paths are safe infrastructure literals.
     return f"{u.scheme}://{u.hostname}{u.path or '/'}"[:500]
 
 
 def safe_path(raw: str):
     p = raw.split("?", 1)[0].split("#", 1)[0]
-    if len(p) < 2 or len(p) > 220:
-        return None
-    if SENSITIVE_RX.search(p):
+    if len(p) < 2 or len(p) > 220 or SENSITIVE_RX.search(p):
         return None
     return p
 
 
+def keep_path(value: str) -> bool:
+    low = value.lower()
+    return any(k in low for k in ("api", "connector", "status", "qr", "station", "charge", "location", "mobile", "app"))
+
+
 def main():
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "package": PACKAGE,
         "policy": {
@@ -126,9 +135,13 @@ def main():
         },
         "download_ok": False,
         "marker_hits": [],
+        "host_marker_hits": [],
         "nearby_public_urls": [],
+        "nearby_public_hosts": [],
         "nearby_public_paths": [],
+        "near_host_public_paths": [],
         "nearby_identifier_names": {},
+        "construction_marker_counts": {},
     }
     with tempfile.TemporaryDirectory(prefix="tcc-numocity-url-") as td:
         root = Path(td)
@@ -144,9 +157,14 @@ def main():
             unpack(apk, tree / f"apk_{idx}")
 
         urls = {}
+        hosts = {}
         paths = {}
+        host_paths = {}
         identifiers = Counter()
+        constructions = Counter()
         hits = []
+        host_hits = []
+
         for file in tree.rglob("*"):
             if not file.is_file():
                 continue
@@ -158,11 +176,17 @@ def main():
             rows = offset_strings(file)
             if not rows:
                 continue
+
             marker_rows = [(idx, off, text, marker) for idx, (off, text) in enumerate(rows) for marker in MARKERS if marker in text]
+            host_rows = [(idx, off, text, marker) for idx, (off, text) in enumerate(rows) for marker in HOST_MARKERS if marker in text]
+
+            for _idx, off, _text, marker in host_rows:
+                host_hits.append({"marker": marker, "source": str(file.relative_to(tree)), "offset": off})
+
+            # Around explicit connector routes: collect public URL/path/host literals and construction symbols.
             for idx, off, text, marker in marker_rows:
                 hits.append({"marker": marker, "source": str(file.relative_to(tree)), "offset": off})
-                # String-table proximity is more useful than arbitrary raw byte context for Hermes/RN bundles.
-                for j in range(max(0, idx - 140), min(len(rows), idx + 141)):
+                for j in range(max(0, idx - 220), min(len(rows), idx + 221)):
                     noff, s = rows[j]
                     distance = abs(noff - off)
                     if SENSITIVE_RX.search(s):
@@ -171,27 +195,65 @@ def main():
                         value = safe_url(raw)
                         if value:
                             urls[(value, marker)] = min(distance, urls.get((value, marker), 10**12))
+                    for raw in HOST_RX.findall(s):
+                        value = raw.lower()
+                        hosts[(value, marker)] = min(distance, hosts.get((value, marker), 10**12))
                     for raw in PATH_RX.findall(s):
                         value = safe_path(raw)
-                        if value and ("api" in value.lower() or "connector" in value.lower() or "status" in value.lower() or "qr" in value.lower()):
+                        if value and keep_path(value):
                             paths[(value, marker)] = min(distance, paths.get((value, marker), 10**12))
                     for name in IDENT_RX.findall(s):
                         if not SENSITIVE_RX.search(name):
                             identifiers[name] += 1
+                    for cm in CONSTRUCTION_MARKERS:
+                        if cm.lower() in s.lower():
+                            constructions[cm] += 1
+
+            # Around the known public backend hostname: look specifically for an API prefix/base path.
+            for idx, off, text, marker in host_rows:
+                for j in range(max(0, idx - 350), min(len(rows), idx + 351)):
+                    noff, s = rows[j]
+                    distance = abs(noff - off)
+                    if SENSITIVE_RX.search(s):
+                        continue
+                    for raw in PATH_RX.findall(s):
+                        value = safe_path(raw)
+                        if value and keep_path(value):
+                            key = (value, marker)
+                            host_paths[key] = min(distance, host_paths.get(key, 10**12))
+                    for cm in CONSTRUCTION_MARKERS:
+                        if cm.lower() in s.lower():
+                            constructions[cm] += 1
 
         report["marker_hits"] = hits[:100]
+        report["host_marker_hits"] = host_hits[:100]
         report["nearby_public_urls"] = [
             {"value": value, "marker": marker, "distance_bytes": distance}
             for (value, marker), distance in sorted(urls.items(), key=lambda x: x[1])[:100]
+        ]
+        report["nearby_public_hosts"] = [
+            {"value": value, "marker": marker, "distance_bytes": distance}
+            for (value, marker), distance in sorted(hosts.items(), key=lambda x: x[1])[:100]
         ]
         report["nearby_public_paths"] = [
             {"value": value, "marker": marker, "distance_bytes": distance}
             for (value, marker), distance in sorted(paths.items(), key=lambda x: x[1])[:120]
         ]
+        report["near_host_public_paths"] = [
+            {"value": value, "host_marker": marker, "distance_bytes": distance}
+            for (value, marker), distance in sorted(host_paths.items(), key=lambda x: x[1])[:160]
+        ]
         report["nearby_identifier_names"] = dict(identifiers.most_common(80))
+        report["construction_marker_counts"] = dict(constructions.most_common())
 
     (OUT / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
-    print(json.dumps({"markers": len(report["marker_hits"]), "urls": report["nearby_public_urls"][:10], "paths": report["nearby_public_paths"][:10]}))
+    print(json.dumps({
+        "markers": len(report["marker_hits"]),
+        "host_markers": len(report["host_marker_hits"]),
+        "urls": report["nearby_public_urls"][:8],
+        "host_paths": report["near_host_public_paths"][:12],
+        "construction": report["construction_marker_counts"],
+    }))
 
 
 if __name__ == "__main__":
