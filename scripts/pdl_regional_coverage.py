@@ -33,7 +33,7 @@ def fetch(url):
 def norm(s):
     import unicodedata
     if isinstance(s,bytes): s=s.decode('utf-8',errors='replace')
-    s=unescape(s or '')
+    s=unescape(s or '').replace('’',"'").replace('‘',"'")
     s=re.sub(r'<script\b[^>]*>.*?</script>|<style\b[^>]*>.*?</style>',' ',s,flags=re.I|re.S)
     s=re.sub(r'<[^>]+>',' ',s)
     s=unicodedata.normalize('NFKD',s)
