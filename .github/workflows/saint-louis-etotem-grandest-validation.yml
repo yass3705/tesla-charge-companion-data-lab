@@ -1,0 +1,79 @@
+name: Grand Est Saint-Louis E-TOTEM validation
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths: ["scripts/saint_louis_etotem_official.py", ".github/workflows/saint-louis-etotem-grandest-validation.yml"]
+permissions: {contents: write}
+concurrency: {group: grandest-saint-louis-etotem-validation, cancel-in-progress: true}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Extract current official tariff
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/saint_louis_etotem
+          python -m py_compile scripts/saint_louis_etotem_official.py
+          python scripts/saint_louis_etotem_official.py --out out/saint_louis_etotem 2> >(tee out/saint_louis_etotem/error.log >&2)
+      - name: Validate classification
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/saint_louis_etotem/saint_louis_etotem_official_grandest.json').read_text())
+          assert p['network']['serviceOperatorSince']=='2026-01-01'
+          assert p['operatorDirect']['eCity']['eco37KwEurPerKwh']==0.30
+          assert p['operatorDirect']['eCity']['normalBoost74To22KwEurPerKwh']==0.39
+          assert p['operatorDirect']['ePremiumFast']['power50To99KwEurPerKwh']==0.45
+          assert p['operatorDirect']['ePremiumFast']['power100To180KwEurPerKwh']==0.49
+          assert p['operatorDirect']['postChargeNight']['maximumEur']==2.0
+          assert p['tccDecision']['directTariffClassable'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/saint_louis_etotem
+          cp out/saint_louis_etotem/saint_louis_etotem_official_grandest.json data/operator_direct/saint_louis_etotem_official_grandest.json
+          cp out/saint_louis_etotem/SUMMARY.md reports/saint_louis_etotem/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]";git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/saint_louis_etotem_official_grandest.json reports/saint_louis_etotem/latest_summary.md
+          if ! git diff --cached --quiet; then git commit -m "data(saint-louis): publish official E-TOTEM tariffs [run ${GITHUB_RUN_ID}]";git pull --rebase origin main;git push origin HEAD:main;fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/saint_louis_etotem
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/saint_louis_etotem/error.log');s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr';s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/saint_louis_etotem/latest_diagnostic.json').write_text(json.dumps({'dataset':'saint-louis-etotem-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env: {JOB_STATUS: "${{ job.status }}"}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/saint_louis_etotem
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/saint_louis_etotem/latest_run_status.json').write_text(json.dumps({'dataset':'saint-louis-etotem-run-status','operator':'Saint-Louis / E-TOTEM','region':'Grand Est','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]";git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/saint_louis_etotem/latest_run_status.json reports/saint_louis_etotem/latest_diagnostic.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then git commit -m "status(saint-louis): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]";for attempt in 1 2 3;do git pull --rebase origin main;if git push origin HEAD:main;then exit 0;fi;sleep $((attempt*2));done;exit 1;fi
