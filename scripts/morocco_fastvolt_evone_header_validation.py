@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -22,30 +23,55 @@ PATH = "/app/charging_stations/"
 CASES = [
     ("no_context_header", {}),
     ("x_client_placeholder", {"X-Client": "0"}),
+    ("client_placeholder", {"Client": "0"}),
+    ("client_id_placeholder", {"client_id": "0"}),
+    ("tenant_placeholder", {"tenant": "0"}),
+    ("tenant_id_placeholder", {"tenant_id": "0"}),
+    ("business_placeholder", {"Business": "0"}),
+    ("business_lower_placeholder", {"business": "0"}),
+    ("x_business_placeholder", {"X-Business": "0"}),
     ("organization_placeholder", {"Organization": "0"}),
+    ("organization_lower_placeholder", {"organization": "0"}),
+    ("x_organization_placeholder", {"X-Organization": "0"}),
+    ("organisation_placeholder", {"Organisation": "0"}),
+    ("organisation_lower_placeholder", {"organisation": "0"}),
+    ("x_organisation_placeholder", {"X-Organisation": "0"}),
     ("organisation_code_placeholder", {"ORGANISATION_CODE": "0"}),
+    ("organisation_name_placeholder", {"ORGANISATION_NAME": "0"}),
+    ("company_placeholder", {"Company": "0"}),
+    ("x_company_placeholder", {"X-Company": "0"}),
 ]
 OUT = Path("artifacts/morocco-fastvolt-evone-header-validation")
 OUT.mkdir(parents=True, exist_ok=True)
-UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.0)"
+UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.1)"
 
 SAFE_MESSAGE_KEYS = {"message", "detail", "error", "errors"}
+SAFE_TEXT_MARKERS = (
+    "business", "organisation", "organization", "tenant", "client", "company",
+    "unauthorized", "unauthorised", "forbidden", "invalid", "required", "missing",
+)
 
 
 def sanitize_body(body: str) -> dict:
     try:
         obj = json.loads(body)
     except Exception:
-        return {"json": False}
+        low = body.lower()
+        return {
+            "json": False,
+            "safe_text_markers": sorted({m for m in SAFE_TEXT_MARKERS if m in low}),
+            "body_length": len(body),
+        }
     out = {"json": True}
     if isinstance(obj, dict):
         out["top_level_keys"] = sorted(str(k) for k in obj.keys())[:50]
         for key in SAFE_MESSAGE_KEYS:
             val = obj.get(key)
             if isinstance(val, str):
-                out[key] = val[:300]
+                # Keep only a marker classification for unexpected auth text; never persist IDs/values.
+                low = val.lower()
+                out[key + "_markers"] = sorted({m for m in SAFE_TEXT_MARKERS if m in low})
             elif isinstance(val, dict):
-                # persist field names only, never values
                 out[key + "_keys"] = sorted(str(k) for k in val.keys())[:50]
     return out
 
@@ -95,11 +121,12 @@ def main() -> None:
             "no_query_strings": True,
             "no_mutations": True,
             "raw_response_bodies_persisted": False,
+            "plain_text_auth_responses_classified_by_safe_markers_only": True,
         },
         "apps": apps,
     }
     (OUT / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
-    print(json.dumps({k: [{"case": p["case"], "status": p.get("status")} for p in v["probes"]] for k, v in apps.items()}))
+    print(json.dumps({k: [{"case": p["case"], "status": p.get("status"), "safe": p.get("safe_response")} for p in v["probes"]] for k, v in apps.items()}))
 
 
 if __name__ == "__main__":
