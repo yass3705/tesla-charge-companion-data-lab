@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "generatedAt": "2026-08-21T19:42:42.019181Z",
+  "generatedAt": "2026-08-21T22:04:00.394815Z",
   "country": "FR",
   "region": "Bretagne",
   "publicationStatus": "validated_candidate",
@@ -13,10 +13,14 @@
         "SDE22 / Ouest Charge"
       ],
       "researchStatus": "accounted_for",
-      "pricingRuleStatus": "first_party_source_conflict",
+      "pricingRuleStatus": "station_app_verified_precedence",
       "notes": [
-        "Current Ouest Charge central page displays 0.40/0.55/0.55 EUR/kWh by normal/rapid/ultra-rapid category while the current SDE22 owner page still displays 0.33/0.44/0.55. Direct ranking is intentionally blocked until manual resolution."
-      ]
+        "Manual app verification confirms 0.40 EUR/kWh on both Type 2 22 kW and CCS 47 kW at the tested SDE22 station.",
+        "The app also displays 0.20 EUR/min after five connected hours during 07:00-21:00 plus a separate inactivity line under the same conditions.",
+        "The SDE22 owner-page 0.33/0.44/0.55 grid is superseded for this verified station; department-wide power-category generalization remains blocked."
+      ],
+      "verifiedStationTariffClassable": true,
+      "stationDisplayedTariffHasPriority": true
     },
     {
       "department": "Finistère",
@@ -59,17 +63,20 @@
     "singleUniversalRegionalTariff": false,
     "allIdentifiedLiveTariffsResolved": false,
     "referenceOnlyOrBlockedFamilies": [
-      "SDE22 / Ouest Charge direct tariff until first-party conflict is resolved",
       "Brest Métropole / Easy Charge Service direct energy tariff"
     ],
-    "localParkingChargingFamilyIncluded": true
+    "localParkingChargingFamilyIncluded": true,
+    "stationLevelResolvedFamilies": [
+      "SDE22 / Ouest Charge via app-displayed station tariff"
+    ]
   },
   "tccDecision": {
     "regionalCoverageValidated": true,
     "doNotInventDepartmentDefaults": true,
     "preserveNetworkStationCategorySubscriptionAndParking": true,
     "roamingSeparate": true,
-    "nextStep": "continue national regional pass; manual station checks can later resolve SDE22 conflict and Brest live pricing"
+    "nextStep": "verify Brest Métropole / Easy Charge Service direct live pricing; retain station-level tariff precedence for SDE22",
+    "stationDisplayedTariffHasPriorityForSDE22": true
   },
   "sourceEvidence": {
     "validatedOperatorFiles": [
@@ -77,6 +84,9 @@
       "morbihan_energies_official_bretagne.json",
       "rennes_cpark_official_bretagne.json",
       "brest_easycharge_transition_bretagne.json"
+    ],
+    "manualStationVerificationFiles": [
+      "data/station_verifications/ouestcharge_sde22_pledaran_app_2026_08_22.json"
     ]
   },
   "notes": [
