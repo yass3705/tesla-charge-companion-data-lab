@@ -1,0 +1,150 @@
+name: Nouvelle-Aquitaine regional coverage
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/nouvelle_aquitaine_regional_coverage.py"
+      - ".github/workflows/nouvelle-aquitaine-regional-coverage.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nouvelle-aquitaine-regional-coverage
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Install PDF reader
+        run: python -m pip install --disable-pip-version-check 'pypdf>=5,<6'
+      - name: Extract and consolidate current evidence
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/nouvelle_aquitaine
+          python -m py_compile scripts/nouvelle_aquitaine_regional_coverage.py
+          python scripts/nouvelle_aquitaine_regional_coverage.py --out out/nouvelle_aquitaine 2> >(tee out/nouvelle_aquitaine/error.log >&2)
+      - name: Validate tariff models and coverage
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('out/nouvelle_aquitaine')
+          m=json.loads((root/'mobive_official_nouvelle_aquitaine.json').read_text())
+          assert len(m['standardGridDepartments'])==9
+          assert m['standardGrid']['nonSubscriber']['dcGt60']['energyEurPerKwh']==0.68
+          assert m['standardGrid']['subscriber']['dcGt60']['energyEurPerKwh']==0.57
+          assert m['pyreneesAtlantiques64']['nonSubscriber']['acGt7']['energyEurPerKwh']==0.55
+          assert m['pyreneesAtlantiques64']['subscriber']['dc40_60']['energyEurPerKwh']==0.53
+          assert m['subscriptionAnnualEur']==18.0
+          a=json.loads((root/'alterbase_deux_sevres_official_nouvelle_aquitaine.json').read_text())
+          assert a['subscriberTariffs']['acLt24']==0.432
+          assert a['occasionalTariffs']['dcGt25']==0.612
+          assert a['occasionalTariffs']['sessionFeeEur']==0.996
+          s=json.loads((root/'soregies_vienne_official_nouvelle_aquitaine.json').read_text())
+          assert s['sessionFeeEur']==0.99
+          assert s['mobilitesPlus']['monthlyFeeEur']==4.99
+          assert s['mobilitesDirectNoSubscription']['rapid200']['peak']==0.59
+          assert s['publicAdHocDisplayedOnCurrentSite']['rapid200']['peak']==0.71
+          assert s['durationSurcharge']['rapid200']=={'afterMinutes':60,'eurPerMin':0.39}
+          b=json.loads((root/'bordeaux_metropole_freshmile_official_nouvelle_aquitaine.json').read_text())
+          assert b['directTariff']['energyEurPerKwh']==0.38
+          assert b['directTariff']['dcConnectionSurcharge']['afterMinutes']==120
+          assert b['directTariff']['acConnectionSurcharge']['afterMinutes']==240
+          l=json.loads((root/'limoges_metropole_izivia_official_nouvelle_aquitaine.json').read_text())
+          assert l['subscriptions']=={'standardMonthlyEur':10.0,'frequencyMonthlyEur':20.0}
+          assert l['tariffs']['ac22']['dayEnergy']==[0.38,0.34,0.29]
+          assert l['tariffs']['dc100_150']['postChargeEurPerBlock']==2.0
+          lr=json.loads((root/'la_rochelle_municipal_irve_official_nouvelle_aquitaine.json').read_text())
+          assert lr['tccDecision']['directTariffClassable'] is False
+          port=json.loads((root/'la_rochelle_port_freshmile_official_nouvelle_aquitaine.json').read_text())
+          assert port['directTariff2026']=={'powerKw':22,'energyEurPerKwh':0.48,'connectedTimeEurPerMin':0.02}
+          p=json.loads((root/'nouvelle_aquitaine_regional_coverage.json').read_text())
+          assert p['region']=='Nouvelle-Aquitaine'
+          assert p['departmentsTotal']==12
+          assert p['coverage']['departmentsAccountedFor']==12
+          assert p['coverage']['regionalPublicNetworkResearchCoverageComplete'] is True
+          assert p['coverage']['mobiveDepartments']==10
+          assert p['coverage']['identifiedMainDepartmentalPublicNetworkFamiliesAccountedFor'] is True
+          assert p['coverage']['singleUniversalRegionalTariff'] is False
+          assert p['coverage']['allIdentifiedLiveTariffsResolved'] is False
+          assert p['tccDecision']['doNotInventDepartmentDefaults'] is True
+          assert p['tccDecision']['roamingSeparate'] is True
+          assert p['sourceHealth']['officialSourcesReachableAtRun'] >= 5
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct data/regional_coverage reports/nouvelle_aquitaine
+          for f in mobive_official_nouvelle_aquitaine.json alterbase_deux_sevres_official_nouvelle_aquitaine.json soregies_vienne_official_nouvelle_aquitaine.json bordeaux_metropole_freshmile_official_nouvelle_aquitaine.json limoges_metropole_izivia_official_nouvelle_aquitaine.json la_rochelle_municipal_irve_official_nouvelle_aquitaine.json la_rochelle_port_freshmile_official_nouvelle_aquitaine.json; do
+            cp "out/nouvelle_aquitaine/$f" "data/operator_direct/$f"
+          done
+          cp out/nouvelle_aquitaine/nouvelle_aquitaine_regional_coverage.json data/regional_coverage/
+          cp out/nouvelle_aquitaine/SUMMARY.md reports/nouvelle_aquitaine/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/mobive_official_nouvelle_aquitaine.json data/operator_direct/alterbase_deux_sevres_official_nouvelle_aquitaine.json data/operator_direct/soregies_vienne_official_nouvelle_aquitaine.json data/operator_direct/bordeaux_metropole_freshmile_official_nouvelle_aquitaine.json data/operator_direct/limoges_metropole_izivia_official_nouvelle_aquitaine.json data/operator_direct/la_rochelle_municipal_irve_official_nouvelle_aquitaine.json data/operator_direct/la_rochelle_port_freshmile_official_nouvelle_aquitaine.json data/regional_coverage/nouvelle_aquitaine_regional_coverage.json reports/nouvelle_aquitaine/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(nouvelle-aquitaine): publish validated regional public-network evidence [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/nouvelle_aquitaine
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/nouvelle_aquitaine/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/nouvelle_aquitaine/latest_diagnostic.json').write_text(json.dumps({'dataset':'nouvelle-aquitaine-regional-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-60:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/nouvelle_aquitaine
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/nouvelle_aquitaine/latest_run_status.json').write_text(json.dumps({'dataset':'nouvelle-aquitaine-regional-run-status','region':'Nouvelle-Aquitaine','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/nouvelle_aquitaine/latest_run_status.json
+          if [ "${JOB_STATUS}" = "success" ] && git ls-files --error-unmatch reports/nouvelle_aquitaine/latest_diagnostic.json >/dev/null 2>&1; then
+            git rm -f reports/nouvelle_aquitaine/latest_diagnostic.json
+          elif [ -f reports/nouvelle_aquitaine/latest_diagnostic.json ]; then
+            git add reports/nouvelle_aquitaine/latest_diagnostic.json
+          fi
+          if ! git diff --cached --quiet; then
+            git commit -m "status(nouvelle-aquitaine): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
