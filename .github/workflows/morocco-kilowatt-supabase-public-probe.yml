@@ -1,0 +1,40 @@
+name: Morocco Kilowatt Supabase Public Probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/morocco_kilowatt_supabase_public_probe.py'
+      - '.github/workflows/morocco-kilowatt-supabase-public-probe.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-kilowatt-supabase-public-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run sanitized read-only probe
+        run: python scripts/morocco_kilowatt_supabase_public_probe.py
+      - name: Publish safe summary
+        run: |
+          mkdir -p reports/morocco/kilowatt
+          cp artifacts/morocco-kilowatt-supabase/summary.json reports/morocco/kilowatt/latest-supabase-public.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/morocco/kilowatt/latest-supabase-public.json
+          if git diff --cached --quiet; then
+            echo 'No report changes.'
+            exit 0
+          fi
+          git commit -m "data(morocco): update Kilowatt Supabase public discovery [run $GITHUB_RUN_ID]"
+          git push
