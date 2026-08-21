@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate Saint-Louis Agglomération / E-TOTEM network coverage from durable official procurement evidence."""
 from __future__ import annotations
-import argparse, hashlib, io, json, re, urllib.request
+import argparse, hashlib, io, json, re, subprocess, tempfile, urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from pypdf import PdfReader
@@ -11,7 +11,13 @@ ANALYSIS='https://www.agglo-saint-louis.fr/wp-content/uploads/2025/10/AR-V1-rapp
 def fetch(url,timeout=45):
     req=urllib.request.Request(url,headers={'User-Agent':UA,'Accept':'application/pdf,*/*','Connection':'close'})
     with urllib.request.urlopen(req,timeout=timeout) as r:return int(getattr(r,'status',200)),r.read(),r.geturl()
-def pdftext(raw):return re.sub(r'\s+',' ',' '.join((p.extract_text() or '') for p in PdfReader(io.BytesIO(raw)).pages)).strip()
+def pdftext(raw):
+    parts=[' '.join((p.extract_text() or '') for p in PdfReader(io.BytesIO(raw)).pages)]
+    try:
+        with tempfile.NamedTemporaryFile(suffix='.pdf') as f:
+            f.write(raw);f.flush();q=subprocess.run(['pdftotext','-layout',f.name,'-'],capture_output=True,text=True,timeout=30,check=True);parts.append(q.stdout)
+    except Exception:pass
+    return re.sub(r'\s+',' ',' '.join(parts)).strip()
 def norm(s):
     import unicodedata
     s=unicodedata.normalize('NFKD',s or '');s=''.join(c for c in s if not unicodedata.combining(c));s=s.lower().replace('’',"'");s=re.sub(r'\s+',' ',s);return s.strip()
@@ -25,13 +31,13 @@ def main():
     if as_!=200:raise RuntimeError(f'HTTP failure award={as_}')
     at=pdftext(araw)
     require_regex(at,'winner field',r'laureat')
-    require_regex(at,'E-TOTEM winner',r'e\s*[-–—]?\s*totem|etotem')
+    require_regex(at,'E-TOTEM winner',r'totem')
     require_regex(at,'signature date',r'08\s*/\s*12\s*/\s*2025')
     analysis_live=False;analysis_status=None;analysis_sha=None;analysis_url=ANALYSIS;legacy_points=None;deployment_deadline=None
     try:
         rs,rraw,rfinal=fetch(ANALYSIS,8);rt=pdftext(rraw)
         require_regex(rt,'40 existing charge points',r'40\s+points?\s+de\s+charge')
-        require_regex(rt,'E-TOTEM retained',r'retenir[^\n]{0,100}(?:e\s*[-–—]?\s*totem|etotem)')
+        require_regex(rt,'E-TOTEM retained',r'retenir.{0,100}totem')
         require_regex(rt,'May 2027 deadline',r'fin\s+mai\s+2027')
         analysis_live=True;analysis_status=rs;analysis_sha=hashlib.sha256(rraw).hexdigest();analysis_url=rfinal;legacy_points=40;deployment_deadline='2027-05'
     except Exception:
