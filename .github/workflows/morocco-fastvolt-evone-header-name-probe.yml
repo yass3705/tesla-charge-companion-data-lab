@@ -1,0 +1,53 @@
+name: Morocco FastVolt EVOne header-name probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/morocco_fastvolt_evone_header_name_probe.py"
+      - ".github/workflows/morocco-fastvolt-evone-header-name-probe.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-fastvolt-evone-header-name-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate syntax and public-repo safety
+        run: |
+          python -m py_compile scripts/morocco_fastvolt_evone_header_name_probe.py
+          python scripts/public_safety_check.py .
+      - name: Run read-only header-name differential probe
+        run: python scripts/morocco_fastvolt_evone_header_name_probe.py
+      - name: Validate generated output
+        run: |
+          test -s artifacts/morocco-fastvolt-evone-header-names/summary.json
+          python scripts/public_safety_check.py artifacts/morocco-fastvolt-evone-header-names
+      - name: Persist sanitized report
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/fastvolt-evone
+          cp artifacts/morocco-fastvolt-evone-header-names/summary.json reports/morocco/fastvolt-evone/latest-header-name-differential.json
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/morocco/fastvolt-evone/latest-header-name-differential.json
+          if git diff --cached --quiet; then
+            echo "No report change"
+            exit 0
+          fi
+          git commit -m "data(morocco): update FastVolt EVOne header-name differential [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:${GITHUB_REF_NAME}
