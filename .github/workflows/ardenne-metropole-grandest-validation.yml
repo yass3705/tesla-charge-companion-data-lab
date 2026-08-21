@@ -1,0 +1,105 @@
+name: Grand Est Ardenne Metropole validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/ardenne_metropole_official.py"
+      - ".github/workflows/ardenne-metropole-grandest-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: grandest-ardenne-metropole-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Extract current official rules
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/ardenne_metropole
+          python -m py_compile scripts/ardenne_metropole_official.py
+          python scripts/ardenne_metropole_official.py --out out/ardenne_metropole 2> >(tee out/ardenne_metropole/error.log >&2)
+      - name: Validate tariff structure
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/ardenne_metropole/ardenne_metropole_official_grandest.json').read_text())
+          assert p['dataset']=='ardenne-metropole-official-grandest'
+          assert p['operatorDirect']['7kva']['eurPerHour']==1.10
+          assert p['operatorDirect']['22kva']['eurPerHour']==2.20
+          assert p['tccDecision']['directTariffClassable'] is True
+          assert p['sourceEvidence']['officialOnly'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/ardenne_metropole
+          cp out/ardenne_metropole/ardenne_metropole_official_grandest.json data/operator_direct/ardenne_metropole_official_grandest.json
+          cp out/ardenne_metropole/SUMMARY.md reports/ardenne_metropole/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/ardenne_metropole_official_grandest.json reports/ardenne_metropole/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(ardenne): publish official Grand Est tariff rules [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/ardenne_metropole
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/ardenne_metropole/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/ardenne_metropole/latest_diagnostic.json').write_text(json.dumps({'dataset':'ardenne-metropole-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/ardenne_metropole
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/ardenne_metropole/latest_run_status.json').write_text(json.dumps({'dataset':'ardenne-metropole-run-status','operator':'Ardenne Métropole','region':'Grand Est','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/ardenne_metropole/latest_run_status.json
+          if [ -f reports/ardenne_metropole/latest_diagnostic.json ]; then git add reports/ardenne_metropole/latest_diagnostic.json; fi
+          if ! git diff --cached --quiet; then
+            git commit -m "status(ardenne): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
