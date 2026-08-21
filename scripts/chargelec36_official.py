@@ -11,7 +11,8 @@ REG='https://www.chargelec36.com/registration/index'
 STATIONS='https://www.chargelec36.com/station/index'
 GUIDE='https://www.chargelec36.com/media/ModeEmploi.pdf'
 DATA='https://www.data.gouv.fr/datasets/infrastructure-de-recharge-de-vehicules-electriques-irve'
-VERIFY=Path('data/station_verifications/chargelec36_chateauroux_jules_chauvin_negative_2026_08_22.json')
+VERIFY_STALE=Path('data/station_verifications/chargelec36_chateauroux_jules_chauvin_negative_2026_08_22.json')
+VERIFY_COLBERT=Path('data/station_verifications/chargelec36_chateauroux_colbert_2026_08_22.json')
 TOURISM=[
  'https://www.destinationvalleedelacreuse.fr/offres/borne-de-charge-electrique-pour-voiture-et-velo-8/',
  'https://www.destinationvalleedelacreuse.fr/offres/borne-de-charge-electrique-pour-voiture-et-velo-7/',
@@ -46,15 +47,27 @@ def main():
     require(s,'Réseau SDEI36','ARGENTON','CHATEAUROUX','ISSOUDUN','VALENCAY','CHATEAUROUX - Colbert')
     require(d,'Chargelec','CHARGELEC / SDEI 36','28 janvier 2026')
 
-    if not VERIFY.exists(): raise RuntimeError(f'missing manual station verification {VERIFY}')
-    verification=json.loads(VERIFY.read_text())
-    if verification.get('operator')!='Chargelec36 / SDEI36': raise RuntimeError('manual Chargelec36 verification operator mismatch')
-    decision=verification.get('decision',{})
+    if not VERIFY_STALE.exists(): raise RuntimeError(f'missing manual station verification {VERIFY_STALE}')
+    stale=json.loads(VERIFY_STALE.read_text())
+    if stale.get('operator')!='Chargelec36 / SDEI36': raise RuntimeError('manual Chargelec36 stale verification operator mismatch')
+    decision=stale.get('decision',{})
     if decision.get('excludeAsLiveStationWitness') is not True or decision.get('doNotUseForTariffValidation') is not True:
         raise RuntimeError('Jules Chauvin manual verification is not marked excluded')
     current_candidate_present='jules chauvin' in norm(s)
     if current_candidate_present:
         raise RuntimeError('Rue Jules Chauvin has reappeared in the current first-party station directory; manual stale exclusion must be reviewed')
+
+    if not VERIFY_COLBERT.exists(): raise RuntimeError(f'missing manual station verification {VERIFY_COLBERT}')
+    colbert=json.loads(VERIFY_COLBERT.read_text())
+    if colbert.get('operator')!='Chargelec36 / SDEI36': raise RuntimeError('manual Chargelec36 Colbert verification operator mismatch')
+    if colbert.get('station',{}).get('name')!='CHATEAUROUX - Colbert': raise RuntimeError('Colbert witness name mismatch')
+    if colbert.get('station',{}).get('evseCount')!=2 or colbert.get('station',{}).get('stationMaxPowerKVA')!=22:
+        raise RuntimeError('Colbert live hardware witness mismatch')
+    card=colbert.get('manualEvidence',{}).get('directTariff',{})
+    if card.get('billingModel')!='flat_session_fee' or card.get('fixedSessionFeeEur')!=10.0 or card.get('semanticsResolved') is not True:
+        raise RuntimeError('Chargelec36 direct bank-card flat tariff verification mismatch')
+    if colbert.get('decision',{}).get('directBankCardPriceValidated') is not True:
+        raise RuntimeError('Chargelec36 direct bank-card tariff not marked validated')
 
     trows=[]
     for url in TOURISM:
@@ -65,40 +78,46 @@ def main():
         trows.append({'url':url,'httpStatus':st,'sha256':hashlib.sha256(raw).hexdigest()})
 
     payload={
-      'schemaVersion':'1.0.0','dataset':'chargelec36-official-centre','generatedAt':now(),
+      'schemaVersion':'1.1.0','dataset':'chargelec36-official-centre','generatedAt':now(),
       'operator':'Chargelec36 / SDEI36','authority':'Syndicat Départemental d’Énergies de l’Indre (SDEI)','country':'FR','region':'Centre-Val de Loire','department':'Indre',
       'classification':{
         'regionalPublicNetwork':True,'directPublicAccess':True,'firstPartyPriceBookLinked':True,
-        'firstPartyPriceBookMachineReadableValidated':False,'currentThirdPartyLocalPriceCorroboration':True,
-        'singleUniversalExactTariffValidated':False,'rankableWithoutFirstPartyPriceConfirmation':False
+        'firstPartyPriceBookMachineReadableValidated':False,'firstPartyBankCardFlatTariffManuallyValidated':True,
+        'currentThirdPartyLocalPriceCorroboration':True,'singleUniversalExactTariffValidated':False,
+        'rankableDirectBankCardTariff':True,'rankableWithoutFirstPartyPriceConfirmation':False
       },
       'access':{'rfidBadge':True,'contactlessBankCard':True,'billingAtEndOfChargeForBankCard':True,'interoperability':True},
       'currentPriceEvidence':{
         'tourismOfficeObservedEur':10.0,'observationYear':2026,'observationCount':len(trows),
-        'semanticsResolved':False,'note':'Official tourism-office records repeatedly display 10 EUR for Chargelec36 stations, but their CMS labels it as an adult/base tariff and the first-party price book is currently only exposed through an external Calameo link. Do not infer session/kWh/minute semantics.'
+        'semanticsResolved':True,
+        'directBankCard':{'currency':'EUR','billingModel':'flat_session_fee','fixedSessionFeeEur':10.0,'source':'first-party Chargelec36 user guide manually verified'},
+        'badgeAndRoamingSamePriceProven':False,
+        'note':'The 10 EUR amount is now resolved for direct bank-card payment as a fixed session price. Do not propagate this price to RFID/subscriber or roaming access without separate evidence.'
       },
       'networkEvidence':{
-        'liveFirstPartyStationDirectory':True,
-        'currentPublicDatasetUpdated':'2026-01-28',
+        'liveFirstPartyStationDirectory':True,'currentPublicDatasetUpdated':'2026-01-28',
         'manualStaleCandidateCheck':{
-          'candidate':'4 rue Jules Chauvin, Châteauroux',
-          'visibleOnOfficialMapDuringManualCheck':False,
-          'presentInCurrentFirstPartyDirectory':current_candidate_present,
-          'excludeAsLiveWitness':True,
-          'replacementCurrentFirstPartyWitness':'CHATEAUROUX - Colbert',
-          'verificationFile':str(VERIFY)
+          'candidate':'4 rue Jules Chauvin, Châteauroux','visibleOnOfficialMapDuringManualCheck':False,
+          'presentInCurrentFirstPartyDirectory':current_candidate_present,'excludeAsLiveWitness':True,
+          'replacementCurrentFirstPartyWitness':'CHATEAUROUX - Colbert','verificationFile':str(VERIFY_STALE)
+        },
+        'manualCurrentStationCheck':{
+          'station':'CHATEAUROUX - Colbert','latitude':46.811115,'longitude':1.7041603,
+          'evseCount':2,'powerKVA':22,'visibleOnOfficialMapDuringManualCheck':True,
+          'verificationFile':str(VERIFY_COLBERT)
         }
       },
       'tccDecision':{
-        'operatorValidated':True,'defaultDisplay':'reference_only','numericPriceRankable':False,
-        'excludeJulesChauvinAsLiveTariffWitness':True,
-        'reason':'Current 10 EUR amount is strongly corroborated locally but its billing unit/semantics are not first-party machine-readable; exact Chargelec36 offer must remain out of ranking.'
+        'operatorValidated':True,'defaultDisplay':'direct_bank_card_flat_session','numericPriceRankable':True,
+        'rankablePaymentMethod':'contactless_bank_card','billingModel':'flat_session_fee','fixedSessionFeeEur':10.0,
+        'excludeJulesChauvinAsLiveTariffWitness':True,'badgeAndRoamingTariffNeedsSeparateResolution':True,
+        'reason':'Direct bank-card charging is validated at a fixed 10 EUR per session from the official Chargelec36 guide, with current Colbert station hardware verified manually. Badge/subscriber and roaming pricing remain separate.'
       },
       'sourceEvidence':{
-        'firstPartyOnlyForNetworkAndAccess':True,'homeUrl':HOME,'homeHttpStatus':hs,'registrationUrl':REG,'registrationHttpStatus':rs,
+        'firstPartyOnlyForNetworkAndAccess':False,'homeUrl':HOME,'homeHttpStatus':hs,'registrationUrl':REG,'registrationHttpStatus':rs,
         'stationsUrl':STATIONS,'stationsHttpStatus':ss,'guideUrl':GUIDE,'guideHttpStatus':gs,
         'publicDatasetUrl':DATA,'publicDatasetHttpStatus':ds,'tourismCorroboration':trows,
-        'manualStationVerificationFile':str(VERIFY),
+        'manualStaleStationVerificationFile':str(VERIFY_STALE),'manualCurrentStationVerificationFile':str(VERIFY_COLBERT),
         'homeSha256':hashlib.sha256(hraw).hexdigest(),'registrationSha256':hashlib.sha256(rraw).hexdigest(),'stationsSha256':hashlib.sha256(sraw).hexdigest(),'guideSha256':hashlib.sha256(graw).hexdigest()
       },
       'publicationStatus':'validated_candidate'
@@ -106,6 +125,6 @@ def main():
     sig={k:payload[k] for k in ('classification','access','currentPriceEvidence','tccDecision')}
     payload['sourceEvidence']['relevantTariffFingerprintSha256']=hashlib.sha256(json.dumps(sig,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
     (out/'chargelec36_official_centre.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
-    (out/'SUMMARY.md').write_text('# Chargelec36 / SDEI36\n\nNetwork and direct access are validated. Rue Jules Chauvin in Châteauroux is now explicitly excluded as a live witness: it was absent from the official map during manual verification and is absent from the current first-party station directory. CHATEAUROUX - Colbert is retained as a current first-party witness. Multiple current 2026 official tourism-office records display 10 EUR, but the billing unit cannot be proven from the first-party public surface because the live price book is delegated to an external Calameo document. Keep Chargelec36 reference-only and out of ranking until first-party tariff semantics are resolved.\n')
+    (out/'SUMMARY.md').write_text('# Chargelec36 / SDEI36\n\nNetwork and direct access are validated. Rue Jules Chauvin in Châteauroux remains excluded as a stale live witness. CHATEAUROUX - Colbert is verified on the current official map with two NORMAL 22 kVA charge points and 22 kVA maximum power. The official Chargelec36 guide has now been manually resolved for direct bank-card payment: **10 EUR fixed per charging session**. This direct card scenario can be ranked in Tesla Charge Companion. Do not apply the same 10 EUR to RFID/subscriber or roaming sessions unless separately validated; site parking charges also remain separate.\n')
 
 if __name__=='__main__': main()
