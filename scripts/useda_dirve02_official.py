@@ -32,8 +32,8 @@ def main():
     hs,hraw,hfinal=fetch(HOME); ts,traw,tfinal=fetch(TARIFF); os_,oraw,ofinal=fetch(OPERATOR)
     if min(hs,ts,os_)!=200: raise RuntimeError(f'HTTP failure home={hs} tariff={ts} operator={os_}')
     h=hraw.decode('utf-8',errors='replace'); t=traw.decode('utf-8',errors='replace'); o=oraw.decode('utf-8',errors='replace')
-    require(h,'DIRVE 02','164 bornes','15 bornes rapides','36 centimes','Electromaps','paiement à l’acte')
-    require(t,'1er septembre 2025','0,36','kWh','Electromaps','paiement à l’acte','commissions supplémentaires')
+    require(h,'DIRVE 02','164 bornes','15 bornes rapides','36 centimes','Electromaps','paiement')
+    require(t,'1er septembre 2025','0,36','kWh','Electromaps','paiement','commissions supplémentaires')
     require(o,'CITEOS','COGELUM','Electromaps remplace désormais Freshmile','tarifs délibérés par l’USEDA','propres tarifs')
     out=Path(args.out); out.mkdir(parents=True,exist_ok=True)
     payload={
