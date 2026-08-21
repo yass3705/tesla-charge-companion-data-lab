@@ -1,14 +1,19 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "country": "MA",
   "observed_at_local": "2026-08-19T21:20:00+02:00",
-  "source_method": "manual_cross_app_observation",
+  "source_method": "manual_and_public_backend_cross_app_observation",
   "privacy": {
     "screenshots_committed": false,
     "personal_data_committed": false,
-    "note": "Only charging-infrastructure facts transcribed from user-verified app screens/statements are stored."
+    "note": "Only charging-infrastructure facts transcribed from user-verified app screens/statements or sanitized anonymous read-only public backend responses are stored."
   },
   "modeling_rule": "operator/CPO, site_brand, app_source/access_network, tariff_channel and status_source must be modeled separately. A roaming/eMSP app may expose a different tariff and a less fresh status than the native operator app.",
+  "evone_production_status_policy": {
+    "include": ["Available", "Occupied", "Charging"],
+    "exclude_from_production": ["Faulted", "Offline", "Unknown", "Unavailable"],
+    "excluded_status_handling": "May remain in diagnostic reports but must not populate the production station dataset."
+  },
   "observations": [
     {
       "native_app": "EVGO",
@@ -92,6 +97,43 @@
       "freshness_assessment": "Combined with the Marjane Mohammedia mismatch versus the EVGO native app, the result strengthens the hypothesis that EVOne roaming/aggregated status can be delayed or lower-freshness than native CPO status.",
       "modeling_consequence": "Store source-specific status plus fetched_at/observed_at and apply source precedence rules; do not flatten all app statuses into one availability value.",
       "evidence_level": "strong_manual_ui_behavior_evidence"
+    },
+    {
+      "cross_app_case": "EVGO_backend_corroborates_native_live_state",
+      "site_name": "Marjane Mohammedia",
+      "native_backend": "cp.evgo.ma",
+      "source_route": "GET /api/v1/app/locations/10",
+      "report_generated_at_utc": "2026-08-21T09:47:36.712459+00:00",
+      "backend_location_updated_at": "2026-08-21 09:44:02.000",
+      "location_id": 10,
+      "evses": [
+        {
+          "evse_id": "28",
+          "identifier": "3",
+          "status": "charging",
+          "isAvailable": false,
+          "currentType": "ac",
+          "connector_type": "Type 2",
+          "operatorId": 1,
+          "networkId": "1",
+          "tariffId": null
+        },
+        {
+          "evse_id": "29",
+          "identifier": "4",
+          "status": "charging",
+          "isAvailable": false,
+          "currentType": "ac",
+          "connector_type": "Type 2",
+          "operatorId": 1,
+          "networkId": "1",
+          "tariffId": null
+        }
+      ],
+      "corroboration": "The anonymous native EVGO backend reported both Marjane Mohammedia EVSEs as charging, consistent with the user's EVGO-native observation that a connector was occupied and inconsistent with EVOne showing the site offline/unavailable.",
+      "freshness_consequence": "Treat cp.evgo.ma/native EVGO status as authoritative over EVOne roaming status whenever both are available.",
+      "tariff_note": "tariffId=null does not by itself prove free charging. Keep the user-verified native-app free tariff as a separate tariff-channel observation until the tariff route/model is independently validated.",
+      "evidence_level": "strong_public_backend_plus_manual_cross_app_corroboration"
     }
   ]
 }
