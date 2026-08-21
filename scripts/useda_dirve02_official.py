@@ -34,7 +34,7 @@ def main():
     h=hraw.decode('utf-8',errors='replace'); t=traw.decode('utf-8',errors='replace'); o=oraw.decode('utf-8',errors='replace')
     require(h,'DIRVE 02','164 bornes','15 bornes rapides','36 centimes','Electromaps','paiement')
     require(t,'1er septembre 2025','0,36','kWh','Electromaps','paiement','commissions supplémentaires')
-    require(o,'CITEOS','COGELUM','Electromaps remplace désormais Freshmile','tarifs délibérés par l’USEDA','propres tarifs')
+    require(o,'CITEOS','COGELUM','Electromaps','Freshmile','tarifs délibérés','propres tarifs')
     out=Path(args.out); out.mkdir(parents=True,exist_ok=True)
     payload={
       'schemaVersion':'1.0.0','dataset':'useda-dirve02-official-hdf','generatedAt':now(),
