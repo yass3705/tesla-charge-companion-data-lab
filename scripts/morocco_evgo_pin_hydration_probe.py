@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Read-only EVGO pin->location hydration probe.
+
+Uses only public location IDs discovered anonymously from /api/v1/app/pins and
+hydrates those IDs through /api/v1|v2/app/locations. No login, credentials,
+charging actions, account/session mutations, or raw response persistence.
+"""
+from __future__ import annotations
+import datetime as dt, json, urllib.error, urllib.request
+from pathlib import Path
+
+HOST='https://cp.evgo.ma'
+PIN_IDS=[8,4,19]
+PATHS=['/api/v1/app/locations','/api/v2/app/locations']
+OUT=Path('artifacts/morocco-evgo-pin-hydration'); OUT.mkdir(parents=True,exist_ok=True)
+UA='Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.0)'
+ALLOW={'id','name','title','status','availability','available','power','powerKw','maxPower','latitude','longitude','lat','lng','address','city','currency','currencies','tariff','tariffs','price','free','evse','evses','connectors','connectorType','operator','network','cpo','clusterSize','underlyingLocationIds','geo','av'}
+
+def sanitize(v,depth=0):
+    if depth>6:return None
+    if isinstance(v,list):return [sanitize(x,depth+1) for x in v[:10]]
+    if isinstance(v,dict):
+        out={}
+        for k,x in v.items():
+            if k in ALLOW: out[k]=sanitize(x,depth+1)
+            elif isinstance(x,(dict,list)):
+                y=sanitize(x,depth+1)
+                if y not in (None,{},[]): out[k]=y
+        return out
+    if isinstance(v,(str,int,float,bool)) or v is None:return v
+    return None
+
+def shape(body):
+    try:o=json.loads(body)
+    except Exception:return {'json':False}
+    r={'json':True}
+    if isinstance(o,dict):
+        r['top_level_keys']=sorted(map(str,o.keys()))[:50]
+        r['collection_counts']={str(k):len(v) for k,v in o.items() if isinstance(v,(list,dict))}
+        r['collection_item_keys']={str(k):sorted(map(str,v[0].keys()))[:120] for k,v in o.items() if isinstance(v,list) and v and isinstance(v[0],dict)}
+        s=sanitize(o)
+        if s not in ({},None):r['sanitized_public_sample']=s
+        if isinstance(o.get('message'),str):r['message']=o['message'][:500]
+    return r
+
+def req(path):
+    payload=json.dumps({'locations':PIN_IDS},separators=(',',':')).encode()
+    q=urllib.request.Request(HOST+path,data=payload,method='POST',headers={'User-Agent':UA,'Accept':'application/json','Content-Type':'application/json'})
+    try:
+        with urllib.request.urlopen(q,timeout=25) as z: status=z.status; ctype=z.headers.get('content-type',''); body=z.read(500000).decode('utf-8','replace')
+    except urllib.error.HTTPError as e:
+        status=e.code; ctype=e.headers.get('content-type','') if e.headers else ''
+        try: body=e.read(500000).decode('utf-8','replace')
+        except Exception: body=''
+    except Exception as e:return {'path':path,'status':None,'error_type':type(e).__name__}
+    return {'path':path,'status':status,'content_type':ctype,'safe_response':shape(body)}
+
+def main():
+    probes=[req(p) for p in PATHS]
+    report={'schema_version':1,'generated_at':dt.datetime.now(dt.timezone.utc).isoformat(),'host':'cp.evgo.ma','source_pin_ids':PIN_IDS,'policy':{'read_only_hydration':True,'no_login':True,'no_credentials':True,'no_mutations':True,'ids_origin':'anonymous /app/pins public response','raw_response_bodies_persisted':False,'only_whitelisted_public_charging_fields_sampled':True},'probes':probes}
+    (OUT/'summary.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+    print(json.dumps([{'path':x['path'],'status':x.get('status'),'counts':x.get('safe_response',{}).get('collection_counts',{})} for x in probes]))
+if __name__=='__main__':main()
