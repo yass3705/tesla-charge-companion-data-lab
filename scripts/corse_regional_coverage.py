@@ -93,7 +93,7 @@ def main():
     if src['sde2a_report']['httpStatus']==200 and src['sde2a_report']['text']:
         require(src['sde2a_report']['text'],'150 bornes de recharge','300 Points de Charge','2026','220 points de charge','80 points de charge',label='SDE2A rollout')
     if src['sieep_hc']['httpStatus']==200:
-        require(src['sieep_hc']['text'],'Haute-Corse','distribution publique d’électricité',label='SIEEP Haute-Corse')
+        require(src['sieep_hc']['text'],'SIEEP','Haute-Corse',label='SIEEP Haute-Corse')
     if src['info_gouv_hc']['httpStatus']==200:
         require(src['info_gouv_hc']['text'],'Schéma Directeur','SIEEP','20 minutes',label='Haute-Corse SDIRVE')
     if reachable < 8: raise RuntimeError(f'too few current public/official sources reachable: {reachable}/{len(SOURCES)}')
