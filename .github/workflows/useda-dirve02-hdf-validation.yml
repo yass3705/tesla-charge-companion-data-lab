@@ -1,0 +1,107 @@
+name: Hauts-de-France USEDA DIRVE 02 validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/useda_dirve02_official.py"
+      - ".github/workflows/useda-dirve02-hdf-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hdf-useda-dirve02-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Extract current official rules
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/useda_dirve02
+          python -m py_compile scripts/useda_dirve02_official.py
+          python scripts/useda_dirve02_official.py --out out/useda_dirve02 2> >(tee out/useda_dirve02/error.log >&2)
+      - name: Validate tariff model
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/useda_dirve02/useda_dirve02_official_hdf.json').read_text())
+          assert p['department']=='Aisne'
+          assert p['effectiveFrom']=='2025-09-01'
+          assert p['directTariff']['energyEurPerKwhTtc']==0.36
+          assert p['directTariff']['samePriceAllPowerBands'] is True
+          assert p['mobilityOperator']=='Electromaps'
+          assert p['serviceOperator']=='CITEOS/COGELUM'
+          assert p['tccDecision']['directTariffClassable'] is True
+          assert p['sourceEvidence']['officialOnly'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/useda_dirve02
+          cp out/useda_dirve02/useda_dirve02_official_hdf.json data/operator_direct/useda_dirve02_official_hdf.json
+          cp out/useda_dirve02/SUMMARY.md reports/useda_dirve02/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/useda_dirve02_official_hdf.json reports/useda_dirve02/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(hdf): publish USEDA DIRVE 02 official tariff [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/useda_dirve02
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/useda_dirve02/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/useda_dirve02/latest_diagnostic.json').write_text(json.dumps({'dataset':'useda-dirve02-hdf-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/useda_dirve02
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/useda_dirve02/latest_run_status.json').write_text(json.dumps({'dataset':'useda-dirve02-hdf-run-status','operator':'USEDA DIRVE 02','region':'Hauts-de-France','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/useda_dirve02/latest_run_status.json reports/useda_dirve02/latest_diagnostic.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "status(useda-dirve02-hdf): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
