@@ -1,0 +1,110 @@
+name: Hauts-de-France TE80 Somme validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/te80_somme_official.py"
+      - ".github/workflows/te80-somme-hdf-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hdf-te80-somme-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Extract current official rules
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/te80_somme
+          python -m py_compile scripts/te80_somme_official.py
+          python scripts/te80_somme_official.py --out out/te80_somme 2> >(tee out/te80_somme/error.log >&2)
+      - name: Validate tariff model
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/te80_somme/te80_somme_official_hdf.json').read_text())
+          assert p['department']=='Somme'
+          assert p['effectiveFrom']=='2026-01-28'
+          assert p['tariffs']['power3To22Kw']['energyEurPerKwh']==0.45
+          assert p['tariffs']['stationWith22KwPoint']['freeConnectedMinutes']==120
+          assert p['tariffs']['stationWith22KwPoint']['day0900To1900AfterFreeEurPerMin']==0.012
+          assert p['tariffs']['stationWith22KwPoint']['night1900To0900AfterFreeEurPerMin']==0.003
+          assert p['tariffs']['rapid50Kw']['energyEurPerKwh']==0.55
+          assert p['tariffs']['rapid50Kw']['freeConnectedMinutes']==60
+          assert p['tariffs']['rapid50Kw']['afterFreeEurPerMin']==0.05
+          assert p['serviceOperator']=='Freshmile'
+          assert p['tccDecision']['directTariffClassable'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/te80_somme
+          cp out/te80_somme/te80_somme_official_hdf.json data/operator_direct/te80_somme_official_hdf.json
+          cp out/te80_somme/SUMMARY.md reports/te80_somme/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/te80_somme_official_hdf.json reports/te80_somme/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(hdf): publish TE80 Somme official tariff [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/te80_somme
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/te80_somme/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/te80_somme/latest_diagnostic.json').write_text(json.dumps({'dataset':'te80-somme-hdf-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/te80_somme
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/te80_somme/latest_run_status.json').write_text(json.dumps({'dataset':'te80-somme-hdf-run-status','operator':'Territoire d’Energie Somme','region':'Hauts-de-France','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/te80_somme/latest_run_status.json reports/te80_somme/latest_diagnostic.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "status(te80-somme-hdf): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
