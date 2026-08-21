@@ -1,0 +1,62 @@
+name: Grand Est Connectandgo Mad et Moselle validation
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths: ["scripts/connectandgo_mad_moselle_official.py", ".github/workflows/connectandgo-mad-moselle-grandest-validation.yml"]
+permissions: {contents: write}
+concurrency: {group: grandest-connectandgo-mad-moselle-validation, cancel-in-progress: true}
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: python scripts/public_safety_check.py .
+      - name: Extract current official rules
+        run: |
+          mkdir -p out/connectandgo_mad_moselle
+          python -m py_compile scripts/connectandgo_mad_moselle_official.py
+          python scripts/connectandgo_mad_moselle_official.py --out out/connectandgo_mad_moselle
+      - name: Validate tariff structure
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/connectandgo_mad_moselle/connectandgo_mad_moselle_official_grandest.json').read_text())
+          assert p['network']['publishedStationCount']==6
+          assert p['operatorDirect']['withoutSubscription']['day']['below30Kw']=={'eurPerKwh':0.27,'eurPerMinute':0.025}
+          assert p['operatorDirect']['withoutSubscription']['day']['above30Kw']=={'eurPerKwh':0.45,'eurPerMinute':0.025}
+          assert p['operatorDirect']['withSubscription']['monthlyEur']==3.0
+          assert p['operatorDirect']['withSubscription']['day']['above30Kw']=={'eurPerKwh':0.43,'eurPerMinute':0.02}
+          assert p['operatorDirect']['withSubscription']['idle']['above30Kw']=={'afterMinutes':90,'eurPerMinute':0.15,'condition':'without_consumption'}
+          assert p['tccDecision']['directTariffClassable'] is True and p['sourceEvidence']['officialOnly'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail; mkdir -p data/operator_direct reports/connectandgo_mad_moselle
+          cp out/connectandgo_mad_moselle/connectandgo_mad_moselle_official_grandest.json data/operator_direct/connectandgo_mad_moselle_official_grandest.json
+          cp out/connectandgo_mad_moselle/SUMMARY.md reports/connectandgo_mad_moselle/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/connectandgo_mad_moselle_official_grandest.json reports/connectandgo_mad_moselle/latest_summary.md
+          if ! git diff --cached --quiet; then git commit -m "data(connectandgo): publish Mad et Moselle tariff rules [run ${GITHUB_RUN_ID}]"; git pull --rebase origin main; git push origin HEAD:main; fi
+      - name: Publish run status
+        if: always()
+        env: {JOB_STATUS: "${{ job.status }}"}
+        shell: bash
+        run: |
+          set -euo pipefail; mkdir -p reports/connectandgo_mad_moselle
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/connectandgo_mad_moselle/latest_run_status.json').write_text(json.dumps({'dataset':'connectandgo-mad-moselle-run-status','operator':'Connect&go - Mad et Moselle','region':'Grand Est','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"; git add reports/connectandgo_mad_moselle/latest_run_status.json
+          if ! git diff --cached --quiet; then git commit -m "status(connectandgo-mad-moselle): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"; for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done; exit 1; fi
