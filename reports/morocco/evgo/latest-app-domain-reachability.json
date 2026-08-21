@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-21T00:48:00.723448+00:00",
+  "policy": {
+    "read_only_get_only": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_query_values": true,
+    "no_coordinates": true,
+    "no_station_ids": true,
+    "no_mutations": true,
+    "raw_response_bodies_persisted": false
+  },
+  "probes": [
+    {
+      "base": "https://cp.evgo.ma",
+      "path": "/",
+      "status": 401,
+      "content_type": "application/json",
+      "final_host": "cp.evgo.ma",
+      "final_path": "/admin",
+      "safe_response": {
+        "json": true,
+        "top_level_keys": [
+          "message",
+          "redirect"
+        ],
+        "message": "Unauthenticated."
+      }
+    },
+    {
+      "base": "https://cp.evgo.ma",
+      "path": "/api/v1/app/evses/search",
+      "status": 422,
+      "content_type": "application/json",
+      "final_host": "cp.evgo.ma",
+      "final_path": "/api/v1/app/evses/search",
+      "safe_response": {
+        "json": true,
+        "top_level_keys": [
+          "errors",
+          "message"
+        ],
+        "message": "The query field is required.",
+        "error_keys": [
+          "query"
+        ]
+      }
+    },
+    {
+      "base": "https://cp.evgo.ma",
+      "path": "/api/v2/app/evses/search",
+      "status": 422,
+      "content_type": "application/json",
+      "final_host": "cp.evgo.ma",
+      "final_path": "/api/v2/app/evses/search",
+      "safe_response": {
+        "json": true,
+        "top_level_keys": [
+          "errors",
+          "message"
+        ],
+        "message": "The query field is required.",
+        "error_keys": [
+          "query"
+        ]
+      }
+    },
+    {
+      "base": "https://cp.evgo.ma",
+      "path": "/api/v1/app/locations",
+      "status": 405,
+      "content_type": "application/json",
+      "final_host": "cp.evgo.ma",
+      "final_path": "/api/v1/app/locations",
+      "safe_response": {
+        "json": true,
+        "top_level_keys": [
+          "message"
+        ],
+        "message": "The GET method is not supported for route api/v1/app/locations. Supported methods: POST."
+      }
+    },
+    {
+      "base": "https://cp.evgo.ma",
+      "path": "/api/v2/app/locations",
+      "status": 405,
+      "content_type": "application/json",
+      "final_host": "cp.evgo.ma",
+      "final_path": "/api/v2/app/locations",
+      "safe_response": {
+        "json": true,
+        "top_level_keys": [
+          "message"
+        ],
+        "message": "The GET method is not supported for route api/v2/app/locations. Supported methods: POST."
+      }
+    },
+    {
+      "base": "https://evgo.ma",
+      "path": "/",
+      "status": null,
+      "error_type": "URLError"
+    },
+    {
+      "base": "https://evgo.ma",
+      "path": "/api/v1/app/evses/search",
+      "status": null,
+      "error_type": "URLError"
+    },
+    {
+      "base": "https://evgo.ma",
+      "path": "/api/v2/app/evses/search",
+      "status": null,
+      "error_type": "URLError"
+    },
+    {
+      "base": "https://evgo.ma",
+      "path": "/api/v1/app/locations",
+      "status": null,
+      "error_type": "URLError"
+    },
+    {
+      "base": "https://evgo.ma",
+      "path": "/api/v2/app/locations",
+      "status": null,
+      "error_type": "URLError"
+    }
+  ]
+}
