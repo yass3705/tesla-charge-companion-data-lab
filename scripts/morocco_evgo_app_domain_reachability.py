@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""Read-only reachability probe for EVGO public domains exposed by the Android client.
+
+Only GET requests without credentials, station IDs, coordinates or query values are sent.
+The output retains status, content type, redirect target host/path, JSON top-level keys and
+short validation messages. Raw response bodies are never persisted.
+"""
+from __future__ import annotations
+import datetime as dt
+import json
+import re
+import urllib.error
+import urllib.request
+from pathlib import Path
+from urllib.parse import urlsplit
+
+OUT = Path("artifacts/morocco-evgo-app-domain-reachability")
+OUT.mkdir(parents=True, exist_ok=True)
+UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.0)"
+BASES = ["https://cp.evgo.ma", "https://evgo.ma"]
+PATHS = [
+    "/",
+    "/api/v1/app/evses/search",
+    "/api/v2/app/evses/search",
+    "/api/v1/app/locations",
+    "/api/v2/app/locations",
+]
+TOKENISH = re.compile(r"\b[A-Za-z0-9_-]{32,}\b")
+
+
+def safe_body(body: str) -> dict:
+    try:
+        obj = json.loads(body)
+    except Exception:
+        return {"json": False}
+    out = {"json": True}
+    if isinstance(obj, dict):
+        out["top_level_keys"] = sorted(str(k) for k in obj.keys())[:40]
+        msg = obj.get("message")
+        if isinstance(msg, str):
+            out["message"] = TOKENISH.sub("[REDACTED]", msg)[:500]
+        errors = obj.get("errors")
+        if isinstance(errors, dict):
+            out["error_keys"] = sorted(str(k) for k in errors.keys())[:30]
+    return out
+
+
+def probe(base: str, path: str) -> dict:
+    url = base + path
+    req = urllib.request.Request(url, method="GET", headers={"User-Agent": UA, "Accept": "application/json,text/plain,*/*"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as res:
+            status = res.status
+            ctype = res.headers.get("content-type", "")
+            final = res.geturl()
+            body = res.read(100_000).decode("utf-8", "replace")
+    except urllib.error.HTTPError as exc:
+        status = exc.code
+        ctype = exc.headers.get("content-type", "") if exc.headers else ""
+        final = exc.geturl()
+        try:
+            body = exc.read(100_000).decode("utf-8", "replace")
+        except Exception:
+            body = ""
+    except Exception as exc:
+        return {"base": base, "path": path, "status": None, "error_type": type(exc).__name__}
+    q = urlsplit(final)
+    return {
+        "base": base,
+        "path": path,
+        "status": status,
+        "content_type": ctype,
+        "final_host": q.hostname,
+        "final_path": q.path,
+        "safe_response": safe_body(body),
+    }
+
+
+def main() -> None:
+    probes = [probe(base, path) for base in BASES for path in PATHS]
+    report = {
+        "schema_version": 1,
+        "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "policy": {
+            "read_only_get_only": True,
+            "no_login": True,
+            "no_credentials": True,
+            "no_query_values": True,
+            "no_coordinates": True,
+            "no_station_ids": True,
+            "no_mutations": True,
+            "raw_response_bodies_persisted": False,
+        },
+        "probes": probes,
+    }
+    (OUT / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+    print(json.dumps([{"base": x["base"], "path": x["path"], "status": x.get("status"), "final_host": x.get("final_host")} for x in probes]))
+
+
+if __name__ == "__main__":
+    main()
