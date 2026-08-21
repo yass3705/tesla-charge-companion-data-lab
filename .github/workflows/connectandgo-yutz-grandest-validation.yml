@@ -1,0 +1,97 @@
+name: Grand Est Connectandgo Yutz validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/connectandgo_yutz_official.py"
+      - ".github/workflows/connectandgo-yutz-grandest-validation.yml"
+
+permissions:
+  contents: write
+concurrency:
+  group: grandest-connectandgo-yutz-validation
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Extract current official rules
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/connectandgo_yutz
+          python -m py_compile scripts/connectandgo_yutz_official.py
+          python scripts/connectandgo_yutz_official.py --out out/connectandgo_yutz 2> >(tee out/connectandgo_yutz/error.log >&2)
+      - name: Validate tariff structure
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/connectandgo_yutz/connectandgo_yutz_official_grandest.json').read_text())
+          assert p['dataset']=='connectandgo-yutz-official-grandest'
+          assert p['network']['publishedStationCount']==6
+          assert p['network']['publishedConnectorPowerKw']==[22,25,50]
+          assert p['operatorDirect']['withoutSubscription']['day']['upTo25Kw']['eurPerKwh']==0.38
+          assert p['operatorDirect']['withoutSubscription']['day']['from50Kw']['eurPerKwh']==0.53
+          assert p['operatorDirect']['withoutSubscription']['night']['upTo25Kw']['eurPerKwh']==0.29
+          assert p['operatorDirect']['withoutSubscription']['day']['postFullChargeIdle']['graceMinutes']==15
+          assert p['operatorDirect']['withoutSubscription']['night']['idle']['at50Kw']['secondTierEurPerHour']==10.0
+          assert p['operatorDirect']['withSubscription']['monthlyEur']==4.0
+          assert p['operatorDirect']['withSubscription']['day']['upTo25Kw']['eurPerKwh']==0.33
+          assert p['operatorDirect']['withSubscription']['night']['upTo25Kw']['eurPerKwh']==0.25
+          assert p['operatorDirect']['withSubscription']['day']['postFullChargeIdle']['unitAmbiguous'] is True
+          assert p['rules']['dayNightClockWindowsNotPublishedOnCurrentTariffPage'] is True
+          assert p['tccDecision']['operatorValidated'] is True
+          assert p['tccDecision']['automaticDayNightClassification'] is False
+          assert p['sourceEvidence']['officialOnly'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/connectandgo_yutz
+          cp out/connectandgo_yutz/connectandgo_yutz_official_grandest.json data/operator_direct/connectandgo_yutz_official_grandest.json
+          cp out/connectandgo_yutz/SUMMARY.md reports/connectandgo_yutz/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/connectandgo_yutz_official_grandest.json reports/connectandgo_yutz/latest_summary.md
+          if ! git diff --cached --quiet; then git commit -m "data(connectandgo): publish Yutz tariff rules [run ${GITHUB_RUN_ID}]"; git pull --rebase origin main; git push origin HEAD:main; fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/connectandgo_yutz
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/connectandgo_yutz/error.log');s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr';s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s);Path('reports/connectandgo_yutz/latest_diagnostic.json').write_text(json.dumps({'dataset':'connectandgo-yutz-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env: {JOB_STATUS: "${{ job.status }}"}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/connectandgo_yutz
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/connectandgo_yutz/latest_run_status.json').write_text(json.dumps({'dataset':'connectandgo-yutz-run-status','operator':'Connect&go - Yutz','region':'Grand Est','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/connectandgo_yutz/latest_run_status.json
+          if [ -f reports/connectandgo_yutz/latest_diagnostic.json ]; then git add reports/connectandgo_yutz/latest_diagnostic.json; fi
+          if ! git diff --cached --quiet; then git commit -m "status(connectandgo-yutz): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"; for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done; exit 1; fi
