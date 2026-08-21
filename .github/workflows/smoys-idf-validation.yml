@@ -1,0 +1,110 @@
+name: IDF SMOYS validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/smoys_official.py"
+      - ".github/workflows/smoys-idf-validation.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: idf-smoys-validation
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+      - name: Extract current official rules
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/smoys
+          python -m py_compile scripts/smoys_official.py
+          python scripts/smoys_official.py --out out/smoys 2> >(tee out/smoys/error.log >&2)
+      - name: Validate tariff structure
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/smoys/smoys_official_idf.json').read_text())
+          assert p['dataset']=='smoys-official-idf'
+          assert p['classification']['localPublicNetwork'] is True
+          assert p['classification']['directBankCard'] is True
+          assert p['directTariff']['energyEurPerKwhTtc']==0.39
+          assert p['directTariff']['postCharge']['graceMinutes']==15
+          assert p['directTariff']['postCharge']['day0800To2000EurPer15MinutesTtc']==0.80
+          assert p['directTariff']['postCharge']['night2000To0800EurPer15MinutesTtc']==0.0
+          assert p['access']['qrBankCard'] is True
+          assert p['access']['ulysSmoysPassPurchaseEur']==6.0
+          assert p['access']['samePublishedLocalTariffForQrBankCardAndUlysSmoys'] is True
+          assert p['access']['thirdPartyRoamingMayDiffer'] is True
+          PY
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/smoys
+          cp out/smoys/smoys_official_idf.json data/operator_direct/smoys_official_idf.json
+          cp out/smoys/SUMMARY.md reports/smoys/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/smoys_official_idf.json reports/smoys/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(smoys): publish official IDF tariff rules [run ${GITHUB_RUN_ID}]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/smoys
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          p=Path('out/smoys/error.log')
+          s=p.read_text(errors='replace') if p.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/smoys/latest_diagnostic.json').write_text(json.dumps({'dataset':'smoys-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-40:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/smoys
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/smoys/latest_run_status.json').write_text(json.dumps({'dataset':'smoys-run-status','operator':'SMOYS','region':'Ile-de-France','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/smoys/latest_run_status.json reports/smoys/latest_diagnostic.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "status(smoys): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
