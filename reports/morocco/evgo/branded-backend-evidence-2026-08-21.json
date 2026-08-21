@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "operator_brand": "EVGO",
+  "app_package": "ma.evgo.cp.app",
+  "finding": "cp.evgo.ma is a live branded EVGO mobile/backend hostname exposing the same anonymous app routes already validated on the AMPECO tenant hostname.",
+  "evidence": {
+    "source_report": "reports/morocco/evgo/latest-app-domain-reachability.json",
+    "app_exposed_domain": "cp.evgo.ma",
+    "root_behavior": {
+      "status": 401,
+      "redirect_path": "/admin",
+      "message": "Unauthenticated."
+    },
+    "mobile_routes": [
+      {
+        "route": "/api/v1/app/evses/search",
+        "method": "GET",
+        "anonymous_status": 422,
+        "validation": "query field required"
+      },
+      {
+        "route": "/api/v2/app/evses/search",
+        "method": "GET",
+        "anonymous_status": 422,
+        "validation": "query field required"
+      },
+      {
+        "route": "/api/v1/app/locations",
+        "method": "POST",
+        "inert_payload": {"locations": []},
+        "anonymous_status": 200,
+        "response_top_level_keys": ["currencies", "locations", "tariffs"]
+      },
+      {
+        "route": "/api/v2/app/locations",
+        "method": "POST",
+        "inert_payload": {"locations": []},
+        "anonymous_status": 200,
+        "response_top_level_keys": ["currencies", "locations", "tariffs"]
+      }
+    ]
+  },
+  "interpretation": {
+    "backend_hostname_confidence": "high",
+    "canonical_mobile_backend_candidate": "https://cp.evgo.ma",
+    "platform_provider": "AMPECO",
+    "operator_candidate": "Nareva Services / EVGO",
+    "next_step": "Prefer cp.evgo.ma for future sanitized read-only mobile-route discovery and identify the anonymous map/cluster request that supplies internal location IDs before hydrating them through /app/locations."
+  },
+  "privacy": {
+    "credentials_committed": false,
+    "station_ids_committed": false,
+    "coordinates_committed": false,
+    "raw_response_bodies_committed": false
+  }
+}
