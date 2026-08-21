@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "dataset": "bfc-regional-coverage",
-  "generatedAt": "2026-08-21T21:47:00.132484Z",
+  "generatedAt": "2026-08-21T21:55:16.095811Z",
   "region": "Bourgogne-Franche-Comté",
   "country": "FR",
   "departmentsTotal": 8,
@@ -56,8 +56,18 @@
     {
       "department": "Jura",
       "operator": "Modulo candidate from SIDEC public history",
-      "tccDecision": "reference_only",
-      "reason": "Modulo current public prices are from-values and current first-party Jura station/operator mapping is not yet machine-confirmed"
+      "tccDecision": "reference_only_with_negative_station_mapping_check",
+      "excludedCandidate": {
+        "station": "Lidl CHAMPAGNOLE Cassin",
+        "city": "Champagnole",
+        "operatorDisplayed": "Lidl",
+        "evseIds": [
+          "FR*LDL*E00003243",
+          "FR*LDL*E00003244"
+        ],
+        "reason": "current Charge Global app screenshot identifies this candidate as a Lidl roaming station, not Modulo/SIDEC"
+      },
+      "reason": "Modulo current public prices are from-values and current first-party Jura station/operator mapping is still unresolved; Champagnole Cassin has now been explicitly excluded as a false Modulo witness"
     }
   ],
   "coverage": {
@@ -65,6 +75,7 @@
     "exactRuleCount": 6,
     "referenceOnlyCount": 2,
     "currentStationLevelVerifications": 1,
+    "negativeStationMappingVerifications": 1,
     "regionalResearchCoverageComplete": true,
     "allDepartmentsRankable": false
   },
@@ -83,13 +94,15 @@
       "qwello_saone_et_loire_official.json"
     ],
     "stationVerificationFiles": [
-      "data/station_verifications/qwello_autun_12_petite_rue_marchaux.json"
+      "data/station_verifications/qwello_autun_12_petite_rue_marchaux.json",
+      "data/station_verifications/jura_champagnole_cassin_lidl_negative_mapping.json"
     ]
   },
   "notes": [
     "Existing exact-rule files were generated from first-party sources on 2026-08-20 and are reused rather than rerun blindly one day later.",
-    "Qwello Autun 12 Petite Rue Marchaux is now current-station verified at 0.30 EUR/kWh + 0.02 EUR/min with a 3.60 EUR night cap on the minute component from 21:00 to 07:00.",
-    "Saône-et-Loire remains reference-only at department level until more Qwello stations confirm uniformity; Jura/Modulo remains reference-only until current local station/operator mapping and exact pricing are confirmed."
+    "Qwello Autun 12 Petite Rue Marchaux is current-station verified at 0.30 EUR/kWh + 0.02 EUR/min with a 3.60 EUR night cap on the minute component from 21:00 to 07:00.",
+    "Champagnole Cassin in Jura was manually checked in Charge Global on 2026-08-21 and is Lidl (FR*LDL*E00003243 / FR*LDL*E00003244), so it is explicitly excluded as a Modulo/SIDEC witness.",
+    "Saône-et-Loire remains reference-only at department level until more Qwello stations confirm uniformity; Jura/Modulo remains reference-only until a current local Modulo station and exact pricing are confirmed."
   ],
   "publicationStatus": "validated_candidate"
 }
