@@ -47,7 +47,6 @@ def section(text,start,end):
 
 
 def now(): return datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
-
 def write_json(path,payload): path.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
 
 
@@ -65,7 +64,6 @@ def main():
     if min(os_,cs,fs,is_,ms,rs,bs)!=200:
         raise RuntimeError(f'HTTP failure ouest={os_} sde22={cs} sdef={fs} sde35={is_} morbihan={ms} rennes={rs} brest={bs}')
 
-    # Central Ouest Charge page: current displayed grid for the three Breton member departments.
     sec35=section(oraw,'Ille-et-Vilaine (35)','Finistère (29)')
     require(sec35,'borne normale','0,40','5eme heure','0,20','7h','21h','borne rapide','0,55','1ere heure','borne ultra rapide','1€','non abonnes','50€',label='Ouest Charge Ille-et-Vilaine')
     sec29=section(oraw,'Finistère (29)',"Côtes d'Armor (22)")
@@ -73,18 +71,11 @@ def main():
     sec22=section(oraw,"Côtes d'Armor (22)",'Vous souhaitez')
     require(sec22,'borne normale','0,40','5eme heure','0,20','7h','21h','borne rapide','0,55','borne ultra rapide','1€','non abonnes','50€',label="Ouest Charge Côtes-d'Armor")
 
-    # Territory-owner pages establish the live public network footprint.
-    require(craw,'Ouest Charge','Côtes d Armor','202 bornes accélérées','8 bornes rapides','4 bornes','0,33','0,44','0,55',label='SDE22 current page')
+    require(craw,'Ouest Charge','202 bornes accélérées','8 bornes rapides','4 bornes','0,33','0,44','0,55',label='SDE22 current page')
     require(fraw,'OuestCharge','Côtes','Ille et Vilaine','2 800 bornes','badge Ouest Charge','10 €',label='SDEF current page')
     require(iraw,'Béa','Ouest Charge','344 points de charge','Ille-et-Vilaine',label='SDE35 current page')
-
-    # Morbihan is a separate direct network, only interoperable/partner with Ouest Charge.
     require(mraw,'Morbihan Énergies','0,40','0,025','0,55','0,10','20 €','8h','4h','5€','FreshMile','24h/24','7j/7',label='Morbihan Energies')
-
-    # Rennes has a distinct metropolitan public-parking offer alongside SDE35/Ouest Charge.
     require(rraw,'C-Park','308 bornes','7 à 22 kW','1 €','0,40 €/kWh','coût du stationnement','parcs-relais','gratuits','200 places',label='Rennes C-Park')
-
-    # Brest has an emerging metropolitan rollout with Easy Charge Service; tariff is not published on this first-party page.
     require(braw,'Easy Charge Service','15 stations','72 points','été 2026','mi 2027','carte bancaire','QR Code',label='Brest Easy Charge')
 
     common={'schemaVersion':'1.0.0','generatedAt':now(),'country':'FR','region':'Bretagne','publicationStatus':'validated_candidate'}
@@ -113,9 +104,6 @@ def main():
     regional={**common,'dataset':'bretagne-regional-coverage','departmentsTotal':4,'departmentCoverage':departments,'coverage':{'departmentsAccountedFor':4,'regionalPublicNetworkResearchCoverageComplete':True,'identifiedEstablishedPublicNetworkFamiliesAccountedFor':True,'singleUniversalRegionalTariff':False,'allIdentifiedLiveTariffsResolved':False,'referenceOnlyOrBlockedFamilies':["SDE22 / Ouest Charge direct tariff until first-party conflict is resolved",'Brest Métropole / Easy Charge Service direct energy tariff'],'localParkingChargingFamilyIncluded':True},'tccDecision':{'regionalCoverageValidated':True,'doNotInventDepartmentDefaults':True,'preserveNetworkStationCategorySubscriptionAndParking':True,'roamingSeparate':True,'nextStep':'continue national regional pass; manual station checks can later resolve SDE22 conflict and Brest live pricing'},'sourceEvidence':{'validatedOperatorFiles':['ouestcharge_bretagne_official.json','morbihan_energies_official_bretagne.json','rennes_cpark_official_bretagne.json','brest_easycharge_transition_bretagne.json']},'notes':['Coverage concerns identified public/local network families and metropolitan public charging offers, not every private commercial CPO in Bretagne.','Parking fees and operator roaming surcharges must remain separate from direct network charging prices.']}
     write_json(out/'bretagne_regional_coverage.json',regional)
 
-    (out/'SUMMARY.md').write_text(
-      '# Bretagne coverage\n\n'
-      'All four departments are accounted for at public/local network research level. Ouest Charge covers the public SDE22/SDEF/SDE35 family, Morbihan Energies remains a separate direct network, Rennes C-Park has a distinct metropolitan parking tariff, and Brest Easy Charge Service is tracked as an in-progress metropolitan rollout. The current Cotes-d Armor direct Ouest Charge price is intentionally not classed because two current first-party pages disagree.\n'
-    )
+    (out/'SUMMARY.md').write_text('# Bretagne coverage\n\nAll four departments are accounted for at public/local network research level. Ouest Charge covers the public SDE22/SDEF/SDE35 family, Morbihan Energies remains a separate direct network, Rennes C-Park has a distinct metropolitan parking tariff, and Brest Easy Charge Service is tracked as an in-progress metropolitan rollout. The current Cotes-d Armor direct Ouest Charge price is intentionally not classed because two current first-party pages disagree.\n')
 
 if __name__=='__main__': main()
