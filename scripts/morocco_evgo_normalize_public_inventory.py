@@ -3,7 +3,11 @@
 
 No backend requests are made here. The script reads reports/morocco/evgo/latest-pin-hydration.json
 and emits a compact station inventory that keeps CPO/operator, site brand, app source, tariff channel
-and status source distinct. It never invents a tariff when tariffId is null.
+and status source distinct.
+
+EVGO-specific business rule: when the native EVGO data exposes no tariff (tariffId is null), the
+station/EVSE is treated as free (0 MAD). This rule applies to EVGO only and must not be generalized
+to other operators.
 """
 # This derived-data step is intentionally offline: it never contacts the EVGO backend.
 from __future__ import annotations
@@ -21,6 +25,7 @@ def main() -> None:
     rows = []
     status_counts = Counter()
     tariff_ids = Counter()
+    free_evse_count = 0
 
     for item in v1.get('locations', []):
         loc = item.get('location') or {}
@@ -33,6 +38,9 @@ def main() -> None:
                 tariff_id = evse.get('tariffId')
                 if tariff_id is not None:
                     tariff_ids[str(tariff_id)] += 1
+                is_free = tariff_id is None
+                if is_free:
+                    free_evse_count += 1
                 evses.append({
                     'id': evse.get('id'),
                     'identifier': evse.get('identifier'),
@@ -44,6 +52,13 @@ def main() -> None:
                     'networkId': evse.get('networkId'),
                     'operatedBy': evse.get('operatedBy'),
                     'tariffId': tariff_id,
+                    'isFree': is_free,
+                    'priceMAD': 0 if is_free else None,
+                    'price_interpretation': (
+                        'EVGO-specific rule: missing native price/tariff is treated as free.'
+                        if is_free else
+                        'A native EVGO tariff reference exists; do not infer its numeric price here.'
+                    ),
                     'connectors': [
                         {
                             'id': c.get('id'),
@@ -66,7 +81,7 @@ def main() -> None:
             'app_source': 'EVGO',
             'status_source': 'EVGO native backend cp.evgo.ma',
             'tariff_channel': 'EVGO native',
-            'tariff_interpretation': 'Do not infer free or paid from tariffId=null; require native app/API evidence.',
+            'tariff_interpretation': 'EVGO only: if no native price/tariff is present, treat charging as free (0 MAD).',
             'evses': evses,
         })
 
@@ -77,7 +92,9 @@ def main() -> None:
         'policy': {
             'derived_from_sanitized_public_report_only': True,
             'backend_requests_made': False,
-            'tariffs_invented': False,
+            'evgo_missing_tariff_means_free': True,
+            'evgo_missing_tariff_price_mad': 0,
+            'rule_scope': 'EVGO only; never generalize missing-price=free to other operators.',
             'modeling_dimensions_kept_separate': [
                 'operator_cpo_candidate', 'site_brand', 'app_source', 'tariff_channel', 'status_source'
             ],
@@ -87,6 +104,7 @@ def main() -> None:
             'evse_count': sum(len(x['evses']) for x in rows),
             'status_counts': dict(sorted(status_counts.items())),
             'non_null_tariff_ids': dict(sorted(tariff_ids.items())),
+            'free_evse_count_by_evgo_missing_tariff_rule': free_evse_count,
         },
         'stations': rows,
     }
