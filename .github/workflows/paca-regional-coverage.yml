@@ -1,0 +1,155 @@
+name: PACA regional coverage
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main", "paca-regional-coverage"]
+    paths:
+      - "scripts/paca_regional_coverage.py"
+      - ".github/workflows/paca-regional-coverage.yml"
+      - "data/operator_direct/eborn_official_france.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: paca-regional-coverage-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+
+      - name: Extract and consolidate official evidence
+        id: extract
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/paca
+          python -m py_compile scripts/paca_regional_coverage.py
+          python scripts/paca_regional_coverage.py --out out/paca 2> >(tee out/paca/error.log >&2)
+          cat out/paca/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate tariff models and regional coverage
+        if: success()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=Path('out/paca')
+          p=json.loads((r/'paca_regional_coverage.json').read_text())
+          assert p['region']=='Provence-Alpes-Côte d’Azur'
+          assert p['departmentsTotal']==6
+          assert p['coverage']['departmentsAccountedFor']==6
+          assert p['coverage']['regionalPublicNetworkResearchCoverageComplete'] is True
+          assert p['coverage']['singleUniversalRegionalTariff'] is False
+          assert p['coverage']['allIdentifiedLiveTariffsResolved'] is False
+          assert p['tccDecision']['keepUnresolvedStationTariffsNullUntilVerified'] is True
+          assert p['sourceHealth']['officialOrOperatorSourcesReachableAtRun'] >= 9
+
+          w=json.loads((r/'wiiiz_evzen_official_paca.json').read_text())
+          assert w['subscription']=={'monthlyFeeEur':6.0,'registrationFeeEur':15.0,'badgeIncluded':True}
+          assert w['directTariff']['dc50Kw']=={'subscriberEurPerKwh':0.24,'nonSubscriberEurPerKwh':0.40,'postChargeEurPerMinute':0.25}
+
+          l=json.loads((r/'larecharge_evzen_official_paca.json').read_text())
+          assert l['directTariff']['acceleratedUpTo22Kw']=={'day0700To2200EurPerHour':6.0,'night2200To0700EurPerHour':1.5}
+          assert l['directTariff']['transactionCapEur']==50.0
+          assert l['directTariff']['subscriberDiscountPercent']==5.0
+          assert l['tccDecision']['doNotApplyLegacyGridToAllLarechargeLabelledStations'] is True
+
+          s=json.loads((r/'simone_evzen_official_paca.json').read_text())
+          assert s['effectiveDate']=='2026-06-01'
+          assert s['directTariff']['ac22Kw']['day0700To2100']=={'subscriberEurPerKwh':0.50,'nonSubscriberEurPerKwh':0.55}
+          assert s['directTariff']['ac22Kw']['night2100To0700']=={'subscriberEurPerKwh':0.35,'nonSubscriberEurPerKwh':0.38}
+          assert s['directTariff']['ac22Kw']['paymentCapEur']==30.0
+
+          n=json.loads((r/'prise_de_nice_official_paca.json').read_text())
+          assert n['serviceOperator']=='IZIVIA'
+          assert n['networkEvidence2026']['newPublicPointsFrom2026_07_17']==86
+          assert n['tccDecision']['genericCurrentDirectTariffClassable'] is False
+
+          v=json.loads((r/'vaucluselec_ulys_official_paca.json').read_text())
+          assert v['subscription']['monthlyFeeEur']==1.50
+          assert v['subscription']['passPriceEur']==6.0
+          assert v['tccDecision']['genericCurrentDirectTariffClassable'] is False
+          PY
+
+      - name: Publish validated evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct data/regional_coverage reports/paca
+          for f in wiiiz_evzen_official_paca.json larecharge_evzen_official_paca.json simone_evzen_official_paca.json prise_de_nice_official_paca.json vaucluselec_ulys_official_paca.json; do
+            cp "out/paca/$f" "data/operator_direct/$f"
+          done
+          cp out/paca/paca_regional_coverage.json data/regional_coverage/
+          cp out/paca/SUMMARY.md reports/paca/latest_summary.md
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/wiiiz_evzen_official_paca.json data/operator_direct/larecharge_evzen_official_paca.json data/operator_direct/simone_evzen_official_paca.json data/operator_direct/prise_de_nice_official_paca.json data/operator_direct/vaucluselec_ulys_official_paca.json data/regional_coverage/paca_regional_coverage.json reports/paca/latest_summary.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data(paca): publish validated regional public-network evidence [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin "${GITHUB_REF_NAME}"
+              if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
+
+      - name: Publish diagnostic on failure
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p reports/paca
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          q=Path('out/paca/error.log')
+          s=q.read_text(errors='replace') if q.exists() else 'validation failed without extractor stderr'
+          s=re.sub(r'(?i)(authorization|cookie|token|secret|password)\s*[:=]\s*\S+',r'\1=[REDACTED]',s)
+          Path('reports/paca/latest_diagnostic.json').write_text(json.dumps({'dataset':'paca-regional-diagnostic','sanitized':True,'errorTail':[x for x in s.splitlines() if x.strip()][-60:]},ensure_ascii=False,indent=2)+'\n')
+          PY
+
+      - name: Publish run status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/paca
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/paca/latest_run_status.json').write_text(json.dumps({'dataset':'paca-regional-run-status','region':'Provence-Alpes-Côte d’Azur','runId':os.environ.get('GITHUB_RUN_ID',''),'status':os.environ.get('JOB_STATUS','unknown'),'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')},ensure_ascii=False,indent=2)+'\n')
+          PY
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/paca/latest_run_status.json
+          if [ "${JOB_STATUS}" = "success" ] && git ls-files --error-unmatch reports/paca/latest_diagnostic.json >/dev/null 2>&1; then
+            git rm -f reports/paca/latest_diagnostic.json
+          elif [ -f reports/paca/latest_diagnostic.json ]; then
+            git add reports/paca/latest_diagnostic.json
+          fi
+          if ! git diff --cached --quiet; then
+            git commit -m "status(paca): ${JOB_STATUS} [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin "${GITHUB_REF_NAME}"
+              if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
