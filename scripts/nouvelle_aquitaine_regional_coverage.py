@@ -70,7 +70,11 @@ def main():
 
     # Hard checks on currently stable first-party sources; other sources remain corroborating/non-blocking.
     if src['alterbase']['httpStatus']==200:
-        require(src['alterbase']['text'],'18€','0,432','0,528','0,612','0,996',label='AlterBase')
+        alter_text=norm(src['alterbase']['text'])
+        alter_compact=re.sub(r'\s+','',alter_text).replace(',','.')
+        require(src['alterbase']['text'],'18€',label='AlterBase')
+        alter_missing=[v for v in ('0.432','0.528','0.612','0.996') if v not in alter_compact]
+        if alter_missing: raise RuntimeError('AlterBase missing numeric witnesses: '+', '.join(alter_missing))
     if src['soregies_2026']['httpStatus']==200 and src['soregies_2026']['text']:
         require(src['soregies_2026']['text'],'4,99','0,42','0,34','0,59','0,47','0,39','0,16','0,01','0,99',label='Sorégies 2026')
     if src['limoges_2026']['httpStatus']==200 and src['limoges_2026']['text']:
