@@ -1,0 +1,42 @@
+name: Morocco TotalEnergies Numocity station-state probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/morocco_totalenergies_numocity_stationstate_probe.py'
+      - '.github/workflows/morocco-totalenergies-numocity-stationstate.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run sanitized read-only station-state probe
+        run: python scripts/morocco_totalenergies_numocity_stationstate_probe.py
+
+      - name: Publish sanitized summary when changed
+        run: |
+          mkdir -p reports/morocco/totalenergies
+          cp artifacts/morocco-totalenergies-numocity-stationstate/summary.json reports/morocco/totalenergies/latest-stationstate-validation.json
+          if [ -z "$(git status --porcelain -- reports/morocco/totalenergies/latest-stationstate-validation.json)" ]; then
+            echo 'No station-state report change.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/morocco/totalenergies/latest-stationstate-validation.json
+          git commit -m 'data(morocco): update Numocity station-state validation'
+          git pull --rebase origin main
+          git push origin HEAD:main
