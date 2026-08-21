@@ -4,7 +4,8 @@ from __future__ import annotations
 import argparse, json
 from pathlib import Path
 
-VERIFY = Path('data/station_verifications/ouestcharge_sde22_pledaran_app_2026_08_22.json')
+SDE22_VERIFY = Path('data/station_verifications/ouestcharge_sde22_pledaran_app_2026_08_22.json')
+BREST_VERIFY = Path('data/station_verifications/brest_easycharge_place_des_delisseurs_app_visibility_2026_08_22.json')
 
 
 def load(path: Path):
@@ -21,7 +22,7 @@ def main():
     args = ap.parse_args()
     root = Path(args.out)
 
-    v = load(VERIFY)
+    v = load(SDE22_VERIFY)
     assert v['department'] == "Côtes-d'Armor"
     by_connector = {(x['connector'], x['powerKw']): x for x in v['connectorsVerified']}
     assert by_connector[('TYPE2', 22)]['energyEurPerKwh'] == 0.40
@@ -52,7 +53,7 @@ def main():
     op['tccDecision']['cotesArmorDirectClassable'] = False
     op['tccDecision']['cotesArmorVerifiedStationClassable'] = True
     op['tccDecision']['cotesArmorStationDisplayedTariffHasPriority'] = True
-    op['sourceEvidence']['manualStationVerificationFile'] = str(VERIFY)
+    op['sourceEvidence']['manualStationVerificationFile'] = str(SDE22_VERIFY)
     dump(op_path, op)
 
     reg_path = root / 'bretagne_regional_coverage.json'
@@ -73,7 +74,40 @@ def main():
     reg['coverage']['stationLevelResolvedFamilies'] = ['SDE22 / Ouest Charge via app-displayed station tariff']
     reg['tccDecision']['stationDisplayedTariffHasPriorityForSDE22'] = True
     reg['tccDecision']['nextStep'] = 'verify Brest Métropole / Easy Charge Service direct live pricing; retain station-level tariff precedence for SDE22'
-    reg['sourceEvidence']['manualStationVerificationFiles'] = [str(VERIFY)]
+
+    b = load(BREST_VERIFY)
+    assert b['department'] == 'Finistère'
+    assert b['city'] == 'Brest'
+    assert b['operator'] == 'Easy Charge Service'
+    assert b['station']['officialPlannedName'] == 'Place des Délisseurs'
+    assert b['station']['operatorAppVisible'] is False
+    assert b['tccDecision']['treatAsLiveVerifiedStation'] is False
+    assert b['tccDecision']['directTariffVerified'] is False
+
+    brest_path = root / 'brest_easycharge_transition_bretagne.json'
+    brest = load(brest_path)
+    brest['manualAppVisibilityCheck'] = {
+        'verifiedAt': b['verifiedAt'],
+        'station': b['station']['officialPlannedName'],
+        'city': b['city'],
+        'publicIrveListingObserved': b['station']['publicIrveListingObserved'],
+        'operatorAppVisible': b['station']['operatorAppVisible'],
+        'liveStatus': 'not_confirmed_in_operator_app'
+    }
+    brest['tccDecision']['directEnergyTariffClassable'] = False
+    brest['tccDecision']['defaultDisplay'] = 'reference_only_until_operator_app_or_on_site_reconfirmation'
+    brest['tccDecision']['placeDesDelisseursLiveVerified'] = False
+    brest['sourceEvidence']['manualStationVerificationFile'] = str(BREST_VERIFY)
+    dump(brest_path, brest)
+
+    for row in reg['departmentCoverage']:
+        if row['department'] == 'Finistère':
+            notes = row.setdefault('notes', [])
+            notes.append('Place des Délisseurs is announced by Brest Métropole and appears in recent public IRVE data, but was not visible in the Easy Charge operator app during manual verification on 2026-08-22; keep it reference-only until reconfirmed.')
+            break
+    reg['tccDecision']['brestEasyChargePlaceDesDelisseursLiveVerified'] = False
+    reg['tccDecision']['nextStep'] = 'find a currently visible Brest Easy Charge station in the operator app before resolving direct live pricing'
+    reg['sourceEvidence']['manualStationVerificationFiles'] = [str(SDE22_VERIFY), str(BREST_VERIFY)]
     dump(reg_path, reg)
 
     summary = root / 'SUMMARY.md'
@@ -83,6 +117,10 @@ def main():
              '- Connected-time component displayed: **0.20 EUR/min after 5 h, 07:00-21:00**.\n'
              '- Separate inactivity line displayed under the same conditions; do not double-count without operator confirmation.\n'
              '- SDE22 owner-page 0.33/0.44/0.55 grid is superseded for this station; station-displayed tariff has priority.\n')
+    text += ('\n## Manual check — Brest / Easy Charge Service\n\n'
+             '- **Place des Délisseurs** remains listed by Brest Métropole and in recent public IRVE data.\n'
+             '- It was **not visible in the Easy Charge operator app** during manual verification on 2026-08-22.\n'
+             '- Treat the station as **rollout/reference-only**, not live verified; no direct tariff should be inferred until operator-app or on-site reconfirmation.\n')
     summary.write_text(text)
 
 
