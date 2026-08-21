@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "dataset": "bfc-regional-coverage",
-  "generatedAt": "2026-08-21T14:06:26.388441Z",
+  "generatedAt": "2026-08-21T21:47:00.132484Z",
   "region": "Bourgogne-Franche-Comté",
   "country": "FR",
   "departmentsTotal": 8,
@@ -41,8 +41,17 @@
     {
       "department": "Saône-et-Loire",
       "operator": "Qwello",
-      "tccDecision": "reference_only",
-      "reason": "initial 2026 tariff is verified but current exact station tariff requires station/app lookup"
+      "tccDecision": "reference_only_with_station_level_verification",
+      "currentVerifiedStationCount": 1,
+      "verifiedStation": {
+        "name": "12 Petite Rue Marchaux",
+        "city": "Autun",
+        "powerKw": 22,
+        "eurPerKwh": 0.3,
+        "eurPerMinute": 0.02,
+        "nightMinuteComponentCapEur": 3.6
+      },
+      "reason": "current direct tariff is verified for Qwello Autun 12 Petite Rue Marchaux, but network-wide uniformity across Saône-et-Loire is not yet established"
     },
     {
       "department": "Jura",
@@ -55,6 +64,7 @@
     "departmentsAccountedFor": 8,
     "exactRuleCount": 6,
     "referenceOnlyCount": 2,
+    "currentStationLevelVerifications": 1,
     "regionalResearchCoverageComplete": true,
     "allDepartmentsRankable": false
   },
@@ -71,11 +81,15 @@
       "sied70_official_haute_saone.json",
       "tde90_belfort_official.json",
       "qwello_saone_et_loire_official.json"
+    ],
+    "stationVerificationFiles": [
+      "data/station_verifications/qwello_autun_12_petite_rue_marchaux.json"
     ]
   },
   "notes": [
     "Existing exact-rule files were generated from first-party sources on 2026-08-20 and are reused rather than rerun blindly one day later.",
-    "Saône-et-Loire/Qwello and Jura/Modulo remain deliberately non-rankable until current exact local/station pricing is resolved."
+    "Qwello Autun 12 Petite Rue Marchaux is now current-station verified at 0.30 EUR/kWh + 0.02 EUR/min with a 3.60 EUR night cap on the minute component from 21:00 to 07:00.",
+    "Saône-et-Loire remains reference-only at department level until more Qwello stations confirm uniformity; Jura/Modulo remains reference-only until current local station/operator mapping and exact pricing are confirmed."
   ],
   "publicationStatus": "validated_candidate"
 }
