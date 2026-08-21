@@ -1,0 +1,122 @@
+name: Nouvelle-Aquitaine recovery validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/nouvelle-aquitaine-recovery.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  recover-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply robust AlterBase witness fix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/nouvelle_aquitaine_regional_coverage.py')
+          s=p.read_text()
+          old="        require(src['alterbase']['text'],'18€','0,432','0,528','0,612','0,996',label='AlterBase')"
+          new="""        alter_text=norm(src['alterbase']['text'])
+        alter_compact=re.sub(r'\\s+','',alter_text).replace(',','.')
+        require(src['alterbase']['text'],'18€',label='AlterBase')
+        alter_missing=[v for v in ('0.432','0.528','0.612','0.996') if v not in alter_compact]
+        if alter_missing: raise RuntimeError('AlterBase missing numeric witnesses: '+', '.join(alter_missing))"""
+          if old in s:
+              s=s.replace(old,new,1)
+          elif "alter_compact=re.sub" not in s:
+              raise SystemExit('AlterBase witness block not in expected state')
+          p.write_text(s)
+          PY
+          python -m py_compile scripts/nouvelle_aquitaine_regional_coverage.py
+
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+
+      - name: Install PDF reader
+        run: python -m pip install --disable-pip-version-check 'pypdf>=5,<6'
+
+      - name: Extract evidence
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p out/nouvelle_aquitaine
+          python scripts/nouvelle_aquitaine_regional_coverage.py --out out/nouvelle_aquitaine 2> >(tee out/nouvelle_aquitaine/error.log >&2)
+
+      - name: Validate outputs
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('out/nouvelle_aquitaine')
+          m=json.loads((root/'mobive_official_nouvelle_aquitaine.json').read_text())
+          assert len(m['standardGridDepartments'])==9
+          assert m['standardGrid']['nonSubscriber']['dcGt60']['energyEurPerKwh']==0.68
+          assert m['standardGrid']['subscriber']['dcGt60']['energyEurPerKwh']==0.57
+          a=json.loads((root/'alterbase_deux_sevres_official_nouvelle_aquitaine.json').read_text())
+          assert a['subscriberTariffs']['acLt24']==0.432
+          assert a['occasionalTariffs']['dcGt25']==0.612
+          assert a['occasionalTariffs']['sessionFeeEur']==0.996
+          s=json.loads((root/'soregies_vienne_official_nouvelle_aquitaine.json').read_text())
+          assert s['mobilitesPlus']['monthlyFeeEur']==4.99
+          assert s['publicAdHocDisplayedOnCurrentSite']['rapid200']['peak']==0.71
+          b=json.loads((root/'bordeaux_metropole_freshmile_official_nouvelle_aquitaine.json').read_text())
+          assert b['directTariff']['energyEurPerKwh']==0.38
+          l=json.loads((root/'limoges_metropole_izivia_official_nouvelle_aquitaine.json').read_text())
+          assert l['tariffs']['dc100_150']['postChargeEurPerBlock']==2.0
+          lr=json.loads((root/'la_rochelle_municipal_irve_official_nouvelle_aquitaine.json').read_text())
+          assert lr['tccDecision']['directTariffClassable'] is False
+          p=json.loads((root/'nouvelle_aquitaine_regional_coverage.json').read_text())
+          assert p['departmentsTotal']==12
+          assert p['coverage']['departmentsAccountedFor']==12
+          assert p['coverage']['regionalPublicNetworkResearchCoverageComplete'] is True
+          assert p['coverage']['identifiedMainDepartmentalPublicNetworkFamiliesAccountedFor'] is True
+          assert p['tccDecision']['roamingSeparate'] is True
+          assert p['sourceHealth']['officialSourcesReachableAtRun'] >= 5
+          PY
+
+      - name: Publish corrected validator and validated data
+        env:
+          RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct data/regional_coverage reports/nouvelle_aquitaine
+          for f in mobive_official_nouvelle_aquitaine.json alterbase_deux_sevres_official_nouvelle_aquitaine.json soregies_vienne_official_nouvelle_aquitaine.json bordeaux_metropole_freshmile_official_nouvelle_aquitaine.json limoges_metropole_izivia_official_nouvelle_aquitaine.json la_rochelle_municipal_irve_official_nouvelle_aquitaine.json la_rochelle_port_freshmile_official_nouvelle_aquitaine.json; do
+            cp "out/nouvelle_aquitaine/$f" "data/operator_direct/$f"
+          done
+          cp out/nouvelle_aquitaine/nouvelle_aquitaine_regional_coverage.json data/regional_coverage/
+          cp out/nouvelle_aquitaine/SUMMARY.md reports/nouvelle_aquitaine/latest_summary.md
+          python - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          from pathlib import Path
+          Path('reports/nouvelle_aquitaine/latest_run_status.json').write_text(json.dumps({
+            'dataset':'nouvelle-aquitaine-regional-run-status',
+            'region':'Nouvelle-Aquitaine',
+            'runId':os.environ['RUN_ID'],
+            'status':'success',
+            'checkedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+          },ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -f reports/nouvelle_aquitaine/latest_diagnostic.json
+          python scripts/public_safety_check.py .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/nouvelle_aquitaine_regional_coverage.py data/operator_direct data/regional_coverage/nouvelle_aquitaine_regional_coverage.json reports/nouvelle_aquitaine
+          git commit -m "data(nouvelle-aquitaine): publish validated regional coverage [run ${RUN_ID}]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
