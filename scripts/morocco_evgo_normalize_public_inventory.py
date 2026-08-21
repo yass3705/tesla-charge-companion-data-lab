@@ -5,6 +5,7 @@ No backend requests are made here. The script reads reports/morocco/evgo/latest-
 and emits a compact station inventory that keeps CPO/operator, site brand, app source, tariff channel
 and status source distinct. It never invents a tariff when tariffId is null.
 """
+# This derived-data step is intentionally offline: it never contacts the EVGO backend.
 from __future__ import annotations
 import json
 from collections import Counter
