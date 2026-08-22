@@ -38,11 +38,12 @@ METHOD_MARKERS = (
 )
 OUT = Path("artifacts/morocco-numocity-url-construction")
 OUT.mkdir(parents=True, exist_ok=True)
-UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.4)"
+UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.5)"
 
 URL_RX = re.compile(r"https?://[^\s\x00\"'<>\\]{5,500}", re.I)
 HOST_RX = re.compile(r"(?<![A-Za-z0-9.-])(?:[A-Za-z0-9-]+\.)+(?:com|ma|net|tech|io)(?![A-Za-z0-9.-])", re.I)
 NUMOCITY_DOMAIN_RX = re.compile(r"(?:[A-Za-z0-9-]+\.)*numocity\.com", re.I)
+BINARY_NUMOCITY_RX = re.compile(rb"(?:[A-Za-z0-9-]+\.)*numocity\.com", re.I)
 PATH_RX = re.compile(r"/(?:[A-Za-z0-9._~-]+/?){1,10}")
 IDENT_RX = re.compile(
     r"\b(?:baseURL|baseUrl|base_url|apiURL|apiUrl|api_url|endpoint|apiEndpoint|"
@@ -129,9 +130,42 @@ def keep_path(value: str) -> bool:
     return any(k in low for k in ("api", "connector", "status", "qr", "station", "charge", "location", "mobile", "app"))
 
 
+def binary_domains_near_marker(path: Path, marker: str, radius: int = 512) -> list[str]:
+    """Recover only public *.numocity.com literals from raw bytes around a known public route.
+
+    Two harmless normalizations are tried: raw ASCII and NUL-stripped bytes, the latter covering
+    UTF-16-ish/static packing where printable hostname labels may be separated by zero bytes.
+    No arbitrary context is returned.
+    """
+    try:
+        data = path.read_bytes()
+    except Exception:
+        return []
+    needle = marker.encode("ascii", "ignore")
+    if not needle:
+        return []
+    found: set[str] = set()
+    start = 0
+    while True:
+        pos = data.find(needle, start)
+        if pos < 0:
+            break
+        window = data[max(0, pos - radius): min(len(data), pos + len(needle) + radius)]
+        for candidate in (window, window.replace(b"\x00", b"")):
+            for m in BINARY_NUMOCITY_RX.findall(candidate):
+                try:
+                    host = m.decode("ascii").lower()
+                except Exception:
+                    continue
+                if host.endswith("numocity.com") and len(host) <= 120:
+                    found.add(host)
+        start = pos + len(needle)
+    return sorted(found)
+
+
 def main():
     report = {
-        "schema_version": 5,
+        "schema_version": 6,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "package": PACKAGE,
         "policy": {
@@ -146,6 +180,7 @@ def main():
             "method_detection_is_static_signal_only": True,
             "construction_detection_is_static_signal_only": True,
             "near_route_numocity_domains_are_public_domain_literals_only": True,
+            "binary_domain_recovery_persists_public_numocity_hosts_only": True,
         },
         "download_ok": False,
         "marker_hits": [],
@@ -155,6 +190,7 @@ def main():
         "nearby_public_paths": [],
         "near_host_public_paths": [],
         "near_route_numocity_domains": {},
+        "binary_numocity_domains_by_route": {},
         "nearby_identifier_names": {},
         "construction_marker_counts": {},
         "construction_marker_counts_by_route": {},
@@ -178,6 +214,7 @@ def main():
         paths = {}
         host_paths = {}
         numocity_domains_by_route = defaultdict(Counter)
+        binary_domains_by_route = defaultdict(Counter)
         identifiers = Counter()
         constructions = Counter()
         constructions_by_route = defaultdict(Counter)
@@ -199,6 +236,11 @@ def main():
 
             marker_rows = [(idx, off, text, marker) for idx, (off, text) in enumerate(rows) for marker in MARKERS if marker in text]
             host_rows = [(idx, off, text, marker) for idx, (off, text) in enumerate(rows) for marker in HOST_MARKERS if marker in text]
+
+            present_markers = sorted({marker for _idx, _off, _text, marker in marker_rows})
+            for marker in present_markers:
+                for host in binary_domains_near_marker(file, marker):
+                    binary_domains_by_route[marker][host] += 1
 
             for _idx, off, _text, marker in host_rows:
                 host_hits.append({"marker": marker, "source": str(file.relative_to(tree)), "offset": off})
@@ -274,6 +316,9 @@ def main():
         report["near_route_numocity_domains"] = {
             route: dict(counts.most_common()) for route, counts in sorted(numocity_domains_by_route.items())
         }
+        report["binary_numocity_domains_by_route"] = {
+            route: dict(counts.most_common()) for route, counts in sorted(binary_domains_by_route.items())
+        }
         report["nearby_identifier_names"] = dict(identifiers.most_common(100))
         report["construction_marker_counts"] = dict(constructions.most_common())
         report["construction_marker_counts_by_route"] = {
@@ -290,6 +335,7 @@ def main():
         "urls": report["nearby_public_urls"][:8],
         "host_paths": report["near_host_public_paths"][:12],
         "numocity_domains": report["near_route_numocity_domains"],
+        "binary_numocity_domains": report["binary_numocity_domains_by_route"],
         "construction_by_route": report["construction_marker_counts_by_route"],
         "methods": report["method_marker_counts_by_route"],
     }))
