@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-22T08:34:16.788008+00:00",
+  "policy": {
+    "read_only_get_only": true,
+    "anonymous_only": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_query_strings": true,
+    "no_station_ids": true,
+    "no_mutations": true,
+    "raw_response_bodies_persisted": false
+  },
+  "hosts": {
+    "current_observed": {
+      "host": "mobile.ev.fastvolt.ma",
+      "probes": [
+        {
+          "path": "/",
+          "status": 401,
+          "content_type": "text/plain; charset=utf-8",
+          "body_markers": [
+            "business",
+            "organisation"
+          ]
+        },
+        {
+          "path": "/app/charging_stations/",
+          "status": 401,
+          "content_type": "text/plain; charset=utf-8",
+          "body_markers": [
+            "business",
+            "organisation"
+          ]
+        }
+      ]
+    },
+    "public_indexed_alternate": {
+      "host": "app.api.fastvolt.bornerecharge.ma",
+      "probes": [
+        {
+          "path": "/",
+          "status": 200,
+          "content_type": "text/html; charset=UTF-8",
+          "body_markers": [
+            "evplug"
+          ]
+        },
+        {
+          "path": "/app/charging_stations/",
+          "status": 404,
+          "content_type": "application/json",
+          "body_markers": [],
+          "json_top_level_keys": [
+            "message"
+          ]
+        }
+      ]
+    }
+  }
+}
