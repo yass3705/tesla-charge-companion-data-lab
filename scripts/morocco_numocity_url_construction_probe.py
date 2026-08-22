@@ -3,8 +3,8 @@
 
 Examines the publicly distributed Android client around known connector/station-state routes and the
 public Numocity hostname. Persists only public host/path literals, HTTP-method-like syntax markers,
-safe Numocity domain literals and identifier names. No backend request, login, credential, real QR,
-connector/station ID or raw bundle context is persisted.
+safe URL-construction symbol names, safe Numocity domain literals and identifier names. No backend
+request, login, credential, real QR, connector/station ID or raw bundle context is persisted.
 """
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ METHOD_MARKERS = (
 )
 OUT = Path("artifacts/morocco-numocity-url-construction")
 OUT.mkdir(parents=True, exist_ok=True)
-UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.3)"
+UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.4)"
 
 URL_RX = re.compile(r"https?://[^\s\x00\"'<>\\]{5,500}", re.I)
 HOST_RX = re.compile(r"(?<![A-Za-z0-9.-])(?:[A-Za-z0-9-]+\.)+(?:com|ma|net|tech|io)(?![A-Za-z0-9.-])", re.I)
@@ -131,7 +131,7 @@ def keep_path(value: str) -> bool:
 
 def main():
     report = {
-        "schema_version": 4,
+        "schema_version": 5,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "package": PACKAGE,
         "policy": {
@@ -144,6 +144,7 @@ def main():
             "credentials_or_real_station_ids_persisted": False,
             "queries_and_fragments_stripped_from_urls": True,
             "method_detection_is_static_signal_only": True,
+            "construction_detection_is_static_signal_only": True,
             "near_route_numocity_domains_are_public_domain_literals_only": True,
         },
         "download_ok": False,
@@ -156,6 +157,7 @@ def main():
         "near_route_numocity_domains": {},
         "nearby_identifier_names": {},
         "construction_marker_counts": {},
+        "construction_marker_counts_by_route": {},
         "method_marker_counts_by_route": {},
     }
     with tempfile.TemporaryDirectory(prefix="tcc-numocity-url-") as td:
@@ -178,6 +180,7 @@ def main():
         numocity_domains_by_route = defaultdict(Counter)
         identifiers = Counter()
         constructions = Counter()
+        constructions_by_route = defaultdict(Counter)
         methods_by_route = defaultdict(Counter)
         hits = []
         host_hits = []
@@ -227,6 +230,8 @@ def main():
                     for cm in CONSTRUCTION_MARKERS:
                         if cm.lower() in s.lower():
                             constructions[cm] += 1
+                            if distance <= 1024:
+                                constructions_by_route[marker][cm] += 1
                     if distance <= 1024:
                         low = s.lower()
                         for mm in METHOD_MARKERS:
@@ -271,6 +276,9 @@ def main():
         }
         report["nearby_identifier_names"] = dict(identifiers.most_common(100))
         report["construction_marker_counts"] = dict(constructions.most_common())
+        report["construction_marker_counts_by_route"] = {
+            route: dict(counts.most_common()) for route, counts in sorted(constructions_by_route.items())
+        }
         report["method_marker_counts_by_route"] = {
             route: dict(counts.most_common()) for route, counts in sorted(methods_by_route.items())
         }
@@ -282,6 +290,7 @@ def main():
         "urls": report["nearby_public_urls"][:8],
         "host_paths": report["near_host_public_paths"][:12],
         "numocity_domains": report["near_route_numocity_domains"],
+        "construction_by_route": report["construction_marker_counts_by_route"],
         "methods": report["method_marker_counts_by_route"],
     }))
 
