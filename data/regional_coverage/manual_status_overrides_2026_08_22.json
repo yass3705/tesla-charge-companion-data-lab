@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-08-22T14:52:00+02:00",
+  "dataset": "regional-coverage-manual-status-overrides",
+  "purpose": "Non-destructive override layer for generated regional coverage snapshots after manual operator-app/station verification. Apply these overrides after loading the generated regional file. Preserve the generated files as source-discovery snapshots.",
+  "precedence": "manual_override_over_generated_reference_only_status_for_exact_matched_scope",
+  "overrides": [
+    {
+      "regionalFile": "data/regional_coverage/centre_val_de_loire_regional_coverage.json",
+      "region": "Centre-Val de Loire",
+      "effectiveStatus": {
+        "Cher": "station_level_rankable",
+        "Eure-et-Loir": "mixed_station_level_rankable",
+        "Indre": "direct_bank_card_rule_resolved",
+        "Indre-et-Loire": "station_level_rankable_cross_station_corroborated",
+        "Loir-et-Cher": "station_level_rankable_with_intra_authority_variation",
+        "Loiret": "mixed_station_level_rankable"
+      },
+      "notes": [
+        "Bourges Rue Maurice Roy corrected tariff: 07:00-20:00 non-member 0.51 EUR/kWh, first 4 h 0 EUR/h then 1.56 EUR/h; member 0.40 EUR/kWh, first 4 h 0 EUR/h then 1.20 EUR/h.",
+        "Chargelec36 Châteauroux Colbert direct bank-card billing is a flat 10 EUR/session.",
+        "SIEIL37 Verneuil and Sainte-Maure corroborate 0.52 EUR/kWh non-member / 0.40 EUR/kWh member with no time fee displayed on checked Saturday schedules.",
+        "SIDELC41 Blois versus Nouan proves time rules vary even within the authority; keep station scope.",
+        "Orléans 24 rue Bannier resolves the 25 EUR >2 h surcharge; Montargis Commissariat provides a separate e-Totem local offer."
+      ]
+    },
+    {
+      "regionalFile": "data/regional_coverage/occitanie_regional_coverage.json",
+      "region": "Occitanie",
+      "effectiveStatus": {
+        "Ariège / Révéo": "station_level_verified",
+        "Aveyron / Révéo": "station_level_verified",
+        "Pyrénées-Orientales / AQUÍ": "ac_dc_station_classes_verified",
+        "Tarn-et-Garonne / SDE82": "2026_app_confirmed"
+      },
+      "notes": [
+        "Rodez 22 kW: 0.40 EUR/kWh + 0.10 EUR/min 07:00-22:00 after 2 h.",
+        "Foix 22 kW: 0.40 EUR/kWh + 0.12 EUR/min 07:00-23:00 after 2 h; separate inactivity line shown.",
+        "AQUÍ AC22: 0.40 EUR/kWh + 0.10 EUR/min after 2 h; AQUÍ CCS180: 0.52 EUR/kWh + 0.20 EUR/min after 45 min.",
+        "Montauban Mandoune: 0.45 EUR/kWh + 0.045 EUR/min 06:00-22:00 after 3 h."
+      ]
+    },
+    {
+      "regionalFile": "data/regional_coverage/paca_regional_coverage.json",
+      "region": "Provence-Alpes-Côte d'Azur",
+      "effectiveStatus": {
+        "Vaucluse / Vauclus'Elec": "station_level_resolved",
+        "Bouches-du-Rhône / MAMP-IZIVIA": "station_level_resolved",
+        "Alpes-Maritimes / Prise de Nice": "hardware_confirmed_direct_public_tariff_unresolved"
+      },
+      "notes": [
+        "Vauclus'Elec Avignon Nord: AC21 0.40 EUR/kWh, DC60 0.50 EUR/kWh; +0.12 EUR/min after 30 min charging and post-charge parking component when applicable.",
+        "Gémenos 13 Boulevard Vessiot: 08:00-20:00 0.39 EUR/kWh + 0.05 EUR/min post-charge; 20:00-08:00 5 EUR connection amount then 0.30 EUR/kWh beyond 16.667 kWh.",
+        "Prise de Nice app shows hardware/profile pricing but no clean direct ad-hoc public tariff; do not infer from IZIVIA subscriptions."
+      ]
+    },
+    {
+      "regionalFile": "data/regional_coverage/pays_de_la_loire_regional_coverage.json",
+      "region": "Pays de la Loire",
+      "effectiveStatus": {
+        "Loire-Atlantique / Nantes e-Totem": "ac_dc_classes_resolved",
+        "Mayenne / e-Totem rollout": "reference_only_not_visible_in_app",
+        "Sarthe IRVE rapid": "reference_only_not_visible_in_alize"
+      },
+      "notes": [
+        "Nantes AC/e-City: 0.40 EUR/kWh standard, 0.30 ECO; post-charge 10 min free then 1 EUR/15 min.",
+        "Nantes DC/e-Fast: 0.50 EUR/kWh standard, 0.40 ECO; post-charge 10 min free then 3 EUR/15 min.",
+        "Bonchamp-lès-Laval Impasse du Maine and Rue des Sports not visible in e-Totem app.",
+        "La Flèche Allée du Loir referenced externally but not exposed in Alizé during manual check."
+      ]
+    },
+    {
+      "regionalFile": "data/regional_coverage/auvergne_rhone_alpes_regional_coverage.json",
+      "region": "Auvergne-Rhône-Alpes",
+      "effectiveStatus": {"Cantal outside Aurillac": "station_level_verified"},
+      "notes": ["Saint-Flour Allée Georges Pompidou: Type 2 22 kW and CCS 50 kW both 6 EUR first 15 min then 0.15 EUR/min; no kWh price displayed."]
+    },
+    {
+      "regionalFile": "data/regional_coverage/nouvelle_aquitaine_regional_coverage.json",
+      "region": "Nouvelle-Aquitaine",
+      "effectiveStatus": {"Ville de La Rochelle municipal IRVE": "station_level_resolved"},
+      "notes": ["Place JB Marcet / e-Totem G10: 0.69 EUR/kWh; after charge completion 15 min free then 1 EUR/5 min occupancy."]
+    },
+    {
+      "regionalFile": "data/regional_coverage/normandie_regional_coverage.json",
+      "region": "Normandie",
+      "effectiveStatus": {"Le Havre / Shell Recharge-ubitricity examples": "station_manager_price_resolved"},
+      "notes": ["107 Rue Commandant Abadie and Boulevard de Leningrad: 0.52 EUR/kWh + 0.35 EUR transaction, Type 2 22.10 kW; do not generalize to all Le Havre managers."]
+    },
+    {
+      "regionalFile": "data/regional_coverage/modulo_grandest.json",
+      "region": "Grand Est",
+      "effectiveStatus": {"Marne SIEM / Fagnières": "station_level_rankable"},
+      "notes": ["Fagnières Parc des Tilleuls: guest 0.52 EUR/kWh + 0.50 EUR minimum; registered 0.40 EUR/kWh; no time component displayed; member minimum not displayed does not imply zero."]
+    },
+    {
+      "regionalFile": "data/regional_coverage/hauts_de_france_regional_coverage.json",
+      "region": "Hauts-de-France",
+      "effectiveStatus": {"Pass Pass normal and rapid categories": "manual_examples_correlated_with_official_grid"},
+      "notes": ["Registered-user app examples confirm normal 0.32 EUR/kWh + time rules and rapid 0.44 EUR/kWh + 0.20 EUR/min after 90 min; app registration is required, so do not label these as guest tariffs."]
+    },
+    {
+      "regionalFile": "data/regional_coverage/corse_regional_coverage.json",
+      "region": "Corse",
+      "effectiveStatus": {
+        "OZECAR": "station_level_verified",
+        "E-MOTUM": "station_level_verified",
+        "SDE2A / Andà": "reference_only_tariff_unavailable"
+      },
+      "notes": [
+        "OZECAR Bonifacio P1: 0.58 EUR/kWh + 1.50 EUR startup after 5 min; 0.16 EUR/min inactivity after 60 min post-charge grace.",
+        "E-MOTUM Ajaccio tested AC22 and CCS150 both display 0.75 EUR/kWh; no universal network tariff inferred.",
+        "Sartène/Zonza historical sites not visible in Load Stations and an opened station returned Tarification indisponible."
+      ]
+    }
+  ],
+  "remainingTrueGaps": [
+    "Brest Métropole / Easy Charge Service live app price",
+    "Prise de Nice direct public/ad-hoc tariff",
+    "Mayenne e-Totem rollout visibility/tariff",
+    "Sarthe IRVE rapid live app tariff",
+    "SDE2A/Andà direct tariff"
+  ],
+  "tccDecision": {
+    "stopBlindManualSampling": true,
+    "useVerifiedStationRuleWhenStationIdentityMatches": true,
+    "keepRemainingGapsUnrankedForDirectPrice": true,
+    "directCpoAndRoamingSeparate": true
+  }
+}
