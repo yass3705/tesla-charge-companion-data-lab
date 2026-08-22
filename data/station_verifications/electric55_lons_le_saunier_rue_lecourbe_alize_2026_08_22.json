@@ -1,22 +1,39 @@
 {
-  "schemaVersion": "1.0.0",
-  "dataset": "electric55-lons-le-saunier-rue-lecourbe-alize-verification",
+  "schemaVersion": "1.1.0",
+  "dataset": "electric55-lons-le-saunier-rue-lecourbe-verification",
   "verifiedAt": "2026-08-22",
   "country": "FR",
   "region": "Bourgogne-Franche-Comté",
   "department": "Jura",
   "cpo": "Electric 55",
-  "emspApp": "Alizé",
   "station": {
     "name": "Electric 55",
     "address": "Rue Lecourbe, 39000 Lons-le-Saunier",
-    "verificationScope": "station_identity_and_alize_displayed_tariff"
+    "verificationScope": "station_identity_direct_cpo_tariff_and_alize_retail_tariff"
   },
   "connector": {
     "type": "Type 2",
     "powerKwDisplayed": 22
   },
+  "directCpoPortalTariff": {
+    "portal": "https://e55c.evse-portal.com/auth/scan-pay/FR*55C*EFR39000*P7PPFG*1/1",
+    "evseId": "FR*55C*EFR39000*P7PPFG*1",
+    "pricing": [
+      {
+        "label": "Mode Jour",
+        "eurPerMinute": 0.09
+      },
+      {
+        "label": "Mode nuit",
+        "eurPerMinute": 0.06
+      }
+    ],
+    "energyPriceDisplayed": false,
+    "sessionFeeDisplayed": false,
+    "sourceType": "manual_direct_cpo_portal_screenshots"
+  },
   "alizeDisplayedTariff": {
+    "app": "Alizé",
     "chargingTime": [
       {
         "from": "07:00",
@@ -46,16 +63,17 @@
   },
   "interpretation": {
     "stationCpoConfirmed": true,
-    "thisIsAlizeRetailOrEmspDisplayedPrice": true,
-    "doNotTreatAsUniversalElectric55DirectTariff": true,
-    "doNotDoubleCountChargingTimeAndInactivitySimultaneously": true,
-    "inactivityInterpretation": "state_dependent_post_charge_or_idle_component; exact simultaneous billing not proven",
+    "directCpoTariffResolved": true,
+    "directCpoTariffPreferredForTccDirectPrice": true,
+    "alizeIsSeparateEmspRetailPrice": true,
+    "doNotTreatAlizePriceAsDirectElectric55Tariff": true,
+    "doNotDoubleCountAlizeChargingTimeAndInactivitySimultaneously": true,
     "juraCurrentPublicCpoCandidateConfirmed": true,
-    "reason": "Alizé exposes the station as Electric 55 and displays a retail per-minute tariff that differs from Electric 55's published operator-side indicative rates. Keep roaming/eMSP retail pricing separate from CPO direct pricing."
+    "networkWideGeneralization": false,
+    "reason": "The direct Electric 55 EVSE portal exposes 0.09 EUR/min day and 0.06 EUR/min night for this exact EVSE, while Alizé displays higher retail prices of 0.0966 and 0.0718 EUR/min. TCC must keep direct CPO and eMSP/roaming pricing separate."
   },
   "source": {
-    "type": "manual_app_screenshots",
-    "app": "Alizé",
-    "screenshotTimeLocal": "2026-08-22T14:01:00+02:00"
+    "manualAppScreenshotsAtLocal": "2026-08-22T14:01:00+02:00",
+    "manualDirectPortalScreenshotsAtLocal": "2026-08-22T14:00:00+02:00"
   }
 }
