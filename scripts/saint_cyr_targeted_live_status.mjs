@@ -197,6 +197,28 @@ const result = {
 };
 
 await fs.writeFile(`${OUT}/status-result.json`, JSON.stringify(result, null, 2) + '\n');
+const statusSnapshot = {
+  schemaVersion: 1,
+  generatedAt: result.generatedAt,
+  maxAgeHours: 48,
+  provenance: {
+    repository: process.env.GITHUB_REPOSITORY ?? 'yass3705/tesla-charge-companion-data-lab',
+    workflowRun: process.env.GITHUB_RUN_ID
+      ? `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
+      : null
+  },
+  stations: Object.fromEntries([...electra, ...electroverse].filter(x => x.found).map(x => {
+    const sourceId = x.source === 'electra' ? `electra-only:${x.target.id}` : `electroverse:${x.target.pk}`;
+    return [sourceId, {
+      status: x.normalizedTccStatus === 'HORS_SERVICE' ? 'out_of_service' : x.normalizedTccStatus === 'DISPONIBLE' ? 'available' : 'unknown',
+      source: x.source,
+      checkedAt: x.queriedAt,
+      rawStatuses: x.evseStatuses,
+      scheduledClosureOverride: Boolean(x.scheduledClosureOverride)
+    }];
+  }))
+};
+await fs.writeFile(`${OUT}/status_snapshot.json`, JSON.stringify(statusSnapshot, null, 2) + '\n');
 const lines = [
   '# Saint-Cyr live status check',
   '',
