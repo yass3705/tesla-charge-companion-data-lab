@@ -1,60 +1,21 @@
 {
-  "schemaVersion": "1.0.0",
-  "generatedAt": "2026-08-21T21:35:34.767602Z",
-  "country": "FR",
-  "region": "Corse",
-  "publicationStatus": "validated_candidate",
-  "dataset": "corse-regional-coverage",
-  "departmentsTotal": 2,
-  "departments": {
-    "Haute-Corse": {
-      "publicNetworkFamilies": [
-        "E-MOTUM",
-        "OZECAR",
-        "Bastia municipal parks / YES 55",
-        "SIEEP Haute-Corse planning"
-      ],
-      "tariffNotes": "Only Bastia municipal parking energy tariff is uniformly resolved here; E-MOTUM and OZECAR require station-level prices."
-    },
-    "Corse-du-Sud": {
-      "publicNetworkFamilies": [
-        "E-MOTUM",
-        "OZECAR",
-        "SDE2A"
-      ],
-      "tariffNotes": "SDE2A has a current small network and a 2026 rollout plan, but no verified generic current public tariff."
-    }
+  "schemaVersion":"1.1.0",
+  "generatedAt":"2026-08-22T14:52:00+02:00",
+  "country":"FR",
+  "region":"Corse",
+  "publicationStatus":"manual_consolidated",
+  "dataset":"corse-regional-coverage",
+  "departmentsTotal":2,
+  "departments":{
+    "Haute-Corse":{"publicNetworkFamilies":["E-MOTUM","OZECAR","Bastia municipal parks / YES 55","SIEEP Haute-Corse planning"],"tariffNotes":"Bastia municipal grid is official/exact. E-MOTUM and OZECAR remain station-configurable; verified station examples can be ranked when station identity matches."},
+    "Corse-du-Sud":{"publicNetworkFamilies":["E-MOTUM","OZECAR","SDE2A / Andà / Load Stations"],"tariffNotes":"E-MOTUM Ajaccio and OZECAR Bonifacio station tariffs were manually verified. SDE2A/Andà direct tariff remains unavailable in the app."}
   },
-  "coverage": {
-    "departmentsAccountedFor": 2,
-    "regionalPublicNetworkResearchCoverageComplete": true,
-    "singleUniversalRegionalTariff": false,
-    "allIdentifiedLiveTariffsResolved": false,
-    "operatorFamiliesWithExactCurrentPublicGrid": [
-      "Bastia municipal parks / YES 55"
-    ],
-    "operatorFamiliesRequiringStationPrice": [
-      "E-MOTUM",
-      "OZECAR"
-    ],
-    "publicAuthorityRolloutsWithoutGenericVerifiedTariff": [
-      "SDE2A",
-      "SIEEP Haute-Corse"
-    ]
+  "manualVerification":{
+    "ozecarBonifacio":{"station":"Parking Public P1","connector":"Type 2 22 kW","energyEurPerKwh":0.58,"startFeeEur":1.50,"startFeeAppliedAfterChargeMinutes":5,"inactivityEurPerMinute":0.16,"postChargeGraceMinutes":60},
+    "emotumAjaccio":{"portCharlesOrnano":{"connector":"CCS 150 kW","energyEurPerKwh":0.75},"hotelCalaDiSole":{"connector":"Type 2 22 kW","energyEurPerKwh":0.75},"networkWideUniformityAsserted":false},
+    "sde2aAnda":{"sarteneVisible":false,"zonzaVisible":false,"openedStationPricing":"Tarification indisponible","decision":"reference_only_no_direct_tariff"}
   },
-  "tccDecision": {
-    "doNotInventIslandWideTariff": true,
-    "stationSpecificPricingMustRemainNullUntilVerified": true,
-    "futureRolloutsMustNotBeCountedAsFullyLive": true,
-    "roamingSeparate": true
-  },
-  "sourceHealth": {
-    "officialOrOperatorSourcesReachableAtRun": 9,
-    "sourcesTotal": 10
-  },
-  "notes": [
-    "National private CPOs already validated elsewhere are not duplicated as Corsican regional tariff families unless they define a local public-network rule.",
-    "E-MOTUM states prices are station-specific; OZECAR explicitly supports site-configurable tariffs, so both require station-level verification.",
-    "Bastia 2026 publishes 0.20 EUR/kWh HT for the municipal parking charging points; parking and tax treatment are not silently folded into that energy figure."
-  ]
+  "coverage":{"departmentsAccountedFor":2,"regionalPublicNetworkResearchCoverageComplete":true,"singleUniversalRegionalTariff":false,"allIdentifiedLiveTariffsResolved":false,"stationLevelResolvedFamilies":["E-MOTUM","OZECAR"],"remainingTrueGap":["SDE2A / Andà direct tariff"]},
+  "tccDecision":{"doNotInventIslandWideTariff":true,"stationSpecificPricingRequiredForEMotumAndOzecar":true,"futureRolloutsMustNotBeCountedAsFullyLive":true,"roamingSeparate":true,"manualReviewClosedForCurrentProject":true},
+  "sourceEvidence":{"manualFiles":["data/station_verifications/emotum_ajaccio_port_ornano_cala_di_sole_app_2026_08_22.json"],"consolidation":"data/consolidation/manual_verification_consolidation_2026_08_22.json"}
 }
