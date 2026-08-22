@@ -1,0 +1,40 @@
+name: Morocco FastVolt public host compare
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/morocco_fastvolt_public_host_compare.py'
+      - '.github/workflows/morocco-fastvolt-public-host-compare.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compare anonymous public FastVolt hosts
+        run: python scripts/morocco_fastvolt_public_host_compare.py
+
+      - name: Commit sanitized report when changed
+        run: |
+          if [ -z "$(git status --porcelain -- reports/morocco/fastvolt/latest-public-host-compare.json)" ]; then
+            echo 'No report change.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/morocco/fastvolt/latest-public-host-compare.json
+          git commit -m 'data(morocco): compare public FastVolt backend hosts'
+          git pull --rebase origin main
+          git push origin HEAD:main
