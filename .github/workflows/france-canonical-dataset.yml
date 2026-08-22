@@ -1,0 +1,91 @@
+name: France canonical charging dataset
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "scripts/build_france_canonical_dataset.py"
+      - "data/regional_coverage/**"
+      - "data/operator_direct/**"
+      - "data/station_verifications/**"
+      - ".github/workflows/france-canonical-dataset.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/build_france_canonical_dataset.py"
+      - "data/regional_coverage/**"
+      - "data/operator_direct/**"
+      - "data/station_verifications/**"
+      - ".github/workflows/france-canonical-dataset.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: france-canonical-dataset-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public safety
+        run: python scripts/public_safety_check.py .
+
+      - name: Compile canonical builder
+        run: python -m py_compile scripts/build_france_canonical_dataset.py
+
+      - name: Build and validate PR candidate
+        if: github.event_name == 'pull_request'
+        run: |
+          python scripts/build_france_canonical_dataset.py --out /tmp/france_public_charging_canonical.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('/tmp/france_public_charging_canonical.json').read_text())
+          assert p['dataset']=='france-public-charging-canonical'
+          assert p['country']=='FR'
+          assert p['deterministicBuild'] is True
+          assert p['counts']['remainingTrueGaps']==5
+          assert len(p['remainingTrueGaps'])==5
+          assert p['policy']['directCpoAndRoamingSeparate'] is True
+          assert p['policy']['preserveStationAndNetworkScope'] is True
+          assert p['appReadiness']['safeToUseUniversalDepartmentDefaults'] is False
+          assert p['sourcePrecedence'][0]['source']=='manual_station_verification'
+          assert p['counts']['stationVerificationSources'] > 0
+          assert p['counts']['operatorDirectSources'] > 0
+          assert p['counts']['regionalCoverageSources'] > 0
+          PY
+
+      - name: Build canonical dataset on main
+        if: github.event_name != 'pull_request'
+        run: python scripts/build_france_canonical_dataset.py
+
+      - name: Validate canonical dataset on main
+        if: github.event_name != 'pull_request'
+        run: |
+          python scripts/build_france_canonical_dataset.py --check
+          python scripts/public_safety_check.py .
+
+      - name: Publish canonical dataset
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/france_public_charging_canonical.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data(france): rebuild canonical charging dataset [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
