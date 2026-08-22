@@ -1,116 +1,69 @@
 {
   "schemaVersion": "1.1.0",
   "dataset": "bfc-regional-coverage",
-  "generatedAt": "2026-08-22T14:49:00+02:00",
+  "generatedAt": "2026-08-22T14:52:00+02:00",
   "region": "Bourgogne-Franche-Comté",
   "country": "FR",
   "departmentsTotal": 8,
   "exactRuleDepartments": [
-    {
-      "department": "Yonne",
-      "operator": "SDEY",
-      "tccDecision": "classable_by_validated_operator_rules"
-    },
-    {
-      "department": "Côte-d'Or",
-      "operator": "SICECO",
-      "tccDecision": "classable_by_validated_operator_rules"
-    },
-    {
-      "department": "Nièvre",
-      "operator": "SIEEEN",
-      "tccDecision": "classable_by_validated_operator_rules"
-    },
-    {
-      "department": "Doubs",
-      "operator": "SYDED",
-      "tccDecision": "classable_by_validated_operator_rules"
-    },
-    {
-      "department": "Haute-Saône",
-      "operator": "SIED70",
-      "tccDecision": "classable_by_validated_operator_rules"
-    },
-    {
-      "department": "Territoire de Belfort",
-      "operator": "Territoire d'Énergie 90",
-      "tccDecision": "classable_by_validated_operator_rules"
-    }
+    {"department":"Yonne","operator":"SDEY","tccDecision":"classable_by_validated_operator_rules"},
+    {"department":"Côte-d'Or","operator":"SICECO","tccDecision":"classable_by_validated_operator_rules"},
+    {"department":"Nièvre","operator":"SIEEEN","tccDecision":"classable_by_validated_operator_rules"},
+    {"department":"Doubs","operator":"SYDED","tccDecision":"classable_by_validated_operator_rules"},
+    {"department":"Haute-Saône","operator":"SIED70","tccDecision":"classable_by_validated_operator_rules"},
+    {"department":"Territoire de Belfort","operator":"Territoire d'Énergie 90","tccDecision":"classable_by_validated_operator_rules"}
   ],
-  "referenceOnlyDepartments": [
+  "stationLevelValidatedDepartments": [
     {
       "department": "Saône-et-Loire",
       "operator": "Qwello",
-      "tccDecision": "station_level_verified_with_cross_commune_corroboration",
-      "currentVerifiedStationCount": 2,
-      "verifiedStations": [
-        {
-          "name": "12 Petite Rue Marchaux",
-          "city": "Autun",
-          "powerKw": 22,
-          "eurPerKwh": 0.30,
-          "eurPerMinute": 0.02,
-          "nightMinuteComponentCapEur": 3.60
-        },
-        {
-          "name": "Place du 14 juillet",
-          "city": "Viré",
-          "address": "Rue du Petit Molard, Viré",
-          "powerKw": 22,
-          "eurPerKwh": 0.30,
-          "eurPerMinute": 0.02,
-          "nightMinuteComponentCapEur": 3.60
-        }
+      "tccDecision": "station_level_classable_cross_commune_corroborated",
+      "verifiedStationCount": 2,
+      "verifiedPattern": {
+        "powerKw": 22,
+        "eurPerKwh": 0.30,
+        "eurPerMinute": 0.02,
+        "nightWindow": "21:00-07:00",
+        "nightMinuteComponentCapEur": 3.60
+      },
+      "stations": [
+        "12 Petite Rue Marchaux, Autun",
+        "Place du 14 juillet, Rue du Petit Molard, Viré"
       ],
-      "manualVerificationSufficientForCurrentProject": true,
-      "networkWideUniformTariffAsserted": false,
-      "reason": "Two Qwello 22 kW stations in different communes independently display the same current tariff and night cap, strongly corroborating the published Saône-et-Loire pattern. Keep station/local scope because Qwello can expose station-specific pricing, but no further manual sampling is required for the current project."
+      "networkWideUniformityAsserted": false,
+      "furtherManualSamplingRequiredForCurrentProject": false
     },
     {
       "department": "Jura",
       "operator": "Electric 55",
-      "tccDecision": "station_level_cpo_and_direct_tariff_verified",
-      "currentVerifiedStation": {
-        "name": "Electric 55",
-        "city": "Lons-le-Saunier",
-        "address": "Rue Lecourbe, 39000 Lons-le-Saunier",
-        "powerKw": 22,
-        "directCpoPortal": {
-          "dayEurPerMinute": 0.09,
-          "nightEurPerMinute": 0.06
-        },
-        "alizeRetail": {
-          "dayWindow": "07:00-23:00",
-          "dayEurPerMinute": 0.0966,
-          "nightWindow": "23:00-07:00",
-          "nightEurPerMinute": 0.0718,
-          "temporaryReservationEur": 30.0
-        }
+      "tccDecision": "station_level_direct_cpo_verified",
+      "verifiedStation": "Rue Lecourbe, Lons-le-Saunier",
+      "directCpoPortalTariff": {
+        "dayEurPerMinute": 0.09,
+        "nightEurPerMinute": 0.06,
+        "exactDayNightClockBoundariesFromPortalScreenshot": false
       },
-      "historicalCandidate": "SIDEC / Modulo",
-      "historicalModuloDowngraded": true,
-      "networkWideUniformTariffAsserted": false,
-      "reason": "A current Electric 55 station and its direct CPO portal tariff are verified in Lons-le-Saunier. Historical SIDEC/Modulo planning remains non-current and must not be restored as the default Jura mapping."
+      "alizeRetailSeparate": true,
+      "alizeDisplayed": {
+        "07:00-23:00_eurPerMinute": 0.0966,
+        "23:00-07:00_eurPerMinute": 0.0718,
+        "temporaryReservationEur": 30.0
+      },
+      "historicalModuloMappingRejected": true,
+      "excludedCandidate": "Lidl CHAMPAGNOLE Cassin",
+      "networkWideUniformityAsserted": false,
+      "furtherManualSamplingRequiredForCurrentProject": false
     }
   ],
   "coverage": {
     "departmentsAccountedFor": 8,
     "exactRuleCount": 6,
-    "referenceOnlyCount": 2,
-    "currentStationLevelVerifications": 4,
-    "negativeStationMappingVerifications": 1,
-    "historicalOperatorMappingsDowngraded": 1,
+    "stationLevelValidatedDepartmentCount": 2,
     "regionalResearchCoverageComplete": true,
-    "allDepartmentsRankable": false
+    "allDepartmentsHaveUsableRuleOrVerifiedStationPattern": true,
+    "allStationsRankableWithoutStationIdentity": false
   },
   "sourceEvidence": {
-    "bfcCurrentTariffPage": "https://www.territoiredenergie-bourgogne-franche-comte.com/nos-offres-et-tarifs/",
-    "bfcHttpStatus": 200,
-    "moduloCurrentHome": "https://modulo-energies.fr/",
-    "moduloHttpStatus": 200,
-    "moduloCurrentMembersPage": "https://modulo-energies.fr/collectivites/",
-    "moduloCurrentMembersHttpStatus": 200,
-    "moduloCurrentMembersPageListsSidecJura": false,
     "validatedLocalFiles": [
       "sdey_official_yonne.json",
       "siceco_cotedor_official.json",
@@ -125,14 +78,15 @@
       "data/station_verifications/qwello_vire_place_14_juillet_app_2026_08_22.json",
       "data/station_verifications/jura_champagnole_cassin_lidl_negative_mapping.json",
       "data/station_verifications/electric55_lons_le_saunier_rue_lecourbe_alize_2026_08_22.json"
-    ]
+    ],
+    "consolidation": "data/consolidation/manual_verification_consolidation_2026_08_22.json"
   },
-  "notes": [
-    "Qwello Autun and Viré independently display 0.30 EUR/kWh + 0.02 EUR/min with a 3.60 EUR night cap on the minute component from 21:00 to 07:00.",
-    "The Qwello result is now corroborated across two communes; no additional manual Qwello sampling is needed for this project, while a formal universal network tariff is still not asserted.",
-    "Champagnole Cassin in Jura was manually checked and is Lidl, so it remains excluded as a Modulo/SIDEC witness.",
-    "A current Electric 55 station in Lons-le-Saunier is verified, including the direct Electric 55 portal tariff and a distinct higher Alizé retail tariff.",
-    "The current official Modulo members page does not evidence SIDEC Jura. Historical SIDEC/Modulo planning is preserved only as history, not as a current operator mapping."
-  ],
-  "publicationStatus": "validated_candidate"
+  "tccDecision": {
+    "regionalCoverageValidated": true,
+    "doNotInventDepartmentDefaults": true,
+    "preserveStationScopeForQwelloAndElectric55": true,
+    "directCpoAndRoamingSeparate": true,
+    "manualReviewClosedForCurrentProject": true
+  },
+  "publicationStatus": "manual_consolidated"
 }
