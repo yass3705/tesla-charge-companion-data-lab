@@ -2,12 +2,12 @@
 """Sanitized read-only probe for the TotalEnergies Morocco / Numocity station-state route.
 
 The route `/chargestation/getstationstate` was recovered from the public Android client
-only 64 bytes from a public `numocity.com` literal, while the branded TotalEnergies host
-is also present elsewhere in the same client. This probe performs GET requests only,
-without login, credentials, real station IDs, charging actions, or account/session
-mutations. It persists only HTTP status, content type, JSON top-level keys,
-validation-message text, and collection/object key names. Placeholder values are
-intentionally invalid (`0`).
+only 64 bytes from a public `numocity.com` literal. A subsequent static-only probe also
+recovered the safe split fragment `numocity.com/2` next to this route. This probe performs
+GET requests only against the literal public hosts/paths supported by those static signals,
+without login, credentials, real station IDs, charging actions, or account/session mutations.
+It persists only HTTP status, content type, JSON top-level keys, validation-message text,
+and collection/object key names. Placeholder values are intentionally invalid (`0`).
 """
 from __future__ import annotations
 
@@ -18,13 +18,14 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-HOSTS = [
-    "https://csmstotalenergiesma.numocity.com",
-    "https://numocity.com",
-]
-PATHS = [
-    "/chargestation/getstationstate",
-    "/api/chargestation/getstationstate",
+TARGETS = [
+    ("https://csmstotalenergiesma.numocity.com", "/chargestation/getstationstate", "branded_direct"),
+    ("https://csmstotalenergiesma.numocity.com", "/api/chargestation/getstationstate", "branded_api"),
+    ("https://numocity.com", "/chargestation/getstationstate", "generic_direct"),
+    ("https://numocity.com", "/api/chargestation/getstationstate", "generic_api"),
+    # Statically recovered split fragment: numocity.com/2 near /chargestation/getstationstate.
+    ("https://numocity.com", "/2/chargestation/getstationstate", "generic_v2_direct"),
+    ("https://numocity.com", "/2/api/chargestation/getstationstate", "generic_v2_api"),
 ]
 CASES = [
     ("no_query", {}),
@@ -34,7 +35,7 @@ CASES = [
 ]
 OUT = Path("artifacts/morocco-totalenergies-numocity-stationstate")
 OUT.mkdir(parents=True, exist_ok=True)
-UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.1)"
+UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.2)"
 SAFE_MESSAGE_KEYS = {"message", "detail", "error", "errors", "status"}
 
 
@@ -67,7 +68,7 @@ def sanitize_body(body: str) -> dict:
     return out
 
 
-def probe(host: str, path: str, label: str, query: dict[str, str]) -> dict:
+def probe(host: str, path: str, target_label: str, case_label: str, query: dict[str, str]) -> dict:
     url = host + path
     if query:
         url += "?" + urllib.parse.urlencode(query)
@@ -86,16 +87,18 @@ def probe(host: str, path: str, label: str, query: dict[str, str]) -> dict:
             body = ""
     except Exception as exc:
         return {
+            "target": target_label,
             "host": host.removeprefix("https://"),
             "path": path,
-            "case": label,
+            "case": case_label,
             "status": None,
             "error_type": type(exc).__name__,
         }
     return {
+        "target": target_label,
         "host": host.removeprefix("https://"),
         "path": path,
-        "case": label,
+        "case": case_label,
         "status": status,
         "content_type": ctype,
         "safe_response": sanitize_body(body),
@@ -104,18 +107,16 @@ def probe(host: str, path: str, label: str, query: dict[str, str]) -> dict:
 
 def main() -> None:
     probes = [
-        probe(host, path, label, query)
-        for host in HOSTS
-        for path in PATHS
-        for label, query in CASES
+        probe(host, path, target_label, case_label, query)
+        for host, path, target_label in TARGETS
+        for case_label, query in CASES
     ]
     report = {
-        "schema_version": 2,
+        "schema_version": 3,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
-        "hosts": [h.removeprefix("https://") for h in HOSTS],
         "source_signal": (
-            "public Android client static route /chargestation/getstationstate; "
-            "generic numocity.com literal observed 64 bytes from route"
+            "public Android client static route /chargestation/getstationstate; generic numocity.com literal "
+            "observed 64 bytes from route; safe split fragment numocity.com/2 recovered by static-only analysis"
         ),
         "policy": {
             "read_only_get_only": True,
@@ -125,14 +126,14 @@ def main() -> None:
             "no_real_station_ids": True,
             "no_charging_actions": True,
             "no_account_or_session_mutations": True,
-            "only_hosts_literally_recovered_from_public_client_tested": True,
+            "only_public_hosts_and_statically_supported_paths_tested": True,
             "raw_response_bodies_persisted": False,
         },
         "probes": probes,
     }
     (OUT / "summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps([
-        {"host": p["host"], "path": p["path"], "case": p["case"], "status": p.get("status")}
+        {"target": p["target"], "case": p["case"], "status": p.get("status")}
         for p in probes
     ]))
 
