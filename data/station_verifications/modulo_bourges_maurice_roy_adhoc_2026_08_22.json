@@ -1,56 +1,87 @@
 {
-  "schemaVersion": "1.0.0",
-  "dataset": "modulo-station-adhoc-tariff-verification",
+  "schemaVersion": "1.1.0",
+  "dataset": "modulo-station-tariff-verification",
   "verifiedAt": "2026-08-22",
   "country": "FR",
   "region": "Centre-Val de Loire",
   "department": "Cher",
   "operator": "Modulo Energies",
   "authority": "SDE18",
+  "app": "Charge Global",
   "station": {
     "name": "MODULO - BOURGES - Rue Maurice Roy",
     "evseId": "FR*S18*E186239",
     "connector": "Type 2",
     "displayedPowerKW": 18,
-    "status": "available"
+    "verificationScope": "station_and_displayed_saturday_schedule"
   },
-  "manualEvidence": {
-    "surface": "Charge Global app",
-    "evidenceType": "user-supplied screenshots",
-    "checkedLocalDate": "2026-08-22",
-    "accessScenario": "ad_hoc_not_logged_in",
-    "tariffGrid": [
+  "dayVerified": "Saturday",
+  "nonSubscriber": {
+    "periods": [
       {
-        "timeWindowLabel": "00:00-07:00",
+        "start": "00:00",
+        "end": "07:00",
         "energyEurPerKwh": 0.52,
-        "connectionEurPerMinute": 0.0
+        "minimumFeeEur": 0.50
       },
       {
-        "timeWindowLabel": "07:00-19:00",
-        "energyEurPerKwh": 0.52,
-        "connectionEurPerMinute": 0.025
+        "start": "07:00",
+        "end": "20:00",
+        "energyEurPerKwh": 0.51,
+        "timeFee": {
+          "firstHours": 4,
+          "firstHoursEurPerHour": 0.0,
+          "afterFirstHoursEurPerHour": 1.56
+        },
+        "minimumFeeEur": 0.50
       },
       {
-        "timeWindowLabel": "19:00-00:00",
+        "start": "20:00",
+        "end": "24:00",
         "energyEurPerKwh": 0.52,
-        "connectionEurPerMinute": 0.0
+        "minimumFeeEur": 0.50
       }
     ],
-    "minimumFeeEur": 0.50,
-    "bankCardPreauthorisationEur": 25.0,
-    "vatIncluded": true,
-    "importantSemantics": {
-      "daytimeMinuteComponentIsSessionConnectionPricing": true,
-      "doNotClassifyAsPostChargeIdleFeeWithoutSeparateEvidence": true,
-      "pricesMayDifferWhenLoggedIn": true
-    }
+    "bankCardPreauthorisationEur": 25.0
+  },
+  "subscriber": {
+    "periods": [
+      {
+        "start": "00:00",
+        "end": "07:00",
+        "energyEurPerKwh": 0.40
+      },
+      {
+        "start": "07:00",
+        "end": "20:00",
+        "energyEurPerKwh": 0.40,
+        "timeFee": {
+          "firstHours": 4,
+          "firstHoursEurPerHour": 0.0,
+          "afterFirstHoursEurPerHour": 1.20
+        }
+      },
+      {
+        "start": "20:00",
+        "end": "24:00",
+        "energyEurPerKwh": 0.40
+      }
+    ],
+    "minimumFeeDisplayed": false,
+    "minimumFeeInterpretation": "not_displayed_do_not_infer_zero"
+  },
+  "correction": {
+    "supersedesPreviousMisread": true,
+    "previousIncorrectInterpretation": "0.52 EUR/kWh plus 0.025 EUR/min during daytime",
+    "correctInterpretation": "07:00-20:00 non-subscriber is 0.51 EUR/kWh with 0 EUR/h for the first 4 h then 1.56 EUR/h; subscriber is 0.40 EUR/kWh with 0 EUR/h for the first 4 h then 1.20 EUR/h"
   },
   "decision": {
     "useAsCurrentLiveStationWitness": true,
-    "completeAdHocTariffGridValidatedForThisEvse": true,
-    "rankableForAdHocScenario": true,
-    "subscriberOrLoggedInTariffValidated": false,
-    "doNotGeneralizeToAllSDE18StationsYet": true,
-    "nextManualAction": "If available, log in and capture the same EVSE tariff to resolve the Modulo subscriber/member price separately."
-  }
+    "stationTariffRankable": true,
+    "memberAndNonMemberDifferentiated": true,
+    "preserveStationScope": true,
+    "doNotGeneralizeToAllSDE18Stations": true,
+    "roamingSeparate": true
+  },
+  "publicationStatus": "manual_verified_corrected"
 }
