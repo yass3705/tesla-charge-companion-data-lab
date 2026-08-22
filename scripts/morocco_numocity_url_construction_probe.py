@@ -3,8 +3,9 @@
 
 Examines the publicly distributed Android client around known connector/station-state routes and the
 public Numocity hostname. Persists only public host/path literals, HTTP-method-like syntax markers,
-safe URL-construction symbol names, safe Numocity domain literals and identifier names. No backend
-request, login, credential, real QR, connector/station ID or raw bundle context is persisted.
+safe URL-construction symbol names, safe Numocity domain literals and narrowly filtered split URL
+fragments. No backend request, login, credential, real QR, connector/station ID or raw bundle context
+is persisted.
 """
 from __future__ import annotations
 
@@ -38,7 +39,7 @@ METHOD_MARKERS = (
 )
 OUT = Path("artifacts/morocco-numocity-url-construction")
 OUT.mkdir(parents=True, exist_ok=True)
-UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.5)"
+UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.6)"
 
 URL_RX = re.compile(r"https?://[^\s\x00\"'<>\\]{5,500}", re.I)
 HOST_RX = re.compile(r"(?<![A-Za-z0-9.-])(?:[A-Za-z0-9-]+\.)+(?:com|ma|net|tech|io)(?![A-Za-z0-9.-])", re.I)
@@ -53,6 +54,7 @@ IDENT_RX = re.compile(
     re.I,
 )
 SENSITIVE_RX = re.compile(r"password|secret|token|authorization|cookie|email|phone|wallet|payment|card|account|customer|bearer", re.I)
+SAFE_SPLIT_TOKEN_RX = re.compile(rb"[A-Za-z0-9._:/-]{3,120}")
 
 
 def download(dest: Path):
@@ -131,12 +133,6 @@ def keep_path(value: str) -> bool:
 
 
 def binary_domains_near_marker(path: Path, marker: str, radius: int = 512) -> list[str]:
-    """Recover only public *.numocity.com literals from raw bytes around a known public route.
-
-    Two harmless normalizations are tried: raw ASCII and NUL-stripped bytes, the latter covering
-    UTF-16-ish/static packing where printable hostname labels may be separated by zero bytes.
-    No arbitrary context is returned.
-    """
     try:
         data = path.read_bytes()
     except Exception:
@@ -163,9 +159,51 @@ def binary_domains_near_marker(path: Path, marker: str, radius: int = 512) -> li
     return sorted(found)
 
 
+def split_url_fragments_near_marker(path: Path, marker: str, radius: int = 768) -> list[str]:
+    """Return only narrowly filtered non-sensitive URL-construction fragments near a known route.
+
+    This is designed to catch compiled Dart cases such as a hostname assembled from separate literals.
+    It never returns arbitrary surrounding strings: only tokens that look like a scheme, Numocity host
+    fragment, API/base/host label, or short slash-prefixed API path.
+    """
+    try:
+        data = path.read_bytes()
+    except Exception:
+        return []
+    needle = marker.encode("ascii", "ignore")
+    if not needle:
+        return []
+    found: set[str] = set()
+    start = 0
+    while True:
+        pos = data.find(needle, start)
+        if pos < 0:
+            break
+        window = data[max(0, pos - radius): min(len(data), pos + len(needle) + radius)]
+        for candidate in (window, window.replace(b"\x00", b"")):
+            for raw in SAFE_SPLIT_TOKEN_RX.findall(candidate):
+                try:
+                    value = raw.decode("ascii", "ignore").strip("._:-/")
+                except Exception:
+                    continue
+                if not value or len(value) > 120 or SENSITIVE_RX.search(value):
+                    continue
+                low = value.lower()
+                keep = (
+                    "numocity" in low
+                    or "totalenergies" in low
+                    or low in {"http", "https", "api", "baseurl", "base_url", "host", "authority", "scheme"}
+                    or low.startswith(("api/", "app/", "mobile/", "chargestation/"))
+                )
+                if keep:
+                    found.add(value)
+        start = pos + len(needle)
+    return sorted(found)
+
+
 def main():
     report = {
-        "schema_version": 6,
+        "schema_version": 7,
         "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "package": PACKAGE,
         "policy": {
@@ -181,6 +219,7 @@ def main():
             "construction_detection_is_static_signal_only": True,
             "near_route_numocity_domains_are_public_domain_literals_only": True,
             "binary_domain_recovery_persists_public_numocity_hosts_only": True,
+            "split_fragment_recovery_is_narrowly_filtered_and_static_only": True,
         },
         "download_ok": False,
         "marker_hits": [],
@@ -191,6 +230,7 @@ def main():
         "near_host_public_paths": [],
         "near_route_numocity_domains": {},
         "binary_numocity_domains_by_route": {},
+        "safe_split_url_fragments_by_route": {},
         "nearby_identifier_names": {},
         "construction_marker_counts": {},
         "construction_marker_counts_by_route": {},
@@ -215,6 +255,7 @@ def main():
         host_paths = {}
         numocity_domains_by_route = defaultdict(Counter)
         binary_domains_by_route = defaultdict(Counter)
+        split_fragments_by_route = defaultdict(Counter)
         identifiers = Counter()
         constructions = Counter()
         constructions_by_route = defaultdict(Counter)
@@ -241,6 +282,8 @@ def main():
             for marker in present_markers:
                 for host in binary_domains_near_marker(file, marker):
                     binary_domains_by_route[marker][host] += 1
+                for fragment in split_url_fragments_near_marker(file, marker):
+                    split_fragments_by_route[marker][fragment] += 1
 
             for _idx, off, _text, marker in host_rows:
                 host_hits.append({"marker": marker, "source": str(file.relative_to(tree)), "offset": off})
@@ -319,6 +362,9 @@ def main():
         report["binary_numocity_domains_by_route"] = {
             route: dict(counts.most_common()) for route, counts in sorted(binary_domains_by_route.items())
         }
+        report["safe_split_url_fragments_by_route"] = {
+            route: dict(counts.most_common()) for route, counts in sorted(split_fragments_by_route.items())
+        }
         report["nearby_identifier_names"] = dict(identifiers.most_common(100))
         report["construction_marker_counts"] = dict(constructions.most_common())
         report["construction_marker_counts_by_route"] = {
@@ -336,6 +382,7 @@ def main():
         "host_paths": report["near_host_public_paths"][:12],
         "numocity_domains": report["near_route_numocity_domains"],
         "binary_numocity_domains": report["binary_numocity_domains_by_route"],
+        "split_fragments": report["safe_split_url_fragments_by_route"],
         "construction_by_route": report["construction_marker_counts_by_route"],
         "methods": report["method_marker_counts_by_route"],
     }))
