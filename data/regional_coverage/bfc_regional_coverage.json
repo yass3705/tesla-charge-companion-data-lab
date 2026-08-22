@@ -1,7 +1,7 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "dataset": "bfc-regional-coverage",
-  "generatedAt": "2026-08-21T21:57:01.740692Z",
+  "generatedAt": "2026-08-22T14:49:00+02:00",
   "region": "Bourgogne-Franche-Comté",
   "country": "FR",
   "departmentsTotal": 8,
@@ -41,46 +41,63 @@
     {
       "department": "Saône-et-Loire",
       "operator": "Qwello",
-      "tccDecision": "reference_only_with_station_level_verification",
-      "currentVerifiedStationCount": 1,
-      "verifiedStation": {
-        "name": "12 Petite Rue Marchaux",
-        "city": "Autun",
-        "powerKw": 22,
-        "eurPerKwh": 0.3,
-        "eurPerMinute": 0.02,
-        "nightMinuteComponentCapEur": 3.6
-      },
-      "reason": "current direct tariff is verified for Qwello Autun 12 Petite Rue Marchaux, but network-wide uniformity across Saône-et-Loire is not yet established"
+      "tccDecision": "station_level_verified_with_cross_commune_corroboration",
+      "currentVerifiedStationCount": 2,
+      "verifiedStations": [
+        {
+          "name": "12 Petite Rue Marchaux",
+          "city": "Autun",
+          "powerKw": 22,
+          "eurPerKwh": 0.30,
+          "eurPerMinute": 0.02,
+          "nightMinuteComponentCapEur": 3.60
+        },
+        {
+          "name": "Place du 14 juillet",
+          "city": "Viré",
+          "address": "Rue du Petit Molard, Viré",
+          "powerKw": 22,
+          "eurPerKwh": 0.30,
+          "eurPerMinute": 0.02,
+          "nightMinuteComponentCapEur": 3.60
+        }
+      ],
+      "manualVerificationSufficientForCurrentProject": true,
+      "networkWideUniformTariffAsserted": false,
+      "reason": "Two Qwello 22 kW stations in different communes independently display the same current tariff and night cap, strongly corroborating the published Saône-et-Loire pattern. Keep station/local scope because Qwello can expose station-specific pricing, but no further manual sampling is required for the current project."
     },
     {
       "department": "Jura",
-      "operator": "current departmental public-network CPO unresolved",
+      "operator": "Electric 55",
+      "tccDecision": "station_level_cpo_and_direct_tariff_verified",
+      "currentVerifiedStation": {
+        "name": "Electric 55",
+        "city": "Lons-le-Saunier",
+        "address": "Rue Lecourbe, 39000 Lons-le-Saunier",
+        "powerKw": 22,
+        "directCpoPortal": {
+          "dayEurPerMinute": 0.09,
+          "nightEurPerMinute": 0.06
+        },
+        "alizeRetail": {
+          "dayWindow": "07:00-23:00",
+          "dayEurPerMinute": 0.0966,
+          "nightWindow": "23:00-07:00",
+          "nightEurPerMinute": 0.0718,
+          "temporaryReservationEur": 30.0
+        }
+      },
       "historicalCandidate": "SIDEC / Modulo",
-      "tccDecision": "reference_only_historical_modulo_not_currently_evidenced",
-      "currentModuloMembershipEvidence": {
-        "officialMembersPage": "https://modulo-energies.fr/collectivites/",
-        "sidecJuraListed": false,
-        "decision": "do not treat historical SIDEC/Modulo planning as a current live network mapping"
-      },
-      "excludedCandidate": {
-        "station": "Lidl CHAMPAGNOLE Cassin",
-        "city": "Champagnole",
-        "operatorDisplayed": "Lidl",
-        "evseIds": [
-          "FR*LDL*E00003243",
-          "FR*LDL*E00003244"
-        ],
-        "reason": "current Charge Global app screenshot identifies this candidate as a Lidl roaming station, not Modulo/SIDEC"
-      },
-      "reason": "historical SIDEC documents discussed joining Modulo, but the current official Modulo member page does not evidence SIDEC Jura and the manually checked Champagnole candidate is Lidl; no current Jura Modulo tariff should be inferred"
+      "historicalModuloDowngraded": true,
+      "networkWideUniformTariffAsserted": false,
+      "reason": "A current Electric 55 station and its direct CPO portal tariff are verified in Lons-le-Saunier. Historical SIDEC/Modulo planning remains non-current and must not be restored as the default Jura mapping."
     }
   ],
   "coverage": {
     "departmentsAccountedFor": 8,
     "exactRuleCount": 6,
     "referenceOnlyCount": 2,
-    "currentStationLevelVerifications": 1,
+    "currentStationLevelVerifications": 4,
     "negativeStationMappingVerifications": 1,
     "historicalOperatorMappingsDowngraded": 1,
     "regionalResearchCoverageComplete": true,
@@ -105,15 +122,17 @@
     ],
     "stationVerificationFiles": [
       "data/station_verifications/qwello_autun_12_petite_rue_marchaux.json",
-      "data/station_verifications/jura_champagnole_cassin_lidl_negative_mapping.json"
+      "data/station_verifications/qwello_vire_place_14_juillet_app_2026_08_22.json",
+      "data/station_verifications/jura_champagnole_cassin_lidl_negative_mapping.json",
+      "data/station_verifications/electric55_lons_le_saunier_rue_lecourbe_alize_2026_08_22.json"
     ]
   },
   "notes": [
-    "Existing exact-rule files were generated from first-party sources on 2026-08-20 and are reused rather than rerun blindly one day later.",
-    "Qwello Autun 12 Petite Rue Marchaux is current-station verified at 0.30 EUR/kWh + 0.02 EUR/min with a 3.60 EUR night cap on the minute component from 21:00 to 07:00.",
-    "Champagnole Cassin in Jura was manually checked in Charge Global on 2026-08-21 and is Lidl (FR*LDL*E00003243 / FR*LDL*E00003244), so it is explicitly excluded as a Modulo/SIDEC witness.",
-    "The current official Modulo members page does not evidence SIDEC Jura. Historical SIDEC/Modulo planning is therefore preserved only as history, not as a current operator mapping.",
-    "Saône-et-Loire remains reference-only at department level until more Qwello stations confirm uniformity; Jura remains reference-only until its current public-network operator/station mapping is evidenced."
+    "Qwello Autun and Viré independently display 0.30 EUR/kWh + 0.02 EUR/min with a 3.60 EUR night cap on the minute component from 21:00 to 07:00.",
+    "The Qwello result is now corroborated across two communes; no additional manual Qwello sampling is needed for this project, while a formal universal network tariff is still not asserted.",
+    "Champagnole Cassin in Jura was manually checked and is Lidl, so it remains excluded as a Modulo/SIDEC witness.",
+    "A current Electric 55 station in Lons-le-Saunier is verified, including the direct Electric 55 portal tariff and a distinct higher Alizé retail tariff.",
+    "The current official Modulo members page does not evidence SIDEC Jura. Historical SIDEC/Modulo planning is preserved only as history, not as a current operator mapping."
   ],
   "publicationStatus": "validated_candidate"
 }
