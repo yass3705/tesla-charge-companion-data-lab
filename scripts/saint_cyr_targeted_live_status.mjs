@@ -29,6 +29,11 @@ const targets = {
       key: 'nearby-electric55-current',
       pk: '4402244',
       expectedName: 'Electric 55 replacement near Charles Michel / Lattre de Tassigny'
+    },
+    {
+      key: 'lidl-aerostation-maritime',
+      pk: '1813284',
+      expectedName: "Rue de l'Aérostation Maritime · SAINT CYR L'ECOLE"
     }
   ]
 };
@@ -67,6 +72,34 @@ const compactStatus = statuses => {
   const unavailable = new Set(['OUTOFORDER', 'INOPERATIVE', 'REMOVED', 'UNKNOWN']);
   return clean.every(s => unavailable.has(s.toUpperCase())) ? 'HORS_SERVICE' : 'DISPONIBLE';
 };
+
+const weekdayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+function parisNowParts(date = new Date()) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Paris', weekday: 'long', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(date).filter(x => x.type !== 'literal').map(x => [x.type, x.value]));
+  return { weekday: parts.weekday.toUpperCase(), time: `${parts.hour}:${parts.minute}` };
+}
+function openingState(openingHours, date = new Date()) {
+  if (!openingHours) return { known: false, isOpen: null, reason: 'opening hours missing' };
+  if (openingHours.twentyFourSeven) return { known: true, isOpen: true, reason: '24/7' };
+  const regular = openingHours.regularHours ?? [];
+  if (!regular.length) return { known: false, isOpen: null, reason: 'regular hours missing' };
+  const now = parisNowParts(date);
+  const todayIndex = weekdayNames.indexOf(now.weekday);
+  const today = regular.filter(x => {
+    const raw = String(x.weekday ?? '').toUpperCase();
+    return raw === now.weekday || Number(raw) === todayIndex || Number(raw) === (todayIndex || 7);
+  });
+  const hhmm = value => String(value ?? '').slice(0, 5);
+  const isOpen = today.some(x => {
+    const begin = hhmm(x.periodBegin);
+    const end = hhmm(x.periodEnd);
+    if (!begin || !end) return false;
+    return begin <= end ? now.time >= begin && now.time < end : now.time >= begin || now.time < end;
+  });
+  return { known: true, isOpen, reason: isOpen ? 'inside regular hours' : 'outside regular hours', parisNow: now, today };
+}
 
 async function postJson(url, query, variables, extraHeaders = {}) {
   const response = await fetch(url, {
@@ -131,6 +164,9 @@ for (const target of targets.electroverse) {
   const location = response.json?.data?.chargingLocation ?? null;
   const evses = (location?.evses?.edges ?? []).map(x => x?.node).filter(Boolean);
   const statuses = evses.map(x => x?.status);
+  const rawNormalizedStatus = location ? compactStatus(statuses) : 'UNKNOWN';
+  const access = openingState(location?.openingHours);
+  const scheduledClosureOverride = rawNormalizedStatus === 'HORS_SERVICE' && access.known && access.isOpen === false;
   electroverse.push({
     source: 'electroverse',
     target,
@@ -138,7 +174,10 @@ for (const target of targets.electroverse) {
     httpStatus: response.httpStatus,
     errors: response.json?.errors ?? null,
     found: Boolean(location),
-    normalizedTccStatus: location ? compactStatus(statuses) : 'UNKNOWN',
+    rawNormalizedStatus,
+    scheduledClosureOverride,
+    normalizedTccStatus: scheduledClosureOverride ? 'DISPONIBLE' : rawNormalizedStatus,
+    access,
     evseStatuses: statuses,
     location
   });
