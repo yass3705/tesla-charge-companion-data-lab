@@ -1,0 +1,39 @@
+name: Targeted Saint-Cyr live station status
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/saint_cyr_targeted_live_status.mjs'
+      - '.github/workflows/saint-cyr-targeted-live-status.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  live-status:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright
+        run: npm install --no-save playwright
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Query Electra and Electroverse live
+        run: node scripts/saint_cyr_targeted_live_status.mjs
+
+      - name: Upload targeted status result
+        uses: actions/upload-artifact@v4
+        with:
+          name: saint-cyr-live-status-${{ github.run_id }}
+          path: artifacts/saint-cyr-live-status/
+          if-no-files-found: error
+          retention-days: 14
