@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "country": "MA",
   "site_name": "Shell Al Jazira",
   "site_brand": "Shell",
@@ -33,14 +33,22 @@
     "production_use": "usable as static station power metadata with source attribution; do not infer connector type or live state"
   },
   "tariff": {
-    "tariff_channel": "Shell Recharge direct/public-site report",
+    "tariff_channel": "Shell Recharge direct",
     "price_at_publication": 0,
     "currency": "MAD",
     "unit": "session/energy unspecified",
     "published_date": "2025-07-22",
-    "current_validity": "not validated as current on 2026-08-23",
-    "production_use": false,
-    "reason": "The free-charging statement is historical and no current Shell/Vivo tariff endpoint has been validated."
+    "historical_evidence": "free charging was publicly reported at Al Jazira at publication time",
+    "production_rule": {
+      "scope": "Shell Recharge Morocco only",
+      "when": "no Shell Morocco native or official price is present for the station/tariff channel",
+      "price_mad": 0,
+      "is_free": true,
+      "do_not_generalize": true
+    },
+    "production_use": true,
+    "current_effective_price_mad": 0,
+    "price_basis": "Shell Morocco operator-specific TCC fallback rule when no price is supplied; supported by historical free-charging evidence at Al Jazira"
   },
   "status": {
     "live_status": null,
