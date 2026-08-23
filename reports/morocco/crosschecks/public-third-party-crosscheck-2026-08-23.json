@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-23",
+  "country": "MA",
+  "policy": {
+    "diagnostic_only": true,
+    "production_promotion": false,
+    "read_only_sources_only": true,
+    "modeling_dimensions_kept_separate": [
+      "cpo_operator",
+      "site_brand",
+      "app_source_access_network",
+      "tariff_channel",
+      "status_source"
+    ]
+  },
+  "findings": [
+    {
+      "site": "Al Mazar Mall, Marrakech",
+      "source_a": {
+        "name": "Atlas Recharge",
+        "finding": "Lists Al Mazar mall as 22 kW, Kilowatt, free."
+      },
+      "source_b": {
+        "name": "Open Charge Map",
+        "finding": "Lists Al Mazar Mall as public, operational, Level 2 Type 2."
+      },
+      "modeling": {
+        "site_brand": "Al Mazar Mall",
+        "cpo_operator": "Kilowatt candidate",
+        "app_source_access_network": "Kilowatt candidate",
+        "tariff_channel": "third-party listing only; free claim not yet native-validated",
+        "status_source": "Open Charge Map third-party operational flag"
+      },
+      "production_eligible": false,
+      "next_step": "Verify in Kilowatt app/native source before promoting CPO, tariff or live status."
+    },
+    {
+      "site": "TotalEnergies Djebilet, Marrakech",
+      "official_totalenergies": {
+        "finding": "1 charger, 22 kW AC"
+      },
+      "atlas_recharge": {
+        "finding": "Lists TotalEnergies DJEBILET Marrakech as 50 kW and free."
+      },
+      "modeling": {
+        "site_brand": "TotalEnergies",
+        "cpo_operator": null,
+        "app_source_access_network": "TotalEnergies official website for static inventory",
+        "tariff_channel": "unresolved; third-party free claim not promoted",
+        "status_source": null
+      },
+      "production_eligible": true,
+      "production_power_rule": "Keep official 22 kW AC; do not replace with third-party 50 kW until native or station-specific official evidence resolves the conflict.",
+      "documented_blocker": "Public third-party power/tariff data conflicts with the official TotalEnergies inventory."
+    }
+  ]
+}
