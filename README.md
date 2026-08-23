@@ -33,6 +33,12 @@ Sanitized manual app observations are stored in `data/seed/morocco_manual_app_ob
 
 The public workflow `.github/workflows/morocco-public-probe.yml` downloads public Android packages only into temporary storage, mines charging-infrastructure signals, performs explicit read-only probes, removes all raw client material and persists only a field-whitelisted summary.
 
+## France scope: Electric 55 Charging (E55C)
+
+The E55C national station base is built exclusively from the official E55C static IRVE resource on data.gouv.fr. A row qualifies only when the schema field `nom_operateur` strictly identifies Electric 55 Charging; the dataset publisher, infrastructure owner (`nom_amenageur`) and commercial brand (`nom_enseigne`) are never used as substitutes for CPO identity.
+
+The generated file `data/national/electric55_stations_france.json` preserves station and EVSE roaming identifiers, coordinates, connector types, nominal power, access/payment metadata and official tariff text. Only unambiguous tariff text is converted to machine-readable TCC rules; unresolved text remains explicitly unranked. Dynamic availability is intentionally excluded and must be joined in TCC from Electroverse or Electra.
+
 ## Repository layout
 
 - `data/seed/` — sanitized public extraction seeds and manually verified observations
