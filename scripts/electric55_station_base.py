@@ -355,8 +355,8 @@ def offers_for_station(points: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "stalls": len(members),
             "evseIds": sorted(member["evseId"] for member in members),
             "priceStatus": price_status,
-            "pricingRules": first["pricing"]["rules"],
-            "tariffText": first["pricing"]["raw"],
+            "pricingRules": first["pricing"].get("rules", []),
+            "tariffText": first["pricing"].get("raw"),
         })
     return offers
 

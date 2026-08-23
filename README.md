@@ -35,9 +35,11 @@ The public workflow `.github/workflows/morocco-public-probe.yml` downloads publi
 
 ## France scope: Electric 55 Charging (E55C)
 
-The E55C national station base is built exclusively from the official E55C static IRVE resource on data.gouv.fr. A row qualifies only when the schema field `nom_operateur` strictly identifies Electric 55 Charging; the dataset publisher, infrastructure owner (`nom_amenageur`) and commercial brand (`nom_enseigne`) are never used as substitutes for CPO identity.
+The E55C national station inventory is built exclusively from the official E55C static IRVE resource on data.gouv.fr. A row qualifies only when the schema field `nom_operateur` strictly identifies Electric 55 Charging; the dataset publisher, infrastructure owner (`nom_amenageur`) and commercial brand (`nom_enseigne`) are never used as substitutes for CPO identity.
 
-The generated file `data/national/electric55_stations_france.json` preserves station and EVSE roaming identifiers, coordinates, connector types, nominal power, access/payment metadata and official tariff text. Only unambiguous tariff text is converted to machine-readable TCC rules; unresolved text remains explicitly unranked. Dynamic availability is intentionally excluded and must be joined in TCC from Electroverse or Electra.
+The generated file `data/national/electric55_stations_france.json` preserves station and EVSE roaming identifiers, coordinates, connector types, nominal power and access/payment metadata. Exact direct-payment links come from the public E55C map, and machine-readable consumer prices come from the read-only tariff display used by E55C Scan Pay for the exact charge point. Charging-time, parking-time, energy and session-fee dimensions remain separate; third-party eMSP prices are excluded.
+
+Dynamic availability is intentionally excluded and must be joined in TCC from Electroverse or Electra. The daily workflow checks one representative of each globally scoped tariff profile plus every new charge point; Sundays and explicit full-refresh runs recheck every mapped E55C charge point.
 
 ## Repository layout
 
