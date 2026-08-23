@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "generated_at": "2026-08-23",
+  "policy": {
+    "read_only": true,
+    "public_sources_only": true,
+    "production_promotion": false,
+    "modeling_dimensions_kept_separate": [
+      "cpo_operator",
+      "site_brand",
+      "app_source_access_network",
+      "tariff_channel",
+      "status_source"
+    ]
+  },
+  "source": {
+    "publisher": "EVPlug",
+    "url": "https://evplug.ma/le-top-5-des-idees-recues-sur-la-recharge-des-voitures-electriques-au-maroc/",
+    "source_role": "cross-network public corroboration, not authoritative native tariff source"
+  },
+  "findings": [
+    {
+      "network": "Shell Recharge Morocco",
+      "claim": "free",
+      "tcc_use": "corroborates existing Shell Morocco missing-price=>0 MAD policy only",
+      "production_eligible": false,
+      "reason": "Shell pricing rule is user-defined/network-specific; EVPlug is not the native Shell tariff authority"
+    },
+    {
+      "network": "TotalEnergies Morocco",
+      "claim": "free",
+      "tcc_use": "diagnostic only",
+      "production_eligible": false,
+      "reason": "No current native TotalEnergies Morocco tariff source or Numocity payload confirms a blanket 0 MAD rule"
+    },
+    {
+      "network": "Kilowatt Morocco",
+      "claim": "free except Casablanca and Taza",
+      "tcc_use": "diagnostic hypothesis for station-level verification",
+      "production_eligible": false,
+      "reason": "No native Kilowatt station/tariff payload currently available; exceptions are too broad to apply without station-level confirmation"
+    }
+  ],
+  "notes": [
+    "Do not infer CPO/operator from site brand or from EVPlug access-network visibility.",
+    "Do not apply a missing-price=>free rule to TotalEnergies or Kilowatt based on this source.",
+    "For EVOne production candidates, retain only Available, Occupied or Charging statuses; keep Faulted, Offline, Unknown and Unavailable diagnostic-only."
+  ]
+}
