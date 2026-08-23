@@ -28,10 +28,6 @@ jobs:
           fetch-depth: 0
       - name: Public-safety scan
         run: python scripts/public_safety_check.py .
-      - name: Install PDF text extractor
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq poppler-utils
       - name: Extract and validate official Sorégies evidence
         id: extract
         shell: bash
@@ -76,18 +72,22 @@ jobs:
           assert p['sourceEvidence']['officialOnly'] is True
           assert p['classification']['operator']=='Sorégies'
           assert p['classification']['currentRetailModelAmbiguous'] is True
-          g=p['officialGridDated2025_11_01']
-          assert g['accessFeeEurPerSession']==0.99
-          assert g['rapidUpTo200Kw']['subscriber']['offPeakEurPerKwh']==0.42
-          assert g['rapidUpTo200Kw']['public']['peakEurPerKwh']==0.71
-          assert g['acceleratedUpTo50Kw']['eurPerMinuteAfter']==0.16
-          assert g['normalUpTo22Kw']['timeFeeAfterMinutes']==420
-          assert p['currentMarketingOffer']['mobilitesPlusMonthlyEur']==4.99
-          assert p['currentMarketingOffer']['mobilitesPlusHeadlineEurPerKwh']==0.22
-          assert p['currentMarketingOffer']['classicHeadlineEurPerKwh']==0.27
+          c=p['currentMarketingOffer']
+          assert c['mobilitesPlusMonthlyEur']==4.99
+          assert c['mobilitesPlusHeadlineEurPerKwh']==0.22
+          assert c['mobilitesPlusDiscountClaimPct']==20
+          assert c['classicHeadlineEurPerKwh']==0.27
+          assert c['classicCardOneTimeEur']==12.0
+          assert c['headlineValuesSafeAsUniversalStationTariff'] is False
+          assert p['technical']['normalMaxKw']==18
+          assert p['technical']['acceleratedMaxKw']==50
+          assert p['technical']['rapidRangeKw']=='50-200'
+          assert p['legacyDetailedGrid']['machineReachableInCurrentWorkflow'] is False
+          assert p['tccDecision']['networkValidated'] is True
+          assert p['tccDecision']['currentHeadlineOfferValidated'] is True
           assert p['tccDecision']['currentExactCalculatorGridValidated'] is False
           assert len(p['technical']['stationExamplesFromOfficialDataset'])==3
-          print('Validated Sorégies evidence; current exact retail mapping remains intentionally unresolved')
+          print('Validated Sorégies live 2026 evidence; exact per-station current retail tariff remains intentionally unresolved')
           PY
       - name: Publish validated candidate only when model changes
         id: publish
