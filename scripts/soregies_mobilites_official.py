@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import csv, hashlib, html, io, json, re, subprocess, tempfile, time, unicodedata, urllib.request
+import csv, hashlib, html, io, json, re, time, unicodedata, urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
 UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36'
-TARIFF_PDF='https://www.soregies.fr/wp-content/uploads/sites/10/2025/11/Tarifs-soregies-mobilites-TTC-01-11.pdf'
 OFFER_URL='https://www.soregies.fr/offre-mobilite-electrique/'
 PLUS_URL='https://www.soregies.fr/soregies-mobilites-offre-de-recharge-avec-abonnement-et-sans-engagement/'
+PRO_URL='https://www.soregies.fr/professionnels/soregies-mobilites-pro/'
 DATASET_PAGE='https://www.data.gouv.fr/datasets/bornes-de-recharges-soregies'
 DATASET_CSV='https://www.data.gouv.fr/api/1/datasets/r/acdcb053-0e0a-4c9a-a8e8-7c283d7ed240'
+LEGACY_GRID_URL='https://www.soregies.fr/wp-content/uploads/sites/10/2025/11/Tarifs-soregies-mobilites-TTC-01-11.pdf'
 
 def now(): return datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
 def norm(s):
@@ -32,11 +33,6 @@ def text_html(raw):
     s=re.sub(r'<script\b[^>]*>.*?</script>|<style\b[^>]*>.*?</style>',' ',s,flags=re.I|re.S)
     s=re.sub(r'<[^>]+>',' ',s)
     return re.sub(r'\s+',' ',html.unescape(s)).strip()
-def text_pdf(raw):
-    with tempfile.TemporaryDirectory() as td:
-        p=Path(td)/'a.pdf'; t=Path(td)/'a.txt'; p.write_bytes(raw)
-        subprocess.run(['pdftotext','-layout',str(p),str(t)],check=True)
-        return t.read_text(errors='replace')
 def require(text,*phrases,label='source'):
     n=norm(text); miss=[p for p in phrases if norm(p) not in n]
     if miss: raise RuntimeError(f'{label} missing {miss}')
@@ -58,36 +54,31 @@ def samples(rows,n=3):
     return out
 
 def main():
-    tr,ts=fetch(TARIFF_PDF); oraw,os=fetch(OFFER_URL); praw,ps=fetch(PLUS_URL); dr,ds=fetch(DATASET_PAGE); cr,cs=fetch(DATASET_CSV)
-    if min(ts,os,ps,ds,cs)!=200: raise RuntimeError('one or more official sources non-200')
-    tariff=text_pdf(tr); offer=text_html(oraw); plus=text_html(praw); dataset=text_html(dr)
-    require(tariff,'Grille tarifaire au 01/11/2025','0,99','0,42','0,67','0,59','0,71','0,33','0,47','0,27','0,36','0,38','0,41','12 h à 17 h','22 h à 7 h','0,30','0,16','0,01',label='tariff pdf')
-    require(offer,'Plus de 500 points de charge','950 000','4,99','0,22','0,27','12€','Last Miles Solutions',label='current offer')
+    oraw,os=fetch(OFFER_URL); praw,ps=fetch(PLUS_URL); pro_raw,pro_s=fetch(PRO_URL); dr,ds=fetch(DATASET_PAGE); cr,cs=fetch(DATASET_CSV)
+    if min(os,ps,pro_s,ds,cs)!=200: raise RuntimeError('one or more official sources non-200')
+    offer=text_html(oraw); plus=text_html(praw); pro=text_html(pro_raw); dataset=text_html(dr)
+    require(offer,'Plus de 500 points de charge','950 000','4,99','0,22','0,27','12€',label='current offer')
     require(plus,'-20%','4,99','0,22','0,27',label='mobilites plus')
+    require(pro,'Sorégies Mobilités Pro','application Sorégies Mobilités','carte bancaire','Normale','Accéléré','Rapide','Ultra-rapide',label='pro offer')
     require(dataset,'Sorégies Mobilités','Gireve','application Sorégies Mobilités','carte bancaire',label='dataset')
     rows=parse_csv(cr)
     if len(rows)<100: raise RuntimeError(f'technical dataset unexpectedly small: {len(rows)}')
     smp=samples(rows,3)
     if len(smp)<3: raise RuntimeError('unable to resolve three station samples')
     facts={
-      'classification':{'regionalPublicNetwork':True,'scope':'Vienne','operator':'Sorégies','technicalPlatform':'Last Miles Solutions','officialDatasetRows':len(rows),'currentRetailModelAmbiguous':True},
-      'officialGridDated2025_11_01':{
-        'accessFeeEurPerSession':0.99,
-        'windows':{'offPeak':['12:00-17:00','22:00-07:00'],'peak':['07:00-12:00','17:00-22:00']},
-        'rapidUpTo200Kw':{'subscriber':{'offPeakEurPerKwh':0.42,'peakEurPerKwh':0.59},'public':{'offPeakEurPerKwh':0.67,'peakEurPerKwh':0.71},'timeFeeAfterMinutes':60,'eurPerMinuteAfter':0.30},
-        'acceleratedUpTo50Kw':{'subscriber':{'offPeakEurPerKwh':0.33,'peakEurPerKwh':0.44},'public':{'offPeakEurPerKwh':0.42,'peakEurPerKwh':0.47},'timeFeeAfterMinutes':120,'eurPerMinuteAfter':0.16},
-        'normalUpTo22Kw':{'subscriber':{'offPeakEurPerKwh':0.27,'peakEurPerKwh':0.38},'public':{'offPeakEurPerKwh':0.36,'peakEurPerKwh':0.41},'timeFeeAfterMinutes':420,'eurPerMinuteAfter':0.01}},
+      'classification':{'regionalPublicNetwork':True,'scope':'Vienne','operator':'Sorégies','officialDatasetRows':len(rows),'currentRetailModelAmbiguous':True},
       'currentMarketingOffer':{'mobilitesPlusMonthlyEur':4.99,'mobilitesPlusHeadlineEurPerKwh':0.22,'mobilitesPlusDiscountClaimPct':20,'classicCardOneTimeEur':12.0,'classicHeadlineEurPerKwh':0.27,'headlineValuesSafeAsUniversalStationTariff':False},
-      'access':{'app':True,'soregiesCard':True,'bankCardInApp':True,'bankCardTerminalOnEquippedStations':True},
+      'access':{'app':True,'soregiesCard':True,'bankCardInApp':True},
       'roaming':{'gireveIncomingSupported':True,'outgoingCardCoverageClaimedPoints':950000,'thirdPartyRetailMustRemainSeparate':True},
-      'technical':{'normalMaxKw':22,'acceleratedMaxKw':50,'rapidMaxKw':200,'stationExamplesFromOfficialDataset':smp},
-      'tccDecision':{'networkValidated':True,'historicDetailedGridValidated':True,'currentExactCalculatorGridValidated':False,'reason':'current marketing pages show new 0.22/0.27 headline pricing while the latest linked detailed grid remains dated 2025-11-01; station/app verification required before replacing the detailed grid'}
+      'technical':{'normalMaxKw':18,'acceleratedMaxKw':50,'rapidRangeKw':'50-200','ultraRapidMinKw':200,'stationExamplesFromOfficialDataset':smp},
+      'legacyDetailedGrid':{'sourceUrl':LEGACY_GRID_URL,'date':'2025-11-01','machineReachableInCurrentWorkflow':False,'doNotUseAsCurrentCalculatorTariff':True},
+      'tccDecision':{'networkValidated':True,'currentHeadlineOfferValidated':True,'currentExactCalculatorGridValidated':False,'reason':'live official 2026 pages expose headline 0.22/0.27 EUR/kWh offers and require station/app lookup for the tariff in force per charger; the former detailed PDF now returns 404 from GitHub Actions'}
     }
     fp=hashlib.sha256(json.dumps(facts,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
-    payload={'schemaVersion':'1.0.0','dataset':'soregies-mobilites-official-vienne','generatedAt':now(),'operator':'Sorégies Mobilités','country':'FR',**facts,'sourceEvidence':{'officialOnly':True,'sources':[{'key':'tariffPdf','url':TARIFF_PDF,'httpStatus':ts,'sha256':hashlib.sha256(tr).hexdigest()},{'key':'currentOffer','url':OFFER_URL,'httpStatus':os,'sha256':hashlib.sha256(oraw).hexdigest()},{'key':'plusOffer','url':PLUS_URL,'httpStatus':ps,'sha256':hashlib.sha256(praw).hexdigest()},{'key':'dataGouvPage','url':DATASET_PAGE,'httpStatus':ds,'sha256':hashlib.sha256(dr).hexdigest()},{'key':'dataGouvCsv','url':DATASET_CSV,'httpStatus':cs,'sha256':hashlib.sha256(cr).hexdigest()}],'fingerprint':fp},'publicationStatus':'candidate_validated_source_current_price_manual_check_required','notes':['Do not flatten the 2025-11 detailed grid into a claimed current tariff without a station/app recheck.','The 0.22 and 0.27 EUR/kWh values are preserved as current official marketing headline values only.','Third-party eMSP prices remain separate from Sorégies direct pricing.']}
+    payload={'schemaVersion':'1.1.0','dataset':'soregies-mobilites-official-vienne','generatedAt':now(),'operator':'Sorégies Mobilités','country':'FR',**facts,'sourceEvidence':{'officialOnly':True,'sources':[{'key':'currentOffer','url':OFFER_URL,'httpStatus':os,'sha256':hashlib.sha256(oraw).hexdigest()},{'key':'plusOffer','url':PLUS_URL,'httpStatus':ps,'sha256':hashlib.sha256(praw).hexdigest()},{'key':'proOffer','url':PRO_URL,'httpStatus':pro_s,'sha256':hashlib.sha256(pro_raw).hexdigest()},{'key':'dataGouvPage','url':DATASET_PAGE,'httpStatus':ds,'sha256':hashlib.sha256(dr).hexdigest()},{'key':'dataGouvCsv','url':DATASET_CSV,'httpStatus':cs,'sha256':hashlib.sha256(cr).hexdigest()}],'fingerprint':fp},'publicationStatus':'candidate_validated_source_current_price_manual_check_required','notes':['Do not treat 0.22 or 0.27 EUR/kWh as a universal per-station tariff.','Current official pages explicitly direct users to the map/app for the tariff in force at each charger.','Third-party eMSP prices remain separate from Sorégies direct pricing.','The former detailed 2025-11 tariff PDF is recorded only as legacy context because it now returns 404 from GitHub Actions.']}
     out=Path('out/soregies'); out.mkdir(parents=True,exist_ok=True)
     (out/'soregies_mobilites_official_vienne.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
-    lines=['# Sorégies Mobilités official check','','- Network, access channels, roaming and official technical dataset verified.','- Detailed grid dated 2025-11-01 verified: 0.99 EUR/session, power/time-of-day kWh prices, plus time charges after 1h/2h/7h.','- Current 2026 marketing pages advertise Mobilités+ 4.99 EUR/month at headline 0.22 EUR/kWh and classic at headline 0.27 EUR/kWh.','- These current headline values do not map cleanly to the still-linked detailed grid, so the exact current calculator tariff is intentionally left unresolved pending station/app verification.',f'- Official technical dataset rows: {len(rows)}; three real station samples embedded.',f'- Fingerprint: `{fp}`']
+    lines=['# Sorégies Mobilités official check','','- Live 2026 official pages: Mobilités+ 4.99 EUR/month, headline 0.22 EUR/kWh and -20%; classic headline 0.27 EUR/kWh with 12 EUR one-time card.','- These are not generalized as universal station tariffs; Sorégies directs users to the map/app for the tariff in force per charger.','- App/card access, bank-card payment in app, Gireve roaming and official technical dataset verified.','- Power families currently documented: normal up to 18 kW, accelerated up to 50 kW, rapid 50-200 kW, ultra-rapid above 200 kW.','- Former detailed 2025-11 PDF is now 404 in Actions and is not used as a current calculator source.',f'- Official technical dataset rows: {len(rows)}; three real station samples embedded.',f'- Fingerprint: `{fp}`']
     (out/'SUMMARY.md').write_text('\n'.join(lines)+'\n')
     print('\n'.join(lines))
 if __name__=='__main__': main()
