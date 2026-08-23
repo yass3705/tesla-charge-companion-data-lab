@@ -1,0 +1,143 @@
+name: Electric 55 operated station base
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/electric55_station_base.py"
+      - "tests/test_electric55_station_base.py"
+      - "scripts/public_safety_check.py"
+      - ".github/workflows/electric55-station-base.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: electric55-station-base
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Compile and test E55C builder
+        run: |
+          python -m py_compile scripts/electric55_station_base.py tests/test_electric55_station_base.py
+          PYTHONPATH=scripts python -m unittest discover -s tests -p 'test_electric55_station_base.py' -v
+
+      - name: Build strict E55C-operated station base
+        run: |
+          set -euo pipefail
+          mkdir -p out/electric55-stations
+          python scripts/electric55_station_base.py \
+            --out out/electric55-stations/electric55_stations_france.json \
+            --report out/electric55-stations/station_base_summary.md \
+            --min-stations 10
+          cat out/electric55-stations/station_base_summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate TCC integration invariants
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          p=json.loads(Path('out/electric55-stations/electric55_stations_france.json').read_text())
+          assert p['dataset']=='electric55-operated-stations-france'
+          assert p['country']=='FR'
+          assert p['operator']=='Electric 55 Charging (E55C)'
+          assert p['scope']['thirdPartySupervisedStationsWithoutE55CAsOperatorExcluded'] is True
+          assert p['scope']['dynamicStatusIncluded'] is False
+          assert p['scope']['dynamicStatusAuthorityForTcc']==['Electroverse','Electra']
+          assert p['scope']['roamingTariffsIncluded'] is False
+          assert p['filterEvidence']['field']=='nom_operateur'
+          assert p['filterEvidence']['publisherAloneNeverQualifiesARow'] is True
+          assert p['stats']['stationCount'] >= 10
+          assert p['stats']['chargePointCount'] >= p['stats']['stationCount']
+          assert p['stats']['matchedE55cOperatorRows'] >= p['stats']['chargePointCount']
+          station_ids=[s['stationId'] for s in p['stations']]
+          assert len(station_ids)==len(set(station_ids))
+          all_evse=[]
+          for station in p['stations']:
+              assert station['operator']=='Electric 55 Charging (E55C)'
+              assert station['chargePointCount']==len(station['chargePoints'])
+              assert station['offers']
+              lat=station['coordinates']['latitude']; lon=station['coordinates']['longitude']
+              assert -90 <= lat <= 90 and -180 <= lon <= 180
+              evse=[point['evseId'] for point in station['chargePoints']]
+              assert len(evse)==len(set(evse))
+              all_evse.extend(evse)
+              for offer in station['offers']:
+                  assert offer['source']=='e55c_official_irve_static'
+                  assert offer['provider']=='E55C direct'
+                  assert offer['operator']=='Electric 55 Charging (E55C)'
+          assert len(all_evse)==p['stats']['chargePointCount']
+          assert p['tccIntegration']['statusMustBeJoinedExternally'] is True
+          assert p['tccIntegration']['unparsedTariffsMustRemainUnranked'] is True
+          PY
+          python scripts/public_safety_check.py .
+
+      - name: Prepare changed publication
+        id: publish
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,shutil
+          from pathlib import Path
+
+          src=Path('out/electric55-stations/electric55_stations_france.json')
+          summary=Path('out/electric55-stations/station_base_summary.md')
+          dst=Path('data/national/electric55_stations_france.json')
+          report=Path('reports/electric55/station_base_summary.md')
+          new=json.loads(src.read_text())
+
+          def signature(payload):
+              source=payload.get('source') or {}
+              return {
+                  'schemaVersion':payload.get('schemaVersion'),
+                  'dataset':payload.get('dataset'),
+                  'operator':payload.get('operator'),
+                  'scope':payload.get('scope'),
+                  'sourceSha256':source.get('sha256'),
+                  'filterEvidence':payload.get('filterEvidence'),
+                  'stats':payload.get('stats'),
+                  'tccIntegration':payload.get('tccIntegration'),
+                  'stations':payload.get('stations'),
+              }
+
+          changed=not dst.exists() or signature(json.loads(dst.read_text())) != signature(new)
+          Path('changed.flag').write_text('1' if changed else '0')
+          if changed:
+              dst.parent.mkdir(parents=True,exist_ok=True)
+              report.parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(src,dst)
+              shutil.copy2(summary,report)
+          PY
+          echo "changed=$(cat changed.flag)" >> "$GITHUB_OUTPUT"
+          python scripts/public_safety_check.py .
+
+      - name: Commit validated E55C station base
+        if: steps.publish.outputs.changed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/electric55_stations_france.json reports/electric55/station_base_summary.md
+          git commit -m "data(e55c): publish operated France station base [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
