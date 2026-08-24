@@ -1,17 +1,20 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "station": {
     "canonical_name": "TotalEnergies AL WAHA",
     "country": "MA",
     "site_brand": "TotalEnergies",
-    "operator_cpo": null,
-    "operator_cpo_status": "unresolved",
-    "app_source_access_network": null,
+    "operator_cpo": "Kilowatt",
+    "operator_cpo_status": "validated_station_specific_public_api",
+    "app_source_access_network": "Kilowatt public web map",
     "tariff_channel": null,
-    "status_source": null,
+    "status_source": "Kilowatt public web map",
     "official_power_kw": 22,
     "official_current_type": "AC",
-    "official_connector_count": 1
+    "official_connector_count": 1,
+    "kilowatt_station_id": "62e29ef59ad98566676cf824",
+    "latitude": 33.4887755,
+    "longitude": -7.5100194
   },
   "evidence": [
     {
@@ -19,48 +22,34 @@
       "publisher": "TotalEnergies Marketing Maroc",
       "url": "https://totalenergies.ma/energetique-renouvelable",
       "observation": "TotalEnergies' public Morocco charging-network table lists AL WAHA with 1 charger at 22 AC.",
-      "supports": [
-        "site_brand=TotalEnergies",
-        "power=22 kW AC",
-        "connector_count=1"
-      ],
-      "does_not_support": [
-        "operator_cpo=Kilowatt",
-        "tariff",
-        "live_status"
-      ]
+      "supports": ["site_brand=TotalEnergies", "power=22 kW AC", "connector_count=1"]
     },
     {
-      "source_type": "third_party_station_directory",
-      "publisher": "Atlas Recharge",
-      "url": "https://atlasrecharge.com/bornes/type-2",
-      "observation": "The directory currently lists TotalEnergies El Waha at 50 kW without a named operator, while separately identifying some other TotalEnergies sites such as Amskroud and Taourirt as Kilowatt-operated.",
+      "source_type": "kilowatt_native_public_api",
+      "publisher": "Kilowatt",
+      "url": "https://kilowatt.ma/api/charging-stations",
+      "observation": "Kilowatt's public GET-only station API exposes station id 62e29ef59ad98566676cf824 with address 'TotalEnergies Al Waha', city Mediouna, coordinates 33.4887755,-7.5100194, status available, and one Type 2 22 kW connector.",
       "supports": [
-        "Kilowatt operates at least some TotalEnergies-branded Morocco charging sites"
-      ],
-      "conflicts_with_official_source": [
-        "Al Waha power: third party 50 kW vs official TotalEnergies 22 kW AC"
-      ],
-      "does_not_support": [
-        "operator_cpo=Kilowatt for Al Waha"
+        "operator_cpo=Kilowatt",
+        "app_source/access_network=Kilowatt public web map",
+        "status_source=Kilowatt public web map",
+        "power=22 kW",
+        "connector=Type 2",
+        "station-specific coordinates"
       ]
     }
   ],
   "modeling_decision": {
     "site_brand": "TotalEnergies",
-    "operator_cpo": null,
-    "reason": "Do not infer CPO from site brand or from Kilowatt attribution at other TotalEnergies locations. No sufficiently strong public evidence currently attributes AL WAHA itself to Kilowatt.",
-    "power_precedence": "Use official TotalEnergies 22 kW AC over conflicting third-party 50 kW directory data.",
-    "production_policy": "Keep CPO/operator unresolved until a Kilowatt-native, TotalEnergies-native, OCPI/eMSP, charger label, or other direct station-specific source links AL WAHA to Kilowatt."
+    "operator_cpo": "Kilowatt",
+    "app_source_access_network": "Kilowatt public web map",
+    "tariff_channel": null,
+    "status_source": "Kilowatt public web map",
+    "power_precedence": "22 kW is now corroborated independently by TotalEnergies official inventory and Kilowatt native public API.",
+    "production_policy": "CPO attribution is now eligible for production. Tariff remains unresolved until direct tariff evidence is available."
   },
   "blocker": {
-    "status": "documented",
-    "missing_evidence": "station-specific CPO attribution for AL WAHA",
-    "next_validating_evidence_examples": [
-      "Kilowatt app/backend station record naming AL WAHA",
-      "TotalEnergies station/app record naming Kilowatt as operator",
-      "public OCPI/eMSP record with station-specific operator identity",
-      "charger label/photo showing operator branding"
-    ]
+    "status": "resolved_for_cpo",
+    "remaining": ["direct tariff"]
   }
 }
