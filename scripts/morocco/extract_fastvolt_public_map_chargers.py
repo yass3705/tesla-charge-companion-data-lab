@@ -6,7 +6,10 @@ from urllib.request import Request,urlopen
 URL='https://www.fastvolt.net/api/pages'
 UA='TeslaChargeCompanionDataLab/1.0 (+public read-only inventory)'
 MAX_BYTES=1_000_000
-ALLOWED_VALUE_KEYS=('charger_id','charger_name','geo_coordinates')
+ALLOWED_VALUE_KEYS=(
+ 'charger_id','charger_name','geo_coordinates','address_line_1','address_line_2','city','zip_code',
+ 'brand','model','label','max_output','ccs_count','chademo_count','type2_count','state'
+)
 
 def find_chargers(data):
     carte=data.get('carte') if isinstance(data,dict) else None
@@ -24,7 +27,7 @@ def coord_parts(v):
     except Exception: return None,None
 
 report={
- 'schema_version':1,
+ 'schema_version':2,
  'generated_at':datetime.now(timezone.utc).isoformat(),
  'source_url':URL,
  'country':'MA',
@@ -40,7 +43,7 @@ report={
    'app_source_access_network':'FastVolt public web map',
    'tariff_channel':'FastVolt direct',
    'status_source':None,
-   'note':'site_brand and live status are not inferred from the public map inventory.'
+   'note':'Public raw fields brand/model/state are preserved as source fields only. brand is not promoted to site_brand and state is not promoted to live status without separate validation.'
  }
 }
 req=Request(URL,headers={'User-Agent':UA,'Accept':'application/json,*/*;q=0.1'},method='GET')
@@ -58,10 +61,9 @@ for x in chargers:
     if not isinstance(x,dict): continue
     lat,lon=coord_parts(x.get('geo_coordinates'))
     if lat is not None and lon is not None: valid_coords+=1
+    raw={k:x.get(k) for k in ALLOWED_VALUE_KEYS}
     rows.append({
-      'charger_id':x.get('charger_id'),
-      'charger_name':x.get('charger_name'),
-      'geo_coordinates':x.get('geo_coordinates'),
+      **raw,
       'latitude':lat,
       'longitude':lon,
       'cpo_operator':'FastVolt / Afrimobility',
@@ -75,7 +77,13 @@ report['summary']={
  'charger_count':len(rows),
  'valid_coordinate_count':valid_coords,
  'item_schema_keys':all_keys,
- 'production_candidate_count':sum(1 for x in rows if x['production_candidate'])
+ 'production_candidate_count':sum(1 for x in rows if x['production_candidate']),
+ 'with_max_output_count':sum(1 for x in rows if x.get('max_output') not in (None,'')),
+ 'with_ccs_count':sum(1 for x in rows if x.get('ccs_count') not in (None,'')),
+ 'with_type2_count':sum(1 for x in rows if x.get('type2_count') not in (None,'')),
+ 'with_chademo_count':sum(1 for x in rows if x.get('chademo_count') not in (None,'')),
+ 'with_address_count':sum(1 for x in rows if x.get('address_line_1') not in (None,'')),
+ 'raw_state_value_present_count':sum(1 for x in rows if x.get('state') not in (None,''))
 }
 report['chargers']=rows
 json.dump(report,sys.stdout,ensure_ascii=False,indent=2); print()
