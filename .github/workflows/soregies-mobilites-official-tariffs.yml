@@ -57,8 +57,12 @@ jobs:
           git add reports/soregies/latest_diagnostic.json
           if ! git diff --cached --quiet; then
             git commit -m "diag(soregies): publish operator diagnostic [run ${GITHUB_RUN_ID}]"
-            git pull --rebase origin main
-            git push origin HEAD:main
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
           fi
       - name: Validate output envelope
         if: success()
@@ -67,6 +71,7 @@ jobs:
           import json
           from pathlib import Path
           p=json.loads(Path('out/soregies/soregies_mobilites_official_vienne.json').read_text())
+          assert p['schemaVersion']=='1.2.0'
           assert p['dataset']=='soregies-mobilites-official-vienne'
           assert p['publicationStatus']=='candidate_validated_source_current_price_manual_check_required'
           assert p['sourceEvidence']['officialOnly'] is True
@@ -79,15 +84,19 @@ jobs:
           assert c['classicHeadlineEurPerKwh']==0.27
           assert c['classicCardOneTimeEur']==12.0
           assert c['headlineValuesSafeAsUniversalStationTariff'] is False
+          assert c['headlinePriceCardsMachineVerifiedInWorkflow'] is False
+          assert c['headlinePriceCardsPublicWebVerifiedDate']=='2026-08-24'
           assert p['technical']['normalMaxKw']==18
           assert p['technical']['acceleratedMaxKw']==50
           assert p['technical']['rapidRangeKw']=='50-200'
           assert p['legacyDetailedGrid']['machineReachableInCurrentWorkflow'] is False
           assert p['tccDecision']['networkValidated'] is True
-          assert p['tccDecision']['currentHeadlineOfferValidated'] is True
+          assert p['tccDecision']['currentHeadlineOfferPublicWebVerified'] is True
+          assert p['tccDecision']['currentHeadlineOfferMachineVerified'] is False
           assert p['tccDecision']['currentExactCalculatorGridValidated'] is False
           assert len(p['technical']['stationExamplesFromOfficialDataset'])==3
-          print('Validated Sorégies live 2026 evidence; exact per-station current retail tariff remains intentionally unresolved')
+          assert len(p['sourceEvidence']['datedPublicWebEvidence'])==1
+          print('Validated Sorégies network/technical evidence; rendered headline prices remain dated public-web evidence only')
           PY
       - name: Publish validated candidate only when model changes
         id: publish
