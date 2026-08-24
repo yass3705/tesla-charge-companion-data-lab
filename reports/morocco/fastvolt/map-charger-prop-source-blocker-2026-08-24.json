@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-24T12:43:50Z",
+  "country": "MA",
+  "network": "FastVolt",
+  "policy": {
+    "derived_from_existing_sanitized_public_reports_only": true,
+    "backend_requests_made_for_this_report": false,
+    "no_login": true,
+    "no_mutations": true,
+    "no_session_start": true,
+    "raw_client_source_persisted": false
+  },
+  "evidence": {
+    "source_report": "reports/morocco/fastvolt/latest-map-call-shapes.json",
+    "public_page": "https://www.fastvolt.net/carte",
+    "client_chunk": "https://www.fastvolt.net/_next/static/chunks/143-642cbd660af5c7c4.js",
+    "component_name": "chargerMap",
+    "component_prop": "chargers",
+    "station_field_seen": "geo_coordinates",
+    "map_render_shape": "chargerMap receives a chargers collection and maps each item after splitting geo_coordinates",
+    "map_center_seen": {
+      "lat": 31.0549841,
+      "lng": -7.8772858,
+      "classification": "static map center only; not a station"
+    }
+  },
+  "crosscheck": {
+    "api_pages_report": "reports/morocco/fastvolt/latest-api-pages.json",
+    "api_pages_carte_component_count": 2,
+    "api_pages_exposed_carte_component_shape_contains_chargers": false,
+    "validated_graphql_operation_NewQuery_is_station_inventory": false,
+    "validated_graphql_operation_NewQuery_classification": "CMS content"
+  },
+  "finding": {
+    "meaningful": true,
+    "validated": true,
+    "summary": "The public FastVolt web client contains a real chargerMap renderer that expects a chargers collection with geo_coordinates. The currently validated /api/pages schema and NewQuery/fastvoltsections path do not expose that collection, so the station inventory is injected or fetched through a still-unidentified path.",
+    "blocker": "Identify the producer of the chargerMap chargers prop from public client assets or a public read-only request path before attempting any new station endpoint probe.",
+    "do_not_infer": [
+      "Do not treat /api/pages as the national station feed.",
+      "Do not treat fastvoltsections/NewQuery as the national station feed.",
+      "Do not interpret the static Morocco map center as a charging station."
+    ]
+  },
+  "tcc_modeling": {
+    "cpo_operator": "FastVolt / Afrimobility",
+    "site_brand": "station-specific; unresolved by this report",
+    "app_source_access_network": "FastVolt public web map",
+    "tariff_channel": "FastVolt direct",
+    "status_source": "FastVolt native when a station feed is validated"
+  },
+  "next_safe_step": "Trace only the chargerMap prop producer and nearby public request/function identifiers in the already-public same-origin client bundle; avoid endpoint guessing, auth probing or session actions."
+}
