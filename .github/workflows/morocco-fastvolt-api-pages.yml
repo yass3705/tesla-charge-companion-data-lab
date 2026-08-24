@@ -1,0 +1,48 @@
+name: Morocco FastVolt public api-pages
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/morocco/probe_fastvolt_api_pages.py'
+      - '.github/workflows/morocco-fastvolt-api-pages.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe public FastVolt api/pages (GET only)
+        run: |
+          mkdir -p reports/morocco/fastvolt
+          python scripts/morocco/probe_fastvolt_api_pages.py > reports/morocco/fastvolt/latest-api-pages.json
+      - name: Validate sanitized report
+        run: |
+          python - <<'PY'
+          import json
+          p='reports/morocco/fastvolt/latest-api-pages.json'
+          d=json.load(open(p))
+          assert d['policy']['read_only'] is True
+          assert d['policy']['get_only'] is True
+          assert d['policy']['raw_response_body_persisted'] is False
+          assert d['policy']['values_persisted'] is False
+          print(json.dumps({k:d.get(k) for k in ('status','content_type','json','top_level_type','item_count','item_keys','top_level_keys','list_fields','error')},ensure_ascii=False))
+          PY
+      - name: Commit report if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/morocco/fastvolt/latest-api-pages.json
+          if git diff --cached --quiet; then
+            echo 'No report change'
+          else
+            git commit -m "data(morocco): update FastVolt api/pages probe [run $GITHUB_RUN_ID]"
+            git push
+          fi
