@@ -48,23 +48,25 @@ def literals(text):
     return sorted(out)
 
 def graphql_static_hints(text):
-    """Return only short GraphQL-looking identifiers already present in public JS assets.
-    No schema guessing, brute force or raw source persistence.
+    """Return only GraphQL-looking identifiers already present in public JS assets.
+    No schema guessing, brute force, variables, values or raw source persistence.
     """
-    operation_names=set()
-    root_field_hints=set()
-    # Survives common minification when gql/document strings are embedded literally.
-    for m in re.finditer(r'\b(query|subscription)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:\([^{}]{0,500}\))?\s*\{', text):
-        operation_names.add(m.group(2))
-        tail=text[m.end():m.end()+800]
+    operation_names=set(); root_field_hints=set(); associations=[]
+    seen_assoc=set()
+    pat=r'\b(query|subscription)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:\([^{}]{0,500}\))?\s*\{'
+    for m in re.finditer(pat, text):
+        op=m.group(2); operation_names.add(op)
+        tail=text[m.end():m.end()+1200]
         fm=re.search(r'\b([A-Za-z_][A-Za-z0-9_]*)\s*(?:\([^{}]{0,500}\))?\s*\{', tail)
         if fm and not fm.group(1).startswith('__'):
-            root_field_hints.add(fm.group(1))
-    # Anonymous query documents can still expose the first root field literally.
+            root=fm.group(1); root_field_hints.add(root)
+            key=(op,root)
+            if key not in seen_assoc:
+                associations.append({"operation":op,"root_field":root})
+                seen_assoc.add(key)
     for m in re.finditer(r'\bquery\s*(?:\([^{}]{0,500}\))?\s*\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?:\([^{}]{0,500}\))?\s*\{', text):
         if not m.group(1).startswith('__'):
             root_field_hints.add(m.group(1))
-    # Restrict generic nearby identifiers to charging/map vocabulary to avoid noisy JS symbols.
     vocab=re.compile(r'(station|borne|charger|charging|location|map|point|connector|evse)', re.I)
     for m in re.finditer(r'\b([A-Za-z_][A-Za-z0-9_]{2,80})\b', text):
         token=m.group(1)
@@ -73,18 +75,19 @@ def graphql_static_hints(text):
             ctx=text[start:end].lower()
             if 'graphql' in ctx or 'gql' in ctx or 'query' in ctx or 'usequery' in ctx:
                 root_field_hints.add(token)
-    return sorted(operation_names), sorted(root_field_hints)
+    return sorted(operation_names), sorted(root_field_hints), sorted(associations,key=lambda x:(x['operation'],x['root_field']))
 
 report={
-  "schema_version":2,
+  "schema_version":3,
   "generated_at":datetime.now(timezone.utc).isoformat(),
-  "policy":{"read_only":True,"no_login":True,"no_mutations":True,"no_session_start":True,"same_origin_assets_only":True,"raw_bodies_persisted":False,"static_graphql_hints_only":True},
+  "policy":{"read_only":True,"no_login":True,"no_mutations":True,"no_session_start":True,"same_origin_assets_only":True,"raw_bodies_persisted":False,"static_graphql_hints_only":True,"no_graphql_requests_from_this_probe":True},
   "page_url":BASE,
   "page":{},
   "same_origin_script_assets":[],
   "candidate_public_literals":[],
   "graphql_operation_names":[],
   "graphql_root_field_hints":[],
+  "graphql_operation_root_associations":[],
   "errors":[]
 }
 
@@ -97,8 +100,10 @@ try:
         u=urljoin(BASE,src)
         if same_origin(u) and u not in scripts: scripts.append(u)
     candidates=set(literals(page["text"]))
-    op_names=set(); field_hints=set()
-    p_ops,p_fields=graphql_static_hints(page["text"]); op_names.update(p_ops); field_hints.update(p_fields)
+    op_names=set(); field_hints=set(); assoc_map=set()
+    p_ops,p_fields,p_assoc=graphql_static_hints(page["text"])
+    op_names.update(p_ops); field_hints.update(p_fields)
+    for a in p_assoc: assoc_map.add((a['operation'],a['root_field']))
     for u in scripts[:MAX_ASSETS]:
         rec={"url":u}
         try:
@@ -107,18 +112,21 @@ try:
             lits=literals(a["text"])
             rec["candidate_literal_count"]=len(lits)
             candidates.update(lits)
-            ops,fields=graphql_static_hints(a["text"])
+            ops,fields,assocs=graphql_static_hints(a["text"])
             rec["graphql_operation_name_count"]=len(ops)
             rec["graphql_root_field_hint_count"]=len(fields)
             if ops: rec["graphql_operation_names"]=ops[:50]
             if fields: rec["graphql_root_field_hints"]=fields[:100]
+            if assocs: rec["graphql_operation_root_associations"]=assocs[:50]
             op_names.update(ops); field_hints.update(fields)
+            for x in assocs: assoc_map.add((x['operation'],x['root_field']))
         except Exception as e:
             rec["error"]=type(e).__name__+": "+str(e)[:200]
         report["same_origin_script_assets"].append(rec)
     report["candidate_public_literals"]=sorted(candidates)
     report["graphql_operation_names"]=sorted(op_names)
     report["graphql_root_field_hints"]=sorted(field_hints)
+    report["graphql_operation_root_associations"]=[{"operation":o,"root_field":r} for o,r in sorted(assoc_map)]
 except Exception as e:
     report["errors"].append(type(e).__name__+": "+str(e)[:300])
 
