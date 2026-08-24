@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "network_scope": "EVOne / EVPlug access-network candidates only",
+  "purpose": "Production eligibility policy for EVOne-derived station/EVSE status data used by TCC.",
+  "production_status_policy": {
+    "allowed": [
+      "Available",
+      "Occupied",
+      "Charging"
+    ],
+    "excluded": [
+      "Faulted",
+      "Offline",
+      "Unknown",
+      "Unavailable"
+    ],
+    "unknown_or_unmapped_status_default": "exclude_from_production",
+    "diagnostic_reports_may_retain_excluded_statuses": true
+  },
+  "modeling_constraints": {
+    "cpo_operator_must_remain_separate_from": [
+      "site_brand",
+      "app_source_access_network",
+      "tariff_channel",
+      "status_source"
+    ],
+    "evone_roaming_visibility_does_not_imply_cpo_operator": true,
+    "native_cpo_status_should_be_preferred_when_more_freshly_validated": true
+  },
+  "safety": {
+    "read_only": true,
+    "contains_credentials": false,
+    "contains_personal_data": false,
+    "backend_requests_made": false
+  }
+}
