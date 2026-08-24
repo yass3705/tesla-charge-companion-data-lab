@@ -8,6 +8,8 @@ from urllib.error import HTTPError
 ENDPOINT = "https://sg2i.com/akwadigi/fastvolt/graphql"
 PING_QUERY = "query TccPublicProbe { __typename }"
 SCHEMA_QUERY = "query TccPublicSchemaProbe { __schema { queryType { name fields { name } } } }"
+# Recovered directly from the public FastVolt web-map bundle; no schema guessing.
+FASTVOLT_SECTION_QUERY = "query NewQuery { fastvoltsections { __typename } }"
 UA = "TeslaChargeCompanionDataLab/1.0 (+public read-only diagnostics)"
 
 
@@ -27,6 +29,10 @@ def summarize(obj, schema=False):
         if isinstance(data_obj,dict):
             out['data_keys']=sorted(data_obj.keys())
             if '__typename' in data_obj: out['typename']=data_obj.get('__typename')
+            # Only retain nested typename, never station/content values.
+            fv=data_obj.get('fastvoltsections')
+            if isinstance(fv,dict) and '__typename' in fv:
+                out['fastvoltsections_typename']=fv.get('__typename')
             if schema:
                 sch=data_obj.get('__schema')
                 qt=sch.get('queryType') if isinstance(sch,dict) else None
@@ -64,17 +70,19 @@ def call(query, label, method='GET', schema=False):
 probes=[
     call(PING_QUERY,'typename_get','GET'),
     call(PING_QUERY,'typename_post','POST'),
-    call(SCHEMA_QUERY,'query_root_fields_get','GET',schema=True)
+    call(SCHEMA_QUERY,'query_root_fields_get','GET',schema=True),
+    call(FASTVOLT_SECTION_QUERY,'public_bundle_newquery_fastvoltsections_typename','GET')
 ]
 report={
-  'schema_version':2,
+  'schema_version':3,
   'generated_at':datetime.now(timezone.utc).isoformat(),
   'endpoint':ENDPOINT,
   'source':'public FastVolt web-map JavaScript asset',
-  'policy':{'read_only':True,'no_login':True,'no_credentials':True,'no_mutations':True,'query_only':True,'schema_field_names_only':True,'raw_response_body_persisted':False},
+  'policy':{'read_only':True,'no_login':True,'no_credentials':True,'no_mutations':True,'query_only':True,'schema_field_names_only':True,'bundle_recovered_field_validation_only':True,'raw_response_body_persisted':False,'content_values_persisted':False},
   'probes':probes
 }
 report['validated_public_graphql']=any(p.get('status')==200 and p.get('response',{}).get('typename') for p in probes)
+report['validated_fastvoltsections_root']=any(p.get('response',{}).get('fastvoltsections_typename') for p in probes)
 for p in probes:
     names=p.get('response',{}).get('query_field_names')
     if names is not None:
