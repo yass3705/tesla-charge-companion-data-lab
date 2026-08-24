@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "operator_brand": "FastVolt",
+  "generated_at": "2026-08-24",
+  "sources": [
+    {
+      "type": "official_fastvolt_public_map",
+      "url": "https://www.fastvolt.net/carte",
+      "finding": "FastVolt exposes a public web page titled 'Carte des bornes' for rapid and semi-rapid chargers. The indexed public page contains a large set of marker/image entries, consistent with a national station map."
+    },
+    {
+      "type": "official_fastvolt_faq",
+      "url": "https://www.fastvolt.net/FAQ",
+      "finding": "FastVolt states that stations are available both in the mobile app and on the website charging-station map, and that each charger displays real-time status: available, occupied, or out-of-service."
+    }
+  ],
+  "modeling": {
+    "cpo_operator": "FastVolt / Afrimobility",
+    "site_brand": "station-specific; do not infer from FastVolt branding",
+    "app_source_access_network": "FastVolt public website map and FastVolt app",
+    "tariff_channel": "FastVolt direct",
+    "status_source": "FastVolt native website/app status"
+  },
+  "tcc_relevance": {
+    "meaningful_progress": true,
+    "public_web_map_confirmed": true,
+    "native_real_time_status_capability_confirmed": true,
+    "anonymous_machine_readable_station_endpoint_validated": false,
+    "production_inventory_ready": false,
+    "next_step": "Inspect only the public /carte page and its public client assets for a read-only station-marker data source. Do not authenticate, start sessions, or access account-only APIs."
+  },
+  "guardrails": {
+    "read_only": true,
+    "no_login": true,
+    "no_mutations": true,
+    "no_session_start": true,
+    "no_credentials": true,
+    "no_personal_data": true
+  }
+}
