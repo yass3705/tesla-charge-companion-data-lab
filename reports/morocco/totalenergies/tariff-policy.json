@@ -5,8 +5,8 @@
   "scope": "TotalEnergies Morocco direct tariff channel only",
   "policy": {
     "explicit_tariff_wins": true,
-    "missing_or_null_tariff_means_free": true,
-    "missing_or_null_tariff_price_mad": 0,
+    "missing_or_null_tariff_means_free": false,
+    "missing_or_null_tariff_price_mad": null,
     "do_not_generalize_to_other_operators": true
   },
   "modeling": {
@@ -16,5 +16,5 @@
     "tariff_channel": "TotalEnergies direct",
     "status_source": "independent from tariff policy"
   },
-  "interpretation": "For TCC, when a TotalEnergies Morocco station has no explicit direct tariff or the native tariff field is null, charging is treated as free at 0 MAD. If an explicit TotalEnergies direct tariff is available, that tariff overrides this fallback. This rule does not alter CPO attribution or live status modeling."
+  "interpretation": "For TCC, a missing or null TotalEnergies Morocco direct tariff remains unresolved unless an explicit native/official tariff rule is validated. Do not infer 0 MAD from absence alone. This does not alter CPO attribution or live status modeling."
 }
