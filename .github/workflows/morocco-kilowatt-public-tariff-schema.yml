@@ -17,12 +17,18 @@ jobs:
         run: python3 scripts/morocco/kilowatt_public_tariff_schema_probe.py
       - name: Commit sanitized report
         run: |
-          if git diff --quiet -- reports/morocco/kilowatt/latest-public-tariff-schema.json; then
-            echo 'No report change'
-            exit 0
+          REPORT='reports/morocco/kilowatt/latest-public-tariff-schema.json'
+          if git ls-files --error-unmatch "$REPORT" >/dev/null 2>&1; then
+            if git diff --quiet -- "$REPORT"; then
+              echo 'No report change'
+              exit 0
+            fi
+          elif [ ! -f "$REPORT" ]; then
+            echo 'Report was not generated'
+            exit 1
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add reports/morocco/kilowatt/latest-public-tariff-schema.json
+          git add "$REPORT"
           git commit -m 'data(morocco): update Kilowatt public tariff schema'
           git push
