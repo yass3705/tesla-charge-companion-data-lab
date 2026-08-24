@@ -1,0 +1,53 @@
+name: Morocco FastVolt public map inventory
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/morocco/extract_fastvolt_public_map_chargers.py'
+      - '.github/workflows/morocco-fastvolt-public-map-inventory.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Extract FastVolt public map inventory (GET only)
+        run: |
+          mkdir -p reports/morocco/fastvolt
+          python scripts/morocco/extract_fastvolt_public_map_chargers.py > reports/morocco/fastvolt/latest-public-map-inventory.json
+      - name: Validate sanitized inventory
+        run: |
+          python - <<'PY'
+          import json
+          p='reports/morocco/fastvolt/latest-public-map-inventory.json'
+          d=json.load(open(p))
+          assert d['policy']['read_only'] is True
+          assert d['policy']['get_only'] is True
+          assert d['policy']['raw_response_body_persisted'] is False
+          assert d['policy']['credentials_or_personal_data_persisted'] is False
+          assert d['modeling']['site_brand'] is None
+          assert d['modeling']['status_source'] is None
+          print('charger_count',d['summary']['charger_count'])
+          print('valid_coordinate_count',d['summary']['valid_coordinate_count'])
+          print('production_candidate_count',d['summary']['production_candidate_count'])
+          print('item_schema_keys',d['summary']['item_schema_keys'])
+          PY
+      - name: Commit report if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/morocco/fastvolt/latest-public-map-inventory.json
+          if git diff --cached --quiet; then
+            echo 'No report change'
+          else
+            git commit -m "data(morocco): publish FastVolt public map inventory [run $GITHUB_RUN_ID]"
+            git push
+          fi
