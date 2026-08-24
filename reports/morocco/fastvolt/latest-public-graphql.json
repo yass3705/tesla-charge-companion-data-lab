@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-08-24T05:33:55.069443+00:00",
+  "schema_version": 2,
+  "generated_at": "2026-08-24T05:34:41.816710+00:00",
   "endpoint": "https://sg2i.com/akwadigi/fastvolt/graphql",
   "source": "public FastVolt web-map JavaScript asset",
   "policy": {
@@ -9,10 +9,12 @@
     "no_credentials": true,
     "no_mutations": true,
     "query_only": true,
+    "schema_field_names_only": true,
     "raw_response_body_persisted": false
   },
   "probes": [
     {
+      "label": "typename_get",
       "method": "GET",
       "status": 200,
       "content_type": "application/json; charset=UTF-8",
@@ -30,6 +32,7 @@
       }
     },
     {
+      "label": "typename_post",
       "method": "POST",
       "status": 200,
       "content_type": "application/json; charset=UTF-8",
@@ -44,6 +47,24 @@
           "__typename"
         ],
         "typename": "RootQuery"
+      }
+    },
+    {
+      "label": "query_root_fields_get",
+      "method": "GET",
+      "status": 200,
+      "content_type": "application/json; charset=UTF-8",
+      "response": {
+        "json": true,
+        "top_level_keys": [
+          "errors",
+          "extensions"
+        ],
+        "response_type": "dict",
+        "error_count": 1,
+        "error_messages": [
+          "GraphQL introspection is not allowed, but the query contained __schema or __type"
+        ]
       }
     }
   ],
