@@ -31,6 +31,29 @@ def uniq(xs,limit=80):
         if len(out)>=limit: break
     return out
 
+def producer_clues(text):
+    # Keep only structural clues, never raw code windows or data values.
+    clues=[]
+    for m in re.finditer(r'chargerMap',text,re.I):
+        w=text[max(0,m.start()-1200):min(len(text),m.end()+1200)]
+        prop_vars=uniq(re.findall(r'chargers\s*:\s*([A-Za-z_$][A-Za-z0-9_$]{0,40})',w),20)
+        destructured=bool(re.search(r'\{\s*chargers\s*:',w)) or bool(re.search(r'\{\s*chargers\s*[,}]',w))
+        fn_calls=uniq(re.findall(r'([A-Za-z_$][A-Za-z0-9_$.]{0,80})\s*\(',w),30)
+        keys=uniq(re.findall(r'([A-Za-z_$][A-Za-z0-9_$]{1,50})\s*:',w),40)
+        clues.append({'prop_value_identifiers':prop_vars,'destructured_chargers_seen':destructured,'nearby_call_identifiers':fn_calls,'nearby_object_keys':keys})
+    return clues[:12]
+
+def page_signals(text):
+    low=text.lower()
+    terms=['chargermap','chargers','geo_coordinates','connector','evse','station','borne','power','status']
+    return {
+      'term_counts':{t:low.count(t.lower()) for t in terms},
+      'coordinate_pair_like_count':len(re.findall(r'(?<!\d)-?\d{1,2}\.\d{4,}\s*[,}]\s*-?\d{1,3}\.\d{4,}',text)),
+      'next_flight_markers':low.count('self.__next_f.push'),
+      'next_data_marker_seen':'__next_data__' in low,
+      'possible_station_schema_keys':uniq([k for k in re.findall(r'["\']([A-Za-z_][A-Za-z0-9_]{2,50})["\']\s*:',text) if any(x in k.lower() for x in ('charger','station','geo','coord','power','status','connector','address','city'))],60),
+    }
+
 def analyze(text):
     # Persist only operation names, URL/path literals, and call-shape metadata; never raw source context or response bodies.
     graphql_ops=[]
@@ -61,9 +84,10 @@ def analyze(text):
       'endpoint_literals':uniq([x.rstrip("'),;]}") for x in endpoint_literals]),
       'semantic_literals':uniq(semantic_literals,120),
       'coordinate_pair_like_count':coord_like,
+      'charger_map_producer_clues':producer_clues(text),
     }
 
-report={'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),'policy':{'read_only':True,'get_only':True,'no_login':True,'no_mutations':True,'no_session_start':True,'same_origin_assets_only':True,'raw_bodies_persisted':False,'raw_source_context_persisted':False,'literal_and_operation_names_only':True},'page_url':BASE,'assets':[],'errors':[]}
+report={'schema_version':2,'generated_at':datetime.now(timezone.utc).isoformat(),'policy':{'read_only':True,'get_only':True,'no_login':True,'no_mutations':True,'no_session_start':True,'same_origin_assets_only':True,'raw_bodies_persisted':False,'raw_source_context_persisted':False,'literal_and_operation_names_only':True,'page_data_values_persisted':False},'page_url':BASE,'assets':[],'errors':[]}
 try:
     page=fetch(BASE,'text/html,*/*;q=0.1'); p=P(); p.feed(page['text'])
     urls=[]
@@ -71,6 +95,7 @@ try:
         u=urljoin(BASE,src)
         if same_origin(u) and u not in urls: urls.append(u)
     report['page']={k:v for k,v in page.items() if k!='text'}
+    report['page_signals']=page_signals(page['text'])
     report['script_asset_count']=len(urls)
     for u in urls[:MAX_ASSETS]:
         rec={'url':u}
