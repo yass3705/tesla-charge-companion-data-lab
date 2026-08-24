@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "network": "Kilowatt",
+  "generated_date": "2026-08-24",
+  "policy": {
+    "public_sources_only": true,
+    "read_only": true,
+    "no_login": true,
+    "no_mutations": true,
+    "do_not_infer_cpo_from_tariff_source": true,
+    "do_not_generalize_free_tariff_from_null": true
+  },
+  "modeling": {
+    "cpo_operator": "Kilowatt where independently established by the native Kilowatt public station API",
+    "site_brand": "station-specific",
+    "app_source_access_network": "Kilowatt when native API/app is the source",
+    "tariff_channel": "station/source-specific; public third-party evidence may corroborate free access but does not replace an explicit native tariff",
+    "status_source": "independent from tariff evidence"
+  },
+  "evidence": [
+    {
+      "source": "https://evplug.ma/le-top-5-des-idees-recues-sur-la-recharge-des-voitures-electriques-au-maroc/",
+      "source_type": "public industry article",
+      "finding": "EVPlug states that many Kilowatt chargers are free and summarizes Kilowatt as free except Casablanca and Taza.",
+      "confidence": "medium; broad network claim, not station-native tariff data"
+    },
+    {
+      "source": "https://atlasrecharge.com/bornes/gratuites",
+      "source_type": "public charging directory",
+      "finding": "Atlas Recharge currently lists multiple Kilowatt sites as free, including Almaz Mall Casablanca and Agora Park Taza, which conflicts with the broad EVPlug geographic exception.",
+      "confidence": "medium; station-specific public directory evidence, not Kilowatt-native tariff payload"
+    },
+    {
+      "source": "https://apps.apple.com/fr/app/kilowatt-maroc/id6747360355",
+      "source_type": "official app-store listing with public user review",
+      "finding": "A 2026 public review explicitly refers to 'la plupart des bornes gratuites' in the Rabat region being offline, independently corroborating that free Kilowatt charging is common on part of the network.",
+      "confidence": "anecdotal; user review, useful corroboration only"
+    }
+  ],
+  "decision": {
+    "network_wide_free_default": false,
+    "geographic_rule_free_except_casablanca_taza": false,
+    "reason": "Current public station-specific evidence contradicts the broad Casablanca/Taza exception: at least Almaz Mall Casablanca and Agora Park Taza are presently listed as free by a current directory.",
+    "production_rule": "Use 0 MAD only when a station-specific or native/direct tariff source supports free charging. Keep tariff null/unresolved otherwise until Kilowatt exposes tariff data or a stronger station-specific source is validated."
+  }
+}
