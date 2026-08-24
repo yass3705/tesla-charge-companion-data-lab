@@ -1,13 +1,18 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "country": "MA",
   "network": "TotalEnergies",
   "scope": "TotalEnergies Morocco direct tariff channel only",
   "policy": {
     "explicit_tariff_wins": true,
-    "missing_or_null_tariff_means_free": false,
-    "missing_or_null_tariff_price_mad": null,
+    "missing_or_null_tariff_means_free": true,
+    "missing_or_null_tariff_price_mad": 0,
     "do_not_generalize_to_other_operators": true
+  },
+  "evidence": {
+    "source_type": "user-reported public Facebook group testimony",
+    "confidence": "anecdotal_not_official",
+    "note": "The free-tariff assumption is based on testimony reported by the user from a public Facebook group, not on an official TotalEnergies tariff publication or validated Numocity payload."
   },
   "modeling": {
     "site_brand": "TotalEnergies",
@@ -16,5 +21,5 @@
     "tariff_channel": "TotalEnergies direct",
     "status_source": "independent from tariff policy"
   },
-  "interpretation": "For TCC, a missing or null TotalEnergies Morocco direct tariff remains unresolved unless an explicit native/official tariff rule is validated. Do not infer 0 MAD from absence alone. This does not alter CPO attribution or live status modeling."
+  "interpretation": "For TCC, apply the user-approved business rule that a missing or null TotalEnergies Morocco direct tariff is treated as free (0 MAD), while preserving provenance as anecdotal rather than official. Any explicit native/official tariff overrides this fallback. This does not alter CPO attribution or live status modeling."
 }
