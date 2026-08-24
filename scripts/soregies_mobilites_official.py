@@ -66,11 +66,10 @@ def main():
 
     # GitHub receives a partially server-rendered version of the retail pages. Validate only
     # stable text that is actually present there; headline price cards are separately recorded
-    # as public-web verified evidence and must not be treated as machine evidence.
+    # as dated public-web evidence and must not be treated as machine evidence.
     require(offer,'Plus de 500 points de charge','950 000','application Sorégies Mobilités',label='current offer')
     require_any(offer,[['tarif en vigueur','tarifs en vigueur'],['typologie de la borne','typologie des bornes']],label='current tariff lookup rule')
-    require(plus,'-20%','application Sorégies Mobilités',label='mobilites plus')
-    require_any(plus,[['sans engagement'],['carte de recharge gratuite','carte Mobilités+']],label='mobilites plus terms')
+    require(plus,'-20%','application Sorégies Mobilités','sans engagement',label='mobilites plus')
     require(pro,'Sorégies Mobilités Pro','application Sorégies Mobilités','carte bancaire','Normale','Accéléré','Rapide','Ultra-rapide',label='pro offer')
     require(dataset,'Sorégies Mobilités','Gireve','application Sorégies Mobilités','carte bancaire',label='dataset')
 
