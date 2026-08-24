@@ -1,0 +1,34 @@
+name: Morocco Kilowatt public station route probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/morocco/kilowatt_public_station_route_probe.py'
+      - '.github/workflows/morocco-kilowatt-public-station-route-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate public Kilowatt station/count routes safely
+        run: python scripts/morocco/kilowatt_public_station_route_probe.py
+      - name: Commit sanitized report if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/morocco/kilowatt/latest-public-station-route-probe.json
+          if git diff --cached --quiet; then
+            echo 'No report change.'
+          else
+            git commit -m 'data(morocco): update Kilowatt public station route probe [run ${{ github.run_id }}]'
+            git push
+          fi
