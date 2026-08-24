@@ -8,5 +8,5 @@
 - Long connection: **10 EUR/hour after 14 h connected**.
 - Reservation (15 min): **0.17 / 0.37 / 2.00 / 5.70 EUR** for Moto/Flex/Boost/Boost+; resident night reservation free.
 - Belib outbound roaming: **1.49 EUR/session + third-party CPO price**.
-- Official static/live point counts observed: **1907/1967**.
-- Fingerprint: `f2446a2f747d0199e790811c3aa72a3e8b46e0a5e53d56fe46bfb947985c0e4a`
+- Official static/live point counts observed: **1908/1967**.
+- Fingerprint: `942dd028d9c22f5e1377eca780ac14b970734db4ecca28904b8493ef1a9b3d48`
