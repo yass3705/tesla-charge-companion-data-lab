@@ -47,6 +47,46 @@ def literals(text):
             if len(s) <= 300: out.add(s)
     return sorted(out)
 
+def balanced_query_body(text, start):
+    """Return a bounded balanced {...} GraphQL operation body from a public JS asset."""
+    brace=text.find('{', start)
+    if brace < 0: return None
+    depth=0
+    for i in range(brace, min(len(text), brace+12000)):
+        ch=text[i]
+        if ch == '{': depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0: return text[brace:i+1]
+    return None
+
+def operation_field_identifiers(text):
+    """Extract only identifier names already present inside literal GraphQL query documents.
+    Values, raw query text, variables and response bodies are never persisted.
+    """
+    out=[]; seen=set()
+    pat=r'\bquery\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:\([^{}]{0,1000}\))?\s*\{'
+    keywords={'query','mutation','subscription','fragment','on','true','false','null'}
+    for m in re.finditer(pat, text):
+        op=m.group(1)
+        body=balanced_query_body(text, m.end()-1)
+        if not body: continue
+        fields=[]; field_seen=set()
+        # Strip quoted strings so content values never become field-name candidates.
+        safe=re.sub(r'"(?:\\.|[^"\\])*"', ' ', body)
+        # Ignore variable identifiers and GraphQL type names following '$' or ':'.
+        for tm in re.finditer(r'(?<![$A-Za-z0-9_])([A-Za-z_][A-Za-z0-9_]*)', safe):
+            token=tm.group(1)
+            if token in keywords or token == op or token.startswith('__'): continue
+            before=safe[max(0,tm.start()-2):tm.start()]
+            if '$' in before: continue
+            if token not in field_seen:
+                fields.append(token); field_seen.add(token)
+        key=(op,tuple(fields))
+        if key not in seen:
+            out.append({"operation":op,"identifiers":fields[:120]}); seen.add(key)
+    return out
+
 def graphql_static_hints(text):
     """Return only GraphQL-looking identifiers already present in public JS assets.
     No schema guessing, brute force, variables, values or raw source persistence.
@@ -78,9 +118,9 @@ def graphql_static_hints(text):
     return sorted(operation_names), sorted(root_field_hints), sorted(associations,key=lambda x:(x['operation'],x['root_field']))
 
 report={
-  "schema_version":3,
+  "schema_version":4,
   "generated_at":datetime.now(timezone.utc).isoformat(),
-  "policy":{"read_only":True,"no_login":True,"no_mutations":True,"no_session_start":True,"same_origin_assets_only":True,"raw_bodies_persisted":False,"static_graphql_hints_only":True,"no_graphql_requests_from_this_probe":True},
+  "policy":{"read_only":True,"no_login":True,"no_mutations":True,"no_session_start":True,"same_origin_assets_only":True,"raw_bodies_persisted":False,"static_graphql_hints_only":True,"no_graphql_requests_from_this_probe":True,"operation_identifier_names_only":True,"content_values_persisted":False},
   "page_url":BASE,
   "page":{},
   "same_origin_script_assets":[],
@@ -88,6 +128,7 @@ report={
   "graphql_operation_names":[],
   "graphql_root_field_hints":[],
   "graphql_operation_root_associations":[],
+  "graphql_operation_identifiers":[],
   "errors":[]
 }
 
@@ -100,10 +141,11 @@ try:
         u=urljoin(BASE,src)
         if same_origin(u) and u not in scripts: scripts.append(u)
     candidates=set(literals(page["text"]))
-    op_names=set(); field_hints=set(); assoc_map=set()
+    op_names=set(); field_hints=set(); assoc_map=set(); op_identifier_map={}
     p_ops,p_fields,p_assoc=graphql_static_hints(page["text"])
     op_names.update(p_ops); field_hints.update(p_fields)
     for a in p_assoc: assoc_map.add((a['operation'],a['root_field']))
+    for x in operation_field_identifiers(page["text"]): op_identifier_map.setdefault(x['operation'],[]).append(x['identifiers'])
     for u in scripts[:MAX_ASSETS]:
         rec={"url":u}
         try:
@@ -113,13 +155,16 @@ try:
             rec["candidate_literal_count"]=len(lits)
             candidates.update(lits)
             ops,fields,assocs=graphql_static_hints(a["text"])
+            opids=operation_field_identifiers(a["text"])
             rec["graphql_operation_name_count"]=len(ops)
             rec["graphql_root_field_hint_count"]=len(fields)
             if ops: rec["graphql_operation_names"]=ops[:50]
             if fields: rec["graphql_root_field_hints"]=fields[:100]
             if assocs: rec["graphql_operation_root_associations"]=assocs[:50]
+            if opids: rec["graphql_operation_identifiers"]=opids[:20]
             op_names.update(ops); field_hints.update(fields)
             for x in assocs: assoc_map.add((x['operation'],x['root_field']))
+            for x in opids: op_identifier_map.setdefault(x['operation'],[]).append(x['identifiers'])
         except Exception as e:
             rec["error"]=type(e).__name__+": "+str(e)[:200]
         report["same_origin_script_assets"].append(rec)
@@ -127,6 +172,14 @@ try:
     report["graphql_operation_names"]=sorted(op_names)
     report["graphql_root_field_hints"]=sorted(field_hints)
     report["graphql_operation_root_associations"]=[{"operation":o,"root_field":r} for o,r in sorted(assoc_map)]
+    merged=[]
+    for op in sorted(op_identifier_map):
+        names=[]; seen_names=set()
+        for seq in op_identifier_map[op]:
+            for name in seq:
+                if name not in seen_names: names.append(name); seen_names.add(name)
+        merged.append({"operation":op,"identifiers":names[:160]})
+    report["graphql_operation_identifiers"]=merged
 except Exception as e:
     report["errors"].append(type(e).__name__+": "+str(e)[:300])
 
