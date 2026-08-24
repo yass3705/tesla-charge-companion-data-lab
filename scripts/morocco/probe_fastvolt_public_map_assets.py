@@ -47,14 +47,44 @@ def literals(text):
             if len(s) <= 300: out.add(s)
     return sorted(out)
 
+def graphql_static_hints(text):
+    """Return only short GraphQL-looking identifiers already present in public JS assets.
+    No schema guessing, brute force or raw source persistence.
+    """
+    operation_names=set()
+    root_field_hints=set()
+    # Survives common minification when gql/document strings are embedded literally.
+    for m in re.finditer(r'\b(query|subscription)\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:\([^{}]{0,500}\))?\s*\{', text):
+        operation_names.add(m.group(2))
+        tail=text[m.end():m.end()+800]
+        fm=re.search(r'\b([A-Za-z_][A-Za-z0-9_]*)\s*(?:\([^{}]{0,500}\))?\s*\{', tail)
+        if fm and not fm.group(1).startswith('__'):
+            root_field_hints.add(fm.group(1))
+    # Anonymous query documents can still expose the first root field literally.
+    for m in re.finditer(r'\bquery\s*(?:\([^{}]{0,500}\))?\s*\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?:\([^{}]{0,500}\))?\s*\{', text):
+        if not m.group(1).startswith('__'):
+            root_field_hints.add(m.group(1))
+    # Restrict generic nearby identifiers to charging/map vocabulary to avoid noisy JS symbols.
+    vocab=re.compile(r'(station|borne|charger|charging|location|map|point|connector|evse)', re.I)
+    for m in re.finditer(r'\b([A-Za-z_][A-Za-z0-9_]{2,80})\b', text):
+        token=m.group(1)
+        if vocab.search(token):
+            start=max(0,m.start()-180); end=min(len(text),m.end()+180)
+            ctx=text[start:end].lower()
+            if 'graphql' in ctx or 'gql' in ctx or 'query' in ctx or 'usequery' in ctx:
+                root_field_hints.add(token)
+    return sorted(operation_names), sorted(root_field_hints)
+
 report={
-  "schema_version":1,
+  "schema_version":2,
   "generated_at":datetime.now(timezone.utc).isoformat(),
-  "policy":{"read_only":True,"no_login":True,"no_mutations":True,"no_session_start":True,"same_origin_assets_only":True,"raw_bodies_persisted":False},
+  "policy":{"read_only":True,"no_login":True,"no_mutations":True,"no_session_start":True,"same_origin_assets_only":True,"raw_bodies_persisted":False,"static_graphql_hints_only":True},
   "page_url":BASE,
   "page":{},
   "same_origin_script_assets":[],
   "candidate_public_literals":[],
+  "graphql_operation_names":[],
+  "graphql_root_field_hints":[],
   "errors":[]
 }
 
@@ -67,6 +97,8 @@ try:
         u=urljoin(BASE,src)
         if same_origin(u) and u not in scripts: scripts.append(u)
     candidates=set(literals(page["text"]))
+    op_names=set(); field_hints=set()
+    p_ops,p_fields=graphql_static_hints(page["text"]); op_names.update(p_ops); field_hints.update(p_fields)
     for u in scripts[:MAX_ASSETS]:
         rec={"url":u}
         try:
@@ -75,10 +107,18 @@ try:
             lits=literals(a["text"])
             rec["candidate_literal_count"]=len(lits)
             candidates.update(lits)
+            ops,fields=graphql_static_hints(a["text"])
+            rec["graphql_operation_name_count"]=len(ops)
+            rec["graphql_root_field_hint_count"]=len(fields)
+            if ops: rec["graphql_operation_names"]=ops[:50]
+            if fields: rec["graphql_root_field_hints"]=fields[:100]
+            op_names.update(ops); field_hints.update(fields)
         except Exception as e:
             rec["error"]=type(e).__name__+": "+str(e)[:200]
         report["same_origin_script_assets"].append(rec)
     report["candidate_public_literals"]=sorted(candidates)
+    report["graphql_operation_names"]=sorted(op_names)
+    report["graphql_root_field_hints"]=sorted(field_hints)
 except Exception as e:
     report["errors"].append(type(e).__name__+": "+str(e)[:300])
 
