@@ -31,8 +31,23 @@ def uniq(xs,limit=80):
         if len(out)>=limit: break
     return out
 
+def nearest_module_id(text,pos):
+    # Next/Webpack chunks usually encode modules as <numeric id>:(...)=>{...}.
+    # Persist only the numeric module id, never source windows.
+    start=max(0,pos-30000)
+    left=text[start:pos]
+    matches=list(re.finditer(r'(?:^|[,\{])\s*(\d{1,8})\s*:\s*(?:function\s*\([^)]*\)|\([^)]*\)\s*=>)',left))
+    return matches[-1].group(1) if matches else None
+
+def module_export_clues(text,pos):
+    start=max(0,pos-12000); end=min(len(text),pos+12000); w=text[start:end]
+    # n.d(exports,{Name:()=>local,...})-style metadata only.
+    export_names=[]
+    for m in re.finditer(r'\.d\([^,]{1,60},\s*\{([^}]{1,1200})\}\)',w):
+        export_names += re.findall(r'([A-Za-z_$][A-Za-z0-9_$]{0,50})\s*:',m.group(1))
+    return uniq(export_names,40)
+
 def producer_clues(text):
-    # Keep only structural clues, never raw code windows or data values.
     clues=[]
     for m in re.finditer(r'chargerMap',text,re.I):
         w=text[max(0,m.start()-1200):min(len(text),m.end()+1200)]
@@ -40,7 +55,14 @@ def producer_clues(text):
         destructured=bool(re.search(r'\{\s*chargers\s*:',w)) or bool(re.search(r'\{\s*chargers\s*[,}]',w))
         fn_calls=uniq(re.findall(r'([A-Za-z_$][A-Za-z0-9_$.]{0,80})\s*\(',w),30)
         keys=uniq(re.findall(r'([A-Za-z_$][A-Za-z0-9_$]{1,50})\s*:',w),40)
-        clues.append({'prop_value_identifiers':prop_vars,'destructured_chargers_seen':destructured,'nearby_call_identifiers':fn_calls,'nearby_object_keys':keys})
+        clues.append({
+          'prop_value_identifiers':prop_vars,
+          'destructured_chargers_seen':destructured,
+          'nearby_call_identifiers':fn_calls,
+          'nearby_object_keys':keys,
+          'webpack_module_id':nearest_module_id(text,m.start()),
+          'module_export_names':module_export_clues(text,m.start()),
+        })
     return clues[:12]
 
 def page_signals(text):
@@ -55,7 +77,6 @@ def page_signals(text):
     }
 
 def analyze(text):
-    # Persist only operation names, URL/path literals, and call-shape metadata; never raw source context or response bodies.
     graphql_ops=[]
     for kind,name in re.findall(r'(?i)\b(query|mutation|subscription)\s+([A-Za-z_][A-Za-z0-9_]*)',text):
         graphql_ops.append({'kind':kind.lower(),'name':name})
@@ -87,7 +108,33 @@ def analyze(text):
       'charger_map_producer_clues':producer_clues(text),
     }
 
-report={'schema_version':2,'generated_at':datetime.now(timezone.utc).isoformat(),'policy':{'read_only':True,'get_only':True,'no_login':True,'no_mutations':True,'no_session_start':True,'same_origin_assets_only':True,'raw_bodies_persisted':False,'raw_source_context_persisted':False,'literal_and_operation_names_only':True,'page_data_values_persisted':False},'page_url':BASE,'assets':[],'errors':[]}
+def caller_clues(asset_texts,module_ids):
+    out=[]
+    for url,text in asset_texts:
+        for mid in sorted(module_ids):
+            # Only recognize literal webpack module imports such as n(1234).
+            for m in re.finditer(r'([A-Za-z_$][A-Za-z0-9_$]{0,20})\(\s*'+re.escape(mid)+r'\s*\)',text):
+                w=text[max(0,m.start()-1800):min(len(text),m.end()+2200)]
+                if 'charger' not in w.lower() and 'map' not in w.lower():
+                    continue
+                keys=uniq(re.findall(r'([A-Za-z_$][A-Za-z0-9_$]{1,50})\s*:',w),50)
+                charger_vars=uniq(re.findall(r'chargers\s*:\s*([A-Za-z_$][A-Za-z0-9_$]{0,40})',w),20)
+                calls=uniq(re.findall(r'([A-Za-z_$][A-Za-z0-9_$.]{0,80})\s*\(',w),30)
+                schema_terms=uniq([s.lower() for s in re.findall(r'["\']([^"\'\n\r]{2,80})["\']',w) if any(t in s.lower() for t in ('charger','station','geo_coordinates','location','connector','power','status'))],40)
+                out.append({
+                  'asset_url':url,
+                  'imported_module_id':mid,
+                  'import_identifier':m.group(1),
+                  'chargers_prop_value_identifiers':charger_vars,
+                  'nearby_object_keys':keys,
+                  'nearby_call_identifiers':calls,
+                  'nearby_semantic_literals':schema_terms,
+                })
+                if len(out)>=30: return out
+    return out
+
+report={'schema_version':3,'generated_at':datetime.now(timezone.utc).isoformat(),'policy':{'read_only':True,'get_only':True,'no_login':True,'no_mutations':True,'no_session_start':True,'same_origin_assets_only':True,'raw_bodies_persisted':False,'raw_source_context_persisted':False,'literal_and_operation_names_only':True,'page_data_values_persisted':False,'webpack_structure_only':True},'page_url':BASE,'assets':[],'errors':[]}
+asset_texts=[]
 try:
     page=fetch(BASE,'text/html,*/*;q=0.1'); p=P(); p.feed(page['text'])
     urls=[]
@@ -97,15 +144,21 @@ try:
     report['page']={k:v for k,v in page.items() if k!='text'}
     report['page_signals']=page_signals(page['text'])
     report['script_asset_count']=len(urls)
+    module_ids=set()
     for u in urls[:MAX_ASSETS]:
         rec={'url':u}
         try:
             a=fetch(u,'application/javascript,text/javascript,*/*;q=0.1')
+            asset_texts.append((u,a['text']))
             rec.update({k:v for k,v in a.items() if k!='text'})
             rec.update(analyze(a['text']))
+            for c in rec.get('charger_map_producer_clues',[]):
+                if c.get('webpack_module_id'): module_ids.add(c['webpack_module_id'])
         except Exception as e:
             rec['error']=type(e).__name__+': '+str(e)[:180]
         report['assets'].append(rec)
+    report['charger_map_module_ids']=sorted(module_ids)
+    report['charger_map_caller_clues']=caller_clues(asset_texts,module_ids)
 except Exception as e:
     report['errors'].append(type(e).__name__+': '+str(e)[:240])
 json.dump(report,__import__('sys').stdout,ensure_ascii=False,indent=2); print()
