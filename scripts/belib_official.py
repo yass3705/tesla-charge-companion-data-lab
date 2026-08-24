@@ -129,13 +129,13 @@ def main() -> None:
             raise RuntimeError(f"Belib booking PDF value {value} missing")
     require(booking_pdf_text, ("2 juin 2025", "june 2, 2025"), "Belib booking tariff effective date")
 
-    # FAQ evidence: visitor access, roaming and parking semantics.
+    # FAQ evidence: visitor access and roaming semantics. Parking is outside the
+    # TCC Belib pricing scope by explicit project decision.
     require(faq, ("carte bancaire directement sur le totem",), "Belib visitor bank-card access")
     require(faq, ("qr code disponible sur la borne",), "Belib visitor QR access")
     require(faq, ("1.49 €", "1,49 €"), "Belib outbound roaming fee")
     require(faq, ("pre-autorisation", "pré-autorisation"), "Belib 1 EUR subscription preauthorization")
     require(faq, ("14 heures",), "Belib long connection semantics") if "14 heures" in norm(faq) else None
-    require(faq, ("frais de stationnement correspondant a la duree de votre charge",), "Belib Boost+ parking credit")
     require(home, ("temps branche = temps facture", "temps branché = temps facturé"), "Belib connected-time billing")
 
     static_count = int(static_data.get("total_count") or 0)
@@ -239,11 +239,6 @@ def main() -> None:
                 "basis": "connection_time",
                 "scope": "published Belib tariff sheet; not further narrowed on sheet",
             },
-            "boostPlusPrivateParking": {
-                "parkingPaidAtExit": True,
-                "parkingCostForActualEnergyDeliveryTimeDeductedFromRechargeBill": True,
-                "parkingStillSiteSpecific": True,
-            },
         },
         "roaming": {
             "incomingThirdPartyBadge": {
@@ -299,7 +294,7 @@ def main() -> None:
             "Belib is a Paris local public charging concession and must not be replaced by a generic TotalEnergies national tariff.",
             "Moto/Flex daytime prices combine energy and connected-time components; billing continues until unplugging.",
             "Resident night energy-only rates apply to Moto/Flex; Boost and Boost+ retain their time tariffs.",
-            "Boost+ private-parking economics require separate parking handling because parking is paid at exit and a charge-time parking amount is credited against the recharge bill.",
+            "Parking prices and parking credits are intentionally outside the TCC Belib pricing scope.",
             "Official Paris Open Data provides both static IRVE data and live EVSE availability; volatile live counts are excluded from the tariff fingerprint.",
         ],
     }

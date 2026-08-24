@@ -1,0 +1,147 @@
+name: Build Belib operated station base
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 8 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/belib_station_base.py"
+      - "tests/test_belib_station_base.py"
+      - "data/operator_direct/belib_official_paris.json"
+      - ".github/workflows/belib-station-base.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: belib-station-base
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Public-safety scan
+        run: python scripts/public_safety_check.py .
+
+      - name: Compile and test strict Belib builder
+        run: |
+          python -m py_compile scripts/belib_station_base.py tests/test_belib_station_base.py
+          PYTHONPATH=scripts python -m unittest tests/test_belib_station_base.py -v
+
+      - name: Build official Belib-operated station base
+        run: |
+          mkdir -p out/belib-stations
+          python scripts/belib_station_base.py \
+            --tariffs data/operator_direct/belib_official_paris.json \
+            --out out/belib-stations/belib_stations_paris.json \
+            --report out/belib-stations/station_base_summary.md
+          cat out/belib-stations/station_base_summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate scope, Tesla compatibility and no-parking policy
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          payload=json.loads(Path('out/belib-stations/belib_stations_paris.json').read_text())
+          assert payload['dataset']=='belib-operated-stations-paris'
+          scope=payload['scope']
+          assert scope['strictOperatorField']=='nom_operateur'
+          assert scope['strictOperatorValue']=='TOTALENERGIES'
+          assert scope['strictBrandField']=='nom_enseigne'
+          assert scope['strictBrandValue']=="Belib'"
+          assert scope['thirdPartyRoamingStationsExcluded'] is True
+          assert scope['motorcycleOnlyPointsExcluded'] is True
+          assert scope['teslaCompatibleConnectorsOnly'] is True
+          assert scope['parkingFeesIncluded'] is False
+          assert scope['dynamicStatusIncluded'] is False
+          assert 'opendata.paris.fr' in scope['liveStatusRuntimeSource']
+
+          stats=payload['stats']
+          assert stats['stationCount'] >= 350
+          assert stats['chargePointCount'] >= 1600
+          assert stats['excludedMissingIdentifierRows'] >= 1
+          assert stats['tariffProfileCount'] == 9
+          assert len(payload['stations']) == stats['stationCount']
+          assert len(payload['directTariffProfiles']) == 9
+
+          station_ids=set();evse_ids=set()
+          for station in payload['stations']:
+              assert station['stationId'] and station['stationId'] not in station_ids
+              station_ids.add(station['stationId'])
+              assert station['operatorSourceValue']=='TOTALENERGIES'
+              assert station['brandSourceValue']=="Belib'"
+              assert station['configurations']
+              for config in station['configurations']:
+                  assert config['kind'] in {'AC','DC'}
+                  assert config['serviceClass'] in {'flex','boost','boostPlus'}
+                  assert config['connectorTypes']
+                  for evse in config['evseIds']:
+                      assert evse.startswith('FR*V75*')
+                      evse_ids.add(evse)
+          assert len(evse_ids)==stats['chargePointCount']
+
+          def walk(value):
+              if isinstance(value,dict):
+                  for key,item in value.items():
+                      if 'parking' in key.lower():
+                          assert key=='parkingFeesIncluded' and item is False
+                      walk(item)
+              elif isinstance(value,list):
+                  for item in value: walk(item)
+          walk(payload)
+          print(f"Validated {len(station_ids)} Belib stations and {len(evse_ids)} Tesla-compatible EVSEs; parking excluded")
+          PY
+          python scripts/public_safety_check.py .
+
+      - name: Publish only when station or tariff semantics change
+        id: publish
+        run: |
+          python - <<'PY'
+          import json,shutil
+          from pathlib import Path
+
+          src=Path('out/belib-stations/belib_stations_paris.json')
+          dst=Path('data/national/belib_stations_paris.json')
+          report=Path('reports/belib/station_base_summary.md')
+          new=json.loads(src.read_text())
+          def semantic(payload):
+              return {
+                  'scope':payload.get('scope'),
+                  'stats':payload.get('stats'),
+                  'profiles':payload.get('directTariffProfiles'),
+                  'stations':payload.get('stations'),
+              }
+          changed=not dst.exists() or semantic(json.loads(dst.read_text())) != semantic(new)
+          Path('changed.flag').write_text('1' if changed else '0')
+          if changed:
+              dst.parent.mkdir(parents=True,exist_ok=True)
+              report.parent.mkdir(parents=True,exist_ok=True)
+              shutil.copy2(src,dst)
+              shutil.copy2('out/belib-stations/station_base_summary.md',report)
+          PY
+          echo "changed=$(cat changed.flag)" >> "$GITHUB_OUTPUT"
+
+      - name: Commit validated Belib station base
+        if: steps.publish.outputs.changed == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/belib_stations_paris.json reports/belib/station_base_summary.md
+          git commit -m "data(belib): publish operated Paris station base [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1

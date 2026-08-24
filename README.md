@@ -41,6 +41,14 @@ The generated file `data/national/electric55_stations_france.json` preserves sta
 
 Dynamic availability is intentionally excluded and must be joined in TCC from Electroverse or Electra. The daily workflow checks one representative of each globally scoped tariff profile plus every new charge point; Sundays and explicit full-refresh runs recheck every mapped E55C charge point.
 
+## France scope: Belib'
+
+The Paris Belib' base is built only from the official Paris Open Data static IRVE export. Both `nom_operateur=TOTALENERGIES` and `nom_enseigne=Belib'` must match; stations merely accessible through roaming are excluded. Rows without station/EVSE identifiers, motorcycle-only points, and points without a Tesla-compatible Type 2 or CCS connector are also excluded.
+
+The generated file `data/national/belib_stations_paris.json` contains the strict physical inventory and the three official direct customer profiles: visitor, non-resident subscriber and Paris-resident subscriber. Reservation charges are not automatically added to a normal session. Per the TCC project decision, no parking price, parking credit or site-specific parking rule is included.
+
+Live EVSE availability is joined by TCC at runtime from the official Paris Open Data dynamic export, using the static `id_pdc_local` as the exact key.
+
 ## Repository layout
 
 - `data/seed/` — sanitized public extraction seeds and manually verified observations
