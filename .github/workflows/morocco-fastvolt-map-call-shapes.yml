@@ -1,0 +1,57 @@
+name: Morocco FastVolt map call shapes
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/morocco/probe_fastvolt_map_call_shapes.py'
+      - '.github/workflows/morocco-fastvolt-map-call-shapes.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe public FastVolt map call shapes (GET only)
+        run: |
+          mkdir -p reports/morocco/fastvolt
+          python scripts/morocco/probe_fastvolt_map_call_shapes.py > reports/morocco/fastvolt/latest-map-call-shapes.json
+      - name: Validate and summarize sanitized report
+        run: |
+          python - <<'PY'
+          import json
+          p='reports/morocco/fastvolt/latest-map-call-shapes.json'
+          d=json.load(open(p))
+          assert d['policy']['read_only'] is True
+          assert d['policy']['get_only'] is True
+          assert d['policy']['raw_bodies_persisted'] is False
+          assert d['policy']['raw_source_context_persisted'] is False
+          print('assets', len(d.get('assets',[])))
+          for a in d.get('assets',[]):
+              interesting=bool(a.get('graphql_operations') or a.get('call_targets') or a.get('endpoint_literals') or a.get('coordinate_pair_like_count'))
+              if interesting:
+                  print(a['url'])
+                  print(' graphql',a.get('graphql_operations',[]))
+                  print(' calls',a.get('call_targets',[]))
+                  print(' endpoints',a.get('endpoint_literals',[]))
+                  print(' coord_like',a.get('coordinate_pair_like_count',0))
+          if d.get('errors'): print('errors',d['errors'])
+          PY
+      - name: Commit report if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/morocco/fastvolt/latest-map-call-shapes.json
+          if git diff --cached --quiet; then
+            echo 'No report change'
+          else
+            git commit -m "data(morocco): update FastVolt map call shapes [run $GITHUB_RUN_ID]"
+            git push
+          fi
