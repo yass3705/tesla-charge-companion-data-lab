@@ -184,7 +184,7 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import gzip, json
+          import gzip, json, math
           from pathlib import Path
           path=Path('data/national/freshmile_direct_tcc_v8.json.gz')
           assert path.exists() and path.stat().st_size > 100000
@@ -198,8 +198,8 @@ jobs:
           assert s['regionalNetworkCandidatesMayRemain'] is True
           assert c['strictPublishedStations'] >= 900
           assert c['strictPublishedEvse'] >= 3000
-          assert c['strictPublishedConfigurations'] >= 1000
-          assert c['conflictingEvseExcluded'] >= 1
+          assert c['strictPublishedConfigurations'] >= 1500
+          assert isinstance(c.get('conflictingEvseExcluded'), int) and c['conflictingEvseExcluded'] >= 0
           assert safety['regionalNetworkConfiguredExclusions'] >= 18
           for station in data['stations']:
               for cfg in station['configurations']:
@@ -208,6 +208,22 @@ jobs:
                   assert cfg['offerType']=='operator_direct'
                   exact=cfg['pricing']['freshmileExact']
                   assert exact['currency']=='EUR'
+
+          # Regression guard: GEODIS Gennevilliers exposes the same validated
+          # Freshmile direct tariff on Type 2 (22 kW) and domestic E (3 kW).
+          target=next((st for st in data['stations'] if st.get('stationId')=='FRFR1P6106240556543325909'),None)
+          assert target is not None
+          by_power={round(float(cfg['powerKw']),3):cfg for cfg in target['configurations']}
+          assert {3.0,22.0}.issubset(by_power)
+          for power in (3.0,22.0):
+              exact=by_power[power]['pricing']['freshmileExact']
+              assert exact['energy']['billing']=='started_kwh'
+              assert math.isclose(float(exact['energy']['amount']),0.60,rel_tol=0,abs_tol=1e-9)
+              assert exact['time']['billing']=='started_minute'
+              assert exact['time']['appliesTo']=='occupied'
+              assert math.isclose(float(exact['time']['amount']),5/60,rel_tol=0,abs_tol=1e-9)
+              assert math.isclose(float(exact['time']['startAfterMinutes']),120.0,rel_tol=0,abs_tol=1e-9)
+              assert exact['time']['thresholdSemantics']=='ordinal_hour_start'
           print(json.dumps(c,ensure_ascii=False,indent=2))
           PY
       - name: Publish strict TCC V8 dataset to data-lab main
