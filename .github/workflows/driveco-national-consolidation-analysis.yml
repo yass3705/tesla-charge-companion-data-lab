@@ -1,0 +1,88 @@
+name: DRIVECO latest national IRVE tariff analysis
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/driveco-national-consolidation-analysis.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Analyze latest consolidated IRVE DRIVECO rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/driveco
+          python - <<'PY'
+          import csv,io,json,re,urllib.request
+          from collections import Counter,defaultdict
+          from datetime import datetime,timezone
+
+          URL='https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435'
+          req=urllib.request.Request(URL,headers={'User-Agent':'Mozilla/5.0','Accept':'text/csv,*/*;q=0.8'})
+          with urllib.request.urlopen(req,timeout=120) as r: raw=r.read()
+          text=raw.decode('utf-8-sig',errors='replace')
+          try: dialect=csv.Sniffer().sniff(text[:30000],delimiters=',;\t'); reader=csv.DictReader(io.StringIO(text),dialect=dialect)
+          except csv.Error: reader=csv.DictReader(io.StringIO(text),delimiter=';')
+          headers=reader.fieldnames or []
+          def v(row,*names):
+              d={str(k).strip().lower():(x or '').strip() for k,x in row.items() if k is not None}
+              for n in names:
+                  if d.get(n.lower()): return d[n.lower()]
+              return ''
+          rows=[]
+          for row in reader:
+              op=v(row,'nom_operateur','operateur','operator')
+              name=v(row,'nom_station','n_station','station_name')
+              am=v(row,'nom_amenageur','amenageur')
+              if 'driveco' in (op+' '+name+' '+am).lower(): rows.append(row)
+          def cls(row):
+              h=(v(row,'nom_operateur','operateur','operator')+' '+v(row,'nom_station','n_station','station_name')).lower()
+              return 'partner_network' if ('partner network' in h or 'powered by driveco' in h) else 'driveco_network'
+          def ep(raw):
+              if not raw:return None
+              s=raw.strip().strip('"').replace('""','"')
+              try:
+                  o=json.loads(s)
+                  if isinstance(o,str):o=json.loads(o)
+                  if isinstance(o,dict) and isinstance(o.get('energyPrice'),(int,float)):return float(o['energyPrice'])
+              except: pass
+              m=re.search(r'energyPrice[^0-9-]*(-?\d+(?:[.,]\d+)?)',raw)
+              return float(m.group(1).replace(',','.')) if m else None
+          classes=Counter();prices=Counter();with_tariff=0;ids=set();dupes=0;samples=defaultdict(list)
+          for row in rows:
+              c=cls(row);classes[c]+=1
+              evid=v(row,'id_pdc_itinerance','id_pdc_local','id_pdc')
+              if evid:
+                  if evid in ids:dupes+=1
+                  ids.add(evid)
+              t=v(row,'tarification','tarif','pricing','price');p=ep(t)
+              if p is not None:
+                  with_tariff+=1;prices[(c,p)]+=1
+                  if len(samples[(c,p)])<3:samples[(c,p)].append({'evseId':evid or None,'stationName':v(row,'nom_station','n_station') or None,'power':v(row,'puissance_nominale','puissance_nominale_kw') or None,'tarification':t})
+          payload={'schemaVersion':'1.0.0','dataset':'driveco-national-consolidation-20260825-analysis','generatedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),'source':URL,'headers':headers,'matchedRows':len(rows),'uniqueEvseIds':len(ids),'duplicateEvseRows':dupes,'networkClassRows':dict(classes),'rowsWithEnergyPrice':with_tariff,'coverageRatio':round(with_tariff/len(rows),6) if rows else 0,'prices':[{'networkClass':c,'energyPriceEurPerKwh':p,'rows':n,'samples':samples[(c,p)]} for (c,p),n in sorted(prices.items())]}
+          open('reports/driveco/national_consolidation_latest.json','w').write(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({k:payload[k] for k in ('matchedRows','uniqueEvseIds','duplicateEvseRows','networkClassRows','rowsWithEnergyPrice','coverageRatio')},indent=2))
+          for x in payload['prices']:print(x['networkClass'],x['energyPriceEurPerKwh'],x['rows'])
+          PY
+      - name: Commit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/driveco/national_consolidation_latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(driveco): publish latest national consolidation analysis [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
