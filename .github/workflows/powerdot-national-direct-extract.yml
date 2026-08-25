@@ -1,0 +1,286 @@
+name: Powerdot national direct extract
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/powerdot-national-direct-extract.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: powerdot-national-direct-extract
+  cancel-in-progress: true
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download national IRVE
+        run: |
+          mkdir -p tmp reports data/national
+          curl -fL --retry 3 --retry-delay 2 \
+            'https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435' \
+            -o tmp/irve.csv
+      - name: Extract direct Powerdot tariffs
+        run: |
+          python - <<'PY'
+          import csv, gzip, json, re, struct, time, urllib.request, urllib.error
+          from collections import Counter, defaultdict
+          from concurrent.futures import ThreadPoolExecutor, as_completed
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          SRC=Path('tmp/irve.csv')
+          OUT=Path('data/national/powerdot_direct_france.json.gz')
+          REPORT=Path('reports/powerdot_direct_france.md')
+          ENDPOINT='https://api.pwrdt.com/powerdot.adhoc.v1.AdhocAPI/GetChargerInfo'
+          DIM={0:'UNSPECIFIED',1:'ENERGY',2:'FLAT',3:'PARKING_TIME',4:'TIME'}
+
+          def varint(data,pos):
+              value=0; shift=0
+              while True:
+                  if pos>=len(data): raise ValueError('truncated varint')
+                  b=data[pos]; pos+=1; value|=(b&0x7f)<<shift
+                  if not b&0x80:return value,pos
+                  shift+=7
+          def fields(data):
+              out=[]; pos=0
+              while pos<len(data):
+                  key,pos=varint(data,pos); no=key>>3; wt=key&7
+                  if wt==0: val,pos=varint(data,pos)
+                  elif wt==1: val=data[pos:pos+8]; pos+=8
+                  elif wt==2:
+                      n,pos=varint(data,pos); val=data[pos:pos+n]; pos+=n
+                  elif wt==5: val=data[pos:pos+4]; pos+=4
+                  else: raise ValueError(f'unsupported wire {wt}')
+                  out.append((no,wt,val))
+              return out
+          def one(data,no):
+              for f,w,v in fields(data):
+                  if f==no:return v
+              return None
+          def ws(data):
+              if data is None:return None
+              v=one(data,1); return v.decode('utf-8','replace') if isinstance(v,(bytes,bytearray)) else None
+          def wd(data):
+              if data is None:return None
+              for f,w,v in fields(data):
+                  if f==1:
+                      if w==1:return struct.unpack('<d',v)[0]
+                      if w==5:return float(struct.unpack('<f',v)[0])
+                      if w==0:return float(v)
+              return None
+          def wi(data):
+              if data is None:return None
+              v=one(data,1); return int(v) if isinstance(v,int) else None
+          def wb(data):
+              v=wi(data); return bool(v) if v is not None else None
+          def dur(data):
+              if data is None:return None
+              sec=nanos=0
+              for f,w,v in fields(data):
+                  if f==1 and w==0:sec=v
+                  elif f==2 and w==0:nanos=v
+              return sec+nanos/1e9
+          def restrictions(data):
+              if not data:return None
+              out={}
+              for no,name in {1:'minKwh',2:'maxKwh',3:'minPowerKw',4:'maxPowerKw'}.items():
+                  v=one(data,no)
+                  if v is not None:out[name]=wd(v)
+              v=one(data,5)
+              if v is not None:out['minDurationSec']=dur(v)
+              v=one(data,6)
+              if v is not None:out['maxDurationSec']=dur(v)
+              return out or None
+          def component(data):
+              typ=None; price=None
+              for f,w,v in fields(data):
+                  if f==1 and w==0:typ=v
+                  elif f==2 and w==2:price=wd(v)
+              return {'type':DIM.get(typ,str(typ)),'typeCode':typ,'pricePerUnit':price}
+          def element(data):
+              comps=[]; rest=None
+              for f,w,v in fields(data):
+                  if f==1 and w==2:comps.append(component(v))
+                  elif f==2 and w==2:rest=restrictions(v)
+              return {'priceComponents':comps,'restrictions':rest}
+          def tariff(data):
+              if not data:return None
+              out={'id':None,'currencyCode':None,'currencySymbol':None,'elements':[],'isVatIncluded':None,'subscriptionActive':None}
+              for f,w,v in fields(data):
+                  if f==1 and w==2:out['id']=ws(v)
+                  elif f==2 and w==2:out['currencyCode']=ws(v)
+                  elif f==3 and w==2:out['currencySymbol']=ws(v)
+                  elif f==4 and w==2:out['elements'].append(element(v))
+                  elif f==5 and w==2:out['isVatIncluded']=wb(v)
+                  elif f==6 and w==2:out['subscriptionActive']=wb(v)
+              return out
+          def connector(data):
+              out={'connectorNumber':None,'physicalReference':None,'status':None,'format':None,'type':None,'voltage':None,'amperage':None,'maxPowerKw':None,'evseNumber':None,'tariff':None,'orderNumber':None}
+              for f,w,v in fields(data):
+                  if f==1 and w==2:out['connectorNumber']=wi(v)
+                  elif f==2 and w==2:out['physicalReference']=ws(v)
+                  elif f==3 and w==0:out['status']=v
+                  elif f==5 and w==0:out['format']=v
+                  elif f==6 and w==0:out['type']=v
+                  elif f==7 and w==2:out['voltage']=wd(v)
+                  elif f==8 and w==2:out['amperage']=wd(v)
+                  elif f==9 and w==2:out['maxPowerKw']=wd(v)
+                  elif f==10 and w==2:out['evseNumber']=wi(v)
+                  elif f==11 and w==2:out['tariff']=tariff(v)
+                  elif f==12 and w==2:out['orderNumber']=wi(v)
+              return out
+          def charger(data):
+              out={'chargerName':None,'qrCode':None,'brand':None,'model':None,'connectors':[],'chargerPowerType':None}
+              for f,w,v in fields(data):
+                  if f==1 and w==2:out['chargerName']=ws(v)
+                  elif f==2 and w==2:out['qrCode']=ws(v)
+                  elif f==3 and w==2:out['brand']=ws(v)
+                  elif f==4 and w==2:out['model']=ws(v)
+                  elif f==5 and w==2:out['connectors'].append(connector(v))
+                  elif f==8 and w==0:out['chargerPowerType']=v
+              return out
+          def location(data):
+              if not data:return None
+              out={}; names={1:'name',2:'address',3:'zipcode',4:'city',5:'countryCode',6:'uid',8:'id'}
+              for f,w,v in fields(data):
+                  if f in names and w==2:out[names[f]]=ws(v)
+                  elif f==7 and w==2:out['chargerCount']=wi(v)
+                  elif f==9 and w==2:out['latitude']=wd(v)
+                  elif f==10 and w==2:out['longitude']=wd(v)
+              return out
+          def grpc(charger_name):
+              name=charger_name.encode('utf-8')
+              if len(name)>=128:raise ValueError('unexpected charger name length')
+              msg=b'\x0a'+bytes([len(name)])+name
+              frame=b'\x00'+struct.pack('>I',len(msg))+msg
+              headers={'User-Agent':'Mozilla/5.0 TCC-Powerdot-national-direct-extractor','Content-Type':'application/grpc-web+proto','Accept':'application/grpc-web+proto','X-Grpc-Web':'1','Origin':'https://adhoc.pwrdt.com','Referer':'https://adhoc.pwrdt.com/'}
+              req=urllib.request.Request(ENDPOINT,data=frame,headers=headers,method='POST')
+              last=None
+              for attempt in range(3):
+                  try:
+                      with urllib.request.urlopen(req,timeout=15) as r:raw=r.read(3000000); status=r.status
+                      pos=0; messages=[]; trailer=''
+                      while pos+5<=len(raw):
+                          flag=raw[pos]; n=struct.unpack('>I',raw[pos+1:pos+5])[0]; pos+=5
+                          body=raw[pos:pos+n]; pos+=n
+                          if flag&0x80:trailer+=body.decode('utf-8','replace')
+                          else:messages.append(body)
+                      if not messages:return {'ok':False,'chargerName':charger_name,'status':status,'error':'no_message','trailer':trailer}
+                      payload=messages[0]; cm=lm=None; country=vat=None
+                      for f,w,v in fields(payload):
+                          if f==1 and w==2:cm=charger(v)
+                          elif f==2 and w==2:lm=location(v)
+                          elif f==3 and w==2:country=ws(v)
+                          elif f==4 and w==2:vat=wd(v)
+                      return {'ok':True,'chargerName':charger_name,'status':status,'charger':cm,'location':lm,'networkCountryCode':country,'vatPercentage':vat,'trailer':trailer}
+                  except urllib.error.HTTPError as e:
+                      raw=e.read(5000).decode('utf-8','replace'); last=f'HTTP {e.code}: {raw[:500]}'
+                      if e.code in (404,400):break
+                  except Exception as e:last=repr(e)
+                  time.sleep(0.5*(attempt+1))
+              return {'ok':False,'chargerName':charger_name,'status':None,'error':last}
+
+          def get(row,*keys):
+              for k in keys:
+                  v=row.get(k)
+                  if v not in (None,''):return str(v).strip()
+              return ''
+          with SRC.open('r',encoding='utf-8-sig',newline='') as fh:
+              sample=fh.read(65536); fh.seek(0)
+              try:dialect=csv.Sniffer().sniff(sample,delimiters=',;\t')
+              except Exception:dialect=csv.excel
+              reader=csv.DictReader(fh,dialect=dialect)
+              rows=[]
+              for row in reader:
+                  op=' '.join([get(row,'nom_operateur','n_operateur'),get(row,'nom_amenageur','n_amenageur'),get(row,'nom_enseigne','n_enseigne')]).lower().replace(' ','')
+                  if 'powerdot' in op:rows.append(row)
+
+          pdc={} ; station_ids=set(); unmapped=[]
+          for row in rows:
+              pid=get(row,'id_pdc_itinerance','id_pdc_local')
+              if pid:pdc.setdefault(pid,row)
+              sid=get(row,'id_station_itinerance','id_station_local')
+              if sid:station_ids.add(sid)
+          def derive(pid):
+              compact=re.sub(r'[^A-Za-z0-9]','',pid)
+              m=re.match(r'^FRPD1E(.+)$',compact,re.I)
+              if not m:return None
+              body=m.group(1)
+              if len(body)<9 or not body[-1].isdigit():return None
+              core=body[:-1]
+              site=core[:6]; hardware=core[6:]
+              if len(site)<6 or not hardware:return None
+              return site[:3]+'_'+site[3:6]+'_'+hardware
+          charger_to_pdc=defaultdict(list)
+          for pid,row in pdc.items():
+              name=derive(pid)
+              if name:charger_to_pdc[name].append(pid)
+              else:unmapped.append(pid)
+          charger_names=sorted(charger_to_pdc)
+          print('Powerdot rows',len(rows),'unique PDC',len(pdc),'station IDs',len(station_ids),'derived chargers',len(charger_names),'unmapped',len(unmapped))
+
+          results=[]
+          # Four modest workers: public ad-hoc endpoint, no authentication and no session/payment calls.
+          with ThreadPoolExecutor(max_workers=4) as ex:
+              futures={ex.submit(grpc,name):name for name in charger_names}
+              done=0
+              for fut in as_completed(futures):
+                  res=fut.result(); res['irvePdcIds']=charger_to_pdc[res['chargerName']]
+                  results.append(res); done+=1
+                  if done%250==0:print('completed',done,'/',len(charger_names))
+                  time.sleep(0.01)
+
+          results.sort(key=lambda x:x['chargerName'])
+          success=[x for x in results if x['ok']]
+          failures=[x for x in results if not x['ok']]
+          locations={}
+          component_counts=Counter(); energy_rates=Counter(); tariff_ids=Counter(); with_non_energy=0; connectors=0; priced_connectors=0
+          covered_station_ids=set(); covered_pdc=set()
+          for x in success:
+              loc=x.get('location') or {}; locid=loc.get('id') or loc.get('uid') or (loc.get('name','')+'|'+loc.get('address',''))
+              if locid:locations[locid]=loc
+              for pid in x.get('irvePdcIds',[]):covered_pdc.add(pid)
+              ch=x.get('charger') or {}
+              for c in ch.get('connectors',[]):
+                  connectors+=1; t=c.get('tariff')
+                  if t and t.get('elements'):
+                      priced_connectors+=1
+                      if t.get('id'):tariff_ids[t['id']]+=1
+                      has_non=False
+                      for el in t['elements']:
+                          for pc in el.get('priceComponents',[]):
+                              component_counts[pc['type']]+=1
+                              if pc['type']=='ENERGY':energy_rates[round(pc['pricePerUnit'],6)]+=1
+                              else:has_non=True
+                      if has_non:with_non_energy+=1
+          for pid in covered_pdc:
+              row=pdc.get(pid) or {}; sid=get(row,'id_station_itinerance','id_station_local')
+              if sid:covered_station_ids.add(sid)
+
+          payload={'generatedAt':datetime.now(timezone.utc).isoformat(),'source':{'operator':'Power Dot France','endpoint':ENDPOINT,'sourceType':'direct_cpo_public_adhoc_api','roaming':False,'emspCode':''},'irveSource':'data.gouv national IRVE resource eb76d20a-8501-400e-b336-d85724de5435 (2026-08-25)','counts':{'irveRows':len(rows),'uniqueIrvePdc':len(pdc),'uniqueIrveStations':len(station_ids),'derivedChargerNames':len(charger_names),'unmappedPdc':len(unmapped),'apiSuccessChargers':len(success),'apiFailedChargers':len(failures),'coveredIrvePdc':len(covered_pdc),'coveredIrveStations':len(covered_station_ids),'decodedConnectors':connectors,'pricedConnectors':priced_connectors,'locations':len(locations),'connectorsWithNonEnergyComponent':with_non_energy},'componentCounts':dict(component_counts),'energyRateDistribution':{str(k):v for k,v in sorted(energy_rates.items())},'tariffIdCounts':dict(tariff_ids),'unmappedPdcSample':unmapped[:100],'failureSample':failures[:100],'chargers':success}
+          with gzip.open(OUT,'wt',encoding='utf-8') as fh:json.dump(payload,fh,ensure_ascii=False,separators=(',',':'))
+
+          lines=['# Powerdot France — direct CPO national extraction','',f"Generated: {payload['generatedAt']}",'','## Coverage']
+          for k,v in payload['counts'].items():lines.append(f'- {k}: **{v}**')
+          lines += ['','## Tariff components']+[f'- {k}: {v}' for k,v in sorted(component_counts.items())]+['','## Energy prices observed']+[f'- {k} €/kWh: {v} connectors' for k,v in sorted(energy_rates.items())]+['','## Method','- Source: Powerdot public ad-hoc gRPC-Web API (`api.pwrdt.com`).','- `emspCode` is empty: direct CPO price, no roaming/eMSP discount.','- Charger names are derived from Powerdot IRVE EVSE identifiers and deduplicated before querying.','- No payment/session is created; only charger information is read.','', '## Failed charger-name sample']
+          for x in failures[:50]:lines.append(f"- `{x['chargerName']}` — {x.get('error')}")
+          REPORT.write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print(json.dumps(payload['counts'],indent=2)); print('components',dict(component_counts)); print('energy rates',dict(sorted(energy_rates.items())))
+          PY
+      - name: Publish national Powerdot dataset
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/powerdot_direct_france.md data/national/powerdot_direct_france.json.gz
+          git commit -m "data(powerdot): publish national direct CPO tariffs [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
