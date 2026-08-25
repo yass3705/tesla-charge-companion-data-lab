@@ -1,0 +1,94 @@
+name: Morocco TotalEnergies Numocity full-path probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/morocco-totalenergies-numocity-fullpath-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe reconstructed GET-only station-state route
+        shell: python
+        run: |
+          import json
+          import urllib.error
+          import urllib.request
+
+          hosts = [
+              "https://csmstotalenergiesma.numocity.com",
+              "https://csmstotalenergies.numocity.com",
+          ]
+          paths = [
+              "/cpo/app/v1/chargestation/getstationstate",
+              "/cpo/app/v1/chargestation/getstationstate?stationId=00000000-0000-0000-0000-000000000000",
+          ]
+
+          results = []
+          for host in hosts:
+              for path in paths:
+                  url = host + path
+                  req = urllib.request.Request(
+                      url,
+                      method="GET",
+                      headers={
+                          "Accept": "application/json",
+                          "User-Agent": "tcc-public-readonly-diagnostic/1.0",
+                      },
+                  )
+                  try:
+                      with urllib.request.urlopen(req, timeout=15) as resp:
+                          body = resp.read(512).decode("utf-8", "replace")
+                          status = resp.status
+                          content_type = resp.headers.get("Content-Type")
+                  except urllib.error.HTTPError as exc:
+                      status = exc.code
+                      content_type = exc.headers.get("Content-Type") if exc.headers else None
+                      body = exc.read(512).decode("utf-8", "replace")
+                  except Exception as exc:
+                      status = None
+                      content_type = None
+                      body = f"transport_error:{type(exc).__name__}"
+
+                  # Sanitized classification only: no headers/tokens/cookies are sent or persisted.
+                  lower = body.lower()
+                  if status == 404 or "uri not mached" in lower or "not found" in lower:
+                      classification = "route_not_matched"
+                  elif status in (401, 403) or "unauthorized" in lower or "token" in lower:
+                      classification = "route_exists_auth_required"
+                  elif status in (400, 422) or "station" in lower or "parameter" in lower:
+                      classification = "route_exists_input_validation"
+                  elif status is not None:
+                      classification = "route_responded_other"
+                  else:
+                      classification = "transport_error"
+
+                  results.append({
+                      "host": host,
+                      "path_shape": path.split("?")[0],
+                      "station_id_supplied": "?" in path,
+                      "http_status": status,
+                      "content_type": content_type,
+                      "classification": classification,
+                  })
+
+          print(json.dumps({
+              "policy": {
+                  "read_only": True,
+                  "get_only": True,
+                  "anonymous": True,
+                  "no_login": True,
+                  "no_mutations": True,
+                  "no_session_start": True,
+                  "no_credentials": True,
+                  "response_body_persisted": False,
+              },
+              "request_shape": "GET <host>/cpo/app/v1/chargestation/getstationstate?stationId=<placeholder>",
+              "results": results,
+          }, indent=2))
