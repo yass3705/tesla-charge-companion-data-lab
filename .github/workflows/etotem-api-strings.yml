@@ -1,0 +1,33 @@
+name: e-Totem API string extraction
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/etotem_api_strings.py"
+      - ".github/workflows/etotem-api-strings.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract public Flutter API strings
+        run: python scripts/etotem_api_strings.py
+      - name: Publish extraction
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/etotem_api_strings.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(etotem): publish public API string extraction [run ${GITHUB_RUN_ID}]"
+          git pull --rebase origin main
+          git push origin HEAD:main
