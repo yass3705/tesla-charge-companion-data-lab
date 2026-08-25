@@ -1,0 +1,49 @@
+name: Powerdot import graph probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/powerdot-import-graph-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Trace imports
+        run: |
+          mkdir -p reports
+          python - <<'PY'
+          import re,urllib.request
+          from pathlib import Path
+          base='https://adhoc.pwrdt.com/assets/'
+          names=['connector-selection-CuEhC9yd.js','location-D6ivoFSD.js','PricingInfoBottomSheet-Di9ACFNL.js','_terminal-CwgZ5tJ7.js']
+          lines=['# Powerdot import graph','']
+          for name in names:
+            req=urllib.request.Request(base+name,headers={'User-Agent':'Mozilla/5.0 TCC-Powerdot-import-probe'})
+            with urllib.request.urlopen(req,timeout=10) as r: js=r.read(3000000).decode('utf-8','replace')
+            imports=re.findall(r'''import\s*(.*?)\s*from\s*["']([^"']+)["'];?|import["']([^"']+)["'];?''',js)
+            lines += [f'## {name}',f'Length: {len(js)}','### Imports']
+            for groups in imports:
+              clause,path,side=groups
+              target=path or side
+              lines.append('- '+(clause.strip()+' FROM ' if clause.strip() else '')+target)
+            lines += ['### Prefix',js[:5000],'']
+          Path('reports/powerdot_import_graph.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/powerdot_import_graph.md
+          git commit -m "data(powerdot): publish frontend import graph [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
