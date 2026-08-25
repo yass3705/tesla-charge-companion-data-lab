@@ -1,0 +1,103 @@
+name: Freshmile direct tariffs full scan
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: freshmile-direct-tariffs-full
+  cancel-in-progress: false
+
+jobs:
+  full-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Syntax check
+        run: python -m py_compile scripts/freshmile_direct_inventory.py scripts/freshmile_prune_regional_networks.py scripts/freshmile_direct_tariffs.py scripts/freshmile_direct_tariffs_v2.py
+
+      - name: Build current national Freshmile inventory
+        run: python scripts/freshmile_direct_inventory.py
+
+      - name: Remove separately modeled regional networks
+        run: python scripts/freshmile_prune_regional_networks.py
+
+      - name: Fetch complete Freshmile direct tariff layer
+        run: >-
+          python scripts/freshmile_direct_tariffs_v2.py
+          --all
+          --sleep-ms 250
+          --output data/national/freshmile_direct_tariffs_france.json.gz
+
+      - name: Validate full tariff layer
+        shell: bash
+        run: |
+          python - <<'PY'
+          import gzip
+          import json
+          from collections import Counter
+          from pathlib import Path
+
+          path = Path('data/national/freshmile_direct_tariffs_france.json.gz')
+          assert path.exists() and path.stat().st_size > 0
+          with gzip.open(path, 'rt', encoding='utf-8') as handle:
+              data = json.load(handle)
+
+          stats = data['stats']
+          tariffs = [
+              tariff
+              for station in data['stations']
+              for point in station['chargePoints']
+              for tariff in point['tariffs']
+          ]
+          matched_points = sum(
+              bool(point.get('matched'))
+              for station in data['stations']
+              for point in station['chargePoints']
+          )
+          source_validated = sum(bool(t.get('sourceValidated')) for t in tariffs)
+          rankable = sum(bool(t.get('tccRankable')) for t in tariffs)
+          currencies = Counter(str(t.get('currency') or 'NONE') for t in tariffs)
+          complex_tiers = sum(
+              (t.get('components') or {}).get('status') == 'parsed_complex_tiers'
+              for t in tariffs
+          )
+
+          assert data['completeNationalScan'] is True
+          assert data['policy']['publishToTccStableAllowed'] is False
+          assert data['coverage']['stationCoveragePct'] > 99
+          assert data['coverage']['chargePointCoveragePct'] > 99
+          assert stats['stationsSelected'] == stats['stationsInInventory']
+          assert stats['requests'] >= 2500
+          assert stats['http200'] / max(1, stats['requests']) >= 0.98
+          assert stats['locationMatched'] / max(1, stats['requests']) >= 0.98
+          assert matched_points > 0
+          assert source_validated > 0
+          assert rankable <= source_validated
+
+          print(json.dumps({
+              'coverage': data['coverage'],
+              'stats': stats,
+              'matchedChargePoints': matched_points,
+              'tariffSemantics': {
+                  'sourceValidated': source_validated,
+                  'tccRankableNow': rankable,
+                  'complexTiered': complex_tiers,
+                  'currencies': dict(currencies),
+              },
+          }, ensure_ascii=False, indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freshmile-direct-tariffs-full
+          path: data/national/freshmile_direct_tariffs_france.json.gz
+          retention-days: 7
