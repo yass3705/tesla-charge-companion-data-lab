@@ -1,0 +1,71 @@
+name: Bump France direct station tariffs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 5 * * 2"
+  push:
+    paths:
+      - "scripts/bump_direct_station_tariffs.py"
+      - ".github/workflows/bump-direct-station-tariffs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bump-france-direct-station-tariffs
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build Bump France direct station dataset
+        run: python scripts/bump_direct_station_tariffs.py
+
+      - name: Validate output
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          data = json.loads(gzip.decompress(Path('data/national/bump_direct_stations_france.json.gz').read_bytes()))
+          report = json.loads(Path('data/reports/bump_direct_tariffs_report.json').read_text())
+          assert data['operator'] == 'Bump'
+          assert data['country'] == 'FR'
+          assert data['scope']['operatorDirectOnly'] is True
+          assert data['scope']['roamingIncluded'] is False
+          assert data['counts']['franceStationCount'] > 0
+          assert data['counts']['franceEvseCount'] >= data['counts']['franceStationCount']
+          assert report['counts'] == data['counts']
+          print(json.dumps(report, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Upload audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bump-france-direct-station-tariffs
+          path: |
+            data/national/bump_direct_stations_france.json.gz
+            data/reports/bump_direct_tariffs_report.json
+          retention-days: 14
+
+      - name: Commit refreshed Bump dataset
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/bump_direct_stations_france.json.gz data/reports/bump_direct_tariffs_report.json
+          if git diff --cached --quiet; then
+            echo "No Bump station dataset changes"
+            exit 0
+          fi
+          git commit -m "Refresh Bump France direct station dataset"
+          git push
