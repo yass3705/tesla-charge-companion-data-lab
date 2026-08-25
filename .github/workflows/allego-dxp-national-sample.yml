@@ -1,0 +1,146 @@
+name: Allego DXP national sample
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/allego-dxp-national-sample.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Validate national EVSE to chargepoint mapping and tariff coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          python -m pip install --disable-pip-version-check -q selenium
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          import csv, io, json, re, time, urllib.request, urllib.error, hashlib, random
+          from pathlib import Path
+
+          SPA='https://app.allego.eu/price/FRALLEGO8001301'
+          API='https://p-dxp-api-acg8edbwd7g2eheg.a01.azurefd.net/api/dxp/poi/chargepoints/'
+          DATA='https://www.data.gouv.fr/fr/datasets/r/6523db3c-05f2-4c61-9308-e53a92deab37'
+
+          # Capture the public-client APIM key in memory only.
+          opt=Options(); opt.add_argument('--headless=new'); opt.add_argument('--no-sandbox'); opt.add_argument('--disable-dev-shm-usage')
+          opt.set_capability('goog:loggingPrefs', {'performance':'ALL'})
+          d=webdriver.Chrome(options=opt)
+          key=None
+          try:
+              d.get(SPA); time.sleep(7)
+              for item in d.get_log('performance'):
+                  try: msg=json.loads(item['message'])['message']
+                  except Exception: continue
+                  if msg.get('method')!='Network.requestWillBeSent': continue
+                  req=msg['params']['request']
+                  if 'p-dxp-api-' not in req.get('url',''): continue
+                  for hn,hv in (req.get('headers') or {}).items():
+                      if hn.lower()=='ocp-apim-subscription-key': key=str(hv)
+          finally:
+              d.quit()
+          if not key: raise SystemExit('public client key not observed')
+          print('APIM config captured safely: len=',len(key),'sha256=',hashlib.sha256(key.encode()).hexdigest())
+
+          # Read Allego's official French IRVE publication and collect roaming EVSE ids.
+          req=urllib.request.Request(DATA,headers={'User-Agent':'Mozilla/5.0'})
+          raw=urllib.request.urlopen(req,timeout=45).read().decode('utf-8-sig','replace')
+          dialect=csv.Sniffer().sniff(raw[:10000],delimiters=',;\t')
+          rows=list(csv.DictReader(io.StringIO(raw),dialect=dialect))
+          evse=[]
+          for row in rows:
+              for field in ('id_pdc_itinerance','id_pdc_local','id_pdc'):
+                  v=str(row.get(field) or '').upper().strip().replace('*','')
+                  m=re.search(r'FRALLEGO[0-9A-Z_-]+',v)
+                  if m: evse.append(m.group(0)); break
+          evse=sorted(set(evse))
+          print('official rows=',len(rows),'unique Allego EVSE ids=',len(evse))
+
+          # Deterministic spread across the whole sorted inventory, max 80 EVSEs.
+          if len(evse)>80:
+              idxs=sorted(set(round(i*(len(evse)-1)/79) for i in range(80)))
+              sample=[evse[i] for i in idxs]
+          else: sample=evse
+
+          def call(cid):
+              req=urllib.request.Request(API+cid,headers={
+                  'User-Agent':'Mozilla/5.0','Accept':'application/json, text/plain, */*',
+                  'Origin':'https://app.allego.eu','Referer':'https://app.allego.eu/',
+                  'Ocp-Apim-Subscription-Key':key,
+              })
+              try:
+                  with urllib.request.urlopen(req,timeout=15) as r:
+                      return r.status,r.read().decode('utf-8','replace')
+              except urllib.error.HTTPError as e:
+                  return e.code,e.read().decode('utf-8','replace')
+              except Exception as e:
+                  return 0,f'{type(e).__name__}: {e}'
+
+          results=[]
+          for n,eid in enumerate(sample,1):
+              # Current Allego convention: final EVSE connector digit is absent in DXP chargePointId.
+              candidates=[]
+              if re.fullmatch(r'FRALLEGO[0-9]+',eid) and len(eid)>9:
+                  candidates.append(eid[:-1])
+              candidates.append(eid)
+              candidates=list(dict.fromkeys(candidates))
+              chosen=None; status=None; body=''
+              for cid in candidates:
+                  status,body=call(cid)
+                  if status==200:
+                      chosen=cid; break
+              obj=None
+              if status==200:
+                  try: obj=json.loads(body)
+                  except Exception: pass
+              info=((obj or {}).get('prices') or {}).get('priceInfoDirectPayment','') if isinstance(obj,dict) else ''
+              rates=[]
+              for val in re.findall(r'(\d+(?:[.,]\d+)?)\s*EUR\s*/?\s*kWh',info,re.I):
+                  rates.append(float(val.replace(',','.')))
+              fees=[]
+              for val,unit in re.findall(r'(\d+(?:[.,]\d+)?)\s*EUR\s*/\s*(minute|min|heure|hour)',info,re.I):
+                  fees.append({'value':float(val.replace(',','.')),'unit':unit.lower()})
+              row={
+                  'evseId':eid,'candidateIds':candidates,'resolvedChargePointId':chosen,'status':status,
+                  'brand':(obj or {}).get('brand') if isinstance(obj,dict) else None,
+                  'isOwnNetwork':(obj or {}).get('isOwnNetwork') if isinstance(obj,dict) else None,
+                  'subscriberDiscountApplicable':(obj or {}).get('subscriberDiscountApplicable') if isinstance(obj,dict) else None,
+                  'maxPowerKw':(obj or {}).get('maxPowerKw') if isinstance(obj,dict) else None,
+                  'city':(((obj or {}).get('address') or {}).get('city')) if isinstance(obj,dict) else None,
+                  'ratesEurPerKwh':sorted(set(rates)),'feeCandidates':fees,
+                  'hasPriceText':bool(info),
+              }
+              results.append(row)
+              print(f"{n:02d}/{len(sample)} {eid} -> {chosen or '-'} status={status} rates={row['ratesEurPerKwh']} city={row['city']}")
+
+          ok=[r for r in results if r['status']==200]
+          with_rate=[r for r in ok if r['ratesEurPerKwh']]
+          direct_first=[r for r in ok if r['resolvedChargePointId']==r['evseId'][:-1] if re.fullmatch(r'FRALLEGO[0-9]+',r['evseId'])]
+          summary={
+              'officialUniqueEvseIds':len(evse),'sampleSize':len(sample),'resolved200':len(ok),
+              'resolvedPct':round(100*len(ok)/len(sample),1) if sample else 0,
+              'withNumericKwhRate':len(with_rate),
+              'withNumericKwhRatePct':round(100*len(with_rate)/len(sample),1) if sample else 0,
+              'resolvedByStripFinalDigit':sum(1 for r in ok if r['resolvedChargePointId']==r['evseId'][:-1]),
+              'ownNetworkTrue':sum(1 for r in ok if r['isOwnNetwork'] is True),
+              'ownNetworkFalse':sum(1 for r in ok if r['isOwnNetwork'] is False),
+              'subscriberDiscountApplicableTrue':sum(1 for r in ok if r['subscriberDiscountApplicable'] is True),
+              'distinctRates':sorted(set(v for r in with_rate for v in r['ratesEurPerKwh'])),
+          }
+          print('\nSUMMARY\n'+json.dumps(summary,ensure_ascii=False,indent=2))
+          Path('probe/national_sample.json').write_text(json.dumps({'summary':summary,'results':results},ensure_ascii=False,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: allego-dxp-national-sample
+          path: probe/national_sample.json
+          retention-days: 3
