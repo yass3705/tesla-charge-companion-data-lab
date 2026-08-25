@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Discover Bump's public GraphQL endpoint and charging/tariff query schema without credentials.
+"""Discover Bump's public GraphQL charging/tariff schema without credentials.
 
 Only harmless read-only GraphQL meta-queries are sent. No mutation, account data, charge action,
 payment action, token, cookie or private identifier is used. Persisted output contains endpoint
@@ -21,6 +21,14 @@ OUT_MD = Path("reports/bump/graphql_public_probe_latest.md")
 UA = "TeslaChargeCompanionDataLab/1.0 (read-only public GraphQL probe)"
 ENDPOINTS = ("/graphql", "/api/graphql", "/v1/graphql", "/")
 TARGET_NAMESPACES = ("chargePoints", "tariffs", "locationPlanning")
+TARGET_EXTRA_TYPES = (
+    "LocationQueryController",
+    "Tariff",
+    "TariffGroupDetail",
+    "TariffGroupDetailInput",
+    "TariffGroupId",
+    "EvseId",
+)
 
 TYPENAME_QUERY = "query TccPublicProbe { __typename }"
 TYPE_SHAPE = "kind name ofType { kind name ofType { kind name ofType { kind name } } }"
@@ -79,7 +87,7 @@ def type_summary(t: Any) -> dict[str, Any]:
     wrappers = []
     cur = t
     named = None
-    for _ in range(6):
+    for _ in range(8):
         if not isinstance(cur, dict):
             break
         kind = cur.get("kind")
@@ -110,6 +118,18 @@ def sanitize_fields(fields: Any) -> list[dict[str, Any]]:
     return sorted(out, key=lambda x: x["name"].casefold())
 
 
+def sanitize_input_fields(fields: Any) -> list[dict[str, Any]]:
+    out = []
+    for field in fields or []:
+        if isinstance(field, dict) and field.get("name"):
+            out.append({"name": str(field["name"]), "type": type_summary(field.get("type"))})
+    return sorted(out, key=lambda x: x["name"].casefold())
+
+
+def sanitize_enum_values(values: Any) -> list[str]:
+    return sorted(str(v.get("name")) for v in values or [] if isinstance(v, dict) and v.get("name"))
+
+
 def sanitize_query_schema(raw: bytes) -> list[dict[str, Any]]:
     obj = json_obj(raw) or {}
     fields = (((obj.get("data") or {}).get("__schema") or {}).get("queryType") or {}).get("fields") or []
@@ -129,17 +149,31 @@ query TccPublicTypeProbe {{
       type {{ {TYPE_SHAPE} }}
       args {{ name type {{ {TYPE_SHAPE} }} }}
     }}
+    inputFields {{ name type {{ {TYPE_SHAPE} }} }}
+    enumValues {{ name }}
   }}
 }}
 """.strip()
 
 
-def parse_type_fields(raw: bytes) -> tuple[str | None, list[dict[str, Any]]]:
+def parse_type(raw: bytes) -> dict[str, Any] | None:
     obj = json_obj(raw) or {}
     t = (obj.get("data") or {}).get("__type")
     if not isinstance(t, dict):
-        return None, []
-    return t.get("name"), sanitize_fields(t.get("fields"))
+        return None
+    return {
+        "name": t.get("name"),
+        "kind": t.get("kind"),
+        "fields": sanitize_fields(t.get("fields")),
+        "inputFields": sanitize_input_fields(t.get("inputFields")),
+        "enumValues": sanitize_enum_values(t.get("enumValues")),
+    }
+
+
+def format_type(t: dict[str, Any]) -> str:
+    name = t.get("namedType") or t.get("kind") or "?"
+    wrappers = t.get("wrappers") or []
+    return "/".join(wrappers + [name]) if wrappers else name
 
 
 def main() -> None:
@@ -164,6 +198,7 @@ def main() -> None:
     introspection = {"attempted": False, "status": None, "fieldCount": 0}
     namespace_types: dict[str, str] = {}
     namespace_details: dict[str, Any] = {}
+    extra_types: dict[str, Any] = {}
     if endpoint:
         status, content_type, raw = post_graphql(endpoint, SCHEMA_QUERY)
         schema_fields = sanitize_query_schema(raw)
@@ -175,6 +210,7 @@ def main() -> None:
             "succeeded": bool(schema_fields),
         }
         by_name = {f["name"]: f for f in schema_fields}
+        discovered_extra = set(TARGET_EXTRA_TYPES)
         for namespace in TARGET_NAMESPACES:
             f = by_name.get(namespace)
             type_name = (f or {}).get("type", {}).get("namedType") if f else None
@@ -182,21 +218,41 @@ def main() -> None:
                 continue
             namespace_types[namespace] = type_name
             t_status, t_content, t_raw = post_graphql(endpoint, type_introspection_query(type_name))
-            resolved_name, fields = parse_type_fields(t_raw)
+            parsed = parse_type(t_raw)
             namespace_details[namespace] = {
                 "typeName": type_name,
-                "resolvedTypeName": resolved_name,
                 "status": t_status,
                 "contentType": t_content,
-                "fieldCount": len(fields),
-                "fields": fields,
+                "type": parsed,
             }
+            if parsed:
+                for fld in parsed["fields"]:
+                    named = fld["type"].get("namedType")
+                    if named:
+                        discovered_extra.add(named)
+                    for arg in fld["args"]:
+                        anamed = arg["type"].get("namedType")
+                        if anamed:
+                            discovered_extra.add(anamed)
+
+        # Read metadata only for charging/tariff/location-specific return/input types.
+        for type_name in sorted(discovered_extra):
+            low = type_name.casefold()
+            if type_name in TARGET_EXTRA_TYPES or any(k in low for k in ("tariff", "locationquery", "evse")):
+                t_status, t_content, t_raw = post_graphql(endpoint, type_introspection_query(type_name))
+                parsed = parse_type(t_raw)
+                if parsed:
+                    extra_types[type_name] = {
+                        "status": t_status,
+                        "contentType": t_content,
+                        "type": parsed,
+                    }
 
     interesting_names = {"tariffs", "chargepoints", "locations", "search", "viewbyqrurl", "viewevsebyidentifier", "chargelocationbyid", "viewlocationbyidentifier"}
     interesting = [f for f in schema_fields if f["name"].casefold() in interesting_names or any(k in f["name"].casefold() for k in ("tariff", "charge", "location", "evse"))]
 
     payload = {
-        "schemaVersion": "1.1.0",
+        "schemaVersion": "1.2.0",
         "dataset": "bump-public-graphql-probe",
         "generatedAt": now_iso(),
         "base": BASE,
@@ -215,6 +271,7 @@ def main() -> None:
         "interestingQueryFields": interesting,
         "namespaceTypes": namespace_types,
         "namespaceDetails": namespace_details,
+        "extraTypes": extra_types,
     }
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -241,17 +298,21 @@ def main() -> None:
             args = ", ".join(a["name"] for a in f["args"]) or "no args"
             lines.append(f"- `{f['name']}` → `{f['type'].get('namedType')}` — args: `{args}`")
         for namespace, detail in namespace_details.items():
+            parsed = detail.get("type") or {}
             lines += ["", f"## Namespace `{namespace}` → `{detail['typeName']}`", ""]
-            for f in detail["fields"]:
-                arg_bits = []
-                for arg in f["args"]:
-                    typ = arg["type"].get("namedType") or arg["type"].get("kind") or "?"
-                    wrappers = arg["type"].get("wrappers") or []
-                    if wrappers:
-                        typ = "/".join(wrappers + [typ])
-                    arg_bits.append(f"{arg['name']}:{typ}")
-                args = ", ".join(arg_bits) or "no args"
-                lines.append(f"- `{f['name']}` → `{f['type'].get('namedType')}` — `{args}`")
+            for f in parsed.get("fields") or []:
+                arg_bits = [f"{arg['name']}:{format_type(arg['type'])}" for arg in f["args"]]
+                lines.append(f"- `{f['name']}` → `{format_type(f['type'])}` — `{', '.join(arg_bits) or 'no args'}`")
+        for type_name, detail in extra_types.items():
+            parsed = detail["type"]
+            lines += ["", f"## Type `{type_name}` ({parsed['kind']})", ""]
+            for f in parsed.get("fields") or []:
+                args = ", ".join(f"{a['name']}:{format_type(a['type'])}" for a in f["args"])
+                lines.append(f"- field `{f['name']}` → `{format_type(f['type'])}`" + (f" — `{args}`" if args else ""))
+            for f in parsed.get("inputFields") or []:
+                lines.append(f"- input `{f['name']}` → `{format_type(f['type'])}`")
+            if parsed.get("enumValues"):
+                lines.append("- enum values: `" + "`, `".join(parsed["enumValues"]) + "`")
     lines += [
         "",
         "## TCC rule",
@@ -260,7 +321,7 @@ def main() -> None:
         "",
     ]
     OUT_MD.write_text("\n".join(lines), encoding="utf-8")
-    print(json.dumps({"endpoint": endpoint, "fieldCount": len(schema_fields), "namespaceTypes": namespace_types}, indent=2))
+    print(json.dumps({"endpoint": endpoint, "fieldCount": len(schema_fields), "namespaceTypes": namespace_types, "extraTypeCount": len(extra_types)}, indent=2))
 
 
 if __name__ == "__main__":
