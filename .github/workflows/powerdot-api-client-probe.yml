@@ -1,0 +1,56 @@
+name: Powerdot API client probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/powerdot-api-client-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Inspect API client
+        run: |
+          mkdir -p reports data/national
+          python - <<'PY'
+          import json,re,urllib.request
+          from pathlib import Path
+          url='https://adhoc.pwrdt.com/assets/vendor-pwdt-BXoZIqhh.js'
+          req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 TCC-Powerdot-client-probe'})
+          with urllib.request.urlopen(req,timeout=12) as r:
+            js=r.read(6000000).decode('utf-8','replace')
+            status=r.status
+          quoted=[]
+          for m in re.finditer(r'''["']([^"']{1,300})["']''',js):
+            s=m.group(1); low=s.lower()
+            if s.startswith('/') or any(k in low for k in ['terminal','charger','connector','tariff','price','rate','adhoc','session','location','network']):
+              if s not in quoted: quoted.append(s)
+          snippets=[]
+          for m in re.finditer(r'(?i)terminal|charger|connector|tariff|price|network.?rate|adhoc|session',js):
+            sn=re.sub(r'\s+',' ',js[max(0,m.start()-220):min(len(js),m.end()+500)])
+            if sn not in snippets: snippets.append(sn)
+            if len(snippets)>=250: break
+          urls=sorted(set(re.findall(r'''https?://[^"'\s)]+''',js)))
+          payload={'url':url,'status':status,'length':len(js),'quoted':quoted[:1500],'urls':urls,'snippets':snippets}
+          Path('data/national/powerdot_api_client_probe.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding='utf-8')
+          lines=['# Powerdot API client probe','',f'HTTP {status} len={len(js)}','## URLs']+[ '- '+x for x in urls]+['','## Relevant literals']+[ '- '+x for x in quoted[:600]]+['','## Snippets']+[ '- '+x[:1000] for x in snippets[:120]]
+          Path('reports/powerdot_api_client_probe.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print('status',status,'length',len(js),'quoted',len(quoted),'urls',urls[:20])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/powerdot_api_client_probe.md data/national/powerdot_api_client_probe.json
+          git commit -m "data(powerdot): publish API client routes [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
