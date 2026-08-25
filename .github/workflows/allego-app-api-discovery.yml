@@ -14,127 +14,104 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Download Allego shells and current bundles
+      - name: Capture public SPA API configuration and test direct pricing calls
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p probe/bundles probe/headers
-          for page in root price; do
-            if [[ "$page" == root ]]; then URL='https://app.allego.eu/'; else URL='https://app.allego.eu/price/FRALLEGO8001301'; fi
-            curl -fsSL --max-time 30 -A 'Mozilla/5.0' "$URL" -o "probe/${page}.html"
-          done
-          python - <<'PY'
-          from pathlib import Path
-          import re, html
-          srcs=[]
-          for p in (Path('probe/root.html'),Path('probe/price.html')):
-              t=p.read_text(errors='replace')
-              print('\n===',p,'script tags ===')
-              for tag in re.findall(r'<script[^>]*>',t,re.I): print(tag)
-              for m in re.finditer(r'<script[^>]+src=["\']([^"\']+)', t, re.I):
-                  src=html.unescape(m.group(1))
-                  if src.startswith('/'):
-                      src='https://app.allego.eu'+src
-                  elif src.startswith('//'):
-                      src='https:'+src
-                  elif not src.startswith('http'):
-                      src='https://app.allego.eu/'+src.lstrip('/')
-                  srcs.append(src)
-          srcs=list(dict.fromkeys(srcs))
-          Path('probe/scripts.txt').write_text('\n'.join(srcs))
-          print('scripts=',srcs)
-          PY
-          i=0
-          while IFS= read -r u; do
-            [ -n "$u" ] || continue
-            i=$((i+1))
-            echo "===== GET $u ====="
-            curl -sS -L --max-time 45 \
-              -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36' \
-              -H 'Accept: */*' \
-              -H 'Referer: https://app.allego.eu/price/FRALLEGO8001301' \
-              -D "probe/headers/bundle_${i}.txt" \
-              -w 'status=%{http_code} type=%{content_type} size=%{size_download} final=%{url_effective}\n' \
-              "$u" -o "probe/bundles/bundle_${i}.js" || true
-            cat "probe/headers/bundle_${i}.txt" || true
-            wc -c "probe/bundles/bundle_${i}.js" 2>/dev/null || true
-            head -c 160 "probe/bundles/bundle_${i}.js" 2>/dev/null || true; echo
-          done < probe/scripts.txt
-
-      - name: Inspect bundles for API and tariff routes
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          import re, json
-          files=[p for p in Path('probe/bundles').glob('*.js') if p.stat().st_size>5000]
-          text='\n'.join(p.read_text(errors='replace') for p in files)
-          print('bundle_count=',len(files),'chars=',len(text))
-          urls=sorted(set(re.findall(r'https?://[^"\'`\\\s<>]{4,240}', text)))
-          print('\n=== ABSOLUTE URLS (filtered) ===')
-          for u in urls:
-              low=u.lower()
-              if any(k in low for k in ('api','allego','smoov','charge','tariff','price','evse','ocpi')):
-                  print(u[:320])
-          print('\n=== ROUTE / CONTEXT HITS ===')
-          keys=['tariff','price','evse','chargepoint','charge-point','chargingstation','charging-station','station','ocpi','graphql','baseurl','axios','fetch(']
-          hits=[]; low=text.lower()
-          for key in keys:
-              start=0; n=0
-              while n<30:
-                  pos=low.find(key,start)
-                  if pos<0: break
-                  a=max(0,pos-260); b=min(len(text),pos+520)
-                  chunk=re.sub(r'\s+',' ',text[a:b])
-                  hits.append((key,chunk)); n+=1; start=pos+len(key)
-          for key,chunk in hits:
-              print(f'[{key}] {chunk[:900]}')
-          Path('probe/api_hits.json').write_text(json.dumps({'urls':urls,'hits':hits},ensure_ascii=False,indent=2))
-          PY
-
-      - name: Capture browser network calls from price page
-        shell: bash
-        run: |
-          set -euo pipefail
+          mkdir -p probe
           python -m pip install --disable-pip-version-check -q selenium
           python - <<'PY'
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
-          import json,time,re
+          import hashlib, json, time, urllib.request, urllib.error
           from pathlib import Path
+
+          PAGE='https://app.allego.eu/price/FRALLEGO8001301'
+          API_MARKER='p-dxp-api-'
           opt=Options()
-          opt.add_argument('--headless=new'); opt.add_argument('--no-sandbox'); opt.add_argument('--disable-dev-shm-usage')
+          opt.add_argument('--headless=new')
+          opt.add_argument('--no-sandbox')
+          opt.add_argument('--disable-dev-shm-usage')
           opt.add_argument('--window-size=1440,1600')
           opt.set_capability('goog:loggingPrefs', {'performance':'ALL','browser':'ALL'})
           d=webdriver.Chrome(options=opt)
+          key=None
+          captured=[]
           try:
-              url='https://app.allego.eu/price/FRALLEGO8001301'
-              d.get(url); time.sleep(8)
+              d.get(PAGE)
+              time.sleep(8)
               body=d.find_element('tag name','body').text
               Path('probe/rendered_body.txt').write_text(body)
-              print('\n=== RENDERED BODY ===')
-              print(body[:6000])
-              rows=[]
+              print('=== RENDERED PRICE PAGE ===')
+              print(body[:4500])
+
               for item in d.get_log('performance'):
                   try: msg=json.loads(item['message'])['message']
                   except Exception: continue
-                  if msg['method']=='Network.requestWillBeSent':
-                      r=msg['params']['request']; u=r.get('url','')
-                      rows.append({'kind':'request','url':u,'method':r.get('method'),'postData':r.get('postData'),'type':msg['params'].get('type')})
-                  elif msg['method']=='Network.responseReceived':
-                      r=msg['params']['response']; u=r.get('url','')
-                      rows.append({'kind':'response','url':u,'status':r.get('status'),'mimeType':r.get('mimeType'),'type':msg['params'].get('type')})
-              Path('probe/network.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2))
-              print('\n=== NETWORK API/PRICE CANDIDATES ===')
-              seen=set()
-              for r in rows:
-                  u=r.get('url',''); low=u.lower()
-                  if u in seen: continue
-                  if any(k in low for k in ('api','price','tariff','evse','charge','station','ocpi','smoov')) or r.get('type') in ('Fetch','XHR'):
-                      seen.add(u); print(json.dumps(r,ensure_ascii=False)[:1200])
-              print('\n=== BROWSER CONSOLE ===')
-              for x in d.get_log('browser'): print(x)
+                  if msg.get('method') != 'Network.requestWillBeSent':
+                      continue
+                  req=msg['params']['request']
+                  url=req.get('url','')
+                  if API_MARKER not in url:
+                      continue
+                  headers=req.get('headers') or {}
+                  names=sorted(headers)
+                  row={'url':url,'method':req.get('method'),'headerNames':names}
+                  captured.append(row)
+                  for hn,hv in headers.items():
+                      if hn.lower() == 'ocp-apim-subscription-key':
+                          key=str(hv)
+                  print('DXP request:', json.dumps(row,ensure_ascii=False))
+
+              if not key:
+                  raise RuntimeError('Ocp-Apim-Subscription-Key not observed in browser request headers')
+
+              fingerprint=hashlib.sha256(key.encode()).hexdigest()
+              print(f'Public SPA APIM key observed: length={len(key)} sha256={fingerprint}')
+              # Deliberately never print or persist the key itself in this public repository.
+
+              base='https://p-dxp-api-acg8edbwd7g2eheg.a01.azurefd.net/api/dxp/poi/chargepoints/'
+              ids=[
+                  'FRALLEGO800130','FRALLEGO8001301',
+                  'FRALLEGO800990','FRALLEGO8009901',
+                  'FRALLEGO900108','FRALLEGO9001081',
+                  'FRALLEGO999088','FRALLEGO9990881',
+                  'FRALLEGO800261','FRALLEGO8002611',
+              ]
+              results=[]
+              for cid in ids:
+                  url=base+cid
+                  req=urllib.request.Request(url,headers={
+                      'User-Agent':'Mozilla/5.0',
+                      'Accept':'application/json, text/plain, */*',
+                      'Origin':'https://app.allego.eu',
+                      'Referer':'https://app.allego.eu/',
+                      'Ocp-Apim-Subscription-Key':key,
+                  })
+                  try:
+                      with urllib.request.urlopen(req,timeout=20) as r:
+                          raw=r.read().decode('utf-8','replace')
+                          status=r.status
+                          ctype=r.headers.get('content-type','')
+                  except urllib.error.HTTPError as e:
+                      raw=e.read().decode('utf-8','replace')
+                      status=e.code
+                      ctype=e.headers.get('content-type','') if e.headers else ''
+                  row={'id':cid,'status':status,'contentType':ctype,'bytes':len(raw.encode()),'body':raw[:12000]}
+                  try: row['json']=json.loads(raw)
+                  except Exception: pass
+                  results.append(row)
+                  print('\n===',cid,'===')
+                  print('status=',status,'type=',ctype,'bytes=',len(raw.encode()))
+                  print(raw[:5000])
+
+              Path('probe/direct_api_results.json').write_text(json.dumps({
+                  'apiBase':base,
+                  'keyFingerprintSha256':fingerprint,
+                  'keyLength':len(key),
+                  'capturedRequests':captured,
+                  'results':results,
+              },ensure_ascii=False,indent=2))
           finally:
               d.quit()
           PY
