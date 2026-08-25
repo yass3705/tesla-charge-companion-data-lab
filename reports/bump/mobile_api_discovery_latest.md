@@ -1,13 +1,14 @@
 # Bump mobile static API discovery
 
-Read-only static inspection of the current Google Play APK/splits. No Bump account, app execution, charging or payment action was used.
+Read-only static inspection of the current APK/splits. No Bump account, app execution, charging or payment action was used.
 
 ## Result
 
 - APK/split files inspected: **4**
 - Sanitized URL candidates: **47**
-- Relative API/path candidates: **0**
-- Likely station/tariff API candidates: **32**
+- Quoted relative API/path candidates: **0**
+- Compiled Flutter route-string candidates: **1465**
+- Likely station/tariff API URL candidates: **32**
 
 ## Candidate hosts
 
@@ -42,7 +43,7 @@ Read-only static inspection of the current Google Play APK/splits. No Bump accou
 - `queue.api.local.gist.build` — 1 candidate(s)
 - `realtime.cloud.dev.gist.build` — 1 candidate(s)
 
-## Likely station/tariff candidates
+## Likely station/tariff URL candidates
 
 - `https://api-staging.bump-charge.com/`
 - `https://api.bump-charge.com/`
@@ -76,6 +77,169 @@ Read-only static inspection of the current Google Play APK/splits. No Bump accou
 - `https://www.googleapis.com/auth/games_lite`
 - `https://www.recaptcha.net/recaptcha/api3`
 - `https://www.reduxkotlin.org/api/store`
+
+## Compiled station/tariff route strings
+
+- `%link_mobile_use_attestation_endpoints`
+- `%locationSettingsRequest`
+- `-android.permission.ACCESS_BACKGROUND_LOCATION`
+- `-Dio.grpc.ManagedChannel.enableAllocationTracking`
+- `/filter_locations`
+- `/io.grpc.ManagedChannel.enableAllocationTracking`
+- `/onboarding_b2b_home_charging_station`
+- `0elements.adaptive_pricing.currency_selector_init`
+- `0elements.adaptive_pricing.flag_image_load.failed`
+- `0elements.attestation.confirmation.prepare.failed`
+- `1Attestation`
+- `1com.google.android.gms.location.ILocationCallback`
+- `1com.google.android.gms.location.ILocationListener`
+- `1elements.adaptive_pricing.currency_toggled.failed`
+- `1Location`
+- `2Attestation`
+- `3com.stripe.android.attestation.AttestationViewModel`
+- `3elements.attestation.confirmation.prepare.succeeded`
+- `3LocationRestriction`
+- `5com.stripe.android.attestation.AttestationViewModel`
+- `5Location`
+- `6com.stripe.attestation.IntegrityStandardRequestManager`
+- `6LocationRestriction`
+- `9intent_confirmation_handler.attestation.failed_to_prepare`
+- `9INTENT_CONFIRMATION_HANDLER_ATTESTATION_FAILED_TO_PREPARE`
+- `:chargeLocationId`
+- `:INTENT_CONFIRMATION_CHALLENGE_INTENT_NO_ATTESTATION_RESULT`
+- `__geolocation_storage_key__`
+- `_AccessBeaconDeallocationSection`
+- `_buildPriceCategoryLabel`
+- `_buildTotalPrice`
+- `_BumpStationConfirmButton`
+- `_bundleOriginLocationToRedirect`
+- `_CallCarWashStationButton`
+- `_CarsChargingStationIllustration`
+- `_carWashLocationClusterManager`
+- `_CarWashLocationDetailsRequested`
+- `_CarWashLocationInstructionsButton`
+- `_CarWashLocationWithOpeningHoursSheetState`
+- `_CenterDockedFabLocation`
+- `_CenterFloatFabLocation`
+- `_CenterTopFabLocation`
+- `_ChargeLocationCarouselState`
+- `_chargeLocationClusterManager`
+- `_ChargeLocationDetails`
+- `_ChargeLocationDetailsRequested`
+- `_chargeLocationProvider`
+- `_ChargeLocationsRequested`
+- `_ChargePointErrorBody`
+- `_ChargePointErrorRoamingBody`
+- `_ChargingStationIllustration`
+- `_CompanyEvseInfoBox`
+- `_compareConnectorType`
+- `_compareEvseState`
+- `_ConnectConnectorAnimation`
+- `_ConnectorAndCurrentTypeBuilder`
+- `_ConnectorIconBuilder`
+- `_ConnectorTypeTile`
+- `_consumedPriceLabel`
+- `_ConsumptionPrice`
+- `_ContractEnergyPrice`
+- `_copyWithConnectorTypes`
+- `_copyWithEvsePriceScores`
+- `_drawStations`
+- `_effectiveInitialLocation`
+- `_EndContainedFabLocation`
+- `_EndDockedFabLocation`
+- `_EndFloatFabLocation`
+- `_EndTopFabLocation`
+- `_EstimatedConsumptionPrice`
+- `_EvRoutingChargeLocationBody`
+- `_EvRoutingChargeLocationDraggableBottomSheet`
+- `_EvRoutingChargeLocationDraggableSheetState`
+- `_EvseSpecifications`
+- `_evseStatePriorities`
+- `_ExpensiveChargeLocationRecommendationDescription`
+- `_ExpensiveChargeLocationRecommendationTitle`
+- `_ExpensivePriceBanner`
+- `_filterEvses`
+- `_findEvsesWithHighestPower`
+- `_findHighestPowerInEvses`
+- `_formatPrice`
+- `_formatPriceAndFrequency`
+- `_formatPriceRestriction`
+- `_getFilteredAndSortedEvses`
+- `_getIsTariffChangingInTime`
+- `_getLocation`
+- `_getLocationConnectors`
+- `_getQuickTariffDescription`
+- `_getShortTariffDescription`
+- `_getsMatchedLocationFromMatches`
+- `_handleSearchLocationsRetry`
+- `_HomeChargingStationStatusTile`
+- `_initCarWashLocationCluster`
+- `_initChargeLocationCluster`
+- `_initParkingLocationCluster`
+- `_LaunchChargeOnReservationEvseButton`
+- `_LocationDetails`
+- `_LocationRequested`
+- `_LocationsFilterChips`
+- `_LocationsFilterView`
+- `_LocationsServiceSwitcherButtonsState`
+- `_mapScoreCategoryToPrice`
+- `_MiniCenterDockedFabLocation`
+- `_MiniCenterFloatFabLocation`
+- `_MiniCenterTopFabLocation`
+- `_MiniEndDockedFabLocation`
+- `_MiniEndFloatFabLocation`
+- `_MiniEndTopFabLocation`
+- `_MiniStartDockedFabLocation`
+- `_MiniStartFloatFabLocation`
+- `_MiniStartTopFabLocation`
+- `_MonitorEvseInfoBox`
+- `_onAccessBeaconDeallocationRequested`
+- `_onAvailableEvseRequested`
+- `_onCarWashLocationDetailsRequested`
+- `_onCarWashLocationSelected`
+- `_onCarWashLocationsRequested`
+- `_onCarWashLocationUnSelected`
+- `_onCenterOnGeoLocationRequested`
+- `_onChargeLocationByEvseSelected`
+- `_onChargeLocationDetailsRequested`
+- `_onChargeLocationSelected`
+- `_onChargeLocationsRequested`
+- `_onChargingSessionChargeLocationRequested`
+- `_onConnectorTypeAddedToLocationFilters`
+- `_onConnectorTypeRemovedFromLocationFilters`
+- `_onEvseRequested`
+- `_onEvseSelectedManually`
+- `_onEvseTariffRequested`
+- `_onFilterCarWashLocationsRequested`
+- `_onFilteredLocationsRequested`
+- `_onFilterParkingLocationsRequested`
+- `_onGeoLocationFetchRequested`
+- `_onHomeElectricityPriceRequested`
+- `_onLocationFiltersUpdated`
+- `_onLocationRequested`
+- `_onLocationsSwitchedToCharging`
+- `_onLocationsSwitchedToParking`
+- `_onLocationsSwitchedToWashing`
+- `_onParkingLocationDetailsRequested`
+- `_onParkingLocationSelected`
+- `_onParkingLocationsRequested`
+- `_onParkingLocationUnSelected`
+- `_onPeriodicEvseRequestCanceled`
+- `_onPeriodicEvseRequestStarted`
+- `_onPeriodicLocationRequestCanceled`
+- `_onPeriodicLocationRequestStarted`
+- `_onPrepareChargeWithEvse`
+- `_onPriceCategoryAddedToLocationFilters`
+- `_onPriceCategoryRemovedFromLocationFilters`
+- `_onQrcodeEvseSearchCanceled`
+- `_onReservationSessionChargeLocationRequested`
+- `_onScanEvseWithIdentifierRequested`
+- `_onSearchEvseWithQRUrl`
+- `_onSessionDetectedOnEVSE`
+- `_onSessionNotDetectedOnEVSE`
+- `_onStationAlongRouteSelected`
+- `_onStationAlongRouteUnSelected`
+- `_onTariffsRequested`
 
 ## Safety / TCC rule
 
