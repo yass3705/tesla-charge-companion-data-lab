@@ -1,0 +1,73 @@
+name: e-Totem direct station inventory
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 2,5"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/etotem_direct_station_inventory.py"
+      - "tests/test_etotem_direct_station_inventory.py"
+      - ".github/workflows/etotem-direct-station-inventory.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: etotem-direct-station-inventory
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Unit tests
+        run: python -m unittest tests/test_etotem_direct_station_inventory.py -v
+
+      - name: Build strict France physical-CPO inventory
+        run: python scripts/etotem_direct_station_inventory.py
+
+      - name: Validate generated inventory
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          path = Path('data/national/etotem_direct_stations_france.json.gz')
+          with gzip.open(path, 'rt', encoding='utf-8') as handle:
+              p = json.load(handle)
+          assert p['operator'] == 'e-Totem'
+          assert p['country'] == 'FR'
+          assert p['scope']['physicalCpoDirectOnly'] is True
+          assert p['scope']['roamingIncluded'] is False
+          assert p['counts']['stationCount'] >= 300, p['counts']
+          assert p['counts']['pdcCount'] >= p['counts']['stationCount'], p['counts']
+          assert all('totem' in (s.get('operatorName') or '').lower().replace('-', '').replace(' ', '') for s in p['stations'])
+          assert all(s.get('stationId') for s in p['stations'])
+          print(json.dumps(p['counts'], indent=2, ensure_ascii=False))
+          print(json.dumps(p['stationsByDataset'], indent=2, ensure_ascii=False))
+          print(json.dumps(p['topTarificationTexts'][:15], indent=2, ensure_ascii=False))
+          PY
+
+      - name: Publish inventory
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/etotem_direct_stations_france.json.gz
+          if git diff --cached --quiet; then
+            echo "No data change"
+            exit 0
+          fi
+          git commit -m "data(etotem): publish strict France direct station inventory [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
