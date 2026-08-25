@@ -1,0 +1,96 @@
+name: Powerdot direct API probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/powerdot-direct-api-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Probe Connect API
+        run: |
+          mkdir -p reports data/national
+          python - <<'PY'
+          import json, urllib.request, urllib.error
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          base='https://api.pwrdt.com/powerdot.adhoc.v1.AdhocAPI/'
+          headers={
+            'User-Agent':'Mozilla/5.0 TCC-Powerdot-public-adhoc-probe',
+            'Content-Type':'application/json',
+            'Accept':'application/json',
+            'Connect-Protocol-Version':'1',
+            'Origin':'https://adhoc.pwrdt.com',
+            'Referer':'https://adhoc.pwrdt.com/'
+          }
+          chargers=['MRB_CHP_KPC20001','NET_SST_KPS20001','ACE_VIL_SLM10001','ACT_VDD_KPS20001']
+          results=[]
+
+          def post(method,payload):
+            url=base+method
+            body=json.dumps(payload).encode()
+            req=urllib.request.Request(url,data=body,headers=headers,method='POST')
+            try:
+              with urllib.request.urlopen(req,timeout=12) as r:
+                raw=r.read(2000000); status=r.status; rh=dict(r.headers)
+            except urllib.error.HTTPError as e:
+              raw=e.read(500000); status=e.code; rh=dict(e.headers or {})
+            except Exception as e:
+              return {'method':method,'payload':payload,'status':None,'error':repr(e)}
+            text=raw.decode('utf-8','replace')
+            try: parsed=json.loads(text)
+            except Exception: parsed=None
+            return {'method':method,'payload':payload,'status':status,'headers':rh,'bodyText':text[:200000],'json':parsed}
+
+          for charger in chargers:
+            info=post('GetChargerInfo',{'chargerName':charger,'emspCode':''})
+            results.append({'charger':charger,'getChargerInfo':info})
+            parsed=info.get('json') or {}
+            ch=parsed.get('charger') or {}
+            connectors=ch.get('connectors') or []
+            pre=[]
+            for connector in connectors[:10]:
+              number=connector.get('connectorNumber')
+              if number is None: continue
+              pre.append(post('GetPreAuthorizations',{'chargerName':charger,'connectorNumber':number,'emspCode':''}))
+            results[-1]['preAuthorizations']=pre
+
+          payload={'generatedAt':datetime.now(timezone.utc).isoformat(),'base':base,'results':results}
+          Path('data/national/powerdot_direct_api_probe.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding='utf-8')
+          lines=['# Powerdot direct API probe','']
+          for item in results:
+            info=item['getChargerInfo']; lines += [f"## {item['charger']}",f"GetChargerInfo HTTP {info.get('status')}"]
+            parsed=info.get('json')
+            if parsed is not None:
+              lines.append('```json'); lines.append(json.dumps(parsed,ensure_ascii=False,indent=2)[:25000]); lines.append('```')
+            else:
+              lines.append((info.get('bodyText') or info.get('error') or '')[:5000])
+            for pre in item['preAuthorizations']:
+              lines.append(f"GetPreAuthorizations connector={pre['payload'].get('connectorNumber')} HTTP {pre.get('status')}")
+              if pre.get('json') is not None:
+                lines.append('```json'); lines.append(json.dumps(pre['json'],ensure_ascii=False,indent=2)[:15000]); lines.append('```')
+              else: lines.append((pre.get('bodyText') or pre.get('error') or '')[:3000])
+            lines.append('')
+          Path('reports/powerdot_direct_api_probe.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print([(x['charger'],x['getChargerInfo'].get('status')) for x in results])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/powerdot_direct_api_probe.md data/national/powerdot_direct_api_probe.json
+          git commit -m "data(powerdot): publish direct API probe [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
