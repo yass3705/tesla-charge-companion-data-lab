@@ -1,0 +1,132 @@
+name: Freshmile direct CPO inventory
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * *'
+  pull_request:
+    paths:
+      - 'scripts/freshmile_direct_inventory.py'
+      - '.github/workflows/freshmile-direct-cpo-inventory.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/freshmile_direct_inventory.py'
+      - '.github/workflows/freshmile-direct-cpo-inventory.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: freshmile-direct-cpo-inventory-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Syntax and strict-scope smoke test
+        shell: bash
+        run: |
+          python -m py_compile scripts/freshmile_direct_inventory.py
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, 'scripts')
+          import freshmile_direct_inventory as f
+
+          def row(evse, operator='Freshmile', tariff='0,39 €/kWh'):
+              return {
+                  'id_pdc_itinerance': evse,
+                  'id_station_itinerance': evse.replace('*E', '*P'),
+                  'nom_operateur': operator,
+                  'nom_station': 'Test',
+                  'adresse_station': '1 rue Test',
+                  'coordonneesxy': '[2.35,48.85]',
+                  'puissance_nominale': '22',
+                  'prise_type_2': 'true',
+                  'gratuit': 'false',
+                  'paiement_acte': 'true',
+                  'tarification': tariff,
+              }
+
+          payload = f.build([
+              row('FR*FR1*E001'),
+              row('FR*FRS*E002', tariff='0,55 €/kWh + 0,05 €/min'),
+              row('FR*S82*E003'),
+              row('FR*FR1*E004', operator='Other Operator'),
+          ], source={'kind': 'smoke', 'lastModified': '2026-08-25T00:00:00Z'})
+          assert payload['stats']['stationCount'] == 2
+          assert payload['stats']['excludedConflictingOperatorRows'] == 1
+          assert set(payload['stats']['directRowsByCpoCode']) == {'FRFR1', 'FRFRS'}
+          assert payload['stats']['chargePointCountRankableBeforeFreshmileValidation'] == 0
+          assert all(
+              not point['declaredTariff']['tccRankable']
+              for station in payload['stations']
+              for point in station['chargePoints']
+          )
+          print('strict-scope smoke test: OK')
+          PY
+
+      - name: Build from national IRVE consolidation
+        run: python scripts/freshmile_direct_inventory.py
+
+      - name: Validate generated dataset
+        shell: bash
+        run: |
+          python - <<'PY'
+          import gzip
+          import json
+          from pathlib import Path
+
+          path = Path('data/national/freshmile_direct_stations_france.json.gz')
+          assert path.exists() and path.stat().st_size > 0
+          with gzip.open(path, 'rt', encoding='utf-8') as handle:
+              data = json.load(handle)
+
+          expected = {'FRFR0', 'FRFR1', 'FRFR2', 'FRFR3', 'FRFRS'}
+          assert set(data['scope']['directCpoIdentifiers']) == expected
+          assert data['scope']['regionalOrThirdPartyCpoIdentifiersIncluded'] is False
+          assert data['scope']['emspRoamingStationsIncluded'] is False
+          assert data['scope']['regionalNetworkSubscriptionsIncluded'] is False
+          assert data['tariffPolicy']['freshmilePortalCrosscheckRequiredBeforeTccRanking'] is True
+          assert data['stats']['stationCount'] > 0
+          assert data['stats']['chargePointCount'] > 0
+          assert data['stats']['chargePointCountRankableBeforeFreshmileValidation'] == 0
+
+          observed = {
+              point['cpoCode']
+              for station in data['stations']
+              for point in station['chargePoints']
+          }
+          assert observed <= expected
+          print(json.dumps(data['stats'], ensure_ascii=False, indent=2))
+          PY
+
+      - name: Upload validation dataset
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: freshmile-direct-cpo-inventory
+          path: data/national/freshmile_direct_stations_france.json.gz
+          retention-days: 3
+
+      - name: Publish refreshed inventory
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          if git diff --quiet -- data/national/freshmile_direct_stations_france.json.gz; then
+            echo 'Freshmile inventory unchanged.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/national/freshmile_direct_stations_france.json.gz
+          git commit -m 'data(freshmile): refresh direct CPO inventory'
+          git push
