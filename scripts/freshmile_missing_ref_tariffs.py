@@ -12,7 +12,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
-import math
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -23,9 +23,15 @@ from typing import Any
 import freshmile_direct_tariffs_v2 as tariffs
 
 BASE = "https://prod-driver-api.freshmile.com/charge/api/v2"
-UA = "Tesla-Charge-Companion-Freshmile-Missing-Ref/1.0 (+public-GET-only)"
+UA = "Tesla-Charge-Companion-Freshmile-Missing-Ref/1.1 (+public-GET-only)"
 DEFAULT_INPUT = Path("data/national/freshmile_direct_stations_france.json.gz")
 DEFAULT_OUTPUT = Path("reports/freshmile/missing_ref_tariffs.json.gz")
+LOCATION_REF_RE = re.compile(r"^Freshmile France/([A-Z0-9]+)$", re.I)
+
+
+def station_location_ref(station: dict[str, Any]) -> str | None:
+    match = LOCATION_REF_RE.match(str(station.get("name") or "").strip())
+    return match.group(1) if match else None
 
 
 def request_geo(lat: float, lon: float, attempts: int = 3) -> dict[str, Any]:
@@ -96,7 +102,7 @@ def main() -> None:
     args = parser.parse_args()
 
     inventory = read(args.input)
-    missing = [s for s in inventory.get("stations") or [] if tariffs.station_location_ref(s) is None]
+    missing = [s for s in inventory.get("stations") or [] if station_location_ref(s) is None]
     results = []
     stats = {"stationsMissingLocationRef": len(missing), "requests": 0, "http200": 0, "resolvedStations": 0, "resolvedChargePoints": 0, "ambiguousChargePoints": 0, "unresolvedChargePoints": 0, "tariffFound": 0, "tariffSourceValidated": 0, "tccRankable": 0}
 
@@ -157,7 +163,7 @@ def main() -> None:
         results.append(station_out)
 
     payload = {
-        "schemaVersion": "1.0.0",
+        "schemaVersion": "1.1.0",
         "method": "public Freshmile geographic lookup + exact EVSE custom_ref match",
         "policy": {"nearestLocationIsSufficient": False, "exactEvseCustomRefRequired": True, "publishToTccStableAllowed": False},
         "stats": stats,
