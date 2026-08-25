@@ -1,0 +1,80 @@
+name: Freshmile direct tariff sample
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/freshmile_direct_tariffs.py'
+      - 'scripts/freshmile_direct_inventory.py'
+      - 'scripts/freshmile_prune_regional_networks.py'
+      - 'config/freshmile_regional_network_exclusions.json'
+      - '.github/workflows/freshmile-direct-tariffs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: freshmile-direct-tariffs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Syntax check
+        run: python -m py_compile scripts/freshmile_direct_inventory.py scripts/freshmile_prune_regional_networks.py scripts/freshmile_direct_tariffs.py
+
+      - name: Build current national Freshmile inventory
+        run: python scripts/freshmile_direct_inventory.py
+
+      - name: Remove separately modeled regional networks
+        run: python scripts/freshmile_prune_regional_networks.py
+
+      - name: Fetch evenly-spaced Freshmile tariff sample
+        run: python scripts/freshmile_direct_tariffs.py --sample-size 120 --sleep-ms 75
+
+      - name: Validate tariff sample
+        shell: bash
+        run: |
+          python - <<'PY'
+          import gzip
+          import json
+          from pathlib import Path
+
+          path = Path('reports/freshmile/direct_tariffs_sample.json.gz')
+          assert path.exists() and path.stat().st_size > 0
+          with gzip.open(path, 'rt', encoding='utf-8') as handle:
+              data = json.load(handle)
+
+          stats = data['stats']
+          coverage = data['coverage']
+          assert data['completeNationalScan'] is False
+          assert data['policy']['publishToTccStableAllowed'] is False
+          assert coverage['stationCoveragePct'] > 99
+          assert coverage['chargePointCoveragePct'] > 99
+          assert stats['stationsSelected'] == 120
+          assert stats['requests'] >= 115
+          assert stats['http200'] >= 110
+          assert stats['locationMatched'] >= 105
+          assert stats['evseMatched'] > 0
+          assert stats['tariffFound'] > 0
+          assert stats['tariffValidated'] > 0
+
+          print(json.dumps({
+              'coverage': coverage,
+              'stats': stats,
+          }, ensure_ascii=False, indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freshmile-direct-tariff-sample
+          path: reports/freshmile/direct_tariffs_sample.json.gz
+          retention-days: 3
