@@ -1,0 +1,92 @@
+name: La Borne Bleue — inventaire direct TCC V8
+
+on:
+  push:
+    branches:
+      - main
+      - feat/labornebleue-direct-v8-20260825
+    paths:
+      - scripts/labornebleue_station_inventory.py
+      - tests/test_labornebleue_station_inventory.py
+      - .github/workflows/labornebleue-direct-station-inventory.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - scripts/labornebleue_station_inventory.py
+      - tests/test_labornebleue_station_inventory.py
+      - .github/workflows/labornebleue-direct-station-inventory.yml
+      - data/national/labornebleue_direct_stations_idf.json.gz
+  schedule:
+    - cron: "17 10 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: labornebleue-direct-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Tester les règles strictes
+        run: python -m unittest tests.test_labornebleue_station_inventory -v
+
+      - name: Construire la base nationale La Borne Bleue
+        run: python scripts/labornebleue_station_inventory.py --out data/national/labornebleue_direct_stations_idf.json.gz
+
+      - name: Valider le dataset publié
+        run: |
+          python - <<'PY'
+          import gzip, json
+          p='data/national/labornebleue_direct_stations_idf.json.gz'
+          with gzip.open(p,'rt',encoding='utf-8') as f: d=json.load(f)
+          assert d['dataset']=='labornebleue-direct-tcc-v8-idf'
+          assert d['schemaVersion']=='1.0.0'
+          s=d['scope']; c=d['counts']
+          assert s['onlyDirectCpo'] is True
+          assert s['strictExplicitNetworkLabel'] is True
+          assert s['partnerLocationsIncluded'] is False
+          assert s['partnerTariffsIncluded'] is False
+          assert s['subscriptionDiscountAtPartnerOperators'] is False
+          assert s['subscriptionAnnualFeeEur']==10.0
+          assert s['dcTariffRule']=='strictly_above_50_kw'
+          assert 800 <= c['strictSourceChargePoints'] <= 2500, c
+          assert 200 <= c['publishedStations'] <= 1500, c
+          assert c['publishedConfigurations'] >= c['publishedStations']*2, c
+          for st in d['stations']:
+              assert st['countryCode']=='FR'
+              for cfg in st['configurations']:
+                  assert cfg['labornebleueDirect'] is True
+                  assert cfg['labornebleueOwnNetworkOnly'] is True
+                  assert cfg['offerType']=='operator_direct'
+                  assert cfg['subscriptionId'] in (None,'labornebleue-annual')
+          print(json.dumps(c,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Publier si la source a changé
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          if git diff --quiet -- data/national/labornebleue_direct_stations_idf.json.gz; then
+            echo "Aucun changement La Borne Bleue à publier."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/labornebleue_direct_stations_idf.json.gz
+          git commit -m "data(labornebleue): refresh strict direct inventory"
+          git push origin HEAD:${{ github.ref_name }}
