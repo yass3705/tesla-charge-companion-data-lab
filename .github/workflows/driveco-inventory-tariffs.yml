@@ -1,0 +1,141 @@
+name: DRIVECO inventory tariff analysis
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/driveco-inventory-tariffs.yml"
+  schedule:
+    - cron: "41 8 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: driveco-inventory-tariffs
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Analyze official DRIVECO IRVE tariff field
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/driveco
+          python - <<'PY'
+          import csv, io, json, re, urllib.request
+          from collections import Counter, defaultdict
+          from datetime import datetime, timezone
+
+          URL='https://www.data.gouv.fr/api/1/datasets/r/775dd5a9-c0e4-4bb7-8995-f4b5a4148836'
+          req=urllib.request.Request(URL,headers={'User-Agent':'Mozilla/5.0','Accept':'text/csv,*/*;q=0.8'})
+          with urllib.request.urlopen(req,timeout=60) as r:
+              raw=r.read()
+          text=raw.decode('utf-8-sig',errors='replace')
+          sample=text[:20000]
+          try:
+              dialect=csv.Sniffer().sniff(sample,delimiters=',;\t')
+              rows=list(csv.DictReader(io.StringIO(text),dialect=dialect))
+          except csv.Error:
+              rows=list(csv.DictReader(io.StringIO(text),delimiter=';'))
+          assert len(rows)>1000, len(rows)
+
+          def val(row,*names):
+              m={str(k).strip().lower():(v or '').strip() for k,v in row.items() if k is not None}
+              for n in names:
+                  if m.get(n.lower()): return m[n.lower()]
+              return ''
+          def netclass(row):
+              op=val(row,'nom_operateur','operateur','operator')
+              name=val(row,'nom_station','n_station','station_name')
+              hay=(op+' '+name).lower()
+              if 'partner network' in hay or 'powered by driveco' in hay:
+                  return 'partner_network'
+              if 'driveco' in hay:
+                  return 'driveco_network'
+              return 'other_or_unspecified'
+          def fnum(s):
+              s=s.strip().replace(',','.')
+              if re.fullmatch(r'\d+(?:\.\d+)?',s):
+                  try:return float(s)
+                  except:return None
+              return None
+
+          counts=Counter(); classes=Counter(); tariff_classes=defaultdict(Counter); powers=defaultdict(list); samples=defaultdict(list)
+          filled=0
+          for row in rows:
+              c=netclass(row); classes[c]+=1
+              t=val(row,'tarification','tarif','pricing','price').strip()
+              if not t: continue
+              filled+=1; counts[t]+=1; tariff_classes[t][c]+=1
+              p=val(row,'puissance_nominale','puissance_nominale_kw','power')
+              m=re.search(r'-?\d+(?:[,.]\d+)?',p)
+              if m:
+                  try:powers[t].append(float(m.group(0).replace(',','.')))
+                  except:pass
+              if len(samples[t])<4:
+                  samples[t].append({
+                    'networkClass':c,
+                    'operator':val(row,'nom_operateur','operateur','operator') or None,
+                    'stationName':val(row,'nom_station','n_station','station_name') or None,
+                    'evseId':val(row,'id_pdc_itinerance','id_pdc_local','id_pdc') or None,
+                    'powerKw':powers[t][-1] if powers[t] else None,
+                  })
+
+          values=[]
+          for t,n in counts.most_common():
+              x=fnum(t)
+              item={'raw':t,'rows':n,'networkClasses':dict(tariff_classes[t]),'samples':samples[t]}
+              if powers[t]: item['powerKwObserved']={'min':min(powers[t]),'max':max(powers[t])}
+              if x is not None:
+                  item['numericDeclared']=x
+                  item['diagnosticTimes1_20']=round(x*1.20+1e-9,4)
+                  refs=[0.39,0.51,0.54,0.55,0.59]
+                  item['matchesPublishedTtcReferenceAfterTimes1_20']=[r for r in refs if abs(x*1.2-r)<0.0011]
+              values.append(item)
+
+          payload={
+            'schemaVersion':'1.0.0',
+            'dataset':'driveco-official-irve-tariff-analysis',
+            'generatedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),
+            'source':URL,
+            'rowCount':len(rows),
+            'networkClassRows':dict(classes),
+            'rowsWithTarification':filled,
+            'coverageRatio':round(filled/len(rows),6),
+            'uniqueTarificationValues':len(values),
+            'tarificationValues':values,
+            'interpretationPolicy':{
+              'rawFieldIsAuthoritativeAsPublished':True,
+              'times1_20IsDiagnosticOnly':True,
+              'doNotPublishConvertedPriceUntilSemanticsValidated':True
+            }
+          }
+          open('reports/driveco/inventory_tariffs_latest.json','w').write(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+          print('rows',len(rows),'with tariff',filled,'unique',len(values),'classes',dict(classes))
+          for x in values[:20]: print(x['raw'],x['rows'],x.get('diagnosticTimes1_20'),x['networkClasses'])
+          PY
+
+      - name: Commit report when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/driveco/inventory_tariffs_latest.json
+          if git diff --cached --quiet; then echo "No report changes"; exit 0; fi
+          git commit -m "data(driveco): publish official IRVE tariff analysis [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
