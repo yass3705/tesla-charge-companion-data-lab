@@ -1,0 +1,59 @@
+name: Allego public site API probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/allego-public-site-api-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Probe public chargepoint endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          for EVSE in FRALLEGO8001301 FRALLEGO8009901 FRALLEGO9001081 FRALLEGO8002611; do
+            URL="https://www.allego.eu/api/feature/experienceaccelerator/areas/chargepointmap/getchargepoints/${EVSE}"
+            echo "===== ${EVSE} ====="
+            curl -sS -L --max-time 20 \
+              -A 'Mozilla/5.0' \
+              -H 'X-Requested-With: XMLHttpRequest' \
+              -H 'Accept: application/json, text/javascript, */*; q=0.01' \
+              -H 'Referer: https://www.allego.eu/charging-station/1-rue-de-l-industrie-brignais/' \
+              -D "probe/${EVSE}.headers" "$URL" -o "probe/${EVSE}.body" || true
+            sed -n '1,30p' "probe/${EVSE}.headers" || true
+            echo '--- body ---'
+            head -c 5000 "probe/${EVSE}.body" || true
+            echo
+          done
+
+      - name: Summarize tariff-like fields
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,re
+          for p in sorted(Path('probe').glob('*.body')):
+              t=p.read_text(errors='replace')
+              print('\n====',p.stem,'bytes',len(t.encode()),'====')
+              try:
+                  obj=json.loads(t)
+                  print(json.dumps(obj,ensure_ascii=False,indent=2)[:12000])
+              except Exception:
+                  print(t[:4000])
+              for m in re.finditer(r'.{0,120}(price|tariff|rate|cost|fee|kwh|amount|currency).{0,220}',t,re.I|re.S):
+                  print('HIT',re.sub(r'\s+',' ',m.group(0))[:420])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: allego-public-site-api-probe
+          path: probe
+          retention-days: 3
