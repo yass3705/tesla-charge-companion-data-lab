@@ -8,7 +8,7 @@ class BumpInventoryTests(unittest.TestCase):
         self.assertTrue(is_bump_operator("Bump"))
         self.assertTrue(is_bump_operator("BUMP SAS"))
         self.assertFalse(is_bump_operator("Electra"))
-        self.assertFalse(is_bump_operator("Bump partner"))
+        self.assertFalse(is_bump_operator("Powerdot"))
 
     def test_parse_energy_price(self):
         parsed = parse_tariff("0,49 €/kWh")
