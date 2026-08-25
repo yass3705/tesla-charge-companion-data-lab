@@ -1,0 +1,97 @@
+name: Allego public bundle config probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/allego-public-bundle-config-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Inspect public Allego SPA bundles without exposing client key
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          curl -fsSL --max-time 30 -A 'Mozilla/5.0' 'https://app.allego.eu/price/FRALLEGO8001301' -o probe/index.html
+          python - <<'PY'
+          from pathlib import Path
+          import re,html
+          t=Path('probe/index.html').read_text(errors='replace')
+          src=re.search(r'<script[^>]+type=["\']?module["\']?[^>]+src=["\']([^"\']+)',t,re.I)
+          if not src:
+              src=re.search(r'<script[^>]+src=["\']([^"\']+\.js)',t,re.I)
+          if not src: raise SystemExit('no module bundle')
+          u=html.unescape(src.group(1))
+          if u.startswith('/'): u='https://app.allego.eu'+u
+          Path('probe/root_url.txt').write_text(u+'\n')
+          print('root bundle=',u)
+          PY
+          ROOT=$(cat probe/root_url.txt)
+          curl -fsSL --max-time 45 -A 'Mozilla/5.0' -H 'Referer: https://app.allego.eu/' "$ROOT" -o probe/root.js
+          echo "root bytes=$(wc -c < probe/root.js)"
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          t=Path('probe/root.js').read_text(errors='replace')
+          # Discover lazy JS chunks, especially PricePage.
+          chunks=sorted(set(re.findall(r'[A-Za-z0-9_-]*PricePage[A-Za-z0-9_.-]*\.js',t)))
+          alljs=sorted(set(re.findall(r'[A-Za-z0-9_-]+-[A-Za-z0-9_-]{5,}\.js',t)))
+          print('price chunks=',chunks)
+          Path('probe/chunks.txt').write_text('\n'.join(chunks or alljs[:80])+'\n')
+          PY
+          while IFS= read -r chunk || [[ -n "$chunk" ]]; do
+            [ -n "$chunk" ] || continue
+            u="https://app.allego.eu/assets/$chunk"
+            echo "GET $u"
+            curl -fsSL --max-time 45 -A 'Mozilla/5.0' -H 'Referer: https://app.allego.eu/' "$u" -o "probe/$chunk" || true
+          done < probe/chunks.txt
+
+      - name: Locate API config and key fingerprint
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re,hashlib,json
+          files=[Path('probe/root.js')]+list(Path('probe').glob('*PricePage*.js'))
+          text='\n'.join(p.read_text(errors='replace') for p in files if p.exists())
+          print('files=',[p.name for p in files if p.exists()],'chars=',len(text))
+          # Print safe contextual API config, but never a credential value.
+          for needle in ['p-dxp-api-','Ocp-Apim-Subscription-Key','chargepoints/','poi/validate']:
+              print('\n===',needle,'===')
+              start=0
+              for _ in range(10):
+                  pos=text.find(needle,start)
+                  if pos<0: break
+                  snippet=text[max(0,pos-350):min(len(text),pos+500)]
+                  # Mask probable 32-char APIM values before logging.
+                  snippet=re.sub(r'(?i)(Ocp-Apim-Subscription-Key.{0,120}?)[A-Za-z0-9_-]{24,64}',r'\1<masked>',snippet)
+                  print(re.sub(r'\s+',' ',snippet)[:1000])
+                  start=pos+len(needle)
+          # APIM keys are commonly 32 hex/alnum chars. Determine candidates only by proximity to header/config strings.
+          candidates=[]
+          for m in re.finditer(r'(?i)Ocp-Apim-Subscription-Key',text):
+              window=text[max(0,m.start()-600):min(len(text),m.end()+1200)]
+              for c in re.findall(r'["\']([A-Za-z0-9_-]{28,40})["\']',window):
+                  if c not in candidates: candidates.append(c)
+          print('candidate_count=',len(candidates))
+          for c in candidates:
+              print('candidate length=',len(c),'sha256=',hashlib.sha256(c.encode()).hexdigest())
+          Path('probe/safe_summary.json').write_text(json.dumps({'candidateCount':len(candidates),'candidateFingerprints':[{'length':len(c),'sha256':hashlib.sha256(c.encode()).hexdigest()} for c in candidates]},indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: allego-public-bundle-config-probe
+          path: |
+            probe/index.html
+            probe/root_url.txt
+            probe/chunks.txt
+            probe/safe_summary.json
+          retention-days: 3
