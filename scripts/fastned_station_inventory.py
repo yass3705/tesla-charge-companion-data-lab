@@ -279,6 +279,11 @@ def parse_location_page(url: str, raw_html: str, tariff: dict[str, Any]) -> dict
     if not points_match:
         raise ValueError(f"Fastned France page without charging-point count: {url}")
     charging_points = int(points_match.group(1))
+    # Fastned keeps some official location pages online with an explicit 0 charging
+    # points (for example Istres La Galerie). They are CPO pages but not usable
+    # charging stations, so TCC excludes them instead of inventing availability.
+    if charging_points == 0:
+        return None
     if not (1 <= charging_points <= 100):
         raise ValueError(f"implausible Fastned charging-point count {charging_points}: {url}")
 
@@ -398,6 +403,7 @@ def make_payload(
             "requiredOperator": "Fastned",
             "officialFastnedLocationPagesOnly": True,
             "onlyFastnedCpoLocations": True,
+            "zeroPointLocationsIncluded": False,
             "partnerOperatorLocationsIncluded": False,
             "liveStatusIncluded": False,
             "liveStatusAuthority": "TCC base Electroverse/Electra overlay",
