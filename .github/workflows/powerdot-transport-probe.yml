@@ -1,0 +1,64 @@
+name: Powerdot transport probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/powerdot-transport-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Probe transports
+        run: |
+          mkdir -p reports data/national
+          python - <<'PY'
+          import base64,json,struct,urllib.request,urllib.error
+          from pathlib import Path
+          endpoint='https://api.pwrdt.com/powerdot.adhoc.v1.AdhocAPI/GetChargerInfo'
+          charger=b'MRB_CHP_KPC20001'
+          proto=b'\x0a'+bytes([len(charger)])+charger
+          grpc_frame=b'\x00'+struct.pack('>I',len(proto))+proto
+          variants=[
+            ('connect-json','application/connect+json',json.dumps({'chargerName':'MRB_CHP_KPC20001','emspCode':''}).encode()),
+            ('proto','application/proto',proto),
+            ('connect-proto','application/connect+proto',proto),
+            ('grpc-web-proto','application/grpc-web+proto',grpc_frame),
+            ('grpc-web-text','application/grpc-web-text+proto',base64.b64encode(grpc_frame)),
+          ]
+          out=[]
+          for name,ctype,body in variants:
+            headers={'User-Agent':'Mozilla/5.0 TCC Powerdot transport probe','Content-Type':ctype,'Accept':'*/*','Origin':'https://adhoc.pwrdt.com','Referer':'https://adhoc.pwrdt.com/','Connect-Protocol-Version':'1','X-Grpc-Web':'1'}
+            req=urllib.request.Request(endpoint,data=body,headers=headers,method='POST')
+            try:
+              with urllib.request.urlopen(req,timeout=10) as r:
+                raw=r.read(1000000); status=r.status; rh=dict(r.headers)
+            except urllib.error.HTTPError as e:
+              raw=e.read(300000); status=e.code; rh=dict(e.headers or {})
+            except Exception as e:
+              out.append({'name':name,'contentType':ctype,'status':None,'error':repr(e)}); continue
+            out.append({'name':name,'contentType':ctype,'status':status,'responseHeaders':rh,'bodyLen':len(raw),'bodyHexPrefix':raw[:160].hex(),'bodyTextPrefix':raw[:1000].decode('utf-8','replace')})
+          Path('data/national/powerdot_transport_probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          lines=['# Powerdot transport probe','']
+          for x in out:
+            lines += [f"## {x['name']}",f"Request: {x['contentType']}",f"HTTP: {x.get('status')}",f"Response Content-Type: {(x.get('responseHeaders') or {}).get('content-type')}",f"Length: {x.get('bodyLen')}",f"Hex: {x.get('bodyHexPrefix','')}",f"Text: {x.get('bodyTextPrefix',x.get('error',''))[:1500]}",'']
+          Path('reports/powerdot_transport_probe.md').write_text('\n'.join(lines),encoding='utf-8')
+          print([(x['name'],x.get('status'),(x.get('responseHeaders') or {}).get('content-type'),x.get('bodyLen')) for x in out])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/powerdot_transport_probe.md data/national/powerdot_transport_probe.json
+          git commit -m "data(powerdot): publish transport probe [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
