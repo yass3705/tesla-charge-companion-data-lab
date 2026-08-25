@@ -49,7 +49,7 @@ jobs:
           def cls(row):
               h=(v(row,'nom_operateur','operateur','operator')+' '+v(row,'nom_station','n_station','station_name')).lower()
               return 'partner_network' if ('partner network' in h or 'powered by driveco' in h) else 'driveco_network'
-          def ep(raw):
+          def energy(raw):
               if not raw:return None
               s=raw.strip().strip('"').replace('""','"')
               try:
@@ -59,21 +59,37 @@ jobs:
               except: pass
               m=re.search(r'energyPrice[^0-9-]*(-?\d+(?:[.,]\d+)?)',raw)
               return float(m.group(1).replace(',','.')) if m else None
-          classes=Counter();prices=Counter();with_tariff=0;ids=set();dupes=0;samples=defaultdict(list)
+          classes=Counter();prices=Counter();raw_tariffs=Counter();nonempty=0;with_energy=0;ids=set();dupes=0;samples=defaultdict(list);raw_samples=defaultdict(list);sources=Counter()
           for row in rows:
               c=cls(row);classes[c]+=1
               evid=v(row,'id_pdc_itinerance','id_pdc_local','id_pdc')
               if evid:
                   if evid in ids:dupes+=1
                   ids.add(evid)
-              t=v(row,'tarification','tarif','pricing','price');p=ep(t)
+              t=v(row,'tarification','tarif','pricing','price')
+              source_key=(v(row,'datagouv_dataset_id') or '?')+'|'+(v(row,'datagouv_resource_id') or '?')
+              sources[source_key]+=1
+              if t:
+                  nonempty+=1;raw_tariffs[(c,t)]+=1
+                  if len(raw_samples[(c,t)])<3:raw_samples[(c,t)].append({'evseId':evid or None,'stationName':v(row,'nom_station','n_station') or None,'power':v(row,'puissance_nominale','puissance_nominale_kw') or None,'dateMaj':v(row,'date_maj') or None,'lastModified':v(row,'last_modified') or None,'datasetId':v(row,'datagouv_dataset_id') or None,'resourceId':v(row,'datagouv_resource_id') or None})
+              p=energy(t)
               if p is not None:
-                  with_tariff+=1;prices[(c,p)]+=1
+                  with_energy+=1;prices[(c,p)]+=1
                   if len(samples[(c,p)])<3:samples[(c,p)].append({'evseId':evid or None,'stationName':v(row,'nom_station','n_station') or None,'power':v(row,'puissance_nominale','puissance_nominale_kw') or None,'tarification':t})
-          payload={'schemaVersion':'1.0.0','dataset':'driveco-national-consolidation-20260825-analysis','generatedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),'source':URL,'headers':headers,'matchedRows':len(rows),'uniqueEvseIds':len(ids),'duplicateEvseRows':dupes,'networkClassRows':dict(classes),'rowsWithEnergyPrice':with_tariff,'coverageRatio':round(with_tariff/len(rows),6) if rows else 0,'prices':[{'networkClass':c,'energyPriceEurPerKwh':p,'rows':n,'samples':samples[(c,p)]} for (c,p),n in sorted(prices.items())]}
+          top_raw=[]
+          for (c,t),n in raw_tariffs.most_common(100):
+              top_raw.append({'networkClass':c,'rawTarification':t,'rows':n,'samples':raw_samples[(c,t)]})
+          payload={
+            'schemaVersion':'1.1.0','dataset':'driveco-national-consolidation-20260825-analysis','generatedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),'source':URL,'headers':headers,
+            'matchedRows':len(rows),'uniqueEvseIds':len(ids),'duplicateEvseRows':dupes,'networkClassRows':dict(classes),
+            'rowsWithTarificationNonEmpty':nonempty,'rawTarificationUniqueValues':len(raw_tariffs),'topRawTarificationValues':top_raw,
+            'rowsWithStructuredEnergyPrice':with_energy,'structuredEnergyCoverageRatio':round(with_energy/len(rows),6) if rows else 0,
+            'structuredPrices':[{'networkClass':c,'energyPriceEurPerKwh':p,'rows':n,'samples':samples[(c,p)]} for (c,p),n in sorted(prices.items())],
+            'sourceRows':[{'datasetResource':k,'rows':n} for k,n in sources.most_common()]
+          }
           open('reports/driveco/national_consolidation_latest.json','w').write(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({k:payload[k] for k in ('matchedRows','uniqueEvseIds','duplicateEvseRows','networkClassRows','rowsWithEnergyPrice','coverageRatio')},indent=2))
-          for x in payload['prices']:print(x['networkClass'],x['energyPriceEurPerKwh'],x['rows'])
+          print(json.dumps({k:payload[k] for k in ('matchedRows','uniqueEvseIds','duplicateEvseRows','networkClassRows','rowsWithTarificationNonEmpty','rawTarificationUniqueValues','rowsWithStructuredEnergyPrice')},indent=2))
+          for x in top_raw[:25]:print('RAW',x['networkClass'],x['rows'],repr(x['rawTarification'][:160]))
           PY
       - name: Commit report
         shell: bash
