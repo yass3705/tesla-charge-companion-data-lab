@@ -1,0 +1,63 @@
+name: Bump public API probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/bump_public_api_probe.py"
+      - "scripts/bump_direct_inventory.py"
+      - ".github/workflows/bump-public-api-probe.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bump-public-api-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Probe Bump production API with public GET only
+        run: python scripts/bump_public_api_probe.py
+
+      - name: Validate no sensitive response data persisted
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('reports/bump/public_api_probe_latest.json').read_text())
+          m=p['method']
+          assert m['unauthenticated'] and m['getOnly'] and not m['writeRequests']
+          assert not m['responseBodiesPersisted'] and not m['queryStringsUsed']
+          for row in p['results']:
+              assert '?' not in row['path'] and '#' not in row['path']
+              assert 'body' not in row
+          print(p['counts'])
+          PY
+
+      - name: Publish sanitized probe result
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/bump/public_api_probe_latest.json reports/bump/public_api_probe_latest.md
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(bump): publish production API probe [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
