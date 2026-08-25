@@ -154,7 +154,9 @@ def public_exact(k: str, power: float) -> dict[str, Any] | None:
         return {"model": "time_windows", "currency": "EUR",
                 "windows": [{"start": "08:00", "end": "20:00", "ratePerMinute": 4.50 / 60},
                             {"start": "20:00", "end": "08:00", "ratePerMinute": 3.50 / 60}]}
-    if power <= 22:
+    # IRVE commonly exposes nominal 22 kW hardware as 22.08 kW (32 A x 3 phases).
+    # Keep that technical rounding inside the official <=22 kVA tariff class.
+    if power <= 22.1:
         return {"model": "per_minute", "currency": "EUR", "ratePerMinute": 6.50 / 60}
     return {"model": "per_minute", "currency": "EUR", "ratePerMinute": 12.00 / 60}
 
@@ -169,7 +171,9 @@ def subscriber_exact(k: str, power: float) -> dict[str, Any] | None:
         return {"model": "time_windows", "currency": "EUR",
                 "windows": [{"start": "08:00", "end": "20:00", "ratePerMinute": 3.50 / 60},
                             {"start": "20:00", "end": "08:00", "ratePerMinute": 2.50 / 60, "capEur": 12.0}]}
-    if power <= 22:
+    # IRVE commonly exposes nominal 22 kW hardware as 22.08 kW (32 A x 3 phases).
+    # Keep that technical rounding inside the official <=22 kVA tariff class.
+    if power <= 22.1:
         return {"model": "time_windows", "currency": "EUR",
                 "windows": [{"start": "08:00", "end": "20:00", "ratePerMinute": 5.50 / 60},
                             {"start": "20:00", "end": "08:00", "ratePerMinute": 5.50 / 60, "capEur": 12.0}]}
