@@ -1,0 +1,52 @@
+name: Freshmile missing-ref tariff fallback
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/freshmile_missing_ref_tariffs.py'
+      - '.github/workflows/freshmile-missing-ref-tariffs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fallback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax check
+        run: python -m py_compile scripts/freshmile_direct_inventory.py scripts/freshmile_prune_regional_networks.py scripts/freshmile_direct_tariffs_v2.py scripts/freshmile_missing_ref_tariffs.py
+      - name: Build current national Freshmile inventory
+        run: python scripts/freshmile_direct_inventory.py
+      - name: Remove separately modeled regional networks
+        run: python scripts/freshmile_prune_regional_networks.py
+      - name: Resolve missing Freshmile refs by exact EVSE match
+        run: python scripts/freshmile_missing_ref_tariffs.py
+      - name: Validate fallback
+        shell: bash
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          path = Path('reports/freshmile/missing_ref_tariffs.json.gz')
+          assert path.exists() and path.stat().st_size > 0
+          with gzip.open(path, 'rt', encoding='utf-8') as handle:
+              data = json.load(handle)
+          s = data['stats']
+          assert data['policy']['nearestLocationIsSufficient'] is False
+          assert data['policy']['exactEvseCustomRefRequired'] is True
+          assert s['stationsMissingLocationRef'] == 4
+          assert s['requests'] == 4
+          assert s['http200'] >= 3
+          print(json.dumps(s, ensure_ascii=False, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freshmile-missing-ref-tariffs
+          path: reports/freshmile/missing_ref_tariffs.json.gz
+          retention-days: 7
