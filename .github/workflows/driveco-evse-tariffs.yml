@@ -1,0 +1,69 @@
+name: DRIVECO EVSE direct tariffs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/driveco_evse_tariffs.py"
+      - ".github/workflows/driveco-evse-tariffs.yml"
+  schedule:
+    - cron: "53 8 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: driveco-evse-tariffs
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build exact EVSE price base
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/driveco_evse_tariffs.py
+          python scripts/driveco_evse_tariffs.py --out out/driveco-evse
+          cat out/driveco-evse/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Validate conservative classification
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('out/driveco-evse/driveco_evse_tariffs.json').read_text())
+          assert p['policy']['operatorDirectOnly'] is True
+          assert p['policy']['roamingExcluded'] is True
+          assert p['policy']['referencePricesNeverUsedAsFallback'] is True
+          assert p['policy']['matrixOSFNotInterpretedUntilSemanticsValidated'] is True
+          assert p['summary']['rowCount'] > 1000
+          assert p['summary']['resolvedEnergyPriceRows'] > 1000
+          assert all(x['tariff']['energyPriceEurPerKwh'] >= 0 for x in p['resolved'])
+          assert all(x['feeSemantics']['matrixOSF'] == 'published_raw_not_yet_interpreted' for x in p['resolved'])
+          print(p['summary'])
+          PY
+      - name: Publish when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/driveco
+          cp out/driveco-evse/driveco_evse_tariffs.json data/operator_direct/driveco_evse_tariffs.json
+          cp out/driveco-evse/SUMMARY.md reports/driveco/evse_tariffs_summary.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/driveco_evse_tariffs.json reports/driveco/evse_tariffs_summary.md
+          if git diff --cached --quiet; then echo "No data changes"; exit 0; fi
+          git commit -m "data(driveco): publish EVSE direct tariffs [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
