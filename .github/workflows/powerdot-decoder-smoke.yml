@@ -1,0 +1,206 @@
+name: Powerdot decoder smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/powerdot-decoder-smoke.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Decode direct Powerdot tariffs
+        run: |
+          mkdir -p reports data/national
+          python - <<'PY'
+          import json, struct, urllib.request, urllib.error
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          ENDPOINT='https://api.pwrdt.com/powerdot.adhoc.v1.AdhocAPI/GetChargerInfo'
+          CHARGERS=['MRB_CHP_KPC20001','NET_SST_KPS20001','ACE_VIL_SLM10001','ACT_VDD_KPS20001']
+          DIM={0:'UNSPECIFIED',1:'ENERGY',2:'FLAT',3:'PARKING_TIME',4:'TIME'}
+
+          def varint(data,pos):
+              value=0; shift=0
+              while True:
+                  b=data[pos]; pos+=1
+                  value |= (b & 0x7f) << shift
+                  if not b & 0x80: return value,pos
+                  shift += 7
+
+          def fields(data):
+              out=[]; pos=0
+              while pos < len(data):
+                  key,pos=varint(data,pos); no=key>>3; wt=key&7
+                  if wt==0:
+                      val,pos=varint(data,pos)
+                  elif wt==1:
+                      val=data[pos:pos+8]; pos+=8
+                  elif wt==2:
+                      n,pos=varint(data,pos); val=data[pos:pos+n]; pos+=n
+                  elif wt==5:
+                      val=data[pos:pos+4]; pos+=4
+                  else:
+                      raise ValueError(f'unsupported wire type {wt} field {no}')
+                  out.append((no,wt,val))
+              return out
+
+          def one(data,no):
+              vals=[v for f,w,v in fields(data) if f==no]
+              return vals[0] if vals else None
+          def allv(data,no): return [v for f,w,v in fields(data) if f==no]
+          def wrap_string(data):
+              if data is None:return None
+              v=one(data,1); return v.decode('utf-8','replace') if isinstance(v,(bytes,bytearray)) else None
+          def wrap_double(data):
+              if data is None:return None
+              for f,w,v in fields(data):
+                  if f==1:
+                      if w==1:return struct.unpack('<d',v)[0]
+                      if w==5:return float(struct.unpack('<f',v)[0])
+                      if w==0:return float(v)
+              return None
+          def wrap_int(data):
+              if data is None:return None
+              v=one(data,1); return int(v) if isinstance(v,int) else None
+          def wrap_bool(data):
+              x=wrap_int(data); return bool(x) if x is not None else None
+          def duration(data):
+              if data is None:return None
+              sec=0; nanos=0
+              for f,w,v in fields(data):
+                  if f==1 and w==0: sec=v
+                  elif f==2 and w==0: nanos=v
+              return sec+nanos/1e9
+
+          def decode_restr(data):
+              if not data:return None
+              out={}
+              mapping={1:'minKwh',2:'maxKwh',3:'minPowerKw',4:'maxPowerKw'}
+              for no,name in mapping.items():
+                  v=one(data,no)
+                  if v is not None: out[name]=wrap_double(v)
+              v=one(data,5)
+              if v is not None: out['minDurationSec']=duration(v)
+              v=one(data,6)
+              if v is not None: out['maxDurationSec']=duration(v)
+              return out or None
+
+          def decode_component(data):
+              typ=None; price=None
+              for f,w,v in fields(data):
+                  if f==1 and w==0: typ=v
+                  elif f==2 and w==2: price=wrap_double(v)
+              return {'type':DIM.get(typ,str(typ)),'typeCode':typ,'pricePerUnit':price}
+
+          def decode_element(data):
+              comps=[]; restrictions=None
+              for f,w,v in fields(data):
+                  if f==1 and w==2: comps.append(decode_component(v))
+                  elif f==2 and w==2: restrictions=decode_restr(v)
+              return {'priceComponents':comps,'restrictions':restrictions}
+
+          def decode_tariff(data):
+              if not data:return None
+              out={'id':None,'currencyCode':None,'currencySymbol':None,'elements':[],'isVatIncluded':None,'subscriptionActive':None}
+              for f,w,v in fields(data):
+                  if f==1 and w==2: out['id']=wrap_string(v)
+                  elif f==2 and w==2: out['currencyCode']=wrap_string(v)
+                  elif f==3 and w==2: out['currencySymbol']=wrap_string(v)
+                  elif f==4 and w==2: out['elements'].append(decode_element(v))
+                  elif f==5 and w==2: out['isVatIncluded']=wrap_bool(v)
+                  elif f==6 and w==2: out['subscriptionActive']=wrap_bool(v)
+              return out
+
+          def decode_connector(data):
+              out={'connectorNumber':None,'physicalReference':None,'status':None,'format':None,'type':None,'voltage':None,'amperage':None,'maxPowerKw':None,'evseNumber':None,'tariff':None,'orderNumber':None}
+              for f,w,v in fields(data):
+                  if f==1 and w==2: out['connectorNumber']=wrap_int(v)
+                  elif f==2 and w==2: out['physicalReference']=wrap_string(v)
+                  elif f==3 and w==0: out['status']=v
+                  elif f==5 and w==0: out['format']=v
+                  elif f==6 and w==0: out['type']=v
+                  elif f==7 and w==2: out['voltage']=wrap_double(v)
+                  elif f==8 and w==2: out['amperage']=wrap_double(v)
+                  elif f==9 and w==2: out['maxPowerKw']=wrap_double(v)
+                  elif f==10 and w==2: out['evseNumber']=wrap_int(v)
+                  elif f==11 and w==2: out['tariff']=decode_tariff(v)
+                  elif f==12 and w==2: out['orderNumber']=wrap_int(v)
+              return out
+
+          def decode_charger(data):
+              out={'chargerName':None,'qrCode':None,'brand':None,'model':None,'connectors':[],'chargerPowerType':None}
+              for f,w,v in fields(data):
+                  if f==1 and w==2: out['chargerName']=wrap_string(v)
+                  elif f==2 and w==2: out['qrCode']=wrap_string(v)
+                  elif f==3 and w==2: out['brand']=wrap_string(v)
+                  elif f==4 and w==2: out['model']=wrap_string(v)
+                  elif f==5 and w==2: out['connectors'].append(decode_connector(v))
+                  elif f==8 and w==0: out['chargerPowerType']=v
+              return out
+
+          def decode_location(data):
+              if not data:return None
+              names={1:'name',2:'address',3:'zipcode',4:'city',5:'countryCode',6:'uid',8:'id'}
+              out={}
+              for f,w,v in fields(data):
+                  if f in names and w==2: out[names[f]]=wrap_string(v)
+                  elif f==7 and w==2: out['chargerCount']=wrap_int(v)
+                  elif f==9 and w==2: out['latitude']=wrap_double(v)
+                  elif f==10 and w==2: out['longitude']=wrap_double(v)
+              return out
+
+          def grpc_call(charger):
+              name=charger.encode(); msg=b'\x0a'+bytes([len(name)])+name
+              frame=b'\x00'+struct.pack('>I',len(msg))+msg
+              headers={'User-Agent':'Mozilla/5.0 TCC-Powerdot-direct-extractor','Content-Type':'application/grpc-web+proto','Accept':'application/grpc-web+proto','X-Grpc-Web':'1','Origin':'https://adhoc.pwrdt.com','Referer':'https://adhoc.pwrdt.com/'}
+              req=urllib.request.Request(ENDPOINT,data=frame,headers=headers,method='POST')
+              with urllib.request.urlopen(req,timeout=12) as r: raw=r.read(3000000)
+              pos=0; messages=[]; trailers=[]
+              while pos+5<=len(raw):
+                  flag=raw[pos]; n=struct.unpack('>I',raw[pos+1:pos+5])[0]; pos+=5
+                  body=raw[pos:pos+n]; pos+=n
+                  (trailers if flag&0x80 else messages).append(body)
+              if not messages: raise ValueError('no protobuf message frame')
+              return r.status,messages[0],b'\n'.join(trailers).decode('utf-8','replace')
+
+          results=[]
+          for charger in CHARGERS:
+              status,payload,trailer=grpc_call(charger)
+              charger_msg=None; location_msg=None; country=None; vat=None
+              for f,w,v in fields(payload):
+                  if f==1 and w==2: charger_msg=decode_charger(v)
+                  elif f==2 and w==2: location_msg=decode_location(v)
+                  elif f==3 and w==2: country=wrap_string(v)
+                  elif f==4 and w==2: vat=wrap_double(v)
+              results.append({'requestedCharger':charger,'httpStatus':status,'charger':charger_msg,'location':location_msg,'networkCountryCode':country,'vatPercentage':vat,'grpcTrailer':trailer})
+
+          output={'generatedAt':datetime.now(timezone.utc).isoformat(),'source':'Powerdot direct public adhoc gRPC-Web API','roaming':False,'results':results}
+          Path('data/national/powerdot_decoder_smoke.json').write_text(json.dumps(output,ensure_ascii=False,indent=2),encoding='utf-8')
+          lines=['# Powerdot decoded tariff smoke test','']
+          for x in results:
+              lines += [f"## {x['requestedCharger']}",f"Location: {(x['location'] or {}).get('name')} — {(x['location'] or {}).get('address')}",f"VAT: {x['vatPercentage']} | country: {x['networkCountryCode']}"]
+              for c in (x['charger'] or {}).get('connectors',[]):
+                  lines.append(f"- Connector {c['connectorNumber']} | {c['maxPowerKw']} kW | tariff={json.dumps(c['tariff'],ensure_ascii=False)}")
+              lines.append('')
+          Path('reports/powerdot_decoder_smoke.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print(json.dumps(output,ensure_ascii=False,indent=2)[:20000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/powerdot_decoder_smoke.md data/national/powerdot_decoder_smoke.json
+          git commit -m "data(powerdot): publish decoded direct tariffs [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
