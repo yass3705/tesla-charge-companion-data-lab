@@ -40,11 +40,20 @@ def clean(v):
 
 
 def station_key(row: dict) -> str:
-    return str(clean(row.get("id_station_itinerance")) or clean(row.get("id_station_local")) or clean(row.get("nom_station")) or f"row-{row.get('__id')}") )
+    return str(
+        clean(row.get("id_station_itinerance"))
+        or clean(row.get("id_station_local"))
+        or clean(row.get("nom_station"))
+        or f"row-{row.get('__id')}"
+    )
 
 
 def pdc_key(row: dict) -> str:
-    return str(clean(row.get("id_pdc_itinerance")) or clean(row.get("id_pdc_local")) or f"row-{row.get('__id')}") )
+    return str(
+        clean(row.get("id_pdc_itinerance"))
+        or clean(row.get("id_pdc_local"))
+        or f"row-{row.get('__id')}"
+    )
 
 
 def main() -> None:
