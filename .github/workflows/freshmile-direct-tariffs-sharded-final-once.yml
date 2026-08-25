@@ -1,0 +1,158 @@
+name: Freshmile final sharded scan once
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/freshmile-direct-tariffs-sharded-final-once.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: freshmile-final-sharded-scan-once
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax check
+        run: >-
+          python -m py_compile
+          scripts/freshmile_direct_inventory.py
+          scripts/freshmile_prune_regional_networks.py
+          scripts/freshmile_direct_tariffs.py
+          scripts/freshmile_direct_tariffs_v2.py
+          scripts/freshmile_direct_tariffs_shard.py
+          scripts/freshmile_merge_tariff_shards.py
+          scripts/freshmile_missing_ref_tariffs.py
+      - name: Build current national Freshmile inventory
+        run: python scripts/freshmile_direct_inventory.py
+      - name: Remove separately modeled regional networks
+        run: python scripts/freshmile_prune_regional_networks.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freshmile-pruned-inventory-final
+          path: data/national/freshmile_direct_stations_france.json.gz
+          retention-days: 2
+
+  scan:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: freshmile-pruned-inventory-final
+          path: data/national
+      - name: Fetch Freshmile tariff shard
+        run: >-
+          python scripts/freshmile_direct_tariffs_shard.py
+          --input data/national/freshmile_direct_stations_france.json.gz
+          --shard-count 8
+          --shard-index ${{ matrix.shard }}
+          --sleep-ms 75
+          --output reports/freshmile/shards/freshmile-shard-${{ matrix.shard }}.json.gz
+      - name: Upload shard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freshmile-final-shard-${{ matrix.shard }}
+          path: reports/freshmile/shards/freshmile-shard-${{ matrix.shard }}.json.gz
+          retention-days: 2
+          if-no-files-found: warn
+
+  merge:
+    needs: scan
+    if: always() && needs.scan.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: freshmile-pruned-inventory-final
+          path: data/national
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: freshmile-final-shard-*
+          path: reports/freshmile/shards
+          merge-multiple: true
+      - name: Merge complete national tariff layer
+        run: >-
+          python scripts/freshmile_merge_tariff_shards.py
+          --input-dir reports/freshmile/shards
+          --output data/national/freshmile_direct_tariffs_france.json.gz
+      - name: Recover stale and missing location refs
+        run: >-
+          python scripts/freshmile_missing_ref_tariffs.py
+          --input data/national/freshmile_direct_stations_france.json.gz
+          --scan data/national/freshmile_direct_tariffs_france.json.gz
+          --output data/national/freshmile_direct_tariffs_france.json.gz
+      - name: Validate final national tariff layer
+        shell: bash
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from collections import Counter
+          from pathlib import Path
+          path = Path('data/national/freshmile_direct_tariffs_france.json.gz')
+          assert path.exists() and path.stat().st_size > 0
+          with gzip.open(path, 'rt', encoding='utf-8') as handle:
+              data = json.load(handle)
+          stats = data['stats']
+          points = [p for s in data['stations'] for p in s['chargePoints']]
+          tariffs = [t for p in points for t in p['tariffs']]
+          source_validated = sum(bool(t.get('sourceValidated')) for t in tariffs)
+          rankable = sum(bool(t.get('tccRankable')) for t in tariffs)
+          unparsed = sum((t.get('components') or {}).get('status') == 'unparsed' for t in tariffs)
+          complex_tiers = sum((t.get('components') or {}).get('status') == 'parsed_complex_tiers' for t in tariffs)
+          currencies = Counter(str(t.get('currency') or 'NONE') for t in tariffs)
+          invalid_rankable = [t for t in tariffs if t.get('tccRankable') and (not t.get('sourceValidated') or t.get('isPreferential') or t.get('currency') not in {None, 'EUR'} or (t.get('components') or {}).get('status') in {'unparsed','parsed_complex_tiers'})]
+          summary = {
+              'coverage': data.get('coverage'),
+              'quality': data.get('quality'),
+              'recovery': data.get('recovery'),
+              'regionalNetworkAudit': data.get('regionalNetworkAudit'),
+              'stats': stats,
+              'tariffSemantics': {'sourceValidated': source_validated, 'tccRankableNow': rankable, 'unparsed': unparsed, 'complexTiered': complex_tiers, 'currencies': dict(currencies), 'invalidRankable': len(invalid_rankable)},
+          }
+          print(json.dumps(summary, ensure_ascii=False, indent=2))
+          assert data['completeNationalScan'] is True
+          assert data['partitioning']['allShardsPresent'] is True
+          assert data['partitioning']['shardCount'] == 8
+          assert data['policy']['publishToTccStableAllowed'] is False
+          assert (data.get('regionalNetworkAudit') or {}).get('configuredNetworkCount', 0) >= 18
+          assert stats['stationsSelected'] == stats['stationsInInventory']
+          assert stats['requests'] >= 2450
+          assert stats['http200'] / max(1, stats['requests']) >= 0.99
+          assert stats.get('evseMatchedFinal', 0) / max(1, stats['chargePointsInInventory']) >= 0.98
+          assert source_validated > 0 and rankable > 0 and rankable <= source_validated
+          assert not invalid_rankable
+          PY
+      - name: Upload final national artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freshmile-direct-tariffs-final
+          path: |
+            data/national/freshmile_direct_stations_france.json.gz
+            data/national/freshmile_direct_tariffs_france.json.gz
+          retention-days: 7
+          if-no-files-found: warn
