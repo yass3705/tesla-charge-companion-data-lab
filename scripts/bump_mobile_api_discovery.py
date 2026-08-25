@@ -5,7 +5,7 @@ The analyzer is intentionally read-only and privacy/safety conservative:
 - APKs are supplied by the workflow and never committed.
 - no app execution, login, credentials, charging or payment actions;
 - no network requests are made by this script;
-- output contains only sanitized host/path metadata and hashes, never query strings,
+- output contains only sanitized host/path/route metadata and hashes, never query strings,
   headers, cookies, bearer tokens, raw APK contents or full app bundles.
 """
 from __future__ import annotations
@@ -30,6 +30,7 @@ KEYWORDS = (
     "connector", "connectors", "chargepoint", "charge-point", "charge_point",
     "tariff", "tariffs", "price", "prices", "pricing", "charging", "charge",
 )
+ROUTE_KEYWORDS = ("station", "location", "evse", "connector", "chargepoint", "tariff", "price", "pricing")
 SENSITIVE = (
     "token", "secret", "password", "passwd", "authorization", "bearer", "cookie",
     "client_secret", "api_key", "apikey", "refresh_token", "access_token",
@@ -37,6 +38,10 @@ SENSITIVE = (
 URL_RE = re.compile(rb"https?://[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]{4,500}", re.I)
 PATH_RE = re.compile(
     rb"[\"'](/(?:api|graphql|v\d+|stations?|locations?|evses?|connectors?|chargepoints?|tariffs?|pricing|prices?)[A-Za-z0-9._~!$&'()*+,;=:@%/?#\[\]-]{0,300})[\"']",
+    re.I,
+)
+ROUTE_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9])(/?[A-Za-z0-9._{}:%-]*(?:station|location|evse|connector|chargepoint|tariff|pricing|price)[A-Za-z0-9._{}:/%~-]*)",
     re.I,
 )
 ASCII_STRING_RE = re.compile(rb"[\x20-\x7e]{6,1000}")
@@ -66,7 +71,6 @@ def sanitize_url(raw: str) -> tuple[str, str] | None:
     if host in {"localhost", "127.0.0.1", "0.0.0.0"}:
         return None
     path = re.sub(r"/{2,}", "/", p.path or "/")
-    # Never retain query/fragment because they can contain tokens or identifiers.
     return host, path[:320]
 
 
@@ -81,20 +85,42 @@ def sensitive(text: str) -> bool:
 
 
 def strings_from_bytes(data: bytes) -> Iterable[bytes]:
-    # ASCII is sufficient for URL/path discovery in typical Android bundles and native libs.
     yield from ASCII_STRING_RE.findall(data)
 
 
-def inspect_blob(data: bytes, source: str, urls: dict, paths: dict, markers: Counter) -> None:
-    # Direct URL/path regexes catch compacted/minified code even when adjacent strings are huge.
+def sanitize_route_token(token: str) -> str | None:
+    token = token.strip().strip("'\"`()[]<>,.;")
+    token = token.split("?", 1)[0].split("#", 1)[0]
+    if not token or len(token) > 220 or sensitive(token):
+        return None
+    low = token.casefold()
+    if not any(k in low for k in ROUTE_KEYWORDS):
+        return None
+    if not re.fullmatch(r"/?[A-Za-z0-9._{}:%~-]+(?:/[A-Za-z0-9._{}:%~-]+)*", token):
+        return None
+    # Keep either an actual path or a concise endpoint/model token useful for route reconstruction.
+    if "/" not in token and len(token) > 80:
+        return None
+    return token
+
+
+def inspect_blob(data: bytes, source: str, urls: dict, paths: dict, routes: dict, markers: Counter) -> None:
     candidates = list(URL_RE.findall(data))
     for s in strings_from_bytes(data):
-        if interesting(s.decode("utf-8", errors="ignore")):
-            candidates.extend(URL_RE.findall(s))
-            for m in PATH_RE.findall(s):
-                path = m.decode("utf-8", errors="ignore")
-                if not sensitive(path):
-                    paths.setdefault(path[:320], set()).add(source)
+        text = s.decode("utf-8", errors="ignore")
+        if not interesting(text):
+            continue
+        candidates.extend(URL_RE.findall(s))
+        for m in PATH_RE.findall(s):
+            path = m.decode("utf-8", errors="ignore")
+            if not sensitive(path):
+                paths.setdefault(path.split("?",1)[0].split("#",1)[0][:320], set()).add(source)
+        # Flutter AOT commonly stores route fragments as plain string-table entries rather than
+        # quoted source literals, so collect tightly filtered endpoint-looking tokens as well.
+        for match in ROUTE_TOKEN_RE.findall(text):
+            route = sanitize_route_token(match)
+            if route:
+                routes.setdefault(route, set()).add(source)
 
     for raw in candidates:
         text = raw.decode("utf-8", errors="ignore")
@@ -122,7 +148,7 @@ def inspect_blob(data: bytes, source: str, urls: dict, paths: dict, markers: Cou
             markers[key] += 1
 
 
-def inspect_apk(apk: Path, urls: dict, paths: dict, markers: Counter) -> dict:
+def inspect_apk(apk: Path, urls: dict, paths: dict, routes: dict, markers: Counter) -> dict:
     meta = {
         "filename": apk.name,
         "bytes": apk.stat().st_size,
@@ -135,11 +161,10 @@ def inspect_apk(apk: Path, urls: dict, paths: dict, markers: Counter) -> dict:
             infos = zf.infolist()
             meta["zipEntries"] = len(infos)
             for info in infos:
-                # Skip obviously irrelevant large media assets, but scan code/config/native libs.
                 name = info.filename
                 lowname = name.casefold()
                 relevant = (
-                    lowname.endswith((".dex", ".so", ".js", ".json", ".xml", ".txt", ".properties", ".html"))
+                    lowname.endswith((".dex", ".so", ".js", ".json", ".xml", ".txt", ".properties", ".html", ".env"))
                     or "assets/" in lowname
                     or "flutter_assets" in lowname
                     or "manifest" in lowname
@@ -151,7 +176,7 @@ def inspect_apk(apk: Path, urls: dict, paths: dict, markers: Counter) -> dict:
                 except Exception:
                     continue
                 meta["entriesScanned"] += 1
-                inspect_blob(data, f"{apk.name}:{name}", urls, paths, markers)
+                inspect_blob(data, f"{apk.name}:{name}", urls, paths, routes, markers)
     except zipfile.BadZipFile:
         meta["error"] = "bad_zip"
     return meta
@@ -168,22 +193,28 @@ def main() -> int:
 
     urls: dict[str, dict] = {}
     paths: dict[str, set[str]] = {}
+    routes: dict[str, set[str]] = {}
     markers: Counter = Counter()
-    apk_meta = [inspect_apk(apk, urls, paths, markers) for apk in apks]
+    apk_meta = [inspect_apk(apk, urls, paths, routes, markers) for apk in apks]
 
-    url_rows = []
-    for key, row in sorted(urls.items()):
-        url_rows.append({
+    url_rows = [
+        {
             "url": key,
             "host": row["host"],
             "path": row["path"],
             "sourceCount": len(row["sources"]),
             "sources": sorted(row["sources"])[:8],
-        })
+        }
+        for key, row in sorted(urls.items())
+    ]
     path_rows = [
         {"path": path, "sourceCount": len(srcs), "sources": sorted(srcs)[:8]}
         for path, srcs in sorted(paths.items())
         if interesting(path) and not sensitive(path)
+    ]
+    route_rows = [
+        {"route": route, "sourceCount": len(srcs), "sources": sorted(srcs)[:8]}
+        for route, srcs in sorted(routes.items(), key=lambda item: (item[0].casefold(), item[0]))
     ]
 
     host_counts = Counter(r["host"] for r in url_rows)
@@ -193,7 +224,7 @@ def main() -> int:
     ]
 
     payload = {
-        "schemaVersion": "1.0.0",
+        "schemaVersion": "1.1.0",
         "dataset": "bump-mobile-static-api-discovery",
         "generatedAt": now_iso(),
         "package": PACKAGE,
@@ -211,11 +242,13 @@ def main() -> int:
         "hostCounts": [{"host": h, "candidateCount": n} for h, n in host_counts.most_common()],
         "candidateUrls": url_rows[:500],
         "candidatePaths": path_rows[:500],
+        "compiledRouteStringCandidates": route_rows[:1000],
         "likelyStationTariffCandidates": likely[:250],
         "counts": {
             "apkCount": len(apks),
             "urlCandidateCount": len(url_rows),
             "pathCandidateCount": len(path_rows),
+            "compiledRouteStringCandidateCount": len(route_rows),
             "likelyStationTariffCandidateCount": len(likely),
         },
     }
@@ -226,14 +259,15 @@ def main() -> int:
     lines = [
         "# Bump mobile static API discovery",
         "",
-        "Read-only static inspection of the current Google Play APK/splits. No Bump account, app execution, charging or payment action was used.",
+        "Read-only static inspection of the current APK/splits. No Bump account, app execution, charging or payment action was used.",
         "",
         "## Result",
         "",
         f"- APK/split files inspected: **{len(apks)}**",
         f"- Sanitized URL candidates: **{len(url_rows)}**",
-        f"- Relative API/path candidates: **{len(path_rows)}**",
-        f"- Likely station/tariff API candidates: **{len(likely)}**",
+        f"- Quoted relative API/path candidates: **{len(path_rows)}**",
+        f"- Compiled Flutter route-string candidates: **{len(route_rows)}**",
+        f"- Likely station/tariff API URL candidates: **{len(likely)}**",
         "",
         "## Candidate hosts",
         "",
@@ -243,14 +277,18 @@ def main() -> int:
             lines.append(f"- `{host}` — {count} candidate(s)")
     else:
         lines.append("No relevant hostnames found.")
-    lines += ["", "## Likely station/tariff candidates", ""]
+    lines += ["", "## Likely station/tariff URL candidates", ""]
     if likely:
         for row in likely[:80]:
             lines.append(f"- `{row['url']}`")
     else:
         lines.append("No likely station/tariff URL found in static strings.")
+    if route_rows:
+        lines += ["", "## Compiled station/tariff route strings", ""]
+        for row in route_rows[:160]:
+            lines.append(f"- `{row['route']}`")
     if path_rows:
-        lines += ["", "## Relative API/path candidates", ""]
+        lines += ["", "## Quoted relative API/path candidates", ""]
         for row in path_rows[:80]:
             lines.append(f"- `{row['path']}`")
     lines += [
