@@ -33,11 +33,12 @@ jobs:
           data = json.loads(path.read_text(encoding='utf-8'))
           assert data['method'] == 'unauthenticated public GET only'
           assert data['validatedExactPriceFound'] is False
-          assert data['requestCount'] <= 50
+          assert data['requestCount'] <= 20
           print(json.dumps({
               'requestCount': data['requestCount'],
               'statusCounts': data['statusCounts'],
-              'interestingResponseCount': data['interestingResponseCount'],
+              'successfulResponseCount': data['successfulResponseCount'],
+              'successfulResponsesWithPriceSemantics': data['successfulResponsesWithPriceSemantics'],
           }, ensure_ascii=False, indent=2))
           PY
       - uses: actions/upload-artifact@v4
