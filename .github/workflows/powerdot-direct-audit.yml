@@ -1,0 +1,96 @@
+name: Powerdot direct tariff audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/powerdot-direct-audit.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download national IRVE
+        run: |
+          mkdir -p tmp reports data/national
+          curl -fL --retry 3 'https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435' -o tmp/irve.csv
+      - name: Audit Powerdot extraction
+        run: |
+          python - <<'PY'
+          import csv,gzip,json
+          from collections import defaultdict
+          from datetime import datetime,timezone
+          from pathlib import Path
+
+          with gzip.open('data/national/powerdot_direct_france.json.gz','rt',encoding='utf-8') as f:data=json.load(f)
+          covered_pdc=set()
+          time_cases=[]
+          for ch in data['chargers']:
+            covered_pdc.update(ch.get('irvePdcIds',[]))
+            loc=ch.get('location') or {}
+            for c in (ch.get('charger') or {}).get('connectors',[]):
+              t=c.get('tariff') or {}
+              for el in t.get('elements',[]):
+                for pc in el.get('priceComponents',[]):
+                  if pc.get('type')!='ENERGY':
+                    time_cases.append({'chargerName':ch['chargerName'],'location':loc,'connectorNumber':c.get('connectorNumber'),'powerKw':c.get('maxPowerKw'),'tariffId':t.get('id'),'component':pc,'restrictions':el.get('restrictions'),'fullTariff':t})
+
+          def val(r,*keys):
+            for k in keys:
+              x=r.get(k)
+              if x not in (None,''):return str(x).strip()
+            return ''
+          with open('tmp/irve.csv','r',encoding='utf-8-sig',newline='') as f:
+            sample=f.read(65536);f.seek(0)
+            try:dialect=csv.Sniffer().sniff(sample,delimiters=',;\t')
+            except Exception:dialect=csv.excel
+            rd=csv.DictReader(f,dialect=dialect)
+            stations=defaultdict(lambda:{'pdc':set(),'rows':[]})
+            for r in rd:
+              op=' '.join([val(r,'nom_operateur','n_operateur'),val(r,'nom_amenageur','n_amenageur'),val(r,'nom_enseigne','n_enseigne')]).lower().replace(' ','')
+              if 'powerdot' not in op:continue
+              sid=val(r,'id_station_itinerance','id_station_local') or val(r,'nom_station','n_station')+'|'+val(r,'adresse_station','ad_station')
+              pid=val(r,'id_pdc_itinerance','id_pdc_local')
+              if pid:stations[sid]['pdc'].add(pid)
+              stations[sid]['rows'].append(r)
+
+          unresolved=[]
+          partial=[]
+          for sid,s in stations.items():
+            cov=s['pdc'] & covered_pdc
+            r=s['rows'][0]
+            item={'stationId':sid,'name':val(r,'nom_station','n_station'),'address':val(r,'adresse_station','ad_station'),'city':val(r,'consolidated_commune','nom_commune','commune'),'operator':val(r,'nom_operateur','n_operateur'),'pdcCount':len(s['pdc']),'coveredPdcCount':len(cov),'uncoveredPdcIds':sorted(s['pdc']-covered_pdc),'dateMaj':val(r,'date_maj','date_maj_itinerance'),'implantation':val(r,'implantation_station'),'accessibilite':val(r,'accessibilite_pmr'),'conditionAcces':val(r,'condition_acces')}
+            if not cov:unresolved.append(item)
+            elif len(cov)<len(s['pdc']):partial.append(item)
+          unresolved.sort(key=lambda x:(x['name'],x['stationId']))
+          partial.sort(key=lambda x:(x['name'],x['stationId']))
+          audit={'generatedAt':datetime.now(timezone.utc).isoformat(),'timeCases':time_cases,'unresolvedStations':unresolved,'partiallyCoveredStations':partial,'counts':{'timeCases':len(time_cases),'unresolvedStations':len(unresolved),'partialStations':len(partial)}}
+          Path('data/national/powerdot_direct_audit.json').write_text(json.dumps(audit,ensure_ascii=False,indent=2),encoding='utf-8')
+          lines=['# Powerdot direct tariff audit','',f"TIME/non-energy cases: **{len(time_cases)}**",f"Unresolved stations: **{len(unresolved)}**",f"Partially covered stations: **{len(partial)}**",'','## Non-energy tariff components','']
+          for x in time_cases:
+            lines.append(f"- {x['location'].get('name')} | {x['chargerName']} connector {x['connectorNumber']} ({x['powerKw']} kW) | {x['component']['type']}={x['component']['pricePerUnit']} | restrictions={json.dumps(x['restrictions'],ensure_ascii=False)} | tariff={x['tariffId']}")
+          lines += ['','## Unresolved stations','']
+          for x in unresolved:
+            lines.append(f"- `{x['stationId']}` | {x['name']} | {x['address']} | PDC={x['pdcCount']} | dateMaj={x['dateMaj']} | IDs={','.join(x['uncoveredPdcIds'][:8])}")
+          lines += ['','## Partially covered stations','']
+          for x in partial[:100]:
+            lines.append(f"- `{x['stationId']}` | {x['name']} | covered {x['coveredPdcCount']}/{x['pdcCount']} | missing={','.join(x['uncoveredPdcIds'][:8])}")
+          Path('reports/powerdot_direct_audit.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print(audit['counts'])
+          PY
+      - name: Publish audit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/powerdot_direct_audit.md data/national/powerdot_direct_audit.json
+          git commit -m "data(powerdot): publish direct tariff audit [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
