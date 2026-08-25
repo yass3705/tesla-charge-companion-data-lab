@@ -1,0 +1,70 @@
+name: e-Totem direct tariff harvest
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/etotem_direct_tariff_harvest.mjs"
+      - ".github/workflows/etotem-direct-tariff-harvest.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: etotem-direct-tariff-harvest
+  cancel-in-progress: true
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Ensure physical inventory exists
+        run: test -s data/national/etotem_direct_stations_france.json.gz
+      - name: Install browser driver
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Harvest public direct tariffs
+        run: node scripts/etotem_direct_tariff_harvest.mjs
+      - name: Validate strict output
+        run: |
+          python - <<'PY'
+          import gzip, json
+          p='data/national/etotem_direct_tariffs_france.json.gz'
+          with gzip.open(p,'rt',encoding='utf-8') as f: d=json.load(f)
+          c=d['counts']
+          assert d['scope']['physicalCpoDirectOnly'] is True
+          assert d['scope']['roamingIncluded'] is False
+          assert d['scope']['noGuessedFallback'] is True
+          assert c['inventoryStations'] >= 600, c
+          assert c['resolvedStations'] >= 500, c
+          assert c['resolvedWithTariffText'] > 0, c
+          for s in d['stations']:
+              if not s.get('resolved'): continue
+              a=s['api']
+              assert str(a.get('bOcpi',0)) == '0'
+              assert str(a.get('bGireve',0)) == '0'
+              assert str(a.get('bItinerance',0)) == '0'
+          print(json.dumps(c,ensure_ascii=False,indent=2))
+          print('profiles',len(d.get('tariffProfiles',[])))
+          PY
+      - name: Publish harvest
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/etotem_direct_tariffs_france.json.gz
+          if git diff --cached --quiet; then
+            echo "No tariff data change"
+            exit 0
+          fi
+          git commit -m "data(etotem): publish direct station tariff harvest [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
