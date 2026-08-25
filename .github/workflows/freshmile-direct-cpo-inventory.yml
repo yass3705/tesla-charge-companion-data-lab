@@ -7,11 +7,15 @@ on:
   pull_request:
     paths:
       - 'scripts/freshmile_direct_inventory.py'
+      - 'scripts/freshmile_prune_regional_networks.py'
+      - 'config/freshmile_regional_network_exclusions.json'
       - '.github/workflows/freshmile-direct-cpo-inventory.yml'
   push:
     branches: [main]
     paths:
       - 'scripts/freshmile_direct_inventory.py'
+      - 'scripts/freshmile_prune_regional_networks.py'
+      - 'config/freshmile_regional_network_exclusions.json'
       - '.github/workflows/freshmile-direct-cpo-inventory.yml'
 
 permissions:
@@ -35,17 +39,20 @@ jobs:
       - name: Syntax and strict-scope smoke test
         shell: bash
         run: |
-          python -m py_compile scripts/freshmile_direct_inventory.py
+          python -m py_compile scripts/freshmile_direct_inventory.py scripts/freshmile_prune_regional_networks.py
           python - <<'PY'
+          import json
           import sys
           sys.path.insert(0, 'scripts')
           import freshmile_direct_inventory as f
+          import freshmile_prune_regional_networks as p
 
-          def row(evse, operator='Freshmile', tariff='0,39 €/kWh'):
+          def row(evse, operator='Freshmile', tariff='0,39 €/kWh', owner='Freshmile client'):
               return {
                   'id_pdc_itinerance': evse,
                   'id_station_itinerance': evse.replace('*E', '*P'),
                   'nom_operateur': operator,
+                  'nom_amenageur': owner,
                   'nom_station': 'Test',
                   'adresse_station': '1 rue Test',
                   'coordonneesxy': '[2.35,48.85]',
@@ -61,21 +68,33 @@ jobs:
               row('FR*FRS*E002', tariff='0,55 €/kWh + 0,05 €/min'),
               row('FR*S82*E003'),
               row('FR*FR1*E004', operator='Other Operator'),
+              row('FR*FR1*E005', owner='Bordeaux Métropole rapide'),
           ], source={'kind': 'smoke', 'lastModified': '2026-08-25T00:00:00Z'})
-          assert payload['stats']['stationCount'] == 2
+          assert payload['stats']['stationCount'] == 3
           assert payload['stats']['excludedConflictingOperatorRows'] == 1
           assert set(payload['stats']['directRowsByCpoCode']) == {'FRFR1', 'FRFRS'}
           assert payload['stats']['chargePointCountRankableBeforeFreshmileValidation'] == 0
+
+          with open('config/freshmile_regional_network_exclusions.json', encoding='utf-8') as handle:
+              config = json.load(handle)
+          payload = p.prune(payload, config)
+          assert payload['stats']['stationCount'] == 2
+          assert payload['stats']['excludedRegionalStationCount'] == 1
+          assert payload['regionalNetworkAudit']['excludedStationsByNetwork']['bordeaux_metropole'] == 1
+          assert payload['tccIntegration']['publishToStableAllowed'] is False
           assert all(
               not point['declaredTariff']['tccRankable']
               for station in payload['stations']
               for point in station['chargePoints']
           )
-          print('strict-scope smoke test: OK')
+          print('strict-scope and regional-exclusion smoke test: OK')
           PY
 
-      - name: Build from national IRVE consolidation
+      - name: Build Freshmile CPO umbrella from national IRVE consolidation
         run: python scripts/freshmile_direct_inventory.py
+
+      - name: Exclude separately modeled regional networks
+        run: python scripts/freshmile_prune_regional_networks.py
 
       - name: Validate generated dataset
         shell: bash
@@ -83,22 +102,34 @@ jobs:
           python - <<'PY'
           import gzip
           import json
+          import unicodedata
+          import re
           from pathlib import Path
+
+          def norm(value):
+              text = unicodedata.normalize('NFKD', str(value or ''))
+              text = ''.join(ch for ch in text if not unicodedata.combining(ch))
+              return re.sub(r'\s+', ' ', text.lower()).strip()
 
           path = Path('data/national/freshmile_direct_stations_france.json.gz')
           assert path.exists() and path.stat().st_size > 0
           with gzip.open(path, 'rt', encoding='utf-8') as handle:
               data = json.load(handle)
+          with open('config/freshmile_regional_network_exclusions.json', encoding='utf-8') as handle:
+              config = json.load(handle)
 
           expected = {'FRFR0', 'FRFR1', 'FRFR2', 'FRFR3', 'FRFRS'}
           assert set(data['scope']['directCpoIdentifiers']) == expected
-          assert data['scope']['regionalOrThirdPartyCpoIdentifiersIncluded'] is False
           assert data['scope']['emspRoamingStationsIncluded'] is False
           assert data['scope']['regionalNetworkSubscriptionsIncluded'] is False
+          assert data['scope']['regionalNetworkExclusionPolicy'] == 'explicit_modeled_networks_only'
+          assert data['scope']['regionalNetworkCandidatesMayRemain'] is True
           assert data['tariffPolicy']['freshmilePortalCrosscheckRequiredBeforeTccRanking'] is True
           assert data['stats']['stationCount'] > 0
           assert data['stats']['chargePointCount'] > 0
+          assert data['stats']['excludedRegionalStationCount'] > 0
           assert data['stats']['chargePointCountRankableBeforeFreshmileValidation'] == 0
+          assert data['tccIntegration']['publishToStableAllowed'] is False
 
           observed = {
               point['cpoCode']
@@ -106,7 +137,26 @@ jobs:
               for point in station['chargePoints']
           }
           assert observed <= expected
-          print(json.dumps(data['stats'], ensure_ascii=False, indent=2))
+
+          # No configured regional alias is allowed to survive pruning.
+          for station in data['stations']:
+              values = {
+                  'ownerPrefixes': norm(station.get('owner')),
+                  'brandPrefixes': norm(station.get('brand')),
+                  'namePrefixes': norm(station.get('name')),
+              }
+              for network in config['networks']:
+                  for field, station_value in values.items():
+                      for prefix in network.get(field) or []:
+                          assert not station_value.startswith(norm(prefix)), (
+                              station.get('stationId'), network['key'], station_value
+                          )
+
+          print(json.dumps({
+              'stats': data['stats'],
+              'regionalNetworkAudit': data['regionalNetworkAudit'],
+              'tccIntegration': data['tccIntegration'],
+          }, ensure_ascii=False, indent=2))
           PY
 
       - name: Upload validation dataset
