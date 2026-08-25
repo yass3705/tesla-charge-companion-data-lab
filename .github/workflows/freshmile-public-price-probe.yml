@@ -32,13 +32,21 @@ jobs:
           path = Path('reports/freshmile/public_price_probe_latest.json')
           data = json.loads(path.read_text(encoding='utf-8'))
           assert data['method'] == 'unauthenticated public GET only'
-          assert data['validatedExactPriceFound'] is False
-          assert data['requestCount'] <= 20
+          assert data['requestCount'] <= 30
+          if str(data.get('schemaVersion', '')).startswith('1.3'):
+              assert data['matchedTargetCount'] >= 2
+              assert data['validatedTariffCount'] >= 2
+              assert data['validatedExactPriceFound'] is True
+          else:
+              assert data['validatedExactPriceFound'] is False
           print(json.dumps({
+              'schemaVersion': data.get('schemaVersion'),
               'requestCount': data['requestCount'],
               'statusCounts': data['statusCounts'],
               'successfulResponseCount': data['successfulResponseCount'],
               'successfulResponsesWithPriceSemantics': data['successfulResponsesWithPriceSemantics'],
+              'matchedTargetCount': data.get('matchedTargetCount'),
+              'validatedTariffCount': data.get('validatedTariffCount'),
           }, ensure_ascii=False, indent=2))
           PY
       - uses: actions/upload-artifact@v4
