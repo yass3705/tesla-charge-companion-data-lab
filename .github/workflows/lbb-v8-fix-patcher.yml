@@ -1,0 +1,91 @@
+name: Patch La Borne Bleue nominal 22 kW
+
+on:
+  push:
+    branches:
+      - fix/labornebleue-v8-bugs-20260825
+    paths:
+      - .github/workflows/lbb-v8-fix-patcher.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/labornebleue-v8-bugs-20260825
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Apply source and regression-test patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path('scripts/labornebleue_station_inventory.py')
+          s = source.read_text(encoding='utf-8')
+          needle = '    if power <= 22:\n'
+          count = s.count(needle)
+          if count != 2:
+              raise SystemExit(f'expected 2 AC <=22 thresholds, found {count}')
+          s = s.replace(needle, '    # IRVE commonly exposes nominal 22 kW hardware as 22.08 kW (32 A x 3 phases).\n    # Keep that technical rounding inside the official <=22 kVA tariff class.\n    if power <= 22.1:\n')
+          source.write_text(s, encoding='utf-8')
+
+          tests = Path('tests/test_labornebleue_station_inventory.py')
+          t = tests.read_text(encoding='utf-8')
+          marker = '        self.assertEqual(sub_74["windows"][1]["capEur"], 12.0)\n'
+          if marker not in t:
+              raise SystemExit('tariff test insertion marker missing')
+          addition = marker + (
+              '        public_2208 = mod.public_exact("AC", 22.08)\n'
+              '        sub_2208 = mod.subscriber_exact("AC", 22.08)\n'
+              '        self.assertAlmostEqual(public_2208["ratePerMinute"] * 60, 6.50)\n'
+              '        self.assertAlmostEqual(sub_2208["windows"][0]["ratePerMinute"] * 60, 5.50)\n'
+              '        self.assertEqual(sub_2208["windows"][1]["capEur"], 12.0)\n'
+              '        self.assertAlmostEqual(mod.public_exact("AC", 22.11)["ratePerMinute"] * 60, 12.00)\n'
+              '        self.assertAlmostEqual(mod.subscriber_exact("AC", 22.11)["ratePerMinute"] * 60, 11.00)\n'
+          )
+          t = t.replace(marker, addition, 1)
+          tests.write_text(t, encoding='utf-8')
+          PY
+
+      - name: Run unit tests
+        run: python -m unittest tests.test_labornebleue_station_inventory -v
+
+      - name: Build against live IRVE source
+        run: python scripts/labornebleue_station_inventory.py --out /tmp/labornebleue.json.gz
+
+      - name: Validate live nominal 22 kW mapping
+        run: |
+          python - <<'PY'
+          import gzip, json
+          with gzip.open('/tmp/labornebleue.json.gz','rt',encoding='utf-8') as f:
+              d=json.load(f)
+          seen=0
+          for st in d['stations']:
+              for cfg in st['configurations']:
+                  if cfg['kind']=='AC' and 22 < float(cfg['powerKw']) <= 22.1:
+                      seen += 1
+                      ex=cfg['pricing']['labornebleueExact']
+                      if cfg['subscriptionId']=='labornebleue-annual':
+                          assert abs(ex['windows'][0]['ratePerMinute']*60-5.5)<1e-9, (st['stationId'],cfg)
+                      else:
+                          assert abs(ex['ratePerMinute']*60-6.5)<1e-9, (st['stationId'],cfg)
+          assert seen>0, 'live dataset contains no nominal 22.08 kW configurations'
+          print({'nominal22ConfigurationsValidated':seen,'stations':d['counts']['publishedStations']})
+          PY
+
+      - name: Commit patch and remove one-off workflow
+        run: |
+          rm .github/workflows/lbb-v8-fix-patcher.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix(labornebleue): map 22.08 kW to nominal 22 kW tariff band'
+          git push origin HEAD:fix/labornebleue-v8-bugs-20260825
