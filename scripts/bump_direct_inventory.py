@@ -3,8 +3,8 @@
 
 Source of truth: Bump's own daily IRVE dataset published on data.gouv.fr.
 The script intentionally does NOT treat Bump roaming/partner locations as Bump-operated.
-It also does not invent prices: the IRVE ``tarification`` field is preserved and classified,
-and only explicit price components are parsed as candidates for later validation.
+Bump's current official IRVE export does not publish a ``tarification`` column; that absence is
+recorded explicitly and no price is inferred from power, brand, payment mode or any other field.
 """
 from __future__ import annotations
 
@@ -172,8 +172,9 @@ def build_payload(dataset: dict[str, Any], resource: dict[str, Any], blob: bytes
     rows, headers = decode_csv(blob)
     if not rows:
         raise RuntimeError("Bump IRVE dataset is empty")
-    if "nom_operateur" not in headers or "tarification" not in headers:
+    if "nom_operateur" not in headers:
         raise RuntimeError(f"Unexpected Bump IRVE schema: {headers}")
+    tariff_field_present = "tarification" in headers
 
     operated = [r for r in rows if is_bump_operator(r.get("nom_operateur"))]
     rejected = [r for r in rows if not is_bump_operator(r.get("nom_operateur"))]
@@ -196,7 +197,7 @@ def build_payload(dataset: dict[str, Any], resource: dict[str, Any], blob: bytes
     latest_row_update = max((norm(r.get("date_maj")) for r in operated), default="")
 
     return {
-        "schemaVersion": "1.0.0",
+        "schemaVersion": "1.1.0",
         "dataset": "bump-direct-operated-stations-france-inventory",
         "operator": "Bump",
         "country": "FR",
@@ -204,6 +205,7 @@ def build_payload(dataset: dict[str, Any], resource: dict[str, Any], blob: bytes
             "onlyOfficialBumpPublishedStations": True,
             "onlyRowsWhoseOperatorIsBump": True,
             "roamingPartnerStationsIncluded": False,
+            "tariffFieldPresentInOfficialIrve": tariff_field_present,
             "tariffsAreCandidatesUntilValidated": True,
             "rankableTariffsPublished": False,
         },
@@ -216,6 +218,7 @@ def build_payload(dataset: dict[str, Any], resource: dict[str, Any], blob: bytes
             "resourceLastModified": resource.get("last_modified") or resource.get("modified"),
             "resourceSha256": source_hash,
             "latestRowUpdate": latest_row_update,
+            "headers": headers,
         },
         "counts": {
             "sourceRows": len(rows),
@@ -237,8 +240,9 @@ def build_payload(dataset: dict[str, Any], resource: dict[str, Any], blob: bytes
 
 def render_report(payload: dict[str, Any]) -> str:
     c = payload["counts"]
+    tariff_field = payload["scope"]["tariffFieldPresentInOfficialIrve"]
     lines = [
-        "# Bump direct France — official station tariff inventory",
+        "# Bump direct France — official station inventory",
         "",
         "Source: Bump's own daily IRVE dataset on data.gouv.fr. Roaming/partner locations are excluded by construction.",
         "",
@@ -248,27 +252,21 @@ def render_report(payload: dict[str, Any]) -> str:
         f"- Bump-operated rows retained: **{c['bumpOperatedRows']}**",
         f"- Public stations: **{c['stationCount']}**",
         f"- Public charge points: **{c['pointCount']}**",
-        f"- Stations with at least one explicit price candidate in `tarification`: **{c['stationsWithExplicitPriceCandidate']}**",
-        f"- Unique non-empty tariff strings: **{c['uniqueNonEmptyTariffStrings']}**",
+        f"- Official IRVE `tarification` field present: **{str(tariff_field).lower()}**",
+        f"- Stations with at least one explicit price candidate: **{c['stationsWithExplicitPriceCandidate']}**",
         "",
-        "## Tariff-field classification",
+        "## Pricing conclusion",
         "",
     ]
-    for key, count in c["tariffClassCounts"].items():
-        lines.append(f"- `{key}`: **{count}** points")
-    lines += ["", "## Published tariff strings", ""]
-    strings = payload.get("tariffStringCounts", [])
-    if not strings:
-        lines.append("No non-empty tariff strings were published in the official IRVE file.")
+    if not tariff_field:
+        lines.append("Bump's current official IRVE export does **not** publish a `tarification` column. The dataset can authoritatively define the direct-operated station/PDC perimeter, but cannot supply prices. Driver-facing Bump app/API data is required for station-level tariffs.")
     else:
-        for item in strings[:100]:
-            safe = item["tariff"].replace("\n", " ")
-            lines.append(f"- **{item['pointCount']}** points — `{safe}`")
+        lines.append("The official export contains a tariff field; values remain non-rankable until confirmed against Bump's driver-facing tariff source.")
     lines += [
         "",
         "## Decision rule for TCC",
         "",
-        "No Bump price from this report becomes rankable automatically. Only explicit, unambiguous station/point prices that are confirmed against Bump's driver-facing tariff source can be promoted to the TCC tariff layer.",
+        "No Bump price is inferred from this inventory. Only explicit, unambiguous station/point prices confirmed against Bump's driver-facing source can be promoted to the TCC tariff layer.",
         "",
     ]
     return "\n".join(lines)
@@ -286,6 +284,7 @@ def main() -> None:
     DEFAULT_OUT.write_bytes(gzip.compress(rendered.encode("utf-8"), compresslevel=9, mtime=0))
     DEFAULT_REPORT.write_text(render_report(payload), encoding="utf-8")
     print(json.dumps(payload["counts"], ensure_ascii=False, indent=2))
+    print(f"tariffFieldPresent={payload['scope']['tariffFieldPresentInOfficialIrve']}")
 
 
 if __name__ == "__main__":
