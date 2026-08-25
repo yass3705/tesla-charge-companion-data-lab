@@ -30,13 +30,19 @@ for s in quoted:
             routeish.append(s)
 routeish=sorted(set(routeish))
 
+needles=[
+    'aBornes','sIdPoolUnique','sIdPool','sNomReseau','bOcpi','tarifs','Tarifs','reseauxBornes',
+    'nIdBorne','nIdPdc','sTypeBorne','sLibelleBorne','szOcppChargeBoxIdentity',
+    'SelectsBornes','Stations','ActionsPdc','fPrixMensuel','fPrixPostCharge','nPrixInscription',
+    'nPrixTotal','bPostChargeGratuit','bPostChargeInclus','bVisibleTarifs','aPdc','cpo_pool'
+]
 contexts={}
-for needle in ['aBornes','sIdPoolUnique','sIdPool','sNomReseau','bOcpi','tarifs','Tarifs','reseauxBornes','nIdBorne','nIdPdc','sTypeBorne','sLibelleBorne','szOcppChargeBoxIdentity']:
+for needle in needles:
     vals=[]
     for m in re.finditer(re.escape(needle),js):
-        snippet=re.sub(r'\s+',' ',js[max(0,m.start()-600):min(len(js),m.end()+1000)])
+        snippet=re.sub(r'\s+',' ',js[max(0,m.start()-1200):min(len(js),m.end()+2200)])
         if snippet not in vals: vals.append(snippet)
-        if len(vals)>=20: break
+        if len(vals)>=30: break
     contexts[needle]=vals
 
 # Strings that look like application action names / backend method names.
@@ -47,16 +53,30 @@ for s in quoted:
         actions.append(s)
 actions=sorted(set(actions))
 
-payload={'bundleSize':len(js),'absoluteUrls':abs_urls,'routeishStrings':routeish,'actionStrings':actions,'contexts':contexts}
+# Capture nearby request construction markers too.
+request_markers={}
+for needle in ['SelectsBornes','ActionsPdc','Stations','Tarifs','cpo_pool']:
+    vals=[]
+    for m in re.finditer(re.escape(needle),js):
+        lo=max(0,m.start()-5000); hi=min(len(js),m.end()+5000)
+        block=js[lo:hi]
+        # Retain quoted tokens from the surrounding request code, useful for reconstructing payloads.
+        tokens=[]
+        for qm in re.finditer(r'["\']([^"\']{1,180})["\']',block):
+            v=qm.group(1)
+            if v not in tokens: tokens.append(v)
+        vals.append({'offset':m.start(),'tokens':tokens[:250],'snippet':re.sub(r'\s+',' ',block)[:10000]})
+        if len(vals)>=10: break
+    request_markers[needle]=vals
+
+payload={'bundleSize':len(js),'absoluteUrls':abs_urls,'routeishStrings':routeish,'actionStrings':actions,'contexts':contexts,'requestMarkers':request_markers}
 OUT.parent.mkdir(parents=True,exist_ok=True)
 OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding='utf-8')
 print('ABSOLUTE URLS')
 for x in abs_urls: print(x)
 print('\nACTION STRINGS')
 for x in actions: print(x)
-print('\nROUTEISH STRINGS')
-for x in routeish: print(x)
 print('\nKEY CONTEXTS')
 for k,vals in contexts.items():
     print('\n###',k)
-    for v in vals[:6]: print(v[:1600])
+    for v in vals[:4]: print(v[:3200])
