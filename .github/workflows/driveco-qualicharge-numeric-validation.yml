@@ -1,0 +1,74 @@
+name: DRIVECO QualiCharge numeric tariff validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/driveco-qualicharge-numeric-validation.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate DRIVECO numeric tariff rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/driveco
+          python - <<'PY'
+          import csv,io,json,re,urllib.request
+          from collections import Counter,defaultdict
+          from datetime import datetime,timezone
+          URL='https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435'
+          req=urllib.request.Request(URL,headers={'User-Agent':'Mozilla/5.0','Accept':'text/csv,*/*;q=0.8'})
+          with urllib.request.urlopen(req,timeout=120) as r: text=r.read().decode('utf-8-sig',errors='replace')
+          try:dialect=csv.Sniffer().sniff(text[:30000],delimiters=',;\t');reader=csv.DictReader(io.StringIO(text),dialect=dialect)
+          except csv.Error:reader=csv.DictReader(io.StringIO(text),delimiter=';')
+          def v(row,*names):
+              d={str(k).strip().lower():(x or '').strip() for k,x in row.items() if k is not None}
+              for n in names:
+                  if d.get(n.lower()):return d[n.lower()]
+              return ''
+          def numeric(s):
+              s=(s or '').strip().replace(',','.')
+              return float(s) if re.fullmatch(r'\d+(?:\.\d+)?',s) else None
+          groups=Counter();samples=defaultdict(list);non_driveco=[];all_numeric=0;direct_numeric=0
+          for row in reader:
+              t=v(row,'tarification');p=numeric(t)
+              if p is None:continue
+              all_numeric+=1
+              op=v(row,'nom_operateur');am=v(row,'nom_amenageur');ens=v(row,'nom_enseigne');name=v(row,'nom_station')
+              related='driveco' in (op+' '+am+' '+ens+' '+name).lower()
+              if not related:continue
+              is_op='driveco' in op.lower()
+              key=(p,op,am,ens)
+              groups[key]+=1
+              item={'evseId':v(row,'id_pdc_itinerance') or None,'stationId':v(row,'id_station_itinerance') or None,'stationName':name or None,'powerKw':v(row,'puissance_nominale') or None,'tarificationRaw':t,'operator':op or None,'developer':am or None,'brand':ens or None,'dateMaj':v(row,'date_maj') or None,'lastModified':v(row,'last_modified') or None,'datasetId':v(row,'datagouv_dataset_id') or None,'resourceId':v(row,'datagouv_resource_id') or None}
+              if len(samples[key])<5:samples[key].append(item)
+              if is_op:direct_numeric+=1
+              else:
+                  if len(non_driveco)<30:non_driveco.append(item)
+          payload={'schemaVersion':'1.0.0','generatedAt':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),'source':URL,'policy':'Only nom_operateur containing DRIVECO is eligible as DRIVECO-operated. Name/developer mentions alone are diagnostic only. Numeric tariff VAT semantics remain unproven.','allNumericTariffRowsInNationalBase':all_numeric,'drivecoOperatorNumericRows':direct_numeric,'groups':[{'rawNumericTariff':p,'operator':op,'developer':am,'brand':ens,'rows':n,'diagnosticTimes1_20':round(p*1.2,4),'samples':samples[(p,op,am,ens)]} for (p,op,am,ens),n in sorted(groups.items(),key=lambda x:(x[0][0],x[0][1]))],'falsePositiveExamples':non_driveco}
+          open('reports/driveco/qualicharge_numeric_validation.json','w').write(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
+          print('driveco operator numeric rows',direct_numeric)
+          for g in payload['groups']:print(g['rawNumericTariff'],g['operator'],g['developer'],g['brand'],g['rows'],'x1.2=',g['diagnosticTimes1_20'])
+          PY
+      - name: Commit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/driveco/qualicharge_numeric_validation.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(driveco): publish QualiCharge numeric validation [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
