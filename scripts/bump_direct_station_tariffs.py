@@ -59,7 +59,8 @@ def pdc_key(row: dict) -> str:
 def main() -> None:
     rows = []
     page = 1
-    page_size = 1000
+    # data.gouv API tabulaire currently caps page_size at 50.
+    page_size = 50
     total = None
     while True:
         q = urllib.parse.urlencode({"page": page, "page_size": page_size})
