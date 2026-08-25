@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "generated_date": "2026-08-25",
+  "network": "TotalEnergies Club EV-Charge Morocco",
+  "source": {
+    "static_reconstruction": "reports/morocco/totalenergies/latest-numocity-shape.json",
+    "workflow": ".github/workflows/morocco-totalenergies-numocity-fullpath-probe.yml",
+    "workflow_run_id": 32866437224
+  },
+  "policy": {
+    "read_only": true,
+    "get_only": true,
+    "anonymous": true,
+    "no_login": true,
+    "no_mutations": true,
+    "no_session_start": true,
+    "no_credentials": true,
+    "response_body_persisted": false
+  },
+  "reconstructed_request_shape": "GET <resolved-base-url>/cpo/app/v1/chargestation/getstationstate?stationId=<station-id>",
+  "results": [
+    {
+      "host": "https://csmstotalenergiesma.numocity.com",
+      "station_id_supplied": false,
+      "http_status": 404,
+      "content_type": "text/html; charset=utf-8",
+      "classification": "route_not_matched"
+    },
+    {
+      "host": "https://csmstotalenergiesma.numocity.com",
+      "station_id_supplied": true,
+      "http_status": 404,
+      "content_type": "text/html; charset=utf-8",
+      "classification": "route_not_matched"
+    },
+    {
+      "host": "https://csmstotalenergies.numocity.com",
+      "station_id_supplied": false,
+      "http_status": null,
+      "classification": "transport_error"
+    },
+    {
+      "host": "https://csmstotalenergies.numocity.com",
+      "station_id_supplied": true,
+      "http_status": null,
+      "classification": "transport_error"
+    }
+  ],
+  "conclusion": "The APK-derived service path is now reconstructed more precisely as cpo/app/v1/chargestation/getstationstate with stationId as a required query parameter, but the currently guessed Morocco host csmstotalenergiesma.numocity.com does not match that route anonymously. The remaining blocker is the exact runtime HostBuilder prefix/environment (and possibly API gateway host), not the station-state method/path suffix itself. Do not treat the 404 as evidence that Numocity live status is unavailable in the native app.",
+  "modeling_impact": {
+    "cpo_operator": "station-specific; unchanged",
+    "site_brand": "TotalEnergies where established by official inventory",
+    "app_source_access_network": "Club EV-Charge / Numocity native app",
+    "tariff_channel": "unchanged",
+    "status_source": "Numocity native live capability established, ingestion endpoint host unresolved"
+  }
+}
