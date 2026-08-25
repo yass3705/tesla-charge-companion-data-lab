@@ -1,0 +1,105 @@
+name: Powerdot API discovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/powerdot-api-discovery.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Inspect Powerdot adhoc pricing modules
+        run: |
+          mkdir -p reports data/national tmp/powerdot-assets
+          python - <<'PY'
+          import json, re, urllib.request, urllib.error
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          base='https://adhoc.pwrdt.com/assets/'
+          assets=[
+            '_terminal-CwgZ5tJ7.js',
+            'NetworkRatesBottomSheet-CnWikIl2.js',
+            'InlineRateExperience-CPirSG02.js',
+            'PricingInfoBottomSheet-Di9ACFNL.js',
+            'connector-selection-CuEhC9yd.js',
+            'location-D6ivoFSD.js',
+            'terminal-charging-CACr3o-a.js',
+            'subscription-plans-_yQtFhoH.js',
+          ]
+          headers={'User-Agent':'Mozilla/5.0 TCC-Powerdot-public-api-discovery'}
+          def get(url):
+            req=urllib.request.Request(url,headers=headers)
+            try:
+              with urllib.request.urlopen(req,timeout=10) as r:
+                return r.status,r.read(3000000).decode('utf-8','replace'),None
+            except Exception as e:
+              return None,'',repr(e)
+
+          findings=[]
+          for name in assets:
+            status,js,error=get(base+name)
+            strings=[]
+            # Pull quoted literals likely to contain API paths, resources or pricing field names.
+            for m in re.finditer(r'''["']([^"']{1,220})["']''',js):
+              s=m.group(1)
+              low=s.lower()
+              if any(k in low for k in ['tariff','tarif','price','pricing','rate','terminal','charger','connector','evse','location','adhoc','session','subscription']):
+                if s not in strings: strings.append(s)
+            snippets=[]
+            for m in re.finditer(r'(?i)tariff|tarif|price|pricing|network.?rate|rate.?id|terminal|charger.?name|connector|evse',js):
+              snippet=re.sub(r'\s+',' ',js[max(0,m.start()-180):min(len(js),m.end()+320)])
+              if snippet not in snippets: snippets.append(snippet)
+              if len(snippets)>=80: break
+            url_strings=sorted(set(re.findall(r'''https?://[^"'\s)]+''',js)))
+            findings.append({'asset':name,'status':status,'length':len(js),'error':error,'strings':strings[:300],'snippets':snippets,'urls':url_strings[:100]})
+
+          # Main bundle may contain API base configuration / generated client paths.
+          status,main,error=get(base+'index-B36_HfRJ.js')
+          main_strings=[]
+          for m in re.finditer(r'''["']([^"']{1,240})["']''',main):
+            s=m.group(1); low=s.lower()
+            if ('/api' in low or 'api.pwrdt' in low or any(k in low for k in ['/terminal','/charger','/connector','/tariff','/rate','/location'])):
+              if s not in main_strings: main_strings.append(s)
+          main_snippets=[]
+          for m in re.finditer(r'(?i)api\.pwrdt|baseurl|authorization|x-api|terminal|tariff|network.?rate',main):
+            sn=re.sub(r'\s+',' ',main[max(0,m.start()-200):min(len(main),m.end()+400)])
+            if sn not in main_snippets: main_snippets.append(sn)
+            if len(main_snippets)>=120: break
+
+          payload={'generatedAt':datetime.now(timezone.utc).isoformat(),'base':base,'assets':findings,'main':{'status':status,'length':len(main),'error':error,'strings':main_strings[:400],'snippets':main_snippets}}
+          Path('data/national/powerdot_api_discovery.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding='utf-8')
+
+          lines=['# Powerdot API discovery','']
+          for item in findings:
+            lines += [f"## {item['asset']}",f"HTTP {item['status']} len={item['length']}",'### Relevant strings']
+            for s in item['strings'][:80]: lines.append('- '+s)
+            lines.append('### Snippets')
+            for s in item['snippets'][:20]: lines.append('- '+s[:700])
+            lines.append('')
+          lines += ['## Main bundle API config','### Relevant strings']
+          for s in main_strings[:100]: lines.append('- '+s)
+          lines.append('### Snippets')
+          for s in main_snippets[:40]: lines.append('- '+s[:700])
+          Path('reports/powerdot_api_discovery.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print('assets',[(x['asset'],x['status'],x['length']) for x in findings])
+          print('main_strings',main_strings[:40])
+          PY
+      - name: Publish findings
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/powerdot_api_discovery.md data/national/powerdot_api_discovery.json
+          git commit -m "data(powerdot): publish adhoc API discovery [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
