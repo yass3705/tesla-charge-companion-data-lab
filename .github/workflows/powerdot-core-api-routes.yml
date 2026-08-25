@@ -1,0 +1,57 @@
+name: Powerdot core API routes
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/powerdot-core-api-routes.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract routes
+        run: |
+          mkdir -p reports data/national
+          python - <<'PY'
+          import json,re,urllib.request
+          from pathlib import Path
+          url='https://adhoc.pwrdt.com/assets/vendor-B6DQZ8WU.js'
+          req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 TCC-Powerdot-core-api-probe'})
+          with urllib.request.urlopen(req,timeout=12) as r:
+            js=r.read(10000000).decode('utf-8','replace'); status=r.status
+          literals=[]
+          for m in re.finditer(r'''["']([^"']{1,400})["']''',js):
+            s=m.group(1); low=s.lower()
+            if s.startswith('/') or any(k in low for k in ['location','charger','connector','tariff','price','rate','session','terminal','emsp','adhoc']):
+              if s not in literals: literals.append(s)
+          snippets=[]
+          for m in re.finditer(r'(?i)locationchargers|locationid|chargername|tariff|pricing|pricecomponent|emspcode|sessionuid|terminal',js):
+            sn=re.sub(r'\s+',' ',js[max(0,m.start()-300):min(len(js),m.end()+700)])
+            if sn not in snippets: snippets.append(sn)
+            if len(snippets)>=350: break
+          imports=[]
+          for groups in re.findall(r'''import\s*(.*?)\s*from\s*["']([^"']+)["'];?|import["']([^"']+)["'];?''',js):
+            clause,path,side=groups; imports.append((clause.strip(),path or side))
+          payload={'url':url,'status':status,'length':len(js),'literals':literals[:2500],'snippets':snippets,'imports':imports}
+          Path('data/national/powerdot_core_api_routes.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding='utf-8')
+          lines=['# Powerdot core API routes','',f'HTTP {status} len={len(js)}','## Imports']+[f'- {a} FROM {b}' for a,b in imports]+['','## Relevant literals']+['- '+x for x in literals[:1200]]+['','## Snippets']+['- '+x[:1400] for x in snippets[:220]]
+          Path('reports/powerdot_core_api_routes.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print('status',status,'length',len(js),'literals',len(literals),'imports',imports[:20])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/powerdot_core_api_routes.md data/national/powerdot_core_api_routes.json
+          git commit -m "data(powerdot): publish core API routes [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
