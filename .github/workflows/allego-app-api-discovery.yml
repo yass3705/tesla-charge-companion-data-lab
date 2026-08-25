@@ -1,0 +1,118 @@
+name: Allego app API discovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/allego-app-api-discovery.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Download Allego app shell and bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe/bundles
+          URL='https://app.allego.eu/price/FRALLEGO8001301'
+          curl -fsSL --max-time 30 -A 'Mozilla/5.0' "$URL" -o probe/index.html
+          python - <<'PY'
+          from pathlib import Path
+          import re, html
+          t=Path('probe/index.html').read_text(errors='replace')
+          srcs=[]
+          for m in re.finditer(r'<script[^>]+src=["\']([^"\']+)', t, re.I):
+              src=html.unescape(m.group(1))
+              if src.startswith('/'):
+                  src='https://app.allego.eu'+src
+              elif src.startswith('//'):
+                  src='https:'+src
+              elif not src.startswith('http'):
+                  src='https://app.allego.eu/'+src.lstrip('/')
+              srcs.append(src)
+          css=[]
+          for m in re.finditer(r'<link[^>]+href=["\']([^"\']+)', t, re.I):
+              href=html.unescape(m.group(1))
+              if '.css' not in href: continue
+              if href.startswith('/'):
+                  href='https://app.allego.eu'+href
+              elif href.startswith('//'):
+                  href='https:'+href
+              elif not href.startswith('http'):
+                  href='https://app.allego.eu/'+href.lstrip('/')
+              css.append(href)
+          Path('probe/scripts.txt').write_text('\n'.join(dict.fromkeys(srcs)))
+          Path('probe/css.txt').write_text('\n'.join(dict.fromkeys(css)))
+          print('scripts=',srcs)
+          print('css=',css)
+          PY
+          i=0
+          while IFS= read -r u; do
+            [ -n "$u" ] || continue
+            i=$((i+1))
+            echo "GET $u"
+            curl -fsSL --max-time 45 -A 'Mozilla/5.0' "$u" -o "probe/bundles/bundle_${i}.js" || true
+          done < probe/scripts.txt
+          ls -lh probe/bundles || true
+
+      - name: Inspect bundles for API and tariff routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re, json
+          files=list(Path('probe/bundles').glob('*.js'))
+          text='\n'.join(p.read_text(errors='replace') for p in files)
+          print('bundle_count=',len(files),'chars=',len(text))
+          # Absolute URLs / origins
+          urls=sorted(set(re.findall(r'https?://[^"\'`\\\s<>]{4,220}', text)))
+          print('\n=== ABSOLUTE URLS (filtered) ===')
+          for u in urls:
+              low=u.lower()
+              if any(k in low for k in ('api','allego','smoov','charge','tariff','price','evse','ocpi')):
+                  print(u[:300])
+          print('\n=== ROUTE / CONTEXT HITS ===')
+          keys=['tariff','price','evse','chargepoint','charge-point','chargingstation','charging-station','station','ocpi','graphql','baseurl','axios','fetch(']
+          hits=[]
+          low=text.lower()
+          for key in keys:
+              start=0; n=0
+              while n<20:
+                  pos=low.find(key,start)
+                  if pos<0: break
+                  a=max(0,pos-220); b=min(len(text),pos+420)
+                  chunk=re.sub(r'\s+',' ',text[a:b])
+                  hits.append((key,chunk))
+                  n+=1; start=pos+len(key)
+          for key,chunk in hits:
+              print(f'[{key}] {chunk[:800]}')
+          Path('probe/api_hits.json').write_text(json.dumps({'urls':urls,'hits':hits},ensure_ascii=False,indent=2))
+          PY
+
+      - name: Probe likely public API conventions
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Only passive GET/HEAD probes against Allego-owned public hosts discovered/known from the app shell.
+          for u in \
+            'https://app.allego.eu/api/price/FRALLEGO8001301' \
+            'https://app.allego.eu/api/prices/FRALLEGO8001301' \
+            'https://app.allego.eu/api/tariff/FRALLEGO8001301' \
+            'https://app.allego.eu/api/tariffs/FRALLEGO8001301'; do
+            echo "===== $u ====="
+            curl -sS -L --max-time 12 -A 'Mozilla/5.0' -D - "$u" -o /tmp/body || true
+            head -c 500 /tmp/body 2>/dev/null || true
+            echo
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: allego-app-api-discovery
+          path: probe
+          retention-days: 3
