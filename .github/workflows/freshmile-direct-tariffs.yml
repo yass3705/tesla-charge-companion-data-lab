@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'scripts/freshmile_direct_tariffs.py'
+      - 'scripts/freshmile_direct_tariffs_v2.py'
       - 'scripts/freshmile_direct_inventory.py'
       - 'scripts/freshmile_prune_regional_networks.py'
       - 'config/freshmile_regional_network_exclusions.json'
@@ -29,7 +30,7 @@ jobs:
           python-version: '3.12'
 
       - name: Syntax check
-        run: python -m py_compile scripts/freshmile_direct_inventory.py scripts/freshmile_prune_regional_networks.py scripts/freshmile_direct_tariffs.py
+        run: python -m py_compile scripts/freshmile_direct_inventory.py scripts/freshmile_prune_regional_networks.py scripts/freshmile_direct_tariffs.py scripts/freshmile_direct_tariffs_v2.py
 
       - name: Build current national Freshmile inventory
         run: python scripts/freshmile_direct_inventory.py
@@ -38,7 +39,7 @@ jobs:
         run: python scripts/freshmile_prune_regional_networks.py
 
       - name: Fetch evenly-spaced Freshmile tariff sample
-        run: python scripts/freshmile_direct_tariffs.py --sample-size 120 --sleep-ms 75
+        run: python scripts/freshmile_direct_tariffs_v2.py --sample-size 120 --sleep-ms 75
 
       - name: Validate tariff sample
         shell: bash
@@ -46,6 +47,7 @@ jobs:
           python - <<'PY'
           import gzip
           import json
+          from collections import Counter
           from pathlib import Path
 
           path = Path('reports/freshmile/direct_tariffs_sample.json.gz')
@@ -55,6 +57,24 @@ jobs:
 
           stats = data['stats']
           coverage = data['coverage']
+          tariffs = [
+              tariff
+              for station in data['stations']
+              for point in station['chargePoints']
+              for tariff in point['tariffs']
+          ]
+          source_validated = sum(bool(t.get('sourceValidated')) for t in tariffs)
+          rankable = sum(bool(t.get('tccRankable')) for t in tariffs)
+          currencies = Counter(str(t.get('currency') or 'NONE') for t in tariffs)
+          complex_tiers = sum(
+              (t.get('components') or {}).get('status') == 'parsed_complex_tiers'
+              for t in tariffs
+          )
+          native_non_eur = sum(
+              bool(t.get('sourceValidated')) and t.get('currency') not in {None, 'EUR'}
+              for t in tariffs
+          )
+
           assert data['completeNationalScan'] is False
           assert data['policy']['publishToTccStableAllowed'] is False
           assert coverage['stationCoveragePct'] > 99
@@ -66,10 +86,19 @@ jobs:
           assert stats['evseMatched'] > 0
           assert stats['tariffFound'] > 0
           assert stats['tariffValidated'] > 0
+          assert source_validated / max(1, len(tariffs)) >= 0.99
+          assert rankable <= source_validated
 
           print(json.dumps({
               'coverage': coverage,
               'stats': stats,
+              'tariffSemantics': {
+                  'sourceValidated': source_validated,
+                  'tccRankableNow': rankable,
+                  'nativeNonEur': native_non_eur,
+                  'complexTiered': complex_tiers,
+                  'currencies': dict(currencies),
+              },
           }, ensure_ascii=False, indent=2))
           PY
 
