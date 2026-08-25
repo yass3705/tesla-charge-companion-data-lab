@@ -1,0 +1,35 @@
+name: e-Totem anonymous network probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/etotem_network_probe.mjs"
+      - ".github/workflows/etotem-network-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install browser driver
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Capture anonymous public map traffic
+        run: node scripts/etotem_network_probe.mjs
+      - name: Publish probe result
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/etotem_network_probe.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(etotem): publish anonymous network probe [run ${GITHUB_RUN_ID}]"
+          git pull --rebase origin main
+          git push origin HEAD:main
