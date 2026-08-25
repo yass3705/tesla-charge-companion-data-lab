@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Probe a very small set of Freshmile public GET routes for EVSE tariff data.
+"""Probe Freshmile's public GET API for EVSE tariff semantics.
 
-The web map now redirects drivers to the Freshmile mobile app, while an older
-public Nuxt bundle exposed the base URL https://prod-driver-api.freshmile.com/charge/api/v2.
-This probe performs only unauthenticated GET requests against a bounded route
-matrix for known public Freshmile EVSE identifiers. It never sends credentials,
-never mutates state and never treats an HTTP 200 or a numeric token as a
-validated tariff on its own.
+The first bounded probe established that /evses is a live public route and its
+422 validation error explicitly requires filter.location_id when filter.ref is
+absent. This second-stage probe tests only the nested/dotted filter.ref forms
+for known public Freshmile EVSE identifiers. No authentication, credentials or
+state-changing requests are used, and no numeric token is accepted as a TCC
+tariff without semantic validation.
 """
 from __future__ import annotations
 
@@ -23,31 +23,13 @@ from typing import Any
 
 BASE = "https://prod-driver-api.freshmile.com/charge/api/v2"
 DEFAULT_OUTPUT = Path("reports/freshmile/public_price_probe_latest.json")
-UA = "Tesla-Charge-Companion-Freshmile-Probe/1.0 (+public-GET-only)"
+UA = "Tesla-Charge-Companion-Freshmile-Probe/1.1 (+public-GET-only)"
 DEFAULT_EVSES = [
     "FRFR1EBVFB2",  # hotel Dolce Vita, Ajaccio
     "FRFR1EPNFH1",  # Hotel Amerique, Palavas-les-Flots
     "FRFR1EUMAR1",  # Champdor-Corcelles
 ]
-ROUTE_TEMPLATES = [
-    "/evse/{id}",
-    "/evses/{id}",
-    "/charge-point/{id}",
-    "/charge-points/{id}",
-    "/charging-point/{id}",
-    "/charging-points/{id}",
-    "/station/{id}",
-    "/stations/{id}",
-    "/location/{id}",
-    "/locations/{id}",
-]
-QUERY_TEMPLATES = [
-    ("/evses", "id"),
-    ("/stations", "evse"),
-    ("/locations", "evse"),
-    ("/search", "query"),
-]
-PRICE_WORDS = re.compile(r"\b(price|pricing|tariff|tarif|cost|fee|rate|kwh|minute|min)\b", re.I)
+PRICE_WORDS = re.compile(r"\b(price|pricing|tariff|tarif|cost|fee|rate|kwh|minute|min|amount|currency)\b", re.I)
 
 
 def now_iso() -> str:
@@ -80,8 +62,12 @@ def get(url: str) -> dict[str, Any]:
         "sha256": hashlib.sha256(raw).hexdigest(),
         "bodyLooksJson": text.lstrip().startswith(("{", "[")),
         "priceSemanticTerms": sorted({m.group(0).lower() for m in PRICE_WORDS.finditer(text)}),
-        "bodyPreview": re.sub(r"\s+", " ", text[:800]).strip(),
+        "bodyPreview": re.sub(r"\s+", " ", text[:1600]).strip(),
     }
+
+
+def url(path: str, params: dict[str, str]) -> str:
+    return BASE + path + "?" + urllib.parse.urlencode(params)
 
 
 def main() -> None:
@@ -93,30 +79,30 @@ def main() -> None:
 
     requests: list[dict[str, Any]] = []
     for evse in evses:
-        safe = urllib.parse.quote(evse, safe="")
-        for template in ROUTE_TEMPLATES:
-            requests.append(get(BASE + template.format(id=safe)))
-        for path, key in QUERY_TEMPLATES:
-            query = urllib.parse.urlencode({key: evse})
-            requests.append(get(f"{BASE}{path}?{query}"))
+        # Laravel-style nested query plus dotted form, both suggested by the
+        # live validation response returned by the first probe.
+        candidates = [
+            url("/evses", {"filter[ref]": evse}),
+            url("/evses", {"filter.ref": evse}),
+            url("/locations", {"filter[ref]": evse}),
+            url("/locations", {"filter.ref": evse}),
+        ]
+        requests.extend(get(candidate) for candidate in candidates)
 
-    interesting = [
-        item for item in requests
-        if item.get("status") in {200, 206}
-        or item.get("bodyLooksJson")
-        or item.get("priceSemanticTerms")
-    ]
+    successful = [item for item in requests if item.get("status") in {200, 206}]
+    semantic = [item for item in successful if item.get("priceSemanticTerms")]
     payload = {
-        "schemaVersion": "1.0.0",
+        "schemaVersion": "1.1.0",
         "generatedAt": now_iso(),
         "baseUrl": BASE,
         "method": "unauthenticated public GET only",
         "knownPublicEvseIds": evses,
         "requestCount": len(requests),
         "statusCounts": {},
-        "interestingResponseCount": len(interesting),
+        "successfulResponseCount": len(successful),
+        "successfulResponsesWithPriceSemantics": len(semantic),
         "validatedExactPriceFound": False,
-        "policy": "A route/status/numeric value is evidence only. Exact price needs semantic association with a specific EVSE and tariff components before TCC use.",
+        "policy": "HTTP 200 and price-like words are discovery evidence only. Exact price needs EVSE identity plus explicit tariff components before TCC ranking.",
         "requests": requests,
     }
     for item in requests:
@@ -129,7 +115,8 @@ def main() -> None:
         "output": str(args.output),
         "requestCount": payload["requestCount"],
         "statusCounts": payload["statusCounts"],
-        "interestingResponseCount": len(interesting),
+        "successfulResponseCount": payload["successfulResponseCount"],
+        "successfulResponsesWithPriceSemantics": payload["successfulResponsesWithPriceSemantics"],
     }, ensure_ascii=False, indent=2))
 
 
