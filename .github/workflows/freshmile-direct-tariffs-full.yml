@@ -2,9 +2,14 @@ name: Freshmile direct tariffs full scan
 
 on:
   workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/freshmile_build_tcc_v8.py"
+      - ".github/workflows/freshmile-direct-tariffs-full.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: freshmile-direct-tariffs-full
@@ -29,6 +34,7 @@ jobs:
           scripts/freshmile_direct_tariffs_shard.py
           scripts/freshmile_merge_tariff_shards.py
           scripts/freshmile_missing_ref_tariffs.py
+          scripts/freshmile_build_tcc_v8.py
       - name: Build current national Freshmile inventory
         run: python scripts/freshmile_direct_inventory.py
       - name: Remove separately modeled regional networks
@@ -118,11 +124,7 @@ jobs:
               data = json.load(handle)
 
           stats = data['stats']
-          points = [
-              point
-              for station in data['stations']
-              for point in station['chargePoints']
-          ]
+          points = [point for station in data['stations'] for point in station['chargePoints']]
           tariffs = [tariff for point in points for tariff in point['tariffs']]
           source_validated = sum(bool(t.get('sourceValidated')) for t in tariffs)
           rankable = sum(bool(t.get('tccRankable')) for t in tariffs)
@@ -170,6 +172,54 @@ jobs:
           assert rankable <= source_validated
           assert not invalid_rankable
           PY
+      - name: Build fail-closed TCC V8 layer
+        run: >-
+          python scripts/freshmile_build_tcc_v8.py
+          data/national/freshmile_direct_tariffs_france.json.gz
+          data/national/freshmile_direct_tcc_v8.json.gz
+      - name: Validate strict TCC V8 layer
+        shell: bash
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          path=Path('data/national/freshmile_direct_tcc_v8.json.gz')
+          assert path.exists() and path.stat().st_size > 100000
+          with gzip.open(path,'rt',encoding='utf-8') as handle:
+              data=json.load(handle)
+          c=data['counts']; s=data['scope']; safety=data['sourceSafety']
+          assert data['dataset']=='freshmile-direct-tcc-v8-france'
+          assert s['countryCode']=='FR' and s['onlyDirectCpo'] is True
+          assert s['roamingIncluded'] is False and s['configuredRegionalNetworksIncluded'] is False
+          assert s['preferentialTariffsIncluded'] is False and s['onlyStrictTccExact'] is True
+          assert s['regionalNetworkCandidatesMayRemain'] is True
+          assert c['strictPublishedStations'] >= 900
+          assert c['strictPublishedEvse'] >= 3000
+          assert c['strictPublishedConfigurations'] >= 1000
+          assert c['conflictingEvseExcluded'] >= 1
+          assert safety['regionalNetworkConfiguredExclusions'] >= 18
+          for station in data['stations']:
+              for cfg in station['configurations']:
+                  assert cfg['kind'] in {'AC','DC'}
+                  assert cfg['freshmileDirect'] and cfg['freshmileVerified'] and cfg['freshmileStrictExact']
+                  assert cfg['offerType']=='operator_direct'
+                  exact=cfg['pricing']['freshmileExact']
+                  assert exact['currency']=='EUR'
+          print(json.dumps(c,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish strict TCC V8 dataset to data-lab main
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/national/freshmile_direct_tcc_v8.json.gz
+          if git diff --cached --quiet; then
+            echo 'Strict Freshmile TCC V8 dataset unchanged.'
+          else
+            git commit -m 'data(freshmile): refresh strict TCC V8 layer [skip ci]'
+            git push origin HEAD:main
+          fi
       - name: Upload final national artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -178,5 +228,6 @@ jobs:
           path: |
             data/national/freshmile_direct_stations_france.json.gz
             data/national/freshmile_direct_tariffs_france.json.gz
+            data/national/freshmile_direct_tcc_v8.json.gz
           retention-days: 7
           if-no-files-found: warn
