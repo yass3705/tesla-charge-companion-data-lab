@@ -1,0 +1,59 @@
+name: Allego public EVSE price endpoint probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/allego-price-endpoint-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Probe known French Allego EVSE price pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          for EVSE in FRALLEGO8001301 FRALLEGO8009901 FRALLEGO8001431 FRALLEGO0020781; do
+            echo "===== $EVSE ====="
+            curl -fsSL --max-time 25 -A 'Mozilla/5.0' -D "probe/${EVSE}.headers" "https://app.allego.eu/price/${EVSE}" -o "probe/${EVSE}.html" || true
+            wc -c "probe/${EVSE}.html" 2>/dev/null || true
+            grep -Eio '.{0,100}(€|EUR|kWh|Allego Direct|Allego Smart|Allego Plus|price|tarif).{0,160}' "probe/${EVSE}.html" 2>/dev/null | head -n 40 || true
+            echo
+          done
+
+      - name: Summarize redirects and HTML markers
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,re
+          rows=[]
+          for p in sorted(Path('probe').glob('*.html')):
+              t=p.read_text(errors='replace')
+              h=p.with_suffix('.headers').read_text(errors='replace') if p.with_suffix('.headers').exists() else ''
+              rows.append({
+                  'evse':p.stem,
+                  'bytes':len(t.encode()),
+                  'http':re.findall(r'^HTTP/[^\n]+',h,re.M),
+                  'locations':re.findall(r'^location:\s*(.+)$',h,re.M|re.I),
+                  'has_kwh':'kWh' in t,
+                  'has_direct':'Allego Direct' in t,
+                  'has_smart':'Allego Smart' in t,
+                  'has_plus':'Allego Plus' in t,
+                  'numeric_eur_kwh':re.findall(r'(\d+(?:[.,]\d+)?)\s*(?:€|EUR)\s*/?\s*kWh',t,re.I)[:20],
+              })
+          print(json.dumps(rows,indent=2,ensure_ascii=False))
+          Path('probe/summary.json').write_text(json.dumps(rows,indent=2,ensure_ascii=False))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: allego-price-endpoint-probe
+          path: probe
+          retention-days: 3
