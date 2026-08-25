@@ -1,0 +1,92 @@
+name: Allego France station direct tariffs
+
+on:
+  workflow_dispatch:
+    inputs:
+      browser_fallback:
+        description: "Enable headless browser fallback for dynamically rendered exact prices"
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: "17 5 * * 3"
+  push:
+    paths:
+      - "scripts/allego_station_tariffs.py"
+      - ".github/workflows/allego-station-tariffs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: allego-france-station-tariffs
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install browser dependency when requested
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.browser_fallback }}
+        run: python -m pip install --disable-pip-version-check selenium
+
+      - name: Build Allego France station/EVSE direct tariff dataset
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXTRA=()
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.browser_fallback }}" == "true" ]]; then
+            EXTRA+=(--browser)
+          fi
+          python scripts/allego_station_tariffs.py "${EXTRA[@]}"
+
+      - name: Validate output
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          data = json.loads(gzip.decompress(Path('data/national/allego_direct_stations_france.json.gz').read_bytes()))
+          report = json.loads(Path('data/reports/allego_station_tariffs_report.json').read_text())
+          assert data['operator'] == 'Allego'
+          assert data['country'] == 'FR'
+          assert data['scope']['operatorDirectOnly'] is True
+          assert data['scope']['roamingIncluded'] is False
+          assert data['scope']['countryDefaultsAreRankable'] is False
+          assert data['counts']['franceStationCount'] >= 50
+          assert data['counts']['franceEvseCount'] >= data['counts']['franceStationCount']
+          assert report['publicationReadyStationCount'] + report['blockedStationCount'] == data['counts']['franceStationCount']
+          print(json.dumps(report['counts'], indent=2))
+          print('publicationReadyStationCount=', report['publicationReadyStationCount'])
+          print('blockedStationCount=', report['blockedStationCount'])
+          PY
+
+      - name: Upload audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: allego-france-station-tariffs
+          path: |
+            data/national/allego_direct_stations_france.json.gz
+            data/reports/allego_station_tariffs_report.json
+          retention-days: 14
+
+      - name: Commit refreshed Allego dataset
+        if: ${{ github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/allego_direct_stations_france.json.gz data/reports/allego_station_tariffs_report.json
+          if git diff --cached --quiet; then
+            echo "No Allego station tariff changes"
+            exit 0
+          fi
+          git commit -m "Refresh Allego France station direct tariffs"
+          git push
