@@ -1,0 +1,47 @@
+name: Freshmile public price probe
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/freshmile_public_price_probe.py'
+      - '.github/workflows/freshmile-public-price-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax check
+        run: python -m py_compile scripts/freshmile_public_price_probe.py
+      - name: Probe public Freshmile GET routes
+        run: python scripts/freshmile_public_price_probe.py
+      - name: Summarize results
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('reports/freshmile/public_price_probe_latest.json')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          assert data['method'] == 'unauthenticated public GET only'
+          assert data['validatedExactPriceFound'] is False
+          assert data['requestCount'] <= 50
+          print(json.dumps({
+              'requestCount': data['requestCount'],
+              'statusCounts': data['statusCounts'],
+              'interestingResponseCount': data['interestingResponseCount'],
+          }, ensure_ascii=False, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freshmile-public-price-probe
+          path: reports/freshmile/public_price_probe_latest.json
+          retention-days: 3
