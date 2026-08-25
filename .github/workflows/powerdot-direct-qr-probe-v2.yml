@@ -1,0 +1,303 @@
+name: Powerdot direct QR probe v2
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/powerdot-direct-qr-probe-v2.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: powerdot-direct-qr-probe-v2
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download current national IRVE snapshot
+        run: |
+          set -euo pipefail
+          mkdir -p tmp reports data/national
+          curl -fL --retry 3 --retry-delay 2 \
+            'https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435' \
+            -o tmp/irve.csv
+
+      - name: Inventory Powerdot and probe direct QR frontend
+        run: |
+          python - <<'PY'
+          import csv, gzip, hashlib, json, re, time
+          import urllib.error, urllib.request
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from urllib.parse import urljoin
+
+          SRC = Path('tmp/irve.csv')
+          OUT = Path('data/national/powerdot_probe.json.gz')
+          REPORT = Path('reports/powerdot_probe.md')
+
+          def text(row, *keys):
+              for key in keys:
+                  val = row.get(key)
+                  if val not in (None, ''):
+                      return str(val).strip()
+              return ''
+
+          with SRC.open('r', encoding='utf-8-sig', newline='') as fh:
+              sample = fh.read(65536)
+              fh.seek(0)
+              try:
+                  dialect = csv.Sniffer().sniff(sample, delimiters=',;\t')
+              except Exception:
+                  dialect = csv.excel
+              reader = csv.DictReader(fh, dialect=dialect)
+              headers = list(reader.fieldnames or [])
+              rows = []
+              for row in reader:
+                  hay = ' '.join([
+                      text(row, 'nom_operateur', 'n_operateur'),
+                      text(row, 'nom_amenageur', 'n_amenageur'),
+                      text(row, 'nom_enseigne', 'n_enseigne'),
+                  ]).lower().replace(' ', '')
+                  if 'powerdot' in hay:
+                      rows.append(row)
+
+          stations = {}
+          for row in rows:
+              sid = text(row, 'id_station_itinerance', 'id_station_local', 'nom_station', 'n_station')
+              key = sid or text(row, 'adresse_station', 'ad_station') + '|' + text(row, 'code_insee')
+              station = stations.setdefault(key, {
+                  'stationId': sid,
+                  'name': text(row, 'nom_station', 'n_station'),
+                  'address': text(row, 'adresse_station', 'ad_station'),
+                  'operator': text(row, 'nom_operateur', 'n_operateur'),
+                  'tarificationValues': set(),
+                  'evses': [],
+              })
+              tariff = text(row, 'tarification')
+              if tariff:
+                  station['tarificationValues'].add(tariff)
+              station['evses'].append({
+                  'id': text(row, 'id_pdc_itinerance', 'id_pdc_local'),
+                  'idLocal': text(row, 'id_pdc_local'),
+                  'powerKw': text(row, 'puissance_nominale', 'puiss_max'),
+                  'tarification': tariff,
+              })
+
+          for station in stations.values():
+              station['tarificationValues'] = sorted(station['tarificationValues'])
+
+          HEADERS = {'User-Agent': 'Mozilla/5.0 TCC-Powerdot-public-QR-probe'}
+
+          def fetch(url, limit=1000000, timeout=15):
+              req = urllib.request.Request(url, headers=HEADERS)
+              try:
+                  with urllib.request.urlopen(req, timeout=timeout) as resp:
+                      body = resp.read(limit)
+                      return resp.status, resp.geturl(), resp.headers.get('content-type',''), body, None
+              except urllib.error.HTTPError as exc:
+                  try:
+                      body = exc.read(min(limit, 200000))
+                  except Exception:
+                      body = b''
+                  return exc.code, url, exc.headers.get('content-type','') if exc.headers else '', body, None
+              except Exception as exc:
+                  return None, url, '', b'', repr(exc)
+
+          def candidates(evse):
+              out = []
+              for original in (evse.get('idLocal',''), evse.get('id','')):
+                  if not original:
+                      continue
+                  base = re.sub(r'^FRPD1E', '', original.strip(), flags=re.I)
+                  variants = [base]
+                  if re.search(r'\d$', base):
+                      variants.append(base[:-1])
+                  for variant in variants:
+                      compact = re.sub(r'[^A-Za-z0-9]', '', variant)
+                      for candidate in (variant, compact):
+                          if candidate and candidate not in out:
+                              out.append(candidate)
+                      if len(compact) >= 7:
+                          grouped = compact[:3] + '_' + compact[3:6] + '_' + compact[6:]
+                          if grouped not in out:
+                              out.append(grouped)
+              return out
+
+          probes = []
+          valid_pages = []
+
+          def probe(label, candidate, source):
+              url = 'https://qrcode-manager.powerdot-ev.com/' + candidate
+              status, final_url, ctype, body, error = fetch(url)
+              html = body.decode('utf-8', 'replace')
+              title_match = re.search(r'(?is)<title[^>]*>(.*?)</title>', html)
+              item = {
+                  'label': label,
+                  'candidate': candidate,
+                  'source': source,
+                  'url': url,
+                  'status': status,
+                  'finalUrl': final_url,
+                  'contentType': ctype,
+                  'length': len(body),
+                  'sha256': hashlib.sha256(body).hexdigest() if body else None,
+                  'error': error,
+                  'title': title_match.group(1).strip() if title_match else None,
+                  'pricingTermsInHtml': bool(re.search(r'(?i)price|pricing|tariff|tarif|kwh|eur|€', html)),
+              }
+              probes.append(item)
+              if status == 200 and len(body) > 500:
+                  valid_pages.append((item, html))
+              return item
+
+          for label, candidate in [
+              ('Mr Bricolage Champniers', 'MRB_CHP_KPC20001'),
+              ('Netto Soustons', 'NET_SST_KPS20001'),
+          ]:
+              probe(label, candidate, 'known-public-qr')
+              time.sleep(0.2)
+
+          sample_stations = sorted(stations.values(), key=lambda s: (s['name'], s['stationId']))[:50]
+          seen = {p['candidate'] for p in probes}
+          for station in sample_stations:
+              evses = station['evses']
+              if not evses:
+                  continue
+              def numeric_power(evse):
+                  try:
+                      return float(str(evse.get('powerKw') or '0').replace(',', '.'))
+                  except Exception:
+                      return 0.0
+              evse = max(evses, key=numeric_power)
+              attempted = 0
+              for candidate in candidates(evse):
+                  if candidate in seen:
+                      continue
+                  seen.add(candidate)
+                  result = probe(station['name'] or station['stationId'], candidate, 'derived-current-irve')
+                  attempted += 1
+                  time.sleep(0.08)
+                  if result['status'] == 200 and result['length'] > 500:
+                      break
+                  if attempted >= 5:
+                      break
+
+          assets = []
+          for page, html in valid_pages[:4]:
+              script_urls = re.findall(r'''(?is)<script[^>]+src=["']([^"']+)''', html)
+              for src in script_urls[:15]:
+                  asset_url = urljoin(page['finalUrl'] or page['url'], src)
+                  status, final_url, ctype, body, error = fetch(asset_url, limit=2000000)
+                  js = body.decode('utf-8', 'replace')
+                  absolute_urls = sorted(set(re.findall(r'''https?://[^"'\s)]+''', js)))
+                  apiish = [u for u in absolute_urls if any(k in u.lower() for k in ('api','tariff','price','powerdot','charge'))]
+                  snippets = []
+                  for match in re.finditer(r'(?i)tariff|tarif|price|pricing|connector|evse', js):
+                      lo = max(0, match.start() - 100)
+                      hi = min(len(js), match.end() + 180)
+                      snippet = re.sub(r'\s+', ' ', js[lo:hi])
+                      if snippet not in snippets:
+                          snippets.append(snippet)
+                      if len(snippets) >= 25:
+                          break
+                  assets.append({
+                      'pageCandidate': page['candidate'],
+                      'assetUrl': asset_url,
+                      'status': status,
+                      'contentType': ctype,
+                      'length': len(body),
+                      'error': error,
+                      'apiishUrls': apiish[:50],
+                      'keywordSnippets': snippets,
+                  })
+
+          with_tariff = [s for s in stations.values() if s['tarificationValues']]
+          payload = {
+              'generatedAt': datetime.now(timezone.utc).isoformat(),
+              'source': 'data.gouv national IRVE resource eb76d20a-8501-400e-b336-d85724de5435 (2026-08-25)',
+              'operator': 'Power Dot France',
+              'scope': {'country': 'FR', 'cpoOnly': True, 'roamingTariffsIncluded': False},
+              'csvHeaders': headers,
+              'counts': {
+                  'powerdotRows': len(rows),
+                  'stations': len(stations),
+                  'evses': sum(len(s['evses']) for s in stations.values()),
+                  'stationsWithIrveTarification': len(with_tariff),
+                  'qrProbes': len(probes),
+                  'qrHttp200': sum(1 for p in probes if p['status'] == 200),
+                  'derivedQrHttp200': sum(1 for p in probes if p['source'] == 'derived-current-irve' and p['status'] == 200),
+              },
+              'publishedTarificationExamples': [
+                  {'stationId': s['stationId'], 'name': s['name'], 'values': s['tarificationValues']}
+                  for s in with_tariff[:100]
+              ],
+              'probes': probes,
+              'assetFindings': assets,
+              'sampleStations': sample_stations,
+          }
+
+          with gzip.open(OUT, 'wt', encoding='utf-8') as fh:
+              json.dump(payload, fh, ensure_ascii=False, indent=2)
+
+          report = [
+              '# Powerdot direct QR probe v2',
+              '',
+              '- Powerdot IRVE rows: **{}**'.format(payload['counts']['powerdotRows']),
+              '- Unique stations: **{}**'.format(payload['counts']['stations']),
+              '- EVSE/PDC: **{}**'.format(payload['counts']['evses']),
+              '- Stations with IRVE tarification text: **{}**'.format(payload['counts']['stationsWithIrveTarification']),
+              '- QR probes: **{}**'.format(payload['counts']['qrProbes']),
+              '- QR HTTP 200: **{}**'.format(payload['counts']['qrHttp200']),
+              '- Derived QR HTTP 200: **{}**'.format(payload['counts']['derivedQrHttp200']),
+              '',
+              '## Known public QR probes',
+              '',
+          ]
+          for item in probes[:2]:
+              report.append('- {} | {} | HTTP {} | len {} | final {}'.format(
+                  item['label'], item['candidate'], item['status'], item['length'], item['finalUrl']))
+          report += ['', '## Successful derived QR candidates', '']
+          successes = [p for p in probes if p['source'] == 'derived-current-irve' and p['status'] == 200]
+          if successes:
+              for item in successes[:30]:
+                  report.append('- {} | {} | {}'.format(item['label'], item['candidate'], item['finalUrl']))
+          else:
+              report.append('- None in sampled stations.')
+          report += ['', '## Frontend/API findings', '']
+          if assets:
+              for asset in assets[:20]:
+                  report.append('- Asset: {} | HTTP {} | len {}'.format(asset['assetUrl'], asset['status'], asset['length']))
+                  for url in asset['apiishUrls'][:12]:
+                      report.append('  - URL: ' + url)
+                  for snippet in asset['keywordSnippets'][:5]:
+                      report.append('  - Snippet: ' + snippet[:300])
+          else:
+              report.append('- No frontend asset could be inspected.')
+          REPORT.write_text('\n'.join(report) + '\n', encoding='utf-8')
+          print(json.dumps(payload['counts'], indent=2))
+          PY
+
+      - name: Publish probe results
+        if: always()
+        run: |
+          set -euo pipefail
+          if [[ ! -f reports/powerdot_probe.md || ! -f data/national/powerdot_probe.json.gz ]]; then
+            echo 'Probe did not produce report files.'
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/powerdot_probe.md data/national/powerdot_probe.json.gz
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(powerdot): publish direct QR probe v2 [run ${GITHUB_RUN_ID}]"
+          git pull --rebase origin main
+          git push origin HEAD:main
