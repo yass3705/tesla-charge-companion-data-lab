@@ -1,0 +1,50 @@
+name: Allego DXP special tariff semantics
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/allego-dxp-special-tariffs.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect special multi-rate and non-default Allego tariffs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -q selenium
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          import json,time,urllib.request,urllib.error
+          API='https://p-dxp-api-acg8edbwd7g2eheg.a01.azurefd.net/api/dxp/poi/chargepoints/'
+          SPA='https://app.allego.eu/price/FRALLEGO8001301'
+          ids=['FRALLEGO600002','FRALLEGO600018','FRALLEGO800072','FRALLEGO800451','FRALLEGO800464','FRALLEGO002102','FRALLEGO800285']
+          opt=Options(); opt.add_argument('--headless=new'); opt.add_argument('--no-sandbox'); opt.add_argument('--disable-dev-shm-usage')
+          opt.set_capability('goog:loggingPrefs',{'performance':'ALL'})
+          d=webdriver.Chrome(options=opt); key=None
+          try:
+              d.get(SPA); time.sleep(7)
+              for item in d.get_log('performance'):
+                  try: msg=json.loads(item['message'])['message']
+                  except Exception: continue
+                  if msg.get('method')!='Network.requestWillBeSent': continue
+                  req=msg['params']['request']
+                  if 'p-dxp-api-' not in req.get('url',''): continue
+                  for k,v in (req.get('headers') or {}).items():
+                      if k.lower()=='ocp-apim-subscription-key': key=str(v)
+          finally: d.quit()
+          if not key: raise SystemExit('key not captured')
+          for cid in ids:
+              req=urllib.request.Request(API+cid,headers={'User-Agent':'Mozilla/5.0','Accept':'application/json','Origin':'https://app.allego.eu','Referer':'https://app.allego.eu/','Ocp-Apim-Subscription-Key':key})
+              with urllib.request.urlopen(req,timeout=20) as r: obj=json.loads(r.read())
+              print('\n'+'='*80+'\n'+cid, obj.get('address',{}).get('city'), obj.get('maxPowerKw'), obj.get('chargerType'))
+              print('subscriberDiscountApplicable=',obj.get('subscriberDiscountApplicable'))
+              print((obj.get('prices') or {}).get('priceInfoDirectPayment',''))
+          PY
