@@ -28,9 +28,8 @@ page.on('response', async res=>{
 });
 
 await page.goto(target,{waitUntil:'domcontentloaded',timeout:60000});
-await page.waitForTimeout(18000);
+await page.waitForTimeout(16000);
 
-// Reuse the exact headers the app itself used for its public anonymous Stations request.
 let directResults={};
 if(stationsRequestHeaders){
   directResults=await page.evaluate(async ({headers})=>{
@@ -39,15 +38,15 @@ if(stationsRequestHeaders){
       const lk=k.toLowerCase();
       if(!['host','content-length','origin','referer','sec-fetch-dest','sec-fetch-mode','sec-fetch-site','user-agent'].includes(lk)) keep[k]=v;
     }
-    const requests={};
-    const urls={
-      unclusterFrance:'/api/Stations?fLatSudOuest=41.0&fLongSudOuest=-6.0&fLatNordEst=51.5&fLongNordEst=10.5&bUniquementBornesDisponibles=false&bCompatibleAutocharge=0&nZoom=12&bNePasClusteriser=1&nBornesPrivees=0&bRecupererBorneLaPlusProche=0',
-      mane:'/api/Stations?fLatSudOuest=43.05&fLongSudOuest=0.82&fLatNordEst=43.15&fLongNordEst=0.98&bUniquementBornesDisponibles=false&bCompatibleAutocharge=0&nZoom=16&bNePasClusteriser=1&nBornesPrivees=0&bRecupererBorneLaPlusProche=0'
-    };
-    for(const [name,url] of Object.entries(urls)){
-      try{const r=await fetch(url,{headers:keep});requests[name]={status:r.status,text:(await r.text()).slice(0,200000)}}catch(e){requests[name]={error:String(e)}}
-    }
-    return {headers:keep,requests};
+    const ctl=new AbortController();
+    const timer=setTimeout(()=>ctl.abort(),20000);
+    const url='/api/Stations?fLatSudOuest=43.05&fLongSudOuest=0.82&fLatNordEst=43.15&fLongNordEst=0.98&bUniquementBornesDisponibles=false&bCompatibleAutocharge=0&nZoom=16&bNePasClusteriser=1&nBornesPrivees=0&bRecupererBorneLaPlusProche=0';
+    try{
+      const r=await fetch(url,{headers:keep,signal:ctl.signal});
+      const text=await r.text();
+      return {headers:keep,requests:{mane:{status:r.status,text:text.slice(0,300000)}}};
+    }catch(e){return {headers:keep,requests:{mane:{error:String(e)}}};}
+    finally{clearTimeout(timer);}
   },{headers:stationsRequestHeaders});
 }
 
@@ -55,5 +54,5 @@ const result={target,finalUrl:page.url(),anonymousBody,stationsRequestHeaders,di
 fs.mkdirSync('data/national',{recursive:true});
 fs.writeFileSync(outPath,JSON.stringify(result,null,2));
 console.log(JSON.stringify({eventCount:events.length,hasStationsHeaders:!!stationsRequestHeaders,direct:Object.fromEntries(Object.entries(directResults.requests||{}).map(([k,v])=>[k,{status:v.status,length:(v.text||'').length,error:v.error}]))},null,2));
-for(const [k,v] of Object.entries(directResults.requests||{})){console.log('\n###',k,'STATUS',v.status,'\n',String(v.text||v.error||'').slice(0,20000));}
+for(const [k,v] of Object.entries(directResults.requests||{})){console.log('\n###',k,'STATUS',v.status,'\n',String(v.text||v.error||'').slice(0,30000));}
 await browser.close();
