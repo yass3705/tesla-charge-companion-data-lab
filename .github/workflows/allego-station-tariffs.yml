@@ -13,6 +13,7 @@ on:
   push:
     paths:
       - "scripts/allego_station_tariffs.py"
+      - "scripts/allego_station_tariffs_fast.py"
       - ".github/workflows/allego-station-tariffs.yml"
 
 permissions:
@@ -20,12 +21,12 @@ permissions:
 
 concurrency:
   group: allego-france-station-tariffs
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +46,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.browser_fallback }}" == "true" ]]; then
             EXTRA+=(--browser)
           fi
-          python scripts/allego_station_tariffs.py "${EXTRA[@]}"
+          python scripts/allego_station_tariffs_fast.py --workers 16 "${EXTRA[@]}"
 
       - name: Validate output
         run: |
