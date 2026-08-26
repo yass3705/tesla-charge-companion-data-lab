@@ -1,0 +1,40 @@
+name: IZIVIA Express filter schema analysis
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/izivia-express-filter-analysis.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Find public map network filter schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 'https://fronts-map.izivia.com/' -o /tmp/index.html
+          BUNDLE=$(grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' /tmp/index.html | head -1)
+          curl -fsSL --retry 3 "https://fronts-map.izivia.com/$BUNDLE" -o /tmp/bundle.js
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/bundle.js').read_text(errors='replace')
+          low=s.lower()
+          needles=['marketingnetwork','marketing-network','marketing_network','networkids','network_ids','networks','filters:{','applyfilters','67ab64d36b14f13fac39a82d']
+          for needle in needles:
+              print('\n===== NEEDLE',needle,'=====')
+              pos=0
+              count=0
+              while count<30:
+                  i=low.find(needle.lower(),pos)
+                  if i<0: break
+                  print('\n---',i,'---')
+                  print(s[max(0,i-900):min(len(s),i+1600)])
+                  pos=i+len(needle)
+                  count+=1
+          PY
