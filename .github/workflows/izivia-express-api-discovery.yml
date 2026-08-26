@@ -1,0 +1,142 @@
+name: IZIVIA Express public map API discovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/izivia-express-api-discovery.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Probe IZIVIA public charging map network calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          python -m pip install --disable-pip-version-check -q selenium
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          import json, time, urllib.parse
+          from pathlib import Path
+
+          PAGES = [
+              'https://www.izivia.com/carte-borne-recharge-izivia',
+              'https://izivia.com/carte-borne-recharge-izivia',
+          ]
+          opt=Options()
+          opt.add_argument('--headless=new')
+          opt.add_argument('--no-sandbox')
+          opt.add_argument('--disable-dev-shm-usage')
+          opt.add_argument('--window-size=1440,1600')
+          opt.set_capability('goog:loggingPrefs', {'performance':'ALL','browser':'ALL'})
+          d=webdriver.Chrome(options=opt)
+          rows=[]
+          json_responses=[]
+          pages=[]
+          try:
+              for page in PAGES:
+                  try:
+                      d.get(page)
+                      time.sleep(10)
+                      current=d.current_url
+                      body=d.find_element('tag name','body').text
+                      source=d.page_source
+                      iframes=[]
+                      for f in d.find_elements('tag name','iframe'):
+                          src=f.get_attribute('src')
+                          if src: iframes.append(src)
+                      pages.append({'requested':page,'currentUrl':current,'iframes':iframes,'body':body[:20000]})
+                      Path('probe/page_body.txt').write_text(body[:50000])
+                      Path('probe/page_source.html').write_text(source[:500000])
+
+                      logs=d.get_log('performance')
+                      requests={}
+                      responses={}
+                      for item in logs:
+                          try: msg=json.loads(item['message'])['message']
+                          except Exception: continue
+                          method=msg.get('method')
+                          params=msg.get('params') or {}
+                          if method=='Network.requestWillBeSent':
+                              req=params.get('request') or {}
+                              url=req.get('url','')
+                              host=(urllib.parse.urlparse(url).hostname or '').lower()
+                              if 'izivia' not in host:
+                                  continue
+                              rid=params.get('requestId')
+                              row={'requestId':rid,'url':url,'method':req.get('method'),'headerNames':sorted((req.get('headers') or {}).keys())}
+                              requests[rid]=row
+                              rows.append(row)
+                          elif method=='Network.responseReceived':
+                              resp=params.get('response') or {}
+                              url=resp.get('url','')
+                              host=(urllib.parse.urlparse(url).hostname or '').lower()
+                              if 'izivia' not in host:
+                                  continue
+                              rid=params.get('requestId')
+                              responses[rid]={'url':url,'status':resp.get('status'),'mimeType':resp.get('mimeType')}
+
+                      for rid,resp in responses.items():
+                          mime=(resp.get('mimeType') or '').lower()
+                          url=resp.get('url','')
+                          low=url.lower()
+                          if not ('json' in mime or any(k in low for k in ['api','station','charge','poi','location','tariff','price'])):
+                              continue
+                          try:
+                              got=d.execute_cdp_cmd('Network.getResponseBody', {'requestId':rid})
+                              text=got.get('body','')
+                          except Exception as e:
+                              text='[response body unavailable: %s]' % (e,)
+                          json_responses.append({**resp,'body':text[:100000]})
+                  except Exception as e:
+                      pages.append({'requested':page,'error':repr(e)})
+
+              # Probe public iframe(s) directly if the marketing page exposes one.
+              iframe_urls=[]
+              for p in pages:
+                  iframe_urls.extend(p.get('iframes') or [])
+              for page in iframe_urls[:5]:
+                  try:
+                      d.get(page)
+                      time.sleep(10)
+                      body=d.find_element('tag name','body').text
+                      pages.append({'requested':page,'currentUrl':d.current_url,'body':body[:20000],'directIframeProbe':True})
+                      logs=d.get_log('performance')
+                      for item in logs:
+                          try: msg=json.loads(item['message'])['message']
+                          except Exception: continue
+                          if msg.get('method')!='Network.requestWillBeSent': continue
+                          req=msg.get('params',{}).get('request') or {}
+                          url=req.get('url','')
+                          host=(urllib.parse.urlparse(url).hostname or '').lower()
+                          if 'izivia' in host:
+                              rows.append({'url':url,'method':req.get('method'),'headerNames':sorted((req.get('headers') or {}).keys()),'directIframeProbe':True})
+                  except Exception as e:
+                      pages.append({'requested':page,'error':repr(e),'directIframeProbe':True})
+
+              out={'pages':pages,'iziviaRequests':rows,'candidateResponses':json_responses}
+              Path('probe/izivia_public_map_probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2))
+              print('pages=',json.dumps([{k:v for k,v in p.items() if k!='body'} for p in pages],ensure_ascii=False,indent=2))
+              print('IZIVIA request count=',len(rows))
+              for r in rows[:100]: print(json.dumps(r,ensure_ascii=False))
+              print('candidate response count=',len(json_responses))
+              for r in json_responses[:20]:
+                  print('\n===',r.get('status'),r.get('mimeType'),r.get('url'),'===')
+                  print((r.get('body') or '')[:5000])
+          finally:
+              d.quit()
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: izivia-express-api-discovery
+          path: probe
+          retention-days: 3
