@@ -1,0 +1,176 @@
+name: IZIVIA Express national direct tariff audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/izivia-express-national-direct-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Extract direct IZIVIA Express pricing for official national inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import csv, json, uuid, urllib.request, urllib.error, urllib.parse, re, collections, time
+          from pathlib import Path
+
+          DATA_URL='https://www.data.gouv.fr/api/1/datasets/r/95f96484-c602-4b2f-996d-702f61b2e8ab'
+          BASE='https://fronts-map.izivia.com/api/'
+          NETWORK_ID='67ab64d36b14f13fac39a82d'
+          headers={'Accept':'application/json','Accept-Language':'fr','Content-Type':'application/json','x-device-id':str(uuid.uuid4()),'User-Agent':'Mozilla/5.0 TCC-IZIVIA-Express-national-audit'}
+          filters={'chargingConnectors':[],'supportsAutocharge':False,'onlyTwentyFourSeven':False,'onlyAvailable':False,'capabilityTypes':[],'marketingNetworkIds':[NETWORK_ID]}
+
+          def request(url, method='GET', body=None, tries=3):
+              data=None if body is None else json.dumps(body,separators=(',',':')).encode()
+              h=headers if url.startswith(BASE) else {'User-Agent':headers['User-Agent'],'Accept':'text/csv,*/*'}
+              last=None
+              for attempt in range(tries):
+                  try:
+                      req=urllib.request.Request(url,data=data,headers=h,method=method)
+                      with urllib.request.urlopen(req,timeout=45) as r:
+                          return r.status,r.read()
+                  except urllib.error.HTTPError as e:
+                      last=(e.code,e.read())
+                  except Exception as e:
+                      last=(0,repr(e).encode())
+                  time.sleep(1.2*(attempt+1))
+              return last
+
+          # Official allow-list: every row is explicitly IZIVIA-operated / Izivia Express.
+          st,raw=request(DATA_URL)
+          if st!=200: raise SystemExit(f'data.gouv failed {st}: {raw[:500]}')
+          text=raw.decode('utf-8-sig','replace')
+          dialect=csv.Sniffer().sniff(text[:5000],delimiters=',;\t')
+          rows=list(csv.DictReader(text.splitlines(),dialect=dialect))
+          official_stations={}
+          official_pdcs=[]
+          for r in rows:
+              sid=(r.get('id_station_itinerance') or '').strip()
+              if not sid: continue
+              official_stations.setdefault(sid,[]).append(r)
+              official_pdcs.append(r)
+          if any((r.get('nom_operateur') or '').strip().upper()!='IZIVIA' for r in official_pdcs):
+              raise SystemExit('official inventory contains non-IZIVIA operator row')
+
+          def code_from_official(s):
+              m=re.search(r'OAZS(.+)$',s or '',re.I)
+              return m.group(1).replace('*','').replace('_','') if m else None
+          def code_from_legacy(s):
+              m=re.search(r'OAZS\*([^*]+)',s or '',re.I)
+              return m.group(1) if m else None
+
+          official_by_code={}
+          for sid,rs in official_stations.items():
+              c=code_from_official(sid)
+              if c: official_by_code[c]={'stationId':sid,'rows':rs}
+
+          # Express marketing-network markers; official allow-list below prevents partner contamination.
+          marker_body={'square':{'centerLng':2.2,'centerLat':46.2,'zoom':5},'filters':filters}
+          mst,mraw=request(BASE+'map/markers','POST',marker_body)
+          if mst!=200: raise SystemExit(f'markers failed {mst}: {mraw[:500]}')
+          markers=json.loads(mraw.decode())
+
+          details=[]
+          api_by_code={}
+          for idx,m in enumerate(markers):
+              sid=m.get('id') if isinstance(m,dict) else None
+              if not sid: continue
+              dst,draw=request(BASE+f'charging-locations/{sid}','POST',{'filters':filters})
+              if dst!=200:
+                  details.append({'mapId':sid,'detailStatus':dst,'marker':m}); continue
+              try: d=json.loads(draw.decode())
+              except Exception:
+                  details.append({'mapId':sid,'detailStatus':dst,'detailRaw':draw.decode('utf-8','replace')[:3000],'marker':m}); continue
+              legacy=d.get('legacyId')
+              code=code_from_legacy(legacy)
+              entry={'mapId':sid,'detailStatus':dst,'marker':m,'detail':d,'legacyId':legacy,'code':code}
+              details.append(entry)
+              if code: api_by_code.setdefault(code,entry)
+              if idx and idx%40==0: print('DETAIL_PROGRESS',idx,'/',len(markers))
+
+          records=[]
+          direct_counter=collections.Counter()
+          sub_counter=collections.Counter()
+          matched=priced=nonempty=0
+          missing=[]
+          for i,(code,off) in enumerate(sorted(official_by_code.items())):
+              api=api_by_code.get(code)
+              rec={'code':code,'officialStationId':off['stationId'],'officialRows':off['rows'],'apiMatch':bool(api)}
+              if not api:
+                  missing.append(off['stationId']); records.append(rec); continue
+              matched+=1
+              d=api['detail']; mapid=api['mapId']
+              rec.update({'mapId':mapid,'detail':d,'legacyId':d.get('legacyId')})
+              params={}
+              if d.get('legacyId') is not None: params['legacyId']=d['legacyId']
+              if d.get('firstStationEmipId'): params['stationEmipId']=d['firstStationEmipId']
+              if params:
+                  qs=urllib.parse.urlencode(params)
+                  pst,praw=request(BASE+f'charging-locations/{mapid}/pricing-info-items?{qs}')
+                  rec['pricingStatus']=pst
+                  if pst==200:
+                      priced+=1
+                      try: pricing=json.loads(praw.decode())
+                      except Exception: pricing=None
+                      rec['pricing']=pricing
+                      if pricing:
+                          nonempty+=1
+                          for item in pricing:
+                              it=(item.get('itemType') or '') if isinstance(item,dict) else ''
+                              vals=(item.get('rawPricingInfos') or item.get('pricingInfos') or []) if isinstance(item,dict) else []
+                              names=item.get('subscriptionNames') if isinstance(item,dict) else None
+                              for v in vals:
+                                  if it=='subscription': sub_counter[(names or '',v)]+=1
+                                  else: direct_counter[v]+=1
+              records.append(rec)
+              if i and i%30==0: print('PRICE_PROGRESS',i,'/',len(official_by_code))
+
+          extra_codes=sorted(set(api_by_code)-set(official_by_code))
+          summary={
+              'generatedAt':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),
+              'operator':'IZIVIA',
+              'network':'IZIVIA Express',
+              'operatorDirectOnly':True,
+              'roamingIncluded':False,
+              'officialPdcRows':len(official_pdcs),
+              'officialStationCount':len(official_stations),
+              'officialCodes':len(official_by_code),
+              'mapMarkerCount':len(markers),
+              'mapCodes':len(api_by_code),
+              'matchedOfficialStations':matched,
+              'pricingHttp200':priced,
+              'nonEmptyPricingStations':nonempty,
+              'missingOfficialStations':missing,
+              'extraMapCodesNotInOfficialDataset':extra_codes,
+              'directPricingStrings':[{'count':n,'text':s} for s,n in direct_counter.most_common()],
+              'subscriptionPricingStrings':[{'count':n,'subscriptionNames':name,'text':s} for (name,s),n in sub_counter.most_common()],
+          }
+          Path('out/izivia_express_direct_raw.json').write_text(json.dumps(records,ensure_ascii=False,indent=2))
+          Path('out/izivia_express_direct_summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2))
+          print('\n=== SUMMARY ===')
+          print(json.dumps({k:v for k,v in summary.items() if k not in ('directPricingStrings','subscriptionPricingStrings','extraMapCodesNotInOfficialDataset','missingOfficialStations')},ensure_ascii=False,indent=2))
+          print('\n=== MISSING OFFICIAL ===',len(missing),missing[:100])
+          print('\n=== EXTRA MAP CODES ===',len(extra_codes),extra_codes[:100])
+          print('\n=== DIRECT PRICING STRINGS ===')
+          for x in summary['directPricingStrings']:
+              print(x['count'],repr(x['text']))
+          print('\n=== SUBSCRIPTION PRICING STRINGS ===')
+          for x in summary['subscriptionPricingStrings'][:100]:
+              print(x['count'],repr(x['subscriptionNames']),repr(x['text']))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: izivia-express-national-direct-audit
+          path: out
+          retention-days: 3
