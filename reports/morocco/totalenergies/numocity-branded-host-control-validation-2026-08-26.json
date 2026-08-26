@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-26T21:50:42Z",
+  "scope": "TotalEnergies Morocco / Club EV-Charge / Numocity",
+  "policy": {
+    "read_only": true,
+    "get_only": true,
+    "anonymous": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_mutations": true,
+    "no_session_start": true,
+    "response_body_persisted": false
+  },
+  "evidence": {
+    "static_client_signal": "The APK static analysis places /api/fetch-spurious-transactions near the literal csmstotalenergiesma.numocity.com, making it a useful harmless branded-host control route.",
+    "workflow_run_id": 33017192852,
+    "workflow_commit": "68e17efc08ff24cd17a32bff04926816dde4133f",
+    "branded_host": "https://csmstotalenergiesma.numocity.com",
+    "control_routes": [
+      {
+        "path": "/api/fetch-spurious-transactions",
+        "http_status": 404,
+        "classification": "route_not_matched"
+      },
+      {
+        "path": "/2/api/fetch-spurious-transactions",
+        "http_status": 404,
+        "classification": "route_not_matched"
+      }
+    ]
+  },
+  "interpretation": {
+    "finding": "Even a route found adjacent to the branded Numocity host literal is not mounted directly on csmstotalenergiesma.numocity.com at the root or under /2.",
+    "blocker_narrowing": "The remaining blocker is therefore not limited to the station-state or connector suffix. The runtime app likely constructs a different authority/base URL, uses a gateway/rewrite layer, or derives an environment-specific prefix not recoverable from the currently tested literals.",
+    "do_not_infer": [
+      "Do not infer that csmstotalenergiesma.numocity.com is the direct mobile API base solely because the literal is present in the app.",
+      "Do not infer CPO/operator from Club EV-Charge app branding; keep station-specific CPO attribution separate."
+    ]
+  },
+  "modeling": {
+    "site_brand": "station-specific",
+    "cpo_operator": "station-specific",
+    "app_source_access_network": "Club EV-Charge / Numocity",
+    "tariff_channel": "Club EV-Charge / TotalEnergies direct when evidenced",
+    "status_source": "Numocity native only after runtime endpoint validation"
+  }
+}
