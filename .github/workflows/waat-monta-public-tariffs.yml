@@ -1,0 +1,80 @@
+name: WAAT Monta public direct tariffs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 2"
+  push:
+    paths:
+      - "scripts/waat_monta_public_tariffs.mjs"
+      - ".github/workflows/waat-monta-public-tariffs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: waat-monta-public-direct-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install browser driver
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Build WAAT public direct tariff audit
+        run: |
+          set -euo pipefail
+          node --check scripts/waat_monta_public_tariffs.mjs
+          node scripts/waat_monta_public_tariffs.mjs
+      - name: Validate direct-only output
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          d=json.loads(gzip.decompress(Path('data/national/waat_monta_public_tariffs_france.json.gz').read_bytes()))
+          c=d['counts'];s=d['scope']
+          assert d['dataset']=='waat-monta-public-direct-tariffs-france'
+          assert d['operator']=='WAAT' and d['operatorPrefix']=='FR*WA2'
+          assert s['operatorDirectOnly'] is True and s['roamingIncluded'] is False
+          assert s['residentialIncluded'] is False and s['guestPublicApi'] is True
+          assert c['irveStationCount'] >= 500, c
+          assert c['mapErrors'] < max(30, c['irveStationCount']*.12), c
+          assert c['directWaatGroupCount'] > 0, c
+          assert all(x.get('directWaatEvidence') for x in d['directGroups'])
+          # Fail closed until the normalization pass validates exact pricing semantics.
+          assert all(x.get('rankableDirect') is False for x in d['stations'])
+          print(json.dumps(c,indent=2))
+          PY
+      - name: Upload WAAT public tariff audit
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: waat-monta-public-direct-tariffs
+          path: |
+            data/national/waat_monta_public_tariffs_france.json.gz
+            data/reports/waat_monta_public_tariffs_report.json
+          retention-days: 14
+      - name: Commit refreshed audit
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/waat_monta_public_tariffs_france.json.gz data/reports/waat_monta_public_tariffs_report.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Refresh WAAT Monta public direct tariff audit"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
