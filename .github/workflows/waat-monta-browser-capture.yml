@@ -1,0 +1,115 @@
+name: WAAT Monta browser pricing capture
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/waat-monta-browser-capture.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install lightweight browser driver
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Capture Monta public-map API responses
+        run: |
+          set -euo pipefail
+          cat > /tmp/capture.mjs <<'JS'
+          import fs from 'node:fs';
+          import { chromium } from 'playwright-core';
+
+          const chromeCandidates=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'];
+          const executablePath=chromeCandidates.find(p=>fs.existsSync(p));
+          if(!executablePath) throw new Error('No Chromium/Chrome executable found');
+
+          const browser=await chromium.launch({executablePath,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+          const context=await browser.newContext({
+            locale:'fr-FR',
+            userAgent:'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+            viewport:{width:1280,height:900}
+          });
+          const page=await context.newPage();
+          const captured=[];
+          const consoleLines=[];
+
+          page.on('console',m=>{ if(consoleLines.length<120) consoleLines.push({type:m.type(),text:m.text().slice(0,1000)}); });
+          page.on('response',async r=>{
+            const u=r.url();
+            if(!u.includes('api.monta.app/api/v1/')) return;
+            const interesting=/\/auth\/guest|\/operators\/current|\/charge_points(?:\/|\?|$)|\/charge_point_groups/.test(u);
+            if(!interesting) return;
+            const item={url:u,status:r.status(),contentType:r.headers()['content-type']||null};
+            try {
+              const txt=await r.text();
+              if(u.includes('/auth/guest')) {
+                item.body='[guest credentials redacted]';
+                try { const j=JSON.parse(txt); item.keys=Object.keys(j); item.hasToken=!!j?.token?.access_token; }
+                catch {}
+              } else {
+                const j=JSON.parse(txt);
+                item.json=j;
+              }
+            } catch(e) { item.readError=String(e); }
+            captured.push(item);
+          });
+
+          // Saint-Priest / Lyon: known current WAAT public station area.
+          const url='https://maps.monta.app/?lat=45.7045&lng=4.9445&zoom=16&locale=fr';
+          let pageStatus=null;
+          try {
+            const resp=await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});
+            pageStatus=resp?.status()??null;
+            await page.waitForTimeout(18000);
+          } catch(e) { consoleLines.push({type:'navigation-error',text:String(e)}); }
+
+          // Also request a wider Lyon viewport naturally by zooming out if UI is alive.
+          try {
+            await page.evaluate(()=>{
+              const u=new URL(location.href);u.searchParams.set('zoom','11');history.replaceState({},'',u.toString());window.dispatchEvent(new PopStateEvent('popstate'));
+            });
+            await page.waitForTimeout(8000);
+          } catch {}
+
+          function scan(value,path='$',hits=[]){
+            if(hits.length>1000) return hits;
+            if(value && typeof value==='object') {
+              if(Array.isArray(value)) value.forEach((v,i)=>scan(v,`${path}[${i}]`,hits));
+              else for(const [k,v] of Object.entries(value)) {
+                const lk=k.toLowerCase();
+                if(/pric|tariff|fee|operator|roaming|evse|charge_point|currency|kw/.test(lk)) hits.push({path:`${path}.${k}`,value:(typeof v==='object'?JSON.stringify(v).slice(0,4000):v)});
+                scan(v,`${path}.${k}`,hits);
+              }
+            }
+            return hits;
+          }
+          const pricingHits=[];
+          for(const c of captured){ if(c.json) pricingHits.push(...scan(c.json, c.url)); }
+          const waatHits=pricingHits.filter(x=>String(x.value).toLowerCase().includes('waat'));
+          const report={generatedAt:new Date().toISOString(),pageUrl:url,pageStatus,finalUrl:page.url(),title:await page.title().catch(()=>null),captured,pricingHits,waatHits,console:consoleLines};
+          fs.mkdirSync('data/reports',{recursive:true});
+          fs.writeFileSync('data/reports/waat_monta_browser_capture.json',JSON.stringify(report,null,2));
+          console.log(JSON.stringify({pageStatus:report.pageStatus,finalUrl:report.finalUrl,title:report.title,captured:captured.map(x=>({url:x.url,status:x.status,keys:x.keys||(x.json&&typeof x.json==='object'?Object.keys(x.json).slice(0,30):null)})),pricingHitCount:pricingHits.length,waatHitCount:waatHits.length,waatHits:waatHits.slice(0,30)},null,2));
+          await browser.close();
+          JS
+          node /tmp/capture.mjs
+      - name: Commit sanitized browser report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_monta_browser_capture.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: publish sanitized Monta browser pricing capture"
+          for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
