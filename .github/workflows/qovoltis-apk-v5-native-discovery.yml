@@ -1,0 +1,148 @@
+name: Qovoltis APK v5 native discovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-apk-v5-native-discovery.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Download and unpack Qovoltis 5.0.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work probe
+          URL='https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=50012'
+          curl -fLsS --max-time 180 -A 'Mozilla/5.0' "$URL" -o work/qovoltis.xapk
+          unzip -q work/qovoltis.xapk -d work/xapk
+          MAIN_APK=$(find work/xapk -maxdepth 1 -type f -name 'com.qovoltis.client.apk' | head -1)
+          test -n "$MAIN_APK"
+          mkdir -p work/apk
+          unzip -q "$MAIN_APK" -d work/apk
+          find work/apk -maxdepth 3 -type f -printf '%s\t%p\n' | sort -nr | head -300 > probe/largest-files.tsv
+          find work/apk -maxdepth 5 -type f | sed 's#^work/apk/##' | head -3000 > probe/file-tree.txt
+          printf 'main_apk=%s\nbytes=%s\n' "$MAIN_APK" "$(wc -c < "$MAIN_APK")" > probe/apk-info.txt
+
+      - name: Detect framework and collect public API strings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import json, os, re, subprocess
+
+          root = Path('work/apk')
+          out = Path('probe')
+          files = [p for p in root.rglob('*') if p.is_file()]
+          paths = [str(p.relative_to(root)) for p in files]
+
+          framework = {
+              'flutter': any('libflutter.so' in x or 'flutter_assets' in x for x in paths),
+              'reactNative': any('libreactnative' in x.lower() or 'index.android.bundle' in x.lower() for x in paths),
+              'capacitorCordova': any(('capacitor' in x.lower() or 'cordova' in x.lower()) for x in paths),
+              'unity': any('libunity.so' in x.lower() for x in paths),
+          }
+
+          # Only public network-contract indicators are retained. Never persist
+          # Authorization/token/cookie values or query strings that could contain secrets.
+          url_re = re.compile(rb'https?://[^\x00-\x20"\'<>]{3,500}', re.I)
+          route_re = re.compile(rb'[/][A-Za-z0-9_{}?=.&%-]{0,120}(?:station|borne|charge|charging|tariff|pricing|price|map|location|connector|evse|poi|offer)[A-Za-z0-9_/{}/?=.&%-]{0,180}', re.I)
+          domain_words = ('qovoltis','qoapi','qorest','chargenow','qockpit','ocpi','station','borne','tariff','pricing','price','evse')
+
+          urls = set()
+          routes = set()
+          hits = []
+
+          # Prioritize assets/native libraries likely to hold compiled Flutter/JS app strings.
+          candidates = []
+          for p in files:
+              rel = str(p.relative_to(root))
+              low = rel.lower()
+              if (p.suffix.lower() in ('.so','.json','.js','.txt','.xml','.yaml','.yml','.arb','.properties','.bundle')
+                  or 'assets/' in low or 'flutter_assets' in low or 'res/raw' in low):
+                  candidates.append(p)
+          candidates = sorted(candidates, key=lambda p: p.stat().st_size, reverse=True)[:1200]
+
+          for p in candidates:
+              try:
+                  size = p.stat().st_size
+                  if size > 220_000_000:
+                      continue
+                  data = p.read_bytes()
+              except Exception:
+                  continue
+              rel = str(p.relative_to(root))
+              local_urls = []
+              for m in url_re.finditer(data):
+                  raw = m.group(0).decode('utf-8','replace')
+                  clean = raw.split('?',1)[0].split('#',1)[0].rstrip('),;]')
+                  if any(w in clean.lower() for w in ('qovoltis','qoapi','qorest','chargenow','qockpit','ocpi','api')):
+                      urls.add(clean)
+                      local_urls.append(clean)
+              local_routes = []
+              for m in route_re.finditer(data):
+                  raw = m.group(0).decode('utf-8','replace')
+                  # Strip query to avoid accidentally retaining user/session fields.
+                  clean = raw.split('?',1)[0]
+                  if len(clean) >= 4:
+                      routes.add(clean)
+                      local_routes.append(clean)
+              if local_urls or local_routes:
+                  hits.append({
+                      'file': rel,
+                      'bytes': size,
+                      'urls': sorted(set(local_urls))[:100],
+                      'routes': sorted(set(local_routes))[:200],
+                  })
+
+          result = {
+              'scope':'public_apk_static_strings_no_auth_bypass_no_secrets',
+              'versionCode':50012,
+              'framework':framework,
+              'apiUrls':sorted(urls),
+              'routeCandidates':sorted(routes)[:3000],
+              'filesWithHits':hits[:500],
+          }
+          (out/'qovoltis_v5_native_contract.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
+
+          with (out/'SUMMARY.txt').open('w',encoding='utf-8') as f:
+              f.write('=== FRAMEWORK ===\n'+json.dumps(framework,ensure_ascii=False)+'\n')
+              f.write('\n=== API URLS ===\n')
+              f.write('\n'.join(sorted(urls))+'\n')
+              f.write('\n=== ROUTE CANDIDATES ===\n')
+              f.write('\n'.join(sorted(routes))+'\n')
+              f.write('\n=== FILES WITH HITS ===\n')
+              for h in hits:
+                  f.write(f"{h['file']} ({h['bytes']} bytes)\n")
+                  for u in h['urls']: f.write('  URL '+u+'\n')
+                  for r in h['routes'][:80]: f.write('  ROUTE '+r+'\n')
+          print((out/'SUMMARY.txt').read_text(encoding='utf-8')[:120000])
+          PY
+
+      - name: Inspect printable strings in Flutter/React native payloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > probe/native-keyword-context.txt
+          while IFS= read -r f; do
+            [ -f "$f" ] || continue
+            echo "===== $f =====" >> probe/native-keyword-context.txt
+            strings -a -n 5 "$f" 2>/dev/null \
+              | grep -E -i 'qovoltis|qoapi|qorest|chargenow|qockpit|/[^ ]*(station|borne|charge|tariff|pricing|price|evse|connector|location|map)[^ ]*' \
+              | sed -E 's#([?&](token|access_token|authorization|apikey|api_key|key|secret)=)[^&[:space:]]+#\1<redacted>#Ig' \
+              | head -2500 >> probe/native-keyword-context.txt || true
+          done < <(find work/apk -type f \( -name 'libapp.so' -o -name '*.bundle' -o -name 'index.android.bundle' -o -name 'main.dart.js' -o -name '*.js' \) | head -100)
+          sed -n '1,12000p' probe/native-keyword-context.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-apk-v5-native-discovery
+          path: probe
+          retention-days: 3
