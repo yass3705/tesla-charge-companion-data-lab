@@ -5,9 +5,10 @@ on:
   push:
     paths:
       - ".github/workflows/waat-monta-module-endpoints.yml"
+      - "scripts/inspect_monta_public_modules.py"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   inspect:
@@ -15,50 +16,28 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch Monta hub modules and extract endpoint strings
-        shell: bash
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Extract Monta public tariff module endpoints
         run: |
           set -euo pipefail
-          mkdir -p /tmp/monta
-          base='https://cdn.monta.app/control/hub/assets'
-          files=(
-            'use-public-tariffs-kFlP_gIp.js'
-            'deeplinks-api-DfouvZRW.js'
-            'charge-points-api-C25y_gLF.js'
-            'price-groups-api-s7tBvtb3.js'
-            'charge-point-detail-api-BDg_2hI1.js'
-            'sites-search-api-Df3kz9OJ.js'
-            'monta-urls-J6q9Peb-.js'
-          )
-          for f in "${files[@]}"; do
-            echo "===== $f ====="
-            code=$(curl -L -sS -o "/tmp/monta/$f" -w '%{http_code}' "$base/$f" || true)
-            echo "HTTP $code bytes $(wc -c < "/tmp/monta/$f" 2>/dev/null || echo 0)"
-            if [[ "$code" == 200 ]]; then
-              python - "$f" <<'PY'
-import re,sys,pathlib
-p=pathlib.Path('/tmp/monta')/sys.argv[1]
-s=p.read_text('utf-8','ignore')
-patterns=[
- r'https?://[^"\'`\\\s]+',
- r'[/][A-Za-z0-9_.~?=&%{}:$\-]+(?:[/][A-Za-z0-9_.~?=&%{}:$\-]+)+',
-]
-seen=[]
-for pat in patterns:
-  for m in re.finditer(pat,s):
-    x=m.group(0)
-    if any(k in x.lower() for k in ['api','price','tariff','charge','deep','public','site','qr']):
-      if x not in seen: seen.append(x)
-for x in seen[:250]: print(x)
-print('--- contextual hits ---')
-for key in ['public tariff','publicTariff','tariff','price','deeplink','deepLink','chargePoint','charge-point','priceGroup','price-group','qr']:
-  pos=0
-  while True:
-    i=s.lower().find(key.lower(),pos)
-    if i<0: break
-    a=max(0,i-240); b=min(len(s),i+500)
-    print(f'[{key}] '+s[a:b].replace('\n',' ')[:760])
-    pos=i+len(key)
-PY
-            fi
+          python -m py_compile scripts/inspect_monta_public_modules.py
+          python scripts/inspect_monta_public_modules.py
+      - name: Commit endpoint report
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_monta_module_endpoints.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Refresh WAAT Monta public module endpoint report"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
           done
+          exit 1
