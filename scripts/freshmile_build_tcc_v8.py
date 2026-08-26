@@ -98,6 +98,11 @@ def display_rule(exact):
   else:rule['chargePerMinute']=float(time['amount'])
  if not energy and time and not float(time.get('startAfterMinutes') or 0):rule['billing']='minute'
  return rule
+def connector_kind(point_kind,connector):
+ standard=norm((connector or {}).get('standard'))
+ if any(token in standard for token in ('combo','chademo','ccs')):return 'DC'
+ if any(token in standard for token in ('type 2','t2','mennekes')):return 'AC'
+ return point_kind if point_kind in {'AC','DC'} else ''
 def read_gzip(path):return json.load(gzip.open(path,'rt',encoding='utf-8'))
 def write_gzip(path,payload):
  path.parent.mkdir(parents=True,exist_ok=True);raw=json.dumps(payload,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode('utf-8')
@@ -110,7 +115,7 @@ def main():
   for point in station.get('chargePoints') or []:
    rankable_on_point=sum(1 for tariff in (point.get('tariffs') or []) if tariff.get('sourceValidated') and tariff.get('tccRankable'));source_rankable+=rankable_on_point
    point_kind=str(point.get('kind') or '').upper()
-   if point_kind not in {'AC','DC'}:rejection['unsupported_connector_kind']+=rankable_on_point;continue
+   if point_kind not in {'AC','DC','MIXED'}:rejection['unsupported_connector_kind']+=rankable_on_point;continue
    formulas_by_power=defaultdict(dict);metadata_by_power=defaultdict(lambda:defaultdict(lambda:{'tariffIds':set(),'tariffRefs':set(),'names':set()}))
    for tariff in point.get('tariffs') or []:
     exact,reason=parse_exact_tariff(tariff)
@@ -118,11 +123,14 @@ def main():
      if tariff.get('sourceValidated') and tariff.get('tccRankable'):rejection[reason]+=1
      continue
     connector=tariff.get('connector') or {}
+    kind=connector_kind(point_kind,connector)
+    if kind not in {'AC','DC'}:
+     rejection['unsupported_connector_kind']+=1;continue
     try:connector_power=float(connector.get('powerKw') or point.get('powerKw') or 0)
     except (TypeError,ValueError):connector_power=0.0
     if not (connector_power>0):
      rejection['invalid_connector_power']+=1;continue
-    accepted_records+=1;power_key=(point_kind,round(connector_power,3));key=json.dumps(exact,sort_keys=True,ensure_ascii=False,separators=(',',':'));formulas_by_power[power_key][key]=exact;meta=metadata_by_power[power_key][key];meta['tariffIds'].add(tariff.get('tariffId'))
+    accepted_records+=1;power_key=(kind,round(connector_power,3));key=json.dumps(exact,sort_keys=True,ensure_ascii=False,separators=(',',':'));formulas_by_power[power_key][key]=exact;meta=metadata_by_power[power_key][key];meta['tariffIds'].add(tariff.get('tariffId'))
     if tariff.get('tariffRef'):meta['tariffRefs'].add(str(tariff['tariffRef']))
     if tariff.get('name'):meta['names'].add(str(tariff['name']))
    point_published=False
