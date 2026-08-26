@@ -1,0 +1,18 @@
+name: e-Totem search endpoint probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/etotem_search_probe.mjs"
+      - ".github/workflows/etotem-search-probe.yml"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install --no-save playwright-core@1.55.0
+      - run: node scripts/etotem_search_probe.mjs
