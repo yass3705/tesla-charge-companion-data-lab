@@ -1,0 +1,55 @@
+name: Qovoltis proxy API prefix probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-proxy-prefix-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Probe versioned read-only paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess,json
+          host='https://proxy-cp-user.qovoltis.com'
+          suffixes=[
+            '/evcps/stations',
+            '/evcps/stations?station_id=TEST',
+            '/evcps/emsp-stations',
+            '/evcps/emsp-stations?emsp=QOV',
+            '/evcps/emsp-stations?emsp=QVI',
+            '/configurations/public',
+          ]
+          prefixes=['','/api','/api/v1','/api/v2','/api/v3','/v1','/v2','/v3']
+          out=[]
+          for n,(pre,suf) in enumerate((x for pre in prefixes for x in [(pre,suf) for suf in suffixes]),1):
+              url=host+pre+suf
+              body=Path(f'probe/{n}.body'); hdr=Path(f'probe/{n}.headers')
+              cmd=['curl','-sS','--max-time','12','-A','Qovoltis-TCC-ReadOnly/1.0','-H','Accept: application/json','-D',str(hdr),'-o',str(body),'-w','%{http_code}|%{url_effective}|%{content_type}',url]
+              try: meta=subprocess.check_output(cmd,text=True).strip()
+              except subprocess.CalledProcessError as e: meta=(e.output or 'ERR').strip()
+              sample=body.read_text(errors='replace')[:600] if body.exists() else ''
+              is_webflow='This site was created in Webflow' in sample
+              out.append({'url':url,'meta':meta,'bytes':body.stat().st_size if body.exists() else 0,'webflow':is_webflow,'sample':sample})
+          Path('probe/results.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          for r in out:
+              if not r['webflow'] or not r['meta'].startswith('200|'):
+                  print(r['meta'],r['bytes'],'WEBFLOW='+str(r['webflow']),r['url'],repr(r['sample'][:220]))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-proxy-prefix-probe
+          path: probe/results.json
+          retention-days: 3
