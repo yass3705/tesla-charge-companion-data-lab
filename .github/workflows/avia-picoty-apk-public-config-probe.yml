@@ -1,0 +1,89 @@
+name: AVIA Picoty public APK config probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/avia_picoty_apk_public_config_probe.py"
+      - ".github/workflows/avia-picoty-apk-public-config-probe.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: avia-picoty-apk-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  APK_URL: https://d.apkpure.com/b/APK/fr.picoty.app?version=latest
+  EXPECTED_SHA256: 209226bd768a2270017a7629141c8141b617d4639847e1bb229fe6c29f946cd0
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download public current APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors --connect-timeout 30 --max-time 600 \
+            -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126 Safari/537.36' \
+            "$APK_URL" -o /tmp/avia-picoty.apk
+          test -s /tmp/avia-picoty.apk
+          echo "bytes=$(wc -c < /tmp/avia-picoty.apk)"
+          SHA=$(sha256sum /tmp/avia-picoty.apk | awk '{print $1}')
+          echo "sha256=$SHA"
+          if [ "$SHA" != "$EXPECTED_SHA256" ]; then
+            echo "NOTE: downloaded package hash differs from APKPure page reference; continuing static inspection but report will preserve actual hash."
+          fi
+      - name: Extract public endpoint/config metadata only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/avia_picoty_apk_public_config_probe.py
+          python scripts/avia_picoty_apk_public_config_probe.py /tmp/avia-picoty.apk data/reports/avia_picoty_apk_public_config_probe.json
+      - name: Validate redacted report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/reports/avia_picoty_apk_public_config_probe.json').read_text())
+          assert d['policy']=='public_apk_static_config_only_no_credentials_no_authenticated_calls'
+          txt=Path('data/reports/avia_picoty_apk_public_config_probe.json').read_text()
+          # Report intentionally contains no URL query strings/fragments and redacts long token-like contexts.
+          for u in d.get('urls',[]):
+              assert '?' not in u and '#' not in u
+          print(json.dumps({'apk':d['apk'],'zip':d['zip'],'entriesScanned':d['entriesScanned'],'domains':d.get('domains'),'urls':d.get('urls'),'findingCount':len(d.get('keywordFindings',[])),'error':d.get('error')},indent=2,ensure_ascii=False))
+          PY
+      - name: Upload redacted report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: avia-picoty-apk-public-config-probe
+          path: data/reports/avia_picoty_apk_public_config_probe.json
+          retention-days: 14
+      - name: Commit redacted report
+        if: ${{ github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/avia_picoty_apk_public_config_probe.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Refresh AVIA Picoty public APK config probe"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
