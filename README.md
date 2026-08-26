@@ -1,43 +1,61 @@
-# Tesla Charge Companion — Data Lab
+# Tesla Charge Companion Data Lab
 
-Dépôt dédié aux travaux de collecte, de contrôle et de validation des données de recharge destinées à Tesla Charge Companion.
+Public data-research repository for **Tesla Charge Companion**.
 
-Le principe est de séparer les expérimentations de données du dépôt applicatif stable afin de pouvoir tester les sources, comparer les opérateurs, produire des rapports de validation et ne publier que des données suffisamment vérifiées.
+This repository is intentionally separated from the private research archive. Everything committed here — including Git history, Actions logs and artifacts — must be safe to expose publicly.
 
-## Organisation
+## Public-data rules
 
-- `config/` : configuration des opérateurs, sources et règles de normalisation.
-- `data/` : données collectées et jeux de données de travail.
-- `izivia/` : travaux spécifiques IZIVIA.
-- `reports/` : rapports et résultats de validation.
-- `scripts/` : collecteurs, convertisseurs et outils de contrôle.
-- `tests/` : tests automatiques.
-- `.github/workflows/` : automatisation des collectes et validations.
+Only public charging-infrastructure identifiers, public source URLs, generic extraction code and non-sensitive derived reports belong here.
 
-## Méthode générale
+Do **not** commit credentials, API keys, cookies, authenticated-account exports, screenshots, personal information, private debug logs or copied history from private repositories.
 
-Pour chaque opérateur :
+A safety scanner runs before generated data is published. Public mobile-app research must additionally avoid persisting raw APK/XAPK files, JWTs, Supabase client keys, tenant/organisation identifiers or authenticated request material. Such material may only be used transiently at runtime when it is explicitly public client configuration and only for read-only requests permitted by the client/backend.
 
-1. identifier en priorité les sources officielles et techniques disponibles ;
-2. distinguer clairement opérateur direct, application, abonnement, ad hoc et itinérance ;
-3. relever les composantes tarifaires : prix au kWh, prix à la minute, frais de session, occupation et parking ;
-4. conserver les puissances, connecteurs, horaires et règles particulières lorsque disponibles ;
-5. contrôler plusieurs stations réelles ;
-6. conserver explicitement les incertitudes au lieu de fabriquer ou extrapoler une valeur ;
-7. publier vers Tesla Charge Companion seulement après validation.
+## France scope: Lidl
 
-## Règle de provenance tarifaire
+Two distinct public tariff channels are intentionally kept separate:
 
-Un prix provenant d'un eMSP ou d'un badge de roaming ne doit pas être publié comme tarif direct du CPO. Les données doivent conserver leur provenance et, lorsque c'est nécessaire, un niveau de confiance. Les tarifs abonnés ne doivent être pris en compte par l'application que lorsque l'abonnement correspondant est sélectionné par l'utilisateur.
+1. **Lidl Plus / operator_direct** — sourced from Lidl France's official public E-Mobility page. Lidl explicitly states that the same per-kWh tariff applies everywhere in France, so this is modeled as a national network rule rather than 6,334 duplicated EVSE tariffs. The monitor extracts AC/DC prices, preauthorisation amounts and promotion status without using an authenticated Lidl account or private API.
+2. **Intercharge ad-hoc payment / adhoc_payment** — EVSE-level public direct-payment pricing. This is not assumed to equal Lidl Plus. A smoke validation showed that `FR*LDL*E00002411` can return a different ad-hoc price from the Lidl Plus app tariff.
 
-## AVIA / Picoty
+The official Lidl Plus rule is written to `data/operator_direct/lidl_plus_france.json` only when the tariff evidence changes. A lightweight public GitHub Action checks the official page daily without creating needless daily commits when the tariff is unchanged.
 
-Le jeu national AVIA/Picoty repose sur le CPO Picoty identifié par le préfixe `FR*PY2`. `AVIA VOLT` est conservé comme marque commerciale.
+Generated public-payment data remains candidate data until representative checks confirm the intended source interpretation.
 
-Les couches tarifaires sont volontairement séparées :
+## Morocco scope
 
-- `direct_cpo` : paiement direct Picoty/AVIA VOLT ;
-- `avia_carte` : offre AVIA Carte / Deft Power ;
-- `roaming` : tarifs d'eMSP tiers.
+The Morocco public lab currently tracks **FastVolt, Kilowatt, EVPlug/EvOne, TotalEnergies Club EV-Charge, Shell Recharge/Vivo Energy and EVGO**. Tesla is intentionally outside this non-Tesla investigation.
 
-Aucun tarif national n'est extrapolé tant qu'il n'est pas établi par une source suffisamment fiable. Les données de stations et d'EVSE peuvent en revanche être générées indépendamment via les identifiants Picoty afin de constituer la base nationale avant enrichissement tarifaire.
+The key modeling rule is that **CPO/operator, site brand and app/access network are different concepts**. A station appearing inside Kilowatt, EVGO or another app does not by itself prove that the app provider is the charging-point operator. For example, `TotalEnergies Al Waha` is visible in Kilowatt with a free 22 kW connector while it was not found in the TotalEnergies Club EV-Charge station list during the same manual check; its CPO therefore remains unresolved until backend/operator metadata confirms it.
+
+Sanitized manual app observations are stored in `data/seed/morocco_manual_app_observations.json`. Screenshots themselves are deliberately not committed. The migration baseline and current blockers are documented under `reports/morocco/`.
+
+The public workflow `.github/workflows/morocco-public-probe.yml` downloads public Android packages only into temporary storage, mines charging-infrastructure signals, performs explicit read-only probes, removes all raw client material and persists only a field-whitelisted summary.
+
+## France scope: Electric 55 Charging (E55C)
+
+The E55C national station inventory is built exclusively from the official E55C static IRVE resource on data.gouv.fr. A row qualifies only when the schema field `nom_operateur` strictly identifies Electric 55 Charging; the dataset publisher, infrastructure owner (`nom_amenageur`) and commercial brand (`nom_enseigne`) are never used as substitutes for CPO identity.
+
+The generated file `data/national/electric55_stations_france.json` preserves station and EVSE roaming identifiers, coordinates, connector types, nominal power and access/payment metadata. Exact direct-payment links come from the public E55C map, and machine-readable consumer prices come from the read-only tariff display used by E55C Scan Pay for the exact charge point. Charging-time, parking-time, energy and session-fee dimensions remain separate; third-party eMSP prices are excluded.
+
+Dynamic availability is intentionally excluded and must be joined in TCC from Electroverse or Electra. The daily workflow checks one representative of each globally scoped tariff profile plus every new charge point; Sundays and explicit full-refresh runs recheck every mapped E55C charge point.
+
+## France scope: Belib'
+
+The Paris Belib' base is built only from the official Paris Open Data static IRVE export. Both `nom_operateur=TOTALENERGIES` and `nom_enseigne=Belib'` must match; stations merely accessible through roaming are excluded. Rows without station/EVSE identifiers, motorcycle-only points, and points without a Tesla-compatible Type 2 or CCS connector are also excluded.
+
+The generated file `data/national/belib_stations_paris.json` contains the strict physical inventory and the three official direct customer profiles: visitor, non-resident subscriber and Paris-resident subscriber. Reservation charges are not automatically added to a normal session. Per the TCC project decision, no parking price, parking credit or site-specific parking rule is included.
+
+Live EVSE availability is joined by TCC at runtime from the official Paris Open Data dynamic export, using the static `id_pdc_local` as the exact key.
+
+## Repository layout
+
+- `data/seed/` — sanitized public extraction seeds and manually verified observations
+- `data/adhoc_payment/` — public ad-hoc payment candidates
+- `data/operator_direct/` — validated-source operator/app tariff rules
+- `scripts/` — public extraction and safety tooling
+- `reports/` — concise extraction/validation reports
+- `.github/workflows/` — reproducible public Actions pipelines
+
+Long-term target: move collection workloads to Cloudflare and keep GitHub as a transparent validation/publication layer.
