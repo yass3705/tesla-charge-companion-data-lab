@@ -1,0 +1,80 @@
+name: IZIVIA Express public station detail probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/izivia-express-detail-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Probe public station detail and pricing endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          python - <<'PY'
+          import json, uuid, urllib.request, urllib.error
+          from pathlib import Path
+
+          BASE='https://fronts-map.izivia.com/api/'
+          # French markers observed on the public map; used only to establish response schema.
+          IDS=['693f6fee3fdcff3315e3814d','67c80e58722ceb379e33692a','68791a64fe7ffb6c636b8639']
+          device=str(uuid.uuid4())
+          common={'Accept':'application/json','Accept-Language':'fr','Content-Type':'application/json','x-device-id':device,'User-Agent':'Mozilla/5.0 TCC-IZIVIA-probe'}
+
+          def call(path, method='GET', body=None):
+              data=None if body is None else json.dumps(body).encode()
+              req=urllib.request.Request(BASE+path,data=data,headers=common,method=method)
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as r:
+                      text=r.read().decode('utf-8','replace')
+                      return r.status,text
+              except urllib.error.HTTPError as e:
+                  return e.code,e.read().decode('utf-8','replace')
+
+          out=[]
+          for sid in IDS:
+              attempts=[]
+              detail=None
+              for body in ({'filters':{}},{'filters':None},{}):
+                  status,text=call(f'charging-locations/{sid}','POST',body)
+                  attempts.append({'body':body,'status':status,'response':text[:5000]})
+                  if status==200:
+                      try: detail=json.loads(text)
+                      except Exception: pass
+                      if isinstance(detail,dict): break
+              row={'id':sid,'detailAttempts':attempts,'detail':detail}
+              if isinstance(detail,dict):
+                  legacy=detail.get('legacyId')
+                  emip=detail.get('firstStationEmipId')
+                  if legacy is not None and emip:
+                      from urllib.parse import urlencode
+                      qs=urlencode({'legacyId':legacy,'stationEmipId':emip})
+                      st,txt=call(f'charging-locations/{sid}/pricing-info-items?{qs}')
+                      row['pricingStatus']=st
+                      row['pricingRaw']=txt
+                      try: row['pricing']=json.loads(txt)
+                      except Exception: pass
+              out.append(row)
+
+          Path('probe/detail_probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2))
+          for row in out:
+              print('\n===',row['id'],'===')
+              print('DETAIL',json.dumps(row.get('detail'),ensure_ascii=False)[:15000])
+              print('PRICING STATUS',row.get('pricingStatus'))
+              print('PRICING',json.dumps(row.get('pricing'),ensure_ascii=False)[:15000])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: izivia-express-detail-probe
+          path: probe
+          retention-days: 3
