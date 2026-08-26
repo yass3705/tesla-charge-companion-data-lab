@@ -50,10 +50,13 @@ def inspect(name:str)->dict[str,Any]:
 
 
 def main():
-    roots=['LocationQueryController','LocationSearchInputV3Input','SearchLocationResultV3']
-    types={}
-    queue=list(roots); seen=set()
-    while queue and len(types)<40:
+    roots=[
+      'LocationQueryController',
+      'LocationSearchInput','LocationSearchInputV2Input','LocationSearchInputV3Input',
+      'SearchLocationResult','SearchLocationResultV2','SearchLocationResultV3'
+    ]
+    types={}; queue=list(roots); seen=set()
+    while queue and len(types)<80:
         n=queue.pop(0)
         if n in seen: continue
         seen.add(n)
@@ -64,8 +67,8 @@ def main():
             if f.get('kind') in ('OBJECT','INTERFACE','UNION','ENUM') and f.get('namedType') not in seen: queue.append(f['namedType'])
             for a in f.get('args') or []:
                 if a.get('kind') in ('INPUT_OBJECT','ENUM') and a.get('namedType') not in seen: queue.append(a['namedType'])
-    payload={'schemaVersion':'1.0.0','generatedAt':datetime.now(timezone.utc).isoformat(),'method':{'unauthenticated':True,'introspectionOnly':True,'mutationsSent':False,'personalDataQueried':False},'types':types}
+    payload={'schemaVersion':'1.1.0','generatedAt':datetime.now(timezone.utc).isoformat(),'method':{'unauthenticated':True,'introspectionOnly':True,'mutationsSent':False,'personalDataQueried':False},'types':types}
     OUT.parent.mkdir(parents=True,exist_ok=True); OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
-    print(json.dumps({'typeCount':len(types),'v3Input':types.get('LocationSearchInputV3Input')},ensure_ascii=False,indent=2))
+    print(json.dumps({'typeCount':len(types),'v1':types.get('SearchLocationResult'),'v2':types.get('SearchLocationResultV2'),'v3':types.get('SearchLocationResultV3')},ensure_ascii=False,indent=2))
 
 if __name__=='__main__': main()
