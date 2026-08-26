@@ -12,26 +12,18 @@ permissions:
 jobs:
   extract:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
-      - name: Download official Qovoltis Android package
+      - name: Download and decompile official Qovoltis Android package
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p work out
           curl -sS -L --max-time 120 -A 'Mozilla/5.0' \
-            'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=443' \
-            -o work/qovoltis.xapk
+            'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=443' -o work/qovoltis.xapk
           unzip -q work/qovoltis.xapk -d work/xapk
           BASE_APK=$(find work/xapk -type f -name '*.apk' | sort | head -1)
           cp "$BASE_APK" work/base.apk
-          echo "BASE_APK=$BASE_APK" | tee out/download.txt
-          ls -lh work/qovoltis.xapk work/base.apk | tee -a out/download.txt
-
-      - name: Install JADX
-        shell: bash
-        run: |
-          set -euo pipefail
           URL=$(python - <<'PY'
           import json,urllib.request
           req=urllib.request.Request('https://api.github.com/repos/skylot/jadx/releases/latest',headers={'User-Agent':'qovoltis-probe'})
@@ -42,63 +34,71 @@ jobs:
                   print(a['browser_download_url']); break
           PY
           )
-          echo "$URL"
           curl -sS -L --max-time 120 "$URL" -o work/jadx.zip
           unzip -q work/jadx.zip -d work/jadx
           chmod +x work/jadx/bin/jadx
-          work/jadx/bin/jadx --version
+          work/jadx/bin/jadx --show-bad-code --no-res --threads-count 2 -d work/src work/base.apk >out/jadx.log 2>&1 || true
 
-      - name: Decompile and find API interface routes
+      - name: Extract exact API base construction and tariff routes
         shell: bash
         run: |
           set +e
-          mkdir -p work/src out
-          work/jadx/bin/jadx --show-bad-code --no-res --threads-count 2 -d work/src work/base.apk >out/jadx.log 2>&1
-          echo '=== qovoltis source files mentioning qoapi / retrofit / station / offer ===' > out/api_hits.txt
-          grep -RIlE 'qoapi\.qovoltis\.com|retrofit2\.http\.|FetchStationsList|MapStationList|StationDetails|findOffer|getOffers|pricing_default_price|referenceOffre' work/src/sources 2>/dev/null | head -300 >> out/api_hits.txt
-          : > out/route_context.txt
-          while IFS= read -r f; do
-            echo "===== $f =====" >> out/route_context.txt
-            grep -nE -C 5 'qoapi\.qovoltis\.com|@(GET|POST|PUT|DELETE|PATCH)|FetchStationsList|MapStationList|StationDetails|findOffer|getOffers|pricing_default_price|referenceOffre|station|borne|connector|offer' "$f" 2>/dev/null | head -800 >> out/route_context.txt
-          done < <(tail -n +2 out/api_hits.txt)
-          grep -RhoE '@(GET|POST|PUT|DELETE|PATCH)\([^)]*\)' work/src/sources 2>/dev/null | sort -u > out/retrofit_annotations.txt
-          grep -RhoE '"[A-Za-z0-9_./{}?=&:-]{3,}"' work/src/sources 2>/dev/null | \
-            tr -d '"' | grep -Ei '(^|/)(stations?|bornes?|charge|charging|connectors?|offers?|subscriptions?|users?|map|public|pricing|prices?|tariffs?|socket|qobox)(/|$|\?)' | sort -u > out/path_candidates.txt
-          sed -n '1,1200p' out/route_context.txt
-          echo '--- annotations ---'
-          sed -n '1,500p' out/retrofit_annotations.txt
-          echo '--- path candidates ---'
-          sed -n '1,500p' out/path_candidates.txt
+          {
+            echo '=== ApiGateway / Retrofit base construction ==='
+            grep -RInE -C 12 'qoapi\.qovoltis\.com|baseUrl\(|Retrofit\.Builder|BASE_URL|API_URL|getStationDetailsService|getMainMapService' work/src/sources/com/qovoltis/client 2>/dev/null | head -5000
+            echo '=== station/map APIs ==='
+            grep -RInE -C 8 '@(GET|POST).*borne/(map-station|emsp-map-station)|map-station-preview|map-station-list|emsp-map-station-list' work/src/sources/com/qovoltis/client 2>/dev/null | head -3000
+            echo '=== tariff response model fields ==='
+            grep -RInE -C 3 'tarif_heures_creuses|tarif_heures_pleines|price_per_reference_unit|pricing_default_price_currency|reference_unit|duration_rate|PricingTotal|DurationRate' work/src/sources/com/qovoltis/client/mainmap 2>/dev/null | head -5000
+            echo '=== request model constructors ==='
+            grep -RInE -C 10 'class StationFilterRequest|class MapStationListQueryRequest|MapStationListQueryRequest\(|StationFilterRequest\(' work/src/sources/com/qovoltis/client/mainmap 2>/dev/null | head -4000
+          } > out/deep-evidence.txt
+          sed -n '1,1200p' out/deep-evidence.txt
 
-      - name: Probe only clearly public GET endpoints discovered
+      - name: Probe exact discovered endpoints on plausible base variants
         shell: bash
         run: |
           set +e
-          mkdir -p out/http
           python - <<'PY'
+          import requests,json,itertools
           from pathlib import Path
-          import re,subprocess
-          text=Path('out/retrofit_annotations.txt').read_text(errors='ignore') if Path('out/retrofit_annotations.txt').exists() else ''
-          routes=[]
-          for m in re.finditer(r'@GET\((?:value\s*=\s*)?["\']([^"\']+)',text):
-              r=m.group(1)
-              if '{' in r or '}' in r: continue
-              low=r.lower()
-              if any(k in low for k in ('station','borne','map','offer','price','tariff','public','connector','socket')):
-                  routes.append(r)
-          routes=list(dict.fromkeys(routes))[:30]
-          out=[]
-          for r in routes:
-              url='https://qoapi.qovoltis.com/api/'+r.lstrip('/')
-              p=subprocess.run(['curl','-sS','-L','--max-time','20','-A','Mozilla/5.0','-H','Accept: application/json','-o','/tmp/body','-w','%{http_code}\t%{content_type}\t%{size_download}',url],capture_output=True,text=True)
-              body=Path('/tmp/body').read_text(errors='replace')[:1200] if Path('/tmp/body').exists() else ''
-              out.append(f'{p.stdout}\t{url}\n{body}\n---')
-          Path('out/http/public_get_probe.txt').write_text('\n'.join(out),encoding='utf-8')
-          print('\n'.join(out)[:30000])
+          bases=['https://qoapi.qovoltis.com/','https://qoapi.qovoltis.com/api/']
+          gets=[
+            ('app/get-public-settings',{}),
+            ('app/getSetting',{}),
+            ('borne/map-station-list',{}),
+            ('borne/map-station-preview',{'station_id':'1'}),
+          ]
+          report=[]
+          for base in bases:
+            for path,params in gets:
+              url=base+path
+              try:
+                r=requests.get(url,params=params,timeout=20,headers={'User-Agent':'Mozilla/5.0','Accept':'application/json,text/plain,*/*'},allow_redirects=False)
+                report.append({'method':'GET','url':r.url,'status':r.status_code,'content_type':r.headers.get('content-type'),'location':r.headers.get('location'),'body':r.text[:2000]})
+              except Exception as e:
+                report.append({'method':'GET','url':url,'error':repr(e)})
+          # Conservative POST probes to the station-list endpoint only, using harmless empty/default bodies.
+          for base in bases:
+            for qs in [
+              {'side':'0','minlng':'-180','minlat':'-90','emsp':'0'},
+              {'side':'100','minlng':'1.9','minlat':'48.6','emsp':'0'},
+              {'side':'100','minlng':'2.0','minlat':'48.7','emsp':'0'},
+            ]:
+              for body in [{}, {'filters':[]}, {'power':[]}, {'operators':[]}]:
+                url=base+'borne/emsp-map-station-list'
+                try:
+                  r=requests.post(url,params=qs,json=body,timeout=20,headers={'User-Agent':'Mozilla/5.0','Accept':'application/json','Content-Type':'application/json'},allow_redirects=False)
+                  report.append({'method':'POST','url':r.url,'request_body':body,'status':r.status_code,'content_type':r.headers.get('content-type'),'location':r.headers.get('location'),'body':r.text[:4000]})
+                except Exception as e:
+                  report.append({'method':'POST','url':url,'params':qs,'request_body':body,'error':repr(e)})
+          Path('out/base-variant-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+          for x in report:
+            print(json.dumps(x,ensure_ascii=False))
           PY
 
       - uses: actions/upload-artifact@v4
         with:
           name: qovoltis-apk-route-extraction
           path: out
-          retention-days: 3
+          retention-days: 5
