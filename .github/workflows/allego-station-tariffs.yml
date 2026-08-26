@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: allego-france-station-tariffs
+  group: allego-france-station-tariffs-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -46,18 +46,32 @@ jobs:
           from pathlib import Path
           data = json.loads(gzip.decompress(Path('data/national/allego_direct_stations_france.json.gz').read_bytes()))
           report = json.loads(Path('data/reports/allego_station_tariffs_report.json').read_text())
+          counts = data['counts']
+          assert data['dataset'] == 'allego-direct-operated-evse-france'
+          assert data['schemaVersion'] == '3.0.0'
           assert data['operator'] == 'Allego'
           assert data['country'] == 'FR'
           assert data['scope']['operatorDirectOnly'] is True
           assert data['scope']['roamingIncluded'] is False
           assert data['scope']['countryDefaultsAreRankable'] is False
-          assert data['counts']['franceEvseCount'] >= 500
-          assert data['counts']['franceStationCount'] >= 50
-          assert data['counts']['rankableEvseCount'] > 0
-          assert data['counts']['rankableEvseCount'] + data['counts']['blockedEvseCount'] == data['counts']['franceEvseCount']
-          assert data['counts']['coveragePct'] >= 50.0, data['counts']
-          assert report['publicationReadyEvseCount'] == data['counts']['rankableEvseCount']
-          print(json.dumps(data['counts'], indent=2))
+          assert data['scope']['exactDirectPricesFromDxp'] is True
+          assert data['scope']['unparsedTimeFeesAreRankable'] is False
+          assert counts['franceEvseCount'] >= 1000, counts
+          assert counts['franceStationCount'] >= 140, counts
+          assert counts['stationsWithCoordinates'] >= 140, counts
+          assert counts['irveLinkedEvseCount'] >= 1000, counts
+          assert counts['rankableEvseCount'] > 0
+          assert counts['rankableStationCount'] > 0
+          assert counts['rankableEvseCount'] + counts['blockedEvseCount'] == counts['franceEvseCount']
+          assert counts['coveragePct'] >= 60.0, counts
+          assert len(data['stations']) == counts['franceStationCount']
+          assert all(s.get('coordinates') for s in data['stations'] if s.get('rankableDirect'))
+          assert all(not (e.get('rankableDirect') and e.get('feeCandidates')) for e in data['evses'])
+          assert all(e.get('directEurPerKwh') is None for e in data['evses'] if not e.get('rankableDirect'))
+          assert report['publicationReadyEvseCount'] == counts['rankableEvseCount']
+          assert report['publicationReadyStationCount'] == counts['rankableStationCount']
+          print(json.dumps(counts, indent=2))
+          print(json.dumps(report.get('blockedReasonCounts', {}), indent=2))
           PY
 
       - name: Public-safety scan Allego only
