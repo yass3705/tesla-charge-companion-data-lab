@@ -1,0 +1,53 @@
+name: IZIVIA Express V8 engine compatibility audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/izivia-express-v8-engine-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout TCC V8 release
+        uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-stable
+          ref: release/2026-08
+          path: tcc
+      - name: Inspect current exact classification and billing-field consumers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p=json.load(open('izivia/izivia_express_station_tariffs_v1.json'))
+          print('=== CURRENT EXACT CLASSIFICATION ===')
+          for st in p['stations']:
+            if st['normalizedDirectPricing'] and all(x.get('status')=='exact_current_v8' for x in st['normalizedDirectPricing']):
+              print(st['officialStationId'],st['name'],st['address'])
+              print(json.dumps(st['normalizedDirectPricing'],ensure_ascii=False,indent=2))
+          PY
+          echo '=== V8 FIELD REFERENCES ==='
+          grep -RInE 'postCharge(BlockMinutes|BlockFee|GraceMinutes|Rate)|startedKwhCharged|afterMinutes(Rate|Threshold|Cap)|priceWithRules' tcc/assets tcc/scripts || true
+          echo '=== PRICE ENGINE CONTEXT ==='
+          python - <<'PY'
+          from pathlib import Path
+          for p in Path('tcc/assets').glob('*.js'):
+            s=p.read_text(errors='replace')
+            for needle in ['postChargeBlockFee','postChargeBlockMinutes','postChargeGraceMinutes','postChargeRate','startedKwhCharged']:
+              pos=0
+              while True:
+                i=s.find(needle,pos)
+                if i<0: break
+                print(f'FILE={p} NEEDLE={needle} POS={i}')
+                print(s[max(0,i-700):i+1200])
+                print('\n---')
+                pos=i+len(needle)
+          PY
