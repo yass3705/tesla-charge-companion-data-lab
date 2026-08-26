@@ -30,7 +30,7 @@ jobs:
           NET='67ab64d36b14f13fac39a82d'
           DEVICE=str(uuid.uuid4())
           FILTERS={'chargingConnectors':[],'supportsAutocharge':False,'onlyTwentyFourSeven':False,'onlyAvailable':False,'capabilityTypes':[],'marketingNetworkIds':[NET]}
-          # Explicitly verified by exact name/address/coordinates against the public IZIVIA map.
+          # Verified by exact name/address/coordinates against the public IZIVIA map.
           ALIASES={
             'FRE04POAZS2811':'281',
             'FRE04POAZS2812':'281',
@@ -55,7 +55,6 @@ jobs:
             m=re.search(r'OAZS\*(\d+)\*',legacy or '')
             return m.group(1) if m else ''
 
-          # Official CPO whitelist.
           st,b=call(DATA)
           if st!=200: raise SystemExit(f'official inventory HTTP {st}')
           text=b.decode('utf-8-sig','replace')
@@ -68,7 +67,6 @@ jobs:
           if len(grouped)!=155: raise SystemExit(f'expected 155 official stations, got {len(grouped)}')
           if any((r.get('nom_operateur') or '').strip()!='IZIVIA' for r in rows): raise SystemExit('non-IZIVIA operator in official whitelist')
 
-          # Public map details.
           mst,mb=call(BASE+'map/markers','POST',{'square':{'centerLng':2.2,'centerLat':46.2,'zoom':5},'filters':FILTERS})
           if mst!=200: raise SystemExit(f'markers HTTP {mst}')
           markers=json.loads(mb.decode())
@@ -84,6 +82,14 @@ jobs:
             c=code_from_legacy(d.get('legacyId'))
             if c: by_code[c]=d
 
+          resolved={}
+          for official_id in grouped:
+            official_code=code_from_official(official_id)
+            map_code=ALIASES.get(official_id,official_code)
+            d=by_code.get(map_code)
+            if not d: raise SystemExit(f'unresolved official station {official_id} -> {map_code}')
+            resolved[official_id]=(map_code,d)
+
           def get_pricing(d):
             params={}
             if d.get('legacyId') is not None: params['legacyId']=d.get('legacyId')
@@ -93,86 +99,60 @@ jobs:
             raw=b.decode('utf-8','replace')
             try:data=json.loads(raw)
             except Exception:data=None
-            return s,data,raw
+            return d['id'],s,data,raw
 
-          # Feature-oriented normalization. No silent approximation of started blocks or included-energy tariffs.
+          unique_details={d['id']:d for _,d in resolved.values()}
+          pricing_cache={}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+            for location_id,ps,items,praw in ex.map(get_pricing,unique_details.values()):
+              pricing_cache[location_id]=(ps,items,praw)
+
+          # Feature-oriented normalization: exactness is conservative by design.
           def normalize_direct(raw):
             s=' '.join((raw or '').replace('\u00a0',' ').split())
             low=s.lower().replace(',','.')
             features=['energy_kwh'] if '/kwh' in low else []
-            exact=True
             reasons=[]
             parsed={'raw':s,'currency':'EUR','features':features}
-
             prices=[float(x) for x in re.findall(r'(\d+(?:\.\d+)?)\s*€\s*/\s*kwh',low)]
             if prices: parsed['kwhPricesEur']=prices
             linear=[float(x) for x in re.findall(r'(\d+(?:\.\d+)?)\s*€\s*(?:par|/)\s*minute',low)]
             if linear:
-              features.append('connected_time_linear')
-              parsed['perMinuteEur']=linear
-
+              features.append('connected_time_linear');parsed['perMinuteEur']=linear
             if re.search(r'\d+(?:\.\d+)?\s*€\s*/\s*\d+\s*min',low):
-              features.append('started_time_block')
-              exact=False;reasons.append('started_time_block_billing')
-              blocks=[]
-              for fee,mins in re.findall(r'(\d+(?:\.\d+)?)\s*€\s*/\s*(\d+)\s*min',low): blocks.append({'feeEur':float(fee),'minutes':int(mins)})
-              parsed['startedBlocks']=blocks
+              features.append('started_time_block');reasons.append('started_time_block_billing')
+              parsed['startedBlocks']=[{'feeEur':float(fee),'minutes':int(mins)} for fee,mins in re.findall(r'(\d+(?:\.\d+)?)\s*€\s*/\s*(\d+)\s*min',low)]
             if 'post-charge' in low or 'post charge' in low:
-              features.append('post_charge_fee')
-              exact=False;reasons.append('post_charge_phase')
-            if 'après' in low or 'apres' in low or 'au-delà' in low or 'au dela' in low or 'au-delà' in s.lower():
-              features.append('duration_threshold')
+              features.append('post_charge_fee');reasons.append('post_charge_phase')
+            if any(x in low for x in ['après','apres','au-delà','au dela']): features.append('duration_threshold')
             if 'plafond' in low or 'plafonn' in low or 'facturation max' in low:
-              features.append('cap')
+              features.append('cap');reasons.append('session_or_context_cap')
               caps=[float(x) for x in re.findall(r'(?:max\s*:\s*|plafond(?:\s+de)?\s*|plafonn\w*\s*(?:à|a)\s*)(\d+(?:\.\d+)?)\s*€',low)]
               if caps: parsed['capsEur']=caps
-              # Session/global caps are not equivalent to current after-duration surcharge caps.
-              exact=False;reasons.append('session_or_context_cap')
-            if any(x in low for x in ['journée','journee','la nuit','de 7h','de 21h','23h','7h-23h','23h-7h']):
-              features.append('time_window')
-            if re.search(r'\d+(?:\.\d+)?\s*€\s+le branchement',low):
-              features.append('connection_fee')
+            if any(x in low for x in ['journée','journee','la nuit','de 7h','de 21h','23h','7h-23h','23h-7h']): features.append('time_window')
+            if re.search(r'\d+(?:\.\d+)?\s*€\s+le branchement',low): features.append('connection_fee')
             if re.search(r'au del[aà]\s+de\s+\d+(?:\.\d+)?\s*kwh',low):
-              features.append('included_energy_threshold')
-              exact=False;reasons.append('included_energy_threshold')
+              features.append('included_energy_threshold');reasons.append('included_energy_threshold')
             if re.search(r'\d+(?:\.\d+)?\s*€\s+apr[eè]s\s+\d+\s*h',low) and re.search(r'puis\s+\d+(?:\.\d+)?\s*€\s*/\s*h',low):
-              features.append('stepped_occupancy_fee')
-              exact=False;reasons.append('stepped_occupancy_fee')
-
-            # Current V8 exact baseline confirmed for energy + genuinely linear per-minute charging.
-            # Anything else above remains raw and must not be approximated.
-            if not reasons and features==['energy_kwh','connected_time_linear']:
-              status='exact_current_v8'
-            elif not reasons and features==['energy_kwh']:
-              status='exact_current_v8'
-            else:
-              status='engine_extension_required'
-            parsed['status']=status
-            parsed['extensionReasons']=sorted(set(reasons))
-            parsed['features']=sorted(set(features))
+              features.append('stepped_occupancy_fee');reasons.append('stepped_occupancy_fee')
+            features=sorted(set(features));reasons=sorted(set(reasons))
+            status='exact_current_v8' if not reasons and features in (['energy_kwh'],['connected_time_linear','energy_kwh']) else 'engine_extension_required'
+            parsed.update({'features':features,'status':status,'extensionReasons':reasons})
             return parsed
 
-          def direct_items(items):
-            return [x for x in (items or []) if isinstance(x,dict) and x.get('itemType')=='charging_location']
+          def direct_items(items): return [x for x in (items or []) if isinstance(x,dict) and x.get('itemType')=='charging_location']
 
           out=[]
-          pricing_cache={}
           for official_id,rr in sorted(grouped.items()):
             official_code=code_from_official(official_id)
-            map_code=ALIASES.get(official_id,official_code)
-            d=by_code.get(map_code)
-            if not d: raise SystemExit(f'unresolved official station {official_id} -> {map_code}')
-            cache_key=d['id']
-            if cache_key not in pricing_cache: pricing_cache[cache_key]=get_pricing(d)
-            ps,items,praw=pricing_cache[cache_key]
+            map_code,d=resolved[official_id]
+            ps,items,praw=pricing_cache[d['id']]
             if ps!=200 or not isinstance(items,list): raise SystemExit(f'pricing failed {official_id}: {ps}')
-            directs=direct_items(items)
             raws=[]
-            for item in directs:
+            for item in direct_items(items):
               vals=item.get('rawPricingInfos') or item.get('pricingInfos') or []
               raws.extend(str(v) for v in vals if str(v).strip())
             raws=list(dict.fromkeys(raws))
-            if not raws: raise SystemExit(f'no direct price {official_id}')
             normalized=[normalize_direct(x) for x in raws]
             first=rr[0]
             powers=sorted({float(r.get('puissance_nominale')) for r in rr if (r.get('puissance_nominale') or '').strip()})
@@ -180,65 +160,44 @@ jobs:
             out.append({
               'officialStationId':official_id,
               'officialMapAliasCode':map_code if map_code!=official_code else None,
-              'mapLocationId':d.get('id'),
-              'mapLegacyId':d.get('legacyId'),
-              'name':first.get('nom_station'),
-              'address':first.get('adresse_station'),
-              'coordinatesOfficial':first.get('coordonneesXY'),
-              'operator':'IZIVIA',
-              'network':'Izivia Express',
-              'pdcCount':len(rr),
-              'pdcIds':pdc_ids,
-              'powersKw':powers,
+              'mapLocationId':d.get('id'),'mapLegacyId':d.get('legacyId'),
+              'name':first.get('nom_station'),'address':first.get('adresse_station'),'coordinatesOfficial':first.get('coordonneesXY'),
+              'operator':'IZIVIA','network':'Izivia Express','pdcCount':len(rr),'pdcIds':pdc_ids,'powersKw':powers,
               'mapConnectorStats':d.get('chargingConnectorsStats') or [],
-              'directRawPricing':raws,
-              'normalizedDirectPricing':normalized,
+              'directPricePublished':bool(raws),'directRawPricing':raws,'normalizedDirectPricing':normalized,
               'subscriptionPricingItems':[x for x in items if isinstance(x,dict) and x.get('itemType')=='subscription'],
-              'pricingSource':'IZIVIA public map API',
-              'inventorySource':DATA,
+              'otherPricingItems':[x for x in items if isinstance(x,dict) and x.get('itemType') not in ('charging_location','subscription')],
+              'pricingSource':'IZIVIA public map API','inventorySource':DATA,
             })
 
           if len(out)!=155: raise SystemExit(f'expected 155 normalized stations, got {len(out)}')
-          exact=sum(all(x.get('status')=='exact_current_v8' for x in st['normalizedDirectPricing']) for st in out)
-          extension=len(out)-exact
-          raw_counts=collections.Counter()
-          feature_counts=collections.Counter()
-          reason_counts=collections.Counter()
-          for st in out:
-            for n in st['normalizedDirectPricing']:
-              raw_counts[n['raw']]+=1
-              feature_counts.update(n['features'])
-              reason_counts.update(n['extensionReasons'])
+          direct_available=sum(bool(st['directRawPricing']) for st in out)
+          direct_unavailable=155-direct_available
+          exact=sum(bool(st['normalizedDirectPricing']) and all(x.get('status')=='exact_current_v8' for x in st['normalizedDirectPricing']) for st in out)
+          extension=sum(bool(st['normalizedDirectPricing']) and not all(x.get('status')=='exact_current_v8' for x in st['normalizedDirectPricing']) for st in out)
+          raw_counts=collections.Counter();feature_counts=collections.Counter();reason_counts=collections.Counter()
+          for station in out:
+            for n in station['normalizedDirectPricing']:
+              raw_counts[n['raw']]+=1;feature_counts.update(n['features']);reason_counts.update(n['extensionReasons'])
           meta={
-            'schemaVersion':1,
-            'operator':'IZIVIA',
-            'network':'Izivia Express',
-            'country':'FR',
+            'schemaVersion':1,'operator':'IZIVIA','network':'Izivia Express','country':'FR',
             'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            'officialStations':155,
-            'officialPdcRows':len(rows),
-            'resolvedStations':len(out),
-            'aliasMappings':ALIASES,
-            'distinctDirectRawTariffs':len(raw_counts),
-            'stationsExactCurrentV8':exact,
-            'stationsEngineExtensionRequired':extension,
-            'principle':'No roaming; no silent tariff approximation; direct charging_location pricing only for simulation.',
+            'officialStations':155,'officialPdcRows':len(rows),'resolvedStations':len(out),'aliasMappings':ALIASES,
+            'stationsDirectPricePublished':direct_available,'stationsDirectPriceNotPublished':direct_unavailable,
+            'distinctDirectRawTariffs':len(raw_counts),'stationsExactCurrentV8':exact,'stationsEngineExtensionRequired':extension,
+            'principle':'No roaming; no silent tariff approximation; only charging_location pricing is treated as direct simulation pricing.'
           }
-          base={'metadata':meta,'stations':out}
-          Path('izivia/izivia_express_station_tariffs_v1.json').write_text(json.dumps(base,ensure_ascii=False,indent=2),encoding='utf-8')
+          Path('izivia/izivia_express_station_tariffs_v1.json').write_text(json.dumps({'metadata':meta,'stations':out},ensure_ascii=False,indent=2),encoding='utf-8')
           report={
-            'metadata':meta,
-            'directRawTariffCounts':dict(raw_counts.most_common()),
-            'featureCounts':dict(feature_counts.most_common()),
+            'metadata':meta,'directRawTariffCounts':dict(raw_counts.most_common()),'featureCounts':dict(feature_counts.most_common()),
             'extensionReasonCounts':dict(reason_counts.most_common()),
-            'extensionRequiredStations':[{
-              'officialStationId':st['officialStationId'],'name':st['name'],'address':st['address'],
-              'raw':st['directRawPricing'],
-              'reasons':sorted({r for n in st['normalizedDirectPricing'] for r in n['extensionReasons']})
-            } for st in out if not all(n['status']=='exact_current_v8' for n in st['normalizedDirectPricing'])]
+            'directPriceNotPublishedStations':[{'officialStationId':st['officialStationId'],'name':st['name'],'address':st['address'],'subscriptionItems':len(st['subscriptionPricingItems'])} for st in out if not st['directPricePublished']],
+            'extensionRequiredStations':[{'officialStationId':st['officialStationId'],'name':st['name'],'address':st['address'],'raw':st['directRawPricing'],'reasons':sorted({r for n in st['normalizedDirectPricing'] for r in n['extensionReasons']})} for st in out if st['normalizedDirectPricing'] and not all(n['status']=='exact_current_v8' for n in st['normalizedDirectPricing'])]
           }
           Path('izivia/izivia_express_normalization_report_v1.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
           print('SUMMARY',json.dumps(meta,ensure_ascii=False))
+          print('DIRECT NOT PUBLISHED')
+          for st in report['directPriceNotPublishedStations']: print(st['officialStationId'],st['name'],st['address'],'subscriptionItems=',st['subscriptionItems'])
           print('EXTENSION REASONS',json.dumps(dict(reason_counts.most_common()),ensure_ascii=False))
           print('RAW TARIFFS')
           for raw,count in raw_counts.most_common(): print(count,raw)
@@ -254,8 +213,9 @@ jobs:
           assert len(p['stations'])==155
           assert p['metadata']['resolvedStations']==155
           assert len({x['officialStationId'] for x in p['stations']})==155
-          assert all(x['directRawPricing'] for x in p['stations'])
-          print('VALIDATION OK: 155/155 stations, all with direct pricing')
+          assert p['metadata']['stationsDirectPricePublished']+p['metadata']['stationsDirectPriceNotPublished']==155
+          assert p['metadata']['stationsExactCurrentV8']+p['metadata']['stationsEngineExtensionRequired']==p['metadata']['stationsDirectPricePublished']
+          print('VALIDATION OK: 155/155 physical stations resolved; direct-price publication state explicit')
           PY
 
       - name: Commit normalized base
