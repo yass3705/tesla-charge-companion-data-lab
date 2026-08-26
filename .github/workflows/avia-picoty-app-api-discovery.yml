@@ -6,6 +6,7 @@ on:
     paths:
       - "scripts/avia_picoty_app_discovery.py"
       - "scripts/avia_picoty_hermes_strings.py"
+      - "scripts/avia_picoty_runtime_config_extract.py"
       - ".github/workflows/avia-picoty-app-api-discovery.yml"
 
 permissions:
@@ -18,7 +19,7 @@ concurrency:
 jobs:
   discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,13 +29,11 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install apkeep and download public AVIA VOLT Android package
+      - name: Download public AVIA VOLT Android package
         shell: bash
         run: |
           set -euo pipefail
-          asset_url="$(curl --fail --silent --show-error --location \
-            https://api.github.com/repos/EFForg/apkeep/releases/latest | \
-            python -c 'import json,sys; d=json.load(sys.stdin); a=[x["browser_download_url"] for x in d["assets"] if x["name"]=="apkeep-x86_64-unknown-linux-gnu"]; print(a[0] if a else "")')"
+          asset_url="$(curl --fail --silent --show-error --location https://api.github.com/repos/EFForg/apkeep/releases/latest | python -c 'import json,sys; d=json.load(sys.stdin); a=[x["browser_download_url"] for x in d["assets"] if x["name"]=="apkeep-x86_64-unknown-linux-gnu"]; print(a[0] if a else "")')"
           test -n "$asset_url"
           curl --fail --silent --show-error --location "$asset_url" -o /tmp/apkeep
           chmod +x /tmp/apkeep
@@ -43,15 +42,12 @@ jobs:
           pkg="$(find /tmp/apks -maxdepth 1 -type f | head -n1)"
           test -n "$pkg"
           cp "$pkg" /tmp/avia-picoty.apk
-          echo "downloaded bytes: $(wc -c </tmp/avia-picoty.apk)"
           file /tmp/avia-picoty.apk
 
       - name: Extract coarse public API/config hints
-        run: |
-          set -euo pipefail
-          python scripts/avia_picoty_app_discovery.py /tmp/avia-picoty.apk
+        run: python scripts/avia_picoty_app_discovery.py /tmp/avia-picoty.apk
 
-      - name: Parse exact Hermes string boundaries safely
+      - name: Extract base APK and Hermes bundle recursively
         shell: bash
         run: |
           set -euo pipefail
@@ -59,37 +55,60 @@ jobs:
           import io, zipfile
           from pathlib import Path
           package=Path('/tmp/avia-picoty.apk')
-          out=Path('/tmp/index.android.bundle')
+          bundle_out=Path('/tmp/index.android.bundle')
+          apk_out=Path('/tmp/base.apk')
 
-          def find_bundle(blob: bytes, label: str, depth: int=0):
+          def walk(blob: bytes, label: str, depth: int=0):
               if depth > 3 or not zipfile.is_zipfile(io.BytesIO(blob)):
                   return None
               with zipfile.ZipFile(io.BytesIO(blob)) as z:
                   names=z.namelist()
                   direct=[n for n in names if n.endswith('assets/index.android.bundle') or n.endswith('index.android.bundle')]
                   if direct:
-                      data=z.read(direct[0])
-                      print('bundle', f'{label}!{direct[0]}', len(data))
-                      return data
+                      return z.read(direct[0]), blob, f'{label}!{direct[0]}'
                   nested=[n for n in names if n.lower().endswith(('.apk','.xapk','.zip'))]
                   for n in nested:
                       try:
-                          data=find_bundle(z.read(n), f'{label}!{n}', depth+1)
+                          found=walk(z.read(n), f'{label}!{n}', depth+1)
                       except Exception:
-                          data=None
-                      if data is not None:
-                          return data
+                          found=None
+                      if found:
+                          return found
               return None
-
-          data=find_bundle(package.read_bytes(), package.name)
-          if data is None:
+          found=walk(package.read_bytes(), package.name)
+          if not found:
               raise SystemExit('Hermes bundle not found recursively in package/XAPK')
-          out.write_bytes(data)
+          bundle, base_apk, label=found
+          bundle_out.write_bytes(bundle)
+          apk_out.write_bytes(base_apk)
+          print('bundle', label, len(bundle), 'base-apk', len(base_apk))
           PY
-          file /tmp/index.android.bundle
+          file /tmp/index.android.bundle /tmp/base.apk
+
+      - name: Parse exact Hermes strings and pseudo-code
+        shell: bash
+        run: |
+          set -euo pipefail
           rm -rf /tmp/hermes-dec
           git clone --depth 1 https://github.com/P1sec/hermes-dec.git /tmp/hermes-dec
           PYTHONPATH=/tmp/hermes-dec/src python scripts/avia_picoty_hermes_strings.py /tmp/index.android.bundle
+          PYTHONPATH=/tmp/hermes-dec/src python /tmp/hermes-dec/hbc-decompiler /tmp/index.android.bundle /tmp/avia-decompiled.js
+          test -s /tmp/avia-decompiled.js
+
+      - name: Decode public APK resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq apktool >/dev/null
+          rm -rf /tmp/avia-decoded
+          apktool d -f /tmp/base.apk -o /tmp/avia-decoded >/tmp/apktool.log 2>&1
+          test -d /tmp/avia-decoded
+
+      - name: Extract sanitized tenant and guest-route context
+        run: |
+          set -euo pipefail
+          python scripts/avia_picoty_runtime_config_extract.py /tmp/avia-decoded /tmp/avia-decompiled.js
 
       - name: Validate discovery reports
         run: |
@@ -98,18 +117,19 @@ jobs:
           from pathlib import Path
           d=json.loads(Path('data/reports/avia_picoty_app_api_discovery.json').read_text())
           h=json.loads(Path('data/reports/avia_picoty_hermes_api_strings.json').read_text())
-          assert isinstance(d.get('hosts'),list)
-          assert isinstance(d.get('interestingUrls'),list)
+          r=json.loads(Path('data/reports/avia_picoty_runtime_config.json').read_text())
           assert d['hosts'] or d['interestingUrls'] or d['contextHits']
-          assert h['stringCount'] > 1000, h
-          assert h['safety']['credentialsPersisted'] is False
-          assert h['safety']['tokensPersisted'] is False
-          assert any('deftpower' in x.lower() or 'azure' in x.lower() for x in h.get('exactHosts',[])), h.get('exactHosts')
+          assert h['stringCount'] > 1000
+          assert h['safety']['credentialsPersisted'] is False and h['safety']['tokensPersisted'] is False
+          assert r['safety']['credentialsPersisted'] is False and r['safety']['tokensPersisted'] is False
+          assert any('deftpower' in x.lower() or 'azure' in x.lower() for x in h.get('exactHosts',[]))
           print(json.dumps({
             'bytecodeVersion':h['bytecodeVersion'],
-            'stringCount':h['stringCount'],
             'exactHosts':h['exactHosts'],
-            'routes':h['exactRoutesAndTariffStrings'][:80]
+            'guestRoutes':[x for x in h['exactRoutesAndTariffStrings'] if 'guest' in x.lower() or '/tariffs' in x.lower() or '/map-locations' in x.lower()][:80],
+            'runtimeCandidates':r['candidates'],
+            'resourceHitCount':len(r['resourceHits']),
+            'decompiledHitCount':len(r['decompiledHits'])
           }, ensure_ascii=False, indent=2))
           PY
 
@@ -121,6 +141,7 @@ jobs:
           path: |
             data/reports/avia_picoty_app_api_discovery.json
             data/reports/avia_picoty_hermes_api_strings.json
+            data/reports/avia_picoty_runtime_config.json
           retention-days: 14
 
       - name: Commit sanitized discovery reports
@@ -129,9 +150,9 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/reports/avia_picoty_app_api_discovery.json data/reports/avia_picoty_hermes_api_strings.json
+          git add data/reports/avia_picoty_app_api_discovery.json data/reports/avia_picoty_hermes_api_strings.json data/reports/avia_picoty_runtime_config.json
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Discover AVIA Picoty public app API configuration"
+          git commit -m "Discover AVIA Picoty public guest API configuration"
           for attempt in 1 2 3; do
             git pull --rebase origin main
             if git push origin HEAD:main; then exit 0; fi
