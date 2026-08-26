@@ -26,6 +26,7 @@ TARGET_EXTRA_TYPES = (
     "LocationSearchInput",
     "LocationSearchInputV2Input",
     "LocationSearchInputV3Input",
+    "LocationSearchZoneInput",
     "LocationSearchPointInput",
     "SearchLocationResult",
     "SearchLocationResultV2",
@@ -263,7 +264,7 @@ def main() -> None:
     interesting = [f for f in schema_fields if f["name"].casefold() in interesting_names or any(k in f["name"].casefold() for k in ("tariff", "charge", "location", "evse"))]
 
     payload = {
-        "schemaVersion": "1.3.0",
+        "schemaVersion": "1.3.1",
         "dataset": "bump-public-graphql-probe",
         "generatedAt": now_iso(),
         "base": BASE,
