@@ -91,14 +91,11 @@ def main() -> None:
     for base in BASES:
         for prefix in PREFIXES:
             for path in PATHS:
-                # Do not duplicate root variants such as /v1/ plus another root slash.
                 url = base.rstrip("/") + prefix + path
                 if url in seen:
                     continue
                 seen.add(url)
                 results.append(request("GET", url))
-            # Query shapes inferred from the public client definitions. Values are deliberately
-            # impossible/non-identifying so the probe only distinguishes route existence.
             map_url = base.rstrip("/") + prefix + "/tenants/nonexistent/map-locations"
             results.append(request("GET", map_url, {
                 "latLongBottomLeft": "41,-6",
