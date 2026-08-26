@@ -1,0 +1,51 @@
+name: Bump variable tariff parser
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/bump_variable_tariff_parser.py"
+      - ".github/workflows/bump-variable-tariff-parser.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  parse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Parse all Bump variable tariff descriptions
+        run: python scripts/bump_variable_tariff_parser.py
+      - name: Require complete deterministic coverage
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('reports/bump/variable_tariff_parse_latest.json').read_text())
+          assert p['failedPoints'] == 0
+          assert p['parsedPoints'] == p['variablePointsExpected'] == 681
+          assert p['parsedPatternCount'] == 14
+          print({'parsed':p['parsedPoints'],'patterns':p['parsedPatternCount']})
+          PY
+      - name: Publish parser report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/bump/variable_tariff_parse_latest.json reports/bump/variable_tariff_parse_latest.md
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "report(bump): validate variable tariff parser [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
