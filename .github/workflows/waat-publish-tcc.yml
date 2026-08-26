@@ -1,0 +1,43 @@
+name: WAAT publish compact TCC map
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/publish_waat_tcc.py'
+      - '.github/workflows/waat-publish-tcc.yml'
+      - 'data/national/waat_monta_direct_tariffs_france.json.gz'
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build compact WAAT TCC map
+        run: python scripts/publish_waat_tcc.py
+      - name: Validate compact map
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('data/publish/waat_direct_tariffs_tcc_france.json',encoding='utf-8'))
+          assert p['dataset']=='waat-direct-tariffs-tcc-france'
+          assert p['scope']['directCpoOnly'] is True and p['scope']['roamingIncluded'] is False
+          assert p['counts']=={'franceStations':571,'rankableStations':452,'rankableConfigs':507,'unresolvedStations':119}
+          assert len(p['stations'])==571
+          for s in p['stations']:
+            for c in s['configs']:
+              assert c['kind'] in ('AC','DC') and c['powerKw']>0 and c['directEurPerKwh']>0 and c['groupIds']
+          print(p['counts'])
+          PY
+      - name: Commit compact map
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/publish/waat_direct_tariffs_tcc_france.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'data: publish WAAT compact TCC tariff map'
+          git pull --rebase origin main
+          git push origin HEAD:main
