@@ -1,0 +1,107 @@
+name: AVIA Volt Picoty national IRVE extract
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "43 5 * * 3"
+  push:
+    paths:
+      - "scripts/avia_picoty_irve_extract.py"
+      - ".github/workflows/avia-picoty-irve-extract.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: avia-picoty-irve-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PAN_IRVE_URL: https://transport.data.gouv.fr/resources/84013/download
+  OUTPUT_JSON: data/national/avia_volt_picoty_irve_extract.json
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download current national PAN IRVE static export
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 4 --retry-all-errors \
+            --connect-timeout 30 --max-time 600 \
+            "$PAN_IRVE_URL" -o /tmp/pan-irve.csv
+          test -s /tmp/pan-irve.csv
+          echo "Downloaded bytes: $(wc -c < /tmp/pan-irve.csv)"
+          head -c 200 /tmp/pan-irve.csv | tr '\r\n' ' ' || true
+          echo
+
+      - name: Extract every FR*PY2 station and raw tariff field
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/avia_picoty_irve_extract.py
+          python scripts/avia_picoty_irve_extract.py \
+            /tmp/pan-irve.csv "$OUTPUT_JSON" \
+            --source-url "$PAN_IRVE_URL"
+
+      - name: Validate Picoty direct-only extract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          p=Path('data/national/avia_volt_picoty_irve_extract.json')
+          d=json.loads(p.read_text(encoding='utf-8'))
+          c=d['counts']
+          assert d['dataset']=='avia-volt-picoty-pan-irve-extract'
+          assert d['scope']['operatorPrefixNormalized']=='FRPY2'
+          assert d['scope']['physicalCpoDirectInventory'] is True
+          assert d['scope']['roamingTariffsIncluded'] is False
+          assert c['stationCount'] >= 20, c
+          assert c['panRowsMatched'] >= c['stationCount'], c
+          assert len(d['stations']) == c['stationCount']
+          for s in d['stations']:
+              ids=[s.get('stationId','')]+list(s.get('pdcIds') or [])
+              assert any(re.sub(r'[^A-Z0-9]','',x.upper()).startswith('FRPY2') for x in ids if x), s
+          print(json.dumps(c, indent=2, ensure_ascii=False))
+          print(json.dumps(d['tarificationSummary'], indent=2, ensure_ascii=False))
+          PY
+
+      - name: Upload Picoty extraction artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: avia-volt-picoty-irve-extract
+          path: data/national/avia_volt_picoty_irve_extract.json
+          retention-days: 14
+
+      - name: Commit refreshed Picoty PAN extract
+        if: ${{ github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$OUTPUT_JSON"
+          if git diff --cached --quiet; then
+            echo "No Picoty PAN changes"
+            exit 0
+          fi
+          git commit -m "Refresh AVIA Volt Picoty national IRVE extract"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
