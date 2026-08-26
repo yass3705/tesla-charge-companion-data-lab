@@ -12,16 +12,18 @@ permissions:
 jobs:
   extract:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 18
     steps:
-      - name: Download and decompile official Qovoltis Android package
+      - name: Download and decompile current Qovoltis Android package
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p work out
-          curl -sS -L --max-time 120 -A 'Mozilla/5.0' \
-            'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=443' -o work/qovoltis.xapk
+          curl -sS -L --max-time 180 -A 'Mozilla/5.0' \
+            'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=50012' -o work/qovoltis.xapk
+          echo "bytes=$(wc -c < work/qovoltis.xapk)" | tee out/download.txt
           unzip -q work/qovoltis.xapk -d work/xapk
+          find work/xapk -type f -name '*.apk' -printf '%p %s\n' | tee -a out/download.txt
           BASE_APK=$(find work/xapk -type f -name '*.apk' | sort | head -1)
           cp "$BASE_APK" work/base.apk
           URL=$(python - <<'PY'
@@ -39,66 +41,84 @@ jobs:
           chmod +x work/jadx/bin/jadx
           work/jadx/bin/jadx --show-bad-code --no-res --threads-count 2 -d work/src work/base.apk >out/jadx.log 2>&1 || true
 
-      - name: Extract exact API base construction and tariff routes
+      - name: Extract current backend hosts routes and tariff models
         shell: bash
         run: |
           set +e
           {
-            echo '=== ApiGateway / Retrofit base construction ==='
-            grep -RInE -C 12 'qoapi\.qovoltis\.com|baseUrl\(|Retrofit\.Builder|BASE_URL|API_URL|getStationDetailsService|getMainMapService' work/src/sources/com/qovoltis/client 2>/dev/null | head -5000
-            echo '=== station/map APIs ==='
-            grep -RInE -C 8 '@(GET|POST).*borne/(map-station|emsp-map-station)|map-station-preview|map-station-list|emsp-map-station-list' work/src/sources/com/qovoltis/client 2>/dev/null | head -3000
-            echo '=== tariff response model fields ==='
-            grep -RInE -C 3 'tarif_heures_creuses|tarif_heures_pleines|price_per_reference_unit|pricing_default_price_currency|reference_unit|duration_rate|PricingTotal|DurationRate' work/src/sources/com/qovoltis/client/mainmap 2>/dev/null | head -5000
-            echo '=== request model constructors ==='
-            grep -RInE -C 10 'class StationFilterRequest|class MapStationListQueryRequest|MapStationListQueryRequest\(|StationFilterRequest\(' work/src/sources/com/qovoltis/client/mainmap 2>/dev/null | head -4000
+            echo '=== all Qovoltis/network URL literals ==='
+            grep -RInE -C 3 'https?://|qovoltis\.com|qorest|qoapi|ocpi|gireve' work/src/sources 2>/dev/null | head -8000
+            echo '=== Retrofit / HTTP annotations ==='
+            grep -RInE -C 6 '@(GET|POST|PUT|DELETE|PATCH)|Retrofit\.Builder|baseUrl\(|BASE_URL|API_URL' work/src/sources 2>/dev/null | head -10000
+            echo '=== station / tariff evidence ==='
+            grep -RInE -C 8 'map-station|station-preview|station-list|tarif|tariff|pricing|price_per|reference_unit|heures_creuses|heures_pleines|chargepoint|connector|borne|evse' work/src/sources 2>/dev/null | head -12000
           } > out/deep-evidence.txt
-          sed -n '1,1200p' out/deep-evidence.txt
+          sed -n '1,2200p' out/deep-evidence.txt
 
-      - name: Probe exact discovered endpoints on plausible base variants
+      - name: Build concise discovered endpoint inventory
         shell: bash
         run: |
           set +e
           python - <<'PY'
-          import requests,json,itertools
           from pathlib import Path
-          bases=['https://qoapi.qovoltis.com/','https://qoapi.qovoltis.com/api/']
-          gets=[
-            ('app/get-public-settings',{}),
-            ('app/getSetting',{}),
-            ('borne/map-station-list',{}),
-            ('borne/map-station-preview',{'station_id':'1'}),
-          ]
+          import re
+          hosts=set(); routes=[]
+          for f in Path('work/src/sources').rglob('*.java'):
+            try:t=f.read_text(errors='replace')
+            except:continue
+            for m in re.finditer(r'https?://[^\s"\')<>]+',t):
+              u=m.group(0).rstrip(';,')
+              if 'qovoltis' in u.lower() or 'gireve' in u.lower() or 'ocpi' in u.lower(): hosts.add(u)
+            for m in re.finditer(r'@(GET|POST|PUT|DELETE|PATCH)\s*\(\s*["\']([^"\']+)',t):
+              p=m.group(2)
+              if any(k in p.lower() for k in ('station','borne','map','price','pricing','tariff','offer','connector','evse','charge')):
+                routes.append((str(f),m.group(1),p))
+          Path('out/hosts.txt').write_text('\n'.join(sorted(hosts)),encoding='utf-8')
+          Path('out/routes.tsv').write_text('\n'.join('\t'.join(x) for x in routes),encoding='utf-8')
+          print('HOSTS')
+          print('\n'.join(sorted(hosts)))
+          print('ROUTES')
+          print('\n'.join('\t'.join(x) for x in routes[:1000]))
+          PY
+
+      - name: Probe only discovered public read endpoints
+        shell: bash
+        run: |
+          set +e
+          python - <<'PY'
+          from pathlib import Path
+          import re,requests,json,urllib.parse
+          hosts=[]
+          for line in Path('out/hosts.txt').read_text(errors='replace').splitlines() if Path('out/hosts.txt').exists() else []:
+            if line.startswith('http'):
+              p=urllib.parse.urlsplit(line)
+              root=f'{p.scheme}://{p.netloc}/'
+              if 'qovoltis' in p.netloc.lower() and root not in hosts: hosts.append(root)
+          # Include official QoREST root as a control.
+          for h in ['https://qorest.qovoltis.com/']:
+            if h not in hosts: hosts.append(h)
+          routes=[]
+          p=Path('out/routes.tsv')
+          if p.exists():
+            for line in p.read_text(errors='replace').splitlines():
+              parts=line.split('\t')
+              if len(parts)>=3 and parts[-2]=='GET' and '{' not in parts[-1]: routes.append(parts[-1].lstrip('/'))
+          routes=list(dict.fromkeys(routes))[:80]
           report=[]
-          for base in bases:
-            for path,params in gets:
-              url=base+path
+          for base in hosts[:20]:
+            for path in routes:
+              if not any(k in path.lower() for k in ('station','borne','map','price','pricing','tariff','offer','connector','evse','charge')): continue
+              url=urllib.parse.urljoin(base,path)
               try:
-                r=requests.get(url,params=params,timeout=20,headers={'User-Agent':'Mozilla/5.0','Accept':'application/json,text/plain,*/*'},allow_redirects=False)
-                report.append({'method':'GET','url':r.url,'status':r.status_code,'content_type':r.headers.get('content-type'),'location':r.headers.get('location'),'body':r.text[:2000]})
-              except Exception as e:
-                report.append({'method':'GET','url':url,'error':repr(e)})
-          # Conservative POST probes to the station-list endpoint only, using harmless empty/default bodies.
-          for base in bases:
-            for qs in [
-              {'side':'0','minlng':'-180','minlat':'-90','emsp':'0'},
-              {'side':'100','minlng':'1.9','minlat':'48.6','emsp':'0'},
-              {'side':'100','minlng':'2.0','minlat':'48.7','emsp':'0'},
-            ]:
-              for body in [{}, {'filters':[]}, {'power':[]}, {'operators':[]}]:
-                url=base+'borne/emsp-map-station-list'
-                try:
-                  r=requests.post(url,params=qs,json=body,timeout=20,headers={'User-Agent':'Mozilla/5.0','Accept':'application/json','Content-Type':'application/json'},allow_redirects=False)
-                  report.append({'method':'POST','url':r.url,'request_body':body,'status':r.status_code,'content_type':r.headers.get('content-type'),'location':r.headers.get('location'),'body':r.text[:4000]})
-                except Exception as e:
-                  report.append({'method':'POST','url':url,'params':qs,'request_body':body,'error':repr(e)})
-          Path('out/base-variant-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
-          for x in report:
-            print(json.dumps(x,ensure_ascii=False))
+                r=requests.get(url,timeout=12,headers={'User-Agent':'Mozilla/5.0','Accept':'application/json,text/plain,*/*'},allow_redirects=False)
+                report.append({'url':url,'status':r.status_code,'content_type':r.headers.get('content-type'),'location':r.headers.get('location'),'body':r.text[:1500]})
+              except Exception as e: report.append({'url':url,'error':repr(e)})
+          Path('out/public-get-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(report,ensure_ascii=False,indent=2)[:60000])
           PY
 
       - uses: actions/upload-artifact@v4
         with:
-          name: qovoltis-apk-route-extraction
+          name: qovoltis-apk-route-extraction-current
           path: out
           retention-days: 5
