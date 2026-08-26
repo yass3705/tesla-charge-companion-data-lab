@@ -1,0 +1,157 @@
+name: Qovoltis APK route discovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-apk-route-discovery.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Download public Qovoltis Android package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work probe
+          URL='https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=443'
+          curl -fLsS --max-time 120 -A 'Mozilla/5.0' "$URL" -o work/qovoltis.xapk
+          unzip -q work/qovoltis.xapk -d work/xapk
+          find work/xapk -type f -name '*.apk' -printf '%s %p\n' | sort -nr | tee probe/apks.txt
+          test -s probe/apks.txt
+
+      - name: Install JADX
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLsS --max-time 120 \
+            'https://github.com/skylot/jadx/releases/download/v1.5.1/jadx-1.5.1.zip' \
+            -o work/jadx.zip
+          unzip -q work/jadx.zip -d work/jadx
+          work/jadx/bin/jadx --version | tee probe/jadx-version.txt
+
+      - name: Decompile main APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN_APK=$(sort -nr probe/apks.txt | head -1 | cut -d' ' -f2-)
+          echo "MAIN_APK=$MAIN_APK" | tee probe/main-apk.txt
+          mkdir -p work/decompiled
+          work/jadx/bin/jadx \
+            --no-res \
+            --show-bad-code \
+            --threads-count 4 \
+            -d work/decompiled \
+            "$MAIN_APK" \
+            > probe/jadx.log 2>&1 || true
+          echo "source_files=$(find work/decompiled -type f | wc -l)" | tee -a probe/main-apk.txt
+
+      - name: Extract API interfaces, station models and pricing fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re, json
+
+          root = Path('work/decompiled')
+          out = Path('probe')
+          out.mkdir(exist_ok=True)
+
+          needles = [
+              'StationDetails', 'FetchStations', 'MapStationList',
+              'pricing_default_price_currency', 'pricing_default_price',
+              'tariff', 'price', 'kwh', 'refBorne', 'connectorReference',
+              'qoapi.qovoltis.com', 'getOffers', 'findOffer',
+          ]
+          route_re = re.compile(r'@(GET|POST|PUT|PATCH|DELETE|HTTP)\s*\((.*?)\)', re.I | re.S)
+          url_re = re.compile(r'https?://[^\s"\'<>]+', re.I)
+          string_path_re = re.compile(r'["\']([^"\']*(?:station|borne|charge|tariff|price|offer|location|connector)[^"\']*)["\']', re.I)
+
+          matches = []
+          route_hits = []
+          urls = set()
+          candidate_files = []
+
+          for p in root.rglob('*'):
+              if not p.is_file() or p.suffix.lower() not in ('.java', '.kt', '.xml', '.txt'):
+                  continue
+              try:
+                  text = p.read_text(errors='replace')
+              except Exception:
+                  continue
+              low = text.lower()
+              hit_needles = [n for n in needles if n.lower() in low]
+              if not hit_needles:
+                  continue
+              rel = str(p.relative_to(root))
+              candidate_files.append({'file': rel, 'needles': hit_needles})
+
+              lines = text.splitlines()
+              for i, line in enumerate(lines):
+                  if any(n.lower() in line.lower() for n in needles):
+                      start = max(0, i - 3)
+                      end = min(len(lines), i + 6)
+                      snippet = '\n'.join(lines[start:end])
+                      matches.append({'file': rel, 'line': i + 1, 'snippet': snippet[:4000]})
+
+              for m in route_re.finditer(text):
+                  context = text[max(0, m.start()-400):min(len(text), m.end()+700)]
+                  if any(n.lower() in context.lower() for n in needles) or any(k in context.lower() for k in ('station','borne','charge','offer','location','connector')):
+                      route_hits.append({
+                          'file': rel,
+                          'annotation': re.sub(r'\s+', ' ', m.group(0))[:1000],
+                          'context': re.sub(r'\s+', ' ', context)[:2500],
+                      })
+
+              for u in url_re.findall(text):
+                  if 'qovoltis' in u.lower() or 'qoapi' in u.lower():
+                      urls.add(u.rstrip('),;'))
+
+          # Deduplicate snippets aggressively.
+          seen = set()
+          dedup_matches = []
+          for row in matches:
+              key = (row['file'], row['line'])
+              if key not in seen:
+                  seen.add(key)
+                  dedup_matches.append(row)
+
+          result = {
+              'scope': 'static_analysis_public_apk_no_auth_bypass',
+              'apiUrls': sorted(urls),
+              'candidateFiles': candidate_files[:1000],
+              'retrofitRoutes': route_hits[:1000],
+              'contextMatches': dedup_matches[:1500],
+          }
+          (out / 'qovoltis_apk_routes.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
+
+          with (out / 'ROUTE_SUMMARY.txt').open('w', encoding='utf-8') as f:
+              f.write('=== QOVOLTIS API URLS ===\n')
+              for u in sorted(urls):
+                  f.write(u + '\n')
+              f.write('\n=== RETROFIT / HTTP ROUTES ===\n')
+              for r in route_hits:
+                  f.write(f"\nFILE {r['file']}\n{r['annotation']}\n{r['context']}\n")
+              f.write('\n=== HIGH-VALUE FILES ===\n')
+              for c in candidate_files:
+                  if any(x.lower() in c['file'].lower() for x in ('station','api','remote','service','offer','price','tariff')):
+                      f.write(f"{c['file']} :: {', '.join(c['needles'])}\n")
+              f.write('\n=== SELECTED CONTEXT ===\n')
+              for m in dedup_matches:
+                  if any(k in m['snippet'].lower() for k in ('@get','@post','stationdetails','fetchstations','pricing_default','tariff','price','refborne')):
+                      f.write(f"\nFILE {m['file']}:{m['line']}\n{m['snippet']}\n")
+
+          print((out / 'ROUTE_SUMMARY.txt').read_text(encoding='utf-8')[:60000])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-apk-route-discovery
+          path: probe
+          retention-days: 3
