@@ -1,0 +1,79 @@
+name: Bump national public tariffs fine-grid
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/bump-national-public-tariffs-fine.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bump-national-public-tariffs
+  cancel-in-progress: true
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile harvester
+        run: python -m py_compile scripts/bump_graphql_national_tariffs.py scripts/bump_direct_inventory.py
+      - name: Smoke test 100 stations with fine grid
+        run: |
+          PYTHONPATH=scripts python - <<'PY'
+          import sys
+          import bump_graphql_national_tariffs as b
+          b.TILE_DEGREES=0.10
+          b.TILE_MARGIN=0.004
+          sys.argv=['bump-harvester','--limit','100']
+          b.main()
+          PY
+      - name: Harvest national Bump direct tariffs with fine grid
+        run: |
+          PYTHONPATH=scripts python - <<'PY'
+          import sys
+          import bump_graphql_national_tariffs as b
+          b.TILE_DEGREES=0.10
+          b.TILE_MARGIN=0.004
+          sys.argv=['bump-harvester']
+          b.main()
+          PY
+      - name: Validate conservative output
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          p=json.loads(gzip.decompress(Path('data/national/bump_direct_tariffs_graphql_france.json.gz').read_bytes()))
+          c=p['counts']
+          assert p['scope']['directCpoOnly'] and not p['scope']['roamingIncluded']
+          assert c['officialStations'] >= 1000
+          assert c['matchedStations'] >= c['officialStations'] * 0.5
+          assert c['stationsWithTariff'] <= c['matchedStations']
+          for s in p['stations']:
+              if s['match']['status'] != 'matched':
+                  assert not any(x.get('tariff') for x in s['match'].get('points',[]))
+          print(c)
+          PY
+      - name: Publish Bump national direct tariff dataset
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/bump_direct_tariffs_graphql_france.json.gz reports/bump_direct_tariffs_graphql_france.md reports/bump/national_tariff_harvest_latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(bump): publish national direct public tariffs fine-grid [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
