@@ -35,7 +35,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          BASE=$(find work/xapk -type f -name '*.apk' | head -1)
+          BASE=work/xapk/com.qovoltis.client.apk
+          test -f "$BASE"
           echo "BASE=$BASE"
           work/jadx/bin/jadx --no-res -d work/src "$BASE" >/tmp/jadx.log 2>&1 || true
           tail -80 /tmp/jadx.log || true
