@@ -1,0 +1,108 @@
+name: WAAT deeplink and Monta extraction audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/waat-deeplink-monta-extraction-audit.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Inspect public WAAT Monta extraction and deeplink bundles
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv, io, json, re, urllib.request, urllib.error
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          UA={'User-Agent':'TeslaChargeCompanion-data-lab/1.0'}
+          def get(url):
+            req=urllib.request.Request(url,headers=UA)
+            with urllib.request.urlopen(req,timeout=60) as r:
+              return r.geturl(), r.read()
+
+          report={'generatedAt':datetime.now(timezone.utc).isoformat()}
+          # data.gouv dataset metadata
+          meta_url='https://www.data.gouv.fr/api/1/datasets/extraction-monta/'
+          try:
+            _, raw=get(meta_url); meta=json.loads(raw)
+            report['dataset']={'title':meta.get('title'),'last_update':meta.get('last_update'),'resources':[]}
+            for r in meta.get('resources') or []:
+              report['dataset']['resources'].append({k:r.get(k) for k in ['id','title','format','url','latest','last_modified']})
+            csvres=next((r for r in meta.get('resources') or [] if str(r.get('format') or '').lower()=='csv'),None)
+            if csvres:
+              final,data=get(csvres['url'])
+              text=data.decode('utf-8-sig','replace')
+              dialect=csv.Sniffer().sniff(text[:10000], delimiters=',;\t|')
+              rd=csv.DictReader(io.StringIO(text),dialect=dialect)
+              rows=[]
+              headers=rd.fieldnames or []
+              for i,row in enumerate(rd):
+                if i>=40: break
+                rows.append(row)
+              report['dataset']['csv']={
+                'resourceUrl':csvres['url'],'finalUrl':final,'bytes':len(data),
+                'headers':headers,'sampleRows':rows,
+              }
+          except Exception as e:
+            report['datasetError']=f'{type(e).__name__}: {e}'
+
+          base='https://cdn.monta.app/control/hub/assets'
+          chunks=['deeplinks-M9CQGfOc.js','extract-slug-from-input-5pt7UVWH.js','qr-code-s05x_GAe.js','deeplinks-api-DfouvZRW.js','monta-urls-J6q9Peb-.js']
+          report['chunks']=[]
+          for f in chunks:
+            url=f'{base}/{f}'
+            try:
+              final,data=get(url); s=data.decode('utf-8','ignore')
+              strings=[]
+              for pat in [r'https?://[^"\'`\\\s]+',r'/[A-Za-z0-9_.~?=&%{}:$@+\-]+(?:/[A-Za-z0-9_.~?=&%{}:$@+\-]+)+']:
+                for m in re.finditer(pat,s):
+                  x=m.group(0)
+                  if x not in strings and any(k in x.lower() for k in ['deep','charge','qr','public','portal','app.monta','monta.app']): strings.append(x)
+              ctx=[]
+              for key in ['deeplink','slug','customUrl','chargePoint','qr','legacyPortal','url','public']:
+                pos=0
+                while len([x for x in ctx if x['key']==key])<25:
+                  i=s.lower().find(key.lower(),pos)
+                  if i<0: break
+                  ctx.append({'key':key,'context':s[max(0,i-450):min(len(s),i+1000)].replace('\n',' ')})
+                  pos=i+len(key)
+              report['chunks'].append({'file':f,'status':200,'bytes':len(data),'strings':strings[:500],'contexts':ctx[:150]})
+            except urllib.error.HTTPError as e:
+              report['chunks'].append({'file':f,'status':e.code})
+            except Exception as e:
+              report['chunks'].append({'file':f,'status':0,'error':f'{type(e).__name__}: {e}'})
+
+          out=Path('data/reports/waat_deeplink_monta_extraction_audit.json')
+          out.parent.mkdir(parents=True,exist_ok=True)
+          out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(report,ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Commit audit report
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_deeplink_monta_extraction_audit.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Refresh WAAT deeplink and Monta extraction audit"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
