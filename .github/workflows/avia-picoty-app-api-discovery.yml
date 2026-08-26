@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - "scripts/avia_picoty_app_discovery.py"
+      - "scripts/avia_picoty_hermes_strings.py"
       - ".github/workflows/avia-picoty-app-api-discovery.yml"
 
 permissions:
@@ -17,7 +18,7 @@ concurrency:
 jobs:
   discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,40 +46,73 @@ jobs:
           echo "downloaded bytes: $(wc -c </tmp/avia-picoty.apk)"
           file /tmp/avia-picoty.apk
 
-      - name: Extract public API/config hints only
+      - name: Extract coarse public API/config hints
         run: |
           set -euo pipefail
           python scripts/avia_picoty_app_discovery.py /tmp/avia-picoty.apk
 
-      - name: Validate discovery report
+      - name: Parse exact Hermes string boundaries safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import zipfile
+          from pathlib import Path
+          apk=Path('/tmp/avia-picoty.apk')
+          out=Path('/tmp/index.android.bundle')
+          with zipfile.ZipFile(apk) as z:
+              names=z.namelist()
+              candidates=[n for n in names if n.endswith('assets/index.android.bundle') or n=='assets/index.android.bundle']
+              if not candidates:
+                  candidates=[n for n in names if n.endswith('index.android.bundle')]
+              if not candidates:
+                  raise SystemExit('Hermes bundle not found in APK')
+              out.write_bytes(z.read(candidates[0]))
+              print('bundle', candidates[0], out.stat().st_size)
+          PY
+          file /tmp/index.android.bundle
+          git clone --depth 1 https://github.com/P1sec/hermes-dec.git /tmp/hermes-dec
+          PYTHONPATH=/tmp/hermes-dec/src python scripts/avia_picoty_hermes_strings.py /tmp/index.android.bundle
+
+      - name: Validate discovery reports
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          p=Path('data/reports/avia_picoty_app_api_discovery.json')
-          d=json.loads(p.read_text())
+          d=json.loads(Path('data/reports/avia_picoty_app_api_discovery.json').read_text())
+          h=json.loads(Path('data/reports/avia_picoty_hermes_api_strings.json').read_text())
           assert isinstance(d.get('hosts'),list)
           assert isinstance(d.get('interestingUrls'),list)
-          assert isinstance(d.get('contextHits'),list)
-          assert d['hosts'] or d['interestingUrls'] or d['contextHits'], d
-          print(json.dumps({k:d[k] for k in ('hosts','interestingUrls')}, indent=2))
+          assert d['hosts'] or d['interestingUrls'] or d['contextHits']
+          assert h['stringCount'] > 1000, h
+          assert h['safety']['credentialsPersisted'] is False
+          assert h['safety']['tokensPersisted'] is False
+          assert any('deftpower' in x.lower() or 'azure' in x.lower() for x in h.get('exactHosts',[])), h.get('exactHosts')
+          print(json.dumps({
+            'bytecodeVersion':h['bytecodeVersion'],
+            'stringCount':h['stringCount'],
+            'exactHosts':h['exactHosts'],
+            'routes':h['exactRoutesAndTariffStrings'][:80]
+          }, ensure_ascii=False, indent=2))
           PY
 
-      - name: Upload discovery report
+      - name: Upload discovery reports
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: avia-picoty-public-app-api-discovery
-          path: data/reports/avia_picoty_app_api_discovery.json
+          path: |
+            data/reports/avia_picoty_app_api_discovery.json
+            data/reports/avia_picoty_hermes_api_strings.json
           retention-days: 14
 
-      - name: Commit discovery report
+      - name: Commit sanitized discovery reports
         if: ${{ github.ref == 'refs/heads/main' }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/reports/avia_picoty_app_api_discovery.json
+          git add data/reports/avia_picoty_app_api_discovery.json data/reports/avia_picoty_hermes_api_strings.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Discover AVIA Picoty public app API configuration"
           for attempt in 1 2 3; do
