@@ -1,0 +1,133 @@
+name: Bump national public tariffs station fallback
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/bump-national-public-tariffs-station-fallback.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bump-national-public-tariffs
+  cancel-in-progress: true
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Harvest with throttling and unique station tariff-group fallback
+        run: |
+          PYTHONPATH=scripts python - <<'PY'
+          import sys,time
+          import bump_graphql_national_tariffs as b
+
+          original_post=b.post
+          def throttled_post(query, variables, attempts=4):
+              last=('network_error',{})
+              for i in range(7):
+                  status,obj=original_post(query,variables,attempts=1)
+                  last=(status,obj)
+                  errs=b.gql_errors(obj) if isinstance(obj,dict) else []
+                  limited=any('too many requests' in e.casefold() for e in errs)
+                  transient=status in (429,500,502,503,504,'network_error')
+                  if not limited and not transient: return status,obj
+                  time.sleep(min(8.0,1.0*(i+1)))
+              return last
+          b.post=throttled_post
+
+          original_match=b.match_station
+          def station_fallback_match(station, locations):
+              m=original_match(station,locations)
+              if m.get('status')!='matched': return m
+              loc=next((x for x in locations if str(x.get('locationId'))==str(m.get('locationId'))),None)
+              if not loc: return m
+              usable=[e for e in loc.get('evses',[]) if e.get('tariffGroupId') and e.get('evseId')]
+              groups={str(e['tariffGroupId']) for e in usable}
+              if len(groups)!=1 or not usable: return m
+              group=next(iter(groups)); representative=usable[0]
+              fallback_count=0
+              for p in m.get('points',[]):
+                  if p.get('mapped'): continue
+                  p['appEvseId']=representative['evseId']
+                  p['appEvseIdentifier']=None
+                  p['tariffGroupId']=group
+                  p['mapped']=True
+                  p['mappingFallback']='unique_tariff_group_at_matched_location'
+                  fallback_count+=1
+              if fallback_count:
+                  m['stationTariffGroupFallbackPoints']=fallback_count
+              return m
+          b.match_station=station_fallback_match
+
+          b.MAX_WORKERS=2
+          b.TILE_DEGREES=0.10
+          b.TILE_MARGIN=0.004
+          sys.argv=['bump-harvester']
+          b.main()
+          PY
+      - name: Build final Bump coverage and tariff-pattern report
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from collections import Counter
+          from pathlib import Path
+          p=json.loads(gzip.decompress(Path('data/national/bump_direct_tariffs_graphql_france.json.gz').read_bytes()))
+          patterns=Counter(); fallback_points=0; missing=Counter(); unpriced=[]; changing_examples=[]
+          for s in p['stations']:
+              m=s['match']
+              fallback_points+=int(m.get('stationTariffGroupFallbackPoints') or 0)
+              if m.get('status')!='matched': continue
+              station_priced=False
+              for point in m.get('points',[]):
+                  t=point.get('tariff')
+                  if not t:
+                      if not point.get('mapped'): missing['evse_not_mapped']+=1
+                      elif not point.get('tariffGroupId'): missing['tariff_group_missing']+=1
+                      else: missing['tariff_detail_missing']+=1
+                      continue
+                  station_priced=True
+                  key=(t.get('energyEurPerKwh'),t.get('timeEurPerHour'),t.get('flatFeeEur'),t.get('minPriceEur'),bool(t.get('isTariffChangingInTime')),t.get('parkingText'))
+                  patterns[key]+=1
+                  if t.get('isTariffChangingInTime') and len(changing_examples)<30:
+                      changing_examples.append({'stationId':s.get('idStationItinerance'),'stationName':s.get('name'),'powerKw':point.get('powerKw'),'tariff':t})
+              if not station_priced: unpriced.append({'stationId':s.get('idStationItinerance'),'name':s.get('name')})
+          rows=[{'pointCount':n,'energyEurPerKwh':k[0],'timeEurPerHour':k[1],'flatFeeEur':k[2],'minPriceEur':k[3],'isTariffChangingInTime':k[4],'parkingText':k[5]} for k,n in patterns.most_common()]
+          out={'generatedAt':p['generatedAt'],'counts':p['counts'],'fallbackPoints':fallback_points,'pricePatternCount':len(patterns),'pricePatterns':rows,'missingPointReasons':dict(missing),'unpricedMatchedStations':unpriced,'timeChangingExamples':changing_examples}
+          q=Path('reports/bump/national_tariff_distribution_latest.json'); q.parent.mkdir(parents=True,exist_ok=True); q.write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'counts':p['counts'],'fallbackPoints':fallback_points,'pricePatternCount':len(patterns),'missing':dict(missing),'unpricedMatchedStations':len(unpriced),'topPatterns':rows[:10]},ensure_ascii=False,indent=2))
+          PY
+      - name: Validate and publish
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          p=json.loads(gzip.decompress(Path('data/national/bump_direct_tariffs_graphql_france.json.gz').read_bytes()))
+          c=p['counts']; d=json.loads(Path('reports/bump/national_tariff_distribution_latest.json').read_text())
+          assert c['matchedStations'] >= 1400
+          assert c['uniqueTariffGroupsWithTariff'] == c['uniqueTariffGroupsRequested']
+          assert d['fallbackPoints'] >= 0
+          assert not d['missingPointReasons'].get('tariff_detail_missing',0)
+          print({'counts':c,'fallbackPoints':d['fallbackPoints'],'unpricedMatchedStations':len(d['unpricedMatchedStations'])})
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/bump_direct_tariffs_graphql_france.json.gz reports/bump_direct_tariffs_graphql_france.md reports/bump/national_tariff_harvest_latest.json reports/bump/national_tariff_distribution_latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(bump): apply unique station tariff-group fallback [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
