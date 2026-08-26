@@ -12,7 +12,7 @@ permissions:
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,81 +22,125 @@ jobs:
           node-version: "22"
       - name: Install lightweight browser driver
         run: npm install --no-save playwright-core@1.55.0
-      - name: Capture Monta public-map API responses
+      - name: Probe real WAAT stations through Monta public web map
         run: |
           set -euo pipefail
           cat > capture-waat-monta.mjs <<'JS'
           import fs from 'node:fs';
+          import zlib from 'node:zlib';
           import { chromium } from 'playwright-core';
+
+          const src=JSON.parse(zlib.gunzipSync(fs.readFileSync('data/national/waat_direct_stations_france.json.gz')));
+          const eligible=(src.stations||[]).filter(s=>Array.isArray(s.coordinates)&&s.coordinates.length>=2);
+          const byPower=[...eligible].sort((a,b)=>(b.maxPowerKw||0)-(a.maxPowerKw||0));
+          const byGeo=[...eligible].sort((a,b)=>(a.coordinates[0]-b.coordinates[0])||(a.coordinates[1]-b.coordinates[1]));
+          const selected=[];
+          const seen=new Set();
+          function add(s){ if(!s||seen.has(s.stationIdNormalized)) return; seen.add(s.stationIdNormalized); selected.push(s); }
+          byPower.slice(0,4).forEach(add);
+          for(const q of [0,.15,.3,.45,.6,.75,.9,1]) add(byGeo[Math.min(byGeo.length-1,Math.floor(q*(byGeo.length-1)))]);
+          const samples=selected.slice(0,10);
 
           const chromeCandidates=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'];
           const executablePath=chromeCandidates.find(p=>fs.existsSync(p));
           if(!executablePath) throw new Error('No Chromium/Chrome executable found');
-
           const browser=await chromium.launch({executablePath,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
-          const context=await browser.newContext({
-            locale:'fr-FR',
-            userAgent:'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-            viewport:{width:1280,height:900}
-          });
-          const page=await context.newPage();
-          const captured=[];
-          const consoleLines=[];
+          const context=await browser.newContext({locale:'fr-FR',userAgent:'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',viewport:{width:1280,height:900}});
 
-          page.on('console',m=>{ if(consoleLines.length<120) consoleLines.push({type:m.type(),text:m.text().slice(0,1000)}); });
-          page.on('response',async r=>{
-            const u=r.url();
-            if(!u.includes('api.monta.app/api/v1/')) return;
-            const interesting=/\/auth\/guest|\/operators\/current|\/charge_points(?:\/|\?|$)|\/charge_point_groups/.test(u);
-            if(!interesting) return;
-            const item={url:u,status:r.status(),contentType:r.headers()['content-type']||null};
-            try {
-              const txt=await r.text();
-              if(u.includes('/auth/guest')) {
-                item.body='[guest credentials redacted]';
-                try { const j=JSON.parse(txt); item.keys=Object.keys(j); item.hasToken=!!j?.token?.access_token; }
-                catch {}
-              } else {
-                item.json=JSON.parse(txt);
-              }
-            } catch(e) { item.readError=String(e); }
-            captured.push(item);
-          });
-
-          const url='https://maps.monta.app/?lat=45.7045&lng=4.9445&zoom=16&locale=fr';
-          let pageStatus=null;
-          try {
-            const resp=await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});
-            pageStatus=resp?.status()??null;
-            await page.waitForTimeout(18000);
-          } catch(e) { consoleLines.push({type:'navigation-error',text:String(e)}); }
-          try {
-            await page.evaluate(()=>{
-              const u=new URL(location.href);u.searchParams.set('zoom','11');history.replaceState({},'',u.toString());window.dispatchEvent(new PopStateEvent('popstate'));
-            });
-            await page.waitForTimeout(8000);
-          } catch {}
-
-          function scan(value,path='$',hits=[]){
-            if(hits.length>1500) return hits;
-            if(value && typeof value==='object') {
-              if(Array.isArray(value)) value.forEach((v,i)=>scan(v,`${path}[${i}]`,hits));
-              else for(const [k,v] of Object.entries(value)) {
-                const lk=k.toLowerCase();
-                if(/pric|tariff|fee|operator|roaming|evse|charge_point|currency|kw/.test(lk)) hits.push({path:`${path}.${k}`,value:(typeof v==='object'?JSON.stringify(v).slice(0,4000):v)});
-                scan(v,`${path}.${k}`,hits);
-              }
-            }
-            return hits;
+          const results=[];
+          const operatorRe=/(^|[^a-z0-9])(waat|fr\s*\*?\s*wa2|frwa2)([^a-z0-9]|$)/i;
+          function loc(o){
+            if(!o) return null;
+            if(typeof o.location==='string') { const p=o.location.split(',').map(Number); if(p.length>=2&&p.every(Number.isFinite)) return [p[0],p[1]]; }
+            if(Number.isFinite(o.latitude)&&Number.isFinite(o.longitude)) return [o.latitude,o.longitude];
+            return null;
           }
-          const pricingHits=[];
-          for(const c of captured){ if(c.json) pricingHits.push(...scan(c.json,c.url)); }
-          const waatHits=pricingHits.filter(x=>String(x.value).toLowerCase().includes('waat'));
-          const report={generatedAt:new Date().toISOString(),pageUrl:url,pageStatus,finalUrl:page.url(),title:await page.title().catch(()=>null),captured,pricingHits,waatHits,console:consoleLines};
-          fs.mkdirSync('data/reports',{recursive:true});
-          fs.writeFileSync('data/reports/waat_monta_browser_capture.json',JSON.stringify(report,null,2));
-          console.log(JSON.stringify({pageStatus:report.pageStatus,finalUrl:report.finalUrl,title:report.title,captured:captured.map(x=>({url:x.url,status:x.status,keys:x.keys||(x.json&&typeof x.json==='object'?Object.keys(x.json).slice(0,30):null)})),pricingHitCount:pricingHits.length,waatHitCount:waatHits.length,waatHits:waatHits.slice(0,30),console:consoleLines.slice(0,30)},null,2));
+          function distM(a,b){
+            if(!a||!b) return null; const R=6371000, rad=x=>x*Math.PI/180;
+            const dLat=rad(b[0]-a[0]),dLon=rad(b[1]-a[1]);
+            const h=Math.sin(dLat/2)**2+Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLon/2)**2;
+            return 2*R*Math.asin(Math.sqrt(h));
+          }
+          function cleanHeaders(h){
+            const out={};
+            for(const [k,v] of Object.entries(h||{})) {
+              const lk=k.toLowerCase();
+              if(['host','content-length','cookie','authorization'].includes(lk)) continue;
+              if(lk.startsWith('sec-')||lk.startsWith(':')) continue;
+              out[k]=v;
+            }
+            return out;
+          }
+          function sanitize(v,depth=0){
+            if(depth>8) return '[depth-limited]';
+            if(Array.isArray(v)) return v.slice(0,100).map(x=>sanitize(x,depth+1));
+            if(v&&typeof v==='object'){
+              const o={};
+              for(const [k,x] of Object.entries(v)){
+                if(/token|cookie|authori[sz]ation|password|secret|email|phone|zendesk|jwt/i.test(k)) continue;
+                o[k]=sanitize(x,depth+1);
+              }
+              return o;
+            }
+            return v;
+          }
+          function pricingFields(v,path='$',out=[]){
+            if(out.length>500||v==null) return out;
+            if(Array.isArray(v)) v.forEach((x,i)=>pricingFields(x,`${path}[${i}]`,out));
+            else if(typeof v==='object') for(const [k,x] of Object.entries(v)){
+              if(/pric|tariff|fee|cost|currency|kwh|minute|parking|idle|time_price|sales_fixed/i.test(k)) out.push({path:`${path}.${k}`,value:typeof x==='object'?JSON.stringify(sanitize(x)).slice(0,3000):x});
+              pricingFields(x,`${path}.${k}`,out);
+            }
+            return out;
+          }
+
+          for(const s of samples){
+            const [lat,lng]=s.coordinates;
+            const page=await context.newPage();
+            const maps=[]; let guestOk=false; let mapHeaders={};
+            page.on('response',async r=>{
+              const u=r.url();
+              if(u.includes('/api/v1/auth/guest')&&r.status()===201) guestOk=true;
+              if(!u.includes('api.monta.app/api/v1/charge_points/map')) return;
+              try { maps.push({url:u,status:r.status(),json:JSON.parse(await r.text())}); mapHeaders=await r.request().allHeaders(); } catch {}
+            });
+            const pageUrl=`https://maps.monta.app/?lat=${lat}&lng=${lng}&zoom=17&locale=fr`;
+            let pageStatus=null;
+            try { const rr=await page.goto(pageUrl,{waitUntil:'domcontentloaded',timeout:60000}); pageStatus=rr?.status()??null; await page.waitForTimeout(8500); } catch(e) {}
+            const items=[];
+            for(const m of maps) for(const key of ['list','single_list']) if(Array.isArray(m.json?.[key])) for(const x of m.json[key]) items.push(x);
+            const dedup=[...new Map(items.map(x=>[`${x.document||''}:${x.id}`,x])).values()];
+            const nearby=dedup.map(x=>({x,d:distM([lat,lng],loc(x))})).filter(y=>y.d==null||y.d<600).sort((a,b)=>(a.d??1e9)-(b.d??1e9));
+            const direct=nearby.filter(y=>operatorRe.test(String(y.x.operator_name||y.x.operator||'')));
+            const chosen=direct[0]||null;
+            let detail=null;
+            if(chosen?.x?.id){
+              const endpoint=chosen.x.document==='charge_point_group'?`https://api.monta.app/api/v1/charge_point_groups/${chosen.x.id}`:`https://api.monta.app/api/v1/charge_points/${chosen.x.id}`;
+              try {
+                detail=await page.evaluate(async ({endpoint,headers})=>{
+                  const r=await fetch(endpoint,{headers}); const t=await r.text(); let j=null; try{j=JSON.parse(t)}catch{}; return {status:r.status,contentType:r.headers.get('content-type'),json:j,body:j?null:t.slice(0,1000)};
+                },{endpoint,headers:cleanHeaders(mapHeaders)});
+              } catch(e) { detail={error:String(e)}; }
+            }
+            results.push({
+              target:{stationId:s.stationIdNormalized,name:s.stationName,address:s.address,coordinates:s.coordinates,maxPowerKw:s.maxPowerKw,evseIds:(s.evses||[]).map(e=>e.evseIdNormalized)},
+              pageStatus,guestOk,mapRequestCount:maps.length,
+              directCandidates:direct.slice(0,5).map(y=>({distanceM:y.d,document:y.x.document,id:y.x.id,name:y.x.name,operatorName:y.x.operator_name,location:y.x.location,maxKw:y.x.max_kw,priceLabel:y.x.price_label,currency:y.x.currency,kwhSalesFixedPrices:y.x.kwh_sales_fixed_prices,pricingHits:pricingFields(y.x)})),
+              nearestContext:nearby.slice(0,5).map(y=>({distanceM:y.d,document:y.x.document,id:y.x.id,name:y.x.name,operatorName:y.x.operator_name,location:y.x.location,maxKw:y.x.max_kw,priceLabel:y.x.price_label})),
+              detail:detail?sanitize(detail):null,
+              detailPricingHits:detail?.json?pricingFields(detail.json):[]
+            });
+            await page.close();
+          }
+
           await browser.close();
+          const directMatched=results.filter(r=>r.directCandidates.length).length;
+          const detailOk=results.filter(r=>r.detail?.status===200).length;
+          const withPricing=results.filter(r=>r.directCandidates.some(x=>x.priceLabel||x.pricingHits?.length)||r.detailPricingHits.length).length;
+          const report={generatedAt:new Date().toISOString(),source:'Monta public web map via real browser guest flow',operator:'WAAT',operatorPrefix:'FR*WA2',sampleCount:results.length,directMatched,detailOk,withPricing,results};
+          fs.mkdirSync('data/reports',{recursive:true});
+          fs.writeFileSync('data/reports/waat_monta_browser_capture.json',JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify({sampleCount:report.sampleCount,directMatched,detailOk,withPricing,summary:results.map(r=>({station:r.target.stationId,name:r.target.name,guestOk:r.guestOk,mapRequestCount:r.mapRequestCount,direct:r.directCandidates.map(x=>({operator:x.operatorName,name:x.name,price:x.priceLabel,id:x.id,document:x.document,distanceM:x.distanceM})),detailStatus:r.detail?.status||null,detailPricingHits:r.detailPricingHits.slice(0,8)}))},null,2));
           JS
           node capture-waat-monta.mjs
           rm -f capture-waat-monta.mjs
@@ -107,6 +151,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/reports/waat_monta_browser_capture.json
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "data: publish sanitized Monta browser pricing capture"
+          git commit -m "data: publish WAAT-targeted Monta browser pricing capture"
           for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
           exit 1
