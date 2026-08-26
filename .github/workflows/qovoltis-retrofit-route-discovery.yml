@@ -1,0 +1,118 @@
+name: Qovoltis Retrofit route discovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-retrofit-route-discovery.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  decompile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download official Android package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work out
+          curl -sS -L --max-time 120 -A 'Mozilla/5.0' \
+            'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=443' \
+            -o work/qovoltis.xapk
+          unzip -q work/qovoltis.xapk -d work/xapk
+          find work/xapk -type f -name '*.apk' -print
+
+      - name: Install jadx
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS -L --max-time 120 \
+            'https://github.com/skylot/jadx/releases/download/v1.5.2/jadx-1.5.2.zip' \
+            -o work/jadx.zip
+          unzip -q work/jadx.zip -d work/jadx
+          chmod +x work/jadx/bin/jadx
+          work/jadx/bin/jadx --version
+
+      - name: Decompile base APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=$(find work/xapk -type f -name '*.apk' | sort | head -1)
+          echo "BASE=$BASE"
+          work/jadx/bin/jadx --show-bad-code --deobf --no-res -d work/src "$BASE" >/tmp/jadx.log 2>&1 || true
+          tail -80 /tmp/jadx.log || true
+          find work/src/sources -type f | wc -l
+
+      - name: Extract API interfaces routes and relevant models
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=work/src/sources
+          {
+            echo '## Retrofit annotations and route strings'
+            grep -RInE '@(GET|POST|PUT|PATCH|DELETE|Headers)|https://qoapi\.qovoltis\.com|/api/|stations|station|offers|offer|pricing|price|tariff|connector|borne' "$SRC" 2>/dev/null \
+              | grep -Ei 'qovoltis|retrofit|remote|api|station|offer|pricing|price|tariff|connector|borne' \
+              | head -2500 || true
+            echo
+            echo '## Candidate source files'
+            find "$SRC" -type f | grep -Ei 'Api|Service|RemoteDataSource|Station|Offer|Pricing|Connector|Borne' | head -500 || true
+          } > out/routes.txt
+
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          src=Path('work/src/sources')
+          wanted=[]
+          for p in src.rglob('*.java'):
+              try: t=p.read_text(errors='replace')
+              except: continue
+              low=t.lower()
+              if any(k in low for k in ['fetchstationslistrequestbody','stationdetailsremotedatasource','getoffers','findoffer','pricing_default_price_currency','mapstationlistqueryrequest','chargesocketdataresponse']):
+                  wanted.append((p,t))
+          with Path('out/relevant_sources.txt').open('w',encoding='utf-8') as f:
+              for p,t in wanted[:200]:
+                  f.write(f'\n===== {p} =====\n')
+                  for m in re.finditer(r'.{0,500}(@(?:GET|POST|PUT|PATCH|DELETE)[^\n]*|fetchStations|stationDetails|getOffers|findOffer|pricing_default_price_currency|MapStationListQueryRequest|ChargeSocketDataResponse).{0,1200}',t,re.I|re.S):
+                      f.write(re.sub(r'\n{3,}','\n\n',m.group(0))+'\n---\n')
+          print('matched_files',len(wanted))
+          PY
+
+          sed -n '1,2200p' out/routes.txt
+          sed -n '1,2200p' out/relevant_sources.txt
+
+      - name: Probe only clearly public unauthenticated GET candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess
+          text='\n'.join(p.read_text(errors='replace') for p in Path('work/src/sources').rglob('*.java'))
+          routes=[]
+          for m in re.finditer(r'@GET\(\s*"([^"]+)"\s*\)',text):
+              r=m.group(1)
+              if '{' not in r and '?' not in r and len(r)<180:
+                  routes.append(r)
+          routes=list(dict.fromkeys(routes))[:120]
+          base='https://qoapi.qovoltis.com/api/'
+          out=[]
+          for r in routes:
+              url=base+r.lstrip('/')
+              try:
+                  cp=subprocess.run(['curl','-sS','-L','--max-time','12','-A','Mozilla/5.0','-H','Accept: application/json','-o','/tmp/body','-w','%{http_code}|%{content_type}',url],capture_output=True,text=True)
+                  body=Path('/tmp/body').read_text(errors='replace')[:600].replace('\n',' ')
+                  out.append(f'{cp.stdout}|{url}|{body}')
+              except Exception as e:
+                  out.append(f'ERR|{url}|{e!r}')
+          Path('out/get_probe.tsv').write_text('\n'.join(out),encoding='utf-8')
+          print(Path('out/get_probe.tsv').read_text()[:30000])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-retrofit-route-discovery
+          path: out
+          retention-days: 3
