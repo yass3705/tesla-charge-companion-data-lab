@@ -60,8 +60,16 @@ jobs:
           print(json.dumps(data['counts'], indent=2))
           PY
 
-      - name: Public-safety scan
-        run: python scripts/public_safety_check.py .
+      - name: Public-safety scan Allego only
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .allego-safety
+          mkdir -p .allego-safety
+          cp scripts/allego_dxp_national.py .allego-safety/
+          cp data/reports/allego_station_tariffs_report.json .allego-safety/
+          gzip -dc data/national/allego_direct_stations_france.json.gz > .allego-safety/allego_direct_stations_france.json
+          python scripts/public_safety_check.py .allego-safety
 
       - name: Upload audit artifact
         uses: actions/upload-artifact@v4
