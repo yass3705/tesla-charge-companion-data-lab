@@ -1,0 +1,38 @@
+name: IZIVIA Express pricing arguments analysis
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/izivia-express-pricing-args-analysis.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Extract exact pricing endpoint call chain from public map bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 'https://fronts-map.izivia.com/' -o /tmp/index.html
+          BUNDLE=$(grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' /tmp/index.html | head -1)
+          curl -fsSL --retry 3 "https://fronts-map.izivia.com/$BUNDLE" -o /tmp/bundle.js
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/bundle.js').read_text(errors='replace')
+          low=s.lower()
+          needles=['pricing-info-items','stationemipid','firststationemipid','legacyid','pricinginfoitems','itemtype:"charging_station"','itemtype:"charging_connector"']
+          for needle in needles:
+              print('\n===== NEEDLE',needle,'=====')
+              pos=0; count=0
+              while count<25:
+                  i=low.find(needle.lower(),pos)
+                  if i<0: break
+                  print('\n---',i,'---')
+                  print(s[max(0,i-1800):min(len(s),i+3000)])
+                  pos=i+len(needle); count+=1
+          PY
