@@ -1,0 +1,106 @@
+name: Qovoltis v5 route extraction
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-v5-route-extraction.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download current Qovoltis 5.0.1 Android package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work out
+          curl -sS -L --max-time 120 -A 'Mozilla/5.0' \
+            'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=50012' \
+            -o work/qovoltis.xapk
+          file work/qovoltis.xapk | tee out/download.txt
+          wc -c work/qovoltis.xapk | tee -a out/download.txt
+          unzip -q work/qovoltis.xapk -d work/xapk
+          find work/xapk -type f -name '*.apk' -printf '%p %s\n' | tee -a out/download.txt
+          BASE=$(find work/xapk -type f -name '*.apk' | sort | head -1)
+          cp "$BASE" work/base.apk
+
+      - name: Install JADX
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL=$(python - <<'PY'
+          import json,urllib.request
+          req=urllib.request.Request('https://api.github.com/repos/skylot/jadx/releases/latest',headers={'User-Agent':'qovoltis-probe'})
+          obj=json.load(urllib.request.urlopen(req,timeout=30))
+          for a in obj['assets']:
+              n=a['name'].lower()
+              if n.startswith('jadx-') and n.endswith('.zip') and 'gui' not in n:
+                  print(a['browser_download_url']); break
+          PY
+          )
+          curl -sS -L --max-time 120 "$URL" -o work/jadx.zip
+          unzip -q work/jadx.zip -d work/jadx
+          chmod +x work/jadx/bin/jadx
+
+      - name: Decompile current app and extract API evidence
+        shell: bash
+        run: |
+          set +e
+          mkdir -p work/src
+          work/jadx/bin/jadx --show-bad-code --no-res --threads-count 2 -d work/src work/base.apk >out/jadx.log 2>&1
+          grep -RhoE 'https?://[^"[:space:]<>]+' work/src/sources 2>/dev/null | grep -Ei 'qovoltis|qorest|qoapi|qockpit|ocpi|api' | sort -u > out/urls.txt || true
+          grep -RhoE '@(GET|POST|PUT|DELETE|PATCH)\([^)]*\)' work/src/sources 2>/dev/null | sort -u > out/retrofit_annotations.txt || true
+          grep -RInE --include='*.java' 'tarif_heures_creuses|tarif_heures_pleines|price_per_reference_unit|pricing_default_price_currency|map-station-preview|map-station-list|emsp-map-station-list|StationDetails|PricingTotal|DurationRate|tariff|pricing|price' work/src/sources 2>/dev/null | head -8000 > out/tariff_context.txt || true
+          echo '=== URLs ==='; cat out/urls.txt
+          echo '=== Retrofit ==='; sed -n '1,500p' out/retrofit_annotations.txt
+          echo '=== Tariff evidence ==='; sed -n '1,1500p' out/tariff_context.txt
+
+      - name: Test discovered public GET routes on discovered Qovoltis hosts
+        shell: bash
+        run: |
+          set +e
+          python - <<'PY'
+          from pathlib import Path
+          import re,requests,json,urllib.parse
+          urls=Path('out/urls.txt').read_text(errors='replace') if Path('out/urls.txt').exists() else ''
+          anns=Path('out/retrofit_annotations.txt').read_text(errors='replace') if Path('out/retrofit_annotations.txt').exists() else ''
+          hosts=[]
+          for u in re.findall(r'https?://[^\s"<>]+',urls):
+              p=urllib.parse.urlsplit(u)
+              if p.hostname and 'qovoltis' in p.hostname:
+                  base=f'{p.scheme}://{p.netloc}'
+                  if base not in hosts: hosts.append(base)
+          for fallback in ['https://qoapi.qovoltis.com','https://qorest.qovoltis.com']:
+              if fallback not in hosts: hosts.append(fallback)
+          gets=[]
+          for m in re.finditer(r'@GET\((?:value\s*=\s*)?["\']([^"\']+)',anns):
+              route=m.group(1)
+              if '{' in route or '}' in route: continue
+              if any(k in route.lower() for k in ('station','borne','map','price','pricing','tariff','public')):
+                  gets.append(route)
+          report=[]
+          for host in hosts[:12]:
+              for route in list(dict.fromkeys(gets))[:25]:
+                  candidates=[]
+                  if route.startswith('/'): candidates=[host+route]
+                  else: candidates=[host+'/'+route,host+'/api/'+route]
+                  for url in candidates:
+                      try:
+                          r=requests.get(url,timeout=12,headers={'User-Agent':'Mozilla/5.0','Accept':'application/json,text/plain,*/*'},allow_redirects=True)
+                          report.append({'url':url,'status':r.status_code,'content_type':r.headers.get('content-type'),'body':r.text[:1000]})
+                      except Exception as e:
+                          report.append({'url':url,'error':repr(e)})
+          Path('out/public_get_probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(report,ensure_ascii=False,indent=2)[:50000])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-v5-route-extraction
+          path: out
+          retention-days: 5
