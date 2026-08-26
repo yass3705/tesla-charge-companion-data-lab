@@ -1,0 +1,42 @@
+name: Build IZIVIA Express TCC V8 dataset v2
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "izivia/izivia_express_station_tariffs_v1.json"
+      - "scripts/build_izivia_express_tcc_v8.py"
+      - ".github/workflows/build-izivia-express-tcc-v8-v2.yml"
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact fail-closed dataset
+        run: python scripts/build_izivia_express_tcc_v8.py
+      - name: Validate generated dataset
+        run: |
+          python -m json.tool data/national/izivia_express_direct_tcc_v8.json >/dev/null
+          python - <<'PY'
+          import json
+          p=json.load(open('data/national/izivia_express_direct_tcc_v8.json'))
+          c=p['counts']
+          assert p['scope']['onlyDirectCpo'] is True
+          assert p['scope']['roamingIncluded'] is False
+          assert p['scope']['subscriptionDiscountsIncluded'] is False
+          assert c['officialStationRows']==155
+          assert c['directPricePublishedRows']==146
+          assert c['directPriceNotPublishedRows']==9
+          assert c['excludedAmbiguousConfigurations']==0
+          print(c)
+          PY
+      - name: Commit generated dataset
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/national/izivia_express_direct_tcc_v8.json
+          if git diff --cached --quiet; then echo 'No change'; else git commit -m 'Build IZIVIA Express exact TCC V8 dataset'; git push; fi
