@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "dataset": "driveco-manual-app-validation",
   "verifiedAt": "2026-08-26",
   "country": "FR",
@@ -47,16 +47,52 @@
         "ccsIdleGraceMinutesAfterChargeEnd": 15,
         "openingHours": "08:00-19:00"
       }
+    },
+    {
+      "stationName": "Première Classe - Conflans-Sainte-Honorine",
+      "address": "11 Rue des Belles Hâtes, 78700 Conflans-Sainte-Honorine",
+      "stationId": "FRDRVPFGHW",
+      "qualichargeNumeric": {
+        "rawEurPerKwh": 0.4583,
+        "resourceId": "8bb0a6e2-1016-42ba-aaee-f72f55c82e9f",
+        "powerKw": 200
+      },
+      "drivecoAppObserved": {
+        "ccs200KwEurPerKwhTtc": 0.55,
+        "ccsIdleFeeEurPerMinute": 0.30,
+        "ccsIdleGraceMinutesAfterChargeEnd": 15,
+        "type2PowerKw": 22,
+        "type2EurPerKwhTtc": 0.39
+      }
+    },
+    {
+      "stationName": "La Maison Villacoublay - Vélizy-Villacoublay",
+      "address": "1 Rue André Citroën, 78140 Vélizy-Villacoublay",
+      "qualichargeNumeric": {
+        "rawEurPerKwh": 0.4917,
+        "resourceId": "8bb0a6e2-1016-42ba-aaee-f72f55c82e9f",
+        "powerKw": 300
+      },
+      "drivecoAppObserved": {
+        "ccs300KwEurPerKwhTtc": 0.59,
+        "ccsIdleFeeEurPerMinute": 0.30,
+        "ccsIdleGraceMinutesAfterChargeEnd": 15,
+        "ccs200KwEurPerKwhTtc": 0.55
+      }
     }
   ],
   "conclusion": {
-    "validatedRawNumericValue": 0.45,
-    "validatedTtcValue": 0.54,
     "vatMultiplier": 1.20,
-    "independentStationsChecked": 2,
-    "qualichargeEvseRowsDirectlyCrossChecked": 6,
-    "classification": "validated_for_raw_0_45_on_same_qualicharge_resource",
-    "globalGeneralizationToOtherRawNumericValues": false,
-    "note": "The two independent DRIVECO sites prove that raw numeric tariff 0.45 from this QualiCharge resource maps to 0.54 EUR/kWh TTC in the DRIVECO app. Other raw numeric values remain to be validated before applying the VAT transform globally."
+    "validatedMappings": {
+      "0.45": 0.54,
+      "0.4583": 0.55,
+      "0.4917": 0.59
+    },
+    "validatedRawNumericValues": [0.45, 0.4583, 0.4917],
+    "classification": "validated_for_all_driveco_numeric_values_present_in_same_qualicharge_resource",
+    "globalGeneralizationToKnownRawNumericValues": true,
+    "scopeGuard": "Only DRIVECO-operated rows from resource 8bb0a6e2-1016-42ba-aaee-f72f55c82e9f and only the three validated raw values may use the x1.20 transform.",
+    "occupancyGeneralization": false,
+    "note": "First-party DRIVECO app screenshots independently confirm the three numeric QualiCharge values as pre-tax energy prices: 0.45 -> 0.54 TTC, 0.4583 -> 0.55 TTC, and 0.4917 -> 0.59 TTC. Parking/occupancy fees remain station-specific unless separately proven."
   }
 }
