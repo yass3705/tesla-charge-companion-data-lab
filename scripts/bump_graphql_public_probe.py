@@ -23,6 +23,17 @@ ENDPOINTS = ("/graphql", "/api/graphql", "/v1/graphql", "/")
 TARGET_NAMESPACES = ("chargePoints", "tariffs", "locationPlanning")
 TARGET_EXTRA_TYPES = (
     "LocationQueryController",
+    "LocationSearchInput",
+    "LocationSearchInputV2Input",
+    "LocationSearchInputV3Input",
+    "LocationSearchPointInput",
+    "SearchLocationResult",
+    "SearchLocationResultV2",
+    "SearchLocationResultV3",
+    "Location",
+    "Evse",
+    "ChargePointTariffGroup",
+    "Point",
     "Tariff",
     "TariffGroupDetail",
     "TariffGroupDetailInput",
@@ -252,7 +263,7 @@ def main() -> None:
     interesting = [f for f in schema_fields if f["name"].casefold() in interesting_names or any(k in f["name"].casefold() for k in ("tariff", "charge", "location", "evse"))]
 
     payload = {
-        "schemaVersion": "1.2.0",
+        "schemaVersion": "1.3.0",
         "dataset": "bump-public-graphql-probe",
         "generatedAt": now_iso(),
         "base": BASE,
