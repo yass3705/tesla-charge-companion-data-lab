@@ -1,15 +1,31 @@
 # Tesla Charge Companion Data Lab
 
-This repository contains data collection, validation, and normalization workflows used to build operator and tariff datasets for Tesla Charge Companion.
+Ce dépôt sert de laboratoire de données pour Tesla Charge Companion. Il contient les scripts, configurations, rapports et tests utilisés pour explorer, collecter, normaliser et valider les données des opérateurs de recharge avant publication vers l'application stable.
+
+## Objectifs
+
+- isoler les expérimentations de collecte du dépôt stable ;
+- conserver des collecteurs reproductibles ;
+- documenter les sources et hypothèses ;
+- générer des jeux de données contrôlables avant publication ;
+- ajouter des tests de non-régression sur les opérateurs et tarifs.
+
+## Structure
+
+- `.github/` : workflows GitHub Actions du laboratoire ;
+- `config/` : paramètres et règles de collecte ;
+- `data/` : données intermédiaires ou générées ;
+- `izivia/` : travaux dédiés au réseau IZIVIA ;
+- `reports/` : résultats de validation et rapports ;
+- `scripts/` : collecteurs et outils de normalisation ;
+- `tests/` : tests automatiques.
+
+## Principes de validation
+
+Les données tarifaires ne doivent pas être publiées comme tarif opérateur direct lorsqu'elles proviennent uniquement d'un eMSP ou d'un acteur de roaming. Les sources officielles ou techniques directement rattachées au CPO sont privilégiées. Lorsqu'une valeur ne peut pas être vérifiée de façon suffisante, elle reste explicitement inconnue plutôt que d'être extrapolée.
+
+Les jeux nationaux doivent conserver, lorsque la source le permet, l'identifiant de station, l'identifiant EVSE, l'opérateur, la puissance, les connecteurs et les métadonnées de provenance nécessaires à une fusion déterministe dans Tesla Charge Companion.
 
 ## AVIA / Picoty
 
-A dedicated national AVIA/Picoty collector is being added under `scripts/` and `config/`.
-
-Source identification rules:
-- CPO/operator identifier: `FR*PY2` (Picoty)
-- Commercial network label: `AVIA VOLT`
-- Direct CPO pricing must remain distinct from AVIA Carte / Deft Power eMSP pricing and third-party roaming tariffs.
-- Do not infer a national direct price unless it is present in a verified official source.
-
-The generated AVIA dataset is intended to preserve station/EVSE granularity and attach tariff provenance/confidence metadata so downstream TCC logic can safely prefer verified direct-CPO tariffs when available.
+Le collecteur national AVIA/Picoty filtre le CPO Picoty via l'identifiant `FR*PY2`. `AVIA VOLT` est conservé comme marque commerciale, mais les tarifs sont séparés en trois catégories : paiement direct CPO, offre AVIA Carte/Deft Power, et roaming tiers. Un tarif national ne doit jamais être déduit d'une source secondaire ou d'un prix eMSP.
