@@ -6,78 +6,124 @@ const INVENTORY='data/national/etotem_direct_stations_france.json.gz';
 const OUTPUT='data/national/etotem_direct_tariffs_france.json.gz';
 const HOME='https://www.e-totem.fr/';
 const CONCURRENCY=3;
-const MATCH_RADIUS_M=150;
+const MATCH_RADIUS_M=120;
+const BROAD_QUERIES=[
+  'e-Totem','SEMOB','INTERMARCHE','Carrefour','Super U','Hyper U','U Express','Utile',
+  'Cooperative U','Saint Etienne','Saint-Étienne','G10'
+];
 
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function normId(v){return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');}
 function normText(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();}
 function direct(e){return String(e?.bOcpi??0)==='0'&&String(e?.bGireve??0)==='0'&&String(e?.bItinerance??0)==='0';}
+function frApiId(e){return normId(e?.sIdPool).startsWith('FR');}
 function distanceM(a,b){const R=6371000,r=Math.PI/180,dLat=(b.lat-a.lat)*r,dLon=(b.lon-a.lon)*r,la1=a.lat*r,la2=b.lat*r;const h=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
-function htmlToText(v){let s=String(v||'');const entities={'&euro;':'€','&amp;':'&','&nbsp;':' ','&apos;':"'",'&quot;':'"','&agrave;':'à','&Agrave;':'À','&eacute;':'é','&Eacute;':'É','&ecirc;':'ê','&acirc;':'â','&ocirc;':'ô','&ucirc;':'û','&icirc;':'î','&ccedil;':'ç','&ugrave;':'ù','&rsquo;':"'"};for(let round=0;round<3;round++)s=s.replace(/&(euro|amp|nbsp|apos|quot|agrave|Agrave|eacute|Eacute|ecirc|acirc|ocirc|ucirc|icirc|ccedil|ugrave|rsquo);/g,m=>entities[m]||m).replace(/&#0*39;/g,"'").replace(/&#0*34;/g,'"').replace(/&#0*160;/g,' ').replace(/&#x0*27;/gi,"'").replace(/&#x0*a0;/gi,' ');return s.replace(/<br\s*\/?\s*>/gi,'\n').replace(/<\/p\s*>/gi,'\n').replace(/<[^>]+>/g,' ').replace(/\r/g,'').replace(/[ \t]+/g,' ').replace(/ *\n+ */g,'\n').trim();}
-function tariffSignature(text){return String(text||'').toLowerCase().replace(/\s+/g,' ').trim();}
-function num(v){const n=Number(String(v).replace(',','.'));return Number.isFinite(n)?n:null;}
-function parseHints(text){const t=String(text||''),kwh=[],timeFees=[],grace=[],powerThresholds=[];for(const m of t.matchAll(/(\d+(?:[.,]\d+)?)\s*€\s*(?:\/|par)?\s*kwh/gi)){const n=num(m[1]);if(n!==null&&!kwh.includes(n))kwh.push(n);}for(const m of t.matchAll(/(\d+(?:[.,]\d+)?)\s*€\s*(?:\/|par\s+tranche(?:\s+entam[eé]e)?\s+de)?\s*(\d+)\s*min/gi)){const item={eur:num(m[1]),minutes:Number(m[2]),raw:m[0]};if(!timeFees.some(x=>x.eur===item.eur&&x.minutes===item.minutes))timeFees.push(item);}for(const m of t.matchAll(/(\d+)\s*(min|h(?:eure)?s?)\s+gratuite?s?/gi)){let minutes=Number(m[1]);if(/^h/i.test(m[2]))minutes*=60;if(!grace.includes(minutes))grace.push(minutes);}for(const m of t.matchAll(/(?:jusqu(?:'|’|\s)?(?:a|à)|au[- ]del[aà]|de|point de charge)\s*([^\n]{0,50}?)(\d+(?:[.,]\d+)?)\s*kw/gi)){const n=num(m[2]);if(n!==null&&!powerThresholds.includes(n))powerThresholds.push(n);}return {pricePerKwhCandidatesEur:kwh,timeFeeCandidates:timeFees,freeGraceMinutesCandidates:grace,powerThresholdCandidatesKw:powerThresholds};}
-function searchVariants(t){
-  const values=[];
-  const add=v=>{v=String(v||'').trim();if(v.length>=3&&!values.some(x=>normText(x)===normText(v)))values.push(v.slice(0,120));};
-  add(t.name);
-  add(String(t.name||'').replace(/^\s*e[ -]?totem\s*[-–—:]?\s*/i,''));
-  const parts=String(t.name||'').split(/\s[-–—:]\s/).map(x=>x.trim()).filter(Boolean);if(parts.length>1)add(parts.at(-1));
-  add(t.brandName);
-  add(t.stationIdLocal);
-  add(t.stationId);
-  return values.slice(0,5);
+function decodeEntities(s){
+  const named={euro:'€',amp:'&',nbsp:' ',apos:"'",quot:'"',agrave:'à',Agrave:'À',eacute:'é',Eacute:'É',ecirc:'ê',acirc:'â',ocirc:'ô',ucirc:'û',icirc:'î',ccedil:'ç',ugrave:'ù',rsquo:"'",laquo:'«',raquo:'»'};
+  return String(s||'').replace(/&([A-Za-z]+);/g,(m,k)=>Object.hasOwn(named,k)?named[k]:m).replace(/&#(\d+);/g,(m,n)=>String.fromCodePoint(Number(n))).replace(/&#x([0-9a-f]+);/gi,(m,n)=>String.fromCodePoint(parseInt(n,16)));
 }
-function matchCandidate(target,elements){
-  const native=(elements||[]).filter(direct),wanted=new Set([normId(target.stationId),normId(target.stationIdLocal)].filter(Boolean));
-  for(const e of native){if(wanted.has(normId(e?.sIdPool))||wanted.has(normId(e?.sIdPoolUnique)))return {element:e,matchMethod:'id',distanceM:0};}
-  if(Number.isFinite(target.latitude)&&Number.isFinite(target.longitude)){
-    let nearest=null;
-    for(const e of native){const lat=Number(e?.fLatitude),lon=Number(e?.fLongitude);if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;const d=distanceM({lat:target.latitude,lon:target.longitude},{lat,lon});if(d<=MATCH_RADIUS_M&&(!nearest||d<nearest.distanceM))nearest={element:e,matchMethod:'coordinates',distanceM:Math.round(d)};}
-    if(nearest)return nearest;
-  }
-  return null;
+function htmlToText(v){let s=String(v||'');for(let i=0;i<3;i++)s=decodeEntities(s);return s.replace(/<br\s*\/?\s*>/gi,'\n').replace(/<\/p\s*>/gi,'\n').replace(/<[^>]+>/g,' ').replace(/\\'/g,"'").replace(/\r/g,'').replace(/[ \t]+/g,' ').replace(/ *\n+ */g,'\n').trim();}
+function num(v){const n=Number(String(v).replace(',','.'));return Number.isFinite(n)?n:null;}
+function parseHints(text){
+  const t=String(text||''),kwh=[],timeFees=[],grace=[],caps=[];
+  for(const m of t.matchAll(/(\d+(?:[.,]\d+)?)\s*€\s*(?:\/|par)?\s*kwh/gi)){const n=num(m[1]);if(n!==null&&!kwh.includes(n))kwh.push(n);}
+  for(const m of t.matchAll(/(\d+(?:[.,]\d+)?)\s*€\s*\/?\s*(\d+)\s*min/gi)){const item={eur:num(m[1]),minutes:Number(m[2]),raw:m[0]};if(!timeFees.some(x=>x.eur===item.eur&&x.minutes===item.minutes))timeFees.push(item);}
+  for(const m of t.matchAll(/(\d+)\s*min(?:ute)?s?\s+gratuite?s?/gi)){const n=Number(m[1]);if(!grace.includes(n))grace.push(n);}
+  for(const m of t.matchAll(/plafonn?[eé]\s+[àa]\s*(\d+(?:[.,]\d+)?)\s*€(?:\s+entre\s+(\d{1,2})h(?:\d{2})?\s+et\s+(\d{1,2})h(?:\d{2})?)?/gi))caps.push({eur:num(m[1]),start:m[2]?`${m[2].padStart(2,'0')}:00`:null,end:m[3]?`${m[3].padStart(2,'0')}:00`:null,raw:m[0]});
+  const eco=/\bmode\s+eco\b/i.test(t);
+  const postCharge=/une fois le v[eé]hicule recharg[eé]|apr[eè]s (?:la )?recharge|post[- ]charge/i.test(t);
+  const noPost=/sans (?:forfait (?:de )?)?post[- ]charge/i.test(t);
+  return {pricePerKwhCandidatesEur:kwh,timeFeeCandidates:timeFees,freeGraceMinutesCandidates:grace,capCandidates:caps,mentionsEcoMode:eco,postChargeSemantics:postCharge,noPostChargeFee:noPost};
+}
+function familyOf(id){const n=normId(id);for(const p of ['FRETI','FRESE','FRG10','FRCAR','FRSUA'])if(n.startsWith(p))return p;return n.slice(0,5)||'UNKNOWN';}
+function apiTariffRaw(e){return String(e?.sWebTexte||e?.sWebTextePool||e?.aBornes?.[0]?.sWebTextePool||e?.aBornes?.[0]?.szWebTexte||'').trim();}
+function apiCoords(e){const lat=Number(e?.fLatitude??e?.latitude),lon=Number(e?.fLongitude??e?.longitude);return Number.isFinite(lat)&&Number.isFinite(lon)?{lat,lon}:null;}
+function elementKey(e){return normId(e?.sIdPool)||normId(e?.sIdPoolUnique)||`${e?.sOrigine||''}|${e?.nIdPool||''}|${e?.fLatitude||''}|${e?.fLongitude||''}`;}
+function targetNameVariants(t){
+  const out=[],add=v=>{v=String(v||'').trim();if(v.length>=3&&!out.some(x=>normText(x)===normText(v)))out.push(v.slice(0,100));};
+  add(t.name);add(String(t.name||'').replace(/^\s*e[ -]?totem\s*[-–—:]?\s*/i,''));add(t.brandName);add(t.stationIdLocal);
+  const n=String(t.name||'').replace(/^\s*(?:e[ -]?totem|semob)\s*[-–—:]?\s*/i,'').trim();
+  const words=n.split(/\s+/).filter(x=>x.length>=4);if(words.length>=2)add(words.slice(-3).join(' '));if(words.length)add(words.at(-1));
+  return out.slice(0,4);
+}
+function safeCoordinateCandidate(t,elements){
+  if(!Number.isFinite(t.latitude)||!Number.isFinite(t.longitude))return null;
+  const near=[];
+  for(const e of elements){const c=apiCoords(e);if(!c)continue;const d=distanceM({lat:t.latitude,lon:t.longitude},c);if(d<=MATCH_RADIUS_M)near.push({e,d});}
+  near.sort((a,b)=>a.d-b.d);if(!near.length)return null;
+  if(near.length===1)return near[0];
+  if(near[0].d<=35&&near[1].d-near[0].d>=25)return near[0];
+  const tn=normText(t.name),scored=near.map(x=>{const en=normText(x.e?.sLibelle),tokens=tn.split(' ').filter(w=>w.length>=4),hit=tokens.filter(w=>en.includes(w)).length;return {...x,hit};}).sort((a,b)=>b.hit-a.hit||a.d-b.d);
+  return scored[0].hit>=2&&scored[0].hit>scored[1].hit?scored[0]:null;
 }
 
 if(!fs.existsSync(INVENTORY))throw new Error(`Missing ${INVENTORY}`);
 const inv=JSON.parse(zlib.gunzipSync(fs.readFileSync(INVENTORY)).toString('utf8'));
-const targets=(inv.stations||[]).map((s,index)=>({index,stationId:s.stationId,stationIdLocal:s.stationIdLocal,name:s.name,brandName:s.brandName,developerName:s.developerName,address:s.address,latitude:Number(s.latitude),longitude:Number(s.longitude),maxPowerKw:s.maxPowerKw,pdcCount:s.pdcCount,dataset:s.dataset?.title||null}));
-console.log(`[e-Totem] inventory=${targets.length}; strategy=public station search index; concurrency=${CONCURRENCY}`);
+const targets=(inv.stations||[]).map((s,index)=>({index,stationId:s.stationId,stationIdLocal:s.stationIdLocal||'',name:s.name||'',brandName:s.brandName||'',address:s.address||'',latitude:Number(s.latitude),longitude:Number(s.longitude),maxPowerKw:Number(s.maxPowerKw||0),pdcCount:Number(s.pdcCount||0),pdcs:s.pdcs||[],dataset:s.dataset?.title||'',family:familyOf(s.stationId)}));
+console.log(`[e-Totem] inventory=${targets.length}; strategy=hybrid broad index + targeted fallback`);
 
 const browser=await chromium.launch({headless:true,executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});
 const page=await browser.newPage({locale:'fr-FR',viewport:{width:1280,height:900}});
 await page.goto(HOME,{waitUntil:'domcontentloaded',timeout:60000});
 
-const sentry=await page.evaluate(async()=>{const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),15000);try{const p=new URLSearchParams({sLibelleBorne:'INTERMARCHE MANE',bUniquementBornesDisponibles:'false',bNePasClusteriser:'1',nBornesPrivees:'0'});const r=await fetch('/api/Stations?'+p.toString(),{credentials:'include',cache:'no-store',signal:ctl.signal});const j=await r.json();const a=Array.isArray(j?.aElements)?j.aElements:[],m=a.find(e=>String(e?.sIdPool||'').toUpperCase().replace(/[^A-Z0-9]/g,'')==='FRETIP31315A');return {status:r.status,count:a.length,mane:!!m,direct:!!m&&String(m?.bOcpi??0)==='0'&&String(m?.bGireve??0)==='0'&&String(m?.bItinerance??0)==='0',tariff:!!String(m?.sWebTexte||'').trim()};}finally{clearTimeout(timer);}});
-if(sentry.status!==200||!sentry.mane||!sentry.direct||!sentry.tariff){await browser.close();throw new Error(`Search-index Mane sentry failed: ${JSON.stringify(sentry)}`);}
-console.log(`[e-Totem] search-index Mane sentry OK status=${sentry.status} count=${sentry.count} tariff=true`);
+const allElements=new Map();let requestCount=0,errorCount=0,retryCount=0,detailCount=0,broadCalls=0,targetedCalls=0;
+async function search(query,attempt=0){
+  requestCount++;
+  try{
+    const result=await page.evaluate(async q=>{const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),25000);try{const u='/api/Stations?sLibelleBorne='+encodeURIComponent(q)+'&bUniquementBornesDisponibles=false&bNePasClusteriser=1&nBornesPrivees=0';const r=await fetch(u,{credentials:'include',cache:'no-store',signal:ctl.signal});const text=await r.text();if(!r.ok)throw new Error(`http_${r.status}`);const j=JSON.parse(text);return Array.isArray(j?.aElements)?j.aElements:[];}finally{clearTimeout(timer);}},query);
+    return result;
+  }catch(err){if(attempt<2){retryCount++;await sleep(500*(attempt+1));return search(query,attempt+1);}errorCount++;return [];}
+}
+async function addSearch(query,kind){const elements=await search(query);if(kind==='broad')broadCalls++;else targetedCalls++;for(const e of elements)if(direct(e)&&frApiId(e))allElements.set(elementKey(e),e);return elements.length;}
 
-const payload=targets.map(t=>({...t,variants:searchVariants(t)}));
-const harvest=await page.evaluate(async ({targets,concurrency,matchRadius})=>{
-  const normId=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
-  const direct=e=>String(e?.bOcpi??0)==='0'&&String(e?.bGireve??0)==='0'&&String(e?.bItinerance??0)==='0';
-  const dist=(a,b)=>{const R=6371000,r=Math.PI/180,dLat=(b.lat-a.lat)*r,dLon=(b.lon-a.lon)*r,la1=a.lat*r,la2=b.lat*r;const h=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));};
-  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-  let requestCount=0,errorCount=0,retryCount=0,detailCount=0;
-  async function getJson(url,attempt=0){const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),12000);try{requestCount++;const r=await fetch(url,{credentials:'include',cache:'no-store',signal:ctl.signal});const text=await r.text();if(!r.ok)throw new Error(`http_${r.status}`);return JSON.parse(text);}catch(e){if(attempt<1){retryCount++;await sleep(500);return getJson(url,attempt+1);}errorCount++;return null;}finally{clearTimeout(timer);}}
-  function match(t,elements){const native=(elements||[]).filter(direct),wanted=new Set([normId(t.stationId),normId(t.stationIdLocal)].filter(Boolean));for(const e of native){if(wanted.has(normId(e?.sIdPool))||wanted.has(normId(e?.sIdPoolUnique)))return {element:e,matchMethod:'id',distanceM:0};}if(Number.isFinite(t.latitude)&&Number.isFinite(t.longitude)){let nearest=null;for(const e of native){const lat=Number(e?.fLatitude),lon=Number(e?.fLongitude);if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;const d=dist({lat:t.latitude,lon:t.longitude},{lat,lon});if(d<=matchRadius&&(!nearest||d<nearest.distanceM))nearest={element:e,matchMethod:'coordinates',distanceM:Math.round(d)};}if(nearest)return nearest;}return null;}
-  async function one(t){
-    const seen=new Set();
-    for(const term of t.variants||[]){const key=String(term||'').trim().toLowerCase();if(!key||seen.has(key))continue;seen.add(key);const p=new URLSearchParams({sLibelleBorne:term,bUniquementBornesDisponibles:'false',bNePasClusteriser:'1',nBornesPrivees:'0'});const j=await getJson('/api/Stations?'+p.toString());const found=match(t,Array.isArray(j?.aElements)?j.aElements:[]);if(found){let e=found.element;const tariff=String(e?.sWebTexte||e?.aBornes?.[0]?.sWebTextePool||e?.aBornes?.[0]?.szWebTexte||'').trim();const bornes=Array.isArray(e?.aBornes)?e.aBornes:[];if((!tariff||bornes.length===0)&&e?.sOrigine&&e?.nIdPool!=null){const detail=await getJson('/api/Stations/'+encodeURIComponent(e.sOrigine)+'/'+encodeURIComponent(String(e.nIdPool)));detailCount++;const de=Array.isArray(detail?.aElements)?detail.aElements.find(direct):null;if(de)e=de;}return {...found,element:e,searchTerm:term};}}
-    return {resolved:false};
+for(const q of BROAD_QUERIES){const n=await addSearch(q,'broad');console.log(`[e-Totem] broad ${JSON.stringify(q)} -> ${n} API elements; native FR pool=${allElements.size}`);await sleep(180);}
+
+const matched=new Map();let exact=0,coordinate=0,targetedResolved=0;
+function reindexAndMatch(unresolvedOnly=false){
+  const elements=[...allElements.values()];const byId=new Map();for(const e of elements){const id=normId(e?.sIdPool);if(id)byId.set(id,e);}
+  for(const t of targets){if(matched.has(t.index))continue;const e=byId.get(normId(t.stationId));if(e){matched.set(t.index,{element:e,method:'id',distanceM:0});exact++;continue;}const c=safeCoordinateCandidate(t,elements);if(c){matched.set(t.index,{element:c.e,method:'coordinates',distanceM:Math.round(c.d)});coordinate++;}}
+}
+reindexAndMatch();
+console.log(`[e-Totem] after broad preload resolved=${matched.size}/${targets.length}; exact=${exact}; coordinate=${coordinate}`);
+
+const pending=()=>targets.filter(t=>!matched.has(t.index));
+let queue=pending(),next=0;
+async function targetedWorker(){
+  while(true){const pos=next++;if(pos>=queue.length)return;const t=queue[pos];let found=false;
+    for(const q of targetNameVariants(t)){
+      const before=allElements.size;await addSearch(q,'targeted');
+      const fresh=[...allElements.values()];const id=fresh.find(e=>normId(e?.sIdPool)===normId(t.stationId));
+      if(id){matched.set(t.index,{element:id,method:'id',distanceM:0});exact++;targetedResolved++;found=true;break;}
+      const c=safeCoordinateCandidate(t,fresh);if(c){matched.set(t.index,{element:c.e,method:'coordinates',distanceM:Math.round(c.d)});coordinate++;targetedResolved++;found=true;break;}
+      if(allElements.size===before)await sleep(80);
+    }
+    if(!found&&pos%25===0)console.log(`[e-Totem] targeted progress ${pos}/${queue.length}; resolved=${matched.size}`);
+    await sleep(120);
   }
-  const out=new Array(targets.length);let next=0,done=0;
-  async function worker(){while(true){const i=next++;if(i>=targets.length)return;out[i]=await one(targets[i]);done++;if(done%50===0||done===targets.length)console.log(`[e-Totem/browser] progress ${done}/${targets.length}; resolved=${out.filter(x=>x?.element).length}; requests=${requestCount}; errors=${errorCount}`);await sleep(120);}}
-  await Promise.all(Array.from({length:concurrency},()=>worker()));
-  return {out,stats:{requestCount,errorCount,retryCount,detailCount,resolved:out.filter(x=>x?.element).length}};
-},{targets:payload,concurrency:CONCURRENCY,matchRadius:MATCH_RADIUS_M});
-await browser.close();
-console.log('[e-Totem] search harvest',JSON.stringify(harvest.stats));
+}
+await Promise.all(Array.from({length:CONCURRENCY},()=>targetedWorker()));
+reindexAndMatch(true);
+console.log(`[e-Totem] final matching resolved=${matched.size}/${targets.length}; exact=${exact}; coordinate=${coordinate}; targetedResolved=${targetedResolved}`);
 
-const stations=[];let exact=0,coordFallback=0,unresolved=0,withTariff=0;
-for(const target of targets){const r=harvest.out?.[target.index];if(!r?.element||!direct(r.element)){unresolved++;stations.push({...target,resolved:false});continue;}if(r.matchMethod==='id')exact++;else coordFallback++;const match=r.element,tariffHtml=String(match.sWebTexte||match.aBornes?.[0]?.sWebTextePool||match.aBornes?.[0]?.szWebTexte||''),tariffText=htmlToText(tariffHtml),signature=tariffSignature(tariffText);if(tariffText)withTariff++;stations.push({...target,resolved:true,matchMethod:r.matchMethod,distanceM:r.distanceM??null,searchTerm:r.searchTerm||null,api:{sIdPool:match.sIdPool,sIdPoolUnique:match.sIdPoolUnique,sOrigine:match.sOrigine,sLibelle:match.sLibelle,sNomReseau:match.sNomReseau,sTypeBorne:match.sTypeBorne,bOcpi:match.bOcpi,bGireve:match.bGireve,bItinerance:match.bItinerance,nIdPool:match.nIdPool},tariffHtml,tariffText,tariffSignature:signature,tariffHints:parseHints(tariffText),apiPdc:(match.aBornes||[]).flatMap(b=>(b.aPdc||[]).map(p=>({nIdPdc:p.nIdPdc,nIdBorne:p.nIdBorne,nConnectorId:p.nConnectorId,status:p.szStatus,types:p.szTypePrises||[]})))});}
-const profileMap=new Map();for(const s of stations.filter(s=>s.resolved&&s.tariffText)){if(!profileMap.has(s.tariffSignature))profileMap.set(s.tariffSignature,{count:0,text:s.tariffText,hints:s.tariffHints,exampleStations:[]});const p=profileMap.get(s.tariffSignature);p.count++;if(p.exampleStations.length<8)p.exampleStations.push({stationId:s.stationId,name:s.name,network:s.api?.sNomReseau,maxPowerKw:s.maxPowerKw});}
-const profiles=[...profileMap.values()].sort((a,b)=>b.count-a.count);
-const output={schemaVersion:'3.0.0',generatedAt:new Date().toISOString(),operator:'e-Totem',country:'FR',scope:{physicalCpoDirectOnly:true,roamingIncluded:false,source:'public anonymous e-Totem /api/Stations station-label search index joined to strict e-Totem IRVE inventory',nativeFilter:'bOcpi=0 AND bGireve=0 AND bItinerance=0',noGuessedFallback:true},harvest:{strategy:'anonymous station-label search + exact EMI3 join + <=150m coordinate fallback + detail endpoint only when needed',concurrency:CONCURRENCY,...harvest.stats},counts:{inventoryStations:targets.length,resolvedStations:exact+coordFallback,exactIdMatches:exact,coordinateFallbackMatches:coordFallback,unresolvedStations:unresolved,resolvedWithTariffText:withTariff,uniqueTariffProfiles:profiles.length},tariffProfiles:profiles,stations};
-fs.mkdirSync('data/national',{recursive:true});fs.writeFileSync(OUTPUT,zlib.gzipSync(Buffer.from(JSON.stringify(output),'utf8'),{level:9}));
-console.log(JSON.stringify({harvest:output.harvest,counts:output.counts},null,2));
-console.log(JSON.stringify(profiles.slice(0,30).map((p,i)=>({rank:i+1,count:p.count,text:p.text.slice(0,900),hints:p.hints,examples:p.exampleStations.slice(0,3)})),null,2));
+async function detail(e){
+  const origin=String(e?.sOrigine||''),id=String(e?.nIdPool||'');if(!origin||!id)return e;detailCount++;requestCount++;
+  try{return await page.evaluate(async ({origin,id})=>{const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),20000);try{const r=await fetch('/api/Stations/'+encodeURIComponent(origin)+'/'+encodeURIComponent(id),{credentials:'include',cache:'no-store',signal:ctl.signal});if(!r.ok)throw new Error(`http_${r.status}`);const j=await r.json();return Array.isArray(j?.aElements)&&j.aElements[0]?j.aElements[0]:j;}finally{clearTimeout(timer);}},{origin,id});}catch{errorCount++;return e;}
+}
+
+const records=[];const profiles=new Map();
+for(const t of targets){
+  const m=matched.get(t.index);if(!m){records.push({...t,resolved:false,reason:'not_found_in_public_native_index'});continue;}
+  let e=m.element;let raw=apiTariffRaw(e);if(!raw||!(e?.aBornes?.length)){e=await detail(e);raw=apiTariffRaw(e);}
+  const clean=htmlToText(raw),hints=parseHints(clean),sig=normText(clean);
+  if(clean){if(!profiles.has(sig))profiles.set(sig,{text:clean,rawHtml:raw,count:0,hints,examples:[]});const p=profiles.get(sig);p.count++;if(p.examples.length<5)p.examples.push({stationId:t.stationId,name:t.name,network:e?.sNomReseau||'',maxPowerKw:t.maxPowerKw});}
+  records.push({...t,resolved:true,matchMethod:m.method,matchDistanceM:m.distanceM,tariffRawHtml:raw,tariffText:clean,tariffHints:hints,api:{sIdPool:e?.sIdPool||'',sIdPoolUnique:e?.sIdPoolUnique||'',sOrigine:e?.sOrigine||'',nIdPool:e?.nIdPool??null,sLibelle:e?.sLibelle||'',sNomReseau:e?.sNomReseau||'',fLatitude:Number(e?.fLatitude),fLongitude:Number(e?.fLongitude),bOcpi:e?.bOcpi??0,bGireve:e?.bGireve??0,bItinerance:e?.bItinerance??0,aBornes:Array.isArray(e?.aBornes)?e.aBornes:[]}});
+}
+await browser.close();
+
+const coverage={};for(const fam of ['FRETI','FRESE','FRG10','FRCAR','FRSUA']){const subset=records.filter(r=>r.family===fam),resolved=subset.filter(r=>r.resolved),withTariff=resolved.filter(r=>r.tariffText);coverage[fam]={inventory:subset.length,resolved:resolved.length,withTariff:withTariff.length,unresolved:subset.length-resolved.length};}
+const resolvedRecords=records.filter(r=>r.resolved),withTariff=resolvedRecords.filter(r=>r.tariffText);
+const tariffProfiles=[...profiles.values()].sort((a,b)=>b.count-a.count).map((p,i)=>({rank:i+1,...p}));
+const out={schemaVersion:'2.0.0',generatedAt:new Date().toISOString(),operator:'e-Totem',country:'FR',scope:{physicalCpoDirectOnly:true,roamingIncluded:false,noGuessedFallback:true,source:'public e-Totem station search index joined to strict IRVE physical-CPO inventory',nativeFilter:'bOcpi=0 AND bGireve=0 AND bItinerance=0',tariffPolicy:'station-specific public tariff text; ECO/member alternatives retained as text but never selected as default automatically'},harvest:{strategy:'broad public index preload + exact EMI3 join + safe coordinate fallback + targeted station-label searches',concurrency:CONCURRENCY,broadQueries:BROAD_QUERIES,broadCalls,targetedCalls,requestCount,errorCount,retryCount,detailCount,targetedResolved,nativeFrElementsSeen:allElements.size},counts:{inventoryStations:targets.length,resolvedStations:resolvedRecords.length,exactIdMatches:exact,coordinateFallbackMatches:coordinate,unresolvedStations:targets.length-resolvedRecords.length,resolvedWithTariffText:withTariff.length,uniqueTariffProfiles:tariffProfiles.length},coverageByFamily:coverage,tariffProfiles,stations:records};
+fs.mkdirSync('data/national',{recursive:true});fs.writeFileSync(OUTPUT,zlib.gzipSync(Buffer.from(JSON.stringify(out))));
+console.log(JSON.stringify({harvest:out.harvest,counts:out.counts,coverageByFamily:coverage},null,2));
+console.log(JSON.stringify(tariffProfiles.slice(0,20).map(p=>({rank:p.rank,count:p.count,text:p.text.slice(0,400),hints:p.hints,examples:p.examples.slice(0,3)})),null,2));
