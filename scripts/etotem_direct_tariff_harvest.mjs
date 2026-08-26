@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 
 const INVENTORY='data/national/etotem_direct_stations_france.json.gz';
 const OUTPUT='data/national/etotem_direct_tariffs_france.json.gz';
-const PORTAL='https://www.e-totem.fr/#/home/ou_se_recharger';
+const ORIGIN='https://www.e-totem.fr/';
 const CONCURRENCY=8;
 const BATCH=80;
 
@@ -34,22 +34,29 @@ console.log(`[e-Totem] inventory=${targets.length}`);
 
 const browser=await chromium.launch({headless:true,executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});
 const page=await browser.newPage({locale:'fr-FR',viewport:{width:1440,height:1000}});
-let stationHeaders=null;
-page.on('request',req=>{if(!stationHeaders&&req.url().includes('/api/Stations?')&&['xhr','fetch'].includes(req.resourceType()))stationHeaders=req.headers();});
-await page.goto(PORTAL,{waitUntil:'domcontentloaded',timeout:60000});
-for(let i=0;i<60&&!stationHeaders;i++)await page.waitForTimeout(500);
-if(!stationHeaders){await browser.close();throw new Error('Could not capture public anonymous Stations request headers');}
-console.log('[e-Totem] anonymous bootstrap OK; starting station-by-station harvest');
+await page.goto(ORIGIN,{waitUntil:'domcontentloaded',timeout:60000});
+const bootstrap=await page.evaluate(async()=>{
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),10000);
+  try{
+    const r=await fetch('/api/ConnexionAnonyme',{method:'POST',headers:{Accept:'application/json'},signal:ctl.signal});
+    const text=await r.text();
+    if(!r.ok)throw new Error(`ConnexionAnonyme HTTP ${r.status}`);
+    const j=JSON.parse(text);
+    if(j?.bSucces!==true||!j?.szToken)throw new Error('ConnexionAnonyme returned no usable anonymous token');
+    window.__ETOTEM_HARVEST_TOKEN=j.szToken;
+    return {status:r.status,userType:j.szTypeUtilisateur||null,success:true};
+  }finally{clearTimeout(timer);}
+});
+if(!bootstrap?.success){await browser.close();throw new Error('Anonymous bootstrap failed');}
+console.log(`[e-Totem] ConnexionAnonyme OK status=${bootstrap.status} type=${bootstrap.userType||'unknown'}; starting station-by-station harvest`);
 
 const rawResults=[];
 for(let start=0;start<targets.length;start+=BATCH){
   const chunk=targets.slice(start,start+BATCH);
-  const part=await page.evaluate(async ({targets,headers,concurrency})=>{
-    const keep={};
-    for(const [k,v] of Object.entries(headers||{})){
-      const lk=k.toLowerCase();
-      if(!['host','content-length','origin','referer','sec-fetch-dest','sec-fetch-mode','sec-fetch-site','user-agent'].includes(lk))keep[k]=v;
-    }
+  const part=await page.evaluate(async ({targets,concurrency})=>{
+    const token=window.__ETOTEM_HARVEST_TOKEN;
+    if(!token)throw new Error('Anonymous token missing from browser memory');
+    const headers={Accept:'application/json',Authorization:'Bearer '+token};
     const norm=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
     const isDirect=e=>String(e?.bOcpi??0)==='0'&&String(e?.bGireve??0)==='0'&&String(e?.bItinerance??0)==='0';
     const dist=(a,b)=>{
@@ -62,8 +69,13 @@ for(let start=0;start<targets.length;start+=BATCH){
       const p=new URLSearchParams({fLatSudOuest:String(t.latitude-delta),fLongSudOuest:String(t.longitude-delta),fLatNordEst:String(t.latitude+delta),fLongNordEst:String(t.longitude+delta),bUniquementBornesDisponibles:'false',bCompatibleAutocharge:'0',nZoom:'18',bNePasClusteriser:'1',nBornesPrivees:'0',bRecupererBorneLaPlusProche:'0'});
       const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),6500);
       try{
-        const r=await fetch('/api/Stations?'+p.toString(),{headers:keep,signal:ctl.signal});
+        const r=await fetch('/api/Stations?'+p.toString(),{headers,signal:ctl.signal});
         const text=await r.text();
+        if(r.status===401&&attempt<1){
+          const ar=await fetch('/api/ConnexionAnonyme',{method:'POST',headers:{Accept:'application/json'}});
+          const aj=await ar.json();
+          if(ar.ok&&aj?.bSucces===true&&aj?.szToken){window.__ETOTEM_HARVEST_TOKEN=aj.szToken;headers.Authorization='Bearer '+aj.szToken;return query(t,delta,attempt+1);}
+        }
         if(!r.ok)throw new Error('http_'+r.status);
         const j=JSON.parse(text),elements=(Array.isArray(j?.aElements)?j.aElements:[]).filter(isDirect);
         return {elements,status:r.status};
@@ -92,11 +104,12 @@ for(let start=0;start<targets.length;start+=BATCH){
     async function worker(){while(true){const i=next++;if(i>=targets.length)return;out[i]=await one(targets[i]);await sleep(20);}}
     await Promise.all(Array.from({length:concurrency},()=>worker()));
     return out;
-  },{targets:chunk,headers:stationHeaders,concurrency:CONCURRENCY});
+  },{targets:chunk,concurrency:CONCURRENCY});
   rawResults.push(...part);
   const resolvedSoFar=rawResults.filter(x=>x?.resolved).length;
   console.log(`[e-Totem] progress ${Math.min(start+BATCH,targets.length)}/${targets.length}; resolved=${resolvedSoFar}`);
 }
+await page.evaluate(()=>{delete window.__ETOTEM_HARVEST_TOKEN;});
 await browser.close();
 
 const resultByIndex=new Map(rawResults.map(r=>[r.index,r]));
@@ -118,7 +131,7 @@ for(const s of stations.filter(s=>s.resolved&&s.tariffText)){
   if(p.exampleStations.length<8)p.exampleStations.push({stationId:s.stationId,name:s.name,network:s.api?.sNomReseau,maxPowerKw:s.maxPowerKw});
 }
 const profiles=[...profileMap.values()].sort((a,b)=>b.count-a.count);
-const output={schemaVersion:'1.2.0',generatedAt:new Date().toISOString(),operator:'e-Totem',country:'FR',scope:{physicalCpoDirectOnly:true,roamingIncluded:false,source:'public anonymous e-Totem /api/Stations joined to strict e-Totem IRVE inventory',nativeFilter:'bOcpi=0 AND bGireve=0 AND bItinerance=0',noGuessedFallback:true},harvest:{strategy:'station-by-station tight bbox + bounded wider fallback',concurrency:CONCURRENCY,batchSize:BATCH},counts:{inventoryStations:targets.length,resolvedStations:exact+coordFallback,exactIdMatches:exact,coordinateFallbackMatches:coordFallback,unresolvedStations:unresolved,resolvedWithTariffText:withTariff,uniqueTariffProfiles:profiles.length},tariffProfiles:profiles,stations};
+const output={schemaVersion:'1.3.0',generatedAt:new Date().toISOString(),operator:'e-Totem',country:'FR',scope:{physicalCpoDirectOnly:true,roamingIncluded:false,source:'public anonymous e-Totem API: ConnexionAnonyme + authenticated /api/Stations joined to strict e-Totem IRVE inventory',nativeFilter:'bOcpi=0 AND bGireve=0 AND bItinerance=0',noGuessedFallback:true},harvest:{strategy:'direct anonymous API bootstrap + station-by-station tight bbox + bounded wider fallback',concurrency:CONCURRENCY,batchSize:BATCH},counts:{inventoryStations:targets.length,resolvedStations:exact+coordFallback,exactIdMatches:exact,coordinateFallbackMatches:coordFallback,unresolvedStations:unresolved,resolvedWithTariffText:withTariff,uniqueTariffProfiles:profiles.length},tariffProfiles:profiles,stations};
 fs.mkdirSync('data/national',{recursive:true});
 fs.writeFileSync(OUTPUT,zlib.gzipSync(Buffer.from(JSON.stringify(output),'utf8'),{level:9}));
 console.log(JSON.stringify({harvest:output.harvest,counts:output.counts},null,2));
