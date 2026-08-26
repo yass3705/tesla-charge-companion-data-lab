@@ -1,0 +1,82 @@
+name: WAAT Monta national direct tariffs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 4 * * 2'
+  push:
+    paths:
+      - 'scripts/waat_monta_national.mjs'
+      - '.github/workflows/waat-monta-national-tariffs.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: waat-monta-national-tariffs
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright core
+        run: npm install --no-save playwright-core@1.55.0
+      - name: Ensure current WAAT inventory exists
+        run: |
+          test -f data/national/waat_direct_stations_france.json.gz
+      - name: Collect public Monta direct prices
+        env:
+          WAAT_CONCURRENCY: '6'
+        run: node scripts/waat_monta_national.mjs
+      - name: Validate conservative output
+        run: |
+          python - <<'PY'
+          import gzip,json
+          p=json.load(gzip.open('data/national/waat_monta_direct_tariffs_france.json.gz','rt',encoding='utf-8'))
+          c=p['counts']
+          assert p['dataset']=='waat-monta-direct-tariffs-france'
+          assert p['scope']['directCpoOnly'] is True
+          assert p['scope']['roamingIncluded'] is False
+          assert p['scope']['unresolvedCasesNeverRankable'] is True
+          assert c['queriedStations'] >= 500, c
+          assert c['stationsWithMontaGroup'] > 0, c
+          assert c['rankableStations'] > 0, c
+          assert c['mapErrors'] < c['queriedStations'], c
+          for s in p['stations']:
+            for g in s.get('rankableGroups',[]):
+              assert g['rankable'] is True
+              assert g['dynamicPricing'] is False
+              assert isinstance(g['directEurPerKwh'],(int,float)) and g['directEurPerKwh'] > 0
+              assert '-' not in str(g.get('priceLabel') or '')
+          print(json.dumps(c,indent=2))
+          print(json.dumps(p.get('tariffDistribution',{}),indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: waat-monta-national-tariffs
+          path: |
+            data/national/waat_monta_direct_tariffs_france.json.gz
+            data/reports/waat_monta_national_tariffs_report.json
+          retention-days: 14
+      - name: Commit sanitized national snapshot
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/national/waat_monta_direct_tariffs_france.json.gz data/reports/waat_monta_national_tariffs_report.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'data: refresh national WAAT Monta direct tariffs'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
