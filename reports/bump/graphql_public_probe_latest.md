@@ -172,6 +172,11 @@ Introspection status: **200**, fields discovered: **30**
 - input `latitude` → `NON_NULL/Float`
 - input `longitude` → `NON_NULL/Float`
 
+## Type `LocationSearchZoneInput` (INPUT_OBJECT)
+
+- input `bottomRight` → `NON_NULL/LocationSearchPointInput`
+- input `topLeft` → `NON_NULL/LocationSearchPointInput`
+
 ## Type `Point` (OBJECT)
 
 - field `latitude` → `NON_NULL/Float`
