@@ -1,0 +1,81 @@
+name: WAAT Monta members error diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/waat-monta-members-error-diagnostic.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install --disable-pip-version-check selenium
+      - name: Diagnose one WAAT members request
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports
+          python - <<'PY'
+          import json,time,re
+          from pathlib import Path
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          opts=Options()
+          for a in ['--headless=new','--no-sandbox','--disable-dev-shm-usage','--window-size=1440,1000']:
+            opts.add_argument(a)
+          opts.set_capability('goog:loggingPrefs',{'performance':'ALL'})
+          d=webdriver.Chrome(options=opts)
+          try:
+            d.execute_cdp_cmd('Network.enable',{})
+            d.get('https://maps.monta.app/?lat=43.341484&lng=3.261133&zoom=17&locale=fr')
+            time.sleep(9)
+            perf=d.get_log('performance'); reqs={}; extras={}; resps={}
+            for row in perf:
+              try:m=json.loads(row['message'])['message'];p=m.get('params',{});rid=p.get('requestId')
+              except:continue
+              if m['method']=='Network.requestWillBeSent':reqs[rid]=p.get('request',{})
+              elif m['method']=='Network.requestWillBeSentExtraInfo':extras[rid]=p.get('headers',{})
+              elif m['method']=='Network.responseReceived':resps[rid]=p.get('response',{})
+            h={}
+            for rid,r in resps.items():
+              if '/api/v1/charge_points/map?' in str(r.get('url') or '') and int(r.get('status') or 0)==200:
+                h={**(reqs.get(rid,{}).get('headers') or {}),**(extras.get(rid) or {})}
+            allowed={'authorization','meta','uuid','operator','accept-language','timezone','accept','application','operation'}
+            hh={k:v for k,v in h.items() if str(k).lower() in allowed}
+            script="""
+              const done=arguments[arguments.length-1],url=arguments[0],headers=arguments[1];
+              fetch(url,{headers,credentials:'omit'}).then(async r=>done({status:r.status,text:await r.text(),headers:Object.fromEntries(r.headers.entries())})).catch(e=>done({status:0,error:String(e)}));
+            """
+            tests=[]
+            variants=[
+              ('captured_headers','https://api.monta.app/api/v1/charge_points?charge_point_group_id=714420',hh),
+              ('no_accept','https://api.monta.app/api/v1/charge_points?charge_point_group_id=714420',{k:v for k,v in hh.items() if str(k).lower()!='accept'}),
+              ('with_location','https://api.monta.app/api/v1/charge_points?charge_point_group_id=714420',{**hh,'Location':'43.341484,3.261133'}),
+              ('with_lat_lng','https://api.monta.app/api/v1/charge_points?charge_point_group_id=714420&lat=43.341484&lng=3.261133',hh),
+            ]
+            for name,url,headers in variants:
+              x=d.execute_async_script(script,url,headers)
+              # Never persist auth values.
+              tests.append({'name':name,'url':url,'status':x.get('status'),'body':(x.get('text') or '')[:4000],'error':x.get('error')})
+            out={'tests':tests}
+            Path('data/reports/waat_monta_members_error_diagnostic.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+            print(json.dumps(out,ensure_ascii=False,indent=2))
+          finally:d.quit()
+          PY
+      - name: Commit diagnostic
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_monta_members_error_diagnostic.json
+          git diff --cached --quiet && exit 0
+          git commit -m "data: diagnose WAAT Monta group members request"
+          for attempt in 1 2 3 4 5; do git pull --rebase origin main; git push origin HEAD:main && exit 0; sleep $((attempt*2)); done
+          exit 1
