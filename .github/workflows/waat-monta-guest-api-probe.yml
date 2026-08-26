@@ -30,78 +30,82 @@ jobs:
 
           UA='Mozilla/5.0 TeslaChargeCompanion/1.0'
           BASE='https://api.monta.app'
-          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'bundleContexts':{},'guestAttempts':[],'apiProbes':[]}
+          ORIGIN='https://maps.monta.app'
+          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'guestAttempts':[],'apiProbes':[]}
 
-          # Inspect current public-map bundle for request shape.
-          html=urllib.request.urlopen(urllib.request.Request('https://maps.monta.app/',headers={'User-Agent':UA}),timeout=30).read().decode('utf-8','ignore')
-          src=re.search(r'<script[^>]+src=["\']([^"\']*index-[^"\']+\.js)',html,re.I)
-          jsurl='https://maps.monta.app'+src.group(1) if src and src.group(1).startswith('/') else (src.group(1) if src else '')
-          if jsurl:
-            js=urllib.request.urlopen(urllib.request.Request(jsurl,headers={'User-Agent':UA}),timeout=30).read().decode('utf-8','ignore')
-            for needle in ['/api/v1/auth/guest','/api/v1/charge_points/map','/api/v1/charge_points/${e}','/api/v1/charge_points']:
-              i=js.find(needle)
-              if i>=0: out['bundleContexts'][needle]=js[max(0,i-1200):min(len(js),i+2600)]
-
-          def req(url,method='GET',body=None,token=None,limit=500000):
-            headers={'User-Agent':UA,'Accept':'application/json','Origin':'https://maps.monta.app','Referer':'https://maps.monta.app/'}
+          def req(url,method='GET',body_marker=False,token=None,extra_headers=None,limit=900000):
+            headers={'User-Agent':UA,'Accept':'application/json','Origin':ORIGIN,'Referer':ORIGIN+'/'}
+            if extra_headers: headers.update(extra_headers)
             data=None
-            if body is not None:
-              data=json.dumps(body).encode();headers['Content-Type']='application/json'
+            if body_marker:
+              data=b''
             if token: headers['Authorization']='Bearer '+token
             r=urllib.request.Request(url,data=data,headers=headers,method=method)
             try:
-              with urllib.request.urlopen(r,timeout=30) as h:return h.status,h.geturl(),dict(h.headers),h.read(limit).decode('utf-8','ignore')
+              with urllib.request.urlopen(r,timeout=35) as h:return h.status,h.geturl(),dict(h.headers),h.read(limit).decode('utf-8','ignore')
             except urllib.error.HTTPError as e:return e.code,e.geturl(),dict(e.headers),e.read(limit).decode('utf-8','ignore')
 
-          token=None
-          # Try request shapes, stopping at first token-bearing response.
-          for method,body in [('GET',None),('POST',{}),('POST',{'platform':'web'}),('POST',{'source':'web-map'})]:
-            st,fu,he,txt=req(BASE+'/api/v1/auth/guest',method,body)
-            safe={'method':method,'body':body,'status':st,'contentType':he.get('Content-Type'),'bodyPreview':txt[:3000]}
+          def find_token(x):
+            if isinstance(x,dict):
+              for k,v in x.items():
+                if k.lower() in ('access_token','accesstoken') and isinstance(v,str) and len(v)>20:return v
+              for v in x.values():
+                z=find_token(v)
+                if z:return z
+            elif isinstance(x,list):
+              for v in x:
+                z=find_token(v)
+                if z:return z
+            return None
+
+          attempts=[
+            {'Operator':'monta'},
+            {'Operator':'monta','Application':'monta-web-map'},
+            {'Operator':'monta','Application':'monta-web-map','Application-Version':'1.0.0'},
+            {'Operator':'monta','Application':'monta-web-map','Version':'1.0.0'},
+            {'Operator':'monta','Operation':'monta-web-map'},
+          ]
+          token=None; winning_headers=None
+          for hset in attempts:
+            st,fu,he,txt=req(BASE+'/api/v1/auth/guest','POST',True,None,hset)
+            safe={'headers':hset,'status':st,'contentType':he.get('Content-Type'),'tokenFound':False,'bodyPreview':txt[:1800]}
             try:
-              d=json.loads(txt)
-              def find_token(x):
-                if isinstance(x,dict):
-                  for k,v in x.items():
-                    if k.lower() in ('token','accesstoken','access_token','bearertoken','bearer_token') and isinstance(v,str) and len(v)>20:return v
-                  for v in x.values():
-                    z=find_token(v)
-                    if z:return z
-                elif isinstance(x,list):
-                  for v in x:
-                    z=find_token(v)
-                    if z:return z
-              tok=find_token(d)
-              # redact token from persisted/logged response
+              d=json.loads(txt); tok=find_token(d)
               if tok:
-                token=tok
-                safe['tokenFound']=True;safe['tokenLength']=len(tok);safe['bodyPreview']='[token-bearing JSON redacted] keys='+str(list(d.keys()) if isinstance(d,dict) else type(d).__name__)
-              else:safe['tokenFound']=False
-            except Exception:safe['tokenFound']=False
+                token=tok; winning_headers=hset
+                safe['tokenFound']=True; safe['tokenLength']=len(tok); safe['bodyPreview']='[guest token redacted] top-level keys='+str(list(d.keys()) if isinstance(d,dict) else type(d).__name__)
+            except Exception: pass
             out['guestAttempts'].append(safe)
-            if token:break
+            if token: break
 
           if token:
+            common=winning_headers or {'Operator':'monta'}
             urls=[
+              BASE+'/api/v1/operators/current',
               BASE+'/api/v1/charge_points/218305',
               BASE+'/api/v1/charge_points/179509',
-              BASE+'/api/v1/charge_points?search=WAAT&page=1&per_page=20',
-              BASE+'/api/v1/charge_points?search=PROUDREED&page=1&per_page=20',
-              BASE+'/api/v1/charge_points/map?lat=48.8566&lng=2.3522&zoom=8',
+              BASE+'/api/v1/charge_points/map?top=51.2&bottom=41.2&left=-5.5&right=9.8&zoom=5&center_lat=46.5&center_lng=2.2&segmented=1',
               BASE+'/api/v1/charge_points/by_country?country=FR&page=1&per_page=20',
             ]
             for u in urls:
-              st,fu,he,txt=req(u,token=token)
-              item={'url':u,'status':st,'contentType':he.get('Content-Type'),'bodyPreview':txt[:40000]}
+              st,fu,he,txt=req(u,'GET',False,token,common)
+              item={'url':u,'status':st,'contentType':he.get('Content-Type')}
               try:
                 d=json.loads(txt)
                 item['json']=d
-                item.pop('bodyPreview',None)
-              except Exception:pass
+              except Exception:
+                item['bodyPreview']=txt[:8000]
               out['apiProbes'].append(item)
 
           p=Path('data/reports/waat_monta_guest_api_probe.json');p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({'guestAttempts':out['guestAttempts'],'apiProbeSummary':[{'url':x['url'],'status':x['status'],'keys':list(x.get('json',{}).keys()) if isinstance(x.get('json'),dict) else None} for x in out['apiProbes']]},ensure_ascii=False,indent=2))
+          summary={'guestAttempts':out['guestAttempts'],'apiProbeSummary':[]}
+          for x in out['apiProbes']:
+            d=x.get('json')
+            entry={'url':x['url'],'status':x['status']}
+            if isinstance(d,dict): entry['keys']=list(d.keys())[:50]
+            entry['containsPricing']=('pric' in json.dumps(d,ensure_ascii=False).lower()) if d is not None else False
+            summary['apiProbeSummary'].append(entry)
+          print(json.dumps(summary,ensure_ascii=False,indent=2))
           PY
       - name: Commit guest API report
         run: |
