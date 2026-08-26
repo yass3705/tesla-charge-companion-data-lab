@@ -20,45 +20,47 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Inspect maps.monta.app public bundle
+      - name: Inspect public Monta map bundles
         run: |
           set -euo pipefail
           mkdir -p data/reports
           python - <<'PY'
-          import json,re,urllib.request,urllib.parse
+          import json,re,urllib.request,urllib.parse,urllib.error
           from datetime import datetime,timezone
           UA={'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'text/html,*/*'}
-          def get(url,limit=6_000_000):
+          def get(url,limit=8_000_000):
             req=urllib.request.Request(url,headers=UA)
             try:
               with urllib.request.urlopen(req,timeout=30) as r:return r.status,r.geturl(),r.read(limit).decode('utf-8','replace'),dict(r.headers)
+            except urllib.error.HTTPError as e:return e.code,e.geturl(),e.read(limit).decode('utf-8','replace'),dict(e.headers)
             except Exception as e:return None,url,'',{'error':str(e)}
-          st,final,html,headers=get('https://maps.monta.app/')
-          assets=[]
-          for pat in (r'<script[^>]+src=["\']([^"\']+)',r'<link[^>]+href=["\']([^"\']+)'):
-            for x in re.findall(pat,html,re.I):
-              u=urllib.parse.urljoin(final,x)
-              if '.js' in u and u not in assets: assets.append(u)
-          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'root':{'status':st,'finalUrl':final,'headers':headers,'htmlPreview':html[:3000]},'assets':[],'candidateUrls':[],'candidateRoutes':[],'queryParams':[]}
-          key=re.compile(r'(api|map|location|site|charge.?point|operator|price|tariff|public|roaming|promotion|deeplink)',re.I)
-          urls=set(); routes=set(); params=set()
-          for u in assets[:100]:
+          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'roots':[],'assets':[],'candidateUrls':[],'candidateRoutes':[],'queryParams':[]}
+          key=re.compile(r'(api|map|location|site|charge.?point|operator|price|tariff|public|roaming|promotion|deeplink|evse)',re.I)
+          urls=set();routes=set();params=set();assets=[]
+          for root in ['https://map.monta.com/','https://maps.monta.app/']:
+            st,final,html,headers=get(root)
+            out['roots'].append({'url':root,'status':st,'finalUrl':final,'headers':headers,'htmlPreview':html[:5000]})
+            for pat in (r'<script[^>]+src=["\']([^"\']+)',r'<link[^>]+href=["\']([^"\']+)'):
+              for x in re.findall(pat,html,re.I):
+                u=urllib.parse.urljoin(final,x)
+                if '.js' in u and u not in assets:assets.append(u)
+          for u in assets[:120]:
             ast,afinal,text,ah=get(u)
             snippets=[]
             for m in key.finditer(text):
-              a=max(0,m.start()-220);b=min(len(text),m.end()+520);s=re.sub(r'\s+',' ',text[a:b])
+              a=max(0,m.start()-280);b=min(len(text),m.end()+700);s=re.sub(r'\s+',' ',text[a:b])
               if s not in snippets:snippets.append(s)
-              if len(snippets)>=100:break
-            for x in re.findall(r'https?://[^"\'`\s<>()]{5,300}',text):
+              if len(snippets)>=140:break
+            for x in re.findall(r'https?://[^"\'`\s<>()]{5,350}',text):
               if key.search(x):urls.add(x)
-            for x in re.findall(r'(["\'`])(/[^"\'`\s]{2,240})\1',text):
+            for x in re.findall(r'(["\'`])(/[^"\'`\s]{2,280})\1',text):
               p=x[1]
               if key.search(p):routes.add(p)
-            for x in re.findall(r'(?:URLSearchParams|searchParams\.(?:get|set)|\.get)\(["\']([A-Za-z0-9_-]{2,50})["\']',text):params.add(x)
+            for x in re.findall(r'(?:URLSearchParams|searchParams\.(?:get|set)|\.get)\(["\']([A-Za-z0-9_-]{2,60})["\']',text):params.add(x)
             out['assets'].append({'url':u,'status':ast,'finalUrl':afinal,'length':len(text),'snippets':snippets})
           out['candidateUrls']=sorted(urls);out['candidateRoutes']=sorted(routes);out['queryParams']=sorted(params)
           open('data/reports/waat_monta_public_map_discovery.json','w',encoding='utf-8').write(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({'rootStatus':st,'assetCount':len(out['assets']),'urls':out['candidateUrls'],'routes':out['candidateRoutes'][:200],'queryParams':out['queryParams']},ensure_ascii=False,indent=2))
+          print(json.dumps({'roots':out['roots'],'assetCount':len(out['assets']),'urls':out['candidateUrls'],'routes':out['candidateRoutes'][:350],'queryParams':out['queryParams']},ensure_ascii=False,indent=2)[:100000])
           PY
       - name: Upload report
         if: ${{ always() }}
@@ -75,5 +77,5 @@ jobs:
           git add data/reports/waat_monta_public_map_discovery.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "data: publish Monta public map discovery"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
