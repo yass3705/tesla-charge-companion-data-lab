@@ -1,0 +1,87 @@
+name: Qovoltis OpenAPI station tariff extraction
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-openapi-tariff-extraction.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Extract relevant current QoAPI paths and schemas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import requests,json,re
+          spec=requests.get('https://qoapi.qovoltis.com/openapi.json',timeout=30,headers={'User-Agent':'Mozilla/5.0'}).json()
+          kws=('station','borne','tariff','price','pricing','location','connector','evse','map','chargepoint','charging','offer')
+          selected=[]
+          for path,ops in spec.get('paths',{}).items():
+              blob=(path+' '+json.dumps(ops,ensure_ascii=False)).lower()
+              if any(k in blob for k in kws):
+                  for method,op in ops.items():
+                      if method.lower() not in ('get','post','put','patch','delete'): continue
+                      selected.append({
+                        'path':path,'method':method.upper(),
+                        'summary':op.get('summary'),'description':op.get('description'),
+                        'security':op.get('security','<inherited/none>'),
+                        'parameters':op.get('parameters',[]),
+                        'requestBody':op.get('requestBody'),
+                        'responses':op.get('responses',{})
+                      })
+          schemas={}
+          for name,s in spec.get('components',{}).get('schemas',{}).items():
+              blob=(name+' '+json.dumps(s,ensure_ascii=False)).lower()
+              if any(k in blob for k in kws): schemas[name]=s
+          result={'info':spec.get('info'),'root_security':spec.get('security'),'securitySchemes':spec.get('components',{}).get('securitySchemes'), 'paths':selected,'schemas':schemas}
+          open('out/relevant.json','w').write(json.dumps(result,ensure_ascii=False,indent=2))
+          print('PATH_COUNT',len(selected))
+          for x in selected:
+              print('\n===',x['method'],x['path'],'===')
+              print('SUMMARY',x['summary'])
+              print('SECURITY',json.dumps(x['security'],ensure_ascii=False))
+              print('PARAMS',json.dumps(x['parameters'],ensure_ascii=False)[:4000])
+              if x['requestBody']: print('BODY',json.dumps(x['requestBody'],ensure_ascii=False)[:4000])
+              print('RESP',json.dumps(x['responses'],ensure_ascii=False)[:5000])
+          print('\nSCHEMAS',','.join(schemas.keys()))
+          PY
+
+      - name: Probe only unauthenticated relevant GET endpoints with no required path params
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,requests
+          x=json.load(open('out/relevant.json'))
+          out=[]
+          for op in x['paths']:
+              if op['method']!='GET': continue
+              sec=op['security']
+              # Only probe endpoints explicitly marked security=[] or no operation security when root security is absent.
+              public=(sec==[] or (sec=='<inherited/none>' and not x.get('root_security')))
+              if not public: continue
+              if '{' in op['path']: continue
+              required=[p for p in op.get('parameters',[]) if p.get('required')]
+              if required: continue
+              u='https://qoapi.qovoltis.com'+op['path']
+              try:
+                  r=requests.get(u,timeout=20,headers={'User-Agent':'Mozilla/5.0','Accept':'application/json'})
+                  out.append({'url':u,'status':r.status_code,'body':r.text[:5000]})
+              except Exception as e: out.append({'url':u,'error':repr(e)})
+          open('out/public_get_results.json','w').write(json.dumps(out,ensure_ascii=False,indent=2))
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-openapi-tariff-extraction
+          path: out
+          retention-days: 3
