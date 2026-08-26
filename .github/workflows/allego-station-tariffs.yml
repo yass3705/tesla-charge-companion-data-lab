@@ -7,13 +7,15 @@ on:
   push:
     paths:
       - "scripts/allego_dxp_national.py"
+      - "scripts/allego_normalize_v8.py"
+      - "scripts/allego_coordinate_fallbacks_v8.py"
       - ".github/workflows/allego-station-tariffs.yml"
 
 permissions:
   contents: write
 
 concurrency:
-  group: allego-france-station-tariffs
+  group: allego-france-station-tariffs-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -32,12 +34,14 @@ jobs:
       - name: Install Allego DXP browser dependency
         run: python -m pip install --disable-pip-version-check -q selenium
 
-      - name: Build exact Allego France EVSE tariffs from DXP
+      - name: Build and normalize Allego France EVSE tariffs from DXP
         shell: bash
         run: |
           set -euo pipefail
-          python -m py_compile scripts/allego_dxp_national.py
+          python -m py_compile scripts/allego_dxp_national.py scripts/allego_normalize_v8.py scripts/allego_coordinate_fallbacks_v8.py
           python scripts/allego_dxp_national.py
+          python scripts/allego_normalize_v8.py
+          python scripts/allego_coordinate_fallbacks_v8.py
 
       - name: Validate output and fail closed
         run: |
@@ -46,18 +50,71 @@ jobs:
           from pathlib import Path
           data = json.loads(gzip.decompress(Path('data/national/allego_direct_stations_france.json.gz').read_bytes()))
           report = json.loads(Path('data/reports/allego_station_tariffs_report.json').read_text())
+          counts = data['counts']
+          assert data['dataset'] == 'allego-direct-operated-evse-france'
+          assert data['schemaVersion'] == '3.1.0'
           assert data['operator'] == 'Allego'
           assert data['country'] == 'FR'
           assert data['scope']['operatorDirectOnly'] is True
           assert data['scope']['roamingIncluded'] is False
           assert data['scope']['countryDefaultsAreRankable'] is False
-          assert data['counts']['franceEvseCount'] >= 500
-          assert data['counts']['franceStationCount'] >= 50
-          assert data['counts']['rankableEvseCount'] > 0
-          assert data['counts']['rankableEvseCount'] + data['counts']['blockedEvseCount'] == data['counts']['franceEvseCount']
-          assert data['counts']['coveragePct'] >= 50.0, data['counts']
-          assert report['publicationReadyEvseCount'] == data['counts']['rankableEvseCount']
-          print(json.dumps(data['counts'], indent=2))
+          assert data['scope']['exactDirectPricesFromDxp'] is True
+          assert data['scope']['structuredTimeFeesAreRankable'] is True
+          assert data['scope']['conditionalOffersRequireSelection'] is True
+          assert counts['franceEvseCount'] >= 1000, counts
+          assert counts['franceStationCount'] >= 140, counts
+          assert counts['stationsWithCoordinates'] >= 154, counts
+          assert counts['irveLinkedEvseCount'] >= 1000, counts
+          assert counts['rankableEvseCount'] >= 1100, counts
+          assert counts['rankableStationCount'] >= 150, counts
+          assert counts['rankableEvseCount'] + counts['blockedEvseCount'] == counts['franceEvseCount']
+          assert counts['coveragePct'] >= 99.0, counts
+          assert counts['kingdomEligibleEvseCount'] >= 200, counts
+          assert counts['structuredFeeEvseCount'] >= 800, counts
+          assert len(data['stations']) == counts['franceStationCount']
+          assert all(s.get('coordinates') for s in data['stations'] if s.get('rankableDirect'))
+          assert all(e.get('directEurPerKwh') is None for e in data['evses'] if not e.get('rankableDirect'))
+          assert all(e.get('blockingReason') == 'not_allego_own_network' for e in data['evses'] if not e.get('rankableDirect'))
+
+          bron = [e for e in data['evses'] if 'BRON' in str(e.get('stationName') or '').upper() and 'BURGER KING' in str(e.get('stationName') or '').upper()]
+          assert len(bron) == 4, bron
+          for evse in bron:
+              assert evse['kind'] == 'DC', evse
+              assert abs(float(evse['powerKw']) - 150.0) < 0.01, evse
+              assert abs(float(evse['directEurPerKwh']) - 0.45) < 1e-9, evse
+              offers = evse.get('conditionalOffers') or []
+              assert len(offers) == 1, evse
+              offer = offers[0]
+              assert offer['selectionId'] == 'burger-king-kingdom'
+              assert offer['requiresSelection'] is True
+              assert abs(float(offer['pricePerKwhEur']) - 0.30) < 1e-9
+              assert offer['start'] == '14:30' and offer['end'] == '18:30'
+
+          lanester = next(s for s in data['stations'] if s.get('stationId') == 'FRSITE00000325')
+          assert lanester['coordinates'] == [47.779187, -3.342502], lanester
+          assert lanester['coordinatesSource'] == 'allego-official-station-page'
+          assert {e.get('evseId') for e in lanester['evses']} == {
+              'FRALLEGO6001471','FRALLEGO6001472','FRALLEGO6001481','FRALLEGO6001482'
+          }
+
+          for evse in data['evses']:
+              policy = evse.get('feePolicy')
+              if not policy:
+                  continue
+              if policy['type'] == 'idle_after_charging':
+                  assert policy['onlyAfterChargingStops'] is True
+                  assert policy['notBeforeSessionMinute'] == 45
+              elif policy['type'] == 'connection_overstay':
+                  assert policy['startAfterSessionMinutes'] == 300
+                  assert policy['endAfterSessionMinutes'] == 960
+                  assert policy['activeTimeWindows'] == [{'start':'07:00','end':'23:00'}]
+              else:
+                  raise AssertionError(policy)
+
+          assert report['publicationReadyEvseCount'] == counts['rankableEvseCount']
+          assert report['publicationReadyStationCount'] == counts['rankableStationCount']
+          print(json.dumps(counts, indent=2))
+          print(json.dumps(report.get('blockedReasonCounts', {}), indent=2))
           PY
 
       - name: Public-safety scan Allego only
@@ -66,12 +123,13 @@ jobs:
           set -euo pipefail
           rm -rf .allego-safety
           mkdir -p .allego-safety
-          cp scripts/allego_dxp_national.py .allego-safety/
+          cp scripts/allego_dxp_national.py scripts/allego_normalize_v8.py scripts/allego_coordinate_fallbacks_v8.py .allego-safety/
           cp data/reports/allego_station_tariffs_report.json .allego-safety/
           gzip -dc data/national/allego_direct_stations_france.json.gz > .allego-safety/allego_direct_stations_france.json
           python scripts/public_safety_check.py .allego-safety
 
       - name: Upload audit artifact
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: allego-france-station-tariffs
