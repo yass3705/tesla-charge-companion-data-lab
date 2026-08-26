@@ -1,0 +1,71 @@
+name: Qovoltis JADX route extraction
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-jadx-routes.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  decompile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Download public Qovoltis APK and JADX
+        shell: bash
+        run: |
+          set -e
+          mkdir -p work out
+          curl -fsSL --max-time 120 -A 'Mozilla/5.0' 'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=443' -o work/qovoltis.xapk
+          unzip -q work/qovoltis.xapk -d work/xapk
+          cp work/xapk/com.qovoltis.client.apk work/app.apk
+          curl -fsSL --max-time 120 'https://github.com/skylot/jadx/releases/download/v1.5.3/jadx-1.5.3.zip' -o work/jadx.zip
+          unzip -q work/jadx.zip -d work/jadx
+          chmod +x work/jadx/bin/jadx
+          work/jadx/bin/jadx --version
+
+      - name: Decompile app code
+        shell: bash
+        run: |
+          set +e
+          work/jadx/bin/jadx -d work/src --no-res --show-bad-code work/app.apk >out/jadx.log 2>&1
+          echo "jadx rc=$?"
+          find work/src/sources/com/qovoltis/client -type f | wc -l || true
+
+      - name: Extract API and pricing sources
+        shell: bash
+        run: |
+          set -e
+          paths=(
+            'work/src/sources/com/qovoltis/client/core/EndPointHelper.java'
+            'work/src/sources/com/qovoltis/client/mainmap/domain/MainMapApi.java'
+            'work/src/sources/com/qovoltis/client/mainmap/domain/StationDetailsApi.java'
+            'work/src/sources/com/qovoltis/client/mainmap/data/request/MapStationListQueryRequest.java'
+            'work/src/sources/com/qovoltis/client/mainmap/data/request/StationFilterRequest.java'
+            'work/src/sources/com/qovoltis/client/mainmap/data/response/DataStationDetails.java'
+            'work/src/sources/com/qovoltis/client/mainmap/data/response/DataMapStationList.java'
+            'work/src/sources/com/qovoltis/client/mainmap/data/response/PlatFee.java'
+            'work/src/sources/com/qovoltis/client/mainmap/data/response/StationDetailsResponse.java'
+            'work/src/sources/com/qovoltis/client/mainmap/data/source/StationDetailsRemoteDataSource.java'
+            'work/src/sources/com/qovoltis/client/mainmap/data/source/MainMapRemoteDataSource.java'
+            'work/src/sources/com/qovoltis/client/utils/PriceHelper.java'
+          )
+          for p in "${paths[@]}"; do
+            if [ -f "$p" ]; then
+              echo "===== $p =====" >> out/routes.txt
+              cat "$p" >> out/routes.txt
+              echo >> out/routes.txt
+            fi
+          done
+          echo '===== Retrofit route grep =====' >> out/routes.txt
+          grep -RInE '@(GET|POST|PUT|DELETE|PATCH)|qoapi|map-station|StationDetails|PlatFee|tarif_heures|price|offer_price' work/src/sources/com/qovoltis/client/mainmap work/src/sources/com/qovoltis/client/core work/src/sources/com/qovoltis/client/utils 2>/dev/null | head -n 2000 >> out/routes.txt || true
+          sed -n '1,2500p' out/routes.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-jadx-routes
+          path: out
+          retention-days: 5
