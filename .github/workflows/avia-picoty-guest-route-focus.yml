@@ -33,8 +33,10 @@ jobs:
           from pathlib import Path
           p=Path('data/reports/avia_picoty_guest_route_focus.json')
           d=json.loads(p.read_text())
-          assert d['schemaVersion'] in {'1.0.0','1.1.0'}
+          assert d['schemaVersion']=='1.1.1'
           assert sum(len(v) for v in d['methods'].values())>0
+          assert d['methods'].get('getMapLocationsAsGuest')
+          assert d['methods'].get('getLocationTariffsAsGuest')
           assert not re.search(r'eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{8,}',p.read_text())
           print({k:len(v) for k,v in d['methods'].items()})
           PY
