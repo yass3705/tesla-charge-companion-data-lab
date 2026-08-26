@@ -1,6 +1,6 @@
 # Bump direct France — public GraphQL tariff harvest
 
-Generated: `2026-08-26T00:27:12.780105Z`
+Generated: `2026-08-26T00:29:01.355353Z`
 
 ## Coverage
 
@@ -9,10 +9,10 @@ Generated: `2026-08-26T00:27:12.780105Z`
 - Stations matched to Bump public map: **1466**
 - Ambiguous stations quarantined: **0**
 - Unmatched stations: **48**
-- Unique tariff groups queried: **193**
-- Unique tariff groups with an anonymous tariff: **193**
-- Stations with a usable tariff object: **1367**
-- Charge points with a usable tariff object: **2035**
+- Unique tariff groups queried: **192**
+- Unique tariff groups with an anonymous tariff: **192**
+- Stations with a usable tariff object: **1423**
+- Charge points with a usable tariff object: **2113**
 
 ## Safety rule
 
