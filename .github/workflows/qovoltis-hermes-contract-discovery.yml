@@ -1,0 +1,148 @@
+name: Qovoltis Hermes API contract discovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-hermes-contract-discovery.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Download Qovoltis 5.0.1 Hermes bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work probe
+          URL='https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=50012'
+          curl -fLsS --max-time 180 -A 'Mozilla/5.0' "$URL" -o work/qovoltis.xapk
+          unzip -q work/qovoltis.xapk -d work/xapk
+          MAIN_APK=$(find work/xapk -maxdepth 1 -type f -name 'com.qovoltis.client.apk' -print -quit)
+          test -n "$MAIN_APK"
+          unzip -p "$MAIN_APK" assets/index.android.bundle > work/index.android.bundle
+          file work/index.android.bundle | tee probe/bundle-type.txt
+          sha256sum work/index.android.bundle | tee probe/bundle-sha256.txt
+
+      - name: Install Hermes bytecode decompiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -q hermes-dec
+          command -v hbc-file-parser || true
+          command -v hbc-disassembler || true
+          command -v hbc-decompiler || true
+          hbc-file-parser work/index.android.bundle > probe/hbc-header.txt 2>&1 || true
+          sed -n '1,300p' probe/hbc-header.txt
+
+      - name: Decompile Hermes bytecode
+        shell: bash
+        run: |
+          set -euo pipefail
+          hbc-decompiler work/index.android.bundle work/decompiled.js > probe/decompiler.log 2>&1 || true
+          if [ ! -s work/decompiled.js ]; then
+            echo 'Decompiler did not produce output; trying disassembly.' | tee -a probe/decompiler.log
+            hbc-disassembler work/index.android.bundle work/disassembled.hasm >> probe/decompiler.log 2>&1 || true
+          fi
+          wc -c work/decompiled.js 2>/dev/null || true
+          wc -c work/disassembled.hasm 2>/dev/null || true
+          sed -n '1,200p' probe/decompiler.log
+
+      - name: Extract Qovoltis network contract contexts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import json, re
+
+          candidates = [Path('work/decompiled.js'), Path('work/disassembled.hasm')]
+          src = next((p for p in candidates if p.exists() and p.stat().st_size), None)
+          if src is None:
+              Path('probe/contract-contexts.json').write_text(json.dumps({'error':'no decompiler/disassembler output'}, indent=2), encoding='utf-8')
+              raise SystemExit(0)
+
+          text = src.read_text(errors='replace')
+          # Public API/network-contract terms only. We redact values next to auth/token/key labels.
+          terms = [
+              'proxy-cp-user.qovoltis.com', 'qorest.qovoltis.com', 'qoapi.qovoltis.com',
+              'emsp-stations', 'station', 'borne', 'charging/history', 'charging',
+              'connector', 'evse', 'tariff', 'tarif', 'pricing', 'price', 'offer',
+              'startChargingV2', 'handleStationScanned', 'isPollingCharge',
+              'getApiErrorTranslationKey', 'api_environment_url',
+          ]
+          sensitive = re.compile(r'(?i)(authorization|bearer|access[_-]?token|refresh[_-]?token|api[_-]?key|secret|password)(\s*[:=]\s*)["\']?[^\s,;"\']+')
+
+          def redact(s):
+              s = sensitive.sub(lambda m: m.group(1)+m.group(2)+'<redacted>', s)
+              # Remove query strings from absolute Qovoltis URLs if present.
+              s = re.sub(r'(https?://(?:[^/\s]+\.)?qovoltis\.com/[^\s"\']*?)\?[^\s"\']+', r'\1?<redacted-query>', s, flags=re.I)
+              return s
+
+          hits=[]
+          low=text.lower()
+          for term in terms:
+              start=0
+              t=term.lower()
+              count=0
+              while count < 120:
+                  i=low.find(t,start)
+                  if i<0: break
+                  a=max(0,i-3500); b=min(len(text),i+5000)
+                  hits.append({'term':term,'offset':i,'context':redact(text[a:b])})
+                  start=i+len(t); count+=1
+
+          # Deduplicate heavily-overlapping contexts.
+          hits.sort(key=lambda x:x['offset'])
+          dedup=[]
+          last_end=-1
+          for h in hits:
+              if h['offset'] < last_end-1000:
+                  continue
+              dedup.append(h)
+              last_end=h['offset']+5000
+
+          # Extract literal-like route fragments and first-party URLs from decompiled output.
+          urls=sorted(set(re.findall(r'https?://[^\s"\'<>]{4,400}', text, flags=re.I)))
+          urls=[u.split('?',1)[0].rstrip('),;]}') for u in urls if 'qovoltis' in u.lower()]
+          route_pat=re.compile(r'["\']([^"\']{1,240}(?:station|borne|charging|charge|connector|evse|tariff|tarif|pricing|price|offer)[^"\']{0,240})["\']', re.I)
+          routes=[]
+          for m in route_pat.finditer(text):
+              v=m.group(1)
+              if len(v) <= 500:
+                  routes.append(v.split('?',1)[0])
+          routes=sorted(set(routes))
+
+          result={
+              'scope':'static_public_apk_network_contract_no_auth_bypass',
+              'source':src.name,
+              'sourceBytes':len(text.encode('utf-8','replace')),
+              'firstPartyUrls':urls[:300],
+              'routeLikeStrings':routes[:4000],
+              'contexts':dedup[:600],
+          }
+          Path('probe/contract-contexts.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
+
+          with Path('probe/CONTRACT_SUMMARY.txt').open('w',encoding='utf-8') as f:
+              f.write(f'SOURCE {src} bytes={result["sourceBytes"]}\n')
+              f.write('\n=== FIRST-PARTY URLS ===\n')
+              for u in result['firstPartyUrls']: f.write(u+'\n')
+              f.write('\n=== ROUTE-LIKE STRINGS ===\n')
+              for r in result['routeLikeStrings']:
+                  if any(k in r.lower() for k in ('station','borne','charging','charge','connector','evse','tariff','tarif','pricing','price','offer')):
+                      f.write(r+'\n')
+              f.write('\n=== CONTEXTS ===\n')
+              for h in result['contexts']:
+                  f.write(f'\n--- {h["term"]} @ {h["offset"]} ---\n{h["context"]}\n')
+          print(Path('probe/CONTRACT_SUMMARY.txt').read_text(encoding='utf-8')[:180000])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-hermes-contract-discovery
+          path: probe
+          retention-days: 3
