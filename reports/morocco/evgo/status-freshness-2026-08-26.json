@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "network": "EVGO",
+  "observed_from": "reports/morocco/evgo/latest-pin-hydration.json",
+  "generated_at_utc": "2026-08-26T04:41:42.035692+00:00",
+  "source_host": "cp.evgo.ma",
+  "source_method": "anonymous_read_only_public_backend_refresh",
+  "policy": {
+    "get_only": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_mutations": true,
+    "raw_response_body_persisted": false,
+    "modeling_dimensions_kept_separate": [
+      "cpo_operator",
+      "site_brand",
+      "app_source_access_network",
+      "tariff_channel",
+      "status_source"
+    ]
+  },
+  "modeling": {
+    "cpo_operator": "Nareva Services / EVGO",
+    "site_brand": null,
+    "app_source_access_network": "EVGO",
+    "tariff_channel": "EVGO native",
+    "status_source": "EVGO native backend cp.evgo.ma"
+  },
+  "freshness_validation": {
+    "pins_http_status": 200,
+    "pin_count": 17,
+    "marjane_mohammedia": {
+      "location_id": 10,
+      "updatedAt": "2026-08-26 03:38:53.000",
+      "current_evses": [
+        {"id": "28", "identifier": "3", "status": "available", "isAvailable": true},
+        {"id": "29", "identifier": "4", "status": "available", "isAvailable": true}
+      ],
+      "previous_public_backend_observation": {
+        "report_generated_at_utc": "2026-08-21T09:47:36.712459+00:00",
+        "updatedAt": "2026-08-21 09:44:02.000",
+        "evse_28_status": "charging",
+        "evse_29_status": "charging"
+      },
+      "interpretation": "The same native public location endpoint changed from both EVSEs charging on 2026-08-21 to both available on 2026-08-26, while updatedAt advanced to the current period. This validates cp.evgo.ma as a fresh/native status source rather than a static catalogue snapshot."
+    }
+  },
+  "diagnostic_semantics": {
+    "marjane_derb_sultan": {
+      "location_id": 8,
+      "updatedAt": "2026-08-25 22:23:10.000",
+      "observed_conflicts": [
+        {"evse_id": "25", "status": "available", "isAvailable": false, "isLongTermUnavailable": true},
+        {"evse_id": "30", "status": "charging", "isAvailable": false, "isLongTermUnavailable": true}
+      ],
+      "interpretation": "EVGO availability semantics are multi-field. Do not infer production usability from the textual status alone when isAvailable or long-term/temporary-unavailability flags conflict. Preserve the raw sanitized fields and define precedence before production filtering."
+    }
+  },
+  "source_precedence_consequence": "When an EVGO station is also visible through EVOne roaming, prefer the native cp.evgo.ma status_source for freshness. Keep EVOne as a separate roaming/eMSP status observation and retain the existing EVOne production filter: Available, Occupied or Charging only."
+}
