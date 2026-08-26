@@ -1,0 +1,42 @@
+name: Diagnose IZIVIA compact dataset guard
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/izivia-express-builder-diagnose.yml"
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect source metadata and tariff/config multiplicity
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,re
+          from collections import Counter
+          p=json.load(open('izivia/izivia_express_station_tariffs_v1.json'))
+          m=p['metadata']
+          print('officialStations',m.get('officialStations'))
+          print('resolvedStations',m.get('resolvedStations'))
+          print('published',m.get('stationsDirectPricePublished'))
+          print('notPublished',m.get('stationsDirectPriceNotPublished'))
+          print('distinctMeta',m.get('distinctDirectRawTariffs'))
+          print('topLevelRawCountsPresent',bool(p.get('directRawTariffCounts')),'len',len(p.get('directRawTariffCounts') or {}))
+          families=Counter(); multi=[]; missing=[]
+          for st in p['stations']:
+            raws=st.get('directRawPricing') or []
+            if len(raws)>1: multi.append((st['officialStationId'],st['name'],raws))
+            for raw in raws:
+              l=re.sub(r'<br\s*/?>',' ',raw,flags=re.I).lower().replace(',','.')
+              if 'facturation max' in l or 'plafond' in l: families['session_cap']+=1
+              elif '20kwh' in l.replace(' ',''): families['day_night']+=1
+              elif 'post-charge' in l or 'post charge' in l: families['simple_post']+=1
+              else: families['other']+=1;missing.append((st['officialStationId'],raw))
+          print('families',dict(families))
+          print('multiRawStations',len(multi))
+          for x in multi[:20]: print('MULTI',x)
+          print('unclassified',missing)
+          PY
