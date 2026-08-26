@@ -1,0 +1,85 @@
+name: Qovoltis Retrofit route extraction
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-retrofit-route-extract.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Download official Android package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work out
+          curl -sS -L --max-time 90 -A 'Mozilla/5.0' \
+            'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=443' \
+            -o work/qovoltis.xapk
+          unzip -q work/qovoltis.xapk -d work/xapk
+          find work/xapk -type f -name '*.apk' -print
+
+      - name: Install JADX
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS -L --max-time 60 \
+            'https://github.com/skylot/jadx/releases/download/v1.5.1/jadx-1.5.1.zip' \
+            -o work/jadx.zip
+          unzip -q work/jadx.zip -d work/jadx
+          chmod +x work/jadx/bin/jadx
+          work/jadx/bin/jadx --version
+
+      - name: Decompile main APK and extract API routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN=$(find work/xapk -maxdepth 1 -type f -name '*.apk' | sort | head -1)
+          echo "MAIN_APK=$MAIN"
+          work/jadx/bin/jadx --no-res --show-bad-code -d work/src "$MAIN" >/tmp/jadx.log 2>&1 || true
+          echo '=== candidate source files ===' | tee out/routes.txt
+          grep -RIlE 'qoapi\.qovoltis\.com|FetchStationsListRequestBody|StationDetailsRemoteDataSource|getOffers|findOffer|pricing_default_price_currency' work/src/sources 2>/dev/null | head -200 | tee -a out/routes.txt
+          echo '=== Retrofit annotations and nearby route strings ===' | tee -a out/routes.txt
+          grep -RInE -B4 -A8 '@(GET|POST|PUT|DELETE|PATCH)\(|@(Path|Query|Body|Header)\(|FetchStationsList|StationDetails|getOffers|findOffer|pricing_default_price_currency|stations|offers|borne|connector' work/src/sources 2>/dev/null | head -12000 | tee -a out/routes.txt
+          echo '=== API-like string literals ===' | tee -a out/routes.txt
+          grep -RhoE '"[A-Za-z0-9_./{}?&=-]{3,}"' work/src/sources 2>/dev/null \
+            | tr -d '"' \
+            | grep -Ei 'station|offer|borne|charge|connector|pricing|tariff|map|public|socket' \
+            | sort -u | head -2000 | tee -a out/routes.txt
+
+      - name: Probe only discovered unauthenticated GET routes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re, subprocess, json
+          txt=Path('out/routes.txt').read_text(errors='replace')
+          routes=[]
+          for m in re.finditer(r'@GET\(\"([^\"]+)\"\)', txt):
+              r=m.group(1)
+              if '{' not in r and r.startswith('/') or (r and '{' not in r):
+                  routes.append(r)
+          routes=list(dict.fromkeys(routes))[:80]
+          base='https://qoapi.qovoltis.com/api/'
+          out=[]
+          for r in routes:
+              url=base+r.lstrip('/')
+              cp=subprocess.run(['curl','-sS','-L','--max-time','12','-o','/tmp/body','-w','%{http_code}|%{content_type}|%{size_download}',url],capture_output=True,text=True)
+              meta=cp.stdout.strip()
+              body=Path('/tmp/body').read_text(errors='replace')[:1200] if Path('/tmp/body').exists() else ''
+              out.append({'route':r,'url':url,'meta':meta,'body_prefix':body})
+          Path('out/get_probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:30000])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-retrofit-route-extract
+          path: out
+          retention-days: 3
