@@ -1,0 +1,94 @@
+name: WAAT France direct station inventory
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 3"
+  push:
+    paths:
+      - "scripts/waat_national.py"
+      - ".github/workflows/waat-direct-inventory.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: waat-france-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build strict FR*WA2 direct inventory
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/waat_national.py
+          python scripts/waat_national.py
+
+      - name: Validate direct-only fail-closed output
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          d=json.loads(gzip.decompress(Path('data/national/waat_direct_stations_france.json.gz').read_bytes()))
+          c=d['counts']; s=d['scope']
+          assert d['schemaVersion']=='1.0.0'
+          assert d['dataset']=='waat-direct-stations-france'
+          assert d['operator']=='WAAT' and d['country']=='FR'
+          assert s['operatorDirectOnly'] is True
+          assert s['operatorPrefix']=='FR*WA2'
+          assert s['roamingIncluded'] is False
+          assert s['myWaatRoamingIncluded'] is False
+          assert s['residentialTariffsIncluded'] is False
+          assert s['pricesFailClosed'] is True
+          assert s['countryDefaultsAreRankable'] is False
+          assert c['franceStationCount'] >= 2, c
+          assert c['franceEvseCount'] >= c['franceStationCount'], c
+          assert c['rankableStationCount'] == 0, c
+          assert c['rankableEvseCount'] == 0, c
+          assert c['blockedStationCount'] == c['franceStationCount'], c
+          assert c['blockedEvseCount'] == c['franceEvseCount'], c
+          assert all(str(x['stationIdNormalized']).startswith('FRWA2') for x in d['stations'])
+          assert all(x.get('directEurPerKwh') is None for x in d['stations'])
+          assert all(not e.get('rankableDirect') for x in d['stations'] for e in x['evses'])
+          print(json.dumps(c, indent=2))
+          PY
+
+      - name: Upload WAAT audit artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: waat-france-direct-inventory
+          path: |
+            data/national/waat_direct_stations_france.json.gz
+            data/reports/waat_station_inventory_report.json
+          retention-days: 14
+
+      - name: Commit refreshed WAAT inventory
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/waat_direct_stations_france.json.gz data/reports/waat_station_inventory_report.json
+          if git diff --cached --quiet; then
+            echo "No WAAT inventory changes"
+            exit 0
+          fi
+          git commit -m "Refresh WAAT France direct inventory"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
