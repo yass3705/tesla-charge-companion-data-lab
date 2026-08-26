@@ -1,0 +1,178 @@
+name: Qovoltis public API discovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-public-api-discovery.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Probe public QoREST Swagger and common API docs
+        shell: bash
+        run: |
+          set -u
+          mkdir -p probe/qorest
+          urls=(
+            "https://qorest.qovoltis.com/"
+            "https://qorest.qovoltis.com/swagger/v1/"
+            "https://qorest.qovoltis.com/swagger/v2/"
+            "https://qorest.qovoltis.com/swagger/v1/swagger.json"
+            "https://qorest.qovoltis.com/swagger/v2/swagger.json"
+            "https://qorest.qovoltis.com/swagger/v1/openapi.json"
+            "https://qorest.qovoltis.com/swagger/v2/openapi.json"
+            "https://qorest.qovoltis.com/openapi.json"
+            "https://qorest.qovoltis.com/swagger.json"
+            "https://qorest.qovoltis.com/api-docs"
+            "https://qorest.qovoltis.com/docs"
+            "https://qorest.qovoltis.com/redoc"
+          )
+          i=0
+          : > probe/qorest/status.tsv
+          for url in "${urls[@]}"; do
+            i=$((i+1))
+            body="probe/qorest/${i}.body"
+            headers="probe/qorest/${i}.headers"
+            code=$(curl -sS -L --max-time 20 -A 'Mozilla/5.0' -H 'Accept: application/json,text/html,*/*' -D "$headers" -o "$body" -w '%{http_code}' "$url" || true)
+            ctype=$(grep -i '^content-type:' "$headers" | tail -1 | tr -d '\r' | cut -d: -f2- | xargs || true)
+            bytes=$(wc -c < "$body" 2>/dev/null || echo 0)
+            printf '%s\t%s\t%s\t%s\t%s\n' "$i" "$code" "$ctype" "$bytes" "$url" >> probe/qorest/status.tsv
+          done
+          cat probe/qorest/status.tsv
+
+      - name: Extract QoREST paths and tariff-like schema terms
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,re
+          out=[]
+          for p in sorted(Path('probe/qorest').glob('*.body')):
+              raw=p.read_text(errors='replace')
+              out.append(f'===== {p.name} bytes={len(raw.encode())} =====')
+              try:
+                  obj=json.loads(raw)
+                  paths=obj.get('paths') if isinstance(obj,dict) else None
+                  if isinstance(paths,dict):
+                      out.append(f'OPENAPI_PATH_COUNT={len(paths)}')
+                      for path,ops in paths.items():
+                          low=path.lower()+json.dumps(ops,ensure_ascii=False).lower()[:1000]
+                          if any(k in low for k in ('tariff','price','cost','fee','station','charge','evse','location','offer','subscription','connector')):
+                              out.append(f'PATH {path} METHODS={list(ops) if isinstance(ops,dict) else "?"}')
+                  sec=obj.get('security') if isinstance(obj,dict) else None
+                  out.append('ROOT_SECURITY='+repr(sec))
+              except Exception:
+                  pass
+              for m in re.finditer(r'.{0,100}(tariff|price|cost|fee|kwh|station|charge|evse|location|offer|subscription|connector).{0,220}',raw,re.I|re.S):
+                  out.append('HIT '+re.sub(r'\s+',' ',m.group(0))[:420])
+              for m in re.finditer(r'https?://[^\s"\'<>]+',raw,re.I):
+                  u=m.group(0).rstrip('),;')
+                  if 'qovoltis' in u.lower() or 'api' in u.lower(): out.append('URL '+u[:500])
+          Path('probe/qorest/summary.txt').write_text('\n'.join(dict.fromkeys(out)),encoding='utf-8')
+          print(Path('probe/qorest/summary.txt').read_text()[:30000])
+          PY
+
+      - name: Inspect public ChargeNow and Qockpit frontend bundles
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.request import Request,urlopen
+          from urllib.parse import urljoin
+          import re,ssl
+          Path('probe/frontends').mkdir(parents=True,exist_ok=True)
+          ctx=ssl.create_default_context()
+          bases=['https://chargenow.qovoltis.com/','https://qockpit.qovoltis.com/']
+          report=[]
+          for base in bases:
+              slug='chargenow' if 'chargenow' in base else 'qockpit'
+              try:
+                  req=Request(base,headers={'User-Agent':'Mozilla/5.0'})
+                  data=urlopen(req,timeout=20,context=ctx).read()
+              except Exception as e:
+                  report.append(f'{base} ERROR {e!r}')
+                  continue
+              html=data.decode('utf-8','replace')
+              Path(f'probe/frontends/{slug}.html').write_text(html,encoding='utf-8')
+              report.append(f'{base} HTML_BYTES={len(data)}')
+              srcs=re.findall(r'<script[^>]+src=["\']([^"\']+)',html,re.I)
+              report.append(f'{base} SCRIPT_COUNT={len(srcs)}')
+              for n,src in enumerate(srcs[:30],1):
+                  url=urljoin(base,src)
+                  report.append('SCRIPT '+url)
+                  try:
+                      req=Request(url,headers={'User-Agent':'Mozilla/5.0','Referer':base})
+                      js=urlopen(req,timeout=20,context=ctx).read()
+                      text=js.decode('utf-8','replace')
+                      Path(f'probe/frontends/{slug}_{n}.js').write_text(text,encoding='utf-8')
+                      for u in re.findall(r'https?://[^\s"\'<>]+',text,re.I):
+                          if 'qovoltis' in u.lower() or 'api' in u.lower() or 'ocpi' in u.lower(): report.append('URL '+u[:600])
+                      for m in re.finditer(r'.{0,100}(tariff|price|cost|fee|kwh|station|charge|evse|location|offer|subscription|connector|qorest).{0,220}',text,re.I|re.S):
+                          report.append('HIT '+re.sub(r'\s+',' ',m.group(0))[:420])
+                  except Exception as e:
+                      report.append(f'SCRIPT_ERROR {url} {e!r}')
+          Path('probe/frontends/summary.txt').write_text('\n'.join(dict.fromkeys(report)),encoding='utf-8')
+          print(Path('probe/frontends/summary.txt').read_text()[:40000])
+          PY
+
+      - name: Download and statically inspect official Android package
+        shell: bash
+        run: |
+          set +e
+          mkdir -p probe/apk work_apk
+          URL='https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=443'
+          curl -sS -L --max-time 90 -A 'Mozilla/5.0' "$URL" -o work_apk/qovoltis.xapk
+          echo "download_exit=$? bytes=$(wc -c < work_apk/qovoltis.xapk 2>/dev/null || echo 0)" | tee probe/apk/download.txt
+          file work_apk/qovoltis.xapk | tee -a probe/apk/download.txt
+          unzip -q work_apk/qovoltis.xapk -d work_apk/xapk 2>>probe/apk/download.txt
+          find work_apk/xapk -maxdepth 2 -type f -printf '%p %s\n' | head -200 > probe/apk/files.txt
+          mkdir -p work_apk/unpacked
+          for apk in $(find work_apk/xapk -type f -name '*.apk' | head -20); do
+            d="work_apk/unpacked/$(basename "$apk" .apk)"
+            mkdir -p "$d"
+            unzip -q "$apk" -d "$d" 2>/dev/null
+          done
+          : > probe/apk/urls.txt
+          : > probe/apk/keywords.txt
+          while IFS= read -r -d '' f; do
+            strings -a "$f" 2>/dev/null | grep -Eio 'https?://[^[:space:]"<>]+' | grep -Ei 'qovoltis|qorest|qockpit|chargenow|ocpi|api' >> probe/apk/urls.txt || true
+            strings -a "$f" 2>/dev/null | grep -Ei '.{0,100}(tariff|price|cost|fee|kwh|station|charge|evse|location|offer|subscription|connector|qorest).{0,220}' >> probe/apk/keywords.txt || true
+          done < <(find work_apk/unpacked -type f -print0)
+          sort -u probe/apk/urls.txt -o probe/apk/urls.txt
+          sort -u probe/apk/keywords.txt -o probe/apk/keywords.txt
+          echo '--- APK URL hits ---'
+          head -300 probe/apk/urls.txt
+          echo '--- APK keyword hits ---'
+          head -300 probe/apk/keywords.txt
+
+      - name: Consolidate findings
+        shell: bash
+        run: |
+          {
+            echo '# Qovoltis public discovery summary'
+            echo
+            echo '## QoREST status'
+            cat probe/qorest/status.tsv || true
+            echo
+            echo '## QoREST summary'
+            cat probe/qorest/summary.txt || true
+            echo
+            echo '## Frontend summary'
+            cat probe/frontends/summary.txt || true
+            echo
+            echo '## APK URLs'
+            cat probe/apk/urls.txt || true
+          } > probe/FINAL_SUMMARY.txt
+          sed -n '1,900p' probe/FINAL_SUMMARY.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-public-api-discovery
+          path: probe
+          retention-days: 3
