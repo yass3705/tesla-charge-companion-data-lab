@@ -1,0 +1,72 @@
+name: WAAT Monta public map API context
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/waat-monta-map-api-context.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Extract public map guest API context
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports
+          python - <<'PY'
+          import json,re,urllib.request
+          from datetime import datetime,timezone
+          root='https://maps.monta.app/'
+          req=urllib.request.Request(root,headers={'User-Agent':'Mozilla/5.0'})
+          html=urllib.request.urlopen(req,timeout=30).read().decode('utf-8','replace')
+          m=re.search(r'<script[^>]+src=["\']([^"\']*index-[^"\']+\.js)',html,re.I)
+          if not m: raise RuntimeError('index asset not found')
+          from urllib.parse import urljoin
+          asset=urljoin(root,m.group(1))
+          req=urllib.request.Request(asset,headers={'User-Agent':'Mozilla/5.0'})
+          text=urllib.request.urlopen(req,timeout=30).read().decode('utf-8','replace')
+          needles=['/api/v1/auth/guest','/api/v1/charge_points/map','/api/v1/charge_points/${e}','authorization','Authorization','Bearer','guestToken','accessToken','operatorIds','maxPrice','charge_point_groups/${e}']
+          contexts={}
+          for n in needles:
+            vals=[];start=0
+            while True:
+              i=text.find(n,start)
+              if i<0: break
+              a=max(0,i-1800);b=min(len(text),i+3200)
+              vals.append(text[a:b]);start=i+len(n)
+              if len(vals)>=10:break
+            contexts[n]=vals
+          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'asset':asset,'assetLength':len(text),'contexts':contexts}
+          open('data/reports/waat_monta_map_api_context.json','w',encoding='utf-8').write(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          for n,v in contexts.items():
+            print('\n###',n,'matches',len(v))
+            for s in v[:2]: print(re.sub(r'\s+',' ',s)[:5000])
+          PY
+      - name: Upload report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: waat-monta-map-api-context
+          path: data/reports/waat_monta_map_api_context.json
+          retention-days: 14
+      - name: Commit report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_monta_map_api_context.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: publish Monta public map API context"
+          git pull --rebase origin main
+          git push origin HEAD:main
