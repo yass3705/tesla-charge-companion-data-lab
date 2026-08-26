@@ -1,0 +1,51 @@
+name: Qovoltis safe read probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-safe-read-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe exact read-only endpoints without authentication
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          python - <<'PY'
+          import subprocess, pathlib
+          urls = [
+            'https://qoapi.qovoltis.com/api/app/getSetting',
+            'https://qoapi.qovoltis.com/api/borne/map-station-list',
+            'https://qoapi.qovoltis.com/api/borne/map-station-list?side=1&minlng=2&minlat=48',
+            'https://qoapi.qovoltis.com/api/borne/map-station-list?side=0.5&minlng=1.8&minlat=48.5',
+            'https://qoapi.qovoltis.com/api/borne/map-station-list?side=100000&minlng=1.5&minlat=48.0',
+            'https://qoapi.qovoltis.com/api/borne/map-station-preview?station_id=1',
+          ]
+          rows=[]
+          outdir=pathlib.Path('probe')
+          for i,url in enumerate(urls,1):
+              hdr=outdir/f'{i}.headers'
+              body=outdir/f'{i}.body'
+              cmd=['curl','-sS','--max-time','20','-A','Qovoltis-Android-read-probe/3.9.2','-H','Accept: application/json','-D',str(hdr),'-o',str(body),'-w','%{http_code}',url]
+              p=subprocess.run(cmd,capture_output=True,text=True)
+              code=p.stdout.strip() or 'curl_error'
+              text=body.read_text(errors='replace') if body.exists() else p.stderr
+              rows.append(f'## {i} {code} {url}\n{text[:4000]}\n')
+          report='\n'.join(rows)
+          (outdir/'report.txt').write_text(report,encoding='utf-8')
+          print(report)
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-safe-read-probe
+          path: probe
+          retention-days: 3
