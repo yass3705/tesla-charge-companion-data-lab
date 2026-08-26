@@ -6,6 +6,8 @@ then GETs each corresponding public /app/locations/{id} resource. No login, cred
 charging/session actions, or mutations. Persisted output is limited to public charging
 infrastructure fields needed to validate station identity, EVSE status, power, connector
 shape, operator attribution and tariff references.
+
+This probe is safe to re-run as a bounded freshness check of the public EVGO map data.
 """
 from __future__ import annotations
 import datetime as dt, json, urllib.error, urllib.request
