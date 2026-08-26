@@ -28,68 +28,36 @@ jobs:
           import fs from 'node:fs';
           import { chromium } from 'playwright-core';
           const targets=[
-            {label:'Beziers DC',lat:43.341484,lng:3.261133,wantId:714420},
-            {label:'Carcassonne',lat:43.22624,lng:2.327766,wantId:811653},
-            {label:'Strasbourg AC/DC',lat:48.586299,lng:7.702678,wantIds:[631961,494949]}
+            {label:'Beziers DC',lat:43.341484,lng:3.261133,ids:[714420]},
+            {label:'Carcassonne',lat:43.22624,lng:2.327766,ids:[811653]},
+            {label:'Strasbourg AC/DC',lat:48.586299,lng:7.702678,ids:[631961,494949]}
           ];
           const exe=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].find(fs.existsSync);
           if(!exe) throw new Error('No browser');
           const browser=await chromium.launch({executablePath:exe,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
           const ctx=await browser.newContext({locale:'fr-FR',viewport:{width:1280,height:900}});
+          function sanitize(v,d=0){if(d>10)return '[depth-limited]';if(Array.isArray(v))return v.slice(0,200).map(x=>sanitize(x,d+1));if(v&&typeof v==='object'){const o={};for(const[k,x]of Object.entries(v)){if(/token|cookie|authori[sz]ation|password|secret|email|phone|zendesk|jwt/i.test(k))continue;o[k]=sanitize(x,d+1)}return o}return v}
+          function priceHits(v,path='$',out=[]){if(v==null||out.length>1000)return out;if(Array.isArray(v))v.forEach((x,i)=>priceHits(x,`${path}[${i}]`,out));else if(typeof v==='object')for(const[k,x]of Object.entries(v)){if(/pric|tariff|fee|cost|currency|kwh|minute|parking|idle|sales|billing|rate|time/i.test(k))out.push({path:`${path}.${k}`,value:typeof x==='object'?JSON.stringify(sanitize(x)).slice(0,5000):x});priceHits(x,`${path}.${k}`,out)}return out}
           const output=[];
-          function sanitize(v,depth=0){
-            if(depth>10)return '[depth-limited]';
-            if(Array.isArray(v))return v.slice(0,200).map(x=>sanitize(x,depth+1));
-            if(v&&typeof v==='object'){
-              const o={}; for(const [k,x] of Object.entries(v)){
-                if(/token|cookie|authori[sz]ation|password|secret|email|phone|zendesk|jwt/i.test(k)) continue;
-                o[k]=sanitize(x,depth+1);
-              } return o;
-            } return v;
-          }
-          function priceHits(v,path='$',out=[]){
-            if(v==null||out.length>1000)return out;
-            if(Array.isArray(v))v.forEach((x,i)=>priceHits(x,`${path}[${i}]`,out));
-            else if(typeof v==='object')for(const [k,x] of Object.entries(v)){
-              if(/pric|tariff|fee|cost|currency|kwh|minute|parking|idle|sales|billing|rate|time/i.test(k))out.push({path:`${path}.${k}`,value:typeof x==='object'?JSON.stringify(sanitize(x)).slice(0,5000):x});
-              priceHits(x,`${path}.${k}`,out);
-            }
-            return out;
-          }
           for(const t of targets){
-            const p=await ctx.newPage();
-            let authHeader=null; let mapJson=null; let guest201=false;
-            p.on('response',async r=>{
-              const u=r.url();
-              if(u.includes('/api/v1/auth/guest')&&r.status()===201)guest201=true;
-              if(u.includes('/api/v1/charge_points/map')){
-                try{const h=await r.request().allHeaders(); authHeader=h.authorization||h.Authorization||authHeader; mapJson=JSON.parse(await r.text());}catch{}
-              }
-            });
-            await p.goto(`https://maps.monta.app/?lat=${t.lat}&lng=${t.lng}&zoom=17&locale=fr`,{waitUntil:'domcontentloaded',timeout:60000});
-            await p.waitForTimeout(8000);
-            const ids=t.wantIds||[t.wantId]; const details=[];
-            for(const id of ids){
-              const endpoint=`https://api.monta.app/api/v1/charge_point_groups/${id}`;
-              let res;
-              try{
-                res=await p.evaluate(async ({endpoint,authHeader})=>{
-                  const headers={Accept:'application/json'}; if(authHeader)headers.Authorization=authHeader;
-                  const r=await fetch(endpoint,{headers,credentials:'include'}); const text=await r.text(); let json=null; try{json=JSON.parse(text)}catch{};
-                  return {status:r.status,json,body:json?null:text.slice(0,1000)};
-                },{endpoint,authHeader});
-              }catch(e){res={error:String(e)}}
-              details.push({id,status:res?.status??null,json:res?.json?sanitize(res.json):null,body:res?.body||null,pricingHits:res?.json?priceHits(res.json):[]});
+            const p=await ctx.newPage(); let mapHeaders=null,mapJson=null,guest201=false;
+            p.on('response',async r=>{const u=r.url();if(u.includes('/api/v1/auth/guest')&&r.status()===201)guest201=true;if(u.includes('/api/v1/charge_points/map'))try{mapHeaders=await r.request().allHeaders();mapJson=JSON.parse(await r.text())}catch{}});
+            await p.goto(`https://maps.monta.app/?lat=${t.lat}&lng=${t.lng}&zoom=17&locale=fr`,{waitUntil:'domcontentloaded',timeout:60000}); await p.waitForTimeout(8000);
+            const details=[];
+            for(const id of t.ids){
+              const dp=await ctx.newPage();
+              const h={}; for(const [k,v] of Object.entries(mapHeaders||{})){const lk=k.toLowerCase();if(['host','content-length','cookie','origin','referer'].includes(lk)||lk.startsWith('sec-')||lk.startsWith(':'))continue;h[k]=v}
+              await dp.setExtraHTTPHeaders(h);
+              let result={id,status:null,error:null,json:null,pricingHits:[]};
+              try{const r=await dp.goto(`https://api.monta.app/api/v1/charge_point_groups/${id}`,{waitUntil:'domcontentloaded',timeout:45000});result.status=r?.status()??null;const txt=await r?.text();let j=null;try{j=JSON.parse(txt||'')}catch{};result.json=j?sanitize(j):null;result.body=j?null:(txt||'').slice(0,1000);result.pricingHits=j?priceHits(j):[]}catch(e){result.error=String(e)}
+              details.push(result); await dp.close();
             }
-            const list=[...(mapJson?.list||[]),...(mapJson?.single_list||[])];
-            const wantedMap=list.filter(x=>ids.includes(x.id)).map(x=>sanitize(x));
-            output.push({target:t,guest201,authorizationObserved:Boolean(authHeader),mapObjects:wantedMap,mapPricingHits:wantedMap.flatMap(x=>priceHits(x)),details});
-            await p.close();
+            const list=[...(mapJson?.list||[]),...(mapJson?.single_list||[])];const mapObjects=list.filter(x=>t.ids.includes(x.id)).map(sanitize);
+            output.push({target:t,guest201,authorizationObserved:Boolean(mapHeaders?.authorization||mapHeaders?.Authorization),mapObjects,details}); await p.close();
           }
           await browser.close();
-          const report={generatedAt:new Date().toISOString(),source:'Monta public web map guest session; authorization retained in memory only',operator:'WAAT',targets:output};
-          fs.mkdirSync('data/reports',{recursive:true}); fs.writeFileSync('data/reports/waat_monta_guest_detail.json',JSON.stringify(report,null,2)+'\n');
-          console.log(JSON.stringify(output.map(x=>({target:x.target.label,guest201:x.guest201,authorizationObserved:x.authorizationObserved,mapPrices:x.mapObjects.map(y=>({id:y.id,name:y.name,price_label:y.price_label,max_kw:y.max_kw})),details:x.details.map(d=>({id:d.id,status:d.status,pricingHits:d.pricingHits.slice(0,25)}))})),null,2));
+          const report={generatedAt:new Date().toISOString(),source:'Monta public web map guest session; guest authorization retained in browser memory only',operator:'WAAT',targets:output};fs.mkdirSync('data/reports',{recursive:true});fs.writeFileSync('data/reports/waat_monta_guest_detail.json',JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify(output.map(x=>({target:x.target.label,guest201:x.guest201,authorizationObserved:x.authorizationObserved,mapPrices:x.mapObjects.map(y=>({id:y.id,name:y.name,price:y.price_label,maxKw:y.max_kw})),details:x.details.map(d=>({id:d.id,status:d.status,error:d.error,pricingHits:d.pricingHits.slice(0,40)}))})),null,2));
           JS
           node waat-detail.mjs
           rm -f waat-detail.mjs
