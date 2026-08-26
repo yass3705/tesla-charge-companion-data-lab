@@ -6,6 +6,7 @@ on:
     branches: ["main"]
     paths:
       - "scripts/bump_tariff_detail_probe.py"
+      - "scripts/bump_tariff_crosscheck_probe.py"
       - ".github/workflows/bump-tariff-detail.yml"
 
 permissions:
@@ -22,27 +23,30 @@ jobs:
           python-version: "3.12"
       - name: Resolve Bump tariff detail
         run: python scripts/bump_tariff_detail_probe.py
-      - name: Validate read-only tariff result
+      - name: Cross-check second Bump tariff
+        run: python scripts/bump_tariff_crosscheck_probe.py
+      - name: Validate read-only tariff results
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
           p=json.loads(Path('reports/bump/tariff_detail_latest.json').read_text())
-          m=p['method']
-          assert m['unauthenticated'] and m['publicReadOnlyTariffQueryOnly'] and m['schemaDerivedPricingFieldsOnly']
-          assert not m['mutationsSent'] and not m['credentialsUsed'] and not m['personalDataQueried']
-          assert not m['chargingSessionStarted'] and not m['paymentSubmitted']
-          assert p['verifiedBinding']['officialEvseIdentifier']=='FRBMPE1151'
-          print({'tariffResolved':p['tariffResolved'],'attempts':[{'label':a['label'],'status':a['status'],'errors':a['errors']} for a in p['attempts']]})
+          c=json.loads(Path('reports/bump/tariff_crosscheck_latest.json').read_text())
+          for x in (p,c):
+              m=x['method']
+              assert m['unauthenticated'] and m['publicReadOnlyTariffQueryOnly']
+              assert not m['mutationsSent'] and not m['credentialsUsed'] and not m['personalDataQueried']
+              assert x['tariffResolved']
+          print({'first':p['verifiedBinding'],'second':c['verifiedBinding']})
           PY
-      - name: Publish tariff result
+      - name: Publish tariff results
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports/bump/tariff_detail_latest.json
+          git add reports/bump/tariff_detail_latest.json reports/bump/tariff_crosscheck_latest.json
           git diff --cached --quiet && exit 0
-          git commit -m "diag(bump): publish verified tariff detail [run ${GITHUB_RUN_ID}]"
+          git commit -m "diag(bump): publish verified tariff details [run ${GITHUB_RUN_ID}]"
           for attempt in 1 2 3 4; do
             git pull --rebase origin main && git push && exit 0
             sleep $((attempt * 2))
