@@ -1,0 +1,170 @@
+name: WAAT Monta live public price probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/waat-monta-live-price-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Query public Monta guest map around WAAT stations
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports
+          python - <<'PY'
+          import gzip,json,math,random,urllib.request,urllib.parse,urllib.error,uuid
+          from datetime import datetime,timezone
+          from pathlib import Path
+
+          API='https://api.monta.app'
+          UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36'
+          session=str(uuid.uuid4())
+          base_headers={
+            'User-Agent':UA,
+            'Accept':'application/json',
+            'Content-Type':'application/json; charset=UTF-8',
+            'Meta':'web;production;1.0.0;browser;chrome Linux x86_64',
+            'Timezone':'GMT',
+            'Accept-Language':'fr-FR',
+            'UUID':session,
+            'Operator':'monta',
+            'Origin':'https://maps.monta.app',
+            'Referer':'https://maps.monta.app/'
+          }
+
+          def request(method,path,params=None,token=None,body=None):
+            url=API+path
+            if params:
+              url+='?'+urllib.parse.urlencode(params,doseq=True)
+            h=dict(base_headers)
+            if token: h['Authorization']='Bearer '+token
+            data=None
+            if method!='GET': data=(json.dumps(body).encode() if body is not None else b'')
+            req=urllib.request.Request(url,data=data,headers=h,method=method)
+            try:
+              with urllib.request.urlopen(req,timeout=35) as r:
+                raw=r.read(5_000_000).decode('utf-8','replace')
+                try: obj=json.loads(raw)
+                except Exception: obj={'_raw':raw[:5000]}
+                return r.status,obj
+            except urllib.error.HTTPError as e:
+              raw=e.read(1_000_000).decode('utf-8','replace')
+              try: obj=json.loads(raw)
+              except Exception: obj={'_raw':raw[:5000]}
+              return e.code,obj
+
+          auth_status,auth=request('POST','/api/v1/auth/guest')
+          if auth_status not in (200,201):
+            raise SystemExit('guest auth failed status=%s body=%s'%(auth_status,json.dumps(auth,ensure_ascii=False)[:2000]))
+          token=((auth.get('token') or {}).get('access_token'))
+          if not token: raise SystemExit('guest auth succeeded but no access token')
+
+          inv=json.loads(gzip.decompress(Path('data/national/waat_direct_stations_france.json.gz').read_bytes()))
+          stations=inv['stations']
+          # Prefer recognisable/public samples, then geographically distinct stations.
+          preferred=[]
+          for st in stations:
+            txt=' '.join(str(st.get(k) or '') for k in ('stationName','address','city'))
+            if any(x in txt.upper() for x in ('PROUDREED','SAINT-PRIEST','DARDILLY','CHOISY','DIJON','BEZIERS','VENISSIEUX')):
+              preferred.append(st)
+          picked=[]
+          for st in preferred+stations:
+            c=st.get('coordinates')
+            if not c: continue
+            lat,lon=c
+            if any(abs(lat-x['coordinates'][0])<.08 and abs(lon-x['coordinates'][1])<.08 for x in picked):
+              continue
+            picked.append(st)
+            if len(picked)>=10: break
+
+          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'guestAuthStatus':auth_status,'tokenPersisted':False,'samples':[]}
+          for st in picked:
+            lat,lon=st['coordinates']
+            # ~1.2 km box catches minor coordinate differences while keeping map response manageable.
+            dlat=.012; dlon=.016
+            params={'top':lat+dlat,'bottom':lat-dlat,'left':lon-dlon,'right':lon+dlon,'zoom':15,'center_lat':lat,'center_lng':lon,'segmented':1}
+            status,m=request('GET','/api/v1/charge_points/map',params,token)
+            singles=(m.get('single_list') or []) if isinstance(m,dict) else []
+            clusters=(m.get('cluster_list') or []) if isinstance(m,dict) else []
+            sample={'waat':{k:st.get(k) for k in ('stationId','stationIdNormalized','stationName','address','city','coordinates','maxPowerKw','evseIds')},'mapStatus':status,'singleCount':len(singles),'clusterCount':len(clusters),'nearbySingles':[],'nearbyClusters':[]}
+            # Preserve only public station data; token is never written.
+            for x in singles[:80]:
+              sample['nearbySingles'].append(x)
+            for x in clusters[:80]:
+              sample['nearbyClusters'].append(x)
+            # Fetch raw details for all singles, and cluster/group IDs if available.
+            details=[]
+            for x in singles[:30]:
+              cid=x.get('id')
+              if cid is None: continue
+              s,d=request('GET',f'/api/v1/charge_points/{urllib.parse.quote(str(cid))}',None,token)
+              details.append({'kind':'charge_point','id':cid,'status':s,'data':d})
+            for x in clusters[:30]:
+              gid=x.get('id') or x.get('charge_point_group_id')
+              if gid is None: continue
+              s,d=request('GET',f'/api/v1/charge_point_groups/{urllib.parse.quote(str(gid))}',None,token)
+              details.append({'kind':'group','id':gid,'status':s,'data':d})
+              if s==200:
+                ms,md=request('GET','/api/v1/charge_points',{'charge_point_group_id':gid},token)
+                details.append({'kind':'group_members','id':gid,'status':ms,'data':md})
+            sample['details']=details
+            out['samples'].append(sample)
+
+          # Add summary clues for WAAT/operator/price fields.
+          def walk(o,path=''):
+            if isinstance(o,dict):
+              for k,v in o.items():
+                p=f'{path}.{k}' if path else k
+                if any(q in k.lower() for q in ('operator','pric','tariff','roam','web_app','identifier','currency')):
+                  yield p,v
+                yield from walk(v,p)
+            elif isinstance(o,list):
+              for i,v in enumerate(o): yield from walk(v,f'{path}[{i}]')
+          clues=[]
+          for i,s in enumerate(out['samples']):
+            for p,v in walk(s):
+              sv=str(v)
+              if len(sv)>1500: sv=sv[:1500]
+              clues.append({'sample':i,'path':p,'value':sv})
+              if len(clues)>=600: break
+            if len(clues)>=600: break
+          out['clues']=clues
+          Path('data/reports/waat_monta_live_price_probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps({
+            'guestAuthStatus':auth_status,
+            'samples':[(s['waat']['stationName'],s['mapStatus'],s['singleCount'],s['clusterCount']) for s in out['samples']],
+            'waatClues':[c for c in clues if 'waat' in c['value'].lower()][:50],
+            'priceClues':[c for c in clues if any(x in c['path'].lower() for x in ('pric','tariff','currency'))][:80]
+          },ensure_ascii=False,indent=2))
+          PY
+      - name: Upload sanitized probe report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: waat-monta-live-price-probe
+          path: data/reports/waat_monta_live_price_probe.json
+          retention-days: 14
+      - name: Commit sanitized probe report
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_monta_live_price_probe.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: publish WAAT Monta live public price probe"
+          git pull --rebase origin main
+          git push origin HEAD:main
