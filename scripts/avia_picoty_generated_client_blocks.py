@@ -23,6 +23,10 @@ JWT = re.compile(r'eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{8,}'
 BEARER = re.compile(r'(?i)(bearer\s+)[A-Za-z0-9._~+\-/=]{16,}')
 KV_SECRET = re.compile(r'(?i)(api[-_ ]?key|subscription[-_ ]?key|client[-_ ]?secret|access[-_ ]?token|refresh[-_ ]?token|authorization)(\s*[=:]\s*[\"\']?)([^\s\"\',}]{8,})')
 QUOTED = re.compile(r"['\"]([^'\"]{1,220})['\"]")
+OP = re.compile(
+    r"\{'method':\s*'([^']+)',\s*'path':\s*'([^']+)',\s*'alias':\s*'([^']+)'"
+    r"(?:,\s*'description':\s*'([^']*)')?"
+)
 
 
 def redact(s):
@@ -62,12 +66,37 @@ def main():
     data=json.loads(SOURCE.read_text(encoding='utf-8'))
     strings=list(walk_strings(data))
     out={
-        'schemaVersion':'1.0.0',
+        'schemaVersion':'1.1.0',
         'generatedAt':datetime.now(timezone.utc).isoformat(),
         'source':str(SOURCE),
+        'openApiOperations':[],
+        'bootstrapOperations':[],
         'targets':{},
         'genericRouteBlocks':[],
     }
+
+    # The decompiled bundle embeds its generated API specification as literal
+    # method/path/alias dictionaries. Extract these first; they are much less
+    # ambiguous than operation-name string searches.
+    seen_ops=set()
+    for path,s in strings:
+        for m in OP.finditer(s):
+            method, route, alias, desc = m.groups()
+            key=(method,route,alias)
+            if key in seen_ops:
+                continue
+            seen_ops.add(key)
+            item={
+                'method':method.upper(),
+                'path':route,
+                'alias':alias,
+                'description':desc or None,
+                'jsonPath':path,
+            }
+            out['openApiOperations'].append(item)
+            low=' '.join((route,alias,desc or '')).lower()
+            if any(k in low for k in ('register','registration','group','tenant-file','cpo','guest','distribution')):
+                out['bootstrapOperations'].append(item)
 
     for target in TARGETS:
         hits=[]
@@ -82,7 +111,6 @@ def main():
                     item={'jsonPath':path,'context':ctx,'literals':literals(ctx)}
                     if item not in hits: hits.append(item)
                 start=i+len(n)
-        # Prefer blocks that contain likely route literals and keep enough alternatives.
         hits.sort(key=lambda x: (not any(v.startswith('/') for v in x['literals']), -len(x['literals'])))
         out['targets'][target]=hits[:30]
 
@@ -91,7 +119,6 @@ def main():
         low=s.lower()
         if not any(h.lower() in low for h in ROUTE_HINTS):
             continue
-        # Collect each route-hint occurrence independently.
         for hint in ROUTE_HINTS:
             pos=0
             while True:
@@ -107,6 +134,8 @@ def main():
 
     OUT.write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     print(json.dumps({
+        'openApiOperations':len(out['openApiOperations']),
+        'bootstrapOperations':len(out['bootstrapOperations']),
         'targets':{k:len(v) for k,v in out['targets'].items()},
         'genericRouteBlocks':len(out['genericRouteBlocks'])
     },indent=2))
