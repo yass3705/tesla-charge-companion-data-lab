@@ -24,11 +24,13 @@ LOCATION_ID = 11936
 TARIFF_GROUP_ID = "f03e61b7-dd44-4533-bf42-3fc299c589ff"
 TYPE_SHAPE = "kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name } } } }"
 SAFE_FIELD = re.compile(
-    r"^(?:id|name|label|description|currency|price|amount|value|unit|type|dimension|stepSize|step|vat|tax|taxes|"
-    r"tariff|tariffs|component|components|element|elements|restriction|restrictions|startDateTime|endDateTime|"
-    r"minDuration|maxDuration|minKwh|maxKwh|minCurrent|maxCurrent|minPower|maxPower|minimum|maximum|"
-    r"energy|time|duration|parking|flat|fixed|session|fee|fees|cost|costs|rate|rates|kwh|minute|minutes|"
-    r"priceExcludingVat|priceIncludingVat|total|subtotal|billing|overstay|occupancy|idle|gracePeriod|freePeriod)$",
+    r"^(?:id|name|label|description|alternativeText|currency|price|amount|value|unit|type|priceType|dimension|"
+    r"stepSize|step|vat|tax|taxes|tariff|tariffs|tariffGroupId|tariffId|component|components|element|elements|"
+    r"restriction|restrictions|startDateTime|endDateTime|minDuration|maxDuration|minKwh|maxKwh|minCurrent|"
+    r"maxCurrent|minPower|maxPower|minimum|maximum|energy|time|duration|parking|flat|flatFee|fixed|session|fee|"
+    r"fees|cost|costs|rate|rates|kwh|minute|minutes|priceExcludingVat|priceIncludingVat|pricePerKWh|pricePerHour|"
+    r"minPrice|includingVat|excludingVat|total|subtotal|billing|overstay|occupancy|idle|gracePeriod|freePeriod|"
+    r"generatedDescription|quick|short|long|quickDetail|shortDetail|isTariffChangingInTime)$",
     re.I,
 )
 
@@ -115,7 +117,7 @@ def main() -> None:
         attempts.append({"label": label, "status": status, "errors": errors, "data": data})
 
     payload = {
-        "schemaVersion": "1.0.0",
+        "schemaVersion": "1.1.0",
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "method": {
             "unauthenticated": True,
