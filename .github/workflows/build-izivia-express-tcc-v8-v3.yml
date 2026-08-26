@@ -1,0 +1,38 @@
+name: Build IZIVIA Express TCC V8 dataset v3
+on:
+  push:
+    paths:
+      - ".github/workflows/build-izivia-express-tcc-v8-v3.yml"
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact fail-closed dataset
+        run: python scripts/build_izivia_express_tcc_v8.py
+      - name: Validate connector classification and dataset
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('data/national/izivia_express_direct_tcc_v8.json'))
+          c=p['counts']
+          assert c['officialStationRows']==155 and c['directPricePublishedRows']==146 and c['directPriceNotPublishedRows']==9
+          assert c['excludedAmbiguousConfigurations']==0
+          bad=[]
+          for st in p['stations']:
+            for cfg in st['configurations']:
+              if cfg['powerKw']<=3 and cfg['kind']!='AC': bad.append((st['stationId'],cfg['kind'],cfg['powerKw']))
+          assert not bad,bad
+          print(c)
+          PY
+      - name: Commit rebuilt dataset
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/national/izivia_express_direct_tcc_v8.json
+          if git diff --cached --quiet; then echo 'No change'; else git commit -m 'Correct IZIVIA Express connector classification'; git push; fi
