@@ -1,0 +1,138 @@
+name: WAAT Monta browser EVSE pricing probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/waat-monta-browser-evse-pricing-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install --disable-pip-version-check selenium
+      - name: Probe WAAT EVSE pricing
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports
+          python - <<'PY'
+          import json,time,re
+          from pathlib import Path
+          from datetime import datetime,timezone
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+
+          TARGETS=[
+            {'label':'Beziers','lat':43.341484,'lng':3.261133,'groups':[714420,714422]},
+            {'label':'Carcassonne','lat':43.226240,'lng':2.327766,'groups':[811653]},
+          ]
+          sensitive=re.compile(r'(token|authorization|cookie|secret|password|jwt)',re.I)
+          def sanitize(o):
+            if isinstance(o,dict):
+              return {k:('[redacted]' if sensitive.search(str(k)) else sanitize(v)) for k,v in o.items()}
+            if isinstance(o,list): return [sanitize(v) for v in o]
+            return o
+
+          opts=Options()
+          for a in ['--headless=new','--no-sandbox','--disable-dev-shm-usage','--window-size=1440,1000','--lang=fr-FR']:
+            opts.add_argument(a)
+          opts.set_capability('goog:loggingPrefs',{'performance':'ALL'})
+          d=webdriver.Chrome(options=opts)
+          out=[]
+          try:
+            d.execute_cdp_cmd('Network.enable',{})
+            for t in TARGETS:
+              try:d.get_log('performance')
+              except:pass
+              d.get(f"https://maps.monta.app/?lat={t['lat']}&lng={t['lng']}&zoom=17&locale=fr")
+              time.sleep(9)
+              perf=d.get_log('performance')
+              reqs={}; extras={}; resps={}
+              for row in perf:
+                try:m=json.loads(row['message'])['message'];p=m.get('params',{});rid=p.get('requestId')
+                except:continue
+                if m['method']=='Network.requestWillBeSent':
+                  reqs[rid]=p.get('request',{})
+                elif m['method']=='Network.requestWillBeSentExtraInfo':
+                  extras[rid]=p.get('headers',{})
+                elif m['method']=='Network.responseReceived':
+                  resps[rid]=p.get('response',{})
+              headers={}
+              auth_status=[]
+              for rid,r in resps.items():
+                u=str(r.get('url') or '')
+                if '/api/v1/auth/guest' in u: auth_status.append(r.get('status'))
+                if '/api/v1/charge_points/map?' in u and int(r.get('status') or 0)==200:
+                  headers={**(reqs.get(rid,{}).get('headers') or {}),**(extras.get(rid) or {})}
+              allowed={'authorization','meta','uuid','operator','accept-language','timezone','time-zone','locale','accept'}
+              h={k:v for k,v in headers.items() if str(k).lower() in allowed}
+              script="""
+                const done=arguments[arguments.length-1], url=arguments[0], headers=arguments[1];
+                fetch(url,{headers,credentials:'omit'}).then(async r=>done({status:r.status,text:await r.text(),url:r.url})).catch(e=>done({status:0,error:String(e),url}));
+              """
+              groups=[]
+              for gid in t['groups']:
+                members_url=f'https://api.monta.app/api/v1/charge_points?charge_point_group_id={gid}'
+                mr=d.execute_async_script(script,members_url,h)
+                grec={'groupId':gid,'membersStatus':mr.get('status'),'members':[]}
+                members=[]
+                try:
+                  mj=json.loads(mr.get('text') or '{}')
+                  members=mj.get('data') or []
+                  if isinstance(members,dict): members=members.get('data') or members.get('items') or []
+                except Exception as e:
+                  grec['membersParseError']=str(e);grec['membersBodyPreview']=(mr.get('text') or '')[:1000]
+                for cp in members if isinstance(members,list) else []:
+                  if not isinstance(cp,dict): continue
+                  cid=cp.get('id')
+                  rec={'member':cp}
+                  if cid is not None:
+                    dr=d.execute_async_script(script,f'https://api.monta.app/api/v1/charge_points/{cid}',h)
+                    rec['detailStatus']=dr.get('status')
+                    try: rec['detail']=json.loads(dr.get('text') or '{}')
+                    except: rec['detailBodyPreview']=(dr.get('text') or '')[:1000]
+                  grec['members'].append(rec)
+                groups.append(grec)
+              out.append(sanitize({'target':t,'authStatuses':auth_status,'groups':groups}))
+            report={'generatedAt':datetime.now(timezone.utc).isoformat(),'method':'Monta public map guest browser -> group members -> EVSE detail','credentialsPersisted':False,'results':out}
+            Path('data/reports/waat_monta_browser_evse_pricing_probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+            # Console summary only: no credentials.
+            s=[]
+            for r in out:
+              for g in r['groups']:
+                row={'target':r['target']['label'],'groupId':g['groupId'],'membersStatus':g['membersStatus'],'memberCount':len(g['members']),'members':[]}
+                for m in g['members']:
+                  x=m.get('detail') or m.get('member') or {}
+                  row['members'].append({k:x.get(k) for k in ['id','identifier','name','operator_name','max_kw','price_label','currency','pricings','pricing_collection','roaming','charge_point_group_id']})
+                s.append(row)
+            print(json.dumps(s,ensure_ascii=False,indent=2))
+          finally:
+            d.quit()
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: waat-monta-browser-evse-pricing-probe
+          path: data/reports/waat_monta_browser_evse_pricing_probe.json
+          retention-days: 14
+      - name: Commit sanitized report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_monta_browser_evse_pricing_probe.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: publish WAAT Monta EVSE pricing probe"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
