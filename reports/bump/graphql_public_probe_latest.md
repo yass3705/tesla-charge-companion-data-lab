@@ -38,8 +38,66 @@ Introspection status: **200**, fields discovered: **30**
 - `locationZones` → `NON_NULL/LIST/NON_NULL/LocationZone` — `locationId:NON_NULL/LocationId`
 - `parkingSpaces` → `NON_NULL/LIST/NON_NULL/ParkingSpace` — `locationId:NON_NULL/LocationId`
 
+## Type `ChargePointTariffGroup` (OBJECT)
+
+- field `id` → `NON_NULL/ChargePointTariffGroupId`
+
+## Type `Evse` (OBJECT)
+
+- field `accessInfo` → `NON_NULL/EvseAccessInfo`
+- field `availability` → `NON_NULL/EvseAvailability`
+- field `capabilities` → `NON_NULL/LIST/NON_NULL/EvseCapability`
+- field `charger` → `Charger`
+- field `chargerSatellite` → `ChargerSatellite`
+- field `connectors` → `NON_NULL/LIST/NON_NULL/Connector`
+- field `currentInfo` → `NON_NULL/EvseCurrentInfo`
+- field `id` → `NON_NULL/EvseId`
+- field `identifier` → `NON_NULL/EvseIdentifier`
+- field `isRoaming` → `NON_NULL/Boolean`
+- field `managingGroupId` → `GroupId`
+- field `managingUnit` → `B2BCustomerUnit`
+- field `ocppHardwareStatus` → `EvseOcppHardwareStatus`
+- field `operator` → `ChargePointOperator`
+- field `outOfOrderInfo` → `EvseOutOfOrderInfo`
+- field `ownerCustomer` → `B2BCustomer`
+- field `ownerGroupId` → `GroupId`
+- field `physicalReference` → `PhysicalReference`
+- field `priceScoring` → `EvseScoring` — `version:String, scoreDate:Date`
+- field `reservationInfo` → `NON_NULL/EvseReservationInfo`
+- field `shouldBeCounted` → `NON_NULL/Boolean`
+- field `state` → `NON_NULL/EvseState`
+- field `status` → `NON_NULL/EvseStatus`
+- field `tariffGroup` → `ChargePointTariffGroup`
+
 ## Type `EvseId` (SCALAR)
 
+
+## Type `Location` (OBJECT)
+
+- field `address` → `NON_NULL/LocationAddress`
+- field `allEvses` → `LIST/Evse`
+- field `barriers` → `LIST/AccessBarrier`
+- field `canReserve` → `NON_NULL/Boolean`
+- field `chargeType` → `NON_NULL/ChargeType`
+- field `connectorTypes` → `LIST/NON_NULL/ConnectorType`
+- field `coordinates` → `NON_NULL/Point`
+- field `evses` → `LIST/Evse`
+- field `evsesStatusStateCounts` → `LIST/EvseStatusStateCount`
+- field `featuredPartnerOffer` → `PartnerOffer`
+- field `hasAtLeastOneAvailableEvse` → `NON_NULL/Boolean`
+- field `hasCable` → `NON_NULL/Boolean`
+- field `hasMandatoryBarrier` → `NON_NULL/Boolean`
+- field `hasPartnerOffers` → `NON_NULL/Boolean`
+- field `id` → `NON_NULL/LocationId`
+- field `isRoaming` → `NON_NULL/Boolean`
+- field `maxPower` → `Power`
+- field `mobilityServiceProviders` → `LIST/MobilityServiceProvider`
+- field `name` → `NON_NULL/String`
+- field `operators` → `NON_NULL/LIST/NON_NULL/ChargePointOperator`
+- field `partnerOffers` → `LIST/PartnerOffer`
+- field `presentationInfo` → `NON_NULL/PresentationInfo`
+- field `priceScoring` → `LocationScoring` — `version:String, scoreDate:Date`
+- field `status` → `NON_NULL/LocationStatus`
 
 ## Type `LocationQueryController` (OBJECT)
 
@@ -63,6 +121,75 @@ Introspection status: **200**, fields discovered: **30**
 - field `viewGroupLocationsForB2BCustomer` → `NON_NULL/PaginatedOutputOfLocationsStatus` — `groupId:NON_NULL/GroupId, pageNumber:NON_NULL/Int, pageSize:NON_NULL/Int, locationsIds:LIST/NON_NULL/LocationId`
 - field `viewGroupLocationsOverviewForB2BCustomer` → `NON_NULL/GroupLocationsOverview` — `groupId:NON_NULL/GroupId`
 - field `viewLocationTariffs` → `LocationTariffResult` — `groupId:NON_NULL/GroupId, locationId:NON_NULL/LocationId`
+
+## Type `LocationSearchInput` (INPUT_OBJECT)
+
+- input `canReserve` → `Boolean`
+- input `capabilities` → `LIST/NON_NULL/EvseCapability`
+- input `connectorTypes` → `LIST/NON_NULL/ConnectorType`
+- input `hasCable` → `Boolean`
+- input `isAvailable` → `Boolean`
+- input `isRoaming` → `Boolean`
+- input `maxPower` → `Power`
+- input `minPower` → `Power`
+- input `searchZone` → `NON_NULL/LocationSearchZoneInput`
+
+## Type `LocationSearchInputV2Input` (INPUT_OBJECT)
+
+- input `appendPowerAggregation` → `Boolean`
+- input `canReserve` → `Boolean`
+- input `capabilities` → `LIST/NON_NULL/EvseCapability`
+- input `connectorTypes` → `LIST/NON_NULL/ConnectorType`
+- input `evsePriceScores` → `LIST/NON_NULL/ScoreCategory`
+- input `hasCable` → `Boolean`
+- input `isAvailable` → `Boolean`
+- input `isBumpOrPartner` → `Boolean`
+- input `isCompanyOwned` → `Boolean`
+- input `isRoaming` → `Boolean`
+- input `maxPower` → `Power`
+- input `minPower` → `Power`
+- input `searchZone` → `NON_NULL/LocationSearchZoneInput`
+- input `usableBy` → `LIST/NON_NULL/VehicleCompatibilityType`
+
+## Type `LocationSearchInputV3Input` (INPUT_OBJECT)
+
+- input `appendPowerAggregation` → `Boolean`
+- input `canReserve` → `Boolean`
+- input `capabilities` → `LIST/NON_NULL/EvseCapability`
+- input `clusterSize` → `Int`
+- input `connectorTypes` → `LIST/NON_NULL/ConnectorType`
+- input `evsePriceScores` → `LIST/NON_NULL/ScoreCategory`
+- input `hasCable` → `Boolean`
+- input `isAvailable` → `Boolean`
+- input `isBumpOrPartner` → `Boolean`
+- input `isRoaming` → `Boolean`
+- input `maxPower` → `Power`
+- input `minPower` → `Power`
+- input `searchZone` → `NON_NULL/LocationSearchZoneInput`
+
+## Type `LocationSearchPointInput` (INPUT_OBJECT)
+
+- input `latitude` → `NON_NULL/Float`
+- input `longitude` → `NON_NULL/Float`
+
+## Type `Point` (OBJECT)
+
+- field `latitude` → `NON_NULL/Float`
+- field `longitude` → `NON_NULL/Float`
+
+## Type `SearchLocationResult` (OBJECT)
+
+- field `facets` → `NON_NULL/SearchLocationFacets`
+- field `locations` → `NON_NULL/LIST/NON_NULL/Location`
+
+## Type `SearchLocationResultV2` (OBJECT)
+
+- field `facets` → `NON_NULL/SearchLocationFacets`
+- field `locations` → `NON_NULL/LIST/NON_NULL/LightLocation`
+
+## Type `SearchLocationResultV3` (OBJECT)
+
+- field `locations` → `NON_NULL/LIST/NON_NULL/GeoLocationFacet`
 
 ## Type `Tariff` (OBJECT)
 
