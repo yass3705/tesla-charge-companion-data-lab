@@ -14,7 +14,7 @@ PREFIXES=['','/v1','/api','/api/v1']
 PATHS=['/','/tenants','/registration-groups','/map-locations','/nearby-locations','/locations/nonexistent','/locations/nonexistent/tariffs','/tenants/nonexistent/map-locations','/tenants/nonexistent/nearby-locations','/tenants/nonexistent/locations/nonexistent','/tenants/nonexistent/locations/nonexistent/tariffs','/tenants/nonexistent/app-distribution','/tenants/nonexistent/registration-groups']
 SECRETISH=re.compile(r'(?i)(authorization|subscription[-_ ]?key|api[-_ ]?key|access[-_ ]?token|refresh[-_ ]?token|client[-_ ]?secret)\s*[:=]\s*[^\s,;]+')
 JWT_RE=re.compile(r'\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}(?:\.[A-Za-z0-9_-]{10,})?\b')
-def sanitize(text): return JWT_RE.sub('<redacted-jwt>',SECRETISH.sub(lambda m:m.group(1)+'=<redacted>',text))[:2500]
+def sanitize(text):return JWT_RE.sub('<redacted-jwt>',SECRETISH.sub(lambda m:m.group(1)+'=<redacted>',text))[:2500]
 def request(method,url,params=None):
     if params:url+=('&' if '?' in url else '?')+urllib.parse.urlencode(params)
     req=urllib.request.Request(url,method=method,headers={'User-Agent':'TeslaChargeCompanion-data-lab/1.0','Accept':'application/json, text/plain, */*'})
