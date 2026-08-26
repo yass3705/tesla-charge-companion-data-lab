@@ -1,0 +1,98 @@
+name: WAAT Monta unsegmented map probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/waat-monta-unsegmented-map-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install --disable-pip-version-check selenium
+      - name: Capture unsegmented WAAT map payloads
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports
+          python - <<'PY'
+          import json,time,re
+          from pathlib import Path
+          from datetime import datetime,timezone
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+
+          targets=[('Beziers',43.341484,3.261133),('Carcassonne',43.226240,2.327766)]
+          opts=Options()
+          for a in ['--headless=new','--no-sandbox','--disable-dev-shm-usage','--window-size=1440,1000','--lang=fr-FR']:
+            opts.add_argument(a)
+          opts.set_capability('goog:loggingPrefs',{'performance':'ALL'})
+          d=webdriver.Chrome(options=opts)
+          out=[]
+          sensitive=re.compile(r'(token|authorization|cookie|secret|password|jwt)',re.I)
+          def sanitize(o):
+            if isinstance(o,dict): return {k:('[redacted]' if sensitive.search(str(k)) else sanitize(v)) for k,v in o.items()}
+            if isinstance(o,list): return [sanitize(v) for v in o]
+            return o
+          try:
+            d.execute_cdp_cmd('Network.enable',{})
+            for label,lat,lng in targets:
+              try:d.get_log('performance')
+              except:pass
+              d.get(f'https://maps.monta.app/?lat={lat}&lng={lng}&zoom=18&locale=fr&segmented=0')
+              time.sleep(10)
+              perf=d.get_log('performance'); resps={}
+              for row in perf:
+                try:m=json.loads(row['message'])['message'];p=m.get('params',{});rid=p.get('requestId')
+                except:continue
+                if m['method']=='Network.responseReceived':resps[rid]=p.get('response',{})
+              events=[]
+              for rid,r in resps.items():
+                u=str(r.get('url') or '')
+                if '/api/v1/charge_points/map?' not in u or int(r.get('status') or 0)!=200: continue
+                try: body=d.execute_cdp_cmd('Network.getResponseBody',{'requestId':rid}).get('body',''); payload=json.loads(body)
+                except Exception as e: payload={'error':str(e)}
+                events.append({'url':u,'status':r.get('status'),'payload':sanitize(payload)})
+              out.append({'target':label,'lat':lat,'lng':lng,'events':events})
+            report={'generatedAt':datetime.now(timezone.utc).isoformat(),'method':'public Monta web map segmented=0','results':out}
+            Path('data/reports/waat_monta_unsegmented_map_probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+            # compact console summary
+            rows=[]
+            for r in out:
+              for e in r['events']:
+                p=e['payload']; items=[]
+                for key in ('list','single_list','cluster_list','data'):
+                  v=p.get(key) if isinstance(p,dict) else None
+                  if isinstance(v,list):
+                    for x in v:
+                      if isinstance(x,dict):
+                        blob=' '.join(str(x.get(k) or '') for k in ['operator_name','name','identifier'])
+                        if 'WAAT' in blob.upper() or 'FRWA2' in re.sub(r'[^A-Z0-9]','',blob.upper()):
+                          items.append({k:x.get(k) for k in ['document','id','identifier','name','operator_name','max_kw','min_kw','price_label','pricings','pricing_collection','charge_point_group_id','roaming','currency']})
+                rows.append({'target':r['target'],'url':e['url'],'waatItems':items})
+            print(json.dumps(rows,ensure_ascii=False,indent=2))
+          finally:d.quit()
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: waat-monta-unsegmented-map-probe
+          path: data/reports/waat_monta_unsegmented_map_probe.json
+          retention-days: 14
+      - name: Commit sanitized report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_monta_unsegmented_map_probe.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: publish unsegmented WAAT Monta map probe"
+          for attempt in 1 2 3 4 5; do git pull --rebase origin main; git push origin HEAD:main && exit 0; sleep $((attempt*2)); done
+          exit 1
