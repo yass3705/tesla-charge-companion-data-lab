@@ -28,6 +28,8 @@ jobs:
           paths = [
               "/cpo/app/v1/chargestation/getstationstate",
               "/cpo/app/v1/chargestation/getstationstate?stationId=00000000-0000-0000-0000-000000000000",
+              "/2/cpo/app/v1/chargestation/getstationstate",
+              "/2/cpo/app/v1/chargestation/getstationstate?stationId=00000000-0000-0000-0000-000000000000",
           ]
 
           results = []
@@ -56,7 +58,6 @@ jobs:
                       content_type = None
                       body = f"transport_error:{type(exc).__name__}"
 
-                  # Sanitized classification only: no headers/tokens/cookies are sent or persisted.
                   lower = body.lower()
                   if status == 404 or "uri not mached" in lower or "not found" in lower:
                       classification = "route_not_matched"
@@ -89,6 +90,6 @@ jobs:
                   "no_credentials": True,
                   "response_body_persisted": False,
               },
-              "request_shape": "GET <host>/cpo/app/v1/chargestation/getstationstate?stationId=<placeholder>",
+              "evidence_note": "The /2 candidate is tested only because static client analysis recovered numocity.com/2 near the station-state route.",
               "results": results,
           }, indent=2))
