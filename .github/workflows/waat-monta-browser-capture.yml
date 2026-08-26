@@ -25,7 +25,7 @@ jobs:
       - name: Capture Monta public-map API responses
         run: |
           set -euo pipefail
-          cat > /tmp/capture.mjs <<'JS'
+          cat > capture-waat-monta.mjs <<'JS'
           import fs from 'node:fs';
           import { chromium } from 'playwright-core';
 
@@ -57,14 +57,12 @@ jobs:
                 try { const j=JSON.parse(txt); item.keys=Object.keys(j); item.hasToken=!!j?.token?.access_token; }
                 catch {}
               } else {
-                const j=JSON.parse(txt);
-                item.json=j;
+                item.json=JSON.parse(txt);
               }
             } catch(e) { item.readError=String(e); }
             captured.push(item);
           });
 
-          // Saint-Priest / Lyon: known current WAAT public station area.
           const url='https://maps.monta.app/?lat=45.7045&lng=4.9445&zoom=16&locale=fr';
           let pageStatus=null;
           try {
@@ -72,8 +70,6 @@ jobs:
             pageStatus=resp?.status()??null;
             await page.waitForTimeout(18000);
           } catch(e) { consoleLines.push({type:'navigation-error',text:String(e)}); }
-
-          // Also request a wider Lyon viewport naturally by zooming out if UI is alive.
           try {
             await page.evaluate(()=>{
               const u=new URL(location.href);u.searchParams.set('zoom','11');history.replaceState({},'',u.toString());window.dispatchEvent(new PopStateEvent('popstate'));
@@ -82,7 +78,7 @@ jobs:
           } catch {}
 
           function scan(value,path='$',hits=[]){
-            if(hits.length>1000) return hits;
+            if(hits.length>1500) return hits;
             if(value && typeof value==='object') {
               if(Array.isArray(value)) value.forEach((v,i)=>scan(v,`${path}[${i}]`,hits));
               else for(const [k,v] of Object.entries(value)) {
@@ -94,15 +90,16 @@ jobs:
             return hits;
           }
           const pricingHits=[];
-          for(const c of captured){ if(c.json) pricingHits.push(...scan(c.json, c.url)); }
+          for(const c of captured){ if(c.json) pricingHits.push(...scan(c.json,c.url)); }
           const waatHits=pricingHits.filter(x=>String(x.value).toLowerCase().includes('waat'));
           const report={generatedAt:new Date().toISOString(),pageUrl:url,pageStatus,finalUrl:page.url(),title:await page.title().catch(()=>null),captured,pricingHits,waatHits,console:consoleLines};
           fs.mkdirSync('data/reports',{recursive:true});
           fs.writeFileSync('data/reports/waat_monta_browser_capture.json',JSON.stringify(report,null,2));
-          console.log(JSON.stringify({pageStatus:report.pageStatus,finalUrl:report.finalUrl,title:report.title,captured:captured.map(x=>({url:x.url,status:x.status,keys:x.keys||(x.json&&typeof x.json==='object'?Object.keys(x.json).slice(0,30):null)})),pricingHitCount:pricingHits.length,waatHitCount:waatHits.length,waatHits:waatHits.slice(0,30)},null,2));
+          console.log(JSON.stringify({pageStatus:report.pageStatus,finalUrl:report.finalUrl,title:report.title,captured:captured.map(x=>({url:x.url,status:x.status,keys:x.keys||(x.json&&typeof x.json==='object'?Object.keys(x.json).slice(0,30):null)})),pricingHitCount:pricingHits.length,waatHitCount:waatHits.length,waatHits:waatHits.slice(0,30),console:consoleLines.slice(0,30)},null,2));
           await browser.close();
           JS
-          node /tmp/capture.mjs
+          node capture-waat-monta.mjs
+          rm -f capture-waat-monta.mjs
       - name: Commit sanitized browser report
         run: |
           set -euo pipefail
