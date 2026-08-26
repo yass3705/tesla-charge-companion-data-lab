@@ -27,7 +27,7 @@ jobs:
           python - <<'PY'
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
-          import json, time, urllib.parse
+          import json, time
           from pathlib import Path
 
           PAGE='https://fronts-map.izivia.com/'
@@ -45,9 +45,8 @@ jobs:
               d.get(PAGE)
               time.sleep(12)
               body=d.find_element('tag name','body').text
-              source=d.page_source
               Path('probe/page_body.txt').write_text(body[:100000])
-              Path('probe/page_source.html').write_text(source[:1000000])
+              Path('probe/page_source.html').write_text(d.page_source[:1000000])
 
               requests=[]
               candidate=[]
@@ -63,7 +62,14 @@ jobs:
                       url=req.get('url','')
                       typ=params.get('type')
                       if typ in ('XHR','Fetch','Script'):
-                          requests.append({'requestId':params.get('requestId'),'url':url,'method':req.get('method'),'type':typ,'headerNames':sorted((req.get('headers') or {}).keys())})
+                          requests.append({
+                              'requestId':params.get('requestId'),
+                              'url':url,
+                              'method':req.get('method'),
+                              'type':typ,
+                              'headerNames':sorted((req.get('headers') or {}).keys()),
+                              'postData':req.get('postData')
+                          })
                   elif method=='Network.responseReceived':
                       resp=params.get('response') or {}
                       typ=params.get('type')
@@ -72,31 +78,18 @@ jobs:
 
               for resp in responses:
                   mime=(resp.get('mimeType') or '').lower()
-                  if 'json' not in mime and 'javascript' not in mime and 'text/plain' not in mime:
+                  if 'json' not in mime and 'text/plain' not in mime:
                       continue
                   try:
                       got=d.execute_cdp_cmd('Network.getResponseBody', {'requestId':resp['requestId']})
                       text=got.get('body','')
                   except Exception as e:
                       text='[response body unavailable: %s]' % (e,)
-                  candidate.append({**resp,'body':text[:200000]})
+                  candidate.append({**resp,'body':text[:250000]})
 
-              out={
-                  'page':PAGE,
-                  'currentUrl':d.current_url,
-                  'title':d.title,
-                  'body':body[:30000],
-                  'requests':requests,
-                  'candidateResponses':candidate,
-              }
+              out={'page':PAGE,'currentUrl':d.current_url,'title':d.title,'body':body[:30000],'requests':requests,'candidateResponses':candidate}
               Path('probe/izivia_public_map_probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2))
-              print('current=',d.current_url,'title=',d.title)
-              print('body=',body[:5000])
-              print('request count=',len(requests),'response count=',len(responses),'captured bodies=',len(candidate))
               for r in requests[:200]: print('REQ',json.dumps(r,ensure_ascii=False))
-              for r in candidate[:50]:
-                  print('\n=== RESP',r.get('status'),r.get('mimeType'),r.get('url'),'===')
-                  print((r.get('body') or '')[:10000])
           finally:
               d.quit()
           PY
