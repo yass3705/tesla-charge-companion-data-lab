@@ -1,0 +1,99 @@
+name: Qovoltis current app API probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-current-app-api.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Download Qovoltis 5.0.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work probe
+          curl -sS -L --max-time 180 -A 'Mozilla/5.0' \
+            'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=50012' \
+            -o work/qovoltis-current.xapk
+          echo "bytes=$(wc -c < work/qovoltis-current.xapk)" | tee probe/download.txt
+          file work/qovoltis-current.xapk | tee -a probe/download.txt
+          unzip -q work/qovoltis-current.xapk -d work/xapk
+          find work/xapk -type f -name '*.apk' -printf '%s %p\n' | sort -nr | tee probe/apks-by-size.txt
+          BASE=$(find work/xapk -type f -name '*.apk' -printf '%s %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          echo "BASE=$BASE" | tee probe/base.txt
+          cp "$BASE" work/base.apk
+
+      - name: Decode current app
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq apktool >/dev/null
+          apktool d -f work/base.apk -o work/decoded >/dev/null 2>&1 || true
+          cp work/decoded/apktool.yml probe/apktool.yml 2>/dev/null || true
+          grep -RIna -E 'qovoltis\.com|qoapi|qorest|qockpit|chargenow|retrofit2/http/(GET|POST|PUT|DELETE|PATCH)|pricing|tariff|pricePerReference|map-station|station-preview|emsp-map' work/decoded 2>/dev/null | head -10000 > probe/evidence.txt || true
+          sed -n '1,1200p' probe/evidence.txt
+
+      - name: Extract URLs and exact Retrofit endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re,json
+          root=Path('work/decoded')
+          urls=set(); methods=[]
+          for p in root.rglob('*'):
+              if not p.is_file(): continue
+              try:
+                  if p.stat().st_size>20_000_000: continue
+                  raw=p.read_bytes()
+              except: continue
+              # Static URL scan across resources/smali/native-readable strings.
+              text=raw.decode('latin1','ignore')
+              for u in re.findall(r'https?://[^\s\x00"\'<>]{4,500}',text,re.I):
+                  if any(k in u.lower() for k in ('qovoltis','qoapi','qorest','chargenow','qockpit')):
+                      urls.add(u.rstrip('),;\\'))
+          for p in root.rglob('*.smali'):
+              try:t=p.read_text(errors='replace')
+              except:continue
+              if 'Lretrofit2/http/' not in t: continue
+              for b in re.findall(r'(?ms)^\.method\s+.*?^\.end method\s*$',t):
+                  hm=re.search(r'Lretrofit2/http/(GET|POST|PUT|DELETE|PATCH);',b)
+                  if not hm: continue
+                  http=hm.group(1)
+                  ann=re.search(r'(?ms)\.annotation runtime Lretrofit2/http/'+http+r';(.*?)\.end annotation',b)
+                  path=None
+                  if ann:
+                      vm=re.search(r'value\s*=\s*"([^"]*)"',ann.group(1))
+                      if vm:path=vm.group(1)
+                  decl=b.splitlines()[0].strip()
+                  methods.append({'file':str(p).split('work/decoded/',1)[-1],'http':http,'path':path,'declaration':decl})
+          Path('probe/urls.txt').write_text('\n'.join(sorted(urls)),encoding='utf-8')
+          Path('probe/retrofit.json').write_text(json.dumps(methods,ensure_ascii=False,indent=2),encoding='utf-8')
+          print('URLS'); print(Path('probe/urls.txt').read_text()[:30000])
+          print('RETROFIT'); print(Path('probe/retrofit.json').read_text()[:60000])
+          PY
+
+      - name: Inspect Flutter and web assets if present
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            find work/decoded -type f \( -name '*.js' -o -name '*.json' -o -name '*.dart' -o -name '*.yaml' -o -name '*.html' \) -print
+            grep -RIna -E 'qorest|qoapi|qovoltis\.com|station|pricing|tariff|price|kwh|offer' work/decoded/assets work/decoded/res/raw 2>/dev/null | head -5000 || true
+          } > probe/assets-evidence.txt
+          sed -n '1,1000p' probe/assets-evidence.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-current-app-api
+          path: probe
+          retention-days: 3
