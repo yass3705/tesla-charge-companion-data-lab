@@ -19,8 +19,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p audit
-          URL='https://static.data.gouv.fr/resources/bornes-de-recharges-izivia-express/20260825-060254/datagouv-export-izivia-express-2026-08-25t06-02-53.csv'
-          curl -fsSL --retry 3 "$URL" -o audit/izivia_express_official.csv
+          # Stable data.gouv resource redirect, rather than the mutable static URL.
+          URL='https://www.data.gouv.fr/api/1/datasets/r/95f96484-c602-4b2f-996d-702f61b2e8ab'
+          curl -fL --retry 3 "$URL" -o audit/izivia_express_official.csv
           python - <<'PY'
           import csv,json,collections
           from pathlib import Path
@@ -41,7 +42,6 @@ jobs:
               print('\n===',key,'unique',len(c),'===')
               for v,n in c.most_common(30): print(n,repr(v))
 
-          # Station-level dedupe and operator integrity
           station_key='id_station_itinerance' if 'id_station_itinerance' in fields else None
           stations={}
           if station_key:
@@ -50,16 +50,12 @@ jobs:
                   if sid: stations.setdefault(sid,r)
           print('\nSTATIONS',len(stations))
           print('\nSAMPLE STATIONS')
-          for sid,r in list(stations.items())[:40]:
+          for sid,r in list(stations.items())[:50]:
               print(json.dumps({k:r.get(k) for k in ['id_station_itinerance','nom_station','nom_operateur','nom_amenageur','nom_enseigne','adresse_station','puissance_nominale','tarification'] if k in fields},ensure_ascii=False))
 
-          summary={
-              'rows':len(rows),
-              'stations':len(stations),
-              'fields':fields,
+          summary={'rows':len(rows),'stations':len(stations),'fields':fields,
               'operators':dict(collections.Counter((r.get('nom_operateur') or '').strip() for r in rows)) if 'nom_operateur' in fields else {},
-              'signs':dict(collections.Counter((r.get('nom_enseigne') or '').strip() for r in rows)) if 'nom_enseigne' in fields else {},
-          }
+              'signs':dict(collections.Counter((r.get('nom_enseigne') or '').strip() for r in rows)) if 'nom_enseigne' in fields else {}}
           Path('audit/summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2))
           PY
 
