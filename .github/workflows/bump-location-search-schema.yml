@@ -1,0 +1,47 @@
+name: Bump public location search schema
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/bump_location_search_schema_probe.py"
+      - ".github/workflows/bump-location-search-schema.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Introspect Bump location search schema
+        run: python scripts/bump_location_search_schema_probe.py
+      - name: Validate read-only schema report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('reports/bump/location_search_schema_latest.json').read_text())
+          assert p['method']['unauthenticated'] and p['method']['introspectionOnly']
+          assert not p['method']['mutationsSent'] and not p['method']['personalDataQueried']
+          assert 'LocationSearchInputV3Input' in p['types']
+          print(p['types']['LocationSearchInputV3Input'])
+          PY
+      - name: Publish schema report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/bump/location_search_schema_latest.json
+          git diff --cached --quiet && exit 0
+          git commit -m "diag(bump): publish location search schema [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((attempt * 2))
+          done
+          exit 1
