@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - main
       - feat/avia-picoty-national-base
     paths:
       - 'scripts/build_avia_picoty.py'
@@ -50,6 +51,7 @@ jobs:
         run: |
           python scripts/build_avia_picoty.py \
             --input /tmp/irve-statique.csv \
+            --source-label 'https://www.data.gouv.fr/api/1/datasets/r/4ca78c71-4ea4-475d-bd3a-d4aef88f7bf8' \
             --output data/avia_picoty_direct_france.json \
             --gzip
 
@@ -62,8 +64,12 @@ jobs:
           d = json.loads(p.read_text(encoding='utf-8'))
           s = d['stats']
           assert s['stations'] > 0, s
+          assert s['stations_with_coordinates'] == s['stations'], s
           assert s['evses'] >= s['stations'], s
+          assert s['unique_evse_ids'] == s['evses'], s
           assert d['operator']['cpo_id_prefix'] == 'FR*PY2'
+          assert d['source'].startswith('https://www.data.gouv.fr/'), d['source']
+          assert d['policy']['brand_alone_proves_cpo'] is False
           assert d['policy']['roaming_tariffs_as_direct'] is False
           assert d['policy']['avia_carte_deftpower_as_direct'] is False
           assert d['policy']['unverified_0_59_fallback_published'] is False
@@ -80,6 +86,7 @@ jobs:
           report = {
               'generated_at': datetime.now(timezone.utc).isoformat(),
               'dataset': d['dataset'],
+              'source': d['source'],
               'operator': d['operator'],
               'stats': d['stats'],
               'policy': d['policy'],
@@ -90,7 +97,7 @@ jobs:
           PY
 
       - name: Commit generated AVIA data
-        if: github.ref_name == 'feat/avia-picoty-national-base'
+        if: github.ref_name == 'main' || github.ref_name == 'feat/avia-picoty-national-base'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
