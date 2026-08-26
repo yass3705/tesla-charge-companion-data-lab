@@ -1,0 +1,72 @@
+name: WAAT Monta EVSE public page probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/waat-monta-evse-public-page-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Probe public EVSE deeplink routes
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,re,urllib.request,urllib.error
+          from datetime import datetime,timezone
+          from pathlib import Path
+          ids=['218305','179509','238830','93640','FRWA2E5806034']
+          hosts=['https://app.monta.app','https://hub.monta.app','https://waat.monta.app','https://monta.app']
+          paths=['/evse/{id}','/public/evse/{id}','/charge/{id}']
+          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'probes':[]}
+          for host in hosts:
+            for ident in ids:
+              for pat in paths:
+                url=host+pat.format(id=ident)
+                req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 TeslaChargeCompanion','Accept':'text/html,application/xhtml+xml,application/json'})
+                item={'url':url}
+                try:
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                    body=r.read(250000).decode('utf-8','ignore')
+                    item.update(status=r.status,finalUrl=r.geturl(),contentType=r.headers.get('content-type'),bytes=len(body.encode()))
+                except urllib.error.HTTPError as e:
+                  body=e.read(250000).decode('utf-8','ignore')
+                  item.update(status=e.code,finalUrl=e.geturl(),contentType=e.headers.get('content-type'),bytes=len(body.encode()))
+                except Exception as e:
+                  item.update(status=0,error=f'{type(e).__name__}: {e}'); out['probes'].append(item); continue
+                item['title']=(re.search(r'<title[^>]*>(.*?)</title>',body,re.I|re.S).group(1).strip() if re.search(r'<title[^>]*>(.*?)</title>',body,re.I|re.S) else None)
+                item['moneyHits']=sorted(set(re.findall(r'(?i)(?:€\s*\d+[.,]\d+|\d+[.,]\d+\s*€|\d+[.,]\d+\s*(?:EUR|€/kWh|€/min))',body)))[:50]
+                item['routeHits']=sorted(set(re.findall(r'https?://[^"\'<>\\\s]+|/[A-Za-z0-9_.?=&%:@+\-]+(?:/[A-Za-z0-9_.?=&%:@+\-]+)+',body)))
+                item['routeHits']=[x for x in item['routeHits'] if any(k in x.lower() for k in ['evse','charge','price','tariff','payment','monta'])][:100]
+                for k in ['price','tariff','payment','chargePoint','evse','deeplink']:
+                  i=body.lower().find(k.lower())
+                  if i>=0: item.setdefault('contexts',{})[k]=body[max(0,i-300):i+800].replace('\n',' ')[:1100]
+                out['probes'].append(item)
+          p=Path('data/reports/waat_monta_evse_public_page_probe.json');p.parent.mkdir(parents=True,exist_ok=True);p.write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          for x in out['probes']:
+            if x.get('status') in (200,301,302,303,307,308) or x.get('finalUrl')!=x.get('url'):
+              print(json.dumps(x,ensure_ascii=False)[:8000])
+          PY
+      - name: Commit probe report
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_monta_evse_public_page_probe.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Refresh WAAT Monta EVSE public page probe"
+          for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
