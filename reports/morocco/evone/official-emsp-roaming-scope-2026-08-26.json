@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "observed_date": "2026-08-26",
+  "subject": "EvOne.ma / EVPlug access-network scope",
+  "sources": [
+    {
+      "publisher": "EVPlug",
+      "url": "https://evplug.ma/individuel/points-de-recharge/",
+      "source_type": "official_operator_site",
+      "facts": {
+        "public_map_on_website": "not yet available",
+        "station_inventory_and_tariffs": "directed to mobile app",
+        "coverage_claim": "99% of public charging in Morocco",
+        "wording_scope": "stations where the EVPlug charge card can be used"
+      }
+    },
+    {
+      "publisher": "EVPlug",
+      "url": "https://evplug.ma/home/",
+      "source_type": "official_operator_site",
+      "facts": {
+        "charge_card_positioning": "broad-access charging card",
+        "coverage_claim": "99% in Morocco",
+        "cross-network_use_claimed": true
+      }
+    },
+    {
+      "publisher": "EVPlug",
+      "url": "https://play.google.com/store/apps/details?id=ma.evplug",
+      "source_type": "official_app_store_listing",
+      "facts": {
+        "app_name": "EvOne.ma",
+        "provider": "Evplug.ma",
+        "last_update_date_listed": "2026-08-03",
+        "capabilities": [
+          "view prices in advance",
+          "check charger availability",
+          "start and stop charging remotely",
+          "track charging sessions",
+          "receive real-time updates"
+        ]
+      }
+    }
+  ],
+  "modeling": {
+    "app_source_access_network": "EVOne / EVPlug",
+    "cpo_operator": "station-specific; never infer EVPlug from visibility in EVOne",
+    "site_brand": "station-specific",
+    "tariff_channel": "EVOne/EVPlug eMSP tariff when sourced from app; native CPO tariff remains separate",
+    "status_source": "EVOne/EVPlug roaming status when sourced from app; prefer native CPO status when available"
+  },
+  "interpretation": "Official EVPlug wording establishes EVOne/EVPlug primarily as a broad access/eMSP layer across public charging networks, not proof that EVPlug is CPO for every visible station. The existing production status policy remains unchanged: keep Available, Occupied or Charging; exclude Faulted, Offline, Unknown and Unavailable from production while retaining them for diagnostics.",
+  "policy": {
+    "read_only": true,
+    "public_sources_only": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_mutations": true
+  }
+}
