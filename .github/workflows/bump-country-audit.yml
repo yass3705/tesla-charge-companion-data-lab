@@ -1,0 +1,50 @@
+name: Bump France country audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/bump_country_audit.py"
+      - ".github/workflows/bump-country-audit.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Audit Bump country boundary
+        run: PYTHONPATH=scripts python scripts/bump_country_audit.py
+      - name: Validate audit
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('reports/bump/country_audit_latest.json').read_text())
+          c=p['classification']
+          assert p['sourceRowsBump'] >= 2000
+          assert c['validFrenchInseePoints'] > 0
+          print(c)
+          PY
+      - name: Publish audit report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/bump/country_audit_latest.json
+          git diff --cached --quiet && exit 0
+          git commit -m "diag(bump): publish France country audit [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main && git push && exit 0
+            sleep $((attempt * 2))
+          done
+          exit 1
