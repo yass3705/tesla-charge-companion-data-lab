@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "network": "EVGO",
+  "derived_from": "reports/morocco/evgo/latest-pin-hydration.json",
+  "source_generated_at_utc": "2026-08-26T04:41:42.035692+00:00",
+  "source_host": "cp.evgo.ma",
+  "policy": {
+    "derived_from_sanitized_public_report_only": true,
+    "backend_requests_made": false,
+    "no_login": true,
+    "no_credentials": true,
+    "no_mutations": true,
+    "modeling_dimensions_kept_separate": [
+      "cpo_operator",
+      "site_brand",
+      "app_source_access_network",
+      "tariff_channel",
+      "status_source"
+    ]
+  },
+  "modeling": {
+    "cpo_operator": "Nareva Services / EVGO",
+    "site_brand": null,
+    "app_source_access_network": "EVGO",
+    "tariff_channel": "EVGO native",
+    "status_source": "EVGO native backend cp.evgo.ma"
+  },
+  "raw_snapshot_summary": {
+    "location_count": 17,
+    "evse_count": 43,
+    "text_status_counts": {
+      "available": 37,
+      "charging": 3,
+      "unavailable": 3
+    },
+    "managedByOperator_true_count": 43,
+    "roamingEvseId_null_count": 43,
+    "operatorId_values": [1],
+    "networkId_values": ["1"]
+  },
+  "production_semantics": {
+    "available_rule": "status == available AND isAvailable == true AND isLongTermUnavailable == false AND isTemporarilyUnavailable == false",
+    "charging_rule": "status == charging AND isLongTermUnavailable == false AND isTemporarilyUnavailable == false; retain as active/occupied, not as available",
+    "hard_exclusion_rule": "isLongTermUnavailable == true OR isTemporarilyUnavailable == true overrides the textual status for production usability",
+    "other_statuses": "retain diagnostically unless separately modeled; do not infer availability"
+  },
+  "production_summary": {
+    "production_available_evse_count": 35,
+    "production_charging_evse_count": 2,
+    "production_active_evse_count": 37,
+    "excluded_evse_count": 6,
+    "locations_with_at_least_one_production_active_evse": 14,
+    "locations_without_production_active_evse": 3
+  },
+  "excluded_evses": [
+    {
+      "location_id": 8,
+      "location_name": "Marjane Derb Sultan",
+      "evse_id": "25",
+      "status": "available",
+      "isAvailable": false,
+      "isLongTermUnavailable": true,
+      "isTemporarilyUnavailable": false,
+      "reason": "long_term_unavailable_overrides_text_available"
+    },
+    {
+      "location_id": 8,
+      "location_name": "Marjane Derb Sultan",
+      "evse_id": "30",
+      "status": "charging",
+      "isAvailable": false,
+      "isLongTermUnavailable": true,
+      "isTemporarilyUnavailable": false,
+      "reason": "long_term_unavailable_overrides_text_charging"
+    },
+    {
+      "location_id": 6,
+      "location_name": "Marjane Menara",
+      "evse_id": "10",
+      "status": "available",
+      "isAvailable": false,
+      "isLongTermUnavailable": true,
+      "isTemporarilyUnavailable": false,
+      "reason": "long_term_unavailable_overrides_text_available"
+    },
+    {
+      "location_id": 6,
+      "location_name": "Marjane Menara",
+      "evse_id": "12",
+      "status": "unavailable",
+      "isAvailable": false,
+      "isLongTermUnavailable": true,
+      "isTemporarilyUnavailable": false,
+      "reason": "unavailable_and_long_term_unavailable"
+    },
+    {
+      "location_id": 15,
+      "location_name": "Marjane Fès Agdal",
+      "evse_id": "39",
+      "status": "unavailable",
+      "isAvailable": false,
+      "isLongTermUnavailable": true,
+      "isTemporarilyUnavailable": false,
+      "reason": "unavailable_and_long_term_unavailable"
+    },
+    {
+      "location_id": 15,
+      "location_name": "Marjane Fès Agdal",
+      "evse_id": "40",
+      "status": "unavailable",
+      "isAvailable": false,
+      "isLongTermUnavailable": true,
+      "isTemporarilyUnavailable": false,
+      "reason": "unavailable_and_long_term_unavailable"
+    }
+  ],
+  "locations_without_production_active_evse": [
+    {"location_id": 8, "name": "Marjane Derb Sultan"},
+    {"location_id": 6, "name": "Marjane Menara"},
+    {"location_id": 15, "name": "Marjane Fès Agdal"}
+  ],
+  "native_inventory_interpretation": "All 43 EVSE records in the current native snapshot are managedByOperator=true, have roamingEvseId=null, operatorId=1 and networkId=1. This strongly supports treating this 17-location set as EVGO's native operator-managed inventory rather than an imported roaming catalogue. This does not change site_brand and does not infer tariffs or statuses for third-party networks."
+}
