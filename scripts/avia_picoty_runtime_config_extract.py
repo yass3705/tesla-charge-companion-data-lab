@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Sanitize app resource/decompiler context for AVIA Picoty public guest API discovery.
 
-Inputs are decoded public APK resources and optional hermes-dec pseudo-code.  The output
+Inputs are decoded public APK resources and optional hermes-dec pseudo-code. The output
 retains only brand/tenant/base-URL/guest-route context and strips credential-like values.
 """
 from __future__ import annotations
@@ -21,18 +21,33 @@ TERMS = (
     "getmaplocationsasguest", "get-map-locations-as-guest", "nearby-locations-as-guest",
     "/map-locations", "/locations/:locationid/tariffs", "baseurl", "apiurl",
 )
+
+# Match JS/JSON assignments such as:
+#   'API_SUBSCRIPTION_KEY': '...'
+#   "ANDROID_GOOGLE_MAPS_API_KEY": "..."
+# and unquoted forms such as API_KEY=...
+SECRET_OBJECT_RE = re.compile(
+    r"(?ix)(?P<prefix>['\"]?(?:"
+    r"(?:[A-Z0-9_]*API(?:_SUBSCRIPTION)?_KEY)|"
+    r"(?:[A-Z0-9_]*GOOGLE_MAPS_API_KEY)|"
+    r"AUTHORIZATION|BEARER|ACCESS_TOKEN|REFRESH_TOKEN|CLIENT_SECRET|SUBSCRIPTION_KEY"
+    r")['\"]?\s*:\s*)(?P<quote>['\"])(?P<value>[^'\"]+)(?P=quote)"
+)
 SECRET_ASSIGN_RE = re.compile(
-    r"(?i)((?:api[-_ ]?key|authorization|bearer|access[-_ ]?token|refresh[-_ ]?token|client[-_ ]?secret|subscription[-_ ]?key)\s*[:=]\s*)[^\s,;\"']+"
+    r"(?i)((?:api[-_ ]?key|authorization|bearer|access[-_ ]?token|refresh[-_ ]?token|client[-_ ]?secret|subscription[-_ ]?key)\s*=\s*)[^\s,;\"']+"
 )
 QUERY_SECRET_RE = re.compile(r"(?i)([?&](?:key|api_key|apikey|token|access_token|client_secret)=)[^&#\s]+")
+GOOGLE_KEY_RE = re.compile(r"\bAIza[0-9A-Za-z_-]{20,}\b")
 JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}(?:\.[A-Za-z0-9_-]{10,})?\b")
 LONG_TOKEN_RE = re.compile(r"\b[a-fA-F0-9]{40,}\b|\b[A-Za-z0-9_-]{100,}\b")
 UUID_RE = re.compile(r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}\b")
 
 
 def sanitize(s: str) -> str:
+    s = SECRET_OBJECT_RE.sub(lambda m: f"{m.group('prefix')}{m.group('quote')}<redacted>{m.group('quote')}", s)
     s = SECRET_ASSIGN_RE.sub(r"\1<redacted>", s)
     s = QUERY_SECRET_RE.sub(r"\1<redacted>", s)
+    s = GOOGLE_KEY_RE.sub("<redacted-google-api-key>", s)
     s = JWT_RE.sub("<redacted-jwt>", s)
     s = LONG_TOKEN_RE.sub("<redacted-token>", s)
     return s[:1800]
@@ -58,9 +73,9 @@ def collect_resources(root: Path) -> list[dict[str, str]]:
         lines = text.splitlines()
         for i, line in enumerate(lines):
             if relevant(line):
-                lo, hi = max(0, i-2), min(len(lines), i+3)
+                lo, hi = max(0, i - 2), min(len(lines), i + 3)
                 context = sanitize("\n".join(lines[lo:hi]))
-                hits.append({"file": str(p.relative_to(root)), "line": i+1, "context": context})
+                hits.append({"file": str(p.relative_to(root)), "line": i + 1, "context": context})
                 if len(hits) >= 400:
                     return hits
     return hits
@@ -80,7 +95,7 @@ def collect_decompiled(path: Path | None) -> list[dict[str, object]]:
             i = low.find(needle, start)
             if i < 0:
                 break
-            lo, hi = max(0, i-1400), min(len(text), i+2200)
+            lo, hi = max(0, i - 1400), min(len(text), i + 2200)
             ctx = sanitize(text[lo:hi])
             key = ctx[:500]
             if key not in seen:
@@ -115,7 +130,17 @@ def main() -> None:
         },
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    rendered = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+    # Fail closed if a common credential marker survived sanitization.
+    forbidden = [
+        r"AIza[0-9A-Za-z_-]{20,}",
+        r"(?i)['\"]API_SUBSCRIPTION_KEY['\"]\s*:\s*['\"](?!<redacted>)",
+        r"(?i)['\"]ANDROID_GOOGLE_MAPS_API_KEY['\"]\s*:\s*['\"](?!<redacted>)",
+    ]
+    for pattern in forbidden:
+        if re.search(pattern, rendered):
+            raise RuntimeError(f"sensitive value survived sanitization: {pattern}")
+    OUT.write_text(rendered, encoding="utf-8")
     print(json.dumps({
         "resourceHitCount": len(resource_hits),
         "decompiledHitCount": len(decompiled_hits),
