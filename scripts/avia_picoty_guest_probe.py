@@ -97,10 +97,7 @@ def main() -> None:
                 seen.add(url)
                 results.append(request("GET", url))
             map_url = base.rstrip("/") + prefix + "/tenants/nonexistent/map-locations"
-            results.append(request("GET", map_url, {
-                "latLongBottomLeft": "41,-6",
-                "latLongTopRight": "52,10",
-            }))
+            results.append(request("GET", map_url, {"latLongBottomLeft": "41,-6", "latLongTopRight": "52,10"}))
             near_url = base.rstrip("/") + prefix + "/tenants/nonexistent/nearby-locations"
             results.append(request("GET", near_url, {"latitude": "48.8", "longitude": "2.3"}))
             results.append(request("OPTIONS", base.rstrip("/") + prefix + "/tenants/nonexistent/map-locations"))
