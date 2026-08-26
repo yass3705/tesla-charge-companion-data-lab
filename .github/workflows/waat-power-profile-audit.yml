@@ -1,0 +1,62 @@
+name: WAAT direct power profile audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/waat-power-profile-audit.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Summarize WAAT power profile
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import gzip,json,collections
+          from pathlib import Path
+          d=json.loads(gzip.decompress(Path('data/national/waat_direct_stations_france.json.gz').read_bytes()))
+          stations=d['stations']
+          bands=collections.Counter(); exact=collections.Counter(); high=[]
+          for s in stations:
+            vals=[]
+            for e in s.get('evses') or []:
+              v=e.get('powerKw')
+              try:v=float(v)
+              except:continue
+              vals.append(v);exact[str(v)]+=1
+              if v<7.5:bands['<7.5']+=1
+              elif v<=22.5:bands['7.5-22.5']+=1
+              elif v<50:bands['22.5-49.9']+=1
+              elif v<150:bands['50-149']+=1
+              elif v<350:bands['150-349']+=1
+              else:bands['>=350']+=1
+            mx=max(vals) if vals else None
+            if mx is not None and mx>=50:
+              high.append({'stationId':s.get('stationId'),'stationName':s.get('stationName'),'address':s.get('address'),'coordinates':s.get('coordinates'),'maxPowerKw':mx,'evses':s.get('evses')})
+          out={'counts':d['counts'],'evsePowerBands':dict(bands),'exactPowerCounts':dict(exact),'stationsAtLeast50KwCount':len(high),'stationsAtLeast50Kw':high}
+          Path('data/reports/waat_power_profile_audit.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Commit report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_power_profile_audit.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: publish WAAT power profile audit"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
