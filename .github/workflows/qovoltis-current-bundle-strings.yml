@@ -1,0 +1,91 @@
+name: Qovoltis current Hermes API strings
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-current-bundle-strings.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Extract Hermes string table
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work probe
+          curl -sS -L --max-time 180 -A 'Mozilla/5.0' \
+            'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=50012' \
+            -o work/app.xapk
+          unzip -q work/app.xapk -d work/xapk
+          BASE=$(find work/xapk -type f -name '*.apk' -printf '%s %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          unzip -p "$BASE" assets/index.android.bundle > work/index.android.bundle
+          strings -a -n 3 work/index.android.bundle > probe/all-strings.txt
+          grep -Ei 'qovoltis|proxy-cp-user|qorest|/v[0-9]+/|evcps|station|tariff|pricing|price|kwh|emsp|connector|charge|offer|configuration|location' probe/all-strings.txt > probe/api-strings.txt || true
+          sed -n '1,2500p' probe/api-strings.txt
+
+      - name: Parse route and URL candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re,json
+          lines=Path('probe/all-strings.txt').read_text(errors='replace').splitlines()
+          urls=[]; routes=[]; hits=[]
+          for i,s in enumerate(lines):
+              low=s.lower()
+              if any(k in low for k in ('proxy-cp-user','qorest.qovoltis','qovoltis.com')) and ('http://' in low or 'https://' in low):
+                  urls.append(s)
+              if s.startswith('/') and len(s)<300 and any(k in low for k in ('evcp','station','tariff','pricing','price','charge','offer','location','emsp','configuration','connector')):
+                  routes.append(s)
+              if any(k in low for k in ('evcps','station_id','tariffs','pricing','emsp-stations','proxy-cp-user')):
+                  hits.append({'i':i,'before':lines[max(0,i-6):i],'line':s,'after':lines[i+1:i+7]})
+          Path('probe/urls-clean.txt').write_text('\n'.join(dict.fromkeys(urls)),encoding='utf-8')
+          Path('probe/routes-clean.txt').write_text('\n'.join(dict.fromkeys(routes)),encoding='utf-8')
+          Path('probe/context.json').write_text(json.dumps(hits,ensure_ascii=False,indent=2),encoding='utf-8')
+          print('URLS'); print(Path('probe/urls-clean.txt').read_text()[:20000])
+          print('ROUTES'); print(Path('probe/routes-clean.txt').read_text()[:40000])
+          print('CONTEXT'); print(Path('probe/context.json').read_text()[:60000])
+          PY
+
+      - name: Safe anonymous discovery probes
+        shell: bash
+        run: |
+          set +e
+          python - <<'PY'
+          from pathlib import Path
+          import json, subprocess
+          base='https://proxy-cp-user.qovoltis.com'
+          targets=[
+            ('GET','/'),
+            ('GET','/evcps/emsp-stations'),
+            ('GET','/evcps/emsp-stations?emsp=QOVOLTIS'),
+            ('GET','/evcps/emsp-stations?emsp=QVI'),
+            ('GET','/evcps/emsp-stations?emsp=QOV'),
+            ('GET','/v2/evcps/stations'),
+            ('GET','/configurations/public'),
+          ]
+          out=[]
+          for n,(method,path) in enumerate(targets,1):
+              url=base+path
+              body=Path(f'probe/body-{n}.txt'); hdr=Path(f'probe/hdr-{n}.txt')
+              cmd=['curl','-sS','-L','--max-time','20','-A','Mozilla/5.0','-H','Accept: application/json','-D',str(hdr),'-o',str(body),'-w','%{http_code}',url]
+              try: code=subprocess.check_output(cmd,text=True).strip()
+              except Exception: code='ERR'
+              sample=body.read_text(errors='replace')[:5000] if body.exists() else ''
+              out.append({'path':path,'code':code,'bytes':body.stat().st_size if body.exists() else 0,'sample':sample})
+          Path('probe/anonymous-probes.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(Path('probe/anonymous-probes.json').read_text())
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-current-hermes-api
+          path: probe
+          retention-days: 3
