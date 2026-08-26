@@ -1,0 +1,115 @@
+name: Bump national public tariffs throttled
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/bump-national-public-tariffs-throttled.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bump-national-public-tariffs
+  cancel-in-progress: true
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Harvest national Bump tariffs with GraphQL throttling
+        run: |
+          PYTHONPATH=scripts python - <<'PY'
+          import sys,time
+          import bump_graphql_national_tariffs as b
+          original=b.post
+          def throttled_post(query, variables, attempts=4):
+              last=('network_error',{})
+              for i in range(7):
+                  status,obj=original(query,variables,attempts=1)
+                  last=(status,obj)
+                  errs=b.gql_errors(obj) if isinstance(obj,dict) else []
+                  limited=any('too many requests' in e.casefold() for e in errs)
+                  transient=status in (429,500,502,503,504,'network_error')
+                  if not limited and not transient:
+                      return status,obj
+                  time.sleep(min(8.0,1.0*(i+1)))
+              return last
+          b.post=throttled_post
+          b.MAX_WORKERS=2
+          b.TILE_DEGREES=0.10
+          b.TILE_MARGIN=0.004
+          sys.argv=['bump-harvester']
+          b.main()
+          PY
+      - name: Build tariff distribution report
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from collections import Counter
+          from pathlib import Path
+          p=json.loads(gzip.decompress(Path('data/national/bump_direct_tariffs_graphql_france.json.gz').read_bytes()))
+          patterns=Counter()
+          tariff_ids=Counter()
+          missing_point_reasons=Counter()
+          unpriced=[]
+          unmatched=[]
+          for s in p['stations']:
+              m=s['match']
+              if m['status']!='matched':
+                  unmatched.append({'stationId':s.get('idStationItinerance'),'name':s.get('name'),'status':m['status'],'reason':m.get('reason')})
+                  continue
+              station_priced=False
+              for point in m.get('points',[]):
+                  t=point.get('tariff')
+                  if not t:
+                      if not point.get('mapped'): missing_point_reasons['evse_not_mapped']+=1
+                      elif not point.get('tariffGroupId'): missing_point_reasons['tariff_group_missing']+=1
+                      else: missing_point_reasons['tariff_detail_missing']+=1
+                      continue
+                  station_priced=True
+                  key=(t.get('energyEurPerKwh'),t.get('timeEurPerHour'),t.get('flatFeeEur'),t.get('minPriceEur'),bool(t.get('isTariffChangingInTime')),t.get('parkingText'))
+                  patterns[key]+=1
+                  if t.get('tariffId'): tariff_ids[t['tariffId']]+=1
+              if not station_priced:
+                  unpriced.append({'stationId':s.get('idStationItinerance'),'name':s.get('name'),'matchMethod':m.get('method')})
+          rows=[]
+          for k,n in patterns.most_common():
+              rows.append({'pointCount':n,'energyEurPerKwh':k[0],'timeEurPerHour':k[1],'flatFeeEur':k[2],'minPriceEur':k[3],'isTariffChangingInTime':k[4],'parkingText':k[5]})
+          out={'generatedAt':p['generatedAt'],'counts':p['counts'],'uniqueTariffIds':len(tariff_ids),'pricePatternCount':len(patterns),'pricePatterns':rows,'missingPointReasons':dict(missing_point_reasons),'unpricedMatchedStations':unpriced,'unmatchedStations':unmatched}
+          path=Path('reports/bump/national_tariff_distribution_latest.json'); path.parent.mkdir(parents=True,exist_ok=True); path.write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'counts':p['counts'],'uniqueTariffIds':len(tariff_ids),'pricePatternCount':len(patterns),'topPatterns':rows[:15],'missingPointReasons':dict(missing_point_reasons)},ensure_ascii=False,indent=2))
+          PY
+      - name: Validate and publish
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          p=json.loads(gzip.decompress(Path('data/national/bump_direct_tariffs_graphql_france.json.gz').read_bytes()))
+          c=p['counts']
+          assert p['scope']['directCpoOnly'] and not p['scope']['roamingIncluded']
+          assert c['officialStations'] >= 1500
+          assert c['matchedStations'] >= c['officialStations'] * 0.80
+          assert c['uniqueTariffGroupsWithTariff'] == c['uniqueTariffGroupsRequested']
+          print(c)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/bump_direct_tariffs_graphql_france.json.gz reports/bump_direct_tariffs_graphql_france.md reports/bump/national_tariff_harvest_latest.json reports/bump/national_tariff_distribution_latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(bump): publish throttled national direct tariffs [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
