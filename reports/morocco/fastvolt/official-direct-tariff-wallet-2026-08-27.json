@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "network": "FastVolt",
+  "retrieved_date": "2026-08-27",
+  "sources": [
+    {
+      "publisher": "FastVolt",
+      "url": "https://www.fastvolt.net/HowIts",
+      "source_type": "official_operator_site",
+      "evidence": "Public page states a per-minute tariff of 2.50 MAD/min for rapid DC charging and 0.5 MAD/min for semi-rapid AC charging."
+    },
+    {
+      "publisher": "FastVolt",
+      "url": "https://www.fastvolt.net/FAQ",
+      "source_type": "official_operator_site",
+      "evidence": "Public FAQ states that charging requires an account for payment/history, uses a wallet with a minimum 50 MAD top-up, and debits sessions according to duration, power used and the station tariff."
+    },
+    {
+      "publisher": "FastVolt",
+      "url": "https://www.fastvolt.net/aboutUs",
+      "source_type": "official_operator_site",
+      "evidence": "Official company page identifies FastVolt as the operator launched by Afrimobility and Afrimobility as holder of the FastVolt brand."
+    }
+  ],
+  "policy": {
+    "public_source_only": true,
+    "read_only": true,
+    "no_login": true,
+    "no_mutations": true,
+    "no_inferred_live_status": true,
+    "do_not_apply_tariff_to_other_networks": true
+  },
+  "modeling": {
+    "cpo_operator": "FastVolt / Afrimobility",
+    "site_brand": null,
+    "app_source_access_network": "FastVolt",
+    "tariff_channel": "FastVolt direct",
+    "status_source": null
+  },
+  "tariffs": {
+    "dc_rapid": {
+      "price_mad_per_minute": 2.5,
+      "billing_unit": "minute"
+    },
+    "ac_semi_rapid": {
+      "price_mad_per_minute": 0.5,
+      "billing_unit": "minute"
+    }
+  },
+  "wallet": {
+    "minimum_top_up_mad": 50,
+    "account_required_for_payment_and_history": true,
+    "notes": "FAQ says each session is debited according to duration, power used and station tariff; no additional per-kWh component is inferred from that wording."
+  },
+  "production_interpretation": "Use the official per-minute FastVolt direct tariff by current class when no station-specific direct FastVolt tariff overrides it. Keep site_brand independent from CPO/operator, and do not infer live availability from tariff or map inventory data."
+}
