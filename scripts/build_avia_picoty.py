@@ -76,13 +76,19 @@ def normalized_text(value: Any) -> str:
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
-def is_picoty_row(row: dict[str, Any]) -> bool:
-    """Return True only for a Picoty CPO row, never from brand alone."""
+def picoty_match_reason(row: dict[str, Any]) -> str | None:
     for key in ID_FIELDS:
         if norm_id(row.get(key)).startswith(PICOTY_NORMALIZED_PREFIX):
-            return True
+            return "frpy2_identifier"
     operator_text = " ".join(str(row.get(k) or "") for k in OPERATOR_FIELDS)
-    return "picoty" in normalized_text(operator_text)
+    if "picoty" in normalized_text(operator_text):
+        return "operator_name"
+    return None
+
+
+def is_picoty_row(row: dict[str, Any]) -> bool:
+    """Return True only for a Picoty CPO row, never from brand alone."""
+    return picoty_match_reason(row) is not None
 
 
 def first(row: dict[str, Any], *keys: str) -> Any:
@@ -229,9 +235,6 @@ def parse_direct_tariff(row: dict[str, Any]) -> dict[str, Any]:
     has_direct_marker = any(marker in normalized for marker in DIRECT_TARIFF_MARKERS)
     has_direct_marker = has_direct_marker or re.search(r"\bcb\b", normalized) is not None
     has_roaming_marker = any(marker in normalized for marker in ROAMING_TARIFF_MARKERS)
-
-    # A roaming-only indication is explicitly not a direct Picoty tariff. When both
-    # kinds of wording coexist, require an unambiguous single direct numeric value.
     if not has_direct_marker:
         return result
 
@@ -280,7 +283,11 @@ def build(rows: Iterable[dict[str, Any]], source: str) -> dict[str, Any]:
     rows = list(rows)
     picoty_rows = [row for row in rows if is_picoty_row(row)]
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    match_counts: dict[str, int] = defaultdict(int)
     for row in picoty_rows:
+        reason = picoty_match_reason(row)
+        if reason:
+            match_counts[reason] += 1
         grouped[station_key(row)].append(row)
 
     stations = []
@@ -299,7 +306,7 @@ def build(rows: Iterable[dict[str, Any]], source: str) -> dict[str, Any]:
                 "source_brand_name": first(r0, "nom_enseigne", "reseau"),
                 "cpo_id_prefix": PICOTY_PREFIX,
                 "address": first(r0, "adresse_station", "adresse", "address"),
-                "postal_code": first(r0, "code_postal", "postal_code"),
+                "postal_code": first(r0, "consolidated_code_postal", "code_postal", "postal_code"),
                 "city": first(r0, "consolidated_commune", "commune", "ville", "city"),
                 "city_code_insee": first(r0, "code_insee_commune"),
                 "latitude": lat,
@@ -316,6 +323,7 @@ def build(rows: Iterable[dict[str, Any]], source: str) -> dict[str, Any]:
         for evse in station["evses"]:
             tariff_counts[evse["direct_tariff"]["status"]] += 1
 
+    evse_ids = [evse["evse_id"] for station in stations for evse in station["evses"] if evse.get("evse_id")]
     return {
         "schema_version": 1,
         "dataset": "avia_picoty_direct_france",
@@ -331,8 +339,13 @@ def build(rows: Iterable[dict[str, Any]], source: str) -> dict[str, Any]:
         "stats": {
             "input_rows": len(rows),
             "picoty_rows": len(picoty_rows),
+            "match_reason_counts": dict(sorted(match_counts.items())),
             "stations": len(stations),
+            "stations_with_coordinates": sum(
+                1 for station in stations if station["latitude"] is not None and station["longitude"] is not None
+            ),
             "evses": sum(len(s["evses"]) for s in stations),
+            "unique_evse_ids": len(set(evse_ids)),
             "tariff_status_counts": dict(sorted(tariff_counts.items())),
         },
         "stations": stations,
@@ -342,12 +355,13 @@ def build(rows: Iterable[dict[str, Any]], source: str) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="IRVE CSV/JSON/JSONL path or URL")
+    parser.add_argument("--source-label", help="Canonical public source URL/name stored in output metadata")
     parser.add_argument("--output", default="data/avia_picoty_direct_france.json")
     parser.add_argument("--gzip", action="store_true", help="also write <output>.gz")
     args = parser.parse_args()
 
     rows = load_rows(args.input)
-    dataset = build(rows, args.input)
+    dataset = build(rows, args.source_label or args.input)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     payload = json.dumps(dataset, ensure_ascii=False, indent=2, sort_keys=False) + "\n"
