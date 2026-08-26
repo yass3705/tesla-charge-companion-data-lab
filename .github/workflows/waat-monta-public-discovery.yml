@@ -1,0 +1,155 @@
+name: WAAT Monta public tariff discovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/waat-monta-public-discovery.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: waat-monta-public-discovery-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Probe public Monta / MyWAAT routes
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports
+          cat > /tmp/waat_monta_probe.py <<'PY'
+          import json, re, ssl, urllib.request, urllib.error, urllib.parse
+          from html import unescape
+          from datetime import datetime, timezone
+
+          UA='TeslaChargeCompanion-data-lab/1.0 (+public WAAT/Monta research)'
+          ctx=ssl.create_default_context()
+          sample_evse='FRWA2E5806034'
+          urls=[
+            f'https://public-api.monta.com/api/v1/afir/charge-points/{sample_evse}/status',
+            'https://public-api.monta.com/api/v1/afir/charge-points?country=FR&page=1&perPage=2',
+            'https://partner-api.monta.com/api/v1/afir/charge-points',
+            'https://app.monta.app/receipts',
+            'https://app.monta.app/robots.txt',
+            'https://app.monta.app/sitemap.xml',
+            'https://app.monta.app/manifest.json',
+            'https://waat.monta.app/privacy-policy',
+          ]
+          deep_paths=[
+            f'/charge-point/{sample_evse}', f'/charge-points/{sample_evse}',
+            f'/charge/{sample_evse}', f'/charging/{sample_evse}',
+            f'/c/{sample_evse}', f'/qr/{sample_evse}', f'/guest/{sample_evse}',
+            f'/public/charge-point/{sample_evse}', f'/public/charge-points/{sample_evse}',
+            f'/d/{sample_evse}',
+          ]
+          urls += ['https://app.monta.app'+p for p in deep_paths]
+
+          def fetch(url, max_bytes=2_000_000):
+            req=urllib.request.Request(url,headers={'User-Agent':UA,'Accept':'*/*'})
+            try:
+              with urllib.request.urlopen(req,timeout=25,context=ctx) as r:
+                b=r.read(max_bytes)
+                return {'url':url,'status':r.status,'finalUrl':r.geturl(),'headers':dict(r.headers),'body':b.decode('utf-8','replace')}
+            except urllib.error.HTTPError as e:
+              try: b=e.read(max_bytes)
+              except Exception: b=b''
+              return {'url':url,'status':e.code,'finalUrl':e.geturl(),'headers':dict(e.headers),'body':b.decode('utf-8','replace')}
+            except Exception as e:
+              return {'url':url,'error':f'{type(e).__name__}: {e}','body':''}
+
+          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'sampleEvse':sample_evse,'probes':[],'assets':[],'findings':[]}
+          fetched={}
+          for u in urls:
+            r=fetch(u)
+            fetched[u]=r
+            body=r.get('body','')
+            title=None
+            m=re.search(r'<title[^>]*>(.*?)</title>',body,re.I|re.S)
+            if m: title=re.sub(r'\s+',' ',unescape(m.group(1))).strip()
+            out['probes'].append({k:v for k,v in r.items() if k!='body'} | {'title':title,'bodyPreview':body[:800]})
+
+          # Collect JS assets exposed by public HTML responses.
+          asset_urls=set()
+          for r in fetched.values():
+            base=r.get('finalUrl') or r.get('url')
+            body=r.get('body','')
+            for src in re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',body,re.I):
+              asset_urls.add(urllib.parse.urljoin(base,unescape(src)))
+            for href in re.findall(r'<link[^>]+href=["\']([^"\']+)["\']',body,re.I):
+              h=urllib.parse.urljoin(base,unescape(href))
+              if h.endswith('.js') or '.js?' in h: asset_urls.add(h)
+
+          patterns=[
+            r'charge[-_ ]?point', r'deep[-_ ]?link', r'guest', r'qr', r'ad.?hoc',
+            r'price', r'pricing', r'public-api\.monta', r'partner-api\.monta',
+            r'/api/v[0-9]+/[A-Za-z0-9_?=&./{}:-]+', r'https?://[^"\'\s]{8,200}'
+          ]
+          combined=re.compile('|'.join(f'(?:{p})' for p in patterns),re.I)
+          for au in sorted(asset_urls)[:80]:
+            r=fetch(au,4_000_000)
+            body=r.get('body','')
+            hits=[]
+            for m in combined.finditer(body):
+              a=max(0,m.start()-180); b=min(len(body),m.end()+260)
+              s=re.sub(r'\s+',' ',body[a:b])
+              if s not in hits: hits.append(s)
+              if len(hits)>=25: break
+            out['assets'].append({'url':au,'status':r.get('status'),'finalUrl':r.get('finalUrl'),'length':len(body),'hits':hits})
+
+          # De-duplicate high-value route/url strings from all public content.
+          corpus='\n'.join(r.get('body','') for r in fetched.values())+'\n'+'\n'.join('\n'.join(a['hits']) for a in out['assets'])
+          candidates=set()
+          for pat in [
+            r'https?://[^"\'\s<>]{8,220}',
+            r'/(?:api|charge|charging|charge-point|charge-points|guest|qr|public|d)/[A-Za-z0-9_?=&./{}:-]{1,180}'
+          ]:
+            for x in re.findall(pat,corpus,re.I):
+              if 'monta' in x.lower() or any(k in x.lower() for k in ('charge','guest','qr','price')):
+                candidates.add(unescape(x))
+          out['findings']=sorted(candidates)[:500]
+          open('data/reports/waat_monta_public_discovery.json','w',encoding='utf-8').write(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({
+            'probeStatuses':[(p.get('url'),p.get('status'),p.get('finalUrl'),p.get('title')) for p in out['probes']],
+            'assetCount':len(out['assets']),
+            'findingCount':len(out['findings']),
+            'findings':out['findings'][:80]
+          },ensure_ascii=False,indent=2))
+          PY
+          python /tmp/waat_monta_probe.py
+
+      - name: Upload discovery report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: waat-monta-public-discovery
+          path: data/reports/waat_monta_public_discovery.json
+          retention-days: 14
+
+      - name: Commit discovery report
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_monta_public_discovery.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: publish WAAT Monta public discovery report"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
