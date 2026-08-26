@@ -1,0 +1,93 @@
+name: Qovoltis 5.0.1 discovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/qovoltis-5-0-1-discovery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download Qovoltis 5.0.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work out
+          curl -sS -L --max-time 120 -A 'Mozilla/5.0' 'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=50012' -o work/qovoltis.xapk
+          echo "bytes=$(wc -c < work/qovoltis.xapk)" | tee out/download.txt
+          file work/qovoltis.xapk | tee -a out/download.txt
+          unzip -q work/qovoltis.xapk -d work/xapk
+          BASE=$(find work/xapk -type f -name '*.apk' | sort | head -1)
+          cp "$BASE" work/base.apk
+          echo "base=$BASE" | tee -a out/download.txt
+
+      - name: Install JADX
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL=$(python - <<'PY'
+          import json,urllib.request
+          req=urllib.request.Request('https://api.github.com/repos/skylot/jadx/releases/latest',headers={'User-Agent':'qovoltis-probe'})
+          obj=json.load(urllib.request.urlopen(req,timeout=30))
+          for a in obj['assets']:
+              if a['name'].startswith('jadx-') and a['name'].endswith('.zip') and 'gui' not in a['name'].lower():
+                  print(a['browser_download_url']);break
+          PY
+          )
+          curl -sS -L "$URL" -o work/jadx.zip
+          unzip -q work/jadx.zip -d work/jadx
+          chmod +x work/jadx/bin/jadx
+
+      - name: Decompile current app
+        shell: bash
+        run: |
+          set +e
+          mkdir -p work/src out
+          work/jadx/bin/jadx --show-bad-code --no-res --threads-count 2 -d work/src work/base.apk >out/jadx.log 2>&1
+          grep -RhoE 'https?://[^"[:space:]]+' work/src/sources 2>/dev/null | grep -Ei 'qovoltis|qorest|qoapi|api' | sort -u > out/urls.txt || true
+          grep -RhoE '@(GET|POST|PUT|DELETE|PATCH)\([^)]*\)' work/src/sources 2>/dev/null | sort -u > out/routes.txt || true
+          grep -RInE 'MapStationList|StationDetails|tarif_heures|price_per_reference_unit|pricing_default_price_currency|DurationRate|PricingTotal|qoapi|qorest' work/src/sources 2>/dev/null | head -5000 > out/key-context.txt || true
+          echo '=== URLS ==='; cat out/urls.txt
+          echo '=== ROUTES ==='; cat out/routes.txt
+          echo '=== KEY CONTEXT ==='; sed -n '1,3000p' out/key-context.txt
+
+      - name: Probe discovered hosts and station endpoints read-only
+        shell: bash
+        run: |
+          set +e
+          python - <<'PY'
+          from pathlib import Path
+          import re,requests,json
+          urls=Path('out/urls.txt').read_text(errors='ignore').splitlines() if Path('out/urls.txt').exists() else []
+          bases=[]
+          for u in urls:
+              m=re.match(r'(https?://[^/]+(?:/[^\s"\']*)?)',u)
+              if m and 'qovoltis' in u.lower(): bases.append(u)
+          for b in ['https://qoapi.qovoltis.com/','https://qoapi.qovoltis.com/api/','https://qorest.qovoltis.com/','https://qorest.qovoltis.com/api/']:
+              if b not in bases:bases.append(b)
+          endpoints=['borne/map-station-list','borne/map-station-preview','app/get-public-settings','app/getSetting']
+          report=[]
+          for base in bases[:20]:
+              root=base if base.endswith('/') else base+'/'
+              for ep in endpoints:
+                  url=root+ep
+                  try:
+                      r=requests.get(url,timeout=15,headers={'User-Agent':'Mozilla/5.0','Accept':'application/json,text/plain,*/*'})
+                      report.append({'url':url,'status':r.status_code,'ctype':r.headers.get('content-type'),'body':r.text[:700]})
+                  except Exception as e:
+                      report.append({'url':url,'error':repr(e)})
+          Path('out/http-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
+          print(json.dumps(report,ensure_ascii=False,indent=2)[:50000])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-5-0-1-discovery
+          path: out
+          retention-days: 5
