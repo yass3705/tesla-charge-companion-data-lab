@@ -12,115 +12,140 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - name: Probe QoREST Swagger and public service roots
         shell: bash
         run: |
-          set -u
           mkdir -p probe/qorest probe/services probe/chargenow probe/apk
-          UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36'
-          urls=(
-            'https://qorest.qovoltis.com/'
-            'https://qorest.qovoltis.com/swagger/v1/'
-            'https://qorest.qovoltis.com/swagger/v2/'
-            'https://qorest.qovoltis.com/swagger/v1/swagger.json'
-            'https://qorest.qovoltis.com/swagger/v2/swagger.json'
-            'https://qorest.qovoltis.com/swagger/v1/swagger.yaml'
-            'https://qorest.qovoltis.com/swagger/v2/swagger.yaml'
-            'https://qorest.qovoltis.com/swagger.json'
-            'https://qorest.qovoltis.com/openapi.json'
-            'https://qorest.qovoltis.com/api-docs'
-          )
-          i=0
-          for u in "${urls[@]}"; do
-            i=$((i+1)); echo "===== $u ====="
-            curl -sS -L --max-time 20 -A "$UA" -D "probe/qorest/$i.headers" "$u" -o "probe/qorest/$i.body" || true
-            head -n 1 "probe/qorest/$i.headers" 2>/dev/null || true
-            wc -c "probe/qorest/$i.body" 2>/dev/null || true
-            grep -Eio '.{0,100}(tariff|price|station|connector|evse|chargepoint|swagger|openapi|security|authorization).{0,180}' "probe/qorest/$i.body" 2>/dev/null | head -n 30 || true
-          done
-
-          services=(
-            'https://qorest-demo.qovoltis.com/'
-            'https://qorest-doc-pp.qovoltis.com/'
-            'https://qockpit-v2.qovoltis.com/'
-            'https://demo-scan.qovoltis.com/'
-            'https://qockpit-demo.qovoltis.com/'
-            'https://ocpi-infra-pp.qovoltis.com/'
-            'https://billing-pp.qovoltis.com/'
-            'https://ocpi-syder-pp.qovoltis.com/'
-          )
-          i=0
-          for u in "${services[@]}"; do
-            i=$((i+1)); echo "===== $u ====="
-            curl -sS -L --max-time 20 -A "$UA" -D "probe/services/$i.headers" "$u" -o "probe/services/$i.body" || true
-            head -n 1 "probe/services/$i.headers" 2>/dev/null || true
-            wc -c "probe/services/$i.body" 2>/dev/null || true
-            grep -Eio 'https?://[^"'"' <>]+' "probe/services/$i.body" 2>/dev/null | head -n 30 || true
-          done
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess, json
+          ua='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36'
+          urls=[
+            'https://qorest.qovoltis.com/',
+            'https://qorest.qovoltis.com/swagger/v1/',
+            'https://qorest.qovoltis.com/swagger/v2/',
+            'https://qorest.qovoltis.com/swagger/v3/',
+            'https://qorest.qovoltis.com/swagger/v1/swagger.json',
+            'https://qorest.qovoltis.com/swagger/v2/swagger.json',
+            'https://qorest.qovoltis.com/swagger/v3/swagger.json',
+            'https://qorest.qovoltis.com/swagger/v3/swagger.yaml',
+            'https://qorest.qovoltis.com/swagger.json',
+            'https://qorest.qovoltis.com/openapi.json',
+            'https://qorest.qovoltis.com/api-docs',
+          ]
+          services=[
+            'https://qorest-demo.qovoltis.com/',
+            'https://qorest-doc-pp.qovoltis.com/',
+            'https://qockpit-v2.qovoltis.com/',
+            'https://demo-scan.qovoltis.com/',
+            'https://qockpit-demo.qovoltis.com/',
+            'https://ocpi-infra-pp.qovoltis.com/',
+            'https://billing-pp.qovoltis.com/',
+            'https://ocpi-syder-pp.qovoltis.com/',
+          ]
+          def get(url, base, i):
+              h=f'probe/{base}/{i}.headers'; b=f'probe/{base}/{i}.body'
+              r=subprocess.run(['curl','-sS','-L','--max-time','25','-A',ua,'-D',h,url,'-o',b],check=False)
+              text=Path(b).read_text(errors='replace') if Path(b).exists() else ''
+              head=Path(h).read_text(errors='replace') if Path(h).exists() else ''
+              print('=====',url,'=====')
+              print((head.splitlines() or ['NO HEADERS'])[0], 'bytes=',len(text.encode()))
+              low=text.lower()
+              marks=[x for x in ['tariff','tarif','price','station','connector','evse','chargepoint','swagger','openapi','authorization'] if x in low]
+              print('markers=',marks)
+          for i,u in enumerate(urls,1): get(u,'qorest',i)
+          for i,u in enumerate(services,1): get(u,'services',i)
+          Path('probe/qorest/urls.json').write_text(json.dumps(urls,indent=2))
+          Path('probe/services/urls.json').write_text(json.dumps(services,indent=2))
+          PY
 
       - name: Inspect ChargeNow HTML and JavaScript bundles
         shell: bash
         run: |
-          set -u
-          UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36'
-          base='https://chargenow.qovoltis.com'
-          curl -sS -L --max-time 25 -A "$UA" -D probe/chargenow/root.headers "$base/" -o probe/chargenow/root.html || true
-          echo '--- ChargeNow root ---'
-          wc -c probe/chargenow/root.html 2>/dev/null || true
-          grep -Eo '(src|href)=["'"'][^"'"']+' probe/chargenow/root.html 2>/dev/null | head -n 100 || true
           python - <<'PY'
           from pathlib import Path
-          import re, urllib.parse, subprocess
-          p=Path('probe/chargenow/root.html')
-          html=p.read_text(errors='replace') if p.exists() else ''
+          import re, urllib.parse, subprocess, json
+          ua='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/124 Safari/537.36'
+          base='https://chargenow.qovoltis.com/'
+          subprocess.run(['curl','-sS','-L','--max-time','30','-A',ua,'-D','probe/chargenow/root.headers',base,'-o','probe/chargenow/root.html'],check=False)
+          html=Path('probe/chargenow/root.html').read_text(errors='replace') if Path('probe/chargenow/root.html').exists() else ''
           assets=[]
           for m in re.finditer(r'(?:src|href)=["\']([^"\']+)',html,re.I):
               x=m.group(1)
-              if x.endswith('.js') or '.js?' in x or x.endswith('.json'):
-                  assets.append(urllib.parse.urljoin('https://chargenow.qovoltis.com/',x))
-          assets=list(dict.fromkeys(assets))[:30]
-          Path('probe/chargenow/assets.txt').write_text('\n'.join(assets))
+              if any(y in x for y in ['.js','.json','manifest']): assets.append(urllib.parse.urljoin(base,x))
+          assets=list(dict.fromkeys(assets))[:40]
+          Path('probe/chargenow/assets.json').write_text(json.dumps(assets,indent=2))
+          print('root bytes',len(html.encode()),'assets',len(assets))
           for i,u in enumerate(assets):
-              subprocess.run(['curl','-sS','-L','--max-time','25','-A','Mozilla/5.0','-o',f'probe/chargenow/asset_{i}.txt',u],check=False)
-          print('\n'.join(assets))
+              out=f'probe/chargenow/asset_{i}.txt'
+              subprocess.run(['curl','-sS','-L','--max-time','30','-A',ua,u,'-o',out],check=False)
+              print(i,u,Path(out).stat().st_size if Path(out).exists() else 0)
+          clues=[]; urls=[]
+          for p in Path('probe/chargenow').glob('asset_*.txt'):
+              t=p.read_text(errors='replace')
+              for s in re.findall(r'https?://[^"\'\s<>)}]+',t):
+                  if s not in urls: urls.append(s)
+              for pat in [r'.{0,120}(?:qorest|qovoltis\.com|tariff|tarif|price|pricing|station|connector|evse|chargepoint|graphql|ocpi).{0,220}']:
+                  clues += re.findall(pat,t,re.I|re.S)[:100]
+          Path('probe/chargenow/extracted_urls.txt').write_text('\n'.join(urls[:500]))
+          Path('probe/chargenow/clues.txt').write_text('\n---\n'.join(clues[:500]))
+          print('extracted urls',len(urls))
+          for s in urls:
+              if 'qovoltis' in s.lower() or any(k in s.lower() for k in ['api','price','tarif','station','evse']): print(s[:500])
           PY
-          echo '--- Bundle clues ---'
-          grep -ERaio '.{0,140}(qorest|qovoltis\.com|chargenow|tariff|tarif|price|pricing|station|connector|evse|chargepoint|api/|graphql|ocpi).{0,220}' probe/chargenow/asset_*.txt 2>/dev/null | head -n 250 || true
-          grep -ERho 'https?://[^"'"' <>)\\]+' probe/chargenow/asset_*.txt 2>/dev/null | sort -u | head -n 150 || true
 
       - name: Probe anonymous OCPI version endpoints only
         shell: bash
         run: |
-          set -u
-          for host in ocpi-infra-pp.qovoltis.com ocpi-syder-pp.qovoltis.com; do
-            for path in /ocpi/versions /versions /ocpi/cpo/2.2.1/versions /ocpi/emsp/2.2.1/versions; do
-              u="https://$host$path"
-              echo "===== $u ====="
-              curl -sS -L --max-time 15 -A 'Mozilla/5.0' -w '\nHTTP=%{http_code}\n' "$u" | head -c 3000 || true
-              echo
-            done
-          done
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          hosts=['ocpi-infra-pp.qovoltis.com','ocpi-syder-pp.qovoltis.com']
+          paths=['/ocpi/versions','/versions','/ocpi/cpo/2.2.1/versions','/ocpi/emsp/2.2.1/versions','/ocpi/2.2.1/versions']
+          out=[]
+          for host in hosts:
+            for path in paths:
+              u='https://'+host+path
+              r=subprocess.run(['curl','-sS','-L','--max-time','15','-A','Mozilla/5.0','-w','\nHTTP=%{http_code}\n',u],capture_output=True,text=True)
+              s=r.stdout[:5000]
+              out.append('===== '+u+' =====\n'+s)
+              print('=====',u,'====='); print(s[:1000])
+          Path('probe/services/ocpi_probe.txt').write_text('\n'.join(out))
+          PY
 
       - name: Static scan public Android XAPK when downloadable
         shell: bash
         run: |
-          set -u
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess, zipfile, re, os
           url='https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=443'
-          curl -sS -L --max-time 90 -A 'Mozilla/5.0' "$url" -o probe/apk/qovoltis.xapk || true
-          echo '--- APK/XAPK size/type ---'
-          ls -lh probe/apk/qovoltis.xapk 2>/dev/null || true
-          file probe/apk/qovoltis.xapk 2>/dev/null || true
-          if unzip -t probe/apk/qovoltis.xapk >/dev/null 2>&1; then
-            mkdir -p probe/apk/unpacked
-            unzip -q probe/apk/qovoltis.xapk -d probe/apk/unpacked || true
-            find probe/apk/unpacked -type f -name '*.apk' -maxdepth 3 -print
-            for a in probe/apk/unpacked/*.apk; do
-              [ -f "$a" ] || continue
-              unzip -p "$a" classes.dex 2>/dev/null | strings | grep -Eia 'https?://|qorest|chargenow|qovoltis\.com|tariff|price|station|connector|evse|graphql|ocpi' | head -n 400 || true
-            done
-          fi
+          p=Path('probe/apk/qovoltis.xapk')
+          subprocess.run(['curl','-sS','-L','--max-time','120','-A','Mozilla/5.0',url,'-o',str(p)],check=False)
+          print('xapk bytes',p.stat().st_size if p.exists() else 0)
+          hits=[]
+          if p.exists() and zipfile.is_zipfile(p):
+            d=Path('probe/apk/unpacked'); d.mkdir(parents=True,exist_ok=True)
+            with zipfile.ZipFile(p) as z: z.extractall(d)
+            for apk in d.rglob('*.apk'):
+              ad=apk.with_suffix(''); ad.mkdir(exist_ok=True)
+              try:
+                with zipfile.ZipFile(apk) as z:
+                  for n in z.namelist():
+                    if n.endswith('.dex'):
+                      data=z.read(n)
+                      for m in re.finditer(rb'[ -~]{8,500}',data):
+                        s=m.group().decode('latin1','ignore')
+                        if ('qovoltis' in s.lower() or 'qorest' in s.lower() or 'chargenow' in s.lower() or 'http' in s.lower() and any(k in s.lower() for k in ['api','tariff','price','station','evse','ocpi'])):
+                          hits.append(s)
+              except Exception as e: print('apk scan err',e)
+          hits=list(dict.fromkeys(hits))[:2000]
+          Path('probe/apk/string_hits.txt').write_text('\n'.join(hits),errors='ignore')
+          print('string hits',len(hits))
+          for h in hits[:300]: print(h[:700])
+          PY
 
       - name: Create compact summary
         shell: bash
@@ -128,23 +153,20 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import json,re
-          out={'qorest':[],'services':[],'chargenow':{},'interesting_strings':[]}
-          for d,key in [('qorest','qorest'),('services','services')]:
-            for body in sorted(Path('probe',d).glob('*.body')):
-              h=body.with_suffix('.headers')
-              ht=h.read_text(errors='replace') if h.exists() else ''
-              t=body.read_text(errors='replace')
-              out[key].append({'file':body.name,'bytes':len(t.encode()),'http':re.findall(r'^HTTP/[^\n]+',ht,re.M),'content_type':re.findall(r'^content-type:\s*(.+)$',ht,re.M|re.I),'markers':sorted(set(re.findall(r'(?i)tariff|price|station|connector|evse|swagger|openapi|authorization',t)))})
-          root=Path('probe/chargenow/root.html')
-          out['chargenow']['root_bytes']=root.stat().st_size if root.exists() else 0
-          out['chargenow']['assets']=Path('probe/chargenow/assets.txt').read_text(errors='replace').splitlines() if Path('probe/chargenow/assets.txt').exists() else []
-          for p in list(Path('probe/chargenow').glob('asset_*.txt')):
-              t=p.read_text(errors='replace')
-              for s in re.findall(r'https?://[^"\'\s<>]+',t):
-                  if 'qovoltis' in s.lower() or any(x in s.lower() for x in ['api','tarif','price','station','evse']): out['interesting_strings'].append(s[:500])
-          out['interesting_strings']=list(dict.fromkeys(out['interesting_strings']))[:250]
+          out={'qorest':[],'services':[],'chargenow':{},'apk':{}}
+          for d in ['qorest','services']:
+            urls=json.loads(Path('probe',d,'urls.json').read_text()) if Path('probe',d,'urls.json').exists() else []
+            for i,body in enumerate(sorted(Path('probe',d).glob('*.body'),key=lambda p:int(p.stem)),1):
+              h=body.with_suffix('.headers'); ht=h.read_text(errors='replace') if h.exists() else ''; t=body.read_text(errors='replace')
+              out[d].append({'url':urls[i-1] if i-1<len(urls) else body.name,'bytes':len(t.encode()),'http':re.findall(r'^HTTP/[^\n]+',ht,re.M),'content_type':re.findall(r'^content-type:\s*(.+)$',ht,re.M|re.I),'markers':sorted(set(re.findall(r'(?i)tariff|tarif|price|station|connector|evse|swagger|openapi|authorization',t)))})
+          aj=Path('probe/chargenow/assets.json')
+          out['chargenow']['assets']=json.loads(aj.read_text()) if aj.exists() else []
+          eu=Path('probe/chargenow/extracted_urls.txt')
+          out['chargenow']['urls']=eu.read_text(errors='replace').splitlines()[:500] if eu.exists() else []
+          ah=Path('probe/apk/string_hits.txt')
+          out['apk']['hits']=ah.read_text(errors='replace').splitlines()[:500] if ah.exists() else []
           Path('probe/summary.json').write_text(json.dumps(out,indent=2,ensure_ascii=False))
-          print(json.dumps(out,indent=2,ensure_ascii=False))
+          print(json.dumps(out,indent=2,ensure_ascii=False)[:30000])
           PY
 
       - uses: actions/upload-artifact@v4
