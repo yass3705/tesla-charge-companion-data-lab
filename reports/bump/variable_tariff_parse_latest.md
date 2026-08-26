@@ -4,6 +4,7 @@
 - Parsed points: **681**
 - Failed points: **0**
 - Parsed distinct patterns: **14**
+- Duration guards: **1h15=75, 2h=120, 4h=240 minutes**
 
 ## 606 points
 
@@ -45,7 +46,7 @@
   {
     "kind": "session_duration_surcharge",
     "eurPerMinute": 0.29,
-    "afterMinutes": 60
+    "afterMinutes": 75
   }
 ]
 ```
