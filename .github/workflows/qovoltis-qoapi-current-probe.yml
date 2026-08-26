@@ -1,0 +1,55 @@
+name: Qovoltis current QoAPI public probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-qoapi-current-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Probe current public QoAPI routing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import requests,json
+          urls=[
+            'https://qoapi.qovoltis.com/',
+            'https://qoapi.qovoltis.com/openapi.json',
+            'https://qoapi.qovoltis.com/docs',
+            'https://qoapi.qovoltis.com/redoc',
+            'https://qoapi.qovoltis.com/api/openapi.json',
+            'https://qoapi.qovoltis.com/api/docs',
+            'https://qoapi.qovoltis.com/api/app/get-public-settings',
+            'https://qoapi.qovoltis.com/app/get-public-settings',
+            'https://qoapi.qovoltis.com/api/borne/map-station-preview',
+            'https://qoapi.qovoltis.com/borne/map-station-preview',
+            'https://qoapi.qovoltis.com/api/borne/map-station-preview?station_id=1',
+            'https://qoapi.qovoltis.com/borne/map-station-preview?station_id=1',
+            'https://qoapi.qovoltis.com/api/borne/map-station-list',
+            'https://qoapi.qovoltis.com/borne/map-station-list',
+          ]
+          out=[]
+          for u in urls:
+            try:
+              r=requests.get(u,timeout=20,headers={'User-Agent':'Mozilla/5.0','Accept':'application/json,text/html,*/*'},allow_redirects=True)
+              out.append({'url':u,'status':r.status_code,'final_url':r.url,'content_type':r.headers.get('content-type'),'www_authenticate':r.headers.get('www-authenticate'),'server':r.headers.get('server'),'body':r.text[:5000]})
+            except Exception as e:
+              out.append({'url':u,'error':repr(e)})
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          open('out/results.json','w').write(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-qoapi-current-probe
+          path: out
+          retention-days: 3
