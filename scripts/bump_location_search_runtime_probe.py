@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Probe Bump public GraphQL map search and anonymous tariff lookup for one official Bump EVSE.
+"""Probe Bump public GraphQL map search and anonymous tariff lookup for one official Bump station.
 
 Unauthenticated, read-only queries only. No account/session/payment data or mutations.
-The sample EVSE is taken from Bump's own official IRVE inventory and only public charging/tariff
-fields required for TCC are retained.
+The sample station is taken from Bump's own official IRVE inventory and only public charging/tariff
+fields required for TCC are retained. Matching is primarily geographic because the app may expose
+an internal EVSE identifier different from the regulatory FRBMP interoperable identifier.
 """
 from __future__ import annotations
-import json, urllib.error, urllib.request
+import json, math, urllib.error, urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -60,11 +61,52 @@ def errors(obj:dict[str,Any])->list[str]:
     return [str(x.get('message'))[:500] for x in (obj.get('errors') or []) if isinstance(x,dict)]
 
 
+def distance_m(lat1:float,lon1:float,lat2:float,lon2:float)->float:
+    # Sufficient for sub-km matching of the same station.
+    dy=(lat2-lat1)*111_320.0
+    dx=(lon2-lon1)*111_320.0*math.cos(math.radians((lat1+lat2)/2.0))
+    return math.hypot(dx,dy)
+
+
+def safe_location(loc:dict[str,Any], sample_lat:float, sample_lon:float)->dict[str,Any]:
+    c=loc.get('coordinates') if isinstance(loc.get('coordinates'),dict) else {}
+    lat=c.get('latitude'); lon=c.get('longitude')
+    dist=None
+    if isinstance(lat,(int,float)) and isinstance(lon,(int,float)):
+        dist=round(distance_m(sample_lat,sample_lon,float(lat),float(lon)),1)
+    evses=[]
+    for e in loc.get('evses') or []:
+        if not isinstance(e,dict): continue
+        tg=e.get('tariffGroup') if isinstance(e.get('tariffGroup'),dict) else {}
+        evses.append({
+            'evseId':e.get('id'),'evseIdentifier':e.get('identifier'),'evseIsRoaming':e.get('isRoaming'),
+            'tariffGroupId':tg.get('id'),
+        })
+    return {
+        'locationId':loc.get('id'),'locationName':loc.get('name'),'locationIsRoaming':loc.get('isRoaming'),
+        'latitude':lat,'longitude':lon,'distanceFromOfficialMeters':dist,'evses':evses,
+    }
+
+
+def tariff_detail(evse:dict[str,Any])->dict[str,Any]:
+    q='''query TccTariff($tariffGroupId: TariffGroupId!, $evseId: EvseId!, $hasAnonymous: Boolean) {
+      tariffs { detail(tariffGroupId: $tariffGroupId, evseId: $evseId, hasAnonymous: $hasAnonymous) {
+        id name currency type alternativeText alternativeUrl
+      } }
+    }'''
+    status,obj=post(q,{'tariffGroupId':evse['tariffGroupId'],'evseId':evse['evseId'],'hasAnonymous':True})
+    tariff=(((obj.get('data') or {}).get('tariffs') or {}).get('detail')) if isinstance(obj,dict) else None
+    return {
+        'evseId':evse.get('evseId'),'evseIdentifier':evse.get('evseIdentifier'),'tariffGroupId':evse.get('tariffGroupId'),
+        'status':status,'errors':errors(obj),'hasTariff':isinstance(tariff,dict),
+        'tariff':{k:tariff.get(k) for k in ('id','name','currency','type','alternativeText','alternativeUrl')} if isinstance(tariff,dict) else None,
+    }
+
+
 def main():
     s=sample(); lat=s['latitude']; lon=s['longitude']; d=.02
     zone={'topLeft':{'latitude':lat+d,'longitude':lon-d},'bottomRight':{'latitude':lat-d,'longitude':lon+d}}
 
-    # First prove the lightweight V3 map search remains public.
     q_v3='''query TccSearchV3($input: LocationSearchInputV3Input!) { chargePoints { locations { searchV3(input: $input) { __typename } } } }'''
     variants=[
         {'label':'zone_only','input':{'searchZone':zone}},
@@ -77,7 +119,6 @@ def main():
         data=obj.get('data') if isinstance(obj,dict) else None
         attempts.append({'label':v['label'],'status':status,'errors':errors(obj),'hasData':data is not None,'typename':((((data or {}).get('chargePoints') or {}).get('locations') or {}).get('searchV3') or {}).get('__typename') if isinstance(data,dict) else None})
 
-    # The classic search returns full Location -> Evse -> tariffGroup public map objects.
     q_search='''query TccSearch($input: LocationSearchInput!) {
       chargePoints { locations { search(input: $input) {
         locations {
@@ -91,57 +132,45 @@ def main():
     search_errors=errors(search_obj)
     locations=((((search_obj.get('data') or {}).get('chargePoints') or {}).get('locations') or {}).get('search') or {}).get('locations') if isinstance(search_obj,dict) else []
     locations=locations if isinstance(locations,list) else []
+    public_locations=[safe_location(x,lat,lon) for x in locations if isinstance(x,dict)]
+    public_locations.sort(key=lambda x: x['distanceFromOfficialMeters'] if isinstance(x.get('distanceFromOfficialMeters'),(int,float)) else 10**12)
 
-    matched=[]
-    for loc in locations:
-        if not isinstance(loc,dict): continue
-        for evse in loc.get('evses') or []:
-            if not isinstance(evse,dict): continue
-            if str(evse.get('identifier') or '').casefold()==s['evseIdentifier'].casefold():
-                tg=evse.get('tariffGroup') if isinstance(evse.get('tariffGroup'),dict) else {}
-                matched.append({
-                    'locationId':loc.get('id'),
-                    'locationName':loc.get('name'),
-                    'locationIsRoaming':loc.get('isRoaming'),
-                    'evseId':evse.get('id'),
-                    'evseIdentifier':evse.get('identifier'),
-                    'evseIsRoaming':evse.get('isRoaming'),
-                    'tariffGroupId':tg.get('id'),
-                })
+    exact=[]
+    for loc in public_locations:
+        for e in loc.get('evses') or []:
+            if str(e.get('evseIdentifier') or '').casefold()==s['evseIdentifier'].casefold():
+                exact.append({'location':loc,'evse':e})
 
-    tariff_attempt=None
-    if matched and matched[0].get('evseId') and matched[0].get('tariffGroupId'):
-        m=matched[0]
-        q_tariff='''query TccTariff($tariffGroupId: TariffGroupId!, $evseId: EvseId!, $hasAnonymous: Boolean) {
-          tariffs { detail(tariffGroupId: $tariffGroupId, evseId: $evseId, hasAnonymous: $hasAnonymous) {
-            id name currency type alternativeText alternativeUrl
-          } }
-        }'''
-        tariff_status,tariff_obj=post(q_tariff,{'tariffGroupId':m['tariffGroupId'],'evseId':m['evseId'],'hasAnonymous':True})
-        tariff=(((tariff_obj.get('data') or {}).get('tariffs') or {}).get('detail')) if isinstance(tariff_obj,dict) else None
-        tariff_attempt={
-            'status':tariff_status,
-            'errors':errors(tariff_obj),
-            'hasTariff':isinstance(tariff,dict),
-            'tariff':{k:tariff.get(k) for k in ('id','name','currency','type','alternativeText','alternativeUrl')} if isinstance(tariff,dict) else None,
-        }
+    nearest=public_locations[0] if public_locations else None
+    geo_match=nearest if nearest and isinstance(nearest.get('distanceFromOfficialMeters'),(int,float)) and nearest['distanceFromOfficialMeters'] <= 500 else None
+    tariff_candidates=[]
+    source='none'
+    if exact:
+        tariff_candidates=[exact[0]['evse']]; source='exact_interoperable_identifier'
+    elif geo_match:
+        tariff_candidates=[e for e in geo_match.get('evses') or [] if e.get('evseId') and e.get('tariffGroupId')]
+        source='nearest_location_within_500m'
+
+    tariff_attempts=[tariff_detail(e) for e in tariff_candidates[:12]]
 
     payload={
-        'schemaVersion':'1.1.0',
+        'schemaVersion':'1.2.0',
         'generatedAt':datetime.now(timezone.utc).isoformat(),
         'method':{
             'unauthenticated':True,'publicReadOnlySearchOnly':True,'mutationsSent':False,
             'credentialsUsed':False,'personalDataQueried':False,'sampleFromOfficialBumpIrve':True,
         },
-        'sample':s,
-        'searchZone':zone,
-        'attempts':attempts,
+        'sample':s,'searchZone':zone,'attempts':attempts,
         'publicSearchSucceeded':any(a.get('typename') for a in attempts),
         'classicSearch':{
-            'status':search_status,'errors':search_errors,'locationCount':len(locations),
-            'matchedOfficialEvseCount':len(matched),'matches':matched[:5],
+            'status':search_status,'errors':search_errors,'locationCount':len(public_locations),
+            'locations':public_locations[:10],
+            'exactOfficialEvseMatchCount':len(exact),
+            'nearestLocationMatch':geo_match,
+            'mappingSource':source,
         },
-        'anonymousTariffDetail':tariff_attempt,
+        'anonymousTariffDetails':tariff_attempts,
+        'anonymousTariffSucceeded':any(x.get('hasTariff') for x in tariff_attempts),
     }
     OUT.parent.mkdir(parents=True,exist_ok=True); OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n')
     print(json.dumps(payload,ensure_ascii=False,indent=2))
