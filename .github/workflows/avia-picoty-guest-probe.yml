@@ -1,0 +1,55 @@
+name: AVIA Picoty anonymous guest API probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/avia_picoty_guest_probe.py"
+      - ".github/workflows/avia-picoty-guest-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run read-only anonymous probe
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/avia_picoty_guest_probe.py
+          python scripts/avia_picoty_guest_probe.py
+      - name: Validate no credentials were used
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/reports/avia_picoty_guest_probe.json').read_text())
+          assert d['credentialsSent'] is False
+          assert d['writeMethodsUsed'] is False
+          assert all(x['method'] in ('GET','OPTIONS') for x in d['results'])
+          print([(x['method'],x['url'],x.get('status')) for x in d['results']])
+          PY
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: avia-picoty-anonymous-guest-probe
+          path: data/reports/avia_picoty_guest_probe.json
+          retention-days: 14
+      - name: Commit report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/avia_picoty_guest_probe.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Probe AVIA Picoty anonymous guest API surface"
+          git pull --rebase origin main
+          git push origin HEAD:main
