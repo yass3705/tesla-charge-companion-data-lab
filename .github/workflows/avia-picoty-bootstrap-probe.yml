@@ -29,12 +29,15 @@ jobs:
       - name: Validate report
         run: |
           python - <<'PY'
-          import json
+          import json,re
           from pathlib import Path
           p=Path('data/reports/avia_picoty_bootstrap_probe.json')
           d=json.loads(p.read_text())
-          assert d['schemaVersion']=='1.0.0'
+          assert d['schemaVersion']=='1.0.1'
+          assert d['credentialsSent'] is False and d['writeMethodsUsed'] is False
           assert d['anonymousReadOnlyProbes']
+          raw=p.read_text()
+          assert not re.search(r'eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{8,}',raw)
           print({k:len(v) if isinstance(v,list) else v for k,v in d['candidates'].items() if k!='snippets'})
           print([(x['url'],x['status']) for x in d['anonymousReadOnlyProbes']])
           PY
