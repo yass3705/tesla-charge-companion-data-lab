@@ -1,4 +1,4 @@
-# probe-current-2026-08-26
+# probe-current-2026-08-26-rawscan
 name: Qovoltis APK route extraction
 
 on:
@@ -13,20 +13,56 @@ permissions:
 jobs:
   extract:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 20
     steps:
-      - name: Download and decompile current Qovoltis Android package
+      - name: Download current Qovoltis Android package
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p work out
           curl -sS -L --max-time 180 -A 'Mozilla/5.0' \
             'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=50012' -o work/qovoltis.xapk
-          echo "bytes=$(wc -c < work/qovoltis.xapk)" | tee out/download.txt
           unzip -q work/qovoltis.xapk -d work/xapk
-          find work/xapk -type f -name '*.apk' -printf '%p %s\n' | tee -a out/download.txt
-          BASE_APK=$(find work/xapk -type f -name '*.apk' | sort | head -1)
+          BASE_APK=$(find work/xapk -type f -name 'com.qovoltis.client.apk' | head -1)
           cp "$BASE_APK" work/base.apk
+          echo "xapk_bytes=$(wc -c < work/qovoltis.xapk)" > out/download.txt
+          echo "base_apk=$BASE_APK bytes=$(wc -c < work/base.apk)" >> out/download.txt
+          find work/xapk -type f -name '*.apk' -printf '%p %s\n' >> out/download.txt
+          unzip -l work/base.apk > out/apk-file-list.txt
+
+      - name: Raw APK DEX resource and native string scan
+        shell: bash
+        run: |
+          set +e
+          mkdir -p work/raw
+          unzip -q work/base.apk -d work/raw
+          : > out/raw-network-tariff-hits.txt
+          while IFS= read -r -d '' f; do
+            strings -a -n 4 "$f" 2>/dev/null | grep -Eai \
+              'https?://|wss?://|qovoltis|qorest|qoapi|chargenow|qockpit|gireve|ocpi|emsp|cpo|station[-_/ ]?(list|preview|map|detail)|borne|chargepoint|connector|evse|tarif|tariff|pricing|price[_ -]?per|reference[_ -]?unit|heures[_ -]?(creuses|pleines)|kwh|graphql|base[_ -]?url|api[_ -]?url' \
+              | sed "s#^#$f\t#" >> out/raw-network-tariff-hits.txt || true
+          done < <(find work/raw -type f -print0)
+          sort -u out/raw-network-tariff-hits.txt -o out/raw-network-tariff-hits.txt
+          grep -Eai 'qovoltis|qorest|qoapi|chargenow|qockpit|gireve|ocpi|https?://[^ ]*qovoltis|station[-_/ ]?(list|preview|map|detail)|tarif|tariff|pricing|price[_ -]?per|heures[_ -]?(creuses|pleines)' out/raw-network-tariff-hits.txt \
+            > out/qovoltis-focused-hits.txt || true
+          sed -n '1,6000p' out/qovoltis-focused-hits.txt
+
+      - name: Inspect manifest resources and app assets
+        shell: bash
+        run: |
+          set +e
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq aapt >/dev/null 2>&1 || true
+          aapt dump badging work/base.apk > out/aapt-badging.txt 2>&1 || true
+          aapt dump xmltree work/base.apk AndroidManifest.xml > out/manifest-tree.txt 2>&1 || true
+          find work/raw/assets work/raw/res work/raw/lib -type f -printf '%p\n' 2>/dev/null | head -20000 > out/assets-res-libs.txt
+          grep -Eai 'flutter|react|capacitor|cordova|network|retrofit|okhttp|ktor|graphql|qovoltis|api' out/apk-file-list.txt > out/framework-clues.txt || true
+          sed -n '1,2000p' out/framework-clues.txt
+
+      - name: Decompile and scan app package plus Retrofit routes
+        shell: bash
+        run: |
+          set +e
           URL=$(python - <<'PY'
           import json,urllib.request
           req=urllib.request.Request('https://api.github.com/repos/skylot/jadx/releases/latest',headers={'User-Agent':'qovoltis-probe'})
@@ -41,81 +77,41 @@ jobs:
           unzip -q work/jadx.zip -d work/jadx
           chmod +x work/jadx/bin/jadx
           work/jadx/bin/jadx --show-bad-code --no-res --threads-count 2 -d work/src work/base.apk >out/jadx.log 2>&1 || true
+          find work/src/sources -type f | grep -Ei '/com/qovoltis/|qovoltis' > out/qovoltis-source-files.txt || true
+          : > out/qovoltis-source-evidence.txt
+          while IFS= read -r f; do
+            echo "===== $f =====" >> out/qovoltis-source-evidence.txt
+            grep -nEai -C 8 'https?://|baseUrl|@GET|@POST|@PUT|station|borne|connector|evse|tarif|tariff|pricing|price|kwh|offer|map|charge' "$f" 2>/dev/null | head -1000 >> out/qovoltis-source-evidence.txt || true
+          done < out/qovoltis-source-files.txt
+          grep -RInE --include='*.java' -C 6 '@(GET|POST|PUT|DELETE|PATCH)' work/src/sources 2>/dev/null \
+            | grep -Eai -B 8 -A 8 'station|borne|connector|evse|tarif|tariff|pricing|price|offer|map|charge|qovoltis' \
+            > out/retrofit-relevant.txt || true
+          grep -RInE --include='*.java' -C 5 'https?://[^" ]+|baseUrl\(|BASE_URL|API_URL' work/src/sources 2>/dev/null \
+            | grep -Eai -B 6 -A 6 'qovoltis|api|station|borne|charge|map' > out/decompiled-url-evidence.txt || true
+          sed -n '1,5000p' out/qovoltis-source-evidence.txt
 
-      - name: Extract current backend hosts routes and tariff models
-        shell: bash
-        run: |
-          set +e
-          {
-            echo '=== all Qovoltis/network URL literals ==='
-            grep -RInE -C 3 'https?://|qovoltis\.com|qorest|qoapi|ocpi|gireve' work/src/sources 2>/dev/null | head -8000
-            echo '=== Retrofit / HTTP annotations ==='
-            grep -RInE -C 6 '@(GET|POST|PUT|DELETE|PATCH)|Retrofit\.Builder|baseUrl\(|BASE_URL|API_URL' work/src/sources 2>/dev/null | head -10000
-            echo '=== station / tariff evidence ==='
-            grep -RInE -C 8 'map-station|station-preview|station-list|tarif|tariff|pricing|price_per|reference_unit|heures_creuses|heures_pleines|chargepoint|connector|borne|evse' work/src/sources 2>/dev/null | head -12000
-          } > out/deep-evidence.txt
-          sed -n '1,2200p' out/deep-evidence.txt
-
-      - name: Build concise discovered endpoint inventory
+      - name: Summarize current app architecture evidence
         shell: bash
         run: |
           set +e
           python - <<'PY'
           from pathlib import Path
           import re
-          hosts=set(); routes=[]
-          for f in Path('work/src/sources').rglob('*.java'):
-            try:t=f.read_text(errors='replace')
-            except:continue
-            for m in re.finditer(r'https?://[^\s"\')<>]+',t):
-              u=m.group(0).rstrip(';,')
-              if 'qovoltis' in u.lower() or 'gireve' in u.lower() or 'ocpi' in u.lower(): hosts.add(u)
-            for m in re.finditer(r'@(GET|POST|PUT|DELETE|PATCH)\s*\(\s*["\']([^"\']+)',t):
-              p=m.group(2)
-              if any(k in p.lower() for k in ('station','borne','map','price','pricing','tariff','offer','connector','evse','charge')):
-                routes.append((str(f),m.group(1),p))
-          Path('out/hosts.txt').write_text('\n'.join(sorted(hosts)),encoding='utf-8')
-          Path('out/routes.tsv').write_text('\n'.join('\t'.join(x) for x in routes),encoding='utf-8')
-          print('HOSTS')
-          print('\n'.join(sorted(hosts)))
-          print('ROUTES')
-          print('\n'.join('\t'.join(x) for x in routes[:1000]))
-          PY
-
-      - name: Probe only discovered public read endpoints
-        shell: bash
-        run: |
-          set +e
-          python - <<'PY'
-          from pathlib import Path
-          import re,requests,json,urllib.parse
-          hosts=[]
-          for line in Path('out/hosts.txt').read_text(errors='replace').splitlines() if Path('out/hosts.txt').exists() else []:
-            if line.startswith('http'):
-              p=urllib.parse.urlsplit(line)
-              root=f'{p.scheme}://{p.netloc}/'
-              if 'qovoltis' in p.netloc.lower() and root not in hosts: hosts.append(root)
-          # Include official QoREST root as a control.
-          for h in ['https://qorest.qovoltis.com/']:
-            if h not in hosts: hosts.append(h)
+          files=['qovoltis-focused-hits.txt','qovoltis-source-evidence.txt','retrofit-relevant.txt','decompiled-url-evidence.txt','framework-clues.txt']
+          text='\n'.join(Path('out/'+f).read_text(errors='replace') if Path('out/'+f).exists() else '' for f in files)
+          urls=sorted(set(re.findall(r'https?://[^\s"\'<>),]+',text,re.I)))
+          urls=[u for u in urls if any(k in u.lower() for k in ('qovoltis','qorest','qoapi','chargenow','qockpit','gireve','ocpi'))]
+          route_pat=re.compile(r'@(GET|POST|PUT|DELETE|PATCH)[^\n]{0,100}["\']([^"\']+)',re.I)
           routes=[]
-          p=Path('out/routes.tsv')
-          if p.exists():
-            for line in p.read_text(errors='replace').splitlines():
-              parts=line.split('\t')
-              if len(parts)>=3 and parts[-2]=='GET' and '{' not in parts[-1]: routes.append(parts[-1].lstrip('/'))
-          routes=list(dict.fromkeys(routes))[:80]
-          report=[]
-          for base in hosts[:20]:
-            for path in routes:
-              if not any(k in path.lower() for k in ('station','borne','map','price','pricing','tariff','offer','connector','evse','charge')): continue
-              url=urllib.parse.urljoin(base,path)
-              try:
-                r=requests.get(url,timeout=12,headers={'User-Agent':'Mozilla/5.0','Accept':'application/json,text/plain,*/*'},allow_redirects=False)
-                report.append({'url':url,'status':r.status_code,'content_type':r.headers.get('content-type'),'location':r.headers.get('location'),'body':r.text[:1500]})
-              except Exception as e: report.append({'url':url,'error':repr(e)})
-          Path('out/public-get-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
-          print(json.dumps(report,ensure_ascii=False,indent=2)[:60000])
+          for m in route_pat.finditer(text):
+              p=m.group(2)
+              if any(k in p.lower() for k in ('station','borne','map','connector','evse','price','pricing','tarif','offer','charge')):
+                  routes.append((m.group(1).upper(),p))
+          lines=['URLS:']+urls+['','ROUTES:']+[f'{m}\t{p}' for m,p in sorted(set(routes))]
+          for key in ('tarif_heures_creuses','tarif_heures_pleines','price_per_reference_unit','pricing_qovoltis','pricing_total','reference_unit'):
+              lines.append(f'KEY {key}: {key.lower() in text.lower()}')
+          Path('out/SUMMARY.txt').write_text('\n'.join(lines),encoding='utf-8')
+          print(Path('out/SUMMARY.txt').read_text())
           PY
 
       - uses: actions/upload-artifact@v4
