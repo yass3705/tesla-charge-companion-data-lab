@@ -7,6 +7,7 @@ on:
     paths:
       - "scripts/bump_graphql_public_probe.py"
       - "scripts/bump_tariff_schema_probe.py"
+      - "scripts/bump_tariff_detail_probe.py"
       - "scripts/bump_evse_sample_probe.py"
       - "scripts/bump_location_search_runtime_probe.py"
       - "scripts/bump_location_search_extract_probe.py"
@@ -44,6 +45,8 @@ jobs:
         run: python scripts/bump_location_search_extract_probe.py
       - name: Compare public location search v1/v2
         run: python scripts/bump_location_search_legacy_extract_probe.py
+      - name: Resolve public tariff detail for verified EVSE
+        run: python scripts/bump_tariff_detail_probe.py
       - name: Validate sanitized read-only outputs
         run: |
           python - <<'PY'
@@ -61,17 +64,19 @@ jobs:
           assert x['method']['unauthenticated'] and x['method']['publicReadOnlySearchOnly'] and x['method']['schemaDerivedSafeSelection']
           l=json.loads(Path('reports/bump/location_search_legacy_extract_latest.json').read_text())
           assert l['method']['unauthenticated'] and l['method']['publicReadOnlySearchOnly'] and l['method']['schemaDerivedSafeSelection']
-          for m in (p['method'],t['method'],q['method'],s['method'],x['method'],l['method']):
+          d=json.loads(Path('reports/bump/tariff_detail_latest.json').read_text())
+          assert d['method']['unauthenticated'] and d['method']['publicReadOnlyTariffQueryOnly'] and d['method']['schemaDerivedPricingFieldsOnly']
+          for m in (p['method'],t['method'],q['method'],s['method'],x['method'],l['method'],d['method']):
               assert not m.get('mutationsSent',False) and not m.get('credentialsUsed',False) and not m.get('personalDataQueried',False)
           print({'tariffTypes':list(t['types'])})
-          print({'v3':{'ids':x['ids'][:10],'tariffGroups':x['tariffGroupValues'][:10]},'legacy':[{'field':a['field'],'status':a['status'],'ids':a['ids'][:10],'hashes':a['hashes'][:10],'tariffGroups':a['tariffGroups'][:10]} for a in l['attempts']]})
+          print({'tariffResolved':d['tariffResolved'],'attempts':[{'label':a['label'],'status':a['status'],'errors':a['errors']} for a in d['attempts']]})
           PY
-      - name: Publish sanitized GraphQL, EVSE and search reports
+      - name: Publish sanitized GraphQL, EVSE and tariff reports
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports/bump/graphql_public_probe_latest.json reports/bump/graphql_public_probe_latest.md reports/bump/tariff_schema_latest.json reports/bump/tariff_schema_latest.md reports/bump/evse_sample_probe_latest.json reports/bump/evse_sample_probe_latest.md reports/bump/location_search_runtime_latest.json reports/bump/location_search_extract_latest.json reports/bump/location_search_legacy_extract_latest.json
+          git add reports/bump/graphql_public_probe_latest.json reports/bump/graphql_public_probe_latest.md reports/bump/tariff_schema_latest.json reports/bump/tariff_schema_latest.md reports/bump/evse_sample_probe_latest.json reports/bump/evse_sample_probe_latest.md reports/bump/location_search_runtime_latest.json reports/bump/location_search_extract_latest.json reports/bump/location_search_legacy_extract_latest.json reports/bump/tariff_detail_latest.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "diag(bump): publish GraphQL public probe [run ${GITHUB_RUN_ID}]"
           for attempt in 1 2 3 4; do
