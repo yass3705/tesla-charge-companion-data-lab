@@ -51,13 +51,9 @@ jobs:
               except urllib.error.HTTPError as e:
                   return e.code,e.read().decode('utf-8','replace')
 
-          marker_body={
-              'square':{'centerLng':2.2,'centerLat':46.2,'zoom':5},
-              'filters':filters,
-          }
+          marker_body={'square':{'centerLng':2.2,'centerLat':46.2,'zoom':5},'filters':filters}
           status,text=call('map/markers','POST',marker_body)
           print('MARKERS STATUS',status,'BYTES',len(text))
-          print(text[:5000])
           if status!=200:
               raise SystemExit('marker request failed')
           markers=json.loads(text)
@@ -67,43 +63,52 @@ jobs:
           print('EXPRESS MARKERS',len(markers))
 
           rows=[]
-          for marker in markers[:20]:
+          # Prefer explicit IZIVIA EXPRESS names, but keep the whole filtered set available.
+          ordered=[]
+          for marker in markers:
               sid=marker.get('id') if isinstance(marker,dict) else None
-              if not sid:
-                  continue
+              if not sid: continue
               dst,dtxt=call(f'charging-locations/{sid}','POST',{'filters':filters})
-              print('\n=== DETAIL',sid,dst,'===')
-              print(dtxt[:8000])
               detail=None
               if dst==200:
                   try: detail=json.loads(dtxt)
                   except Exception: pass
-              row={'marker':marker,'detailStatus':dst,'detail':detail,'detailRaw':dtxt[:20000]}
-              if isinstance(detail,dict):
-                  legacy=detail.get('legacyId')
-                  emip=detail.get('firstStationEmipId')
-                  row['legacyId']=legacy
-                  row['firstStationEmipId']=emip
-                  if legacy is not None and emip:
-                      qs=urllib.parse.urlencode({'legacyId':legacy,'stationEmipId':emip})
-                      pst,ptxt=call(f'charging-locations/{sid}/pricing-info-items?{qs}')
-                      row['pricingStatus']=pst
-                      row['pricingRaw']=ptxt[:100000]
-                      try: row['pricing']=json.loads(ptxt)
-                      except Exception: pass
-                      print('PRICING',pst,ptxt[:12000])
+              item={'marker':marker,'detailStatus':dst,'detail':detail,'detailRaw':dtxt[:20000]}
+              if isinstance(detail,dict) and 'IZIVIA EXPRESS' in (detail.get('name') or '').upper():
+                  ordered.insert(0,item)
+              else:
+                  ordered.append(item)
+              if len(ordered)>=40: break
+
+          for row in ordered:
+              detail=row.get('detail')
+              if not isinstance(detail,dict):
+                  rows.append(row); continue
+              sid=detail.get('id')
+              legacy=detail.get('legacyId')
+              emip=detail.get('firstStationEmipId')
+              row['legacyId']=legacy
+              row['firstStationEmipId']=emip
+              params={}
+              if legacy is not None: params['legacyId']=legacy
+              if emip: params['stationEmipId']=emip
+              print('\n=== DETAIL',sid,detail.get('name'),'legacy=',legacy,'emip=',emip,'===')
+              if params:
+                  qs=urllib.parse.urlencode(params)
+                  pst,ptxt=call(f'charging-locations/{sid}/pricing-info-items?{qs}')
+                  row['pricingStatus']=pst
+                  row['pricingRaw']=ptxt[:100000]
+                  try: row['pricing']=json.loads(ptxt)
+                  except Exception: pass
+                  print('PRICING',pst,ptxt[:15000])
               rows.append(row)
-              if row.get('pricingStatus')==200:
+              if row.get('pricingStatus')==200 and row.get('pricing'):
                   break
 
           Path('probe/sample_details_pricing.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2))
           pricing_ok=[r for r in rows if r.get('pricingStatus')==200]
-          print('\nSUMMARY',json.dumps({
-              'markerCount':len(markers),
-              'detailsTried':len(rows),
-              'pricingResponses':len(pricing_ok),
-              'networkId':NETWORK_ID
-          },ensure_ascii=False))
+          pricing_nonempty=[r for r in pricing_ok if r.get('pricing')]
+          print('\nSUMMARY',json.dumps({'markerCount':len(markers),'detailsTried':len(rows),'pricingResponses':len(pricing_ok),'nonEmptyPricingResponses':len(pricing_nonempty),'networkId':NETWORK_ID},ensure_ascii=False))
           if not pricing_ok:
               raise SystemExit('No Express pricing response obtained')
           PY
