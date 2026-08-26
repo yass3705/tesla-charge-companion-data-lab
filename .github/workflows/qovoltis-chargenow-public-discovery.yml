@@ -16,51 +16,31 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p out
-          curl -sS -L --max-time 30 -A 'Mozilla/5.0' -D out/headers.txt https://chargenow.qovoltis.com/ -o out/index.html
+          for page in index.html QovoltisBornes.html; do
+            url="https://chargenow.qovoltis.com/${page/index.html/}"
+            curl -sS -L --max-time 30 -A 'Mozilla/5.0' "$url" -o "out/$page"
+          done
           python - <<'PY'
           from pathlib import Path
           import re,urllib.parse,subprocess
-          html=Path('out/index.html').read_text(errors='replace')
-          print(html[:30000])
           refs=[]
-          for pat in [r'href=["\']([^"\']+)',r'src=["\']([^"\']+)',r'action=["\']([^"\']+)']:
-              refs += re.findall(pat,html,re.I)
+          for p in [Path('out/index.html'),Path('out/QovoltisBornes.html')]:
+              html=p.read_text(errors='replace')
+              print(f'===== {p.name} =====')
+              print(html[:40000])
+              for pat in [r'href=["\']([^"\']+)',r'src=["\']([^"\']+)',r'action=["\']([^"\']+)']:
+                  refs += re.findall(pat,html,re.I)
           refs=list(dict.fromkeys(refs))
           Path('out/refs.txt').write_text('\n'.join(refs))
-          print('\nREFS\n'+'\n'.join(refs))
           scripts=[]
           for x in refs:
               u=urllib.parse.urljoin('https://chargenow.qovoltis.com/',x)
-              if urllib.parse.urlparse(u).netloc=='chargenow.qovoltis.com' and (u.endswith('.js') or '/build/' in u or '/assets/' in u): scripts.append(u)
+              if urllib.parse.urlparse(u).netloc=='chargenow.qovoltis.com' and (u.endswith('.js') or '/build/' in u): scripts.append(u)
           for i,u in enumerate(scripts,1):
-              p=f'out/script-{i}.txt'
-              subprocess.run(['curl','-sS','-L','--max-time','30','-A','Mozilla/5.0',u,'-o',p])
+              subprocess.run(['curl','-sS','-L','--max-time','30','-A','Mozilla/5.0',u,'-o',f'out/script-{i}.js'])
           PY
-          grep -RInE 'https?://|/api/|api[A-Za-z0-9._/-]*|tarif|price|pricing|kwh|station|borne|chargepoint|connector|session|payment|paygreen|qorest|qoapi|ocpi|gireve' out --exclude=index.html --exclude=headers.txt | head -4000 > out/hits.txt || true
+          grep -RInE 'https?://|fetch\(|axios|XMLHttpRequest|/api/|tarif|price|pricing|kwh|station|borne|chargepoint|connector|session|payment|paygreen|qorest|qoapi|ocpi|gireve|ref_site' out --exclude='*.svg' --exclude='*.png' | head -5000 > out/hits.txt || true
           cat out/hits.txt
-      - name: Probe obvious public same-origin paths found in HTML
-        shell: bash
-        run: |
-          set +e
-          python - <<'PY'
-          from pathlib import Path
-          import re,urllib.parse,requests,json
-          html=Path('out/index.html').read_text(errors='replace')
-          refs=[]
-          for pat in [r'href=["\']([^"\']+)',r'action=["\']([^"\']+)']:
-              refs += re.findall(pat,html,re.I)
-          report=[]
-          for x in dict.fromkeys(refs):
-              u=urllib.parse.urljoin('https://chargenow.qovoltis.com/',x)
-              if urllib.parse.urlparse(u).netloc!='chargenow.qovoltis.com': continue
-              if urllib.parse.urlparse(u).path.lower().endswith(('.svg','.png','.jpg','.jpeg','.css','.js','.ico')): continue
-              try:
-                  r=requests.get(u,timeout=15,headers={'User-Agent':'Mozilla/5.0'},allow_redirects=True)
-                  report.append({'source':x,'url':u,'final':r.url,'status':r.status_code,'type':r.headers.get('content-type'),'body':r.text[:2500]})
-              except Exception as e: report.append({'source':x,'url':u,'error':repr(e)})
-          Path('out/pages.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
-          print(json.dumps(report,ensure_ascii=False,indent=2)[:30000])
-          PY
       - uses: actions/upload-artifact@v4
         with:
           name: qovoltis-chargenow-public-discovery
