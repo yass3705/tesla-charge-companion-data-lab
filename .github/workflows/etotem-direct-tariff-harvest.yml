@@ -38,22 +38,27 @@ jobs:
           import gzip, json
           p='data/national/etotem_direct_tariffs_france.json.gz'
           with gzip.open(p,'rt',encoding='utf-8') as f: d=json.load(f)
-          c=d['counts']
-          assert d['scope']['physicalCpoDirectOnly'] is True
-          assert d['scope']['roamingIncluded'] is False
-          assert d['scope']['noGuessedFallback'] is True
+          c=d['counts']; cov=d['coverageByFamily']; scope=d['scope']
+          assert scope['physicalCpoDirectOnly'] is True
+          assert scope['roamingIncluded'] is False
+          assert scope['noGuessedFallback'] is True
           assert c['inventoryStations'] >= 600, c
-          assert c['resolvedStations'] >= 500, c
-          assert c['resolvedWithTariffText'] > 0, c
+          # Public native API coverage is quasi-complete for the two families it exposes.
+          assert cov['FRETI']['resolved'] / cov['FRETI']['inventory'] >= 0.99, cov['FRETI']
+          assert cov['FRESE']['resolved'] / cov['FRESE']['inventory'] >= 0.98, cov['FRESE']
+          assert c['resolvedStations'] >= 465, c
+          assert c['resolvedWithTariffText'] >= 465, c
+          assert c['coordinateFallbackMatches'] <= 10, c
           for s in d['stations']:
-              if not s.get('resolved'): continue
-              a=s['api']
-              assert str(a.get('bOcpi',0)) == '0'
-              assert str(a.get('bGireve',0)) == '0'
-              assert str(a.get('bItinerance',0)) == '0'
-          print(json.dumps(c,ensure_ascii=False,indent=2))
-          print(json.dumps(d.get('coverageByFamily',{}),ensure_ascii=False,indent=2))
-          print('profiles',len(d.get('tariffProfiles',[])))
+              if s.get('resolved'):
+                  a=s['api']
+                  assert str(a.get('bOcpi',0)) == '0'
+                  assert str(a.get('bGireve',0)) == '0'
+                  assert str(a.get('bItinerance',0)) == '0'
+              else:
+                  assert not s.get('tariffText'), s.get('stationId')
+                  assert s.get('reason'), s.get('stationId')
+          print(json.dumps({'counts':c,'coverageByFamily':cov,'coordinateMatches':[{'stationId':s['stationId'],'name':s['name'],'apiId':s['api']['sIdPool'],'apiName':s['api']['sLibelle'],'distanceM':s['matchDistanceM']} for s in d['stations'] if s.get('matchMethod')=='coordinates']},ensure_ascii=False,indent=2))
           PY
       - name: Publish harvest
         run: |
