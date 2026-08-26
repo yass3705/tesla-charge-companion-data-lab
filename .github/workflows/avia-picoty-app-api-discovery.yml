@@ -27,14 +27,21 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Download public AVIA VOLT Android package
+      - name: Install apkeep and download public AVIA VOLT Android package
         shell: bash
         run: |
           set -euo pipefail
-          url='https://d.apkpure.com/b/APK/fr.picoty.app?version=latest'
-          curl --fail --location --retry 3 --retry-all-errors \
-            -A 'Mozilla/5.0' "$url" -o /tmp/avia-picoty.apk
-          test -s /tmp/avia-picoty.apk
+          asset_url="$(curl --fail --silent --show-error --location \
+            https://api.github.com/repos/EFForg/apkeep/releases/latest | \
+            python -c 'import json,sys; d=json.load(sys.stdin); a=[x["browser_download_url"] for x in d["assets"] if x["name"]=="apkeep-x86_64-unknown-linux-gnu"]; print(a[0] if a else "")')"
+          test -n "$asset_url"
+          curl --fail --silent --show-error --location "$asset_url" -o /tmp/apkeep
+          chmod +x /tmp/apkeep
+          mkdir -p /tmp/apks
+          /tmp/apkeep -a fr.picoty.app /tmp/apks
+          pkg="$(find /tmp/apks -maxdepth 1 -type f | head -n1)"
+          test -n "$pkg"
+          cp "$pkg" /tmp/avia-picoty.apk
           echo "downloaded bytes: $(wc -c </tmp/avia-picoty.apk)"
           file /tmp/avia-picoty.apk
 
@@ -53,8 +60,6 @@ jobs:
           assert isinstance(d.get('hosts'),list)
           assert isinstance(d.get('interestingUrls'),list)
           assert isinstance(d.get('contextHits'),list)
-          # We expect the Picoty/Deftpower white-label app to expose at least one
-          # infrastructure/config hint. Fail closed if the downloaded package changes.
           assert d['hosts'] or d['interestingUrls'] or d['contextHits'], d
           print(json.dumps({k:d[k] for k in ('hosts','interestingUrls')}, indent=2))
           PY
