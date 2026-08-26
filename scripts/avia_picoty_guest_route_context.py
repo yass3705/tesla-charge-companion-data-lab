@@ -13,10 +13,22 @@ INPUTS = [
 TARGETS = [
     'getChargeTariffAsGuest',
     'getMapLocationsAsGuest',
+    'getChargingStationsAsGuest',
+    'getTenantIdAsGuest',
+    'getTenantIdByRegisterCode',
+    'getAzureMapsRegistrationCode',
     'getAppDistributionAsGuest',
+    'getAppDistributionByTenantId',
+    'getAppDistributionByMagicLink',
+    'getTenantSettings',
+    'getTenantTariffs',
+    'getChargeTariffById',
+    'registrationCode', 'registration-code', 'registerCode',
     'tenantId', 'tenant_id', 'tenant-id',
     'appDistribution', 'app-distribution', 'distributionId', 'distribution_id',
     'registrationGroup', 'registration-group',
+    'environment-by-magic-link',
+    'charging-tariffs', '/tariffs/', 'locations/',
     'v1/tenants/', '/v1/tenants/',
     'api.deftpower.com', 'account.deftpower.com',
     'fr.picoty.app', 'picoty',
@@ -25,7 +37,7 @@ TARGETS = [
 JWT = re.compile(r'eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{8,}')
 BEARER = re.compile(r'(?i)(bearer\s+)[A-Za-z0-9._~+\-/=]{16,}')
 KV_SECRET = re.compile(r'(?i)(api[-_ ]?key|subscription[-_ ]?key|client[-_ ]?secret|access[-_ ]?token|refresh[-_ ]?token|authorization)(\s*[=:]\s*["\']?)([^\s"\',}]{8,})')
-LONG_TOKEN = re.compile(r'(?<![A-Za-z0-9])[A-Za-z0-9_-]{48,}(?![A-Za-z0-9])')
+LONG_TOKEN = re.compile(r'(?<![A-Za-z0-9])[A-Za-z0-9_-]{64,}(?![A-Za-z0-9])')
 
 
 def redact(s: str) -> str:
@@ -57,14 +69,13 @@ def snippets_for(value: str):
             i = low.find(needle, start)
             if i < 0:
                 break
-            a = max(0, i - 260)
-            b = min(len(value), i + len(target) + 420)
+            a = max(0, i - 620)
+            b = min(len(value), i + len(target) + 1200)
             snippet = redact(value[a:b].replace('\x00', ' '))
             found.append({'target': target, 'snippet': snippet})
             start = i + max(1, len(target))
-            if len(found) >= 80:
+            if len(found) >= 180:
                 return found
-    # de-duplicate snippets while preserving order
     seen=set(); out=[]
     for x in found:
         key=(x['target'],x['snippet'])
@@ -75,9 +86,9 @@ def snippets_for(value: str):
 
 def main():
     out = {
-        'schemaVersion': '1.0.0',
+        'schemaVersion': '1.1.0',
         'generatedAt': datetime.now(timezone.utc).isoformat(),
-        'purpose': 'Public guest-route reconstruction for AVIA VOLT Picoty / Deftpower; secrets and long tokens redacted.',
+        'purpose': 'Public guest-route reconstruction for AVIA VOLT Picoty / Deftpower; credentials and tokens are redacted.',
         'files': [],
     }
     for p in INPUTS:
