@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Extract and probe only documented/public guest bootstrap surfaces for Picoty Recharge & Vous.
+"""Extract and probe only anonymous/read-only AVIA Picoty/Deftpower guest bootstrap surfaces.
 
-No user credentials or persistent auth tokens are used. The goal is to resolve tenant/location
-identifiers necessary to read public guest tariff endpoints. Responses are stored with sensitive
-headers omitted.
+No user credentials, cookies, OAuth tokens or API subscription keys are used. Responses are
+stored without request secrets. This is intended to resolve public tenant/location identifiers
+required by the app's guest tariff routes.
 """
-import json,re,urllib.parse,urllib.request,urllib.error
+import json,re,urllib.request,urllib.error
 from pathlib import Path
 from datetime import datetime,timezone
 
@@ -20,7 +20,13 @@ TOKENS=['getRegistrationGroups','registerWithoutToken','getTenantIdAsGuest','get
 URL_RE=re.compile(r'https?://[^\s"\'<>]+')
 ROUTE_RE=re.compile(r'[/A-Za-z0-9_.:-]*(?:registration|register|tenant|distribution)[/A-Za-z0-9_.:{}?=&-]*',re.I)
 UUID_RE=re.compile(r'\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b',re.I)
+SECRET_RE=re.compile(r'(?i)(authorization|subscription[-_]?key|api[-_]?key|access[-_]?token|refresh[-_]?token|client[-_]?secret)\s*[:=]\s*[^\s,;]+')
+JWT_RE=re.compile(r'\beyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}(?:\.[A-Za-z0-9_-]{8,})?\b')
 
+def sanitize(s):
+    s=SECRET_RE.sub(lambda m:m.group(1)+'=<redacted>',s)
+    s=JWT_RE.sub('<redacted-jwt>',s)
+    return s
 
 def walk(x,path='$'):
     if isinstance(x,dict):
@@ -28,7 +34,6 @@ def walk(x,path='$'):
     elif isinstance(x,list):
         for i,v in enumerate(x): yield from walk(v,f'{path}[{i}]')
     elif isinstance(x,str): yield path,x
-
 
 def extract_candidates():
     out={'urls':[], 'routes':[], 'uuids':[], 'snippets':[]}
@@ -39,38 +44,37 @@ def extract_candidates():
         for path,s in walk(data):
             low=s.lower()
             if not any(t.lower() in low for t in TOKENS): continue
-            sn=s[:12000]
-            out['snippets'].append({'source':str(p),'path':path,'text':sn})
+            out['snippets'].append({'source':str(p),'path':path,'text':sanitize(s[:18000])})
             for u in URL_RE.findall(s):
                 if any(h in u for h in ['deftpower','azure-api.net','picoty']):
+                    u=sanitize(u)
                     if u not in out['urls']: out['urls'].append(u)
             for m in ROUTE_RE.findall(s):
+                m=sanitize(m)
                 if len(m)>=5 and m not in out['routes']: out['routes'].append(m)
             for u in UUID_RE.findall(s):
                 if u not in out['uuids']: out['uuids'].append(u)
-    out['snippets']=out['snippets'][:120]
+    out['snippets']=out['snippets'][:200]
     return out
 
-
 def get(url):
-    req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Accept':'application/json,text/plain,*/*'})
+    req=urllib.request.Request(url,headers={'User-Agent':'TeslaChargeCompanion-data-lab/1.0','Accept':'application/json,text/plain,*/*'})
     try:
         with urllib.request.urlopen(req,timeout=20) as r:
-            body=r.read(100000).decode('utf-8','replace')
+            body=sanitize(r.read(100000).decode('utf-8','replace'))
             return {'url':url,'status':r.status,'contentType':r.headers.get('content-type'),'body':body}
     except urllib.error.HTTPError as e:
-        return {'url':url,'status':e.code,'contentType':e.headers.get('content-type') if e.headers else None,'body':e.read(20000).decode('utf-8','replace')}
+        return {'url':url,'status':e.code,'contentType':e.headers.get('content-type') if e.headers else None,'body':sanitize(e.read(30000).decode('utf-8','replace'))}
     except Exception as e:
-        return {'url':url,'status':None,'error':type(e).__name__,'body':str(e)}
-
+        return {'url':url,'status':None,'error':type(e).__name__,'body':sanitize(str(e))}
 
 def main():
     cand=extract_candidates()
     probes=[]
-    static_paths=['/v1/tenants','/tenants','/registration-groups','/v1/registration-groups','/app-distribution','/v1/app-distribution']
+    static_paths=['/v1/tenants','/tenants','/registration-groups','/v1/registration-groups','/app-distribution','/v1/app-distribution','/v1/tenants/registration-groups']
     for base in HOSTS:
         for path in static_paths: probes.append(get(base+path))
-    out={'schemaVersion':'1.0.0','generatedAt':datetime.now(timezone.utc).isoformat(),'candidates':cand,'anonymousReadOnlyProbes':probes}
+    out={'schemaVersion':'1.0.1','generatedAt':datetime.now(timezone.utc).isoformat(),'credentialsSent':False,'writeMethodsUsed':False,'candidates':cand,'anonymousReadOnlyProbes':probes}
     Path('data/reports/avia_picoty_bootstrap_probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     print(json.dumps({'urls':len(cand['urls']),'routes':len(cand['routes']),'uuids':len(cand['uuids']),'probes':[(x['url'],x['status']) for x in probes]},ensure_ascii=False,indent=2))
 if __name__=='__main__':main()
