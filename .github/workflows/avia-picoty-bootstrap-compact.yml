@@ -1,0 +1,77 @@
+name: AVIA Picoty compact bootstrap extraction
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/avia_picoty_bootstrap_compact.py"
+      - "data/reports/avia_picoty_full_guest_bootstrap.json"
+      - ".github/workflows/avia-picoty-bootstrap-compact.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: avia-picoty-bootstrap-compact-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compact public guest bootstrap evidence
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/avia_picoty_bootstrap_compact.py
+          python scripts/avia_picoty_bootstrap_compact.py
+
+      - name: Validate compact evidence
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          p=Path('data/reports/avia_picoty_bootstrap_compact.json')
+          d=json.loads(p.read_text(encoding='utf-8'))
+          assert d['schemaVersion']=='1.0.0'
+          assert d['safety']['networkCalls'] is False
+          assert d['safety']['credentialsPersisted'] is False
+          assert d['operations']['getMapLocationsAsGuest']['hitCount'] > 0
+          assert d['operations']['getLocationTariffsAsGuest']['hitCount'] > 0
+          raw=p.read_text(encoding='utf-8')
+          assert not re.search(r'\beyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}',raw)
+          assert not re.search(r'\bAIza[0-9A-Za-z_-]{20,}\b',raw)
+          print({'uuids':d['uuidCandidates'],'ops':{k:v['hitCount'] for k,v in d['operations'].items()}})
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: avia-picoty-bootstrap-compact
+          path: data/reports/avia_picoty_bootstrap_compact.json
+          retention-days: 14
+
+      - name: Commit compact report
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/avia_picoty_bootstrap_compact.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Extract compact AVIA Picoty guest bootstrap evidence"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
