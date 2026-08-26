@@ -7,6 +7,7 @@ on:
       - "scripts/avia_picoty_app_discovery.py"
       - "scripts/avia_picoty_hermes_strings.py"
       - "scripts/avia_picoty_runtime_config_extract.py"
+      - "scripts/avia_picoty_full_guest_bootstrap_extract.py"
       - ".github/workflows/avia-picoty-app-api-discovery.yml"
 
 permissions:
@@ -110,6 +111,12 @@ jobs:
           set -euo pipefail
           python scripts/avia_picoty_runtime_config_extract.py /tmp/avia-decoded /tmp/avia-decompiled.js
 
+      - name: Extract guest bootstrap from complete bundle
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/avia_picoty_full_guest_bootstrap_extract.py
+          python scripts/avia_picoty_full_guest_bootstrap_extract.py /tmp/avia-decoded /tmp/avia-decompiled.js
+
       - name: Validate discovery reports
         run: |
           python - <<'PY'
@@ -118,18 +125,24 @@ jobs:
           d=json.loads(Path('data/reports/avia_picoty_app_api_discovery.json').read_text())
           h=json.loads(Path('data/reports/avia_picoty_hermes_api_strings.json').read_text())
           r=json.loads(Path('data/reports/avia_picoty_runtime_config.json').read_text())
+          f=json.loads(Path('data/reports/avia_picoty_full_guest_bootstrap.json').read_text())
           assert d['hosts'] or d['interestingUrls'] or d['contextHits']
           assert h['stringCount'] > 1000
           assert h['safety']['credentialsPersisted'] is False and h['safety']['tokensPersisted'] is False
           assert r['safety']['credentialsPersisted'] is False and r['safety']['tokensPersisted'] is False
+          assert f['safety']['credentialsPersisted'] is False and f['safety']['tokensPersisted'] is False
           assert any('deftpower' in x.lower() or 'azure' in x.lower() for x in h.get('exactHosts',[]))
+          assert any(f['operations'].get(k) for k in ('getRegistrationGroups','registerWithoutToken','getLocationTariffsAsGuest'))
           print(json.dumps({
             'bytecodeVersion':h['bytecodeVersion'],
             'exactHosts':h['exactHosts'],
             'guestRoutes':[x for x in h['exactRoutesAndTariffStrings'] if 'guest' in x.lower() or '/tariffs' in x.lower() or '/map-locations' in x.lower()][:80],
             'runtimeCandidates':r['candidates'],
             'resourceHitCount':len(r['resourceHits']),
-            'decompiledHitCount':len(r['decompiledHits'])
+            'decompiledHitCount':len(r['decompiledHits']),
+            'fullOperationSummary':f['operationSummary'],
+            'fullUuidCandidates':f['uuidCandidates'],
+            'fullConfigHits':{k:len(v) for k,v in f['configHits'].items() if v}
           }, ensure_ascii=False, indent=2))
           PY
 
@@ -142,6 +155,7 @@ jobs:
             data/reports/avia_picoty_app_api_discovery.json
             data/reports/avia_picoty_hermes_api_strings.json
             data/reports/avia_picoty_runtime_config.json
+            data/reports/avia_picoty_full_guest_bootstrap.json
           retention-days: 14
 
       - name: Commit sanitized discovery reports
@@ -150,9 +164,9 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/reports/avia_picoty_app_api_discovery.json data/reports/avia_picoty_hermes_api_strings.json data/reports/avia_picoty_runtime_config.json
+          git add data/reports/avia_picoty_app_api_discovery.json data/reports/avia_picoty_hermes_api_strings.json data/reports/avia_picoty_runtime_config.json data/reports/avia_picoty_full_guest_bootstrap.json
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Discover AVIA Picoty public guest API configuration"
+          git commit -m "Discover full AVIA Picoty public guest bootstrap"
           for attempt in 1 2 3; do
             git pull --rebase origin main
             if git push origin HEAD:main; then exit 0; fi
