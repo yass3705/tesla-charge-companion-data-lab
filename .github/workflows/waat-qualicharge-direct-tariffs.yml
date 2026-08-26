@@ -1,0 +1,171 @@
+name: WAAT QualiCharge direct tariffs
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/waat-qualicharge-direct-tariffs.yml"
+  schedule:
+    - cron: "23 5 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: waat-qualicharge-direct-tariffs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Extract strict direct WAAT tariffs from public QualiCharge map
+        run: |
+          set -euo pipefail
+          mkdir -p data/national data/reports
+          python - <<'PY'
+          import gzip, json, re, urllib.request
+          from collections import Counter
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          URL='https://map.qualicharge.beta.gouv.fr/api/irve/points/'
+          req=urllib.request.Request(URL,headers={'User-Agent':'TeslaChargeCompanion-data-lab/1.0','Accept':'application/json'})
+          with urllib.request.urlopen(req,timeout=90) as r:
+            src=json.load(r)
+          stations=src.get('stations') or []
+
+          def norm(v): return re.sub(r'[^A-Z0-9]','',str(v or '').upper())
+          def is_waat(st):
+            op=str(st.get('nom_operateur') or '').upper()
+            sid=norm(st.get('id_station_itinerance'))
+            pdcs=[norm(x) for x in (st.get('pdc_itinerance_ids') or [])]
+            return 'WAAT' in op or sid.startswith('FRWA2') or any(x.startswith('FRWA2') for x in pdcs)
+          def walk_prices(o,path=''):
+            out=[]
+            if isinstance(o,dict):
+              for k,v in o.items():
+                p=f'{path}.{k}' if path else k
+                if any(q in k.lower() for q in ('price','pricing','tarif','cost','fee','currency')):
+                  out.append((p,v))
+                out += walk_prices(v,p)
+            elif isinstance(o,list):
+              for i,v in enumerate(o): out += walk_prices(v,f'{path}[{i}]')
+            return out
+
+          waat=[x for x in stations if is_waat(x)]
+          operator_counts=Counter(str(x.get('nom_operateur') or '') for x in waat)
+          tariff_records=[]
+          for st in waat:
+            summary=st.get('summary') or {}
+            price=summary.get('price_per_kwh')
+            pricing_value=summary.get('pricing_value')
+            has=bool(st.get('has_tarification'))
+            pdc_ids=list(st.get('pdc_itinerance_ids') or [])
+            direct_ids=[x for x in pdc_ids if norm(x).startswith('FRWA2')]
+            evidence={
+              'stationKey':st.get('station_key'),
+              'stationId':st.get('id_station_itinerance'),
+              'stationName':st.get('nom_station'),
+              'operator':st.get('nom_operateur'),
+              'lat':st.get('lat'),'lng':st.get('lng'),
+              'pdcIds':direct_ids,
+              'allPdcIds':pdc_ids,
+              'maxPowerKw':summary.get('max_power'),
+              'hasTarification':has,
+              'pricePerKwh':price,
+              'pricingValue':pricing_value,
+              'pricingFields':[{'path':p,'value':v} for p,v in walk_prices(st)],
+              'raw':st,
+            }
+            # Rankable only when this is unequivocally a direct WAAT station/EVSE and
+            # QualiCharge exposes a numeric €/kWh value. No roaming fallback.
+            try:
+              numeric=float(price) if price is not None else None
+            except Exception:
+              numeric=None
+            rankable=bool(direct_ids and numeric is not None and 0 < numeric < 5)
+            evidence['directEurPerKwh']=numeric if rankable else None
+            evidence['rankableDirect']=rankable
+            evidence['blockingReason']=None if rankable else ('qualicharge_no_numeric_kwh_tariff' if direct_ids else 'not_direct_frwa2_evse')
+            tariff_records.append(evidence)
+
+          counts={
+            'qualichargeStationCount':len(stations),
+            'waatStationCount':len(waat),
+            'waatEvseCount':sum(len(x.get('pdc_itinerance_ids') or []) for x in waat),
+            'waatDirectFrwa2EvseCount':sum(len(x['pdcIds']) for x in tariff_records),
+            'stationsWithHasTarification':sum(1 for x in tariff_records if x['hasTarification']),
+            'stationsWithNumericPricePerKwh':sum(1 for x in tariff_records if x['directEurPerKwh'] is not None),
+            'rankableStationCount':sum(1 for x in tariff_records if x['rankableDirect']),
+            'rankableDirectEvseCount':sum(len(x['pdcIds']) for x in tariff_records if x['rankableDirect']),
+          }
+          payload={
+            'schemaVersion':'1.0.0','dataset':'waat-direct-tariffs-qualicharge-france',
+            'operator':'WAAT','country':'FR','generatedAt':datetime.now(timezone.utc).isoformat(),
+            'source':{'type':'public-qualicharge-afir-map','url':URL,'pricingModel':'OCPI tariff summary'},
+            'scope':{'operatorDirectOnly':True,'operatorPrefix':'FR*WA2','roamingIncluded':False,'minimumPowerScopeKw':50,'pricesFailClosed':True},
+            'counts':counts,'operatorNamesSeen':dict(operator_counts),'stations':tariff_records,
+          }
+          raw=json.dumps(payload,ensure_ascii=False,separators=(',',':')).encode()
+          Path('data/national/waat_direct_tariffs_qualicharge_france.json.gz').write_bytes(gzip.compress(raw,compresslevel=9,mtime=0))
+          report={
+            'generatedAt':payload['generatedAt'],'counts':counts,'operatorNamesSeen':dict(operator_counts),
+            'waatStationKeys':[x['stationKey'] for x in tariff_records],
+            'rankableStations':[{k:x.get(k) for k in ('stationKey','stationId','stationName','operator','pdcIds','maxPowerKw','pricePerKwh','pricingValue','directEurPerKwh')} for x in tariff_records if x['rankableDirect']],
+            'blockedStations':[{k:x.get(k) for k in ('stationKey','stationId','stationName','operator','pdcIds','maxPowerKw','hasTarification','pricePerKwh','pricingValue','pricingFields','blockingReason')} for x in tariff_records if not x['rankableDirect']],
+          }
+          Path('data/reports/waat_qualicharge_direct_tariffs_report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(counts,ensure_ascii=False,indent=2))
+          print('Rankable examples:')
+          print(json.dumps(report['rankableStations'][:20],ensure_ascii=False,indent=2))
+          print('Blocked pricing examples:')
+          print(json.dumps(report['blockedStations'][:10],ensure_ascii=False,indent=2))
+          PY
+      - name: Validate fail-closed WAAT output
+        run: |
+          python - <<'PY'
+          import gzip,json,re
+          from pathlib import Path
+          d=json.loads(gzip.decompress(Path('data/national/waat_direct_tariffs_qualicharge_france.json.gz').read_bytes()))
+          assert d['operator']=='WAAT' and d['country']=='FR'
+          assert d['scope']['operatorDirectOnly'] is True and d['scope']['roamingIncluded'] is False
+          for st in d['stations']:
+            if st['rankableDirect']:
+              assert st['pdcIds'] and all(re.sub(r'[^A-Z0-9]','',x.upper()).startswith('FRWA2') for x in st['pdcIds'])
+              assert st['directEurPerKwh'] is not None
+            else:
+              assert st['directEurPerKwh'] is None
+          print(d['counts'])
+          PY
+      - name: Upload WAAT QualiCharge audit
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: waat-qualicharge-direct-tariffs
+          path: |
+            data/national/waat_direct_tariffs_qualicharge_france.json.gz
+            data/reports/waat_qualicharge_direct_tariffs_report.json
+          retention-days: 14
+      - name: Commit refreshed WAAT QualiCharge tariffs
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/waat_direct_tariffs_qualicharge_france.json.gz data/reports/waat_qualicharge_direct_tariffs_report.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Refresh WAAT QualiCharge direct tariffs"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
