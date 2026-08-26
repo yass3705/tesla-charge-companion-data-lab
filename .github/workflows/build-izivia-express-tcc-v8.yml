@@ -1,0 +1,210 @@
+name: Build IZIVIA Express TCC V8 dataset
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "izivia/izivia_express_station_tariffs_v1.json"
+      - ".github/workflows/build-izivia-express-tcc-v8.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build fail-closed compact dataset
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,re,math
+          from pathlib import Path
+          from collections import defaultdict,Counter
+
+          SRC=Path('izivia/izivia_express_station_tariffs_v1.json')
+          OUT=Path('data/national/izivia_express_direct_tcc_v8.json')
+          src=json.loads(SRC.read_text())
+          meta=src.get('metadata',{})
+          assert meta.get('officialStations')==155
+          assert meta.get('resolvedStations')==155
+          assert meta.get('stationsDirectPricePublished')==146
+          assert meta.get('stationsDirectPriceNotPublished')==9
+
+          def clean(s):
+            return ' '.join(re.sub(r'<br\s*/?>',' ',str(s or ''),flags=re.I).replace('\u00a0',' ').split())
+          def low(s): return clean(s).lower().replace(',','.')
+          def num(x): return float(str(x).replace(',','.'))
+          def started_units_text(l):
+            return bool(re.search(r'(?:kwh|énergie|energie)[^.!;]{0,45}entam|entam[^.!;]{0,45}(?:kwh|énergie|energie)',l))
+          def started_minute_text(l):
+            return bool(re.search(r'(?:minute|durée|duree)[^.!;]{0,45}entam|entam[^.!;]{0,45}(?:minute|durée|duree)',l))
+
+          def parse_post_charge(l):
+            # Started blocks have precedence over linear minute/hour rates.
+            m=re.search(r'(\d+(?:\.\d+)?)\s*€\s*/\s*(\d+)\s*mins?\s+(?:en\s+)?post[- ]charge',l)
+            if m:
+              return {'billing':'started_block','blockMinutes':int(m.group(2)),'blockFeeEur':num(m.group(1))}
+            m=re.search(r'(\d+(?:\.\d+)?)\s*€\s*/\s*(\d+)\s*min\s+(?:en\s+)?post[- ]charge',l)
+            if m:
+              return {'billing':'started_block','blockMinutes':int(m.group(2)),'blockFeeEur':num(m.group(1))}
+            m=re.search(r'(\d+(?:\.\d+)?)\s*€\s*/\s*min(?:ute)?\s+(?:en\s+)?post[- ]charge',l)
+            if m:
+              return {'billing':'started_minute' if started_minute_text(l) else 'linear_minute','ratePerMinuteEur':num(m.group(1))}
+            m=re.search(r'(\d+(?:\.\d+)?)\s*€\s*/\s*h\s+(?:en\s+)?post[- ]charge',l)
+            if m:
+              return {'billing':'started_minute' if started_minute_text(l) else 'linear_minute','ratePerMinuteEur':num(m.group(1))/60.0}
+            m=re.search(r'(\d+(?:\.\d+)?)\s*€\s*/\s*min(?:ute)?\s+en\s+post\s+charge',l)
+            if m:
+              return {'billing':'started_minute' if started_minute_text(l) else 'linear_minute','ratePerMinuteEur':num(m.group(1))}
+            return None
+
+          def parse_formula(raw):
+            s=clean(raw); l=low(raw)
+            kwh=[num(x) for x in re.findall(r'(\d+(?:\.\d+)?)\s*€\s*/\s*kwh',l)]
+            if not kwh: raise ValueError(f'no kWh price: {s}')
+            started_kwh=started_units_text(l)
+            cap=re.search(r'(?:facturation\s+max\s*:\s*|plafond(?:\s+de)?\s*)(\d+(?:\.\d+)?)\s*€',l)
+            if cap:
+              post=parse_post_charge(l)
+              if not post: raise ValueError(f'cap family without post charge: {s}')
+              return {'family':'session_cap','currency':'EUR','energy':{'ratePerKwhEur':kwh[0],'billing':'started_kwh' if started_kwh else 'linear_kwh'},'postCharge':post,'sessionCapEur':num(cap.group(1)),'raw':s}
+
+            if re.search(r'20\s*kwh',l) and (re.search(r'8h\s*(?:et|-|à|a)\s*20h',l) or re.search(r'08h\s*-\s*20h',l)):
+              # Day energy is the first kWh rate before the night clause; night extra is the last kWh rate.
+              day_rate=kwh[0]; night_rate=kwh[-1]
+              fee=None
+              for pat in [r'forfait\s+de\s+connexion\s+(?:à|a|de)\s*(\d+(?:\.\d+)?)\s*€',r'forfait\s+de\s+connexion\s*(\d+(?:\.\d+)?)\s*€',r'forfait\s+de\s*(\d+(?:\.\d+)?)\s*€']:
+                m=re.search(pat,l)
+                if m: fee=num(m.group(1));break
+              if fee is None: raise ValueError(f'night fee not parsed: {s}')
+              # Parse post-charge only from the day clause, before the night clause.
+              split=re.split(r'entre\s+20h|20h\s*-\s*08h|20h\s*-\s*8h',l,maxsplit=1)
+              day_l=split[0]
+              post=parse_post_charge(day_l)
+              return {'family':'day_night_included_energy','currency':'EUR','tariffSelection':'connection_start_local_time','day':{'start':'08:00','end':'20:00','energy':{'ratePerKwhEur':day_rate,'billing':'started_kwh' if started_kwh else 'linear_kwh'},'postCharge':post},'night':{'start':'20:00','end':'08:00','connectionFeeEur':fee,'includedEnergyKwh':20.0,'extraEnergy':{'ratePerKwhEur':night_rate,'billing':'started_kwh' if started_kwh else 'linear_kwh'}},'raw':s}
+
+            post=parse_post_charge(l)
+            if not post: raise ValueError(f'simple family without post charge: {s}')
+            return {'family':'simple_postcharge','currency':'EUR','energy':{'ratePerKwhEur':kwh[0],'billing':'started_kwh' if started_kwh else 'linear_kwh'},'postCharge':post,'raw':s}
+
+          def connector_configs(st):
+            grouped={}
+            for c in st.get('mapConnectorStats') or []:
+              p=num(c.get('maxPowerInW',0))/1000.0
+              if p<=0: continue
+              std=str(c.get('standard','')).lower()
+              kind='AC' if std in ('t2','type2','type_2') and p<=43 else 'DC'
+              key=(kind,round(p,3))
+              grouped[key]=max(grouped.get(key,0),int(c.get('totalConnectorCount') or c.get('availableConnectorCount') or 0))
+            if not grouped:
+              for p in st.get('powersKw') or []:
+                p=num(p);kind='AC' if p<=22.5 else 'DC';grouped[(kind,round(p,3))]=max(grouped.get((kind,round(p,3)),0),1)
+            return [{'kind':k,'powerKw':p,'stalls':max(1,n)} for (k,p),n in sorted(grouped.items(),key=lambda x:(x[0][0],x[0][1]))]
+
+          def formula_targets(raw):
+            l=low(raw);targets=[]
+            # Specific connector declarations only. Generic formulas have no target restriction.
+            for m in re.finditer(r'(\d+(?:\.\d+)?)\s*kw\s*(ac|dc)',l):
+              targets.append((m.group(2).upper(),num(m.group(1))))
+            if not targets:
+              m=re.search(r'borne\s+(\d+(?:\.\d+)?)\s*kw\b',l)
+              if m: targets.append(('DC' if num(m.group(1))>22.5 else 'AC',num(m.group(1))))
+            return targets
+
+          def applies(cfg,targets):
+            if not targets:return True
+            return any(cfg['kind']==k and abs(cfg['powerKw']-p)<=2.1 for k,p in targets)
+
+          row_out=[];excluded=[];family_rows=Counter();formula_count=0
+          for st in src.get('stations',[]):
+            coords=json.loads(st.get('coordinatesOfficial') or '[null,null]') if isinstance(st.get('coordinatesOfficial'),str) else st.get('coordinatesOfficial')
+            lat,lon=(coords+[None,None])[:2] if isinstance(coords,list) else (None,None)
+            configs=connector_configs(st)
+            formulas=[]
+            for raw in st.get('directRawPricing') or []:
+              exact=parse_formula(raw);targets=formula_targets(raw);formulas.append((exact,targets));family_rows[exact['family']]+=1;formula_count+=1
+            out_cfg=[]
+            for cfg in configs:
+              matches=[exact for exact,targets in formulas if applies(cfg,targets)]
+              unique={json.dumps(x,sort_keys=True,ensure_ascii=False):x for x in matches}
+              if len(unique)>1:
+                excluded.append({'stationId':st.get('officialStationId'),'kind':cfg['kind'],'powerKw':cfg['powerKw'],'reason':'ambiguous_formula','formulas':[x['raw'] for x in unique.values()]});continue
+              if not unique: continue
+              exact=next(iter(unique.values()))
+              # Representative rule keeps existing V8 UI/simulator contract; exact wrapper overrides the cost.
+              if exact['family']=='day_night_included_energy':
+                rules=[
+                  {'scope':'timeWindow','start':'08:00','end':'20:00','billing':'kwh','currency':'EUR','pricePerKwh':exact['day']['energy']['ratePerKwhEur'],'chargePerMinute':0,'connectionFee':0,'idlePerMinute':0,'afterMinutesRate':0,'afterMinutesThreshold':0,'afterMinutesCap':0},
+                  {'scope':'timeWindow','start':'20:00','end':'08:00','billing':'kwh','currency':'EUR','pricePerKwh':0,'chargePerMinute':0,'connectionFee':exact['night']['connectionFeeEur'],'idlePerMinute':0,'afterMinutesRate':0,'afterMinutesThreshold':0,'afterMinutesCap':0}
+                ]
+              else:
+                rules=[{'scope':'allDay','start':'00:00','end':'24:00','billing':'kwh','currency':'EUR','pricePerKwh':exact['energy']['ratePerKwhEur'],'chargePerMinute':0,'connectionFee':0,'idlePerMinute':0,'afterMinutesRate':0,'afterMinutesThreshold':0,'afterMinutesCap':0}]
+              out_cfg.append({
+                'id':f"izivia-direct:{cfg['kind']}:{str(cfg['powerKw']).replace('.','_')}",
+                'label':f"IZIVIA direct · {cfg['kind']} {cfg['powerKw']:g} kW",
+                'kind':cfg['kind'],'powerKw':cfg['powerKw'],'stalls':cfg['stalls'],
+                'offerProvider':'IZIVIA direct','offerType':'operator_direct','iziviaDirect':True,'iziviaStrictExact':True,
+                'pricing':{'type':'rules','rules':rules,'iziviaExact':exact}
+              })
+            row_out.append({
+              'stationId':st.get('officialStationId'),'mapLocationId':st.get('mapLocationId'),'name':st.get('name'),'address':st.get('address'),
+              'latitude':lat,'longitude':lon,'directPricePublished':bool(st.get('directPricePublished')),
+              'officialStationIds':[st.get('officialStationId')],'configurations':out_cfg,
+              'rawPricing':st.get('directRawPricing') or []
+            })
+
+          # Merge official sub-station rows that point to the same public-map location into one TCC site.
+          merged={}
+          for st in row_out:
+            key=st.get('mapLocationId') or st.get('stationId')
+            if key not in merged:
+              merged[key]=st
+              continue
+            cur=merged[key];cur['officialStationIds']=sorted(set(cur['officialStationIds']+st['officialStationIds']))
+            cur['directPricePublished']=cur['directPricePublished'] or st['directPricePublished']
+            bykey={(c['kind'],round(c['powerKw'],3),json.dumps(c['pricing']['iziviaExact'],sort_keys=True,ensure_ascii=False)):c for c in cur['configurations']}
+            for c in st['configurations']:
+              k=(c['kind'],round(c['powerKw'],3),json.dumps(c['pricing']['iziviaExact'],sort_keys=True,ensure_ascii=False))
+              if k not in bykey: bykey[k]=c
+              else: bykey[k]['stalls']=max(bykey[k]['stalls'],c['stalls'])
+            cur['configurations']=list(bykey.values())
+            cur['rawPricing']=sorted(set(cur['rawPricing']+st['rawPricing']))
+
+          stations=list(merged.values())
+          stations.sort(key=lambda x:(str(x.get('name') or ''),str(x.get('stationId') or '')))
+          direct_rows=sum(1 for st in row_out if st['directPricePublished'])
+          no_price_rows=sum(1 for st in row_out if not st['directPricePublished'])
+          exact_config_count=sum(len(st['configurations']) for st in stations)
+          priced_locations=sum(1 for st in stations if st['configurations'])
+          out={
+            'dataset':'izivia-express-direct-tcc-v8-france','schemaVersion':'1.0.0','sourceGeneratedAt':meta.get('generatedAt'),
+            'scope':{'countryCode':'FR','onlyDirectCpo':True,'roamingIncluded':False,'subscriptionDiscountsIncluded':False,'failClosed':True,'pricingSemantics':'exact_custom_runtime'},
+            'counts':{'officialStationRows':len(row_out),'tccLocations':len(stations),'directPricePublishedRows':direct_rows,'directPriceNotPublishedRows':no_price_rows,'pricedTccLocations':priced_locations,'exactConfigurations':exact_config_count,'excludedAmbiguousConfigurations':len(excluded),'distinctRawTariffs':len(src.get('directRawTariffCounts') or {}),'formulaRows':formula_count,'familyFormulaRows':dict(family_rows)},
+            'aliasMappings':meta.get('aliasMappings') or {},'excluded':excluded,'stations':stations
+          }
+          assert len(row_out)==155 and direct_rows==146 and no_price_rows==9
+          assert len(src.get('directRawTariffCounts') or {})==18
+          assert family_rows['session_cap']==75 and family_rows['day_night_included_energy']==68 and family_rows['simple_postcharge']==3
+          assert not excluded, excluded[:5]
+          assert exact_config_count>0 and priced_locations>0
+          OUT.parent.mkdir(parents=True,exist_ok=True)
+          OUT.write_text(json.dumps(out,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+          print(json.dumps(out['counts'],ensure_ascii=False,indent=2))
+          PY
+      - name: Validate JSON
+        shell: bash
+        run: |
+          python -m json.tool data/national/izivia_express_direct_tcc_v8.json >/dev/null
+          wc -c data/national/izivia_express_direct_tcc_v8.json
+      - name: Commit generated dataset
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/national/izivia_express_direct_tcc_v8.json
+          if git diff --cached --quiet; then echo 'No change'; else git commit -m 'Build compact IZIVIA Express TCC V8 dataset'; git push; fi
