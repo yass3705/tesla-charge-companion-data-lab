@@ -1,0 +1,171 @@
+name: WAAT Monta national sharded direct tariffs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 4 * * 2'
+  push:
+    paths:
+      - 'scripts/waat_monta_shard.mjs'
+      - '.github/workflows/waat-monta-national-sharded.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: waat-monta-national-sharded
+  cancel-in-progress: false
+
+jobs:
+  shard:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save playwright-core@1.55.0
+      - name: Collect WAAT shard
+        env:
+          WAAT_SHARD_INDEX: '${{ matrix.shard }}'
+          WAAT_SHARD_COUNT: '4'
+          WAAT_CONCURRENCY: '2'
+        run: node scripts/waat_monta_shard.mjs
+      - name: Validate shard
+        env:
+          SHARD: '${{ matrix.shard }}'
+        run: |
+          python - <<'PY'
+          import gzip,json,os
+          p=json.load(gzip.open(f"data/shards/waat_monta_shard_{os.environ['SHARD']}.json.gz",'rt',encoding='utf-8'))
+          assert p['dataset']=='waat-monta-direct-tariffs-shard'
+          assert p['shardCount']==4
+          assert len(p['stations']) in (142,143), len(p['stations'])
+          assert not [s for s in p['stations'] if s.get('mapError')], [(s.get('stationIdNormalized'),s.get('mapError')) for s in p['stations'] if s.get('mapError')][:10]
+          assert all(s.get('mapHttpStatus')==200 for s in p['stations'])
+          for s in p['stations']:
+            for c in s.get('integrationConfigs',[]):
+              if c.get('rankable'):
+                assert c.get('directEurPerKwh',0)>0
+                assert not c.get('blockingReason')
+          print({'shard':p['shardIndex'],'stations':len(p['stations']),'rankable':sum(bool(s.get('rankableDirect')) for s in p['stations'])})
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: waat-monta-shard-${{ matrix.shard }}
+          path: data/shards/waat_monta_shard_${{ matrix.shard }}.json.gz
+          retention-days: 7
+
+  merge:
+    needs: shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: waat-monta-shard-*
+          path: data/shards
+          merge-multiple: true
+      - name: Merge and validate complete national snapshot
+        run: |
+          python - <<'PY'
+          import gzip,json,glob,collections,datetime,os
+          files=sorted(glob.glob('data/shards/waat_monta_shard_*.json.gz'))
+          assert len(files)==4, files
+          shards=[json.load(gzip.open(f,'rt',encoding='utf-8')) for f in files]
+          assert sorted(p['shardIndex'] for p in shards)==[0,1,2,3]
+          stations=[s for p in shards for s in p['stations']]
+          ids=[s['stationIdNormalized'] for s in stations]
+          assert len(stations)==571, len(stations)
+          assert len(set(ids))==571, 'duplicate station ids'
+          errors=[s for s in stations if s.get('mapError') or s.get('mapHttpStatus')!=200]
+          assert not errors, [(s.get('stationIdNormalized'),s.get('mapHttpStatus'),s.get('mapError')) for s in errors[:20]]
+
+          groups={}
+          for s in stations:
+            for g in s.get('montaGroups',[]): groups[g['montaGroupId']]=g
+          rankable_groups={}
+          for s in stations:
+            for g in s.get('rankableGroups',[]):
+              if g.get('rankable'): rankable_groups[g['montaGroupId']]=g
+          dist=collections.Counter(f"{float(g['directEurPerKwh']):.3f}" for g in rankable_groups.values())
+          safe_configs=[c for s in stations for c in s.get('integrationConfigs',[]) if c.get('rankable')]
+          unresolved_configs=[c for s in stations for c in s.get('integrationConfigs',[]) if not c.get('rankable')]
+          counts={
+            'inventoryStations':571,
+            'queriedStations':len(stations),
+            'mapHttp200':sum(s.get('mapHttpStatus')==200 for s in stations),
+            'mapErrors':len(errors),
+            'stationsWithMontaGroup':sum(bool(s.get('montaGroups')) for s in stations),
+            'rankableStations':sum(bool(s.get('rankableDirect')) for s in stations),
+            'unresolvedStations':sum(not s.get('rankableDirect') for s in stations),
+            'uniqueMontaGroups':len(groups),
+            'rankableMontaGroups':len(rankable_groups),
+            'rankablePhysicalConfigs':len(safe_configs),
+            'unresolvedPhysicalConfigs':len(unresolved_configs),
+            'priceRangeGroups':sum(g.get('blockingReason')=='price_range' for g in groups.values()),
+            'dynamicGroups':sum(g.get('blockingReason')=='dynamic_pricing' for g in groups.values()),
+            'zeroPriceGroups':sum(g.get('blockingReason')=='zero_price_not_auto_ranked' for g in groups.values()),
+            'ambiguousConnectorGroups':sum(g.get('blockingReason')=='ambiguous_connector_kind' for g in groups.values()),
+          }
+          payload={
+            'schemaVersion':'2.0.0','dataset':'waat-monta-direct-tariffs-france','operator':'WAAT','country':'FR',
+            'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'source':{'type':'monta-public-web-map-guest-browser-sharded','mapUrl':'https://maps.monta.app/','apiBase':'https://api.monta.app','note':'Four independent browser guest sessions; authorization is never persisted.'},
+            'scope':{'directCpoOnly':True,'operatorPrefix':'FR*WA2','roamingIncluded':False,'stationSpecificPricing':True,'unresolvedCasesNeverRankable':True,'zeroPriceAutoRanked':False,'dynamicPricingAutoRanked':False,'rangePricingAutoRanked':False,'ambiguousConnectorGroupsAutoRanked':False},
+            'counts':counts,'tariffDistribution':dict(sorted(dist.items())),'stations':sorted(stations,key=lambda s:s['stationIdNormalized'])
+          }
+          os.makedirs('data/national',exist_ok=True);os.makedirs('data/reports',exist_ok=True)
+          with gzip.open('data/national/waat_monta_direct_tariffs_france.json.gz','wt',encoding='utf-8') as f: json.dump(payload,f,separators=(',',':'))
+          examples=[]
+          for s in payload['stations']:
+            cs=[c for c in s.get('integrationConfigs',[]) if c.get('rankable')]
+            if cs: examples.append({'stationId':s['stationIdNormalized'],'name':s.get('stationName'),'address':s.get('address'),'configs':cs})
+            if len(examples)>=20: break
+          report={'generatedAt':payload['generatedAt'],'counts':counts,'tariffDistribution':payload['tariffDistribution'],'examples':examples}
+          with open('data/reports/waat_monta_national_tariffs_report.json','w',encoding='utf-8') as f: json.dump(report,f,ensure_ascii=False,indent=2)
+          assert counts['queriedStations']==571 and counts['mapHttp200']==571 and counts['mapErrors']==0
+          assert counts['rankablePhysicalConfigs']>0
+          for s in payload['stations']:
+            for g in s.get('rankableGroups',[]):
+              assert g.get('rankable') is True
+              assert g.get('dynamicPricing') is False
+              assert isinstance(g.get('directEurPerKwh'),(int,float)) and g['directEurPerKwh']>0
+              assert '-' not in str(g.get('priceLabel') or '')
+              assert g.get('kind') in ('AC','DC')
+            for c in s.get('integrationConfigs',[]):
+              if c.get('rankable'):
+                assert c.get('kind') in ('AC','DC') and c.get('powerKw',0)>0 and c.get('directEurPerKwh',0)>0
+                assert len(c.get('groupIds') or [])>=1
+          print(json.dumps(counts,indent=2))
+          print(json.dumps(payload['tariffDistribution'],indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: waat-monta-national-validated
+          path: |
+            data/national/waat_monta_direct_tariffs_france.json.gz
+            data/reports/waat_monta_national_tariffs_report.json
+          retention-days: 14
+      - name: Commit validated national snapshot
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/national/waat_monta_direct_tariffs_france.json.gz data/reports/waat_monta_national_tariffs_report.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'data: publish validated sharded WAAT Monta tariffs'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            git push origin HEAD:main && exit 0
+            sleep $((attempt*2))
+          done
+          exit 1
