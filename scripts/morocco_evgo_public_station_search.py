@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Read-only EVGO/AMPECO public station-search probe.
 
-Uses only already-confirmed public mobile search routes and public place-name or
-public EVSE-label queries. No login, credentials, mutation, charging/payment
-action or raw response persistence. The report keeps only charging-infrastructure
-fields plus harmless result-shape metadata.
+Uses only already-confirmed public mobile search routes on the branded EVGO
+backend plus public place-name or public EVSE-label queries. No login,
+credentials, mutation, charging/payment action or raw response persistence.
+The report keeps only charging-infrastructure fields plus harmless result-shape
+metadata.
 """
 from __future__ import annotations
 import datetime as dt
@@ -14,7 +15,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-HOST="evgo.eu-evgo.charge.ampeco.tech"
+HOST="cp.evgo.ma"
 PATHS=["/api/v1/app/evses/search","/api/v2/app/evses/search"]
 # Include both native-app place names and a couple of public labels observed via
 # EVOne, to determine whether this endpoint searches places or EVSE identifiers.
@@ -23,7 +24,7 @@ QUERIES=[
  "Marjane Ain Sebaa","Ain Sebaa","Casablanca","1004","1005"
 ]
 OUT=Path("artifacts/morocco-evgo-public-search")
-UA="Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.6)"
+UA="Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.7)"
 SAFE_KEYS=("id","name","title","status","availability","occupied","available","power","kw","connector","evse","location","address","city","latitude","longitude","lat","lng","tariff","price","currency","free","operator","network")
 SENSITIVE=("user","email","phone","account","payment","card","token","secret","auth","cookie")
 
@@ -85,7 +86,7 @@ def probe(path,query):
 def main():
  OUT.mkdir(parents=True,exist_ok=True)
  probes=[probe(path,query) for query in QUERIES for path in PATHS]
- result={"schema_version":3,"generated_at":dt.datetime.now(dt.timezone.utc).isoformat(),"host":HOST,"queries":QUERIES,"policy":{"read_only":True,"no_login":True,"no_mutations":True,"no_credentials":True,"raw_response_bodies_persisted":False},"probes":probes}
+ result={"schema_version":4,"generated_at":dt.datetime.now(dt.timezone.utc).isoformat(),"host":HOST,"queries":QUERIES,"policy":{"read_only":True,"no_login":True,"no_mutations":True,"no_credentials":True,"raw_response_bodies_persisted":False},"probes":probes}
  (OUT/"summary.json").write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n")
  print(json.dumps({"statuses":[x.get("status") for x in probes],"result_counts":[x.get("result_count") for x in probes]}))
 if __name__=="__main__":main()
