@@ -1,0 +1,84 @@
+name: WAAT historical Monta dataset audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/waat-monta-dataset-audit.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Inspect data.gouv WAAT Monta extraction
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports
+          python - <<'PY'
+          import csv,io,json,re,urllib.request
+          from datetime import datetime,timezone
+          api='https://www.data.gouv.fr/api/1/datasets/extraction-monta/'
+          req=urllib.request.Request(api,headers={'User-Agent':'TeslaChargeCompanion-data-lab/1.0'})
+          with urllib.request.urlopen(req,timeout=30) as r: meta=json.load(r)
+          resources=meta.get('resources') or []
+          csvs=[x for x in resources if str(x.get('format') or '').lower()=='csv' or str(x.get('url') or '').lower().endswith('.csv')]
+          if not csvs: raise RuntimeError('No CSV resource')
+          res=csvs[0]
+          req=urllib.request.Request(res['url'],headers={'User-Agent':'TeslaChargeCompanion-data-lab/1.0'})
+          with urllib.request.urlopen(req,timeout=60) as r: raw=r.read()
+          text=raw.decode('utf-8-sig','replace')
+          sample=text[:10000]
+          dialect=csv.Sniffer().sniff(sample,delimiters=',;\t|')
+          reader=csv.DictReader(io.StringIO(text),dialect=dialect)
+          rows=list(reader)
+          fields=reader.fieldnames or []
+          key_fields=[f for f in fields if re.search(r'(deep|slug|url|link|qr|monta|id|evse|station|charge)',f,re.I)]
+          url_values=[]; monta_values=[]; sample_matches=[]
+          for row in rows:
+            joined=' | '.join(str(v or '') for v in row.values())
+            if 'FRWA2E5806034' in joined.upper() or 'FR*WA2*E5806034' in joined.upper(): sample_matches.append(row)
+            for f,v in row.items():
+              s=str(v or '').strip()
+              if re.search(r'https?://',s,re.I): url_values.append({'field':f,'value':s})
+              if re.search(r'(m\.monta\.com|deeplink|MONTA-[A-Za-z0-9]+)',s,re.I): monta_values.append({'field':f,'value':s})
+          # redact nothing sensitive expected; only public dataset values are reported, cap samples.
+          out={
+            'generatedAt':datetime.now(timezone.utc).isoformat(),
+            'datasetId':meta.get('id'),'title':meta.get('title'),'resource':{k:res.get(k) for k in ('id','title','url','format','last_modified')},
+            'rowCount':len(rows),'fields':fields,'candidateFields':key_fields,
+            'urlValueCount':len(url_values),'urlSamples':url_values[:80],
+            'montaDeepLinkLikeCount':len(monta_values),'montaDeepLinkLikeSamples':monta_values[:100],
+            'sampleEvseMatchCount':len(sample_matches),'sampleEvseMatches':sample_matches[:5],
+            'firstRows':rows[:3]
+          }
+          open('data/reports/waat_monta_dataset_audit.json','w',encoding='utf-8').write(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({k:out[k] for k in ('rowCount','fields','candidateFields','urlValueCount','montaDeepLinkLikeCount','sampleEvseMatchCount')},ensure_ascii=False,indent=2))
+          print(json.dumps(out['montaDeepLinkLikeSamples'][:20],ensure_ascii=False,indent=2))
+          PY
+      - name: Upload report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: waat-monta-dataset-audit
+          path: data/reports/waat_monta_dataset_audit.json
+          retention-days: 14
+      - name: Commit report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_monta_dataset_audit.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: publish WAAT Monta dataset audit"
+          git pull --rebase origin main
+          git push origin HEAD:main
