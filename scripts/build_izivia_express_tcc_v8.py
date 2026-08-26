@@ -134,7 +134,7 @@ def connector_configs(station):
         if power <= 0:
             continue
         standard = str(connector.get("standard", "")).lower()
-        kind = "AC" if standard in ("t2", "type2", "type_2") and power <= 43 else "DC"
+        kind = "AC" if standard in ("t2", "type2", "type_2", "standard_household") and power <= 43 else "DC"
         key = (kind, round(power, 3))
         grouped[key] = max(grouped.get(key, 0), int(connector.get("totalConnectorCount") or connector.get("availableConnectorCount") or 0))
     if not grouped:
