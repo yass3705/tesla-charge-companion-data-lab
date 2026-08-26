@@ -1,0 +1,87 @@
+name: WAAT Monta targeted public assets
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/waat-monta-targeted-assets.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Inspect targeted public Monta assets
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports
+          python - <<'PY'
+          import json,re,urllib.request,urllib.parse
+          from datetime import datetime,timezone
+          base='https://cdn.monta.app/control/hub/assets/'
+          names=[
+            'deeplinks-api-DfouvZRW.js',
+            'deeplinks-M9CQGfOc.js',
+            'use-public-tariffs-kFlP_gIp.js',
+            'monta-urls-J6q9Peb-.js',
+            'charge-point-detail-api-BDg_2hI1.js',
+            'charge-points-api-C25y_gLF.js',
+            'charge-point-detail-schema-CEjOkVEP.js',
+            'price-groups-api-s7tBvtb3.js'
+          ]
+          ua={'User-Agent':'TeslaChargeCompanion-data-lab/1.0','Accept':'*/*'}
+          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'assets':[],'routes':[],'urls':[],'strings':[]}
+          route_re=re.compile(r'(["\'`])((?:https?://|/)[^"\'`\s]{2,220})\1')
+          interesting=re.compile(r'(deep.?link|public.?tariff|guest|qr|charge.?point|price|tariff|slug|hub\.monta|app\.monta|api)',re.I)
+          for name in names:
+            url=base+name
+            try:
+              req=urllib.request.Request(url,headers=ua)
+              with urllib.request.urlopen(req,timeout=30) as r: text=r.read(5_000_000).decode('utf-8','replace'); status=r.status
+            except Exception as e:
+              out['assets'].append({'name':name,'url':url,'error':str(e)}); continue
+            routes=[]
+            for m in route_re.finditer(text):
+              s=m.group(2)
+              if interesting.search(s): routes.append(s)
+            # Capture contextual snippets around interesting API/deeplink terms.
+            snippets=[]
+            for m in interesting.finditer(text):
+              a=max(0,m.start()-260); b=min(len(text),m.end()+520)
+              s=re.sub(r'\s+',' ',text[a:b])
+              if s not in snippets: snippets.append(s)
+              if len(snippets)>=80: break
+            out['assets'].append({'name':name,'url':url,'status':status,'length':len(text),'routes':sorted(set(routes)),'snippets':snippets})
+            out['routes'] += routes
+            out['urls'] += re.findall(r'https?://[^"\'`\s<>()]{5,240}',text)
+          out['routes']=sorted(set(out['routes']))
+          out['urls']=sorted(set(out['urls']))
+          open('data/reports/waat_monta_targeted_assets.json','w',encoding='utf-8').write(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'routes':out['routes'],'urls':out['urls'],'assetSummary':[(x['name'],x.get('status'),x.get('length'),x.get('routes')) for x in out['assets']]},ensure_ascii=False,indent=2))
+          PY
+      - name: Upload report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: waat-monta-targeted-assets
+          path: data/reports/waat_monta_targeted_assets.json
+          retention-days: 14
+      - name: Commit report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_monta_targeted_assets.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: publish Monta targeted public asset report"
+          git pull --rebase origin main
+          git push origin HEAD:main
