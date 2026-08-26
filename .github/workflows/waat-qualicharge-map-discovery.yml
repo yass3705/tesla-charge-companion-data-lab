@@ -1,0 +1,83 @@
+name: WAAT QualiCharge public tariff map discovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/waat-qualicharge-map-discovery.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Inspect public QualiCharge map assets
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports
+          python - <<'PY'
+          import json,re,urllib.request,urllib.parse,urllib.error
+          from datetime import datetime,timezone
+          ROOT='https://map.qualicharge.beta.gouv.fr/'
+          UA={'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'text/html,*/*'}
+          def get(url,limit=8_000_000):
+            req=urllib.request.Request(url,headers=UA)
+            try:
+              with urllib.request.urlopen(req,timeout=35) as r:
+                return r.status,r.geturl(),r.read(limit).decode('utf-8','replace'),dict(r.headers)
+            except urllib.error.HTTPError as e:
+              return e.code,e.geturl(),e.read(limit).decode('utf-8','replace'),dict(e.headers)
+            except Exception as e:return None,url,'',{'error':str(e)}
+          st,final,html,h=get(ROOT)
+          assets=[]
+          for pat in (r'<script[^>]+src=["\']([^"\']+)',r'<link[^>]+href=["\']([^"\']+)'):
+            for x in re.findall(pat,html,re.I):
+              u=urllib.parse.urljoin(final,x)
+              if ('.js' in u or '.json' in u) and u not in assets: assets.append(u)
+          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'root':{'status':st,'finalUrl':final,'headers':h,'html':html[:10000]},'assets':[],'urls':[],'routes':[],'tariffSnippets':[]}
+          key=re.compile(r'(tarif|tariff|price|pricing|ocpi|station|borne|point.?de.?charge|api|geojson|vector|tile|network|operator)',re.I)
+          urls=set();routes=set();snips=[]
+          for u in assets[:120]:
+            ast,af,text,ah=get(u)
+            aentry={'url':u,'status':ast,'finalUrl':af,'length':len(text),'snippets':[]}
+            for x in re.findall(r'https?://[^"\'`\s<>()]{5,350}',text):
+              if key.search(x):urls.add(x)
+            for m in re.finditer(r'(["\'`])(/[^"\'`\s]{2,300})\1',text):
+              p=m.group(2)
+              if key.search(p):routes.add(p)
+            for m in key.finditer(text):
+              a=max(0,m.start()-350);b=min(len(text),m.end()+900);s=re.sub(r'\s+',' ',text[a:b])
+              if s not in aentry['snippets']:aentry['snippets'].append(s)
+              if s not in snips:snips.append(s)
+              if len(aentry['snippets'])>=80:break
+            out['assets'].append(aentry)
+          out['urls']=sorted(urls);out['routes']=sorted(routes);out['tariffSnippets']=snips[:500]
+          open('data/reports/waat_qualicharge_map_discovery.json','w',encoding='utf-8').write(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'rootStatus':st,'assetCount':len(out['assets']),'urls':out['urls'],'routes':out['routes'][:300],'tariffSnippets':out['tariffSnippets'][:40]},ensure_ascii=False,indent=2))
+          PY
+      - name: Upload report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: waat-qualicharge-map-discovery
+          path: data/reports/waat_qualicharge_map_discovery.json
+          retention-days: 14
+      - name: Commit report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_qualicharge_map_discovery.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: publish QualiCharge tariff map discovery"
+          git pull --rebase origin main
+          git push origin HEAD:main
