@@ -1,0 +1,102 @@
+name: Qovoltis route decompile
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-route-decompile.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Download Qovoltis APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work out
+          curl -sS -L --max-time 120 -A 'Mozilla/5.0' 'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=443' -o work/qovoltis.xapk
+          unzip -q work/qovoltis.xapk -d work/xapk
+          find work/xapk -type f -name '*.apk' -print
+
+      - name: Install JADX
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS -L --max-time 120 'https://github.com/skylot/jadx/releases/download/v1.5.2/jadx-1.5.2.zip' -o work/jadx.zip
+          unzip -q work/jadx.zip -d work/jadx
+          chmod +x work/jadx/bin/jadx
+
+      - name: Decompile base APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=$(find work/xapk -type f -name '*.apk' | head -1)
+          echo "BASE=$BASE"
+          work/jadx/bin/jadx --no-res -d work/src "$BASE" >/tmp/jadx.log 2>&1 || true
+          tail -80 /tmp/jadx.log || true
+
+      - name: Extract API route evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > out/routes.txt
+          grep -RInE '@(GET|POST|PUT|DELETE|PATCH)\(|qoapi\.qovoltis\.com|FetchStationsList|StationDetailsRemoteDataSource|MapStationListQueryRequest|getOffers|findOffer|pricing_default_price|connectorReference|retrieveHistoryChargePoint' work/src 2>/dev/null | head -3000 > out/routes.txt || true
+          echo '--- route evidence ---'
+          sed -n '1,1200p' out/routes.txt
+
+      - name: Extract Retrofit interfaces and nearby context
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          hits=[]
+          for p in Path('work/src').rglob('*.java'):
+              try: t=p.read_text(errors='ignore')
+              except: continue
+              if any(k in t for k in ['@GET(', '@POST(', '@PUT(', '@DELETE(', '@PATCH(']):
+                  if any(k.lower() in t.lower() for k in ['station','offer','pricing','connector','chargepoint','qovoltis']):
+                      lines=t.splitlines()
+                      for i,line in enumerate(lines):
+                          if re.search(r'@(GET|POST|PUT|DELETE|PATCH)\(', line):
+                              lo=max(0,i-5); hi=min(len(lines),i+12)
+                              hits.append(f'===== {p} lines {lo+1}-{hi} =====\n'+'\n'.join(lines[lo:hi]))
+          Path('out/retrofit_context.txt').write_text('\n\n'.join(hits[:500]),encoding='utf-8')
+          print(Path('out/retrofit_context.txt').read_text()[:50000])
+          PY
+
+      - name: Test only discovered unauthenticated GET routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          text=Path('out/retrofit_context.txt').read_text(errors='ignore')
+          routes=[]
+          for m in re.finditer(r'@GET\("([^"]+)"\)', text):
+              r=m.group(1)
+              if '{' not in r and r not in routes:
+                  routes.append(r)
+          out=[]
+          for r in routes[:40]:
+              url='https://qoapi.qovoltis.com/api/'+r.lstrip('/')
+              cp=subprocess.run(['curl','-sS','-o','/tmp/body','-w','%{http_code}','--max-time','15','-A','Mozilla/5.0',url],capture_output=True,text=True)
+              code=cp.stdout.strip()
+              body=Path('/tmp/body').read_text(errors='ignore')[:1200] if Path('/tmp/body').exists() else ''
+              out.append(f'{code}\t{url}\t{body.replace(chr(10)," ")[:500]}')
+          Path('out/public_get_tests.txt').write_text('\n'.join(out),encoding='utf-8')
+          print('\n'.join(out))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-route-decompile
+          path: out
+          retention-days: 3
