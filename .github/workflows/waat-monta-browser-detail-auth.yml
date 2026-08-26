@@ -24,7 +24,7 @@ jobs:
       - name: Fetch WAAT group details with in-memory guest authorization
         run: |
           set -euo pipefail
-          cat > /tmp/waat-detail.mjs <<'JS'
+          cat > waat-detail.mjs <<'JS'
           import fs from 'node:fs';
           import { chromium } from 'playwright-core';
           const targets=[
@@ -91,8 +91,8 @@ jobs:
           fs.mkdirSync('data/reports',{recursive:true}); fs.writeFileSync('data/reports/waat_monta_guest_detail.json',JSON.stringify(report,null,2)+'\n');
           console.log(JSON.stringify(output.map(x=>({target:x.target.label,guest201:x.guest201,authorizationObserved:x.authorizationObserved,mapPrices:x.mapObjects.map(y=>({id:y.id,name:y.name,price_label:y.price_label,max_kw:y.max_kw})),details:x.details.map(d=>({id:d.id,status:d.status,pricingHits:d.pricingHits.slice(0,25)}))})),null,2));
           JS
-          node /tmp/waat-detail.mjs
-          rm -f /tmp/waat-detail.mjs
+          node waat-detail.mjs
+          rm -f waat-detail.mjs
       - name: Commit sanitized report
         run: |
           git config user.name "github-actions[bot]"
