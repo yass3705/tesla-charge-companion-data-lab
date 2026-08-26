@@ -22,12 +22,14 @@ jobs:
           URL='https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=50012'
           curl -fLsS --max-time 180 -A 'Mozilla/5.0' "$URL" -o work/qovoltis.xapk
           unzip -q work/qovoltis.xapk -d work/xapk
-          MAIN_APK=$(find work/xapk -maxdepth 1 -type f -name 'com.qovoltis.client.apk' | head -1)
+          MAIN_APK=$(find work/xapk -maxdepth 1 -type f -name 'com.qovoltis.client.apk' -print -quit)
           test -n "$MAIN_APK"
           mkdir -p work/apk
           unzip -q "$MAIN_APK" -d work/apk
-          find work/apk -maxdepth 3 -type f -printf '%s\t%p\n' | sort -nr | head -300 > probe/largest-files.tsv
-          find work/apk -maxdepth 5 -type f | sed 's#^work/apk/##' | head -3000 > probe/file-tree.txt
+          find work/apk -maxdepth 3 -type f -printf '%s\t%p\n' | sort -nr > probe/largest-files-all.tsv
+          sed -n '1,300p' probe/largest-files-all.tsv > probe/largest-files.tsv
+          find work/apk -maxdepth 5 -type f | sed 's#^work/apk/##' > probe/file-tree-all.txt
+          sed -n '1,3000p' probe/file-tree-all.txt > probe/file-tree.txt
           printf 'main_apk=%s\nbytes=%s\n' "$MAIN_APK" "$(wc -c < "$MAIN_APK")" > probe/apk-info.txt
 
       - name: Detect framework and collect public API strings
@@ -36,7 +38,7 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          import json, os, re, subprocess
+          import json, re
 
           root = Path('work/apk')
           out = Path('probe')
@@ -54,7 +56,6 @@ jobs:
           # Authorization/token/cookie values or query strings that could contain secrets.
           url_re = re.compile(rb'https?://[^\x00-\x20"\'<>]{3,500}', re.I)
           route_re = re.compile(rb'[/][A-Za-z0-9_{}?=.&%-]{0,120}(?:station|borne|charge|charging|tariff|pricing|price|map|location|connector|evse|poi|offer)[A-Za-z0-9_/{}/?=.&%-]{0,180}', re.I)
-          domain_words = ('qovoltis','qoapi','qorest','chargenow','qockpit','ocpi','station','borne','tariff','pricing','price','evse')
 
           urls = set()
           routes = set()
@@ -89,7 +90,6 @@ jobs:
               local_routes = []
               for m in route_re.finditer(data):
                   raw = m.group(0).decode('utf-8','replace')
-                  # Strip query to avoid accidentally retaining user/session fields.
                   clean = raw.split('?',1)[0]
                   if len(clean) >= 4:
                       routes.add(clean)
@@ -131,14 +131,15 @@ jobs:
         run: |
           set -euo pipefail
           : > probe/native-keyword-context.txt
-          while IFS= read -r f; do
+          find work/apk -type f \( -name 'libapp.so' -o -name '*.bundle' -o -name 'index.android.bundle' -o -name 'main.dart.js' -o -name '*.js' \) > probe/native-payload-files.txt
+          sed -n '1,100p' probe/native-payload-files.txt | while IFS= read -r f; do
             [ -f "$f" ] || continue
             echo "===== $f =====" >> probe/native-keyword-context.txt
             strings -a -n 5 "$f" 2>/dev/null \
               | grep -E -i 'qovoltis|qoapi|qorest|chargenow|qockpit|/[^ ]*(station|borne|charge|tariff|pricing|price|evse|connector|location|map)[^ ]*' \
               | sed -E 's#([?&](token|access_token|authorization|apikey|api_key|key|secret)=)[^&[:space:]]+#\1<redacted>#Ig' \
-              | head -2500 >> probe/native-keyword-context.txt || true
-          done < <(find work/apk -type f \( -name 'libapp.so' -o -name '*.bundle' -o -name 'index.android.bundle' -o -name 'main.dart.js' -o -name '*.js' \) | head -100)
+              | sed -n '1,2500p' >> probe/native-keyword-context.txt || true
+          done
           sed -n '1,12000p' probe/native-keyword-context.txt
 
       - uses: actions/upload-artifact@v4
