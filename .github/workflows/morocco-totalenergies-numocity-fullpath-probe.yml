@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Probe reconstructed GET-only station-state route
+      - name: Probe reconstructed GET-only station-state and connector routes
         shell: python
         run: |
           import json
@@ -30,6 +30,12 @@ jobs:
               "/cpo/app/v1/chargestation/getstationstate?stationId=00000000-0000-0000-0000-000000000000",
               "/2/cpo/app/v1/chargestation/getstationstate",
               "/2/cpo/app/v1/chargestation/getstationstate?stationId=00000000-0000-0000-0000-000000000000",
+              "/api/get-connector-status",
+              "/api/qr-connector",
+              "/api/qr-connector-list",
+              "/2/api/get-connector-status",
+              "/2/api/qr-connector",
+              "/2/api/qr-connector-list",
           ]
 
           results = []
@@ -63,8 +69,8 @@ jobs:
                       classification = "route_not_matched"
                   elif status in (401, 403) or "unauthorized" in lower or "token" in lower:
                       classification = "route_exists_auth_required"
-                  elif status in (400, 422) or "station" in lower or "parameter" in lower:
-                      classification = "route_exists_input_validation"
+                  elif status in (400, 405, 422) or "station" in lower or "parameter" in lower or "method" in lower:
+                      classification = "route_exists_or_input_validation"
                   elif status is not None:
                       classification = "route_responded_other"
                   else:
@@ -73,7 +79,7 @@ jobs:
                   results.append({
                       "host": host,
                       "path_shape": path.split("?")[0],
-                      "station_id_supplied": "?" in path,
+                      "station_id_supplied": "stationId=" in path,
                       "http_status": status,
                       "content_type": content_type,
                       "classification": classification,
@@ -90,6 +96,6 @@ jobs:
                   "no_credentials": True,
                   "response_body_persisted": False,
               },
-              "evidence_note": "The /2 candidate is tested only because static client analysis recovered numocity.com/2 near the station-state route.",
+              "evidence_note": "All tested paths were recovered by static client analysis; /2 variants are tested only because numocity.com/2 was recovered near the station-state route.",
               "results": results,
           }, indent=2))
