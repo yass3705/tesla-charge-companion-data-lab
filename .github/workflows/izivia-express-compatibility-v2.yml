@@ -21,145 +21,92 @@ jobs:
           repository: yass3705/tesla-charge-companion-stable
           ref: release/2026-08
           path: tcc
-      - name: Verify V8 exact billing wrapper is loaded
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -n 'assets/v8-operator-tariff-overlay.js' tcc/index.html
-          grep -n 'installPostChargePricing' tcc/assets/v8-operator-tariff-overlay.js
-          grep -n 'postChargeBlockFee' tcc/assets/v8-operator-tariff-overlay.js
-          grep -n 'startedKwhCharged' tcc/assets/v8-operator-tariff-overlay.js
-      - name: Reclassify IZIVIA Express tariff compatibility
+      - name: Classify runtime support
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           import json,re,collections
           from pathlib import Path
-
-          bp=Path('izivia/izivia_express_station_tariffs_v1.json')
-          rp=Path('izivia/izivia_express_normalization_report_v1.json')
+          bp=Path('izivia/izivia_express_station_tariffs_v1.json'); rp=Path('izivia/izivia_express_normalization_report_v1.json')
           base=json.loads(bp.read_text())
+          idx=Path('tcc/index.html').read_text(errors='replace')
+          scripts=re.findall(r'<script[^>]+src=["\']([^"\']+)',idx,re.I)
+          loaded_post=False
+          for src in scripts:
+            p=Path('tcc')/src.split('?')[0]
+            if p.exists() and ('__tccPostChargeGraceV2' in p.read_text(errors='replace') or 'installPostChargePricing' in p.read_text(errors='replace')): loaded_post=True
+          implementation_present=Path('tcc/assets/v8-operator-tariff-overlay.js').exists() and 'installPostChargePricing' in Path('tcc/assets/v8-operator-tariff-overlay.js').read_text(errors='replace')
+          print('POSTCHARGE_IMPLEMENTATION_PRESENT',implementation_present)
+          print('POSTCHARGE_IMPLEMENTATION_LOADED',loaded_post)
 
-          def clean(raw):
-            s=re.sub(r'<br\s*/?>',' ',raw or '',flags=re.I)
-            return ' '.join(s.replace('\u00a0',' ').split())
-          def low(raw): return clean(raw).lower().replace(',','.')
-
+          def clean(raw): return ' '.join(re.sub(r'<br\s*/?>',' ',raw or '',flags=re.I).replace('\u00a0',' ').split())
           def parse(raw):
-            s=clean(raw); l=low(raw)
-            features=[];missing=[];plan={'raw':s,'currency':'EUR'}
-            kwh=[float(x) for x in re.findall(r'(\d+(?:\.\d+)?)\s*€\s*/\s*kwh',l)]
-            if kwh: features.append('energy_kwh');plan['kwhPricesEur']=kwh
-            started_kwh=bool(re.search(r'(?:kwh|énergie|energie)[^.!;]{0,35}entam',l) or re.search(r'entam[^.!;]{0,35}(?:kwh|énergie|energie)',l))
-            started_min=bool(re.search(r'minute[s]?[^.!;]{0,25}entam',l) or re.search(r'durée[^.!;]{0,25}entam',l))
-            if started_kwh: features.append('started_kwh');plan['startedKwhCharged']=True
-            if started_min: features.append('started_minute')
-
-            post_block=None
-            m=re.search(r'(\d+(?:\.\d+)?)\s*€\s*/\s*(\d+)\s*mins?\s+post[- ]charge',l)
-            if not m: m=re.search(r'(\d+(?:\.\d+)?)\s*€\s*/\s*(\d+)\s*min\s+post[- ]charge',l)
-            if m:
-              post_block={'minutes':int(m.group(2)),'feeEur':float(m.group(1))};features.append('post_charge_started_block')
-            else:
-              m=re.search(r'(\d+(?:\.\d+)?)\s*€\s*/\s*min(?:ute)?\s+(?:en\s+)?post[- ]charge',l)
-              if m:
-                rate=float(m.group(1));features.append('post_charge_per_minute')
-                post_block={'minutes':1,'feeEur':rate} if started_min else None
-                if not started_min: plan['postChargeRateEurPerMinute']=rate
-              else:
-                m=re.search(r'(\d+(?:\.\d+)?)\s*€\s*/\s*h\s+post[- ]charge',l)
-                if m:
-                  rate=float(m.group(1))/60;features.append('post_charge_per_hour')
-                  post_block={'minutes':1,'feeEur':rate} if started_min else None
-                  if not started_min: plan['postChargeRateEurPerMinute']=rate
-            if post_block: plan['postChargeBlock']=post_block
-            if 'post-charge' in l or 'post charge' in l: plan['postChargeGraceMinutes']=0
-
-            cap_m=re.search(r'(?:facturation\s+max\s*:\s*|plafond(?:\s+de)?\s*|plafonn\w*\s*(?:à|a)\s*)(\d+(?:\.\d+)?)\s*€',l)
-            if cap_m:
-              cap=float(cap_m.group(1));features.append('session_or_context_cap');plan['statedCapEur']=cap
-              missing.append('session_cap_semantics_and_enforcement')
-
-            has_window=bool(re.search(r'entre\s+\d{1,2}h(?:\s*[-et]+\s*|\s+et\s+)\d{1,2}h',l) or re.search(r'\b\d{1,2}h\s*-\s*\d{1,2}h',l))
-            if has_window: features.append('time_window')
-            conn=re.findall(r'forfait\s+de\s+connexion(?:\s+à|\s+de)?\s*(\d+(?:\.\d+)?)\s*€|forfait\s+de\s*(\d+(?:\.\d+)?)\s*€',l)
-            vals=[float(a or b) for a,b in conn if (a or b)]
-            if vals: features.append('connection_fee');plan['connectionFeesEur']=vals
-
+            s=clean(raw); l=s.lower().replace(',','.')
+            missing=[]; latent=[]; features=[]
+            cap=re.search(r'(?:facturation\s+max\s*:\s*|plafond(?:\s+de)?\s*)(\d+(?:\.\d+)?)\s*€',l)
             threshold=bool(re.search(r'(?:au[- ]delà\s+de|au dela\s+de|à\s+partir\s+de|a\s+partir\s+de)\s*20\s*kwh',l))
-            if threshold:
-              features.append('included_energy_threshold');plan['includedEnergyKwh']=20
-              missing.append('included_energy_threshold_pricing')
-
-            # Current V8 release has global support for:
-            # started kWh, post-charge linear rates, started post-charge blocks,
-            # time windows and fixed connection fees. We conservatively leave
-            # ambiguous/session caps and included-energy thresholds blocked.
-            model='current_v8_exact' if not missing else 'engine_extension_required'
-            if cap_m: family='session_cap_50' if abs(float(cap_m.group(1))-50)<1e-9 else 'session_cap_other'
+            has_post=('post-charge' in l or 'post charge' in l)
+            started_kwh=bool(re.search(r'(?:kwh|énergie|energie)[^.!;]{0,40}entam',l) or re.search(r'entam[^.!;]{0,40}(?:kwh|énergie|energie)',l))
+            started_min=bool(re.search(r'minute[s]?[^.!;]{0,30}entam',l) or re.search(r'durée[^.!;]{0,30}entam',l))
+            if has_post: features.append('post_charge')
+            if started_kwh: features.append('started_kwh')
+            if started_min: features.append('started_minute')
+            if cap: features.append('session_or_context_cap'); missing.append('session_cap_semantics_and_enforcement')
+            if threshold: features.append('included_energy_threshold'); missing.append('included_energy_threshold_pricing')
+            if has_post or started_kwh or started_min:
+              latent.append('load_existing_postcharge_started_units_wrapper')
+              if not loaded_post: missing.append('postcharge_started_units_runtime_loader')
+            if cap: family='session_cap_50' if abs(float(cap.group(1))-50)<1e-9 else 'session_cap_other'
             elif threshold: family='night_connection_includes_20kwh'
-            else: family='current_v8_exact_simple'
-            plan.update({'features':sorted(set(features)),'compatibility':model,'missingEngineFeatures':sorted(set(missing)),'family':family})
-            return plan
+            else: family='simple_postcharge'
+            status='current_runtime_exact' if not missing else 'runtime_extension_required'
+            status_if_wrapper='exact_if_existing_wrapper_loaded' if not [m for m in missing if m!='postcharge_started_units_runtime_loader'] else 'additional_engine_extension_required'
+            return {'raw':s,'family':family,'features':sorted(set(features)),'currentRuntimeStatus':status,'statusIfExistingWrapperLoaded':status_if_wrapper,'missingRuntimeFeatures':sorted(set(missing)),'existingDormantCapabilities':sorted(set(latent))}
 
-          family_counts=collections.Counter();compat_counts=collections.Counter();raw_counts=collections.Counter();exact_stations=[];blocked=[]
+          families=collections.Counter(); current=collections.Counter(); with_wrapper=collections.Counter(); exact_after_wrapper=[]; blocked=[]
           for st in base['stations']:
             plans=[parse(x) for x in st.get('directRawPricing',[])]
-            st['v8CompatibilityV2']={
-              'directPricePublished':bool(plans),
-              'status':'direct_price_not_published' if not plans else ('current_v8_exact' if all(p['compatibility']=='current_v8_exact' for p in plans) else 'engine_extension_required'),
-              'plans':plans,
-              'missingEngineFeatures':sorted({m for p in plans for m in p['missingEngineFeatures']})
-            }
-            if not plans: compat_counts['direct_price_not_published']+=1
+            if not plans:
+              state='direct_price_not_published'; current[state]+=1; with_wrapper[state]+=1
             else:
-              for p in plans: family_counts[p['family']]+=1;raw_counts[p['raw']]+=1
-              compat_counts[st['v8CompatibilityV2']['status']]+=1
-              if st['v8CompatibilityV2']['status']=='current_v8_exact':
-                exact_stations.append({'officialStationId':st['officialStationId'],'name':st['name'],'address':st['address'],'pricing':st['directRawPricing'],'plans':plans})
-              else:
-                blocked.append({'officialStationId':st['officialStationId'],'name':st['name'],'address':st['address'],'pricing':st['directRawPricing'],'missingEngineFeatures':st['v8CompatibilityV2']['missingEngineFeatures']})
+              for p in plans: families[p['family']]+=1
+              state='current_runtime_exact' if all(p['currentRuntimeStatus']=='current_runtime_exact' for p in plans) else 'runtime_extension_required'; current[state]+=1
+              state2='exact_if_existing_wrapper_loaded' if all(p['statusIfExistingWrapperLoaded']=='exact_if_existing_wrapper_loaded' for p in plans) else 'additional_engine_extension_required'; with_wrapper[state2]+=1
+              if state2=='exact_if_existing_wrapper_loaded': exact_after_wrapper.append({'officialStationId':st['officialStationId'],'name':st['name'],'address':st['address'],'pricing':st['directRawPricing']})
+              else: blocked.append({'officialStationId':st['officialStationId'],'name':st['name'],'missing':sorted({m for p in plans for m in p['missingRuntimeFeatures']})})
+            st['v8CompatibilityV2']={'directPricePublished':bool(plans),'currentRuntimeStatus':state,'plans':plans}
 
           meta=base['metadata']
-          meta['compatibilitySchemaVersion']=2
-          meta['stationsExactCurrentV8']=compat_counts['current_v8_exact']
-          meta['stationsEngineExtensionRequired']=compat_counts['engine_extension_required']
-          meta['stationsDirectPriceNotPublished']=compat_counts['direct_price_not_published']
-          meta['compatibilityFamilyCounts']=dict(family_counts)
-          meta['v8CompatibilityVerifiedAgainst']='tesla-charge-companion-stable release/2026-08; v8-operator-tariff-overlay global priceWithRules wrapper'
+          meta.update({
+            'compatibilitySchemaVersion':2,
+            'postChargeEngineImplementationPresent':implementation_present,
+            'postChargeEngineLoadedInCurrentIndex':loaded_post,
+            'stationsExactCurrentV8Runtime':current['current_runtime_exact'],
+            'stationsRuntimeExtensionRequired':current['runtime_extension_required'],
+            'stationsExactIfExistingPostChargeWrapperLoaded':with_wrapper['exact_if_existing_wrapper_loaded'],
+            'stationsAdditionalEngineExtensionRequiredAfterWrapper':with_wrapper['additional_engine_extension_required'],
+            'stationsDirectPriceNotPublished':current['direct_price_not_published'],
+            'compatibilityFamilyCounts':dict(families),
+            'v8CompatibilityVerifiedAgainst':'tesla-charge-companion-stable release/2026-08 index.html runtime script list'
+          })
+          # Remove stale optimistic fields from v1.
+          meta.pop('stationsExactCurrentV8',None);meta.pop('stationsEngineExtensionRequired',None)
           bp.write_text(json.dumps(base,ensure_ascii=False,indent=2),encoding='utf-8')
-
-          report=json.loads(rp.read_text()) if rp.exists() else {}
-          report['metadata']=meta
-          report['v8CompatibilityV2']={
-            'counts':dict(compat_counts),'familyCounts':dict(family_counts),
-            'exactStations':exact_stations,'engineExtensionRequiredStations':blocked,
-            'requiredEngineFeatures':{
-              'session_cap_semantics_and_enforcement':sum('session_cap_semantics_and_enforcement' in x['missingEngineFeatures'] for x in blocked),
-              'included_energy_threshold_pricing':sum('included_energy_threshold_pricing' in x['missingEngineFeatures'] for x in blocked)
-            }
-          }
+          report=json.loads(rp.read_text()) if rp.exists() else {}; report['metadata']=meta
+          report['v8CompatibilityV2']={'currentRuntimeCounts':dict(current),'afterLoadingExistingWrapperCounts':dict(with_wrapper),'familyCounts':dict(families),'exactAfterLoadingExistingWrapper':exact_after_wrapper,'blockedStations':blocked,'requiredNewEngineFeatures':{'session_cap_semantics_and_enforcement':families['session_cap_50'],'included_energy_threshold_pricing':families['night_connection_includes_20kwh']}}
           rp.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
-
-          print('COMPAT',json.dumps(dict(compat_counts),ensure_ascii=False))
-          print('FAMILIES',json.dumps(dict(family_counts),ensure_ascii=False))
-          print('EXACT STATIONS')
-          for x in exact_stations: print(x['officialStationId'],x['name'],'|',x['pricing'])
-          print('REQUIRED ENGINE FEATURES',json.dumps(report['v8CompatibilityV2']['requiredEngineFeatures'],ensure_ascii=False))
-          assert sum(compat_counts.values())==155
-          assert family_counts['session_cap_50']==75
-          assert family_counts['night_connection_includes_20kwh']==68
-          assert family_counts['current_v8_exact_simple']==3
-          assert compat_counts['current_v8_exact']==3
-          assert compat_counts['engine_extension_required']==143
-          assert compat_counts['direct_price_not_published']==9
+          print('CURRENT_RUNTIME',dict(current));print('AFTER_EXISTING_WRAPPER',dict(with_wrapper));print('FAMILIES',dict(families));print('EXACT_AFTER_WRAPPER')
+          for x in exact_after_wrapper: print(x['officialStationId'],x['name'],'|',x['pricing'])
+          assert implementation_present is True and loaded_post is False
+          assert families=={'session_cap_50':75,'night_connection_includes_20kwh':68,'simple_postcharge':3}
+          assert current['current_runtime_exact']==0 and current['runtime_extension_required']==146 and current['direct_price_not_published']==9
+          assert with_wrapper['exact_if_existing_wrapper_loaded']==3 and with_wrapper['additional_engine_extension_required']==143 and with_wrapper['direct_price_not_published']==9
           PY
-      - name: Commit corrected compatibility metadata
+      - name: Commit compatibility correction
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add izivia/izivia_express_station_tariffs_v1.json izivia/izivia_express_normalization_report_v1.json
-          if git diff --cached --quiet; then echo 'No change'; else git commit -m 'Correct IZIVIA Express V8 compatibility classification'; git push; fi
+          if git diff --cached --quiet; then echo 'No change'; else git commit -m 'Correct IZIVIA Express runtime compatibility'; git push; fi
