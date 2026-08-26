@@ -5,7 +5,6 @@ import { chromium } from 'playwright-core';
 const INVENTORY='data/national/etotem_direct_stations_france.json.gz';
 const OUTPUT='data/national/etotem_direct_tariffs_france.json.gz';
 const HOME='https://www.e-totem.fr/';
-const CONCURRENCY=3;
 const MATCH_RADIUS_M=120;
 const BROAD_QUERIES=[
   'e-Totem','SEMOB','INTERMARCHE','Carrefour','Super U','Hyper U','U Express','Utile',
@@ -39,71 +38,43 @@ function familyOf(id){const n=normId(id);for(const p of ['FRETI','FRESE','FRG10'
 function apiTariffRaw(e){return String(e?.sWebTexte||e?.sWebTextePool||e?.aBornes?.[0]?.sWebTextePool||e?.aBornes?.[0]?.szWebTexte||'').trim();}
 function apiCoords(e){const lat=Number(e?.fLatitude??e?.latitude),lon=Number(e?.fLongitude??e?.longitude);return Number.isFinite(lat)&&Number.isFinite(lon)?{lat,lon}:null;}
 function elementKey(e){return normId(e?.sIdPool)||normId(e?.sIdPoolUnique)||`${e?.sOrigine||''}|${e?.nIdPool||''}|${e?.fLatitude||''}|${e?.fLongitude||''}`;}
-function targetNameVariants(t){
-  const out=[],add=v=>{v=String(v||'').trim();if(v.length>=3&&!out.some(x=>normText(x)===normText(v)))out.push(v.slice(0,100));};
-  add(t.name);add(String(t.name||'').replace(/^\s*e[ -]?totem\s*[-–—:]?\s*/i,''));add(t.brandName);add(t.stationIdLocal);
-  const n=String(t.name||'').replace(/^\s*(?:e[ -]?totem|semob)\s*[-–—:]?\s*/i,'').trim();
-  const words=n.split(/\s+/).filter(x=>x.length>=4);if(words.length>=2)add(words.slice(-3).join(' '));if(words.length)add(words.at(-1));
-  return out.slice(0,4);
-}
+function privateTarget(t){return /\b(?:salarie?s?|personnel|employe?s?|privee?s?|private|staff|collaborateurs?)\b/i.test(normText(`${t.name} ${t.address}`));}
+function nameHits(a,b){const bn=normText(b),tokens=[...new Set(normText(a).split(' ').filter(w=>w.length>=4&&!['totem','borne','station','recharge'].includes(w)))];return tokens.filter(w=>bn.includes(w));}
 function safeCoordinateCandidate(t,elements){
-  if(!Number.isFinite(t.latitude)||!Number.isFinite(t.longitude))return null;
+  if(privateTarget(t)||!Number.isFinite(t.latitude)||!Number.isFinite(t.longitude))return null;
   const near=[];
-  for(const e of elements){const c=apiCoords(e);if(!c)continue;const d=distanceM({lat:t.latitude,lon:t.longitude},c);if(d<=MATCH_RADIUS_M)near.push({e,d});}
+  for(const e of elements){const c=apiCoords(e);if(!c)continue;const d=distanceM({lat:t.latitude,lon:t.longitude},c);if(d<=MATCH_RADIUS_M)near.push({e,d,hits:nameHits(t.name,e?.sLibelle)});}
   near.sort((a,b)=>a.d-b.d);if(!near.length)return null;
-  if(near.length===1)return near[0];
-  if(near[0].d<=35&&near[1].d-near[0].d>=25)return near[0];
-  const tn=normText(t.name),scored=near.map(x=>{const en=normText(x.e?.sLibelle),tokens=tn.split(' ').filter(w=>w.length>=4),hit=tokens.filter(w=>en.includes(w)).length;return {...x,hit};}).sort((a,b)=>b.hit-a.hit||a.d-b.d);
-  return scored[0].hit>=2&&scored[0].hit>scored[1].hit?scored[0]:null;
+  if(near.length===1)return near[0].hits.length>=1?near[0]:null;
+  if(near[0].d<=35&&near[0].hits.length>=1&&near[1].d-near[0].d>=25)return near[0];
+  const scored=near.slice().sort((a,b)=>b.hits.length-a.hits.length||a.d-b.d);
+  return scored[0].hits.length>=2&&scored[0].hits.length>scored[1].hits.length?scored[0]:null;
 }
 
 if(!fs.existsSync(INVENTORY))throw new Error(`Missing ${INVENTORY}`);
 const inv=JSON.parse(zlib.gunzipSync(fs.readFileSync(INVENTORY)).toString('utf8'));
 const targets=(inv.stations||[]).map((s,index)=>({index,stationId:s.stationId,stationIdLocal:s.stationIdLocal||'',name:s.name||'',brandName:s.brandName||'',address:s.address||'',latitude:Number(s.latitude),longitude:Number(s.longitude),maxPowerKw:Number(s.maxPowerKw||0),pdcCount:Number(s.pdcCount||0),pdcs:s.pdcs||[],dataset:s.dataset?.title||'',family:familyOf(s.stationId)}));
-console.log(`[e-Totem] inventory=${targets.length}; strategy=hybrid broad index + targeted fallback`);
+console.log(`[e-Totem] inventory=${targets.length}; strategy=public native index only`);
 
 const browser=await chromium.launch({headless:true,executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});
 const page=await browser.newPage({locale:'fr-FR',viewport:{width:1280,height:900}});
 await page.goto(HOME,{waitUntil:'domcontentloaded',timeout:60000});
 
-const allElements=new Map();let requestCount=0,errorCount=0,retryCount=0,detailCount=0,broadCalls=0,targetedCalls=0;
+const allElements=new Map();let requestCount=0,errorCount=0,retryCount=0,detailCount=0,broadCalls=0;
 async function search(query,attempt=0){
   requestCount++;
   try{
-    const result=await page.evaluate(async q=>{const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),25000);try{const u='/api/Stations?sLibelleBorne='+encodeURIComponent(q)+'&bUniquementBornesDisponibles=false&bNePasClusteriser=1&nBornesPrivees=0';const r=await fetch(u,{credentials:'include',cache:'no-store',signal:ctl.signal});const text=await r.text();if(!r.ok)throw new Error(`http_${r.status}`);const j=JSON.parse(text);return Array.isArray(j?.aElements)?j.aElements:[];}finally{clearTimeout(timer);}},query);
-    return result;
+    return await page.evaluate(async q=>{const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),25000);try{const u='/api/Stations?sLibelleBorne='+encodeURIComponent(q)+'&bUniquementBornesDisponibles=false&bNePasClusteriser=1&nBornesPrivees=0';const r=await fetch(u,{credentials:'include',cache:'no-store',signal:ctl.signal});const text=await r.text();if(!r.ok)throw new Error(`http_${r.status}`);const j=JSON.parse(text);return Array.isArray(j?.aElements)?j.aElements:[];}finally{clearTimeout(timer);}},query);
   }catch(err){if(attempt<2){retryCount++;await sleep(500*(attempt+1));return search(query,attempt+1);}errorCount++;return [];}
 }
-async function addSearch(query,kind){const elements=await search(query);if(kind==='broad')broadCalls++;else targetedCalls++;for(const e of elements)if(direct(e)&&frApiId(e))allElements.set(elementKey(e),e);return elements.length;}
+async function addSearch(query){const elements=await search(query);broadCalls++;for(const e of elements)if(direct(e)&&frApiId(e))allElements.set(elementKey(e),e);return elements.length;}
 
-for(const q of BROAD_QUERIES){const n=await addSearch(q,'broad');console.log(`[e-Totem] broad ${JSON.stringify(q)} -> ${n} API elements; native FR pool=${allElements.size}`);await sleep(180);}
+for(const q of BROAD_QUERIES){const n=await addSearch(q);console.log(`[e-Totem] broad ${JSON.stringify(q)} -> ${n} API elements; native FR pool=${allElements.size}`);await sleep(180);}
 
-const matched=new Map();let exact=0,coordinate=0,targetedResolved=0;
-function reindexAndMatch(unresolvedOnly=false){
-  const elements=[...allElements.values()];const byId=new Map();for(const e of elements){const id=normId(e?.sIdPool);if(id)byId.set(id,e);}
-  for(const t of targets){if(matched.has(t.index))continue;const e=byId.get(normId(t.stationId));if(e){matched.set(t.index,{element:e,method:'id',distanceM:0});exact++;continue;}const c=safeCoordinateCandidate(t,elements);if(c){matched.set(t.index,{element:c.e,method:'coordinates',distanceM:Math.round(c.d)});coordinate++;}}
-}
-reindexAndMatch();
-console.log(`[e-Totem] after broad preload resolved=${matched.size}/${targets.length}; exact=${exact}; coordinate=${coordinate}`);
-
-const pending=()=>targets.filter(t=>!matched.has(t.index));
-let queue=pending(),next=0;
-async function targetedWorker(){
-  while(true){const pos=next++;if(pos>=queue.length)return;const t=queue[pos];let found=false;
-    for(const q of targetNameVariants(t)){
-      const before=allElements.size;await addSearch(q,'targeted');
-      const fresh=[...allElements.values()];const id=fresh.find(e=>normId(e?.sIdPool)===normId(t.stationId));
-      if(id){matched.set(t.index,{element:id,method:'id',distanceM:0});exact++;targetedResolved++;found=true;break;}
-      const c=safeCoordinateCandidate(t,fresh);if(c){matched.set(t.index,{element:c.e,method:'coordinates',distanceM:Math.round(c.d)});coordinate++;targetedResolved++;found=true;break;}
-      if(allElements.size===before)await sleep(80);
-    }
-    if(!found&&pos%25===0)console.log(`[e-Totem] targeted progress ${pos}/${queue.length}; resolved=${matched.size}`);
-    await sleep(120);
-  }
-}
-await Promise.all(Array.from({length:CONCURRENCY},()=>targetedWorker()));
-reindexAndMatch(true);
-console.log(`[e-Totem] final matching resolved=${matched.size}/${targets.length}; exact=${exact}; coordinate=${coordinate}; targetedResolved=${targetedResolved}`);
+const matched=new Map();let exact=0,coordinate=0;
+const elements=[...allElements.values()],byId=new Map();for(const e of elements){const id=normId(e?.sIdPool);if(id)byId.set(id,e);}
+for(const t of targets){const e=byId.get(normId(t.stationId));if(e){matched.set(t.index,{element:e,method:'id',distanceM:0});exact++;continue;}const c=safeCoordinateCandidate(t,elements);if(c){matched.set(t.index,{element:c.e,method:'coordinates',distanceM:Math.round(c.d)});coordinate++;}}
+console.log(`[e-Totem] final matching resolved=${matched.size}/${targets.length}; exact=${exact}; coordinate=${coordinate}`);
 
 async function detail(e){
   const origin=String(e?.sOrigine||''),id=String(e?.nIdPool||'');if(!origin||!id)return e;detailCount++;requestCount++;
@@ -112,7 +83,7 @@ async function detail(e){
 
 const records=[];const profiles=new Map();
 for(const t of targets){
-  const m=matched.get(t.index);if(!m){records.push({...t,resolved:false,reason:'not_found_in_public_native_index'});continue;}
+  const m=matched.get(t.index);if(!m){records.push({...t,resolved:false,reason:privateTarget(t)?'private_or_staff_station_not_mapped_to_public_tariff':'not_found_in_public_native_index'});continue;}
   let e=m.element;let raw=apiTariffRaw(e);if(!raw||!(e?.aBornes?.length)){e=await detail(e);raw=apiTariffRaw(e);}
   const clean=htmlToText(raw),hints=parseHints(clean),sig=normText(clean);
   if(clean){if(!profiles.has(sig))profiles.set(sig,{text:clean,rawHtml:raw,count:0,hints,examples:[]});const p=profiles.get(sig);p.count++;if(p.examples.length<5)p.examples.push({stationId:t.stationId,name:t.name,network:e?.sNomReseau||'',maxPowerKw:t.maxPowerKw});}
@@ -123,7 +94,7 @@ await browser.close();
 const coverage={};for(const fam of ['FRETI','FRESE','FRG10','FRCAR','FRSUA']){const subset=records.filter(r=>r.family===fam),resolved=subset.filter(r=>r.resolved),withTariff=resolved.filter(r=>r.tariffText);coverage[fam]={inventory:subset.length,resolved:resolved.length,withTariff:withTariff.length,unresolved:subset.length-resolved.length};}
 const resolvedRecords=records.filter(r=>r.resolved),withTariff=resolvedRecords.filter(r=>r.tariffText);
 const tariffProfiles=[...profiles.values()].sort((a,b)=>b.count-a.count).map((p,i)=>({rank:i+1,...p}));
-const out={schemaVersion:'2.0.0',generatedAt:new Date().toISOString(),operator:'e-Totem',country:'FR',scope:{physicalCpoDirectOnly:true,roamingIncluded:false,noGuessedFallback:true,source:'public e-Totem station search index joined to strict IRVE physical-CPO inventory',nativeFilter:'bOcpi=0 AND bGireve=0 AND bItinerance=0',tariffPolicy:'station-specific public tariff text; ECO/member alternatives retained as text but never selected as default automatically'},harvest:{strategy:'broad public index preload + exact EMI3 join + safe coordinate fallback + targeted station-label searches',concurrency:CONCURRENCY,broadQueries:BROAD_QUERIES,broadCalls,targetedCalls,requestCount,errorCount,retryCount,detailCount,targetedResolved,nativeFrElementsSeen:allElements.size},counts:{inventoryStations:targets.length,resolvedStations:resolvedRecords.length,exactIdMatches:exact,coordinateFallbackMatches:coordinate,unresolvedStations:targets.length-resolvedRecords.length,resolvedWithTariffText:withTariff.length,uniqueTariffProfiles:tariffProfiles.length},coverageByFamily:coverage,tariffProfiles,stations:records};
+const out={schemaVersion:'2.1.0',generatedAt:new Date().toISOString(),operator:'e-Totem',country:'FR',scope:{physicalCpoDirectOnly:true,roamingIncluded:false,noGuessedFallback:true,source:'public e-Totem station search index joined to strict IRVE physical-CPO inventory',nativeFilter:'bOcpi=0 AND bGireve=0 AND bItinerance=0',tariffPolicy:'station-specific public tariff text; ECO/member alternatives retained as text but never selected as default automatically',unresolvedPolicy:'physical stations without a public native e-Totem tariff remain unresolved and are never assigned a guessed price'},harvest:{strategy:'broad public native index + exact EMI3 join + conservative coordinate fallback; no targeted-name extrapolation',broadQueries:BROAD_QUERIES,broadCalls,targetedCalls:0,requestCount,errorCount,retryCount,detailCount,targetedResolved:0,nativeFrElementsSeen:allElements.size},counts:{inventoryStations:targets.length,resolvedStations:resolvedRecords.length,exactIdMatches:exact,coordinateFallbackMatches:coordinate,unresolvedStations:targets.length-resolvedRecords.length,resolvedWithTariffText:withTariff.length,uniqueTariffProfiles:tariffProfiles.length},coverageByFamily:coverage,tariffProfiles,stations:records};
 fs.mkdirSync('data/national',{recursive:true});fs.writeFileSync(OUTPUT,zlib.gzipSync(Buffer.from(JSON.stringify(out))));
-console.log(JSON.stringify({harvest:out.harvest,counts:out.counts,coverageByFamily:coverage},null,2));
+console.log(JSON.stringify({harvest:out.harvest,counts:out.counts,coverageByFamily:coverage,coordinateMatches:records.filter(r=>r.matchMethod==='coordinates').map(r=>({stationId:r.stationId,name:r.name,apiId:r.api?.sIdPool,apiName:r.api?.sLibelle,distanceM:r.matchDistanceM}))},null,2));
 console.log(JSON.stringify(tariffProfiles.slice(0,20).map(p=>({rank:p.rank,count:p.count,text:p.text.slice(0,400),hints:p.hints,examples:p.examples.slice(0,3)})),null,2));
