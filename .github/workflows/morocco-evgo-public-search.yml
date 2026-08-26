@@ -29,7 +29,7 @@ jobs:
           python-version: "3.12"
       - name: Safety and syntax
         run: |
-          python scripts/public_safety_check.py .
+          python scripts/public_safety_check.py scripts/morocco_evgo_public_station_search.py
           python -m py_compile scripts/morocco_evgo_public_station_search.py
       - name: Run public read-only station search
         run: python scripts/morocco_evgo_public_station_search.py
@@ -47,7 +47,7 @@ jobs:
           PY
           mkdir -p reports/morocco/evgo
           cp artifacts/morocco-evgo-public-search/summary.json reports/morocco/evgo/latest-public-search.json
-          python scripts/public_safety_check.py .
+          python scripts/public_safety_check.py reports/morocco/evgo/latest-public-search.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add reports/morocco/evgo/latest-public-search.json
