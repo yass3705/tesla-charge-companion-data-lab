@@ -1,0 +1,105 @@
+name: WAAT Monta UI detail capture
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/waat-monta-browser-ui-detail-capture.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install --disable-pip-version-check selenium
+      - name: Capture frontend-triggered detail requests
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports
+          python - <<'PY'
+          import json,time,re
+          from pathlib import Path
+          from datetime import datetime,timezone
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+
+          targets=[('Beziers',43.341484,3.261133),('Carcassonne',43.226240,2.327766)]
+          opts=Options()
+          for a in ['--headless=new','--no-sandbox','--disable-dev-shm-usage','--window-size=1440,1000','--lang=fr-FR']:
+            opts.add_argument(a)
+          opts.set_capability('goog:loggingPrefs',{'performance':'ALL','browser':'ALL'})
+          d=webdriver.Chrome(options=opts)
+          sensitive=re.compile(r'(authorization|cookie|token|secret|password|jwt)',re.I)
+          def sh(h):
+            return {k:('[redacted]' if sensitive.search(str(k)) else v) for k,v in (h or {}).items() if str(k).lower() in {'authorization','meta','uuid','operator','application','operation','accept-language','timezone','origin','referer','accept','content-type'}}
+          def sanitize(o):
+            if isinstance(o,dict):return {k:('[redacted]' if sensitive.search(str(k)) else sanitize(v)) for k,v in o.items()}
+            if isinstance(o,list):return [sanitize(v) for v in o]
+            return o
+          allout=[]
+          try:
+            d.execute_cdp_cmd('Network.enable',{})
+            for label,lat,lng in targets:
+              try:d.get_log('performance')
+              except:pass
+              d.get(f'https://maps.monta.app/?lat={lat}&lng={lng}&zoom=17&locale=fr')
+              time.sleep(9)
+              markers=d.find_elements('css selector','.leaflet-marker-icon')
+              clicks=[]
+              for i,el in enumerate(markers[:15]):
+                try:
+                  if el.is_displayed():
+                    txt={'i':i,'title':el.get_attribute('title'),'aria':el.get_attribute('aria-label'),'class':el.get_attribute('class')}
+                    d.execute_script('arguments[0].click()',el)
+                    clicks.append(txt)
+                    time.sleep(2)
+                except Exception as e:
+                  clicks.append({'i':i,'error':str(e)})
+              time.sleep(3)
+              perf=d.get_log('performance')
+              reqs={};extra={};resps={}
+              for row in perf:
+                try:m=json.loads(row['message'])['message'];p=m.get('params',{});rid=p.get('requestId')
+                except:continue
+                if m['method']=='Network.requestWillBeSent':reqs[rid]=p.get('request',{})
+                elif m['method']=='Network.requestWillBeSentExtraInfo':extra[rid]=p.get('headers',{})
+                elif m['method']=='Network.responseReceived':resps[rid]=p.get('response',{})
+              events=[]
+              for rid,r in resps.items():
+                u=str(r.get('url') or '')
+                if not re.search(r'/api/v1/(charge_points|charge_point_groups)',u):continue
+                body=''
+                try:body=d.execute_cdp_cmd('Network.getResponseBody',{'requestId':rid}).get('body','')
+                except Exception as e:body=json.dumps({'bodyError':str(e)})
+                try:b=json.loads(body)
+                except:b={'bodyPreview':body[:5000]}
+                hdr={**(reqs.get(rid,{}).get('headers') or {}),**(extra.get(rid) or {})}
+                events.append(sanitize({'url':u,'method':reqs.get(rid,{}).get('method'),'status':r.get('status'),'requestHeaders':sh(hdr),'response':b}))
+              allout.append({'target':label,'lat':lat,'lng':lng,'markerCount':len(markers),'clicks':clicks,'events':events,'bodyText':d.find_element('tag name','body').text[:6000]})
+            report={'generatedAt':datetime.now(timezone.utc).isoformat(),'method':'public Monta map UI marker click network capture','results':allout}
+            Path('data/reports/waat_monta_ui_detail_capture.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+            print(json.dumps([{'target':r['target'],'markerCount':r['markerCount'],'events':[(e['status'],e['url']) for e in r['events']]} for r in allout],ensure_ascii=False,indent=2))
+          finally:d.quit()
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: waat-monta-ui-detail-capture
+          path: data/reports/waat_monta_ui_detail_capture.json
+          retention-days: 14
+      - name: Commit sanitized capture
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_monta_ui_detail_capture.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: publish WAAT Monta UI detail capture"
+          for attempt in 1 2 3 4 5; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
