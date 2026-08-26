@@ -1,0 +1,142 @@
+name: Qovoltis public fallback discovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-public-fallback-discovery.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Inspect ChargeNow public no-account flow
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe/chargenow work
+          curl -sS -L --max-time 30 -A 'Mozilla/5.0' \
+            'https://chargenow.qovoltis.com/' -o probe/chargenow/root.html
+          python - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          from urllib.parse import urljoin
+          import re,json
+          html=Path('probe/chargenow/root.html').read_text(errors='replace')
+          class P(HTMLParser):
+              def __init__(self): super().__init__(); self.rows=[]
+              def handle_starttag(self,tag,attrs):
+                  d=dict(attrs)
+                  keep={k:v for k,v in d.items() if k in ('href','src','action','method','name','value','id','class','type')}
+                  if keep:self.rows.append({'tag':tag,**keep})
+          p=P(); p.feed(html)
+          base='https://chargenow.qovoltis.com/'
+          links=[]
+          for row in p.rows:
+              for k in ('href','src','action'):
+                  v=row.get(k)
+                  if v: links.append(urljoin(base,v))
+          jsurls=re.findall(r'https?://[^\s"\'<>]+',html,re.I)
+          report={'elements':p.rows,'links':list(dict.fromkeys(links+jsurls))}
+          Path('probe/chargenow/structure.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(Path('probe/chargenow/structure.json').read_text()[:40000])
+          print('\nRAW HTML\n',html[:20000])
+          PY
+
+      - name: Follow safe same-host ChargeNow GET links
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import json,subprocess,urllib.parse,re
+          d=json.loads(Path('probe/chargenow/structure.json').read_text())
+          links=[]
+          for u in d['links']:
+              p=urllib.parse.urlparse(u)
+              if p.netloc!='chargenow.qovoltis.com': continue
+              if p.scheme not in ('http','https'): continue
+              if any(x in p.path.lower() for x in ('logout','delete','start','stop','pay','payment','charge')):
+                  # GET-only discovery is fine, but avoid anything that semantically starts/stops/pays.
+                  if any(x in p.path.lower() for x in ('start','stop','pay','payment')): continue
+              links.append(u)
+          out=[]
+          for i,u in enumerate(list(dict.fromkeys(links))[:30],1):
+              body=Path(f'probe/chargenow/link-{i}.body')
+              cmd=['curl','-sS','-L','--max-time','20','-A','Mozilla/5.0','-o',str(body),'-w','%{http_code}|%{url_effective}|%{content_type}',u]
+              try:meta=subprocess.check_output(cmd,text=True).strip()
+              except subprocess.CalledProcessError as e:meta=(e.output or 'ERR').strip()
+              txt=body.read_text(errors='replace') if body.exists() else ''
+              out.append({'url':u,'meta':meta,'bytes':len(txt.encode()),'sample':txt[:5000]})
+          Path('probe/chargenow/follow.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(Path('probe/chargenow/follow.json').read_text()[:50000])
+          PY
+
+      - name: Download current app and decompile Hermes
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sS -L --max-time 180 -A 'Mozilla/5.0' \
+            'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=50012' -o work/app.xapk
+          unzip -q work/app.xapk -d work/xapk
+          BASE=$(find work/xapk -type f -name '*.apk' -printf '%s %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          unzip -p "$BASE" assets/index.android.bundle > work/index.android.bundle
+          git clone --depth 1 https://github.com/P1sec/hermes-dec.git work/hermes-dec >/dev/null 2>&1
+          python -m pip install ./work/hermes-dec >/dev/null
+          hbc-decompiler work/index.android.bundle work/decompiled.js >/dev/null 2>probe/hermes.stderr
+
+      - name: Extract guest anonymous QR ad-hoc and auth contexts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re,json
+          lines=Path('work/decompiled.js').read_text(errors='replace').splitlines()
+          terms=('guest','anonymous','anonyme','without account','sans compte','ad-hoc','adhoc','qr','qrcode','chargenow','payment','paygreen','proxy-cp-user','/auth/','auth/','login','register','otp','public','station_id','evcps/stations')
+          hits=[]
+          for i,l in enumerate(lines):
+              low=l.lower()
+              if any(t in low for t in terms):
+                  hits.append({'line':i+1,'hit':l[:1000],'context':lines[max(0,i-12):min(len(lines),i+13)]})
+          Path('probe/app-context.json').write_text(json.dumps(hits[:1200],ensure_ascii=False,indent=2),encoding='utf-8')
+          routes=[]
+          for l in lines:
+              for m in re.finditer(r"['\"](/[^'\"\s]{2,220})['\"]",l):
+                  s=m.group(1); low=s.lower()
+                  if any(t in low for t in ('guest','anonymous','auth','qr','payment','paygreen','public','evcp','station','charge')):
+                      routes.append(s)
+          Path('probe/app-routes.txt').write_text('\n'.join(dict.fromkeys(routes)),encoding='utf-8')
+          print('ROUTES\n'+Path('probe/app-routes.txt').read_text()[:30000])
+          print('CONTEXT\n'+Path('probe/app-context.json').read_text()[:80000])
+          PY
+
+      - name: Validate mobile client credential without exposing it
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY=$(strings -a work/index.android.bundle | grep -Eo 'qvk_live_[A-Za-z0-9_-]+' | head -1 || true)
+          [ -n "$KEY" ] || { echo 'client key missing'; exit 1; }
+          echo "::add-mask::$KEY"
+          CODE=$(curl -sS --max-time 20 -o probe/public-config.body -w '%{http_code}' \
+            -A 'Qovoltis/5.0.1' -H 'Accept: application/json' -H "X-API-KEY: $KEY" \
+            'https://qorest.qovoltis.com/api/v1/configurations/public')
+          echo "public_config_http=$CODE" > probe/client-validation.txt
+          echo "client_key_present=true" >> probe/client-validation.txt
+          cat probe/client-validation.txt
+
+      - name: Upload sanitized evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-public-fallback-discovery
+          path: |
+            probe/chargenow
+            probe/app-routes.txt
+            probe/app-context.json
+            probe/client-validation.txt
+            probe/public-config.body
+          retention-days: 3
