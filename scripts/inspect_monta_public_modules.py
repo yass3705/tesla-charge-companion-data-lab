@@ -18,12 +18,14 @@ FILES = [
     "monta-urls-J6q9Peb-.js",
     "src-C_4q6C_O.js",
     "use-operator-team-id-C1mlEbjy.js",
+    "grid-data-B5-Ts_De.js",
+    "monta-client-config-Bjw7pU-k.js",
 ]
 KEYS = [
-    "listTariffsCreator", "public tariff", "publicTariff", "tariff", "price",
+    "listTariffsCreator", "getTariffById", "public tariff", "publicTariff", "tariff", "price",
     "deeplink", "deepLink", "chargePoint", "charge-point", "priceGroup",
     "price-group", "qr", "guest", "adHoc", "ad-hoc", "publicNetwork",
-    "public-network", "portalApiUrl", "apiGatewayUrl",
+    "public-network", "portalApiUrl", "apiGatewayUrl", "proxyUrls",
 ]
 
 
@@ -50,7 +52,7 @@ def interesting_strings(s: str) -> list[str]:
                 if x not in seen:
                     seen.add(x)
                     out.append(x)
-    return out[:800]
+    return out[:1200]
 
 
 def contexts(s: str) -> list[dict[str, str]]:
@@ -59,11 +61,11 @@ def contexts(s: str) -> list[dict[str, str]]:
     for key in KEYS:
         start = 0
         n = 0
-        while n < 25:
+        while n < 40:
             i = low.find(key.lower(), start)
             if i < 0:
                 break
-            a, b = max(0, i - 360), min(len(s), i + 900)
+            a, b = max(0, i - 420), min(len(s), i + 1100)
             out.append({"key": key, "context": s[a:b].replace("\n", " ")})
             start = i + len(key)
             n += 1
@@ -87,10 +89,10 @@ def main() -> None:
     p.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     for m in report["modules"]:
         print("=====", m["file"], "status", m["status"], "bytes", m["bytes"], "=====")
-        for x in m.get("strings", [])[:120]:
+        for x in m.get("strings", [])[:160]:
             print(x)
-        for c in m.get("contexts", [])[:60]:
-            print(f"[{c['key']}] {c['context'][:1200]}")
+        for c in m.get("contexts", [])[:80]:
+            print(f"[{c['key']}] {c['context'][:1400]}")
 
 
 if __name__ == "__main__":
