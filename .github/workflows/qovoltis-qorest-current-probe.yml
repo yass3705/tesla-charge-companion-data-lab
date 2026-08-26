@@ -1,0 +1,86 @@
+name: Qovoltis current QoREST station probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-qorest-current-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Download and decompile current app
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work probe/http
+          curl -sS -L --max-time 180 -A 'Mozilla/5.0' \
+            'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=50012' -o work/app.xapk
+          unzip -q work/app.xapk -d work/xapk
+          BASE=$(find work/xapk -type f -name '*.apk' -printf '%s %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          unzip -p "$BASE" assets/index.android.bundle > work/index.android.bundle
+          git clone --depth 1 https://github.com/P1sec/hermes-dec.git work/hermes-dec >/dev/null 2>&1
+          python -m pip install ./work/hermes-dec >/dev/null
+          hbc-decompiler work/index.android.bundle work/decompiled.js >/dev/null 2>probe/decompiler.stderr
+
+      - name: Extract current apiClient implementation and station call context
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          lines=Path('work/decompiled.js').read_text(errors='replace').splitlines()
+          terms=['https://qorest.qovoltis.com/api',"'/v2/evcps/stations?station_id='","'/evcps/emsp-stations?emsp='","'/configurations/public'"]
+          out=[]
+          for term in terms:
+              out.append('\n### TERM '+term)
+              idxs=[i for i,l in enumerate(lines) if term in l]
+              for i in idxs[:12]:
+                  lo=max(0,i-180); hi=min(len(lines),i+220)
+                  out.append(f'===== lines {lo+1}-{hi} hit {i+1} =====')
+                  out.extend(lines[lo:hi])
+          Path('probe/targeted-context.txt').write_text('\n'.join(out),encoding='utf-8')
+          print(Path('probe/targeted-context.txt').read_text()[:120000])
+          PY
+
+      - name: Probe exact plausible QoREST read paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess,json
+          targets=[
+            'https://qorest.qovoltis.com/api/v1/configurations/public',
+            'https://qorest.qovoltis.com/api/configurations/public',
+            'https://qorest.qovoltis.com/api/v1/evcps/emsp-stations?emsp=QOVOLTIS&side=25&minlat=48.70&minlng=2.00',
+            'https://qorest.qovoltis.com/api/evcps/emsp-stations?emsp=QOVOLTIS&side=25&minlat=48.70&minlng=2.00',
+            'https://qorest.qovoltis.com/api/v2/evcps/stations?station_id=TEST&type=QOVOLTIS',
+            'https://qorest.qovoltis.com/api/v1/v2/evcps/stations?station_id=TEST&type=QOVOLTIS',
+            'https://qorest.qovoltis.com/api/v2/evcps/stations?type=QOVOLTIS',
+          ]
+          out=[]
+          for i,url in enumerate(targets,1):
+              body=Path(f'probe/http/{i}.body'); hdr=Path(f'probe/http/{i}.headers')
+              cmd=['curl','-sS','--max-time','20','-A','Qovoltis/5.0.1','-H','Accept: application/json','-D',str(hdr),'-o',str(body),'-w','%{http_code}|%{content_type}|%{redirect_url}',url]
+              try: meta=subprocess.check_output(cmd,text=True).strip()
+              except subprocess.CalledProcessError as e: meta=(e.output or 'ERR').strip()
+              sample=body.read_text(errors='replace')[:6000] if body.exists() else ''
+              headers=hdr.read_text(errors='replace')[:4000] if hdr.exists() else ''
+              out.append({'url':url,'meta':meta,'bytes':body.stat().st_size if body.exists() else 0,'headers':headers,'sample':sample})
+          Path('probe/http/results.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          for r in out:
+              print('\n',r['meta'],r['bytes'],r['url'])
+              print(r['sample'][:1200])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-current-qorest-probe
+          path: probe
+          retention-days: 3
