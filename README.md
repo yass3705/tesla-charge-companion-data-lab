@@ -1,31 +1,43 @@
-# Tesla Charge Companion Data Lab
+# Tesla Charge Companion — Data Lab
 
-Ce dépôt sert de laboratoire de données pour Tesla Charge Companion. Il contient les scripts, configurations, rapports et tests utilisés pour explorer, collecter, normaliser et valider les données des opérateurs de recharge avant publication vers l'application stable.
+Dépôt dédié aux travaux de collecte, de contrôle et de validation des données de recharge destinées à Tesla Charge Companion.
 
-## Objectifs
+Le principe est de séparer les expérimentations de données du dépôt applicatif stable afin de pouvoir tester les sources, comparer les opérateurs, produire des rapports de validation et ne publier que des données suffisamment vérifiées.
 
-- isoler les expérimentations de collecte du dépôt stable ;
-- conserver des collecteurs reproductibles ;
-- documenter les sources et hypothèses ;
-- générer des jeux de données contrôlables avant publication ;
-- ajouter des tests de non-régression sur les opérateurs et tarifs.
+## Organisation
 
-## Structure
-
-- `.github/` : workflows GitHub Actions du laboratoire ;
-- `config/` : paramètres et règles de collecte ;
-- `data/` : données intermédiaires ou générées ;
-- `izivia/` : travaux dédiés au réseau IZIVIA ;
-- `reports/` : résultats de validation et rapports ;
-- `scripts/` : collecteurs et outils de normalisation ;
+- `config/` : configuration des opérateurs, sources et règles de normalisation.
+- `data/` : données collectées et jeux de données de travail.
+- `izivia/` : travaux spécifiques IZIVIA.
+- `reports/` : rapports et résultats de validation.
+- `scripts/` : collecteurs, convertisseurs et outils de contrôle.
 - `tests/` : tests automatiques.
+- `.github/workflows/` : automatisation des collectes et validations.
 
-## Principes de validation
+## Méthode générale
 
-Les données tarifaires ne doivent pas être publiées comme tarif opérateur direct lorsqu'elles proviennent uniquement d'un eMSP ou d'un acteur de roaming. Les sources officielles ou techniques directement rattachées au CPO sont privilégiées. Lorsqu'une valeur ne peut pas être vérifiée de façon suffisante, elle reste explicitement inconnue plutôt que d'être extrapolée.
+Pour chaque opérateur :
 
-Les jeux nationaux doivent conserver, lorsque la source le permet, l'identifiant de station, l'identifiant EVSE, l'opérateur, la puissance, les connecteurs et les métadonnées de provenance nécessaires à une fusion déterministe dans Tesla Charge Companion.
+1. identifier en priorité les sources officielles et techniques disponibles ;
+2. distinguer clairement opérateur direct, application, abonnement, ad hoc et itinérance ;
+3. relever les composantes tarifaires : prix au kWh, prix à la minute, frais de session, occupation et parking ;
+4. conserver les puissances, connecteurs, horaires et règles particulières lorsque disponibles ;
+5. contrôler plusieurs stations réelles ;
+6. conserver explicitement les incertitudes au lieu de fabriquer ou extrapoler une valeur ;
+7. publier vers Tesla Charge Companion seulement après validation.
+
+## Règle de provenance tarifaire
+
+Un prix provenant d'un eMSP ou d'un badge de roaming ne doit pas être publié comme tarif direct du CPO. Les données doivent conserver leur provenance et, lorsque c'est nécessaire, un niveau de confiance. Les tarifs abonnés ne doivent être pris en compte par l'application que lorsque l'abonnement correspondant est sélectionné par l'utilisateur.
 
 ## AVIA / Picoty
 
-Le collecteur national AVIA/Picoty filtre le CPO Picoty via l'identifiant `FR*PY2`. `AVIA VOLT` est conservé comme marque commerciale, mais les tarifs sont séparés en trois catégories : paiement direct CPO, offre AVIA Carte/Deft Power, et roaming tiers. Un tarif national ne doit jamais être déduit d'une source secondaire ou d'un prix eMSP.
+Le jeu national AVIA/Picoty repose sur le CPO Picoty identifié par le préfixe `FR*PY2`. `AVIA VOLT` est conservé comme marque commerciale.
+
+Les couches tarifaires sont volontairement séparées :
+
+- `direct_cpo` : paiement direct Picoty/AVIA VOLT ;
+- `avia_carte` : offre AVIA Carte / Deft Power ;
+- `roaming` : tarifs d'eMSP tiers.
+
+Aucun tarif national n'est extrapolé tant qu'il n'est pas établi par une source suffisamment fiable. Les données de stations et d'EVSE peuvent en revanche être générées indépendamment via les identifiants Picoty afin de constituer la base nationale avant enrichissement tarifaire.
