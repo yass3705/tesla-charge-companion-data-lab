@@ -43,7 +43,6 @@ jobs:
           assert scope['roamingIncluded'] is False
           assert scope['noGuessedFallback'] is True
           assert c['inventoryStations'] >= 600, c
-          # Public native API coverage is quasi-complete for the two families it exposes.
           assert cov['FRETI']['resolved'] / cov['FRETI']['inventory'] >= 0.99, cov['FRETI']
           assert cov['FRESE']['resolved'] / cov['FRESE']['inventory'] >= 0.98, cov['FRESE']
           assert c['resolvedStations'] >= 465, c
@@ -65,12 +64,12 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/national/etotem_direct_tariffs_france.json.gz
+          git add data/national/etotem_direct_stations_france.json.gz data/national/etotem_direct_tariffs_france.json.gz
           if git diff --cached --quiet; then
-            echo "No tariff data change"
+            echo "No e-Totem data change"
             exit 0
           fi
-          git commit -m "data(etotem): publish direct station tariff harvest [run ${GITHUB_RUN_ID}]"
+          git commit -m "data(etotem): publish normalized direct inventory and tariffs [run ${GITHUB_RUN_ID}]"
           for attempt in 1 2 3 4; do
             git pull --rebase origin main
             if git push origin HEAD:main; then exit 0; fi
