@@ -28,108 +28,123 @@ jobs:
           cp "$BASE" work/base.apk
           echo "BASE=$BASE" | tee probe/base.txt
 
-      - name: Decode APK and extract Retrofit routes
+      - name: Decode APK
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y -qq apktool >/dev/null
           apktool d -f work/base.apk -o work/decoded >/dev/null 2>&1 || true
-          {
-            echo '# QoAPI / Retrofit evidence'
-            grep -RIna -E 'qoapi\.qovoltis\.com|retrofit2/http/(GET|POST|PUT|DELETE|PATCH)|FetchStations|StationDetails|MapStation|Offers|pricing_default_price|ChargeSocket' work/decoded 2>/dev/null | head -5000 || true
-          } > probe/route-evidence.txt
-          sed -n '1,1500p' probe/route-evidence.txt
 
-      - name: Extract route-like strings from decoded smali
+      - name: Extract targeted QoAPI classes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          root = Path('work/decoded')
+          outdir = Path('probe/targeted')
+          outdir.mkdir(parents=True, exist_ok=True)
+          wanted_names = {
+              'NetworkConfiguration$Definitions.smali',
+              'ApiGateway.smali',
+              'StationDetailsApi.smali',
+              'MainMapApi.smali',
+              'QoSocketApi.smali',
+              'StationsNetworkDataProvider.smali',
+          }
+          triggers = (
+              'FetchStationsUseCase', 'StationDetailsUseCase', 'MapStationsMultiplexedUseCase',
+              'Retrofit$Builder', 'OkHttpClient', 'Authorization', 'Bearer', 'x-api-key',
+              'api-key', 'client-id', 'qoapi.qovoltis.com',
+          )
+          selected = []
+          for p in root.rglob('*.smali'):
+              rel = str(p.relative_to(root))
+              low = rel.lower()
+              try:
+                  text = p.read_text(errors='replace')
+              except Exception:
+                  continue
+              if (p.name in wanted_names or '/api/qoapi/' in low or any(t in text for t in triggers)):
+                  dest = outdir / rel.replace('/', '__')
+                  dest.write_text(text, encoding='utf-8')
+                  selected.append(rel)
+          Path('probe/targeted-files.txt').write_text('\n'.join(selected), encoding='utf-8')
+          print(f'selected={len(selected)}')
+          print('\n'.join(selected[:500]))
+          PY
+
+      - name: Build focused Retrofit and auth evidence
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
           import re
+
+          keys = re.compile(
+              r'retrofit2/http/(?:GET|POST|PUT|DELETE|PATCH|Path|Query|QueryMap|Header|Headers|Body|Field|FieldMap)'
+              r'|Authorization|Bearer|x-api-key|api-key|client-id|User-Agent|baseUrl|Retrofit\$Builder|OkHttpClient'
+              r'|qoapi\.qovoltis\.com|qoreal\.qovoltis\.com|pricing_default_price|pricing_default_label'
+              r'|FetchStations|StationDetails|MapStations|StationDto|ChargeSocketDto', re.I)
+          chunks = []
+          literals = []
+          for p in sorted(Path('probe/targeted').glob('*.smali')):
+              lines = p.read_text(errors='replace').splitlines()
+              hit_idx = [i for i,l in enumerate(lines) if keys.search(l)]
+              if not hit_idx:
+                  continue
+              merged = []
+              for i in hit_idx:
+                  lo=max(0,i-35); hi=min(len(lines),i+36)
+                  if merged and lo <= merged[-1][1] + 1:
+                      merged[-1]=(merged[-1][0], max(merged[-1][1],hi))
+                  else:
+                      merged.append((lo,hi))
+              for lo,hi in merged:
+                  chunks.append(f'===== FILE {p.name} L{lo+1}-{hi} =====\n' + '\n'.join(lines[lo:hi]))
+              for i,l in enumerate(lines):
+                  if 'const-string' in l:
+                      m=re.search(r'"([^"\\]*(?:\\.[^"\\]*)*)"', l)
+                      if m:
+                          s=m.group(1)
+                          if ('/' in s or any(k in s.lower() for k in ('authorization','bearer','api-key','client-id','price','station','socket','map','offer'))):
+                              literals.append(f'{p.name}:{i+1}\t{s}')
+          Path('probe/focused-context.txt').write_text('\n\n'.join(chunks), encoding='utf-8')
+          Path('probe/string-literals.txt').write_text('\n'.join(literals), encoding='utf-8')
+          print(Path('probe/focused-context.txt').read_text(errors='replace')[:120000])
+          print('\n===== LITERALS =====')
+          print(Path('probe/string-literals.txt').read_text(errors='replace')[:60000])
+          PY
+
+      - name: Extract Retrofit annotation windows from all decoded smali
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          root=Path('work/decoded')
+          marker=re.compile(r'Lretrofit2/http/(?:GET|POST|PUT|DELETE|PATCH|Path|Query|QueryMap|Header|Headers|Body|Field|FieldMap);')
           rows=[]
-          pats=('station','borne','charge','offer','pricing','price','tariff','socket','map','location','connector')
-          for p in Path('work/decoded').rglob('*.smali'):
+          for p in root.rglob('*.smali'):
               try: lines=p.read_text(errors='replace').splitlines()
               except: continue
-              joined='\n'.join(lines)
-              if not any(k.lower() in joined.lower() for k in ('qoapi','StationDetails','FetchStations','MapStation','Offer','Pricing','ChargeSocket')):
-                  continue
-              for i,line in enumerate(lines):
-                  if 'const-string' in line:
-                      m=re.search(r'"([^"\\]*(?:\\.[^"\\]*)*)"',line)
-                      if not m: continue
-                      s=m.group(1)
-                      low=s.lower()
-                      if ('/' in s and any(k in low for k in pats)) or any(k in low for k in ('qoapi','pricing_default_price')):
-                          lo=max(0,i-12); hi=min(len(lines),i+13)
-                          rows.append(f'FILE {p}\n'+'\n'.join(lines[lo:hi])+'\n---')
-          Path('probe/route-context.txt').write_text('\n'.join(rows[:2000]),encoding='utf-8')
-          print(Path('probe/route-context.txt').read_text()[:60000])
-          PY
-
-      - name: Build conservative GET candidate list
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          import re
-          text=(Path('probe/route-evidence.txt').read_text(errors='replace')+'\n'+Path('probe/route-context.txt').read_text(errors='replace'))
-          vals=set()
-          for m in re.finditer(r'"([^"\n]{1,180})"',text):
-              s=m.group(1).replace('\\/','/')
-              if '/' not in s: continue
-              low=s.lower()
-              if any(k in low for k in ('station','borne','charge','offer','pricing','price','tariff','socket','map','location','connector')) and not s.startswith(('http://','https://')):
-                  if re.fullmatch(r'[A-Za-z0-9_./{}?=&%:*+-]+',s): vals.add(s)
-          out='\n'.join(sorted(vals))
-          Path('probe/route-candidates.txt').write_text(out,encoding='utf-8')
-          print(out[:30000])
-          PY
-
-      - name: Probe only discovered public GET candidates
-        shell: bash
-        run: |
-          set +e
-          mkdir -p probe/http
-          : > probe/http/status.tsv
-          n=0
-          while IFS= read -r route; do
-            [ -n "$route" ] || continue
-            case "$route" in
-              *'{'*|*'}'*|*':'*) continue ;;
-            esac
-            route="${route#/}"
-            url="https://qoapi.qovoltis.com/api/${route}"
-            n=$((n+1))
-            [ "$n" -le 80 ] || break
-            code=$(curl -sS -L --max-time 15 -A 'Mozilla/5.0' -H 'Accept: application/json' -o "probe/http/$n.body" -D "probe/http/$n.headers" -w '%{http_code}' "$url" || true)
-            bytes=$(wc -c < "probe/http/$n.body" 2>/dev/null || echo 0)
-            printf '%s\t%s\t%s\t%s\n' "$code" "$bytes" "$route" "$url" >> probe/http/status.tsv
-          done < probe/route-candidates.txt
-          cat probe/http/status.tsv
-          python - <<'PY'
-          from pathlib import Path
-          import json,re
-          out=[]
-          status=Path('probe/http/status.tsv')
-          if status.exists(): out.append(status.read_text(errors='replace'))
-          for p in sorted(Path('probe/http').glob('*.body')):
-              t=p.read_text(errors='replace')
-              if not t.strip(): continue
-              hits=[]
-              for m in re.finditer(r'.{0,100}(price|pricing|tariff|kwh|offer|station|connector|borne).{0,240}',t,re.I|re.S):
-                  hits.append(re.sub(r'\s+',' ',m.group(0))[:500])
-              if hits:
-                  out.append(f'\n== {p.name} ==\n'+'\n'.join(hits[:30]))
-          Path('probe/http/summary.txt').write_text('\n'.join(out),encoding='utf-8')
-          print(Path('probe/http/summary.txt').read_text()[:50000])
+              idx=[i for i,l in enumerate(lines) if marker.search(l)]
+              if not idx: continue
+              for i in idx:
+                  lo=max(0,i-20); hi=min(len(lines),i+26)
+                  rows.append(f'===== {p} L{i+1} =====\n'+'\n'.join(lines[lo:hi]))
+          Path('probe/all-retrofit-annotations.txt').write_text('\n\n'.join(rows),encoding='utf-8')
+          print(f'annotation_windows={len(rows)}')
+          print(Path('probe/all-retrofit-annotations.txt').read_text(errors='replace')[:140000])
           PY
 
       - uses: actions/upload-artifact@v4
         with:
-          name: qovoltis-qoapi-route-discovery
+          name: qovoltis-qoapi-targeted-extraction
           path: probe
           retention-days: 3
