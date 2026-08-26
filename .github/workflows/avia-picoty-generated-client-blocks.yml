@@ -36,10 +36,14 @@ jobs:
           p=Path('data/reports/avia_picoty_generated_client_blocks.json')
           d=json.loads(p.read_text(encoding='utf-8'))
           raw=p.read_text(encoding='utf-8')
-          assert d['schemaVersion']=='1.0.0'
-          assert d['genericRouteBlocks'] or any(d['targets'].values())
+          assert d['schemaVersion']=='1.1.0'
+          assert d['openApiOperations'] or d['genericRouteBlocks'] or any(d['targets'].values())
           assert not re.search(r'eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{8,}', raw)
-          print({k:len(v) for k,v in d['targets'].items()})
+          print({
+            'openApiOperations':len(d['openApiOperations']),
+            'bootstrapOperations':len(d['bootstrapOperations']),
+            'targets':{k:len(v) for k,v in d['targets'].items()}
+          })
           PY
       - uses: actions/upload-artifact@v4
         with:
@@ -50,7 +54,7 @@ jobs:
         if: ${{ github.ref == 'refs/heads/main' }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
+          git config user.name "github-actions[bot]]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/reports/avia_picoty_generated_client_blocks.json
           if git diff --cached --quiet; then exit 0; fi
