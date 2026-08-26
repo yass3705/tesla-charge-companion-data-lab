@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "network": "TotalEnergies Club EV-Charge",
+  "generated_date": "2026-08-26",
+  "source": {
+    "workflow_run_id": 32975106091,
+    "workflow": ".github/workflows/morocco-totalenergies-numocity-fullpath-probe.yml",
+    "static_client_evidence": "reports/morocco/totalenergies/latest-url-construction.json"
+  },
+  "policy": {
+    "read_only": true,
+    "get_only": true,
+    "anonymous": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_mutations": true,
+    "no_session_start": true,
+    "response_body_persisted": false
+  },
+  "tested_on_branded_morocco_host": "https://csmstotalenergiesma.numocity.com",
+  "static_client_routes_tested": [
+    "/api/get-connector-status",
+    "/api/qr-connector",
+    "/api/qr-connector-list",
+    "/2/api/get-connector-status",
+    "/2/api/qr-connector",
+    "/2/api/qr-connector-list"
+  ],
+  "result": {
+    "all_http_status": 404,
+    "all_classification": "route_not_matched",
+    "content_type": "text/html; charset=utf-8"
+  },
+  "modeling": {
+    "cpo_operator": "station-specific; do not infer from TotalEnergies site_brand",
+    "site_brand": "TotalEnergies where independently evidenced",
+    "app_source_access_network": "Club EV-Charge / Numocity",
+    "tariff_channel": "TotalEnergies direct / Club EV-Charge when native tariff is evidenced",
+    "status_source": "Numocity native only after exact runtime endpoint is validated"
+  },
+  "interpretation": "The three additional GET route literals recovered from the Android client are not directly mounted at the confirmed Morocco branded host, with or without the evidenced /2 prefix. This narrows the blocker to the runtime base URL/gateway/path construction rather than these route suffixes themselves.",
+  "remaining_blocker": "Recover the exact runtime HostBuilder/base URL or gateway used by the app before attempting any further station-state ingestion."
+}
