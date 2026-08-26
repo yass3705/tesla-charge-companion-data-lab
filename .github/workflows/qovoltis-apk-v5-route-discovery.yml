@@ -1,0 +1,124 @@
+name: Qovoltis APK v5 route discovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-apk-v5-route-discovery.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Download Qovoltis 5.0.1 public XAPK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work probe
+          URL='https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=50012'
+          curl -fLsS --max-time 180 -A 'Mozilla/5.0' "$URL" -o work/qovoltis.xapk
+          unzip -q work/qovoltis.xapk -d work/xapk
+          find work/xapk -type f -name '*.apk' -printf '%s %p\n' | sort -nr | tee probe/apks.txt
+          test -s probe/apks.txt
+
+      - name: Install JADX
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLsS --max-time 120 \
+            'https://github.com/skylot/jadx/releases/download/v1.5.1/jadx-1.5.1.zip' \
+            -o work/jadx.zip
+          unzip -q work/jadx.zip -d work/jadx
+          work/jadx/bin/jadx --version | tee probe/jadx-version.txt
+
+      - name: Decompile main APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          MAIN_APK=$(sort -nr probe/apks.txt | head -1 | cut -d' ' -f2-)
+          echo "MAIN_APK=$MAIN_APK" | tee probe/main-apk.txt
+          mkdir -p work/decompiled
+          work/jadx/bin/jadx --no-res --show-bad-code --threads-count 4 \
+            -d work/decompiled "$MAIN_APK" > probe/jadx.log 2>&1 || true
+          echo "source_files=$(find work/decompiled -type f | wc -l)" | tee -a probe/main-apk.txt
+
+      - name: Extract first-party API contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import json, re
+
+          root = Path('work/decompiled')
+          out = Path('probe')
+          first_party = []
+          api_urls = set()
+          routes = []
+          high_value = []
+
+          route_re = re.compile(r'@(GET|POST|PUT|PATCH|DELETE|HTTP)\s*\((.*?)\)', re.I | re.S)
+          url_re = re.compile(r'https?://[^\s"\'<>]+', re.I)
+          keys = ('station','borne','charge','pricing','price','tarif','offer','location','map','connector','evse','ocpi','qovoltis')
+
+          for p in root.rglob('*'):
+              if not p.is_file() or p.suffix.lower() not in ('.java','.kt','.xml','.txt'):
+                  continue
+              try:
+                  text = p.read_text(errors='replace')
+              except Exception:
+                  continue
+              rel = str(p.relative_to(root))
+              is_first = '/com/qovoltis/' in ('/' + rel.replace('\\','/')) or rel.startswith('sources/com/qovoltis/')
+              for u in url_re.findall(text):
+                  if 'qovoltis' in u.lower() or 'qoapi' in u.lower() or 'qorest' in u.lower():
+                      api_urls.add(u.rstrip('),;'))
+              if not is_first:
+                  continue
+              first_party.append(rel)
+              for m in route_re.finditer(text):
+                  ctx = text[max(0,m.start()-500):min(len(text),m.end()+900)]
+                  routes.append({
+                      'file': rel,
+                      'annotation': re.sub(r'\s+',' ',m.group(0))[:1200],
+                      'context': re.sub(r'\s+',' ',ctx)[:3500],
+                  })
+              low = (rel + '\n' + text[:200000]).lower()
+              if any(k in low for k in keys):
+                  # Keep full first-party source for a small set of likely contract/model files.
+                  if any(k in rel.lower() for k in ('api','service','webservice','station','pricing','price','tarif','map','network','gateway','interceptor')):
+                      high_value.append(rel)
+                      target = out / 'selected_sources' / rel
+                      target.parent.mkdir(parents=True, exist_ok=True)
+                      target.write_text(text, encoding='utf-8')
+
+          result = {
+              'scope':'public_apk_static_analysis_no_auth_bypass',
+              'versionCode':50012,
+              'apiUrls':sorted(api_urls),
+              'routeCount':len(routes),
+              'routes':routes,
+              'highValueFiles':high_value,
+          }
+          (out/'qovoltis_v5_api_contract.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
+
+          with (out/'SUMMARY.txt').open('w',encoding='utf-8') as f:
+              f.write('=== API URLS ===\n')
+              f.write('\n'.join(sorted(api_urls))+'\n')
+              f.write('\n=== FIRST-PARTY ROUTES ===\n')
+              for r in routes:
+                  f.write(f"\n{r['file']}\n{r['annotation']}\n{r['context']}\n")
+              f.write('\n=== HIGH VALUE FILES ===\n')
+              f.write('\n'.join(high_value)+'\n')
+          print((out/'SUMMARY.txt').read_text(encoding='utf-8')[:100000])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-apk-v5-route-discovery
+          path: probe
+          retention-days: 3
