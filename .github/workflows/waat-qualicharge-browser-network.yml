@@ -1,0 +1,108 @@
+name: WAAT QualiCharge public map browser network
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/waat-qualicharge-browser-network.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install browser driver client
+        run: pip install --disable-pip-version-check selenium
+      - name: Capture public map requests
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports
+          python - <<'PY'
+          import json,time,re
+          from pathlib import Path
+          from datetime import datetime,timezone
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.common.by import By
+
+          opts=Options()
+          opts.add_argument('--headless=new');opts.add_argument('--no-sandbox');opts.add_argument('--disable-dev-shm-usage')
+          opts.add_argument('--window-size=1440,1000');opts.add_argument('--lang=fr-FR')
+          opts.set_capability('goog:loggingPrefs',{'performance':'ALL','browser':'ALL'})
+          driver=webdriver.Chrome(options=opts)
+          requests={}; responses={}; bodies=[]; browser_logs=[]
+          try:
+            driver.get('https://map.qualicharge.beta.gouv.fr/')
+            time.sleep(8)
+            # Try to switch to the tariff view if a visible control exists.
+            clicked=[]
+            for xp in [
+              "//*[contains(translate(normalize-space(.),'TARIFICATION','tarification'),'tarification')]",
+              "//*[contains(translate(@aria-label,'TARIFICATION','tarification'),'tarification')]",
+              "//*[contains(translate(@title,'TARIFICATION','tarification'),'tarification')]"
+            ]:
+              try:
+                els=driver.find_elements(By.XPATH,xp)
+                for el in els:
+                  if el.is_displayed() and el.is_enabled():
+                    driver.execute_script('arguments[0].click()',el);clicked.append(el.text or el.get_attribute('aria-label') or el.get_attribute('title'));time.sleep(5);raise StopIteration
+              except StopIteration: break
+              except Exception: pass
+            perf=driver.get_log('performance')
+            for row in perf:
+              try:m=json.loads(row['message'])['message'];p=m.get('params',{})
+              except Exception:continue
+              if m['method']=='Network.requestWillBeSent':
+                r=p.get('request',{});requests[p.get('requestId')]={'url':r.get('url'),'method':r.get('method'),'headers':r.get('headers',{}),'postData':r.get('postData')}
+              elif m['method']=='Network.responseReceived':
+                r=p.get('response',{});responses[p.get('requestId')]={'url':r.get('url'),'status':r.get('status'),'mimeType':r.get('mimeType'),'headers':r.get('headers',{})}
+            # Retrieve bodies only for likely API/data responses; public data only.
+            for rid,r in responses.items():
+              u=str(r.get('url') or ''); mt=str(r.get('mimeType') or '')
+              if not (('json' in mt) or re.search(r'(api|station|tarif|price|geojson|pdc|charge|irve|data)',u,re.I)):continue
+              try:
+                b=driver.execute_cdp_cmd('Network.getResponseBody',{'requestId':rid})
+                body=b.get('body','')
+              except Exception as e: body='';b={'error':str(e)}
+              bodies.append({'requestId':rid,'response':r,'request':requests.get(rid),'bodyPreview':body[:30000]})
+            browser_logs=driver.get_log('browser')
+            out={
+              'generatedAt':datetime.now(timezone.utc).isoformat(),
+              'finalUrl':driver.current_url,'title':driver.title,'clicked':clicked,
+              'bodyTextPreview':driver.find_element(By.TAG_NAME,'body').text[:12000],
+              'network':bodies,
+              'allRequests':[v|{'requestId':k,'response':responses.get(k)} for k,v in requests.items() if re.search(r'(api|station|tarif|price|geojson|pdc|charge|irve|data|qualicharge)',str(v.get('url') or ''),re.I)],
+              'browserLogs':browser_logs[:200]
+            }
+            Path('data/reports/waat_qualicharge_browser_network.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+            print(json.dumps({'title':out['title'],'clicked':clicked,'body':out['bodyTextPreview'][:4000],'interestingRequests':[(x['request'].get('method') if x.get('request') else None,x['response'].get('status'),x['response'].get('url'),x['bodyPreview'][:800]) for x in bodies]},ensure_ascii=False,indent=2))
+          finally:
+            driver.quit()
+          PY
+      - name: Upload report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: waat-qualicharge-browser-network
+          path: data/reports/waat_qualicharge_browser_network.json
+          retention-days: 14
+      - name: Commit report
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_qualicharge_browser_network.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: publish QualiCharge public browser network report"
+          git pull --rebase origin main
+          git push origin HEAD:main
