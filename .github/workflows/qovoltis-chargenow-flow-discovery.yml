@@ -1,0 +1,115 @@
+name: Qovoltis ChargeNow no-account flow discovery
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-chargenow-flow-discovery.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Fetch public ChargeNow flow pages and assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe/pages probe/assets
+          BASE='https://chargenow.qovoltis.com/'
+          pages=(
+            'QovoltisBornes.html'
+            'qovoltisbornes.html'
+            'Bornes.html'
+            'QovoltisPrises.html'
+            'QovoltisConnecteurs.html'
+            'QovoltisPaiement.html'
+          )
+          : > probe/status.tsv
+          for p in "${pages[@]}"; do
+            safe=$(echo "$p" | tr '/?&=' '____')
+            code=$(curl -sS -L --max-time 25 -A 'Mozilla/5.0' -o "probe/pages/$safe" -w '%{http_code}' "$BASE$p" || true)
+            size=$(wc -c < "probe/pages/$safe" 2>/dev/null || echo 0)
+            printf '%s\t%s\t%s\n' "$code" "$size" "$p" >> probe/status.tsv
+          done
+          cat probe/status.tsv
+
+      - name: Parse HTML JavaScript routes and network calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re,json,html
+          report=[]
+          discovered=set()
+          for p in Path('probe/pages').glob('*'):
+              text=p.read_text(errors='replace')
+              if len(text)<100: continue
+              item={'file':p.name,'title':None,'urls':[],'relative':[],'network_context':[],'storage_context':[]}
+              m=re.search(r'<title[^>]*>(.*?)</title>',text,re.I|re.S)
+              if m:item['title']=re.sub(r'\s+',' ',m.group(1)).strip()
+              for u in re.findall(r'https?://[^\s"\'<>`]+',text,re.I):
+                  item['urls'].append(u); discovered.add(u)
+              patterns=[
+                r'(?:href|src|action)\s*=\s*["\']([^"\']+)',
+                r'(?:window\.location(?:\.href)?|location\.href)\s*=\s*[`"\']([^`"\']+)',
+                r'(?:fetch|axios\.(?:get|post)|XMLHttpRequest)\s*\(\s*[`"\']([^`"\']+)',
+              ]
+              for pat in patterns:
+                  for s in re.findall(pat,text,re.I):
+                      item['relative'].append(s); discovered.add(s)
+              lines=text.splitlines()
+              for i,line in enumerate(lines):
+                  low=line.lower()
+                  if any(k in low for k in ('fetch(','axios','xmlhttprequest','ref_site','localstorage','sessionstorage','borne','connector','prise','tarif','price','prix','kwh','payment','paiement','qorest','qoapi','proxy')):
+                      item['network_context'].append({'line':i+1,'context':lines[max(0,i-4):min(len(lines),i+5)]})
+              report.append(item)
+          Path('probe/parsed.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+          Path('probe/discovered.txt').write_text('\n'.join(sorted(discovered)),encoding='utf-8')
+          print(Path('probe/parsed.json').read_text()[:100000])
+          print('\nDISCOVERED\n'+Path('probe/discovered.txt').read_text()[:30000])
+          PY
+
+      - name: Fetch discovered same-host JS and HTML resources safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.parse import urljoin,urlparse
+          import subprocess,json,re
+          base='https://chargenow.qovoltis.com/'
+          raw=Path('probe/discovered.txt').read_text(errors='replace').splitlines()
+          urls=[]
+          for s in raw:
+              if not s or s.startswith(('javascript:','#','data:')): continue
+              u=urljoin(base,s)
+              p=urlparse(u)
+              if p.netloc!='chargenow.qovoltis.com': continue
+              if any(x in p.path.lower() for x in ('start','stop','pay','payment','paiement','delete','logout')): continue
+              if p.path.lower().endswith(('.js','.html','.json')) or 'api' in p.path.lower(): urls.append(u)
+          out=[]
+          for i,u in enumerate(list(dict.fromkeys(urls))[:50],1):
+              body=Path(f'probe/assets/{i}.body')
+              cmd=['curl','-sS','-L','--max-time','20','-A','Mozilla/5.0','-o',str(body),'-w','%{http_code}|%{url_effective}|%{content_type}',u]
+              try:meta=subprocess.check_output(cmd,text=True).strip()
+              except subprocess.CalledProcessError as e:meta=(e.output or 'ERR').strip()
+              txt=body.read_text(errors='replace') if body.exists() else ''
+              hits=[]
+              for line in txt.splitlines():
+                  if any(k in line.lower() for k in ('ref_site','fetch(','axios','api','borne','tarif','prix','price','kwh','connector','prise')):
+                      hits.append(line[:1000])
+              out.append({'url':u,'meta':meta,'bytes':len(txt.encode()),'hits':hits[:200],'sample':txt[:3000]})
+          Path('probe/assets-results.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(Path('probe/assets-results.json').read_text()[:100000])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-chargenow-flow-discovery
+          path: probe
+          retention-days: 3
