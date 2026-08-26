@@ -1,0 +1,69 @@
+name: Qovoltis runtime network config extraction
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-network-config.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Download and decompile public app
+        shell: bash
+        run: |
+          set -e
+          mkdir -p work out
+          curl -fsSL --max-time 120 -A 'Mozilla/5.0' 'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=443' -o work/qovoltis.xapk
+          unzip -q work/qovoltis.xapk -d work/xapk
+          cp work/xapk/com.qovoltis.client.apk work/app.apk
+          curl -fsSL --max-time 120 'https://github.com/skylot/jadx/releases/download/v1.5.3/jadx-1.5.3.zip' -o work/jadx.zip
+          unzip -q work/jadx.zip -d work/jadx
+          chmod +x work/jadx/bin/jadx
+          set +e
+          work/jadx/bin/jadx -d work/src --no-res --show-bad-code work/app.apk >out/jadx.log 2>&1
+          set -e
+
+      - name: Trace base URL Retrofit and request headers
+        shell: bash
+        run: |
+          SRC=work/src/sources/com/qovoltis/client
+          {
+            echo '===== URL / Retrofit references ====='
+            grep -RInE 'QOVOLTIS_BSS_URL|qoapi\.qovoltis|qorest\.qovoltis|baseUrl\(|Retrofit\.Builder|OkHttpClient\.Builder|StationDetailsApi|MainMapApi' "$SRC" 2>/dev/null | head -n 4000
+            echo '===== auth/header/interceptors ====='
+            grep -RInE 'Authorization|Bearer|Interceptor|addHeader|header\(|token|accessToken|refreshToken' "$SRC" 2>/dev/null | head -n 5000
+            echo '===== remote config / endpoint update ====='
+            grep -RInE 'RemoteConfig|FirebaseRemoteConfig|endpoint|end_point|base_url|baseUrl|serverUrl|apiUrl|bssUrl|BSS_URL|Definitions\.' "$SRC" 2>/dev/null | head -n 5000
+          } > out/grep.txt || true
+
+          python - <<'PY'
+          from pathlib import Path
+          import re, shutil
+          src=Path('work/src/sources/com/qovoltis/client')
+          hits=[]
+          pats=['QOVOLTIS_BSS_URL','qoapi.qovoltis','qorest.qovoltis','baseUrl(','Authorization','Bearer','StationDetailsApi','MainMapApi','RemoteConfig']
+          for p in src.rglob('*.java'):
+              try:t=p.read_text(errors='replace')
+              except:continue
+              if any(x in t for x in pats):
+                  hits.append(p)
+          out=Path('out/sources');out.mkdir(parents=True,exist_ok=True)
+          for i,p in enumerate(hits[:120]):
+              rel=p.relative_to(src)
+              dst=out/(str(i).zfill(3)+'__'+('__'.join(rel.parts)))
+              dst.write_text(p.read_text(errors='replace'))
+          print('source files captured',len(hits))
+          print(Path('out/grep.txt').read_text(errors='replace')[:60000])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-network-config
+          path: out
+          retention-days: 5
