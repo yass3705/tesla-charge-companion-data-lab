@@ -2,12 +2,6 @@ name: Allego France station direct tariffs
 
 on:
   workflow_dispatch:
-    inputs:
-      browser_fallback:
-        description: "Enable headless browser fallback for dynamically rendered exact prices"
-        required: false
-        default: false
-        type: boolean
   schedule:
     - cron: "17 5 * * 3"
   push:
@@ -29,42 +23,48 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install browser dependency when requested
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.browser_fallback }}
-        run: python -m pip install --disable-pip-version-check selenium
+      - name: Install Allego DXP browser bootstrap dependency
+        run: python -m pip install --disable-pip-version-check -q selenium
 
       - name: Build Allego France station/EVSE direct tariff dataset
         shell: bash
         run: |
           set -euo pipefail
-          EXTRA=()
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.browser_fallback }}" == "true" ]]; then
-            EXTRA+=(--browser)
-          fi
-          python scripts/allego_station_tariffs_fast.py --workers 16 "${EXTRA[@]}"
+          python -m py_compile scripts/allego_station_tariffs.py scripts/allego_station_tariffs_fast.py
+          python scripts/allego_station_tariffs_fast.py --workers 16
 
-      - name: Validate output
+      - name: Validate output and DXP coverage
         run: |
           python - <<'PY'
           import gzip, json
           from pathlib import Path
           data = json.loads(gzip.decompress(Path('data/national/allego_direct_stations_france.json.gz').read_bytes()))
           report = json.loads(Path('data/reports/allego_station_tariffs_report.json').read_text())
+          counts = data['counts']
           assert data['operator'] == 'Allego'
           assert data['country'] == 'FR'
           assert data['scope']['operatorDirectOnly'] is True
           assert data['scope']['roamingIncluded'] is False
           assert data['scope']['countryDefaultsAreRankable'] is False
-          assert data['counts']['franceStationCount'] >= 50
-          assert data['counts']['franceEvseCount'] >= data['counts']['franceStationCount']
-          assert report['publicationReadyStationCount'] + report['blockedStationCount'] == data['counts']['franceStationCount']
-          print(json.dumps(report['counts'], indent=2))
+          assert data['scope']['exactDirectPricesFromDxp'] is True
+          assert data['sources']['dxpApi'].startswith('https://p-dxp-api-')
+          assert counts['franceStationCount'] >= 300, counts
+          assert counts['franceEvseCount'] >= 2000, counts
+          assert counts['dxpResolvedEvseCount'] >= 1500, counts
+          assert counts['dxpPricedEvseCount'] >= 1500, counts
+          assert counts['dxpPricedEvsePct'] >= 60, counts
+          assert report['publicationReadyStationCount'] + report['blockedStationCount'] == counts['franceStationCount']
+          assert report['publicationReadyStationCount'] >= 250, report
+          print(json.dumps(counts, indent=2))
           print('publicationReadyStationCount=', report['publicationReadyStationCount'])
+          print('fullyPricedStationCount=', report['fullyPricedStationCount'])
           print('blockedStationCount=', report['blockedStationCount'])
           PY
 
@@ -89,5 +89,10 @@ jobs:
             echo "No Allego station tariff changes"
             exit 0
           fi
-          git commit -m "Refresh Allego France station direct tariffs"
-          git push
+          git commit -m "data(allego): refresh France DXP direct tariffs [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
