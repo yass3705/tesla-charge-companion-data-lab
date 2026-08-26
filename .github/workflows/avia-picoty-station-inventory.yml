@@ -1,0 +1,93 @@
+name: AVIA Volt Picoty France direct station inventory
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 5 * * 3"
+  push:
+    paths:
+      - "scripts/avia_picoty_national.py"
+      - ".github/workflows/avia-picoty-station-inventory.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: avia-picoty-france-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build strict FR*PY2 national inventory
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/avia_picoty_national.py
+          python scripts/avia_picoty_national.py
+
+      - name: Validate direct-only fail-closed output
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          d=json.loads(gzip.decompress(Path('data/national/avia_picoty_direct_stations_france.json.gz').read_bytes()))
+          c=d['counts']; s=d['scope']
+          assert d['schemaVersion']=='1.0.0'
+          assert d['dataset']=='avia-volt-picoty-direct-stations-france'
+          assert d['operator']=='Picoty' and d['country']=='FR'
+          assert s['operatorDirectOnly'] is True
+          assert s['operatorPrefix']=='FR*PY2'
+          assert s['roamingIncluded'] is False
+          assert s['aviaBrandSitesOperatedByOtherCposIncluded'] is False
+          assert s['pricesFailClosed'] is True
+          assert s['observedThirdPartyPricesAreRankable'] is False
+          assert c['franceStationCount'] >= 10, c
+          assert c['franceEvseCount'] >= c['franceStationCount'], c
+          assert c['stationsWithCoordinates'] >= int(c['franceStationCount'] * .8), c
+          assert c['rankableStationCount'] == 0, c
+          assert c['blockedStationCount'] == c['franceStationCount'], c
+          assert len(d['stations']) == c['franceStationCount']
+          assert all(str(x['stationIdNormalized']).startswith('FRPY2') for x in d['stations'])
+          assert all(x.get('directEurPerKwh') is None for x in d['stations'])
+          print(json.dumps(c, indent=2))
+          print(json.dumps(d.get('irveExplicitKwhPriceCounts',{}), indent=2))
+          PY
+
+      - name: Upload AVIA Picoty audit artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: avia-picoty-france-station-inventory
+          path: |
+            data/national/avia_picoty_direct_stations_france.json.gz
+            data/reports/avia_picoty_station_inventory_report.json
+          retention-days: 14
+
+      - name: Commit refreshed Picoty inventory
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/avia_picoty_direct_stations_france.json.gz data/reports/avia_picoty_station_inventory_report.json
+          if git diff --cached --quiet; then
+            echo "No AVIA Picoty inventory changes"
+            exit 0
+          fi
+          git commit -m "Refresh AVIA Volt Picoty France direct inventory"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
