@@ -1,0 +1,115 @@
+name: Qovoltis Hermes API decompile
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-hermes-decompile.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  decompile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Download current Qovoltis app and extract Hermes bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work probe
+          curl -sS -L --max-time 180 -A 'Mozilla/5.0' \
+            'https://d.apkpure.net/b/XAPK/com.qovoltis.client?versionCode=50012' \
+            -o work/app.xapk
+          unzip -q work/app.xapk -d work/xapk
+          BASE=$(find work/xapk -type f -name '*.apk' -printf '%s %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
+          unzip -p "$BASE" assets/index.android.bundle > work/index.android.bundle
+          file work/index.android.bundle | tee probe/bundle-info.txt
+          echo "bytes=$(wc -c < work/index.android.bundle)" | tee -a probe/bundle-info.txt
+
+      - name: Install hermes-dec
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip >/dev/null
+          git clone --depth 1 https://github.com/P1sec/hermes-dec.git work/hermes-dec
+          python -m pip install ./work/hermes-dec >/dev/null
+          {
+            command -v hbc-file-parser || true
+            command -v hbc-disassembler || true
+            command -v hbc-decompiler || true
+            hbc-file-parser work/index.android.bundle 2>&1 | head -120 || true
+          } | tee probe/hermes-version.txt
+
+      - name: Decompile Hermes bytecode
+        shell: bash
+        run: |
+          set +e
+          hbc-decompiler work/index.android.bundle work/decompiled.js > probe/decompiler.stdout 2> probe/decompiler.stderr
+          echo "exit=$?" | tee probe/decompiler-status.txt
+          echo "decompiled_bytes=$(wc -c < work/decompiled.js 2>/dev/null || echo 0)" | tee -a probe/decompiler-status.txt
+          sed -n '1,160p' probe/decompiler.stderr || true
+          if [ ! -s work/decompiled.js ]; then
+            hbc-disassembler work/index.android.bundle work/disassembled.hasm > probe/disassembler.stdout 2> probe/disassembler.stderr || true
+            echo "disassembled_bytes=$(wc -c < work/disassembled.hasm 2>/dev/null || echo 0)" | tee -a probe/decompiler-status.txt
+          fi
+
+      - name: Extract HTTP client and station pricing contexts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re,json
+          candidates=[]
+          for fn in ('work/decompiled.js','work/disassembled.hasm'):
+              p=Path(fn)
+              if p.exists() and p.stat().st_size:
+                  candidates.append(p)
+          if not candidates:
+              Path('probe/context.txt').write_text('NO_DECOMPILED_OUTPUT',encoding='utf-8')
+              raise SystemExit(0)
+          p=max(candidates,key=lambda x:x.stat().st_size)
+          lines=p.read_text(errors='replace').splitlines()
+          terms=(
+              'proxy-cp-user','/api/v','evcps','emsp-stations','station_id',
+              'tariff','tariffs','pricing','price','kwh','baseurl','axios',
+              'authorization','interceptor','configurations/public','qorest.qovoltis'
+          )
+          hits=[]
+          seen=set()
+          for i,line in enumerate(lines):
+              low=line.lower()
+              if any(t in low for t in terms):
+                  lo=max(0,i-18); hi=min(len(lines),i+19)
+                  key=(lo,hi)
+                  if key in seen: continue
+                  seen.add(key)
+                  hits.append({'line':i+1,'term_line':line[:1200],'context':lines[lo:hi]})
+          Path('probe/context.json').write_text(json.dumps(hits[:700],ensure_ascii=False,indent=2),encoding='utf-8')
+          text=[]
+          for h in hits[:700]:
+              text.append(f"===== around line {h['line']} =====")
+              text.extend(h['context'])
+          Path('probe/context.txt').write_text('\n'.join(text),encoding='utf-8')
+          # Extract likely absolute URLs and route strings from decompiled output.
+          raw='\n'.join(lines)
+          urls=sorted(set(re.findall(r'https?://[^\s"\'<>]{4,500}',raw,re.I)))
+          routes=sorted(set(re.findall(r'["\'](/[^"\'\s]{2,220})["\']',raw)))
+          urls=[u for u in urls if 'qovoltis' in u.lower() or 'qorest' in u.lower()]
+          routes=[r for r in routes if any(k in r.lower() for k in ('evcp','station','tariff','price','pricing','offer','configuration','emsp','charge'))]
+          Path('probe/urls.txt').write_text('\n'.join(urls),encoding='utf-8')
+          Path('probe/routes.txt').write_text('\n'.join(routes),encoding='utf-8')
+          print('SOURCE',p,'LINES',len(lines),'HITS',len(hits))
+          print('URLS\n',Path('probe/urls.txt').read_text()[:15000])
+          print('ROUTES\n',Path('probe/routes.txt').read_text()[:30000])
+          print('CONTEXT\n',Path('probe/context.txt').read_text()[:60000])
+          PY
+
+      - name: Upload sanitized analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-hermes-api-decompile
+          path: probe
+          retention-days: 3
