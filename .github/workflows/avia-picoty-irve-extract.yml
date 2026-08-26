@@ -7,6 +7,7 @@ on:
   push:
     paths:
       - "scripts/avia_picoty_irve_extract.py"
+      - "scripts/avia_picoty_compact_index.py"
       - ".github/workflows/avia-picoty-irve-extract.yml"
 
 permissions:
@@ -19,6 +20,7 @@ concurrency:
 env:
   PAN_IRVE_URL: https://transport.data.gouv.fr/resources/84013/download
   OUTPUT_JSON: data/national/avia_volt_picoty_irve_extract.json
+  INDEX_JSON: data/national/avia_volt_picoty_station_index.json
 
 jobs:
   extract:
@@ -49,10 +51,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m py_compile scripts/avia_picoty_irve_extract.py
+          python -m py_compile scripts/avia_picoty_irve_extract.py scripts/avia_picoty_compact_index.py
           python scripts/avia_picoty_irve_extract.py \
             /tmp/pan-irve.csv "$OUTPUT_JSON" \
             --source-url "$PAN_IRVE_URL"
+          python scripts/avia_picoty_compact_index.py "$OUTPUT_JSON" "$INDEX_JSON"
 
       - name: Validate Picoty direct-only extract
         shell: bash
@@ -63,6 +66,7 @@ jobs:
           from pathlib import Path
           p=Path('data/national/avia_volt_picoty_irve_extract.json')
           d=json.loads(p.read_text(encoding='utf-8'))
+          idx=json.loads(Path('data/national/avia_volt_picoty_station_index.json').read_text(encoding='utf-8'))
           c=d['counts']
           assert d['dataset']=='avia-volt-picoty-pan-irve-extract'
           assert d['scope']['operatorPrefixNormalized']=='FRPY2'
@@ -71,6 +75,8 @@ jobs:
           assert c['stationCount'] >= 20, c
           assert c['panRowsMatched'] >= c['stationCount'], c
           assert len(d['stations']) == c['stationCount']
+          assert idx['dataset']=='avia-volt-picoty-station-index'
+          assert len(idx['stations'])==c['stationCount']
           for s in d['stations']:
               ids=[s.get('stationId','')]+list(s.get('pdcIds') or [])
               assert any(re.sub(r'[^A-Z0-9]','',x.upper()).startswith('FRPY2') for x in ids if x), s
@@ -83,7 +89,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: avia-volt-picoty-irve-extract
-          path: data/national/avia_volt_picoty_irve_extract.json
+          path: |
+            data/national/avia_volt_picoty_irve_extract.json
+            data/national/avia_volt_picoty_station_index.json
           retention-days: 14
 
       - name: Commit refreshed Picoty PAN extract
@@ -93,7 +101,7 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$OUTPUT_JSON"
+          git add "$OUTPUT_JSON" "$INDEX_JSON"
           if git diff --cached --quiet; then
             echo "No Picoty PAN changes"
             exit 0
