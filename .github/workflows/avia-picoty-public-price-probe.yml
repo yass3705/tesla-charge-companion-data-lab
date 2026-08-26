@@ -1,0 +1,75 @@
+name: AVIA Picoty public pricing source probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/avia_picoty_public_price_probe.py"
+      - ".github/workflows/avia-picoty-public-price-probe.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: avia-picoty-public-price-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Probe public Picoty and CarburantIQ pages/assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/avia_picoty_public_price_probe.py
+          python scripts/avia_picoty_public_price_probe.py data/reports/avia_picoty_public_price_probe.json
+
+      - name: Validate report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/reports/avia_picoty_public_price_probe.json')
+          d=json.loads(p.read_text(encoding='utf-8'))
+          assert len(d.get('targets',[])) == 3
+          assert any(x.get('name')=='picoty_station_map' for x in d['targets'])
+          assert any(x.get('name')=='carburantiq_chateauponsac' for x in d['targets'])
+          print(json.dumps({x['name']:{'status':x.get('status'),'error':x.get('error'),'scripts':len(x.get('scriptUrls',[])),'bundles':len(x.get('bundleFindings',[])),'candidateUrls':len(x.get('pageCandidateUrls',[]))} for x in d['targets']}, indent=2, ensure_ascii=False))
+          PY
+
+      - name: Upload report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: avia-picoty-public-price-probe
+          path: data/reports/avia_picoty_public_price_probe.json
+          retention-days: 14
+
+      - name: Commit report
+        if: ${{ github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/avia_picoty_public_price_probe.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Refresh AVIA Picoty public pricing source probe"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
