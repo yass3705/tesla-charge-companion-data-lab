@@ -42,7 +42,7 @@ jobs:
           p=Path('data/reports/avia_picoty_guest_route_context.json')
           d=json.loads(p.read_text(encoding='utf-8'))
           raw=p.read_text(encoding='utf-8')
-          assert d['schemaVersion']=='1.0.0'
+          assert d['schemaVersion'] in {'1.0.0','1.1.0'}
           assert any(f.get('matches') for f in d['files']), d
           assert not re.search(r'eyJ[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{12,}\.[A-Za-z0-9_-]{8,}',raw)
           print({f['path']:len(f.get('matches',[])) for f in d['files']})
