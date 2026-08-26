@@ -1,0 +1,94 @@
+name: Qovoltis latest app extraction
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-latest-app-extraction.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download latest Qovoltis XAPK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work probe
+          curl -fSsL --max-time 180 -A 'Mozilla/5.0' \
+            'https://d.apkpure.net/b/XAPK/com.qovoltis.client?version=latest' \
+            -o work/qovoltis.xapk
+          unzip -q work/qovoltis.xapk -d work/xapk
+          find work/xapk -type f -name '*.apk' -printf '%p %s\n' | tee probe/apks.txt
+          BASE=$(find work/xapk -type f -name 'base.apk' | head -1)
+          if [ -z "$BASE" ]; then BASE=$(find work/xapk -type f -name '*.apk' | sort | head -1); fi
+          cp "$BASE" work/base.apk
+          echo "BASE=$BASE" | tee probe/base.txt
+
+      - name: Decode latest APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq apktool >/dev/null
+          apktool d -f work/base.apk -o work/decoded >/dev/null 2>&1
+          sed -n '1,80p' work/decoded/apktool.yml | tee probe/apktool-version.txt
+
+      - name: Extract current API evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('work/decoded')
+          routes=[]; bases=[]; pricing=[]; files=set()
+          http=re.compile(r'Lretrofit2/http/(GET|POST|PUT|DELETE|PATCH);')
+          value=re.compile(r'value = "([^"]+)"')
+          url=re.compile(r'https://[^"\\\s]+')
+          price_re=re.compile(r'price|pricing|tarif|kwh|offer|subscription|station|borne|charge',re.I)
+          for p in root.rglob('*.smali'):
+              try: lines=p.read_text(errors='replace').splitlines()
+              except: continue
+              text='\n'.join(lines)
+              if 'com/qovoltis' not in text and 'qovoltis' not in str(p).lower():
+                  continue
+              for i,l in enumerate(lines):
+                  for u in url.findall(l):
+                      bases.append(f'{p}:{i+1}\t{u}')
+                  m=http.search(l)
+                  if m:
+                      for j in range(i+1,min(len(lines),i+8)):
+                          v=value.search(lines[j])
+                          if v:
+                              routes.append(f'{m.group(1)}\t{v.group(1)}\t{p}:{i+1}')
+                              files.add(p)
+                              break
+                  if ('const-string' in l or 'SerializedName' in l or 'Json' in l) and price_re.search(l):
+                      pricing.append(f'{p}:{i+1}\t{l.strip()}')
+              if re.search(r'pricing_default_price|price_per|pricePer|tariff|tarif|kwh_price|priceKwh|default_price',text,re.I):
+                  files.add(p)
+          Path('probe/base-urls.txt').write_text('\n'.join(sorted(set(bases))),encoding='utf-8')
+          Path('probe/routes.txt').write_text('\n'.join(dict.fromkeys(routes)),encoding='utf-8')
+          Path('probe/pricing-hits.txt').write_text('\n'.join(pricing),encoding='utf-8')
+          out=Path('probe/relevant'); out.mkdir(exist_ok=True)
+          for p in sorted(files):
+              rel=str(p.relative_to(root))
+              (out/rel.replace('/','__')).write_text(p.read_text(errors='replace'),encoding='utf-8')
+          print('=== BASE URLS ===')
+          print(Path('probe/base-urls.txt').read_text(errors='replace')[:30000])
+          print('=== ROUTES ===')
+          print(Path('probe/routes.txt').read_text(errors='replace')[:80000])
+          print('=== PRICING ===')
+          print(Path('probe/pricing-hits.txt').read_text(errors='replace')[:50000])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-latest-app-extraction
+          path: probe
+          retention-days: 3
