@@ -1,0 +1,51 @@
+name: Freshmile fast strict rebuild
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["data/freshmile-fast-rebuild.trigger"]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download last verified full Freshmile scan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api /repos/${{ github.repository }}/actions/artifacts/9567501389/zip > /tmp/freshmile.zip
+          unzip -q /tmp/freshmile.zip -d /tmp/freshmile
+          test -s /tmp/freshmile/freshmile_direct_tariffs_france.json.gz
+      - name: Rebuild strict layer with current builder
+        run: |
+          set -euo pipefail
+          python scripts/freshmile_build_tcc_v8.py /tmp/freshmile/freshmile_direct_tariffs_france.json.gz data/national/freshmile_direct_tcc_v8.json.gz
+          python - <<'PY'
+          import gzip,json,math
+          with gzip.open('data/national/freshmile_direct_tcc_v8.json.gz','rt',encoding='utf-8') as f:d=json.load(f)
+          st=next((x for x in d['stations'] if x.get('stationId')=='FRFR1P1323183653895844303'),None)
+          assert st is not None,'SMUJWYXIBS absent du strict dataset'
+          ac=next((c for c in st['configurations'] if c.get('kind')=='AC' and float(c.get('powerKw') or 0)==22),None)
+          dc=next((c for c in st['configurations'] if c.get('kind')=='DC' and float(c.get('powerKw') or 0)==50),None)
+          assert ac is not None,'SMUJWYXIBS AC 22 kW absent'
+          assert dc is not None,'SMUJWYXIBS DC 50 kW absent'
+          for cfg in (ac,dc):
+              ex=cfg['pricing']['freshmileExact']
+              assert math.isclose(float(ex['energy']['amount']),.65,abs_tol=1e-9)
+              assert math.isclose(float(ex['time']['amount']),.10,abs_tol=1e-9)
+          print({'station':st['name'],'configs':[(c['kind'],c['powerKw']) for c in st['configurations']]})
+          PY
+      - name: Publish corrected strict layer
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/national/freshmile_direct_tcc_v8.json.gz
+          git commit -m 'data(freshmile): publish mixed-EVSE strict rebuild [skip ci]'
+          git push origin HEAD:main
