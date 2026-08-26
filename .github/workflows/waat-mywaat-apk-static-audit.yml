@@ -1,0 +1,137 @@
+name: WAAT MyWAAT APK static endpoint audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/waat-mywaat-apk-static-audit.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Resolve public APK/XAPK download and inspect strings
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports /tmp/mywaat
+          python - <<'PY'
+          import json,re,urllib.request,urllib.parse,zipfile,io,os,subprocess
+          from datetime import datetime,timezone
+          UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36'
+          pages=[
+            'https://apkcombo.com/mywaat/com.waat.thirdparty.monta.waatev/download/apk',
+            'https://apkcombo.com/mywaat/com.waat.thirdparty.monta.waatev/',
+          ]
+          def fetch(url,limit=100_000_000):
+            req=urllib.request.Request(url,headers={'User-Agent':UA,'Accept':'*/*','Referer':'https://apkcombo.com/'})
+            with urllib.request.urlopen(req,timeout=45) as r:
+              return r.status,r.geturl(),r.headers, r.read(limit)
+          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'package':'com.waat.thirdparty.monta.waatev','pageProbes':[],'download':None,'domains':[],'urls':[],'apiStrings':[],'notes':[]}
+          candidates=[]
+          for p in pages:
+            try:
+              st,final,h,b=fetch(p,5_000_000); text=b.decode('utf-8','replace')
+              out['pageProbes'].append({'url':p,'status':st,'finalUrl':final,'contentType':h.get('content-type'),'length':len(b),'preview':text[:1000]})
+              for x in re.findall(r'https?://[^"\'<>\s]{8,1000}',text):
+                x=x.replace('&amp;','&')
+                if any(q in x.lower() for q in ('download','apk','xapk','mywaat','waatev')): candidates.append(x)
+              for x in re.findall(r'(?:href|data-url|data-href)=["\']([^"\']+)["\']',text,re.I):
+                u=urllib.parse.urljoin(final,x.replace('&amp;','&'))
+                if any(q in u.lower() for q in ('download','apk','xapk')): candidates.append(u)
+            except Exception as e:
+              out['pageProbes'].append({'url':p,'error':f'{type(e).__name__}: {e}'})
+          seen=[]
+          for c in candidates:
+            if c not in seen:seen.append(c)
+          payload=None; source=None; ctype=None
+          for c in seen[:100]:
+            try:
+              st,final,h,b=fetch(c)
+              ct=str(h.get('content-type') or '')
+              if b[:2]==b'PK' and len(b)>1_000_000:
+                payload=b;source=final;ctype=ct;break
+            except Exception: pass
+          if payload is None:
+            out['notes'].append('No APK/XAPK payload resolved from public APKCombo page; no bypass attempted.')
+          else:
+            out['download']={'source':source,'contentType':ctype,'size':len(payload),'sha256':__import__('hashlib').sha256(payload).hexdigest()}
+            open('/tmp/mywaat/package.zip','wb').write(payload)
+            # APK and XAPK are zip containers. Collect strings from manifest/resources/dex/native assets.
+            z=zipfile.ZipFile(io.BytesIO(payload))
+            names=z.namelist()
+            nested=[]
+            blobs=[]
+            for name in names:
+              try:
+                b=z.read(name)
+              except Exception: continue
+              if name.lower().endswith('.apk') and b[:2]==b'PK': nested.append((name,b))
+              elif len(b)<=30_000_000: blobs.append((name,b))
+            for n,b in nested:
+              try:
+                nz=zipfile.ZipFile(io.BytesIO(b))
+                for nn in nz.namelist():
+                  try: bb=nz.read(nn)
+                  except Exception: continue
+                  if len(bb)<=30_000_000:blobs.append((n+'!'+nn,bb))
+              except Exception: pass
+            urlset=set(); domains=set(); apis=[]
+            urlre=re.compile(rb'https?://[A-Za-z0-9._~:/?#\[\]@!$&\'()*+,;=%-]{5,500}')
+            domainre=re.compile(rb'(?:[A-Za-z0-9-]+\.)+(?:com|app|io|dk|fr|net|cloud|dev|co|eu)')
+            for name,b in blobs:
+              for m in urlre.finditer(b):
+                s=m.group().decode('utf-8','ignore').rstrip('.,;)\"\'')
+                if any(k in s.lower() for k in ('monta','waat','charge','api','deeplink','guest','price','tariff','stripe')):urlset.add(s)
+              for m in domainre.finditer(b):
+                s=m.group().decode('ascii','ignore').lower()
+                if any(k in s for k in ('monta','waat','charge','stripe')):domains.add(s)
+              # ASCII context around useful terms; only public app code strings, no tokens persisted.
+              lower=b.lower()
+              for needle in (b'/api/v1/',b'auth/guest',b'deeplink',b'public tariff',b'public_tariff',b'price',b'tariff',b'm.monta.com'):
+                start=0
+                while True:
+                  i=lower.find(needle,start)
+                  if i<0:break
+                  a=max(0,i-180);c=min(len(b),i+500)
+                  s=b[a:c].decode('utf-8','ignore').replace('\x00','')
+                  if s and s not in apis:apis.append(s)
+                  start=i+len(needle)
+                  if len(apis)>=500:break
+                if len(apis)>=500:break
+              if len(apis)>=500:break
+            out['domains']=sorted(domains);out['urls']=sorted(urlset)[:1000];out['apiStrings']=apis[:500]
+          open('data/reports/waat_mywaat_apk_static_audit.json','w',encoding='utf-8').write(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'pageProbes':out['pageProbes'],'download':out['download'],'domains':out['domains'],'urls':out['urls'][:150],'apiStrings':out['apiStrings'][:40],'notes':out['notes']},ensure_ascii=False,indent=2))
+          PY
+      - name: Upload report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: waat-mywaat-apk-static-audit
+          path: data/reports/waat_mywaat_apk_static_audit.json
+          retention-days: 14
+      - name: Commit sanitized report
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_mywaat_apk_static_audit.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: publish MyWAAT APK static audit"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
