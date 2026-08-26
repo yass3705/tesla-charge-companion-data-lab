@@ -1,0 +1,84 @@
+name: WAAT pre-integration audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/waat-preintegration-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate WAAT integration invariants and witness cases
+        run: |
+          python - <<'PY'
+          import gzip,json,re,collections
+          p=json.load(gzip.open('data/national/waat_monta_direct_tariffs_france.json.gz','rt',encoding='utf-8'))
+          assert p['dataset']=='waat-monta-direct-tariffs-france'
+          assert p['schemaVersion']=='2.0.0'
+          assert p['scope']['directCpoOnly'] is True
+          assert p['scope']['roamingIncluded'] is False
+          assert p['scope']['unresolvedCasesNeverRankable'] is True
+          assert p['counts']['inventoryStations']==571
+          assert p['counts']['queriedStations']==571
+          assert p['counts']['mapHttp200']==571
+          assert p['counts']['mapErrors']==0
+          ids=[s['stationIdNormalized'] for s in p['stations']]
+          assert len(ids)==len(set(ids))==571
+
+          groups={}
+          group_stations=collections.defaultdict(list)
+          for s in p['stations']:
+            assert s.get('mapHttpStatus')==200 and not s.get('mapError')
+            for g in s.get('montaGroups',[]):
+              groups[g['montaGroupId']]=g
+              group_stations[g['montaGroupId']].append(s)
+              op=str(g.get('operatorName') or '')
+              assert re.search(r'WAAT|FR\s*\*?\s*WA2',op,re.I), (g['montaGroupId'],op)
+            for g in s.get('rankableGroups',[]):
+              assert g.get('rankable') is True
+              assert g.get('blockingReason') is None
+              assert g.get('kind') in ('AC','DC')
+              assert g.get('dynamicPricing') is False
+              assert isinstance(g.get('directEurPerKwh'),(int,float)) and g['directEurPerKwh']>0
+              assert '-' not in str(g.get('priceLabel') or '')
+            by_id={g['montaGroupId']:g for g in s.get('montaGroups',[])}
+            for c in s.get('integrationConfigs',[]):
+              if not c.get('rankable'): continue
+              assert c.get('kind') in ('AC','DC') and c.get('powerKw',0)>0
+              gids=c.get('groupIds') or []
+              assert gids
+              hits=[by_id[x] for x in gids if x in by_id]
+              assert len(hits)==len(gids)
+              prices={round(float(g['directEurPerKwh']),6) for g in hits}
+              assert prices=={round(float(c['directEurPerKwh']),6)}, (s['stationIdNormalized'],c,prices)
+              assert all(g.get('rankable') is True and g.get('kind')==c['kind'] for g in hits)
+              assert all((g.get('minPowerKw') is None or c['powerKw']>=g['minPowerKw']-.6) and (g.get('maxPowerKw') is None or c['powerKw']<=g['maxPowerKw']+.6) for g in hits)
+
+          # Witness: Strasbourg PROUDREED DC 47 kW = 0.42 EUR/kWh.
+          g=groups[631961]
+          assert g['rankable'] is True and g['kind']=='DC' and abs(g['directEurPerKwh']-.42)<1e-9 and abs(g['maxPowerKw']-47)<1e-9
+          # Witness: Strasbourg PROUDREED AC 22 kW = 0.28 EUR/kWh.
+          g=groups[494949]
+          assert g['rankable'] is True and g['kind']=='AC' and abs(g['directEurPerKwh']-.28)<1e-9 and abs(g['maxPowerKw']-22)<1e-9
+          # Witness: Beziers DC group = 0.62 EUR/kWh, if present in national IRVE match it must remain exact and safe.
+          g=groups[714420]
+          assert g['rankable'] is True and g['kind']=='DC' and abs(g['directEurPerKwh']-.62)<1e-9
+          # Witness: Carcassonne mixed/range price must never rank.
+          g=groups[811653]
+          assert g['rankable'] is False and g['blockingReason']=='price_range' and g['directEurPerKwh'] is None
+          assert all(811653 not in (c.get('groupIds') or []) for s in p['stations'] for c in s.get('integrationConfigs',[]) if c.get('rankable'))
+
+          blocked=collections.Counter(g.get('blockingReason') for g in groups.values() if not g.get('rankable'))
+          print(json.dumps({'counts':p['counts'],'tariffDistribution':p['tariffDistribution'],'blockedGroups':dict(blocked),'witnesses':{
+            'strasbourg_dc':{'group':631961,'eurPerKwh':groups[631961]['directEurPerKwh']},
+            'strasbourg_ac':{'group':494949,'eurPerKwh':groups[494949]['directEurPerKwh']},
+            'beziers_dc':{'group':714420,'eurPerKwh':groups[714420]['directEurPerKwh']},
+            'carcassonne':{'group':811653,'blockingReason':groups[811653]['blockingReason'],'priceLabel':groups[811653]['priceLabel']}
+          }},ensure_ascii=False,indent=2))
+          PY
