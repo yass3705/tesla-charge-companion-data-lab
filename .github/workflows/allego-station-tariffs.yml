@@ -8,6 +8,7 @@ on:
     paths:
       - "scripts/allego_station_tariffs.py"
       - "scripts/allego_station_tariffs_fast.py"
+      - "scripts/allego_attach_irve_geo.py"
       - ".github/workflows/allego-station-tariffs.yml"
 
 permissions:
@@ -37,8 +38,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m py_compile scripts/allego_station_tariffs.py scripts/allego_station_tariffs_fast.py
+          python -m py_compile scripts/allego_station_tariffs.py scripts/allego_station_tariffs_fast.py scripts/allego_attach_irve_geo.py
           python scripts/allego_station_tariffs_fast.py --workers 16
+          python scripts/allego_attach_irve_geo.py data/national/allego_direct_stations_france.json.gz
 
       - name: Validate output and DXP coverage
         run: |
@@ -60,6 +62,8 @@ jobs:
           assert counts['dxpResolvedEvseCount'] >= 1500, counts
           assert counts['dxpPricedEvseCount'] >= 1500, counts
           assert counts['dxpPricedEvsePct'] >= 60, counts
+          assert counts['irveLinkedEvseCount'] >= 2000, counts
+          assert counts['stationsWithCoordinates'] >= 300, counts
           assert report['publicationReadyStationCount'] + report['blockedStationCount'] == counts['franceStationCount']
           assert report['publicationReadyStationCount'] >= 250, report
           print(json.dumps(counts, indent=2))
