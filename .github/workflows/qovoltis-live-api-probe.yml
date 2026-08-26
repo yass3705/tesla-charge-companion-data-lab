@@ -1,0 +1,147 @@
+name: Qovoltis live public API probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/qovoltis-live-api-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Test public production API around Toussus-le-Noble
+        shell: bash
+        run: |
+          set -e
+          mkdir -p out
+          python - <<'PY'
+          import json, subprocess, re
+          from pathlib import Path
+
+          BASE='https://qoapi.qovoltis.com/api/'
+          UA='Qovoltis-public-api-validation/1.0'
+
+          def req(method, url, body=None, name='resp'):
+              hdr=Path('out')/(name+'.headers')
+              data=Path('out')/(name+'.body')
+              cmd=['curl','-sS','-L','--max-time','25','-A',UA,'-H','Accept: application/json','-D',str(hdr),'-o',str(data),'-w','%{http_code}', '-X', method]
+              if body is not None:
+                  cmd += ['-H','Content-Type: application/json','--data',json.dumps(body,separators=(',',':'))]
+              cmd += [url]
+              p=subprocess.run(cmd,capture_output=True,text=True)
+              code=p.stdout.strip()
+              text=data.read_text(errors='replace') if data.exists() else ''
+              print('\n====',name,method,url,'HTTP',code,'bytes',len(text.encode()),'====')
+              print(text[:6000])
+              return code,text
+
+          # Harmless endpoints first: distinguish open API vs auth-gated API.
+          req('GET',BASE+'app/getSetting',name='setting')
+          req('GET',BASE+'borne/map-station-preview?station_id=invalid-public-test',name='preview_invalid')
+
+          cases=[
+            ('map_a','0.20','2.00','48.65',1,{'filters':None}),
+            ('map_b','0.30','1.95','48.60',1,{}),
+            ('map_c','0.30','1.95','48.60',1,{'filters':{}}),
+            ('map_d','0.50','1.85','48.50',1,{'filters':None}),
+            ('map_e','0.30','1.95','48.60',0,{'filters':None}),
+          ]
+          successes=[]
+          for name,side,minlng,minlat,emsp,body in cases:
+              url=f'{BASE}borne/emsp-map-station-list?side={side}&minlng={minlng}&minlat={minlat}&emsp={emsp}'
+              code,text=req('POST',url,body,name)
+              if code.startswith('2') and text.lstrip().startswith(('{','[')):
+                  try: successes.append((name,json.loads(text)))
+                  except Exception: pass
+
+          # Recursively collect station-looking objects and internal IDs; prefer Toussus match.
+          objs=[]
+          def walk(x,path='$'):
+              if isinstance(x,dict):
+                  vals=' '.join(str(v) for v in x.values() if isinstance(v,(str,int,float)))
+                  keys={str(k).lower() for k in x}
+                  if ('id' in keys or 'station_id' in keys) and any(k in keys for k in ['coordx','coordy','latitude','longitude','lat','lng','name','nom','ville','adresse','address','id','station_id']):
+                      objs.append((path,x,vals))
+                  for k,v in x.items(): walk(v,path+'.'+str(k))
+              elif isinstance(x,list):
+                  for i,v in enumerate(x): walk(v,path+f'[{i}]')
+          for name,j in successes: walk(j,'$.'+name)
+          print('\nstation-like objects:',len(objs))
+
+          def extract_id(o):
+              for k,v in o.items():
+                  if str(k).lower() in ('station_id','id') and isinstance(v,(str,int)):
+                      return str(v)
+              return None
+
+          matches=[]
+          for path,o,vals in objs:
+              low=vals.lower()
+              if any(s in low for s in ['toussus','aerodrome','aérodrome','air & co','air et co']):
+                  sid=extract_id(o)
+                  print('MATCH',path,'id=',sid,json.dumps(o,ensure_ascii=False)[:3000])
+                  if sid: matches.append(sid)
+
+          # If no textual match, select only objects geographically very close to Toussus when coords are recognizable.
+          if not matches:
+              for path,o,vals in objs:
+                  sid=extract_id(o)
+                  if not sid: continue
+                  nums=[]
+                  for k,v in o.items():
+                      if isinstance(v,(int,float)):
+                          nums.append((str(k).lower(),float(v)))
+                  lat=next((v for k,v in nums if k in ('lat','latitude','coordy') and 40<v<55),None)
+                  lng=next((v for k,v in nums if k in ('lng','lon','long','longitude','coordx') and -10<v<15),None)
+                  # API may reverse coordX/Y, check both sensible orientations.
+                  if lat is not None and lng is not None and abs(lat-48.75)<0.12 and abs(lng-2.11)<0.18:
+                      print('GEO MATCH',path,'id=',sid,'lat/lng=',lat,lng)
+                      matches.append(sid)
+
+          matches=list(dict.fromkeys(matches))[:5]
+          Path('out/candidate_station_ids.json').write_text(json.dumps(matches,indent=2))
+          print('candidate ids',matches)
+          for i,sid in enumerate(matches):
+              req('GET',BASE+'borne/map-station-preview?station_id='+sid,name=f'preview_{i}')
+          PY
+
+      - name: Summarize public tariff fields
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json,re
+          rows=[]
+          for p in sorted(Path('out').glob('preview_*.body')):
+              text=p.read_text(errors='replace')
+              try: j=json.loads(text)
+              except: continue
+              def find(obj,key):
+                  if isinstance(obj,dict):
+                      if key in obj: return obj[key]
+                      for v in obj.values():
+                          z=find(v,key)
+                          if z is not None:return z
+                  elif isinstance(obj,list):
+                      for v in obj:
+                          z=find(v,key)
+                          if z is not None:return z
+                  return None
+              row={'file':p.name}
+              for k in ['id','adresse','ville','operator_name','tarif_heures_creuses','tarif_heures_pleines','pricing_total','pricing_qovoltis','hbj_plat_fee','duration_rate','opening_time','bornes']:
+                  row[k]=find(j,k)
+              rows.append(row)
+          Path('out/tariff_summary.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2))
+          print(json.dumps(rows,ensure_ascii=False,indent=2)[:30000])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-live-public-api-probe
+          path: out
+          retention-days: 5
