@@ -6,6 +6,7 @@ on:
     branches: ["main"]
     paths:
       - "scripts/etotem_direct_tariff_harvest.mjs"
+      - "scripts/etotem_normalize_inventory_coordinates.py"
       - ".github/workflows/etotem-direct-tariff-harvest.yml"
 
 permissions:
@@ -25,6 +26,8 @@ jobs:
           fetch-depth: 0
       - name: Ensure physical inventory exists
         run: test -s data/national/etotem_direct_stations_france.json.gz
+      - name: Normalize IRVE coordinate orientation
+        run: python scripts/etotem_normalize_inventory_coordinates.py data/national/etotem_direct_stations_france.json.gz
       - name: Install browser driver
         run: npm install --no-save playwright-core@1.55.0
       - name: Harvest public direct tariffs
@@ -49,6 +52,7 @@ jobs:
               assert str(a.get('bGireve',0)) == '0'
               assert str(a.get('bItinerance',0)) == '0'
           print(json.dumps(c,ensure_ascii=False,indent=2))
+          print(json.dumps(d.get('coverageByFamily',{}),ensure_ascii=False,indent=2))
           print('profiles',len(d.get('tariffProfiles',[])))
           PY
       - name: Publish harvest
