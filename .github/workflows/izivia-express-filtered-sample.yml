@@ -1,0 +1,116 @@
+name: IZIVIA Express filtered station pricing sample
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/izivia-express-filtered-sample.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch IZIVIA Express-only markers and sample direct pricing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          python - <<'PY'
+          import json, uuid, urllib.request, urllib.error, urllib.parse
+          from pathlib import Path
+
+          BASE='https://fronts-map.izivia.com/api/'
+          NETWORK_ID='67ab64d36b14f13fac39a82d'
+          device=str(uuid.uuid4())
+          headers={
+              'Accept':'application/json',
+              'Accept-Language':'fr',
+              'Content-Type':'application/json',
+              'x-device-id':device,
+              'User-Agent':'Mozilla/5.0 TCC-IZIVIA-Express-sample'
+          }
+          filters={
+              'chargingConnectors':[],
+              'supportsAutocharge':False,
+              'onlyTwentyFourSeven':False,
+              'onlyAvailable':False,
+              'capabilityTypes':[],
+              'marketingNetworkIds':[NETWORK_ID],
+          }
+
+          def call(path, method='GET', body=None):
+              data=None if body is None else json.dumps(body,separators=(',',':')).encode()
+              req=urllib.request.Request(BASE+path,data=data,headers=headers,method=method)
+              try:
+                  with urllib.request.urlopen(req,timeout=35) as r:
+                      return r.status,r.read().decode('utf-8','replace')
+              except urllib.error.HTTPError as e:
+                  return e.code,e.read().decode('utf-8','replace')
+
+          marker_body={
+              'square':{'centerLng':2.2,'centerLat':46.2,'zoom':5},
+              'filters':filters,
+          }
+          status,text=call('map/markers','POST',marker_body)
+          print('MARKERS STATUS',status,'BYTES',len(text))
+          print(text[:5000])
+          if status!=200:
+              raise SystemExit('marker request failed')
+          markers=json.loads(text)
+          Path('probe/markers_express_only.json').write_text(json.dumps(markers,ensure_ascii=False,indent=2))
+          if not isinstance(markers,list):
+              raise SystemExit('unexpected marker schema')
+          print('EXPRESS MARKERS',len(markers))
+
+          rows=[]
+          for marker in markers[:20]:
+              sid=marker.get('id') if isinstance(marker,dict) else None
+              if not sid:
+                  continue
+              dst,dtxt=call(f'charging-locations/{sid}','POST',{'filters':filters})
+              print('\n=== DETAIL',sid,dst,'===')
+              print(dtxt[:8000])
+              detail=None
+              if dst==200:
+                  try: detail=json.loads(dtxt)
+                  except Exception: pass
+              row={'marker':marker,'detailStatus':dst,'detail':detail,'detailRaw':dtxt[:20000]}
+              if isinstance(detail,dict):
+                  legacy=detail.get('legacyId')
+                  emip=detail.get('firstStationEmipId')
+                  row['legacyId']=legacy
+                  row['firstStationEmipId']=emip
+                  if legacy is not None and emip:
+                      qs=urllib.parse.urlencode({'legacyId':legacy,'stationEmipId':emip})
+                      pst,ptxt=call(f'charging-locations/{sid}/pricing-info-items?{qs}')
+                      row['pricingStatus']=pst
+                      row['pricingRaw']=ptxt[:100000]
+                      try: row['pricing']=json.loads(ptxt)
+                      except Exception: pass
+                      print('PRICING',pst,ptxt[:12000])
+              rows.append(row)
+              if row.get('pricingStatus')==200:
+                  break
+
+          Path('probe/sample_details_pricing.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2))
+          pricing_ok=[r for r in rows if r.get('pricingStatus')==200]
+          print('\nSUMMARY',json.dumps({
+              'markerCount':len(markers),
+              'detailsTried':len(rows),
+              'pricingResponses':len(pricing_ok),
+              'networkId':NETWORK_ID
+          },ensure_ascii=False))
+          if not pricing_ok:
+              raise SystemExit('No Express pricing response obtained')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: izivia-express-filtered-sample
+          path: probe
+          retention-days: 3
