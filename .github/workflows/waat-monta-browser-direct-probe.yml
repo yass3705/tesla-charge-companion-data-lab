@@ -1,0 +1,206 @@
+name: WAAT Monta browser direct pricing probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/waat-monta-browser-direct-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Selenium
+        run: pip install --disable-pip-version-check selenium
+      - name: Probe WAAT via public Monta browser guest flow
+        run: |
+          set -euo pipefail
+          mkdir -p data/reports
+          python - <<'PY'
+          import json, time, re
+          from datetime import datetime, timezone
+          from pathlib import Path
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+
+          TARGETS = [
+              {"label":"Beziers", "lat":43.341484, "lng":3.261133, "expected":"FRWA2"},
+              {"label":"Carcassonne", "lat":43.226240, "lng":2.327766, "expected":"FRWA2"},
+          ]
+
+          def norm(v):
+              return re.sub(r'[^A-Z0-9]','',str(v or '').upper())
+
+          def redact_headers(h):
+              out={}
+              for k,v in (h or {}).items():
+                  lk=str(k).lower()
+                  if lk in {'authorization','cookie','set-cookie','x-auth-token'} or 'token' in lk:
+                      out[k]='[redacted]'
+                  elif lk in {'meta','uuid','operator','accept-language','timezone','time-zone','locale','content-type','accept','origin','referer','user-agent'}:
+                      out[k]=v
+              return out
+
+          opts=Options()
+          for a in ['--headless=new','--no-sandbox','--disable-dev-shm-usage','--window-size=1440,1000','--lang=fr-FR']:
+              opts.add_argument(a)
+          opts.set_capability('goog:loggingPrefs',{'performance':'ALL','browser':'ALL'})
+          driver=webdriver.Chrome(options=opts)
+          results=[]
+          try:
+              driver.execute_cdp_cmd('Network.enable', {})
+              for t in TARGETS:
+                  # Clear prior performance entries so each target is isolated.
+                  try: driver.get_log('performance')
+                  except Exception: pass
+                  url=f"https://maps.monta.app/?lat={t['lat']}&lng={t['lng']}&zoom=17&locale=fr"
+                  driver.get(url)
+                  time.sleep(10)
+                  perf=driver.get_log('performance')
+                  reqs={}; resps={}; extras={}
+                  for row in perf:
+                      try:
+                          m=json.loads(row['message'])['message']; p=m.get('params',{}); rid=p.get('requestId')
+                      except Exception:
+                          continue
+                      if m['method']=='Network.requestWillBeSent':
+                          r=p.get('request',{})
+                          reqs[rid]={'url':r.get('url'),'method':r.get('method'),'headers':r.get('headers',{})}
+                      elif m['method']=='Network.requestWillBeSentExtraInfo':
+                          extras[rid]=p.get('headers',{})
+                      elif m['method']=='Network.responseReceived':
+                          r=p.get('response',{})
+                          resps[rid]={'url':r.get('url'),'status':r.get('status'),'mimeType':r.get('mimeType')}
+
+                  auth_events=[]; map_events=[]; map_items=[]; selected_map_headers={}
+                  for rid,resp in resps.items():
+                      u=str(resp.get('url') or '')
+                      if '/api/v1/auth/guest' in u:
+                          auth_events.append({'status':resp.get('status'),'url':u})
+                      if '/api/v1/charge_points/map' not in u or int(resp.get('status') or 0)!=200:
+                          continue
+                      try:
+                          body=driver.execute_cdp_cmd('Network.getResponseBody',{'requestId':rid}).get('body','')
+                          payload=json.loads(body)
+                      except Exception as e:
+                          map_events.append({'url':u,'status':resp.get('status'),'error':str(e)})
+                          continue
+                      hdr={**(reqs.get(rid,{}).get('headers') or {}), **(extras.get(rid) or {})}
+                      selected_map_headers=hdr
+                      items=payload.get('list') or payload.get('data') or []
+                      if isinstance(items,dict): items=items.get('list') or items.get('items') or []
+                      if not isinstance(items,list): items=[]
+                      map_items.extend(items)
+                      map_events.append({'url':u,'status':resp.get('status'),'itemCount':len(items),'headers':redact_headers(hdr)})
+
+                  def is_waat_item(x):
+                      blob=' '.join(str(x.get(k) or '') for k in ['operator_name','operator','name','identifier','evse_id','id_pdc_itinerance','charge_point_id'])
+                      n=norm(blob)
+                      return 'WAAT' in blob.upper() or 'FRWA2' in n
+
+                  matches=[x for x in map_items if isinstance(x,dict) and is_waat_item(x)]
+
+                  # Reuse only the public guest request context already established by the page.
+                  # We never persist credentials. Detail calls happen from the browser origin.
+                  safe_header_names={'authorization','meta','uuid','operator','accept-language','timezone','time-zone','locale'}
+                  detail_headers={k:v for k,v in selected_map_headers.items() if str(k).lower() in safe_header_names}
+                  details=[]
+                  for x in matches[:20]:
+                      doc=str(x.get('document') or '')
+                      xid=x.get('id')
+                      if xid is None: continue
+                      if doc=='charge_point_group':
+                          endpoint=f"https://api.monta.app/api/v1/charge_point_groups/{xid}"
+                      elif doc=='charge_point':
+                          endpoint=f"https://api.monta.app/api/v1/charge_points/{xid}"
+                      else:
+                          # Try group first for map objects; fail closed if unsupported.
+                          endpoint=f"https://api.monta.app/api/v1/charge_point_groups/{xid}"
+                      script="""
+                      const done=arguments[arguments.length-1];
+                      const url=arguments[0], headers=arguments[1];
+                      fetch(url,{method:'GET',headers:headers,credentials:'omit'})
+                        .then(async r=>({status:r.status,text:await r.text(),url:r.url}))
+                        .then(done).catch(e=>done({status:0,error:String(e),url:url}));
+                      """
+                      raw=driver.execute_async_script(script, endpoint, detail_headers)
+                      rec={'endpoint':endpoint,'status':raw.get('status'),'mapObject':x}
+                      text=raw.get('text') or ''
+                      if text:
+                          try:
+                              obj=json.loads(text)
+                              rec['detail']=obj
+                          except Exception:
+                              rec['bodyPreview']=text[:1000]
+                      if raw.get('error'): rec['error']=raw['error']
+                      details.append(rec)
+
+                  # Sanitize recursively: remove credential-ish fields but retain tariff/pricing fields.
+                  sensitive=re.compile(r'(token|authorization|cookie|password|secret|zendesk_jwt)',re.I)
+                  def sanitize(o):
+                      if isinstance(o,dict):
+                          return {k:('[redacted]' if sensitive.search(str(k)) else sanitize(v)) for k,v in o.items()}
+                      if isinstance(o,list): return [sanitize(v) for v in o]
+                      return o
+
+                  results.append(sanitize({
+                      'target':t,
+                      'pageUrl':driver.current_url,
+                      'authEvents':auth_events,
+                      'mapEvents':map_events,
+                      'mapItemCount':len(map_items),
+                      'waatMatchCount':len(matches),
+                      'waatMapObjects':matches[:30],
+                      'details':details,
+                  }))
+
+              out={
+                  'generatedAt':datetime.now(timezone.utc).isoformat(),
+                  'method':'public-monta-web-map-guest-browser',
+                  'scope':{'operatorDirectOnly':True,'roamingIncluded':False,'credentialsPersisted':False},
+                  'results':results,
+              }
+              Path('data/reports/waat_monta_browser_direct_probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+              print(json.dumps({
+                  'summary':[{
+                      'target':r['target']['label'],
+                      'auth':r['authEvents'],
+                      'mapItemCount':r['mapItemCount'],
+                      'waatMatchCount':r['waatMatchCount'],
+                      'detailStatuses':[d.get('status') for d in r['details']],
+                      'operators':[x.get('operator_name') for x in r['waatMapObjects']],
+                  } for r in results]
+              },ensure_ascii=False,indent=2))
+          finally:
+              driver.quit()
+          PY
+      - name: Upload probe report
+        uses: actions/upload-artifact@v4
+        with:
+          name: waat-monta-browser-direct-probe
+          path: data/reports/waat_monta_browser_direct_probe.json
+          retention-days: 14
+      - name: Commit sanitized report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/waat_monta_browser_direct_probe.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data: publish sanitized WAAT Monta browser direct probe"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
