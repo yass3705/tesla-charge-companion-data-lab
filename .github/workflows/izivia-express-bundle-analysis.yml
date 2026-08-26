@@ -1,0 +1,61 @@
+name: IZIVIA Express public bundle endpoint analysis
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/izivia-express-bundle-analysis.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Extract IZIVIA public API routes from map bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          curl -fsSL --retry 3 'https://fronts-map.izivia.com/' -o probe/index.html
+          BUNDLE=$(grep -oE 'assets/index-[A-Za-z0-9_-]+\.js' probe/index.html | head -1)
+          test -n "$BUNDLE"
+          curl -fsSL --retry 3 "https://fronts-map.izivia.com/$BUNDLE" -o probe/bundle.js
+          python - <<'PY'
+          import re, json
+          from pathlib import Path
+          s=Path('probe/bundle.js').read_text(errors='replace')
+          out={}
+          out['apiRoutes']=sorted(set(re.findall(r'["\'`](\/api\/[A-Za-z0-9_?&=\-{}./:${},]+)["\'`]',s)))
+          # broader route fragments around keywords, to survive minification/string concatenation
+          keys=['marker','station','location','chargepoint','evse','tariff','price','pricing','detail','marketing-network','network']
+          contexts=[]
+          low=s.lower()
+          for key in keys:
+              pos=0
+              seen=0
+              while seen<80:
+                  i=low.find(key,pos)
+                  if i<0: break
+                  a=max(0,i-260); b=min(len(s),i+520)
+                  contexts.append({'key':key,'context':s[a:b]})
+                  pos=i+len(key); seen+=1
+          out['contexts']=contexts
+          Path('probe/routes.json').write_text(json.dumps(out,ensure_ascii=False,indent=2))
+          print('BUNDLE BYTES',len(s))
+          print('=== API ROUTES ===')
+          for r in out['apiRoutes']: print(r)
+          print('=== KEYWORD CONTEXTS ===')
+          for x in contexts[:250]:
+              print('\n###',x['key'])
+              print(x['context'])
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: izivia-express-bundle-analysis
+          path: probe
+          retention-days: 3
