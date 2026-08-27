@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "generated_date": "2026-08-27",
+  "country": "MA",
+  "scope": "FastVolt public BorneRecharge platform surface",
+  "policy": {
+    "public_web_sources_only": true,
+    "read_only": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_mutations": true,
+    "no_private_context_values": true
+  },
+  "evidence": {
+    "current_public_portal": {
+      "url": "https://app.fastvolt.bornerecharge.ma/",
+      "observed_state": "publicly reachable",
+      "public_role_labels": ["Admin & CPO", "Business Managers"],
+      "interpretation": "A current public FastVolt portal is hosted inside the bornerecharge.ma platform namespace and explicitly separates CPO/admin and business-manager roles. This is platform-context evidence only; it is not a public driver API endpoint."
+    },
+    "historical_or_indexed_api_host": {
+      "url": "https://app.api.fastvolt.bornerecharge.ma/",
+      "search_index_observation": "public search index still contains an EVPlug.ma page at this host",
+      "current_runtime_validation": "not validated as reachable by this report",
+      "interpretation": "The indexed host materially strengthens the FastVolt/BorneRecharge/EVPlug backend-family hypothesis, but it must not be promoted to current status_source or app runtime authority until route-level reachability is validated."
+    },
+    "existing_native_route_context": {
+      "shared_route_family": [
+        "/app/charging_stations/",
+        "/user/get_charging_station_details/"
+      ],
+      "existing_route_resolved_host": "mobile.ev.fastvolt.ma",
+      "existing_route_status": 401,
+      "safe_context_markers": ["business", "organisation"]
+    }
+  },
+  "modeling": {
+    "cpo_operator": "FastVolt / Afrimobility",
+    "site_brand": null,
+    "app_source_access_network": "FastVolt",
+    "tariff_channel": "FastVolt direct",
+    "status_source": null,
+    "evplug_role": "technical/platform/eMSP relationship evidence only; never infer EVPlug as FastVolt CPO from this evidence"
+  },
+  "conclusion": "FastVolt has a current public platform surface under app.fastvolt.bornerecharge.ma with explicit CPO/business role separation, while public indexing also exposes a historical or otherwise non-validated app.api.fastvolt.bornerecharge.ma host branded EVPlug.ma. Combined with the already confirmed shared FastVolt/EVOne station-route fingerprint and the 401 business/organisation requirement on mobile.ev.fastvolt.ma, this materially strengthens the hypothesis that FastVolt and EVOne share BorneRecharge/EVPlug platform infrastructure. It does not yet resolve the current anonymous driver API authority or native live-status feed."
+}
