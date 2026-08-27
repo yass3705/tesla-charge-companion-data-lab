@@ -1,0 +1,116 @@
+name: Qovoltis ChargeNow direct tariff probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/qovoltis-chargenow-direct-tariff-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Probe public ChargeNow site-details endpoint with known Qovoltis site refs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import requests, json
+          refs=['FR*QOV*78-00003','FR*QOV*77-00006','FR*QOV*33-00013','FR*QOV*33-00003','FR*QOV*59-00001']
+          base='https://bss.qovoltis.com/api/borne/site-details'
+          out=[]
+          for ref in refs:
+              try:
+                  r=requests.get(base,params={'ref_site':ref},headers={'User-Agent':'Mozilla/5.0','Accept':'application/json'},timeout=20)
+                  out.append({'ref_site':ref,'status':r.status_code,'content_type':r.headers.get('content-type'),'text':r.text[:10000]})
+              except Exception as e:
+                  out.append({'ref_site':ref,'error':repr(e)})
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          open('out/site-details-probe.json','w').write(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Fetch latest Qovoltis IRVE static dataset metadata and locate resource
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import requests,json
+          # data.gouv dataset slug discovered publicly
+          u='https://www.data.gouv.fr/api/1/datasets/irve-statique-organisation-qovoltis/'
+          r=requests.get(u,headers={'User-Agent':'Mozilla/5.0'},timeout=30)
+          print(r.status_code,r.url)
+          print(r.text[:20000])
+          open('out/datagouv-dataset.json','w').write(r.text)
+          if r.ok:
+              obj=r.json()
+              for res in obj.get('resources',[]):
+                  print('RESOURCE',res.get('title'),res.get('url'),res.get('format'),res.get('last_modified'))
+          PY
+
+      - name: Download current Qovoltis CSV and search site refs / Toussus
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import requests,json,csv,io,re
+          obj=json.load(open('out/datagouv-dataset.json'))
+          ress=[x for x in obj.get('resources',[]) if (x.get('format') or '').lower()=='csv']
+          if not ress: raise SystemExit('no CSV resource')
+          url=ress[0]['url']
+          r=requests.get(url,headers={'User-Agent':'Mozilla/5.0'},timeout=60)
+          print('CSV',r.status_code,len(r.content),r.url)
+          open('out/qovoltis-current.csv','wb').write(r.content)
+          text=r.content.decode('utf-8-sig','replace')
+          rows=list(csv.DictReader(io.StringIO(text)))
+          print('rows',len(rows),'fields',rows[0].keys() if rows else None)
+          selected=[]
+          for row in rows:
+              blob=' '.join(str(v) for v in row.values())
+              if re.search(r'Toussus|A[eé]rodrome',blob,re.I) or 'FR*QOV*78-' in blob:
+                  selected.append(row)
+          print(json.dumps(selected[:100],ensure_ascii=False,indent=2))
+          open('out/toussus-and-78.json','w').write(json.dumps(selected,ensure_ascii=False,indent=2))
+          PY
+
+      - name: For Qovoltis refs from current dataset, test ChargeNow endpoint and extract pricing fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv,re,requests,json
+          rows=list(csv.DictReader(open('out/qovoltis-current.csv',encoding='utf-8-sig',errors='replace')))
+          refs=[]
+          for row in rows:
+              vals=list(row.values())
+              for v in vals:
+                  if not v: continue
+                  for m in re.findall(r'FR\*QOV\*[0-9A-Z-]+',str(v)):
+                      if m not in refs: refs.append(m)
+          # focus known dept 78 first, then small national sample
+          ordered=[r for r in refs if r.startswith('FR*QOV*78-')] + refs[:20]
+          ordered=list(dict.fromkeys(ordered))[:40]
+          base='https://bss.qovoltis.com/api/borne/site-details'
+          results=[]
+          for ref in ordered:
+              try:
+                  resp=requests.get(base,params={'ref_site':ref},headers={'User-Agent':'Mozilla/5.0','Accept':'application/json'},timeout=15)
+                  item={'ref_site':ref,'status':resp.status_code,'content_type':resp.headers.get('content-type')}
+                  try:
+                      data=resp.json(); item['json']=data
+                  except Exception: item['text']=resp.text[:2000]
+                  results.append(item)
+              except Exception as e: results.append({'ref_site':ref,'error':repr(e)})
+          print(json.dumps(results,ensure_ascii=False,indent=2)[:100000])
+          open('out/current-ref-site-details.json','w').write(json.dumps(results,ensure_ascii=False,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-chargenow-direct-tariff-probe
+          path: out
+          retention-days: 5
