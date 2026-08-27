@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-27T14:43:00Z",
+  "country": "MA",
+  "network": "FastVolt",
+  "finding": "bounded infrastructure-only neighborhoods around the current ma.fastgo station route literals contain no backend hostname or authority literal",
+  "source": {
+    "report": "reports/morocco/fastvolt/latest-current-mobile-client-indicators.json",
+    "workflow_run": 33083605560,
+    "package": "ma.fastgo",
+    "public_catalog": "APKPure"
+  },
+  "evidence": {
+    "station_list_route": "/app/charging_stations/",
+    "station_detail_route": "/user/get_charging_station_details/",
+    "source_file": "lib/arm64-v8a/libapp.so",
+    "route_neighborhood_domain_or_url_candidates": 0,
+    "global_relevant_domain_like_indicators": 0,
+    "validated_backend_host": null
+  },
+  "modeling": {
+    "cpo_operator": "FastVolt / Afrimobility",
+    "site_brand": null,
+    "app_source_access_network": "FastVolt",
+    "tariff_channel": "FastVolt direct",
+    "status_source": null,
+    "evplug_relationship": "public client/support/component context only; not promoted to CPO or native status source"
+  },
+  "interpretation": "The current Flutter AOT client keeps the station route literals in libapp.so, but a bounded static strings neighborhood around those routes exposes no infrastructure authority. This makes simple nearby-string reconstruction a documented dead end. The next safe avenues are current-client runtime configuration assets, Flutter AOT symbol/constant reconstruction, or a bounded anonymous observation of app network traffic; do not guess hosts from EVPlug branding alone.",
+  "policy": {
+    "public_sources_only": true,
+    "read_only": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_mutations": true,
+    "no_secrets_persisted": true
+  }
+}
