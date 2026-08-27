@@ -1,0 +1,27 @@
+name: Qovoltis Toussus ref validation
+on:
+  push:
+    paths: ['.github/workflows/qovoltis-toussus-ref-validation.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test Toussus candidate ChargeNow refs
+        shell: bash
+        run: |
+          python - <<'PY'
+          import requests,json
+          refs=['FR*QOV*78-00027','FR*QOV*78-000027','FRQOV7800027']
+          u='https://bss.qovoltis.com/api/borne/site-details'
+          out=[]
+          for ref in refs:
+              r=requests.get(u,params={'ref_site':ref},headers={'User-Agent':'Mozilla/5.0','Accept':'application/json'},timeout=20)
+              rec={'ref_site':ref,'status':r.status_code}
+              try: rec['json']=r.json()
+              except: rec['text']=r.text[:2000]
+              out.append(rec)
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
