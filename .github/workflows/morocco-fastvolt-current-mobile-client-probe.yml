@@ -1,0 +1,158 @@
+name: Morocco FastVolt current mobile client probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-current-mobile-client-probe.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-fastvolt-current-mobile-client-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download public current FastVolt XAPK temporarily
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/fastvolt-xapk
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/ma.fastgo?version=latest' \
+            -o /tmp/fastvolt.xapk
+          test "$(stat -c%s /tmp/fastvolt.xapk)" -lt 120000000
+          unzip -q /tmp/fastvolt.xapk -d /tmp/fastvolt-xapk
+          find /tmp/fastvolt-xapk -type f -name '*.apk' -print
+
+      - name: Extract sanitized public client indicators
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, re, subprocess, hashlib
+          from datetime import datetime, timezone
+          from urllib.parse import urlsplit
+
+          root='/tmp/fastvolt-xapk'
+          out='reports/morocco/fastvolt/latest-current-mobile-client-indicators.json'
+          os.makedirs(os.path.dirname(out), exist_ok=True)
+          apks=[]
+          for dp,_,fs in os.walk(root):
+              for f in fs:
+                  if f.endswith('.apk'):
+                      apks.append(os.path.join(dp,f))
+          if not apks:
+              raise SystemExit('no APK found in XAPK')
+
+          text_parts=[]
+          apk_meta=[]
+          for p in sorted(apks):
+              data=open(p,'rb').read()
+              apk_meta.append({'name':os.path.basename(p),'size_bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})
+              proc=subprocess.run(['strings','-a','-n','5',p],capture_output=True,text=True,errors='ignore',timeout=90)
+              text_parts.append(proc.stdout)
+          text='\n'.join(text_parts)
+
+          # Keep only public infrastructure indicators. Strip queries/fragments, IPs and obvious secret-bearing strings.
+          url_re=re.compile(r'https?://[^\\s\"\'<>]{4,300}',re.I)
+          urls=[]
+          for raw in url_re.findall(text):
+              raw=raw.rstrip('),.;]}')
+              try:
+                  u=urlsplit(raw)
+              except Exception:
+                  continue
+              host=(u.hostname or '').lower()
+              if not host or re.fullmatch(r'\\d{1,3}(?:\\.\\d{1,3}){3}',host):
+                  continue
+              path=u.path or '/'
+              if len(path)>180:
+                  path=path[:180]
+              urls.append(f'{u.scheme.lower()}://{host}{path}')
+
+          # Route-like literals relevant only to station/tariff/status discovery.
+          route_terms=('api','station','charger','chargepoint','connector','evse','status','tariff','price','cost','map','location','availability')
+          routes=set()
+          for line in text.splitlines():
+              s=line.strip()
+              if not (2 <= len(s) <= 180):
+                  continue
+              low=s.lower()
+              if not any(t in low for t in route_terms):
+                  continue
+              if any(x in low for x in ('authorization','bearer ','password','secret','refresh_token','access_token','client_secret')):
+                  continue
+              if re.fullmatch(r'/[A-Za-z0-9_./{}?=&:-]+',s) and ('/' in s[1:]):
+                  s=s.split('?',1)[0]
+                  routes.add(s)
+
+          hosts=sorted({urlsplit(u).hostname for u in urls if urlsplit(u).hostname})
+          urls=sorted(set(urls))
+          # Limit to likely backend/config URLs, excluding generic library domains.
+          relevant=[]
+          for u in urls:
+              low=u.lower()
+              if any(k in low for k in ('fastvolt','fastgo','evplug','api','charge','charger','station','firebase','ampeco','numocity')):
+                  relevant.append(u)
+
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA',
+            'network':'FastVolt',
+            'source':{
+              'package':'ma.fastgo',
+              'public_catalog':'APKPure',
+              'download_shape':'https://d.apkpure.net/b/XAPK/ma.fastgo?version=latest',
+              'raw_apk_persisted':False
+            },
+            'policy':{
+              'public_source_only':True,'read_only':True,'no_login':True,'no_credentials':True,
+              'no_mutations':True,'raw_binary_not_committed':True,'query_strings_removed':True,
+              'obvious_secret_bearing_literals_excluded':True
+            },
+            'apk_files':apk_meta,
+            'sanitized':{
+              'hosts':hosts[:100],
+              'relevant_urls':relevant[:150],
+              'route_like_literals':sorted(routes)[:250]
+            },
+            'modeling':{
+              'cpo_operator':'FastVolt / Afrimobility',
+              'site_brand':None,
+              'app_source_access_network':'FastVolt',
+              'tariff_channel':'FastVolt direct',
+              'status_source':None
+            },
+            'interpretation':'Indicators are static public-client clues only. A host or route is not promoted to native status/tariff source until separately validated with a bounded anonymous read-only request.'
+          }
+          with open(out,'w',encoding='utf-8') as f:
+              json.dump(report,f,ensure_ascii=False,indent=2)
+              f.write('\n')
+          PY
+          rm -rf /tmp/fastvolt.xapk /tmp/fastvolt-xapk
+
+      - name: Publish sanitized report when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/fastvolt/latest-current-mobile-client-indicators.json
+          if git diff --cached --quiet; then
+            echo 'No sanitized report change.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "diag(morocco): publish FastVolt current mobile indicators [run $GITHUB_RUN_ID]"
+          git push
