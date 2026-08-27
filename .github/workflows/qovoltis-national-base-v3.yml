@@ -1,0 +1,124 @@
+name: Qovoltis national direct tariff base v3
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/qovoltis-national-base-v3.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build QOV + QVI national direct tariff base
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv,io,json,re,time,hashlib
+          from concurrent.futures import ThreadPoolExecutor,as_completed
+          from datetime import datetime,timezone
+          from pathlib import Path
+          from urllib.request import Request,urlopen
+          from urllib.error import HTTPError
+          from urllib.parse import quote
+          OUT=Path('data/qovoltis');OUT.mkdir(parents=True,exist_ok=True)
+          UA='TeslaChargeCompanion-DataLab/1.0 (+public-read-only)'
+          def req(url,timeout=40):
+            with urlopen(Request(url,headers={'User-Agent':UA,'Accept':'application/json,text/csv,*/*'}),timeout=timeout) as r:return r.read(),getattr(r,'status',200),r.headers.get('content-type','')
+          meta=json.loads(req('https://www.data.gouv.fr/api/1/datasets/irve-statique-organisation-qovoltis/')[0].decode())
+          rr=[r for r in meta.get('resources',[]) if (r.get('format') or '').lower()=='csv'];rr.sort(key=lambda r:str(r.get('last_modified') or ''),reverse=True);rs=rr[0]
+          raw,_,ctype=req(rs['url'],90);txt=raw.decode('utf-8-sig','replace')
+          try:d=csv.Sniffer().sniff(txt[:12000],delimiters=',;\t')
+          except:d=csv.excel
+          rows=list(csv.DictReader(io.StringIO(txt),dialect=d))
+          def first(r,*n):
+            x={str(k).strip().lower():v for k,v in r.items() if k is not None}
+            for k in n:
+              v=x.get(k.lower())
+              if v is not None and str(v).strip():return str(v).strip()
+          def convert(s):
+            if not s:return None
+            x=re.sub('[^A-Za-z0-9]','',s).upper();m=re.fullmatch(r'FR(QOV|QVI)([A-Z0-9]+)(\d{5})',x)
+            return f'FR*{m.group(1)}*{m.group(2)}-{m.group(3)}' if m else None
+          sites={};bad=[]
+          for r in rows:
+            sid=first(r,'id_station_itinerance','id_station','id_station_local');ref=convert(sid)
+            if not ref:bad.append({'id_station_itinerance':sid,'id_pdc_itinerance':first(r,'id_pdc_itinerance')});continue
+            s=sites.setdefault(ref,{'ref_site':ref,'emi3_prefix':ref.split('*')[1],'id_station_itinerance':sid,'nom_station':first(r,'nom_station'),'adresse_station':first(r,'adresse_station'),'code_insee_commune':first(r,'code_insee_commune'),'coordonneesXY':first(r,'coordonneesXY'),'nom_operateur':first(r,'nom_operateur'),'nom_amenageur':first(r,'nom_amenageur'),'nom_enseigne':first(r,'nom_enseigne'),'pdc_irve':[]})
+            s['pdc_irve'].append({k:first(r,k) for k in ['id_pdc_itinerance','id_pdc_local','puissance_nominale','prise_type_ef','prise_type_2','prise_type_combo_ccs','prise_type_chademo','prise_type_autre','gratuit','paiement_acte','paiement_cb','paiement_autre','tarification','condition_acces','reservation','horaires','accessibilite_pmr','date_mise_en_service','date_maj','cable_t2_attache']})
+          B='https://bss.qovoltis.com/api/borne/site-details?ref_site='
+          def fetch(ref):
+            u=B+quote(ref,safe='')
+            for a in range(3):
+              try:b,st,_=req(u,25);return ref,st,json.loads(b.decode('utf-8','replace')),None
+              except HTTPError as e:
+                if e.code in (429,500,502,503,504) and a<2:time.sleep(a+1);continue
+                try:er=e.read().decode('utf-8','replace')[:400]
+                except:er=repr(e)
+                return ref,e.code,None,er
+              except Exception as e:
+                if a<2:time.sleep(a+1);continue
+                return ref,None,None,repr(e)
+          got={};fails=[]
+          with ThreadPoolExecutor(max_workers=10) as ex:
+            fs=[ex.submit(fetch,r) for r in sites]
+            for f in as_completed(fs):
+              ref,st,obj,er=f.result()
+              if st==200 and obj is not None:got[ref]=obj
+              else:fails.append({'ref_site':ref,'status':st,'error':er})
+          pricekeys={'pricing_syder','pricing_syder_currency','pricing_syder_unit','pricing_duration_syder','tarif_heures_creuses','tarif_heures_pleines','rate','time_threshold','begin_free_hour','end_free_hour','price_per_reference_unit','reference_unit'}
+          connkeys=['id','number','reference','type_connector','power_max','status']
+          def walk(x,p='$'):
+            if isinstance(x,dict):
+              yield p,x
+              for k,v in x.items():yield from walk(v,p+'.'+str(k))
+            elif isinstance(x,list):
+              for i,v in enumerate(x):yield from walk(v,f'{p}[{i}]')
+          out=[];priced=0;vals=[];priced_sites=set();qov_ok=qvi_ok=0
+          for ref,s in sorted(sites.items()):
+            rawsite=got.get(ref);tar=[]
+            if rawsite is not None:
+              if s['emi3_prefix']=='QOV':qov_ok+=1
+              else:qvi_ok+=1
+              for p,dct in walk(rawsite):
+                if not pricekeys.intersection(dct):continue
+                z={'json_path':p};z.update({k:dct.get(k) for k in connkeys+sorted(pricekeys) if k in dct});tar.append(z)
+                v=z.get('pricing_syder')
+                if v not in (None,''):
+                  priced+=1;priced_sites.add(ref)
+                  try:vals.append(float(str(v).replace(',','.')))
+                  except:pass
+            out.append({**s,'tariff_api_ok':rawsite is not None,'tariffs':tar,'site_details_raw':rawsite})
+          tp=[];ts=next((s for s in out if s['ref_site']=='FR*QOV*78-00027'),None)
+          if ts:
+            for t in ts['tariffs']:
+              if t.get('pricing_syder') not in (None,''):
+                try:tp.append(float(str(t['pricing_syder']).replace(',','.')))
+                except:pass
+          now=datetime.now(timezone.utc).isoformat();source={'dataset_title':meta.get('title'),'dataset_last_update':meta.get('last_update'),'resource_id':rs.get('id'),'resource_last_modified':rs.get('last_modified'),'url':rs.get('url'),'sha256':hashlib.sha256(raw).hexdigest(),'rows':len(rows)}
+          byprefix={p:sum(1 for s in sites.values() if s['emi3_prefix']==p) for p in ['QOV','QVI']};okprefix={'QOV':qov_ok,'QVI':qvi_ok}
+          qa={'generated_at':now,'source':source,'csv_rows_total':len(rows),'unique_ref_sites':len(sites),'sites_by_prefix':byprefix,'site_details_http_200':len(got),'http_200_by_prefix':okprefix,'site_details_failures':len(fails),'priced_sites':len(priced_sites),'priced_records':priced,'distinct_pricing_syder_eur_per_kwh':sorted(set(round(v,6) for v in vals)),'unconvertible_rows':len(bad),'toussus':{'present':bool(ts),'pricing_syder_values':sorted(set(tp)),'expected_0_3504_present':any(abs(v-.3504)<1e-9 for v in tp)},'publication_status':'STAGED_DATA_LAB_ONLY_NOT_PUBLISHED_TO_TCC'}
+          payload={'schema_version':3,'generated_at':now,'operator_family':'Qovoltis','country':'FR','included_emi3_prefixes':['QOV','QVI'],'tariff_kind':'direct_public_ad_hoc','source_inventory':source,'source_tariff_api':B+'<REF_SITE>','publication_status':'STAGED_DATA_LAB_ONLY_NOT_PUBLISHED_TO_TCC','sites':out}
+          (OUT/'qovoltis_national.json').write_text(json.dumps(payload,ensure_ascii=False,indent=2),encoding='utf-8');(OUT/'qa.json').write_text(json.dumps(qa,ensure_ascii=False,indent=2),encoding='utf-8');(OUT/'failures.json').write_text(json.dumps(fails,ensure_ascii=False,indent=2),encoding='utf-8');(OUT/'unconvertible.json').write_text(json.dumps(bad,ensure_ascii=False,indent=2),encoding='utf-8')
+          cols=['ref_site','emi3_prefix','id_station_itinerance','nom_station','adresse_station','reference','type_connector','power_max','status','pricing_syder','pricing_syder_currency','pricing_syder_unit','pricing_duration_syder','tarif_heures_creuses','tarif_heures_pleines','rate','time_threshold','begin_free_hour','end_free_hour','json_path']
+          with (OUT/'qovoltis_tariffs.csv').open('w',newline='',encoding='utf-8') as f:
+            w=csv.DictWriter(f,fieldnames=cols);w.writeheader()
+            for s in out:
+              for t in s['tariffs']:
+                z={k:t.get(k) for k in cols};z.update({k:s.get(k) for k in ['ref_site','emi3_prefix','id_station_itinerance','nom_station','adresse_station']});w.writerow(z)
+          print(json.dumps(qa,ensure_ascii=False,indent=2))
+          if not qa['toussus']['expected_0_3504_present']:raise SystemExit('Toussus regression check failed')
+          if len(got)<1:raise SystemExit('No public tariff API successes')
+          PY
+      - name: Commit staged national base to data-lab only
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'; git add data/qovoltis
+          if ! git diff --cached --quiet; then git commit -m 'data(qovoltis): stage QOV QVI national tariff base'; git push; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qovoltis-national-base-v3
+          path: data/qovoltis
+          retention-days: 7
