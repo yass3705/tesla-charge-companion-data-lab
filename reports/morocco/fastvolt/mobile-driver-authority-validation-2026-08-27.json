@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "generated_date": "2026-08-27",
+  "country": "MA",
+  "scope": "FastVolt current mobile driver API authority classification from evidenced GET routes",
+  "policy": {
+    "public_outputs_only": true,
+    "read_only": true,
+    "get_only": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_mutations": true,
+    "raw_response_body_persisted": false
+  },
+  "evidence": {
+    "source_report": "reports/morocco/fastvolt/latest-bornerecharge-evidenced-routes.json",
+    "route_family": [
+      "/app/charging_stations/",
+      "/user/get_charging_station_details/"
+    ],
+    "hosts": {
+      "app.api.fastvolt.bornerecharge.ma": {
+        "results": "404 on both evidenced routes",
+        "classification": "public EVPlug/BorneRecharge web/platform surface; not validated as FastVolt mobile driver API authority"
+      },
+      "mobile.ev.fastvolt.ma": {
+        "results": "401 on both evidenced routes",
+        "classification": "route-resolving FastVolt mobile driver API authority candidate",
+        "interpretation": "401 rather than 404 shows that both client-evidenced route paths resolve on this host but require application business/organisation context or authorization before returning data."
+      }
+    }
+  },
+  "modeling": {
+    "cpo_operator": "FastVolt / Afrimobility",
+    "site_brand": null,
+    "app_source_access_network": "FastVolt",
+    "tariff_channel": "FastVolt direct",
+    "status_source": null,
+    "backend_authority_candidate": "mobile.ev.fastvolt.ma",
+    "evplug_role": "shared technical/platform/eMSP context; do not infer EVPlug as CPO"
+  },
+  "resolved_point": "The newly reachable app.api.fastvolt.bornerecharge.ma root is not the evidenced driver-route authority. The strongest current public FastVolt mobile backend candidate remains mobile.ev.fastvolt.ma because both shared client routes resolve there and return authentication/context gating instead of route-not-found.",
+  "remaining_blocker": "Find a public, non-account business/organisation context or another anonymous read-only endpoint shape that allows station/status retrieval. Do not guess private identifiers or bypass authentication."
+}
