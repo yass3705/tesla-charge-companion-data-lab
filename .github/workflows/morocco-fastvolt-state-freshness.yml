@@ -1,0 +1,31 @@
+name: Morocco FastVolt state freshness
+
+on:
+  push:
+    paths:
+      - 'scripts/morocco/fastvolt_state_freshness_probe.py'
+      - '.github/workflows/morocco-fastvolt-state-freshness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run isolated public GET-only probe
+        run: python scripts/morocco/fastvolt_state_freshness_probe.py
+      - name: Publish sanitized report
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add reports/morocco/fastvolt/latest-state-freshness.json
+          if git diff --cached --quiet; then
+            echo 'No report change'
+          else
+            git commit -m "diag(morocco): publish FastVolt state freshness [run $GITHUB_RUN_ID]"
+            git push
+          fi
