@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
-  "generated_at": "2026-08-27T13:44:38.254485+00:00",
+  "schema_version": 3,
+  "generated_at": "2026-08-27T14:41:22.418721+00:00",
   "country": "MA",
   "network": "FastVolt",
   "source": {
@@ -17,7 +17,8 @@
     "no_mutations": true,
     "raw_binary_not_committed": true,
     "query_strings_removed": true,
-    "obvious_secret_bearing_literals_excluded": true
+    "obvious_secret_bearing_literals_excluded": true,
+    "route_context_only_infrastructure_literals": true
   },
   "apk_files": [
     {
@@ -280,7 +281,23 @@
       "/user/remove_favorite_stations/",
       "/user/v2/estimates/"
     ],
-    "domain_like_indicators": []
+    "domain_like_indicators": [],
+    "route_authority_context": [
+      {
+        "route": "/app/charging_stations/",
+        "source_file": "0/lib/arm64-v8a/libapp.so",
+        "nearby_infrastructure_literals": [
+          "/app/charging_stations/"
+        ]
+      },
+      {
+        "route": "/user/get_charging_station_details/",
+        "source_file": "0/lib/arm64-v8a/libapp.so",
+        "nearby_infrastructure_literals": [
+          "/user/get_charging_station_details/"
+        ]
+      }
+    ]
   },
   "modeling": {
     "cpo_operator": "FastVolt / Afrimobility",
@@ -289,5 +306,5 @@
     "tariff_channel": "FastVolt direct",
     "status_source": null
   },
-  "interpretation": "Static indicators from extracted public client files only. Hosts/routes are clues, not promoted to status/tariff sources until separately validated with bounded anonymous read-only requests."
+  "interpretation": "Static indicators from extracted public client files only. Route-neighbourhood output is restricted to infrastructure-shaped literals. Hosts/routes are clues, not promoted to status/tariff sources until separately validated with bounded anonymous read-only requests."
 }
