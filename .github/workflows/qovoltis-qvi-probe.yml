@@ -1,0 +1,30 @@
+name: Qovoltis QVI public tariff probe
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/qovoltis-qvi-probe.yml']
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe representative FRQVI sites
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, urllib.parse, urllib.request, urllib.error
+          refs=['FR*QVI*25-00002','FR*QVI*87-00003','FR*QVI*24-00001','FR*QVI*87-00004']
+          for ref in refs:
+              url='https://bss.qovoltis.com/api/borne/site-details?ref_site='+urllib.parse.quote(ref,safe='')
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Accept':'application/json'})
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      body=r.read().decode('utf-8','replace')
+                      print('\nREF',ref,'STATUS',r.status,'BYTES',len(body))
+                      print(body[:3000])
+              except urllib.error.HTTPError as e:
+                  print('\nREF',ref,'STATUS',e.code,e.read().decode('utf-8','replace')[:1000])
+              except Exception as e:
+                  print('\nREF',ref,'ERROR',repr(e))
+          PY
