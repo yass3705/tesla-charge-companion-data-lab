@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "date": "2026-08-27",
+  "network": "FastVolt",
+  "source": "https://www.fastvolt.net/api/pages",
+  "evidence": {
+    "baseline_report": "reports/morocco/fastvolt/latest-public-map-inventory.json",
+    "observed_state_values_examples": [
+      "Casablanca-Settat",
+      "Rabat-Salé-Kénitra",
+      "Tangier-Tétouan-Al Hoceima",
+      "Marrakesh-Safi",
+      "Souss-Massa",
+      "Oriental"
+    ],
+    "interpretation": "The public field named state is an administrative/geographic region field, not EVSE availability state."
+  },
+  "modeling": {
+    "cpo_operator": "FastVolt / Afrimobility",
+    "site_brand": null,
+    "app_source_access_network": "FastVolt public web map",
+    "tariff_channel": "FastVolt direct",
+    "status_source": null
+  },
+  "production_rule": "Never map the FastVolt api/pages field state to live charger status. Keep it only as geographic metadata. A separate native/public availability field or endpoint must be validated before FastVolt live status is used in TCC.",
+  "policy": {
+    "read_only": true,
+    "public_source_only": true,
+    "no_login": true,
+    "no_mutations": true,
+    "no_inferred_live_status": true
+  }
+}
