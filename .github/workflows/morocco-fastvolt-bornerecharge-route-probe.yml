@@ -1,0 +1,56 @@
+name: Morocco FastVolt BorneRecharge evidenced route probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/morocco/probe_fastvolt_bornerecharge_evidenced_routes.py'
+      - '.github/workflows/morocco-fastvolt-bornerecharge-route-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run isolated public GET-only probe
+        run: |
+          set -euo pipefail
+          python scripts/morocco/probe_fastvolt_bornerecharge_evidenced_routes.py
+
+      - name: Safety check generated report
+        run: |
+          set -euo pipefail
+          test -f reports/morocco/fastvolt/latest-bornerecharge-evidenced-routes.json
+          python - <<'PY'
+          import json
+          p='reports/morocco/fastvolt/latest-bornerecharge-evidenced-routes.json'
+          d=json.load(open(p,encoding='utf-8'))
+          pol=d['policy']
+          assert pol['read_only'] and pol['get_only'] and pol['no_login'] and pol['no_credentials'] and pol['no_mutations']
+          for x in d['probes']:
+              assert x['method']=='GET'
+              assert '?' not in x['url']
+          print('safe report validated')
+          PY
+
+      - name: Publish sanitized report if changed
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/morocco/fastvolt/latest-bornerecharge-evidenced-routes.json
+          if git diff --cached --quiet; then
+            echo 'No report change'
+            exit 0
+          fi
+          git commit -m "diag(morocco): publish FastVolt BorneRecharge route probe [run $GITHUB_RUN_ID]"
+          git push
