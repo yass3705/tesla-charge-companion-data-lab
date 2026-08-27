@@ -87,16 +87,25 @@ jobs:
                       pass
 
           text_parts=[]
+          source_lines=[]
           scanned_meta=[]
           for p in scan_files:
               rel=os.path.relpath(p,extracted)
               scanned_meta.append({'path':rel,'size_bytes':os.path.getsize(p)})
               try:
                   proc=subprocess.run(['strings','-a','-n','5',p],capture_output=True,text=True,errors='ignore',timeout=90)
+                  lines=proc.stdout.splitlines()
                   text_parts.append(proc.stdout)
+                  for line in lines:
+                      source_lines.append((rel,line.strip()))
               except Exception:
                   continue
           text='\n'.join(text_parts)
+
+          secret_terms=('authorization','bearer ','password','secret','refresh_token','access_token','client_secret','api_key','apikey')
+          def safe(s):
+              low=s.lower()
+              return not any(x in low for x in secret_terms)
 
           url_re=re.compile(r'https?://[^\\s\"\'<>]{4,300}',re.I)
           urls=[]
@@ -120,19 +129,49 @@ jobs:
 
           route_terms=('api','station','charger','chargepoint','connector','evse','status','tariff','price','cost','map','location','availability','socket')
           routes=set()
-          indicators=set()
-          for line in text.splitlines():
-              s=line.strip()
-              if not (3 <= len(s) <= 180):
+          domain_re=re.compile(r'(?i)^(?:[a-z0-9-]+\\.)+[a-z]{2,15}$')
+          all_domains=set()
+          for _,line in source_lines:
+              s=line.strip().strip('"\'()[]{}<>,;')
+              if not (3 <= len(s) <= 180) or not safe(s):
                   continue
               low=s.lower()
-              if any(x in low for x in ('authorization','bearer ','password','secret','refresh_token','access_token','client_secret')):
+              if re.fullmatch(r'/[A-Za-z0-9_./{}:=?-]+',s) and ('/' in s[1:]) and any(t in low for t in route_terms):
+                  routes.add(s.split('?',1)[0])
+              if domain_re.fullmatch(s) and not re.fullmatch(r'\\d{1,3}(?:\\.\\d{1,3}){3}',s):
+                  all_domains.add(s.lower())
+
+          # Bounded context around the exact current-client station routes. Persist only
+          # domain/URL/path-shaped infrastructure strings, never arbitrary neighbouring text.
+          targets=(
+              '/app/charging_stations/',
+              '/user/get_charging_station_details/',
+              '/user/v2/estimates/'
+          )
+          route_context=[]
+          for idx,(rel,line) in enumerate(source_lines):
+              if line not in targets:
                   continue
-              if any(t in low for t in route_terms):
-                  if re.fullmatch(r'/[A-Za-z0-9_./{}:=?-]+',s) and ('/' in s[1:]):
-                      routes.add(s.split('?',1)[0])
-                  elif re.fullmatch(r'[A-Za-z][A-Za-z0-9_.-]{2,80}\\.[A-Za-z]{2,15}',s):
-                      indicators.add(s.lower())
+              candidates=set()
+              lo=max(0,idx-80); hi=min(len(source_lines),idx+81)
+              for _,near in source_lines[lo:hi]:
+                  s=near.strip().strip('"\'()[]{}<>,;')
+                  if not (3 <= len(s) <= 220) or not safe(s):
+                      continue
+                  if domain_re.fullmatch(s):
+                      candidates.add(s.lower())
+                      continue
+                  if s.startswith(('http://','https://')):
+                      try:
+                          u=urlsplit(s.rstrip('),.;]}'))
+                          if u.hostname and '.' in u.hostname:
+                              candidates.add(f'{u.scheme.lower()}://{u.hostname.lower()}{u.path or "/"}')
+                      except Exception:
+                          pass
+                  elif re.fullmatch(r'/[A-Za-z0-9_./{}:=?-]{3,180}',s):
+                      if any(t in s.lower() for t in route_terms):
+                          candidates.add(s.split('?',1)[0])
+              route_context.append({'route':line,'source_file':rel,'nearby_infrastructure_literals':sorted(candidates)[:100]})
 
           urls=sorted(set(urls))
           relevant=[]
@@ -141,6 +180,7 @@ jobs:
               if any(k in low for k in ('fastvolt','fastgo','evplug','api','charge','charger','station','firebase','socket','map','location')):
                   relevant.append(u)
           hosts=sorted({urlsplit(u).hostname for u in relevant if urlsplit(u).hostname})
+          domain_indicators=sorted(d for d in all_domains if any(k in d for k in ('fast','volt','evplug','charge','station','api','afri','mobility')))
 
           flutter_markers=[
               os.path.relpath(p,extracted) for p in scan_files
@@ -148,7 +188,7 @@ jobs:
           ]
 
           report={
-            'schema_version':2,
+            'schema_version':3,
             'generated_at':datetime.now(timezone.utc).isoformat(),
             'country':'MA','network':'FastVolt',
             'source':{
@@ -158,7 +198,8 @@ jobs:
             'policy':{
               'public_source_only':True,'read_only':True,'no_login':True,'no_credentials':True,
               'no_mutations':True,'raw_binary_not_committed':True,'query_strings_removed':True,
-              'obvious_secret_bearing_literals_excluded':True
+              'obvious_secret_bearing_literals_excluded':True,
+              'route_context_only_infrastructure_literals':True
             },
             'apk_files':apk_meta,
             'extracted_scan':{
@@ -170,13 +211,14 @@ jobs:
               'hosts':hosts[:100],
               'relevant_urls':relevant[:200],
               'route_like_literals':sorted(routes)[:300],
-              'domain_like_indicators':sorted(indicators)[:150]
+              'domain_like_indicators':domain_indicators[:150],
+              'route_authority_context':route_context[:20]
             },
             'modeling':{
               'cpo_operator':'FastVolt / Afrimobility','site_brand':None,
               'app_source_access_network':'FastVolt','tariff_channel':'FastVolt direct','status_source':None
             },
-            'interpretation':'Static indicators from extracted public client files only. Hosts/routes are clues, not promoted to status/tariff sources until separately validated with bounded anonymous read-only requests.'
+            'interpretation':'Static indicators from extracted public client files only. Route-neighbourhood output is restricted to infrastructure-shaped literals. Hosts/routes are clues, not promoted to status/tariff sources until separately validated with bounded anonymous read-only requests.'
           }
           with open(out,'w',encoding='utf-8') as f:
               json.dump(report,f,ensure_ascii=False,indent=2)
