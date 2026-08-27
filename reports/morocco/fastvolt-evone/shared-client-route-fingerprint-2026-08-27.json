@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "generated_date": "2026-08-27",
+  "country": "MA",
+  "scope": "FastVolt / EVOne public mobile-client relationship",
+  "policy": {
+    "static_public_reports_only": true,
+    "backend_requests_made": false,
+    "no_login": true,
+    "no_credentials": true,
+    "no_context_values_persisted": true,
+    "no_mutations": true
+  },
+  "evidence": {
+    "fastvolt_current_client": {
+      "package": "ma.fastgo",
+      "source_report": "reports/morocco/fastvolt/latest-current-mobile-client-indicators.json",
+      "generated_at": "2026-08-27T14:41:22.418721+00:00",
+      "route_fingerprint": [
+        "/app/charging_stations/",
+        "/user/get_charging_station_details/",
+        "/user/add_favorite_stations/",
+        "/user/remove_favorite_stations/",
+        "/user/v2/estimates/"
+      ]
+    },
+    "cross_app_client_report": {
+      "source_report": "reports/morocco/fastvolt-evone/latest-client-context.json",
+      "generated_at": "2026-08-20T13:37:00.230257+00:00",
+      "fastvolt_package": "ma.fastgo",
+      "evone_package": "ma.evplug",
+      "shared_route_markers": [
+        "/app/charging_stations/",
+        "/user/get_charging_station_details/",
+        "GetChargingStationsCall",
+        "charging_stations",
+        "get_charging_station_details"
+      ],
+      "interpretation": "Both public Android clients contain the same station-list/detail route family and generated call marker names, which is stronger evidence of a shared client/API family than the support-domain link alone."
+    },
+    "previous_fastvolt_route_validation": {
+      "source_report": "reports/morocco/fastvolt-evone/latest-header-validation.json",
+      "host": "mobile.ev.fastvolt.ma",
+      "path": "/app/charging_stations/",
+      "observed_http_status": 401,
+      "safe_response_markers": ["business", "organisation"],
+      "interpretation": "The FastVolt host/path was route-resolved and required client business/organisation context in the existing anonymous GET-only validation. This report does not claim that the current ma.fastgo build still derives its runtime authority from a statically visible host literal."
+    }
+  },
+  "modeling": {
+    "fastvolt_cpo_operator": "FastVolt / Afrimobility",
+    "fastvolt_site_brand": null,
+    "fastvolt_app_source_access_network": "FastVolt",
+    "fastvolt_tariff_channel": "FastVolt direct",
+    "fastvolt_status_source": null,
+    "evone_role": "eMSP / roaming access layer",
+    "evone_cpo_operator": "station-specific; never infer EVPlug from app visibility",
+    "evone_status_source": "EVOne roaming when explicitly sourced from EVOne; native CPO status has priority"
+  },
+  "production_policy": {
+    "evone_allowed_statuses": ["Available", "Occupied", "Charging"],
+    "evone_diagnostic_only_statuses": ["Faulted", "Offline", "Unknown", "Unavailable"]
+  },
+  "conclusion": "FastVolt and EVOne have a confirmed shared mobile-client route fingerprint. This materially strengthens the technical relationship between the two applications, but does not change CPO attribution and does not yet resolve FastVolt native live-status ingestion. The next useful target is the public client business/organisation context or runtime authority, not additional route-name guessing."
+}
