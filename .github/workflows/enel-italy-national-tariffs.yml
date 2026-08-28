@@ -1,0 +1,61 @@
+name: Enel Italy national tariff candidate
+
+on:
+  push:
+    branches:
+      - research/enel-italy-probe
+    paths:
+      - scripts/enel_italy_national_tariffs.py
+      - .github/workflows/enel-italy-national-tariffs.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check requests requests-aws4auth selenium
+      - name: Rebuild current PUN Italy inventory
+        run: python scripts/pun_italy_national.py --workers 8
+      - name: Build national Enel tariff candidate
+        run: python scripts/enel_italy_national_tariffs.py --workers 16
+      - name: Validate national candidate
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          p = Path('data/national/enel_direct_stations_italy.json.gz')
+          assert p.exists() and p.stat().st_size > 100000
+          r = json.loads(gzip.decompress(p.read_bytes()))
+          c = r['counts']
+          assert r['country'] == 'IT'
+          assert c['punEnxEvseCount'] > 20000
+          assert c['punEnxStationSerialCount'] > 9000
+          assert c['requestedStationSerialCount'] == c['punEnxStationSerialCount']
+          assert c['successfulStationDetailCount'] > 8500
+          assert c['matchedEnelEvseCount'] > 17000
+          assert c['rankableOperatorTariffEvseCount'] > 17000
+          assert r['security']['accountCredentialsUsed'] is False
+          assert r['security']['authorizationMaterialPersisted'] is False
+          assert r['tariffPolicy']['directPaymenthPriceRankable'] is False
+          assert r['tariffPolicy']['penaltiesRankable'] is False
+          print(json.dumps(c, ensure_ascii=False, indent=2))
+          print(json.dumps(r['observedOperatorPriceEurPerKwh'], ensure_ascii=False, indent=2))
+          PY
+      - name: Upload Enel national candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enel-direct-italy-candidate
+          path: |
+            data/national/enel_direct_stations_italy.json.gz
+            data/reports/enel_italy_national_tariffs_report.json
+          retention-days: 14
