@@ -60,7 +60,9 @@ class FranceIrveCanonicalTests(unittest.TestCase):
         self.assertEqual(record["tariff_offers"], [])
 
     def test_subscription_or_multi_component_tariff_is_text_only(self):
-        subscription = canonicalize(row(tarification="Non-abonné : 0,39 €/kWh"))
+        subscription = canonicalize(
+            row(tarification="Abonné : 0,29 €/kWh ; non-abonné : 0,39 €/kWh")
+        )
         mixed = canonicalize(row(tarification="0,39 €/kWh + 0,05 €/minute"))
         self.assertEqual(subscription["tariff_fallback"]["parse_status"], "text_only")
         self.assertEqual(mixed["tariff_fallback"]["parse_status"], "text_only")
