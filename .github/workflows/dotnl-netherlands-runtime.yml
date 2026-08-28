@@ -67,11 +67,13 @@ jobs:
           scope=manifest.get('scope') or {}; bounds=scope.get('europeanNetherlandsBounds') or []
           geo_ok=len(bounds)==4 and all(bounds[0] <= float(r[3]) <= bounds[1] and bounds[2] <= float(r[4]) <= bounds[3] for r in rows)
           checks={
+              'schemaV2': manifest.get('schemaVersion')==2,
               'stations>70000': report['stationCount']>70000,
               'tiles>10': report['tileCount']>10,
               'runtimeRowsMatchManifest': len(rows)==manifest['stationCount']==report['stationCount'],
-              'strictScope': scope.get('countryCode')=='NL' and scope.get('publishedToTcc') is False and scope.get('strictTariffCompiler') is True and scope.get('teslaExcluded') is True,
+              'strictScope': scope.get('countryCode')=='NL' and scope.get('publishedToTcc') is False and scope.get('strictTariffCompiler') is True and scope.get('teslaExcluded') is True and scope.get('ocpiDurationBands') is True,
               'geographicBoundsApplied': geo_ok and report['metrics']['outOfBoundsStations']>0,
+              'durationBandsProduced': report['metrics'].get('durationBandConfigs',0)>0 and manifest.get('durationBandConfigurationCount',0)>0,
               'someExactTariffs': report['metrics']['exactPricedConnectors']>50000,
               'noPublication': report['publishedToTcc'] is False,
               'NLIdsOnly': all(str(r[0]).startswith('NL:') for r in rows),
