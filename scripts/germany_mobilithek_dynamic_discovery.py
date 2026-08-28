@@ -47,9 +47,8 @@ def flatten_offer_nodes(obj):
     def walk(x):
         if isinstance(x, dict):
             keys = {str(k).lower() for k in x}
-            blob = json.dumps(x, ensure_ascii=False).lower()
             if ("offerid" in keys or "id" in keys or "publicationid" in keys) and (
-                "title" in keys or "name" in keys or "afir-recharging" in blob
+                "title" in keys or "name" in keys
             ):
                 ident = str(x.get("offerId") or x.get("publicationId") or x.get("id") or "")
                 sig = (ident, str(x.get("title") or x.get("name") or ""))
@@ -66,52 +65,74 @@ def flatten_offer_nodes(obj):
 
 
 def compact_offer(x):
-    blob = json.dumps(x, ensure_ascii=False)
-    low = blob.lower()
-    if "afir" not in low or "recharg" not in low:
+    raw_blob = json.dumps(x, ensure_ascii=False).lower()
+    title_value = x.get("title") or x.get("name") or x.get("dataName") or x.get("publicationName") or ""
+    title = json.dumps(title_value, ensure_ascii=False).lower() if not isinstance(title_value, str) else title_value.lower()
+    if "afir" not in raw_blob or "recharg" not in raw_blob:
         return None
-    if not any(t in low for t in TARGETS):
+    provider = next((t for t in TARGETS if t in raw_blob), None)
+    if not provider:
         return None
+    dynamic = "-dyn-" in title or " dynamic" in title or "dynamisch" in title
+    static = "-stat-" in title or " static" in title or "statisch" in title
     return {
         "id": str(x.get("offerId") or x.get("publicationId") or x.get("id") or ""),
-        "title": x.get("title") or x.get("name") or x.get("dataName") or x.get("publicationName"),
-        "provider": next((t for t in TARGETS if t in low), None),
-        "dynamicHint": "dyn" in low or "dynamic" in low or "dynamisch" in low,
-        "staticHint": "stat" in low or "static" in low or "statisch" in low,
+        "title": title_value,
+        "provider": provider,
+        "dynamicHint": dynamic,
+        "staticHint": static,
         "raw": x,
     }
 
 
+def page_shape(obj):
+    if not isinstance(obj, dict):
+        return {"type": type(obj).__name__}
+    out = {"keys": sorted(obj.keys())[:30]}
+    for key in ("totalElements", "totalPages", "number", "size", "numberOfElements", "page", "total"):
+        if key in obj:
+            out[key] = obj[key]
+    for key in ("content", "items", "results", "offers"):
+        if isinstance(obj.get(key), list):
+            out[key + "Count"] = len(obj[key])
+    return out
+
+
 def main():
-    # Start with the broadest request. If the API schema changed, retain its
-    # response/error so the CI log tells us exactly what to adapt.
     attempts = []
     candidates = []
-    payloads = [
-        {},
-        {"searchTerm": "AFIR-recharging"},
-        {"search": "AFIR-recharging"},
-        {"query": "AFIR-recharging"},
-    ]
-    urls = [
-        BASE + "?page=0&size=500",
-        BASE + "?page=0&size=100",
-        BASE + "?page=0&size=50",
-    ]
-    for url in urls:
-        for payload in payloads:
-            res = request(url, payload)
-            attempts.append({"url": url, "payload": payload, "ok": res.get("ok"), "status": res.get("status"), "error": res.get("error")})
-            if not res.get("ok"):
-                continue
-            for node in flatten_offer_nodes(res["data"]):
-                c = compact_offer(node)
-                if c:
-                    candidates.append(c)
-            # A valid broad response is enough; avoid redundant calls.
-            if candidates:
+    # Empty JSON is accepted by the current public API. Walk the current newest
+    # pages so duplicate GovData records do not hide the actual offer IDs.
+    successful_pages = 0
+    empty_streak = 0
+    for page in range(0, 80):
+        url = BASE + f"?page={page}&size=100"
+        res = request(url, {})
+        attempts.append({
+            "url": url, "payload": {}, "ok": res.get("ok"), "status": res.get("status"),
+            "error": res.get("error"), "shape": page_shape(res.get("data")) if res.get("ok") else None,
+        })
+        if not res.get("ok"):
+            if page == 0:
                 break
-        if candidates:
+            continue
+        successful_pages += 1
+        nodes = flatten_offer_nodes(res["data"])
+        if not nodes:
+            empty_streak += 1
+        else:
+            empty_streak = 0
+        for node in nodes:
+            c = compact_offer(node)
+            if c:
+                candidates.append(c)
+        # Stop once both known dynamic providers are found and Qwello has either
+        # appeared anywhere or we have scanned a meaningful window around them.
+        dyn_providers = {c["provider"] for c in candidates if c["dynamicHint"] and not c["staticHint"]}
+        qwello_seen = any(c["provider"] == "qwello" for c in candidates)
+        if {"chargecloud", "eround"}.issubset(dyn_providers) and (qwello_seen or page >= 15):
+            break
+        if empty_streak >= 3:
             break
 
     dedup = {}
@@ -122,10 +143,11 @@ def main():
     dynamic = [c for c in candidates if c["dynamicHint"] and not c["staticHint"]]
 
     out = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "dataset": "germany-mobilithek-dynamic-discovery",
         "generatedAt": now(),
         "stagedOnly": True,
+        "successfulPages": successful_pages,
         "attempts": attempts,
         "candidates": candidates,
         "dynamicCandidates": dynamic,
@@ -134,6 +156,7 @@ def main():
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print("TCC_MOBILITHEK_DISCOVERY=" + json.dumps({
+        "successfulPages": successful_pages,
         "candidates": len(candidates), "dynamicCandidates": len(dynamic),
         "providers": sorted({c.get("provider") for c in dynamic if c.get("provider")}),
     }, sort_keys=True))
@@ -141,8 +164,10 @@ def main():
         print("TCC_MOBILITHEK_DYNAMIC=" + json.dumps({
             "id": c.get("id"), "title": c.get("title"), "provider": c.get("provider")
         }, ensure_ascii=False, sort_keys=True))
-    if not any(a.get("ok") for a in attempts):
-        raise SystemExit("Mobilithek offers/search API did not accept any discovery request")
+    if successful_pages == 0:
+        raise SystemExit("Mobilithek offers/search API did not accept discovery request")
+    if not {"chargecloud", "eround"}.issubset({c.get("provider") for c in dynamic}):
+        raise SystemExit("current chargecloud/eRound dynamic offers not both discovered")
 
 
 if __name__ == "__main__":
