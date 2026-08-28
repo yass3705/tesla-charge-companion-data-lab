@@ -103,15 +103,18 @@ jobs:
               'unmatchedSample': unmatched,
           }
           print(json.dumps(result, ensure_ascii=False, indent=2))
-          if rows < 50:
-              raise SystemExit('unexpectedly small E55C dynamic feed')
-          if matched < 50:
-              raise SystemExit('too few exact matches to current canonical PAN')
-          if matched / max(1, len(seen)) < 0.90:
-              raise SystemExit('E55C exact canonical match rate below 90%')
+
           allowed={'en_service','hors_service','inconnu'}
           unexpected={k:v for k,v in states.items() if k not in allowed}
           if unexpected:
               raise SystemExit('unexpected E55C state values: '+json.dumps(unexpected))
-          print('RESULT e55cOfficialDirectStatusProbe=True')
+
+          usable=(
+              rows >= 50
+              and matched >= 50
+              and matched / max(1, len(seen)) >= 0.90
+          )
+          print('RESULT e55cOfficialDirectStatusUsable='+str(usable))
+          if not usable:
+              print('INFO official E55C dynamic publication is schema-valid but too sparse/unmatched for canonical enrichment; IRVE dynamic fallback remains active.')
           PY
