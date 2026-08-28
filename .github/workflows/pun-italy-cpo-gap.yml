@@ -1,0 +1,49 @@
+name: Italy PUN CPO tariff gap
+
+on:
+  push:
+    branches:
+      - research/pun-italy-normalized
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check requests requests-aws4auth
+      - name: Rebuild normalized PUN dataset
+        run: python scripts/pun_italy_national.py --workers 8
+      - name: Build CPO tariff gap report
+        run: python scripts/pun_italy_cpo_gap.py
+      - name: Validate gap report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('data/reports/pun_italy_cpo_gap_report.json')
+          assert p.exists() and p.stat().st_size > 1000
+          r = json.loads(p.read_text(encoding='utf-8'))
+          assert r['country'] == 'IT'
+          assert r['counts']['nonTeslaEvseCount'] > 50000
+          assert len(r['priority']) >= 50
+          assert r['priority'][0]['partyId'] in {'ENX', 'BEC'}
+          print(json.dumps(r['counts'], ensure_ascii=False, indent=2))
+          print(json.dumps(r['priority'][:12], ensure_ascii=False, indent=2))
+          PY
+      - name: Upload CPO gap report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pun-italy-cpo-gap
+          path: |
+            data/reports/pun_italy_cpo_gap_report.json
+            data/reports/pun_italy_cpo_gap_report.md
+          retention-days: 14
