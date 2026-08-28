@@ -1,0 +1,47 @@
+name: A2A Italy JS endpoint scan
+
+on:
+  push:
+    branches:
+      - research/enel-italy-probe
+    paths:
+      - scripts/a2a_italy_js_endpoint_scan.py
+      - .github/workflows/a2a-italy-js-endpoint-scan.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Scan public A2A scripts
+        run: python scripts/a2a_italy_js_endpoint_scan.py
+      - name: Validate report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/reports/a2a_italy_js_endpoint_scan.json')
+          assert p.exists() and p.stat().st_size > 1000
+          r=json.loads(p.read_text(encoding='utf-8'))
+          assert len(r['files']) == 3
+          for f in r['files']:
+              print('\nFILE', f['file'])
+              print('paths', json.dumps(f['backendLikePaths'], ensure_ascii=False))
+              for m in f['matches'][:80]:
+                  print(json.dumps(m, ensure_ascii=False))
+          PY
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a2a-italy-js-endpoint-scan
+          path: data/reports/a2a_italy_js_endpoint_scan.json
+          retention-days: 14
