@@ -1,0 +1,86 @@
+name: Allego DXP status probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/allego-dxp-status-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Probe public DXP payload for operational-status fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -q selenium
+          python - <<'PY'
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          import hashlib, json, re, time, urllib.request
+
+          PAGE='https://app.allego.eu/price/FRALLEGO8001301'
+          BASE='https://p-dxp-api-acg8edbwd7g2eheg.a01.azurefd.net/api/dxp/poi/chargepoints/'
+          SAMPLE=['FRALLEGO800130','FRALLEGO800990','FRALLEGO900108','FRALLEGO999088','FRALLEGO800261']
+
+          opt=Options(); opt.add_argument('--headless=new'); opt.add_argument('--no-sandbox'); opt.add_argument('--disable-dev-shm-usage')
+          opt.set_capability('goog:loggingPrefs', {'performance':'ALL'})
+          d=webdriver.Chrome(options=opt)
+          key=None
+          try:
+              d.get(PAGE); time.sleep(7)
+              for item in d.get_log('performance'):
+                  try: msg=json.loads(item['message'])['message']
+                  except Exception: continue
+                  if msg.get('method')!='Network.requestWillBeSent': continue
+                  req=msg['params']['request']
+                  if 'p-dxp-api-' not in req.get('url',''): continue
+                  for hn,hv in (req.get('headers') or {}).items():
+                      if hn.lower()=='ocp-apim-subscription-key': key=str(hv)
+          finally:
+              d.quit()
+          if not key: raise SystemExit('public client key not observed')
+          print('APIM config captured safely: len=',len(key),'sha256=',hashlib.sha256(key.encode()).hexdigest())
+
+          tokens=('status','state','avail','operat','service','usable','active','offline','online','fault','open','closed')
+          def walk(obj,path=''):
+              hits=[]
+              if isinstance(obj,dict):
+                  for k,v in obj.items():
+                      p=f'{path}.{k}' if path else str(k)
+                      if any(t in str(k).lower() for t in tokens):
+                          hits.append((p,v))
+                      hits.extend(walk(v,p))
+              elif isinstance(obj,list):
+                  for i,v in enumerate(obj[:20]): hits.extend(walk(v,f'{path}[{i}]'))
+              return hits
+
+          any_hit=False
+          for cid in SAMPLE:
+              req=urllib.request.Request(BASE+cid,headers={
+                  'User-Agent':'Mozilla/5.0','Accept':'application/json, text/plain, */*',
+                  'Origin':'https://app.allego.eu','Referer':'https://app.allego.eu/',
+                  'Ocp-Apim-Subscription-Key':key,
+              })
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as r: obj=json.loads(r.read().decode('utf-8','replace'))
+              except Exception as e:
+                  print(cid,'ERROR',type(e).__name__,str(e)[:160]); continue
+              print('\n===',cid,'===')
+              print('topLevelKeys=',sorted(obj.keys()) if isinstance(obj,dict) else type(obj).__name__)
+              hits=walk(obj)
+              safe=[]
+              for p,v in hits:
+                  if isinstance(v,(str,int,float,bool)) or v is None:
+                      safe.append({'path':p,'value':v})
+                  elif isinstance(v,list): safe.append({'path':p,'valueType':'list','count':len(v)})
+                  elif isinstance(v,dict): safe.append({'path':p,'valueType':'object','keys':sorted(v.keys())})
+              print('statusLikeFields=',json.dumps(safe,ensure_ascii=False,indent=2)[:12000])
+              any_hit = any_hit or bool(safe)
+          print('\nRESULT statusLikeFieldFound=',any_hit)
+          PY
