@@ -32,11 +32,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Download official DOT-NL snapshots
         shell: bash
         run: |
@@ -45,17 +43,11 @@ jobs:
           curl -fsSL --retry 4 --retry-all-errors --connect-timeout 30 --max-time 900 "$TAR_URL" -o /tmp/dotnl_tariffs.json.gz
           gzip -t /tmp/dotnl_locations.json.gz
           gzip -t /tmp/dotnl_tariffs.json.gz
-
       - name: Normalize Netherlands source
         shell: bash
         run: |
           set -euo pipefail
-          python scripts/dotnl_netherlands_build.py \
-            /tmp/dotnl_locations.json.gz \
-            /tmp/dotnl_tariffs.json.gz \
-            "$NORMALIZED_GZ" \
-            "$NORMALIZED_REPORT"
-
+          python scripts/dotnl_netherlands_build.py /tmp/dotnl_locations.json.gz /tmp/dotnl_tariffs.json.gz "$NORMALIZED_GZ" "$NORMALIZED_REPORT"
       - name: Compile strict TCC runtime tiles
         shell: bash
         run: |
@@ -63,7 +55,6 @@ jobs:
           rm -rf "$RUNTIME_DIR"
           python scripts/dotnl_netherlands_runtime.py "$NORMALIZED_GZ" "$RUNTIME_DIR" "$RUNTIME_REPORT"
           cp "$RUNTIME_DIR/manifest.json" "$RUNTIME_MANIFEST_COPY"
-
       - name: Validate strict runtime
         shell: bash
         run: |
@@ -72,23 +63,23 @@ jobs:
           import gzip,json,os,sys
           report=json.load(open(os.environ['RUNTIME_REPORT'],encoding='utf-8'))
           manifest=json.load(open(os.environ['RUNTIME_MANIFEST_COPY'],encoding='utf-8'))
-          with gzip.open(os.path.join(os.environ['RUNTIME_DIR'],'all.json.gz'),'rt',encoding='utf-8') as f:
-              rows=json.load(f)
+          with gzip.open(os.path.join(os.environ['RUNTIME_DIR'],'all.json.gz'),'rt',encoding='utf-8') as f: rows=json.load(f)
+          scope=manifest.get('scope') or {}; bounds=scope.get('europeanNetherlandsBounds') or []
+          geo_ok=len(bounds)==4 and all(bounds[0] <= float(r[3]) <= bounds[1] and bounds[2] <= float(r[4]) <= bounds[3] for r in rows)
           checks={
               'stations>70000': report['stationCount']>70000,
               'tiles>10': report['tileCount']>10,
               'runtimeRowsMatchManifest': len(rows)==manifest['stationCount']==report['stationCount'],
-              'strictScope': manifest['scope']=={'countryCode':'NL','publishedToTcc':False,'strictTariffCompiler':True,'teslaExcluded':True},
+              'strictScope': scope.get('countryCode')=='NL' and scope.get('publishedToTcc') is False and scope.get('strictTariffCompiler') is True and scope.get('teslaExcluded') is True,
+              'geographicBoundsApplied': geo_ok and report['metrics']['outOfBoundsStations']>0,
               'someExactTariffs': report['metrics']['exactPricedConnectors']>50000,
               'noPublication': report['publishedToTcc'] is False,
               'NLIdsOnly': all(str(r[0]).startswith('NL:') for r in rows),
           }
           print(json.dumps({'checks':checks,'report':report},ensure_ascii=False,indent=2))
           failed=[k for k,v in checks.items() if not v]
-          if failed:
-              print('FAILED: '+', '.join(failed),file=sys.stderr); sys.exit(1)
+          if failed: print('FAILED: '+', '.join(failed),file=sys.stderr); sys.exit(1)
           PY
-
       - name: Upload runtime prototype
         uses: actions/upload-artifact@v4
         with:
@@ -98,7 +89,6 @@ jobs:
             data/national/dotnl_netherlands_runtime_report.json
             data/national/dotnl_netherlands_runtime_manifest_test.json
           retention-days: 14
-
       - name: Commit test reports
         if: ${{ github.ref == 'refs/heads/dotnl-netherlands-baseline' }}
         shell: bash
