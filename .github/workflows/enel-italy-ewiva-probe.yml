@@ -1,0 +1,44 @@
+name: Enel Italy Ewiva tariff probe
+
+on:
+  push:
+    branches:
+      - research/enel-italy-probe
+    paths:
+      - scripts/enel_italy_ewiva_probe.py
+      - .github/workflows/enel-italy-ewiva-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check requests selenium
+      - name: Probe Ewiva through Enel public station API
+        run: python scripts/enel_italy_ewiva_probe.py
+      - name: Validate probe
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('data/reports/enel_italy_ewiva_probe.json')
+          assert p.exists()
+          r = json.loads(p.read_text(encoding='utf-8'))
+          print(json.dumps(r, ensure_ascii=False, indent=2))
+          PY
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enel-italy-ewiva-probe
+          path: data/reports/enel_italy_ewiva_probe.json
+          retention-days: 14
