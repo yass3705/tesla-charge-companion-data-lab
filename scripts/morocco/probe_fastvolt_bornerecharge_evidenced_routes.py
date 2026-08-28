@@ -4,8 +4,10 @@ from datetime import datetime, timezone
 from urllib import request, error
 
 # Bounded, evidenced application routes plus a small set of conventional public
-# API-metadata paths on the already validated FastVolt mobile authority. This is
-# intentionally not a crawler or path brute-forcer.
+# API-metadata paths on the already validated FastVolt mobile authority. A single
+# deliberately nonexistent sentinel path is included only to distinguish route
+# resolution from host-wide authentication middleware. This is not a crawler or
+# path brute-forcer.
 TARGETS = [
     ("app.api.fastvolt.bornerecharge.ma", "/app/charging_stations/", "evidenced_app_route"),
     ("app.api.fastvolt.bornerecharge.ma", "/user/get_charging_station_details/", "evidenced_app_route"),
@@ -17,6 +19,7 @@ TARGETS = [
     ("mobile.ev.fastvolt.ma", "/redoc", "conventional_public_metadata"),
     ("mobile.ev.fastvolt.ma", "/robots.txt", "conventional_public_metadata"),
     ("mobile.ev.fastvolt.ma", "/api/schema/", "conventional_public_metadata"),
+    ("mobile.ev.fastvolt.ma", "/__tcc_readonly_nonexistent_sentinel__", "nonexistent_control"),
 ]
 
 
@@ -72,7 +75,6 @@ def safe_get(host, path, probe_class):
             data = json.loads(body.decode("utf-8", "replace"))
             if isinstance(data, dict):
                 result["top_level_keys"] = sorted(str(k) for k in data.keys())[:40]
-                # Keep only schema/error *field names*, never business/account values.
                 generic = {}
                 for key in ("message", "detail", "error", "errors", "openapi", "swagger", "paths", "components"):
                     if key in data:
@@ -97,11 +99,22 @@ def safe_get(host, path, probe_class):
 
 def main():
     probes = [safe_get(h, p, c) for h, p, c in TARGETS]
+    mobile = [p for p in probes if p["host"] == "mobile.ev.fastvolt.ma"]
+    sentinel = next((p for p in mobile if p["probe_class"] == "nonexistent_control"), None)
+    same_as_sentinel = []
+    if sentinel and sentinel.get("status") is not None:
+        sig = (sentinel.get("status"), sentinel.get("content_type"), sentinel.get("response_length_sampled"))
+        same_as_sentinel = [
+            p["path"] for p in mobile
+            if p["probe_class"] != "nonexistent_control"
+            and (p.get("status"), p.get("content_type"), p.get("response_length_sampled")) == sig
+        ]
+
     out = {
-        "schema_version": 2,
+        "schema_version": 3,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "country": "MA",
-        "scope": "FastVolt/EVPlug evidenced GET routes plus bounded conventional public metadata discovery",
+        "scope": "FastVolt/EVPlug evidenced GET routes plus bounded public metadata and one nonexistent control",
         "policy": {
             "read_only": True,
             "get_only": True,
@@ -111,6 +124,7 @@ def main():
             "no_mutations": True,
             "no_business_or_organisation_guessing": True,
             "no_path_bruteforce_or_crawling": True,
+            "single_nonexistent_control_only": True,
             "raw_response_body_persisted": False,
             "only_status_content_type_and_schema_shape_persisted": True,
         },
@@ -121,6 +135,15 @@ def main():
             "tariff_channel": "FastVolt direct",
             "status_source": None,
             "evplug_role": "technical/platform/eMSP evidence only; not CPO attribution",
+        },
+        "route_resolution_control": {
+            "sentinel_path": sentinel.get("path") if sentinel else None,
+            "sentinel_status": sentinel.get("status") if sentinel else None,
+            "paths_with_identical_status_content_type_length": same_as_sentinel,
+            "interpretation": (
+                "If evidenced routes and a deliberately nonexistent path have the same HTTP/content signature, "
+                "the anonymous response is consistent with host-wide middleware and does not independently prove route resolution."
+            ),
         },
         "probes": probes,
     }
