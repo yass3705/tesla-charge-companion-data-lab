@@ -7,6 +7,7 @@ on:
       - ".github/workflows/allego-direct-status-validation.yml"
       - "scripts/france_irve_status_allego.py"
       - "scripts/france_irve_canonical.py"
+      - "scripts/france_irve_dynamic_adapter.py"
 
 permissions:
   contents: read
@@ -14,7 +15,7 @@ permissions:
 jobs:
   national-status:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,9 +25,19 @@ jobs:
       - name: Install browser client dependency
         run: python -m pip install --disable-pip-version-check -q selenium
 
-      - name: Build Allego direct-status enrichment from current PAN
+      - name: Download one current national IRVE static snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 \
+            'https://www.data.gouv.fr/api/1/datasets/r/4ca78c71-4ea4-475d-bd3a-d4aef88f7bf8' \
+            -o /tmp/irve.csv
+          test -s /tmp/irve.csv
+
+      - name: Build Allego direct-status enrichment from the same PAN snapshot
         run: |
           python scripts/france_irve_status_allego.py \
+            --static /tmp/irve.csv \
             --workers 16 \
             --out /tmp/france_irve_status_allego.json
 
@@ -55,9 +66,58 @@ jobs:
           print('RESULT allegoDirectStatusValidation=True')
           PY
 
-      - name: Upload diagnostic enrichment
+      - name: Build current IRVE dynamic fallback
+        run: |
+          python scripts/france_irve_dynamic_adapter.py \
+            --out /tmp/france_irve_dynamic_enrichment.json
+
+      - name: Build dynamic-only national baseline
+        run: |
+          python scripts/france_irve_canonical.py \
+            --static /tmp/irve.csv \
+            --enrichment /tmp/france_irve_dynamic_enrichment.json \
+            --out /tmp/france_irve_dynamic_only.json \
+            --summary-out /tmp/france_irve_dynamic_only_summary.json
+
+      - name: Build national canonical with Allego direct then IRVE dynamic fallback
+        run: |
+          python scripts/france_irve_canonical.py \
+            --static /tmp/irve.csv \
+            --enrichment /tmp/france_irve_status_allego.json \
+            --enrichment /tmp/france_irve_dynamic_enrichment.json \
+            --out /tmp/france_irve_with_allego.json \
+            --summary-out /tmp/france_irve_with_allego_summary.json
+
+      - name: Compare direct-status impact and enforce fallback semantics
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          b=json.load(open('/tmp/france_irve_dynamic_only_summary.json', encoding='utf-8'))['summary']
+          c=json.load(open('/tmp/france_irve_with_allego_summary.json', encoding='utf-8'))['summary']
+          print('dynamicOnly=', json.dumps(b['statusCounts'], ensure_ascii=False, sort_keys=True))
+          print('withAllego=', json.dumps(c['statusCounts'], ensure_ascii=False, sort_keys=True))
+          enrich=c['enrichments']
+          direct_key=next(k for k in enrich if k.endswith('france_irve_status_allego.json'))
+          direct=enrich[direct_key]
+          print('allegoCanonicalEnrichment=', json.dumps(direct, ensure_ascii=False, sort_keys=True))
+          if direct.get('status_applied', 0) < 2500:
+              raise SystemExit('too few Allego direct statuses applied to canonical PDCs')
+          if direct.get('unmatched', 0) != 0:
+              raise SystemExit('Allego enrichment emitted a non-canonical PDC')
+          if c['statusCounts'].get('unknown', 0) > b['statusCounts'].get('unknown', 0):
+              raise SystemExit('direct CPO enrichment must never increase unknown status count')
+          if c.get('non_tesla_points') != b.get('non_tesla_points'):
+              raise SystemExit('direct status enrichment changed physical inventory size')
+          print('RESULT canonicalAllegoPriorityValidation=True')
+          PY
+
+      - name: Upload diagnostic summaries and enrichment
         uses: actions/upload-artifact@v4
         with:
           name: allego-direct-status-enrichment
-          path: /tmp/france_irve_status_allego.json
+          path: |
+            /tmp/france_irve_status_allego.json
+            /tmp/france_irve_dynamic_only_summary.json
+            /tmp/france_irve_with_allego_summary.json
           retention-days: 3
