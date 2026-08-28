@@ -3,27 +3,67 @@ import json
 from datetime import datetime, timezone
 from urllib import request, error
 
+# Bounded, evidenced application routes plus a small set of conventional public
+# API-metadata paths on the already validated FastVolt mobile authority. This is
+# intentionally not a crawler or path brute-forcer.
 TARGETS = [
-    ("app.api.fastvolt.bornerecharge.ma", "/app/charging_stations/"),
-    ("app.api.fastvolt.bornerecharge.ma", "/user/get_charging_station_details/"),
-    ("mobile.ev.fastvolt.ma", "/app/charging_stations/"),
-    ("mobile.ev.fastvolt.ma", "/user/get_charging_station_details/"),
+    ("app.api.fastvolt.bornerecharge.ma", "/app/charging_stations/", "evidenced_app_route"),
+    ("app.api.fastvolt.bornerecharge.ma", "/user/get_charging_station_details/", "evidenced_app_route"),
+    ("mobile.ev.fastvolt.ma", "/app/charging_stations/", "evidenced_app_route"),
+    ("mobile.ev.fastvolt.ma", "/user/get_charging_station_details/", "evidenced_app_route"),
+    ("mobile.ev.fastvolt.ma", "/openapi.json", "conventional_public_metadata"),
+    ("mobile.ev.fastvolt.ma", "/swagger.json", "conventional_public_metadata"),
+    ("mobile.ev.fastvolt.ma", "/docs", "conventional_public_metadata"),
+    ("mobile.ev.fastvolt.ma", "/redoc", "conventional_public_metadata"),
+    ("mobile.ev.fastvolt.ma", "/robots.txt", "conventional_public_metadata"),
+    ("mobile.ev.fastvolt.ma", "/api/schema/", "conventional_public_metadata"),
 ]
 
 
-def safe_get(host, path):
+def safe_get(host, path, probe_class):
     url = f"https://{host}{path}"
-    req = request.Request(url, method="GET", headers={"User-Agent": "tcc-data-lab-public-readonly/1.0", "Accept": "application/json,text/plain,*/*"})
-    result = {"host": host, "path": path, "method": "GET", "url": url}
+    req = request.Request(
+        url,
+        method="GET",
+        headers={
+            "User-Agent": "tcc-data-lab-public-readonly/1.0",
+            "Accept": "application/json,text/plain,text/html,*/*",
+        },
+    )
+    result = {
+        "host": host,
+        "path": path,
+        "probe_class": probe_class,
+        "method": "GET",
+        "url": url,
+    }
     try:
         with request.urlopen(req, timeout=15) as resp:
             body = resp.read(65536)
-            result.update({"status": resp.status, "content_type": resp.headers.get("content-type"), "response_length_sampled": len(body)})
+            result.update(
+                {
+                    "status": resp.status,
+                    "content_type": resp.headers.get("content-type"),
+                    "response_length_sampled": len(body),
+                }
+            )
     except error.HTTPError as exc:
         body = exc.read(65536)
-        result.update({"status": exc.code, "content_type": exc.headers.get("content-type"), "response_length_sampled": len(body)})
+        result.update(
+            {
+                "status": exc.code,
+                "content_type": exc.headers.get("content-type"),
+                "response_length_sampled": len(body),
+            }
+        )
     except Exception as exc:
-        result.update({"status": None, "error_class": type(exc).__name__, "error": "transport_or_resolution_error"})
+        result.update(
+            {
+                "status": None,
+                "error_class": type(exc).__name__,
+                "error": "transport_or_resolution_error",
+            }
+        )
         return result
 
     ctype = (result.get("content_type") or "").lower()
@@ -32,9 +72,9 @@ def safe_get(host, path):
             data = json.loads(body.decode("utf-8", "replace"))
             if isinstance(data, dict):
                 result["top_level_keys"] = sorted(str(k) for k in data.keys())[:40]
-                # Retain only generic validation/error field names, never business/account values.
+                # Keep only schema/error *field names*, never business/account values.
                 generic = {}
-                for key in ("message", "detail", "error", "errors"):
+                for key in ("message", "detail", "error", "errors", "openapi", "swagger", "paths", "components"):
                     if key in data:
                         val = data[key]
                         if isinstance(val, dict):
@@ -44,7 +84,7 @@ def safe_get(host, path):
                         else:
                             generic[key + "_type"] = type(val).__name__
                 if generic:
-                    result["generic_error_shape"] = generic
+                    result["generic_schema_shape"] = generic
             elif isinstance(data, list):
                 result["json_shape"] = "list"
                 result["item_count"] = len(data)
@@ -56,12 +96,12 @@ def safe_get(host, path):
 
 
 def main():
-    probes = [safe_get(h, p) for h, p in TARGETS]
+    probes = [safe_get(h, p, c) for h, p, c in TARGETS]
     out = {
-        "schema_version": 1,
+        "schema_version": 2,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "country": "MA",
-        "scope": "FastVolt/EVPlug BorneRecharge evidenced shared GET-route validation",
+        "scope": "FastVolt/EVPlug evidenced GET routes plus bounded conventional public metadata discovery",
         "policy": {
             "read_only": True,
             "get_only": True,
@@ -69,6 +109,8 @@ def main():
             "no_credentials": True,
             "no_query_parameters": True,
             "no_mutations": True,
+            "no_business_or_organisation_guessing": True,
+            "no_path_bruteforce_or_crawling": True,
             "raw_response_body_persisted": False,
             "only_status_content_type_and_schema_shape_persisted": True,
         },
@@ -82,7 +124,11 @@ def main():
         },
         "probes": probes,
     }
-    with open("reports/morocco/fastvolt/latest-bornerecharge-evidenced-routes.json", "w", encoding="utf-8") as f:
+    with open(
+        "reports/morocco/fastvolt/latest-bornerecharge-evidenced-routes.json",
+        "w",
+        encoding="utf-8",
+    ) as f:
         json.dump(out, f, ensure_ascii=False, indent=2)
         f.write("\n")
 
