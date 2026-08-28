@@ -55,7 +55,11 @@ jobs:
           q=d['providerStats']['qwello']
           e=d['providerStats']['eround']
           assert q['mode']=='snapshot' and q['knownCoveragePct'] > 95, q
-          assert e['mode']=='delta' and e['knownPointsAfterMerge'] >= e['currentEvents'], e
+          assert q['knownPointsAfterMerge'] <= q['staticPoints'], q
+          assert e['mode']=='delta', e
+          assert e['knownPointsAfterMerge'] >= e['currentActionableEvents'], e
+          assert e['knownPointsAfterMerge'] >= e['previousKnownPoints'], e
+          assert d['stats']['currentUnjoinedEvents'] >= 0
           print('TCC_AFIR_DYNAMIC_STATE_VALIDATED='+json.dumps(d['providerStats'],sort_keys=True))
           PY
 
