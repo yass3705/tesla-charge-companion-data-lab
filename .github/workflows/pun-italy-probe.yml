@@ -1,0 +1,278 @@
+name: Italy PUN API probe
+
+on:
+  push:
+    branches:
+      - research/pun-italy-probe
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install probe dependencies
+        run: pip install --disable-pip-version-check requests requests-aws4auth
+
+      - name: Probe PUN API
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import time
+          import traceback
+          from collections import Counter
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          import requests
+          from requests_aws4auth import AWS4Auth
+
+          AWS_REGION = "eu-south-1"
+          COGNITO_IDP_ID = "eu-south-1:e3b2ab05-2046-43dd-8ed0-c0f14c69d507"
+          COGNITO_ENDPOINT = f"https://cognito-identity.{AWS_REGION}.amazonaws.com/"
+          API_BASE = "https://api.pun.piattaformaunicanazionale.it"
+          MAP_PAGE_SIZE = 1000
+          GROUP_BATCH_SIZE = 100
+          UA = "tesla-charge-companion-data-lab/pun-probe-0.1"
+          OUT = Path("pun_probe_summary.json")
+          RAW = Path("pun_probe_raw_sample.json")
+
+          summary = {
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+              "source": "GSE PUN",
+              "api_base": API_BASE,
+              "runner": "github-hosted ubuntu-latest",
+              "status": "started",
+          }
+
+          def cognito_post(target, payload):
+              r = requests.post(
+                  COGNITO_ENDPOINT,
+                  headers={
+                      "Content-Type": "application/x-amz-json-1.1",
+                      "X-Amz-Target": target,
+                      "User-Agent": UA,
+                  },
+                  json=payload,
+                  timeout=20,
+              )
+              r.raise_for_status()
+              return r.json()
+
+          def get_auth():
+              iid = cognito_post(
+                  "AWSCognitoIdentityService.GetId",
+                  {"IdentityPoolId": COGNITO_IDP_ID},
+              )["IdentityId"]
+              cred = cognito_post(
+                  "AWSCognitoIdentityService.GetCredentialsForIdentity",
+                  {"IdentityId": iid},
+              )["Credentials"]
+              return AWS4Auth(
+                  cred["AccessKeyId"],
+                  cred["SecretKey"],
+                  AWS_REGION,
+                  "execute-api",
+                  session_token=cred["SessionToken"],
+              )
+
+          def post(auth, path, payload, timeout=45):
+              return requests.post(
+                  f"{API_BASE}{path}",
+                  auth=auth,
+                  headers={"Content-Type": "application/json", "User-Agent": UA},
+                  json=payload,
+                  timeout=timeout,
+              )
+
+          def collect_key_presence(records, key):
+              return sum(1 for r in records if key in r and r.get(key) not in (None, "", [], {}))
+
+          def find_price_like(obj, path="", out=None):
+              if out is None:
+                  out = []
+              needles = ("tariff", "price", "cost", "costo", "fee", "currency", "term", "condition")
+              if isinstance(obj, dict):
+                  for k, v in obj.items():
+                      p = f"{path}.{k}" if path else k
+                      if any(n in k.lower() for n in needles):
+                          out.append({"path": p, "sample": str(v)[:300]})
+                      find_price_like(v, p, out)
+              elif isinstance(obj, list):
+                  for v in obj[:5]:
+                      find_price_like(v, path + "[]", out)
+              return out
+
+          try:
+              auth = get_auth()
+              summary["cognito_guest_auth"] = "ok"
+
+              # Step 1: enumerate every EVSE ID.
+              ids = []
+              map_first_keys = []
+              page = 0
+              while True:
+                  r = post(auth, "/v1/chargepoints/public/map/search", {"page": page, "size": MAP_PAGE_SIZE})
+                  if r.status_code == 401:
+                      auth = get_auth()
+                      r = post(auth, "/v1/chargepoints/public/map/search", {"page": page, "size": MAP_PAGE_SIZE})
+                  r.raise_for_status()
+                  d = r.json()
+                  if page == 0:
+                      summary["map_search"] = {
+                          "http_status": r.status_code,
+                          "totalElements": d.get("totalElements"),
+                          "totalPages": d.get("totalPages"),
+                          "page_size": MAP_PAGE_SIZE,
+                      }
+                      content0 = d.get("content", [])
+                      if content0:
+                          map_first_keys = sorted(content0[0].keys())
+                          summary["map_item_keys"] = map_first_keys
+                  content = d.get("content", [])
+                  ids.extend(x.get("evse_id") for x in content if x.get("evse_id"))
+                  if d.get("last", True) or not content:
+                      break
+                  page += 1
+              summary["evse_ids_collected"] = len(ids)
+              summary["unique_evse_ids"] = len(set(ids))
+              print(f"PUN map/search: {len(ids)} EVSE IDs")
+
+              # Step 2: fetch all details, same public endpoint used by the PUN UI/AgID ETL.
+              records = []
+              for i in range(0, len(ids), GROUP_BATCH_SIZE):
+                  batch = ids[i:i + GROUP_BATCH_SIZE]
+                  r = post(auth, "/v1/chargepoints/group", batch)
+                  if r.status_code == 401:
+                      auth = get_auth()
+                      r = post(auth, "/v1/chargepoints/group", batch)
+                  r.raise_for_status()
+                  chunk = r.json()
+                  if isinstance(chunk, list):
+                      records.extend(chunk)
+                  if (i // GROUP_BATCH_SIZE + 1) % 100 == 0:
+                      print(f"group progress: {min(i + GROUP_BATCH_SIZE, len(ids))}/{len(ids)} IDs, {len(records)} records")
+                  time.sleep(0.04)
+
+              summary["detail_records"] = len(records)
+              if records:
+                  RAW.write_text(json.dumps(records[:5], ensure_ascii=False, indent=2), encoding="utf-8")
+
+                  top_keys = sorted({k for r in records for k in r.keys()})
+                  summary["top_level_keys"] = top_keys
+                  summary["top_level_presence"] = {
+                      k: collect_key_presence(records, k) for k in top_keys
+                  }
+
+                  location_keys = sorted({
+                      k for r in records
+                      for k in ((r.get("location") or {}).keys())
+                  })
+                  summary["location_keys"] = location_keys
+                  summary["location_presence"] = {
+                      k: sum(1 for r in records if (r.get("location") or {}).get(k) not in (None, "", [], {}))
+                      for k in location_keys
+                  }
+
+                  connectors = [c for r in records for c in (r.get("connectors") or []) if isinstance(c, dict)]
+                  connector_keys = sorted({k for c in connectors for k in c.keys()})
+                  summary["connector_count"] = len(connectors)
+                  summary["connector_keys"] = connector_keys
+                  summary["connector_presence"] = {
+                      k: sum(1 for c in connectors if c.get(k) not in (None, "", [], {}))
+                      for k in connector_keys
+                  }
+
+                  summary["status_counts"] = dict(Counter(str(r.get("status")) for r in records))
+                  summary["publication_status_counts"] = dict(Counter(str(r.get("publicationStatus")) for r in records))
+                  summary["real_time_counts"] = dict(Counter(str(bool(r.get("realTime"))) for r in records))
+                  summary["cpo_unique"] = len({r.get("businessName") for r in records if r.get("businessName")})
+                  summary["cpo_top_30"] = Counter(
+                      str(r.get("businessName")) for r in records if r.get("businessName")
+                  ).most_common(30)
+
+                  standards = Counter()
+                  powers = Counter()
+                  for c in connectors:
+                      if c.get("standard"):
+                          standards[str(c.get("standard"))] += 1
+                      p = c.get("max_electric_power")
+                      try:
+                          kw = float(p) / 1000 if p is not None else None
+                      except (TypeError, ValueError):
+                          kw = None
+                      if kw is None:
+                          powers["unknown"] += 1
+                      elif kw < 7.4:
+                          powers["<7.4kW"] += 1
+                      elif kw < 22:
+                          powers["7.4-<22kW"] += 1
+                      elif kw < 50:
+                          powers["22-<50kW"] += 1
+                      elif kw < 150:
+                          powers["50-<150kW"] += 1
+                      elif kw < 350:
+                          powers["150-<350kW"] += 1
+                      else:
+                          powers[">=350kW"] += 1
+                  summary["connector_standard_counts"] = dict(standards)
+                  summary["power_bucket_counts"] = dict(powers)
+
+                  found = []
+                  for rec in records:
+                      find_price_like(rec, out=found)
+                      if len(found) >= 100:
+                          break
+                  # Deduplicate paths while retaining one sample value.
+                  by_path = {}
+                  for x in found:
+                      by_path.setdefault(x["path"], x["sample"])
+                  summary["price_like_fields"] = [
+                      {"path": p, "sample": v} for p, v in sorted(by_path.items())
+                  ]
+
+                  # Useful station grouping clues for TCC.
+                  candidate_location_ids = Counter()
+                  for r in records:
+                      loc = r.get("location") or {}
+                      for key in ("id", "location_id", "name"):
+                          if loc.get(key):
+                              candidate_location_ids[key] += 1
+                  summary["location_grouping_candidate_presence"] = dict(candidate_location_ids)
+
+              summary["status"] = "ok"
+
+          except Exception as exc:
+              summary["status"] = "error"
+              summary["error_type"] = type(exc).__name__
+              summary["error"] = str(exc)
+              summary["traceback_tail"] = traceback.format_exc().splitlines()[-20:]
+              print(traceback.format_exc())
+
+          OUT.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+          print("=== PUN PROBE SUMMARY ===")
+          print(json.dumps(summary, ensure_ascii=False, indent=2))
+          if summary.get("status") != "ok":
+              raise SystemExit(1)
+          PY
+
+      - name: Upload probe result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pun-italy-probe
+          path: |
+            pun_probe_summary.json
+            pun_probe_raw_sample.json
+          if-no-files-found: warn
+          retention-days: 7
