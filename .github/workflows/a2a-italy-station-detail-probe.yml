@@ -1,0 +1,64 @@
+name: A2A Italy station detail tariff probe
+
+on:
+  push:
+    branches:
+      - research/enel-italy-probe
+    paths:
+      - scripts/a2a_italy_station_detail_probe.py
+      - .github/workflows/a2a-italy-station-detail-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check selenium
+      - name: Probe A2A public station details
+        run: python scripts/a2a_italy_station_detail_probe.py
+      - name: Validate report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/reports/a2a_italy_station_detail_probe.json')
+          assert p.exists() and p.stat().st_size > 3000
+          r=json.loads(p.read_text(encoding='utf-8'))
+          c=r['counts']
+          assert r['security']['accountCredentialsUsed'] is False
+          assert r['security']['rechargeOrAuthEndpointsCalled'] is False
+          assert c['mapRecords'] > 1000
+          assert c['a2aOwnedMapRecords'] > 100
+          assert c['successfulDetails'] >= 3
+          assert c['detailsWithCostobase'] >= 1
+          assert c['samplePlugCount'] >= 1
+          print(json.dumps(c, ensure_ascii=False, indent=2))
+          for d in r['details']:
+              print(json.dumps({
+                  'alias': d.get('alias'),
+                  'type': d.get('detailType'),
+                  'status': d.get('detailStatus'),
+                  'maxPowerKw': d.get('maxPowerKw'),
+                  'costobase': d.get('costobase'),
+                  'descCostobase': d.get('descCostobase'),
+                  'operator': d.get('operator'),
+                  'evses': d.get('evses'),
+                  'priceLikeScalars': d.get('priceLikeScalars'),
+              }, ensure_ascii=False, indent=2)[:12000])
+          PY
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a2a-italy-station-detail-probe
+          path: data/reports/a2a_italy_station_detail_probe.json
+          retention-days: 14
