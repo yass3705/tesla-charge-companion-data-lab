@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-08-28T13:40:48Z",
+  "source": "GitHub Actions run 32931168792 attempt 4 sanitized probe log",
+  "source_host": "cp.evgo.ma",
+  "policy": {
+    "read_only_get_only": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_mutations": true,
+    "raw_backend_response_not_committed": true,
+    "sanitized_public_charging_fields_only": true
+  },
+  "modeling": {
+    "cpo_operator": "Nareva Services / EVGO",
+    "site_brand": null,
+    "app_source_access_network": "EVGO",
+    "tariff_channel": "EVGO native",
+    "status_source": "EVGO native backend cp.evgo.ma"
+  },
+  "summary": {
+    "pin_count": 17,
+    "location_count": 17,
+    "v1_v2_consistent": true,
+    "new_native_status_value_observed": "suspendedEV",
+    "stations_with_suspendedEV_present": 3
+  },
+  "fresh_transitions_since_2026-08-28T01:31:56Z": [
+    {
+      "name": "Marjane Derb Sultan",
+      "previous_statuses": ["available"],
+      "current_statuses": ["charging", "available"]
+    },
+    {
+      "name": "Tachfine Center",
+      "previous_statuses": ["available"],
+      "current_statuses": ["charging"]
+    },
+    {
+      "name": "Marjane Mohammedia",
+      "previous_statuses": ["available"],
+      "current_statuses": ["charging"]
+    }
+  ],
+  "suspendedEV_examples": [
+    {
+      "name": "Marjane El Jadida",
+      "statuses": ["suspendedEV", "available"]
+    },
+    {
+      "name": "Marjane Tanger",
+      "statuses": ["suspendedEV", "charging"]
+    },
+    {
+      "name": "Marina Shopping Center",
+      "statuses": ["available", "suspendedEV"]
+    }
+  ],
+  "production_interpretation": {
+    "native_status_freshness": "confirmed again by multiple station transitions within the same day",
+    "evgo_vs_evone_priority": "For overlapping EVGO sites, keep cp.evgo.ma as the primary status source over EVOne roaming observations.",
+    "suspendedEV_policy": "Do not treat suspendedEV as available solely from the textual status. Until its EVGO-specific semantics are validated, production usability must continue to be determined at EVSE level using the availability and temporary/long-term-unavailable flags in addition to status text.",
+    "note": "This EVGO rule is separate from the EVOne production policy. EVOne production candidates remain limited to Available, Occupied or Charging; Faulted, Offline, Unknown and Unavailable stay diagnostic-only."
+  }
+}
