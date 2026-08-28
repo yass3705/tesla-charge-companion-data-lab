@@ -17,13 +17,13 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install --disable-pip-version-check requests requests-aws4auth
-      - name: Fetch PUN sample
+      - name: Inspect PUN tariffs
         shell: bash
         run: |
           python - <<'PY'
           import json, traceback
           from pathlib import Path
-          from collections import Counter
+          from collections import Counter, defaultdict
           import requests
           from requests_aws4auth import AWS4Auth
 
@@ -36,61 +36,105 @@ jobs:
           def cp(target,payload):
               r=requests.post(cognito,headers={'Content-Type':'application/x-amz-json-1.1','X-Amz-Target':target},json=payload,timeout=20)
               r.raise_for_status(); return r.json()
+
+          def freeze(v):
+              return json.dumps(v, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+
           try:
               iid=cp('AWSCognitoIdentityService.GetId',{'IdentityPoolId':pool})['IdentityId']
               c=cp('AWSCognitoIdentityService.GetCredentialsForIdentity',{'IdentityId':iid})['Credentials']
               auth=AWS4Auth(c['AccessKeyId'],c['SecretKey'],region,'execute-api',session_token=c['SessionToken'])
+
               r=requests.post(api+'/v1/chargepoints/public/map/search',auth=auth,json={'page':0,'size':1000},headers={'Content-Type':'application/json'},timeout=45)
               out['map_http']=r.status_code; r.raise_for_status(); d=r.json()
               out['totalElements']=d.get('totalElements'); out['totalPages']=d.get('totalPages')
-              items=d.get('content',[])
-              out['map_item_keys']=sorted(items[0].keys()) if items else []
-              ids=[x['evse_id'] for x in items[:500] if x.get('evse_id')]
+              ids=[x['evse_id'] for x in d.get('content',[]) if x.get('evse_id')][:1000]
+
               records=[]
               for i in range(0,len(ids),100):
                   rr=requests.post(api+'/v1/chargepoints/group',auth=auth,json=ids[i:i+100],headers={'Content-Type':'application/json'},timeout=45)
                   rr.raise_for_status(); records.extend(rr.json())
+
+              tariffed=[x for x in records if x.get('punTariffsDetails')]
               out['sample_records']=len(records)
-              out['top_level_keys']=sorted({k for x in records for k in x})
-              locs=[x.get('location') or {} for x in records]
-              out['location_keys']=sorted({k for x in locs for k in x})
-              conns=[c for x in records for c in (x.get('connectors') or []) if isinstance(c,dict)]
-              out['connector_keys']=sorted({k for c in conns for k in c})
-              out['status_counts']=dict(Counter(str(x.get('status')) for x in records))
-              out['real_time_true']=sum(bool(x.get('realTime')) for x in records)
-              out['publication_status_counts']=dict(Counter(str(x.get('publicationStatus')) for x in records))
-              out['cpo_unique_sample']=len({x.get('businessName') for x in records if x.get('businessName')})
-              out['cpo_top_sample']=Counter(str(x.get('businessName')) for x in records if x.get('businessName')).most_common(15)
-              needles=('tariff','price','cost','costo','fee','currency','term','condition')
-              hits={}
-              def walk(v,path=''):
-                  if isinstance(v,dict):
-                      for k,val in v.items():
-                          p=f'{path}.{k}' if path else k
-                          if any(n in k.lower() for n in needles): hits.setdefault(p,str(val)[:250])
-                          walk(val,p)
-                  elif isinstance(v,list):
-                      for val in v[:10]: walk(val,path+'[]')
-              for x in records: walk(x)
-              out['price_like_fields']=[{'path':k,'sample':v} for k,v in sorted(hits.items())]
-              # presence by connector key, useful to see whether price fields exist but are sparse
-              out['connector_presence']={k:sum(1 for c in conns if c.get(k) not in (None,'',[],{})) for k in out['connector_keys']}
-              out['top_level_presence']={k:sum(1 for x in records if x.get(k) not in (None,'',[],{})) for k in out['top_level_keys']}
-              Path('pun_smoke_raw.json').write_text(json.dumps(records[:10],ensure_ascii=False,indent=2),encoding='utf-8')
+              out['tariffed_records']=len(tariffed)
+              out['tariff_coverage_pct']=round(100*len(tariffed)/len(records),2) if records else 0
+
+              # Coverage by CPO.
+              cpo=defaultdict(lambda:{'total':0,'tariffed':0})
+              for x in records:
+                  name=str(x.get('businessName') or 'UNKNOWN')
+                  cpo[name]['total']+=1
+                  if x.get('punTariffsDetails'): cpo[name]['tariffed']+=1
+              for name,v in cpo.items():
+                  v['coverage_pct']=round(100*v['tariffed']/v['total'],1) if v['total'] else 0
+              out['coverage_by_cpo']=dict(sorted(cpo.items(), key=lambda kv:(-kv[1]['tariffed'],-kv[1]['total'],kv[0])))
+
+              # Exact tariff schema and presence by band/component.
+              bands=('acTariff','dcTariff','hpcTariff')
+              comps=('energy','parking','activation','time')
+              out['band_presence']={b:sum(1 for x in tariffed if (x.get('punTariffsDetails') or {}).get(b)) for b in bands}
+              out['component_presence']={}
+              for b in bands:
+                  out['component_presence'][b]={}
+                  for comp in comps:
+                      vals=[]
+                      for x in tariffed:
+                          v=((x.get('punTariffsDetails') or {}).get(b) or {}).get(comp)
+                          if v is not None: vals.append(v)
+                      out['component_presence'][b][comp]={
+                          'count':len(vals),
+                          'distinct_values':sorted({str(v) for v in vals})[:50],
+                      }
+
+              patterns=Counter(freeze(x.get('punTariffsDetails')) for x in tariffed)
+              out['distinct_tariff_patterns']=len(patterns)
+              out['top_tariff_patterns']=[{'count':n,'tariff':json.loads(k)} for k,n in patterns.most_common(30)]
+
+              # Representative examples grouped by CPO, preserving EVSE/location/power/status.
+              examples=[]
+              seen=set()
+              for x in tariffed:
+                  name=str(x.get('businessName') or 'UNKNOWN')
+                  if name in seen: continue
+                  seen.add(name)
+                  examples.append({
+                      'businessName':x.get('businessName'),
+                      'party_id':(x.get('location') or {}).get('party_id'),
+                      'locationId':x.get('locationId'),
+                      'evse_id':x.get('evse_id'),
+                      'status':x.get('status'),
+                      'realTime':x.get('realTime'),
+                      'connectors':x.get('connectors'),
+                      'punTariffsDetails':x.get('punTariffsDetails'),
+                  })
+                  if len(examples)>=40: break
+              out['tariff_examples_by_cpo']=examples
+
+              # Check whether same location gets consistent tariff object across EVSEs.
+              loc_tariffs=defaultdict(set)
+              for x in tariffed:
+                  if x.get('locationId'):
+                      loc_tariffs[str(x['locationId'])].add(freeze(x.get('punTariffsDetails')))
+              out['tariffed_locations']=len(loc_tariffs)
+              out['locations_with_multiple_tariff_objects']=sum(1 for s in loc_tariffs.values() if len(s)>1)
+
+              Path('pun_tariff_examples.json').write_text(json.dumps(examples,ensure_ascii=False,indent=2),encoding='utf-8')
               out['status']='ok'
           except Exception as e:
               out['status']='error'; out['error_type']=type(e).__name__; out['error']=str(e); out['traceback']=traceback.format_exc().splitlines()[-20:]
-          Path('pun_smoke_summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+
+          Path('pun_tariff_summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
           print(json.dumps(out,ensure_ascii=False,indent=2))
           if out['status']!='ok': raise SystemExit(1)
           PY
-      - name: Upload smoke result
+      - name: Upload tariff result
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pun-italy-smoke
+          name: pun-italy-tariff-smoke
           path: |
-            pun_smoke_summary.json
-            pun_smoke_raw.json
+            pun_tariff_summary.json
+            pun_tariff_examples.json
           if-no-files-found: warn
           retention-days: 7
