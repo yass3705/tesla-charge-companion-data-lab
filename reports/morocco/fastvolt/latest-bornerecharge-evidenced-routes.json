@@ -1,8 +1,8 @@
 {
-  "schema_version": 2,
-  "generated_at": "2026-08-28T15:38:32.524105+00:00",
+  "schema_version": 3,
+  "generated_at": "2026-08-28T15:39:28.287668+00:00",
   "country": "MA",
-  "scope": "FastVolt/EVPlug evidenced GET routes plus bounded conventional public metadata discovery",
+  "scope": "FastVolt/EVPlug evidenced GET routes plus bounded public metadata and one nonexistent control",
   "policy": {
     "read_only": true,
     "get_only": true,
@@ -12,6 +12,7 @@
     "no_mutations": true,
     "no_business_or_organisation_guessing": true,
     "no_path_bruteforce_or_crawling": true,
+    "single_nonexistent_control_only": true,
     "raw_response_body_persisted": false,
     "only_status_content_type_and_schema_shape_persisted": true
   },
@@ -22,6 +23,21 @@
     "tariff_channel": "FastVolt direct",
     "status_source": null,
     "evplug_role": "technical/platform/eMSP evidence only; not CPO attribution"
+  },
+  "route_resolution_control": {
+    "sentinel_path": "/__tcc_readonly_nonexistent_sentinel__",
+    "sentinel_status": 401,
+    "paths_with_identical_status_content_type_length": [
+      "/app/charging_stations/",
+      "/user/get_charging_station_details/",
+      "/openapi.json",
+      "/swagger.json",
+      "/docs",
+      "/redoc",
+      "/robots.txt",
+      "/api/schema/"
+    ],
+    "interpretation": "If evidenced routes and a deliberately nonexistent path have the same HTTP/content signature, the anonymous response is consistent with host-wide middleware and does not independently prove route resolution."
   },
   "probes": [
     {
@@ -132,6 +148,16 @@
       "probe_class": "conventional_public_metadata",
       "method": "GET",
       "url": "https://mobile.ev.fastvolt.ma/api/schema/",
+      "status": 401,
+      "content_type": "text/plain; charset=utf-8",
+      "response_length_sampled": 38
+    },
+    {
+      "host": "mobile.ev.fastvolt.ma",
+      "path": "/__tcc_readonly_nonexistent_sentinel__",
+      "probe_class": "nonexistent_control",
+      "method": "GET",
+      "url": "https://mobile.ev.fastvolt.ma/__tcc_readonly_nonexistent_sentinel__",
       "status": 401,
       "content_type": "text/plain; charset=utf-8",
       "response_length_sampled": 38
