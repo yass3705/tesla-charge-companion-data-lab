@@ -6,7 +6,9 @@ Provider semantics observed in live Mobilithek data:
 - eRound publishes small deltas: merge updates into the previous known state.
 
 Never infer a state for an unseen eRound point. Unknown remains unknown until an
-explicit source event is observed. This artifact is staging-only.
+explicit source event is observed. Dynamic objects not yet present in the static
+feed are counted as source lag but are not actionable until they map to EVSE IDs.
+This artifact is staging-only.
 """
 from __future__ import annotations
 
@@ -66,8 +68,14 @@ def build(current: dict, previous: dict | None):
         prev_by_provider.setdefault(row.get("provider"), {})[key(row)] = row
 
     current_by_provider = {}
+    unjoined_by_provider = {}
     for row in current.get("points") or []:
-        current_by_provider.setdefault(row.get("provider"), {})[key(row)] = row
+        provider = row.get("provider")
+        actionable = bool(row.get("joinedToStaticPoint") and row.get("evseIds"))
+        if actionable:
+            current_by_provider.setdefault(provider, {})[key(row)] = row
+        else:
+            unjoined_by_provider[provider] = unjoined_by_provider.get(provider, 0) + 1
 
     output_points = []
     provider_stats = {}
@@ -88,18 +96,20 @@ def build(current: dict, previous: dict | None):
         state_counts = {}
         for row in rows:
             state_counts[row["serviceState"]] = state_counts.get(row["serviceState"], 0) + 1
+        coverage = 100 * len(rows) / max(1, known_static)
         provider_stats[provider] = {
             "mode": mode,
-            "currentEvents": len(cur),
+            "currentActionableEvents": len(cur),
+            "currentUnjoinedEvents": unjoined_by_provider.get(provider, 0),
             "previousKnownPoints": len(prev),
             "knownPointsAfterMerge": len(rows),
             "staticPoints": known_static,
-            "knownCoveragePct": round(100 * len(rows) / max(1, known_static), 2),
+            "knownCoveragePct": round(min(100.0, coverage), 2),
             "serviceStateDistribution": state_counts,
         }
 
     result = {
-        "schemaVersion": "0.1.0",
+        "schemaVersion": "0.2.0",
         "dataset": "germany-afir-dynamic-persistent-state",
         "generatedAt": now,
         "countryCode": "DE",
@@ -108,6 +118,7 @@ def build(current: dict, previous: dict | None):
             "publishesToTcc": False,
             "tariffsRankable": False,
             "unknownIsNeverAssumedOperational": True,
+            "unjoinedDynamicObjectsAreNotActionable": True,
             "providerModes": PROVIDER_MODE,
         },
         "sourceDynamicGeneratedAt": current.get("generatedAt"),
@@ -121,6 +132,7 @@ def build(current: dict, previous: dict | None):
         "operational": sum(x.get("serviceState") == "operational" for x in result["points"]),
         "outOfService": sum(x.get("serviceState") == "out_of_service" for x in result["points"]),
         "unknown": sum(x.get("serviceState") == "unknown" for x in result["points"]),
+        "currentUnjoinedEvents": sum(unjoined_by_provider.values()),
     }
     return result
 
