@@ -1,0 +1,48 @@
+name: Enel Italy targeted station probe
+
+on:
+  push:
+    branches:
+      - research/enel-italy-probe
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check selenium requests
+      - name: Probe targeted Italian station data
+        run: python scripts/enel_italy_station_probe.py
+      - name: Validate probe report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('data/reports/enel_italy_station_probe.json')
+          assert p.exists() and p.stat().st_size > 500
+          r = json.loads(p.read_text(encoding='utf-8'))
+          assert r['security']['accountCredentialsUsed'] is False
+          assert r['security']['authorizationMaterialPersisted'] is False
+          assert r['counts']['cityQueries'] == 3
+          assert r['counts']['successfulCityQueries'] >= 1
+          print(json.dumps(r['counts'], ensure_ascii=False, indent=2))
+          print(json.dumps(r['commonPriceLikeKeyPaths'][:30], ensure_ascii=False, indent=2))
+          PY
+      - name: Upload targeted probe report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enel-italy-station-probe
+          path: |
+            data/reports/enel_italy_station_probe.json
+            data/reports/enel_italy_station_probe.md
+          retention-days: 14
