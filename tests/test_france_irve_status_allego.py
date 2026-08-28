@@ -1,7 +1,10 @@
+import sys
 import unittest
-from collections import Counter
+from pathlib import Path
 
-from scripts.france_irve_status_allego import normalize_allego_status, records_from_dxp
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+
+from france_irve_status_allego import normalize_allego_status, records_from_dxp
 
 
 class AllegoStatusAdapterTests(unittest.TestCase):
