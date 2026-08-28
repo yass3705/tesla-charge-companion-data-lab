@@ -3,7 +3,7 @@
 
 The script reproduces the anonymous session created by Enel's public web map,
 queries a few Italian city centres, then tests the public station-detail route
-advertised by the frontend bundle with real station identifiers returned by
+advertised by the frontend bundle with real station serial numbers returned by
 the map. Authentication material stays only in process memory and is never
 written to reports or logs.
 """
@@ -84,6 +84,52 @@ def extract_matching_scalars(obj: Any, tokens: tuple[str, ...], prefix: str = ""
         for v in obj[:50]:
             extract_matching_scalars(v, tokens, prefix + "[]", depth + 1, out)
     return out
+
+
+def power_class(max_power: Any) -> str:
+    try:
+        p = float(max_power)
+    except Exception:
+        return "unknown"
+    if p <= 43:
+        return "quick"
+    if p <= 99:
+        return "fast"
+    return "hpc"
+
+
+def extract_plug_price_summaries(obj: Any) -> list[dict[str, Any]]:
+    if not isinstance(obj, dict) or not isinstance(obj.get("result"), dict):
+        return []
+    evses = obj["result"].get("evses")
+    if not isinstance(evses, list):
+        return []
+    rows: list[dict[str, Any]] = []
+    keep = (
+        "id", "plugId", "typology", "maxPower", "minPower", "status", "currency",
+        "price", "typePrice", "penaltyPrice",
+        "directPaymenthPrice", "directPaymenthTypePrice", "directPaymenthPenaltyPrice",
+    )
+    for evse in evses[:20]:
+        if not isinstance(evse, dict):
+            continue
+        plugs = evse.get("plugs")
+        if not isinstance(plugs, list):
+            continue
+        for plug in plugs[:10]:
+            if not isinstance(plug, dict):
+                continue
+            row: dict[str, Any] = {
+                "evseId": evse.get("evseId"),
+                "evseStatus": evse.get("status"),
+                "evseType": evse.get("type"),
+            }
+            for key in keep:
+                value = plug.get(key)
+                if isinstance(value, (str, int, float, bool)) or value is None:
+                    row[key] = value
+            rows.append(row)
+    return rows
 
 
 def extract_browser_station_headers() -> tuple[dict[str, str], dict[str, Any]]:
@@ -167,19 +213,37 @@ def get_city_map(session: requests.Session, headers: dict[str, str], city: str, 
     return row, stations
 
 
-def probe_detail(session: requests.Session, headers: dict[str, str], station: dict[str, Any], identifier_kind: str) -> dict[str, Any]:
-    ident = station.get(identifier_kind)
+def select_stratified_samples(stations: list[dict[str, Any]], per_class: int = 3) -> list[dict[str, Any]]:
+    buckets: dict[str, list[dict[str, Any]]] = {"quick": [], "fast": [], "hpc": []}
+    seen: set[str] = set()
+    for station in stations:
+        serial = station.get("serialNumber")
+        if not isinstance(serial, str) or not serial or serial in seen:
+            continue
+        cls = power_class(station.get("maxPower"))
+        if cls not in buckets or len(buckets[cls]) >= per_class:
+            continue
+        buckets[cls].append(station)
+        seen.add(serial)
+        if all(len(v) >= per_class for v in buckets.values()):
+            break
+    return buckets["quick"] + buckets["fast"] + buckets["hpc"]
+
+
+def probe_detail(session: requests.Session, headers: dict[str, str], station: dict[str, Any]) -> dict[str, Any]:
+    ident = station.get("serialNumber")
     row: dict[str, Any] = {
-        "identifierKind": identifier_kind,
-        "identifier": ident if isinstance(ident, (str, int, float, bool)) else None,
+        "identifierKind": "serialNumber",
+        "identifier": ident if isinstance(ident, str) else None,
+        "powerClass": power_class(station.get("maxPower")),
         "mapAddress": station.get("address"),
         "mapMaxPower": station.get("maxPower"),
         "mapStatus": station.get("status"),
     }
-    if ident is None:
-        row["skipped"] = "missing_identifier"
+    if not isinstance(ident, str) or not ident:
+        row["skipped"] = "missing_serial_number"
         return row
-    url = STATION_URL + "/" + quote(str(ident), safe="")
+    url = STATION_URL + "/" + quote(ident, safe="")
     r = session.get(url, headers=headers, timeout=45)
     row["httpStatus"] = r.status_code
     row["contentType"] = r.headers.get("content-type")
@@ -207,6 +271,7 @@ def probe_detail(session: requests.Session, headers: dict[str, str], station: di
     row["priceLikeKeyPaths"] = sorted(p for p in paths if any(t in p.lower() for t in PRICE_TOKENS))[:300]
     row["detailLikeKeyPaths"] = sorted(p for p in paths if any(t in p.lower() for t in DETAIL_TOKENS))[:300]
     row["priceLikeScalars"] = extract_matching_scalars(obj, PRICE_TOKENS)[:100]
+    row["plugPrices"] = extract_plug_price_summaries(obj)
     return row
 
 
@@ -214,26 +279,39 @@ def main() -> None:
     replay_headers, browser_diag = extract_browser_station_headers()
     session = requests.Session()
     city_results: list[dict[str, Any]] = []
-    samples: list[dict[str, Any]] = []
+    all_stations: list[dict[str, Any]] = []
     for city, lat, lon in CITIES:
         row, stations = get_city_map(session, replay_headers, city, lat, lon)
         city_results.append(row)
-        if city == "Rome":
-            samples = stations[:3]
-    detail_results: list[dict[str, Any]] = []
-    for station in samples:
-        for kind in ("num", "serialNumber"):
-            detail_results.append(probe_detail(session, replay_headers, station, kind))
+        all_stations.extend(stations)
+
+    samples = select_stratified_samples(all_stations, per_class=3)
+    detail_results = [probe_detail(session, replay_headers, station) for station in samples]
+
     detail_price_paths: Counter[str] = Counter()
+    class_counts: Counter[str] = Counter()
+    price_pairs: Counter[str] = Counter()
     for row in detail_results:
+        class_counts[row.get("powerClass", "unknown")] += 1
         for p in row.get("priceLikeKeyPaths", []):
             detail_price_paths[p] += 1
+        for plug in row.get("plugPrices", []):
+            key = json.dumps({
+                "class": row.get("powerClass"),
+                "price": plug.get("price"),
+                "typePrice": plug.get("typePrice"),
+                "directPaymenthPrice": plug.get("directPaymenthPrice"),
+                "currency": plug.get("currency"),
+            }, sort_keys=True)
+            price_pairs[key] += 1
+
     successful_detail = sum(1 for x in detail_results if x.get("httpStatus") == 200 and x.get("json") is True)
     nonempty_detail = sum(1 for x in detail_results if x.get("resultNonEmpty") is True)
     price_detail = sum(1 for x in detail_results if x.get("priceLikeKeyPaths"))
+
     report = {
         "generatedAt": now_iso(),
-        "scope": "public_enel_map_and_station_detail_probe",
+        "scope": "public_enel_map_and_station_detail_probe_stratified",
         "security": {
             "accountCredentialsUsed": False,
             "browserSessionMaterialKeptOnlyInMemory": True,
@@ -247,6 +325,7 @@ def main() -> None:
             "successfulCityQueries": sum(1 for x in city_results if x.get("httpStatus") == 200),
             "mapStationsReturned": sum(int(x.get("resultLength") or 0) for x in city_results),
             "detailRequests": len(detail_results),
+            "detailSampleClassCounts": dict(class_counts),
             "successfulDetailJsonResponses": successful_detail,
             "nonEmptyDetailResponses": nonempty_detail,
             "detailResponsesWithPriceEvidence": price_detail,
@@ -255,6 +334,10 @@ def main() -> None:
         "cityResults": city_results,
         "detailProbe": detail_results,
         "commonDetailPriceLikeKeyPaths": detail_price_paths.most_common(300),
+        "observedPricePairs": [
+            {"values": json.loads(k), "count": v}
+            for k, v in price_pairs.most_common()
+        ],
         "stationDataReady": any(int(x.get("resultLength") or 0) > 0 for x in city_results),
         "detailDataReady": nonempty_detail > 0,
         "priceDataSeenInDetail": price_detail > 0,
@@ -266,6 +349,7 @@ def main() -> None:
         f"- City queries successful: **{report['counts']['successfulCityQueries']}/{len(CITIES)}**\n"
         f"- Map stations returned: **{report['counts']['mapStationsReturned']}**\n"
         f"- Detail requests: **{report['counts']['detailRequests']}**\n"
+        f"- Sample classes: **{dict(class_counts)}**\n"
         f"- Non-empty detail responses: **{nonempty_detail}**\n"
         f"- Detail responses with price evidence: **{price_detail}**\n"
         f"- Detail endpoint usable: **{'yes' if report['detailDataReady'] else 'no'}**\n"
@@ -277,8 +361,9 @@ def main() -> None:
         "stationDataReady": report["stationDataReady"],
         "detailDataReady": report["detailDataReady"],
         "priceDataSeenInDetail": report["priceDataSeenInDetail"],
+        "observedPricePairs": report["observedPricePairs"],
         "detailProbe": detail_results,
-    }, ensure_ascii=False, indent=2)[:30000])
+    }, ensure_ascii=False, indent=2)[:40000])
 
 
 if __name__ == "__main__":
