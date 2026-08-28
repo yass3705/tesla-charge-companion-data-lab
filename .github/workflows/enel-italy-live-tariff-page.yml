@@ -1,0 +1,47 @@
+name: Enel Italy live tariff page probe
+
+on:
+  push:
+    branches:
+      - research/enel-italy-probe
+    paths:
+      - scripts/enel_italy_live_tariff_page_probe.py
+      - .github/workflows/enel-italy-live-tariff-page.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check selenium
+      - name: Probe live Enel tariff cards
+        run: python scripts/enel_italy_live_tariff_page_probe.py
+      - name: Validate report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('data/reports/enel_italy_live_tariff_page_probe.json')
+          assert p.exists() and p.stat().st_size > 1000
+          r = json.loads(p.read_text(encoding='utf-8'))
+          assert len(r['captures']) == 3
+          print(json.dumps(r['clicks'], ensure_ascii=False, indent=2))
+          for cap in r['captures']:
+              print(cap['label'], json.dumps({k:v['prices'] for k,v in cap['plans'].items()}, ensure_ascii=False))
+          PY
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enel-italy-live-tariff-page
+          path: data/reports/enel_italy_live_tariff_page_probe.json
+          retention-days: 14
