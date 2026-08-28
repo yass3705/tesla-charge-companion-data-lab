@@ -3,14 +3,14 @@ name: France IRVE canonical validation
 on:
   pull_request:
     paths:
-      - "scripts/france_irve_canonical.py"
-      - "tests/test_france_irve_canonical.py"
+      - "scripts/france_irve_*.py"
+      - "tests/test_france_irve_*.py"
       - "docs/france_irve_canonical.md"
       - ".github/workflows/france-irve-canonical.yml"
   workflow_dispatch:
     inputs:
       smoke_rows:
-        description: "Number of official IRVE rows to validate (0 = full national build)"
+        description: "Static IRVE rows to validate (0 = full national build)"
         required: false
         default: "20000"
   schedule:
@@ -27,8 +27,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Run canonical merge tests
-        run: python -m unittest discover -s tests -p 'test_france_irve_canonical.py' -v
+      - name: Run France IRVE tests
+        run: python -m unittest discover -s tests -p 'test_france_irve_*.py' -v
 
   official-source-smoke:
     if: github.event_name != 'pull_request'
@@ -47,7 +47,11 @@ jobs:
           else
             echo "value=20000" >> "$GITHUB_OUTPUT"
           fi
-      - name: Validate official national IRVE source
+      - name: Normalize official IRVE dynamic status fallback
+        run: |
+          python scripts/france_irve_dynamic_adapter.py \
+            --out /tmp/france_irve_dynamic_enrichment.json
+      - name: Validate official national IRVE static source with dynamic fallback
         shell: bash
         run: |
           ROWS="${{ steps.rows.outputs.value }}"
@@ -57,6 +61,7 @@ jobs:
           fi
           python scripts/france_irve_canonical.py \
             "${LIMIT_ARGS[@]}" \
+            --enrichment /tmp/france_irve_dynamic_enrichment.json \
             --out /tmp/france_irve_canonical.json \
             --summary-out /tmp/france_irve_summary.json
           cat /tmp/france_irve_summary.json
