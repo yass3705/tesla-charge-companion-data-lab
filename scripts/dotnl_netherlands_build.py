@@ -33,16 +33,10 @@ def gross_component(component):
     return price * (1.0 + (vat or 0.0) / 100.0)
 
 
-def gross_price_object(value):
-    if not isinstance(value, dict):
-        return None
-    incl = as_float(value.get("incl_vat"))
-    if incl is not None:
-        return incl
-    return as_float(value.get("excl_vat"))
-
-
 def normalize_tariff(tariff):
+    country = str(tariff.get("country_code") or "").upper()
+    party = str(tariff.get("party_id") or "").upper()
+    tariff_id = str(tariff.get("id") or "")
     elements = []
     for element in tariff.get("elements") or []:
         if not isinstance(element, dict):
@@ -51,13 +45,11 @@ def normalize_tariff(tariff):
         for component in element.get("price_components") or []:
             if not isinstance(component, dict):
                 continue
-            typ = str(component.get("type") or "").upper()
-            net = as_float(component.get("price"))
             gross = gross_component(component)
             components.append(
                 {
-                    "type": typ,
-                    "priceExVat": net,
+                    "type": str(component.get("type") or "").upper(),
+                    "priceExVat": as_float(component.get("price")),
                     "vatPct": as_float(component.get("vat")),
                     "priceInclVat": None if gross is None else round(gross, 6),
                     "stepSize": component.get("step_size"),
@@ -70,13 +62,16 @@ def normalize_tariff(tariff):
             }
         )
     return {
-        "id": str(tariff.get("id") or ""),
+        "tariffKey": f"{country}:{party}:{tariff_id}",
+        "countryCode": country,
+        "partyId": party,
+        "tariffId": tariff_id,
         "type": tariff.get("type"),
         "currency": tariff.get("currency") or "EUR",
         "startDateTime": tariff.get("start_date_time"),
         "endDateTime": tariff.get("end_date_time"),
-        "minPriceInclVat": gross_price_object(tariff.get("min_price")),
-        "maxPriceInclVat": gross_price_object(tariff.get("max_price")),
+        "minPrice": tariff.get("min_price"),
+        "maxPrice": tariff.get("max_price"),
         "altText": tariff.get("tariff_alt_text"),
         "altUrl": tariff.get("tariff_alt_url"),
         "elements": elements,
@@ -106,17 +101,15 @@ def derive_power_kw(connector):
 
 
 def station_service_status(statuses):
-    s = {str(x).upper() for x in statuses}
-    if s & SERVICE_STATUSES:
+    values = {str(x).upper() for x in statuses}
+    if values & SERVICE_STATUSES:
         return "IN_SERVICE"
-    if s and s <= BROKEN_STATUSES:
-        return "OUT_OF_SERVICE"
-    if s & BROKEN_STATUSES and not (s & SERVICE_STATUSES):
+    if values and values <= BROKEN_STATUSES:
         return "OUT_OF_SERVICE"
     return "UNKNOWN"
 
 
-def normalize_location(location, tariff_index, metrics):
+def normalize_location(location, tariff_index, metrics, used_tariff_keys):
     party = str(location.get("party_id") or "").upper()
     location_id = str(location.get("id") or "")
     coords = location.get("coordinates") or {}
@@ -148,23 +141,28 @@ def normalize_location(location, tariff_index, metrics):
                 metrics["connectorsMissingUsablePower"] += 1
 
             tariff_ids = [str(x) for x in (connector.get("tariff_ids") or [])]
-            resolved_tariffs = []
+            tariff_keys = []
             unresolved = []
+            resolved_tariffs = []
             for tariff_id in tariff_ids:
                 tariff = tariff_index.get((party, tariff_id))
                 if tariff is None:
                     unresolved.append(tariff_id)
                     metrics["unresolvedTariffLinksByParty"][party] += 1
-                else:
-                    resolved_tariffs.append(tariff)
+                    continue
+                tariff_key = tariff["tariffKey"]
+                tariff_keys.append(tariff_key)
+                used_tariff_keys.add(tariff_key)
+                resolved_tariffs.append(tariff)
 
             if tariff_ids:
                 metrics["connectorsWithTariffIds"] += 1
-            if resolved_tariffs:
+            if tariff_keys:
                 metrics["connectorsWithResolvedTariff"] += 1
-                if any(str(t.get("type") or "").upper() == "AD_HOC_PAYMENT" for t in resolved_tariffs):
+                types = {str(t.get("type") or "").upper() for t in resolved_tariffs}
+                if "AD_HOC_PAYMENT" in types:
                     metrics["connectorsWithAdHocTariff"] += 1
-                elif any(str(t.get("type") or "").upper() in ("REGULAR", "") for t in resolved_tariffs):
+                if types & {"REGULAR", ""}:
                     metrics["connectorsWithRegularOrUntypedTariff"] += 1
 
             connectors_out.append(
@@ -178,7 +176,7 @@ def normalize_location(location, tariff_index, metrics):
                     "powerKw": power_kw,
                     "powerSource": power_source,
                     "tariffIds": tariff_ids,
-                    "tariffs": resolved_tariffs,
+                    "tariffKeys": tariff_keys,
                     "unresolvedTariffIds": unresolved,
                     "termsAndConditions": connector.get("terms_and_conditions"),
                     "lastUpdated": connector.get("last_updated"),
@@ -245,17 +243,17 @@ def main():
     if not isinstance(locations, list) or not isinstance(tariffs, list):
         raise SystemExit("DOT-NL snapshots must have JSON-array roots")
 
-    nl_tariffs = [
-        t
-        for t in tariffs
-        if isinstance(t, dict)
-        and str(t.get("country_code") or "").upper() == "NL"
-        and str(t.get("party_id") or "").upper() != "TSL"
-    ]
     tariff_index = {}
     duplicate_tariffs = 0
-    for tariff in nl_tariffs:
-        key = (str(tariff.get("party_id") or "").upper(), str(tariff.get("id") or ""))
+    for tariff in tariffs:
+        if not isinstance(tariff, dict):
+            continue
+        country = str(tariff.get("country_code") or "").upper()
+        party = str(tariff.get("party_id") or "").upper()
+        if country != "NL" or party == "TSL":
+            continue
+        tariff_id = str(tariff.get("id") or "")
+        key = (party, tariff_id)
         normalized = normalize_tariff(tariff)
         old = tariff_index.get(key)
         if old is not None:
@@ -292,9 +290,9 @@ def main():
     for location in locations:
         if not isinstance(location, dict):
             continue
-        cc = str(location.get("country_code") or "").upper()
+        country = str(location.get("country_code") or "").upper()
         party = str(location.get("party_id") or "").upper()
-        if cc != "NL":
+        if country != "NL":
             metrics["skippedCountry"] += 1
             continue
         if party == "TSL":
@@ -312,11 +310,18 @@ def main():
                 continue
         best_location[key] = location
 
+    used_tariff_keys = set()
     stations = []
     for key in sorted(best_location):
-        station = normalize_location(best_location[key], tariff_index, metrics)
+        station = normalize_location(best_location[key], tariff_index, metrics, used_tariff_keys)
         if station is not None:
             stations.append(station)
+
+    tariffs_by_key = {
+        tariff["tariffKey"]: tariff
+        for tariff in tariff_index.values()
+        if tariff["tariffKey"] in used_tariff_keys
+    }
 
     generated = dt.datetime.now(dt.timezone.utc).isoformat()
     dataset = {
@@ -329,15 +334,18 @@ def main():
             "tariffs": "https://opendata.ndw.nu/charging_point_tariffs_ocpi.json.gz",
             "format": "OCPI 2.2.1",
         },
+        "tariffs": tariffs_by_key,
         "stations": stations,
     }
 
     args.output_gz.parent.mkdir(parents=True, exist_ok=True)
+    args.report_json.parent.mkdir(parents=True, exist_ok=True)
     payload = json.dumps(dataset, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    with gzip.open(args.output_gz, "wb", compresslevel=9, mtime=0) as handle:
-        handle.write(payload)
+    with args.output_gz.open("wb") as raw:
+        with gzip.GzipFile(fileobj=raw, mode="wb", compresslevel=9, mtime=0) as handle:
+            handle.write(payload)
 
-    c = metrics["connectors"]
+    connector_count = metrics["connectors"]
     report = {
         "dataset": "dotnl-netherlands-build-report",
         "generatedAt": generated,
@@ -348,6 +356,7 @@ def main():
         "duplicateLocationKeys": duplicate_locations,
         "duplicateTariffKeys": duplicate_tariffs,
         "tariffObjectCountNlNonTesla": len(tariff_index),
+        "referencedTariffObjectCount": len(tariffs_by_key),
         "metrics": {
             **{k: v for k, v in metrics.items() if not isinstance(v, collections.Counter)},
             "evseStatusRaw": dict(metrics["evseStatusRaw"]),
@@ -356,10 +365,10 @@ def main():
             "unresolvedTariffLinksByParty": dict(metrics["unresolvedTariffLinksByParty"].most_common()),
         },
         "coveragePct": {
-            "usablePower": round(100.0 * (c - metrics["connectorsMissingUsablePower"]) / c, 3) if c else 0,
-            "tariffIds": round(100.0 * metrics["connectorsWithTariffIds"] / c, 3) if c else 0,
-            "resolvedTariff": round(100.0 * metrics["connectorsWithResolvedTariff"] / c, 3) if c else 0,
-            "adHocTariff": round(100.0 * metrics["connectorsWithAdHocTariff"] / c, 3) if c else 0,
+            "usablePower": round(100.0 * (connector_count - metrics["connectorsMissingUsablePower"]) / connector_count, 3) if connector_count else 0,
+            "tariffIds": round(100.0 * metrics["connectorsWithTariffIds"] / connector_count, 3) if connector_count else 0,
+            "resolvedTariff": round(100.0 * metrics["connectorsWithResolvedTariff"] / connector_count, 3) if connector_count else 0,
+            "adHocTariff": round(100.0 * metrics["connectorsWithAdHocTariff"] / connector_count, 3) if connector_count else 0,
         },
     }
     args.report_json.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
