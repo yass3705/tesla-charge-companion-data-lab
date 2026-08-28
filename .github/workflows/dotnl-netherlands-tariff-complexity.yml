@@ -109,7 +109,7 @@ jobs:
                       worst=max(cats,key=lambda x:rank[x])
                       connector_class[worst]+=1; party_connector_class[p][worst]+=1
 
-          tariff_class=collections.Counter(); tariff_types=collections.Counter(); raw_restriction_keys=collections.Counter(); effective_restriction_keys=collections.Counter(); component_types=collections.Counter(); complex_examples=[]; inactive_elements=0
+          tariff_class=collections.Counter(); tariff_types=collections.Counter(); raw_keys_counter=collections.Counter(); effective_keys_counter=collections.Counter(); component_types=collections.Counter(); complex_examples=[]; inactive_elements=0
           for k in sorted(referenced):
               t=tindex[k]; typ=str(t.get('type') or '<missing>').upper(); tariff_types[typ]+=1
               cat=tariff_category(t); tariff_class[cat]+=1
@@ -117,9 +117,9 @@ jobs:
                   if not isinstance(el,dict): continue
                   rr=el.get('restrictions') or {}
                   for key,v in rr.items():
-                      if v not in (None,[],{},''): raw_restriction_keys[key]+=1
+                      if v not in (None,[],{},''): raw_keys_counter[key]+=1
                   if not element_is_current(el): inactive_elements+=1; continue
-                  for key in effective_restriction_keys(el): effective_restriction_keys[key]+=1
+                  for key in effective_restriction_keys(el): effective_keys_counter[key]+=1
                   for pc in el.get('price_components') or []:
                       if isinstance(pc,dict): component_types[str(pc.get('type') or '<missing>').upper()]+=1
               if cat=='complex' and len(complex_examples)<30:
@@ -138,8 +138,8 @@ jobs:
               'referencedTariffs':len(referenced),
               'tariffRepresentability':dict(tariff_class),
               'tariffTypes':dict(tariff_types),
-              'rawRestrictionKeys':dict(raw_restriction_keys),
-              'effectiveRuntimeRestrictionKeys':dict(effective_restriction_keys),
+              'rawRestrictionKeys':dict(raw_keys_counter),
+              'effectiveRuntimeRestrictionKeys':dict(effective_keys_counter),
               'inactiveElementsIgnored':inactive_elements,
               'componentTypesCurrentElements':dict(component_types),
               'partyConnectorRepresentability':{p:dict(c) for p,c in sorted(party_connector_class.items())},
