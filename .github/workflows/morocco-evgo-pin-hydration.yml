@@ -23,13 +23,20 @@ jobs:
           RUN_ID: ${{ github.run_id }}
         run: |
           mkdir -p reports/morocco/evgo
-          cp artifacts/morocco-evgo-pin-hydration/summary.json reports/morocco/evgo/latest-pin-hydration.json
+          cp artifacts/morocco-evgo-pin-hydration/summary.json /tmp/latest-pin-hydration.json
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # A rerun can start from an older workflow SHA while main keeps moving.
+          # Re-anchor on current main before restoring the freshly generated,
+          # sanitized report so publication remains a fast-forward update.
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p reports/morocco/evgo
+          cp /tmp/latest-pin-hydration.json reports/morocco/evgo/latest-pin-hydration.json
           git add reports/morocco/evgo/latest-pin-hydration.json
           if git diff --cached --quiet; then
             echo 'No report changes'
             exit 0
           fi
           git commit -m "data(morocco): update EVGO pin hydration [run ${RUN_ID}]"
-          git push
+          git push origin HEAD:main
