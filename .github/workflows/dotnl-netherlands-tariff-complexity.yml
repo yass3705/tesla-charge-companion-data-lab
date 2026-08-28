@@ -31,7 +31,7 @@ jobs:
           curl -fsSL --retry 4 --retry-all-errors "$TAR_URL" -o /tmp/tar.json.gz
           gzip -t /tmp/loc.json.gz
           gzip -t /tmp/tar.json.gz
-      - name: Audit referenced tariff complexity
+      - name: Audit effective tariff complexity
         shell: bash
         run: |
           set -euo pipefail
@@ -40,6 +40,39 @@ jobs:
           import collections, datetime as dt, gzip, json, os
           from pathlib import Path
 
+          now=dt.datetime.now(dt.timezone.utc)
+          today=now.date()
+          rank={'simple':0,'time_window':1,'duration':2,'complex':3}
+
+          def date_value(v):
+              if not v: return None
+              try: return dt.date.fromisoformat(str(v)[:10])
+              except ValueError: return None
+
+          def element_is_current(el):
+              rr=(el or {}).get('restrictions') or {}
+              start=date_value(rr.get('start_date')); end=date_value(rr.get('end_date'))
+              if start and today < start: return False
+              if end and today > end: return False
+              return True
+
+          def effective_restriction_keys(el):
+              rr=(el or {}).get('restrictions') or {}
+              return {k for k,v in rr.items() if k not in {'start_date','end_date'} and v not in (None,[],{},'')}
+
+          def element_category(el):
+              active=effective_restriction_keys(el)
+              if not active: return 'simple'
+              if active <= {'start_time','end_time','day_of_week'}: return 'time_window'
+              if active <= {'start_time','end_time','day_of_week','min_duration'}:
+                  comps={str(pc.get('type') or '').upper() for pc in el.get('price_components') or [] if isinstance(pc,dict)}
+                  if 'min_duration' in active and comps <= {'TIME','PARKING_TIME'}: return 'duration'
+              return 'complex'
+
+          def tariff_category(t):
+              cats=[element_category(el) for el in (t.get('elements') or []) if isinstance(el,dict) and element_is_current(el)]
+              return max(cats,key=lambda x:rank[x]) if cats else 'no_current_element'
+
           with gzip.open('/tmp/loc.json.gz','rt',encoding='utf-8-sig') as f: locs=json.load(f)
           with gzip.open('/tmp/tar.json.gz','rt',encoding='utf-8-sig') as f: tariffs=json.load(f)
 
@@ -47,8 +80,7 @@ jobs:
           for t in tariffs:
               if not isinstance(t,dict): continue
               cc=str(t.get('country_code') or '').upper(); p=str(t.get('party_id') or '').upper(); tid=str(t.get('id') or '')
-              if cc=='NL' and p!='TSL' and tid:
-                  tindex[(p,tid)]=t
+              if cc=='NL' and p!='TSL' and tid: tindex[(p,tid)]=t
 
           referenced=set(); connectors=0; conn_resolved=0
           connector_class=collections.Counter(); party_connector_class=collections.defaultdict(collections.Counter)
@@ -60,83 +92,65 @@ jobs:
                   if not isinstance(e,dict) or str(e.get('status') or '').upper() in {'PLANNED','REMOVED'}: continue
                   for c in e.get('connectors') or []:
                       if not isinstance(c,dict): continue
-                      connectors+=1
-                      keys=[]
+                      connectors+=1; keys=[]
                       for tid in c.get('tariff_ids') or []:
                           k=(p,str(tid))
                           if k in tindex:
                               referenced.add(k); keys.append(k)
                       if not keys:
                           connector_class['no_resolved_tariff']+=1; party_connector_class[p]['no_resolved_tariff']+=1; continue
-                      conn_resolved+=1
                       cats=[]
                       for k in keys:
-                          t=tindex[k]
-                          cat='simple'
-                          for el in t.get('elements') or []:
-                              if not isinstance(el,dict): continue
-                              rr=el.get('restrictions') or {}
-                              active={x for x,v in rr.items() if v not in (None,[],{},'')}
-                              if not active: continue
-                              if active <= {'start_time','end_time','day_of_week'}:
-                                  cat=max(cat,'time_window',key=lambda x:{'simple':0,'time_window':1,'duration':2,'complex':3}[x])
-                              elif active <= {'start_time','end_time','day_of_week','min_duration'}:
-                                  comps={str(pc.get('type') or '').upper() for pc in el.get('price_components') or [] if isinstance(pc,dict)}
-                                  if active & {'min_duration'} and comps <= {'TIME','PARKING_TIME'}:
-                                      cat=max(cat,'duration',key=lambda x:{'simple':0,'time_window':1,'duration':2,'complex':3}[x])
-                                  else: cat='complex'
-                              else: cat='complex'
-                          cats.append(cat)
-                      rank={'simple':0,'time_window':1,'duration':2,'complex':3}
+                          cat=tariff_category(tindex[k])
+                          if cat!='no_current_element': cats.append(cat)
+                      if not cats:
+                          connector_class['no_current_tariff']+=1; party_connector_class[p]['no_current_tariff']+=1; continue
+                      conn_resolved+=1
                       worst=max(cats,key=lambda x:rank[x])
                       connector_class[worst]+=1; party_connector_class[p][worst]+=1
 
-          tariff_class=collections.Counter(); tariff_types=collections.Counter(); restriction_keys=collections.Counter(); component_types=collections.Counter(); complex_examples=[]
+          tariff_class=collections.Counter(); tariff_types=collections.Counter(); raw_restriction_keys=collections.Counter(); effective_restriction_keys=collections.Counter(); component_types=collections.Counter(); complex_examples=[]; inactive_elements=0
           for k in sorted(referenced):
               t=tindex[k]; typ=str(t.get('type') or '<missing>').upper(); tariff_types[typ]+=1
-              cat='simple'
+              cat=tariff_category(t); tariff_class[cat]+=1
               for el in t.get('elements') or []:
                   if not isinstance(el,dict): continue
+                  rr=el.get('restrictions') or {}
+                  for key,v in rr.items():
+                      if v not in (None,[],{},''): raw_restriction_keys[key]+=1
+                  if not element_is_current(el): inactive_elements+=1; continue
+                  for key in effective_restriction_keys(el): effective_restriction_keys[key]+=1
                   for pc in el.get('price_components') or []:
                       if isinstance(pc,dict): component_types[str(pc.get('type') or '<missing>').upper()]+=1
-                  rr=el.get('restrictions') or {}
-                  active={x for x,v in rr.items() if v not in (None,[],{},'')}
-                  for key in active: restriction_keys[key]+=1
-                  if not active: continue
-                  if active <= {'start_time','end_time','day_of_week'}:
-                      if cat=='simple': cat='time_window'
-                  elif active <= {'start_time','end_time','day_of_week','min_duration'}:
-                      comps={str(pc.get('type') or '').upper() for pc in el.get('price_components') or [] if isinstance(pc,dict)}
-                      if active & {'min_duration'} and comps <= {'TIME','PARKING_TIME'} and cat!='complex': cat='duration'
-                      else: cat='complex'
-                  else: cat='complex'
-              tariff_class[cat]+=1
               if cat=='complex' and len(complex_examples)<30:
-                  complex_examples.append({'partyId':k[0],'tariffId':k[1],'type':typ,'elements':t.get('elements')})
+                  complex_examples.append({'partyId':k[0],'tariffId':k[1],'type':typ,'currentElements':[el for el in (t.get('elements') or []) if isinstance(el,dict) and element_is_current(el)]})
 
           def pct(v,total): return round(v*100/total,3) if total else 0
           report={
-              'dataset':'dotnl-netherlands-tariff-complexity',
-              'generatedAt':dt.datetime.now(dt.timezone.utc).isoformat(),
-              'scope':{'countryCode':'NL','publishFalseExcluded':True,'teslaExcluded':True,'plannedRemovedExcluded':True},
+              'dataset':'dotnl-netherlands-tariff-complexity-effective',
+              'generatedAt':now.isoformat(),
+              'effectiveDate':today.isoformat(),
+              'scope':{'countryCode':'NL','publishFalseExcluded':True,'teslaExcluded':True,'plannedRemovedExcluded':True,'dateRestrictionsEvaluatedAtBuild':True},
               'connectors':connectors,
-              'connectorsWithResolvedTariff':conn_resolved,
+              'connectorsWithCurrentResolvedTariff':conn_resolved,
               'connectorRepresentability':dict(connector_class),
               'connectorRepresentabilityPct':{k:pct(v,connectors) for k,v in connector_class.items()},
               'referencedTariffs':len(referenced),
               'tariffRepresentability':dict(tariff_class),
               'tariffTypes':dict(tariff_types),
-              'restrictionKeys':dict(restriction_keys),
-              'componentTypes':dict(component_types),
+              'rawRestrictionKeys':dict(raw_restriction_keys),
+              'effectiveRuntimeRestrictionKeys':dict(effective_restriction_keys),
+              'inactiveElementsIgnored':inactive_elements,
+              'componentTypesCurrentElements':dict(component_types),
               'partyConnectorRepresentability':{p:dict(c) for p,c in sorted(party_connector_class.items())},
               'complexExamples':complex_examples,
           }
           Path(os.environ['REPORT']).write_text(json.dumps(report,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8')
-          print(json.dumps({k:report[k] for k in ('connectors','connectorsWithResolvedTariff','connectorRepresentability','connectorRepresentabilityPct','referencedTariffs','tariffRepresentability','tariffTypes','restrictionKeys','componentTypes')},ensure_ascii=False,indent=2))
+          print(json.dumps({k:report[k] for k in ('effectiveDate','connectors','connectorsWithCurrentResolvedTariff','connectorRepresentability','connectorRepresentabilityPct','referencedTariffs','tariffRepresentability','tariffTypes','rawRestrictionKeys','effectiveRuntimeRestrictionKeys','inactiveElementsIgnored','componentTypesCurrentElements')},ensure_ascii=False,indent=2))
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: dotnl-netherlands-tariff-complexity
+          name: dotnl-netherlands-tariff-complexity-effective
           path: ${{ env.REPORT }}
           retention-days: 14
       - name: Commit audit report
@@ -148,6 +162,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$REPORT"
           git diff --cached --quiet && exit 0
-          git commit -m "Record DOT-NL tariff representability audit"
+          git commit -m "Record effective DOT-NL tariff representability audit"
           git pull --rebase origin dotnl-netherlands-baseline
           git push origin HEAD:dotnl-netherlands-baseline
