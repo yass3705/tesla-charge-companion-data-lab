@@ -1,8 +1,8 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-08-27T21:37:06.739737+00:00",
+  "schema_version": 2,
+  "generated_at": "2026-08-28T15:38:32.524105+00:00",
   "country": "MA",
-  "scope": "FastVolt/EVPlug BorneRecharge evidenced shared GET-route validation",
+  "scope": "FastVolt/EVPlug evidenced GET routes plus bounded conventional public metadata discovery",
   "policy": {
     "read_only": true,
     "get_only": true,
@@ -10,6 +10,8 @@
     "no_credentials": true,
     "no_query_parameters": true,
     "no_mutations": true,
+    "no_business_or_organisation_guessing": true,
+    "no_path_bruteforce_or_crawling": true,
     "raw_response_body_persisted": false,
     "only_status_content_type_and_schema_shape_persisted": true
   },
@@ -25,6 +27,7 @@
     {
       "host": "app.api.fastvolt.bornerecharge.ma",
       "path": "/app/charging_stations/",
+      "probe_class": "evidenced_app_route",
       "method": "GET",
       "url": "https://app.api.fastvolt.bornerecharge.ma/app/charging_stations/",
       "status": 404,
@@ -33,13 +36,14 @@
       "top_level_keys": [
         "message"
       ],
-      "generic_error_shape": {
+      "generic_schema_shape": {
         "message_type": "str"
       }
     },
     {
       "host": "app.api.fastvolt.bornerecharge.ma",
       "path": "/user/get_charging_station_details/",
+      "probe_class": "evidenced_app_route",
       "method": "GET",
       "url": "https://app.api.fastvolt.bornerecharge.ma/user/get_charging_station_details/",
       "status": 404,
@@ -48,13 +52,14 @@
       "top_level_keys": [
         "message"
       ],
-      "generic_error_shape": {
+      "generic_schema_shape": {
         "message_type": "str"
       }
     },
     {
       "host": "mobile.ev.fastvolt.ma",
       "path": "/app/charging_stations/",
+      "probe_class": "evidenced_app_route",
       "method": "GET",
       "url": "https://mobile.ev.fastvolt.ma/app/charging_stations/",
       "status": 401,
@@ -64,8 +69,69 @@
     {
       "host": "mobile.ev.fastvolt.ma",
       "path": "/user/get_charging_station_details/",
+      "probe_class": "evidenced_app_route",
       "method": "GET",
       "url": "https://mobile.ev.fastvolt.ma/user/get_charging_station_details/",
+      "status": 401,
+      "content_type": "text/plain; charset=utf-8",
+      "response_length_sampled": 38
+    },
+    {
+      "host": "mobile.ev.fastvolt.ma",
+      "path": "/openapi.json",
+      "probe_class": "conventional_public_metadata",
+      "method": "GET",
+      "url": "https://mobile.ev.fastvolt.ma/openapi.json",
+      "status": 401,
+      "content_type": "text/plain; charset=utf-8",
+      "response_length_sampled": 38
+    },
+    {
+      "host": "mobile.ev.fastvolt.ma",
+      "path": "/swagger.json",
+      "probe_class": "conventional_public_metadata",
+      "method": "GET",
+      "url": "https://mobile.ev.fastvolt.ma/swagger.json",
+      "status": 401,
+      "content_type": "text/plain; charset=utf-8",
+      "response_length_sampled": 38
+    },
+    {
+      "host": "mobile.ev.fastvolt.ma",
+      "path": "/docs",
+      "probe_class": "conventional_public_metadata",
+      "method": "GET",
+      "url": "https://mobile.ev.fastvolt.ma/docs",
+      "status": 401,
+      "content_type": "text/plain; charset=utf-8",
+      "response_length_sampled": 38
+    },
+    {
+      "host": "mobile.ev.fastvolt.ma",
+      "path": "/redoc",
+      "probe_class": "conventional_public_metadata",
+      "method": "GET",
+      "url": "https://mobile.ev.fastvolt.ma/redoc",
+      "status": 401,
+      "content_type": "text/plain; charset=utf-8",
+      "response_length_sampled": 38
+    },
+    {
+      "host": "mobile.ev.fastvolt.ma",
+      "path": "/robots.txt",
+      "probe_class": "conventional_public_metadata",
+      "method": "GET",
+      "url": "https://mobile.ev.fastvolt.ma/robots.txt",
+      "status": 401,
+      "content_type": "text/plain; charset=utf-8",
+      "response_length_sampled": 38
+    },
+    {
+      "host": "mobile.ev.fastvolt.ma",
+      "path": "/api/schema/",
+      "probe_class": "conventional_public_metadata",
+      "method": "GET",
+      "url": "https://mobile.ev.fastvolt.ma/api/schema/",
       "status": 401,
       "content_type": "text/plain; charset=utf-8",
       "response_length_sampled": 38
