@@ -1,0 +1,48 @@
+name: Plenitude Italy official tariff probe
+
+on:
+  push:
+    branches:
+      - research/pun-italy-normalized
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check requests pypdf
+      - name: Probe official Plenitude tariffs and exclusions
+        run: python scripts/plenitude_italy_official.py
+      - name: Validate candidate policy
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('data/reports/plenitude_italy_official.json')
+          r = json.loads(p.read_text(encoding='utf-8'))
+          assert r['punPartyId'] == 'BEC'
+          assert r['currentOffer']['ratesEurPerKwh']['quickAcUpTo22Kw'] == 0.53
+          assert r['currentOffer']['ratesEurPerKwh']['fastDcUpTo75Kw'] == 0.60
+          assert r['currentOffer']['ratesEurPerKwh']['fastPlusUltraFastDcFrom75Kw'] == 0.65
+          assert r['exclusionList']['httpStatus'] == 200
+          assert r['exclusionList']['pageCount'] >= 1
+          assert r['publicationPolicy']['rankableWithoutExceptionResolution'] is False
+          print(json.dumps(r['exclusionList'], ensure_ascii=False, indent=2))
+          PY
+      - name: Upload Plenitude probe report
+        uses: actions/upload-artifact@v4
+        with:
+          name: plenitude-italy-official
+          path: |
+            data/reports/plenitude_italy_official.json
+            data/reports/plenitude_italy_official.md
+          retention-days: 14
