@@ -1,0 +1,245 @@
+name: DOT-NL Netherlands baseline probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/dotnl-netherlands-baseline.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dotnl-netherlands-baseline-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNL_LOCATIONS_URL: https://opendata.ndw.nu/charging_point_locations_ocpi.json.gz
+  DOTNL_TARIFFS_URL: https://opendata.ndw.nu/charging_point_tariffs_ocpi.json.gz
+  REPORT_JSON: data/national/dotnl_netherlands_probe_report.json
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download official DOT-NL national snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          for spec in \
+            "$DOTNL_LOCATIONS_URL /tmp/dotnl_locations.json.gz" \
+            "$DOTNL_TARIFFS_URL /tmp/dotnl_tariffs.json.gz"
+          do
+            url="${spec% *}"
+            out="${spec#* }"
+            curl --fail --silent --show-error --location --retry 4 --retry-all-errors \
+              --connect-timeout 30 --max-time 600 "$url" -o "$out"
+            test -s "$out"
+            gzip -t "$out"
+            echo "$(basename "$out"): $(wc -c < "$out") compressed bytes"
+          done
+
+      - name: Measure coverage and tariff linkage
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$REPORT_JSON")"
+          python - <<'PY'
+          import collections, datetime as dt, gzip, json, math, os
+          from pathlib import Path
+
+          LOC = Path('/tmp/dotnl_locations.json.gz')
+          TAR = Path('/tmp/dotnl_tariffs.json.gz')
+          OUT = Path(os.environ['REPORT_JSON'])
+
+          def read_json_gz(path):
+              with gzip.open(path, 'rt', encoding='utf-8-sig') as f:
+                  return json.load(f)
+
+          def unwrap(obj, names):
+              if isinstance(obj, list):
+                  return obj, {'rootType': 'list'}
+              if isinstance(obj, dict):
+                  for k in ('data', *names):
+                      v = obj.get(k)
+                      if isinstance(v, list):
+                          return v, {'rootType': 'object', 'listKey': k, 'rootKeys': sorted(obj.keys())}
+                  # Some exporters group objects under party/provider keys.
+                  vals=[]
+                  for v in obj.values():
+                      if isinstance(v, list): vals.extend(v)
+                  if vals:
+                      return vals, {'rootType': 'object', 'listKey': '<flattened-list-values>', 'rootKeys': sorted(obj.keys())}
+              raise RuntimeError(f'Unsupported JSON root: {type(obj).__name__}')
+
+          loc_root = read_json_gz(LOC)
+          tar_root = read_json_gz(TAR)
+          locations, loc_shape = unwrap(loc_root, ('locations','items'))
+          tariffs, tar_shape = unwrap(tar_root, ('tariffs','items'))
+
+          status = collections.Counter()
+          cpos = collections.Counter()
+          countries = collections.Counter()
+          connector_types = collections.Counter()
+          power_types = collections.Counter()
+          currencies = collections.Counter()
+          dimensions = collections.Counter()
+          tariff_party = collections.Counter()
+
+          raw_location_count=len(locations)
+          raw_evse_count=raw_connector_count=0
+          tesla_location_count=tesla_evse_count=tesla_connector_count=0
+          nt_locations=nt_evses=nt_connectors=0
+          valid_coords=0
+          opening_times_present=0
+          energy_mix_present=0
+          evse_parking_restrictions_present=0
+          connectors_with_power=0
+          connectors_with_tariff_ids=0
+          tariff_link_count=0
+          link_keys=[]
+          samples={}
+
+          for loc in locations:
+              if not isinstance(loc, dict):
+                  continue
+              party=str(loc.get('party_id') or '').upper()
+              cc=str(loc.get('country_code') or '').upper()
+              evses=loc.get('evses') or []
+              if not isinstance(evses,list): evses=[]
+              conns=[c for e in evses if isinstance(e,dict) for c in (e.get('connectors') or []) if isinstance(c,dict)]
+              raw_evse_count += len(evses)
+              raw_connector_count += len(conns)
+              if party == 'TSL':
+                  tesla_location_count += 1
+                  tesla_evse_count += len(evses)
+                  tesla_connector_count += len(conns)
+                  continue
+
+              nt_locations += 1
+              nt_evses += len(evses)
+              nt_connectors += len(conns)
+              cpos[party or '<missing>'] += 1
+              countries[cc or '<missing>'] += 1
+              if loc.get('opening_times') is not None: opening_times_present += 1
+              if loc.get('energy_mix') is not None: energy_mix_present += 1
+              coords=loc.get('coordinates') or {}
+              try:
+                  lat=float(coords.get('latitude')); lon=float(coords.get('longitude'))
+                  if math.isfinite(lat) and math.isfinite(lon) and -90 <= lat <= 90 and -180 <= lon <= 180:
+                      valid_coords += 1
+              except Exception:
+                  pass
+
+              for evse in evses:
+                  if not isinstance(evse,dict): continue
+                  status[str(evse.get('status') or '<missing>').upper()] += 1
+                  if evse.get('parking_restrictions'): evse_parking_restrictions_present += 1
+                  for c in evse.get('connectors') or []:
+                      if not isinstance(c,dict): continue
+                      connector_types[str(c.get('standard') or '<missing>').upper()] += 1
+                      power_types[str(c.get('power_type') or '<missing>').upper()] += 1
+                      if c.get('max_electric_power') is not None: connectors_with_power += 1
+                      tids=c.get('tariff_ids') or []
+                      if tids:
+                          connectors_with_tariff_ids += 1
+                          tariff_link_count += len(tids)
+                          for tid in tids:
+                              link_keys.append((cc,party,str(tid)))
+              if party in ('FAS','IOY','ELD','TNM','GFX','LDL') and party not in samples:
+                  samples[party]={
+                      'id':loc.get('id'),'name':loc.get('name'),'city':(loc.get('address') or '') if isinstance(loc.get('address'),str) else None,
+                      'evseCount':len(evses),'connectorCount':len(conns)
+                  }
+
+          tariff_index=set()
+          tariff_with_elements=0
+          for t in tariffs:
+              if not isinstance(t,dict): continue
+              cc=str(t.get('country_code') or '').upper()
+              party=str(t.get('party_id') or '').upper()
+              tid=str(t.get('id') or '')
+              if tid: tariff_index.add((cc,party,tid))
+              tariff_party[party or '<missing>'] += 1
+              cur=str(t.get('currency') or '<missing>').upper(); currencies[cur]+=1
+              els=t.get('elements') or []
+              if els: tariff_with_elements += 1
+              for el in els:
+                  if not isinstance(el,dict): continue
+                  for comp in el.get('price_components') or []:
+                      if not isinstance(comp,dict): continue
+                      dimensions[str(comp.get('type') or '<missing>').upper()] += 1
+
+          unique_link_keys=set(link_keys)
+          resolved=sum(1 for k in unique_link_keys if k in tariff_index)
+          unresolved=sorted([k for k in unique_link_keys if k not in tariff_index])
+          resolution_pct=(resolved/len(unique_link_keys)*100) if unique_link_keys else 0.0
+
+          report={
+              'dataset':'dotnl-netherlands-baseline-probe',
+              'generatedAt':dt.datetime.now(dt.timezone.utc).isoformat(),
+              'sources':{'locations':os.environ['DOTNL_LOCATIONS_URL'],'tariffs':os.environ['DOTNL_TARIFFS_URL']},
+              'sourceBytesCompressed':{'locations':LOC.stat().st_size,'tariffs':TAR.stat().st_size},
+              'sourceShape':{'locations':loc_shape,'tariffs':tar_shape},
+              'rawCounts':{'locations':raw_location_count,'evses':raw_evse_count,'connectors':raw_connector_count,'tariffs':len(tariffs)},
+              'teslaExcluded':{'locations':tesla_location_count,'evses':tesla_evse_count,'connectors':tesla_connector_count},
+              'nonTeslaCounts':{'locations':nt_locations,'evses':nt_evses,'connectors':nt_connectors,'cpoPartyIds':len(cpos)},
+              'completeness':{
+                  'locationsWithValidCoordinates':valid_coords,
+                  'locationsWithOpeningTimes':opening_times_present,
+                  'locationsWithEnergyMix':energy_mix_present,
+                  'evsesWithParkingRestrictions':evse_parking_restrictions_present,
+                  'connectorsWithMaxElectricPower':connectors_with_power,
+                  'connectorsWithTariffIds':connectors_with_tariff_ids,
+              },
+              'tariffLinkage':{
+                  'connectorTariffLinks':tariff_link_count,
+                  'uniqueTariffReferences':len(unique_link_keys),
+                  'resolvedUniqueReferences':resolved,
+                  'unresolvedUniqueReferences':len(unresolved),
+                  'resolutionPercent':round(resolution_pct,3),
+                  'unresolvedSample':[{'country_code':a,'party_id':b,'tariff_id':c} for a,b,c in unresolved[:30]],
+              },
+              'tariffs':{'count':len(tariffs),'withElements':tariff_with_elements,'currencies':dict(currencies),'priceComponentTypes':dict(dimensions),'byPartyId':dict(tariff_party)},
+              'statuses':dict(status),
+              'connectorStandards':dict(connector_types),
+              'powerTypes':dict(power_types),
+              'locationsByPartyId':dict(cpos),
+              'countryCodes':dict(countries),
+              'samples':samples,
+          }
+          OUT.write_text(json.dumps(report,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,ensure_ascii=False,indent=2,sort_keys=True))
+          PY
+
+      - name: Upload probe report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnl-netherlands-baseline-probe
+          path: data/national/dotnl_netherlands_probe_report.json
+          retention-days: 14
+
+      - name: Commit probe report on baseline branch
+        if: ${{ github.ref == 'refs/heads/dotnl-netherlands-baseline' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REPORT_JSON"
+          if git diff --cached --quiet; then
+            echo "No report changes"
+            exit 0
+          fi
+          git commit -m "Record DOT-NL Netherlands baseline metrics"
+          git push origin HEAD:dotnl-netherlands-baseline
