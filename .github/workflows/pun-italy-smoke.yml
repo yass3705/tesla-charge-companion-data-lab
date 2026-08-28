@@ -1,0 +1,96 @@
+name: Italy PUN smoke test
+
+on:
+  push:
+    branches:
+      - research/pun-italy-smoke
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests requests-aws4auth
+      - name: Fetch PUN sample
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, traceback
+          from pathlib import Path
+          from collections import Counter
+          import requests
+          from requests_aws4auth import AWS4Auth
+
+          region='eu-south-1'
+          pool='eu-south-1:e3b2ab05-2046-43dd-8ed0-c0f14c69d507'
+          cognito=f'https://cognito-identity.{region}.amazonaws.com/'
+          api='https://api.pun.piattaformaunicanazionale.it'
+          out={'status':'started'}
+
+          def cp(target,payload):
+              r=requests.post(cognito,headers={'Content-Type':'application/x-amz-json-1.1','X-Amz-Target':target},json=payload,timeout=20)
+              r.raise_for_status(); return r.json()
+          try:
+              iid=cp('AWSCognitoIdentityService.GetId',{'IdentityPoolId':pool})['IdentityId']
+              c=cp('AWSCognitoIdentityService.GetCredentialsForIdentity',{'IdentityId':iid})['Credentials']
+              auth=AWS4Auth(c['AccessKeyId'],c['SecretKey'],region,'execute-api',session_token=c['SessionToken'])
+              r=requests.post(api+'/v1/chargepoints/public/map/search',auth=auth,json={'page':0,'size':1000},headers={'Content-Type':'application/json'},timeout=45)
+              out['map_http']=r.status_code; r.raise_for_status(); d=r.json()
+              out['totalElements']=d.get('totalElements'); out['totalPages']=d.get('totalPages')
+              items=d.get('content',[])
+              out['map_item_keys']=sorted(items[0].keys()) if items else []
+              ids=[x['evse_id'] for x in items[:500] if x.get('evse_id')]
+              records=[]
+              for i in range(0,len(ids),100):
+                  rr=requests.post(api+'/v1/chargepoints/group',auth=auth,json=ids[i:i+100],headers={'Content-Type':'application/json'},timeout=45)
+                  rr.raise_for_status(); records.extend(rr.json())
+              out['sample_records']=len(records)
+              out['top_level_keys']=sorted({k for x in records for k in x})
+              locs=[x.get('location') or {} for x in records]
+              out['location_keys']=sorted({k for x in locs for k in x})
+              conns=[c for x in records for c in (x.get('connectors') or []) if isinstance(c,dict)]
+              out['connector_keys']=sorted({k for c in conns for k in c})
+              out['status_counts']=dict(Counter(str(x.get('status')) for x in records))
+              out['real_time_true']=sum(bool(x.get('realTime')) for x in records)
+              out['publication_status_counts']=dict(Counter(str(x.get('publicationStatus')) for x in records))
+              out['cpo_unique_sample']=len({x.get('businessName') for x in records if x.get('businessName')})
+              out['cpo_top_sample']=Counter(str(x.get('businessName')) for x in records if x.get('businessName')).most_common(15)
+              needles=('tariff','price','cost','costo','fee','currency','term','condition')
+              hits={}
+              def walk(v,path=''):
+                  if isinstance(v,dict):
+                      for k,val in v.items():
+                          p=f'{path}.{k}' if path else k
+                          if any(n in k.lower() for n in needles): hits.setdefault(p,str(val)[:250])
+                          walk(val,p)
+                  elif isinstance(v,list):
+                      for val in v[:10]: walk(val,path+'[]')
+              for x in records: walk(x)
+              out['price_like_fields']=[{'path':k,'sample':v} for k,v in sorted(hits.items())]
+              # presence by connector key, useful to see whether price fields exist but are sparse
+              out['connector_presence']={k:sum(1 for c in conns if c.get(k) not in (None,'',[],{})) for k in out['connector_keys']}
+              out['top_level_presence']={k:sum(1 for x in records if x.get(k) not in (None,'',[],{})) for k in out['top_level_keys']}
+              Path('pun_smoke_raw.json').write_text(json.dumps(records[:10],ensure_ascii=False,indent=2),encoding='utf-8')
+              out['status']='ok'
+          except Exception as e:
+              out['status']='error'; out['error_type']=type(e).__name__; out['error']=str(e); out['traceback']=traceback.format_exc().splitlines()[-20:]
+          Path('pun_smoke_summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          if out['status']!='ok': raise SystemExit(1)
+          PY
+      - name: Upload smoke result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pun-italy-smoke
+          path: |
+            pun_smoke_summary.json
+            pun_smoke_raw.json
+          if-no-files-found: warn
+          retention-days: 7
