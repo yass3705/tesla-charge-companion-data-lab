@@ -1,0 +1,113 @@
+name: DOT-NL Netherlands strict runtime
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/dotnl-netherlands-runtime.yml"
+      - "scripts/dotnl_netherlands_build.py"
+      - "scripts/dotnl_netherlands_runtime.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dotnl-netherlands-runtime-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LOC_URL: https://opendata.ndw.nu/charging_point_locations_ocpi.json.gz
+  TAR_URL: https://opendata.ndw.nu/charging_point_tariffs_ocpi.json.gz
+  NORMALIZED_GZ: /tmp/dotnl_netherlands_normalized.json.gz
+  NORMALIZED_REPORT: /tmp/dotnl_netherlands_normalized_report.json
+  RUNTIME_DIR: /tmp/non_tesla_netherlands
+  RUNTIME_REPORT: data/national/dotnl_netherlands_runtime_report.json
+  RUNTIME_MANIFEST_COPY: data/national/dotnl_netherlands_runtime_manifest_test.json
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download official DOT-NL snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 4 --retry-all-errors --connect-timeout 30 --max-time 900 "$LOC_URL" -o /tmp/dotnl_locations.json.gz
+          curl -fsSL --retry 4 --retry-all-errors --connect-timeout 30 --max-time 900 "$TAR_URL" -o /tmp/dotnl_tariffs.json.gz
+          gzip -t /tmp/dotnl_locations.json.gz
+          gzip -t /tmp/dotnl_tariffs.json.gz
+
+      - name: Normalize Netherlands source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/dotnl_netherlands_build.py \
+            /tmp/dotnl_locations.json.gz \
+            /tmp/dotnl_tariffs.json.gz \
+            "$NORMALIZED_GZ" \
+            "$NORMALIZED_REPORT"
+
+      - name: Compile strict TCC runtime tiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$RUNTIME_DIR"
+          python scripts/dotnl_netherlands_runtime.py "$NORMALIZED_GZ" "$RUNTIME_DIR" "$RUNTIME_REPORT"
+          cp "$RUNTIME_DIR/manifest.json" "$RUNTIME_MANIFEST_COPY"
+
+      - name: Validate strict runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip,json,os,sys
+          report=json.load(open(os.environ['RUNTIME_REPORT'],encoding='utf-8'))
+          manifest=json.load(open(os.environ['RUNTIME_MANIFEST_COPY'],encoding='utf-8'))
+          with gzip.open(os.path.join(os.environ['RUNTIME_DIR'],'all.json.gz'),'rt',encoding='utf-8') as f:
+              rows=json.load(f)
+          checks={
+              'stations>70000': report['stationCount']>70000,
+              'tiles>10': report['tileCount']>10,
+              'runtimeRowsMatchManifest': len(rows)==manifest['stationCount']==report['stationCount'],
+              'strictScope': manifest['scope']=={'countryCode':'NL','publishedToTcc':False,'strictTariffCompiler':True,'teslaExcluded':True},
+              'someExactTariffs': report['metrics']['exactPricedConnectors']>50000,
+              'noPublication': report['publishedToTcc'] is False,
+              'NLIdsOnly': all(str(r[0]).startswith('NL:') for r in rows),
+          }
+          print(json.dumps({'checks':checks,'report':report},ensure_ascii=False,indent=2))
+          failed=[k for k,v in checks.items() if not v]
+          if failed:
+              print('FAILED: '+', '.join(failed),file=sys.stderr); sys.exit(1)
+          PY
+
+      - name: Upload runtime prototype
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnl-netherlands-strict-runtime
+          path: |
+            /tmp/non_tesla_netherlands/
+            data/national/dotnl_netherlands_runtime_report.json
+            data/national/dotnl_netherlands_runtime_manifest_test.json
+          retention-days: 14
+
+      - name: Commit test reports
+        if: ${{ github.ref == 'refs/heads/dotnl-netherlands-baseline' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$RUNTIME_REPORT" "$RUNTIME_MANIFEST_COPY"
+          git diff --cached --quiet && exit 0
+          git commit -m "Record strict DOT-NL runtime metrics"
+          git pull --rebase origin dotnl-netherlands-baseline
+          git push origin HEAD:dotnl-netherlands-baseline
