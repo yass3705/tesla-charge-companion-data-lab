@@ -1,0 +1,62 @@
+name: France IRVE canonical validation
+
+on:
+  pull_request:
+    paths:
+      - "scripts/france_irve_canonical.py"
+      - "tests/test_france_irve_canonical.py"
+      - "docs/france_irve_canonical.md"
+      - ".github/workflows/france-irve-canonical.yml"
+  workflow_dispatch:
+    inputs:
+      smoke_rows:
+        description: "Number of official IRVE rows to validate (0 = full national build)"
+        required: false
+        default: "20000"
+  schedule:
+    - cron: "17 4 1 * *"
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run canonical merge tests
+        run: python -m unittest discover -s tests -p 'test_france_irve_canonical.py' -v
+
+  official-source-smoke:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Resolve requested row count
+        id: rows
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.smoke_rows }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=20000" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Validate official national IRVE source
+        shell: bash
+        run: |
+          ROWS="${{ steps.rows.outputs.value }}"
+          LIMIT_ARGS=()
+          if [ "$ROWS" != "0" ]; then
+            LIMIT_ARGS=(--limit "$ROWS")
+          fi
+          python scripts/france_irve_canonical.py \
+            "${LIMIT_ARGS[@]}" \
+            --out /tmp/france_irve_canonical.json \
+            --summary-out /tmp/france_irve_summary.json
+          cat /tmp/france_irve_summary.json
