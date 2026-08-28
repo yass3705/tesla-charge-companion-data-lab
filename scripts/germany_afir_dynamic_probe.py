@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Inspect public German AFIR dynamic feeds before status normalization."""
 from __future__ import annotations
-import gzip, io, json, urllib.request
+import gzip, json, urllib.request
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,34 +13,36 @@ KEY_HINTS=("status","avail","occup","refill","charging","electric","idg","extern
 
 
 def fetch(offer_id):
-    req=urllib.request.Request(ENDPOINT.format(offer_id=offer_id),headers={"User-Agent":UA,"Accept":"application/json","Accept-Encoding":"gzip"})
+    req=urllib.request.Request(ENDPOINT.format(offer_id=offer_id),headers={
+        "User-Agent":UA,
+        "Accept":"application/json, application/xml, text/xml, */*",
+        "Accept-Encoding":"gzip",
+        "Range":"bytes=0-99999999",
+    })
     with urllib.request.urlopen(req,timeout=90) as r:
         raw=r.read()
-        if "gzip" in (r.headers.get("Content-Encoding") or "").lower():
+        # urllib may already transparently return the decoded body on some
+        # runners; only gunzip when the payload itself has a gzip signature.
+        if raw[:2] == b"\x1f\x8b":
             raw=gzip.decompress(raw)
         return json.loads(raw.decode("utf-8-sig")),len(raw)
 
 
-def walk(obj,path="$",depth=0,counts=None,examples=None):
+def walk(obj,path="$",counts=None,examples=None):
     if counts is None: counts=Counter()
     if examples is None: examples=defaultdict(list)
     if isinstance(obj,dict):
         for k,v in obj.items():
-            p=f"{path}.{k}"
-            lk=k.lower()
+            p=f"{path}.{k}"; lk=k.lower()
             if any(h in lk for h in KEY_HINTS):
                 counts[p]+=1
                 if len(examples[p])<5:
-                    if isinstance(v,(str,int,float,bool)) or v is None:
-                        examples[p].append(v)
-                    elif isinstance(v,dict):
-                        examples[p].append({"type":"object","keys":list(v.keys())[:20]})
-                    elif isinstance(v,list):
-                        examples[p].append({"type":"list","length":len(v)})
-            walk(v,p,depth+1,counts,examples)
+                    if isinstance(v,(str,int,float,bool)) or v is None: examples[p].append(v)
+                    elif isinstance(v,dict): examples[p].append({"type":"object","keys":list(v.keys())[:20]})
+                    elif isinstance(v,list): examples[p].append({"type":"list","length":len(v)})
+            walk(v,p,counts,examples)
     elif isinstance(obj,list):
-        for v in obj:
-            walk(v,path+"[]",depth+1,counts,examples)
+        for v in obj: walk(v,path+"[]",counts,examples)
     return counts,examples
 
 
@@ -62,12 +64,7 @@ def main():
         data,size=fetch(oid)
         counts,examples=walk(data)
         rel=find_relevant_objects(data)
-        feed={
-            "provider":provider,"offerId":oid,"uncompressedBytes":size,
-            "topType":type(data).__name__,"topKeys":list(data.keys()) if isinstance(data,dict) else None,
-            "interestingPaths":[{"path":p,"count":c,"examples":examples[p]} for p,c in counts.most_common(120)],
-            "relevantObjects":rel,
-        }
+        feed={"provider":provider,"offerId":oid,"uncompressedBytes":size,"topType":type(data).__name__,"topKeys":list(data.keys()) if isinstance(data,dict) else None,"interestingPaths":[{"path":p,"count":c,"examples":examples[p]} for p,c in counts.most_common(120)],"relevantObjects":rel}
         report["feeds"].append(feed)
         print("TCC_AFIR_DYNAMIC_PROFILE="+json.dumps({"provider":provider,"offerId":oid,"uncompressedBytes":size,"relevantObjects":len(rel)},sort_keys=True))
         for x in rel[:4]:
