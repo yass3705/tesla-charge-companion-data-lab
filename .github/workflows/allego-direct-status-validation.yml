@@ -1,0 +1,63 @@
+name: Allego direct status validation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/allego-direct-status-validation.yml"
+      - "scripts/france_irve_status_allego.py"
+      - "scripts/france_irve_canonical.py"
+
+permissions:
+  contents: read
+
+jobs:
+  national-status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install browser client dependency
+        run: python -m pip install --disable-pip-version-check -q selenium
+
+      - name: Build Allego direct-status enrichment from current PAN
+        run: |
+          python scripts/france_irve_status_allego.py \
+            --workers 16 \
+            --out /tmp/france_irve_status_allego.json
+
+      - name: Validate exact-match guardrails
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('/tmp/france_irve_status_allego.json', encoding='utf-8'))
+          s=p['summary']
+          records=p['records']
+          print(json.dumps(s, ensure_ascii=False, indent=2))
+          if s.get('identity_collision', 0):
+              raise SystemExit('identity collision')
+          if s.get('allego_irve_rows', 0) < 3000:
+              raise SystemExit('unexpectedly small current PAN Allego inventory')
+          if s.get('mapped_irve_rows') != s.get('allego_irve_rows'):
+              raise SystemExit('not all current PAN Allego PDC IDs are structurally mappable')
+          if len(records) < 1000:
+              raise SystemExit('too few direct Allego PDC status records')
+          bad=[r for r in records if r.get('matchConfidence') != 'exact' or r.get('matchMethod') != 'exact_chargepoint_visualid_to_irve_pdc']
+          if bad:
+              raise SystemExit(f'non-exact status matches emitted: {len(bad)}')
+          if any(r.get('status') not in {'in_service','out_of_service','unknown'} for r in records):
+              raise SystemExit('unsupported normalized status emitted')
+          print('RESULT allegoDirectStatusValidation=True')
+          PY
+
+      - name: Upload diagnostic enrichment
+        uses: actions/upload-artifact@v4
+        with:
+          name: allego-direct-status-enrichment
+          path: /tmp/france_irve_status_allego.json
+          retention-days: 3
