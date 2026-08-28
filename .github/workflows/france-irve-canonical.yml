@@ -55,6 +55,10 @@ jobs:
           python scripts/france_irve_status_allego.py \
             --workers 16 \
             --out /tmp/france_irve_status_allego.json
+      - name: Normalize Belib direct PDC status
+        run: |
+          python scripts/france_irve_status_belib.py \
+            --out /tmp/france_irve_status_belib.json
       - name: Normalize official IRVE dynamic status fallback
         run: |
           python scripts/france_irve_dynamic_adapter.py \
@@ -70,6 +74,7 @@ jobs:
           python scripts/france_irve_canonical.py \
             "${LIMIT_ARGS[@]}" \
             --enrichment /tmp/france_irve_status_allego.json \
+            --enrichment /tmp/france_irve_status_belib.json \
             --enrichment /tmp/france_irve_dynamic_enrichment.json \
             --out /tmp/france_irve_canonical.json \
             --summary-out /tmp/france_irve_summary.json
