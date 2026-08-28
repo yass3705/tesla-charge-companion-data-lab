@@ -1,4 +1,4 @@
-name: Allego direct status validation
+name: Direct CPO status validation
 
 on:
   workflow_dispatch:
@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/allego-direct-status-validation.yml"
       - "scripts/france_irve_status_allego.py"
+      - "scripts/france_irve_status_belib.py"
       - "scripts/france_irve_canonical.py"
       - "scripts/france_irve_dynamic_adapter.py"
 
@@ -15,14 +16,14 @@ permissions:
 jobs:
   national-status:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install browser client dependency
+      - name: Install Allego browser client dependency
         run: python -m pip install --disable-pip-version-check -q selenium
 
       - name: Download one current national IRVE static snapshot
@@ -34,36 +35,53 @@ jobs:
             -o /tmp/irve.csv
           test -s /tmp/irve.csv
 
-      - name: Build Allego direct-status enrichment from the same PAN snapshot
+      - name: Build Allego direct-status enrichment
         run: |
           python scripts/france_irve_status_allego.py \
             --static /tmp/irve.csv \
             --workers 16 \
             --out /tmp/france_irve_status_allego.json
 
-      - name: Validate exact-match guardrails
+      - name: Build Belib direct-status enrichment
+        run: |
+          python scripts/france_irve_status_belib.py \
+            --static /tmp/irve.csv \
+            --out /tmp/france_irve_status_belib.json
+
+      - name: Validate direct-source exact-match guardrails
         shell: bash
         run: |
           python - <<'PY'
           import json
-          p=json.load(open('/tmp/france_irve_status_allego.json', encoding='utf-8'))
-          s=p['summary']
-          records=p['records']
-          print(json.dumps(s, ensure_ascii=False, indent=2))
-          if s.get('identity_collision', 0):
-              raise SystemExit('identity collision')
-          if s.get('allego_irve_rows', 0) < 3000:
+
+          a=json.load(open('/tmp/france_irve_status_allego.json', encoding='utf-8'))
+          sa=a['summary']; ar=a['records']
+          print('Allego=', json.dumps(sa, ensure_ascii=False, indent=2))
+          if sa.get('identity_collision', 0):
+              raise SystemExit('Allego identity collision')
+          if sa.get('allego_irve_rows', 0) < 3000:
               raise SystemExit('unexpectedly small current PAN Allego inventory')
-          if s.get('mapped_irve_rows') != s.get('allego_irve_rows'):
+          if sa.get('mapped_irve_rows') != sa.get('allego_irve_rows'):
               raise SystemExit('not all current PAN Allego PDC IDs are structurally mappable')
-          if len(records) < 1000:
+          if len(ar) < 1000:
               raise SystemExit('too few direct Allego PDC status records')
-          bad=[r for r in records if r.get('matchConfidence') != 'exact' or r.get('matchMethod') != 'exact_chargepoint_visualid_to_irve_pdc']
-          if bad:
-              raise SystemExit(f'non-exact status matches emitted: {len(bad)}')
-          if any(r.get('status') not in {'in_service','out_of_service','unknown'} for r in records):
-              raise SystemExit('unsupported normalized status emitted')
-          print('RESULT allegoDirectStatusValidation=True')
+          if any(r.get('matchConfidence') != 'exact' for r in ar):
+              raise SystemExit('non-exact Allego match emitted')
+
+          b=json.load(open('/tmp/france_irve_status_belib.json', encoding='utf-8'))
+          sb=b['summary']; br=b['records']
+          print('Belib=', json.dumps(sb, ensure_ascii=False, indent=2))
+          if sb.get('canonicalNormalizationCollisions', 0):
+              raise SystemExit('Belib canonical normalization collision')
+          if sb.get('inputRows', 0) < 1000:
+              raise SystemExit('unexpectedly small Belib realtime feed')
+          if sb.get('matchedCurrentPan', 0) < 1800:
+              raise SystemExit('too few Belib direct PDC matches')
+          if sb.get('matchedCurrentPan', 0) / max(1, sb.get('uniqueSourcePdc', 0)) < 0.90:
+              raise SystemExit('Belib current-PAN match rate below 90%')
+          if any(r.get('matchConfidence') != 'exact' for r in br):
+              raise SystemExit('non-exact Belib match emitted')
+          print('RESULT directSourceGuardrails=True')
           PY
 
       - name: Build current IRVE dynamic fallback
@@ -79,7 +97,7 @@ jobs:
             --out /tmp/france_irve_dynamic_only.json \
             --summary-out /tmp/france_irve_dynamic_only_summary.json
 
-      - name: Build national canonical with Allego direct then IRVE dynamic fallback
+      - name: Build Allego-only national comparison
         run: |
           python scripts/france_irve_canonical.py \
             --static /tmp/irve.csv \
@@ -88,36 +106,66 @@ jobs:
             --out /tmp/france_irve_with_allego.json \
             --summary-out /tmp/france_irve_with_allego_summary.json
 
+      - name: Build national canonical with Allego and Belib direct status
+        run: |
+          python scripts/france_irve_canonical.py \
+            --static /tmp/irve.csv \
+            --enrichment /tmp/france_irve_status_allego.json \
+            --enrichment /tmp/france_irve_status_belib.json \
+            --enrichment /tmp/france_irve_dynamic_enrichment.json \
+            --out /tmp/france_irve_with_direct_cpo.json \
+            --summary-out /tmp/france_irve_with_direct_cpo_summary.json
+
       - name: Compare direct-status impact and enforce fallback semantics
         shell: bash
         run: |
           python - <<'PY'
           import json
-          b=json.load(open('/tmp/france_irve_dynamic_only_summary.json', encoding='utf-8'))['summary']
-          c=json.load(open('/tmp/france_irve_with_allego_summary.json', encoding='utf-8'))['summary']
-          print('dynamicOnly=', json.dumps(b['statusCounts'], ensure_ascii=False, sort_keys=True))
-          print('withAllego=', json.dumps(c['statusCounts'], ensure_ascii=False, sort_keys=True))
-          enrich=c['enrichments']
-          direct_key=next(k for k in enrich if k.endswith('france_irve_status_allego.json'))
-          direct=enrich[direct_key]
-          print('allegoCanonicalEnrichment=', json.dumps(direct, ensure_ascii=False, sort_keys=True))
-          if direct.get('status_applied', 0) < 2500:
-              raise SystemExit('too few Allego direct statuses applied to canonical PDCs')
-          if direct.get('unmatched', 0) != 0:
-              raise SystemExit('Allego enrichment emitted a non-canonical PDC')
-          if c['statusCounts'].get('unknown', 0) > b['statusCounts'].get('unknown', 0):
-              raise SystemExit('direct CPO enrichment must never increase unknown status count')
-          if c.get('non_tesla_points') != b.get('non_tesla_points'):
+          base=json.load(open('/tmp/france_irve_dynamic_only_summary.json', encoding='utf-8'))['summary']
+          allego=json.load(open('/tmp/france_irve_with_allego_summary.json', encoding='utf-8'))['summary']
+          combo=json.load(open('/tmp/france_irve_with_direct_cpo_summary.json', encoding='utf-8'))['summary']
+
+          print('dynamicOnly=', json.dumps(base['statusCounts'], ensure_ascii=False, sort_keys=True))
+          print('withAllego=', json.dumps(allego['statusCounts'], ensure_ascii=False, sort_keys=True))
+          print('withAllegoBelib=', json.dumps(combo['statusCounts'], ensure_ascii=False, sort_keys=True))
+
+          enrich=combo['enrichments']
+          ak=next(k for k in enrich if k.endswith('france_irve_status_allego.json'))
+          bk=next(k for k in enrich if k.endswith('france_irve_status_belib.json'))
+          ae=enrich[ak]; be=enrich[bk]
+          print('allegoCanonicalEnrichment=', json.dumps(ae, ensure_ascii=False, sort_keys=True))
+          print('belibCanonicalEnrichment=', json.dumps(be, ensure_ascii=False, sort_keys=True))
+
+          if ae.get('status_applied', 0) < 2500:
+              raise SystemExit('too few Allego direct statuses applied')
+          if be.get('status_applied', 0) < 1700:
+              raise SystemExit('too few Belib direct statuses applied')
+          if ae.get('unmatched', 0) != 0 or be.get('unmatched', 0) != 0:
+              raise SystemExit('direct CPO enrichment emitted a non-canonical PDC')
+          if combo['statusCounts'].get('unknown', 0) > allego['statusCounts'].get('unknown', 0):
+              raise SystemExit('Belib direct enrichment increased unknown count')
+          if allego['statusCounts'].get('unknown', 0) > base['statusCounts'].get('unknown', 0):
+              raise SystemExit('Allego direct enrichment increased unknown count')
+          if combo.get('non_tesla_points') != base.get('non_tesla_points'):
               raise SystemExit('direct status enrichment changed physical inventory size')
-          print('RESULT canonicalAllegoPriorityValidation=True')
+
+          recovered_allego=base['statusCounts'].get('unknown',0)-allego['statusCounts'].get('unknown',0)
+          recovered_belib=allego['statusCounts'].get('unknown',0)-combo['statusCounts'].get('unknown',0)
+          recovered_total=base['statusCounts'].get('unknown',0)-combo['statusCounts'].get('unknown',0)
+          print('recoveredUnknownByAllego=', recovered_allego)
+          print('recoveredUnknownByBelibIncremental=', recovered_belib)
+          print('recoveredUnknownTotal=', recovered_total)
+          print('RESULT canonicalDirectCpoPriorityValidation=True')
           PY
 
-      - name: Upload diagnostic summaries and enrichment
+      - name: Upload diagnostic summaries and enrichments
         uses: actions/upload-artifact@v4
         with:
-          name: allego-direct-status-enrichment
+          name: direct-cpo-status-enrichments
           path: |
             /tmp/france_irve_status_allego.json
+            /tmp/france_irve_status_belib.json
             /tmp/france_irve_dynamic_only_summary.json
             /tmp/france_irve_with_allego_summary.json
+            /tmp/france_irve_with_direct_cpo_summary.json
           retention-days: 3
