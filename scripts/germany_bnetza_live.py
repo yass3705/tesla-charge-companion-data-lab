@@ -2,8 +2,8 @@
 """Live entry point for the current BNetzA CSV layout.
 
 The July 2026 export contains a descriptive preamble before the actual column
-header. Keep the core normalizer stable, but replace header discovery with a
-layout-tolerant scan before running it against the live national export.
+header and names the installation power column ``Nennleistung Ladeeinrichtung``.
+Keep the core normalizer stable, but adapt those live-layout details here.
 """
 from __future__ import annotations
 
@@ -11,6 +11,14 @@ try:
     from . import germany_bnetza_catalog as base
 except ImportError:  # direct execution: python scripts/germany_bnetza_live.py
     import germany_bnetza_catalog as base
+
+
+# Current BNetzA export wording (July 2026). Keep older aliases as fallbacks.
+base.ALIASES["connection_power"] = (
+    "nennleistung ladeeinrichtung",
+    "anschlussleistung",
+    "nennleistung der ladeeinrichtung",
+)
 
 
 def find_live_header_row(rows: list[list[str]]) -> int:
