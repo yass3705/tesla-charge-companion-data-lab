@@ -1,0 +1,119 @@
+name: DOT-NL Netherlands normalized build
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/dotnl-netherlands-build.yml"
+      - "scripts/dotnl_netherlands_build.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dotnl-netherlands-build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LOC_URL: https://opendata.ndw.nu/charging_point_locations_ocpi.json.gz
+  TAR_URL: https://opendata.ndw.nu/charging_point_tariffs_ocpi.json.gz
+  OUTPUT_GZ: /tmp/dotnl_netherlands_normalized.json.gz
+  REPORT_JSON: data/national/dotnl_netherlands_build_report.json
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download official DOT-NL snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 4 --retry-all-errors --connect-timeout 30 --max-time 900 "$LOC_URL" -o /tmp/dotnl_locations.json.gz
+          curl -fsSL --retry 4 --retry-all-errors --connect-timeout 30 --max-time 900 "$TAR_URL" -o /tmp/dotnl_tariffs.json.gz
+          gzip -t /tmp/dotnl_locations.json.gz
+          gzip -t /tmp/dotnl_tariffs.json.gz
+          ls -lh /tmp/dotnl_locations.json.gz /tmp/dotnl_tariffs.json.gz
+
+      - name: Build normalized Netherlands dataset
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/dotnl_netherlands_build.py \
+            /tmp/dotnl_locations.json.gz \
+            /tmp/dotnl_tariffs.json.gz \
+            "$OUTPUT_GZ" \
+            "$REPORT_JSON"
+
+      - name: Validate baseline quality gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, sys
+          r=json.load(open(os.environ['REPORT_JSON'],encoding='utf-8'))
+          checks={
+            'stations>70000': r['stationCount'] > 70000,
+            'evses>180000': r['metrics']['evses'] > 180000,
+            'connectors>180000': r['metrics']['connectors'] > 180000,
+            'usablePower>=90%': r['coveragePct']['usablePower'] >= 90,
+            'resolvedTariff>=50%': r['coveragePct']['resolvedTariff'] >= 50,
+            'TeslaExcluded': r['metrics']['skippedTesla'] > 0,
+            'foreignRowsExcluded': r['metrics']['skippedCountry'] > 0,
+          }
+          print(json.dumps({'checks':checks,'stationCount':r['stationCount'],'coveragePct':r['coveragePct']},indent=2))
+          failed=[k for k,v in checks.items() if not v]
+          if failed:
+            print('FAILED: '+', '.join(failed),file=sys.stderr)
+            sys.exit(1)
+          PY
+
+      - name: Inspect output payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip,json,os
+          with gzip.open(os.environ['OUTPUT_GZ'],'rt',encoding='utf-8') as f:
+            d=json.load(f)
+          assert d['scope']=={'countryCode':'NL','teslaExcluded':True,'publicOnly':True}
+          assert len(d['stations']) > 70000
+          assert len(d['tariffs']) > 1000
+          assert not any(s.get('partyId')=='TSL' for s in d['stations'])
+          assert all(s.get('countryCode')=='NL' for s in d['stations'])
+          print(json.dumps({
+            'stations':len(d['stations']),
+            'referencedTariffs':len(d['tariffs']),
+            'firstStation':d['stations'][0]['stationId'] if d['stations'] else None,
+          },indent=2))
+          PY
+
+      - name: Upload normalized dataset and report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnl-netherlands-normalized
+          path: |
+            /tmp/dotnl_netherlands_normalized.json.gz
+            data/national/dotnl_netherlands_build_report.json
+          retention-days: 14
+
+      - name: Commit build report to test branch
+        if: ${{ github.ref == 'refs/heads/dotnl-netherlands-baseline' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REPORT_JSON"
+          git diff --cached --quiet && exit 0
+          git commit -m "Record DOT-NL Netherlands normalized build metrics"
+          git pull --rebase origin dotnl-netherlands-baseline
+          git push origin HEAD:dotnl-netherlands-baseline
