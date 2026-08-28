@@ -6,6 +6,7 @@ on:
       - feature/germany-national-base
     paths:
       - 'scripts/germany_bnetza_afir_match.py'
+      - 'scripts/germany_bnetza_afir_match_v2.py'
       - 'scripts/germany_bnetza_catalog.py'
       - 'scripts/germany_bnetza_live.py'
       - 'scripts/germany_afir_static_normalize.py'
@@ -19,37 +20,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build live BNetzA to AFIR match report
-        run: python scripts/germany_bnetza_afir_match.py
+      - name: Build consolidated live BNetzA to AFIR match report
+        run: python scripts/germany_bnetza_afir_match_v2.py
 
-      - name: Validate staged match artifact
+      - name: Validate staged consolidated match artifact
         run: |
           python - <<'PY'
           import gzip, json
           from pathlib import Path
-          p=Path('data/germany/bnetza_afir_match_report.json.gz')
+          p=Path('data/germany/bnetza_afir_match_report_v2.json.gz')
           assert p.is_file()
           with gzip.open(p,'rt',encoding='utf-8') as f:
               data=json.load(f)
           s=data['stats']
-          assert data['dataset']=='germany-bnetza-afir-match-report'
+          assert data['dataset']=='germany-bnetza-afir-match-report-v2'
           assert data['scope']['stagedOnly'] is True
           assert data['scope']['publishesToTcc'] is False
           assert data['scope']['dynamicStatusIncluded'] is False
           assert data['scope']['tariffsRankable'] is False
-          assert 50000 <= s['bnetzaPhysicalSites'] <= 130000, s
+          assert data['scope']['oneCanonicalMatchPerAfirSite'] is True
+          assert 40000 <= s['bnetzaPhysicalSites'] <= 100000, s
           assert 14000 <= s['afirSites'] <= 17000, s
-          assert s['matchedPhysicalSites'] > 1000, s
-          assert s['matchedPhysicalSites'] <= s['bnetzaPhysicalSites'], s
+          assert s['uniqueAfirSitesMatched'] > 8000, s
+          assert s['acceptedCanonicalMatches'] == s['uniqueAfirSitesMatched'], s
+          assert s['afirCoveragePct'] > 50, s
           assert s['conflicts'] < 1000, s
           assert s['bnetzaUniqueEvseIds'] > 10000, s
-          print('TCC_GERMANY_MATCH_VALIDATED=' + json.dumps(s, ensure_ascii=False, sort_keys=True))
+          print('TCC_GERMANY_MATCH_V2_VALIDATED=' + json.dumps(s, ensure_ascii=False, sort_keys=True))
           PY
 
-      - name: Upload match report
+      - name: Upload consolidated match report
         uses: actions/upload-artifact@v4
         with:
-          name: germany-bnetza-afir-match-${{ github.run_id }}
-          path: data/germany/bnetza_afir_match_report.json.gz
+          name: germany-bnetza-afir-match-v2-${{ github.run_id }}
+          path: data/germany/bnetza_afir_match_report_v2.json.gz
           if-no-files-found: error
           retention-days: 7
