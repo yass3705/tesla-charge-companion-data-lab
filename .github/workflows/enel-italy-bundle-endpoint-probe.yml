@@ -1,0 +1,44 @@
+name: Enel Italy frontend endpoint discovery
+
+on:
+  push:
+    branches:
+      - research/enel-italy-probe
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check requests
+      - name: Inspect public frontend endpoint strings
+        run: python scripts/enel_italy_bundle_endpoint_probe.py
+      - name: Validate safe report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('data/reports/enel_italy_bundle_endpoint_probe.json')
+          r = json.loads(p.read_text(encoding='utf-8'))
+          assert r['security']['credentialsUsed'] is False
+          assert r['security']['rawBundlesPersisted'] is False
+          assert r['counts']['scriptAssetsInspected'] >= 1
+          print(json.dumps({"counts": r['counts'], "detailCandidates": r['detailCandidates'][:30], "nextStepReady": r['nextStepReady']}, ensure_ascii=False, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: enel-italy-bundle-endpoint-probe
+          path: |
+            data/reports/enel_italy_bundle_endpoint_probe.json
+            data/reports/enel_italy_bundle_endpoint_probe.md
+          retention-days: 14
