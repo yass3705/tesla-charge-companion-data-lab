@@ -21,36 +21,39 @@ jobs:
           URL='https://dotnl.ndw.nu/api/rest/geojson/dynamic-road-status/charge-point-data/v1/features?bbox=5.08,52.06,5.18,52.13'
           curl -fsSL --retry 4 --retry-all-errors -D /tmp/headers.txt "$URL" -o /tmp/sample.json
           python - <<'PY'
-          import json,re
+          import collections,json
           data=json.load(open('/tmp/sample.json',encoding='utf-8'))
           headers=open('/tmp/headers.txt',encoding='utf-8',errors='replace').read()
           feats=data.get('features',[]) if isinstance(data,dict) else []
-          def walk(obj,prefix='',out=None):
-              out=out or set()
-              if isinstance(obj,dict):
-                  for k,v in obj.items():
-                      path=f'{prefix}.{k}' if prefix else k
-                      if any(x in k.lower() for x in ('price','tariff','status','avail','evse','connector','operator','party','location','id')):
-                          out.add(path)
-                      walk(v,path,out)
-              elif isinstance(obj,list):
-                  for v in obj[:5]: walk(v,prefix+'[]',out)
-              return out
+          open_values=collections.Counter(); availability_pairs=collections.Counter(); tariff_ref_features=0
           samples=[]
-          for f in feats[:5]:
+          for f in feats:
+              p=f.get('properties') or {}; open_values[str(p.get('open'))]+=1
+              avs=p.get('availabilities') or []
+              if any(a.get('tariff_ids') for a in avs if isinstance(a,dict)): tariff_ref_features+=1
+              for a in avs:
+                  if isinstance(a,dict): availability_pairs[(a.get('available'),a.get('total'))]+=1
+          for f in feats[:8]:
               p=f.get('properties') or {}
               samples.append({
                   'geometry':f.get('geometry'),
-                  'propertyKeys':sorted(p),
-                  'selected':{k:v for k,v in p.items() if any(x in k.lower() for x in ('price','tariff','status','avail','evse','connector','operator','party','location','id'))}
+                  'address':p.get('address'),
+                  'country':p.get('country'),
+                  'cpo_id':p.get('cpo_id'),
+                  'operator_name':p.get('operator_name'),
+                  'open':p.get('open'),
+                  'last_updated':p.get('last_updated'),
+                  'availabilities':p.get('availabilities'),
               })
           report={
-              'featureCollectionType': data.get('type') if isinstance(data,dict) else type(data).__name__,
+              'featureCollectionType':data.get('type') if isinstance(data,dict) else type(data).__name__,
               'featureCount':len(feats),
               'topLevelKeys':sorted(data.keys()) if isinstance(data,dict) else [],
-              'corsAllowOrigin': next((line.split(':',1)[1].strip() for line in headers.splitlines() if line.lower().startswith('access-control-allow-origin:')),None),
-              'contentType': next((line.split(':',1)[1].strip() for line in headers.splitlines() if line.lower().startswith('content-type:')),None),
-              'interestingPaths':sorted(walk(data)),
+              'corsAllowOrigin':next((line.split(':',1)[1].strip() for line in headers.splitlines() if line.lower().startswith('access-control-allow-origin:')),None),
+              'contentType':next((line.split(':',1)[1].strip() for line in headers.splitlines() if line.lower().startswith('content-type:')),None),
+              'openValueCounts':dict(open_values),
+              'featuresWithTariffIds':tariff_ref_features,
+              'availabilityPairTop':[[k[0],k[1],v] for k,v in availability_pairs.most_common(20)],
               'samples':samples,
           }
           open('data/national/dotnl_geojson_probe_report.json','w',encoding='utf-8').write(json.dumps(report,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
