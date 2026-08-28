@@ -33,9 +33,13 @@ jobs:
           assert r['security']['accountCredentialsUsed'] is False
           assert r['security']['authorizationMaterialPersisted'] is False
           assert r['counts']['cityQueries'] == 3
-          assert r['counts']['successfulCityQueries'] >= 1
+          assert r['counts']['successfulCityQueries'] == 3
+          assert r['stationDataReady'] is True
+          assert r['counts']['nonEmptyDetailResponses'] >= 1
+          assert r['detailDataReady'] is True
+          assert r['priceDataSeenInDetail'] is True
           print(json.dumps(r['counts'], ensure_ascii=False, indent=2))
-          print(json.dumps(r['commonPriceLikeKeyPaths'][:30], ensure_ascii=False, indent=2))
+          print(json.dumps(r['commonDetailPriceLikeKeyPaths'][:30], ensure_ascii=False, indent=2))
           PY
       - name: Upload targeted probe report
         if: always()
