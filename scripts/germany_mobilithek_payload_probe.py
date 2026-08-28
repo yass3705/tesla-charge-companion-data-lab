@@ -8,7 +8,6 @@ it does not persist or parse the full national feeds yet.
 from __future__ import annotations
 
 import gzip
-import io
 import json
 import urllib.error
 import urllib.request
@@ -25,9 +24,11 @@ OFFERS = {
     "chargecloud-static": "978597062404620288",
     "eco-movement-static": "954064102947180544",
     "eround-static": "961625658278940672",
+    "eround-dynamic": "961629419076456448",
     "monta-static": "963836072152719360",
     "monta-dynamic": "963870983660167168",
     "qwello-static": "972963216296222720",
+    "qwello-dynamic": "972966368902897664",
     "edri-static": "972837891969273856",
 }
 
@@ -84,6 +85,7 @@ def probe(label: str, offer_id: str) -> dict:
         "detectedKind": kind,
         "containsAfir": "afir" in text.lower(),
         "containsEnergyInfrastructure": "energyInfrastructure" in text or "energyinfrastructure" in text.lower(),
+        "containsStatus": "status" in text.lower() or "available" in text.lower() or "occup" in text.lower(),
         "preview": text[:1000],
     }
 
@@ -91,7 +93,7 @@ def probe(label: str, offer_id: str) -> dict:
 def main():
     results = [probe(label, offer_id) for label, offer_id in OFFERS.items()]
     payload = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "dataset": "germany-mobilithek-afir-noauth-probe",
         "generatedAt": now(),
         "results": results,
@@ -110,7 +112,7 @@ def main():
         print("TCC_MOBILITHEK_PAYLOAD=" + json.dumps({k: result.get(k) for k in (
             "label", "offerId", "ok", "status", "contentType", "contentEncoding",
             "contentLength", "contentRange", "sampleBytes", "detectedKind",
-            "containsAfir", "containsEnergyInfrastructure", "error"
+            "containsAfir", "containsEnergyInfrastructure", "containsStatus", "error"
         ) if k in result}, ensure_ascii=False, sort_keys=True))
     if payload["counts"]["ok"] == 0:
         raise SystemExit("no tested AFIR offer supports anonymous payload access")
