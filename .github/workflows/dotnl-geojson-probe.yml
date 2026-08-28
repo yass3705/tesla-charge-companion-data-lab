@@ -1,0 +1,69 @@
+name: DOT-NL dynamic GeoJSON probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/dotnl-geojson-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch dynamic GeoJSON sample
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://dotnl.ndw.nu/api/rest/geojson/dynamic-road-status/charge-point-data/v1/features?bbox=5.08,52.06,5.18,52.13'
+          curl -fsSL --retry 4 --retry-all-errors -D /tmp/headers.txt "$URL" -o /tmp/sample.json
+          python - <<'PY'
+          import json,re
+          data=json.load(open('/tmp/sample.json',encoding='utf-8'))
+          headers=open('/tmp/headers.txt',encoding='utf-8',errors='replace').read()
+          feats=data.get('features',[]) if isinstance(data,dict) else []
+          def walk(obj,prefix='',out=None):
+              out=out or set()
+              if isinstance(obj,dict):
+                  for k,v in obj.items():
+                      path=f'{prefix}.{k}' if prefix else k
+                      if any(x in k.lower() for x in ('price','tariff','status','avail','evse','connector','operator','party','location','id')):
+                          out.add(path)
+                      walk(v,path,out)
+              elif isinstance(obj,list):
+                  for v in obj[:5]: walk(v,prefix+'[]',out)
+              return out
+          samples=[]
+          for f in feats[:5]:
+              p=f.get('properties') or {}
+              samples.append({
+                  'geometry':f.get('geometry'),
+                  'propertyKeys':sorted(p),
+                  'selected':{k:v for k,v in p.items() if any(x in k.lower() for x in ('price','tariff','status','avail','evse','connector','operator','party','location','id'))}
+              })
+          report={
+              'featureCollectionType': data.get('type') if isinstance(data,dict) else type(data).__name__,
+              'featureCount':len(feats),
+              'topLevelKeys':sorted(data.keys()) if isinstance(data,dict) else [],
+              'corsAllowOrigin': next((line.split(':',1)[1].strip() for line in headers.splitlines() if line.lower().startswith('access-control-allow-origin:')),None),
+              'contentType': next((line.split(':',1)[1].strip() for line in headers.splitlines() if line.lower().startswith('content-type:')),None),
+              'interestingPaths':sorted(walk(data)),
+              'samples':samples,
+          }
+          open('data/national/dotnl_geojson_probe_report.json','w',encoding='utf-8').write(json.dumps(report,ensure_ascii=False,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - name: Commit probe report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/dotnl_geojson_probe_report.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Record DOT-NL dynamic GeoJSON probe"
+          git pull --rebase origin dotnl-netherlands-baseline
+          git push origin HEAD:dotnl-netherlands-baseline
