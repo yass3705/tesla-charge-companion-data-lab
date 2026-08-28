@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "generated_from": "GitHub Actions run 32931168792 attempt 3",
+  "observed_at_utc": "2026-08-28T01:31:56Z",
+  "source_host": "cp.evgo.ma",
+  "policy": {
+    "read_only_get_only": true,
+    "no_login": true,
+    "no_credentials": true,
+    "raw_response_bodies_persisted": false,
+    "only_sanitized_public_charging_fields_retained": true
+  },
+  "modeling": {
+    "cpo_operator": "Nareva Services / EVGO",
+    "site_brand": null,
+    "app_source_access_network": "EVGO",
+    "tariff_channel": "EVGO native",
+    "status_source": "EVGO native backend cp.evgo.ma"
+  },
+  "summary": {
+    "pin_count": 17,
+    "location_count": 17,
+    "v1_v2_consistent": true,
+    "stations_with_only_available_status": 13,
+    "stations_with_charging_status_present": 3,
+    "stations_with_unavailable_status_present": 1
+  },
+  "notable_examples": [
+    {
+      "name": "Marjane Derb Sultan",
+      "statuses": ["available"],
+      "significance": "Previously observed charging; now available, confirming live status transitions."
+    },
+    {
+      "name": "Tachfine Center",
+      "statuses": ["available"],
+      "significance": "Previously observed charging; now available, confirming live status transitions."
+    },
+    {
+      "name": "Marjane Mohammedia",
+      "statuses": ["available"],
+      "significance": "Previously observed charging/preparing; now available, reinforcing freshness of native EVGO status."
+    },
+    {
+      "name": "Marjane Tanger",
+      "statuses": ["charging", "available"]
+    },
+    {
+      "name": "Marjane Agadir",
+      "statuses": ["charging"]
+    },
+    {
+      "name": "Marjane Tetouan",
+      "statuses": ["charging", "available"]
+    },
+    {
+      "name": "Marjane Menara",
+      "statuses": ["available", "unavailable"],
+      "significance": "Keep unavailable EVSE out of production usability even when the location also has an available EVSE."
+    }
+  ],
+  "interpretation": "The branded EVGO backend remains a demonstrably fresh native status source. For EVGO sites also visible via EVOne roaming, cp.evgo.ma should remain the primary status source. Production usability must still consider EVSE-level availability flags in addition to the textual status field."
+}
