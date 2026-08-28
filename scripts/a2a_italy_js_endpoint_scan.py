@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """Scan public A2A Emoving JavaScript for station-detail AJAX endpoints.
 
-Only public static JS is downloaded. The report stores endpoint-like strings and
-short sanitized code contexts; no credentials/cookies or full third-party files.
+Only public static JS from the pinned A2A host is downloaded. The A2A host currently
+presents an incomplete certificate chain to Python's urllib on GitHub runners even
+though Chromium loads the same public site. For this research-only static fetch we
+therefore use an unverified TLS context *only for the hard-coded A2A URL prefix*.
+The report stores endpoint-like strings and short sanitized code contexts; no
+credentials/cookies or full third-party files.
 """
 from __future__ import annotations
 
 import json
 import re
+import ssl
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.request import Request, urlopen
@@ -27,8 +32,11 @@ KEYWORDS = ("json", "price", "tariff", "connector", "presa", "detail", "station"
 
 
 def fetch(url: str) -> str:
+    if not url.startswith(BASE):
+        raise ValueError("refusing non-pinned URL")
     req = Request(url, headers={"User-Agent": "Mozilla/5.0 TCC research"})
-    with urlopen(req, timeout=30) as r:
+    ctx = ssl._create_unverified_context()
+    with urlopen(req, timeout=30, context=ctx) as r:
         return r.read().decode("utf-8", errors="replace")
 
 
@@ -50,18 +58,15 @@ def main():
                 value = m.group(1).strip()
                 if len(value) > 500:
                     continue
-                if not any(k in value.lower() or k in context(text, m.start(), m.end()).lower() for k in KEYWORDS):
+                ctx = context(text, m.start(), m.end())
+                if not any(k in value.lower() or k in ctx.lower() for k in KEYWORDS):
                     continue
                 key = (value, m.start())
                 if key in seen:
                     continue
                 seen.add(key)
-                matches.append({
-                    "value": value,
-                    "context": context(text, m.start(), m.end()),
-                })
-        # Also collect literal relative backend-looking paths.
-        paths = sorted(set(re.findall(r"[\"']((?:/)?(?:json|[A-Za-z0-9_]+\.action)[A-Za-z0-9_./?=&-]*)[\"']", text, re.I)))
+                matches.append({"value": value, "context": ctx})
+        paths = sorted(set(re.findall(r"[\"']((?:/)?(?:json[A-Za-z0-9_./?=&-]*|[A-Za-z0-9_]+\.action[A-Za-z0-9_./?=&-]*))[\"']", text, re.I)))
         rows.append({
             "file": name,
             "url": url,
@@ -71,7 +76,12 @@ def main():
         })
     payload = {
         "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "security": {"accountCredentialsUsed": False, "cookiesPersisted": False, "fullJsPersisted": False},
+        "security": {
+            "accountCredentialsUsed": False,
+            "cookiesPersisted": False,
+            "fullJsPersisted": False,
+            "tlsVerificationDisabledOnlyForPinnedA2aStaticJsHost": True,
+        },
         "files": rows,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
