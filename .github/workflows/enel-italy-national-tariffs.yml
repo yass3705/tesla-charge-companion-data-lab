@@ -6,6 +6,7 @@ on:
       - research/enel-italy-probe
     paths:
       - scripts/enel_italy_national_tariffs.py
+      - scripts/enel_italy_finalize_candidate.py
       - .github/workflows/enel-italy-national-tariffs.yml
   workflow_dispatch:
 
@@ -15,7 +16,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,35 +28,42 @@ jobs:
         run: python scripts/pun_italy_national.py --workers 8
       - name: Build national Enel tariff candidate
         run: python scripts/enel_italy_national_tariffs.py --workers 16
+      - name: Retry gaps and add future tariff schedule
+        run: python scripts/enel_italy_finalize_candidate.py --retry-workers 4
       - name: Validate national candidate
         run: |
           python - <<'PY'
           import gzip, json
           from pathlib import Path
-          p = Path('data/national/enel_direct_stations_italy.json.gz')
+          p = Path('data/national/enel_direct_stations_italy_final_candidate.json.gz')
           assert p.exists() and p.stat().st_size > 100000
           r = json.loads(gzip.decompress(p.read_bytes()))
           c = r['counts']
           assert r['country'] == 'IT'
+          assert r['schemaVersion'] == 2
           assert c['punEnxEvseCount'] > 20000
           assert c['punEnxStationSerialCount'] > 9000
-          assert c['requestedStationSerialCount'] == c['punEnxStationSerialCount']
-          assert c['successfulStationDetailCount'] > 8500
-          assert c['matchedEnelEvseCount'] > 17000
-          assert c['rankableOperatorTariffEvseCount'] > 17000
-          assert r['security']['accountCredentialsUsed'] is False
-          assert r['security']['authorizationMaterialPersisted'] is False
-          assert r['tariffPolicy']['directPaymenthPriceRankable'] is False
-          assert r['tariffPolicy']['penaltiesRankable'] is False
+          assert c['directRankableTariffEvseCount'] > 17000
+          assert c['officialFutureScheduleRankableEvseCount'] > 20000
+          assert c['officialFutureScheduleCoveragePct'] > 99
+          assert c['observedSnapshotPriceMismatchCount'] == 0
+          assert r['operatorTariffPolicy']['priceSelectionBasis'] == 'session_start_local_time'
+          assert r['operatorTariffPolicy']['basicEurPerKwh']['AC']['night'] == 0.58
+          assert r['operatorTariffPolicy']['basicEurPerKwh']['DC']['night'] == 0.64
+          assert r['operatorTariffPolicy']['basicEurPerKwh']['HPC']['night'] == 0.82
+          assert r['operatorTariffPolicy']['plans']['plug_and_go_super']['discountFromBasicEurPerKwh'] == 0.05
+          assert r['operatorTariffPolicy']['plans']['plug_and_go_explorer']['discountFromBasicEurPerKwh'] == 0.10
           print(json.dumps(c, ensure_ascii=False, indent=2))
-          print(json.dumps(r['observedOperatorPriceEurPerKwh'], ensure_ascii=False, indent=2))
+          print(json.dumps(r['gapDiagnostics'], ensure_ascii=False, indent=2)[:12000])
           PY
       - name: Upload Enel national candidate
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: enel-direct-italy-candidate
+          name: enel-direct-italy-final-candidate
           path: |
             data/national/enel_direct_stations_italy.json.gz
+            data/national/enel_direct_stations_italy_final_candidate.json.gz
             data/reports/enel_italy_national_tariffs_report.json
+            data/reports/enel_italy_finalization_report.json
           retention-days: 14
