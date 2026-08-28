@@ -1,0 +1,162 @@
+name: DOT-NL Netherlands tariff audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/dotnl-netherlands-tariff-audit.yml"
+
+permissions:
+  contents: write
+
+env:
+  LOC_URL: https://opendata.ndw.nu/charging_point_locations_ocpi.json.gz
+  TAR_URL: https://opendata.ndw.nu/charging_point_tariffs_ocpi.json.gz
+  REPORT: data/national/dotnl_netherlands_tariff_audit.json
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Download DOT-NL snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 4 --retry-all-errors "$LOC_URL" -o /tmp/loc.json.gz
+          curl -fsSL --retry 4 --retry-all-errors "$TAR_URL" -o /tmp/tar.json.gz
+          gzip -t /tmp/loc.json.gz
+          gzip -t /tmp/tar.json.gz
+      - name: Audit NL non-Tesla tariff coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$REPORT")"
+          python - <<'PY'
+          import collections, datetime as dt, gzip, json, os, statistics
+          from pathlib import Path
+
+          with gzip.open('/tmp/loc.json.gz','rt',encoding='utf-8-sig') as f: locations=json.load(f)
+          with gzip.open('/tmp/tar.json.gz','rt',encoding='utf-8-sig') as f: tariffs=json.load(f)
+          assert isinstance(locations,list) and isinstance(tariffs,list)
+
+          nl_locs=[x for x in locations if isinstance(x,dict) and str(x.get('country_code') or '').upper()=='NL' and str(x.get('party_id') or '').upper()!='TSL']
+          nl_tar=[x for x in tariffs if isinstance(x,dict) and str(x.get('country_code') or '').upper()=='NL' and str(x.get('party_id') or '').upper()!='TSL']
+          tidx={(str(t.get('party_id') or '').upper(),str(t.get('id') or '')):t for t in nl_tar if t.get('id') is not None}
+
+          party={}
+          unresolved_refs=collections.Counter()
+          missing_power=collections.Counter()
+          status=collections.Counter()
+          referenced_by_party=collections.defaultdict(list)
+          total_conn=with_tid=resolved_any=resolved_all=0
+          evse_count=0
+
+          def pstat(p):
+              return party.setdefault(p,{'locations':0,'evses':0,'connectors':0,'connectorsWithTariffIds':0,'connectorsWithAnyResolvedTariff':0,'connectorsWithAllTariffsResolved':0,'connectorsMissingMaxElectricPower':0})
+
+          for loc in nl_locs:
+              p=str(loc.get('party_id') or '').upper() or '<missing>'
+              ps=pstat(p); ps['locations']+=1
+              for e in loc.get('evses') or []:
+                  if not isinstance(e,dict): continue
+                  evse_count+=1; ps['evses']+=1
+                  status[str(e.get('status') or '<missing>').upper()]+=1
+                  for c in e.get('connectors') or []:
+                      if not isinstance(c,dict): continue
+                      total_conn+=1; ps['connectors']+=1
+                      if c.get('max_electric_power') is None:
+                          ps['connectorsMissingMaxElectricPower']+=1; missing_power[p]+=1
+                      tids=[str(x) for x in (c.get('tariff_ids') or [])]
+                      if not tids: continue
+                      with_tid+=1; ps['connectorsWithTariffIds']+=1
+                      flags=[]
+                      for tid in tids:
+                          ok=(p,tid) in tidx; flags.append(ok)
+                          if ok:
+                              referenced_by_party[p].append(tidx[(p,tid)])
+                          else:
+                              unresolved_refs[p]+=1
+                      if any(flags): resolved_any+=1; ps['connectorsWithAnyResolvedTariff']+=1
+                      if all(flags): resolved_all+=1; ps['connectorsWithAllTariffsResolved']+=1
+
+          samples={}
+          selected=['FAS','IOY','ELD','TNM','GFX','LDL','NUO','LMS','ALL','EFL','QWC']
+          for p in selected:
+              seen=set(); out=[]
+              for t in referenced_by_party.get(p,[]):
+                  tid=str(t.get('id') or '')
+                  if tid in seen: continue
+                  seen.add(tid)
+                  els=[]
+                  for el in (t.get('elements') or [])[:5]:
+                      if not isinstance(el,dict): continue
+                      comps=[]
+                      for c in (el.get('price_components') or [])[:6]:
+                          if isinstance(c,dict):
+                              comps.append({k:c.get(k) for k in ('type','price','vat','step_size') if k in c})
+                      els.append({'price_components':comps,'restrictions':el.get('restrictions')})
+                  out.append({'id':tid,'currency':t.get('currency'),'type':t.get('type'),'tariff_alt_text':t.get('tariff_alt_text'),'elements':els})
+                  if len(out)>=3: break
+              if out: samples[p]=out
+
+          energy_prices=collections.defaultdict(list)
+          component_counts=collections.defaultdict(collections.Counter)
+          for t in nl_tar:
+              p=str(t.get('party_id') or '').upper() or '<missing>'
+              for el in t.get('elements') or []:
+                  if not isinstance(el,dict): continue
+                  for c in el.get('price_components') or []:
+                      if not isinstance(c,dict): continue
+                      typ=str(c.get('type') or '<missing>').upper(); component_counts[p][typ]+=1
+                      try: price=float(c.get('price'))
+                      except Exception: continue
+                      if typ=='ENERGY' and 0 <= price < 10: energy_prices[p].append(price)
+
+          energy_summary={}
+          for p,vals in energy_prices.items():
+              if not vals: continue
+              s=sorted(vals); n=len(s)
+              energy_summary[p]={'count':n,'min':s[0],'median':statistics.median(s),'p90':s[min(n-1,int((n-1)*0.9))],'max':s[-1]}
+
+          def pct(a,b): return round(100*a/b,3) if b else 0
+          report={
+              'dataset':'dotnl-netherlands-tariff-audit',
+              'generatedAt':dt.datetime.now(dt.timezone.utc).isoformat(),
+              'scope':{'countryCode':'NL','teslaExcluded':True},
+              'counts':{'locations':len(nl_locs),'evses':evse_count,'connectors':total_conn,'tariffs':len(nl_tar),'parties':len(party)},
+              'coverage':{
+                  'connectorsWithTariffIds':with_tid,'connectorsWithTariffIdsPct':pct(with_tid,total_conn),
+                  'connectorsWithAnyResolvedTariff':resolved_any,'connectorsWithAnyResolvedTariffPct':pct(resolved_any,total_conn),
+                  'connectorsWithAllTariffsResolved':resolved_all,'connectorsWithAllTariffsResolvedPct':pct(resolved_all,total_conn),
+              },
+              'status':dict(status),
+              'unresolvedTariffReferencesByParty':dict(unresolved_refs.most_common()),
+              'partyCoverage':dict(sorted(party.items())),
+              'componentCountsByParty':{p:dict(c) for p,c in component_counts.items()},
+              'energyPriceSummaryByParty':energy_summary,
+              'referencedTariffSamples':samples,
+          }
+          Path(os.environ['REPORT']).write_text(json.dumps(report,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps({'counts':report['counts'],'coverage':report['coverage'],'unresolvedTop':list(unresolved_refs.most_common(15)),'samples':samples},ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dotnl-netherlands-tariff-audit
+          path: ${{ env.REPORT }}
+          retention-days: 14
+      - name: Commit audit report
+        if: ${{ github.ref == 'refs/heads/dotnl-netherlands-baseline' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REPORT"
+          git diff --cached --quiet && exit 0
+          git commit -m "Record DOT-NL Netherlands tariff audit"
+          git push origin HEAD:dotnl-netherlands-baseline
