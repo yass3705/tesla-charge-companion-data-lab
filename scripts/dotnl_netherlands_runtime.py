@@ -5,7 +5,7 @@ from pathlib import Path
 DAYS=['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY','SUNDAY']
 JS_DAY={'SUNDAY':0,'MONDAY':1,'TUESDAY':2,'WEDNESDAY':3,'THURSDAY':4,'FRIDAY':5,'SATURDAY':6}
 DIMS=('ENERGY','TIME','PARKING_TIME','FLAT')
-UNSUPPORTED_RESTRICTIONS={'min_duration','max_duration','min_kwh','max_kwh','min_power','max_power','min_current','max_current','reservation'}
+UNSUPPORTED_RESTRICTIONS={'min_kwh','max_kwh','min_power','max_power','min_current','max_current','reservation'}
 NL_BOUNDS=(50.5,53.8,3.0,7.6)  # generous European-Netherlands guardrail
 
 
@@ -51,15 +51,69 @@ def component_gross(pc):
     if ex is None: return None
     return ex*(1+(fnum(pc.get('vatPct')) or 0)/100)
 
-def component_for_dimension(elements,dim,day_name,m):
-    for el in elements:
-        rr=el.get('restrictions') or {}; days=rr.get('day_of_week')
-        if days and day_name not in {str(x).upper() for x in days}: continue
-        if rr.get('start_time') or rr.get('end_time'):
-            if not in_window(m,rr.get('start_time') or '00:00',rr.get('end_time') or '24:00'): continue
-        for pc in el.get('priceComponents') or []:
-            if str(pc.get('type') or '').upper()==dim: return pc
+def static_element_matches(el,day_name,m):
+    rr=el.get('restrictions') or {}; days=rr.get('day_of_week')
+    if days and day_name not in {str(x).upper() for x in days}: return False
+    if rr.get('start_time') or rr.get('end_time'):
+        if not in_window(m,rr.get('start_time') or '00:00',rr.get('end_time') or '24:00'): return False
+    return True
+
+def element_component(el,dim):
+    for pc in el.get('priceComponents') or []:
+        if str(pc.get('type') or '').upper()==dim: return pc
     return None
+
+def duration_interval(el):
+    rr=el.get('restrictions') or {}
+    mn=fnum(rr.get('min_duration')); mx=fnum(rr.get('max_duration'))
+    mn=max(0.0,mn or 0.0)
+    if mx is not None: mx=max(0.0,mx)
+    if mx is not None and mx<=mn: return None
+    return mn,mx
+
+def dimension_schedule(elements,dim,day_name,m):
+    candidates=[]
+    boundaries={0.0}
+    for el in elements:
+        if not static_element_matches(el,day_name,m): continue
+        pc=element_component(el,dim)
+        if not pc: continue
+        interval=duration_interval(el)
+        if interval is None: return None,None,'invalid_duration_range'
+        mn,mx=interval
+        rate=component_gross(pc)
+        if rate is None: return None,None,'missing_price'
+        if dim in ('TIME','PARKING_TIME'): rate/=60.0
+        candidates.append((mn,mx,rate))
+        boundaries.add(mn)
+        if mx is not None: boundaries.add(mx)
+
+    if not candidates: return 0.0,[],None
+
+    def rate_at(seconds):
+        for mn,mx,rate in candidates:
+            if seconds+1e-9<mn: continue
+            if mx is not None and seconds>=mx-1e-9: continue
+            return rate
+        return 0.0
+
+    points=sorted(boundaries)
+    spans=[]
+    for i,a in enumerate(points):
+        b=points[i+1] if i+1<len(points) else None
+        probe=a if b is None else a+(b-a)/2
+        if b is None: probe=a+1e-6
+        spans.append((a,b,rate_at(probe)))
+
+    base=rate_at(0.0)
+    bands=[]
+    for a,b,rate in spans:
+        if abs(rate-base)<=1e-12: continue
+        if bands and bands[-1][0]==dim and bands[-1][2]==a and abs(bands[-1][3]-rate)<=1e-12:
+            bands[-1][2]=b
+        else:
+            bands.append([dim,round(a,6),None if b is None else round(b,6),round(rate,8)])
+    return base,bands,None
 
 def compile_tariff(t,today):
     if not tariff_current(t,today): return None,'not_current'
@@ -70,12 +124,16 @@ def compile_tariff(t,today):
         active={k for k,v in rr.items() if k not in {'start_date','end_date'} and v not in (None,[],{},'')}
         bad=active & UNSUPPORTED_RESTRICTIONS
         if bad: return None,'unsupported_restriction:'+','.join(sorted(bad))
+        if (rr.get('min_duration') not in (None,'') or rr.get('max_duration') not in (None,'')):
+            if duration_interval(el) is None: return None,'invalid_duration_range'
+            if element_component(el,'FLAT') is not None: return None,'duration_restricted_flat'
         for pc in el.get('priceComponents') or []:
             typ=str(pc.get('type') or '').upper()
             if typ not in DIMS: return None,'unsupported_dimension:'+typ
             step=fnum(pc.get('stepSize'))
             if step not in (None,1.0): return None,'step_size'
             if component_gross(pc) is None: return None,'missing_price'
+
     flat_components=[]
     for el in current:
         rr=el.get('restrictions') or {}
@@ -88,23 +146,35 @@ def compile_tariff(t,today):
         first=component_gross(flat_components[0])
         if any(abs(component_gross(pc)-first)>1e-9 for pc in flat_components[1:]): return None,'multiple_flat'
         flat=first
+
     boundaries={0,1440}
     for el in current:
         rr=el.get('restrictions') or {}
         if rr.get('start_time'): boundaries.add(minute(rr.get('start_time'),0))
         if rr.get('end_time'): boundaries.add(minute(rr.get('end_time'),1440))
+
     bounds=sorted(boundaries); rows=[]
     for day_name in DAYS:
         for a,b in zip(bounds,bounds[1:]):
             if b<=a: continue
-            probe=a+(b-a)/2; vals={}
+            probe=a+(b-a)/2
+            values={}; duration_bands=[]
             for dim in ('ENERGY','TIME','PARKING_TIME'):
-                pc=component_for_dimension(current,dim,day_name,probe); vals[dim]=component_gross(pc) if pc else 0.0
-            billing='kwh' if vals['ENERGY']>0 else ('minute' if vals['TIME']>0 else 'kwh')
-            rows.append(['timeWindow',hhmm(a),'24:00' if b==1440 else hhmm(b),billing,(t.get('currency') or 'EUR').upper(),round(vals['ENERGY'],6),round(vals['TIME']/60,8),round(flat,6),round(vals['PARKING_TIME']/60,8),0,0,[JS_DAY[day_name]]])
+                base,bands,err=dimension_schedule(current,dim,day_name,probe)
+                if err: return None,err
+                values[dim]=base
+                duration_bands.extend(bands)
+            billing='kwh' if values['ENERGY']>0 else ('minute' if values['TIME']>0 else 'kwh')
+            rows.append([
+                'timeWindow',hhmm(a),'24:00' if b==1440 else hhmm(b),billing,
+                (t.get('currency') or 'EUR').upper(),
+                round(values['ENERGY'],6),round(values['TIME'],8),round(flat,6),
+                round(values['PARKING_TIME'],8),0,0,[JS_DAY[day_name]],duration_bands
+            ])
+
     merged={}
     for r in rows:
-        key=json.dumps(r[:11],separators=(',',':'))
+        key=json.dumps(r[:11]+[r[12]],separators=(',',':'))
         if key not in merged: merged[key]=r
         else: merged[key][11]=sorted(set(merged[key][11]+r[11]))
     out=list(merged.values()); out.sort(key=lambda r:(r[1],r[2],r[11]))
@@ -158,7 +228,7 @@ def main():
     ap=argparse.ArgumentParser(); ap.add_argument('normalized_gz',type=Path); ap.add_argument('out_dir',type=Path); ap.add_argument('report_json',type=Path); args=ap.parse_args()
     with gzip.open(args.normalized_gz,'rt',encoding='utf-8') as f: data=json.load(f)
     tariffs=data.get('tariffs') or {}; stations=data.get('stations') or []; generated=str(data.get('generatedAt') or dt.datetime.now(dt.timezone.utc).isoformat()); today=date_of(generated) or dt.datetime.now(dt.timezone.utc).date()
-    stats={'connectors':0,'exactPricedConnectors':0,'unpricedConnectors':0,'ambiguousTariffConnectors':0,'unsupportedReasons':collections.Counter(),'configs':0,'pricedConfigs':0,'outOfBoundsStations':0,'outOfBoundsByParty':collections.Counter()}
+    stats={'connectors':0,'exactPricedConnectors':0,'unpricedConnectors':0,'ambiguousTariffConnectors':0,'unsupportedReasons':collections.Counter(),'configs':0,'pricedConfigs':0,'outOfBoundsStations':0,'outOfBoundsByParty':collections.Counter(),'durationBandConfigs':0}
     compile_cache={}; selection_cache={}; rows=[]
     for st in stations:
         co=st.get('coordinates') or {}; lat=fnum(co.get('latitude')); lon=fnum(co.get('longitude'))
@@ -180,7 +250,9 @@ def main():
         for i,g in enumerate(sorted(groups.values(),key=lambda x:(x['kind'],x['power'],x['tariffKey'] or ''))):
             stalls=len(g['evses']) or g['count']; priced=g['rules'] is not None; label=('DOT-NL public' if priced else 'Tarif DOT-NL non calculable')+f" · {g['kind']} {g['power']:g} kW"
             cid=f"dotnl-{i}-{g['kind'].lower()}-{str(g['power']).replace('.','_')}"; configs.append([cid,label,g['kind'],g['power'],stalls,g['rules'] or []]); stats['configs']+=1
-            if priced: stats['pricedConfigs']+=1
+            if priced:
+                stats['pricedConfigs']+=1
+                if any(len(r)>12 and r[12] for r in g['rules']): stats['durationBandConfigs']+=1
         if not configs: continue
         name=str(st.get('name') or '').strip() or f"Borne {st.get('stationId')}"; address=', '.join(x for x in [str(st.get('address') or '').strip(),str(st.get('postalCode') or '').strip(),str(st.get('city') or '').strip()] if x); operator=str(st.get('operatorName') or '').strip() or str(st.get('partyId') or 'DOT-NL')
         physical=len({str(e.get('uid') or e.get('evseId') or '') for e in st.get('evses') or [] if (e.get('uid') or e.get('evseId'))})
@@ -192,7 +264,7 @@ def main():
     for (tid,a,b),arr in sorted(tiles.items()):
         arr.sort(key=lambda r:str(r[0])); path=args.out_dir/f'{tid}.json.gz'; _,gz_n=gz_write(path,arr); manifest_tiles.append({'id':tid,'file':path.name,'minLat':a,'maxLat':a+.5,'minLon':b,'maxLon':b+.5,'count':len(arr),'bytes':gz_n,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
     rows.sort(key=lambda r:str(r[0])); raw_all,gz_all=gz_write(args.out_dir/'all.json.gz',rows)
-    manifest={'schemaVersion':1,'dataset':'netherlands-non-tesla-runtime-test','generatedAt':generated,'effectiveTariffDate':today.isoformat(),'stationCount':len(rows),'configurationCount':stats['configs'],'pricedConfigurationCount':stats['pricedConfigs'],'tileSizeDegrees':.5,'tileCount':len(manifest_tiles),'allFile':'all.json.gz','allBytes':gz_all,'tiles':manifest_tiles,'scope':{'countryCode':'NL','europeanNetherlandsBounds':list(NL_BOUNDS),'teslaExcluded':True,'strictTariffCompiler':True,'publishedToTcc':False}}
+    manifest={'schemaVersion':2,'dataset':'netherlands-non-tesla-runtime-test','generatedAt':generated,'effectiveTariffDate':today.isoformat(),'stationCount':len(rows),'configurationCount':stats['configs'],'pricedConfigurationCount':stats['pricedConfigs'],'durationBandConfigurationCount':stats['durationBandConfigs'],'tileSizeDegrees':.5,'tileCount':len(manifest_tiles),'allFile':'all.json.gz','allBytes':gz_all,'tiles':manifest_tiles,'scope':{'countryCode':'NL','europeanNetherlandsBounds':list(NL_BOUNDS),'teslaExcluded':True,'strictTariffCompiler':True,'ocpiDurationBands':True,'publishedToTcc':False}}
     (args.out_dir/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8')
     report={'dataset':'dotnl-netherlands-runtime-report','generatedAt':generated,'effectiveTariffDate':today.isoformat(),'stationCount':len(rows),'tileCount':len(manifest_tiles),'allCompressedBytes':gz_all,'allUncompressedBytes':raw_all,'cache':{'compiledTariffs':len(compile_cache),'tariffSelections':len(selection_cache)},'metrics':{**{k:v for k,v in stats.items() if not isinstance(v,collections.Counter)},'unsupportedReasons':dict(stats['unsupportedReasons'].most_common()),'outOfBoundsByParty':dict(stats['outOfBoundsByParty'].most_common())},'coveragePct':{'exactTariffConnectors':round(100*stats['exactPricedConnectors']/stats['connectors'],3) if stats['connectors'] else 0,'pricedConfigs':round(100*stats['pricedConfigs']/stats['configs'],3) if stats['configs'] else 0},'publishedToTcc':False}
     args.report_json.parent.mkdir(parents=True,exist_ok=True); args.report_json.write_text(json.dumps(report,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8'); print(json.dumps(report,ensure_ascii=False,indent=2))
