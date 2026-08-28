@@ -1,0 +1,59 @@
+name: Enel Italy Ewiva national partner layer
+
+on:
+  push:
+    branches:
+      - research/enel-italy-probe
+    paths:
+      - scripts/enel_italy_ewiva_national.py
+      - .github/workflows/enel-italy-ewiva-national.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check requests requests-aws4auth selenium
+      - name: Build current PUN Italy inventory
+        run: python scripts/pun_italy_national.py --workers 8
+      - name: Build national Ewiva partner tariff layer
+        run: python scripts/enel_italy_ewiva_national.py --workers 8
+      - name: Validate candidate
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          p = Path('data/national/enel_ewiva_partner_italy.json.gz')
+          assert p.exists() and p.stat().st_size > 10000
+          r = json.loads(gzip.decompress(p.read_bytes()))
+          c = r['counts']
+          assert r['operatorPartyId'] == 'EWI'
+          assert c['punEwiEvseCount'] > 100
+          assert c['punEwiStationSerialCount'] > 50
+          assert c['matchedEwivaEvseCount'] > 50
+          assert c['directRankableTariffEvseCount'] > 50
+          assert c['partnerScheduleCoveragePct'] > 99
+          assert r['tariffPolicy']['basicEurPerKwh']['HPC'] == {'day': 0.82, 'night': 0.82}
+          print(json.dumps(c, ensure_ascii=False, indent=2))
+          print(json.dumps(r['observedDirectPriceEurPerKwh'], ensure_ascii=False, indent=2))
+          print(json.dumps(r['punTariffClassCounts'], ensure_ascii=False, indent=2))
+          print(json.dumps(r['missingDirectDetailPunStatusCounts'], ensure_ascii=False, indent=2))
+          PY
+      - name: Upload candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enel-ewiva-partner-italy
+          path: |
+            data/national/enel_ewiva_partner_italy.json.gz
+            data/reports/enel_ewiva_partner_italy_report.json
+          retention-days: 14
