@@ -7,6 +7,7 @@ on:
     paths:
       - scripts/enel_italy_national_tariffs.py
       - scripts/enel_italy_finalize_candidate.py
+      - scripts/enel_italy_apply_live_tariff_override.py
       - .github/workflows/enel-italy-national-tariffs.yml
   workflow_dispatch:
 
@@ -30,6 +31,8 @@ jobs:
         run: python scripts/enel_italy_national_tariffs.py --workers 16
       - name: Retry gaps and add future tariff schedule
         run: python scripts/enel_italy_finalize_candidate.py --retry-workers 4
+      - name: Apply verified live tariff card values
+        run: python scripts/enel_italy_apply_live_tariff_override.py
       - name: Validate national candidate
         run: |
           python - <<'PY'
@@ -39,6 +42,7 @@ jobs:
           assert p.exists() and p.stat().st_size > 100000
           r = json.loads(gzip.decompress(p.read_bytes()))
           c = r['counts']
+          policy = r['operatorTariffPolicy']
           assert r['country'] == 'IT'
           assert r['schemaVersion'] == 2
           assert c['punEnxEvseCount'] > 20000
@@ -47,14 +51,17 @@ jobs:
           assert c['officialFutureScheduleRankableEvseCount'] > 20000
           assert c['officialFutureScheduleCoveragePct'] > 99
           assert c['observedSnapshotPriceMismatchCount'] == 0
-          assert r['operatorTariffPolicy']['priceSelectionBasis'] == 'session_start_local_time'
-          assert r['operatorTariffPolicy']['basicEurPerKwh']['AC']['night'] == 0.58
-          assert r['operatorTariffPolicy']['basicEurPerKwh']['DC']['night'] == 0.64
-          assert r['operatorTariffPolicy']['basicEurPerKwh']['HPC']['night'] == 0.82
-          assert r['operatorTariffPolicy']['plans']['plug_and_go_super']['discountFromBasicEurPerKwh'] == 0.05
-          assert r['operatorTariffPolicy']['plans']['plug_and_go_explorer']['discountFromBasicEurPerKwh'] == 0.10
+          assert policy['priceSelectionBasis'] == 'session_start_local_time'
+          assert policy['basicEurPerKwh']['AC'] == {'day': 0.67, 'night': 0.58}
+          assert policy['basicEurPerKwh']['DC'] == {'day': 0.75, 'night': 0.64}
+          assert policy['basicEurPerKwh']['HPC'] == {'day': 0.82, 'night': 0.82}
+          assert policy['liveRenderedCardEvidence']['plugAndGoExplorerEurPerKwh']['HPC'] == {'day': 0.72, 'night': 0.72}
+          assert policy['liveRenderedCardEvidence']['plugAndGoSuperEurPerKwh']['HPC'] == {'day': 0.77, 'night': 0.77}
+          assert policy['plans']['plug_and_go_super']['discountFromBasicEurPerKwh'] == 0.05
+          assert policy['plans']['plug_and_go_explorer']['discountFromBasicEurPerKwh'] == 0.10
           print(json.dumps(c, ensure_ascii=False, indent=2))
           print(json.dumps(r['gapDiagnostics'], ensure_ascii=False, indent=2)[:12000])
+          print(json.dumps(policy['liveRenderedCardEvidence'], ensure_ascii=False, indent=2))
           PY
       - name: Upload Enel national candidate
         if: always()
