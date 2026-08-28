@@ -1,0 +1,63 @@
+name: Italy PUN normalized national extract
+
+on:
+  push:
+    branches:
+      - research/pun-italy-normalized
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check requests requests-aws4auth
+
+      - name: Build normalized PUN Italy dataset
+        run: python scripts/pun_italy_national.py --workers 8
+
+      - name: Validate generated gzip JSON
+        shell: bash
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+
+          dataset = Path('data/national/pun_italy_national.json.gz')
+          report = Path('data/reports/pun_italy_national_report.json')
+          assert dataset.exists() and dataset.stat().st_size > 100_000
+          assert report.exists() and report.stat().st_size > 500
+          payload = json.loads(gzip.decompress(dataset.read_bytes()))
+          quality = json.loads(report.read_text(encoding='utf-8'))
+          assert payload['dataset'] == 'pun-national-italy'
+          assert payload['country'] == 'IT'
+          assert payload['counts']['uniqueEvseCount'] >= 50_000
+          assert payload['counts']['stationCount'] >= 10_000
+          assert len(payload['evses']) == payload['counts']['uniqueEvseCount']
+          assert len(payload['stations']) == payload['counts']['stationCount']
+          assert quality['fetch']['failedBatchCount'] == 0
+          assert all(quality['qualityGates'].values()), quality['qualityGates']
+          print(json.dumps(payload['counts'], ensure_ascii=False, indent=2))
+          PY
+
+      - name: Upload normalized dataset and quality report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pun-italy-normalized
+          path: |
+            data/national/pun_italy_national.json.gz
+            data/reports/pun_italy_national_report.json
+            data/reports/pun_italy_national_report.md
+          if-no-files-found: warn
+          retention-days: 14
