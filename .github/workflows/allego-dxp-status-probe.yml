@@ -22,7 +22,7 @@ jobs:
           python - <<'PY'
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
-          import hashlib, json, re, time, urllib.request
+          import hashlib, json, time, urllib.request
 
           PAGE='https://app.allego.eu/price/FRALLEGO8001301'
           BASE='https://p-dxp-api-acg8edbwd7g2eheg.a01.azurefd.net/api/dxp/poi/chargepoints/'
@@ -48,13 +48,13 @@ jobs:
           print('APIM config captured safely: len=',len(key),'sha256=',hashlib.sha256(key.encode()).hexdigest())
 
           tokens=('status','state','avail','operat','service','usable','active','offline','online','fault','open','closed')
+          id_tokens=('id','uid','evse','connector','chargepoint')
           def walk(obj,path=''):
               hits=[]
               if isinstance(obj,dict):
                   for k,v in obj.items():
                       p=f'{path}.{k}' if path else str(k)
-                      if any(t in str(k).lower() for t in tokens):
-                          hits.append((p,v))
+                      if any(t in str(k).lower() for t in tokens): hits.append((p,v))
                       hits.extend(walk(v,p))
               elif isinstance(obj,list):
                   for i,v in enumerate(obj[:20]): hits.extend(walk(v,f'{path}[{i}]'))
@@ -76,11 +76,23 @@ jobs:
               hits=walk(obj)
               safe=[]
               for p,v in hits:
-                  if isinstance(v,(str,int,float,bool)) or v is None:
-                      safe.append({'path':p,'value':v})
+                  if isinstance(v,(str,int,float,bool)) or v is None: safe.append({'path':p,'value':v})
                   elif isinstance(v,list): safe.append({'path':p,'valueType':'list','count':len(v)})
                   elif isinstance(v,dict): safe.append({'path':p,'valueType':'object','keys':sorted(v.keys())})
               print('statusLikeFields=',json.dumps(safe,ensure_ascii=False,indent=2)[:12000])
+
+              evses=obj.get('evses') if isinstance(obj,dict) else None
+              if isinstance(evses,list):
+                  evse_safe=[]
+                  for i,evse in enumerate(evses[:20]):
+                      if not isinstance(evse,dict): continue
+                      record={'index':i,'keys':sorted(evse.keys())}
+                      for k,v in evse.items():
+                          lk=str(k).lower()
+                          if (any(t in lk for t in id_tokens) or 'status' in lk) and isinstance(v,(str,int,float,bool,type(None))):
+                              record[k]=v
+                      evse_safe.append(record)
+                  print('evseIdentityMap=',json.dumps(evse_safe,ensure_ascii=False,indent=2)[:12000])
               any_hit = any_hit or bool(safe)
           print('\nRESULT statusLikeFieldFound=',any_hit)
           PY
