@@ -1,0 +1,42 @@
+name: Enel Italy station request diagnostic
+
+on:
+  push:
+    branches:
+      - research/enel-italy-probe
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check selenium requests
+      - name: Diagnose station API business response
+        run: python scripts/enel_italy_request_diag.py
+      - name: Validate safe diagnostic
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('data/reports/enel_italy_request_diag.json')
+          r = json.loads(p.read_text(encoding='utf-8'))
+          assert r['security']['authValuesPersisted'] is False
+          assert r['security']['rawBodiesPersisted'] is False
+          assert r['exactReplay']['httpStatus'] > 0
+          print(json.dumps(r, ensure_ascii=False, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: enel-italy-request-diag
+          path: data/reports/enel_italy_request_diag.json
+          retention-days: 14
