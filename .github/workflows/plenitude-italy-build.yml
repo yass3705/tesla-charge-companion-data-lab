@@ -1,0 +1,50 @@
+name: Plenitude Italy direct tariff candidate
+
+on:
+  push:
+    branches:
+      - research/pun-italy-normalized
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check requests requests-aws4auth pypdf
+      - name: Build normalized PUN Italy dataset
+        run: python scripts/pun_italy_national.py --workers 8
+      - name: Build Plenitude direct tariff candidate
+        run: python scripts/plenitude_italy_apply.py
+      - name: Validate candidate
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          p = Path('data/national/plenitude_direct_stations_italy.json.gz')
+          assert p.exists() and p.stat().st_size > 100000
+          r = json.loads(gzip.decompress(p.read_bytes()))
+          c = r['counts']
+          assert r['punPartyId'] == 'BEC'
+          assert c['punBecEvseCount'] > 15000
+          assert c['officialExclusionCodeCount'] > 1000
+          assert c['matchedExclusionCodeCount'] > 1000
+          assert c['rankableEvseCount'] > 5000
+          print(json.dumps(c, ensure_ascii=False, indent=2))
+          PY
+      - name: Upload candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: plenitude-direct-italy-candidate
+          path: |
+            data/national/plenitude_direct_stations_italy.json.gz
+            data/reports/plenitude_italy_apply_report.json
+          retention-days: 14
