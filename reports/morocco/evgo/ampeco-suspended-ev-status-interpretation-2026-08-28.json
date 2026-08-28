@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-28",
+  "scope": "EVGO native status interpretation only",
+  "policy": {
+    "read_only_research": true,
+    "no_credentials": true,
+    "no_mutations_to_external_services": true,
+    "modeling_dimensions_kept_separate": [
+      "cpo_operator",
+      "site_brand",
+      "app_source_access_network",
+      "tariff_channel",
+      "status_source"
+    ]
+  },
+  "source": {
+    "provider": "AMPECO",
+    "title": "EVSE statuses",
+    "url": "https://developers.ampeco.com/reference/evse-statuses",
+    "accessed_at": "2026-08-28"
+  },
+  "validated_mapping": {
+    "ampeco_status": "SuspendedEV",
+    "ocpp_status": "SuspendedEV",
+    "ocpi_status": "Charging",
+    "hubject_status": "Occupied"
+  },
+  "interpretation": {
+    "meaning": "The EVSE remains in an active/occupied charging-session state; the vehicle is temporarily not drawing energy.",
+    "not_available_for_new_session": true,
+    "tcc_operational_class": "occupied_or_active_session",
+    "do_not_classify_as_available": true,
+    "do_not_classify_as_faulted": true
+  },
+  "evgo_modeling": {
+    "cpo_operator": "Nareva Services / EVGO",
+    "app_source_access_network": "EVGO",
+    "status_source": "EVGO native backend cp.evgo.ma",
+    "rule": "When cp.evgo.ma reports suspendedEV, treat the EVSE as occupied/active rather than available. Continue to honor isAvailable, isLongTermUnavailable and isTemporarilyUnavailable flags when determining production usability."
+  },
+  "evone_policy_unchanged": {
+    "production_include": ["Available", "Occupied", "Charging"],
+    "production_exclude": ["Faulted", "Offline", "Unknown", "Unavailable"],
+    "note": "This AMPECO interpretation applies to native EVGO statuses and does not alter the separate EVOne production filter."
+  }
+}
