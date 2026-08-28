@@ -128,14 +128,12 @@ def extract_browser_station_headers() -> tuple[dict[str, str], dict[str, Any]]:
 
         merged = {str(k): str(v) for k, v in (chosen_req.get("headers") or {}).items()}
         merged.update(extra_headers.get(chosen_id or "", {}))
-        # Keep only headers needed to reproduce this public GET. Never return
-        # them in diagnostics; caller keeps them in memory only.
         blocked = {"host", "content-length", "cookie", "referer", "origin", ":authority", ":method", ":path", ":scheme"}
         replay = {k: v for k, v in merged.items() if k.lower() not in blocked and not k.startswith(":")}
         diagnostic = {
             "observedStationRequest": True,
             "stationRequestHost": urlsplit(str(chosen_req.get("url"))).hostname,
-            "stationRequestHeaderNames": sorted(k.lower() for k in replay),
+            "stationRequestHeaderNames": sorted(set(k.lower() for k in replay)),
             "authorizationMaterialPersisted": False,
         }
         return replay, diagnostic
@@ -157,7 +155,7 @@ def main() -> None:
             "lon": lon,
             "zoomLevel": 14,
             "isPrivate": "false",
-            "managedByEnelX": "true",
+            "managedByEnelX": "MANAGED_BY_ENELX_TRUE",
         }
         r = session.get(STATION_URL, params=params, headers=replay_headers, timeout=45)
         row: dict[str, Any] = {"city": city, "httpStatus": r.status_code, "contentType": r.headers.get("content-type")}
@@ -176,7 +174,12 @@ def main() -> None:
                     station_paths[p] += 1
                 candidates = find_candidate_objects(obj)
                 total_candidates += len(candidates)
+                result = obj.get("result") if isinstance(obj, dict) else None
                 row.update({
+                    "businessMessage": obj.get("message") if isinstance(obj, dict) else None,
+                    "businessCode": obj.get("code") if isinstance(obj, dict) else None,
+                    "resultType": type(result).__name__,
+                    "resultLength": len(result) if isinstance(result, (list, dict)) else None,
                     "responseShape": safe_shape(obj),
                     "keyPathCount": len(paths),
                     "priceLikeKeyPaths": prices[:300],
@@ -222,8 +225,7 @@ def main() -> None:
         f"- Price data already visible at map level: **{'yes' if report['priceDataSeen'] else 'no'}**\n",
         encoding="utf-8",
     )
-    print(json.dumps({"counts": report["counts"], "stationDataReady": report["stationDataReady"], "priceDataSeen": report["priceDataSeen"]}, ensure_ascii=False, indent=2))
-    print(json.dumps(city_results, ensure_ascii=False)[:12000])
+    print(json.dumps({"counts": report["counts"], "stationDataReady": report["stationDataReady"], "priceDataSeen": report["priceDataSeen"], "cityResults": city_results}, ensure_ascii=False, indent=2)[:20000])
 
 
 if __name__ == "__main__":
