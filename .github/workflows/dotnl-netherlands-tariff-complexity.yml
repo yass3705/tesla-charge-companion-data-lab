@@ -1,0 +1,153 @@
+name: DOT-NL Netherlands tariff complexity audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/dotnl-netherlands-tariff-complexity.yml"
+
+permissions:
+  contents: write
+
+env:
+  LOC_URL: https://opendata.ndw.nu/charging_point_locations_ocpi.json.gz
+  TAR_URL: https://opendata.ndw.nu/charging_point_tariffs_ocpi.json.gz
+  REPORT: data/national/dotnl_netherlands_tariff_complexity.json
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Download DOT-NL snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 4 --retry-all-errors "$LOC_URL" -o /tmp/loc.json.gz
+          curl -fsSL --retry 4 --retry-all-errors "$TAR_URL" -o /tmp/tar.json.gz
+          gzip -t /tmp/loc.json.gz
+          gzip -t /tmp/tar.json.gz
+      - name: Audit referenced tariff complexity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$REPORT")"
+          python - <<'PY'
+          import collections, datetime as dt, gzip, json, os
+          from pathlib import Path
+
+          with gzip.open('/tmp/loc.json.gz','rt',encoding='utf-8-sig') as f: locs=json.load(f)
+          with gzip.open('/tmp/tar.json.gz','rt',encoding='utf-8-sig') as f: tariffs=json.load(f)
+
+          tindex={}
+          for t in tariffs:
+              if not isinstance(t,dict): continue
+              cc=str(t.get('country_code') or '').upper(); p=str(t.get('party_id') or '').upper(); tid=str(t.get('id') or '')
+              if cc=='NL' and p!='TSL' and tid:
+                  tindex[(p,tid)]=t
+
+          referenced=set(); connectors=0; conn_resolved=0
+          connector_class=collections.Counter(); party_connector_class=collections.defaultdict(collections.Counter)
+          for loc in locs:
+              if not isinstance(loc,dict): continue
+              if str(loc.get('country_code') or '').upper()!='NL' or str(loc.get('party_id') or '').upper()=='TSL' or loc.get('publish') is False: continue
+              p=str(loc.get('party_id') or '').upper()
+              for e in loc.get('evses') or []:
+                  if not isinstance(e,dict) or str(e.get('status') or '').upper() in {'PLANNED','REMOVED'}: continue
+                  for c in e.get('connectors') or []:
+                      if not isinstance(c,dict): continue
+                      connectors+=1
+                      keys=[]
+                      for tid in c.get('tariff_ids') or []:
+                          k=(p,str(tid))
+                          if k in tindex:
+                              referenced.add(k); keys.append(k)
+                      if not keys:
+                          connector_class['no_resolved_tariff']+=1; party_connector_class[p]['no_resolved_tariff']+=1; continue
+                      conn_resolved+=1
+                      cats=[]
+                      for k in keys:
+                          t=tindex[k]
+                          cat='simple'
+                          for el in t.get('elements') or []:
+                              if not isinstance(el,dict): continue
+                              rr=el.get('restrictions') or {}
+                              active={x for x,v in rr.items() if v not in (None,[],{},'')}
+                              if not active: continue
+                              if active <= {'start_time','end_time','day_of_week'}:
+                                  cat=max(cat,'time_window',key=lambda x:{'simple':0,'time_window':1,'duration':2,'complex':3}[x])
+                              elif active <= {'start_time','end_time','day_of_week','min_duration'}:
+                                  comps={str(pc.get('type') or '').upper() for pc in el.get('price_components') or [] if isinstance(pc,dict)}
+                                  if active & {'min_duration'} and comps <= {'TIME','PARKING_TIME'}:
+                                      cat=max(cat,'duration',key=lambda x:{'simple':0,'time_window':1,'duration':2,'complex':3}[x])
+                                  else: cat='complex'
+                              else: cat='complex'
+                          cats.append(cat)
+                      rank={'simple':0,'time_window':1,'duration':2,'complex':3}
+                      worst=max(cats,key=lambda x:rank[x])
+                      connector_class[worst]+=1; party_connector_class[p][worst]+=1
+
+          tariff_class=collections.Counter(); tariff_types=collections.Counter(); restriction_keys=collections.Counter(); component_types=collections.Counter(); complex_examples=[]
+          for k in sorted(referenced):
+              t=tindex[k]; typ=str(t.get('type') or '<missing>').upper(); tariff_types[typ]+=1
+              cat='simple'
+              for el in t.get('elements') or []:
+                  if not isinstance(el,dict): continue
+                  for pc in el.get('price_components') or []:
+                      if isinstance(pc,dict): component_types[str(pc.get('type') or '<missing>').upper()]+=1
+                  rr=el.get('restrictions') or {}
+                  active={x for x,v in rr.items() if v not in (None,[],{},'')}
+                  for key in active: restriction_keys[key]+=1
+                  if not active: continue
+                  if active <= {'start_time','end_time','day_of_week'}:
+                      if cat=='simple': cat='time_window'
+                  elif active <= {'start_time','end_time','day_of_week','min_duration'}:
+                      comps={str(pc.get('type') or '').upper() for pc in el.get('price_components') or [] if isinstance(pc,dict)}
+                      if active & {'min_duration'} and comps <= {'TIME','PARKING_TIME'} and cat!='complex': cat='duration'
+                      else: cat='complex'
+                  else: cat='complex'
+              tariff_class[cat]+=1
+              if cat=='complex' and len(complex_examples)<30:
+                  complex_examples.append({'partyId':k[0],'tariffId':k[1],'type':typ,'elements':t.get('elements')})
+
+          def pct(v,total): return round(v*100/total,3) if total else 0
+          report={
+              'dataset':'dotnl-netherlands-tariff-complexity',
+              'generatedAt':dt.datetime.now(dt.timezone.utc).isoformat(),
+              'scope':{'countryCode':'NL','publishFalseExcluded':True,'teslaExcluded':True,'plannedRemovedExcluded':True},
+              'connectors':connectors,
+              'connectorsWithResolvedTariff':conn_resolved,
+              'connectorRepresentability':dict(connector_class),
+              'connectorRepresentabilityPct':{k:pct(v,connectors) for k,v in connector_class.items()},
+              'referencedTariffs':len(referenced),
+              'tariffRepresentability':dict(tariff_class),
+              'tariffTypes':dict(tariff_types),
+              'restrictionKeys':dict(restriction_keys),
+              'componentTypes':dict(component_types),
+              'partyConnectorRepresentability':{p:dict(c) for p,c in sorted(party_connector_class.items())},
+              'complexExamples':complex_examples,
+          }
+          Path(os.environ['REPORT']).write_text(json.dumps(report,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps({k:report[k] for k in ('connectors','connectorsWithResolvedTariff','connectorRepresentability','connectorRepresentabilityPct','referencedTariffs','tariffRepresentability','tariffTypes','restrictionKeys','componentTypes')},ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dotnl-netherlands-tariff-complexity
+          path: ${{ env.REPORT }}
+          retention-days: 14
+      - name: Commit audit report
+        if: ${{ github.ref == 'refs/heads/dotnl-netherlands-baseline' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REPORT"
+          git diff --cached --quiet && exit 0
+          git commit -m "Record DOT-NL tariff representability audit"
+          git pull --rebase origin dotnl-netherlands-baseline
+          git push origin HEAD:dotnl-netherlands-baseline
