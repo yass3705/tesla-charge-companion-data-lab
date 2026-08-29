@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Inspect eRound AFIR static tariff structures missed by the current parser.
+"""Verify eRound AFIR tariff coverage against actual raw price values.
 
-The normalizer currently recognizes DATEX electricEnergy -> energyRate ->
-energyPrice structures. This QA probe compares that result with recursive raw
-price/rate/tariff evidence and records the dominant paths for missed sites.
-No price becomes rankable or is published to TCC here.
+DATEX objects may contain energyRate/ratePolicy/currency shells even when
+energyPrice is an empty list. This probe separates those shells from actual
+price entries and proves whether the existing normalizer misses any real price.
+Staging/QA only: no tariff becomes rankable or is published to TCC.
 """
 from __future__ import annotations
 
@@ -18,8 +18,7 @@ import germany_afir_static_normalize as afir
 
 PROVIDER = "eround"
 OFFER_ID = afir.OFFERS[PROVIDER]["offerId"]
-PRICE_HINTS = ("price", "tariff", "rate", "currency", "cost")
-MAX_EXAMPLES = 30
+MAX_EXAMPLES = 25
 
 
 def utc_now():
@@ -38,42 +37,47 @@ def site_has_normalized_tariff(site: dict):
     return False
 
 
-def scalar_preview(value: Any):
-    if isinstance(value, (str, int, float, bool)) or value is None:
-        return value
-    if isinstance(value, dict):
-        out = {}
-        for key, child in list(value.items())[:20]:
-            if isinstance(child, (str, int, float, bool)) or child is None:
-                out[key] = child
-            elif isinstance(child, list):
-                out[key] = {"type": "list", "length": len(child)}
-            elif isinstance(child, dict):
-                out[key] = {"type": "object", "keys": list(child.keys())[:15]}
-        return out
-    if isinstance(value, list):
-        return {"type": "list", "length": len(value)}
-    return str(type(value).__name__)
-
-
-def raw_tariff_evidence(obj: Any, path: str = "$", out: list | None = None):
-    if out is None:
-        out = []
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            child_path = f"{path}.{key}"
-            lk = key.lower()
-            if any(hint in lk for hint in PRICE_HINTS):
-                out.append({"path": child_path, "key": key, "preview": scalar_preview(value)})
-            raw_tariff_evidence(value, child_path, out)
-    elif isinstance(obj, list):
-        for value in obj:
-            raw_tariff_evidence(value, path + "[]", out)
-    return out
-
-
 def canonical_path(path: str):
     return path.replace("[]", "[*]")
+
+
+def collect_price_evidence(obj: Any, path: str = "$", out: list | None = None, policies: Counter | None = None):
+    if out is None:
+        out = []
+    if policies is None:
+        policies = Counter()
+    if isinstance(obj, dict):
+        policy = obj.get("ratePolicy")
+        if policy is not None:
+            if isinstance(policy, dict):
+                policy = policy.get("value") or policy.get("extendedValueG") or json.dumps(policy, sort_keys=True)
+            policies[str(policy)] += 1
+        for key, value in obj.items():
+            child_path = f"{path}.{key}"
+            if key == "energyPrice":
+                entries = afir.as_list(value)
+                for entry in entries:
+                    if not isinstance(entry, dict):
+                        continue
+                    amount = afir.safe_float(entry.get("value"))
+                    cap = afir.safe_float(entry.get("priceCap"))
+                    price_type = afir.enum_value(entry.get("priceType"))
+                    # A DATEX energyPrice object is actionable evidence when it
+                    # actually carries a numeric value/cap, not merely because
+                    # the empty structural key exists.
+                    if amount is not None or cap is not None:
+                        out.append({
+                            "path": canonical_path(child_path),
+                            "value": amount,
+                            "priceCap": cap,
+                            "priceType": price_type,
+                            "taxIncluded": entry.get("taxIncluded"),
+                        })
+            collect_price_evidence(value, child_path, out, policies)
+    elif isinstance(obj, list):
+        for value in obj:
+            collect_price_evidence(value, path + "[]", out, policies)
+    return out, policies
 
 
 def main():
@@ -81,47 +85,51 @@ def main():
     raw_sites, profile = afir.get_sites(payload)
 
     stats = Counter()
-    all_raw_paths = Counter()
-    missed_raw_paths = Counter()
-    parsed_raw_paths = Counter()
-    missed_examples = []
-    parsed_examples = []
+    actual_price_paths = Counter()
+    missed_actual_price_paths = Counter()
+    empty_shell_policies = Counter()
+    missed_actual_examples = []
+    shell_examples = []
 
     for raw_site in raw_sites:
         normalized = afir.normalize_site(PROVIDER, OFFER_ID, raw_site)
         parsed = site_has_normalized_tariff(normalized)
-        evidence = raw_tariff_evidence(raw_site)
-        evidence_paths = sorted({canonical_path(x["path"]) for x in evidence})
-        raw_has = bool(evidence)
+        evidence, policies = collect_price_evidence(raw_site)
+        has_actual_price = bool(evidence)
 
         stats["sites"] += 1
         stats["normalizedTariffSites"] += int(parsed)
-        stats["sitesWithAnyRawTariffHint"] += int(raw_has)
-        if raw_has and not parsed:
-            stats["rawHintButParserMissedSites"] += 1
-        if parsed and not raw_has:
-            stats["parserTariffWithoutRawHintSites"] += 1
+        stats["sitesWithActualRawPrice"] += int(has_actual_price)
+        stats["sitesWithNoActualRawPrice"] += int(not has_actual_price)
+        stats["actualRawPriceButParserMissedSites"] += int(has_actual_price and not parsed)
+        stats["parserTariffWithoutActualRawPriceSites"] += int(parsed and not has_actual_price)
 
-        for path in evidence_paths:
-            all_raw_paths[path] += 1
-            (parsed_raw_paths if parsed else missed_raw_paths)[path] += 1
+        for item in evidence:
+            actual_price_paths[item["path"]] += 1
+            if not parsed:
+                missed_actual_price_paths[item["path"]] += 1
 
-        compact = {
-            "sourceSiteId": raw_site.get("idG"),
-            "lastUpdated": raw_site.get("lastUpdated"),
-            "name": afir.text_value(raw_site.get("name")),
-            "normalizedStationCount": normalized.get("stationCount"),
-            "normalizedChargePointCount": normalized.get("chargePointCount"),
-            "normalizedEvseCount": len(normalized.get("evseIds") or []),
-            "evidence": evidence[:40],
-        }
-        if raw_has and not parsed and len(missed_examples) < MAX_EXAMPLES:
-            missed_examples.append(compact)
-        if parsed and len(parsed_examples) < 8:
-            parsed_examples.append(compact)
+        if not has_actual_price:
+            empty_shell_policies.update(policies)
+            if len(shell_examples) < 8:
+                shell_examples.append({
+                    "sourceSiteId": raw_site.get("idG"),
+                    "name": afir.text_value(raw_site.get("name")),
+                    "lastUpdated": raw_site.get("lastUpdated"),
+                    "ratePolicies": dict(policies),
+                    "stationCount": normalized.get("stationCount"),
+                    "chargePointCount": normalized.get("chargePointCount"),
+                })
+        elif not parsed and len(missed_actual_examples) < MAX_EXAMPLES:
+            missed_actual_examples.append({
+                "sourceSiteId": raw_site.get("idG"),
+                "name": afir.text_value(raw_site.get("name")),
+                "lastUpdated": raw_site.get("lastUpdated"),
+                "actualPriceEvidence": evidence[:40],
+            })
 
     report = {
-        "schemaVersion": "0.1.0",
+        "schemaVersion": "0.2.0",
         "dataset": "germany-eround-afir-tariff-structure-probe",
         "generatedAt": utc_now(),
         "countryCode": "DE",
@@ -131,16 +139,17 @@ def main():
             "stagedOnly": True,
             "publishesToTcc": False,
             "tariffsRankable": False,
-            "purpose": "Identify raw eRound price/rate structures missed by the existing AFIR tariff parser.",
+            "emptyEnergyPriceIsNotTariff": True,
+            "purpose": "Verify normalized tariff coverage against non-empty numeric DATEX energyPrice objects.",
         },
         "transport": transport,
         "profile": profile,
         "stats": dict(stats),
-        "topRawTariffPaths": all_raw_paths.most_common(80),
-        "topMissedTariffPaths": missed_raw_paths.most_common(80),
-        "topParsedTariffPaths": parsed_raw_paths.most_common(80),
-        "missedExamples": missed_examples,
-        "parsedExamples": parsed_examples,
+        "actualPricePaths": actual_price_paths.most_common(50),
+        "missedActualPricePaths": missed_actual_price_paths.most_common(50),
+        "noPriceRatePolicyDistribution": dict(empty_shell_policies),
+        "missedActualPriceExamples": missed_actual_examples,
+        "emptyTariffShellExamples": shell_examples,
     }
 
     out = Path("data/germany/eround_tariff_probe.json")
@@ -148,9 +157,10 @@ def main():
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     print("TCC_EROUND_TARIFF_PROBE=" + json.dumps(report["stats"], sort_keys=True))
-    print("TCC_EROUND_TARIFF_MISSED_PATHS=" + json.dumps(report["topMissedTariffPaths"][:25], ensure_ascii=False))
-    for example in missed_examples[:5]:
-        print("TCC_EROUND_TARIFF_MISSED_EXAMPLE=" + json.dumps(example, ensure_ascii=False)[:12000])
+    print("TCC_EROUND_TARIFF_PRICE_PATHS=" + json.dumps(report["actualPricePaths"][:20], ensure_ascii=False))
+    print("TCC_EROUND_TARIFF_NO_PRICE_POLICIES=" + json.dumps(report["noPriceRatePolicyDistribution"], ensure_ascii=False, sort_keys=True))
+    for example in missed_actual_examples[:5]:
+        print("TCC_EROUND_TARIFF_REAL_MISS=" + json.dumps(example, ensure_ascii=False)[:12000])
 
 
 if __name__ == "__main__":
