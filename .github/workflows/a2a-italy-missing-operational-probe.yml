@@ -1,0 +1,62 @@
+name: A2A Italy missing operational EVSE probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/enel-italy-probe
+    paths:
+      - scripts/a2a_italy_missing_operational_probe.py
+      - .github/workflows/a2a-italy-missing-operational-probe.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check selenium
+      - name: Download latest PUN and A2A candidate artifacts
+        run: |
+          set -euo pipefail
+          PUN_RUN="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          A2A_RUN="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow a2a-italy-national-build.yml --branch research/enel-italy-probe --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$PUN_RUN" && test -n "$A2A_RUN"
+          mkdir -p /tmp/pun /tmp/a2a
+          gh run download "$PUN_RUN" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
+          gh run download "$A2A_RUN" --repo "$GITHUB_REPOSITORY" -n a2a-direct-italy-candidate -D /tmp/a2a
+          test -s /tmp/pun/national/pun_italy_national.json.gz
+          test -s /tmp/a2a/national/a2a_direct_stations_italy.json.gz
+          echo "PUN=$PUN_RUN A2A=$A2A_RUN"
+      - name: Probe nearby aliases and detailed EVSE identifiers
+        run: python scripts/a2a_italy_missing_operational_probe.py --pun /tmp/pun/national/pun_italy_national.json.gz --a2a /tmp/a2a/national/a2a_direct_stations_italy.json.gz
+      - name: Validate probe
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/reports/a2a_italy_missing_operational_probe.json')
+          r=json.loads(p.read_text(encoding='utf-8'))
+          c=r['counts']
+          print(json.dumps(c,ensure_ascii=False,indent=2))
+          assert c['operationalPunA2mMissingBeforeProbe'] > 0
+          assert c['neighborAliasesQueried'] > 0
+          assert c['successfulDetails'] > 0
+          PY
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a2a-italy-missing-operational-probe
+          path: data/reports/a2a_italy_missing_operational_probe.json
+          retention-days: 14
