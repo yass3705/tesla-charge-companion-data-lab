@@ -1,0 +1,48 @@
+name: Germany Pfalzwerke direct tariff
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_pfalzwerke_direct_tariff.py'
+      - '.github/workflows/germany-pfalzwerke-direct-tariff.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract official Pfalzwerke ad-hoc tariff
+        run: python scripts/germany_pfalzwerke_direct_tariff.py
+      - name: Validate Pfalzwerke tariff artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/pfalzwerke_direct_tariff.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-pfalzwerke-direct-tariff'
+          assert d['scope']['stagedOnly'] is True and d['scope']['publishesToTcc'] is False
+          assert d['scope']['connectorClassRequired'] is True
+          assert d['scope']['productionRankable'] is False
+          assert d['operator']['bnetzaExactOperators']==['Pfalzwerke AG']
+          own=d['directOwnNetwork']; t=own['connectorClassTariffs']
+          assert own['accessMethod']=='ad-hoc-credit-card'
+          assert own['monthlyFeeEur']==0.0
+          assert own['siteScalarPriceSafe'] is False
+          assert own['rankableCandidateWhenConnectorClassKnown'] is True
+          assert t['AC']=={'eurPerKwh':0.58,'currency':'EUR','taxIncluded':True}
+          assert t['DC']=={'eurPerKwh':0.79,'currency':'EUR','taxIncluded':True}
+          assert own['blockingFee']['assumedZero'] is False
+          print('TCC_PFALZWERKE_DIRECT_TARIFF_VALIDATED='+json.dumps(own,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-pfalzwerke-direct-tariff
+          path: data/germany/pfalzwerke_direct_tariff.json
+          if-no-files-found: error
+          retention-days: 30
