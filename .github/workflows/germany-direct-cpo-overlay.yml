@@ -46,56 +46,110 @@ jobs:
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/enbw.tariff.zip
           unzip -q /tmp/enbw.tariff.zip -d data/germany
           test -s data/germany/enbw_direct_tariff.json
-      - name: Apply direct CPO precedence in staging
+      - name: Restore latest Wirelane EVSE direct tariffs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=germany-wirelane-direct-tariffs&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[0].id // empty')"
+          test -n "$ARTIFACT_ID"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/wirelane.tariffs.zip
+          unzip -q /tmp/wirelane.tariffs.zip -d data/germany
+          test -s data/germany/wirelane_direct_tariffs.json.gz
+      - name: Apply direct CPO precedence and AFIR fallback in staging
         run: python scripts/germany_direct_cpo_overlay.py
       - name: Validate direct CPO overlay
         run: |
           python - <<'PY'
           import gzip,json
           from pathlib import Path
-          p=Path('data/germany/germany_non_tesla_catalog_staging_direct_cpo.json.gz')
-          with gzip.open(p,'rt',encoding='utf-8') as f: d=json.load(f)
+
+          with gzip.open('data/germany/germany_non_tesla_catalog_staging_direct_cpo.json.gz','rt',encoding='utf-8') as f:
+              d=json.load(f)
+          with gzip.open('data/germany/wirelane_direct_tariffs.json.gz','rt',encoding='utf-8') as f:
+              w=json.load(f)
           m=json.loads(Path('data/germany/germany_non_tesla_catalog_staging_direct_cpo_manifest.json').read_text(encoding='utf-8'))
+
           assert d['dataset']=='germany-national-non-tesla-catalog-staging-direct-cpo'
           assert d['scope']['stagedOnly'] is True and d['scope']['publishesToTcc'] is False
           assert d['scope']['tariffsRankable'] is False
           assert d['scope']['directCpoPrecedesAfirInStaging'] is True
+          assert d['scope']['validatedAfirFallbackIncluded'] is True
           assert d['scope']['connectorClassDirectTariffsSupported'] is True
-          s=d['stats']
-          assert s['directCpoSites'] == 3857, s
-          assert s['directCpoProviders'] == {'EWE Go':1204,'EnBW mobility+':2653}, s
-          assert s['directCpoSiteScalarSites'] == 1204, s
-          assert s['directCpoConnectorClassRequiredSites'] == 2653, s
-          assert s['directCpoAppliedOutsideExactOperator'] == 0, s
-          assert s['directCpoAfirCandidatesOverridden'] == 733, s
-          ewe_count=enbw_count=0
+          assert d['scope']['evseSpecificDirectTariffsSupported'] is True
+
+          s=d['stats']; expected_wirelane=w['stats']['sitesFullyCovered']
+          expected_total=1204+2653+expected_wirelane
+          assert expected_wirelane==1103, w['stats']
+          assert s['directCpoSites']==expected_total, s
+          assert s['directCpoProviders']=={'EWE Go':1204,'EnBW mobility+':2653,'Wirelane':expected_wirelane}, s
+          assert s['directCpoSiteScalarSites']==1204, s
+          assert s['directCpoConnectorClassRequiredSites']==2653, s
+          assert s['directCpoEvseSpecificSites']==expected_wirelane, s
+          assert s['wirelaneFullyCoveredDirectSites']==expected_wirelane, s
+          assert s['wirelanePartialSitesNotApplied']==15, s
+          assert s['directCpoAppliedOutsideExactOperator']==0, s
+
+          ewe_count=enbw_count=wirelane_count=afir_preferred=direct_preferred=0
+          safe_candidate_without_direct=0
           for site in d['sites']:
-              pr=site['pricing']; assert pr['rankable'] is False
+              pr=site['pricing']
+              assert pr['rankable'] is False
               direct=pr.get('directCpo')
-              if not direct: continue
-              assert pr['stagingPreferredTariff']['sourceType']=='direct_cpo', site['id']
-              if site['operator']=='EWE Go GmbH':
-                  ewe_count += 1
-                  assert direct['provider']=='EWE Go' and direct['tariffModel']=='site_scalar'
-                  assert direct['eurPerKwh']==0.52 and direct['taxIncluded'] is True and direct['blockingFee'] is None
-                  assert pr['stagingPreferredTariff']['selectionMode']=='site_scalar'
-              elif site['operator']=='EnBW mobility+ AG und Co.KG':
-                  enbw_count += 1
-                  assert direct['provider']=='EnBW mobility+' and direct['tariffModel']=='connector_class'
-                  assert direct['requiresConnectorClass'] is True
-                  t=direct['connectorClassTariffs']
-                  assert t['AC']['eurPerKwh']==0.70 and t['AC']['blockingFee']=={'afterMinutes':120,'eurPerMinute':0.12}
-                  assert t['DC']['eurPerKwh']==0.79 and t['DC']['blockingFee']=={'afterMinutes':30,'eurPerMinute':0.24}
-                  assert pr['stagingPreferredTariff']['selectionMode']=='connector_class'
-                  assert 'eurPerKwh' not in pr['stagingPreferredTariff']
+              preferred=pr.get('stagingPreferredTariff')
+              safe=bool(pr.get('stagingRankableCandidate') and pr.get('stagingEffectiveEurPerKwh') is not None)
+
+              if direct:
+                  direct_preferred += 1
+                  assert preferred and preferred['sourceType']=='direct_cpo', site['id']
+                  if site['operator']=='EWE Go GmbH':
+                      ewe_count += 1
+                      assert direct['provider']=='EWE Go' and direct['tariffModel']=='site_scalar'
+                      assert direct['eurPerKwh']==0.52 and direct['taxIncluded'] is True and direct['blockingFee'] is None
+                      assert preferred['selectionMode']=='site_scalar'
+                  elif site['operator']=='EnBW mobility+ AG und Co.KG':
+                      enbw_count += 1
+                      assert direct['provider']=='EnBW mobility+' and direct['tariffModel']=='connector_class'
+                      assert direct['requiresConnectorClass'] is True
+                      t=direct['connectorClassTariffs']
+                      assert t['AC']['eurPerKwh']==0.70 and t['AC']['blockingFee']=={'afterMinutes':120,'eurPerMinute':0.12}
+                      assert t['DC']['eurPerKwh']==0.79 and t['DC']['blockingFee']=={'afterMinutes':30,'eurPerMinute':0.24}
+                      assert preferred['selectionMode']=='connector_class'
+                      assert 'eurPerKwh' not in preferred
+                  elif site['operator']=='Wirelane Public 1 GmbH':
+                      wirelane_count += 1
+                      assert direct['provider']=='Wirelane' and direct['tariffModel']=='evse_specific'
+                      assert direct['allExpectedEvseCovered'] is True and direct['requiresEvseSelection'] is True
+                      assert preferred['selectionMode']=='evse_specific'
+                      assert len(direct['evseTariffs'])==direct['expectedEvseCount']
+                      assert all(x['complete'] and x['providerConfirmed'] and x['evseIdConfirmed'] and x['eurPerKwh'] is not None for x in direct['evseTariffs'])
+                      assert direct['providerPageAvailabilityNotUsedForServiceState'] is True
+                  else:
+                      raise AssertionError(('unexpected direct CPO operator',site['operator'],site['id']))
               else:
-                  raise AssertionError(('unexpected direct CPO operator',site['operator'],site['id']))
-          assert ewe_count==1204 and enbw_count==2653, (ewe_count,enbw_count)
+                  if safe:
+                      safe_candidate_without_direct += 1
+                      assert preferred and preferred['sourceType']=='afir', site['id']
+                      assert preferred['selectionMode']=='site_scalar'
+                      assert preferred['currency']=='EUR'
+                      assert preferred['eurPerKwh']==pr['stagingEffectiveEurPerKwh']
+                      afir_preferred += 1
+                  elif preferred is not None:
+                      raise AssertionError(('unsafe preferred tariff',site['id'],preferred))
+
+          assert ewe_count==1204 and enbw_count==2653 and wirelane_count==expected_wirelane
+          assert direct_preferred==s['directCpoSites']
+          assert afir_preferred==safe_candidate_without_direct==s['validatedAfirFallbackPreferredSites']
           assert m['stats']==s
           print('TCC_GERMANY_DIRECT_CPO_OVERLAY_VALIDATED='+json.dumps({
-              'directCpoSites':s['directCpoSites'],'providers':s['directCpoProviders'],
-              'scalarSites':s['directCpoSiteScalarSites'],'connectorClassSites':s['directCpoConnectorClassRequiredSites'],
-              'afirCandidatesOverridden':s['directCpoAfirCandidatesOverridden'],'pricePairs':s['eweGoAfirDirectPricePairs'][:20]
+              'directCpoSites':s['directCpoSites'],
+              'providers':s['directCpoProviders'],
+              'scalarSites':s['directCpoSiteScalarSites'],
+              'connectorClassSites':s['directCpoConnectorClassRequiredSites'],
+              'evseSpecificSites':s['directCpoEvseSpecificSites'],
+              'afirCandidatesOverridden':s['directCpoAfirCandidatesOverridden'],
+              'afirFallbackPreferredSites':s['validatedAfirFallbackPreferredSites'],
+              'wirelanePartialNotApplied':s['wirelanePartialSitesNotApplied'],
+              'pricePairs':s['eweGoAfirDirectPricePairs'][:20]
           },sort_keys=True))
           PY
       - uses: actions/upload-artifact@v4
