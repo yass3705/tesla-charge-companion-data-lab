@@ -23,6 +23,8 @@ def main():
     ap.add_argument("--pun", default="data/national/pun_italy_national.json.gz")
     ap.add_argument("--plenitude", default="data/national/plenitude_direct_stations_italy.json.gz")
     ap.add_argument("--a2a", default="data/national/a2a_direct_stations_italy.json.gz")
+    ap.add_argument("--atlante", default="data/national/atlante_go_italy_overlay.json.gz")
+    ap.add_argument("--atlante-chargeleague", default="data/national/atlante_go_chargeleague_italy_overlay.json.gz")
     ap.add_argument("--out", default="data/consolidation/italy_v9_candidate.json.gz")
     ap.add_argument("--report", default="data/reports/italy_v9_consolidation_report.json")
     args = ap.parse_args()
@@ -30,8 +32,11 @@ def main():
     pun = load_gz(Path(args.pun))
     plenitude = load_gz(Path(args.plenitude))
     a2a = load_gz(Path(args.a2a))
+    atlante = load_gz(Path(args.atlante))
+    atlante_chargeleague = load_gz(Path(args.atlante_chargeleague))
 
     direct_by_evse = {}
+    subscriptions_by_evse = {}
     blocked = Counter()
 
     for e in plenitude.get("evses", []):
@@ -77,18 +82,55 @@ def main():
         else:
             blocked["a2a:not_rankable"] += 1
 
+    for layer_name, layer in (("atlante_own", atlante), ("atlante_chargeleague", atlante_chargeleague)):
+        for e in layer.get("evses", []):
+            evse_id = str(e.get("evseId") or "")
+            if not evse_id:
+                continue
+            for tariff in e.get("subscriptionTariffs", []):
+                if tariff.get("rankableWhenSubscriptionSelected") is not True:
+                    blocked[f"{layer_name}:subscription_not_rankable"] += 1
+                    continue
+                if tariff.get("energyEurPerKwh") is None:
+                    blocked[f"{layer_name}:missing_energy_price"] += 1
+                    continue
+                normalized = {
+                    "channel": "subscription",
+                    "provider": tariff.get("provider") or "Atlante",
+                    "subscriptionId": tariff.get("subscriptionId") or "atlante_go",
+                    "network": tariff.get("network") or tariff.get("serviceNetwork") or "Atlante",
+                    "eurPerKwh": tariff.get("energyEurPerKwh"),
+                    "rankableWhenSelected": True,
+                    "mustNotOverwriteDirectTariff": bool(tariff.get("mustNotOverwriteCpoDirectTariff", True)),
+                }
+                current = subscriptions_by_evse.setdefault(evse_id, [])
+                key = (normalized["provider"], normalized["subscriptionId"], normalized["network"])
+                if any((x.get("provider"), x.get("subscriptionId"), x.get("network")) == key for x in current):
+                    blocked[f"{layer_name}:duplicate_subscription_tariff"] += 1
+                    continue
+                current.append(normalized)
+
     merged_evses = []
     operator_counts = Counter()
+    subscription_counts = Counter()
     rankable_count = 0
+    subscription_evse_count = 0
     for e in pun.get("evses", []):
         out = dict(e)
         evse_id = str(out.get("evseId") or "")
         tariff = direct_by_evse.get(evse_id)
+        subscription_tariffs = subscriptions_by_evse.get(evse_id, [])
         out["tccV9DirectTariff"] = tariff
         out["tccV9RankableDirect"] = bool(tariff and tariff.get("rankable"))
+        out["tccV9SubscriptionTariffs"] = subscription_tariffs
+        out["tccV9HasRankableSelectedSubscription"] = bool(subscription_tariffs)
         if out["tccV9RankableDirect"]:
             rankable_count += 1
             operator_counts[tariff.get("operator") or "UNKNOWN"] += 1
+        if subscription_tariffs:
+            subscription_evse_count += 1
+            for st in subscription_tariffs:
+                subscription_counts[f"{st.get('subscriptionId')}:{st.get('network')}"] += 1
         merged_evses.append(out)
 
     evse_by_station = {}
@@ -102,20 +144,24 @@ def main():
         out["evses"] = rows
         out["rankableDirectEvseCount"] = sum(1 for e in rows if e.get("tccV9RankableDirect"))
         out["rankableDirect"] = out["rankableDirectEvseCount"] > 0
+        out["rankableSelectedSubscriptionEvseCount"] = sum(1 for e in rows if e.get("tccV9HasRankableSelectedSubscription"))
+        out["hasRankableSelectedSubscription"] = out["rankableSelectedSubscriptionEvseCount"] > 0
         merged_stations.append(out)
 
     payload = {
-        "schemaVersion": "1.0.0",
+        "schemaVersion": "1.1.0",
         "dataset": "italy-v9-consolidated-candidate",
         "generatedAt": now_iso(),
         "country": "IT",
         "backbone": "GSE PUN",
-        "pricingPrecedence": ["operator_direct", "emsp", "pun_fallback"],
+        "pricingPrecedence": ["operator_direct", "selected_subscription", "emsp", "pun_fallback"],
         "rules": {
             "punIsPhysicalInventoryMaster": True,
             "operatorTariffsRequireExactOrValidatedJoin": True,
             "crossOperatorEvseConflictFailsClosed": True,
             "punTariffNotRankableUntilSemanticsValidated": True,
+            "subscriptionTariffsRankableOnlyWhenSelected": True,
+            "subscriptionTariffsNeverOverwriteDirectTariff": True,
             "teslaHandledByDedicatedTeslaSourceAtPublishLayer": True,
         },
         "counts": {
@@ -124,7 +170,19 @@ def main():
             "rankableDirectEvseCount": rankable_count,
             "rankableDirectCoveragePct": round(100 * rankable_count / len(merged_evses), 2) if merged_evses else 0.0,
             "rankableDirectByOperator": dict(sorted(operator_counts.items())),
+            "rankableSelectedSubscriptionEvseCount": subscription_evse_count,
+            "rankableSelectedSubscriptionCoveragePct": round(100 * subscription_evse_count / len(merged_evses), 2) if merged_evses else 0.0,
+            "rankableSelectedSubscriptionByOffer": dict(sorted(subscription_counts.items())),
             "blockedReasons": dict(sorted(blocked.items())),
+        },
+        "subscriptions": {
+            "atlante_go": {
+                "provider": "Atlante",
+                "monthlyFeeEur": atlante.get("subscription", {}).get("monthlyFeeEur"),
+                "rankableOnlyWhenSelected": True,
+                "italyAtlanteEurPerKwh": atlante.get("subscription", {}).get("energyEurPerKwh"),
+                "italyChargeLeagueEurPerKwh": atlante_chargeleague.get("energyEurPerKwh"),
+            }
         },
         "stations": merged_stations,
         "evses": merged_evses,
@@ -137,7 +195,7 @@ def main():
 
     report = Path(args.report)
     report.parent.mkdir(parents=True, exist_ok=True)
-    report.write_text(json.dumps({"generatedAt": payload["generatedAt"], "counts": payload["counts"], "rules": payload["rules"]}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    report.write_text(json.dumps({"generatedAt": payload["generatedAt"], "counts": payload["counts"], "rules": payload["rules"], "subscriptions": payload["subscriptions"]}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(payload["counts"], ensure_ascii=False, indent=2))
 
 
