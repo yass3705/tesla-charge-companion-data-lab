@@ -35,12 +35,15 @@ jobs:
           r=json.loads(p.read_text(encoding='utf-8'))
           c=r['counts']
           print(json.dumps(c,ensure_ascii=False,indent=2))
-          print(json.dumps(r['hosts'],ensure_ascii=False,indent=2))
-          for row in r['endpointResponses']:
-              print(json.dumps({k:row.get(k) for k in ('url','method','status','mimeType','resourceType','postData','jsonShape','jsonSample','apiLikeTextFragments')},ensure_ascii=False,indent=2)[:15000])
+          print(json.dumps(r['dynamicResponseHosts'],ensure_ascii=False,indent=2))
+          print(json.dumps(r['externalDynamicResponseMetadata'],ensure_ascii=False,indent=2)[:30000])
+          for row in r['trustedDynamicResponses']:
+              print(json.dumps({k:row.get(k) for k in ('url','host','path','method','status','mimeType','resourceType','postData','jsonShape','jsonSample','apiLikeTextFragments')},ensure_ascii=False,indent=2)[:15000])
           assert r['security']['accountCredentialsUsed'] is False
           assert r['security']['requestHeadersPersisted'] is False
-          assert c['firstPartyResponses'] > 0
+          assert r['security']['externalQueryStringsPersisted'] is False
+          assert c['allResponsesObserved'] > 0
+          assert c['dynamicResponses'] > 0
           PY
       - name: Upload report
         if: always()
