@@ -7,8 +7,9 @@ underlyingLocationIds/location id, while raw native EVSE state remains preserved
 
 Power is deliberately fail-closed: native maxPower is never overwritten. Only a
 model-encoded candidate is emitted when the native chargePointModel itself names
-an unambiguous 22 kW Chargedot TACW22 variant. Broader model families such as
-VIARIS UNI and MaxiChargerAC are not assigned a power from model family alone.
+an unambiguous TACW22 / TAC-W22 22 kW hardware variant. The backend prefix is not
+used to infer the hardware manufacturer. Broader model families such as VIARIS UNI
+and MaxiChargerAC are not assigned a power from model family alone.
 """
 from __future__ import annotations
 
@@ -54,7 +55,7 @@ def power_candidate(evse):
     """Return conservative non-native power evidence without replacing maxPower."""
     model = str(evse.get('chargePointModel') or '')
     if model.startswith('CDT_TACW22::'):
-        return 22, 'charge_point_model_encoded', 'Chargedot model identifier TACW22 encodes the 22 kW hardware variant.'
+        return 22, 'charge_point_model_encoded', 'TACW22 / TAC-W22 model identifier denotes the 22 kW hardware variant; backend prefix is not treated as manufacturer evidence.'
     return None, None, None
 
 
@@ -168,7 +169,7 @@ def main():
             'backend_requests_made': False,
             'geo_from_native_public_pins': True,
             'native_max_power_never_overwritten': True,
-            'model_encoded_power_candidate_rule': 'Only CDT_TACW22::* => 22 kW; VIARIS UNI and MaxiChargerAC remain unresolved without variant/site evidence.',
+            'model_encoded_power_candidate_rule': 'Only CDT_TACW22::* => 22 kW; manufacturer is not inferred from the backend prefix. VIARIS UNI and MaxiChargerAC remain unresolved without variant/site evidence.',
             'evgo_missing_tariff_means_free': True,
             'evgo_missing_tariff_price_mad': 0,
             'rule_scope': 'EVGO only; never generalize missing-price=free to other operators.',
