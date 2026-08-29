@@ -1,0 +1,36 @@
+name: Duferco Italy official tariff rules
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/duferco-italy-probe]
+    paths:
+      - scripts/duferco_italy_official_tariffs.py
+      - .github/workflows/duferco-italy-official-tariffs.yml
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate current official pricing and prepaid products
+        run: python scripts/duferco_italy_official_tariffs.py
+      - name: Fail closed on offer semantics
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('data/reference/duferco_italy_offers.json').read_text())
+          assert all(r['evidenceChecks'].values())
+          assert r['payPerUseOwnCpo']['resolutionRules']['crossBandSession']=='fail_closed_unrankable'
+          assert r['roaming']['rankableWithoutStationFeed'] is False
+          assert r['prepaidModel']['tccRankableWithoutRemainingBalance'] is False
+          print(json.dumps({'payPerUseClasses':r['payPerUseOwnCpo']['classes'],'prepaid':r['prepaid']},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: duferco-italy-official-tariffs
+          path: data/reference/duferco_italy_offers.json
+          retention-days: 14
