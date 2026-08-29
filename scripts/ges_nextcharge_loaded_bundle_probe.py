@@ -3,14 +3,15 @@
 
 The browser is used only as a public asset loader. We persist no headers,
 cookies, storage or auth material and never invoke discovered API endpoints.
-Only sanitized endpoint/host/path hints from already-loaded public JS are kept.
+Only sanitized endpoint/host/path hints and a strict allow-list of station API
+configuration literals from already-loaded public JS are kept.
 """
 from __future__ import annotations
 
 import json
 import re
 import time
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
@@ -28,7 +29,15 @@ URL_RE = re.compile(r"https?://[^\s\"'`<>\\]{4,400}", re.I)
 PATH_RE = re.compile(r"[\"'`]((?:/{1,2}|\.\.?/)[A-Za-z0-9_./?=&%:+${}-]{3,320})[\"'`]", re.I)
 HOST_RE = re.compile(r"(?:(?:https?:)?//)?([a-z0-9][a-z0-9.-]{2,}\.[a-z]{2,})(?=[:/'\"`]|$)", re.I)
 STRONG_RE = re.compile(r"(station|chargepoint|connector|evse|tariff|price|marker|cluster|bounding|viewport|latitude|longitude|poi|map)", re.I)
-BLOCKED_RE = re.compile(r"(userauth|login|signup|register|password|payment|wallet|transaction|startcharge|stopcharge|recharge|creditcard)", re.I)
+BLOCKED_RE = re.compile(r"(userauth|login|signup|register|password|payment|wallet|transaction|startcharge|stopcharge|recharge|creditcard|token)", re.I)
+TARGET_CONFIG_KEYS = (
+    "stationsGrid",
+    "station",
+    "stationConnectors",
+    "stationReviews",
+    "stationPhotos",
+    "getUserInfoFromGeoIP",
+)
 
 
 def now_iso() -> str:
@@ -50,6 +59,22 @@ def strip_query_values(value: str) -> str:
         if key:
             keys.append(key[:80])
     return path + ("?" + "&".join(keys) if keys else "")
+
+
+def extract_target_literals(text: str) -> dict[str, list[dict[str, str]]]:
+    """Extract only literal values for a strict non-sensitive station API key set."""
+    found: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for key in TARGET_CONFIG_KEYS:
+        pattern = re.compile(rf'(?<![A-Za-z0-9_$]){re.escape(key)}\s*:\s*["\']([^"\']{{1,260}})["\']')
+        for match in pattern.finditer(text):
+            value = match.group(1).strip()
+            if not value or BLOCKED_RE.search(value):
+                continue
+            kind = "host" if value.startswith(("http://", "https://")) else "path"
+            row = {"value": value[:260], "kind": kind}
+            if row not in found[key]:
+                found[key].append(row)
+    return dict(found)
 
 
 def hints(text: str) -> dict:
@@ -104,7 +129,6 @@ def main() -> None:
             driver.get(MAP_URL)
         except TimeoutException:
             browser_errors.append("page_load_timeout")
-        # page_load_strategy=none returns quickly; gather resources as they stream.
         for _ in range(8):
             time.sleep(3)
             for entry in driver.get_log("performance"):
@@ -131,6 +155,7 @@ def main() -> None:
         bundles = []
         combined_hosts = Counter()
         combined_urls, combined_paths = set(), set()
+        aggregate_literals: dict[str, list[dict[str, str]]] = defaultdict(list)
         for rid, meta in responses.items():
             mime = str(meta.get("mimeType") or "").lower()
             rtype = str(meta.get("resourceType") or "")
@@ -147,6 +172,12 @@ def main() -> None:
                 if not row["base64Encoded"] and len(text) <= MAX_BODY_CHARS:
                     h = hints(text)
                     row["hints"] = h
+                    literals = extract_target_literals(text)
+                    row["targetConfigLiterals"] = literals
+                    for key, values in literals.items():
+                        for value in values:
+                            if value not in aggregate_literals[key]:
+                                aggregate_literals[key].append(value)
                     combined_hosts.update(h["hosts"])
                     combined_urls.update(h["apiLikeUrls"])
                     combined_paths.update(h["apiLikePaths"])
@@ -177,6 +208,7 @@ def main() -> None:
                 "bundlesWithReadableBody": sum(1 for x in bundles if x.get("hints")),
             },
             "responsePaths": sorted({f"{x['host']}{x['path']}" for x in responses.values()}),
+            "targetConfigLiterals": dict(aggregate_literals),
             "bundles": bundles,
             "combined": {
                 "hosts": dict(combined_hosts.most_common(250)),
@@ -189,15 +221,9 @@ def main() -> None:
         print(json.dumps({
             "diagnostics": payload["diagnostics"],
             "counts": payload["counts"],
-            "responsePaths": payload["responsePaths"],
-            "combined": payload["combined"],
-            "bundleSummaries": [{
-                "host": b.get("host"), "path": b.get("path"), "status": b.get("status"),
-                "bodyChars": b.get("bodyChars"), "bodyReadError": b.get("bodyReadError"),
-                "apiLikeUrls": (b.get("hints") or {}).get("apiLikeUrls"),
-                "apiLikePaths": (b.get("hints") or {}).get("apiLikePaths"),
-            } for b in bundles],
-        }, ensure_ascii=False, indent=2)[:150000])
+            "targetConfigLiterals": payload["targetConfigLiterals"],
+            "combinedApiLikePaths": payload["combined"]["apiLikePaths"],
+        }, ensure_ascii=False, indent=2)[:100000])
     finally:
         driver.quit()
 
