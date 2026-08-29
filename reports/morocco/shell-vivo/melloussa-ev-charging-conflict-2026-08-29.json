@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-29T13:46:00Z",
+  "scope": "Shell/Vivo Energy Morocco read-only public-source cross-check",
+  "policy": {
+    "read_only": true,
+    "public_sources_only": true,
+    "no_login": true,
+    "no_mutations": true,
+    "no_credentials": true
+  },
+  "station_candidate": {
+    "name": "Relais Melloussa / Shell Melloussa",
+    "city_area": "Tanger / Ghedir Eddefla",
+    "shell_directory_coordinates": {
+      "lat": 35.67747,
+      "lng": -5.706855
+    }
+  },
+  "modeling": {
+    "operator_cpo": "unresolved",
+    "site_brand": "Shell",
+    "app_source_access_network": "unresolved",
+    "tariff_channel": "unresolved",
+    "status_source": "unresolved"
+  },
+  "evidence": [
+    {
+      "source": "Shell official station directory",
+      "url": "https://find.shell.com/ma/fuel/10125230-relais-melloussa/en_AM",
+      "observation": "Official Shell directory identifies the site and coordinates but currently states 'No EV charging information available'.",
+      "authority": "official-site-directory"
+    },
+    {
+      "source": "Kia Maroc public charging map",
+      "url": "https://www.kia.ma/recharge",
+      "observation": "Kia Maroc currently lists 'Shell Melloussa' among Morocco EV charging locations.",
+      "authority": "manufacturer-public-map"
+    },
+    {
+      "source": "Atlas Recharge",
+      "url": "https://atlasrecharge.com/bornes/ghedir-eddefla/shell-melloussa-163",
+      "observation": "Third-party listing reports 2 charging points, CCS + Type 2, 50 kW maximum and free access, but leaves operator blank.",
+      "authority": "community-third-party"
+    }
+  ],
+  "assessment": {
+    "meaningful_conflict": true,
+    "production_ready": false,
+    "reason": "The existence of EV charging at the Shell-branded site is supported by two non-CPO public sources, while Shell's own current station directory explicitly provides no EV charging information. CPO, access network, tariff channel and live status source remain unresolved.",
+    "production_rule": "Do not promote this candidate as Shell Recharge or assign Vivo Energy as CPO without a native operator/app confirmation. Keep as diagnostic candidate only.",
+    "manual_verification_target": "Check the physical site or any Shell/Vivo/EV roaming app for connector count, power, access method, tariff and operator attribution."
+  }
+}
