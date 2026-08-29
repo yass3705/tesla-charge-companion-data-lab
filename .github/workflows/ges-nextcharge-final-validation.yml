@@ -1,0 +1,86 @@
+name: GES NextCharge final Italy validation
+
+on:
+  push:
+    branches: [research/ges-italy-probe]
+    paths:
+      - scripts/ges_nextcharge_final_validation.py
+      - .github/workflows/ges-nextcharge-final-validation.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download latest national candidate
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ges-nextcharge-national-candidate.yml --branch research/ges-italy-probe --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/ges
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n nextcharge-ges-italy-national-candidate -D /tmp/ges
+          test -s /tmp/ges/national/nextcharge_ges_italy_candidate.json.gz
+          test -s /tmp/ges/reports/ges_nextcharge_italy_national_report.json
+          echo "GES candidate run $RUN_ID"
+      - name: Download latest unit display probe
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ges-nextcharge-tariff-unit-probe.yml --branch research/ges-italy-probe --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/unit
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n ges-nextcharge-tariff-unit-probe -D /tmp/unit
+          test -s /tmp/unit/ges_nextcharge_tariff_unit_probe.json
+          echo "Unit probe run $RUN_ID"
+      - name: Download latest exact recovery probe
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ges-nextcharge-operational-recovery.yml --branch research/ges-italy-probe --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/recovery
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n ges-nextcharge-operational-recovery -D /tmp/recovery
+          test -s /tmp/recovery/ges_nextcharge_operational_recovery.json
+          echo "Recovery run $RUN_ID"
+      - name: Build final validation
+        run: |
+          python scripts/ges_nextcharge_final_validation.py \
+            --candidate /tmp/ges/national/nextcharge_ges_italy_candidate.json.gz \
+            --national-report /tmp/ges/reports/ges_nextcharge_italy_national_report.json \
+            --unit-probe /tmp/unit/ges_nextcharge_tariff_unit_probe.json \
+            --recovery /tmp/recovery/ges_nextcharge_operational_recovery.json
+      - name: Validate final report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/reports/ges_nextcharge_italy_final_validation.json')
+          assert p.exists() and p.stat().st_size > 1000
+          r=json.loads(p.read_text(encoding='utf-8'))
+          assert all(r['qualityAssertions'].values())
+          assert r['integrationDecision']['canRankNextChargeEmspTariffs'] is True
+          assert r['integrationDecision']['canRankAsGesCpoDirectTariffs'] is False
+          assert r['integrationDecision']['mainMergePerformed'] is False
+          assert r['failClosedOperational']['exactMatchedButEmptyPrices']['count'] == 12
+          assert r['failClosedOperational']['absentFromCurrentNextChargeAfterExactRecovery']['count'] == 29
+          assert r['validatedTariffSemantics']['energy']['unit'] == 'EUR/kWh'
+          assert r['validatedTariffSemantics']['time']['unit'] == 'EUR/min'
+          assert r['validatedTariffSemantics']['parking']['unit'] == 'EUR/min'
+          assert r['validatedTariffSemantics']['session']['unit'] == 'EUR/session'
+          print(json.dumps(r['integrationDecision'],indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ges-nextcharge-italy-final-validation
+          path: |
+            data/reports/ges_nextcharge_italy_final_validation.json
+            data/reports/ges_nextcharge_italy_final_validation.md
+          retention-days: 30
