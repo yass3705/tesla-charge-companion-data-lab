@@ -1,0 +1,74 @@
+name: Italy V9 consolidated candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/italy-consolidation-v9-a2a
+    paths:
+      - scripts/italy_consolidate_v9.py
+      - .github/workflows/italy-v9-consolidation.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check selenium requests pypdf
+      - name: Download latest successful normalized PUN artifact
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/pun data/national
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
+          cp /tmp/pun/national/pun_italy_national.json.gz data/national/pun_italy_national.json.gz
+          test -s data/national/pun_italy_national.json.gz
+          echo "Using PUN run $RUN_ID"
+      - name: Build Plenitude candidate
+        run: python scripts/plenitude_italy_apply.py
+      - name: Build A2A candidate
+        run: python scripts/a2a_italy_national.py --pun data/national/pun_italy_national.json.gz
+      - name: Consolidate Italy V9 candidate
+        run: python scripts/italy_consolidate_v9.py
+      - name: Validate consolidated candidate
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          p=Path('data/consolidation/italy_v9_candidate.json.gz')
+          assert p.exists() and p.stat().st_size > 100000
+          with gzip.open(p,'rt',encoding='utf-8') as fh:
+              d=json.load(fh)
+          c=d['counts']
+          print(json.dumps(c,ensure_ascii=False,indent=2))
+          assert d['country'] == 'IT'
+          assert d['backbone'] == 'GSE PUN'
+          assert c['punEvseCount'] > 10000
+          assert c['rankableDirectEvseCount'] > 5000
+          assert c['rankableDirectByOperator'].get('Plenitude On The Road',0) > 5000
+          assert c['rankableDirectByOperator'].get('A2A e-moving',0) > 100
+          assert c['blockedReasons'].get('cross_operator_evse_conflict',0) == 0
+          PY
+      - name: Upload consolidated candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: italy-v9-consolidated-candidate
+          path: |
+            data/consolidation/italy_v9_candidate.json.gz
+            data/reports/italy_v9_consolidation_report.json
+            data/reports/plenitude_italy_apply_report.json
+            data/reports/a2a_italy_national_report.json
+          retention-days: 14
