@@ -1,0 +1,63 @@
+name: GES NextCharge uidConnector stratified probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/ges-italy-probe
+    paths:
+      - scripts/ges_nextcharge_uid_stratified_probe.py
+      - .github/workflows/ges-nextcharge-uid-stratified-probe.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependency
+        run: pip install --disable-pip-version-check selenium
+      - name: Download latest normalized PUN artifact
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/pun
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
+          test -s /tmp/pun/national/pun_italy_national.json.gz
+          echo "Using PUN run $RUN_ID"
+      - name: Validate uidConnector join across Italy
+        run: python scripts/ges_nextcharge_uid_stratified_probe.py --pun /tmp/pun/national/pun_italy_national.json.gz
+      - name: Validate report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/reports/ges_nextcharge_uid_stratified_probe.json')
+          assert p.exists() and p.stat().st_size > 1000
+          r=json.loads(p.read_text(encoding='utf-8'))
+          c=r['counts']
+          print(json.dumps(c,ensure_ascii=False,indent=2))
+          assert r['security']['accountCredentialsUsed'] is False
+          assert r['security']['sessionTokenSent'] is False
+          assert r['security']['captchaBypassed'] is False
+          assert c['targetsSelected'] >= 12
+          assert c['exactUidMatchedEvse'] > 0
+          assert c['targetsWithAnyExactUidMatch'] >= max(6, int(c['targetsCompleted'] * 0.6))
+          PY
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ges-nextcharge-uid-stratified-probe
+          path: data/reports/ges_nextcharge_uid_stratified_probe.json
+          retention-days: 14
