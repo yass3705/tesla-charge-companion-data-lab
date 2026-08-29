@@ -1,0 +1,51 @@
+name: Duferco public station detail EVSE probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/duferco-italy-probe]
+    paths:
+      - scripts/duferco_station_detail_response_probe.py
+      - .github/workflows/duferco-station-detail-response-probe.yml
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check selenium
+      - name: Capture normal public map station detail responses
+        run: python scripts/duferco_station_detail_response_probe.py
+      - name: Validate safe EVSE detail capture
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('data/reports/duferco_station_detail_response_probe.json').read_text())
+          s=r['security']
+          assert s['accountCredentialsUsed'] is False
+          assert s['requestHeadersRead'] is False
+          assert s['cookiesRead'] is False
+          assert s['storageRead'] is False
+          assert s['requestBodiesRead'] is False
+          assert s['startChargeActionsClicked'] is False
+          assert r['detailResponseCount'] > 0
+          ids=[]
+          for x in r['responses']:
+              d=x.get('detail') or {}
+              for k in d.get('_connectorArrayKeys') or []:
+                  ids.extend(str(c.get('connectorEVSEID')) for c in d.get(k) or [] if c.get('connectorEVSEID'))
+          assert ids
+          print(json.dumps({'details':r['detailResponseCount'],'evseIds':ids[:30]},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: duferco-station-detail-response-probe
+          path: data/reports/duferco_station_detail_response_probe.json
+          retention-days: 14
