@@ -63,12 +63,21 @@ def first_party(url: str):
     return host.endswith("qwello.de") or host.endswith("qwello.eu") or not host
 
 
+def attribute_refs(text: str):
+    """Handle quoted and minimized-build unquoted HTML attribute values."""
+    pattern = re.compile(r'\b(src|href)\s*=\s*(?:"([^"]+)"|\'([^\']+)\'|([^\s>]+))', re.I)
+    for match in pattern.finditer(text):
+        value = match.group(2) or match.group(3) or match.group(4)
+        if value:
+            yield match.group(1), value
+
+
 def main():
     pages=[]; refs=[]
     for url in URLS:
         raw,meta=fetch(url); text=raw.decode("utf-8","replace")
         page_refs=[]
-        for attr,value in re.findall(r'\b(src|href)\s*=\s*["\']([^"\']+)["\']',text,re.I):
+        for attr,value in attribute_refs(text):
             absolute=urllib.parse.urljoin(meta["url"],html.unescape(value))
             page_refs.append({"attr":attr.lower(),"raw":value,"absolute":absolute})
             if first_party(absolute): refs.append(absolute)
@@ -82,7 +91,6 @@ def main():
         })
 
     refs=list(dict.fromkeys(refs))
-    # Fetch likely code/data assets only; HTML navigation links are retained but not crawled.
     asset_urls=[]
     for ref in refs:
         path=urllib.parse.urlparse(ref).path.lower()
@@ -113,7 +121,7 @@ def main():
             assets.append({"url":asset_url,"error":f"{type(exc).__name__}: {exc}"})
 
     result={
-        "schemaVersion":"0.2.0","dataset":"germany-qwello-public-web-probe","generatedAt":now(),
+        "schemaVersion":"0.3.0","dataset":"germany-qwello-public-web-probe","generatedAt":now(),
         "scope":{"stagedOnly":True,"publishesToTcc":False,"discoveryOnly":True},
         "pages":pages,"referenceCount":len(refs),"references":refs,"assetCount":len(asset_urls),
         "scriptAssets":assets,"tokenAssetHitCounts":dict(token_hits),
@@ -122,10 +130,10 @@ def main():
     out=Path('data/germany/qwello_public_web_probe.json'); out.parent.mkdir(parents=True,exist_ok=True)
     out.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     print('TCC_QWELLO_WEB_BOOTSTRAP='+json.dumps({
-        'pages':[{'url':p['meta']['url'],'bytes':p['meta']['bytes'],'rawHtml':p['rawHtml'],'references':p['references']} for p in pages],
+        'pages':[{'url':p['meta']['url'],'bytes':p['meta']['bytes'],'references':p['references']} for p in pages],
         'referenceCount':result['referenceCount'],'references':refs,'assetCount':result['assetCount'],
         'tokenAssetHitCounts':result['tokenAssetHitCounts'],'candidateUrls':result['candidateUrls'][:100],
-        'assetSummaries':[{'url':(a.get('meta') or {}).get('url') or a.get('url'),'tokens':sorted((a.get('tokenHits') or {}).keys()),'error':a.get('error')} for a in assets],
+        'assetSummaries':[{'url':(a.get('meta') or {}).get('url') or a.get('url'),'bytes':(a.get('meta') or {}).get('bytes'),'tokens':sorted((a.get('tokenHits') or {}).keys()),'error':a.get('error')} for a in assets],
     },ensure_ascii=False,sort_keys=True))
 
 if __name__=='__main__': main()
