@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - research/enel-italy-probe
+      - research/a2a-italy-national
     paths:
       - scripts/a2a_italy_missing_operational_probe.py
       - .github/workflows/a2a-italy-missing-operational-probe.yml
@@ -30,7 +30,7 @@ jobs:
         run: |
           set -euo pipefail
           PUN_RUN="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
-          A2A_RUN="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow a2a-italy-national-build.yml --branch research/enel-italy-probe --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          A2A_RUN="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow a2a-italy-national-build.yml --branch research/a2a-italy-national --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
           test -n "$PUN_RUN" && test -n "$A2A_RUN"
           mkdir -p /tmp/pun /tmp/a2a
           gh run download "$PUN_RUN" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
