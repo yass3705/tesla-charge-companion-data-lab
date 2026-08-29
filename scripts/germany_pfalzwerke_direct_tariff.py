@@ -53,20 +53,23 @@ def main():
     raw, source = fetch()
     text = textify(raw)
     m = re.search(
-        r"Preise\s+für\s+das\s+Ad-Hoc-Laden\s+an\s+Pfalzwerke\s+Ladestationen(.{1,1800}?)Finden\s+Sie\s+E-Mobility-Ladestationen",
+        r"Preise\s+für\s+das\s+Ad-Hoc-Laden\s+an\s+Pfalzwerke\s+Ladestationen(.{1,2200}?)Finden\s+Sie\s+E-Mobility-Ladestationen",
         text,
         re.I | re.S,
     )
     if not m:
         raise RuntimeError("official Pfalzwerke ad-hoc tariff section not found")
     section = m.group(1)
-    ac = re.search(r"\bAC\s*:\s*58\s*Cent\s*/?\s*kWh", section, re.I)
-    dc = re.search(r"\bDC\s*:\s*79\s*Cent\s*/?\s*kWh", section, re.I)
-    all_sites = re.search(r"Gültig\s+an\s+allen\s+Pfalzwerke\s+Ladestationen", section, re.I)
-    vat = re.search(r"Alle\s+Preise\s+inkl\.?\s*MwSt", section, re.I)
-    no_account = re.search(r"Ohne\s+Registrierung|Kein\s+Kundenkonto\s+notwendig", section, re.I)
-    if not all((ac, dc, all_sites, vat, no_account)):
-        raise RuntimeError("Pfalzwerke ad-hoc tariff evidence changed; refusing stale tariff")
+    checks = {
+        "ac58": bool(re.search(r"\bAC\s*:\s*58\s*Cent\s*/?\s*kWh", section, re.I)),
+        "dc79": bool(re.search(r"\bDC\s*:\s*79\s*Cent\s*/?\s*kWh", section, re.I)),
+        "allSites": bool(re.search(r"Gültig\s+an\s+allen\s+Pfalzwerke[-\s]+Ladestationen", section, re.I)),
+        "vatIncluded": bool(re.search(r"Alle\s+Preise\s+inkl\.?\s*(?:MwSt|Mehrwertsteuer)", section, re.I)),
+        "noAccount": bool(re.search(r"Ohne\s+Registrierung|Kein\s+Kundenkonto\s+notwendig", section, re.I)),
+    }
+    print("TCC_PFALZWERKE_EVIDENCE=" + json.dumps({"checks": checks, "section": section[:2200], "source": source}, ensure_ascii=False, sort_keys=True))
+    if not all(checks.values()):
+        raise RuntimeError(f"Pfalzwerke ad-hoc tariff evidence changed; checks={checks}")
 
     result = {
         "schemaVersion": "0.1.0",
