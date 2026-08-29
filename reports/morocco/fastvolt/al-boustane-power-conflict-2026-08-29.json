@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-08-29T07:34:38Z",
+  "schema_version": 2,
+  "generated_at": "2026-08-29T08:34:37Z",
   "country": "MA",
   "station": {
     "name": "Afriquia Al Boustane",
@@ -9,7 +9,7 @@
     "site_brand": "Afriquia",
     "app_source_access_network": "FastVolt",
     "tariff_channel": "FastVolt direct",
-    "status_source": null
+    "status_source": "FastVolt native app"
   },
   "evidence": [
     {
@@ -28,23 +28,46 @@
       "source_type": "current_public_station_directory",
       "source_url": "https://atlasrecharge.com/bornes/bouznika/afriquia-al-boustane-bouznika-236",
       "observed_date": "2026-08-29",
-      "claim": "Current public listing identifies the site as FastVolt but reports 100 kW maximum and 8 charging points with Type 2 and CCS."
+      "claim": "Current public listing identifies the site as FastVolt but reports 100 kW maximum and 8 charging points with Type 2 and CCS; this is contradicted by the native FastVolt app verification below."
+    },
+    {
+      "source_type": "manual_native_app_verification",
+      "app": "FastVolt",
+      "observed_date": "2026-08-29",
+      "claim": "Native FastVolt station detail shows six connectors total: four CCS2 connectors at 360 kW and two AC connectors at 22 kW. The visible CCS2 connectors are priced at MAD 150.00/hour (2.50 MAD/min), with connector-level live states including Disponible and En cours d'utilisation. No screenshot or account/personal data is persisted in this public report."
     }
   ],
-  "classification": {
-    "conflict": true,
-    "fields_in_conflict": ["max_power_kw", "charging_point_count"],
-    "do_not_promote_to_production_without_native_confirmation": true,
-    "production_recommendation": "Keep the station and CPO attribution, but do not overwrite connector-level power/count from the FastVolt public API solely with either third-party value. Prefer native FastVolt app/API evidence if recovered; until then retain the existing native/public FastVolt inventory values and flag this site for manual app verification."
+  "validated_station_shape": {
+    "connector_count": 6,
+    "dc": {
+      "connector_type": "CCS2",
+      "count": 4,
+      "max_power_kw": 360,
+      "direct_tariff_mad_per_hour": 150.0,
+      "direct_tariff_mad_per_minute": 2.5
+    },
+    "ac": {
+      "count": 2,
+      "max_power_kw": 22
+    },
+    "native_live_status_observed": true,
+    "observed_native_status_labels": [
+      "Disponible",
+      "En cours d'utilisation"
+    ]
   },
-  "app_verification_target": {
-    "station_name": "Afriquia Al Boustane",
-    "verify": ["displayed maximum power", "number of charge points/connectors", "connector split AC/DC"]
+  "classification": {
+    "conflict": false,
+    "resolved_by": "manual_native_app_verification",
+    "rejected_or_obsolete_claim": "Atlas Recharge 100 kW / 8 charging points",
+    "production_recommendation": "Use the native FastVolt app-verified six-connector layout for Afriquia Al Boustane: 4 x CCS2 360 kW plus 2 x AC 22 kW. Preserve FastVolt/Afrimobility as CPO/operator and Afriquia as site_brand. The app also demonstrates connector-level native live status capability, but no automated FastVolt status ingestion endpoint is yet validated."
   },
   "policy": {
-    "read_only_public_sources_only": true,
+    "sanitized_public_report": true,
     "no_credentials": true,
-    "no_mutations_to_operator_systems": true,
+    "no_personal_data": true,
+    "no_operator_mutations": true,
+    "no_session_start": true,
     "modeling_dimensions_preserved": true
   }
 }
