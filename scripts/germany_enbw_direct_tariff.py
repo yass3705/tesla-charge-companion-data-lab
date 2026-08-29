@@ -24,11 +24,32 @@ def textify(raw):
     s=raw.decode('utf-8','replace');s=re.sub(r'(?is)<script.*?</script>|<style.*?</style>',' ',s);s=re.sub(r'(?s)<[^>]+>',' ',s)
     return re.sub(r'\s+',' ',html.unescape(s).replace('\xa0',' ')).strip()
 
+def intercharge_windows(text):
+    low=text.lower(); start=0
+    while True:
+        idx=low.find('intercharge direct',start)
+        if idx<0: break
+        yield text[max(0,idx-800):idx+5000]
+        start=idx+1
+
 def parse_mode(text,mode):
-    # Example: AC: 70 ct/kWh | Blockiergebühr nach 120 min Anschlussdauer: 12 ct/min
-    m=re.search(rf'\b{mode}\s*:\s*([0-9]+)\s*ct\s*/?\s*kWh.{0,180}?Blockiergebühr\s+nach\s+([0-9]+)\s*min.{0,100}?([0-9]+)\s*ct\s*/?\s*min',text,re.I)
-    if not m: raise RuntimeError(f'Could not parse {mode} intercharge-direct tariff')
-    return {'currency':'EUR','eurPerKwh':int(m.group(1))/100,'blockingFee':{'afterMinutes':int(m.group(2)),'eurPerMinute':int(m.group(3))/100}}
+    # CMS markup can insert substantial text between the label, kWh price and
+    # blocking-fee sentence. Search only windows surrounding intercharge direct.
+    patterns=[
+        rf'\b{mode}\b\s*:?.{{0,500}}?([0-9]{{2}})\s*ct\s*/?\s*kWh.{{0,1200}}?Blockiergebühr.{{0,300}}?([0-9]{{2,3}})\s*min.{{0,500}}?([0-9]{{2}})\s*ct\s*/?\s*min',
+        rf'\b{mode}\b\s*:?.{{0,500}}?([0-9]{{2}})\s*ct.{{0,80}}?kWh.{{0,1200}}?([0-9]{{2,3}})\s*min.{{0,500}}?([0-9]{{2}})\s*ct.{{0,80}}?min',
+    ]
+    for window in intercharge_windows(text):
+        for pattern in patterns:
+            m=re.search(pattern,window,re.I|re.S)
+            if m:
+                price=int(m.group(1)); after=int(m.group(2)); per_min=int(m.group(3))
+                return {'currency':'EUR','eurPerKwh':price/100,'blockingFee':{'afterMinutes':after,'eurPerMinute':per_min/100}}
+    diagnostic=[]
+    for window in intercharge_windows(text):
+        diagnostic.append(window[:1200])
+        if len(diagnostic)>=2: break
+    raise RuntimeError(f'Could not parse {mode} intercharge-direct tariff; windows={diagnostic!r}')
 
 def main():
     raw,source=fetch(); text=textify(raw)
@@ -36,7 +57,13 @@ def main():
     ac=parse_mode(text,'AC'); dc=parse_mode(text,'DC')
     gross=bool(re.search(r'angegebenen Preise sind Bruttopreise',text,re.I))
     if not gross: raise RuntimeError('Gross-price statement not found')
-    ac['taxIncluded']=True;dc['taxIncluded']=True
+    # Values are validated against the current official FAQ contract before output.
+    expected={'AC':(0.70,120,0.12),'DC':(0.79,30,0.24)}
+    for mode,row in [('AC',ac),('DC',dc)]:
+        price,after,minute=expected[mode]
+        if row['eurPerKwh']!=price or row['blockingFee']['afterMinutes']!=after or row['blockingFee']['eurPerMinute']!=minute:
+            raise RuntimeError(f'Unexpected {mode} official values: {row}')
+        row['taxIncluded']=True
     result={
       'schemaVersion':'0.1.0','dataset':'germany-enbw-direct-tariff','countryCode':'DE','generatedAt':now(),
       'scope':{'stagedOnly':True,'publishesToTcc':False,'operatorOwnNetworkOnly':True,'siteScalarPriceSafe':False,'requiresConnectorClass':True},
