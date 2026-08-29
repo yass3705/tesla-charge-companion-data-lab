@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-08-29T20:34:43Z",
+  "scope": "EVGO Morocco public native map backend freshness",
+  "source": {
+    "host": "cp.evgo.ma",
+    "access": "anonymous public read-only GET",
+    "paths": [
+      "/api/v1/app/pins",
+      "/api/v1/app/locations/{id}",
+      "/api/v2/app/pins",
+      "/api/v2/app/locations/{id}"
+    ],
+    "workflow_run_id": 33176558376,
+    "source_commit": "fad31c37d3233b90de3722fc81558ac74d35bd61"
+  },
+  "finding": {
+    "validated": true,
+    "meaning": "The EVGO public native location resources expose station-level EVSE statuses with update timestamps only minutes behind the collection time, supporting use as the preferred status_source for EVGO-operated stations over roaming copies when both are available.",
+    "examples": [
+      {
+        "station": "Marjane Mohammedia",
+        "location_id": 10,
+        "location_updated_at": "2026-08-29 20:29:46.000",
+        "collection_generated_at": "2026-08-29T20:34:43.078297+00:00",
+        "observed_evse_statuses": ["charging", "available"],
+        "freshness_seconds_approx": 297
+      },
+      {
+        "station": "Tachfine Center",
+        "location_id": 4,
+        "location_updated_at": "2026-08-29 19:58:51.000",
+        "collection_generated_at": "2026-08-29T20:34:43.078297+00:00",
+        "observed_evse_statuses": ["charging"]
+      }
+    ]
+  },
+  "modeling": {
+    "operator_cpo": "Nareva Services / EVGO",
+    "site_brand": "preserve station/site brand independently",
+    "app_source_access_network": "EVGO public native map",
+    "status_source": "EVGO native cp.evgo.ma",
+    "tariff_channel": "do not infer from status endpoints"
+  },
+  "production_rule": "For EVGO-operated stations, prefer EVGO native status over EVOne/EVPlug roaming status when both are available. Keep EVOne as secondary/diagnostic corroboration unless native EVGO is unavailable.",
+  "safety": {
+    "read_only": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_mutations": true,
+    "raw_response_bodies_persisted": false
+  }
+}
