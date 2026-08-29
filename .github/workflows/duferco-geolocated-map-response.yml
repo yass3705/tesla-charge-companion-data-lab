@@ -1,0 +1,41 @@
+name: Duferco Italy geolocated map response
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/duferco-italy-probe]
+    paths:
+      - scripts/duferco_geolocated_map_response_probe.py
+      - .github/workflows/duferco-geolocated-map-response.yml
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check selenium
+      - name: Capture public map response around Genova
+        run: python scripts/duferco_geolocated_map_response_probe.py
+      - name: Validate no request secrets were inspected
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('data/reports/duferco_geolocated_map_response_probe.json').read_text())
+          assert r['security']['accountCredentialsUsed'] is False
+          assert r['security']['requestHeadersRead'] is False
+          assert r['security']['cookiesRead'] is False
+          assert any((x.get('markerCount') or 0)>0 for x in r['responses'])
+          print(json.dumps([{'status':x.get('status'),'url':x.get('url'),'markers':x.get('markerCount'),'keySets':x.get('markerKeySets',[])[:3]} for x in r['responses']],indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: duferco-geolocated-map-response
+          path: data/reports/duferco_geolocated_map_response_probe.json
+          retention-days: 14
