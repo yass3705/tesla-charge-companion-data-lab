@@ -57,13 +57,15 @@ def main():
         evse_id = str(e.get("evseId") or "")
         if not evse_id:
             continue
-        if e.get("rankableDirect") and e.get("directEnergyEurPerKwh") is not None:
+        direct = e.get("directTariff") if isinstance(e.get("directTariff"), dict) else {}
+        if e.get("rankableDirectTariff") is True and direct.get("energyEurPerKwh") is not None:
             candidate = {
                 "channel": "operator_direct",
                 "operator": "A2A e-moving",
-                "eurPerKwh": e.get("directEnergyEurPerKwh"),
-                "occupancyFee": e.get("occupancyFeePolicy"),
-                "source": "A2A public e-moving station detail",
+                "eurPerKwh": direct.get("energyEurPerKwh"),
+                "occupancyEurPerMin": direct.get("occupancyEurPerMin"),
+                "occupancyPolicy": direct.get("occupancyPolicy"),
+                "source": direct.get("source") or "A2A public e-moving station detail",
                 "rankable": True,
             }
             previous = direct_by_evse.get(evse_id)
@@ -73,7 +75,7 @@ def main():
             else:
                 direct_by_evse[evse_id] = candidate
         else:
-            blocked[f"a2a:{e.get('blockingReason') or 'not_rankable'}"] += 1
+            blocked["a2a:not_rankable"] += 1
 
     merged_evses = []
     operator_counts = Counter()
