@@ -1,0 +1,46 @@
+name: Atlante Italy myAtlante API probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/atlante-italy-probe
+    paths:
+      - scripts/atlante_italy_api_probe.py
+      - .github/workflows/atlante-italy-api-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ATLANTE_API_SUBSCRIPTION_KEY: ${{ secrets.ATLANTE_API_SUBSCRIPTION_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check credential exists without exposing it
+        run: |
+          test -n "${ATLANTE_API_SUBSCRIPTION_KEY:-}" || { echo 'Atlante API credential unavailable'; exit 1; }
+      - name: Probe Italy map, station detail and tariff endpoints
+        run: python scripts/atlante_italy_api_probe.py
+      - name: Validate read-only result
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('data/reports/atlante_italy_api_probe.json').read_text(encoding='utf-8'))
+          assert r['security']['accountCredentialsUsed'] is False
+          assert r['security']['subscriptionKeyPersisted'] is False
+          assert r['security']['authOrChargingEndpointsCalled'] is False
+          assert r['selectedItalyAtlanteLocationCount'] > 0
+          assert len(r['samples']) > 0
+          print(json.dumps({'selectedCpo':r['selectedCpo'],'locations':r['selectedItalyAtlanteLocationCount'],'samples':len(r['samples'])},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlante-italy-api-probe
+          path: data/reports/atlante_italy_api_probe.json
+          retention-days: 14
