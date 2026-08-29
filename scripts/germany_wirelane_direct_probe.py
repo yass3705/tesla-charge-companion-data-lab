@@ -13,7 +13,7 @@ from pathlib import Path
 
 UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36'
 BASE='https://direct.wirelane.com/{evse}?_locale=de'
-OPERATOR='Wirelane Public 1'
+OPERATOR='Wirelane Public 1 GmbH'
 
 def load_gz(path):
     with gzip.open(path,'rt',encoding='utf-8') as f:return json.load(f)
