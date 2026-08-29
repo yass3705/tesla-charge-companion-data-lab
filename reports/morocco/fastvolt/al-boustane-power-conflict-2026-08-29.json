@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
-  "generated_at": "2026-08-29T08:34:37Z",
+  "schema_version": 3,
+  "generated_at": "2026-08-29T20:31:53Z",
   "country": "MA",
   "station": {
     "name": "Afriquia Al Boustane",
@@ -23,6 +23,12 @@
       "source_url": "https://www.wandaloo.com/autonews/marque/modele/fastvolt-introduit-la-borne-de-recharge-ultra-rapide-de-360-kw--une-premiere-au-maroc/4774.html",
       "published_date": "2025-12-24",
       "claim": "Independent Moroccan automotive press also reports FastVolt operating a 360 kW charger at Afriquia Al Boustane."
+    },
+    {
+      "source_type": "official_network_website",
+      "source_url": "https://fastvolt.ma/",
+      "observed_date": "2026-08-29",
+      "claim": "The current FastVolt public website still advertises network charging power 'jusqu'à 100 kW DC'. This is a generic network/marketing statement and is directly contradicted at station level by the native FastVolt app for Al Boustane, which shows 360 kW CCS2 connectors. Therefore the website statement must not be modeled as a per-station or network-wide technical ceiling."
     },
     {
       "source_type": "current_public_station_directory",
@@ -59,8 +65,12 @@
   "classification": {
     "conflict": false,
     "resolved_by": "manual_native_app_verification",
-    "rejected_or_obsolete_claim": "Atlas Recharge 100 kW / 8 charging points",
-    "production_recommendation": "Use the native FastVolt app-verified six-connector layout for Afriquia Al Boustane: 4 x CCS2 360 kW plus 2 x AC 22 kW. Preserve FastVolt/Afrimobility as CPO/operator and Afriquia as site_brand. The app also demonstrates connector-level native live status capability, but no automated FastVolt status ingestion endpoint is yet validated."
+    "rejected_or_obsolete_claims": [
+      "Atlas Recharge 100 kW / 8 charging points",
+      "FastVolt public website generic 'up to 100 kW DC' when interpreted as a technical ceiling"
+    ],
+    "source_priority_rule": "Station-specific native FastVolt app data outranks generic FastVolt website marketing copy and third-party station directories for connector count, power, tariff and live connector state.",
+    "production_recommendation": "Use the native FastVolt app-verified six-connector layout for Afriquia Al Boustane: 4 x CCS2 360 kW plus 2 x AC 22 kW. Preserve FastVolt/Afrimobility as CPO/operator and Afriquia as site_brand. Do not cap FastVolt station power at 100 kW based on the public website. The app also demonstrates connector-level native live status capability, but no automated FastVolt status ingestion endpoint is yet validated."
   },
   "policy": {
     "sanitized_public_report": true,
