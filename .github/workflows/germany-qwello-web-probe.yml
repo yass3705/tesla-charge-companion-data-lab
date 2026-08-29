@@ -29,9 +29,12 @@ jobs:
           assert d['scope']['stagedOnly'] is True and d['scope']['publishesToTcc'] is False
           assert len(d['pages'])==2
           assert all(p['meta']['status']==200 for p in d['pages'])
-          assert d['scriptAssetCount'] >= 1, d
+          assert all(p['meta']['bytes'] > 1000 for p in d['pages'])
+          assert d['referenceCount'] >= 1, d
           print('TCC_QWELLO_WEB_PROBE_VALIDATED='+json.dumps({
-              'scriptAssetCount':d['scriptAssetCount'],
+              'referenceCount':d['referenceCount'],
+              'assetCount':d['assetCount'],
+              'references':d['references'][:80],
               'tokenAssetHitCounts':d['tokenAssetHitCounts'],
               'candidateUrls':d['candidateUrls'][:80]
           },ensure_ascii=False))
