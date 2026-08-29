@@ -37,6 +37,15 @@ jobs:
           gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/ewe.tariff.zip
           unzip -q /tmp/ewe.tariff.zip -d data/germany
           test -s data/germany/ewe_go_direct_tariff.json
+      - name: Restore latest EnBW direct tariff
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=germany-enbw-direct-tariff&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[0].id // empty')"
+          test -n "$ARTIFACT_ID"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/enbw.tariff.zip
+          unzip -q /tmp/enbw.tariff.zip -d data/germany
+          test -s data/germany/enbw_direct_tariff.json
       - name: Apply direct CPO precedence in staging
         run: python scripts/germany_direct_cpo_overlay.py
       - name: Validate direct CPO overlay
@@ -48,35 +57,45 @@ jobs:
           with gzip.open(p,'rt',encoding='utf-8') as f: d=json.load(f)
           m=json.loads(Path('data/germany/germany_non_tesla_catalog_staging_direct_cpo_manifest.json').read_text(encoding='utf-8'))
           assert d['dataset']=='germany-national-non-tesla-catalog-staging-direct-cpo'
-          assert d['scope']['stagedOnly'] is True
-          assert d['scope']['publishesToTcc'] is False
+          assert d['scope']['stagedOnly'] is True and d['scope']['publishesToTcc'] is False
           assert d['scope']['tariffsRankable'] is False
           assert d['scope']['directCpoPrecedesAfirInStaging'] is True
+          assert d['scope']['connectorClassDirectTariffsSupported'] is True
           s=d['stats']
-          assert s['directCpoSites'] == 1204, s
+          assert s['directCpoSites'] == 3857, s
+          assert s['directCpoProviders'] == {'EWE Go':1204,'EnBW mobility+':2653}, s
+          assert s['directCpoSiteScalarSites'] == 1204, s
+          assert s['directCpoConnectorClassRequiredSites'] == 2653, s
           assert s['directCpoAppliedOutsideExactOperator'] == 0, s
           assert s['directCpoAfirCandidatesOverridden'] == 733, s
-          assert s['directCpoSitesWithoutRankableAfirCandidate'] == 471, s
-          direct_count=preferred_count=0
+          ewe_count=enbw_count=0
           for site in d['sites']:
-              pr=site['pricing']
-              assert pr['rankable'] is False
-              if pr.get('directCpo'):
-                  direct_count += 1
-                  assert site['operator']=='EWE Go GmbH', site['id']
-                  assert pr['directCpo']['eurPerKwh']==0.52, site['id']
-                  assert pr['directCpo']['taxIncluded'] is True, site['id']
-                  assert pr['directCpo']['blockingFee'] is None, site['id']
-                  assert pr['stagingPreferredTariff']['sourceType']=='direct_cpo', site['id']
-                  assert pr['stagingPreferredTariff']['eurPerKwh']==0.52, site['id']
-                  preferred_count += 1
-          assert direct_count == preferred_count == s['directCpoSites'], (direct_count,preferred_count,s)
+              pr=site['pricing']; assert pr['rankable'] is False
+              direct=pr.get('directCpo')
+              if not direct: continue
+              assert pr['stagingPreferredTariff']['sourceType']=='direct_cpo', site['id']
+              if site['operator']=='EWE Go GmbH':
+                  ewe_count += 1
+                  assert direct['provider']=='EWE Go' and direct['tariffModel']=='site_scalar'
+                  assert direct['eurPerKwh']==0.52 and direct['taxIncluded'] is True and direct['blockingFee'] is None
+                  assert pr['stagingPreferredTariff']['selectionMode']=='site_scalar'
+              elif site['operator']=='EnBW mobility+ AG und Co.KG':
+                  enbw_count += 1
+                  assert direct['provider']=='EnBW mobility+' and direct['tariffModel']=='connector_class'
+                  assert direct['requiresConnectorClass'] is True
+                  t=direct['connectorClassTariffs']
+                  assert t['AC']['eurPerKwh']==0.70 and t['AC']['blockingFee']=={'afterMinutes':120,'eurPerMinute':0.12}
+                  assert t['DC']['eurPerKwh']==0.79 and t['DC']['blockingFee']=={'afterMinutes':30,'eurPerMinute':0.24}
+                  assert pr['stagingPreferredTariff']['selectionMode']=='connector_class'
+                  assert 'eurPerKwh' not in pr['stagingPreferredTariff']
+              else:
+                  raise AssertionError(('unexpected direct CPO operator',site['operator'],site['id']))
+          assert ewe_count==1204 and enbw_count==2653, (ewe_count,enbw_count)
           assert m['stats']==s
           print('TCC_GERMANY_DIRECT_CPO_OVERLAY_VALIDATED='+json.dumps({
-              'directCpoSites':s['directCpoSites'],
-              'afirCandidatesOverridden':s['directCpoAfirCandidatesOverridden'],
-              'pricePairs':s['eweGoAfirDirectPricePairs'][:20],
-              'deltas':s['eweGoDirectVsAfirDeltaDistribution'][:20]
+              'directCpoSites':s['directCpoSites'],'providers':s['directCpoProviders'],
+              'scalarSites':s['directCpoSiteScalarSites'],'connectorClassSites':s['directCpoConnectorClassRequiredSites'],
+              'afirCandidatesOverridden':s['directCpoAfirCandidatesOverridden'],'pricePairs':s['eweGoAfirDirectPricePairs'][:20]
           },sort_keys=True))
           PY
       - uses: actions/upload-artifact@v4
