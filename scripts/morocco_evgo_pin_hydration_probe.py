@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Read-only EVGO public pin -> location -> EVSE inventory probe.
 
-Discovers public map pins anonymously, extracts only their public underlyingLocationIds,
-then GETs each corresponding public /app/locations/{id} resource. No login, credentials,
-charging/session actions, or mutations. Persisted output is limited to public charging
-infrastructure fields needed to validate station identity, EVSE status, power, connector
-shape, operator attribution and tariff references.
+Discovers public map pins anonymously, extracts their public map metadata and
+underlyingLocationIds, then GETs each corresponding public /app/locations/{id}
+resource. No login, credentials, charging/session actions, or mutations.
+Persisted output is limited to public charging infrastructure fields needed to
+validate station identity, map position, EVSE status, power, connector shape,
+operator attribution and tariff references.
 
 This probe is safe to re-run as a bounded freshness check of the public EVGO map data.
 """
@@ -16,11 +17,12 @@ from pathlib import Path
 HOST='https://cp.evgo.ma'
 VERSIONS=['v1','v2']
 OUT=Path('artifacts/morocco-evgo-pin-hydration'); OUT.mkdir(parents=True,exist_ok=True)
-UA='Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.4)'
+UA='Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.5)'
 
 SAFE_LOCATION={'id','name','address','description','detailed_description','additional_description','timezone','workingHours','updatedAt','zones','underlyingLocationIds'}
 SAFE_EVSE={'id','identifier','emi3Identifier','roamingEvseId','label','status','isAvailable','isLongTermUnavailable','isTemporarilyUnavailable','maxPower','currentType','operatorId','operatedBy','networkId','managedByOperator','tariffId','connectors','chargePointModel','hasParkingBarrier','canReserve'}
 SAFE_CONNECTOR={'id','name','format','status','icon','afirLabellingLetter'}
+SAFE_PIN={'id','underlyingLocationIds','geo','av','clusterSize'}
 
 def req_json(path:str):
     q=urllib.request.Request(HOST+path,method='GET',headers={'User-Agent':UA,'Accept':'application/json'})
@@ -58,6 +60,10 @@ def safe_location(loc):
     out['zones']=zones
     return out
 
+def safe_pin(pin):
+    if not isinstance(pin,dict): return None
+    return {k:pin.get(k) for k in SAFE_PIN if k in pin}
+
 def collect_ids(pins_obj):
     ids=[]
     pins=pins_obj.get('pins') if isinstance(pins_obj,dict) else None
@@ -92,14 +98,15 @@ def station_summary(loc):
     }
 
 def main():
-    report={'schema_version':5,'generated_at':dt.datetime.now(dt.timezone.utc).isoformat(),'host':'cp.evgo.ma',
+    report={'schema_version':6,'generated_at':dt.datetime.now(dt.timezone.utc).isoformat(),'host':'cp.evgo.ma',
             'policy':{'read_only_get_only':True,'no_login':True,'no_credentials':True,'no_mutations':True,'raw_response_bodies_persisted':False,'only_public_charging_fields_persisted':True},
             'versions':{}}
     for version in VERSIONS:
         pin_path=f'/api/{version}/app/pins'
         ps,pc,pobj=req_json(pin_path)
+        raw_pins=pobj.get('pins') if isinstance(pobj,dict) and isinstance(pobj.get('pins'),list) else []
         ids=collect_ids(pobj)
-        entry={'pins_status':ps,'pins_content_type':pc,'pin_count':len(pobj.get('pins',[])) if isinstance(pobj,dict) and isinstance(pobj.get('pins'),list) else None,'location_ids':ids,'locations':[],'station_summaries':[]}
+        entry={'pins_status':ps,'pins_content_type':pc,'pin_count':len(raw_pins) if raw_pins else (0 if isinstance(raw_pins,list) else None),'pins':[safe_pin(p) for p in raw_pins[:100]],'location_ids':ids,'locations':[],'station_summaries':[]}
         for lid in ids[:100]:
             status,ctype,obj=req_json(f'/api/{version}/app/locations/{lid}')
             loc=None
@@ -113,6 +120,6 @@ def main():
         report['versions'][version]=entry
     (OUT/'summary.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
     for v,x in report['versions'].items():
-        print(json.dumps({'version':v,'pin_count':x['pin_count'],'location_ids':len(x['location_ids']),'stations':x['station_summaries']},ensure_ascii=False))
+        print(json.dumps({'version':v,'pin_count':x['pin_count'],'public_pins':x['pins'],'location_ids':len(x['location_ids']),'stations':x['station_summaries']},ensure_ascii=False))
 
 if __name__=='__main__': main()
