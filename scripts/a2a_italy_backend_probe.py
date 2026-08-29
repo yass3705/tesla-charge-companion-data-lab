@@ -3,8 +3,10 @@
 
 Read-only probe. It uses only the public map page and station alias 519, already
 visible on the public map. No login, recharge, payment or account endpoint is
-called. Transient session cookies may be used by the public web application but
-are never written to disk or included in the report.
+called. A2A's public host currently presents a TLS chain that the GitHub runner
+cannot validate, so this research probe disables certificate validation only
+for this known public host and records that limitation explicitly. Data from
+this host is never treated as authoritative without PUN/official cross-checks.
 """
 from __future__ import annotations
 import json,re,time
@@ -12,9 +14,12 @@ from datetime import datetime,timezone
 from pathlib import Path
 from urllib.parse import urljoin,urlparse
 import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 BASE='https://e-movinghub.a2a.it/acEicp/publicMapCMS.action'
 UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/138 Safari/537.36'
+VERIFY_TLS=False
 
 def now(): return datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
 def shape(x):
@@ -33,11 +38,10 @@ def stationish_count(x):
 def request_attempt(s,method,url,data=None,params=None):
     t=time.time(); out={'method':method,'url':url,'dataKeys':sorted((data or {}).keys()),'paramKeys':sorted((params or {}).keys())}
     try:
-        r=s.request(method,url,data=data,params=params,timeout=35,headers={'Accept':'application/json,text/javascript,*/*;q=0.1','X-Requested-With':'XMLHttpRequest'},allow_redirects=True)
+        r=s.request(method,url,data=data,params=params,timeout=35,headers={'Accept':'application/json,text/javascript,*/*;q=0.1','X-Requested-With':'XMLHttpRequest'},allow_redirects=True,verify=VERIFY_TLS)
         out.update({'httpStatus':r.status_code,'elapsedMs':round((time.time()-t)*1000),'contentType':r.headers.get('content-type'),'bytes':len(r.content),'finalUrl':r.url})
         try:
             j=r.json(); out['json']=True; out['shape']=shape(j); out['stationishCount']=stationish_count(j)
-            # Keep only tiny evidence, never full national payload in probe artifact.
             if isinstance(j,list): out['sample']=j[:1]
             elif isinstance(j,dict): out['sample']={k:j[k] for k in list(j)[:6]}
         except Exception:
@@ -48,14 +52,13 @@ def request_attempt(s,method,url,data=None,params=None):
 
 def main():
     s=requests.Session(); s.headers.update({'User-Agent':UA,'Accept-Language':'it-IT,it;q=0.9,en;q=0.5'})
-    report={'generatedAt':now(),'sourcePage':BASE,'security':{'accountCredentialsUsed':False,'authorizationMaterialPersisted':False,'cookiesPersisted':False,'rechargeOrAuthEndpointsCalled':False},'page':{},'assetContexts':[],'mapAttempts':[],'detailAttempts':[],'detected':{}}
+    report={'generatedAt':now(),'sourcePage':BASE,'security':{'accountCredentialsUsed':False,'authorizationMaterialPersisted':False,'cookiesPersisted':False,'rechargeOrAuthEndpointsCalled':False,'tlsCertificateVerificationDisabledForPublicA2aHost':True},'page':{},'assetContexts':[],'mapAttempts':[],'detailAttempts':[],'detected':{}}
     html=''
     try:
-        r=s.get(BASE,timeout=35); html=r.text
+        r=s.get(BASE,timeout=35,verify=VERIFY_TLS); html=r.text
         report['page']={'httpStatus':r.status_code,'bytes':len(r.content),'contentType':r.headers.get('content-type'),'finalUrl':r.url,'transientCookieNames':sorted(s.cookies.keys())}
     except Exception as e:
         report['page']={'error':type(e).__name__,'message':str(e)[:240]}
-    # Inspect public page + same-origin JS for literal endpoint references.
     assets=[BASE]
     if html:
         for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',html,re.I):
@@ -63,7 +66,7 @@ def main():
             if urlparse(u).netloc==urlparse(BASE).netloc and u not in assets: assets.append(u)
     for u in assets[:40]:
         try:
-            text=html if u==BASE else s.get(u,timeout=30).text
+            text=html if u==BASE else s.get(u,timeout=30,verify=VERIFY_TLS).text
         except Exception: continue
         for needle in ('jsonGetMapDashboard','jsonGetCuFromAlias'):
             start=0
@@ -74,39 +77,25 @@ def main():
                 start=i+len(needle)
                 if sum(1 for x in report['assetContexts'] if x['asset']==u and x['needle']==needle)>=5: break
     root=BASE.rsplit('/',1)[0]+'/'
-    map_variants=[
-      root+'publicMapCMS!jsonGetMapDashboard.action',
-      root+'publicMapCMS.action',
-      root+'jsonGetMapDashboard.action',
-    ]
-    detail_variants=[
-      root+'publicMapCMS!jsonGetCuFromAlias.action',
-      root+'publicMapCMS.action',
-      root+'jsonGetCuFromAlias.action',
-    ]
+    map_variants=[root+'publicMapCMS!jsonGetMapDashboard.action',root+'publicMapCMS.action',root+'jsonGetMapDashboard.action']
+    detail_variants=[root+'publicMapCMS!jsonGetCuFromAlias.action',root+'publicMapCMS.action',root+'jsonGetCuFromAlias.action']
     for u in map_variants:
         for method in ('POST','GET'):
             params={'method':'jsonGetMapDashboard'} if u.endswith('publicMapCMS.action') else None
-            a=request_attempt(s,method,u,params=params)
-            report['mapAttempts'].append(a)
+            a=request_attempt(s,method,u,params=params); report['mapAttempts'].append(a)
             if a.get('json') and (a.get('stationishCount') or 0)>100:
-                report['detected']['map']={'method':method,'url':a.get('finalUrl') or u,'requestParams':params or {},'stationishCount':a['stationishCount']}
-                break
+                report['detected']['map']={'method':method,'url':a.get('finalUrl') or u,'requestParams':params or {},'stationishCount':a['stationishCount']}; break
         if 'map' in report['detected']: break
     for u in detail_variants:
         for method in ('POST','GET'):
             params={'method':'jsonGetCuFromAlias'} if u.endswith('publicMapCMS.action') else None
             payload={'aliasCu':'519'}
-            a=request_attempt(s,method,u,data=payload if method=='POST' else None,params={**(params or {}), **(payload if method=='GET' else {})})
-            report['detailAttempts'].append(a)
-            sample=a.get('sample')
-            txt=json.dumps(sample,ensure_ascii=False) if sample is not None else ''
+            a=request_attempt(s,method,u,data=payload if method=='POST' else None,params={**(params or {}),**(payload if method=='GET' else {})}); report['detailAttempts'].append(a)
+            sample=a.get('sample'); txt=json.dumps(sample,ensure_ascii=False) if sample is not None else ''
             if a.get('json') and ('evseData' in txt or 'costobase' in txt or 'assetProvider' in txt):
-                report['detected']['detail']={'method':method,'url':a.get('finalUrl') or u,'requestField':'aliasCu','sampleAlias':'519'}
-                break
+                report['detected']['detail']={'method':method,'url':a.get('finalUrl') or u,'requestField':'aliasCu','sampleAlias':'519'}; break
         if 'detail' in report['detected']: break
     report['security']['transientPublicSessionCookieUsed']=bool(s.cookies)
-    # Remove cookie names too: not necessary to persist even names.
     report['page'].pop('transientCookieNames',None)
     p=Path('data/reports/a2a_italy_backend_probe.json'); p.parent.mkdir(parents=True,exist_ok=True); p.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     print(json.dumps({'page':report['page'],'detected':report['detected'],'assetContexts':len(report['assetContexts'])},ensure_ascii=False,indent=2))
