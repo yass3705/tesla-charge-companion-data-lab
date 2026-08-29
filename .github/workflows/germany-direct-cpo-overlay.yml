@@ -1,0 +1,89 @@
+name: Germany direct CPO tariff overlay
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_direct_cpo_overlay.py'
+      - '.github/workflows/germany-direct-cpo-overlay.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  overlay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore latest classified national catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data/germany
+          ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=germany-national-non-tesla-catalog-staging&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[0].id // empty')"
+          test -n "$ARTIFACT_ID"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/germany-catalog.zip
+          unzip -q /tmp/germany-catalog.zip -d data/germany
+          test -s data/germany/germany_non_tesla_catalog_staging_tariff_classified.json.gz
+      - name: Restore latest EWE Go direct tariff
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=germany-ewe-go-direct-tariff&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[0].id // empty')"
+          test -n "$ARTIFACT_ID"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/ewe.tariff.zip
+          unzip -q /tmp/ewe.tariff.zip -d data/germany
+          test -s data/germany/ewe_go_direct_tariff.json
+      - name: Apply direct CPO precedence in staging
+        run: python scripts/germany_direct_cpo_overlay.py
+      - name: Validate direct CPO overlay
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          p=Path('data/germany/germany_non_tesla_catalog_staging_direct_cpo.json.gz')
+          with gzip.open(p,'rt',encoding='utf-8') as f: d=json.load(f)
+          m=json.loads(Path('data/germany/germany_non_tesla_catalog_staging_direct_cpo_manifest.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-national-non-tesla-catalog-staging-direct-cpo'
+          assert d['scope']['stagedOnly'] is True
+          assert d['scope']['publishesToTcc'] is False
+          assert d['scope']['tariffsRankable'] is False
+          assert d['scope']['directCpoPrecedesAfirInStaging'] is True
+          s=d['stats']
+          assert s['directCpoSites'] == 1204, s
+          assert s['directCpoAppliedOutsideExactOperator'] == 0, s
+          assert s['directCpoAfirCandidatesOverridden'] == 733, s
+          assert s['directCpoSitesWithoutRankableAfirCandidate'] == 471, s
+          direct_count=preferred_count=0
+          for site in d['sites']:
+              pr=site['pricing']
+              assert pr['rankable'] is False
+              if pr.get('directCpo'):
+                  direct_count += 1
+                  assert site['operator']=='EWE Go GmbH', site['id']
+                  assert pr['directCpo']['eurPerKwh']==0.52, site['id']
+                  assert pr['directCpo']['taxIncluded'] is True, site['id']
+                  assert pr['directCpo']['blockingFee'] is None, site['id']
+                  assert pr['stagingPreferredTariff']['sourceType']=='direct_cpo', site['id']
+                  assert pr['stagingPreferredTariff']['eurPerKwh']==0.52, site['id']
+                  preferred_count += 1
+          assert direct_count == preferred_count == s['directCpoSites'], (direct_count,preferred_count,s)
+          assert m['stats']==s
+          print('TCC_GERMANY_DIRECT_CPO_OVERLAY_VALIDATED='+json.dumps({
+              'directCpoSites':s['directCpoSites'],
+              'afirCandidatesOverridden':s['directCpoAfirCandidatesOverridden'],
+              'pricePairs':s['eweGoAfirDirectPricePairs'][:20],
+              'deltas':s['eweGoDirectVsAfirDeltaDistribution'][:20]
+          },sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-national-direct-cpo-staging
+          path: |
+            data/germany/germany_non_tesla_catalog_staging_direct_cpo.json.gz
+            data/germany/germany_non_tesla_catalog_staging_direct_cpo_manifest.json
+          if-no-files-found: error
+          retention-days: 30
