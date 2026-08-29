@@ -12,9 +12,13 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check selenium
       - name: Validate current official pricing and prepaid products
         run: python scripts/duferco_italy_official_tariffs.py
       - name: Fail closed on offer semantics
@@ -24,6 +28,7 @@ jobs:
           from pathlib import Path
           r=json.loads(Path('data/reference/duferco_italy_offers.json').read_text())
           assert all(r['evidenceChecks'].values())
+          assert r['source']['validationMode']=='rendered_visible_text'
           assert r['payPerUseOwnCpo']['resolutionRules']['crossBandSession']=='fail_closed_unrankable'
           assert r['roaming']['rankableWithoutStationFeed'] is False
           assert r['prepaidModel']['tccRankableWithoutRemainingBalance'] is False
