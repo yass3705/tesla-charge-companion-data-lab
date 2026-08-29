@@ -39,6 +39,17 @@ jobs:
           cp /tmp/pun/national/pun_italy_national.json.gz data/national/pun_italy_national.json.gz
           test -s data/national/pun_italy_national.json.gz
           echo "Using PUN run $RUN_ID"
+      - name: Download validated GES NextCharge eMSP candidate
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ges-nextcharge-national-candidate.yml --branch research/ges-italy-probe --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/ges
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n nextcharge-ges-italy-national-candidate -D /tmp/ges
+          cp /tmp/ges/national/nextcharge_ges_italy_candidate.json.gz data/national/nextcharge_ges_italy_candidate.json.gz
+          cp /tmp/ges/reports/ges_nextcharge_italy_national_report.json data/reports/ges_nextcharge_italy_national_report.json
+          test -s data/national/nextcharge_ges_italy_candidate.json.gz
+          echo "Using GES NextCharge run $RUN_ID"
       - name: Build Plenitude candidate
         run: python scripts/plenitude_italy_apply.py
       - name: Build A2A candidate
@@ -63,6 +74,7 @@ jobs:
           c=d['counts']
           own=json.loads(Path('data/reports/atlante_italy_pun_overlay_report.json').read_text())
           partners=json.loads(Path('data/reports/atlante_go_chargeleague_italy_report.json').read_text())
+          ges=json.loads(Path('data/reports/ges_nextcharge_italy_national_report.json').read_text())
           print(json.dumps(c,ensure_ascii=False,indent=2))
           assert d['country'] == 'IT'
           assert d['backbone'] == 'GSE PUN'
@@ -82,6 +94,11 @@ jobs:
           assert partners['counts']['byPartner']['Electra']['evse'] > 0
           assert partners['counts']['byPartner']['IONITY']['evse'] > 0
           assert c['rankableSelectedSubscriptionEvseCount'] >= own['counts']['evse']
+          assert all(ges['qualityGates'].values())
+          assert d['rules']['emspTariffsNeverMasqueradeAsCpoDirect'] is True
+          assert d['emspProviders']['nextcharge']['notCpoDirect'] is True
+          assert c['rankableEmspByProvider'].get('NextCharge',0) > 100
+          assert c['rankableEmspEvseCount'] == ges['counts']['usableNextChargeEmspTariffEvse']
           PY
       - name: Upload consolidated candidate
         if: always()
@@ -96,4 +113,5 @@ jobs:
             data/reference/atlante_italy_offers.json
             data/reports/atlante_italy_pun_overlay_report.json
             data/reports/atlante_go_chargeleague_italy_report.json
+            data/reports/ges_nextcharge_italy_national_report.json
           retention-days: 14
