@@ -1,0 +1,43 @@
+name: GES NextCharge tariff unit display probe
+
+on:
+  push:
+    branches: [research/ges-italy-probe]
+    paths:
+      - scripts/ges_nextcharge_tariff_unit_probe.py
+      - .github/workflows/ges-nextcharge-tariff-unit-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependency
+        run: pip install --disable-pip-version-check requests
+      - name: Probe public display units
+        run: python scripts/ges_nextcharge_tariff_unit_probe.py
+      - name: Validate report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/reports/ges_nextcharge_tariff_unit_probe.json')
+          assert p.exists() and p.stat().st_size > 100
+          r=json.loads(p.read_text(encoding='utf-8'))
+          assert r['security']['staticPublicAssetsOnly'] is True
+          assert r['security']['applicationApiCalled'] is False
+          assert r['security']['accountCredentialsUsed'] is False
+          print(json.dumps({'languageEntries':len(r.get('language',{}).get('matchedEntries',[])),'bundleContexts':len(r.get('bundleUnitContexts',[]))},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ges-nextcharge-tariff-unit-probe
+          path: data/reports/ges_nextcharge_tariff_unit_probe.json
+          retention-days: 14
