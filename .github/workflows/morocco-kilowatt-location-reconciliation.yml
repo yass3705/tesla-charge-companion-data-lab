@@ -1,0 +1,49 @@
+name: Morocco Kilowatt location reconciliation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/morocco/kilowatt_location_reconciliation.py'
+      - 'reports/morocco/kilowatt/latest-public-station-inventory.json'
+      - '.github/workflows/morocco-kilowatt-location-reconciliation.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: morocco-kilowatt-location-reconciliation
+  cancel-in-progress: true
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run offline reconciliation
+        run: python scripts/morocco/kilowatt_location_reconciliation.py
+
+      - name: Publish sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPORT='reports/morocco/kilowatt/latest-location-reconciliation.json'
+          cp artifacts/morocco-kilowatt-location-reconciliation/summary.json "$REPORT"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if [[ -z "$(git status --porcelain -- "$REPORT")" ]]; then
+            echo 'No report change'
+            exit 0
+          fi
+          git add "$REPORT"
+          git commit -m "diag(morocco): update Kilowatt location reconciliation [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin HEAD:main
