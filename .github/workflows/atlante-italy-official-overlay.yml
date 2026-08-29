@@ -8,6 +8,7 @@ on:
     paths:
       - scripts/atlante_italy_official.py
       - scripts/atlante_italy_pun_overlay.py
+      - scripts/atlante_go_chargeleague_italy_overlay.py
       - .github/workflows/atlante-italy-official-overlay.yml
 
 permissions:
@@ -35,16 +36,22 @@ jobs:
           echo "Using PUN run $RUN_ID"
       - name: Build PUN ATE Atlante Go overlay
         run: python scripts/atlante_italy_pun_overlay.py --pun /tmp/pun/national/pun_italy_national.json.gz
-      - name: Validate candidate
+      - name: Build ChargeLeague partner overlay
+        run: python scripts/atlante_go_chargeleague_italy_overlay.py --pun /tmp/pun/national/pun_italy_national.json.gz
+      - name: Validate candidates
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          r=json.loads(Path('data/reports/atlante_italy_pun_overlay_report.json').read_text())
-          print(json.dumps(r,indent=2))
-          assert all(r['qualityGates'].values())
-          assert r['counts']['evse'] > 1000
-          assert r['directPayAsYouGoRankable'] is False
+          own=json.loads(Path('data/reports/atlante_italy_pun_overlay_report.json').read_text())
+          partners=json.loads(Path('data/reports/atlante_go_chargeleague_italy_report.json').read_text())
+          print(json.dumps({'own':own,'partners':partners},indent=2))
+          assert all(own['qualityGates'].values())
+          assert own['counts']['evse'] > 1000
+          assert own['directPayAsYouGoRankable'] is False
+          assert all(partners['qualityGates'].values())
+          assert partners['counts']['byPartner']['Electra']['evse'] > 0
+          assert partners['counts']['byPartner']['IONITY']['evse'] > 0
           PY
       - uses: actions/upload-artifact@v4
         with:
@@ -53,4 +60,6 @@ jobs:
             data/reference/atlante_italy_offers.json
             data/national/atlante_go_italy_overlay.json.gz
             data/reports/atlante_italy_pun_overlay_report.json
+            data/national/atlante_go_chargeleague_italy_overlay.json.gz
+            data/reports/atlante_go_chargeleague_italy_report.json
           retention-days: 14
