@@ -1,0 +1,40 @@
+name: Germany Qwello API discovery
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_qwello_api_discovery.py'
+      - '.github/workflows/germany-qwello-api-discovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect Qwello web bundle request paths
+        run: python scripts/germany_qwello_api_discovery.py
+      - name: Validate discovery artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/qwello_api_discovery.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-qwello-api-discovery'
+          assert d['scope']['stagedOnly'] is True and d['scope']['publishesToTcc'] is False
+          assert d['source']['status']==200 and d['source']['bytes']>40000, d['source']
+          assert 'services.qwello.eu' in d['tokenSnippets'], d['tokenSnippets'].keys()
+          assert 'us/public/web' in d['tokenSnippets'], d['tokenSnippets'].keys()
+          print('TCC_QWELLO_API_DISCOVERY_VALIDATED='+json.dumps({'strings':d['candidateStringLiterals'][:250],'contexts':d['requestContexts'][:30]},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-qwello-api-discovery
+          path: data/germany/qwello_api_discovery.json
+          if-no-files-found: error
+          retention-days: 30
