@@ -1,0 +1,56 @@
+name: GES NextCharge frontend source endpoint probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/ges-italy-probe
+    paths:
+      - scripts/ges_nextcharge_frontend_source_probe.py
+      - .github/workflows/ges-nextcharge-frontend-source-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check selenium requests
+      - name: Inspect public frontend assets
+        run: python scripts/ges_nextcharge_frontend_source_probe.py
+      - name: Validate report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/reports/ges_nextcharge_frontend_source_probe.json')
+          assert p.exists() and p.stat().st_size > 1000
+          r=json.loads(p.read_text(encoding='utf-8'))
+          print(json.dumps({
+              'pageTitle': r.get('pageTitle'),
+              'readyState': r.get('readyState'),
+              'bodyTextPrefix': r.get('bodyTextPrefix'),
+              'scriptCount': r.get('scriptCount'),
+              'allowedScriptCount': r.get('allowedScriptCount'),
+              'scriptUrls': r.get('scriptUrls'),
+              'combined': r.get('combined'),
+          },ensure_ascii=False,indent=2)[:50000])
+          assert r['security']['accountCredentialsUsed'] is False
+          assert r['security']['discoveredEndpointsCalled'] is False
+          assert r['readyState'] == 'complete'
+          assert r['allowedScriptCount'] > 0
+          PY
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ges-nextcharge-frontend-source-probe
+          path: data/reports/ges_nextcharge_frontend_source_probe.json
+          retention-days: 14
