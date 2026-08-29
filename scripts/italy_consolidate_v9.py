@@ -25,6 +25,7 @@ def main():
     ap.add_argument("--a2a", default="data/national/a2a_direct_stations_italy.json.gz")
     ap.add_argument("--atlante", default="data/national/atlante_go_italy_overlay.json.gz")
     ap.add_argument("--atlante-chargeleague", default="data/national/atlante_go_chargeleague_italy_overlay.json.gz")
+    ap.add_argument("--ges-nextcharge", default="data/national/nextcharge_ges_italy_candidate.json.gz")
     ap.add_argument("--out", default="data/consolidation/italy_v9_candidate.json.gz")
     ap.add_argument("--report", default="data/reports/italy_v9_consolidation_report.json")
     args = ap.parse_args()
@@ -34,9 +35,11 @@ def main():
     a2a = load_gz(Path(args.a2a))
     atlante = load_gz(Path(args.atlante))
     atlante_chargeleague = load_gz(Path(args.atlante_chargeleague))
+    ges_nextcharge = load_gz(Path(args.ges_nextcharge))
 
     direct_by_evse = {}
     subscriptions_by_evse = {}
+    emsp_by_evse = {}
     blocked = Counter()
 
     for e in plenitude.get("evses", []):
@@ -110,20 +113,54 @@ def main():
                     continue
                 current.append(normalized)
 
+    # NextCharge is validated as a consumer/eMSP tariff layer, never as GES CPO-direct pricing.
+    for e in ges_nextcharge.get("entries", []):
+        evse_id = str(e.get("evseId") or "").upper()
+        if not evse_id:
+            continue
+        if e.get("rankableAsCpoDirectTariff") is True:
+            blocked["ges_nextcharge:unexpected_cpo_direct_flag"] += 1
+            continue
+        if e.get("rankableAsNextChargeEmspTariff") is not True:
+            blocked["ges_nextcharge:not_rankable_emsp"] += 1
+            continue
+        snap = e.get("tariffSnapshot") if isinstance(e.get("tariffSnapshot"), dict) else {}
+        prices = snap.get("prices") if isinstance(snap.get("prices"), dict) else {}
+        if str(snap.get("currency") or "").upper() != "EUR" or not prices:
+            blocked["ges_nextcharge:invalid_tariff_snapshot"] += 1
+            continue
+        normalized = {
+            "channel": "emsp",
+            "provider": "NextCharge",
+            "billedBy": "Go Electric Stations S.r.l.s.",
+            "currency": "EUR",
+            "prices": {k: prices[k] for k in ("energy", "time", "parking", "session") if k in prices},
+            "restrictions": snap.get("restrictions") or {},
+            "source": "NextCharge public web app",
+            "rankable": True,
+            "mustNotOverwriteDirectOrSelectedSubscription": True,
+        }
+        emsp_by_evse.setdefault(evse_id, []).append(normalized)
+
     merged_evses = []
     operator_counts = Counter()
     subscription_counts = Counter()
+    emsp_counts = Counter()
     rankable_count = 0
     subscription_evse_count = 0
+    emsp_evse_count = 0
     for e in pun.get("evses", []):
         out = dict(e)
         evse_id = str(out.get("evseId") or "")
         tariff = direct_by_evse.get(evse_id)
         subscription_tariffs = subscriptions_by_evse.get(evse_id, [])
+        emsp_tariffs = emsp_by_evse.get(evse_id.upper(), [])
         out["tccV9DirectTariff"] = tariff
         out["tccV9RankableDirect"] = bool(tariff and tariff.get("rankable"))
         out["tccV9SubscriptionTariffs"] = subscription_tariffs
         out["tccV9HasRankableSelectedSubscription"] = bool(subscription_tariffs)
+        out["tccV9EmspTariffs"] = emsp_tariffs
+        out["tccV9HasRankableEmsp"] = bool(emsp_tariffs)
         if out["tccV9RankableDirect"]:
             rankable_count += 1
             operator_counts[tariff.get("operator") or "UNKNOWN"] += 1
@@ -131,6 +168,10 @@ def main():
             subscription_evse_count += 1
             for st in subscription_tariffs:
                 subscription_counts[f"{st.get('subscriptionId')}:{st.get('network')}"] += 1
+        if emsp_tariffs:
+            emsp_evse_count += 1
+            for et in emsp_tariffs:
+                emsp_counts[et.get("provider") or "UNKNOWN"] += 1
         merged_evses.append(out)
 
     evse_by_station = {}
@@ -146,10 +187,12 @@ def main():
         out["rankableDirect"] = out["rankableDirectEvseCount"] > 0
         out["rankableSelectedSubscriptionEvseCount"] = sum(1 for e in rows if e.get("tccV9HasRankableSelectedSubscription"))
         out["hasRankableSelectedSubscription"] = out["rankableSelectedSubscriptionEvseCount"] > 0
+        out["rankableEmspEvseCount"] = sum(1 for e in rows if e.get("tccV9HasRankableEmsp"))
+        out["hasRankableEmsp"] = out["rankableEmspEvseCount"] > 0
         merged_stations.append(out)
 
     payload = {
-        "schemaVersion": "1.1.0",
+        "schemaVersion": "1.2.0",
         "dataset": "italy-v9-consolidated-candidate",
         "generatedAt": now_iso(),
         "country": "IT",
@@ -162,6 +205,8 @@ def main():
             "punTariffNotRankableUntilSemanticsValidated": True,
             "subscriptionTariffsRankableOnlyWhenSelected": True,
             "subscriptionTariffsNeverOverwriteDirectTariff": True,
+            "emspTariffsNeverMasqueradeAsCpoDirect": True,
+            "emspTariffsDoNotOverwriteDirectOrSelectedSubscription": True,
             "teslaHandledByDedicatedTeslaSourceAtPublishLayer": True,
         },
         "counts": {
@@ -173,6 +218,9 @@ def main():
             "rankableSelectedSubscriptionEvseCount": subscription_evse_count,
             "rankableSelectedSubscriptionCoveragePct": round(100 * subscription_evse_count / len(merged_evses), 2) if merged_evses else 0.0,
             "rankableSelectedSubscriptionByOffer": dict(sorted(subscription_counts.items())),
+            "rankableEmspEvseCount": emsp_evse_count,
+            "rankableEmspCoveragePct": round(100 * emsp_evse_count / len(merged_evses), 2) if merged_evses else 0.0,
+            "rankableEmspByProvider": dict(sorted(emsp_counts.items())),
             "blockedReasons": dict(sorted(blocked.items())),
         },
         "subscriptions": {
@@ -182,6 +230,15 @@ def main():
                 "rankableOnlyWhenSelected": True,
                 "italyAtlanteEurPerKwh": atlante.get("subscription", {}).get("energyEurPerKwh"),
                 "italyChargeLeagueEurPerKwh": atlante_chargeleague.get("energyEurPerKwh"),
+            }
+        },
+        "emspProviders": {
+            "nextcharge": {
+                "provider": "NextCharge",
+                "billedBy": ges_nextcharge.get("billedBy") or "Go Electric Stations S.r.l.s.",
+                "commercialLayer": "emsp",
+                "rankable": True,
+                "notCpoDirect": True,
             }
         },
         "stations": merged_stations,
@@ -195,7 +252,7 @@ def main():
 
     report = Path(args.report)
     report.parent.mkdir(parents=True, exist_ok=True)
-    report.write_text(json.dumps({"generatedAt": payload["generatedAt"], "counts": payload["counts"], "rules": payload["rules"], "subscriptions": payload["subscriptions"]}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    report.write_text(json.dumps({"generatedAt": payload["generatedAt"], "counts": payload["counts"], "rules": payload["rules"], "subscriptions": payload["subscriptions"], "emspProviders": payload["emspProviders"]}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(payload["counts"], ensure_ascii=False, indent=2))
 
 
