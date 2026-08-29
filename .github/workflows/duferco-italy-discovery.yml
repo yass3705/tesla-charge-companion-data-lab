@@ -1,0 +1,56 @@
+name: Duferco Italy PUN and map discovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/duferco-italy-probe]
+    paths:
+      - scripts/duferco_italy_pun_profile.py
+      - scripts/duferco_map_network_probe.py
+      - .github/workflows/duferco-italy-discovery.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check selenium
+      - name: Download latest PUN
+        run: |
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/pun
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
+          test -s /tmp/pun/national/pun_italy_national.json.gz
+          echo "Using PUN run $RUN_ID"
+      - name: Profile PUN DUF
+        run: python scripts/duferco_italy_pun_profile.py --pun /tmp/pun/national/pun_italy_national.json.gz
+      - name: Discover public map data calls
+        run: python scripts/duferco_map_network_probe.py
+      - name: Validate read-only discovery
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path('data/reports/duferco_italy_pun_profile.json').read_text())
+          n=json.loads(Path('data/reports/duferco_map_network_probe.json').read_text())
+          assert p['evseCount'] > 500
+          assert n['security']['accountCredentialsUsed'] is False
+          assert n['security']['requestHeadersPersisted'] is False
+          assert n['security']['cookiesPersisted'] is False
+          print(json.dumps({'duf':{'evse':p['evseCount'],'stations':p['stationCount'],'powers':p['powerBucketCounts']},'map':{'xhrFetch':n['xhrFetchCount'],'hosts':n['hostCounts'],'errors':n['errors']}},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: duferco-italy-discovery
+          path: data/reports/duferco_*.json
+          retention-days: 14
