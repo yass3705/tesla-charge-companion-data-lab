@@ -1,0 +1,44 @@
+name: Germany Qwello public web probe
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_qwello_web_probe.py'
+      - '.github/workflows/germany-qwello-web-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe Qwello public tariff frontend
+        run: python scripts/germany_qwello_web_probe.py
+      - name: Validate probe artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/qwello_public_web_probe.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-qwello-public-web-probe'
+          assert d['scope']['stagedOnly'] is True and d['scope']['publishesToTcc'] is False
+          assert len(d['pages'])==2
+          assert all(p['meta']['status']==200 for p in d['pages'])
+          assert d['scriptAssetCount'] >= 1, d
+          print('TCC_QWELLO_WEB_PROBE_VALIDATED='+json.dumps({
+              'scriptAssetCount':d['scriptAssetCount'],
+              'tokenAssetHitCounts':d['tokenAssetHitCounts'],
+              'candidateUrls':d['candidateUrls'][:80]
+          },ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-qwello-public-web-probe
+          path: data/germany/qwello_public_web_probe.json
+          if-no-files-found: error
+          retention-days: 30
