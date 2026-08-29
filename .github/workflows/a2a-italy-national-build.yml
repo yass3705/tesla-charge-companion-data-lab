@@ -40,17 +40,37 @@ jobs:
       - name: Validate fail-closed gates
         run: |
           python - <<'PY'
+          import gzip
           import json
           from pathlib import Path
-          p=Path('data/reports/a2a_italy_national_report.json')
-          r=json.loads(p.read_text(encoding='utf-8'))
-          print(json.dumps(r['counts'],ensure_ascii=False,indent=2))
-          print(json.dumps(r['qualityGates'],ensure_ascii=False,indent=2))
-          assert r['security']['accountCredentialsUsed'] is False
-          assert r['counts']['rankableEvse'] > 100
-          assert r['qualityGates']['detailsSuccessRateGte99pct']
-          assert r['qualityGates']['safePunJoinRateGte95pct']
-          assert r['qualityGates']['conflictingTariffEvseZero']
+
+          report=json.loads(Path('data/reports/a2a_italy_national_report.json').read_text(encoding='utf-8'))
+          with gzip.open('/tmp/pun/national/pun_italy_national.json.gz','rt',encoding='utf-8') as fh:
+              pun=json.load(fh)
+          with gzip.open('data/national/a2a_direct_stations_italy.json.gz','rt',encoding='utf-8') as fh:
+              dataset=json.load(fh)
+
+          pun_a2m={str(e.get('evseId')) for e in pun.get('evses',[]) if str(e.get('partyId') or '').upper() == 'A2M' and e.get('evseId')}
+          rankable={str(e.get('evseId')) for e in dataset.get('evses',[]) if e.get('rankableDirectTariff') is True and e.get('evseId')}
+          covered=len(pun_a2m & rankable)
+          coverage=covered / len(pun_a2m) if pun_a2m else 0.0
+
+          print(json.dumps(report['counts'],ensure_ascii=False,indent=2))
+          print(json.dumps(report['qualityGates'],ensure_ascii=False,indent=2))
+          print(json.dumps({
+              'punA2mEvse': len(pun_a2m),
+              'rankableA2aEvse': len(rankable),
+              'coveredPunA2mEvse': covered,
+              'punA2mDirectTariffCoverage': round(coverage,6),
+              'legacySourceSafeJoinRateDiagnostic': report['counts'].get('safePunMatchRate'),
+          },ensure_ascii=False,indent=2))
+
+          assert report['security']['accountCredentialsUsed'] is False
+          assert report['counts']['rankableEvse'] > 100
+          assert report['qualityGates']['detailsSuccessRateGte99pct']
+          assert report['qualityGates']['conflictingTariffEvseZero']
+          assert coverage >= 0.95
+          assert rankable <= pun_a2m
           PY
       - name: Upload candidate and report
         if: always()
