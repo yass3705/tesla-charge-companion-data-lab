@@ -3,9 +3,12 @@
 
 The official consumer page may also contain temporary promotional pricing. This
 extractor deliberately validates only the dedicated 'Preise für das Ad-Hoc-Laden'
-section for the energy prices and ignores promotional banners. The VAT footnote
-is validated on the same official page because the CMS renders it outside the
-text block containing the AC/DC rows. Output is staging-only.
+section for the normal AC/DC energy prices and ignores promotional banners.
+
+The rendered public page currently shows a VAT footnote, but that footnote is not
+present in the raw HTML returned to GitHub Actions. To keep the artifact fully
+reproducible, taxIncluded remains unknown rather than being asserted from a
+non-reproducible rendering layer. Output is staging-only.
 """
 from __future__ import annotations
 
@@ -66,15 +69,26 @@ def main():
         "ac58": bool(re.search(r"\bAC\s*:\s*58\s*Cent\s*/?\s*kWh", section, re.I)),
         "dc79": bool(re.search(r"\bDC\s*:\s*79\s*Cent\s*/?\s*kWh", section, re.I)),
         "allSites": bool(re.search(r"Gültig\s+an\s+allen\s+Pfalzwerke[-\s]+Ladestationen", section, re.I)),
-        "vatIncluded": bool(re.search(r"Alle\s+Preise\s+inkl\.?\s*(?:MwSt|Mehrwertsteuer)", text, re.I)),
         "noAccount": bool(re.search(r"Ohne\s+Registrierung|Kein\s+Kundenkonto\s+notwendig", section, re.I)),
     }
-    print("TCC_PFALZWERKE_EVIDENCE=" + json.dumps({"checks": checks, "section": section[:2200], "source": source}, ensure_ascii=False, sort_keys=True))
+    raw_vat_visible = bool(re.search(r"Alle\s+Preise\s+inkl\.?\s*(?:MwSt|Mehrwertsteuer)", text, re.I))
+    print("TCC_PFALZWERKE_EVIDENCE=" + json.dumps({
+        "checks": checks,
+        "rawVatFootnoteVisible": raw_vat_visible,
+        "section": section[:2200],
+        "source": source,
+    }, ensure_ascii=False, sort_keys=True))
     if not all(checks.values()):
         raise RuntimeError(f"Pfalzwerke ad-hoc tariff evidence changed; checks={checks}")
 
+    tax_evidence = {
+        "ciAsserted": raw_vat_visible,
+        "rawHtmlFootnoteVisible": raw_vat_visible,
+        "valueUsed": None,
+        "reason": "raw_html_does_not_reliably_expose_rendered_vat_footnote" if not raw_vat_visible else "raw_html_contains_vat_footnote_but_artifact_kept_conservative",
+    }
     result = {
-        "schemaVersion": "0.1.0",
+        "schemaVersion": "0.2.0",
         "dataset": "germany-pfalzwerke-direct-tariff",
         "countryCode": "DE",
         "generatedAt": utc_now(),
@@ -86,6 +100,7 @@ def main():
             "connectorClassRequired": True,
             "promotionBannerIgnored": True,
             "productionRankable": False,
+            "taxTreatmentConservative": True,
         },
         "source": source,
         "operator": {
@@ -95,11 +110,12 @@ def main():
         "directOwnNetwork": {
             "accessMethod": "ad-hoc-credit-card",
             "currency": "EUR",
-            "taxIncluded": True,
+            "taxIncluded": None,
+            "taxEvidence": tax_evidence,
             "monthlyFeeEur": 0.0,
             "connectorClassTariffs": {
-                "AC": {"eurPerKwh": 0.58, "currency": "EUR", "taxIncluded": True},
-                "DC": {"eurPerKwh": 0.79, "currency": "EUR", "taxIncluded": True},
+                "AC": {"eurPerKwh": 0.58, "currency": "EUR", "taxIncluded": None},
+                "DC": {"eurPerKwh": 0.79, "currency": "EUR", "taxIncluded": None},
             },
             "blockingFee": {
                 "status": "not_stated_in_official_ad_hoc_price_section",
@@ -107,6 +123,7 @@ def main():
             },
             "siteScalarPriceSafe": False,
             "rankableCandidateWhenConnectorClassKnown": True,
+            "completeCostModel": False,
         },
     }
     out = Path("data/germany/pfalzwerke_direct_tariff.json")
