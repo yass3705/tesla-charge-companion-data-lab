@@ -42,7 +42,6 @@ def require(pattern,text,label):
 def main():
     price_raw,price_source=fetch_any(PRICE_URLS,'tariff');block_raw,block_source=fetch_any(BLOCK_URLS,'blocking-fee')
     price_text=textify(price_raw);block_text=textify(block_raw)
-    # Current consumer tariff table.
     require(r'Ladetarif\s+Basis',price_text,'Basis')
     require(r'Ladetarif\s+Plus',price_text,'Plus')
     require(r'Kombi\s+Smart',price_text,'Kombi Smart')
@@ -53,7 +52,6 @@ def main():
     require(r'Basis.{0,1800}?Monatliche\s+Grundgebühr.{0,800}?0\s*€',price_text,'Basis monthly fee')
     require(r'Plus.{0,2200}?4[,.]99\s*€',price_text,'Plus monthly fee')
     require(r'Alle\s+Preise.{0,180}?Mehrwertsteuer|Preise.{0,180}?inkl\.',price_text,'VAT statement')
-    # Blocking fee evidence may live on another official page.
     require(r'AC.{0,160}?181\s*Minuten.{0,500}?DC.{0,160}?61\s*Minuten',block_text,'blocking thresholds')
     require(r'5\s*ct\s*/?\s*Min.{0,250}?18\s*€',block_text,'blocking price/cap')
     require(r'nicht.{0,180}?zwischen\s*20:00\s*Uhr\s*und\s*9:00\s*Uhr|nicht.{0,180}?20.?9\s*Uhr',block_text,'night exemption')
@@ -65,7 +63,7 @@ def main():
       {'planId':'henw_plus','name':'HEnW Plus','userSelectionRequired':True,'eligibility':'public_account','monthlyFeeEur':4.99,'oneTimeOptionalCardFeeEur':4.99,'ownNetworkEurPerKwh':own_discount,'roamingEurPerKwh':roaming,'taxIncluded':True,'blockingFeeOwnNetwork':block},
       {'planId':'henw_kombi_smart','name':'HEnW Kombi Smart','userSelectionRequired':True,'eligibility':'active_henw_electricity_contract','monthlyFeeEur':0.0,'oneTimeOptionalCardFeeEur':4.99,'ownNetworkEurPerKwh':own_discount,'roamingEurPerKwh':roaming,'taxIncluded':True,'blockingFeeOwnNetwork':block},
     ]
-    result={'schemaVersion':'0.1.0','dataset':'germany-henw-direct-plans','countryCode':'DE','generatedAt':now(),'scope':{'stagedOnly':True,'publishesToTcc':False,'allPlansOptIn':True,'roamingStoredButNotApplied':True},'sources':{'tariff':price_source,'blockingFee':block_source},'operator':{'canonicalName':'Hamburger Energiewerke Mobil','bnetzaExactOperators':['Hamburger Energiewerke Mobil']},'plans':plans}
+    result={'schemaVersion':'0.1.0','dataset':'germany-henw-direct-plans','countryCode':'DE','generatedAt':now(),'scope':{'stagedOnly':True,'publishesToTcc':False,'allPlansOptIn':True,'roamingStoredButNotApplied':True},'sources':{'tariff':price_source,'blockingFee':block_source},'operator':{'canonicalName':'Hamburger Energiewerke Mobil','bnetzaExactOperators':['Hamburger Energiewerke Mobil GmbH']},'plans':plans}
     out=Path('data/germany/henw_direct_plans.json');out.parent.mkdir(parents=True,exist_ok=True);out.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     print('TCC_HENW_DIRECT_PLANS='+json.dumps(result,ensure_ascii=False,sort_keys=True))
 if __name__=='__main__':main()
