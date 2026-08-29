@@ -1,0 +1,49 @@
+name: GES NextCharge Bologna data probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/ges-italy-probe
+    paths:
+      - scripts/ges_nextcharge_bologna_data_probe.py
+      - .github/workflows/ges-nextcharge-bologna-data-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependency
+        run: pip install --disable-pip-version-check selenium
+      - name: Probe bounded public station data
+        run: python scripts/ges_nextcharge_bologna_data_probe.py
+      - name: Validate report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/reports/ges_nextcharge_bologna_data_probe.json')
+          assert p.exists() and p.stat().st_size > 500
+          r=json.loads(p.read_text(encoding='utf-8'))
+          print(json.dumps({k:r.get(k) for k in ('scope','runtime','stoppedReason','stationCandidateCount')},ensure_ascii=False,indent=2))
+          print(json.dumps(r.get('grid'),ensure_ascii=False,indent=2)[:50000])
+          print(json.dumps(r.get('details'),ensure_ascii=False,indent=2)[:100000])
+          assert r['security']['accountCredentialsUsed'] is False
+          assert r['security']['sessionTokenSent'] is False
+          assert r['security']['captchaBypassed'] is False
+          PY
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ges-nextcharge-bologna-data-probe
+          path: data/reports/ges_nextcharge_bologna_data_probe.json
+          retention-days: 14
