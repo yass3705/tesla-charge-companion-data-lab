@@ -1,0 +1,40 @@
+name: Duferco Italy public marker probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/duferco-italy-probe]
+    paths:
+      - scripts/duferco_map_marker_probe.py
+      - .github/workflows/duferco-map-marker-probe.yml
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check selenium
+      - name: Probe public Italy map marker schema
+        run: python scripts/duferco_map_marker_probe.py
+      - name: Validate read-only result
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('data/reports/duferco_map_marker_probe.json').read_text())
+          assert r['security']['accountCredentialsUsed'] is False
+          assert r['security']['hiddenAuthorizationExtracted'] is False
+          assert any((x.get('markerCount') or 0)>0 for x in r['areas'])
+          print(json.dumps([{'area':x['area'],'status':x['status'],'markers':x.get('markerCount'),'keys':x.get('markerKeySets',[])[:3]} for x in r['areas']],indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: duferco-map-marker-probe
+          path: data/reports/duferco_map_marker_probe.json
+          retention-days: 14
