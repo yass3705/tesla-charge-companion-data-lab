@@ -1,0 +1,39 @@
+{
+  "report_type": "sanitized_public_client_blocker",
+  "scope": "Morocco / TotalEnergies Club EV-Charge",
+  "observed_at": "2026-08-29",
+  "model": {
+    "operator_cpo": "unresolved from this report",
+    "site_brand": "TotalEnergies",
+    "app_source_access_network": "Club EV-Charge",
+    "tariff_channel": "Club EV-Charge / TotalEnergies direct, request shape unresolved",
+    "status_source": "Club EV-Charge promises real-time charge-point availability, backend request shape unresolved"
+  },
+  "public_client_evidence": {
+    "ios_app": {
+      "provider": "Total Maroc SA",
+      "app_name": "Club EV-Charge",
+      "version_observed": "3.00.10",
+      "version_date_observed": "2026-07-28",
+      "capabilities_advertised": [
+        "station discovery",
+        "connector filtering",
+        "real-time charge-point availability",
+        "start/stop charging",
+        "real-time charging status",
+        "payments and transaction history"
+      ],
+      "source": "https://apps.apple.com/ma/app/club-ev-charge/id6475968700"
+    }
+  },
+  "documented_blocker": {
+    "summary": "Current public user reports on the Morocco App Store describe OTP/login failures and internal-error responses. This prevents using a legitimate unauthenticated/normal-registration client session to validate the Numocity read-only station/status/tariff request shape in a safe reproducible probe.",
+    "observations": [
+      "2026-03-16: multiple reviews report login/internal-error failures",
+      "2026-05-03: review reports failure when requesting the confirmation code"
+    ],
+    "interpretation": "The app is still actively maintained (3.00.10 on 2026-07-28), so the blocker is not evidence that the charging service or backend is gone. It is specifically a blocker for validating request shape through a legitimate client session from public evidence alone."
+  },
+  "safe_next_step": "Continue only with passive/public client metadata or a legitimately functioning client session. Do not infer endpoint validity from generic HTTP errors and do not bypass authentication.",
+  "production_impact": "No change to production station records. Do not assign Club EV-Charge as status_source or tariff_source for a station until station-specific data is validated."
+}
