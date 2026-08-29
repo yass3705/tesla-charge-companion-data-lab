@@ -1,0 +1,48 @@
+name: Duferco direct public station detail probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/duferco-italy-probe]
+    paths:
+      - scripts/duferco_station_detail_direct_probe.py
+      - .github/workflows/duferco-station-detail-direct-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check selenium
+      - name: Probe read-only public station details
+        run: python scripts/duferco_station_detail_direct_probe.py
+      - name: Validate public EVSE detail evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('data/reports/duferco_station_detail_direct_probe.json').read_text())
+          s=r['security']
+          assert s['accountCredentialsUsed'] is False
+          assert s['copiedRequestHeadersUsed'] is False
+          assert s['cookiesRead'] is False
+          assert s['storageRead'] is False
+          assert s['requestBodiesRead'] is False
+          assert s['startChargeOrUserEndpointsCalled'] is False
+          assert r['counts']['successful'] > 0
+          assert r['counts']['connectorEvseIds'] > 0
+          print(json.dumps({'counts':r['counts'],'evseIds':r['connectorEvseIds'][:30]},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: duferco-station-detail-direct-probe
+          path: data/reports/duferco_station_detail_direct_probe.json
+          retention-days: 14
