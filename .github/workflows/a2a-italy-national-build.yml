@@ -1,0 +1,63 @@
+name: A2A Italy national direct tariff candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/enel-italy-probe
+    paths:
+      - scripts/a2a_italy_national.py
+      - .github/workflows/a2a-italy-national-build.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check selenium
+      - name: Download latest successful normalized PUN artifact
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/pun
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
+          test -s /tmp/pun/national/pun_italy_national.json.gz
+          echo "Using PUN run $RUN_ID"
+      - name: Build A2A national candidate
+        run: python scripts/a2a_italy_national.py --pun /tmp/pun/national/pun_italy_national.json.gz
+      - name: Validate fail-closed gates
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/reports/a2a_italy_national_report.json')
+          r=json.loads(p.read_text(encoding='utf-8'))
+          print(json.dumps(r['counts'],ensure_ascii=False,indent=2))
+          print(json.dumps(r['qualityGates'],ensure_ascii=False,indent=2))
+          assert r['security']['accountCredentialsUsed'] is False
+          assert r['counts']['rankableEvse'] > 100
+          assert r['qualityGates']['detailsSuccessRateGte99pct']
+          assert r['qualityGates']['exactPunJoinRateGte95pct']
+          assert r['qualityGates']['conflictingTariffEvseZero']
+          PY
+      - name: Upload candidate and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a2a-direct-italy-candidate
+          path: |
+            data/national/a2a_direct_stations_italy.json.gz
+            data/reports/a2a_italy_national_report.json
+          retention-days: 14
