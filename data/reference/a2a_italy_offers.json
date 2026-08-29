@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "operator": "A2A",
+  "service": "A2A Emoving",
+  "researchedAt": "2026-08-29",
+  "sources": {
+    "payAsYouGo": "https://www.a2a.it/casa/download-cpf/1432",
+    "payAsYouGoPlus": "https://www.a2a.it/casa/download-cpf/1433",
+    "small": "https://www.a2a.it/casa/download-cpf/1434",
+    "medium": "https://www.a2a.it/casa/download-cpf/1435",
+    "large": "https://www.a2a.it/casa/download-cpf/1436",
+    "publicMap": "https://e-movinghub.a2a.it/acEicp/publicMapCMS.action"
+  },
+  "directTariffPolicy": {
+    "priceSource": "current station/plug detail in A2A Emoving",
+    "vatIncluded": true,
+    "reason": "Official terms state consumption and occupancy charges may change without prior notice and the applicable charge is displayed in the point detail before charging.",
+    "occupancy": {
+      "graceAfterEnergyEndMinutes": 60,
+      "slowQuickApplicableLocalTime": {"start": "07:00", "end": "23:00"},
+      "fastFastPlusUltraApplicable": "24/7",
+      "rateSource": "current station/plug detail in A2A Emoving"
+    }
+  },
+  "offers": [
+    {
+      "id": "a2a_emoving_a_consumo",
+      "name": "Emoving a consumo",
+      "type": "pay_as_you_go",
+      "monthlyFeeEur": 0,
+      "includedKwh": 0,
+      "energyPrice": "station_detail",
+      "reservationsPerDay": 0,
+      "tccRankable": true,
+      "rankabilityNote": "Use the per-EVSE direct price extracted from A2A station detail."
+    },
+    {
+      "id": "a2a_emoving_a_consumo_plus",
+      "name": "Emoving a consumo Plus",
+      "type": "pay_as_you_go_plus_reservation",
+      "monthlyFeeEur": 2,
+      "includedKwh": 0,
+      "energyPrice": "same_current_station_detail_price_semantics_as_pay_as_you_go",
+      "reservationsPerDay": 2,
+      "reservationHoldMinutes": 15,
+      "tccRankable": false,
+      "rankabilityNote": "No independently validated energy discount versus A Consumo; the subscription chiefly adds reservation service, so it must not create a cheaper energy tariff in TCC."
+    },
+    {
+      "id": "a2a_emoving_small",
+      "name": "Emoving Small",
+      "type": "monthly_kwh_bundle",
+      "monthlyFeeEur": 25,
+      "includedKwh": 40,
+      "includedStationTypes": ["ISOLA", "SLOW", "QUICK", "FAST"],
+      "excludedFromBundleStationTypes": ["FAST_PLUS", "ULTRA"],
+      "overagePrice": "station_detail",
+      "excludedTypePrice": "station_detail",
+      "reservationsPerDay": 2,
+      "reservationHoldMinutes": 15,
+      "tccRankable": false,
+      "rankabilityNote": "Needs monthly remaining-quota state. Do not flatten to 0.625 EUR/kWh because unused allowance, overage, and Fast+/Ultra exclusions change marginal trip cost."
+    },
+    {
+      "id": "a2a_emoving_medium",
+      "name": "Emoving Medium",
+      "type": "monthly_kwh_bundle",
+      "monthlyFeeEur": 57,
+      "includedKwh": 100,
+      "includedStationTypes": ["ISOLA", "SLOW", "QUICK", "FAST"],
+      "excludedFromBundleStationTypes": ["FAST_PLUS", "ULTRA"],
+      "overagePrice": "station_detail",
+      "excludedTypePrice": "station_detail",
+      "reservationsPerDay": 2,
+      "reservationHoldMinutes": 15,
+      "tccRankable": false,
+      "rankabilityNote": "Needs monthly remaining-quota state. Do not flatten to 0.57 EUR/kWh because unused allowance, overage, and Fast+/Ultra exclusions change marginal trip cost."
+    },
+    {
+      "id": "a2a_emoving_large",
+      "name": "Emoving Large",
+      "type": "monthly_kwh_bundle",
+      "monthlyFeeEur": 106,
+      "includedKwh": 200,
+      "includedStationTypes": ["ISOLA", "SLOW", "QUICK", "FAST"],
+      "excludedFromBundleStationTypes": ["FAST_PLUS", "ULTRA"],
+      "overagePrice": "station_detail",
+      "excludedTypePrice": "station_detail",
+      "reservationsPerDay": 2,
+      "reservationHoldMinutes": 15,
+      "tccRankable": false,
+      "rankabilityNote": "Needs monthly remaining-quota state. Do not flatten to 0.53 EUR/kWh because unused allowance, overage, and Fast+/Ultra exclusions change marginal trip cost."
+    }
+  ]
+}
