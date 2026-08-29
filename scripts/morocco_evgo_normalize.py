@@ -4,6 +4,11 @@
 No network calls are made here. The input is the already-sanitized public report
 written by morocco_evgo_pin_hydration_probe.py. Pin geo is joined to locations by
 underlyingLocationIds/location id, while raw native EVSE state remains preserved.
+
+Power is deliberately fail-closed: native maxPower is never overwritten. Only a
+model-encoded candidate is emitted when the native chargePointModel itself names
+an unambiguous 22 kW Chargedot TACW22 variant. Broader model families such as
+VIARIS UNI and MaxiChargerAC are not assigned a power from model family alone.
 """
 from __future__ import annotations
 
@@ -45,6 +50,14 @@ def operational_class(evse):
     return 'unknown'
 
 
+def power_candidate(evse):
+    """Return conservative non-native power evidence without replacing maxPower."""
+    model = str(evse.get('chargePointModel') or '')
+    if model.startswith('CDT_TACW22::'):
+        return 22, 'charge_point_model_encoded', 'Chargedot model identifier TACW22 encodes the 22 kW hardware variant.'
+    return None, None, None
+
+
 def station_brand(name):
     n = (name or '').strip()
     if n.lower().startswith('marjane'):
@@ -66,7 +79,9 @@ def main():
     stations = []
     status_counts = collections.Counter()
     op_counts = collections.Counter()
+    model_counts = collections.Counter()
     evse_count = 0
+    power_candidate_evse_count = 0
 
     for item in data.get('locations') or []:
         loc = item.get('location')
@@ -76,15 +91,22 @@ def main():
         pin = pins.get(lid, {})
         lat, lon = parse_geo(pin.get('geo'))
         evses = []
+        station_has_power_candidate = False
         for zone in loc.get('zones') or []:
             for raw in zone.get('evses') or []:
                 if not isinstance(raw, dict):
                     continue
                 status = raw.get('status')
                 op = operational_class(raw)
+                model = raw.get('chargePointModel')
+                candidate_kw, candidate_source, candidate_note = power_candidate(raw)
                 status_counts[str(status)] += 1
                 op_counts[op] += 1
+                model_counts[str(model)] += 1
                 evse_count += 1
+                if candidate_kw is not None:
+                    power_candidate_evse_count += 1
+                    station_has_power_candidate = True
                 tariff_id = raw.get('tariffId')
                 evses.append({
                     'id': raw.get('id'),
@@ -95,7 +117,11 @@ def main():
                     'isLongTermUnavailable': raw.get('isLongTermUnavailable'),
                     'isTemporarilyUnavailable': raw.get('isTemporarilyUnavailable'),
                     'currentType': raw.get('currentType'),
+                    'chargePointModel': model,
                     'maxPower': raw.get('maxPower'),
+                    'powerCandidateKW': candidate_kw,
+                    'powerCandidateSource': candidate_source,
+                    'powerCandidateNote': candidate_note,
                     'operatorId': raw.get('operatorId'),
                     'networkId': raw.get('networkId'),
                     'operatedBy': raw.get('operatedBy'),
@@ -125,12 +151,13 @@ def main():
             'status_source': 'EVGO native backend cp.evgo.ma',
             'tariff_channel': 'EVGO native',
             'tariff_interpretation': 'EVGO only: if no native price/tariff is present, treat charging as free (0 MAD).',
+            'has_model_encoded_power_candidate': station_has_power_candidate,
             'pin_availability': pin.get('av'),
             'evses': evses,
         })
 
     out = {
-        'schema_version': 2,
+        'schema_version': 3,
         'generated_at': dt.datetime.now(dt.timezone.utc).isoformat(),
         'source_generated_at': src.get('generated_at'),
         'source_report': str(SRC),
@@ -140,6 +167,8 @@ def main():
             'derived_from_sanitized_public_report_only': True,
             'backend_requests_made': False,
             'geo_from_native_public_pins': True,
+            'native_max_power_never_overwritten': True,
+            'model_encoded_power_candidate_rule': 'Only CDT_TACW22::* => 22 kW; VIARIS UNI and MaxiChargerAC remain unresolved without variant/site evidence.',
             'evgo_missing_tariff_means_free': True,
             'evgo_missing_tariff_price_mad': 0,
             'rule_scope': 'EVGO only; never generalize missing-price=free to other operators.',
@@ -152,9 +181,12 @@ def main():
         'summary': {
             'station_count': len(stations),
             'station_count_with_native_geo': sum(1 for s in stations if s['latitude'] is not None and s['longitude'] is not None),
+            'station_count_with_model_encoded_power_candidate': sum(1 for s in stations if s['has_model_encoded_power_candidate']),
             'evse_count': evse_count,
+            'evse_count_with_model_encoded_power_candidate': power_candidate_evse_count,
             'native_status_counts': dict(sorted(status_counts.items())),
             'operational_class_counts': dict(sorted(op_counts.items())),
+            'charge_point_model_counts': dict(sorted(model_counts.items())),
         },
         'stations': stations,
     }
