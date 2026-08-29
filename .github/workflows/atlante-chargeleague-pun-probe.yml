@@ -1,0 +1,32 @@
+name: Atlante ChargeLeague PUN partner probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/atlante-italy-probe]
+    paths:
+      - scripts/atlante_chargeleague_pun_probe.py
+      - .github/workflows/atlante-chargeleague-pun-probe.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download PUN
+        run: |
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          mkdir -p /tmp/pun
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
+      - name: Identify partners
+        run: python scripts/atlante_chargeleague_pun_probe.py --pun /tmp/pun/national/pun_italy_national.json.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atlante-chargeleague-pun-probe
+          path: data/reports/atlante_chargeleague_pun_probe.json
+          retention-days: 14
