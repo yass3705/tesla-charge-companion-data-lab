@@ -5,6 +5,7 @@ on:
     branches: [feature/germany-national-base]
     paths:
       - 'scripts/germany_national_catalog.py'
+      - 'scripts/germany_national_catalog_tariff_overlay.py'
       - '.github/workflows/germany-national-catalog.yml'
   workflow_dispatch:
 
@@ -34,6 +35,20 @@ jobs:
           unzip -q /tmp/afir-state.zip -d data/germany
           test -s data/germany/afir_dynamic_state.json.gz
 
+      - name: Restore latest validated AFIR tariff classification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=germany-afir-tariff-classification&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[0].id // empty')"
+          if [ -z "$ARTIFACT_ID" ]; then
+            echo "No validated germany-afir-tariff-classification artifact found" >&2
+            exit 1
+          fi
+          echo "Restoring AFIR tariff classification artifact $ARTIFACT_ID"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/afir-tariff-classification.zip
+          unzip -q /tmp/afir-tariff-classification.zip -d data/germany
+          test -s data/germany/afir_tariff_classification.json.gz
+
       - name: Rebuild BNetzA dynamic enrichment
         run: python scripts/germany_bnetza_dynamic_enrichment.py
 
@@ -42,6 +57,9 @@ jobs:
 
       - name: Build staged national non-Tesla catalogue
         run: python scripts/germany_national_catalog.py
+
+      - name: Attach safe AFIR tariff candidates
+        run: python scripts/germany_national_catalog_tariff_overlay.py
 
       - name: Validate national catalogue invariants
         run: |
@@ -90,7 +108,35 @@ jobs:
                   assert site['afir']['data'] is None, site['id']
               assert site['pricing']['rankable'] is False
 
-          print('TCC_GERMANY_NATIONAL_CATALOG_VALIDATED='+json.dumps(s,sort_keys=True))
+          ep=Path('data/germany/germany_non_tesla_catalog_staging_tariff_classified.json.gz')
+          with gzip.open(ep,'rt',encoding='utf-8') as f:
+              e=json.load(f)
+          em=json.loads(Path('data/germany/germany_non_tesla_catalog_staging_tariff_classified_manifest.json').read_text(encoding='utf-8'))
+          assert e['dataset']=='germany-national-non-tesla-catalog-staging-tariff-classified'
+          assert e['scope']['stagedOnly'] is True
+          assert e['scope']['publishesToTcc'] is False
+          assert e['scope']['tariffsRankable'] is False
+          assert e['scope']['safeAfirTariffCandidatesIncluded'] is True
+          es=e['stats']
+          assert es['stagingRankableAfirCandidateSites'] > 500, es
+          assert es['afirTariffClassificationMissingForAttachedSite'] == 0, es
+          assert set(es['stagingRankableAfirCandidatesByProvider']) <= {'eround'}, es
+          assert len(e['sites']) == es['nonTeslaSites']
+          assert em['stats'] == es
+          candidate_count=0
+          for site in e['sites']:
+              pricing=site['pricing']
+              assert pricing['rankable'] is False
+              if pricing.get('stagingRankableCandidate'):
+                  candidate_count += 1
+                  assert site['afir']['matchStatus']=='matched_safe', site['id']
+                  assert site['afir']['data']['provider']=='eround', site['id']
+                  assert pricing['stagingEffectiveEurPerKwh'] is not None, site['id']
+                  ac=pricing['afirClassification']
+                  assert ac['classification']=='uniform_simple_kwh_rankable', site['id']
+                  assert set(ac['rateClassDistribution']) == {'simple_kwh_tax_included'}, site['id']
+          assert candidate_count == es['stagingRankableAfirCandidateSites'], (candidate_count,es)
+          print('TCC_GERMANY_NATIONAL_CATALOG_VALIDATED='+json.dumps(es,sort_keys=True))
           PY
 
       - uses: actions/upload-artifact@v4
@@ -99,5 +145,7 @@ jobs:
           path: |
             data/germany/germany_non_tesla_catalog_staging.json.gz
             data/germany/germany_non_tesla_catalog_staging_manifest.json
+            data/germany/germany_non_tesla_catalog_staging_tariff_classified.json.gz
+            data/germany/germany_non_tesla_catalog_staging_tariff_classified_manifest.json
           if-no-files-found: error
           retention-days: 30
