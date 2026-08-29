@@ -1,0 +1,55 @@
+name: Germany HEnW direct charging plans
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_henw_direct_plans.py'
+      - '.github/workflows/germany-henw-direct-plans.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract official HEnW plans
+        run: python scripts/germany_henw_direct_plans.py
+      - name: Validate HEnW plan artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/henw_direct_plans.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-henw-direct-plans'
+          assert d['scope']['stagedOnly'] is True and d['scope']['publishesToTcc'] is False
+          assert d['scope']['allPlansOptIn'] is True
+          assert d['operator']['bnetzaExactOperators']==['Hamburger Energiewerke Mobil']
+          plans={p['planId']:p for p in d['plans']}
+          assert set(plans)=={'henw_basis','henw_plus','henw_kombi_smart'}
+          assert all(p['userSelectionRequired'] is True for p in plans.values())
+          assert plans['henw_basis']['monthlyFeeEur']==0.0
+          assert plans['henw_basis']['ownNetworkEurPerKwh']=={'AC':0.59,'DC':0.69}
+          assert plans['henw_plus']['monthlyFeeEur']==4.99
+          assert plans['henw_plus']['ownNetworkEurPerKwh']=={'AC':0.49,'DC':0.59}
+          assert plans['henw_kombi_smart']['monthlyFeeEur']==0.0
+          assert plans['henw_kombi_smart']['eligibility']=='active_henw_electricity_contract'
+          for p in plans.values():
+              assert p['roamingEurPerKwh']=={'AC':0.65,'DC':0.75}
+              assert p['taxIncluded'] is True
+              b=p['blockingFeeOwnNetwork']
+              assert b['eurPerMinute']==0.05 and b['capEurPerSession']==18.0
+              assert b['afterMinutesByConnectorClass']=={'AC':181,'DC':61}
+              assert b['activeLocalTime']=={'start':'09:00','end':'20:00'}
+          print('TCC_HENW_DIRECT_PLANS_VALIDATED='+json.dumps(plans,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-henw-direct-plans
+          path: data/germany/henw_direct_plans.json
+          if-no-files-found: error
+          retention-days: 30
