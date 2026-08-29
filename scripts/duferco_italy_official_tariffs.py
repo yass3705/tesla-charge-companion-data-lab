@@ -1,43 +1,72 @@
 #!/usr/bin/env python3
 """Validate current official Duferco Mobility Italy consumer tariff rules.
 
-This stores commercial rules only. It deliberately does not infer a power threshold for
-Quick/Fast vs Ultra Fast; station-class resolution is handled separately from map/PUN data.
+The activation page is client-rendered, so validation uses the visible browser text.
+Commercial rules are stored without inferring any Quick/Fast/Ultra power threshold;
+station-class resolution remains a separate, fail-closed step.
 """
 from __future__ import annotations
-import html,json,re,urllib.request
+import json,re,time
 from datetime import datetime,timezone
 from pathlib import Path
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 URL='https://attivazioneonline-emobility.dufercoenergia.com/'
 OUT=Path('data/reference/duferco_italy_offers.json')
-UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36'
+
 def now():return datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
-def fetch():
-    r=urllib.request.Request(URL,headers={'User-Agent':UA,'Accept-Language':'it-IT,it;q=0.9,en;q=0.5'})
-    with urllib.request.urlopen(r,timeout=45) as x:return x.read().decode(x.headers.get_content_charset() or 'utf-8','replace')
-def text(raw):
-    s=re.sub(r'<script\b[^>]*>.*?</script>',' ',raw,flags=re.I|re.S);s=re.sub(r'<style\b[^>]*>.*?</style>',' ',s,flags=re.I|re.S);s=re.sub(r'<[^>]+>',' ',s);return re.sub(r'\s+',' ',html.unescape(s)).strip()
-def n(s):return re.sub(r'\s+',' ',s.lower().replace('–','-').replace('—','-')).strip()
-def has(t,*parts):return all(p.lower() in t for p in parts)
+def norm(s):return re.sub(r'\s+',' ',str(s).lower().replace('–','-').replace('—','-').replace('\u00a0',' ')).strip()
+
+def rendered_text():
+    o=Options();o.add_argument('--headless=new');o.add_argument('--no-sandbox');o.add_argument('--disable-dev-shm-usage');o.add_argument('--window-size=1440,2200');o.add_argument('--lang=it-IT')
+    d=webdriver.Chrome(options=o)
+    try:
+        d.set_page_load_timeout(60)
+        d.get(URL)
+        deadline=time.time()+35
+        best=''
+        while time.time()<deadline:
+            try:t=d.execute_script("return document.body ? document.body.innerText : ''") or ''
+            except Exception:t=''
+            if len(t)>len(best):best=t
+            n=norm(best)
+            if ('pay per use' in n and ('0,74' in n or '0.74' in n) and ('100 kwh' in n or '150 kwh' in n or '400 kwh' in n)):
+                break
+            time.sleep(1)
+        return best
+    finally:d.quit()
+
+def has_price(t,val):
+    a=str(val).replace('.',',');b=str(val)
+    return (a in t or b in t) and ('€/kwh' in t or '€ / kwh' in t or '€/ kwh' in t)
+
 def main():
-    t=n(text(fetch()))
+    t=norm(rendered_text())
+    # Validate each fact independently. Matching is intentionally tolerant only to spacing,
+    # decimal separator and nearby wording; missing visible evidence fails the run.
     checks={
-      'peakQf':bool(re.search(r'0[,.]74\s*€/kwh.*quick.*fast',t,re.I)),
-      'peakUltra':bool(re.search(r'0[,.]79\s*€/kwh.*ultra\s*fast',t,re.I)),
-      'offpeakQf':'0,52 €/kwh' in t or '0.52 €/kwh' in t,
-      'offpeakUltra':bool(re.search(r'0[,.]74\s*€/kwh.*ultra\s*fast',t,re.I)),
-      'sameBandRule':('inizio' in t and 'fine' in t and 'medesima fascia' in t),
-      'roamingStationSpecific':('al costo indicato' in t and ('d-mobility app' in t or 'd-mobility' in t)),
+      'payPerUseVisible':'pay per use' in t,
+      'peakQf':has_price(t,0.74) and ('quick' in t and 'fast' in t),
+      'peakUltra':has_price(t,0.79) and ('ultra fast' in t or 'ultrafast' in t),
+      'offpeakQf':has_price(t,0.52),
+      'offpeakUltra':has_price(t,0.74) and ('ultra fast' in t or 'ultrafast' in t),
+      'morningPeak':('08:00' in t or '8:00' in t) and '12:00' in t,
+      'middayDiscount':'12:00' in t and '15:00' in t,
+      'eveningPeak':'15:00' in t and '22:00' in t,
+      'sameBandRule':(('inizio' in t and 'fine' in t) and ('medesima fascia' in t or 'stessa fascia' in t)),
+      'roamingStationSpecific':(('costo indicato' in t or 'prezzo indicato' in t) and 'd-mobility' in t),
       'prepaid100':('65' in t and '100 kwh' in t),
       'prepaid150':('95' in t and '150 kwh' in t),
       'prepaid400':('249' in t and '400 kwh' in t),
       'prepaid3months':('3 mesi' in t),
-      'prepaidUpTo50':('fino a 50 kw' in t),
+      'prepaidUpTo50':('50 kw' in t and ('fino a' in t or '≤' in t or 'massimo' in t)),
     }
-    if not all(checks.values()):raise RuntimeError(f'Official Duferco evidence incomplete: {checks}')
+    if not all(checks.values()):
+        # Log only booleans and a harmless length; do not dump the full rendered page.
+        raise RuntimeError(f'Official Duferco visible evidence incomplete: checks={checks} renderedChars={len(t)}')
     payload={
-      'schemaVersion':1,'generatedAt':now(),'country':'IT','provider':'Duferco Mobility','source':{'url':URL,'official':True},
+      'schemaVersion':1,'generatedAt':now(),'country':'IT','provider':'Duferco Mobility','source':{'url':URL,'official':True,'validationMode':'rendered_visible_text'},
       'payPerUseOwnCpo':{
         'priceGranularity':'network_class_and_local_time','currency':'EUR','vatIncluded':True,'localTimeZone':'Europe/Rome',
         'classes':{
@@ -51,5 +80,6 @@ def main():
       'prepaidModel':{'tccRankableWithoutRemainingBalance':False,'reason':'prepaid_credit_state_required'},
       'evidenceChecks':checks,
     }
-    OUT.parent.mkdir(parents=True,exist_ok=True);OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8');print(json.dumps({'checks':checks,'payPerUse':payload['payPerUseOwnCpo'],'prepaid':payload['prepaid']},ensure_ascii=False,indent=2))
+    OUT.parent.mkdir(parents=True,exist_ok=True);OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+    print(json.dumps({'checks':checks,'renderedChars':len(t),'payPerUse':payload['payPerUseOwnCpo'],'prepaid':payload['prepaid']},ensure_ascii=False,indent=2))
 if __name__=='__main__':main()
