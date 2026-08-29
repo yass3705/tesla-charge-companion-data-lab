@@ -3,7 +3,9 @@
 
 The official consumer page may also contain temporary promotional pricing. This
 extractor deliberately validates only the dedicated 'Preise für das Ad-Hoc-Laden'
-section and ignores promotional banners. Output is staging-only.
+section for the energy prices and ignores promotional banners. The VAT footnote
+is validated on the same official page because the CMS renders it outside the
+text block containing the AC/DC rows. Output is staging-only.
 """
 from __future__ import annotations
 
@@ -64,7 +66,7 @@ def main():
         "ac58": bool(re.search(r"\bAC\s*:\s*58\s*Cent\s*/?\s*kWh", section, re.I)),
         "dc79": bool(re.search(r"\bDC\s*:\s*79\s*Cent\s*/?\s*kWh", section, re.I)),
         "allSites": bool(re.search(r"Gültig\s+an\s+allen\s+Pfalzwerke[-\s]+Ladestationen", section, re.I)),
-        "vatIncluded": bool(re.search(r"Alle\s+Preise\s+inkl\.?\s*(?:MwSt|Mehrwertsteuer)", section, re.I)),
+        "vatIncluded": bool(re.search(r"Alle\s+Preise\s+inkl\.?\s*(?:MwSt|Mehrwertsteuer)", text, re.I)),
         "noAccount": bool(re.search(r"Ohne\s+Registrierung|Kein\s+Kundenkonto\s+notwendig", section, re.I)),
     }
     print("TCC_PFALZWERKE_EVIDENCE=" + json.dumps({"checks": checks, "section": section[:2200], "source": source}, ensure_ascii=False, sort_keys=True))
