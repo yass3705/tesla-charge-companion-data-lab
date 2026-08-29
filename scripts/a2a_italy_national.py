@@ -11,8 +11,10 @@ Fail-closed rules:
   map coordinate is within 250 m of the PUN EVSE coordinate;
 - malformed/missing price or penalty is retained but not guessed;
 - duplicate A2A representations of the same PUN EVSE are accepted only when the
-  direct tariff components agree; conflicts are blocked;
-- source power differences never overwrite PUN technical power.
+  direct tariff and occupancy trigger semantics agree; conflicts are blocked;
+- source power differences never overwrite PUN technical power;
+- A2A occupancy fees are never modelled as immediate: official terms give a
+  60-minute post-charge grace period and station-class-dependent time windows.
 """
 from __future__ import annotations
 
@@ -37,6 +39,9 @@ DEFAULT_REPORT = Path("data/reports/a2a_italy_national_report.json")
 PRICE_RE = re.compile(r"(?P<value>\d+(?:[\.,]\d+)?)\s*€\s*/\s*kWh", re.I)
 MINUTE_RE = re.compile(r"(?P<value>\d+(?:[\.,]\d+)?)\s*€\s*/\s*min(?:\.|uto|ute)?", re.I)
 LEGACY_GEO_MAX_M = 250.0
+OCCUPANCY_GRACE_MINUTES = 60
+SLOW_QUICK_TYPES = {"ISOLA", "SLOW", "QUICK"}
+FAST_TYPES = {"FAST", "FAST_PLUS", "ULTRA", "ULTRAFAST"}
 
 
 def now_iso():
@@ -56,6 +61,55 @@ def parse_rate(text, rx):
         return None
     m = rx.search(str(text))
     return round(float(m.group("value").replace(",", ".")), 6) if m else None
+
+
+def normalize_station_type(value):
+    return str(value or "UNKNOWN").strip().upper().replace(" ", "_") or "UNKNOWN"
+
+
+def occupancy_policy(station_type, rate):
+    station_type = normalize_station_type(station_type)
+    base = {
+        "rateEurPerMin": rate,
+        "graceAfterEnergyEndMinutes": OCCUPANCY_GRACE_MINUTES,
+        "stationType": station_type,
+        "source": "A2A official Emoving terms + current station/plug detail",
+    }
+    if station_type in SLOW_QUICK_TYPES:
+        return {
+            **base,
+            "application": "daily_local_time_window",
+            "localTimeZone": "Europe/Rome",
+            "dailyStart": "07:00",
+            "dailyEnd": "23:00",
+            "rankable": rate is not None,
+        }
+    if station_type in FAST_TYPES:
+        return {
+            **base,
+            "application": "24_7",
+            "localTimeZone": "Europe/Rome",
+            "rankable": rate is not None,
+        }
+    return {
+        **base,
+        "application": "unknown_station_class",
+        "localTimeZone": "Europe/Rome",
+        "rankable": False,
+        "reason": "a2a_station_class_not_covered_by_validated_occupancy_terms",
+    }
+
+
+def occupancy_signature(row):
+    p = occupancy_policy(row.get("a2aStationType"), row.get("directPenaltyEurPerMin"))
+    return (
+        row.get("directEnergyEurPerKwh"),
+        row.get("directPenaltyEurPerMin"),
+        p.get("application"),
+        p.get("dailyStart"),
+        p.get("dailyEnd"),
+        p.get("graceAfterEnergyEndMinutes"),
+    )
 
 
 def is_a2a_owned(item):
@@ -172,6 +226,7 @@ def main():
     ap.add_argument("--concurrency", type=int, default=12)
     args = ap.parse_args()
     pun_idx, pun_suffix_idx, pun_station_idx, pun_counts = load_pun(Path(args.pun))
+    pun_a2m_ids = {evse_id for evse_id, e in pun_idx.items() if str(e.get("partyId") or "").upper() == "A2M"}
 
     opts = Options()
     for arg in ("--headless=new", "--no-sandbox", "--disable-dev-shm-usage", "--window-size=1440,1600", "--lang=it-IT"):
@@ -217,7 +272,8 @@ def main():
         a2a_coords = coords_from_map(m)
         apv = d.get("assetProvider") if isinstance(d.get("assetProvider"), dict) else {}
         provider_id = apv.get("providerId")
-        type_counts[str(d.get("type") or m.get("type") or "UNKNOWN")] += 1
+        station_type = normalize_station_type(d.get("type") or m.get("type"))
+        type_counts[station_type] += 1
         status_counts[str(d.get("statusCu") or m.get("statusCu") or "UNKNOWN")] += 1
         provider_counts[str(provider_id or "UNKNOWN")] += 1
         for evse in d.get("evseData") or []:
@@ -240,7 +296,7 @@ def main():
                     "plugId": plug_id,
                     "candidateEvseIds": ids,
                     "a2aCoordinates": a2a_coords,
-                    "a2aStationType": d.get("type") or m.get("type"),
+                    "a2aStationType": station_type,
                     "a2aStationStatus": d.get("statusCu") or m.get("statusCu"),
                     "a2aPlugStatus": plug.get("status"),
                     "a2aPlugType": plug.get("plugType") or plug.get("type"),
@@ -282,14 +338,20 @@ def main():
         grouped[row["punEvseId"]].append(row)
     evses, conflicts, duplicate_same = [], [], 0
     for evse_id, rows in sorted(grouped.items()):
-        signatures = {(r["directEnergyEurPerKwh"], r["directPenaltyEurPerMin"]) for r in rows}
+        signatures = {occupancy_signature(r) for r in rows}
         if len(signatures) > 1:
-            conflicts.append({"punEvseId": evse_id, "signatures": sorted([list(x) for x in signatures], key=str), "sourceAliases": sorted({r["a2aAlias"] for r in rows})})
+            conflicts.append({
+                "punEvseId": evse_id,
+                "signatures": sorted([list(x) for x in signatures], key=str),
+                "sourceAliases": sorted({r["a2aAlias"] for r in rows}),
+                "stationTypes": sorted({r["a2aStationType"] for r in rows}),
+            })
             continue
         if len(rows) > 1:
             duplicate_same += len(rows) - 1
         r = rows[0]
         methods = sorted({str(x.get("matchMethod")) for x in rows if x.get("matchMethod")})
+        occ = occupancy_policy(r.get("a2aStationType"), r.get("directPenaltyEurPerMin"))
         evses.append({
             "evseId": evse_id,
             "stationId": r["punStationId"],
@@ -300,14 +362,17 @@ def main():
             "operationalState": r["punOperationalState"],
             "occupancyState": r["punOccupancyState"],
             "sourceStatus": r["punSourceStatus"],
+            "a2aStationType": r["a2aStationType"],
             "directTariff": {
                 "energyEurPerKwh": r["directEnergyEurPerKwh"],
                 "occupancyEurPerMin": r["directPenaltyEurPerMin"],
+                "occupancyPolicy": occ,
                 "source": "A2A public e-moving station detail",
                 "priceListRaw": r["rawPriceList"],
                 "penaltyListRaw": r["rawPenaltyList"],
             },
             "rankableDirectTariff": True,
+            "rankableOccupancyFee": bool(occ.get("rankable")),
             "matchMethod": methods[0] if len(methods) == 1 else "+".join(methods),
             "a2aSourceAliases": sorted({x["a2aAlias"] for x in rows}),
         })
@@ -321,6 +386,10 @@ def main():
     exact_rate = exact_matches / total_plugs if total_plugs else 0.0
     safe_rate = safe_matches / total_plugs if total_plugs else 0.0
     rankable_rate = len(evses) / len(grouped) if grouped else 0.0
+    rankable_ids = {e["evseId"] for e in evses}
+    covered_pun_a2m = len(rankable_ids & pun_a2m_ids)
+    authoritative_coverage = covered_pun_a2m / len(pun_a2m_ids) if pun_a2m_ids else 0.0
+    occupancy_rankable = sum(1 for e in evses if e.get("rankableOccupancyFee"))
     legacy_pair_json = {f"{a}->{b}": n for (a, b), n in sorted(legacy_provider_pairs.items())}
     report = {
         "generatedAt": now_iso(),
@@ -328,6 +397,7 @@ def main():
         "security": {"accountCredentialsUsed": False, "authorizationMaterialPersisted": False, "cookiesPersisted": False, "rechargeOrAuthEndpointsCalled": False},
         "counts": {
             "punInput": pun_counts,
+            "punA2mEvse": len(pun_a2m_ids),
             "a2aMapRecords": len(map_items),
             "a2aOwnedMapRecords": len(owned),
             "uniqueA2aAliases": len(aliases),
@@ -338,8 +408,8 @@ def main():
             "exactPunMatchRate": round(exact_rate, 6),
             "legacySafeSuffixMatches": legacy_matches,
             "safePunMatches": safe_matches,
-            "safePunMatchRate": round(safe_rate, 6),
-            "unmatchedPlugs": len(unmatched),
+            "safePunMatchRateDiagnostic": round(safe_rate, 6),
+            "unmatchedLegacySourcePlugs": len(unmatched),
             "malformedPriceMatches": len(malformed_price),
             "rawMatchedPricedRows": len(raw_candidates),
             "uniqueMatchedPricedEvse": len(grouped),
@@ -347,6 +417,9 @@ def main():
             "conflictingTariffEvse": len(conflicts),
             "rankableEvse": len(evses),
             "rankableStations": len(stations),
+            "rankableOccupancyFeeEvse": occupancy_rankable,
+            "coveredPunA2mEvse": covered_pun_a2m,
+            "punA2mDirectTariffCoverage": round(authoritative_coverage, 6),
             "rankableResolutionRate": round(rankable_rate, 6),
         },
         "a2aTypeCounts": dict(sorted(type_counts.items())),
@@ -355,11 +428,23 @@ def main():
         "matchMethodCounts": dict(sorted(match_method_counts.items())),
         "legacyProviderPrefixPairs": legacy_pair_json,
         "legacyFallbackPolicy": {"punPartyId": "A2M", "uniqueSuffixRequired": True, "maxGeoDistanceM": LEGACY_GEO_MAX_M},
+        "occupancyPolicy": {
+            "graceAfterEnergyEndMinutes": OCCUPANCY_GRACE_MINUTES,
+            "slowQuick": {"stationTypes": sorted(SLOW_QUICK_TYPES), "dailyLocalWindow": "07:00-23:00", "timeZone": "Europe/Rome"},
+            "fast": {"stationTypes": sorted(FAST_TYPES), "application": "24/7", "timeZone": "Europe/Rome"},
+            "rateSource": "current A2A plug penaltyList",
+        },
         "qualityGates": {
             "detailsSuccessRateGte99pct": len(detail_results) >= max(1, int(len(aliases) * 0.99)),
-            "safePunJoinRateGte95pct": safe_rate >= 0.95,
+            "authoritativePunA2mCoverageGte95pct": authoritative_coverage >= 0.95,
             "conflictingTariffEvseZero": len(conflicts) == 0,
+            "rankableEvseSubsetOfPunA2m": rankable_ids <= pun_a2m_ids,
             "rankableEvseNonzero": len(evses) > 0,
+        },
+        "diagnostics": {
+            "legacySourceSafeJoinRate": round(safe_rate, 6),
+            "legacySourceSafeJoinGateDeprecated": True,
+            "reason": "A2A public backend retains stale/historical plug identifiers absent from current authoritative PUN A2M inventory; they are left unmatched rather than geospatially forced.",
         },
         "failures": failures[:200],
         "unmatched": unmatched,
@@ -367,19 +452,21 @@ def main():
         "conflicts": conflicts[:200],
     }
     dataset = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "dataset": "a2a_direct_stations_italy",
         "generatedAt": report["generatedAt"],
         "operator": "A2A",
         "country": "IT",
         "scope": "research-candidate-national-direct-tariff",
-        "sources": [BASE_PAGE, "PUN normalized national artifact"],
+        "sources": [BASE_PAGE, "PUN normalized national artifact", "A2A official Emoving consumer terms"],
         "counts": report["counts"],
         "matchPolicy": {
             "rankable": "exact OCPI EVSE ID, or unique suffix + PUN partyId A2M + <=250m coordinate agreement",
-            "duplicatePolicy": "same tariff accepted; conflicting tariff blocked",
+            "duplicatePolicy": "same tariff and occupancy semantics accepted; conflicts blocked",
             "technicalTruth": "PUN power/coordinates/status retained",
+            "authoritativeCoverageDenominator": "current PUN EVSE where partyId=A2M",
         },
+        "occupancyPolicy": report["occupancyPolicy"],
         "stations": stations,
         "evses": evses,
     }
