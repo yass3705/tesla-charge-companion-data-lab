@@ -1,0 +1,45 @@
+name: GES NextCharge API literal probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/ges-italy-probe
+    paths:
+      - scripts/ges_nextcharge_api_literal_probe.py
+      - .github/workflows/ges-nextcharge-api-literal-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependency
+        run: pip install --disable-pip-version-check requests
+      - name: Extract public station API literals
+        run: python scripts/ges_nextcharge_api_literal_probe.py
+      - name: Validate report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/reports/ges_nextcharge_api_literal_probe.json')
+          r=json.loads(p.read_text(encoding='utf-8'))
+          print(json.dumps(r['targetConfigLiterals'],ensure_ascii=False,indent=2))
+          assert r['security']['applicationApiCalled'] is False
+          assert any(x.get('status') == 200 for x in r['bundles'])
+          PY
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ges-nextcharge-api-literal-probe
+          path: data/reports/ges_nextcharge_api_literal_probe.json
+          retention-days: 14
