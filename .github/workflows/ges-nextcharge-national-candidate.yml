@@ -1,0 +1,110 @@
+name: GES NextCharge national eMSP tariff candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/ges-italy-probe
+    paths:
+      - scripts/ges_nextcharge_national_shard.py
+      - scripts/ges_nextcharge_national_merge.py
+      - .github/workflows/ges-nextcharge-national-candidate.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependency
+        run: pip install --disable-pip-version-check selenium
+      - name: Download latest normalized PUN artifact
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/pun
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
+          test -s /tmp/pun/national/pun_italy_national.json.gz
+          echo "Using PUN run $RUN_ID"
+      - name: Extract exact GES shard
+        run: python scripts/ges_nextcharge_national_shard.py --pun /tmp/pun/national/pun_italy_national.json.gz --shard ${{ matrix.shard }} --shards 4
+      - name: Validate shard safety
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          shard=${{ matrix.shard }}
+          p=Path(f'data/shards/ges_nextcharge/ges_nextcharge_shard_{shard}.json.gz')
+          assert p.exists() and p.stat().st_size>100
+          with gzip.open(p,'rt',encoding='utf-8') as f:r=json.load(f)
+          print(json.dumps(r['counts'],ensure_ascii=False,indent=2))
+          print(json.dumps(r['diagnostics'],ensure_ascii=False,indent=2))
+          assert r['security']['accountCredentialsUsed'] is False
+          assert r['security']['sessionTokenSent'] is False
+          assert r['security']['captchaBypassed'] is False
+          assert r['diagnostics']['stoppedReason'] is None
+          assert r['counts']['targetStations'] > 100
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ges-nextcharge-national-shard-${{ matrix.shard }}
+          path: data/shards/ges_nextcharge/
+          retention-days: 14
+
+  merge:
+    needs: extract
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download latest normalized PUN artifact
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/pun
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
+          test -s /tmp/pun/national/pun_italy_national.json.gz
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ges-nextcharge-national-shard-*
+          path: /tmp/ges-shards
+      - name: Merge exact national candidate
+        run: python scripts/ges_nextcharge_national_merge.py --pun /tmp/pun/national/pun_italy_national.json.gz
+      - name: Validate national candidate
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('data/reports/ges_nextcharge_italy_national_report.json').read_text(encoding='utf-8'))
+          print(json.dumps(r['counts'],ensure_ascii=False,indent=2))
+          print(json.dumps(r['qualityGates'],ensure_ascii=False,indent=2))
+          assert all(r['qualityGates'].values())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nextcharge-ges-italy-national-candidate
+          path: |
+            data/national/nextcharge_ges_italy_candidate.json.gz
+            data/reports/ges_nextcharge_italy_national_report.json
+          retention-days: 14
