@@ -1,0 +1,49 @@
+name: GES NextCharge loaded bundle endpoint probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/ges-italy-probe
+    paths:
+      - scripts/ges_nextcharge_loaded_bundle_probe.py
+      - .github/workflows/ges-nextcharge-loaded-bundle-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check selenium
+      - name: Inspect loaded public NextCharge bundles
+        run: python scripts/ges_nextcharge_loaded_bundle_probe.py
+      - name: Validate report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/reports/ges_nextcharge_loaded_bundle_probe.json')
+          assert p.exists() and p.stat().st_size > 1000
+          r=json.loads(p.read_text(encoding='utf-8'))
+          print(json.dumps(r['counts'],ensure_ascii=False,indent=2))
+          print(json.dumps(r['combined'],ensure_ascii=False,indent=2)[:100000])
+          assert r['security']['accountCredentialsUsed'] is False
+          assert r['security']['discoveredEndpointsCalled'] is False
+          assert r['counts']['loadedJavascriptBundles'] > 0
+          assert r['counts']['bundlesWithReadableBody'] > 0
+          PY
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ges-nextcharge-loaded-bundle-probe
+          path: data/reports/ges_nextcharge_loaded_bundle_probe.json
+          retention-days: 14
