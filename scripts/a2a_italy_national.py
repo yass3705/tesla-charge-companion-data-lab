@@ -5,7 +5,10 @@ Source of current direct consumer price/status: A2A public e-moving map/detail A
 Geographic/technical backbone: normalized official PUN artifact.
 
 Fail-closed rules:
-- only exact OCPI EVSE-ID joins are rankable;
+- exact OCPI EVSE-ID joins are preferred;
+- a legacy-provider fallback is rankable only when the plug suffix resolves to
+  exactly one PUN EVSE, that PUN EVSE belongs to A2A (partyId A2M), and the A2A
+  map coordinate is within 250 m of the PUN EVSE coordinate;
 - malformed/missing price or penalty is retained but not guessed;
 - duplicate A2A representations of the same PUN EVSE are accepted only when the
   direct tariff components agree; conflicts are blocked;
@@ -22,7 +25,6 @@ import time
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -34,6 +36,7 @@ DEFAULT_OUT = Path("data/national/a2a_direct_stations_italy.json.gz")
 DEFAULT_REPORT = Path("data/reports/a2a_italy_national_report.json")
 PRICE_RE = re.compile(r"(?P<value>\d+(?:[\.,]\d+)?)\s*€\s*/\s*kWh", re.I)
 MINUTE_RE = re.compile(r"(?P<value>\d+(?:[\.,]\d+)?)\s*€\s*/\s*min(?:\.|uto|ute)?", re.I)
+LEGACY_GEO_MAX_M = 250.0
 
 
 def now_iso():
@@ -94,12 +97,22 @@ def browser_detail_batch(driver, aliases, concurrency=12, timeout_s=180):
     return result if isinstance(result, list) else []
 
 
+def evse_suffix(evse_id):
+    parts = str(evse_id or "").split("*", 2)
+    return parts[2] if len(parts) == 3 else None
+
+
 def load_pun(path):
     with gzip.open(path, "rt", encoding="utf-8") as fh:
         data = json.load(fh)
     evses = {str(e.get("evseId")): e for e in data.get("evses", []) if e.get("evseId")}
+    suffix_idx = defaultdict(list)
+    for e in evses.values():
+        suffix = evse_suffix(e.get("evseId"))
+        if suffix:
+            suffix_idx[suffix].append(e)
     stations = {str(s.get("stationId")): s for s in data.get("stations", []) if s.get("stationId")}
-    return evses, stations, data.get("counts", {})
+    return evses, suffix_idx, stations, data.get("counts", {})
 
 
 def evse_candidates(provider_id, plug_id):
@@ -113,6 +126,43 @@ def evse_candidates(provider_id, plug_id):
     return out
 
 
+def coords_from_map(item):
+    lat = fnum(item.get("lat"))
+    lon = fnum(item.get("long"))
+    if lat is None or lon is None:
+        return None
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        return None
+    return [lat, lon]
+
+
+def haversine_m(a, b):
+    if not a or not b or len(a) < 2 or len(b) < 2:
+        return None
+    lat1, lon1 = map(math.radians, [float(a[0]), float(a[1])])
+    lat2, lon2 = map(math.radians, [float(b[0]), float(b[1])])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    return 6371000.0 * 2 * math.asin(min(1.0, math.sqrt(h)))
+
+
+def resolve_pun(pun_idx, suffix_idx, provider_id, plug_id, a2a_coords):
+    ids = evse_candidates(provider_id, plug_id)
+    for candidate in ids:
+        if candidate in pun_idx:
+            return pun_idx[candidate], "exact_ocpi_evse_id", None, ids, []
+
+    suffix_hits = [e for e in suffix_idx.get(str(plug_id), []) if str(e.get("partyId") or "").upper() == "A2M"]
+    diagnostics = [e.get("evseId") for e in suffix_hits[:10]]
+    if len(suffix_hits) == 1 and a2a_coords:
+        pun = suffix_hits[0]
+        dist = haversine_m(a2a_coords, pun.get("coordinates"))
+        if dist is not None and dist <= LEGACY_GEO_MAX_M:
+            return pun, "unique_suffix_a2a_party_geo", round(dist, 3), ids, diagnostics
+    return None, None, None, ids, diagnostics
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pun", required=True)
@@ -121,7 +171,7 @@ def main():
     ap.add_argument("--batch-size", type=int, default=120)
     ap.add_argument("--concurrency", type=int, default=12)
     args = ap.parse_args()
-    pun_idx, pun_station_idx, pun_counts = load_pun(Path(args.pun))
+    pun_idx, pun_suffix_idx, pun_station_idx, pun_counts = load_pun(Path(args.pun))
 
     opts = Options()
     for arg in ("--headless=new", "--no-sandbox", "--disable-dev-shm-usage", "--window-size=1440,1600", "--lang=it-IT"):
@@ -158,10 +208,13 @@ def main():
 
     raw_candidates, unmatched, malformed_price = [], [], []
     type_counts, status_counts, provider_counts = Counter(), Counter(), Counter()
+    match_method_counts = Counter()
+    legacy_provider_pairs = Counter()
     for r in detail_results:
         alias = str(r.get("alias") or "")
         d = r["data"]
         m = map_by_alias.get(alias, {})
+        a2a_coords = coords_from_map(m)
         apv = d.get("assetProvider") if isinstance(d.get("assetProvider"), dict) else {}
         provider_id = apv.get("providerId")
         type_counts[str(d.get("type") or m.get("type") or "UNKNOWN")] += 1
@@ -176,18 +229,53 @@ def main():
                 plug_id = str(plug.get("plugId") or plug.get("id") or "").strip()
                 if not plug_id:
                     continue
-                ids = evse_candidates(provider_id, plug_id)
-                pun = next((pun_idx[x] for x in ids if x in pun_idx), None)
+                pun, match_method, match_distance_m, ids, suffix_diagnostics = resolve_pun(
+                    pun_idx, pun_suffix_idx, provider_id, plug_id, a2a_coords
+                )
                 energy = parse_rate(plug.get("priceList"), PRICE_RE)
                 penalty = parse_rate(plug.get("penaltyList"), MINUTE_RE)
-                base = {"a2aAlias": alias, "providerId": provider_id, "plugId": plug_id, "candidateEvseIds": ids, "a2aStationType": d.get("type") or m.get("type"), "a2aStationStatus": d.get("statusCu") or m.get("statusCu"), "a2aPlugStatus": plug.get("status"), "a2aPlugType": plug.get("plugType") or plug.get("type"), "a2aMaxPowerKw": fnum(plug.get("maxPower")), "directEnergyEurPerKwh": energy, "directPenaltyEurPerMin": penalty, "rawPriceList": plug.get("priceList"), "rawPenaltyList": plug.get("penaltyList")}
+                base = {
+                    "a2aAlias": alias,
+                    "providerId": provider_id,
+                    "plugId": plug_id,
+                    "candidateEvseIds": ids,
+                    "a2aCoordinates": a2a_coords,
+                    "a2aStationType": d.get("type") or m.get("type"),
+                    "a2aStationStatus": d.get("statusCu") or m.get("statusCu"),
+                    "a2aPlugStatus": plug.get("status"),
+                    "a2aPlugType": plug.get("plugType") or plug.get("type"),
+                    "a2aMaxPowerKw": fnum(plug.get("maxPower")),
+                    "directEnergyEurPerKwh": energy,
+                    "directPenaltyEurPerMin": penalty,
+                    "rawPriceList": plug.get("priceList"),
+                    "rawPenaltyList": plug.get("penaltyList"),
+                    "matchMethod": match_method,
+                    "matchDistanceM": match_distance_m,
+                    "suffixA2aPartyCandidates": suffix_diagnostics,
+                }
                 if pun is None:
                     unmatched.append(base)
                     continue
+                match_method_counts[match_method] += 1
+                if match_method == "unique_suffix_a2a_party_geo":
+                    source_provider = str(provider_id or "UNKNOWN").upper()
+                    target_prefix = str(pun.get("evseId") or "").split("*")[1] if "*" in str(pun.get("evseId") or "") else "UNKNOWN"
+                    legacy_provider_pairs[(source_provider, target_prefix)] += 1
                 if energy is None:
                     malformed_price.append({**base, "punEvseId": pun.get("evseId")})
                     continue
-                raw_candidates.append({**base, "punEvseId": pun.get("evseId"), "punStationId": pun.get("stationId"), "punPartyId": pun.get("partyId"), "punOperator": pun.get("operator"), "punCoordinates": pun.get("coordinates"), "punMaxPowerKw": pun.get("maxPowerKw"), "punOperationalState": pun.get("operationalState"), "punOccupancyState": pun.get("occupancyState"), "punSourceStatus": pun.get("sourceStatus")})
+                raw_candidates.append({
+                    **base,
+                    "punEvseId": pun.get("evseId"),
+                    "punStationId": pun.get("stationId"),
+                    "punPartyId": pun.get("partyId"),
+                    "punOperator": pun.get("operator"),
+                    "punCoordinates": pun.get("coordinates"),
+                    "punMaxPowerKw": pun.get("maxPowerKw"),
+                    "punOperationalState": pun.get("operationalState"),
+                    "punOccupancyState": pun.get("occupancyState"),
+                    "punSourceStatus": pun.get("sourceStatus"),
+                })
 
     grouped = defaultdict(list)
     for row in raw_candidates:
@@ -201,16 +289,100 @@ def main():
         if len(rows) > 1:
             duplicate_same += len(rows) - 1
         r = rows[0]
-        evses.append({"evseId": evse_id, "stationId": r["punStationId"], "operator": "A2A", "partyId": r["punPartyId"], "coordinates": r["punCoordinates"], "maxPowerKw": r["punMaxPowerKw"], "operationalState": r["punOperationalState"], "occupancyState": r["punOccupancyState"], "sourceStatus": r["punSourceStatus"], "directTariff": {"energyEurPerKwh": r["directEnergyEurPerKwh"], "occupancyEurPerMin": r["directPenaltyEurPerMin"], "source": "A2A public e-moving station detail", "priceListRaw": r["rawPriceList"], "penaltyListRaw": r["rawPenaltyList"]}, "rankableDirectTariff": True, "matchMethod": "exact_ocpi_evse_id", "a2aSourceAliases": sorted({x["a2aAlias"] for x in rows})})
+        methods = sorted({str(x.get("matchMethod")) for x in rows if x.get("matchMethod")})
+        evses.append({
+            "evseId": evse_id,
+            "stationId": r["punStationId"],
+            "operator": "A2A",
+            "partyId": r["punPartyId"],
+            "coordinates": r["punCoordinates"],
+            "maxPowerKw": r["punMaxPowerKw"],
+            "operationalState": r["punOperationalState"],
+            "occupancyState": r["punOccupancyState"],
+            "sourceStatus": r["punSourceStatus"],
+            "directTariff": {
+                "energyEurPerKwh": r["directEnergyEurPerKwh"],
+                "occupancyEurPerMin": r["directPenaltyEurPerMin"],
+                "source": "A2A public e-moving station detail",
+                "priceListRaw": r["rawPriceList"],
+                "penaltyListRaw": r["rawPenaltyList"],
+            },
+            "rankableDirectTariff": True,
+            "matchMethod": methods[0] if len(methods) == 1 else "+".join(methods),
+            "a2aSourceAliases": sorted({x["a2aAlias"] for x in rows}),
+        })
 
     station_ids = sorted({e["stationId"] for e in evses if e.get("stationId")})
     stations = [pun_station_idx[s] for s in station_ids if s in pun_station_idx]
     total_plugs = len(raw_candidates) + len(unmatched) + len(malformed_price)
-    exact_matches = len(raw_candidates) + len(malformed_price)
+    safe_matches = len(raw_candidates) + len(malformed_price)
+    exact_matches = match_method_counts.get("exact_ocpi_evse_id", 0)
+    legacy_matches = match_method_counts.get("unique_suffix_a2a_party_geo", 0)
     exact_rate = exact_matches / total_plugs if total_plugs else 0.0
+    safe_rate = safe_matches / total_plugs if total_plugs else 0.0
     rankable_rate = len(evses) / len(grouped) if grouped else 0.0
-    report = {"generatedAt": now_iso(), "source": {"page": BASE_PAGE, "mapEndpoint": MAP_ENDPOINT, "detailEndpoint": DETAIL_ENDPOINT, "punInput": str(args.pun)}, "security": {"accountCredentialsUsed": False, "authorizationMaterialPersisted": False, "cookiesPersisted": False, "rechargeOrAuthEndpointsCalled": False}, "counts": {"punInput": pun_counts, "a2aMapRecords": len(map_items), "a2aOwnedMapRecords": len(owned), "uniqueA2aAliases": len(aliases), "successfulDetails": len(detail_results), "failedDetails": len(failures), "parsedPlugs": total_plugs, "exactPunMatches": exact_matches, "exactPunMatchRate": round(exact_rate, 6), "unmatchedPlugs": len(unmatched), "malformedPriceMatches": len(malformed_price), "rawMatchedPricedRows": len(raw_candidates), "uniqueMatchedPricedEvse": len(grouped), "duplicateSameTariffRows": duplicate_same, "conflictingTariffEvse": len(conflicts), "rankableEvse": len(evses), "rankableStations": len(stations), "rankableResolutionRate": round(rankable_rate, 6)}, "a2aTypeCounts": dict(sorted(type_counts.items())), "a2aStatusCounts": dict(sorted(status_counts.items())), "a2aProviderCounts": dict(sorted(provider_counts.items())), "qualityGates": {"detailsSuccessRateGte99pct": len(detail_results) >= max(1, int(len(aliases) * 0.99)), "exactPunJoinRateGte95pct": exact_rate >= 0.95, "conflictingTariffEvseZero": len(conflicts) == 0, "rankableEvseNonzero": len(evses) > 0}, "failures": failures[:200], "unmatchedSample": unmatched[:200], "malformedPriceSample": malformed_price[:100], "conflicts": conflicts[:200]}
-    dataset = {"schemaVersion": 1, "dataset": "a2a_direct_stations_italy", "generatedAt": report["generatedAt"], "operator": "A2A", "country": "IT", "scope": "research-candidate-national-direct-tariff", "sources": [BASE_PAGE, "PUN normalized national artifact"], "counts": report["counts"], "matchPolicy": {"rankable": "exact OCPI EVSE ID only", "duplicatePolicy": "same tariff accepted; conflicting tariff blocked", "technicalTruth": "PUN power/coordinates retained"}, "stations": stations, "evses": evses}
+    legacy_pair_json = {f"{a}->{b}": n for (a, b), n in sorted(legacy_provider_pairs.items())}
+    report = {
+        "generatedAt": now_iso(),
+        "source": {"page": BASE_PAGE, "mapEndpoint": MAP_ENDPOINT, "detailEndpoint": DETAIL_ENDPOINT, "punInput": str(args.pun)},
+        "security": {"accountCredentialsUsed": False, "authorizationMaterialPersisted": False, "cookiesPersisted": False, "rechargeOrAuthEndpointsCalled": False},
+        "counts": {
+            "punInput": pun_counts,
+            "a2aMapRecords": len(map_items),
+            "a2aOwnedMapRecords": len(owned),
+            "uniqueA2aAliases": len(aliases),
+            "successfulDetails": len(detail_results),
+            "failedDetails": len(failures),
+            "parsedPlugs": total_plugs,
+            "exactPunMatches": exact_matches,
+            "exactPunMatchRate": round(exact_rate, 6),
+            "legacySafeSuffixMatches": legacy_matches,
+            "safePunMatches": safe_matches,
+            "safePunMatchRate": round(safe_rate, 6),
+            "unmatchedPlugs": len(unmatched),
+            "malformedPriceMatches": len(malformed_price),
+            "rawMatchedPricedRows": len(raw_candidates),
+            "uniqueMatchedPricedEvse": len(grouped),
+            "duplicateSameTariffRows": duplicate_same,
+            "conflictingTariffEvse": len(conflicts),
+            "rankableEvse": len(evses),
+            "rankableStations": len(stations),
+            "rankableResolutionRate": round(rankable_rate, 6),
+        },
+        "a2aTypeCounts": dict(sorted(type_counts.items())),
+        "a2aStatusCounts": dict(sorted(status_counts.items())),
+        "a2aProviderCounts": dict(sorted(provider_counts.items())),
+        "matchMethodCounts": dict(sorted(match_method_counts.items())),
+        "legacyProviderPrefixPairs": legacy_pair_json,
+        "legacyFallbackPolicy": {"punPartyId": "A2M", "uniqueSuffixRequired": True, "maxGeoDistanceM": LEGACY_GEO_MAX_M},
+        "qualityGates": {
+            "detailsSuccessRateGte99pct": len(detail_results) >= max(1, int(len(aliases) * 0.99)),
+            "safePunJoinRateGte95pct": safe_rate >= 0.95,
+            "conflictingTariffEvseZero": len(conflicts) == 0,
+            "rankableEvseNonzero": len(evses) > 0,
+        },
+        "failures": failures[:200],
+        "unmatched": unmatched,
+        "malformedPriceSample": malformed_price[:100],
+        "conflicts": conflicts[:200],
+    }
+    dataset = {
+        "schemaVersion": 2,
+        "dataset": "a2a_direct_stations_italy",
+        "generatedAt": report["generatedAt"],
+        "operator": "A2A",
+        "country": "IT",
+        "scope": "research-candidate-national-direct-tariff",
+        "sources": [BASE_PAGE, "PUN normalized national artifact"],
+        "counts": report["counts"],
+        "matchPolicy": {
+            "rankable": "exact OCPI EVSE ID, or unique suffix + PUN partyId A2M + <=250m coordinate agreement",
+            "duplicatePolicy": "same tariff accepted; conflicting tariff blocked",
+            "technicalTruth": "PUN power/coordinates/status retained",
+        },
+        "stations": stations,
+        "evses": evses,
+    }
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(out, "wt", encoding="utf-8") as fh:
