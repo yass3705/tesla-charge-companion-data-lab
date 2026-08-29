@@ -1,0 +1,42 @@
+name: Duferco frontend station endpoint discovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/duferco-italy-probe]
+    paths:
+      - scripts/duferco_frontend_station_endpoint_probe.py
+      - .github/workflows/duferco-frontend-station-endpoint-probe.yml
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check selenium
+      - name: Inspect public frontend for station endpoints
+        run: python scripts/duferco_frontend_station_endpoint_probe.py
+      - name: Validate read-only result
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('data/reports/duferco_frontend_station_endpoint_probe.json').read_text())
+          assert r['security']['accountCredentialsUsed'] is False
+          assert r['security']['requestHeadersRead'] is False
+          assert r['security']['cookiesRead'] is False
+          assert r['security']['fullBundlesPersisted'] is False
+          assert r['hitCount'] > 0
+          print(json.dumps({'hits':r['hitCount'],'terms':sorted({x['term'] for x in r['hits']})},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: duferco-frontend-station-endpoint-probe
+          path: data/reports/duferco_frontend_station_endpoint_probe.json
+          retention-days: 14
