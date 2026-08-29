@@ -1,0 +1,45 @@
+name: A2A Italy public backend probe
+
+on:
+  push:
+    branches: [research/a2a-italy-current]
+    paths:
+      - scripts/a2a_italy_backend_probe.py
+      - .github/workflows/a2a-italy-backend-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests
+      - name: Discover public map/detail endpoints
+        run: python scripts/a2a_italy_backend_probe.py
+      - name: Validate report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/reports/a2a_italy_backend_probe.json')
+          assert p.exists() and p.stat().st_size > 500
+          r=json.loads(p.read_text(encoding='utf-8'))
+          assert r['security']['accountCredentialsUsed'] is False
+          assert r['security']['authorizationMaterialPersisted'] is False
+          assert r['security']['cookiesPersisted'] is False
+          assert r['security']['rechargeOrAuthEndpointsCalled'] is False
+          print(json.dumps(r['detected'],ensure_ascii=False,indent=2))
+          assert 'map' in r['detected'], 'public map endpoint not rediscovered'
+          assert 'detail' in r['detected'], 'public detail endpoint not rediscovered'
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: a2a-italy-backend-probe
+          path: data/reports/a2a_italy_backend_probe.json
+          retention-days: 14
