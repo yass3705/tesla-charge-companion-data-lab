@@ -1,0 +1,64 @@
+name: Morocco FastVolt read-only refresh
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['diag/morocco-fastvolt-readonly-refresh-20260830']
+    paths:
+      - 'scripts/morocco/extract_fastvolt_public_map_chargers.py'
+      - '.github/workflows/morocco-fastvolt-readonly-refresh.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refresh sanitized FastVolt public inventory
+        run: |
+          mkdir -p artifacts/morocco-fastvolt-readonly-refresh
+          python3 scripts/morocco/extract_fastvolt_public_map_chargers.py > artifacts/morocco-fastvolt-readonly-refresh/latest-public-map-inventory.json
+      - name: Validate production-safe FastVolt semantics
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('artifacts/morocco-fastvolt-readonly-refresh/latest-public-map-inventory.json')
+          d=json.loads(p.read_text())
+          rows=d.get('chargers') or []
+          prod=[x for x in rows if x.get('production_candidate') is True]
+          assert d.get('source_url')=='https://www.fastvolt.net/api/pages'
+          assert d.get('http_status')==200
+          assert d.get('truncated') is False
+          assert len(rows)>=97
+          assert len(prod)>=94
+          assert all(x.get('cpo_operator')=='FastVolt / Afrimobility' for x in prod)
+          assert all(x.get('app_source_access_network')=='FastVolt public web map' for x in prod)
+          assert all(x.get('tariff_channel')=='FastVolt direct' for x in prod)
+          assert all(x.get('status_source') is None for x in prod)
+          assert all(x.get('site_brand') is None for x in prod)
+          assert all(isinstance(x.get('latitude'),(int,float)) and isinstance(x.get('longitude'),(int,float)) for x in prod)
+          # The public `state` field is administrative geography, not charger availability.
+          assert all(x.get('status_source') is None for x in rows)
+          w=next((x for x in rows if str(x.get('charger_id'))=='W00057'),None)
+          assert w is not None
+          out={
+            'ok':True,
+            'chargerCount':len(rows),
+            'productionCandidateCount':len(prod),
+            'validCoordinateCount':d.get('summary',{}).get('valid_coordinate_count'),
+            'w00057':{k:w.get(k) for k in ('charger_name','max_output','ccs_count','chademo_count','type2_count','brand','model','state')},
+            'statusSourcePromoted':False,
+            'modeling':d.get('modeling')
+          }
+          Path('artifacts/morocco-fastvolt-readonly-refresh/validation-summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: morocco-fastvolt-readonly-refresh
+          path: artifacts/morocco-fastvolt-readonly-refresh/
+          retention-days: 7
