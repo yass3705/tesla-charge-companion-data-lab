@@ -1,0 +1,70 @@
+name: Duferco Italy PUN direct candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/duferco-v9-national
+    paths:
+      - scripts/duferco_italy_pun_direct.py
+      - .github/workflows/duferco-italy-pun-direct.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download latest successful normalized PUN artifact
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/pun data/national
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
+          cp /tmp/pun/national/pun_italy_national.json.gz data/national/pun_italy_national.json.gz
+          test -s data/national/pun_italy_national.json.gz
+          echo "Using PUN run $RUN_ID"
+      - name: Build Duferco exact-EVSE candidate
+        run: python scripts/duferco_italy_pun_direct.py
+      - name: Validate candidate
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          p=Path('data/national/duferco_direct_stations_italy.json.gz')
+          assert p.exists() and p.stat().st_size > 5000
+          with gzip.open(p,'rt',encoding='utf-8') as fh:d=json.load(fh)
+          c=d['counts']
+          print(json.dumps(c,ensure_ascii=False,indent=2))
+          assert d['country']=='IT'
+          assert d['operator']=='Duferco Mobility'
+          assert c['dufercoPunStations'] > 500
+          assert c['dufercoPunEvse'] > 500
+          assert c['rankableDirectEvse'] > 500
+          assert c['powerCoveragePct'] >= 95
+          assert sum(c['byTariffClass'].values()) == c['rankableDirectEvse']
+          rankable=[e for e in d['evses'] if e.get('rankableDirectTariff')]
+          assert rankable
+          assert all(e['directTariff']['postChargeFeeUnknown'] is True for e in rankable)
+          assert all(e['directTariff']['holidayCalendar']=='IT' for e in rankable)
+          assert all(e['directTariff']['timeZone']=='Europe/Rome' for e in rankable)
+          assert all(len(e['directTariff']['rules'])==6 for e in rankable)
+          PY
+      - name: Upload candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: duferco-italy-pun-direct-candidate
+          path: |
+            data/national/duferco_direct_stations_italy.json.gz
+            data/reports/duferco_italy_pun_direct_report.json
+          retention-days: 14
