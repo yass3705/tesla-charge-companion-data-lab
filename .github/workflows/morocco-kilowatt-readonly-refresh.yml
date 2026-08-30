@@ -1,0 +1,45 @@
+name: Morocco Kilowatt read-only refresh
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['diag/morocco-kilowatt-readonly-refresh-20260831']
+    paths:
+      - 'scripts/morocco/kilowatt_public_station_inventory.py'
+      - '.github/workflows/morocco-kilowatt-readonly-refresh.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refresh sanitized Kilowatt public inventory
+        run: python3 scripts/morocco/kilowatt_public_station_inventory.py
+      - name: Validate production-safe Kilowatt semantics
+        run: |
+          python3 - <<'PY'
+          import json, math
+          p='reports/morocco/kilowatt/latest-public-station-inventory.json'
+          d=json.load(open(p,encoding='utf-8'))
+          s=d['summary']; rows=d['stations']
+          assert len(rows)>=43, len(rows)
+          assert d['modeling']['cpo_operator']=='Kilowatt'
+          assert d['modeling']['app_source_access_network']=='Kilowatt public web map'
+          assert d['modeling']['status_source']=='Kilowatt public web map'
+          assert all(r.get('cpo_operator')=='Kilowatt' for r in rows)
+          assert all(r.get('site_brand') is None for r in rows)
+          assert all(r.get('tariff_channel') is None for r in rows)
+          usable=[r for r in rows if isinstance(r.get('latitude'),(int,float)) and isinstance(r.get('longitude'),(int,float)) and -90<=r['latitude']<=90 and -180<=r['longitude']<=180]
+          assert len(usable)>=43, len(usable)
+          al=[r for r in rows if 'waha' in str(r.get('name','')).lower() or 'waha' in str(r.get('address','')).lower()]
+          print(json.dumps({'station_records':len(rows),'usable_gps':len(usable),'official_public_connector_count':s.get('official_public_connector_count'),'status_counts':s.get('status_counts'),'al_waha_candidates':al},ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: morocco-kilowatt-readonly-refresh
+          path: reports/morocco/kilowatt/latest-public-station-inventory.json
+          retention-days: 7
