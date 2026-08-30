@@ -1,0 +1,64 @@
+name: Morocco EVGO V9 read-only refresh
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['diag/morocco-evgo-v9-readonly-refresh-20260830']
+    paths:
+      - '.github/workflows/morocco-evgo-v9-readonly-refresh.yml'
+      - 'scripts/morocco_evgo_pin_hydration_probe.py'
+      - 'scripts/morocco_evgo_normalize.py'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch fresh public native EVGO state
+        run: python3 scripts/morocco_evgo_pin_hydration_probe.py
+      - name: Normalize fresh native state for V9
+        run: |
+          mkdir -p reports/morocco/evgo
+          cp artifacts/morocco-evgo-pin-hydration/summary.json reports/morocco/evgo/latest-pin-hydration.json
+          python3 scripts/morocco_evgo_normalize.py
+      - name: Validate EVGO production invariants
+        run: |
+          python3 - <<'PY'
+          import json, math
+          p='reports/morocco/evgo/latest-normalized-stations.json'
+          d=json.load(open(p,encoding='utf-8'))
+          stations=d.get('stations') or []
+          assert len(stations)==17, len(stations)
+          evses=[e for s in stations for e in (s.get('evses') or [])]
+          assert len(evses)==43, len(evses)
+          for s in stations:
+              lat=s.get('latitude'); lon=s.get('longitude')
+              assert isinstance(lat,(int,float)) and isinstance(lon,(int,float)) and math.isfinite(lat) and math.isfinite(lon)
+              assert 20 <= lat <= 37 and -18 <= lon <= 0, (s.get('locationId'),lat,lon)
+              assert s.get('status_source')=='EVGO native backend cp.evgo.ma'
+          for e in evses:
+              status=e.get('status')
+              expected='unknown'
+              if e.get('isLongTermUnavailable') is True or e.get('isTemporarilyUnavailable') is True:
+                  expected='out_of_service'
+              elif status in ('charging','suspendedEV'):
+                  expected='occupied_or_active_session'
+              elif status=='available' and e.get('isAvailable') is True:
+                  expected='available'
+              elif status in ('unavailable','faulted','offline','unknown'):
+                  expected='out_of_service'
+              assert e.get('operational_class')==expected,(e.get('id'),status,e.get('operational_class'),expected)
+          print(json.dumps({'ok':True,'generated_at':d.get('generated_at'),'source_generated_at':d.get('source_generated_at'),'stations':len(stations),'evses':len(evses),'native_status_counts':d.get('summary',{}).get('native_status_counts'),'operational_class_counts':d.get('summary',{}).get('operational_class_counts')},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: morocco-evgo-v9-fresh-readonly
+          path: |
+            artifacts/morocco-evgo-pin-hydration/summary.json
+            reports/morocco/evgo/latest-normalized-stations.json
+          if-no-files-found: error
+          retention-days: 7
