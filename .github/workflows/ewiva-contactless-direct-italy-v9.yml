@@ -1,0 +1,79 @@
+name: Italy V9 Ewiva contactless direct candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/ewiva-contactless-direct-v9
+    paths:
+      - scripts/ewiva_contactless_direct_italy_v9.py
+      - .github/workflows/ewiva-contactless-direct-italy-v9.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check requests beautifulsoup4
+      - name: Download latest validated PUN Italy dataset
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/pun data/national
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
+          cp /tmp/pun/national/pun_italy_national.json.gz data/national/pun_italy_national.json.gz
+          test -s data/national/pun_italy_national.json.gz
+          echo "Using PUN run $RUN_ID"
+      - name: Build Ewiva contactless direct overlay
+        run: python scripts/ewiva_contactless_direct_italy_v9.py
+      - name: Validate strict direct-tariff eligibility
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          with gzip.open('data/national/ewiva_contactless_direct_italy_candidate.json.gz','rt',encoding='utf-8') as fh:d=json.load(fh)
+          r=json.loads(Path('data/reports/ewiva_contactless_direct_italy_report.json').read_text())
+          c=d['counts']
+          print(json.dumps(c,ensure_ascii=False,indent=2))
+          assert d['country']=='IT'
+          assert d['operator']=='Ewiva'
+          assert d['partyId']=='EWI'
+          assert d['price']=={'eurPerKwh':0.8,'validFrom':'2026-08-01'}
+          assert d['rules']['directOnlyOnOfficialPosEnabledSites'] is True
+          assert d['rules']['unmatchedSitesFailClosed'] is True
+          assert d['rules']['ambiguousSitesFailClosed'] is True
+          assert d['rules']['neverExpandPriceToAllEwivaStations'] is True
+          assert c['officialPosSiteRows'] >= 80
+          assert c['matchedPosStations'] >= 50
+          assert c['rankableDirectEvse'] >= c['matchedPosStations']
+          assert c['ambiguousOfficialSites'] == 0
+          assert c['matchedPosStations'] < c['punEwivaStations']
+          for e in d['entries'][:200]:
+              t=e['directTariff']
+              assert t['channel']=='operator_direct'
+              assert t['operator']=='Ewiva'
+              assert t['paymentMethod']=='contactless_pos'
+              assert t['energyEurPerKwh']==0.8
+              assert t['rankable'] is True
+          PY
+      - name: Upload Ewiva contactless candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ewiva-contactless-direct-italy-v9-candidate
+          path: |
+            data/national/ewiva_contactless_direct_italy_candidate.json.gz
+            data/reports/ewiva_contactless_direct_italy_report.json
+          retention-days: 14
