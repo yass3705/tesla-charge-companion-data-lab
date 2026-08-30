@@ -1,0 +1,84 @@
+name: Italy V9 Ewiva Enel eMSP candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/ewiva-v9-enel-emsp
+    paths:
+      - scripts/ewiva_enel_emsp_italy_v9.py
+      - .github/workflows/ewiva-enel-emsp-italy-v9.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download latest validated PUN Italy dataset
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/pun data/national
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
+          cp /tmp/pun/national/pun_italy_national.json.gz data/national/pun_italy_national.json.gz
+          test -s data/national/pun_italy_national.json.gz
+          echo "Using PUN run $RUN_ID"
+
+      - name: Build Ewiva Enel On Your Way overlay
+        run: python scripts/ewiva_enel_emsp_italy_v9.py
+
+      - name: Validate Ewiva exact-EVSE commercial semantics
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          with gzip.open('data/national/ewiva_enel_emsp_italy_candidate.json.gz','rt',encoding='utf-8') as fh:d=json.load(fh)
+          r=json.loads(Path('data/reports/ewiva_enel_emsp_italy_report.json').read_text())
+          c=d['counts']
+          print(json.dumps(c,ensure_ascii=False,indent=2))
+          assert d['country']=='IT'
+          assert d['operator']=='Ewiva'
+          assert d['commercialLayer']=='Enel On Your Way eMSP'
+          assert d['rules']['basicIsEmspNotCpoDirect'] is True
+          assert d['rules']['sessionStartSelectsTariffForWholeSession'] is True
+          assert d['rules']['plugAndGoSuperRankableOnlyWhenSelected'] is True
+          assert d['rules']['explorerFailClosed'] is True
+          assert c['ewivaStations'] > 400
+          assert c['ewivaEvse'] > 800
+          assert c['rankableBasicEmspEvse'] == c['ewivaEvse']
+          assert c['rankablePlugAndGoSuperEvse'] == c['ewivaEvse']
+          assert c['blockedReasons'] == {}
+          assert c['byTariffClass'].get('HPC',0) > 500
+          for e in d['entries'][:100]:
+              basic=e['enelOnYourWayBasic']
+              assert basic['channel']=='emsp'
+              assert basic['notCpoDirect'] is True
+              assert basic['pricing']['priceSelectionBasis']=='session_start_local_time'
+              assert basic['pricing']['postChargeFee']['eurPerMinute'] in (0.1,0.2,0.3)
+              subs=e['subscriptions']
+              assert len(subs)==1 and subs[0]['subscriptionId']=='enel_plug_and_go_super'
+          assert r['tariffs']['basic']['HPC']['allDay']==0.86
+          assert r['tariffs']['plugAndGoSuperDiscountEurPerKwh']==0.05
+          PY
+
+      - name: Upload Ewiva candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ewiva-enel-emsp-italy-v9-candidate
+          path: |
+            data/national/ewiva_enel_emsp_italy_candidate.json.gz
+            data/reports/ewiva_enel_emsp_italy_report.json
+          retention-days: 14
