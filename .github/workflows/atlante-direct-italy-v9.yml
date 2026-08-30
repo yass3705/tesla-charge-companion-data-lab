@@ -1,0 +1,80 @@
+name: Italy V9 Atlante direct candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/atlante-direct-italy-v9
+    paths:
+      - scripts/atlante_station_tariffs_italy.py
+      - .github/workflows/atlante-direct-italy-v9.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      ATLANTE_API_SUBSCRIPTION_KEY: ${{ secrets.ATLANTE_API_SUBSCRIPTION_KEY }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Require Atlante credential
+        run: test -n "${ATLANTE_API_SUBSCRIPTION_KEY:-}"
+
+      - name: Download latest normalized PUN inventory
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/pun data/national
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
+          CANDIDATE="$(find /tmp/pun -type f -name pun_italy_national.json.gz | head -n1)"
+          test -n "$CANDIDATE" && test -s "$CANDIDATE"
+          cp "$CANDIDATE" data/national/pun_italy_national.json.gz
+          echo "Using PUN run $RUN_ID"
+
+      - name: Build myAtlante Italy direct candidate
+        run: python scripts/atlante_station_tariffs_italy.py --workers 12
+
+      - name: Validate exact PUN ATE identity and coverage
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          with gzip.open('data/national/pun_italy_national.json.gz','rt',encoding='utf-8') as f: pun=json.load(f)
+          with gzip.open('data/national/atlante_direct_stations_italy.json.gz','rt',encoding='utf-8') as f: a=json.load(f)
+          pun_ate={str(e.get('evseId')) for e in pun.get('evses',[]) if str(e.get('partyId') or '').upper()=='ATE' and e.get('evseId')}
+          direct=set(a.get('evseIds') or [])
+          c=a['counts']
+          assert a['country']=='IT' and a['partyId']=='ATE'
+          assert a['scope']['partnerLocationsIncluded'] is False
+          assert a['scope']['atlanteGoIncluded'] is False
+          assert a['scope']['onlyUnconditionalEnergyPrices'] is True
+          assert direct and direct <= pun_ate
+          assert c['pricedEvseCount']==len(direct)
+          assert c['pricedLocationCount'] >= 500
+          assert c['hydrationFailureCount'] == 0
+          coverage=len(direct)/len(pun_ate) if pun_ate else 0
+          assert coverage >= .80
+          assert all(str(e).startswith('IT*ATE*') for e in direct)
+          assert all(float(k)>0 for k in c['priceCounts'])
+          print(json.dumps({'punAteEvse':len(pun_ate),'directPricedEvse':len(direct),'coveragePct':round(coverage*100,2),'counts':c},ensure_ascii=False,indent=2))
+          PY
+
+      - name: Upload candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlante-direct-italy-v9-candidate
+          path: |
+            data/national/atlante_direct_stations_italy.json.gz
+            data/reports/atlante_direct_stations_italy_report.json
+          retention-days: 14
