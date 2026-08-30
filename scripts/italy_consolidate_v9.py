@@ -23,6 +23,7 @@ def main():
     ap.add_argument("--pun", default="data/national/pun_italy_national.json.gz")
     ap.add_argument("--plenitude", default="data/national/plenitude_direct_stations_italy.json.gz")
     ap.add_argument("--a2a", default="data/national/a2a_direct_stations_italy.json.gz")
+    ap.add_argument("--duferco", default="data/national/duferco_direct_stations_italy.json.gz")
     ap.add_argument("--atlante", default="data/national/atlante_go_italy_overlay.json.gz")
     ap.add_argument("--atlante-chargeleague", default="data/national/atlante_go_chargeleague_italy_overlay.json.gz")
     ap.add_argument("--ges-nextcharge", default="data/national/nextcharge_ges_italy_candidate.json.gz")
@@ -33,6 +34,7 @@ def main():
     pun = load_gz(Path(args.pun))
     plenitude = load_gz(Path(args.plenitude))
     a2a = load_gz(Path(args.a2a))
+    duferco = load_gz(Path(args.duferco))
     atlante = load_gz(Path(args.atlante))
     atlante_chargeleague = load_gz(Path(args.atlante_chargeleague))
     ges_nextcharge = load_gz(Path(args.ges_nextcharge))
@@ -84,6 +86,39 @@ def main():
                 direct_by_evse[evse_id] = candidate
         else:
             blocked["a2a:not_rankable"] += 1
+
+    # Duferco direct tariffs are exact PUN-EVSE overlays. Energy pricing is fully
+    # rankable by PUN max-power class and calendar window. The station-specific
+    # post-charge occupancy amount is not globally published, so V9 must fail
+    # closed when a session includes post-charge dwell.
+    for e in duferco.get("evses", []):
+        evse_id = str(e.get("evseId") or "")
+        if not evse_id:
+            continue
+        direct = e.get("directTariff") if isinstance(e.get("directTariff"), dict) else {}
+        if e.get("rankableDirectTariff") is True and direct.get("pricingType") == "rules" and direct.get("rules"):
+            candidate = {
+                "channel": "operator_direct",
+                "operator": "Duferco Mobility",
+                "pricingType": "rules",
+                "pricingRules": direct.get("rules"),
+                "holidayCalendar": direct.get("holidayCalendar") or "IT",
+                "timeZone": direct.get("timeZone") or "Europe/Rome",
+                "postChargeFeeUnknown": bool(direct.get("postChargeFeeUnknown", True)),
+                "postChargeFeePolicy": direct.get("postChargeFeePolicy"),
+                "tariffClass": e.get("directTariffClass"),
+                "source": direct.get("source"),
+                "termsSource": direct.get("termsSource"),
+                "rankable": True,
+            }
+            previous = direct_by_evse.get(evse_id)
+            if previous and previous.get("operator") != candidate.get("operator"):
+                blocked["cross_operator_evse_conflict"] += 1
+                direct_by_evse.pop(evse_id, None)
+            else:
+                direct_by_evse[evse_id] = candidate
+        else:
+            blocked[f"duferco:{e.get('blockingReason') or 'not_rankable'}"] += 1
 
     for layer_name, layer in (("atlante_own", atlante), ("atlante_chargeleague", atlante_chargeleague)):
         for e in layer.get("evses", []):
@@ -192,7 +227,7 @@ def main():
         merged_stations.append(out)
 
     payload = {
-        "schemaVersion": "1.2.0",
+        "schemaVersion": "1.3.0",
         "dataset": "italy-v9-consolidated-candidate",
         "generatedAt": now_iso(),
         "country": "IT",
@@ -207,6 +242,8 @@ def main():
             "subscriptionTariffsNeverOverwriteDirectTariff": True,
             "emspTariffsNeverMasqueradeAsCpoDirect": True,
             "emspTariffsDoNotOverwriteDirectOrSelectedSubscription": True,
+            "calendarAwareDirectTariffsSupported": True,
+            "unknownStationSpecificPostChargeFeesFailClosed": True,
             "teslaHandledByDedicatedTeslaSourceAtPublishLayer": True,
         },
         "counts": {
