@@ -1,0 +1,110 @@
+name: Italy V9 Enel overlay candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/enel-v9-national
+    paths:
+      - scripts/italy_enel_overlay_v9.py
+      - .github/workflows/italy-v9-enel-overlay.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download latest validated Italy V9 consolidation
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow italy-v9-consolidation.yml --branch research/italy-consolidation-v9-a2a --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/italy data/consolidation
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n italy-v9-consolidated-candidate -D /tmp/italy
+          if [ -f /tmp/italy/consolidation/italy_v9_candidate.json.gz ]; then
+            cp /tmp/italy/consolidation/italy_v9_candidate.json.gz data/consolidation/italy_v9_candidate.json.gz
+          elif [ -f /tmp/italy/data/consolidation/italy_v9_candidate.json.gz ]; then
+            cp /tmp/italy/data/consolidation/italy_v9_candidate.json.gz data/consolidation/italy_v9_candidate.json.gz
+          else
+            find /tmp/italy -maxdepth 4 -type f -print
+            exit 1
+          fi
+          test -s data/consolidation/italy_v9_candidate.json.gz
+          echo "Using Italy consolidation run $RUN_ID"
+
+      - name: Download latest validated Enel national candidate
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow enel-italy-national-tariffs.yml --branch research/enel-italy-probe --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/enel data/national data/reports
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n enel-direct-italy-final-candidate -D /tmp/enel
+          CANDIDATE="$(find /tmp/enel -type f -name enel_direct_stations_italy_final_candidate.json.gz | head -n1)"
+          REPORT="$(find /tmp/enel -type f -name enel_italy_finalization_report.json | head -n1)"
+          test -n "$CANDIDATE" && test -s "$CANDIDATE"
+          cp "$CANDIDATE" data/national/enel_direct_stations_italy_final_candidate.json.gz
+          if [ -n "$REPORT" ]; then cp "$REPORT" data/reports/enel_italy_finalization_report.json; fi
+          echo "Using Enel run $RUN_ID"
+
+      - name: Apply Enel V9 overlay
+        run: python scripts/italy_enel_overlay_v9.py
+
+      - name: Validate Enel commercial separation and coverage
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+
+          with gzip.open('data/consolidation/italy_v9_candidate.json.gz','rt',encoding='utf-8') as fh:
+              d=json.load(fh)
+          r=json.loads(Path('data/reports/italy_enel_v9_overlay_report.json').read_text())
+          c=d['counts']
+          rc=r['counts']
+          byop=c['rankableDirectByOperator']
+          bysub=c['rankableSelectedSubscriptionByOffer']
+
+          print(json.dumps(r,ensure_ascii=False,indent=2))
+          assert d['schemaVersion'] == '1.4.0'
+          assert d['country'] == 'IT'
+          assert d['rules']['sessionStartDeterminesEnelTariffForWholeSession'] is True
+          assert rc['crossOperatorConflict'] == 0
+          assert rc['enxEvseMatched'] > 20000
+          assert rc['enxDirectRankable'] > 20000
+          assert rc['enxDirectBlocked'] < 100
+          assert byop.get('Enel X Way',0) == rc['enxDirectRankable']
+          assert c['rankableDirectEvseCount'] > 45000
+          assert bysub.get('enel_plug_and_go_super:Enel X Way',0) > 20000
+          assert bysub.get('enel_plug_and_go_explorer:Enel X Way',0) > 20000
+          assert d['subscriptions']['enel_plug_and_go_super']['monthlyFeeEur'] == 4.0
+          assert d['subscriptions']['enel_plug_and_go_explorer']['monthlyFeeEur'] == 12.0
+          assert r['ewivaPolicy'] == 'fail_closed_until_exact_eMSP_EVSE_coverage_is_validated'
+
+          enx=[e for e in d['evses'] if (e.get('tccV9DirectTariff') or {}).get('operator')=='Enel X Way']
+          assert enx
+          sample=enx[0]['tccV9DirectTariff']
+          assert sample['pricingType']=='rules'
+          assert sample['priceSelectionBasis']=='session_start_local_time'
+          assert len(sample['pricingRules'])==2
+          assert sample['timeZone']=='Europe/Rome'
+          PY
+
+      - name: Upload Italy V9 Enel candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: italy-v9-enel-overlay-candidate
+          path: |
+            data/consolidation/italy_v9_candidate.json.gz
+            data/reports/italy_enel_v9_overlay_report.json
+          retention-days: 14
