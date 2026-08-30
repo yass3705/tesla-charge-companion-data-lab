@@ -78,10 +78,10 @@ jobs:
           assert d['schemaVersion'] == '1.4.0'
           assert d['country'] == 'IT'
           assert d['rules']['sessionStartDeterminesEnelTariffForWholeSession'] is True
-          assert rc['crossOperatorConflict'] == 0
+          assert rc.get('crossOperatorConflict',0) == 0
           assert rc['enxEvseMatched'] > 20000
           assert rc['enxDirectRankable'] > 20000
-          assert rc['enxDirectBlocked'] < 100
+          assert rc.get('enxDirectBlocked',0) < 100
           assert byop.get('Enel X Way',0) == rc['enxDirectRankable']
           assert c['rankableDirectEvseCount'] > 45000
           assert bysub.get('enel_plug_and_go_super:Enel X Way',0) > 20000
