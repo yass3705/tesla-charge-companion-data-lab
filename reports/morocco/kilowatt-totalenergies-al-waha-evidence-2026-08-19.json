@@ -1,44 +1,69 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "country": "MA",
   "observed_at": "2026-08-19",
-  "site_name": "AL WAHA",
-  "site_brand": ["TotalEnergies"],
-  "cross_source_evidence": [
+  "updated_at": "2026-08-30",
+  "site_name": "TotalEnergies AL WAHA",
+  "supersedes_prior_interpretation": true,
+  "canonical_resolution_report": "reports/morocco/totalenergies/al-waha-cpo-attribution.json",
+  "station": {
+    "kilowatt_station_id": "62e29ef59ad98566676cf824",
+    "site_brand": "TotalEnergies",
+    "operator_cpo": "Kilowatt",
+    "operator_cpo_status": "validated_station_specific_public_api",
+    "app_source_access_network": "Kilowatt public web map",
+    "tariff_channel": "Kilowatt native app/manual observation when available; otherwise unresolved",
+    "status_source": "Kilowatt public web map",
+    "power_kw": 22,
+    "connector_type": "Type 2",
+    "connector_count": 1,
+    "latitude": 33.4887755,
+    "longitude": -7.5100194
+  },
+  "evidence": [
     {
-      "source": "TotalEnergies Marketing Maroc official website",
+      "source_type": "official_site_brand_network_list",
+      "publisher": "TotalEnergies Marketing Maroc",
       "url": "https://totalenergies.ma/propos/totalenergies-au-maroc/energetique-renouvelable",
-      "fact": "TotalEnergies lists AL WAHA under 'Notre réseau de bornes de recharges électriques' with 1 charger at 22 AC.",
-      "evidence_class": "official_operator_network_page"
+      "observation": "TotalEnergies lists AL WAHA in its Morocco EV charging network with one 22 kW AC charger.",
+      "supports": [
+        "site_brand=TotalEnergies",
+        "power=22 kW AC",
+        "connector_count=1"
+      ]
     },
     {
-      "source": "Kilowatt app manual observation",
-      "fact": "The same TotalEnergies Al Waha site is visible in Kilowatt with a 22 kW connector marked Charging and tariff Free.",
-      "evidence_class": "manual_app_observation"
+      "source_type": "kilowatt_native_public_api",
+      "publisher": "Kilowatt",
+      "url": "https://kilowatt.ma/api/charging-stations",
+      "observation": "Kilowatt public GET-only API exposes station 62e29ef59ad98566676cf824 at TotalEnergies Al Waha, Mediouna, coordinates 33.4887755,-7.5100194, with available status and one Type 2 22 kW connector.",
+      "supports": [
+        "operator_cpo=Kilowatt",
+        "app_source_access_network=Kilowatt public web map",
+        "status_source=Kilowatt public web map",
+        "power=22 kW",
+        "connector_type=Type 2",
+        "station-specific coordinates"
+      ]
     },
     {
-      "source": "TotalEnergies Club EV-Charge manual observation",
-      "fact": "The user did not find Al Waha in the Club EV-Charge station list during the same manual verification.",
-      "evidence_class": "manual_cross_app_observation"
+      "source_type": "manual_native_app_observation",
+      "publisher": "Kilowatt",
+      "observation": "A prior manual Kilowatt app observation showed the Al Waha connector as Charging and Free.",
+      "supports": [
+        "tariff_channel=Kilowatt native app for that observation",
+        "status_source=Kilowatt native app for that observation"
+      ],
+      "production_note": "Do not turn this into a global Kilowatt null=>free rule; tariff remains station/EVSE specific."
     }
   ],
-  "attribution": {
-    "access_network": "Kilowatt",
-    "network_owner_or_official_network_claim": "TotalEnergies Marketing Maroc",
-    "cpo_candidate": "TotalEnergies",
-    "cpo_status": "strong_official_network_evidence_not_backend_confirmed",
-    "kilowatt_cpo_status": "not_supported_by_current_evidence",
-    "reason": "TotalEnergies itself places AL WAHA inside its official Moroccan EV charging network. Kilowatt visibility therefore no longer justifies assuming CPO=Kilowatt. However the precise OCPP/OCPI backend operator remains unconfirmed, so production modeling should keep CPO provisional until station/API evidence identifies the technical operator."
-  },
-  "production_model": {
+  "modeling_decision": {
+    "cpo_operator": "Kilowatt",
     "site_brand": "TotalEnergies",
-    "app_source": "Kilowatt",
-    "access_network": "Kilowatt",
-    "tariff_channel": "Kilowatt_app_display",
-    "cpo": null,
-    "cpo_candidate": "TotalEnergies",
-    "power_kw": 22,
-    "tariff_observed": "Free",
-    "status_source": "Kilowatt"
-  }
+    "app_source_access_network": "Kilowatt public web map",
+    "tariff_channel": "station-specific; native app evidence preferred",
+    "status_source": "Kilowatt public web map unless fresher native app evidence exists",
+    "production_status": "eligible"
+  },
+  "correction_note": "The original 2026-08-19 interpretation treated Kilowatt CPO attribution as unsupported. That became stale after the station-specific Kilowatt public API record was validated on 2026-08-24. This file is retained for history but now points to the resolved production model."
 }
