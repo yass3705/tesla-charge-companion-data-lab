@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-30T16:30:00Z",
+  "country": "MA",
+  "network": "FastVolt",
+  "finding": "official_public_faq_confirms_real_time_status_vocabulary_and_wallet_tariff_semantics",
+  "evidence": [
+    {
+      "source_type": "official_fastvolt_faq",
+      "url": "https://www.fastvolt.net/FAQ",
+      "observed_on": "2026-08-30",
+      "claims": {
+        "station_map": "FastVolt application and website map",
+        "status_is_real_time": true,
+        "public_status_labels": ["disponible", "occupée", "hors-service"],
+        "wallet_minimum_topup_mad": 50,
+        "session_debit_factors": ["durée", "puissance utilisée", "tarif de la borne"],
+        "payment_channels": ["carte bancaire marocaine ou internationale", "E-Voucher Carte Afriquia (en cours de déploiement)", "Kenzup in-app (en cours de déploiement)"]
+      }
+    }
+  ],
+  "modeling": {
+    "cpo_operator": "FastVolt / Afrimobility",
+    "site_brand": "station-specific; not inferred",
+    "app_source_access_network": "FastVolt",
+    "tariff_channel": "FastVolt direct; station-specific tariff amount still unresolved unless native station evidence exists",
+    "status_source": "FastVolt native app/web map once the public read-only request shape is validated"
+  },
+  "production_implications": {
+    "status_mapping_candidates": {
+      "disponible": "Available",
+      "occupée": "Occupied",
+      "hors-service": "Unavailable"
+    },
+    "tariff_amount_promoted": false,
+    "reason": "The FAQ validates billing dimensions and wallet behavior but does not expose a station-specific numeric tariff feed.",
+    "evplug_context_rule": "The evplug.ma support-domain clue from the current Android client remains technical/support context only and is not promoted to CPO/operator, tariff source, or status source."
+  },
+  "policy": {
+    "public_sources_only": true,
+    "read_only": true,
+    "no_credentials": true,
+    "no_login": true,
+    "no_mutations": true,
+    "no_private_client_material": true,
+    "sanitized_report_only": true
+  }
+}
