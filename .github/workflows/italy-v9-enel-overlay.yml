@@ -7,6 +7,7 @@ on:
       - research/enel-v9-national
     paths:
       - scripts/italy_enel_overlay_v9.py
+      - scripts/italy_ewiva_overlay_v9.py
       - .github/workflows/italy-v9-enel-overlay.yml
 
 permissions:
@@ -32,15 +33,9 @@ jobs:
           test -n "$RUN_ID"
           mkdir -p /tmp/italy data/consolidation
           gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n italy-v9-consolidated-candidate -D /tmp/italy
-          if [ -f /tmp/italy/consolidation/italy_v9_candidate.json.gz ]; then
-            cp /tmp/italy/consolidation/italy_v9_candidate.json.gz data/consolidation/italy_v9_candidate.json.gz
-          elif [ -f /tmp/italy/data/consolidation/italy_v9_candidate.json.gz ]; then
-            cp /tmp/italy/data/consolidation/italy_v9_candidate.json.gz data/consolidation/italy_v9_candidate.json.gz
-          else
-            find /tmp/italy -maxdepth 4 -type f -print
-            exit 1
-          fi
-          test -s data/consolidation/italy_v9_candidate.json.gz
+          CANDIDATE="$(find /tmp/italy -type f -name italy_v9_candidate.json.gz | head -n1)"
+          test -n "$CANDIDATE" && test -s "$CANDIDATE"
+          cp "$CANDIDATE" data/consolidation/italy_v9_candidate.json.gz
           echo "Using Italy consolidation run $RUN_ID"
 
       - name: Download latest validated Enel national candidate
@@ -57,10 +52,27 @@ jobs:
           if [ -n "$REPORT" ]; then cp "$REPORT" data/reports/enel_italy_finalization_report.json; fi
           echo "Using Enel run $RUN_ID"
 
-      - name: Apply Enel V9 overlay
+      - name: Download latest validated Ewiva partner candidate
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow enel-italy-ewiva-national.yml --branch research/enel-italy-probe --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/ewiva data/national data/reports
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n enel-ewiva-partner-italy -D /tmp/ewiva
+          CANDIDATE="$(find /tmp/ewiva -type f -name enel_ewiva_partner_italy.json.gz | head -n1)"
+          REPORT="$(find /tmp/ewiva -type f -name enel_ewiva_partner_italy_report.json | head -n1)"
+          test -n "$CANDIDATE" && test -s "$CANDIDATE"
+          cp "$CANDIDATE" data/national/enel_ewiva_partner_italy.json.gz
+          if [ -n "$REPORT" ]; then cp "$REPORT" data/reports/enel_ewiva_partner_italy_report.json; fi
+          echo "Using Ewiva run $RUN_ID"
+
+      - name: Apply Enel X Way V9 overlay
         run: python scripts/italy_enel_overlay_v9.py
 
-      - name: Validate Enel commercial separation and coverage
+      - name: Apply Ewiva Enel commercial overlay
+        run: python scripts/italy_ewiva_overlay_v9.py
+
+      - name: Validate Enel and Ewiva commercial separation and coverage
         run: |
           python - <<'PY'
           import gzip, json
@@ -68,16 +80,22 @@ jobs:
 
           with gzip.open('data/consolidation/italy_v9_candidate.json.gz','rt',encoding='utf-8') as fh:
               d=json.load(fh)
-          r=json.loads(Path('data/reports/italy_enel_v9_overlay_report.json').read_text())
+          er=json.loads(Path('data/reports/italy_enel_v9_overlay_report.json').read_text())
+          wr=json.loads(Path('data/reports/italy_ewiva_v9_overlay_report.json').read_text())
           c=d['counts']
-          rc=r['counts']
+          rc=er['counts']
+          wc=wr['counts']
           byop=c['rankableDirectByOperator']
           bysub=c['rankableSelectedSubscriptionByOffer']
+          byemsp=c['rankableEmspByProvider']
 
-          print(json.dumps(r,ensure_ascii=False,indent=2))
+          print(json.dumps(er,ensure_ascii=False,indent=2))
+          print(json.dumps(wr,ensure_ascii=False,indent=2))
           assert d['schemaVersion'] == '1.4.0'
           assert d['country'] == 'IT'
           assert d['rules']['sessionStartDeterminesEnelTariffForWholeSession'] is True
+          assert d['rules']['enelEwivaOffersAreCommercialLayersNotCpoDirect'] is True
+          assert d['rules']['ewivaDirectContactlessRequiresStationCapabilityEvidence'] is True
           assert rc.get('crossOperatorConflict',0) == 0
           assert rc['enxEvseMatched'] > 20000
           assert rc['enxDirectRankable'] > 20000
@@ -88,15 +106,24 @@ jobs:
           assert bysub.get('enel_plug_and_go_explorer:Enel X Way',0) > 20000
           assert d['subscriptions']['enel_plug_and_go_super']['monthlyFeeEur'] == 4.0
           assert d['subscriptions']['enel_plug_and_go_explorer']['monthlyFeeEur'] == 12.0
-          assert r['ewivaPolicy'] == 'fail_closed_until_exact_eMSP_EVSE_coverage_is_validated'
 
-          enx=[e for e in d['evses'] if (e.get('tccV9DirectTariff') or {}).get('operator')=='Enel X Way']
-          assert enx
-          sample=enx[0]['tccV9DirectTariff']
-          assert sample['pricingType']=='rules'
-          assert sample['priceSelectionBasis']=='session_start_local_time'
-          assert len(sample['pricingRules'])==2
-          assert sample['timeZone']=='Europe/Rome'
+          assert wc.get('partyMismatchBlocked',0) == 0
+          assert wc['ewiEvseMatched'] > 1700
+          assert wc['ewivaBasicEmspAdded'] > 1700
+          assert wc['ewivaDirectContactlessBlockedNoStationCapabilityFlag'] == wc['ewiEvseMatched']
+          assert wr['ewivaPartnerScheduleCoveragePct'] > 99
+          assert wr['policy']['basicIsEnelEmspNotEwivaDirect'] is True
+          assert wr['policy']['directContactless080BlockedWithoutStationCapabilityFlag'] is True
+          assert bysub.get('enel_plug_and_go_super:Ewiva',0) > 1700
+          assert bysub.get('enel_plug_and_go_explorer:Ewiva',0) > 1700
+          assert byemsp.get('Enel On Your Way:Ewiva',0) > 1700
+
+          ewi=[e for e in d['evses'] if str(e.get('partyId') or '').upper()=='EWI']
+          assert len(ewi) > 1700
+          assert not any((e.get('tccV9DirectTariff') or {}).get('operator') in ('Enel X Way','Ewiva') for e in ewi)
+          assert all(any(x.get('provider')=='Enel On Your Way' and x.get('network')=='Ewiva' for x in (e.get('tccV9EmspTariffs') or [])) for e in ewi)
+          assert all(any(x.get('subscriptionId')=='enel_plug_and_go_super' and x.get('network')=='Ewiva' for x in (e.get('tccV9SubscriptionTariffs') or [])) for e in ewi)
+          assert all(any(x.get('subscriptionId')=='enel_plug_and_go_explorer' and x.get('network')=='Ewiva' for x in (e.get('tccV9SubscriptionTariffs') or [])) for e in ewi)
           PY
 
       - name: Upload Italy V9 Enel candidate
@@ -107,4 +134,5 @@ jobs:
           path: |
             data/consolidation/italy_v9_candidate.json.gz
             data/reports/italy_enel_v9_overlay_report.json
+            data/reports/italy_ewiva_v9_overlay_report.json
           retention-days: 14
