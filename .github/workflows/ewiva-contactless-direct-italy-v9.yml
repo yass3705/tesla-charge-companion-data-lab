@@ -7,6 +7,7 @@ on:
       - research/ewiva-contactless-direct-v9
     paths:
       - scripts/ewiva_contactless_direct_italy_v9.py
+      - scripts/ewiva_contactless_direct_italy_v9_runner.py
       - .github/workflows/ewiva-contactless-direct-italy-v9.yml
 
 permissions:
@@ -25,7 +26,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install dependencies
-        run: pip install --disable-pip-version-check requests beautifulsoup4
+        run: pip install --disable-pip-version-check requests beautifulsoup4 selenium
       - name: Download latest validated PUN Italy dataset
         run: |
           set -euo pipefail
@@ -37,7 +38,7 @@ jobs:
           test -s data/national/pun_italy_national.json.gz
           echo "Using PUN run $RUN_ID"
       - name: Build Ewiva contactless direct overlay
-        run: python scripts/ewiva_contactless_direct_italy_v9.py
+        run: python scripts/ewiva_contactless_direct_italy_v9_runner.py
       - name: Validate strict direct-tariff eligibility
         run: |
           python - <<'PY'
