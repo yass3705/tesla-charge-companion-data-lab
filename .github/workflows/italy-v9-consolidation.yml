@@ -21,7 +21,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -41,6 +41,30 @@ jobs:
           cp /tmp/pun/national/pun_italy_national.json.gz data/national/pun_italy_national.json.gz
           test -s data/national/pun_italy_national.json.gz
           echo "Using PUN run $RUN_ID"
+      - name: Download validated A2A national candidate
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow a2a-italy-national-build.yml --branch research/a2a-italy-national --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/a2a data/reports
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n a2a-direct-italy-candidate -D /tmp/a2a
+          cp /tmp/a2a/national/a2a_direct_stations_italy.json.gz data/national/a2a_direct_stations_italy.json.gz
+          cp /tmp/a2a/reports/a2a_italy_national_report.json data/reports/a2a_italy_national_report.json
+          test -s data/national/a2a_direct_stations_italy.json.gz
+          echo "Using A2A run $RUN_ID"
+      - name: Revalidate A2A against current PUN
+        run: |
+          python - <<'PY'
+          import gzip,json
+          with gzip.open('data/national/pun_italy_national.json.gz','rt',encoding='utf-8') as fh:pun=json.load(fh)
+          with gzip.open('data/national/a2a_direct_stations_italy.json.gz','rt',encoding='utf-8') as fh:a2a=json.load(fh)
+          pun_ids={str(e.get('evseId')) for e in pun.get('evses',[]) if str(e.get('partyId') or '').upper()=='A2M' and e.get('evseId')}
+          direct={str(e.get('evseId')) for e in a2a.get('evses',[]) if e.get('rankableDirectTariff') is True and e.get('evseId')}
+          coverage=len(pun_ids & direct)/len(pun_ids) if pun_ids else 0
+          print(json.dumps({'punA2mEvse':len(pun_ids),'rankableA2aEvse':len(direct),'coverage':coverage},indent=2))
+          assert direct <= pun_ids
+          assert coverage >= .95
+          PY
       - name: Download validated GES NextCharge eMSP candidate
         run: |
           set -euo pipefail
@@ -54,8 +78,6 @@ jobs:
           echo "Using GES NextCharge run $RUN_ID"
       - name: Build Plenitude candidate
         run: python scripts/plenitude_italy_apply.py
-      - name: Build A2A candidate
-        run: python scripts/a2a_italy_national.py --pun data/national/pun_italy_national.json.gz
       - name: Build Duferco candidate
         run: python scripts/duferco_italy_pun_direct.py --pun data/national/pun_italy_national.json.gz
       - name: Validate current official Atlante Italy offers
