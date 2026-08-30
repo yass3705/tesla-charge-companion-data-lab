@@ -5,8 +5,10 @@ on:
   push:
     branches:
       - research/italy-consolidation-v9-a2a
+      - research/duferco-v9-national
     paths:
       - scripts/italy_consolidate_v9.py
+      - scripts/duferco_italy_pun_direct.py
       - scripts/atlante_italy_official.py
       - scripts/atlante_italy_pun_overlay.py
       - scripts/atlante_go_chargeleague_italy_overlay.py
@@ -54,6 +56,8 @@ jobs:
         run: python scripts/plenitude_italy_apply.py
       - name: Build A2A candidate
         run: python scripts/a2a_italy_national.py --pun data/national/pun_italy_national.json.gz
+      - name: Build Duferco candidate
+        run: python scripts/duferco_italy_pun_direct.py --pun data/national/pun_italy_national.json.gz
       - name: Validate current official Atlante Italy offers
         run: python scripts/atlante_italy_official.py
       - name: Build Atlante Go own-network overlay
@@ -75,14 +79,20 @@ jobs:
           own=json.loads(Path('data/reports/atlante_italy_pun_overlay_report.json').read_text())
           partners=json.loads(Path('data/reports/atlante_go_chargeleague_italy_report.json').read_text())
           ges=json.loads(Path('data/reports/ges_nextcharge_italy_national_report.json').read_text())
+          duferco=json.loads(Path('data/reports/duferco_italy_pun_direct_report.json').read_text())
           print(json.dumps(c,ensure_ascii=False,indent=2))
           assert d['country'] == 'IT'
           assert d['backbone'] == 'GSE PUN'
           assert c['punEvseCount'] > 10000
-          assert c['rankableDirectEvseCount'] > 5000
+          assert c['rankableDirectEvseCount'] > 25000
           assert c['rankableDirectByOperator'].get('Plenitude On The Road',0) > 5000
           assert c['rankableDirectByOperator'].get('A2A e-moving',0) > 100
+          assert c['rankableDirectByOperator'].get('Duferco Mobility',0) == duferco['counts']['rankableDirectEvse']
+          assert c['rankableDirectByOperator'].get('Duferco Mobility',0) > 1500
+          assert duferco['counts']['powerCoveragePct'] == 100.0
           assert c['blockedReasons'].get('cross_operator_evse_conflict',0) == 0
+          assert d['rules']['calendarAwareDirectTariffsSupported'] is True
+          assert d['rules']['unknownStationSpecificPostChargeFeesFailClosed'] is True
           assert d['rules']['subscriptionTariffsRankableOnlyWhenSelected'] is True
           assert d['rules']['subscriptionTariffsNeverOverwriteDirectTariff'] is True
           assert d['subscriptions']['atlante_go']['italyAtlanteEurPerKwh'] == 0.49
@@ -110,6 +120,7 @@ jobs:
             data/reports/italy_v9_consolidation_report.json
             data/reports/plenitude_italy_apply_report.json
             data/reports/a2a_italy_national_report.json
+            data/reports/duferco_italy_pun_direct_report.json
             data/reference/atlante_italy_offers.json
             data/reports/atlante_italy_pun_overlay_report.json
             data/reports/atlante_go_chargeleague_italy_report.json
