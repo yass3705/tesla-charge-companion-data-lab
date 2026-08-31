@@ -11,6 +11,7 @@ on:
       - 'scripts/go_electric_nextcharge_station_grid_probe.py'
       - 'scripts/go_electric_nextcharge_station_detail_probe.py'
       - 'scripts/go_electric_nextcharge_station_interaction_capture.py'
+      - 'scripts/go_electric_official_public_probe.py'
       - '.github/workflows/go-electric-italy-v9.yml'
       - 'data/reports/go_electric_italy_v9_research.md'
 
@@ -34,9 +35,13 @@ jobs:
           python -m py_compile scripts/go_electric_nextcharge_station_grid_probe.py
           python -m py_compile scripts/go_electric_nextcharge_station_detail_probe.py
           python -m py_compile scripts/go_electric_nextcharge_station_interaction_capture.py
-      - name: Probe public NextCharge map assets
+          python -m py_compile scripts/go_electric_official_public_probe.py
+      - name: Discover official Go Electric public sources
         run: |
           mkdir -p artifacts
+          python scripts/go_electric_official_public_probe.py
+      - name: Probe public NextCharge map assets
+        run: |
           python scripts/go_electric_nextcharge_public_probe.py \
             --out artifacts/go_electric_nextcharge_public_probe.json
       - name: Resolve public frontend config symbols
@@ -60,6 +65,7 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
+          o = json.loads(Path('artifacts/go_electric_official_public_probe.json').read_text())
           r = json.loads(Path('artifacts/go_electric_nextcharge_public_probe.json').read_text())
           s = json.loads(Path('artifacts/go_electric_nextcharge_symbol_probe.json').read_text())
           t = json.loads(Path('artifacts/go_electric_nextcharge_tariff_symbol_probe.json').read_text())
@@ -67,6 +73,13 @@ jobs:
           g = json.loads(Path('artifacts/go_electric_nextcharge_station_grid_probe.json').read_text())
           d = json.loads(Path('artifacts/go_electric_nextcharge_station_detail_probe.json').read_text())
           i = json.loads(Path('artifacts/go_electric_nextcharge_station_interaction_capture.json').read_text())
+          assert o['policy']['readOnly'] is True
+          assert o['policy']['authenticated'] is False
+          assert o['policy']['remoteMutation'] is False
+          assert o['policy']['getOnly'] is True
+          assert o['policy']['discoveredApiCallsExecuted'] is False
+          assert o['policy']['publicationAllowed'] is False
+          assert set(o['policy']['allowedHosts']) == {'goelectricstations.com','www.goelectricstations.com'}
           for payload in (r, s, t):
               assert payload['policy']['readOnly'] is True
               assert payload['policy']['authenticated'] is False
@@ -114,6 +127,10 @@ jobs:
           tariff_hits = sum(sum((src.get('hitCounts') or {}).values()) for src in t.get('sources', []))
           assert tariff_hits > 0, t
           print(json.dumps({
+              'officialRoot': o['rootUrl'],
+              'officialPages': o['pageCount'],
+              'officialAssets': o['assetCount'],
+              'officialTargetEvseHits': o['targetEvseHits'],
               'scripts': r['scriptCount'],
               'candidateUrls': r['candidateUrlCount'],
               'candidateStrings': r['candidateStringCount'],
@@ -134,6 +151,7 @@ jobs:
         with:
           name: go-electric-italy-v9-public-probe
           path: |
+            artifacts/go_electric_official_public_probe.json
             artifacts/go_electric_nextcharge_public_probe.json
             artifacts/go_electric_nextcharge_symbol_probe.json
             artifacts/go_electric_nextcharge_tariff_symbol_probe.json
