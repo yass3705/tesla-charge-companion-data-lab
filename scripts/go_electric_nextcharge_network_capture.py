@@ -4,6 +4,8 @@
 The browser loads the public map. GET/HEAD requests are allowed. Non-GET requests
 are recorded then aborted, so the first pass can reveal runtime bootstrap/API URLs
 and payloads without changing any remote state or initiating charging actions.
+The probe also reads a narrowly allowlisted set of public runtime configuration
+values needed to resolve the station read endpoints exactly.
 """
 from __future__ import annotations
 
@@ -43,6 +45,7 @@ def redact(headers: dict[str, str]) -> dict[str, str]:
 async def main() -> None:
     events: list[dict[str, object]] = []
     console: list[dict[str, str]] = []
+    runtime_config: dict[str, object] = {}
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -84,6 +87,18 @@ async def main() -> None:
         try:
             await page.goto(ROOT, wait_until="domcontentloaded", timeout=60000)
             await page.wait_for_timeout(15000)
+            runtime_config = await page.evaluate(
+                """() => ({
+                    hostAPIstation: (typeof hostEndpoints !== 'undefined' && hostEndpoints) ? (hostEndpoints.hostAPIstation ?? null) : null,
+                    hostAPIstationsGrid: (typeof hostEndpoints !== 'undefined' && hostEndpoints) ? (hostEndpoints.hostAPIstationsGrid ?? null) : null,
+                    pathStation: (typeof pathAPI !== 'undefined' && pathAPI) ? (pathAPI.station ?? null) : null,
+                    pathStationsGrid: (typeof pathAPI !== 'undefined' && pathAPI) ? (pathAPI.stationsGrid ?? null) : null,
+                    appVersion: (typeof appVersion !== 'undefined') ? appVersion : null,
+                    owner: (typeof owner !== 'undefined') ? owner : null,
+                    osType: (typeof osType !== 'undefined') ? osType : null,
+                    country: (typeof country !== 'undefined') ? country : null
+                })"""
+            )
         except Exception as exc:
             navigation_error = f"{type(exc).__name__}: {exc}"
 
@@ -99,7 +114,7 @@ async def main() -> None:
         ))
     ]
     report = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "generatedAt": now_iso(),
         "policy": {
             "publicFrontendOnly": True,
@@ -108,11 +123,16 @@ async def main() -> None:
             "getHeadOptionsAllowed": True,
             "nonGetRequestsBlocked": True,
             "chargingActionsAllowed": False,
+            "runtimeConfigAllowlist": [
+                "hostAPIstation", "hostAPIstationsGrid", "pathStation", "pathStationsGrid",
+                "appVersion", "owner", "osType", "country"
+            ],
         },
         "rootUrl": ROOT,
         "finalUrl": final_url,
         "title": title,
         "navigationError": navigation_error,
+        "runtimeConfig": runtime_config,
         "requestCount": len(events),
         "nonGetCount": len(non_get),
         "interestingCount": len(interesting),
@@ -129,6 +149,7 @@ async def main() -> None:
         "nonGetCount": len(non_get),
         "interestingCount": len(interesting),
         "navigationError": navigation_error,
+        "runtimeConfig": runtime_config,
     }, indent=2))
     for e in non_get[:50]:
         print(e["method"], e["url"], (e.get("postData") or "")[:800])
