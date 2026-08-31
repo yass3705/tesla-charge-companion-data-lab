@@ -6,6 +6,7 @@ on:
     paths:
       - 'scripts/go_electric_nextcharge_public_probe.py'
       - 'scripts/go_electric_nextcharge_symbol_probe.py'
+      - 'scripts/go_electric_nextcharge_network_capture.py'
       - '.github/workflows/go-electric-italy-v9.yml'
       - 'data/reports/go_electric_italy_v9_research.md'
 
@@ -20,10 +21,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Compile probes
+      - name: Compile static probes
         run: |
           python -m py_compile scripts/go_electric_nextcharge_public_probe.py
           python -m py_compile scripts/go_electric_nextcharge_symbol_probe.py
+          python -m py_compile scripts/go_electric_nextcharge_network_capture.py
       - name: Probe public NextCharge map assets
         run: |
           mkdir -p artifacts
@@ -31,6 +33,12 @@ jobs:
             --out artifacts/go_electric_nextcharge_public_probe.json
       - name: Resolve public frontend config symbols
         run: python scripts/go_electric_nextcharge_symbol_probe.py
+      - name: Install browser capture dependency
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install --with-deps chromium
+      - name: Capture public frontend requests with mutations blocked
+        run: python scripts/go_electric_nextcharge_network_capture.py
       - name: Validate read-only reports
         run: |
           python - <<'PY'
@@ -38,11 +46,17 @@ jobs:
           from pathlib import Path
           r = json.loads(Path('artifacts/go_electric_nextcharge_public_probe.json').read_text())
           s = json.loads(Path('artifacts/go_electric_nextcharge_symbol_probe.json').read_text())
+          n = json.loads(Path('artifacts/go_electric_nextcharge_network_capture.json').read_text())
           for payload in (r, s):
               assert payload['policy']['readOnly'] is True
               assert payload['policy']['authenticated'] is False
               assert payload['policy']['remoteMutation'] is False
               assert payload['policy']['discoveredApiCallsExecuted'] is False
+          assert n['policy']['publicFrontendOnly'] is True
+          assert n['policy']['authenticated'] is False
+          assert n['policy']['remoteMutation'] is False
+          assert n['policy']['nonGetRequestsBlocked'] is True
+          assert n['policy']['chargingActionsAllowed'] is False
           assert r['rootUrl'].startswith('https://nextcharge.app/')
           assert r['scriptCount'] >= 1, r
           assert len(s['sources']) >= 2, s
@@ -51,6 +65,8 @@ jobs:
               'candidateUrls': r['candidateUrlCount'],
               'candidateStrings': r['candidateStringCount'],
               'symbolSources': len(s['sources']),
+              'capturedRequests': n['requestCount'],
+              'blockedNonGet': n['nonGetCount'],
           }, indent=2))
           PY
       - uses: actions/upload-artifact@v4
@@ -59,4 +75,5 @@ jobs:
           path: |
             artifacts/go_electric_nextcharge_public_probe.json
             artifacts/go_electric_nextcharge_symbol_probe.json
+            artifacts/go_electric_nextcharge_network_capture.json
           if-no-files-found: error
