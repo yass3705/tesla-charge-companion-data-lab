@@ -4,9 +4,11 @@
 Purpose: determine whether the physical CPO exposes station/EVSE-specific or
 network tariff information that can independently attribute prices to
 `Go Electric Stations SRLS`. This probe never authenticates and never calls a
-discovered API. It only performs GET requests against the public official web
-origin and same-origin static/page resources.
+discovered API. It only performs GET requests against the validated canonical
+Italian web origin and same-origin static/page resources.
 
+The canonical host `goelectricstations.it` was established independently by a
+redirect-safe probe: both known .com hostnames return HTTP 301 to the .it root.
 The target EVSE sample is the exact Spoltore match already validated against PUN.
 """
 from __future__ import annotations
@@ -20,10 +22,10 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 ROOTS = (
-    "https://goelectricstations.com/",
-    "https://www.goelectricstations.com/",
+    "https://goelectricstations.it/",
+    "https://www.goelectricstations.it/",
 )
-ALLOWED_HOSTS = {"goelectricstations.com", "www.goelectricstations.com"}
+ALLOWED_HOSTS = {"goelectricstations.it", "www.goelectricstations.it"}
 USER_AGENT = "TeslaChargeCompanion-DataLab/1.0 (+read-only public research)"
 MAX_BYTES = 6_000_000
 MAX_PAGES = 12
@@ -61,6 +63,9 @@ def get_text(url: str) -> tuple[str, dict[str, str]]:
         "Accept": "text/html,application/javascript,application/json;q=0.9,*/*;q=0.5",
     })
     with urllib.request.urlopen(req, timeout=35) as resp:
+        final_url = str(resp.geturl())
+        if not allowed(final_url):
+            raise RuntimeError(f"redirect outside canonical allowlist: {url} -> {final_url}")
         data = resp.read(MAX_BYTES + 1)
         if len(data) > MAX_BYTES:
             raise RuntimeError(f"response too large: {url}")
@@ -68,7 +73,7 @@ def get_text(url: str) -> tuple[str, dict[str, str]]:
         return data.decode(charset, errors="replace"), {
             "status": str(getattr(resp, "status", "")),
             "contentType": str(resp.headers.get("Content-Type") or ""),
-            "finalUrl": str(resp.geturl()),
+            "finalUrl": final_url,
         }
 
 
@@ -127,7 +132,7 @@ def main() -> None:
         except Exception as exc:
             root_errors.append(f"{candidate}: {type(exc).__name__}: {exc}")
     if root_text is None or root_url is None:
-        raise SystemExit("official Go Electric root unavailable: " + " | ".join(root_errors))
+        raise SystemExit("official Go Electric canonical root unavailable: " + " | ".join(root_errors))
 
     queue: list[str] = [root_url]
     seen: set[str] = set()
@@ -171,9 +176,15 @@ def main() -> None:
 
     all_items = pages + assets
     report = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "generatedAt": now_iso(),
-        "scope": "official Go Electric Stations public web source discovery",
+        "scope": "official Go Electric Stations canonical public web source discovery",
+        "canonicalHostEvidence": {
+            "validatedBy": "separate no-redirect probe",
+            "sourceHosts": ["goelectricstations.com", "www.goelectricstations.com"],
+            "redirectStatus": 301,
+            "target": "https://goelectricstations.it/",
+        },
         "policy": {
             "readOnly": True,
             "authenticated": False,
