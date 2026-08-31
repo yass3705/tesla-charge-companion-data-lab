@@ -3,8 +3,8 @@
 
 Fetches only the public map HTML and official static JS assets. It does not call
 station, connector, tariff, charging, payment or reservation APIs. The goal is
-to identify the UI function and path symbol used after station selection when a
-user opens a connector/tariff detail.
+to identify the UI function and data path used after station selection when a
+user opens connector/tariff details.
 """
 from __future__ import annotations
 
@@ -21,14 +21,29 @@ USER_AGENT = "TeslaChargeCompanion-DataLab/1.0 (+read-only public research)"
 NEEDLES = (
     "getTariffs",
     "tariffEMP",
+    "showConnectors",
+    "connectorsInfoForStationGeneric",
+    "priceRateStandard",
+    "chargeDetails.station",
     "connectorsSummary",
     "idConnector",
+    "idEVSE",
     "idEvse",
     "connectorId",
     "tariff",
     "Tariff",
     "connector",
     "Connector",
+)
+FOCUS = (
+    "showConnectors",
+    "connectorsInfoForStationGeneric",
+    "priceRateStandard",
+    "connectorsSummary",
+    "idConnector",
+    "idEVSE",
+    "tariffEMP",
+    "getTariffs",
 )
 
 
@@ -71,15 +86,15 @@ def js_urls(text: str, base: str) -> list[str]:
     return out
 
 
-def snippets(text: str, needle: str, limit: int = 16) -> list[str]:
+def snippets(text: str, needle: str, limit: int = 12) -> list[str]:
     out: list[str] = []
     pos = 0
     while len(out) < limit:
         pos = text.find(needle, pos)
         if pos < 0:
             break
-        left = max(0, pos - 1800)
-        right = min(len(text), pos + len(needle) + 2600)
+        left = max(0, pos - 1400)
+        right = min(len(text), pos + len(needle) + 2100)
         s = text[left:right]
         if s not in out:
             out.append(s)
@@ -108,10 +123,10 @@ def extract_candidates(text: str) -> dict[str, list[str]]:
     return out
 
 
-def compact_context(text: str, needle: str, radius: int = 700) -> list[str]:
+def compact_context(text: str, needle: str, radius: int = 850) -> list[str]:
     vals: list[str] = []
     pos = 0
-    while len(vals) < 8:
+    while len(vals) < 6:
         pos = text.find(needle, pos)
         if pos < 0:
             break
@@ -144,13 +159,12 @@ def main() -> None:
             "hitCounts": hit_counts,
             "candidates": extract_candidates(text),
             "contexts": {n: snippets(text, n) for n in NEEDLES if n in text},
-            "compactGetTariffs": compact_context(text, "getTariffs"),
-            "compactTariffEMP": compact_context(text, "tariffEMP"),
+            "focusContexts": {n: compact_context(text, n) for n in FOCUS if n in text},
         }
         sources.append(item)
 
     report = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "policy": {
             "readOnly": True,
             "authenticated": False,
@@ -177,8 +191,7 @@ def main() -> None:
             "hostApiSymbols": (c.get("hostApiSymbols") or [])[:80],
             "apiPathStrings": (c.get("apiPathStrings") or [])[:80],
             "functionNames": (c.get("functionNames") or [])[:120],
-            "getTariffsContext": (s.get("compactGetTariffs") or [])[:3],
-            "tariffEMPContext": (s.get("compactTariffEMP") or [])[:3],
+            "focusContexts": {k: v[:3] for k, v in (s.get("focusContexts") or {}).items()},
         })
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 
