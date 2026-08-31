@@ -1,0 +1,81 @@
+name: Morocco EVGO fresh sanitized artifact
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/morocco-evgo-fresh-sanitized-artifact.yml'
+      - 'scripts/morocco_evgo_pin_hydration_probe.py'
+      - 'scripts/morocco_evgo_normalize.py'
+
+permissions:
+  contents: read
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Regenerate sanitized public EVGO snapshot
+        run: |
+          python3 scripts/morocco_evgo_pin_hydration_probe.py
+          mkdir -p reports/morocco/evgo
+          cp artifacts/morocco-evgo-pin-hydration/summary.json reports/morocco/evgo/latest-pin-hydration.json
+          python3 scripts/morocco_evgo_normalize.py
+
+      - name: Validate production invariants
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          p=Path('reports/morocco/evgo/latest-normalized-stations.json')
+          d=json.loads(p.read_text())
+          stations=d.get('stations') or []
+          assert len(stations)==17, f'expected 17 stations, got {len(stations)}'
+          evses=[e for s in stations for e in (s.get('evses') or [])]
+          assert len(evses)==43, f'expected 43 EVSE, got {len(evses)}'
+          for s in stations:
+            lat,lon=s.get('latitude'),s.get('longitude')
+            assert isinstance(lat,(int,float)) and isinstance(lon,(int,float)), f'missing GPS {s.get("locationId")}'
+            assert 20 <= lat <= 37 and -18 <= lon <= 0, f'non-Morocco GPS {s.get("locationId")}: {lat},{lon}'
+          active={'charging','suspendedev','finishing','preparing'}
+          oos={'unavailable','faulted','offline','unknown'}
+          for e in evses:
+            native=str(e.get('status') or '').lower()
+            if e.get('isLongTermUnavailable') or e.get('isTemporarilyUnavailable'):
+              expected='out_of_service'
+            elif native in active:
+              expected='occupied_or_active_session'
+            elif native=='available' and e.get('isAvailable') is True:
+              expected='available'
+            elif native in oos:
+              expected='out_of_service'
+            else:
+              expected='unknown'
+            assert e.get('operational_class')==expected, f'status mismatch EVSE {e.get("id")}: {native} -> {e.get("operational_class")} != {expected}'
+          print(json.dumps({
+            'generated_at':d.get('generated_at'),
+            'source_generated_at':d.get('source_generated_at'),
+            'stations':len(stations),
+            'evses':len(evses),
+            'gps_ok':17,
+            'native_status_counts':d.get('summary',{}).get('native_status_counts'),
+            'operational_class_counts':d.get('summary',{}).get('operational_class_counts')
+          }, ensure_ascii=False))
+          PY
+
+      - name: Upload sanitized fresh dataset
+        uses: actions/upload-artifact@v4
+        with:
+          name: morocco-evgo-fresh-sanitized
+          path: |
+            reports/morocco/evgo/latest-pin-hydration.json
+            reports/morocco/evgo/latest-normalized-stations.json
+          if-no-files-found: error
+          retention-days: 3
