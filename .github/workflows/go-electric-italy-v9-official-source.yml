@@ -6,6 +6,7 @@ on:
     paths:
       - 'scripts/go_electric_official_redirect_probe.py'
       - 'scripts/go_electric_official_public_probe.py'
+      - 'scripts/go_electric_official_link_probe.py'
       - '.github/workflows/go-electric-italy-v9-official-source.yml'
 
 permissions:
@@ -23,12 +24,15 @@ jobs:
         run: |
           python -m py_compile scripts/go_electric_official_redirect_probe.py
           python -m py_compile scripts/go_electric_official_public_probe.py
+          python -m py_compile scripts/go_electric_official_link_probe.py
       - name: Confirm canonical Go Electric host without following redirects
         run: |
           mkdir -p artifacts
           python scripts/go_electric_official_redirect_probe.py
       - name: Scan validated canonical Go Electric public source
         run: python scripts/go_electric_official_public_probe.py
+      - name: Extract official B2C and NextCharge link evidence
+        run: python scripts/go_electric_official_link_probe.py
       - name: Validate strict read-only canonical scope
         run: |
           python - <<'PY'
@@ -36,6 +40,7 @@ jobs:
           from pathlib import Path
           d=json.loads(Path('artifacts/go_electric_official_redirect_probe.json').read_text())
           r=json.loads(Path('artifacts/go_electric_official_public_probe.json').read_text())
+          l=json.loads(Path('artifacts/go_electric_official_link_probe.json').read_text())
           assert d['candidateHosts'] == ['goelectricstations.it'], d
           assert d['policy']['redirectsFollowed'] is False
           p=r['policy']
@@ -50,11 +55,24 @@ jobs:
           assert p['publicationAllowed'] is False
           assert set(p['allowedHosts']) == {'goelectricstations.it','www.goelectricstations.it'}
           assert r['rootUrl'].startswith('https://goelectricstations.it') or r['rootUrl'].startswith('https://www.goelectricstations.it')
+          q=l['policy']
+          assert q['readOnly'] is True
+          assert q['authenticated'] is False
+          assert q['remoteMutation'] is False
+          assert q['getOnly'] is True
+          assert q['sameOriginRequestsOnly'] is True
+          assert q['externalLinksFollowed'] is False
+          assert q['discoveredApiCallsExecuted'] is False
+          assert q['publicationAllowed'] is False
+          assert l['nextchargeContextCount'] > 0, l
           print(json.dumps({
             'rootUrl': r['rootUrl'],
             'pages': r['pageCount'],
             'assets': r['assetCount'],
             'targetEvseHits': r['targetEvseHits'],
+            'b2cContexts': l['b2cContextCount'],
+            'nextchargeContexts': l['nextchargeContextCount'],
+            'nextchargeUrls': l['nextchargeUrlCandidates'],
             'publicationAllowed': p['publicationAllowed'],
           }, indent=2))
           PY
@@ -64,4 +82,5 @@ jobs:
           path: |
             artifacts/go_electric_official_redirect_probe.json
             artifacts/go_electric_official_public_probe.json
+            artifacts/go_electric_official_link_probe.json
           if-no-files-found: error
