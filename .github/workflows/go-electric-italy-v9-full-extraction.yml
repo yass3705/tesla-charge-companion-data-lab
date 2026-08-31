@@ -1,0 +1,114 @@
+name: Go Electric Italy V9 full extraction
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/go_electric_nextcharge_national_batch_probe.py'
+      - 'scripts/go_electric_nextcharge_full_extraction.py'
+      - 'scripts/go_electric_nextcharge_full_aggregate.py'
+      - '.github/workflows/go-electric-italy-v9-full-extraction.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile extraction probes
+        run: |
+          python -m py_compile scripts/go_electric_nextcharge_national_batch_probe.py
+          python -m py_compile scripts/go_electric_nextcharge_full_extraction.py
+      - name: Extract Go Electric shard
+        env:
+          GO_ELECTRIC_SHARD_COUNT: '8'
+          GO_ELECTRIC_SHARD_INDEX: '${{ matrix.shard }}'
+          GO_ELECTRIC_REQUEST_PAUSE_SECONDS: '0.05'
+        run: |
+          mkdir -p artifacts
+          python scripts/go_electric_nextcharge_full_extraction.py
+      - name: Validate shard guardrails
+        env:
+          SHARD: '${{ matrix.shard }}'
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          shard=int(os.environ['SHARD'])
+          p=Path(f'artifacts/go_electric_full_shard_{shard:02d}.json')
+          r=json.loads(p.read_text())
+          assert r['catalogueBaseline'] == {'stationCount': 1136, 'evseCount': 2413}, r['catalogueBaseline']
+          assert r['shard']['index'] == shard
+          assert r['shard']['count'] == 8
+          assert r['policy']['readOnly'] is True
+          assert r['policy']['authenticated'] is False
+          assert r['policy']['remoteMutation'] is False
+          assert r['policy']['fullNationalExtraction'] is True
+          assert r['policy']['exactPunEvseSuffixRequiredForAttribution'] is True
+          assert r['policy']['coordinateOnlyAttributionAllowed'] is False
+          assert r['policy']['directCpoPublicationAllowed'] is False
+          assert r['requestAudit']['allRequestsDeclaredReadOnly'] is True
+          assert r['summary']['processedStations'] == r['shard']['stationCount']
+          print(json.dumps({'shard':r['shard'],'summary':r['summary'],'requestAudit':r['requestAudit']},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: go-electric-italy-v9-full-shard-${{ matrix.shard }}
+          path: artifacts/go_electric_full_shard_*.json
+          if-no-files-found: warn
+
+  aggregate:
+    needs: extract
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download all extraction shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: go-electric-italy-v9-full-shard-*
+          path: artifacts
+          merge-multiple: true
+      - name: Compile aggregator
+        run: python -m py_compile scripts/go_electric_nextcharge_full_aggregate.py
+      - name: Aggregate national extraction
+        run: python scripts/go_electric_nextcharge_full_aggregate.py
+      - name: Validate national completeness and publication lock
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('artifacts/go_electric_italy_v9_full_extraction.json').read_text())
+          p=r['policy']; s=r['summary']; a=r['requestAudit']
+          assert r['catalogueBaseline'] == {'stationCount':1136,'evseCount':2413}
+          assert p['readOnly'] is True
+          assert p['remoteMutation'] is False
+          assert p['allShardsPresent'] is True
+          assert p['directCpoPublicationAllowed'] is False
+          assert s['processedStations'] == 1136
+          assert s['targetPunEvses'] == 2413
+          assert a['allRequestsDeclaredReadOnly'] is True
+          assert len(r['acceptedExactTariffs']) + len(r['quarantine']) == 1136
+          print(json.dumps({'summary':s,'requestAudit':a,'publicationAllowed':p['directCpoPublicationAllowed']},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: go-electric-italy-v9-full-extraction
+          path: artifacts/go_electric_italy_v9_full_extraction.json
+          if-no-files-found: warn

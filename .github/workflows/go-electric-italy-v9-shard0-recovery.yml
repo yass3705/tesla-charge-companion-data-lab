@@ -1,0 +1,127 @@
+name: Go Electric Italy V9 shard 0 recovery
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/go_electric_nextcharge_shard0_recovery.py'
+      - '.github/workflows/go-electric-italy-v9-shard0-recovery.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        part: [0,1,2,3,4,5,6,7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile recovery probe
+        run: |
+          python -m py_compile scripts/go_electric_nextcharge_national_batch_probe.py
+          python -m py_compile scripts/go_electric_nextcharge_shard0_recovery.py
+      - name: Recover original shard 0 part
+        env:
+          GO_ELECTRIC_RECOVERY_PART_COUNT: '8'
+          GO_ELECTRIC_RECOVERY_PART_INDEX: ${{ matrix.part }}
+          GO_ELECTRIC_REQUEST_PAUSE_SECONDS: '0.03'
+        run: |
+          mkdir -p artifacts
+          python scripts/go_electric_nextcharge_shard0_recovery.py
+      - name: Validate recovery part
+        env:
+          PART: ${{ matrix.part }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          part=int(os.environ['PART'])
+          p=Path(f'artifacts/go_electric_full_shard_00_part_{part:02d}.json')
+          r=json.loads(p.read_text())
+          assert r['catalogueBaseline']=={'stationCount':1136,'evseCount':2413}
+          assert r['parentShard']=={'index':0,'count':8,'stationCount':142}
+          assert r['recoveryPart']['index']==part
+          assert r['recoveryPart']['count']==8
+          assert r['policy']['readOnly'] is True
+          assert r['policy']['remoteMutation'] is False
+          assert r['policy']['directCpoPublicationAllowed'] is False
+          assert r['requestAudit']['allRequestsDeclaredReadOnly'] is True
+          assert r['summary']['processedStations']==r['recoveryPart']['stationCount']
+          print(json.dumps({'part':r['recoveryPart'],'summary':r['summary']},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-shard0-recovery-part-${{ matrix.part }}
+          path: artifacts/go_electric_full_shard_00_part_*.json
+          if-no-files-found: error
+
+  aggregate-recovery:
+    needs: recover
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download recovery parts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: go-electric-italy-v9-shard0-recovery-part-*
+          path: artifacts
+          merge-multiple: true
+      - name: Rebuild deterministic original shard 0
+        run: python scripts/go_electric_nextcharge_shard0_recovery.py merge
+      - name: Validate reconstructed shard 0
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('artifacts/go_electric_full_shard_00.json').read_text())
+          assert r['shard']=={'index':0,'count':8,'stationCount':142}
+          assert r['recovery']=={'partCount':8,'exactOriginalStationSet':True}
+          assert r['summary']['processedStations']==142
+          assert r['requestAudit']['allRequestsDeclaredReadOnly'] is True
+          assert r['policy']['directCpoPublicationAllowed'] is False
+          print(json.dumps({'summary':r['summary'],'requestAudit':r['requestAudit'],'recovery':r['recovery']},indent=2))
+          PY
+      - name: Download already validated shards 1-7 from original run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: '33442724514'
+        run: |
+          for s in 1 2 3 4 5 6 7; do
+            gh run download "$SOURCE_RUN_ID" -n "go-electric-italy-v9-full-shard-$s" -D "downloaded-$s"
+            cp downloaded-$s/go_electric_full_shard_*.json artifacts/
+          done
+          ls -lh artifacts/go_electric_full_shard_*.json
+      - name: Run national aggregator
+        run: python scripts/go_electric_nextcharge_full_aggregate.py
+      - name: Validate national recovery aggregation
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('artifacts/go_electric_italy_v9_full_extraction.json').read_text())
+          s=r['summary']; p=r['policy']
+          assert s['processedStations']==1136, s
+          assert s['targetPunEvses']==2413, s
+          assert p['allShardsPresent'] is True
+          assert p['directCpoPublicationAllowed'] is False
+          assert r['requestAudit']['allRequestsDeclaredReadOnly'] is True
+          print(json.dumps({'summary':s,'requestAudit':r['requestAudit'],'publicationAllowed':p['directCpoPublicationAllowed']},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-national-recovered
+          path: |
+            artifacts/go_electric_full_shard_00.json
+            artifacts/go_electric_italy_v9_full_extraction.json
+          if-no-files-found: error

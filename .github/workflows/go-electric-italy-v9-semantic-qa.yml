@@ -1,0 +1,73 @@
+name: Go Electric Italy V9 semantic QA
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/go-electric-italy-v9-semantic-qa.yml'
+      - 'scripts/go_electric_nextcharge_v9_semantic_qa.py'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  semantic-qa:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NATIONAL_AGGREGATE_RUN_ID: '33450033521'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download validated national aggregate
+        run: |
+          mkdir -p artifacts national-aggregate
+          gh run download "$NATIONAL_AGGREGATE_RUN_ID" \
+            -n go-electric-italy-v9-national-aggregate-only \
+            -D national-aggregate
+          cp national-aggregate/go_electric_italy_v9_full_extraction.json artifacts/
+          test -f artifacts/go_electric_italy_v9_full_extraction.json
+
+      - name: Compile semantic QA
+        run: python -m py_compile scripts/go_electric_nextcharge_v9_semantic_qa.py
+
+      - name: Run fail-closed semantic QA and staging transform
+        run: python scripts/go_electric_nextcharge_v9_semantic_qa.py
+
+      - name: Validate staging guardrails
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path('artifacts/go_electric_italy_v9_semantic_qa.json').read_text())
+          ready=json.loads(Path('artifacts/go_electric_italy_v9_ready_offers.json').read_text())
+          quarantine=json.loads(Path('artifacts/go_electric_italy_v9_semantic_quarantine.json').read_text())
+          s=report['summary']; p=report['policy']; offers=ready['offers']
+          assert report['inputBaseline']=={'stationCount':1136,'evseCount':2413}
+          assert p['networkAccess'] is False
+          assert p['exactPhysicalIdentityRequired'] is True
+          assert p['coordinateFallbackAllowed'] is False
+          assert p['unknownTariffSemanticsAllowed'] is False
+          assert p['publicationAllowed'] is False
+          assert ready['publicationAllowed'] is False
+          assert len(offers)==s['readyEvseOffers']
+          assert len({o['punEvseId'] for o in offers})==len(offers)
+          assert len(quarantine['rows'])==s['semanticQuarantineRows']
+          assert all(o['publicationAllowed'] is False for o in offers)
+          assert all(o['qa']['semanticValidated'] is True for o in offers)
+          assert all(o['provenance']['exactPhysicalIdentity'] is True for o in offers)
+          print(json.dumps({'summary':s,'publicationAllowed':False},indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-semantic-qa
+          path: |
+            artifacts/go_electric_italy_v9_semantic_qa.json
+            artifacts/go_electric_italy_v9_ready_offers.json
+            artifacts/go_electric_italy_v9_semantic_quarantine.json
+          if-no-files-found: error

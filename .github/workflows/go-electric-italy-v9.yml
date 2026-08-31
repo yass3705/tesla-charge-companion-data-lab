@@ -1,0 +1,162 @@
+name: Go Electric Italy V9 public research
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/go_electric_nextcharge_public_probe.py'
+      - 'scripts/go_electric_nextcharge_symbol_probe.py'
+      - 'scripts/go_electric_nextcharge_tariff_symbol_probe.py'
+      - 'scripts/go_electric_nextcharge_network_capture.py'
+      - 'scripts/go_electric_nextcharge_station_grid_probe.py'
+      - 'scripts/go_electric_nextcharge_station_detail_probe.py'
+      - 'scripts/go_electric_nextcharge_station_interaction_capture.py'
+      - 'scripts/go_electric_official_public_probe.py'
+      - '.github/workflows/go-electric-italy-v9.yml'
+      - 'data/reports/go_electric_italy_v9_research.md'
+
+permissions:
+  contents: read
+
+jobs:
+  public-probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile probes
+        run: |
+          python -m py_compile scripts/go_electric_nextcharge_public_probe.py
+          python -m py_compile scripts/go_electric_nextcharge_symbol_probe.py
+          python -m py_compile scripts/go_electric_nextcharge_tariff_symbol_probe.py
+          python -m py_compile scripts/go_electric_nextcharge_network_capture.py
+          python -m py_compile scripts/go_electric_nextcharge_station_grid_probe.py
+          python -m py_compile scripts/go_electric_nextcharge_station_detail_probe.py
+          python -m py_compile scripts/go_electric_nextcharge_station_interaction_capture.py
+          python -m py_compile scripts/go_electric_official_public_probe.py
+      - name: Discover official Go Electric public sources
+        run: |
+          mkdir -p artifacts
+          python scripts/go_electric_official_public_probe.py
+      - name: Probe public NextCharge map assets
+        run: |
+          python scripts/go_electric_nextcharge_public_probe.py \
+            --out artifacts/go_electric_nextcharge_public_probe.json
+      - name: Resolve public frontend config symbols
+        run: python scripts/go_electric_nextcharge_symbol_probe.py
+      - name: Trace connector and tariff frontend symbols
+        run: python scripts/go_electric_nextcharge_tariff_symbol_probe.py
+      - name: Install browser capture dependency
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install --with-deps chromium
+      - name: Capture public frontend requests with mutations blocked
+        run: python scripts/go_electric_nextcharge_network_capture.py
+      - name: Read small Italian stationsGrid samples
+        run: python scripts/go_electric_nextcharge_station_grid_probe.py
+      - name: Read public station details for sampled IDs
+        run: python scripts/go_electric_nextcharge_station_detail_probe.py
+      - name: Select one station and capture the next blocked request
+        run: python scripts/go_electric_nextcharge_station_interaction_capture.py
+      - name: Validate read-only reports
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          o = json.loads(Path('artifacts/go_electric_official_public_probe.json').read_text())
+          r = json.loads(Path('artifacts/go_electric_nextcharge_public_probe.json').read_text())
+          s = json.loads(Path('artifacts/go_electric_nextcharge_symbol_probe.json').read_text())
+          t = json.loads(Path('artifacts/go_electric_nextcharge_tariff_symbol_probe.json').read_text())
+          n = json.loads(Path('artifacts/go_electric_nextcharge_network_capture.json').read_text())
+          g = json.loads(Path('artifacts/go_electric_nextcharge_station_grid_probe.json').read_text())
+          d = json.loads(Path('artifacts/go_electric_nextcharge_station_detail_probe.json').read_text())
+          i = json.loads(Path('artifacts/go_electric_nextcharge_station_interaction_capture.json').read_text())
+          assert o['policy']['readOnly'] is True
+          assert o['policy']['authenticated'] is False
+          assert o['policy']['remoteMutation'] is False
+          assert o['policy']['getOnly'] is True
+          assert o['policy']['discoveredApiCallsExecuted'] is False
+          assert o['policy']['publicationAllowed'] is False
+          assert set(o['policy']['allowedHosts']) == {'goelectricstations.it','www.goelectricstations.it'}
+          for payload in (r, s, t):
+              assert payload['policy']['readOnly'] is True
+              assert payload['policy']['authenticated'] is False
+              assert payload['policy']['remoteMutation'] is False
+              assert payload['policy']['discoveredApiCallsExecuted'] is False
+          assert t['policy']['chargingActionsAllowed'] is False
+          assert t['policy']['paymentActionsAllowed'] is False
+          assert t['policy']['reservationActionsAllowed'] is False
+          assert n['policy']['publicFrontendOnly'] is True
+          assert n['policy']['authenticated'] is False
+          assert n['policy']['remoteMutation'] is False
+          assert n['policy']['nonGetRequestsBlocked'] is True
+          assert n['policy']['chargingActionsAllowed'] is False
+          assert n['runtimeConfig']['hostAPIstation'] == 'https://nextcharge.app'
+          assert n['runtimeConfig']['pathStation'] == 'station'
+          assert g['policy']['readOnly'] is True
+          assert g['policy']['authenticated'] is False
+          assert g['policy']['remoteMutation'] is False
+          assert g['policy']['chargingActionsAllowed'] is False
+          assert g['policy']['paymentActionsAllowed'] is False
+          assert g['policy']['nationalScrape'] is False
+          assert g['policy']['allowedEndpoint'] == 'https://nextcharge.app/apps/map/apis/stationsGrid'
+          grid_success = [w for w in g['windows'] if w.get('httpStatus') == 200 and w.get('json') is True]
+          assert grid_success, g
+          assert d['policy']['readOnly'] is True
+          assert d['policy']['authenticated'] is False
+          assert d['policy']['remoteMutation'] is False
+          assert d['policy']['chargingActionsAllowed'] is False
+          assert d['policy']['paymentActionsAllowed'] is False
+          assert d['policy']['reservationActionsAllowed'] is False
+          assert d['policy']['allowedEndpoint'] == 'https://nextcharge.app/apps/map/apis/station'
+          detail_success = [x for x in d['details'] if x.get('httpStatus') == 200 and x.get('json') is True]
+          assert detail_success, d
+          assert i['policy']['publicFrontendOnly'] is True
+          assert i['policy']['authenticated'] is False
+          assert i['policy']['remoteMutation'] is False
+          assert i['policy']['newNonGetRequestsBlocked'] is True
+          assert i['policy']['chargingActionsAllowed'] is False
+          assert i['policy']['paymentActionsAllowed'] is False
+          assert i['policy']['reservationActionsAllowed'] is False
+          assert sorted(i['policy']['allowedPostEndpoints']) == sorted([
+              'https://nextcharge.app/apps/map/apis/stationsGrid',
+              'https://nextcharge.app/apps/map/apis/station',
+          ])
+          tariff_hits = sum(sum((src.get('hitCounts') or {}).values()) for src in t.get('sources', []))
+          assert tariff_hits > 0, t
+          print(json.dumps({
+              'officialRoot': o['rootUrl'],
+              'officialPages': o['pageCount'],
+              'officialAssets': o['assetCount'],
+              'officialTargetEvseHits': o['targetEvseHits'],
+              'scripts': r['scriptCount'],
+              'candidateUrls': r['candidateUrlCount'],
+              'candidateStrings': r['candidateStringCount'],
+              'symbolSources': len(s['sources']),
+              'tariffSymbolSources': len(t['sources']),
+              'tariffSymbolHits': tariff_hits,
+              'capturedRequests': n['requestCount'],
+              'blockedNonGet': n['nonGetCount'],
+              'stationsGridSuccessfulWindows': len(grid_success),
+              'stationCandidates': sum(w.get('stationCandidateCountInSample', 0) for w in grid_success),
+              'stationDetailSuccess': len(detail_success),
+              'interactionAllowedReadPosts': i['allowedReadPostCount'],
+              'interactionBlockedNewNonGet': i['blockedNewNonGetCount'],
+              'selection': i['interaction'].get('selectionResult'),
+          }, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-public-probe
+          path: |
+            artifacts/go_electric_official_public_probe.json
+            artifacts/go_electric_nextcharge_public_probe.json
+            artifacts/go_electric_nextcharge_symbol_probe.json
+            artifacts/go_electric_nextcharge_tariff_symbol_probe.json
+            artifacts/go_electric_nextcharge_network_capture.json
+            artifacts/go_electric_nextcharge_station_grid_probe.json
+            artifacts/go_electric_nextcharge_station_detail_probe.json
+            artifacts/go_electric_nextcharge_station_interaction_capture.json
+          if-no-files-found: error

@@ -1,0 +1,67 @@
+name: Go Electric Italy V9 tariff static trace
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/go_electric_nextcharge_tariff_symbol_probe.py'
+      - 'scripts/go_electric_pun_v9_sample.py'
+      - '.github/workflows/go-electric-italy-v9-tariff-static.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  tariff-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile targeted probes
+        run: |
+          python -m py_compile scripts/go_electric_nextcharge_tariff_symbol_probe.py
+          python -m py_compile scripts/go_electric_pun_v9_sample.py
+      - name: Trace public connector and tariff symbols
+        run: |
+          mkdir -p artifacts
+          python scripts/go_electric_nextcharge_tariff_symbol_probe.py
+      - name: Extract exact Go Electric stations from published Italy V9 PUN catalogue
+        run: python scripts/go_electric_pun_v9_sample.py
+      - name: Validate read-only reports
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          t = json.loads(Path('artifacts/go_electric_nextcharge_tariff_symbol_probe.json').read_text())
+          p = json.loads(Path('artifacts/go_electric_pun_v9_sample.json').read_text())
+          assert t['policy']['readOnly'] is True
+          assert t['policy']['authenticated'] is False
+          assert t['policy']['remoteMutation'] is False
+          assert t['policy']['discoveredApiCallsExecuted'] is False
+          assert t['policy']['chargingActionsAllowed'] is False
+          assert t['policy']['paymentActionsAllowed'] is False
+          assert t['policy']['reservationActionsAllowed'] is False
+          hits = sum(sum((src.get('hitCounts') or {}).values()) for src in t.get('sources', []))
+          assert hits > 0, t
+          assert p['policy']['readOnly'] is True
+          assert p['policy']['providerApiCalled'] is False
+          assert p['targetOperator'] == 'Go Electric Stations SRLS'
+          assert p['stationCount'] > 0, p
+          assert p['evseCount'] > 0, p
+          print(json.dumps({
+              'tariffSources': len(t['sources']),
+              'tariffHits': hits,
+              'goElectricStations': p['stationCount'],
+              'goElectricEvses': p['evseCount'],
+              'sampleClasses': {k: len(v) for k, v in p['samplesByStationMaxPowerClass'].items()},
+          }, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-tariff-static
+          path: |
+            artifacts/go_electric_nextcharge_tariff_symbol_probe.json
+            artifacts/go_electric_pun_v9_sample.json
+          if-no-files-found: error

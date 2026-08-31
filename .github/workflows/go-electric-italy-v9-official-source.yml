@@ -1,0 +1,88 @@
+name: Go Electric Italy V9 official source
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/go_electric_official_redirect_probe.py'
+      - 'scripts/go_electric_official_public_probe.py'
+      - 'scripts/go_electric_official_link_probe.py'
+      - '.github/workflows/go-electric-italy-v9-official-source.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  official-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile official source probes
+        run: |
+          python -m py_compile scripts/go_electric_official_redirect_probe.py
+          python -m py_compile scripts/go_electric_official_public_probe.py
+          python -m py_compile scripts/go_electric_official_link_probe.py
+      - name: Confirm canonical Go Electric host without following redirects
+        run: |
+          mkdir -p artifacts
+          python scripts/go_electric_official_redirect_probe.py
+      - name: Scan validated canonical Go Electric public source
+        run: python scripts/go_electric_official_public_probe.py
+      - name: Extract official B2C and NextCharge link evidence
+        run: python scripts/go_electric_official_link_probe.py
+      - name: Validate strict read-only canonical scope
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('artifacts/go_electric_official_redirect_probe.json').read_text())
+          r=json.loads(Path('artifacts/go_electric_official_public_probe.json').read_text())
+          l=json.loads(Path('artifacts/go_electric_official_link_probe.json').read_text())
+          assert d['candidateHosts'] == ['goelectricstations.it'], d
+          assert d['policy']['redirectsFollowed'] is False
+          p=r['policy']
+          assert p['readOnly'] is True
+          assert p['authenticated'] is False
+          assert p['remoteMutation'] is False
+          assert p['getOnly'] is True
+          assert p['discoveredApiCallsExecuted'] is False
+          assert p['chargingActionsAllowed'] is False
+          assert p['paymentActionsAllowed'] is False
+          assert p['reservationActionsAllowed'] is False
+          assert p['publicationAllowed'] is False
+          assert set(p['allowedHosts']) == {'goelectricstations.it','www.goelectricstations.it'}
+          q=l['policy']
+          assert q['readOnly'] is True
+          assert q['authenticated'] is False
+          assert q['remoteMutation'] is False
+          assert q['getOnly'] is True
+          assert q['sameOriginRequestsOnly'] is True
+          assert q['externalLinksFollowed'] is False
+          assert q['discoveredApiCallsExecuted'] is False
+          assert q['publicationAllowed'] is False
+          assert l['nextchargeContextCount'] > 0, l
+          official_nc=[a for a in l['relevantAnchors'] if a.get('host') == 'nextcharge.app']
+          assert any('sito b2c' in (a.get('text') or '').lower() for a in official_nc), official_nc
+          assert any('nextcharge' in (a.get('text') or '').lower() for a in official_nc), official_nc
+          assert all(a.get('requested') is False for a in official_nc), official_nc
+          print(json.dumps({
+            'rootUrl': r['rootUrl'],
+            'pages': r['pageCount'],
+            'assets': r['assetCount'],
+            'b2cContexts': l['b2cContextCount'],
+            'nextchargeContexts': l['nextchargeContextCount'],
+            'officialNextChargeAnchors': official_nc,
+            'publicationAllowed': p['publicationAllowed'],
+          }, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-official-source
+          path: |
+            artifacts/go_electric_official_redirect_probe.json
+            artifacts/go_electric_official_public_probe.json
+            artifacts/go_electric_official_link_probe.json
+          if-no-files-found: error

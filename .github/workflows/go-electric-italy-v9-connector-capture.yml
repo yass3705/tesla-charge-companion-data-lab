@@ -1,0 +1,108 @@
+name: Go Electric Italy V9 connector capture
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/go_electric_nextcharge_connector_click_capture.py'
+      - 'scripts/go_electric_nextcharge_station_connectors_probe.py'
+      - '.github/workflows/go-electric-italy-v9-connector-capture.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  connector-capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile connector probes
+        run: |
+          python -m py_compile scripts/go_electric_nextcharge_connector_click_capture.py
+          python -m py_compile scripts/go_electric_nextcharge_station_connectors_probe.py
+      - name: Install Chromium capture dependency
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m playwright install --with-deps chromium
+      - name: Capture connector-panel transition with all post-click writes blocked
+        run: |
+          mkdir -p artifacts
+          python scripts/go_electric_nextcharge_connector_click_capture.py
+      - name: Validate fail-closed capture
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('artifacts/go_electric_nextcharge_connector_click_capture.json').read_text())
+          p=r['policy']
+          assert p['publicFrontendOnly'] is True
+          assert p['authenticated'] is False
+          assert p['remoteMutation'] is False
+          assert p['allNonGetBlockedAfterConnectorCaptureStarts'] is True
+          assert p['chargingActionsAllowed'] is False
+          assert p['paymentActionsAllowed'] is False
+          assert p['reservationActionsAllowed'] is False
+          assert p['accountActionsAllowed'] is False
+          assert p['targetPUNOperator'] == 'Go Electric Stations SRLS'
+          assert p['targetNextChargeStationId'] == 'gir.vat.mx.0245db'
+          assert set(p['bootstrapAllowedPostEndpoints']) == {
+            'https://nextcharge.app/apps/map/apis/stationsGrid',
+            'https://nextcharge.app/apps/map/apis/station',
+          }
+          assert r['interaction'].get('selectionResult',{}).get('ok') is True, r['interaction']
+          assert r['interaction'].get('connectorOpenResult',{}).get('ok') is True, r['interaction']
+          blocked=r.get('blockedConnectorCaptureNonGetRequests') or []
+          assert any(x.get('url') == 'https://nextcharge.app/apps/map/apis/stationConnectors' for x in blocked), blocked
+          print(json.dumps({
+            'selected': r['interaction']['selectionResult'],
+            'connectorOpen': r['interaction']['connectorOpenResult'],
+            'blockedPostClickNonGet': r['blockedConnectorCaptureNonGetCount'],
+          }, indent=2))
+          PY
+      - name: Read exact public stationConnectors payload
+        run: python scripts/go_electric_nextcharge_station_connectors_probe.py
+      - name: Validate stationConnectors read and attribution fail-closed
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('artifacts/go_electric_nextcharge_station_connectors_probe.json').read_text())
+          p=r['policy']
+          assert p['readOnly'] is True
+          assert p['authenticated'] is False
+          assert p['remoteMutation'] is False
+          assert p['chargingActionsAllowed'] is False
+          assert p['paymentActionsAllowed'] is False
+          assert p['reservationActionsAllowed'] is False
+          assert p['accountActionsAllowed'] is False
+          assert p['sessionMutationAllowed'] is False
+          assert p['targetPUNOperator'] == 'Go Electric Stations SRLS'
+          assert p['stationConnectorsOnlyForTarget'] == 'gir.vat.mx.0245db'
+          assert p['reservable'] == 0
+          assert p['directCpoTariffAttributionEstablished'] is False
+          assert p['publicationAllowed'] is False
+          assert set(p['allowedPostEndpoints']) == {
+            'https://nextcharge.app/apps/map/apis/stationsGrid',
+            'https://nextcharge.app/apps/map/apis/station',
+            'https://nextcharge.app/apps/map/apis/stationConnectors',
+          }
+          good=[x for x in r['connectorResponses'] if x.get('status') == 200 and x.get('json') is True]
+          assert good, r
+          print(json.dumps({
+            'responses': len(good),
+            'connectorCount': sum(x.get('connectorCount',0) for x in good),
+            'tariffFields': sum(len(x.get('tariffFields') or {}) for x in good),
+            'stationProvider': (r.get('interaction') or {}).get('station',{}).get('provider'),
+            'publicationAllowed': p['publicationAllowed'],
+          }, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-connector-capture
+          path: |
+            artifacts/go_electric_nextcharge_connector_click_capture.json
+            artifacts/go_electric_nextcharge_station_connectors_probe.json
+          if-no-files-found: error

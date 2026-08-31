@@ -1,0 +1,112 @@
+name: Go Electric Italy V9 recovery aggregate only
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/go-electric-italy-v9-recovery-aggregate-only.yml'
+      - 'scripts/go_electric_nextcharge_shard0_recovery.py'
+      - 'scripts/go_electric_nextcharge_full_aggregate.py'
+      - 'scripts/go_electric_nextcharge_part7_single_recovery.py'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DEEP_RUN_ID: '33448702311'
+      RECOVERY_RUN_ID: '33447618836'
+      NATIONAL_RUN_ID: '33442724514'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile aggregate helpers
+        run: |
+          python -m py_compile scripts/go_electric_nextcharge_part7_single_recovery.py
+          python -m py_compile scripts/go_electric_nextcharge_shard0_recovery.py
+          python -m py_compile scripts/go_electric_nextcharge_full_aggregate.py
+
+      - name: Download 17 validated deep-recovery station slots
+        run: |
+          mkdir -p artifacts
+          for slot in $(seq 0 16); do
+            gh run download "$DEEP_RUN_ID" -n "go-electric-italy-v9-part7-slot-$slot" -D "deep-$slot"
+            cp deep-$slot/go_electric_full_shard_00_part_07_slot_*.json artifacts/
+          done
+          test "$(find artifacts -maxdepth 1 -name 'go_electric_full_shard_00_part_07_slot_*.json' | wc -l)" -eq 17
+
+      - name: Rebuild canonical recovery part 7
+        env:
+          GO_ELECTRIC_SHORT_TIMEOUT_SECONDS: '6'
+        run: python scripts/go_electric_nextcharge_part7_single_recovery.py merge
+
+      - name: Download validated recovery parts 0-6
+        run: |
+          for p in 0 1 2 3 4 5 6; do
+            gh run download "$RECOVERY_RUN_ID" -n "go-electric-italy-v9-shard0-recovery-part-$p" -D "recovery-$p"
+            cp recovery-$p/go_electric_full_shard_00_part_*.json artifacts/
+          done
+          for p in 0 1 2 3 4 5 6 7; do
+            test -f "artifacts/go_electric_full_shard_00_part_0${p}.json"
+          done
+
+      - name: Rebuild deterministic original shard 0 with fixed canonical merge
+        run: python scripts/go_electric_nextcharge_shard0_recovery.py merge
+
+      - name: Validate recovered shard 0
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('artifacts/go_electric_full_shard_00.json').read_text())
+          assert r['shard']=={'index':0,'count':8,'stationCount':142}
+          assert r['summary']['processedStations']==142
+          assert r['policy']['readOnly'] is True
+          assert r['policy']['directCpoPublicationAllowed'] is False
+          assert r['requestAudit']['allRequestsDeclaredReadOnly'] is True
+          print(json.dumps({'shard':r['shard'],'summary':r['summary']},indent=2))
+          PY
+
+      - name: Download validated national shards 1-7
+        run: |
+          for s in 1 2 3 4 5 6 7; do
+            gh run download "$NATIONAL_RUN_ID" -n "go-electric-italy-v9-full-shard-$s" -D "national-$s"
+            cp national-$s/go_electric_full_shard_*.json artifacts/
+          done
+          test "$(find artifacts -maxdepth 1 -name 'go_electric_full_shard_??.json' | wc -l)" -eq 8
+
+      - name: Aggregate all 1,136 stations / 2,413 EVSE
+        run: python scripts/go_electric_nextcharge_full_aggregate.py
+
+      - name: Validate national fail-closed result
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('artifacts/go_electric_italy_v9_full_extraction.json').read_text())
+          s=r['summary']; p=r['policy']; a=r['requestAudit']
+          assert s['processedStations']==1136, s
+          assert s['targetPunEvses']==2413, s
+          assert p['allShardsPresent'] is True
+          assert p['exactPunEvseSuffixRequiredForAttribution'] is True
+          assert p['coordinateOnlyAttributionAllowed'] is False
+          assert p['directCpoPublicationAllowed'] is False
+          assert a['allRequestsDeclaredReadOnly'] is True
+          print(json.dumps({'summary':s,'requestAudit':a,'publicationAllowed':False},indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-national-aggregate-only
+          path: |
+            artifacts/go_electric_full_shard_00_part_07.json
+            artifacts/go_electric_full_shard_00.json
+            artifacts/go_electric_italy_v9_full_extraction.json
+          if-no-files-found: error
