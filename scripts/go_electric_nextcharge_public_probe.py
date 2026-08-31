@@ -23,17 +23,20 @@ MAX_ASSET_BYTES = 3_000_000
 MAX_SCRIPTS = 30
 
 
-class ScriptParser(HTMLParser):
+class ResourceParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.scripts: list[str] = []
+        self.resources: list[dict[str, str]] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag.lower() != "script":
-            return
-        src = dict(attrs).get("src")
-        if src:
-            self.scripts.append(src)
+        values = {k: v for k, v in attrs if v is not None}
+        if tag.lower() == "script" and values.get("src"):
+            self.scripts.append(values["src"])
+        for attr in ("src", "href", "data-src", "data-url"):
+            value = values.get(attr)
+            if value:
+                self.resources.append({"tag": tag.lower(), "attribute": attr, "value": value})
 
 
 def now_iso() -> str:
@@ -48,14 +51,26 @@ def safe_url(base: str, candidate: str) -> str | None:
     return url
 
 
-def get_text(url: str) -> str:
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/javascript,application/json;q=0.9,*/*;q=0.5"})
+def get_text(url: str) -> tuple[str, dict[str, str]]:
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": USER_AGENT,
+            "Accept": "text/html,application/javascript,application/json;q=0.9,*/*;q=0.5",
+        },
+    )
     with urllib.request.urlopen(req, timeout=25) as resp:
         data = resp.read(MAX_ASSET_BYTES + 1)
         if len(data) > MAX_ASSET_BYTES:
             raise RuntimeError(f"asset too large: {url}")
         charset = resp.headers.get_content_charset() or "utf-8"
-        return data.decode(charset, errors="replace")
+        headers = {
+            "contentType": str(resp.headers.get("Content-Type") or ""),
+            "server": str(resp.headers.get("Server") or ""),
+            "cacheControl": str(resp.headers.get("Cache-Control") or ""),
+            "contentEncoding": str(resp.headers.get("Content-Encoding") or ""),
+        }
+        return data.decode(charset, errors="replace"), headers
 
 
 def endpoint_candidates(text: str, base_url: str) -> set[str]:
@@ -68,7 +83,7 @@ def endpoint_candidates(text: str, base_url: str) -> set[str]:
     for idx, pattern in enumerate(patterns):
         for match in re.finditer(pattern, text, flags=re.IGNORECASE):
             raw = match.group(0 if idx == 0 else 1).strip("\"'")
-            if len(raw) > 300 or any(x in raw.lower() for x in ("data:image", "node_modules", "sourceMappingURL")):
+            if len(raw) > 300 or any(x in raw.lower() for x in ("data:image", "node_modules", "sourcemappingurl")):
                 continue
             if idx == 2 and not any(token in raw.lower() for token in ("api", "ajax", "json", "station", "connector", "tariff", "price", "evse")):
                 continue
@@ -88,9 +103,18 @@ def main() -> None:
     if not root_url:
         raise SystemExit("root URL must be HTTPS on nextcharge.app")
 
-    html = get_text(root_url)
-    parser = ScriptParser()
+    html, root_headers = get_text(root_url)
+    parser = ResourceParser()
     parser.feed(html)
+
+    discovered_resources: list[dict[str, str]] = []
+    for item in parser.resources:
+        url = safe_url(root_url, item["value"])
+        if not url:
+            continue
+        row = {**item, "url": url}
+        if row not in discovered_resources:
+            discovered_resources.append(row)
 
     script_urls: list[str] = []
     for src in parser.scripts:
@@ -101,20 +125,28 @@ def main() -> None:
             break
 
     candidates = endpoint_candidates(html, root_url)
+    candidates.update(item["url"] for item in discovered_resources if any(k in item["url"].lower() for k in ("api", "station", "connector", "tariff", "price", "evse")))
+
     assets: list[dict[str, object]] = []
     for script_url in script_urls:
         item: dict[str, object] = {"url": script_url}
         try:
-            text = get_text(script_url)
+            text, headers = get_text(script_url)
             found = sorted(endpoint_candidates(text, script_url))
-            item.update({"bytesDecoded": len(text.encode("utf-8")), "candidateCount": len(found), "candidates": found})
+            item.update({
+                "bytesDecoded": len(text.encode("utf-8")),
+                "headers": headers,
+                "candidateCount": len(found),
+                "candidates": found,
+            })
             candidates.update(found)
         except Exception as exc:  # diagnostic only; keep other assets inspectable
             item["error"] = f"{type(exc).__name__}: {exc}"
         assets.append(item)
 
+    compact_prefix = re.sub(r"\s+", " ", html[:8000]).strip()
     report = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "generatedAt": now_iso(),
         "scope": "public NextCharge web map endpoint discovery",
         "policy": {
@@ -124,6 +156,11 @@ def main() -> None:
             "allowedHosts": sorted(ALLOWED_HOSTS),
         },
         "rootUrl": root_url,
+        "rootHeaders": root_headers,
+        "rootHtmlLength": len(html.encode("utf-8")),
+        "rootHtmlPrefix": compact_prefix,
+        "resourceCount": len(discovered_resources),
+        "resources": discovered_resources[:200],
         "scriptCount": len(script_urls),
         "candidateCount": len(candidates),
         "candidates": sorted(candidates),
@@ -132,7 +169,12 @@ def main() -> None:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps({"scriptCount": report["scriptCount"], "candidateCount": report["candidateCount"]}, indent=2))
+    print(json.dumps({
+        "rootHtmlLength": report["rootHtmlLength"],
+        "resourceCount": report["resourceCount"],
+        "scriptCount": report["scriptCount"],
+        "candidateCount": report["candidateCount"],
+    }, indent=2))
     for url in report["candidates"][:80]:
         print(url)
 
