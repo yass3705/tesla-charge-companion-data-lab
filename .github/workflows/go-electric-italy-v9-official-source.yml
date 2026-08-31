@@ -19,36 +19,49 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Compile canonical-host probe
-        run: python -m py_compile scripts/go_electric_official_redirect_probe.py
-      - name: Resolve canonical Go Electric host without following redirects
+      - name: Compile official source probes
+        run: |
+          python -m py_compile scripts/go_electric_official_redirect_probe.py
+          python -m py_compile scripts/go_electric_official_public_probe.py
+      - name: Confirm canonical Go Electric host without following redirects
         run: |
           mkdir -p artifacts
           python scripts/go_electric_official_redirect_probe.py
-      - name: Validate strict redirect-safe scope
+      - name: Scan validated canonical Go Electric public source
+        run: python scripts/go_electric_official_public_probe.py
+      - name: Validate strict read-only canonical scope
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          r=json.loads(Path('artifacts/go_electric_official_redirect_probe.json').read_text())
+          d=json.loads(Path('artifacts/go_electric_official_redirect_probe.json').read_text())
+          r=json.loads(Path('artifacts/go_electric_official_public_probe.json').read_text())
+          assert d['candidateHosts'] == ['goelectricstations.it'], d
+          assert d['policy']['redirectsFollowed'] is False
           p=r['policy']
           assert p['readOnly'] is True
           assert p['authenticated'] is False
           assert p['remoteMutation'] is False
           assert p['getOnly'] is True
-          assert p['redirectsFollowed'] is False
-          assert p['unknownRedirectHostsBlocked'] is True
+          assert p['discoveredApiCallsExecuted'] is False
+          assert p['chargingActionsAllowed'] is False
+          assert p['paymentActionsAllowed'] is False
+          assert p['reservationActionsAllowed'] is False
           assert p['publicationAllowed'] is False
-          assert set(p['allowedHosts']) == {'goelectricstations.com','www.goelectricstations.com'}
+          assert set(p['allowedHosts']) == {'goelectricstations.it','www.goelectricstations.it'}
+          assert r['rootUrl'].startswith('https://goelectricstations.it') or r['rootUrl'].startswith('https://www.goelectricstations.it')
           print(json.dumps({
-            'candidateHosts': r['candidateHosts'],
-            'results': r['results'],
-            'redirects': r['redirects'],
+            'rootUrl': r['rootUrl'],
+            'pages': r['pageCount'],
+            'assets': r['assetCount'],
+            'targetEvseHits': r['targetEvseHits'],
             'publicationAllowed': p['publicationAllowed'],
           }, indent=2))
           PY
       - uses: actions/upload-artifact@v4
         with:
           name: go-electric-italy-v9-official-source
-          path: artifacts/go_electric_official_redirect_probe.json
+          path: |
+            artifacts/go_electric_official_redirect_probe.json
+            artifacts/go_electric_official_public_probe.json
           if-no-files-found: error
