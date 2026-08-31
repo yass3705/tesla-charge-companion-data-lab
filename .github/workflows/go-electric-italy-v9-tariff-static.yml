@@ -1,0 +1,48 @@
+name: Go Electric Italy V9 tariff static trace
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/go_electric_nextcharge_tariff_symbol_probe.py'
+      - '.github/workflows/go-electric-italy-v9-tariff-static.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  tariff-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile targeted tariff probe
+        run: python -m py_compile scripts/go_electric_nextcharge_tariff_symbol_probe.py
+      - name: Trace public connector and tariff symbols
+        run: |
+          mkdir -p artifacts
+          python scripts/go_electric_nextcharge_tariff_symbol_probe.py
+      - name: Validate read-only tariff report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          t = json.loads(Path('artifacts/go_electric_nextcharge_tariff_symbol_probe.json').read_text())
+          assert t['policy']['readOnly'] is True
+          assert t['policy']['authenticated'] is False
+          assert t['policy']['remoteMutation'] is False
+          assert t['policy']['discoveredApiCallsExecuted'] is False
+          assert t['policy']['chargingActionsAllowed'] is False
+          assert t['policy']['paymentActionsAllowed'] is False
+          assert t['policy']['reservationActionsAllowed'] is False
+          hits = sum(sum((src.get('hitCounts') or {}).values()) for src in t.get('sources', []))
+          assert hits > 0, t
+          print(json.dumps({'sources': len(t['sources']), 'hits': hits}, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-tariff-static
+          path: artifacts/go_electric_nextcharge_tariff_symbol_probe.json
+          if-no-files-found: error
