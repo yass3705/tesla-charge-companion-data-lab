@@ -1,0 +1,45 @@
+name: Go Electric Italy V9 public research
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/go_electric_nextcharge_public_probe.py'
+      - '.github/workflows/go-electric-italy-v9.yml'
+      - 'data/reports/go_electric_italy_v9_research.md'
+
+permissions:
+  contents: read
+
+jobs:
+  public-probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile probe
+        run: python -m py_compile scripts/go_electric_nextcharge_public_probe.py
+      - name: Probe public NextCharge map assets
+        run: |
+          mkdir -p artifacts
+          python scripts/go_electric_nextcharge_public_probe.py \
+            --out artifacts/go_electric_nextcharge_public_probe.json
+      - name: Validate read-only report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path('artifacts/go_electric_nextcharge_public_probe.json').read_text())
+          assert r['policy']['readOnly'] is True
+          assert r['policy']['authenticated'] is False
+          assert r['policy']['remoteMutation'] is False
+          assert r['rootUrl'].startswith('https://nextcharge.app/')
+          print(json.dumps({'scripts': r['scriptCount'], 'candidates': r['candidateCount']}, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-public-probe
+          path: artifacts/go_electric_nextcharge_public_probe.json
+          if-no-files-found: error
