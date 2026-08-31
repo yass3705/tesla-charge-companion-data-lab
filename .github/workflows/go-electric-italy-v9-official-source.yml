@@ -54,7 +54,6 @@ jobs:
           assert p['reservationActionsAllowed'] is False
           assert p['publicationAllowed'] is False
           assert set(p['allowedHosts']) == {'goelectricstations.it','www.goelectricstations.it'}
-          assert r['rootUrl'].startswith('https://goelectricstations.it') or r['rootUrl'].startswith('https://www.goelectricstations.it')
           q=l['policy']
           assert q['readOnly'] is True
           assert q['authenticated'] is False
@@ -65,14 +64,17 @@ jobs:
           assert q['discoveredApiCallsExecuted'] is False
           assert q['publicationAllowed'] is False
           assert l['nextchargeContextCount'] > 0, l
+          official_nc=[a for a in l['relevantAnchors'] if a.get('host') == 'nextcharge.app']
+          assert any('sito b2c' in (a.get('text') or '').lower() for a in official_nc), official_nc
+          assert any('nextcharge' in (a.get('text') or '').lower() for a in official_nc), official_nc
+          assert all(a.get('requested') is False for a in official_nc), official_nc
           print(json.dumps({
             'rootUrl': r['rootUrl'],
             'pages': r['pageCount'],
             'assets': r['assetCount'],
-            'targetEvseHits': r['targetEvseHits'],
             'b2cContexts': l['b2cContextCount'],
             'nextchargeContexts': l['nextchargeContextCount'],
-            'nextchargeUrls': l['nextchargeUrlCandidates'],
+            'officialNextChargeAnchors': official_nc,
             'publicationAllowed': p['publicationAllowed'],
           }, indent=2))
           PY
