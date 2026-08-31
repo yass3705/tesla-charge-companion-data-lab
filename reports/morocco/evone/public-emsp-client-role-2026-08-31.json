@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-31",
+  "scope": "EVPlug / EvOne public client role and roaming semantics",
+  "policy": {
+    "public_sources_only": true,
+    "read_only": true,
+    "no_login": true,
+    "no_backend_requests": true,
+    "no_credentials": true,
+    "diagnostic_only": true,
+    "no_production_status_promotion": true
+  },
+  "sources": [
+    {
+      "type": "official_website",
+      "url": "https://evplug.ma/individuel/points-de-recharge/",
+      "observed_claims": [
+        "EVPlug states that its recharge card can be used across public stations and major fast-charging networks in Morocco.",
+        "EVPlug states a 99% coverage claim for Morocco.",
+        "EVPlug directs users to its app for nearby stations and public-station tariffs."
+      ]
+    },
+    {
+      "type": "app_store_listing",
+      "url": "https://apps.apple.com/fr/app/evone-ma/id6477578985",
+      "observed_claims": [
+        "EvOne lets drivers check prices beforehand.",
+        "EvOne exposes charger availability and real-time updates.",
+        "EvOne supports remote start/stop and payments.",
+        "Provider/developer is Evplug."
+      ]
+    }
+  ],
+  "modeling_resolution": {
+    "cpo_operator": "station-specific; MUST NOT default to EVPlug or EvOne solely because a station is visible/usable in EvOne",
+    "site_brand": "station-specific host/brand; independent from EVPlug/EvOne",
+    "app_source_access_network": "EVPlug / EvOne when observation originates from the EvOne client or EVPlug roaming access",
+    "tariff_channel": "EVPlug/EvOne eMSP/roaming tariff when shown by the client; do not overwrite a native CPO direct tariff",
+    "status_source": "EVPlug/EvOne only when the observed status originates from that client; prefer verified native CPO status when fresher/authoritative"
+  },
+  "production_status_policy": {
+    "allowed_evone_statuses": ["Available", "Occupied", "Charging"],
+    "diagnostic_only_statuses": ["Faulted", "Offline", "Unknown", "Unavailable"],
+    "unexpected_or_missing_status": "exclude_from_production"
+  },
+  "interpretation": "Official public materials support classifying EVPlug/EvOne primarily as an eMSP/access-network and client surface spanning multiple charging networks. Visibility or payment capability in EvOne is therefore not evidence that EVPlug/EvOne is the physical CPO. This is particularly relevant when cross-checking EVGO/Nareva sites: EVGO native cp.evgo.ma remains the preferred status source when available and fresher, while EvOne can remain a roaming corroboration source."
+}
