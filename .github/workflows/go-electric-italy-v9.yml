@@ -6,6 +6,7 @@ on:
     paths:
       - 'scripts/go_electric_nextcharge_public_probe.py'
       - 'scripts/go_electric_nextcharge_symbol_probe.py'
+      - 'scripts/go_electric_nextcharge_tariff_symbol_probe.py'
       - 'scripts/go_electric_nextcharge_network_capture.py'
       - 'scripts/go_electric_nextcharge_station_grid_probe.py'
       - 'scripts/go_electric_nextcharge_station_detail_probe.py'
@@ -28,6 +29,7 @@ jobs:
         run: |
           python -m py_compile scripts/go_electric_nextcharge_public_probe.py
           python -m py_compile scripts/go_electric_nextcharge_symbol_probe.py
+          python -m py_compile scripts/go_electric_nextcharge_tariff_symbol_probe.py
           python -m py_compile scripts/go_electric_nextcharge_network_capture.py
           python -m py_compile scripts/go_electric_nextcharge_station_grid_probe.py
           python -m py_compile scripts/go_electric_nextcharge_station_detail_probe.py
@@ -39,6 +41,8 @@ jobs:
             --out artifacts/go_electric_nextcharge_public_probe.json
       - name: Resolve public frontend config symbols
         run: python scripts/go_electric_nextcharge_symbol_probe.py
+      - name: Trace connector and tariff frontend symbols
+        run: python scripts/go_electric_nextcharge_tariff_symbol_probe.py
       - name: Install browser capture dependency
         run: |
           python -m pip install --disable-pip-version-check playwright
@@ -58,15 +62,19 @@ jobs:
           from pathlib import Path
           r = json.loads(Path('artifacts/go_electric_nextcharge_public_probe.json').read_text())
           s = json.loads(Path('artifacts/go_electric_nextcharge_symbol_probe.json').read_text())
+          t = json.loads(Path('artifacts/go_electric_nextcharge_tariff_symbol_probe.json').read_text())
           n = json.loads(Path('artifacts/go_electric_nextcharge_network_capture.json').read_text())
           g = json.loads(Path('artifacts/go_electric_nextcharge_station_grid_probe.json').read_text())
           d = json.loads(Path('artifacts/go_electric_nextcharge_station_detail_probe.json').read_text())
           i = json.loads(Path('artifacts/go_electric_nextcharge_station_interaction_capture.json').read_text())
-          for payload in (r, s):
+          for payload in (r, s, t):
               assert payload['policy']['readOnly'] is True
               assert payload['policy']['authenticated'] is False
               assert payload['policy']['remoteMutation'] is False
               assert payload['policy']['discoveredApiCallsExecuted'] is False
+          assert t['policy']['chargingActionsAllowed'] is False
+          assert t['policy']['paymentActionsAllowed'] is False
+          assert t['policy']['reservationActionsAllowed'] is False
           assert n['policy']['publicFrontendOnly'] is True
           assert n['policy']['authenticated'] is False
           assert n['policy']['remoteMutation'] is False
@@ -103,11 +111,15 @@ jobs:
               'https://nextcharge.app/apps/map/apis/stationsGrid',
               'https://nextcharge.app/apps/map/apis/station',
           ])
+          tariff_hits = sum(sum((src.get('hitCounts') or {}).values()) for src in t.get('sources', []))
+          assert tariff_hits > 0, t
           print(json.dumps({
               'scripts': r['scriptCount'],
               'candidateUrls': r['candidateUrlCount'],
               'candidateStrings': r['candidateStringCount'],
               'symbolSources': len(s['sources']),
+              'tariffSymbolSources': len(t['sources']),
+              'tariffSymbolHits': tariff_hits,
               'capturedRequests': n['requestCount'],
               'blockedNonGet': n['nonGetCount'],
               'stationsGridSuccessfulWindows': len(grid_success),
@@ -124,6 +136,7 @@ jobs:
           path: |
             artifacts/go_electric_nextcharge_public_probe.json
             artifacts/go_electric_nextcharge_symbol_probe.json
+            artifacts/go_electric_nextcharge_tariff_symbol_probe.json
             artifacts/go_electric_nextcharge_network_capture.json
             artifacts/go_electric_nextcharge_station_grid_probe.json
             artifacts/go_electric_nextcharge_station_detail_probe.json
