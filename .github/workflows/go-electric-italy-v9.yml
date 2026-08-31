@@ -9,6 +9,7 @@ on:
       - 'scripts/go_electric_nextcharge_network_capture.py'
       - 'scripts/go_electric_nextcharge_station_grid_probe.py'
       - 'scripts/go_electric_nextcharge_station_detail_probe.py'
+      - 'scripts/go_electric_nextcharge_station_interaction_capture.py'
       - '.github/workflows/go-electric-italy-v9.yml'
       - 'data/reports/go_electric_italy_v9_research.md'
 
@@ -30,6 +31,7 @@ jobs:
           python -m py_compile scripts/go_electric_nextcharge_network_capture.py
           python -m py_compile scripts/go_electric_nextcharge_station_grid_probe.py
           python -m py_compile scripts/go_electric_nextcharge_station_detail_probe.py
+          python -m py_compile scripts/go_electric_nextcharge_station_interaction_capture.py
       - name: Probe public NextCharge map assets
         run: |
           mkdir -p artifacts
@@ -47,6 +49,8 @@ jobs:
         run: python scripts/go_electric_nextcharge_station_grid_probe.py
       - name: Read public station details for sampled IDs
         run: python scripts/go_electric_nextcharge_station_detail_probe.py
+      - name: Select one station and capture the next blocked request
+        run: python scripts/go_electric_nextcharge_station_interaction_capture.py
       - name: Validate read-only reports
         run: |
           python - <<'PY'
@@ -57,6 +61,7 @@ jobs:
           n = json.loads(Path('artifacts/go_electric_nextcharge_network_capture.json').read_text())
           g = json.loads(Path('artifacts/go_electric_nextcharge_station_grid_probe.json').read_text())
           d = json.loads(Path('artifacts/go_electric_nextcharge_station_detail_probe.json').read_text())
+          i = json.loads(Path('artifacts/go_electric_nextcharge_station_interaction_capture.json').read_text())
           for payload in (r, s):
               assert payload['policy']['readOnly'] is True
               assert payload['policy']['authenticated'] is False
@@ -87,6 +92,17 @@ jobs:
           assert d['policy']['allowedEndpoint'] == 'https://nextcharge.app/apps/map/apis/station'
           detail_success = [x for x in d['details'] if x.get('httpStatus') == 200 and x.get('json') is True]
           assert detail_success, d
+          assert i['policy']['publicFrontendOnly'] is True
+          assert i['policy']['authenticated'] is False
+          assert i['policy']['remoteMutation'] is False
+          assert i['policy']['newNonGetRequestsBlocked'] is True
+          assert i['policy']['chargingActionsAllowed'] is False
+          assert i['policy']['paymentActionsAllowed'] is False
+          assert i['policy']['reservationActionsAllowed'] is False
+          assert sorted(i['policy']['allowedPostEndpoints']) == sorted([
+              'https://nextcharge.app/apps/map/apis/stationsGrid',
+              'https://nextcharge.app/apps/map/apis/station',
+          ])
           print(json.dumps({
               'scripts': r['scriptCount'],
               'candidateUrls': r['candidateUrlCount'],
@@ -97,6 +113,9 @@ jobs:
               'stationsGridSuccessfulWindows': len(grid_success),
               'stationCandidates': sum(w.get('stationCandidateCountInSample', 0) for w in grid_success),
               'stationDetailSuccess': len(detail_success),
+              'interactionAllowedReadPosts': i['allowedReadPostCount'],
+              'interactionBlockedNewNonGet': i['blockedNewNonGetCount'],
+              'selection': i['interaction'].get('selectionResult'),
           }, indent=2))
           PY
       - uses: actions/upload-artifact@v4
@@ -108,4 +127,5 @@ jobs:
             artifacts/go_electric_nextcharge_network_capture.json
             artifacts/go_electric_nextcharge_station_grid_probe.json
             artifacts/go_electric_nextcharge_station_detail_probe.json
+            artifacts/go_electric_nextcharge_station_interaction_capture.json
           if-no-files-found: error
