@@ -17,9 +17,13 @@ def now_iso() -> str:
 
 
 def main() -> None:
-    files = sorted(Path("artifacts").glob("go_electric_full_shard_*.json"))
-    if len(files) != EXPECTED_SHARDS:
-        raise SystemExit(f"expected {EXPECTED_SHARDS} shard files, found {len(files)}")
+    # Only canonical national shard files are valid inputs. Recovery part/slot
+    # artifacts deliberately share the shard prefix and must never enter the
+    # national aggregation.
+    files = [Path(f"artifacts/go_electric_full_shard_{index:02d}.json") for index in range(EXPECTED_SHARDS)]
+    missing = [str(path) for path in files if not path.is_file()]
+    if missing:
+        raise SystemExit(f"missing canonical national shard files: {missing}")
 
     shards = [json.loads(path.read_text(encoding="utf-8")) for path in files]
     indices = sorted(x["shard"]["index"] for x in shards)
