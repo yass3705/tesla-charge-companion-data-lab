@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "subject": "TotalEnergies Club EV-Charge public authentication blocker",
+  "observed_date": "2026-08-31",
+  "policy": {
+    "public_metadata_only": true,
+    "read_only": true,
+    "no_login_attempted": true,
+    "no_credentials": true,
+    "no_backend_requests": true,
+    "no_user_data": true
+  },
+  "public_store_evidence": {
+    "source": "Apple App Store Morocco public listing",
+    "app_id": "6475968700",
+    "developer": "Total Maroc SA",
+    "current_version": "3.00.10",
+    "version_date": "2026-07-28",
+    "public_review_signals": [
+      "multiple current public reviews report inability to receive the verification code or log in",
+      "one public review reports an internal-error during login",
+      "the listing simultaneously states that real-time charge-point availability is an app feature"
+    ]
+  },
+  "interpretation": {
+    "finding": "Native app verification is currently operationally constrained by a publicly corroborated authentication/login blocker; failure to validate live station/status/tariff data through an interactive app session should not be interpreted as absence of the underlying Numocity data surface.",
+    "numocity_request_shape_impact": "The existing static evidence for GET-oriented status routes remains relevant. Investigation should continue through sanitized static client analysis and anonymous read-only public request shapes only; do not bypass authentication or use account-bound traffic.",
+    "modeling_change": false,
+    "cpo_operator": "station-specific",
+    "site_brand": "TotalEnergies where independently established",
+    "app_source_access_network": "Club EV-Charge / Numocity",
+    "tariff_channel": "station-specific; unresolved unless explicit native evidence exists",
+    "status_source": "Numocity native only after anonymous/read-only endpoint validation"
+  },
+  "production_effect": {
+    "promote_new_station_data": false,
+    "promote_new_tariff_data": false,
+    "promote_new_status_data": false,
+    "blocker_documented": true
+  }
+}
