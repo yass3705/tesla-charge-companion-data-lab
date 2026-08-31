@@ -20,10 +20,6 @@ jobs:
           python-version: '3.12'
       - name: Compile bounded national probe
         run: python -m py_compile scripts/go_electric_nextcharge_national_batch_probe.py
-      - name: Install Chromium dependency
-        run: |
-          python -m pip install --disable-pip-version-check playwright
-          python -m playwright install --with-deps chromium
       - name: Run bounded national Go Electric tariff batch
         env:
           GO_ELECTRIC_BATCH_LIMIT: '24'
@@ -36,16 +32,16 @@ jobs:
           import json
           from pathlib import Path
           r=json.loads(Path('artifacts/go_electric_nextcharge_national_batch_probe.json').read_text())
-          p=r['policy']; s=r['summary']; c=r['catalogue']
+          p=r['policy']; s=r['summary']; c=r['catalogue']; a=r['requestAudit']
           assert c['goElectricStationCount'] == 1136, c
           assert c['goElectricEvseCount'] == 2413, c
           assert p['readOnly'] is True
           assert p['authenticated'] is False
           assert p['remoteMutation'] is False
+          assert p['browserUiUsed'] is False
           assert p['boundedNationalProbe'] is True
           assert p['nationalScrape'] is False
           assert p['batchLimit'] == 24
-          assert p['connectorReadRequiresPriorBoundedGridDiscovery'] is True
           assert p['exactPunEvseSuffixRequiredForAttribution'] is True
           assert p['coordinateOnlyAttributionAllowed'] is False
           assert p['chargingActionsAllowed'] is False
@@ -54,20 +50,24 @@ jobs:
           assert p['accountActionsAllowed'] is False
           assert p['sessionMutationAllowed'] is False
           assert p['directCpoPublicationAllowed'] is False
+          assert a['allRequestsDeclaredReadOnly'] is True
+          assert set(a['endpoints']) <= set(p['allowedReadPostEndpoints'])
           assert s['targetStations'] >= 16, s
           assert s['queriedStations'] == s['targetStations'], s
+          assert s['gridSuccessStations'] >= 1, s
           assert s['exactMatchedStations'] >= 1, s
           assert s['exactConnectorMatches'] >= 1, s
           print(json.dumps({
             'catalogue': c,
             'summary': s,
-            'blockedRequestCount': len(r.get('blockedRequests') or []),
+            'requestAudit': a,
             'publicationAllowed': p['directCpoPublicationAllowed'],
             'publicationReason': p['publicationReason'],
           }, indent=2))
           PY
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: go-electric-italy-v9-national-batch
           path: artifacts/go_electric_nextcharge_national_batch_probe.json
-          if-no-files-found: error
+          if-no-files-found: warn
