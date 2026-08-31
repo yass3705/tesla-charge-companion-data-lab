@@ -1,0 +1,73 @@
+name: Go Electric Italy V9 exact NextCharge match
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/go_electric_pun_v9_sample.py'
+      - 'scripts/go_electric_nextcharge_exact_match_probe.py'
+      - '.github/workflows/go-electric-italy-v9-exact-match.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  exact-match:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile exact-match probes
+        run: |
+          python -m py_compile scripts/go_electric_pun_v9_sample.py
+          python -m py_compile scripts/go_electric_nextcharge_exact_match_probe.py
+      - name: Extract exact Go Electric PUN targets
+        run: |
+          mkdir -p artifacts
+          python scripts/go_electric_pun_v9_sample.py
+      - name: Cross-match representative PUN stations in NextCharge
+        run: python scripts/go_electric_nextcharge_exact_match_probe.py
+      - name: Validate strict read-only scope
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path('artifacts/go_electric_pun_v9_sample.json').read_text())
+          x = json.loads(Path('artifacts/go_electric_nextcharge_exact_match_probe.json').read_text())
+          assert p['targetOperator'] == 'Go Electric Stations SRLS'
+          assert p['stationCount'] == 1136, p['stationCount']
+          assert p['evseCount'] == 2413, p['evseCount']
+          pol = x['policy']
+          assert pol['readOnly'] is True
+          assert pol['authenticated'] is False
+          assert pol['remoteMutation'] is False
+          assert pol['chargingActionsAllowed'] is False
+          assert pol['paymentActionsAllowed'] is False
+          assert pol['reservationActionsAllowed'] is False
+          assert pol['accountActionsAllowed'] is False
+          assert pol['nationalProviderScrape'] is False
+          assert set(pol['allowedEndpoints']) == {
+              'https://nextcharge.app/apps/map/apis/stationsGrid',
+              'https://nextcharge.app/apps/map/apis/station',
+          }
+          assert 3 <= len(x['targets']) <= 4
+          matched = [r for r in x['targets'] if r.get('matched')]
+          assert matched, x
+          print(json.dumps({
+              'targets': len(x['targets']),
+              'matched': len(matched),
+              'tariffEMP': sum(len((r.get('nextcharge') or {}).get('tariffEMP') or []) for r in matched),
+              'priceRateStandard': sum(len((r.get('nextcharge') or {}).get('priceRateStandard') or []) for r in matched),
+              'idEVSE': sum(len((r.get('nextcharge') or {}).get('idEVSE') or []) for r in matched),
+              'idConnector': sum(len((r.get('nextcharge') or {}).get('idConnector') or []) for r in matched),
+          }, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-exact-match
+          path: |
+            artifacts/go_electric_pun_v9_sample.json
+            artifacts/go_electric_nextcharge_exact_match_probe.json
+          if-no-files-found: error
