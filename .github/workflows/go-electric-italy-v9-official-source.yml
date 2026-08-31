@@ -1,0 +1,57 @@
+name: Go Electric Italy V9 official source
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/go_electric_official_public_probe.py'
+      - '.github/workflows/go-electric-italy-v9-official-source.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  official-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile official source probe
+        run: python -m py_compile scripts/go_electric_official_public_probe.py
+      - name: Discover public official Go Electric sources
+        run: |
+          mkdir -p artifacts
+          python scripts/go_electric_official_public_probe.py
+      - name: Validate strict read-only scope
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('artifacts/go_electric_official_public_probe.json').read_text())
+          p=r['policy']
+          assert p['readOnly'] is True
+          assert p['authenticated'] is False
+          assert p['remoteMutation'] is False
+          assert p['getOnly'] is True
+          assert p['discoveredApiCallsExecuted'] is False
+          assert p['chargingActionsAllowed'] is False
+          assert p['paymentActionsAllowed'] is False
+          assert p['reservationActionsAllowed'] is False
+          assert p['publicationAllowed'] is False
+          assert set(p['allowedHosts']) == {'goelectricstations.com','www.goelectricstations.com'}
+          assert r['rootUrl'].startswith('https://')
+          print(json.dumps({
+            'rootUrl': r['rootUrl'],
+            'pages': r['pageCount'],
+            'assets': r['assetCount'],
+            'targetEvseHits': r['targetEvseHits'],
+            'publicationAllowed': p['publicationAllowed'],
+          }, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-official-source
+          path: artifacts/go_electric_official_public_probe.json
+          if-no-files-found: error
