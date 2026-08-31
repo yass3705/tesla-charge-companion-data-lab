@@ -35,8 +35,14 @@ jobs:
           assert r['policy']['readOnly'] is True
           assert r['policy']['authenticated'] is False
           assert r['policy']['remoteMutation'] is False
+          assert r['policy']['discoveredApiCallsExecuted'] is False
           assert r['rootUrl'].startswith('https://nextcharge.app/')
-          print(json.dumps({'scripts': r['scriptCount'], 'candidates': r['candidateCount']}, indent=2))
+          assert r['scriptCount'] >= 1, r
+          print(json.dumps({
+              'scripts': r['scriptCount'],
+              'candidateUrls': r['candidateUrlCount'],
+              'candidateStrings': r['candidateStringCount'],
+          }, indent=2))
           PY
       - uses: actions/upload-artifact@v4
         with:
