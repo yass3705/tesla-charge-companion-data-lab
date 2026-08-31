@@ -24,6 +24,16 @@ STATIC_HOSTS = {"nextchargeapp-542e.kxcdn.com"}
 FETCH_HOSTS = FRONTEND_HOSTS | STATIC_HOSTS
 MAX_ASSET_BYTES = 8_000_000
 MAX_SCRIPTS = 30
+CONTEXT_TERMS = (
+    "hostEndpoints=",
+    "pathAPI=",
+    "hostAPIstationsGrid",
+    "hostAPImultimedia",
+    "getSessionTokenForStations",
+    "function getStations",
+    "getTariffs(){",
+    "tariffEMP",
+)
 
 
 class ResourceParser(HTMLParser):
@@ -129,6 +139,26 @@ def endpoint_candidates(text: str, base_url: str) -> tuple[set[str], set[str]]:
     return urls, strings
 
 
+def interesting_contexts(text: str) -> dict[str, list[str]]:
+    result: dict[str, list[str]] = {}
+    for term in CONTEXT_TERMS:
+        snippets: list[str] = []
+        start_at = 0
+        while len(snippets) < 8:
+            pos = text.find(term, start_at)
+            if pos < 0:
+                break
+            left = max(0, pos - 1200)
+            right = min(len(text), pos + len(term) + 1800)
+            snippet = text[left:right]
+            if snippet not in snippets:
+                snippets.append(snippet)
+            start_at = pos + len(term)
+        if snippets:
+            result[term] = snippets
+    return result
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default="https://nextcharge.app/map?nextcharge=only")
@@ -143,12 +173,12 @@ def main() -> None:
     parser = ResourceParser()
     parser.feed(html)
 
-    discovered_resources: list[dict[str, str]] = []
+    discovered_resources: list[dict[str, object]] = []
     for item in parser.resources:
         url = recordable_url(root_url, item["value"])
         if not url:
             continue
-        row = {**item, "url": url, "fetchAllowed": fetchable_url(root_url, item["value"]) is not None}
+        row: dict[str, object] = {**item, "url": url, "fetchAllowed": fetchable_url(root_url, item["value"]) is not None}
         if row not in discovered_resources:
             discovered_resources.append(row)
 
@@ -176,6 +206,7 @@ def main() -> None:
                 "candidateUrls": sorted(urls),
                 "candidateStringCount": len(strings),
                 "candidateStrings": sorted(strings)[:500],
+                "interestingContexts": interesting_contexts(text),
                 "nestedJavascript": nested[:100],
             })
             candidate_urls.update(urls)
@@ -186,7 +217,7 @@ def main() -> None:
         assets.append(item)
 
     report = {
-        "schemaVersion": 4,
+        "schemaVersion": 5,
         "generatedAt": now_iso(),
         "scope": "public NextCharge web frontend/static-bundle endpoint discovery",
         "policy": {
