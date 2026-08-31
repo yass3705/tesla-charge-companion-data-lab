@@ -139,9 +139,13 @@ def extract_part() -> None:
 
 
 def merge_parts() -> None:
-    files = sorted(Path("artifacts").glob("go_electric_full_shard_00_part_*.json"))
-    if len(files) != 8:
-        raise SystemExit(f"expected 8 recovery parts, found {len(files)}")
+    # Select the eight canonical part files explicitly. Deep-recovery station
+    # artifacts deliberately share the `part_07_...` prefix and must never be
+    # mistaken for parent recovery parts.
+    files = [Path(f"artifacts/go_electric_full_shard_00_part_{index:02d}.json") for index in range(8)]
+    missing = [str(path) for path in files if not path.is_file()]
+    if missing:
+        raise SystemExit(f"missing canonical recovery parts: {missing}")
     parts = [json.loads(p.read_text(encoding="utf-8")) for p in files]
     indices = sorted(p["recoveryPart"]["index"] for p in parts)
     if indices != list(range(8)):
