@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "purpose": "Sanitized diagnostic evidence that the public native EVGO backend exposes fresh changing EVSE status suitable as the preferred status_source over roaming mirrors when available.",
+  "policy": {
+    "read_only": true,
+    "sanitized_public_fields_only": true,
+    "no_credentials": true,
+    "no_mutations": true,
+    "diagnostic_only": true
+  },
+  "modeling": {
+    "cpo_operator_candidate": "Nareva Services / EVGO",
+    "site_brand": "station-specific",
+    "app_source_access_network": "EVGO",
+    "tariff_channel": "EVGO native",
+    "status_source": "EVGO native backend cp.evgo.ma"
+  },
+  "baseline": {
+    "generated_at": "2026-08-30T05:21:35.361687+00:00",
+    "stations": 17,
+    "evses": 43,
+    "native_status_counts": {
+      "available": 35,
+      "charging": 3,
+      "suspendedEV": 4,
+      "unavailable": 1
+    },
+    "operational_class_counts": {
+      "available": 34,
+      "occupied_or_active_session": 7,
+      "out_of_service": 2
+    }
+  },
+  "fresh_refresh": {
+    "workflow_run_id": 33339319535,
+    "source_generated_at": "2026-08-30T22:30:26.051186+00:00",
+    "normalized_generated_at": "2026-08-30T22:30:44.847045+00:00",
+    "stations": 17,
+    "evses": 43,
+    "native_status_counts": {
+      "available": 32,
+      "charging": 9,
+      "suspendedEV": 1,
+      "unavailable": 1
+    },
+    "operational_class_counts": {
+      "available": 31,
+      "occupied_or_active_session": 10,
+      "out_of_service": 2
+    }
+  },
+  "meaningful_examples": [
+    {
+      "station": "Marjane El Jadida",
+      "evse_id": "59",
+      "baseline_status": "suspendedEV",
+      "fresh_status": "charging",
+      "interpretation": "active-session state changed on the native backend"
+    },
+    {
+      "station": "Marjane Tanger",
+      "fresh_station_statuses": ["charging", "available"],
+      "interpretation": "native backend exposed concurrent occupied/active and available EVSEs"
+    },
+    {
+      "station": "Marjane Agadir",
+      "fresh_station_statuses": ["available", "charging"],
+      "interpretation": "native backend exposed a live mixed station state"
+    }
+  ],
+  "conclusion": {
+    "native_status_is_fresh": true,
+    "production_status_priority": "Prefer EVGO native cp.evgo.ma status for EVGO/Nareva stations when available; EVOne/EVPlug may remain an access_network or roaming diagnostic source but should not overwrite fresher native status.",
+    "tariff_or_cpo_inference_changed": false
+  }
+}
