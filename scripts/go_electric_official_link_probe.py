@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Extract official Go Electric public B2C/NextCharge link evidence without following it.
+"""Extract official Go Electric B2C/NextCharge link evidence without following external links.
 
-Reads only the validated canonical Go Electric `.it` site and same-origin static
-Javascript assets. External links are recorded as evidence but never requested.
-This is intended to decide whether NextCharge is the operator-authorized consumer
-channel for Go Electric station tariffs.
+Reads only the validated canonical Go Electric `.it` site, including directly
+addressed `/it` and `/en` pages plus same-origin Javascript assets. External
+anchor destinations are recorded but never requested. This determines whether
+NextCharge is the operator-authorized consumer channel for Go Electric tariffs.
 """
 from __future__ import annotations
 
@@ -16,12 +16,15 @@ from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 
-ROOT = "https://www.goelectricstations.it/"
+PAGES = (
+    "https://www.goelectricstations.it/",
+    "https://www.goelectricstations.it/it",
+    "https://www.goelectricstations.it/en",
+)
 ALLOWED_HOSTS = {"goelectricstations.it", "www.goelectricstations.it"}
 USER_AGENT = "TeslaChargeCompanion-DataLab/1.0 (+read-only public research)"
 MAX_BYTES = 7_000_000
 MAX_ASSETS = 40
-KEY_TERMS = ("b2c", "nextcharge", "href", "url", "terms", "privacy", "status")
 TARGET_TERMS = ("b2c", "nextcharge")
 
 
@@ -34,7 +37,7 @@ def same_origin(url: str) -> bool:
     return p.scheme == "https" and (p.hostname or "").lower() in ALLOWED_HOSTS
 
 
-def get_text(url: str) -> tuple[str, dict[str, str]]:
+def get_text(url: str) -> tuple[str, dict[str, object]]:
     if not same_origin(url):
         raise RuntimeError(f"outside official same-origin allowlist: {url}")
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/javascript,*/*;q=0.5"})
@@ -53,11 +56,13 @@ def get_text(url: str) -> tuple[str, dict[str, str]]:
         }
 
 
-class AssetParser(HTMLParser):
+class PageParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.assets: list[str] = []
-        self.links: list[str] = []
+        self.anchors: list[dict[str, object]] = []
+        self._anchor: dict[str, object] | None = None
+        self._anchor_text: list[str] = []
 
     def handle_starttag(self, tag, attrs):
         d = {k: v for k, v in attrs if v}
@@ -66,135 +71,113 @@ class AssetParser(HTMLParser):
         if tag.lower() == "link" and d.get("href"):
             self.assets.append(d["href"])
         if tag.lower() == "a" and d.get("href"):
-            self.links.append(d["href"])
+            self._anchor = {"href": d["href"], "target": d.get("target"), "rel": d.get("rel")}
+            self._anchor_text = []
+
+    def handle_data(self, data):
+        if self._anchor is not None:
+            self._anchor_text.append(data)
+
+    def handle_endtag(self, tag):
+        if tag.lower() == "a" and self._anchor is not None:
+            text = " ".join(" ".join(self._anchor_text).split())
+            self.anchors.append({**self._anchor, "text": text})
+            self._anchor = None
+            self._anchor_text = []
 
 
-def normalize_same_origin(base: str, value: str) -> str | None:
-    url = urllib.parse.urljoin(base, value)
-    return url if same_origin(url) else None
-
-
-def external_candidate(base: str, value: str) -> str | None:
-    value = value.strip()
-    if value.startswith(("javascript:", "mailto:", "tel:", "#")):
-        return None
-    url = urllib.parse.urljoin(base, value)
-    p = urllib.parse.urlparse(url)
-    if p.scheme not in {"http", "https"} or not p.hostname:
-        return None
-    return url
-
-
-def contexts(text: str, terms=TARGET_TERMS) -> list[dict[str, str]]:
+def contexts(text: str) -> list[dict[str, str]]:
     low = text.lower()
     out: list[dict[str, str]] = []
-    for term in terms:
+    for term in TARGET_TERMS:
         start = 0
-        while len(out) < 120:
+        while len(out) < 160:
             pos = low.find(term, start)
             if pos < 0:
                 break
-            out.append({"term": term, "text": text[max(0, pos - 900):min(len(text), pos + 1800)]})
+            out.append({"term": term, "text": text[max(0, pos - 1100):min(len(text), pos + 2200)]})
             start = pos + len(term)
     return out
 
 
-def quoted_strings(text: str) -> list[str]:
-    values: list[str] = []
-    pattern = re.compile(r'''["']([^"'\\]{1,1000})["']''')
-    for m in pattern.finditer(text):
-        raw = m.group(1).strip()
-        low = raw.lower()
-        if any(t in low for t in KEY_TERMS) or raw.startswith(("http://", "https://", "/")):
-            if raw not in values:
-                values.append(raw)
-        if len(values) >= 1500:
-            break
-    return values
-
-
-def url_candidates(text: str, base: str) -> list[dict[str, object]]:
-    out: list[dict[str, object]] = []
-    seen: set[str] = set()
-    candidates = quoted_strings(text)
-    candidates += re.findall(r"https?://[^\s\"'<>`]+", text)
-    for raw in candidates:
-        url = external_candidate(base, raw)
-        if not url or url in seen:
-            continue
-        low = (raw + " " + url).lower()
-        if not any(t in low for t in ("nextcharge", "b2c", "goelectric", "privacy", "terms", "status")):
-            continue
-        seen.add(url)
-        p = urllib.parse.urlparse(url)
-        out.append({
-            "raw": raw[:1200],
-            "resolvedUrl": url[:1600],
-            "host": p.hostname,
-            "sameOrigin": same_origin(url),
-            "requested": False,
-        })
-    return out[:500]
+def relevant_anchor(base: str, anchor: dict[str, object]) -> dict[str, object]:
+    raw = str(anchor.get("href") or "")
+    resolved = urllib.parse.urljoin(base, raw)
+    p = urllib.parse.urlparse(resolved)
+    return {
+        **anchor,
+        "resolvedUrl": resolved,
+        "host": p.hostname,
+        "sameOrigin": same_origin(resolved),
+        "requested": False,
+    }
 
 
 def main() -> None:
-    html, headers = get_text(ROOT)
-    parser = AssetParser()
-    parser.feed(html)
+    pages: list[dict[str, object]] = []
+    asset_urls: list[str] = []
+    all_anchors: list[dict[str, object]] = []
+
+    for url in PAGES:
+        try:
+            html, headers = get_text(url)
+            parser = PageParser()
+            parser.feed(html)
+            anchors = [relevant_anchor(url, a) for a in parser.anchors]
+            all_anchors.extend(anchors)
+            pages.append({
+                "url": url,
+                "headers": headers,
+                "anchorCount": len(anchors),
+                "anchors": anchors,
+                "contexts": contexts(html),
+            })
+            for raw in parser.assets:
+                asset = urllib.parse.urljoin(url, raw)
+                if same_origin(asset) and asset.lower().split("?", 1)[0].endswith((".js", ".json")) and asset not in asset_urls:
+                    asset_urls.append(asset)
+                    if len(asset_urls) >= MAX_ASSETS:
+                        break
+        except Exception as exc:
+            pages.append({"url": url, "error": f"{type(exc).__name__}: {exc}"})
 
     sources: list[dict[str, object]] = []
-    sources.append({
-        "url": ROOT,
-        "headers": headers,
-        "kind": "html",
-        "contexts": contexts(html),
-        "quotedStrings": quoted_strings(html),
-        "urlCandidates": url_candidates(html, ROOT),
-    })
-
-    assets: list[str] = []
-    for raw in parser.assets:
-        url = normalize_same_origin(ROOT, raw)
-        if url and url not in assets and url.lower().split("?", 1)[0].endswith((".js", ".json")):
-            assets.append(url)
-        if len(assets) >= MAX_ASSETS:
-            break
-
-    for url in assets:
+    structured_pairs: list[dict[str, str]] = []
+    pair_patterns = [
+        re.compile(r'''(?:href|url|link|b2c|nextcharge)\s*:\s*["']([^"']+)["']''', re.I),
+        re.compile(r'''["'](?:href|url|link|b2c|nextcharge)["']\s*:\s*["']([^"']+)["']''', re.I),
+        re.compile(r'''(?:window\.open|location\.href\s*=)\s*\(?\s*["']([^"']+)["']''', re.I),
+    ]
+    for url in asset_urls:
         try:
-            text, h = get_text(url)
+            text, headers = get_text(url)
             low = text.lower()
             if not any(t in low for t in TARGET_TERMS):
                 continue
+            for pat in pair_patterns:
+                for m in pat.finditer(text):
+                    raw = m.group(1)
+                    if "nextcharge" in raw.lower() or "b2c" in raw.lower() or raw.startswith(("http://", "https://", "/")):
+                        structured_pairs.append({"source": url, "raw": raw[:1600]})
             sources.append({
                 "url": url,
-                "headers": h,
-                "kind": "asset",
+                "headers": headers,
                 "bytesDecoded": len(text.encode("utf-8")),
                 "contexts": contexts(text),
-                "quotedStrings": quoted_strings(text),
-                "urlCandidates": url_candidates(text, url),
             })
         except Exception as exc:
-            sources.append({"url": url, "kind": "asset", "error": f"{type(exc).__name__}: {exc}"})
+            sources.append({"url": url, "error": f"{type(exc).__name__}: {exc}"})
 
-    all_candidates = []
-    seen = set()
-    for src in sources:
-        for item in src.get("urlCandidates", []):
-            key = item.get("resolvedUrl")
-            if key and key not in seen:
-                seen.add(key)
-                all_candidates.append(item)
-
-    nextcharge = [x for x in all_candidates if "nextcharge" in str(x.get("resolvedUrl", "")).lower() or "nextcharge" in str(x.get("raw", "")).lower()]
-    b2c_context_count = sum(1 for src in sources for c in src.get("contexts", []) if c.get("term") == "b2c")
-    nextcharge_context_count = sum(1 for src in sources for c in src.get("contexts", []) if c.get("term") == "nextcharge")
+    relevant_anchors = []
+    for a in all_anchors:
+        blob = (str(a.get("text") or "") + " " + str(a.get("href") or "") + " " + str(a.get("resolvedUrl") or "")).lower()
+        if any(t in blob for t in ("b2c", "nextcharge", "terms", "status", "cpo", "fleet")):
+            relevant_anchors.append(a)
 
     report = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "generatedAt": now_iso(),
-        "scope": "official Go Electric B2C/NextCharge static link evidence",
+        "scope": "official Go Electric rendered B2C/NextCharge anchor evidence",
         "policy": {
             "readOnly": True,
             "authenticated": False,
@@ -208,26 +191,26 @@ def main() -> None:
             "publicationAllowed": False,
             "allowedHosts": sorted(ALLOWED_HOSTS),
         },
-        "root": ROOT,
-        "assetCountFetched": len(assets),
+        "pages": pages,
+        "assetCountFetched": len(asset_urls),
         "sourceCountWithTargetTerms": len(sources),
-        "b2cContextCount": b2c_context_count,
-        "nextchargeContextCount": nextcharge_context_count,
-        "nextchargeUrlCandidates": nextcharge,
-        "allRelevantUrlCandidates": all_candidates,
+        "relevantAnchors": relevant_anchors,
+        "structuredLinkCandidates": structured_pairs[:500],
+        "b2cContextCount": sum(1 for p in pages for c in p.get("contexts", []) if c.get("term") == "b2c") + sum(1 for s in sources for c in s.get("contexts", []) if c.get("term") == "b2c"),
+        "nextchargeContextCount": sum(1 for p in pages for c in p.get("contexts", []) if c.get("term") == "nextcharge") + sum(1 for s in sources for c in s.get("contexts", []) if c.get("term") == "nextcharge"),
         "sources": sources,
     }
     out = Path("artifacts/go_electric_official_link_probe.json")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({
-        "assetsFetched": len(assets),
-        "sourcesWithTargetTerms": len(sources),
-        "b2cContexts": b2c_context_count,
-        "nextchargeContexts": nextcharge_context_count,
-        "nextchargeUrls": nextcharge,
+        "pages": [{"url": p.get("url"), "anchors": p.get("anchorCount"), "error": p.get("error")} for p in pages],
+        "relevantAnchors": relevant_anchors,
+        "structuredLinkCandidates": structured_pairs[:100],
+        "b2cContexts": report["b2cContextCount"],
+        "nextchargeContexts": report["nextchargeContextCount"],
     }, ensure_ascii=False, indent=2))
-    if nextcharge_context_count == 0:
+    if report["nextchargeContextCount"] == 0:
         raise SystemExit("no NextCharge context found in official canonical source")
 
 
