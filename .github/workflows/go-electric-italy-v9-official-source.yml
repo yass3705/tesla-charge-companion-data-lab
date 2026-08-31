@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
+      - 'scripts/go_electric_official_redirect_probe.py'
       - 'scripts/go_electric_official_public_probe.py'
       - '.github/workflows/go-electric-italy-v9-official-source.yml'
 
@@ -18,40 +19,36 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Compile official source probe
-        run: python -m py_compile scripts/go_electric_official_public_probe.py
-      - name: Discover public official Go Electric sources
+      - name: Compile canonical-host probe
+        run: python -m py_compile scripts/go_electric_official_redirect_probe.py
+      - name: Resolve canonical Go Electric host without following redirects
         run: |
           mkdir -p artifacts
-          python scripts/go_electric_official_public_probe.py
-      - name: Validate strict read-only scope
+          python scripts/go_electric_official_redirect_probe.py
+      - name: Validate strict redirect-safe scope
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          r=json.loads(Path('artifacts/go_electric_official_public_probe.json').read_text())
+          r=json.loads(Path('artifacts/go_electric_official_redirect_probe.json').read_text())
           p=r['policy']
           assert p['readOnly'] is True
           assert p['authenticated'] is False
           assert p['remoteMutation'] is False
           assert p['getOnly'] is True
-          assert p['discoveredApiCallsExecuted'] is False
-          assert p['chargingActionsAllowed'] is False
-          assert p['paymentActionsAllowed'] is False
-          assert p['reservationActionsAllowed'] is False
+          assert p['redirectsFollowed'] is False
+          assert p['unknownRedirectHostsBlocked'] is True
           assert p['publicationAllowed'] is False
           assert set(p['allowedHosts']) == {'goelectricstations.com','www.goelectricstations.com'}
-          assert r['rootUrl'].startswith('https://')
           print(json.dumps({
-            'rootUrl': r['rootUrl'],
-            'pages': r['pageCount'],
-            'assets': r['assetCount'],
-            'targetEvseHits': r['targetEvseHits'],
+            'candidateHosts': r['candidateHosts'],
+            'results': r['results'],
+            'redirects': r['redirects'],
             'publicationAllowed': p['publicationAllowed'],
           }, indent=2))
           PY
       - uses: actions/upload-artifact@v4
         with:
           name: go-electric-italy-v9-official-source
-          path: artifacts/go_electric_official_public_probe.json
+          path: artifacts/go_electric_official_redirect_probe.json
           if-no-files-found: error
