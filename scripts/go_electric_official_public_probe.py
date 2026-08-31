@@ -6,6 +6,8 @@ network tariff information that can independently attribute prices to
 `Go Electric Stations SRLS`. This probe never authenticates and never calls a
 discovered API. It only performs GET requests against the public official web
 origin and same-origin static/page resources.
+
+The target EVSE sample is the exact Spoltore match already validated against PUN.
 """
 from __future__ import annotations
 
