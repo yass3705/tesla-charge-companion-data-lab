@@ -73,6 +73,20 @@ def get_text(url: str) -> tuple[str, dict[str, str]]:
         return data.decode(charset, errors="replace"), headers
 
 
+def javascript_assets(text: str, base_url: str) -> set[str]:
+    found: set[str] = set()
+    patterns = [
+        r"(?:src|href)\s*=\s*[\"']([^\"']+\.js(?:\?[^\"']*)?)[\"']",
+        r"[\"']([^\"']+\.js(?:\?[^\"']*)?)[\"']",
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern, text, flags=re.IGNORECASE):
+            url = safe_url(base_url, match.group(1))
+            if url:
+                found.add(url)
+    return found
+
+
 def endpoint_candidates(text: str, base_url: str) -> set[str]:
     candidates: set[str] = set()
     patterns = [
@@ -117,7 +131,7 @@ def main() -> None:
             discovered_resources.append(row)
 
     script_urls: list[str] = []
-    for src in parser.scripts:
+    for src in list(parser.scripts) + sorted(javascript_assets(html, root_url)):
         url = safe_url(root_url, src)
         if url and url not in script_urls:
             script_urls.append(url)
@@ -128,25 +142,30 @@ def main() -> None:
     candidates.update(item["url"] for item in discovered_resources if any(k in item["url"].lower() for k in ("api", "station", "connector", "tariff", "price", "evse")))
 
     assets: list[dict[str, object]] = []
+    nested_js: set[str] = set()
     for script_url in script_urls:
         item: dict[str, object] = {"url": script_url}
         try:
             text, headers = get_text(script_url)
             found = sorted(endpoint_candidates(text, script_url))
+            nested = sorted(javascript_assets(text, script_url))
             item.update({
                 "bytesDecoded": len(text.encode("utf-8")),
                 "headers": headers,
                 "candidateCount": len(found),
                 "candidates": found,
+                "nestedJavascript": nested[:100],
             })
             candidates.update(found)
+            nested_js.update(nested)
         except Exception as exc:  # diagnostic only; keep other assets inspectable
             item["error"] = f"{type(exc).__name__}: {exc}"
         assets.append(item)
 
-    compact_prefix = re.sub(r"\s+", " ", html[:8000]).strip()
+    compact_prefix = re.sub(r"\s+", " ", html[:5000]).strip()
+    compact_suffix = re.sub(r"\s+", " ", html[-5000:]).strip()
     report = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "generatedAt": now_iso(),
         "scope": "public NextCharge web map endpoint discovery",
         "policy": {
@@ -159,9 +178,12 @@ def main() -> None:
         "rootHeaders": root_headers,
         "rootHtmlLength": len(html.encode("utf-8")),
         "rootHtmlPrefix": compact_prefix,
+        "rootHtmlSuffix": compact_suffix,
         "resourceCount": len(discovered_resources),
         "resources": discovered_resources[:200],
         "scriptCount": len(script_urls),
+        "scriptUrls": script_urls,
+        "nestedJavascript": sorted(nested_js)[:200],
         "candidateCount": len(candidates),
         "candidates": sorted(candidates),
         "assets": assets,
