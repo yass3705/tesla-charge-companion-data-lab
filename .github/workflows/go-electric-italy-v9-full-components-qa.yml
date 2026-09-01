@@ -1,0 +1,88 @@
+name: Go Electric Italy V9 full components QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - integration/go-electric-full-components-v9
+    paths:
+      - scripts/go_electric_italy_v9_full_component_activation_qa.py
+      - scripts/go_electric_italy_v9_engine_primitive_mapping_qa.py
+      - .github/workflows/go-electric-italy-v9-full-components-qa.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile activation builders
+        run: |
+          python -m py_compile scripts/go_electric_italy_v9_full_component_activation_qa.py
+          python -m py_compile scripts/go_electric_italy_v9_engine_primitive_mapping_qa.py
+      - name: Download session-ready candidate and semantics proof
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ge-session /tmp/ge-semantics
+          gh run download 33495379759 --repo "$GITHUB_REPOSITORY" --name go-electric-italy-v9-session-activation-qa --dir /tmp/ge-session
+          gh run download 33551150109 --repo "$GITHUB_REPOSITORY" --name go-electric-time-parking-semantics --dir /tmp/ge-semantics
+          find /tmp/ge-session /tmp/ge-semantics -type f -print
+      - name: Build full-component candidate
+        run: |
+          set -euo pipefail
+          CANDIDATE="$(find /tmp/ge-session -name 'italy_v9_candidate_go_electric_session_ready_qa.json.gz' -print -quit)"
+          PROOF="$(find /tmp/ge-semantics -name 'go_electric_nextcharge_tariff_ui_semantics.json' -print -quit)"
+          test -n "$CANDIDATE" && test -n "$PROOF"
+          python scripts/go_electric_italy_v9_full_component_activation_qa.py --candidate "$CANDIDATE" --semantics-proof "$PROOF"
+          python scripts/go_electric_italy_v9_engine_primitive_mapping_qa.py --candidate data/consolidation/italy_v9_candidate_go_electric_full_components_qa.json.gz
+      - name: Validate candidate gates
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          r=json.loads(Path('data/reports/go_electric_italy_v9_full_component_activation_qa.json').read_text())
+          m=json.loads(Path('data/reports/go_electric_italy_v9_engine_primitive_mapping_qa.json').read_text())
+          assert r['publicationAllowed'] is False and r['stableActivationAllowed'] is False
+          assert r['validatedGoElectricDirectEvse']==2214
+          assert r['goElectricRuntimeCandidateEvse']==2214
+          assert r['goElectricStagedEvse']==0
+          assert r['componentCounts']['time']==1052
+          assert r['componentCounts']['parking']==700
+          assert r['parkingTriggers']['onNoEnergyDelivery']==626
+          assert r['parkingTriggers']['onAfterTime']==74
+          assert r['directAccounting']['rankableDirectEvse']==27840
+          assert r['directAccounting']['rankableDirectCoveragePct']==37.11
+          assert r['goElectricPhysicalWithoutRuntimeCandidate']==239
+          assert all(r['gates'].values()),r['gates']
+          assert m['goElectricEvse']==2214
+          assert m['postChargeOffers']==626 and m['postChargeWindowed']==493
+          assert m['onAfterTimeOffers']==74 and m['onAfterTimeWindowed']==63 and m['onAfterTimeUnwindowed']==11
+          assert m['unsupportedRuntimeFields']==0
+          assert all(m['gates'].values()),m['gates']
+          p=Path('data/consolidation/italy_v9_candidate_go_electric_engine_compatible_qa.json.gz')
+          with gzip.open(p,'rt',encoding='utf-8') as fh:d=json.load(fh)
+          ge=[e for e in d['evses'] if (e.get('tccV9DirectTariff') or {}).get('operator')=='Go Electric Stations SRLS']
+          assert len(ge)==2214 and all(e.get('tccV9RankableDirect') is True for e in ge)
+          serial=json.dumps([e['tccV9DirectTariff']['runtimePricing'] for e in ge])
+          assert 'connectedTimeSurcharge' not in serial and 'activeLocalWindows' not in serial
+          assert sum('postChargeFee' in e['tccV9DirectTariff']['runtimePricing'] for e in ge)==626
+          assert sum(any('connectedTimePerMinuteAfterFreeEur' in rule for rule in e['tccV9DirectTariff']['runtimePricing']['rules']) for e in ge)==74
+          print(json.dumps({'activation':r,'engineMapping':m},indent=2,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-full-components-qa
+          path: |
+            data/consolidation/italy_v9_candidate_go_electric_engine_compatible_qa.json.gz
+            data/reports/go_electric_italy_v9_full_component_activation_qa.json
+            data/reports/go_electric_italy_v9_engine_primitive_mapping_qa.json
+          retention-days: 14
