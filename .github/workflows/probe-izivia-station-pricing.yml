@@ -33,54 +33,30 @@ jobs:
               try:data=json.loads(payload)
               except:data=payload
               return int(status or 0),data
-          marker_body={'square':{'centerLat':48.8566,'centerLng':2.3522,'zoom':9},'filters':{}}
-          ms,markers=call('POST','/map/markers',marker_body)
+          ms,markers=call('POST','/map/markers',{'square':{'centerLat':48.8566,'centerLng':2.3522,'zoom':9},'filters':{}})
           chosen=markers[0] if isinstance(markers,list) and markers else None
           out={'markersStatus':ms,'markerCount':len(markers) if isinstance(markers,list) else None,'chosen':chosen}
           if chosen:
-              sid=chosen['id']
-              ds,detail=call('POST',f'/charging-locations/{sid}',{'filters':{}})
-              out['detailStatus']=ds; out['detail']=detail
-              # Search recursively for identifiers likely required by pricing endpoint.
-              candidates=[]
-              def walk(x,path=''):
-                  if isinstance(x,dict):
-                      low={str(k).lower():v for k,v in x.items()}
-                      if any(k in low for k in ('legacyid','stationemipid','emipid','firststationemipid')):
-                          candidates.append({'path':path,'object':x})
-                      for k,v in x.items(): walk(v,path+'/'+str(k))
-                  elif isinstance(x,list):
-                      for i,v in enumerate(x):walk(v,path+f'/{i}')
-              walk(detail)
-              out['identifierCandidates']=candidates[:30]
-              attempts=[]
-              legacy_vals=[]; emip_vals=[]
-              def collect(x):
-                  if isinstance(x,dict):
-                      for k,v in x.items():
-                          lk=str(k).lower()
-                          if lk=='legacyid' and v is not None: legacy_vals.append(str(v))
-                          if lk in ('stationemipid','firststationemipid','emipid') and v is not None: emip_vals.append(str(v))
-                          collect(v)
-                  elif isinstance(x,list):
-                      for v in x: collect(v)
-              collect(detail)
-              for legacy in list(dict.fromkeys(legacy_vals))[:6]:
-                  for emip in list(dict.fromkeys(emip_vals))[:10]:
-                      q=urllib.parse.urlencode({'legacyId':legacy,'stationEmipId':emip})
-                      ps,p=call('GET',f'/charging-locations/{sid}/pricing-info-items?{q}')
-                      attempts.append({'legacyId':legacy,'stationEmipId':emip,'status':ps,'body':p})
-                      if ps==200 and p: break
-                  if attempts and attempts[-1]['status']==200 and attempts[-1]['body']: break
-              out['pricingAttempts']=attempts
+              sid=chosen['id']; ds,detail=call('POST',f'/charging-locations/{sid}',{'filters':{}})
+              out['detailStatus']=ds
+              out['detailKeys']=list(detail) if isinstance(detail,dict) else []
+              legacy=detail.get('legacyId') if isinstance(detail,dict) else None
+              emip=detail.get('firstStationEmipId') if isinstance(detail,dict) else None
+              out['legacyId']=legacy;out['firstStationEmipId']=emip
+              if legacy is not None and emip:
+                  q=urllib.parse.urlencode({'legacyId':legacy,'stationEmipId':emip})
+                  ps,p=call('GET',f'/charging-locations/{sid}/pricing-info-items?{q}')
+                  out['pricingStatus']=ps;out['pricing']=p
+              else:
+                  out['pricingStatus']=None;out['pricing']=None
           pathlib.Path('reports/france/izivia/station-pricing-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({'markersStatus':out.get('markersStatus'),'markerCount':out.get('markerCount'),'chosen':out.get('chosen'),'detailStatus':out.get('detailStatus'),'identifierCandidates':out.get('identifierCandidates'),'pricingAttempts':out.get('pricingAttempts')},ensure_ascii=False,indent=2)[:30000])
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:50000])
           PY
       - name: Publish
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/france/izivia/station-pricing-probe.json
-          git commit -m 'France IZIVIA: publish station pricing probe' || exit 0
+          git commit -m 'France IZIVIA: publish exact pricing probe' || exit 0
           git pull --rebase origin main
           git push
