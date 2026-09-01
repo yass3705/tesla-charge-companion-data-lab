@@ -15,44 +15,45 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Probe public map assets
+      - name: Probe public map API
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/alize reports/france/alize
           curl -fLsS --retry 3 https://alize-map.azurewebsites.net/ -o /tmp/alize/index.html
+          MAIN=$(grep -Eo 'main\.[a-z0-9]+\.js' /tmp/alize/index.html | head -1)
+          curl -fLsS --retry 3 "https://alize-map.azurewebsites.net/$MAIN" -o /tmp/alize/main.js
           python - <<'PY'
-          import re,pathlib,urllib.parse,subprocess,json
-          root=pathlib.Path('/tmp/alize')
-          html=(root/'index.html').read_text(errors='ignore')
-          base='https://alize-map.azurewebsites.net/'
-          assets=[]
-          for m in re.findall(r'(?:src|href)=["\']([^"\']+\.(?:js|css)(?:\?[^"\']*)?)["\']',html,re.I):
-              u=urllib.parse.urljoin(base,m)
-              if u not in assets: assets.append(u)
-          downloaded=[]
-          for i,u in enumerate(assets):
-              p=root/f'asset-{i}.txt'
-              r=subprocess.run(['curl','-fLsS','--retry','2',u,'-o',str(p)])
-              if r.returncode==0: downloaded.append({'url':u,'file':p.name,'bytes':p.stat().st_size})
-          patterns=re.compile(r'https?://[^\s"\'<>]+|[/A-Za-z0-9_.-]*(?:api|ajax|station|borne|charge|evse|tarif|price|marker|geojson)[/A-Za-z0-9_.?=&%-]*',re.I)
-          hits=[]
-          for p in [root/'index.html']+[root/x['file'] for x in downloaded]:
-              text=p.read_text(errors='ignore')
-              for m in patterns.findall(text):
-                  if len(m)>4: hits.append(m[:1000])
-          uniq=[]
-          for h in hits:
-              if h not in uniq: uniq.append(h)
-          report={'source':base,'assetCount':len(assets),'downloaded':downloaded,'candidates':uniq[:2000]}
-          pathlib.Path('reports/france/alize/public-map-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps(report,ensure_ascii=False,indent=2)[:50000])
+          import pathlib,re,json,subprocess
+          js=pathlib.Path('/tmp/alize/main.js').read_text(errors='ignore')
+          needles=['/drive/markers','/drive/detail','drive-api.plugsurfing.com/drive/v1/geosearch/radius','price_components']
+          contexts={}
+          for n in needles:
+              arr=[]
+              for m in re.finditer(re.escape(n),js): arr.append(js[max(0,m.start()-1500):min(len(js),m.end()+1500)])
+              contexts[n]=arr[:10]
+          pathlib.Path('reports/france/alize/bundle-context.json').write_text(json.dumps(contexts,ensure_ascii=False,indent=2)+'\n')
           PY
-      - name: Publish probe report
+          API='https://alize-map-api-faezg8gfgjfngab9.francecentral-01.azurewebsites.net'
+          for spec in 'markers:/drive/markers' 'detail:/drive/detail'; do
+            name=${spec%%:*}; path=${spec#*:}
+            for method in GET POST OPTIONS; do
+              code=$(curl -sS -o "/tmp/alize/${name}-${method}.txt" -w '%{http_code}' -X "$method" -H 'content-type: application/json' --data '{}' "$API$path" || true)
+              echo "$name $method $code $(wc -c < /tmp/alize/${name}-${method}.txt) bytes"
+            done
+          done
+          python - <<'PY'
+          import pathlib,json
+          out={}
+          for p in pathlib.Path('/tmp/alize').glob('*-*.txt'):
+              out[p.name]=p.read_text(errors='ignore')[:20000]
+          pathlib.Path('reports/france/alize/api-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish probe reports
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add reports/france/alize/public-map-probe.json
-          git commit -m 'France Alize: publish public map probe' || exit 0
+          git add reports/france/alize/
+          git commit -m 'France Alize: publish API endpoint probe' || exit 0
           git push
