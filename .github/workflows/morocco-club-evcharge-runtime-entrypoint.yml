@@ -32,10 +32,10 @@ jobs:
           from urllib.parse import urlsplit
 
           d=json.loads(Path('artifacts/morocco-club-evcharge-runtime-entrypoint/summary.json').read_text())
-          assert d.get('schema_version')==1
+          assert d.get('schema_version')==2
           p=d.get('policy',{})
           for key in (
-              'pr64_public_shell_record_gate',
+              'public_shell_record_gate',
               'anonymous_read_only_get_only',
               'exact_same_origin_entrypoint_only',
               'entrypoint_must_be_explicitly_named_by_public_bootstrap',
@@ -49,7 +49,8 @@ jobs:
               'no_cookies',
               'no_station_or_connector_ids',
               'no_charging_or_account_actions',
-              'sanitized_read_only_candidates_only',
+              'sanitized_read_only_api_candidates_only',
+              'ui_navigation_routes_excluded',
           ):
               assert p.get(key) is True, key
           assert p.get('raw_runtime_body_persisted') is False
@@ -83,9 +84,18 @@ jobs:
               assert u.scheme=='https'
               assert u.hostname=='numocity.com' or (u.hostname or '').endswith('.numocity.com')
               assert not u.query and not u.fragment
-          for path in findings.get('safe_read_only_path_candidates',[]):
+          for path in findings.get('safe_read_only_api_path_candidates',[]):
               u=urlsplit(path)
+              lower=path.lower()
               assert path.startswith('/') and not u.scheme and not u.netloc and not u.query and not u.fragment
+              assert '/api/' in lower or '/chargestation/' in lower
+              assert not lower.startswith('/home/')
+
+          relations=findings.get('getstationstate_marker_relations',{})
+          assert relations.get('getstationstate_occurrence_count',0) >= 0
+          assert isinstance(relations.get('nearest_marker_distance_chars',{}),dict)
+          assert isinstance(relations.get('marker_within_256_chars',{}),dict)
+          assert isinstance(relations.get('marker_within_1024_chars',{}),dict)
 
           forbidden={'raw_body','raw_html','text','content','source_context'}
           def walk(value):
@@ -102,7 +112,8 @@ jobs:
               'bytes':req.get('bytes'),
               'absolute_urls':findings.get('safe_numocity_absolute_url_count'),
               'base_literals':findings.get('safe_numocity_base_literal_count'),
-              'read_only_paths':findings.get('safe_read_only_path_candidate_count'),
+              'read_only_api_paths':findings.get('safe_read_only_api_path_candidate_count'),
+              'relations':relations,
               'technical_result':d.get('technical_result'),
           },ensure_ascii=False))
           PY
