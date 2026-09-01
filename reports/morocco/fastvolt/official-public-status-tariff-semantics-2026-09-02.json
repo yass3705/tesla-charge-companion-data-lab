@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-01T23:40:00Z",
+  "country": "MA",
+  "network": "FastVolt",
+  "purpose": "sanitized public evidence for native app status semantics and official public pricing context",
+  "sources": [
+    {
+      "url": "https://www.fastvolt.net/FAQ",
+      "source_type": "official_public_webpage",
+      "evidence": {
+        "native_app_capability": "FastVolt states that each charger displays its state in real time in the FastVolt experience.",
+        "public_status_vocabulary_fr": [
+          "disponible",
+          "occupée",
+          "hors-service"
+        ]
+      }
+    },
+    {
+      "url": "https://www.fastvolt.net/HowIts",
+      "source_type": "official_public_webpage",
+      "evidence": {
+        "pricing_model": "per_minute",
+        "public_general_prices": [
+          {
+            "charging_class": "DC_rapid",
+            "price_mad_per_minute": 2.5
+          },
+          {
+            "charging_class": "AC_semi_rapid",
+            "price_mad_per_minute": 0.5
+          }
+        ],
+        "scope_note": "The public page presents these as general FastVolt parking/recharge prices. Station-specific applicability and any subscription interaction remain unverified, so this is tariff evidence rather than a station-level production tariff override."
+      }
+    }
+  ],
+  "status_normalization_candidate": {
+    "disponible": "Available",
+    "occupée": "Occupied",
+    "hors-service": "diagnostic_out_of_service"
+  },
+  "modeling": {
+    "cpo_operator": "FastVolt / Afrimobility",
+    "site_brand": "station_specific",
+    "app_source_access_network": "FastVolt official mobile app / official public website",
+    "tariff_channel": "FastVolt official public website",
+    "status_source": "unresolved_native_backend",
+    "status_evidence_role": "capability_and_vocabulary_only"
+  },
+  "guardrails": [
+    "Do not treat this FAQ as a live status feed or assign it as status_source.",
+    "Do not infer a private FastVolt backend host from EVPlug support metadata.",
+    "Do not conflate FastVolt/Afrimobility CPO attribution with EVPlug/EVOne app or support lineage.",
+    "Do not promote the general per-minute prices to an individual station until station applicability is established.",
+    "For EVOne production candidates, keep only Available, Occupied or Charging; Faulted, Offline, Unknown and Unavailable remain diagnostic-only."
+  ],
+  "production_promotion": false
+}
