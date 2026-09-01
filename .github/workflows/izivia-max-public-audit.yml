@@ -89,6 +89,7 @@ jobs:
           if status != 200:
               raise SystemExit(f"IZIVIA map bundle HTTP {status}")
           bundle = bundle_raw.decode("utf-8", "replace")
+          Path("out/izivia_map_bundle.js").write_bytes(bundle_raw)
 
           label_positions = [m.start() for m in re.finditer(r"IZIVIA MAX", bundle, flags=re.I)]
           contexts = []
