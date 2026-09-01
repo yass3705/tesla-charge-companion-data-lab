@@ -1,0 +1,160 @@
+name: Go Electric Italy V9 session translation QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - qa/go-electric-italy-v9-component-units
+    paths:
+      - scripts/go_electric_italy_v9_session_translation_qa.py
+      - .github/workflows/go-electric-italy-v9-session-translation-qa.yml
+
+concurrency:
+  group: go-electric-italy-v9-session-translation
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  translate-and-engine-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download validated semantic and unit-audit artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ge-semantic /tmp/ge-unit-audit
+          gh run download 33450130979 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name go-electric-italy-v9-semantic-qa \
+            --dir /tmp/ge-semantic
+          gh run download 33458382110 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name go-electric-italy-v9-component-unit-audit \
+            --dir /tmp/ge-unit-audit
+          find /tmp/ge-semantic /tmp/ge-unit-audit -type f -print
+
+      - name: Build exact energy plus session runtime candidates
+        run: |
+          set -euo pipefail
+          READY="$(find /tmp/ge-semantic -name 'go_electric_italy_v9_ready_offers.json' -print -quit)"
+          AUDIT="$(find /tmp/ge-unit-audit -name 'go_electric_italy_v9_component_unit_audit.json' -print -quit)"
+          test -n "$READY"
+          test -n "$AUDIT"
+          python scripts/go_electric_italy_v9_session_translation_qa.py \
+            --ready "$READY" \
+            --unit-audit "$AUDIT"
+
+      - name: Fetch pinned V9 pricing engine
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/01a540c3400f37783a1eadf1e103f87fa4364001/assets/v9/pricing-engine.js \
+            -o /tmp/pricing-engine.js
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          data=Path('/tmp/pricing-engine.js').read_bytes()
+          print('pricing-engine sha256', hashlib.sha256(data).hexdigest())
+          assert b'sessionFeeEur' in data
+          assert b'evaluateOffer' in data
+          PY
+
+      - name: Test all 127 translations against the real V9 pricing engine
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const engine = require('/tmp/pricing-engine.js');
+          const candidates = JSON.parse(fs.readFileSync('data/qa/go_electric_italy_v9_session_runtime_offers.json','utf8'));
+          const vectorPayload = JSON.parse(fs.readFileSync('data/qa/go_electric_italy_v9_session_runtime_vectors.json','utf8'));
+          const byId = new Map(candidates.offers.map(o => [o.id, o]));
+          const failures = [];
+          const results = [];
+          const round6 = n => Math.round((Number(n)+Number.EPSILON)*1e6)/1e6;
+          for (const v of vectorPayload.vectors) {
+            const offer = byId.get(v.offerId);
+            if (!offer) { failures.push({offerId:v.offerId,reason:'missing_offer'}); continue; }
+            const got = engine.evaluateOffer(offer, v.session);
+            const ok = got.complete === true
+              && Math.abs(Number(got.totalEur)-Number(v.expectedTotalEur)) < 1e-6
+              && Math.abs(Number(got.components?.energy)-Number(v.expectedEnergyEur)) < 1e-6
+              && Math.abs(Number(got.components?.sessionFee)-Number(v.expectedSessionFeeEur)) < 1e-6;
+            results.push({
+              offerId: v.offerId,
+              evseId: v.evseId,
+              complete: got.complete === true,
+              totalEur: got.totalEur,
+              expectedTotalEur: v.expectedTotalEur,
+              energyEur: got.components?.energy ?? null,
+              sessionFeeEur: got.components?.sessionFee ?? null,
+              passed: ok,
+            });
+            if (!ok) failures.push({offerId:v.offerId,got,expected:v});
+          }
+          const report = {
+            schemaVersion: 1,
+            publicationAllowed: false,
+            builderActivationAllowed: false,
+            stablePricingEngineCommit: '01a540c3400f37783a1eadf1e103f87fa4364001',
+            stablePricingEngineBlobSha: candidates.stablePricingEngineBlobSha,
+            testedOffers: results.length,
+            passedOffers: results.filter(r=>r.passed).length,
+            failedOffers: failures.length,
+            translation: {energy:'pricePerKwh',session:'sessionFeeEur'},
+            results,
+            gates: {
+              exactly127Tested: results.length === 127,
+              all127Passed: results.length === 127 && failures.length === 0,
+              engineReturnedComplete: results.every(r=>r.complete),
+              sessionFeeIncludedInTotal: results.every(r=>r.passed),
+              publicationDisabled: true,
+              builderActivationDisabled: true,
+            },
+          };
+          fs.mkdirSync('data/reports',{recursive:true});
+          fs.writeFileSync('data/reports/go_electric_italy_v9_session_engine_qa.json', JSON.stringify(report,null,2)+'\n');
+          console.log(JSON.stringify({...report,results:undefined},null,2));
+          if (!Object.values(report.gates).every(Boolean)) process.exit(1);
+          NODE
+
+      - name: Validate fail-closed activation gates
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          tr=json.loads(Path('data/reports/go_electric_italy_v9_session_translation_qa.json').read_text())
+          eng=json.loads(Path('data/reports/go_electric_italy_v9_session_engine_qa.json').read_text())
+          offers=json.loads(Path('data/qa/go_electric_italy_v9_session_runtime_offers.json').read_text())
+          assert tr['publicationAllowed'] is False
+          assert tr['builderActivationAllowed'] is False
+          assert tr['sessionTranslationCandidateEvse'] == 127
+          assert all(tr['gates'].values())
+          assert eng['testedOffers'] == 127 and eng['passedOffers'] == 127 and eng['failedOffers'] == 0
+          assert all(eng['gates'].values())
+          assert len(offers['offers']) == 127
+          assert all(o['pricing']['type'] == 'rules' for o in offers['offers'])
+          assert all(set(o['pricing']['rules'][0]) >= {'pricePerKwh','sessionFeeEur'} for o in offers['offers'])
+          assert tr['remainingBlocked']['timeComponentOffers'] == 1052
+          assert tr['remainingBlocked']['parkingComponentOffers'] == 700
+          print(json.dumps({'translation':tr,'engineSummary':{k:v for k,v in eng.items() if k!='results'}},indent=2,ensure_ascii=False))
+          PY
+
+      - name: Upload session translation QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-session-translation-qa
+          path: |
+            data/qa/go_electric_italy_v9_session_runtime_offers.json
+            data/qa/go_electric_italy_v9_session_runtime_vectors.json
+            data/reports/go_electric_italy_v9_session_translation_qa.json
+            data/reports/go_electric_italy_v9_session_engine_qa.json
+          retention-days: 14
