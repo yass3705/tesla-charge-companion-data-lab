@@ -1,0 +1,111 @@
+name: Italy V9 Neogy and Alperia EasyCharge candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/neogy-alperia-italy-v9
+    paths:
+      - scripts/neogy_alperia_italy_v9.py
+      - .github/workflows/neogy-alperia-italy-v9.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: neogy-alperia-italy-v9-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download latest successful Italy V9 consolidation
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow italy-v9-consolidation.yml --branch research/italy-consolidation-v9-a2a --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/italy-consolidation
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n italy-v9-consolidated-candidate -D /tmp/italy-consolidation
+          INPUT="$(find /tmp/italy-consolidation -name italy_v9_candidate.json.gz -print -quit)"
+          test -n "$INPUT" && test -s "$INPUT"
+          cp "$INPUT" /tmp/italy_v9_candidate.json.gz
+          echo "Using Italy V9 consolidation run $RUN_ID"
+
+      - name: Build exact Neogy and EasyCharge candidate from official terms
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/neogy_alperia_italy_v9.py
+          python scripts/neogy_alperia_italy_v9.py \
+            --consolidated /tmp/italy_v9_candidate.json.gz
+
+      - name: Validate exact scope and fail-closed exclusions
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+
+          candidate_path=Path('data/national/neogy_alperia_italy_v9_candidate.json.gz')
+          report_path=Path('data/reports/neogy_alperia_italy_v9_report.json')
+          with gzip.open(candidate_path,'rt',encoding='utf-8') as handle:
+              data=json.load(handle)
+          report=json.loads(report_path.read_text(encoding='utf-8'))
+          counts=data['counts']
+          assert data['country']=='IT' and data['operator']=='NEOGY SRL'
+          assert counts['neogyStations']==724 and counts['neogyEvse']==1563
+          assert counts['rankableDirectEvse']==1537 and counts['unresolvedDirectEvse']==26
+          assert counts['easyChargeLightExactEvse']==1563
+          assert counts['easyChargePlusExactEvse']==1563
+          assert counts['directClassCounts']=={
+              'AC_43_UNRESOLVED':26,
+              'OTHER_ITALY_FAST':85,
+              'OTHER_ITALY_HYPER':20,
+              'OTHER_ITALY_QUICK':789,
+              'SOUTH_TYROL_DC':241,
+              'SOUTH_TYROL_QUICK':402,
+          }
+          assert all(data['safetyGates'].values())
+          assert len(data['entries'])==len({row['evseId'] for row in data['entries']})==1563
+          assert all(row['directTariff'] is None for row in data['entries'] if row['tariffClass']=='AC_43_UNRESOLVED')
+          assert all(row['easyChargeLight']['selectionId']=='alperia_easycharge_light' for row in data['entries'])
+          assert all(row['easyChargePlus']['selectionId']=='alperia_easycharge_plus' for row in data['entries'])
+          assert report['counts']==counts and report['safetyGates']==data['safetyGates']
+          print(json.dumps(counts,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Publish canonical candidate on the research branch
+        if: github.event_name != 'pull_request' && github.ref_name == 'feature/neogy-alperia-italy-v9'
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/national/neogy_alperia_italy_v9_candidate.json.gz data/reports/neogy_alperia_italy_v9_report.json
+          if git diff --cached --quiet; then
+            echo 'Neogy and EasyCharge candidate already current'
+            exit 0
+          fi
+          git commit -m "data(neogy): publish Italy EasyCharge candidate [run ${GITHUB_RUN_ID}]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Upload candidate and audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neogy-alperia-italy-v9-candidate
+          path: |
+            data/national/neogy_alperia_italy_v9_candidate.json.gz
+            data/reports/neogy_alperia_italy_v9_report.json
+          if-no-files-found: error
+          retention-days: 14
