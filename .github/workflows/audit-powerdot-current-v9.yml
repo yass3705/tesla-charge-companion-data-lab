@@ -1,0 +1,42 @@
+name: France Powerdot current V9 audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/audit-powerdot-current-v9.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit current Powerdot legacy layer
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/powerdot /tmp/powerdot
+          curl -fLsS --retry 3 https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/powerdot_direct_france.json.gz -o /tmp/powerdot/data.json.gz
+          python - <<'PY'
+          import gzip,json,collections,pathlib
+          d=json.loads(gzip.open('/tmp/powerdot/data.json.gz','rt',encoding='utf-8').read())
+          rows=d if isinstance(d,list) else d.get('stations') or d.get('data') or []
+          summary={'topType':type(d).__name__,'topKeys':list(d) if isinstance(d,dict) else [],'rowCount':len(rows)}
+          if rows:
+              summary['sample']=rows[:5]
+              summary['rowTypes']=dict(collections.Counter(type(x).__name__ for x in rows))
+          pathlib.Path('reports/france/powerdot/current-v9-audit.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,indent=2)[:20000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/powerdot/current-v9-audit.json
+          git commit -m 'France Powerdot: audit current V9 layer' || exit 0
+          git pull --rebase origin main
+          git push
