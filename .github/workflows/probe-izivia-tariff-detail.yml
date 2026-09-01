@@ -20,51 +20,66 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p reports/france/izivia /tmp/izt
-          BASE='https://fronts-map.izivia.com/api'
-          ID='693f6fee3fdcff3315e3814d'
-          curl -fLsS --retry 3 "$BASE/charging-locations/$ID" -o /tmp/izt/detail.json
           python - <<'PY'
           import json,pathlib,subprocess,urllib.parse
-          d=json.load(open('/tmp/izt/detail.json'))
-          def walk(o,path=''):
-              out=[]
-              if isinstance(o,dict):
-                  for k,v in o.items():
-                      p=f'{path}.{k}' if path else k
-                      if any(x in k.lower() for x in ('legacy','emip','station','price','pricing','connector','tariff')):
-                          out.append((p,v if not isinstance(v,(dict,list)) else type(v).__name__))
-                      out.extend(walk(v,p))
-              elif isinstance(o,list):
-                  for i,v in enumerate(o[:20]): out.extend(walk(v,f'{path}[{i}]'))
-              return out
-          hints=walk(d)
-          legacy=None; emip=None
-          def find(o):
-              nonlocal_vars=None
-              if isinstance(o,dict):
-                  for k,v in o.items():
-                      kl=k.lower()
-                      if kl in ('legacyid','legacy_id') and v: yield ('legacy',str(v))
-                      if 'emip' in kl and v and not isinstance(v,(dict,list)): yield ('emip',str(v))
-                      yield from find(v)
-              elif isinstance(o,list):
-                  for v in o: yield from find(v)
-          vals=list(find(d))
-          for typ,v in vals:
-              if typ=='legacy' and legacy is None: legacy=v
-              if typ=='emip' and emip is None: emip=v
-          result={'locationId':'693f6fee3fdcff3315e3814d','detail':d,'hints':hints[:300],'candidateLegacyId':legacy,'candidateStationEmipId':emip}
-          if legacy and emip:
-              u='https://fronts-map.izivia.com/api/charging-locations/693f6fee3fdcff3315e3814d/pricing-info-items?'+urllib.parse.urlencode({'legacyId':legacy,'stationEmipId':emip})
-              r=subprocess.run(['curl','-fLsS','--retry','3',u],capture_output=True,text=True)
-              result['pricingUrlPath']='/api/charging-locations/{id}/pricing-info-items'
-              result['pricingStatus']='success' if r.returncode==0 else 'failure'
-              if r.returncode==0:
-                  try: result['pricing']=json.loads(r.stdout)
-                  except: result['pricingRaw']=r.stdout[:12000]
-              else: result['pricingError']=r.stderr[-2000:]
+          base='https://fronts-map.izivia.com/api'; loc='693f6fee3fdcff3315e3814d'
+          attempts=[]; detail=None
+          for method,body in [('POST','{"filters":{}}'),('POST','{}'),('GET',None)]:
+              cmd=['curl','-sS','-w','\n%{http_code}','-X',method,'-H','accept: application/json']
+              if body is not None: cmd += ['-H','content-type: application/json','--data',body]
+              cmd += [f'{base}/charging-locations/{loc}']
+              r=subprocess.run(cmd,capture_output=True,text=True)
+              raw,status=r.stdout.rsplit('\n',1) if '\n' in r.stdout else (r.stdout,'')
+              parsed=None
+              try: parsed=json.loads(raw)
+              except: pass
+              attempts.append({'method':method,'body':body,'status':status,'sample':raw[:3000]})
+              if status=='200' and isinstance(parsed,dict): detail=parsed; break
+          result={'locationId':loc,'detailAttempts':attempts,'detail':detail}
+          if detail:
+              def walk(o,path=''):
+                  out=[]
+                  if isinstance(o,dict):
+                      for k,v in o.items():
+                          p=f'{path}.{k}' if path else k
+                          if any(x in k.lower() for x in ('legacy','emip','station','price','pricing','connector','tariff')):
+                              out.append((p,v if not isinstance(v,(dict,list)) else type(v).__name__))
+                          out.extend(walk(v,p))
+                  elif isinstance(o,list):
+                      for i,v in enumerate(o[:30]): out.extend(walk(v,f'{path}[{i}]'))
+                  return out
+              hints=walk(detail); result['hints']=hints[:400]
+              vals=[]
+              def find(o):
+                  if isinstance(o,dict):
+                      for k,v in o.items():
+                          kl=k.lower()
+                          if kl in ('legacyid','legacy_id') and v: vals.append(('legacy',str(v)))
+                          if 'emip' in kl and v and not isinstance(v,(dict,list)): vals.append(('emip',str(v)))
+                          find(v)
+                  elif isinstance(o,list):
+                      for v in o: find(v)
+              find(detail)
+              legacy=next((v for t,v in vals if t=='legacy'),None); emip=next((v for t,v in vals if t=='emip'),None)
+              result['candidateLegacyId']=legacy; result['candidateStationEmipId']=emip
+              if legacy and emip:
+                  qs=urllib.parse.urlencode({'legacyId':legacy,'stationEmipId':emip})
+                  url=f'{base}/charging-locations/{loc}/pricing-info-items?{qs}'
+                  pats=[]
+                  for method in ('GET','POST'):
+                      cmd=['curl','-sS','-w','\n%{http_code}','-X',method,'-H','accept: application/json']
+                      if method=='POST': cmd += ['-H','content-type: application/json','--data','{}']
+                      cmd += [url]
+                      r=subprocess.run(cmd,capture_output=True,text=True)
+                      raw,status=r.stdout.rsplit('\n',1) if '\n' in r.stdout else (r.stdout,'')
+                      parsed=None
+                      try: parsed=json.loads(raw)
+                      except: pass
+                      pats.append({'method':method,'status':status,'payload':parsed if status=='200' else None,'sample':raw[:5000]})
+                      if status=='200': result['pricing']=parsed; break
+                  result['pricingAttempts']=pats
           pathlib.Path('reports/france/izivia/tariff-detail-probe.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({'detailKeys':list(d) if isinstance(d,dict) else [],'candidateLegacyId':legacy,'candidateStationEmipId':emip,'pricingStatus':result.get('pricingStatus'),'hints':hints[:80]},ensure_ascii=False,indent=2))
+          print(json.dumps({'detailAttempts':attempts,'detailKeys':list(detail or {}),'legacy':result.get('candidateLegacyId'),'emip':result.get('candidateStationEmipId'),'pricingAttempts':result.get('pricingAttempts')},ensure_ascii=False,indent=2)[:30000])
           PY
       - name: Publish
         shell: bash
