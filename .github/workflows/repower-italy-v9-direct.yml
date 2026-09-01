@@ -1,0 +1,159 @@
+name: Italy V9 Repower direct candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/repower-italy-v9-direct
+    paths:
+      - scripts/repower_italy_v9.py
+      - .github/workflows/repower-italy-v9-direct.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/repower_italy_v9.py
+      - data/national/repower_italy_official_snapshot.json.gz
+      - data/national/repower_italy_v9_candidate.json.gz
+      - data/reports/repower_italy_v9_report.json
+      - .github/workflows/repower-italy-v9-direct.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: repower-italy-v9-direct-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download latest successful Italy V9 consolidation
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow italy-v9-consolidation.yml --branch research/italy-consolidation-v9-a2a --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/italy-consolidation
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n italy-v9-consolidated-candidate -D /tmp/italy-consolidation
+          INPUT="$(find /tmp/italy-consolidation -name italy_v9_candidate.json.gz -print -quit)"
+          test -n "$INPUT" && test -s "$INPUT"
+          cp "$INPUT" /tmp/italy_v9_candidate.json.gz
+          echo "Using Italy V9 consolidation run $RUN_ID"
+
+      - name: Download and verify pinned Recharge Around APK
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 4 --retry-all-errors \
+            --output /tmp/recharge-around.apk \
+            'https://d.apkpure.net/b/APK/com.repower.rechargearound?versionCode=3399'
+          echo '76aae9f56efad48b885b059773415816c774e72d17bd7b2c1781beeac73900d9  /tmp/recharge-around.apk' | sha256sum --check --strict
+
+      - name: Build exact Repower candidate from the official API
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'androguard==4.1.4' 'requests==2.32.5'
+          python -m py_compile scripts/repower_italy_v9.py
+          LOGURU_LEVEL=CRITICAL python scripts/repower_italy_v9.py \
+            --consolidated /tmp/italy_v9_candidate.json.gz \
+            --apk /tmp/recharge-around.apk
+
+      - name: Validate exact scope and fail-closed exclusions
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+
+          candidate_path=Path('data/national/repower_italy_v9_candidate.json.gz')
+          snapshot_path=Path('data/national/repower_italy_official_snapshot.json.gz')
+          report_path=Path('data/reports/repower_italy_v9_report.json')
+          with gzip.open(candidate_path,'rt',encoding='utf-8') as handle:
+              data=json.load(handle)
+          with gzip.open(snapshot_path,'rt',encoding='utf-8') as handle:
+              snapshot=json.load(handle)
+          report=json.loads(report_path.read_text(encoding='utf-8'))
+          counts=data['counts']
+          assert data['country']=='IT' and data['operator']=='Repower Vendita Italia SpA'
+          assert counts['repowerPunStations']==982 and counts['repowerPunEvse']==1155
+          assert counts['officialLocations']==1086 and counts['officialConnectors']==1130
+          assert counts['rankableDirectEvse']==661 and counts['uncoveredRepowerPunEvse']==494
+          assert counts['rankableFreeEvse']==1
+          assert counts['matchMethodCounts']=={
+              'connector_uuid':302,
+              'external_id':349,
+              'station_address_connector':10,
+          }
+          assert counts['energyRateCounts']=={
+              '0.000000':1,
+              '0.480000':3,
+              '0.585600':657,
+          }
+          assert counts['strictSiteFallbackProposedConnectors']==12
+          assert counts['strictSiteFallbackAcceptedConnectors']==10
+          assert counts['strictSiteFallbackCollisionTargets']==1
+          assert all(data['safetyGates'].values())
+          entries=data['entries']
+          ids=[row['evseId'] for row in entries]
+          assert len(ids)==len(set(ids))==661
+          strict=[row for row in entries if row['matchMethod']=='station_address_connector']
+          assert len(strict)==10
+          assert all(row['distanceMeters']<=25 for row in strict)
+          assert all(row['matchEvidence']['addressExact'] is True for row in strict)
+          assert all(row['directTariff']['rankable'] is True for row in entries)
+          assert report['counts']==counts and report['safetyGates']==data['safetyGates']
+          assert snapshot['sourceSnapshot']==data['sourceSnapshot']
+
+          forbidden={'access_token','refresh_token','client_id','client_secret'}
+          def walk(value):
+              if isinstance(value,dict):
+                  for key,item in value.items():
+                      assert str(key).casefold() not in forbidden
+                      walk(item)
+              elif isinstance(value,list):
+                  for item in value:
+                      walk(item)
+          walk(snapshot)
+          walk(data)
+          print(json.dumps(counts,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Publish canonical candidate on the research branch
+        if: github.event_name != 'pull_request' && github.ref_name == 'feature/repower-italy-v9-direct'
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            data/national/repower_italy_official_snapshot.json.gz \
+            data/national/repower_italy_v9_candidate.json.gz \
+            data/reports/repower_italy_v9_report.json
+          if git diff --cached --quiet; then
+            echo 'Repower candidate already current'
+            exit 0
+          fi
+          git commit -m "data(repower): publish Italy direct candidate [run ${GITHUB_RUN_ID}]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Upload candidate and audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repower-italy-v9-direct-candidate
+          path: |
+            data/national/repower_italy_official_snapshot.json.gz
+            data/national/repower_italy_v9_candidate.json.gz
+            data/reports/repower_italy_v9_report.json
+          if-no-files-found: error
+          retention-days: 14
