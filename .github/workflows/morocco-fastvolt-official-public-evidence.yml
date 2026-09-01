@@ -40,6 +40,7 @@ jobs:
           import json
           import os
           import re
+          import unicodedata
           from html.parser import HTMLParser
           from pathlib import Path
 
@@ -56,24 +57,36 @@ jobs:
               text = html.unescape(' '.join(parser.parts))
               return re.sub(r'\s+', ' ', text).strip()
 
-          root = Path(os.environ['RUNNER_TEMP']) / 'fastvolt-public'
-          faq = visible_text(root / 'faq.html')
-          pricing = visible_text(root / 'howits.html')
+          def normalized(text):
+              text = unicodedata.normalize('NFKD', text)
+              text = ''.join(ch for ch in text if not unicodedata.combining(ch))
+              text = text.replace('\u2011', '-').replace('\u2013', '-').replace('\u2014', '-')
+              return re.sub(r'\s+', ' ', text).lower().strip()
 
-          faq_required = [
-              'état en temps réel',
-              'disponible',
-              'occupée',
-              'hors-service',
+          root = Path(os.environ['RUNNER_TEMP']) / 'fastvolt-public'
+          faq = normalized(visible_text(root / 'faq.html'))
+          pricing = normalized(visible_text(root / 'howits.html'))
+
+          required_faq_patterns = {
+              'real_time_state': r'etat\s+en\s+temps\s+reel',
+              'available': r'\bdisponible\b',
+              'occupied': r'\boccupee\b',
+              'out_of_service': r'\bhors[- ]service\b',
+          }
+          required_pricing_patterns = {
+              'dc_class': r'recharge\s+rapide\s*\(dc\)',
+              'dc_price': r'2\s*[,.]\s*50?\s*dhs\s*/\s*min',
+              'ac_class': r'recharge\s+semi[- ]rapide\s*\(ac\)',
+              'ac_price': r'0\s*[,.]\s*5\s*dhs\s*/\s*min',
+          }
+          missing = [
+              name for name, pattern in required_faq_patterns.items()
+              if not re.search(pattern, faq)
           ]
-          pricing_required = [
-              'Parking avec recharge rapide (DC)',
-              '2,50 dhs / min',
-              'Parking avec recharge semi-rapide (AC)',
-              '0.5 dhs / min',
+          missing += [
+              name for name, pattern in required_pricing_patterns.items()
+              if not re.search(pattern, pricing)
           ]
-          missing = [x for x in faq_required if x not in faq]
-          missing += [x for x in pricing_required if x not in pricing]
           if missing:
               raise SystemExit('Expected public evidence missing: ' + ', '.join(missing))
 
