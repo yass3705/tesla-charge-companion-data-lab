@@ -8,6 +8,7 @@ on:
       - '.github/workflows/morocco-watt-ocpi-readonly-probe.yml'
       - 'scripts/morocco_watt_ocpi_public_probe.py'
       - 'scripts/morocco_watt_public_client_static_inspect.py'
+      - 'scripts/morocco_watt_chargers_shape_probe.py'
 
 permissions:
   contents: read
@@ -21,11 +22,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Probe documented public GET surfaces only
+      - name: Probe public GET surfaces only
         run: python3 scripts/morocco_watt_ocpi_public_probe.py
 
       - name: Statically inspect public same-origin client assets
         run: python3 scripts/morocco_watt_public_client_static_inspect.py
+
+      - name: Inspect charger JSON shape without raw values
+        run: python3 scripts/morocco_watt_chargers_shape_probe.py
 
       - name: Validate sanitized artifact contract
         run: |
@@ -34,6 +38,7 @@ jobs:
           from pathlib import Path
           probe=json.loads(Path('artifacts/morocco-watt-ocpi-public-probe/summary.json').read_text())
           static=json.loads(Path('artifacts/morocco-watt-public-client-static/summary.json').read_text())
+          shape=json.loads(Path('artifacts/morocco-watt-chargers-shape/summary.json').read_text())
           pol=probe.get('policy',{})
           assert pol.get('read_only') is True
           assert pol.get('http_methods') == ['GET']
@@ -41,7 +46,7 @@ jobs:
           assert pol.get('cookies_used') is False
           assert pol.get('session_or_command_routes_used') is False
           assert pol.get('raw_payloads_committed') is False
-          assert probe.get('production_decision') == 'diagnostic_only_until_source_contract_and_identity_mapping_are_validated'
+          assert probe.get('production_decision') == 'secondary_diagnostic_only_until_identity_and_provenance_are_reconciled_with_native_cpo_sources'
           spol=static.get('policy',{})
           assert spol.get('read_only') is True
           assert spol.get('http_methods') == ['GET']
@@ -51,13 +56,18 @@ jobs:
           assert spol.get('discovered_routes_invoked') is False
           assert spol.get('command_or_session_routes_invoked') is False
           assert spol.get('raw_html_or_js_committed') is False
+          shpol=shape.get('policy',{})
+          assert shpol.get('read_only') is True
+          assert shpol.get('http_method') == 'GET'
+          assert shpol.get('credentials_used') is False
+          assert shpol.get('cookies_used') is False
+          assert shpol.get('raw_values_committed') is False
           print(json.dumps({
-            'locations': probe.get('locations_summary',{}).get('record_count'),
-            'tariffs': probe.get('tariffs_summary',{}).get('record_count'),
-            'locations_http': probe.get('locations_endpoint',{}).get('http_status'),
-            'tariffs_http': probe.get('tariffs_endpoint',{}).get('http_status'),
-            'static_assets': len(static.get('assets_inspected') or []),
-            'likely_data_candidates': static.get('likely_data_candidate_paths')
+            'chargers_http':probe.get('chargers_endpoint',{}).get('http_status'),
+            'chargers_json':probe.get('chargers_endpoint',{}).get('json'),
+            'chargers_records_current_parser':probe.get('chargers_summary',{}).get('record_count'),
+            'payload_shape':shape.get('payload_shape'),
+            'likely_data_candidates':static.get('likely_data_candidate_paths')
           }, ensure_ascii=False))
           PY
 
@@ -68,5 +78,6 @@ jobs:
           path: |
             artifacts/morocco-watt-ocpi-public-probe/summary.json
             artifacts/morocco-watt-public-client-static/summary.json
+            artifacts/morocco-watt-chargers-shape/summary.json
           if-no-files-found: error
           retention-days: 3
