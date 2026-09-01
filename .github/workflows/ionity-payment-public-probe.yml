@@ -1,0 +1,73 @@
+name: IONITY payment public probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/ionity-payment-public-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Probe public portal shell and JS assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe/assets
+          UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36'
+          for URL in 'https://payment.ionity.eu/' 'https://payment.ionity.eu/charger-detail/2110'; do
+            NAME=$(printf '%s' "$URL" | sed 's#https://payment.ionity.eu/##; s#[^A-Za-z0-9]#_#g')
+            [ -n "$NAME" ] || NAME=root
+            curl -sS -L --max-time 30 -A "$UA" -D "probe/${NAME}.headers" "$URL" -o "probe/${NAME}.html" || true
+            echo "===== $URL ====="
+            sed -n '1,25p' "probe/${NAME}.headers" || true
+            head -c 4000 "probe/${NAME}.html" || true
+            echo
+          done
+
+          python - <<'PY'
+          from pathlib import Path
+          import re, urllib.parse, subprocess
+          base='https://payment.ionity.eu/'
+          seen=set()
+          for p in Path('probe').glob('*.html'):
+              text=p.read_text(errors='replace')
+              for src in re.findall(r'<script[^>]+src=["\']([^"\']+)', text, re.I):
+                  u=urllib.parse.urljoin(base,src)
+                  if u in seen: continue
+                  seen.add(u)
+                  out=Path('probe/assets')/(re.sub(r'[^A-Za-z0-9._-]','_',urllib.parse.urlparse(u).path.strip('/')) or 'asset.js')
+                  print('ASSET',u,'->',out)
+                  subprocess.run(['curl','-sS','-L','--max-time','30','-A','Mozilla/5.0',u,'-o',str(out)],check=False)
+          print('asset_count',len(seen))
+          PY
+
+      - name: Extract endpoint and tariff candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          pats=[r'https?://[^"\'`\\ ]+',r'/api/[A-Za-z0-9_./?=&${}:~-]+',r'graphql',r'charger[^"\'`]{0,120}',r'tariff[^"\'`]{0,160}',r'price[^"\'`]{0,160}',r'kwh[^"\'`]{0,120}']
+          for p in sorted(Path('probe/assets').glob('*')):
+              t=p.read_text(errors='replace')
+              print('\n====',p.name,'bytes',len(t.encode()),'====')
+              hits=[]
+              for pat in pats:
+                  for m in re.finditer(pat,t,re.I):
+                      s=re.sub(r'\s+',' ',m.group(0))[:500]
+                      if s not in hits: hits.append(s)
+              for h in hits[:300]: print(h)
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ionity-payment-public-probe
+          path: probe
+          retention-days: 3
