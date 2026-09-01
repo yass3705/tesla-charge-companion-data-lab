@@ -20,20 +20,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/izivia reports/france/izivia
-          UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/140 Safari/537.36'
           BASE='https://fronts-map.izivia.com/'
-          curl -fLsS -A "$UA" "$BASE" -o /tmp/izivia/front.html
+          curl -fLsS -A 'Mozilla/5.0' "$BASE" -o /tmp/izivia/front.html
           python - <<'PY'
           import re,json,pathlib,urllib.parse,subprocess
           base='https://fronts-map.izivia.com/'
-          secret_patterns=[
-            re.compile(r'(?i)sk\.[A-Za-z0-9._-]{20,}'),
-            re.compile(r'(?i)(access[_-]?token|token|api[_-]?key|apikey)([=:"\'\s]+)[A-Za-z0-9._-]{20,}')
-          ]
-          def sanitize(s):
+          def safe(s):
               s=str(s)
-              s=secret_patterns[0].sub('[REDACTED_MAPBOX_SECRET]',s)
-              s=secret_patterns[1].sub(lambda m:m.group(1)+m.group(2)+'[REDACTED_SECRET]',s)
+              if re.search(r'(?i)mapbox|access[_-]?token|api[_-]?key|apikey|token[=:]',s): return None
               return s
           html=pathlib.Path('/tmp/izivia/front.html').read_text(errors='ignore')
           assets=[]
@@ -44,23 +38,23 @@ jobs:
           for i,u in enumerate(assets[:80]):
               p=pathlib.Path(f'/tmp/izivia/front-{i}.txt')
               r=subprocess.run(['curl','-fLsS','-A','Mozilla/5.0',u,'-o',str(p)])
-              if r.returncode==0: downloaded.append({'url':sanitize(u),'file':p.name,'bytes':p.stat().st_size})
-          patt=re.compile(r'https?://[^\s"\'<>`]+|(?:/|[A-Za-z0-9_.-])*(?:api|graphql|station|borne|charge|tarif|price|connector|evse|location|map)(?:/|[A-Za-z0-9_.?=&%:-])*',re.I)
+              if r.returncode==0: downloaded.append({'url':u,'file':p.name,'bytes':p.stat().st_size})
+          patt=re.compile(r'https?://[^\s"\'<>`]+|(?:/|[A-Za-z0-9_.-])*(?:api|graphql|station|borne|charge|tarif|price|connector|evse|location)(?:/|[A-Za-z0-9_.?=&%:-])*',re.I)
           hits=[]; snippets=[]
           for p in [pathlib.Path('/tmp/izivia/front.html')]+[pathlib.Path('/tmp/izivia')/x['file'] for x in downloaded]:
               txt=p.read_text(errors='ignore')
               for m in patt.finditer(txt):
-                  h=sanitize(m.group(0))
-                  if len(h)>5 and h not in hits: hits.append(h[:1600])
+                  h=safe(m.group(0))
+                  if h and len(h)>5 and h not in hits: hits.append(h[:1200])
               for needle in ('axios','fetch(','graphql','apiUrl','baseURL','tarif','price','evse','station'):
                   for m in re.finditer(re.escape(needle),txt,re.I):
-                      s=sanitize(txt[max(0,m.start()-700):min(len(txt),m.end()+1400)])
-                      if s not in snippets: snippets.append(s)
-          report={'frontBytes':len(html),'assets':downloaded,'candidates':hits[:5000],'snippets':snippets[:120]}
+                      s=safe(txt[max(0,m.start()-500):min(len(txt),m.end()+900)])
+                      if s and s not in snippets: snippets.append(s)
+          report={'frontBytes':len(html),'assets':downloaded,'candidates':hits[:3000],'snippets':snippets[:80]}
           raw=json.dumps(report,ensure_ascii=False,indent=2)+'\n'
-          if re.search(r'(?i)sk\.[A-Za-z0-9._-]{20,}',raw): raise SystemExit('secret redaction failed')
+          if re.search(r'(?i)mapbox|access[_-]?token|api[_-]?key|apikey',raw): raise SystemExit('unsafe report content')
           pathlib.Path('reports/france/izivia/public-map-probe.json').write_text(raw)
-          print(json.dumps({'frontBytes':len(html),'assetCount':len(downloaded),'candidateCount':len(hits),'snippetCount':len(snippets)},indent=2))
+          print(json.dumps({'assetCount':len(downloaded),'candidateCount':len(hits),'snippetCount':len(snippets)},indent=2))
           PY
       - name: Publish
         shell: bash
@@ -68,6 +62,6 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/france/izivia/public-map-probe.json
-          git commit -m 'France IZIVIA: publish sanitized frontend API probe' || exit 0
+          git commit -m 'France IZIVIA: publish safe frontend API probe' || exit 0
           git pull --rebase origin main
           git push
