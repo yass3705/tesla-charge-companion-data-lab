@@ -7,11 +7,13 @@ on:
     paths:
       - '.github/workflows/morocco-club-evcharge-exact-target-get.yml'
       - 'scripts/morocco_club_evcharge_exact_target_get_probe.py'
+      - 'reports/morocco/totalenergies/club-ev-charge-exact-target-get-2026-09-01.json'
   pull_request:
     branches: [main]
     paths:
       - '.github/workflows/morocco-club-evcharge-exact-target-get.yml'
       - 'scripts/morocco_club_evcharge_exact_target_get_probe.py'
+      - 'reports/morocco/totalenergies/club-ev-charge-exact-target-get-2026-09-01.json'
 
 permissions:
   contents: read
@@ -76,6 +78,30 @@ jobs:
             'technical_result':d.get('technical_result'),
             'safe_response_shape':probe.get('safe_response_shape'),
           },ensure_ascii=False))
+          PY
+
+      - name: Validate published blocker record matches live target probe
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          live=json.loads(Path('artifacts/morocco-club-evcharge-exact-target-get/summary.json').read_text())
+          record=json.loads(Path('reports/morocco/totalenergies/club-ev-charge-exact-target-get-2026-09-01.json').read_text())
+          assert record.get('schema_version')==1
+          assert record.get('source',{}).get('workflow_run_id')==33536594341
+          assert record.get('source',{}).get('head_sha')=='9f07cce23ca0ebcbb6b63ea95395067d3c9cf6f9'
+          assert record.get('target_package',{}).get('sha256')==live.get('target_package',{}).get('download_sha256')
+          assert record.get('candidate',{}).get('url')==live.get('candidate',{}).get('url')
+          assert record.get('candidate',{}).get('static_evidence')==live.get('candidate',{}).get('static_evidence')
+          recorded_probe=record.get('probe',{})
+          live_probe=live.get('probe',{})
+          for key in ('request_count','method','query_parameters_used','request_body_used','status','content_type','final_target'):
+            assert recorded_probe.get(key)==live_probe.get(key)
+          assert recorded_probe.get('safe_response_shape')==live_probe.get('safe_response_shape')
+          assert record.get('technical_result')==live.get('technical_result')=='evidence_derived_candidate_not_matched'
+          assert record.get('production_decision')==live.get('production_decision')=='no_promotion'
+          print(json.dumps({'ok':True,'blocker_record_matches_live_probe':True},ensure_ascii=False))
           PY
 
       - uses: actions/upload-artifact@v4

@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-01",
+  "subject": "Club EV-Charge evidence-derived target GET blocker",
+  "source": {
+    "repository": "yass3705/tesla-charge-companion-data-lab",
+    "workflow_run_id": 33536594341,
+    "workflow_conclusion": "success",
+    "head_sha": "9f07cce23ca0ebcbb6b63ea95395067d3c9cf6f9",
+    "artifact_id": 9811873067,
+    "artifact_sha256": "8ed4d20eb717080a4657ca729433a48f901e11fe3c576c6ab841896c3decc357"
+  },
+  "policy": {
+    "target_client_only": true,
+    "static_gate_before_network": true,
+    "single_evidence_derived_candidate": true,
+    "anonymous_read_only_get_only": true,
+    "no_path_enumeration": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_real_station_or_connector_ids": true,
+    "no_query_parameters": true,
+    "no_request_body": true,
+    "no_charging_or_account_actions": true,
+    "redirects_followed": false,
+    "raw_response_body_persisted": false,
+    "raw_package_persisted": false
+  },
+  "target_package": {
+    "package_id": "com.namp.totalev",
+    "download_bytes": 55695146,
+    "sha256": "a13e53871c9a85fb014ff61a9362cd2002f97817530d983f34e8a3a3b88d154e"
+  },
+  "candidate": {
+    "url": "https://csmstotalenergiesma.numocity.com/2/chargestation/getstationstate",
+    "constructed_from_target_package_only": true,
+    "static_evidence": {
+      "files_scanned": 100,
+      "bytes_scanned": 125171153,
+      "host_literal_hits": 2,
+      "route_literal_hits": 2,
+      "near_route_numocity_v2_hits": 2,
+      "host_and_route_same_file_count": 2,
+      "gate_passed": true
+    }
+  },
+  "probe": {
+    "request_count": 1,
+    "method": "GET",
+    "query_parameters_used": false,
+    "request_body_used": false,
+    "status": 404,
+    "content_type": "text/html; charset=utf-8",
+    "final_target": "https://csmstotalenergiesma.numocity.com/2/chargestation/getstationstate",
+    "safe_response_shape": {
+      "json": false,
+      "body_length_sampled": 1031,
+      "signals": {
+        "not found": false,
+        "route": true,
+        "required": false,
+        "missing": false,
+        "unauthorized": false,
+        "forbidden": false
+      }
+    }
+  },
+  "technical_result": "evidence_derived_candidate_not_matched",
+  "interpretation": "The current target package contains the branded host, station-state route and nearby Numocity /2 signal, but their direct evidence-derived composition does not reach a JSON API route. Do not retry speculative prefix, path or parameter variants.",
+  "modeling": {
+    "cpo_operator": "unresolved_station_specific",
+    "site_brand": "TotalEnergies when station-specific evidence supports it",
+    "app_source_access_network": "Club EV-Charge / TotalEnergies Marketing Maroc",
+    "tariff_channel": "unresolved_without_native_station-specific evidence",
+    "status_source": "unresolved_until_station-specific native payload validation",
+    "implementation_partner": "GM AFRICA",
+    "numocity_role": "unverified_current_production_backend"
+  },
+  "production_decision": "no_promotion",
+  "next_step": "Resolve runtime authority, gateway or base-path construction from sanitized target-client public configuration only. Do not enumerate variants and do not reuse sibling-client hosts, station data or identifiers."
+}
