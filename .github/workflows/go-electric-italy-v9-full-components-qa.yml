@@ -7,6 +7,7 @@ on:
       - integration/go-electric-full-components-v9
     paths:
       - scripts/go_electric_italy_v9_full_component_activation_qa.py
+      - scripts/go_electric_italy_v9_engine_primitive_mapping_qa.py
       - .github/workflows/go-electric-italy-v9-full-components-qa.yml
 
 permissions:
@@ -22,8 +23,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Compile activation builder
-        run: python -m py_compile scripts/go_electric_italy_v9_full_component_activation_qa.py
+      - name: Compile activation builders
+        run: |
+          python -m py_compile scripts/go_electric_italy_v9_full_component_activation_qa.py
+          python -m py_compile scripts/go_electric_italy_v9_engine_primitive_mapping_qa.py
       - name: Download session-ready candidate and semantics proof
         env:
           GH_TOKEN: ${{ github.token }}
@@ -40,14 +43,15 @@ jobs:
           PROOF="$(find /tmp/ge-semantics -name 'go_electric_nextcharge_tariff_ui_semantics.json' -print -quit)"
           test -n "$CANDIDATE" && test -n "$PROOF"
           python scripts/go_electric_italy_v9_full_component_activation_qa.py --candidate "$CANDIDATE" --semantics-proof "$PROOF"
+          python scripts/go_electric_italy_v9_engine_primitive_mapping_qa.py --candidate data/consolidation/italy_v9_candidate_go_electric_full_components_qa.json.gz
       - name: Validate candidate gates
         run: |
           python - <<'PY'
           import gzip,json
           from pathlib import Path
           r=json.loads(Path('data/reports/go_electric_italy_v9_full_component_activation_qa.json').read_text())
-          assert r['publicationAllowed'] is False
-          assert r['stableActivationAllowed'] is False
+          m=json.loads(Path('data/reports/go_electric_italy_v9_engine_primitive_mapping_qa.json').read_text())
+          assert r['publicationAllowed'] is False and r['stableActivationAllowed'] is False
           assert r['validatedGoElectricDirectEvse']==2214
           assert r['goElectricRuntimeCandidateEvse']==2214
           assert r['goElectricStagedEvse']==0
@@ -59,20 +63,26 @@ jobs:
           assert r['directAccounting']['rankableDirectCoveragePct']==37.11
           assert r['goElectricPhysicalWithoutRuntimeCandidate']==239
           assert all(r['gates'].values()),r['gates']
-          p=Path('data/consolidation/italy_v9_candidate_go_electric_full_components_qa.json.gz')
+          assert m['goElectricEvse']==2214
+          assert m['postChargeOffers']==626 and m['postChargeWindowed']==493
+          assert m['onAfterTimeOffers']==74 and m['onAfterTimeWindowed']==63 and m['onAfterTimeUnwindowed']==11
+          assert m['unsupportedRuntimeFields']==0
+          assert all(m['gates'].values()),m['gates']
+          p=Path('data/consolidation/italy_v9_candidate_go_electric_engine_compatible_qa.json.gz')
           with gzip.open(p,'rt',encoding='utf-8') as fh:d=json.load(fh)
           ge=[e for e in d['evses'] if (e.get('tccV9DirectTariff') or {}).get('operator')=='Go Electric Stations SRLS']
-          assert len(ge)==2214
-          assert all(e.get('tccV9RankableDirect') is True for e in ge)
-          assert all(isinstance((e.get('tccV9DirectTariff') or {}).get('runtimePricing'),dict) for e in ge)
-          assert sum('connectedTimeSurcharge' in (e['tccV9DirectTariff']['runtimePricing']) for e in ge)==74
-          assert sum('postChargeFee' in (e['tccV9DirectTariff']['runtimePricing']) for e in ge)==626
-          print(json.dumps(r,indent=2,ensure_ascii=False))
+          assert len(ge)==2214 and all(e.get('tccV9RankableDirect') is True for e in ge)
+          serial=json.dumps([e['tccV9DirectTariff']['runtimePricing'] for e in ge])
+          assert 'connectedTimeSurcharge' not in serial and 'activeLocalWindows' not in serial
+          assert sum('postChargeFee' in e['tccV9DirectTariff']['runtimePricing'] for e in ge)==626
+          assert sum(any('connectedTimePerMinuteAfterFreeEur' in rule for rule in e['tccV9DirectTariff']['runtimePricing']['rules']) for e in ge)==74
+          print(json.dumps({'activation':r,'engineMapping':m},indent=2,ensure_ascii=False))
           PY
       - uses: actions/upload-artifact@v4
         with:
           name: go-electric-italy-v9-full-components-qa
           path: |
-            data/consolidation/italy_v9_candidate_go_electric_full_components_qa.json.gz
+            data/consolidation/italy_v9_candidate_go_electric_engine_compatible_qa.json.gz
             data/reports/go_electric_italy_v9_full_component_activation_qa.json
+            data/reports/go_electric_italy_v9_engine_primitive_mapping_qa.json
           retention-days: 14
