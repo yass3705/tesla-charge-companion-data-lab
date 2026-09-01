@@ -1,0 +1,61 @@
+name: France TotalEnergies public map probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-totalenergies-map.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe official station map frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/te reports/france/totalenergies
+          URL='https://totalms.webgeoservices.com/maps/embed/?business=b002&country=fr&filters=electricrecharge&languageTranslation=fr_fr'
+          curl -fLsS -A 'Mozilla/5.0' "$URL" -o /tmp/te/index.html
+          python - <<'PY'
+          import re,json,pathlib,urllib.parse,subprocess
+          html=pathlib.Path('/tmp/te/index.html').read_text(errors='ignore')
+          base='https://totalms.webgeoservices.com/'
+          assets=[]
+          for x in re.findall(r'(?:src|href)=["\']([^"\']+\.(?:js|css)(?:\?[^"\']*)?)["\']',html,re.I):
+              u=urllib.parse.urljoin(base,x)
+              if u not in assets:assets.append(u)
+          dl=[]
+          for i,u in enumerate(assets[:80]):
+              p=pathlib.Path(f'/tmp/te/a{i}.txt');r=subprocess.run(['curl','-fLsS','-A','Mozilla/5.0',u,'-o',str(p)])
+              if r.returncode==0:dl.append({'url':u,'file':p.name,'bytes':p.stat().st_size})
+          hits=[];contexts=[]
+          patt=re.compile(r'https?://[^\s"\'<>`]+|(?:/|[A-Za-z0-9_.-])*(?:api|station|store|search|electric|charge|price|tarif|poi)(?:/|[A-Za-z0-9_.?=&%:-])*',re.I)
+          for p in [pathlib.Path('/tmp/te/index.html')]+[pathlib.Path('/tmp/te')/x['file'] for x in dl]:
+              txt=p.read_text(errors='ignore')
+              for m in patt.finditer(txt):
+                  h=m.group(0)
+                  if re.search(r'(?i)token|api.?key|secret',h):continue
+                  if len(h)>5 and h not in hits:hits.append(h[:1500])
+              for n in ('fetch(','axios','station','electricrecharge','business','api'):
+                  for m in re.finditer(re.escape(n),txt,re.I):
+                      s=txt[max(0,m.start()-500):min(len(txt),m.end()+1100)]
+                      if re.search(r'(?i)token|api.?key|secret',s):continue
+                      if s not in contexts:contexts.append(s)
+          report={'pageBytes':len(html),'assets':dl,'candidates':hits[:4000],'contexts':contexts[:100]}
+          pathlib.Path('reports/france/totalenergies/public-map-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'pageBytes':len(html),'assets':len(dl),'candidates':len(hits),'contexts':len(contexts)},indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/totalenergies/public-map-probe.json
+          git commit -m 'France TotalEnergies: publish public map probe' || exit 0
+          git pull --rebase origin main
+          git push
