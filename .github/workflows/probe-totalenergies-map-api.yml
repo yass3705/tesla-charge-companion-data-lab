@@ -15,37 +15,37 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect TotalEnergies proprietary map bundle
+      - name: Inspect TotalEnergies runtime map script
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/te reports/france/totalenergies
-          curl -fLsS -A 'Mozilla/5.0' https://totalms.webgeoservices.com/maps/static/build/js/main.js -o /tmp/te/main.js
+          curl -fLsS -A 'Mozilla/5.0' https://totalms.webgeoservices.com/maps/static/build/js/script.js -o /tmp/te/script.js
           python - <<'PY'
           import re,json,pathlib
-          txt=pathlib.Path('/tmp/te/main.js').read_text(errors='ignore')
+          txt=pathlib.Path('/tmp/te/script.js').read_text(errors='ignore')
           urls=[];routes=[];contexts=[]
           for u in re.findall(r'https?://[^\s"\'<>`]+|//[A-Za-z0-9._-]+/[A-Za-z0-9_./?=&%:-]+',txt):
               if re.search(r'(?i)token|key=',u):continue
               if u not in urls:urls.append(u[:1800])
-          for q in re.findall(r'["\']([^"\']{2,260})["\']',txt):
-              if re.search(r'(?i)store|station|search|price|tarif|poi|business|location|detail|geocode',q) and ('/' in q or '?' in q):
+          for q in re.findall(r'["\']([^"\']{2,300})["\']',txt):
+              if re.search(r'(?i)store|station|search|price|tarif|poi|business|location|detail|geocode|feature',q) and ('/' in q or '?' in q):
                   if re.search(r'(?i)token|api.?key|secret',q):continue
                   if q not in routes:routes.append(q)
-          for n in ('showPrices','storeId','business','search','detail','price','stores','ajax','woosmap'):
+          for n in ('showPrices','storeId','business','search','detail','price','stores','ajax','woosmap','features'):
               for m in re.finditer(re.escape(n),txt,re.I):
-                  s=txt[max(0,m.start()-700):min(len(txt),m.end()+1600)]
+                  s=txt[max(0,m.start()-800):min(len(txt),m.end()+1800)]
                   if re.search(r'(?i)token|api.?key|secret',s):continue
                   if s not in contexts:contexts.append(s)
-          report={'bytes':len(txt),'urls':urls[:500],'routes':routes[:2000],'contexts':contexts[:150]}
+          report={'bytes':len(txt),'urls':urls[:500],'routes':routes[:2500],'contexts':contexts[:180]}
           pathlib.Path('reports/france/totalenergies/map-api-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({'bytes':len(txt),'urls':urls[:100],'routes':routes[:250]},ensure_ascii=False,indent=2)[:60000])
+          print(json.dumps({'bytes':len(txt),'urls':urls[:120],'routes':routes[:300]},ensure_ascii=False,indent=2)[:70000])
           PY
       - name: Publish
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/france/totalenergies/map-api-probe.json
-          git commit -m 'France TotalEnergies: publish proprietary map probe' || exit 0
+          git commit -m 'France TotalEnergies: publish runtime map probe' || exit 0
           git pull --rebase origin main
           git push
