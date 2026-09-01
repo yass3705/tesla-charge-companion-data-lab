@@ -20,16 +20,30 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/fastvolt-public"
-          curl --fail --silent --show-error \
+
+          faq_effective="$(curl --fail --silent --show-error \
             --connect-timeout 10 --max-time 20 \
-            --proto '=https' \
-            'https://www.fastvolt.net/FAQ' \
-            -o "$RUNNER_TEMP/fastvolt-public/faq.html"
-          curl --fail --silent --show-error \
+            --location --max-redirs 2 \
+            --proto '=https' --proto-redir '=https' \
+            --output "$RUNNER_TEMP/fastvolt-public/faq.html" \
+            --write-out '%{url_effective}' \
+            'https://www.fastvolt.net/FAQ')"
+          pricing_effective="$(curl --fail --silent --show-error \
             --connect-timeout 10 --max-time 20 \
-            --proto '=https' \
-            'https://www.fastvolt.net/HowIts' \
-            -o "$RUNNER_TEMP/fastvolt-public/howits.html"
+            --location --max-redirs 2 \
+            --proto '=https' --proto-redir '=https' \
+            --output "$RUNNER_TEMP/fastvolt-public/howits.html" \
+            --write-out '%{url_effective}' \
+            'https://www.fastvolt.net/HowIts')"
+
+          case "$faq_effective" in
+            https://www.fastvolt.net/*|https://fastvolt.net/*) ;;
+            *) echo "Unexpected FAQ redirect authority" >&2; exit 1 ;;
+          esac
+          case "$pricing_effective" in
+            https://www.fastvolt.net/*|https://fastvolt.net/*) ;;
+            *) echo "Unexpected pricing redirect authority" >&2; exit 1 ;;
+          esac
 
       - name: Validate and emit sanitized evidence only
         shell: bash
