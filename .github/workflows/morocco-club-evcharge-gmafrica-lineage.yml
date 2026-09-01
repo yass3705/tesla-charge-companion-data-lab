@@ -1,0 +1,110 @@
+name: Morocco Club EV-Charge GM Africa public client lineage
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/morocco-club-evcharge-gmafrica-lineage.yml'
+      - 'scripts/morocco_club_evcharge_gmafrica_lineage_probe.py'
+      - 'reports/morocco/totalenergies/club-ev-charge-gmafrica-client-lineage-2026-09-01.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/morocco-club-evcharge-gmafrica-lineage.yml'
+      - 'scripts/morocco_club_evcharge_gmafrica_lineage_probe.py'
+      - 'reports/morocco/totalenergies/club-ev-charge-gmafrica-client-lineage-2026-09-01.json'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Compare sanitized public client lineage
+        run: python3 scripts/morocco_club_evcharge_gmafrica_lineage_probe.py
+
+      - name: Validate fail-closed evidence contract
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          p=Path('artifacts/morocco-club-evcharge-gmafrica-lineage/summary.json')
+          d=json.loads(p.read_text())
+          assert d.get('schema_version')==1
+          policy=d.get('policy',{})
+          assert policy.get('static_public_client_analysis_only') is True
+          assert policy.get('backend_requests_made') is False
+          assert policy.get('no_login') is True
+          assert policy.get('no_credentials') is True
+          assert policy.get('raw_packages_persisted') is False
+          assert policy.get('arbitrary_bundle_strings_persisted') is False
+          assert policy.get('cross_network_station_data_reused') is False
+
+          packages=d.get('packages',{})
+          assert set(packages)=={'club_ev_charge','ma_charge'}
+          assert packages['club_ev_charge'].get('package_id')=='com.namp.totalev'
+          assert packages['ma_charge'].get('package_id')=='com.namp.macharge'
+          for item in packages.values():
+            assert item.get('download_ok') is True
+            assert item.get('download_sha256')
+            assert item.get('raw_package_persisted') is False
+
+          modeling=d.get('modeling',{})
+          assert modeling.get('cpo_operator')=='unresolved_station_specific'
+          assert modeling.get('site_brand')=='TotalEnergies when station-specific evidence supports it'
+          assert modeling.get('app_source_access_network')=='Club EV-Charge / TotalEnergies Marketing Maroc'
+          assert modeling.get('tariff_channel')=='unresolved_without_native_station-specific evidence'
+          assert modeling.get('status_source')=='unresolved_without_validated_public_read-only request'
+          assert modeling.get('implementation_partner')=='GM AFRICA'
+          assert modeling.get('numocity_role')=='unverified_current_production_backend'
+
+          assert d.get('production_decision')=='diagnostic_only'
+          print(json.dumps({
+            'ok':True,
+            'shared_routes':d.get('comparison',{}).get('shared_route_markers',[]),
+            'shared_domains':d.get('comparison',{}).get('shared_public_domains',[]),
+            'next_step':d.get('next_step'),
+          },ensure_ascii=False))
+          PY
+
+      - name: Validate published lineage record matches the live static comparison
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          live=json.loads(Path('artifacts/morocco-club-evcharge-gmafrica-lineage/summary.json').read_text())
+          record=json.loads(Path('reports/morocco/totalenergies/club-ev-charge-gmafrica-client-lineage-2026-09-01.json').read_text())
+          assert record.get('schema_version')==1
+          assert record.get('source',{}).get('workflow_run_id')==33535717827
+          assert record.get('source',{}).get('head_sha')=='44b3fa338f9124cb998305d50e18e7dbfb74f741'
+          expected_hashes=record.get('evidence',{}).get('package_sha256',{})
+          assert expected_hashes=={
+            label:item.get('download_sha256')
+            for label,item in live.get('packages',{}).items()
+          }
+          finding=record.get('finding',{})
+          comparison=live.get('comparison',{})
+          assert finding.get('shared_route_markers')==comparison.get('shared_route_markers')
+          assert finding.get('shared_public_domains')==comparison.get('shared_public_domains')
+          assert finding.get('club_only_public_domains')==comparison.get('club_only_public_domains')
+          assert finding.get('ma_charge_only_public_domains')==comparison.get('ma_charge_only_public_domains')
+          assert record.get('production_decision')=='diagnostic_only'
+          assert record.get('modeling',{}).get('numocity_role')=='unverified_current_production_backend'
+          print(json.dumps({'ok':True,'record_matches_live_static_comparison':True},ensure_ascii=False))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: morocco-club-evcharge-gmafrica-lineage
+          path: artifacts/morocco-club-evcharge-gmafrica-lineage/summary.json
+          if-no-files-found: error
+          retention-days: 3
