@@ -120,6 +120,44 @@ jobs:
           },ensure_ascii=False))
           PY
 
+      - name: Validate published record matches live public-shell probe
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          live=json.loads(Path('artifacts/morocco-club-evcharge-public-root-assets/summary.json').read_text())
+          record=json.loads(Path('reports/morocco/totalenergies/club-ev-charge-public-root-assets-2026-09-01.json').read_text())
+          assert record.get('schema_version')==1
+          source=record.get('source',{})
+          assert source.get('workflow_run_id')==33537945393
+          assert source.get('workflow_conclusion')=='success'
+          assert source.get('head_sha')=='3d709edc6cab60ec6f5a7517e9f22c2e0c8cdc18'
+          assert source.get('artifact_id')==9812395073
+          assert source.get('artifact_sha256')=='8fce420c7af642bffe6659dd9c9a37b4a78f9bd7f6279217b3dc0af431d3f3c1'
+          for key in (
+              'subject',
+              'policy',
+              'limits',
+              'evidence_gate',
+              'root',
+              'discovery',
+              'assets',
+              'safe_findings',
+              'network',
+              'modeling',
+              'technical_result',
+              'production_decision',
+              'next_step',
+          ):
+              assert record.get(key)==live.get(key), key
+          assert record.get('technical_result')=='public_shell_entrypoint_identified_no_target_backend_config'
+          assert record.get('safe_findings',{}).get('runtime_entrypoint_path')=='/main.dart.js'
+          assert record.get('safe_findings',{}).get('target_backend_markers_found') is False
+          assert record.get('production_decision')=='no_promotion'
+          print(json.dumps({'ok':True,'public_shell_record_matches_live_probe':True},ensure_ascii=False))
+          PY
+
       - uses: actions/upload-artifact@v4
         with:
           name: morocco-club-evcharge-public-root-assets
