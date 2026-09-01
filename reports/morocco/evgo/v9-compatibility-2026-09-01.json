@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "network": "EVGO",
+  "validated_on": "2026-09-01",
+  "source_workflow_run": 33456426369,
+  "source_artifact_id": 9781593528,
+  "source_branch": "integration/morocco-evgo-fresh-v9",
+  "source_head_sha": "a752855dcb75403ae122831076dd7cc034ead438",
+  "validation": {
+    "workflow_conclusion": "success",
+    "stations": 17,
+    "evses": 43,
+    "gps_valid_morocco": 17,
+    "native_status_counts": {
+      "available": 24,
+      "charging": 18,
+      "unavailable": 1
+    },
+    "operational_class_counts": {
+      "available": 23,
+      "occupied_or_active_session": 18,
+      "out_of_service": 2
+    },
+    "status_precedence_validated": true,
+    "long_or_temporary_unavailability_overrides_text_status": true,
+    "suspendedEV_and_active_session_states_classified_occupied": true,
+    "modeling_dimensions_kept_separate": [
+      "operator_cpo_candidate",
+      "site_brand",
+      "app_source",
+      "tariff_channel",
+      "status_source"
+    ]
+  },
+  "critical_example": {
+    "locationId": 6,
+    "site": "Marjane Menara",
+    "evse_id": "10",
+    "native_text_status": "available",
+    "isAvailable": false,
+    "isLongTermUnavailable": true,
+    "isTemporarilyUnavailable": false,
+    "operational_class": "out_of_service",
+    "interpretation": "Flag precedence is required; the EVSE must not be exposed as available."
+  },
+  "v9_registry_check": {
+    "stable_validated_v9_source_sha": "76891223d71632eb141990c0bda50d5bf72cebf7",
+    "registry_source_id": "morocco-evgo-native",
+    "adapter": "morocco-public-v1",
+    "profile": "evgo",
+    "current_registry_url": "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-data-lab/main/reports/morocco/evgo/latest-normalized-stations.json",
+    "current_registry_capabilities": ["inventory", "connectors", "access", "status", "tariff"],
+    "compatibility_result": "adapter/profile already present, but registry currently targets the normalized snapshot rather than the fresh-status production snapshot",
+    "required_integration_change_after_publication": "Publish latest-production-stations.json on data-lab main, then switch morocco-evgo-native registry URL to that production snapshot. Do not switch before the file is publicly available on main.",
+    "stable_change_applied": false
+  },
+  "policy": {
+    "sanitized": true,
+    "read_only_validation": true,
+    "no_credentials": true,
+    "no_personal_data": true,
+    "no_stable_deployment_in_this_commit": true
+  }
+}
