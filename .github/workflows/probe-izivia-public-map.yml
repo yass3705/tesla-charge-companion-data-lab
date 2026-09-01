@@ -15,40 +15,49 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Probe current public map iframe
+      - name: Probe IZIVIA map frontend and API candidates
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/izivia reports/france/izivia
           UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/140 Safari/537.36'
-          URL='https://izivia.com/carte-bornes-electriques-izivia/'
-          curl -fLsS -A "$UA" "$URL" -o /tmp/izivia/page.html
+          BASE='https://fronts-map.izivia.com/'
+          curl -fLsS -A "$UA" "$BASE" -o /tmp/izivia/front.html
           python - <<'PY'
           import re,json,pathlib,urllib.parse,subprocess
-          html=pathlib.Path('/tmp/izivia/page.html').read_text(errors='ignore')
-          iframe_tags=re.findall(r'<iframe\b[^>]*>',html,re.I)
-          iframe_srcs=[]
-          for tag in iframe_tags:
-              m=re.search(r'\bsrc=["\']([^"\']+)',tag,re.I)
-              if m: iframe_srcs.append(urllib.parse.urljoin('https://izivia.com/',m.group(1)))
-          contexts=[]
-          for needle in ('borneIframe','iframe','carte-bornes','src =','setAttribute'):
-              for m in re.finditer(re.escape(needle),html,re.I):
-                  contexts.append(html[max(0,m.start()-1200):min(len(html),m.end()+1800)])
-          fetched=[]
-          for i,u in enumerate(dict.fromkeys(iframe_srcs)):
-              p=pathlib.Path(f'/tmp/izivia/iframe-{i}.html')
-              r=subprocess.run(['curl','-LsS','-A','Mozilla/5.0',u,'-o',str(p)])
-              fetched.append({'url':u,'status':r.returncode,'bytes':p.stat().st_size if p.exists() else 0,'sample':p.read_text(errors='ignore')[:5000] if p.exists() else ''})
-          report={'pageBytes':len(html),'iframeTags':iframe_tags,'iframeSrcs':iframe_srcs,'contexts':contexts[:30],'fetchedIframes':fetched}
+          base='https://fronts-map.izivia.com/'
+          html=pathlib.Path('/tmp/izivia/front.html').read_text(errors='ignore')
+          assets=[]
+          for x in re.findall(r'(?:src|href)=["\']([^"\']+\.(?:js|css)(?:\?[^"\']*)?)["\']',html,re.I):
+              u=urllib.parse.urljoin(base,x)
+              if u not in assets: assets.append(u)
+          downloaded=[]
+          for i,u in enumerate(assets[:80]):
+              p=pathlib.Path(f'/tmp/izivia/front-{i}.txt')
+              r=subprocess.run(['curl','-fLsS','-A','Mozilla/5.0',u,'-o',str(p)])
+              if r.returncode==0: downloaded.append({'url':u,'file':p.name,'bytes':p.stat().st_size})
+          patt=re.compile(r'https?://[^\s"\'<>`]+|(?:/|[A-Za-z0-9_.-])*(?:api|graphql|station|borne|charge|tarif|price|connector|evse|location|map)(?:/|[A-Za-z0-9_.?=&%:-])*',re.I)
+          hits=[]
+          snippets=[]
+          for p in [pathlib.Path('/tmp/izivia/front.html')]+[pathlib.Path('/tmp/izivia')/x['file'] for x in downloaded]:
+              txt=p.read_text(errors='ignore')
+              for m in patt.finditer(txt):
+                  h=m.group(0)
+                  if len(h)>5 and h not in hits: hits.append(h[:1600])
+              for needle in ('axios','fetch(','graphql','apiUrl','baseURL','tarif','price','evse','station'):
+                  for m in re.finditer(re.escape(needle),txt,re.I):
+                      s=txt[max(0,m.start()-700):min(len(txt),m.end()+1400)]
+                      if s not in snippets: snippets.append(s)
+          report={'frontBytes':len(html),'assets':downloaded,'candidates':hits[:5000],'snippets':snippets[:120]}
           pathlib.Path('reports/france/izivia/public-map-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({'pageBytes':len(html),'iframeSrcs':iframe_srcs,'contextCount':len(contexts),'fetched':[{k:v for k,v in x.items() if k!='sample'} for x in fetched]},ensure_ascii=False,indent=2))
+          print(json.dumps({'frontBytes':len(html),'assetCount':len(downloaded),'candidateCount':len(hits),'snippetCount':len(snippets)},indent=2))
           PY
       - name: Publish
+        shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git pull --rebase origin main
           git add reports/france/izivia/public-map-probe.json
-          git commit -m 'France IZIVIA: publish map iframe probe' || exit 0
+          git commit -m 'France IZIVIA: publish frontend API probe' || exit 0
+          git pull --rebase origin main
           git push
