@@ -7,9 +7,9 @@ on:
     paths:
       - '.github/workflows/morocco-evgo-fresh-sanitized-artifact.yml'
       - 'scripts/morocco_evgo_pin_hydration_probe.py'
+      - 'scripts/morocco_evgo_status_overlay_from_hydration.py'
       - 'scripts/morocco_evgo_normalize.py'
       - 'scripts/morocco_evgo_apply_fresh_status_overlay.py'
-      - 'reports/morocco/evgo/latest-status-overlay.json'
 
 permissions:
   contents: read
@@ -28,6 +28,7 @@ jobs:
           python3 scripts/morocco_evgo_pin_hydration_probe.py
           mkdir -p reports/morocco/evgo
           cp artifacts/morocco-evgo-pin-hydration/summary.json reports/morocco/evgo/latest-pin-hydration.json
+          python3 scripts/morocco_evgo_status_overlay_from_hydration.py
           python3 scripts/morocco_evgo_normalize.py
           python3 scripts/morocco_evgo_apply_fresh_status_overlay.py
 
@@ -39,11 +40,16 @@ jobs:
 
           p=Path('reports/morocco/evgo/latest-production-stations.json')
           d=json.loads(p.read_text())
+          overlay=json.loads(Path('reports/morocco/evgo/latest-status-overlay.json').read_text())
+          hydration=json.loads(Path('reports/morocco/evgo/latest-pin-hydration.json').read_text())
           stations=d.get('stations') or []
           assert len(stations)==17, f'expected 17 stations, got {len(stations)}'
           evses=[e for s in stations for e in (s.get('evses') or [])]
           assert len(evses)==43, f'expected 43 EVSE, got {len(evses)}'
           assert d.get('policy',{}).get('fresh_native_status_overlay_applied') is True
+          assert overlay.get('policy',{}).get('derived_from_same_run_public_hydration') is True
+          assert overlay.get('source_generated_at') == hydration.get('generated_at')
+          assert d.get('source_generated_at') == hydration.get('generated_at')
           assert d.get('source_status_overlay')=='reports/morocco/evgo/latest-status-overlay.json'
           dims=['operator_cpo_candidate','site_brand','app_source','tariff_channel','status_source']
           assert d.get('policy',{}).get('modeling_dimensions_kept_separate')==dims
