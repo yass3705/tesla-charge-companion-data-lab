@@ -1,0 +1,49 @@
+name: France IZIVIA device id tariff probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-izivia-device-id.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test anonymous device id headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/izivia
+          python - <<'PY'
+          import subprocess,json,pathlib,urllib.parse,uuid
+          loc='693f6fee3fdcff3315e3814d'; emip='FR*SAE*E75107*001*29*2'; legacy=loc
+          qs=urllib.parse.urlencode({'legacyId':legacy,'stationEmipId':emip})
+          url=f'https://fronts-map.izivia.com/api/charging-locations/{loc}/pricing-info-items?{qs}'
+          value=str(uuid.uuid4())
+          names=['x-device-id','device-id','x-deviceid','deviceid','X-Device-Id','X-Device-ID']
+          out=[]
+          for name in names:
+              r=subprocess.run(['curl','-sS','-w','\n%{http_code}','-H','accept: application/json','-H',f'{name}: {value}',url],capture_output=True,text=True)
+              raw,status=r.stdout.rsplit('\n',1) if '\n' in r.stdout else (r.stdout,'')
+              try:p=json.loads(raw)
+              except:p=None
+              out.append({'header':name,'status':status,'payload':p if status=='200' else None,'sample':raw[:3000]})
+              if status=='200':break
+          pathlib.Path('reports/france/izivia/device-id-probe.json').write_text(json.dumps({'locationId':loc,'stationEmipId':emip,'attempts':out},ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:20000])
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase origin main || true
+          git add reports/france/izivia/device-id-probe.json
+          git commit -m 'France IZIVIA: publish anonymous device id probe' || exit 0
+          git push
