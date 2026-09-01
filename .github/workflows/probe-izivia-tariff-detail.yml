@@ -1,0 +1,82 @@
+name: France IZIVIA tariff detail probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-izivia-tariff-detail.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe one public charging location and pricing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/izivia /tmp/izt
+          BASE='https://fronts-map.izivia.com/api'
+          ID='693f6fee3fdcff3315e3814d'
+          curl -fLsS --retry 3 "$BASE/charging-locations/$ID" -o /tmp/izt/detail.json
+          python - <<'PY'
+          import json,pathlib,subprocess,urllib.parse
+          d=json.load(open('/tmp/izt/detail.json'))
+          def walk(o,path=''):
+              out=[]
+              if isinstance(o,dict):
+                  for k,v in o.items():
+                      p=f'{path}.{k}' if path else k
+                      if any(x in k.lower() for x in ('legacy','emip','station','price','pricing','connector','tariff')):
+                          out.append((p,v if not isinstance(v,(dict,list)) else type(v).__name__))
+                      out.extend(walk(v,p))
+              elif isinstance(o,list):
+                  for i,v in enumerate(o[:20]): out.extend(walk(v,f'{path}[{i}]'))
+              return out
+          hints=walk(d)
+          legacy=None; emip=None
+          def find(o):
+              nonlocal_vars=None
+              if isinstance(o,dict):
+                  for k,v in o.items():
+                      kl=k.lower()
+                      if kl in ('legacyid','legacy_id') and v: yield ('legacy',str(v))
+                      if 'emip' in kl and v and not isinstance(v,(dict,list)): yield ('emip',str(v))
+                      yield from find(v)
+              elif isinstance(o,list):
+                  for v in o: yield from find(v)
+          vals=list(find(d))
+          for typ,v in vals:
+              if typ=='legacy' and legacy is None: legacy=v
+              if typ=='emip' and emip is None: emip=v
+          result={'locationId':'693f6fee3fdcff3315e3814d','detail':d,'hints':hints[:300],'candidateLegacyId':legacy,'candidateStationEmipId':emip}
+          if legacy and emip:
+              u='https://fronts-map.izivia.com/api/charging-locations/693f6fee3fdcff3315e3814d/pricing-info-items?'+urllib.parse.urlencode({'legacyId':legacy,'stationEmipId':emip})
+              r=subprocess.run(['curl','-fLsS','--retry','3',u],capture_output=True,text=True)
+              result['pricingUrlPath']='/api/charging-locations/{id}/pricing-info-items'
+              result['pricingStatus']='success' if r.returncode==0 else 'failure'
+              if r.returncode==0:
+                  try: result['pricing']=json.loads(r.stdout)
+                  except: result['pricingRaw']=r.stdout[:12000]
+              else: result['pricingError']=r.stderr[-2000:]
+          pathlib.Path('reports/france/izivia/tariff-detail-probe.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'detailKeys':list(d) if isinstance(d,dict) else [],'candidateLegacyId':legacy,'candidateStationEmipId':emip,'pricingStatus':result.get('pricingStatus'),'hints':hints[:80]},ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for i in 1 2 3 4; do
+            git pull --rebase origin main || true
+            git add reports/france/izivia/tariff-detail-probe.json
+            git commit -m 'France IZIVIA: publish tariff detail probe' || true
+            git push && exit 0
+            git reset --soft HEAD~1 || true
+            sleep $((i*2))
+          done
+          exit 1
