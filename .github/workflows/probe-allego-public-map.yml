@@ -1,0 +1,65 @@
+name: France Allego public map probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-allego-public-map.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe Allego public map and exact-price backend hints
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/allego reports/france/allego
+          for u in 'https://www.allego.eu/fr/nous-trouver/' 'https://www.smoovapp.eu/allego/map'; do
+            code=$(curl -LsS -A 'Mozilla/5.0' -o /tmp/allego/page.html -w '%{http_code}' "$u" || true)
+            echo "$code $u"
+            [ "$code" = 200 ] && break
+          done
+          python - <<'PY'
+          import re,json,pathlib,urllib.parse,subprocess
+          html=pathlib.Path('/tmp/allego/page.html').read_text(errors='ignore')
+          base='https://www.allego.eu/'
+          assets=[]
+          for x in re.findall(r'(?:src|href)=["\']([^"\']+\.(?:js|css)(?:\?[^"\']*)?)["\']',html,re.I):
+              u=urllib.parse.urljoin(base,x)
+              if u not in assets:assets.append(u)
+          dl=[]
+          for i,u in enumerate(assets[:80]):
+              p=pathlib.Path(f'/tmp/allego/a{i}.txt')
+              r=subprocess.run(['curl','-fLsS','-A','Mozilla/5.0',u,'-o',str(p)])
+              if r.returncode==0:dl.append({'url':u,'file':p.name,'bytes':p.stat().st_size})
+          hits=[];contexts=[]
+          patt=re.compile(r'https?://[^\s"\'<>`]+|(?:/|[A-Za-z0-9_.-])*(?:api|graphql|station|charge|tarif|price|connector|evse|location|map)(?:/|[A-Za-z0-9_.?=&%:-])*',re.I)
+          for p in [pathlib.Path('/tmp/allego/page.html')]+[pathlib.Path('/tmp/allego')/x['file'] for x in dl]:
+              txt=p.read_text(errors='ignore')
+              for m in patt.finditer(txt):
+                  h=m.group(0)
+                  if re.search(r'(?i)token|api.?key|secret',h):continue
+                  if len(h)>5 and h not in hits:hits.append(h[:1600])
+              for n in ('fetch(','axios','graphql','price','tarif','charging','station','smoov'):
+                  for m in re.finditer(re.escape(n),txt,re.I):
+                      s=txt[max(0,m.start()-550):min(len(txt),m.end()+1200)]
+                      if re.search(r'(?i)token|api.?key|secret',s):continue
+                      if s not in contexts:contexts.append(s)
+          report={'pageBytes':len(html),'assets':dl,'candidates':hits[:4000],'contexts':contexts[:100]}
+          pathlib.Path('reports/france/allego/public-map-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'pageBytes':len(html),'assets':len(dl),'candidates':len(hits),'contexts':len(contexts)},indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/allego/public-map-probe.json
+          git commit -m 'France Allego: publish public map probe' || exit 0
+          git pull --rebase origin main
+          git push
