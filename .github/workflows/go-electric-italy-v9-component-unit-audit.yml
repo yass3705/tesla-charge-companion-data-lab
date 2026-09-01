@@ -1,0 +1,70 @@
+name: Go Electric Italy V9 component unit audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - qa/go-electric-italy-v9-component-units
+    paths:
+      - scripts/go_electric_italy_v9_component_unit_audit.py
+      - .github/workflows/go-electric-italy-v9-component-unit-audit.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download validated semantic artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p artifacts/go_electric_semantic
+          gh run download 33450130979 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name go-electric-italy-v9-semantic-qa \
+            --dir artifacts/go_electric_semantic
+          find artifacts/go_electric_semantic -maxdepth 3 -type f -print
+
+      - name: Audit component units and runtime capability
+        run: |
+          READY="$(find artifacts/go_electric_semantic -name 'go_electric_italy_v9_ready_offers.json' -print -quit)"
+          test -n "$READY"
+          python scripts/go_electric_italy_v9_component_unit_audit.py \
+            --ready "$READY" \
+            --out data/reports/go_electric_italy_v9_component_unit_audit.json
+
+      - name: Validate fail-closed gates
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path('data/reports/go_electric_italy_v9_component_unit_audit.json').read_text())
+          assert p['publicationAllowed'] is False
+          assert p['multiComponentUnlockAllowed'] is False
+          assert p['semanticReadyOffers'] == 2214
+          assert p['currentSafeRankableGoElectric'] == 816
+          assert p['blockedMultiComponent'] == 1398
+          assert p['nextTranslationCandidate']['componentSet'] == 'energy+session'
+          assert p['nextTranslationCandidate']['evseCount'] == 127
+          assert p['runtimeCapability']['currentItalyBuilderReadsGoElectricPriceComponents'] is False
+          assert p['blockers']['unresolvedTimeUnitOffers'] == 1052
+          assert p['blockers']['unresolvedParkingUnitOrTriggerMappingOffers'] == 700
+          assert all(p['gates'].values()), p['gates']
+          print(json.dumps(p, indent=2, ensure_ascii=False))
+          PY
+
+      - name: Upload component unit audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-component-unit-audit
+          path: data/reports/go_electric_italy_v9_component_unit_audit.json
+          retention-days: 14
