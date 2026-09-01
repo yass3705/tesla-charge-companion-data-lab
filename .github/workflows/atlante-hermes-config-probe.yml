@@ -7,6 +7,7 @@ on:
       - research/atlante-apk-public-config
     paths:
       - scripts/atlante_hermes_config_probe.py
+      - scripts/atlante_bundle_endpoint_inventory.py
       - .github/workflows/atlante-hermes-config-probe.yml
 
 permissions:
@@ -43,9 +44,14 @@ jobs:
           python /tmp/hermes-dec/hbc-decompiler /tmp/index.android.bundle /tmp/decompiled.js
           test -s /tmp/decompiled.js
           echo "decompiled bytes $(wc -c < /tmp/decompiled.js)"
+      - name: Inventory current map and tariff API flow
+        run: python scripts/atlante_bundle_endpoint_inventory.py /tmp/decompiled.js
       - name: Trace public client config and fetch read-only station tariffs
+        id: tariffs
+        continue-on-error: true
         run: python scripts/atlante_hermes_config_probe.py /tmp/decompiled.js
-      - name: Validate sanitized proof
+      - name: Validate sanitized proof when station prices were obtained
+        if: steps.tariffs.outcome == 'success'
         run: |
           python - <<'PY'
           import json
@@ -53,14 +59,19 @@ jobs:
           r=json.loads(Path('data/reports/atlante_hermes_config_probe.json').read_text())
           assert r['clientCredentialRecovered'] is True
           assert r['clientCredentialPersisted'] is False
-          assert r['italyAtlanteMapLocations'] > 0
+          assert r['italyAtlanteLocationCount'] > 0
           assert r['stationTariffSamples']
           assert all(v is False for v in r['security'].values())
-          print({'locations':r['italyAtlanteMapLocations'],'sampleStations':len(r['stationTariffSamples'])})
+          print({'locations':r['italyAtlanteLocationCount'],'sampleStations':len(r['stationTariffSamples'])})
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: atlante-hermes-station-price-proof
-          path: data/reports/atlante_hermes_config_probe.json
+          path: |
+            data/reports/atlante_hermes_config_probe.json
+            data/reports/atlante_bundle_endpoint_inventory.json
           retention-days: 14
+      - name: Fail if station tariff still unresolved
+        if: steps.tariffs.outcome != 'success'
+        run: exit 1
