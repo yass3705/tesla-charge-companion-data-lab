@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
-      - name: Extract map markup and JS callsites
+      - name: Extract safe map markup and data callsites
         shell: bash
         run: |
           set -euo pipefail
@@ -25,20 +25,29 @@ jobs:
           python - <<'PY'
           import re,json,pathlib
           html=pathlib.Path('/tmp/allego/page.html').read_text(errors='ignore');js=pathlib.Path('/tmp/allego/main.js').read_text(errors='ignore')
-          out={'iframes':re.findall(r'<iframe[^>]+>',html,re.I),'dataAttrs':[],'htmlContexts':[],'jsContexts':[]}
+          def safe(s):
+              s=re.sub(r'pk\.[A-Za-z0-9._-]{20,}','[REDACTED_MAP_CLIENT_TOKEN]',str(s))
+              if re.search(r'(?i)data-api=',s):s=re.sub(r'data-api=["\'][^"\']+["\']','data-api="[REDACTED]"',s)
+              return s
+          out={'iframes':[safe(x) for x in re.findall(r'<iframe[^>]+>',html,re.I)],'dataAttrs':[],'htmlContexts':[],'jsContexts':[],'urls':[]}
           for m in re.finditer(r'data-[a-z0-9_-]+=["\'][^"\']*["\']',html,re.I):
-              x=m.group(0)
+              x=safe(m.group(0))
               if any(k in x.lower() for k in ('map','station','charger','lat','lng','price','api')):out['dataAttrs'].append(x)
-          for needle in ('map-container','map-overlay','charger','price-value','single-station','mapbox'):
+          for u in re.findall(r'https?://[^\s"\'<>`]+|/[A-Za-z0-9_./?=&%-]+',html+'\n'+js):
+              if re.search(r'(?i)mapbox|token|api.?key',u):continue
+              if re.search(r'(?i)station|charger|charge|price|tarif|ajax|map',u) and u not in out['urls']:out['urls'].append(u[:1600])
+          for needle in ('map-container','map-overlay','charger','price-value','single-station'):
               for m in re.finditer(re.escape(needle),html,re.I):
-                  s=html[max(0,m.start()-1200):min(len(html),m.end()+2500)]
+                  s=safe(html[max(0,m.start()-1200):min(len(html),m.end()+2500)])
                   if s not in out['htmlContexts']:out['htmlContexts'].append(s)
-          for needle in ('ajax','fetch(','map','station','charger','price'):
+          for needle in ('ajax','fetch(','station','charger','price'):
               for m in re.finditer(re.escape(needle),js,re.I):
-                  s=js[max(0,m.start()-800):min(len(js),m.end()+1600)]
+                  s=safe(js[max(0,m.start()-800):min(len(js),m.end()+1600)])
                   if s not in out['jsContexts']:out['jsContexts'].append(s)
           out={k:(v[:80] if isinstance(v,list) else v) for k,v in out.items()}
-          pathlib.Path('reports/france/allego/map-structure.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          raw=json.dumps(out,ensure_ascii=False,indent=2)+'\n'
+          if re.search(r'pk\.[A-Za-z0-9._-]{20,}',raw):raise SystemExit('redaction failed')
+          pathlib.Path('reports/france/allego/map-structure.json').write_text(raw)
           print(json.dumps(out,ensure_ascii=False,indent=2)[:70000])
           PY
       - name: Publish
@@ -46,6 +55,6 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/france/allego/map-structure.json
-          git commit -m 'France Allego: publish map structure probe' || exit 0
+          git commit -m 'France Allego: publish safe map structure probe' || exit 0
           git pull --rebase origin main
           git push
