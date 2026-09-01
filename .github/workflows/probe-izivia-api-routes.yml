@@ -1,0 +1,58 @@
+name: France IZIVIA API routes probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-izivia-api-routes.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract public backend hosts and routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/izivia reports/france/izivia
+          curl -fLsS https://fronts-map.izivia.com/ -o /tmp/izivia/index.html
+          JS=$(grep -Eo 'src="[^"]+\.js' /tmp/izivia/index.html | head -1 | cut -d'"' -f2)
+          curl -fLsS "https://fronts-map.izivia.com/${JS#/}" -o /tmp/izivia/app.js
+          python - <<'PY'
+          import re,json,pathlib,urllib.parse
+          txt=pathlib.Path('/tmp/izivia/app.js').read_text(errors='ignore')
+          def acceptable(s):
+              return not re.search(r'(?i)mapbox|token|api[_-]?key|apikey|sentry|google|fontawesome|github|react',s)
+          hosts=[]
+          for u in re.findall(r'https://[A-Za-z0-9._:-]+(?:/[A-Za-z0-9._~/?#=&%:+-]*)?',txt):
+              if acceptable(u):
+                  host=urllib.parse.urlsplit(u).netloc
+                  if host and host not in hosts: hosts.append(host)
+          routes=[]
+          for q in re.findall(r'["\']([^"\']{2,160})["\']',txt):
+              if re.search(r'(?i)charging|station|marker|marketing|pricing|price|connector|location',q) and acceptable(q):
+                  if ('/' in q or q.startswith('http')) and q not in routes: routes.append(q)
+          contexts=[]
+          for needle in ('baseApiUrl','fetchMarkers','charging-locations/','fetchMarketingNetworks'):
+              for m in re.finditer(re.escape(needle),txt):
+                  s=txt[max(0,m.start()-350):min(len(txt),m.end()+700)]
+                  if acceptable(s): contexts.append(s)
+          report={'hosts':hosts[:80],'routes':routes[:500],'contexts':contexts[:40]}
+          raw=json.dumps(report,ensure_ascii=False,indent=2)+'\n'
+          if re.search(r'(?i)mapbox|token|api[_-]?key|apikey',raw): raise SystemExit('unsafe output')
+          pathlib.Path('reports/france/izivia/api-routes.json').write_text(raw)
+          print(json.dumps({'hosts':hosts[:30],'routes':routes[:80]},ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/izivia/api-routes.json
+          git commit -m 'France IZIVIA: publish public API route probe' || exit 0
+          git pull --rebase origin main
+          git push
