@@ -1,0 +1,86 @@
+name: France Alize Bouygues exact sample
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/extract-alize-bouygues-sample.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download France V9 PAN compact baseline
+        run: |
+          curl -fLsS --retry 3 https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz -o /tmp/france-all.json.gz
+      - name: Sample exact Alize tariffs for Bouygues physical PDCs
+        shell: bash
+        run: |
+          python - <<'PY'
+          import gzip,json,pathlib,urllib.request,urllib.parse,time,collections
+          rows=json.loads(gzip.open('/tmp/france-all.json.gz','rt',encoding='utf-8').read())
+          ops=collections.Counter(str(r[5] or '') for r in rows)
+          bou=[r for r in rows if 'bouygues' in str(r[5] or '').lower()]
+          targets=[]
+          for r in bou:
+              ids=[]
+              for c in r[8] or []:
+                  ids += [str(x) for x in (c[6] or []) if x]
+              targets.append({'stationId':r[0],'name':r[1],'address':r[2],'lat':r[3],'lon':r[4],'operator':r[5],'network':r[10] if len(r)>10 else None,'pdcIds':sorted(set(ids))})
+          API='https://alize-map-api-faezg8gfgjfngab9.francecentral-01.azurewebsites.net'
+          def req(url,headers=None,data=None,timeout=20):
+              q=urllib.request.Request(url,data=data,headers=headers or {},method='POST' if data is not None else 'GET')
+              with urllib.request.urlopen(q,timeout=timeout) as resp:return resp.status,json.loads(resp.read().decode())
+          sampled=[]
+          for idx,t in enumerate(targets[:60]):
+              up=f"https://drive-api.plugsurfing.com/drive/v1/geosearch/radius?latitude={t['lat']}&longitude={t['lon']}&distance=1500&aggregate=false"
+              try:
+                  st,data=req(API+'/drive/markers',{'content-type':'application/json','key':'BYESKEY','accept':'*/*','url':up},b'{"filters":[]}')
+                  wanted={x.upper().replace(' ','') for x in t['pdcIds']}
+                  matches=[]
+                  for loc in data.get('locations',[]):
+                      evses=loc.get('evses',[])
+                      hit=[e.get('evse_id') for e in evses if str(e.get('evse_id') or '').upper().replace(' ','') in wanted]
+                      if not hit: continue
+                      lid=str(loc.get('id') or '')
+                      enc=urllib.parse.quote(lid,safe='')
+                      detail_url='https://drive-api.plugsurfing.com/drive/v1/locations/'+enc
+                      prices=[]; detail_status=None
+                      try:
+                          detail_status,detail=req(API+'/drive/detail',{'key':'BYESKEY','accept':'*/*','url':detail_url})
+                          for e in detail.get('evses',[]):
+                              if str(e.get('evse_id') or '').upper().replace(' ','') not in wanted: continue
+                              for c in e.get('connectors',[]):
+                                  prices.append({'evseId':e.get('evse_id'),'power':c.get('power'),'standard':c.get('standard'),'price':c.get('price')})
+                      except Exception as de: prices=[{'error':repr(de)}]
+                      matches.append({'locationId':lid,'name':loc.get('name'),'operator':loc.get('operator'),'matchedEvseIds':hit,'detailStatus':detail_status,'prices':prices})
+                  sampled.append({**t,'markerStatus':st,'returnedLocations':len(data.get('locations',[])),'matches':matches})
+              except Exception as e:
+                  sampled.append({**t,'error':repr(e)})
+              time.sleep(.08)
+          report={
+            'panRows':len(rows),'bouyguesStationRows':len(bou),
+            'bouyguesPdcCount':sum(len(x['pdcIds']) for x in targets),
+            'operatorLabels':dict(collections.Counter(x['operator'] for x in targets)),
+            'networkLabels':dict(collections.Counter(str(x['network']) for x in targets)),
+            'sampleSize':len(sampled),
+            'sampleMatchedStations':sum(bool(x.get('matches')) for x in sampled),
+            'sampleMatchedPdc':sum(len({p['evseId'] for m in x.get('matches',[]) for p in m.get('prices',[]) if p.get('evseId')}) for x in sampled),
+            'sampled':sampled
+          }
+          pathlib.Path('reports/france/alize').mkdir(parents=True,exist_ok=True)
+          pathlib.Path('reports/france/alize/bouygues-pan-sample.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({k:v for k,v in report.items() if k!='sampled'},ensure_ascii=False,indent=2))
+          PY
+      - name: Publish sample report
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/alize/bouygues-pan-sample.json
+          git commit -m 'France Alize: publish Bouygues PAN tariff sample' || exit 0
+          git push
