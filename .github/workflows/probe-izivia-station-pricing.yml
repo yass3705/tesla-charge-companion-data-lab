@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Locate station exposing direct pricing identifiers
+      - name: Test pricing with legacy or EMIP identifier
         shell: bash
         run: |
           set -euo pipefail
@@ -36,30 +36,33 @@ jobs:
           ms,markers=call('POST','/map/markers',{'square':{'centerLat':48.8566,'centerLng':2.3522,'zoom':9},'filters':{}})
           markers=markers if isinstance(markers,list) else []
           def detail(m):
-              st,d=call('POST',f"/charging-locations/{m['id']}",{'filters':{}})
-              return m,st,d
-          scanned=[]; selected=None
+              st,d=call('POST',f"/charging-locations/{m['id']}",{'filters':{}});return m,st,d
+          candidates=[]
           with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:
-              for m,st,d in ex.map(detail,markers[:240]):
-                  rec={'marker':m,'status':st,'legacyId':d.get('legacyId') if isinstance(d,dict) else None,'firstStationEmipId':d.get('firstStationEmipId') if isinstance(d,dict) else None,'name':d.get('name') if isinstance(d,dict) else None}
-                  scanned.append(rec)
-                  if rec['legacyId'] is not None and rec['firstStationEmipId']:
-                      selected=(m,d);break
-          out={'markersStatus':ms,'markerCount':len(markers),'scannedCount':len(scanned),'legacyIdFound':selected is not None,'scanned':scanned[:80]}
-          if selected:
-              m,d=selected; legacy=d['legacyId'];emip=d['firstStationEmipId']
-              q=urllib.parse.urlencode({'legacyId':legacy,'stationEmipId':emip})
-              ps,p=call('GET',f"/charging-locations/{m['id']}/pricing-info-items?{q}")
-              out['selected']={'id':m['id'],'name':d.get('name'),'legacyId':legacy,'firstStationEmipId':emip,'detailKeys':list(d)}
-              out['pricingStatus']=ps;out['pricing']=p
+              for m,st,d in ex.map(detail,markers[:300]):
+                  if not isinstance(d,dict):continue
+                  legacy=d.get('legacyId');emip=d.get('firstStationEmipId')
+                  if legacy is not None or emip:
+                      candidates.append({'id':m['id'],'name':d.get('name'),'legacyId':legacy,'stationEmipId':emip})
+                  if len(candidates)>=40:break
+          attempts=[]
+          for c in candidates:
+              params={}
+              if c.get('legacyId') is not None:params['legacyId']=c['legacyId']
+              if c.get('stationEmipId'):params['stationEmipId']=c['stationEmipId']
+              q=urllib.parse.urlencode(params)
+              ps,p=call('GET',f"/charging-locations/{c['id']}/pricing-info-items?{q}")
+              attempts.append({**c,'status':ps,'pricing':p})
+              if ps==200 and isinstance(p,list) and p:break
+          out={'markersStatus':ms,'markerCount':len(markers),'candidateCount':len(candidates),'attempts':attempts}
           pathlib.Path('reports/france/izivia/station-pricing-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({k:v for k,v in out.items() if k!='scanned'},ensure_ascii=False,indent=2)[:50000])
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:60000])
           PY
       - name: Publish
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/france/izivia/station-pricing-probe.json
-          git commit -m 'France IZIVIA: publish direct pricing station probe' || exit 0
+          git commit -m 'France IZIVIA: publish identifier pricing probe' || exit 0
           git pull --rebase origin main
           git push
