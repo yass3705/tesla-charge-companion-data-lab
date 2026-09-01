@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Search EV stores and fetch official prices
+      - name: Search France EV stores and fetch official prices
         shell: bash
         run: |
           set -euo pipefail
@@ -23,55 +23,59 @@ jobs:
           python - <<'PY'
           import subprocess,json,pathlib,urllib.parse
           referer='https://totalms.webgeoservices.com/'
-          def get(url,headers=()):
-              cmd=['curl','-sS','-A','Mozilla/5.0','-w','\n%{http_code}']
+          def get(url,headers=(),extra=()):
+              cmd=['curl','-sS','--retry','2','--connect-timeout','12','--max-time','30','-A','Mozilla/5.0','-w','\n%{http_code}',*extra]
               for h in headers:cmd+=['-H',h]
               cmd += [url]
               r=subprocess.run(cmd,capture_output=True,text=True)
               body,status=r.stdout.rsplit('\n',1) if '\n' in r.stdout else (r.stdout,'')
+              try:code=int(status or 0)
+              except:code=0
               try:data=json.loads(body)
               except:data=body
-              return int(status or 0),data
-          ps,params=get('https://totalms.webgeoservices.com/maps/data/parameters/?language=fr_fr',['Referer: '+referer])
-          raw=json.dumps(params,ensure_ascii=False)
+              return code,data,r.returncode,r.stderr[-1200:]
+          ps,params,_,_=get('https://totalms.webgeoservices.com/maps/data/parameters/?language=fr_fr',['Referer: '+referer])
           hints=[]
           def walk(x,path=''):
               if isinstance(x,dict):
                   for k,v in x.items():
                       p=path+'/'+str(k)
-                      if 'electric' in str(k).lower() or 'recharge' in str(k).lower() or 'charge' in str(k).lower() or (isinstance(v,str) and ('electri' in v.lower() or 'recharge' in v.lower())):
+                      if any(z in str(k).lower() for z in ('electric','recharge','charge')) or (isinstance(v,str) and any(z in v.lower() for z in ('electric','recharge'))):
                           hints.append({'path':p,'value':v if not isinstance(v,(dict,list)) else str(v)[:1000]})
                       walk(v,p)
               elif isinstance(x,list):
                   for i,v in enumerate(x):walk(v,path+'/'+str(i))
           walk(params)
+          queries=['tag:"bornerecharge" AND country:="FR"','tag:"electricrecharge" AND country:="FR"','(tag:"bornerecharge" OR tag:"electricrecharge") AND country:="FR"']
           attempts=[];selected=[]
-          queries=['tag:"electricrecharge"','tags:"electricrecharge"','tag:=electricrecharge','user.electricrecharge:#t']
           for query in queries:
-              q=urllib.parse.urlencode({'lat':48.8566,'lng':2.3522,'radius':500000,'stores_by_page':100,'key':'mapstore-prod-woos','query':query})
-              st,d=get('https://api.woosmap.com/stores/search/?'+q,['Referer: '+referer])
+              q=urllib.parse.urlencode({'lat':46.6,'lng':2.2,'radius':1000000,'stores_by_page':100,'key':'mapstore-prod-woos','query':query})
+              st,d,rc,err=get('https://api.woosmap.com/stores/search/?'+q,['Referer: '+referer])
               feats=d.get('features',[]) if isinstance(d,dict) else []
-              attempts.append({'query':query,'status':st,'count':len(feats),'sample':[{'store_id':f.get('properties',{}).get('store_id'),'name':f.get('properties',{}).get('name'),'tags':f.get('properties',{}).get('tags'),'types':f.get('properties',{}).get('types'),'user_properties':f.get('properties',{}).get('user_properties')} for f in feats[:5]]})
+              attempts.append({'query':query,'status':st,'curlReturnCode':rc,'count':len(feats),'sample':[{'store_id':f.get('properties',{}).get('store_id'),'name':f.get('properties',{}).get('name'),'country':f.get('properties',{}).get('address',{}).get('country_code'),'tags':f.get('properties',{}).get('tags'),'types':f.get('properties',{}).get('types'),'user_properties':f.get('properties',{}).get('user_properties')} for f in feats[:10]]})
               if feats and not selected:selected=feats
-          ts,tok=get('https://totalms.webgeoservices.com/maps/data/token/',['Referer: '+referer])
-          price_attempts=[]
+          ts,tok,_,_=get('https://totalms.webgeoservices.com/maps/data/token/',['Referer: '+referer])
           token=tok.get('access_token') if isinstance(tok,dict) else None
+          price_attempts=[]
           if token:
               for f in selected[:8]:
-                  sid=f.get('properties',{}).get('store_id')
+                  sid=f.get('properties',{}).get('store_id');name=f.get('properties',{}).get('name')
                   url='https://api.vista.alzp.tgscloud.net/REVERSE/api/Info/Poi?'+urllib.parse.urlencode({'Lang':'fr_FR','AdditionalData':'Items','AdditionalDataFields':'Items_Code,Items_Price,Items_Availability,Items_UpdateDate','Code':sid})
-                  st,d=get(url,['Authorization: '+token])
-                  # persist only response, never token
-                  price_attempts.append({'store_id':sid,'name':f.get('properties',{}).get('name'),'status':st,'response':d})
+                  variants=[('raw',['Authorization: '+token]),('bearer',['Authorization: Bearer '+token])]
+                  for label,headers in variants:
+                      st,d,rc,err=get(url,headers,('--http1.1',))
+                      price_attempts.append({'store_id':sid,'name':name,'authVariant':label,'status':st,'curlReturnCode':rc,'stderr':err,'response':d})
+                      if st==200:break
+                  if any(x['store_id']==sid and x['status']==200 for x in price_attempts):break
           out={'parametersStatus':ps,'parameterHints':hints[:100],'searchAttempts':attempts,'tokenStatus':ts,'tokenAvailable':bool(token),'priceAttempts':price_attempts}
           pathlib.Path('reports/france/totalenergies/ev-price-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps(out,ensure_ascii=False,indent=2)[:70000])
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:80000])
           PY
       - name: Publish
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/france/totalenergies/ev-price-probe.json
-          git commit -m 'France TotalEnergies: publish EV price probe' || exit 0
+          git commit -m 'France TotalEnergies: publish corrected EV price probe' || exit 0
           git pull --rebase origin main
           git push
