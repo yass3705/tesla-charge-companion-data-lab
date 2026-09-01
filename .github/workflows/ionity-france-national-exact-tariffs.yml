@@ -1,0 +1,115 @@
+name: IONITY France national exact tariffs
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/ionity-france-national-exact-tariffs.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Download France V9 static dataset
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          BASE='https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static'
+          curl -fLsS --retry 3 "$BASE/manifest.json" -o out/manifest.json
+          FILE=$(python -c "import json;print(json.load(open('out/manifest.json'))['allFile'])")
+          curl -fLsS --retry 3 "$BASE/$FILE" -o out/all.json.gz
+
+      - name: Enumerate IONITY EVSE IDs and query public IONITY API
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip,json,re,time,uuid,urllib.parse,urllib.request,urllib.error
+          from pathlib import Path
+          rows=json.loads(gzip.open('out/all.json.gz','rb').read().decode())
+          def norm(v): return str(v or '').upper().replace('*','').replace('-','').replace('_','').replace(' ','')
+          ion=[]
+          for r in rows:
+              operator=str(r[5] if len(r)>5 else '')
+              cfgs=r[8] if len(r)>8 and isinstance(r[8],list) else []
+              pdcs=[]
+              for c in cfgs:
+                  if isinstance(c,list) and len(c)>6 and isinstance(c[6],list): pdcs += [str(x) for x in c[6]]
+              if 'IONITY' in operator.upper() or any('IOY' in norm(x) for x in pdcs):
+                  ion.append({'stationId':str(r[0]),'name':str(r[1]),'address':str(r[2]),'operator':operator,'pdcs':sorted(set(pdcs))})
+          raw=sorted(set(x for s in ion for x in s['pdcs'] if 'IOY' in norm(x)))
+          def canonical(x):
+              n=norm(x)
+              m=re.search(r'(?:FR)?IOY(E\d+)$',n)
+              if m:return 'FR*IOY*'+m.group(1)
+              m=re.search(r'(?:FR)?IOY(\d+)$',n)
+              if m:return 'FR*IOY*E'+m.group(1)
+              return x
+          evses=sorted(set(canonical(x) for x in raw))
+          print(json.dumps({'panStations':len(rows),'ionityStations':len(ion),'rawIonityPdcs':len(raw),'canonicalEvses':len(evses),'sample':evses[:12]},indent=2))
+          Path('out/ionity-pan-inventory.json').write_text(json.dumps({'stations':ion,'evses':evses},ensure_ascii=False,indent=2))
+          base='https://adhoc-bff.ionity.cloud'; ref=str(uuid.uuid4())
+          headers={'Accept':'application/json','x-adhoc-platform':'WEB','x-adhoc-user-reference':ref,'User-Agent':'Mozilla/5.0'}
+          def get(url):
+              req=urllib.request.Request(url,headers=headers)
+              for attempt in range(3):
+                  try:
+                      with urllib.request.urlopen(req,timeout=20) as resp:return resp.status,json.load(resp)
+                  except urllib.error.HTTPError as e:
+                      if e.code in (429,500,502,503,504) and attempt<2: time.sleep(1.0*(attempt+1));continue
+                      return e.code,{'error':e.read().decode(errors='replace')[:1000]}
+                  except Exception as e:
+                      if attempt<2: time.sleep(1.0*(attempt+1));continue
+                      return 0,{'error':repr(e)}
+          resolved=[]; failures=[]; locations={}
+          for idx,evse in enumerate(evses,1):
+              url=base+'/api/v1/evse/uuids-by-evse-id?'+urllib.parse.urlencode({'evseid':evse})
+              status,obj=get(url)
+              if status!=200 or not obj.get('locationUuid'):
+                  failures.append({'evseId':evse,'stage':'resolve','httpStatus':status,'response':obj});continue
+              loc=obj['locationUuid']; conn=obj.get('connectorUuid')
+              resolved.append({'evseId':evse,'locationUuid':loc,'connectorUuid':conn})
+              if loc not in locations:
+                  st,data=get(base+'/api/v3/location/'+urllib.parse.quote(loc))
+                  if st==200 and data.get('country')=='FR': locations[loc]=data
+                  else: failures.append({'evseId':evse,'locationUuid':loc,'stage':'location','httpStatus':st,'response':data})
+              if idx%25==0: print('progress',idx,'/',len(evses),'locations',len(locations),'failures',len(failures))
+              time.sleep(.12)
+          byconn={x['connectorUuid']:x['evseId'] for x in resolved if x.get('connectorUuid')}
+          stations=[]
+          missing_prices=[]
+          for loc,data in sorted(locations.items(),key=lambda kv:(kv[1].get('name',''),kv[0])):
+              conns=[]
+              for c in data.get('connectors',[]):
+                  price=c.get('adhocPrice')
+                  row={'connectorUuid':c.get('uuid'),'sourceEvseId':byconn.get(c.get('uuid')),'number':c.get('number'),'type':c.get('type'),'maxPowerW':c.get('maxPower'),'status':c.get('status'),'adhocPrice':price,'blockingFee':c.get('blockingFee')}
+                  conns.append(row)
+                  if not isinstance(price,dict) or price.get('amount') is None or price.get('unit') is None:
+                      missing_prices.append({'locationUuid':loc,'name':data.get('name'),'connectorUuid':c.get('uuid'),'number':c.get('number')})
+              stations.append({'locationUuid':loc,'name':data.get('name'),'address':data.get('address'),'postalCode':data.get('postalCode'),'city':data.get('city'),'country':data.get('country'),'preAuthAmountForCharging':data.get('preAuthAmountForCharging'),'connectors':conns})
+          out={'schemaVersion':1,'source':'IONITY public adhoc-bff','sourceEndpoints':['/api/v1/evse/uuids-by-evse-id','/api/v3/location/{uuid}'],'failClosed':True,'panIonityStationCount':len(ion),'evseCount':len(evses),'resolvedEvseCount':len(resolved),'locationCount':len(stations),'failureCount':len(failures),'missingPriceCount':len(missing_prices),'stations':stations,'failures':failures,'missingPrices':missing_prices}
+          Path('out/ionity-france-exact-tariffs.json').write_text(json.dumps(out,ensure_ascii=False,indent=2))
+          prices={}
+          for s in stations:
+              for c in s['connectors']:
+                  p=c.get('adhocPrice') or {}; key=(p.get('amount'),p.get('currency'),p.get('unit'),c.get('type'),c.get('maxPowerW'))
+                  prices[key]=prices.get(key,0)+1
+          summary={'ionityPanStations':len(ion),'canonicalEvses':len(evses),'resolvedEvses':len(resolved),'locations':len(stations),'failures':len(failures),'missingPrices':len(missing_prices),'priceVariants':[{'amount':k[0],'currency':k[1],'unit':k[2],'type':k[3],'maxPowerW':k[4],'connectors':v} for k,v in sorted(prices.items(),key=lambda x:str(x[0]))]}
+          Path('out/summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2))
+          print(json.dumps(summary,ensure_ascii=False,indent=2))
+          if not evses: raise SystemExit('No IONITY EVSE IDs found in PAN')
+          if len(resolved)/len(evses)<0.90: raise SystemExit(f'Resolver coverage too low: {len(resolved)}/{len(evses)}')
+          if missing_prices: raise SystemExit(f'Missing exact prices on {len(missing_prices)} connectors')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ionity-france-national-exact-tariffs
+          path: out
+          retention-days: 7
