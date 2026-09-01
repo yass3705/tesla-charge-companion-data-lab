@@ -15,50 +15,37 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Follow official map API JavaScript loader
+      - name: Inspect TotalEnergies proprietary map bundle
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/te reports/france/totalenergies
-          URL='https://totalms.webgeoservices.com/maps/api/js/?clientId=gme-totalraffinagemarketing1&languageTranslation=fr_fr'
-          curl -fLsS -A 'Mozilla/5.0' "$URL" -o /tmp/te/api.js
+          curl -fLsS -A 'Mozilla/5.0' https://totalms.webgeoservices.com/maps/static/build/js/main.js -o /tmp/te/main.js
           python - <<'PY'
-          import re,json,pathlib,urllib.parse,subprocess
-          txt=pathlib.Path('/tmp/te/api.js').read_text(errors='ignore')
-          loaders=re.findall(r'(?:src=|loadScript\(|importScripts\()["\']?([^"\' )]+)',txt,re.I)
-          urls=re.findall(r'https?://[^\s"\'<>`]+|/[A-Za-z0-9_./?=&%-]+\.js(?:\?[^\s"\'<>`]*)?',txt)
-          candidates=[]
-          for x in loaders+urls:
-              u=urllib.parse.urljoin('https://totalms.webgeoservices.com',x)
-              if u not in candidates:candidates.append(u)
-          assets=[]
-          for i,u in enumerate(candidates[:30]):
-              p=pathlib.Path(f'/tmp/te/loaded-{i}.js')
-              r=subprocess.run(['curl','-fLsS','-A','Mozilla/5.0',u,'-o',str(p)])
-              if r.returncode==0 and p.stat().st_size>222:assets.append({'url':u,'file':str(p),'bytes':p.stat().st_size})
-          alltxt=txt+'\n'+'\n'.join(pathlib.Path(x['file']).read_text(errors='ignore') for x in assets)
-          found_urls=[];routes=[];contexts=[]
-          for u in re.findall(r'https?://[^\s"\'<>`]+',alltxt):
+          import re,json,pathlib
+          txt=pathlib.Path('/tmp/te/main.js').read_text(errors='ignore')
+          urls=[];routes=[];contexts=[]
+          for u in re.findall(r'https?://[^\s"\'<>`]+|//[A-Za-z0-9._-]+/[A-Za-z0-9_./?=&%:-]+',txt):
               if re.search(r'(?i)token|key=',u):continue
-              if u not in found_urls:found_urls.append(u[:1800])
-          for q in re.findall(r'["\']([^"\']{2,240})["\']',alltxt):
-              if re.search(r'(?i)store|station|search|price|tarif|poi|business|location|detail',q) and ('/' in q or '?' in q):
+              if u not in urls:urls.append(u[:1800])
+          for q in re.findall(r'["\']([^"\']{2,260})["\']',txt):
+              if re.search(r'(?i)store|station|search|price|tarif|poi|business|location|detail|geocode',q) and ('/' in q or '?' in q):
                   if re.search(r'(?i)token|api.?key|secret',q):continue
                   if q not in routes:routes.append(q)
-          for n in ('showPrices','storeId','business','search','detail','price','stores','ajax'):
-              for m in re.finditer(re.escape(n),alltxt,re.I):
-                  s=alltxt[max(0,m.start()-500):min(len(alltxt),m.end()+1200)]
+          for n in ('showPrices','storeId','business','search','detail','price','stores','ajax','woosmap'):
+              for m in re.finditer(re.escape(n),txt,re.I):
+                  s=txt[max(0,m.start()-700):min(len(txt),m.end()+1600)]
                   if re.search(r'(?i)token|api.?key|secret',s):continue
                   if s not in contexts:contexts.append(s)
-          report={'loaderText':txt,'candidateAssets':[{k:v for k,v in a.items() if k!='file'} for a in assets],'urls':found_urls[:300],'routes':routes[:1500],'contexts':contexts[:120]}
+          report={'bytes':len(txt),'urls':urls[:500],'routes':routes[:2000],'contexts':contexts[:150]}
           pathlib.Path('reports/france/totalenergies/map-api-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({'loaderText':txt,'assets':report['candidateAssets'],'urls':found_urls[:80],'routes':routes[:180]},ensure_ascii=False,indent=2)[:60000])
+          print(json.dumps({'bytes':len(txt),'urls':urls[:100],'routes':routes[:250]},ensure_ascii=False,indent=2)[:60000])
           PY
       - name: Publish
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/france/totalenergies/map-api-probe.json
-          git commit -m 'France TotalEnergies: publish map API loader probe' || exit 0
+          git commit -m 'France TotalEnergies: publish proprietary map probe' || exit 0
           git pull --rebase origin main
           git push
