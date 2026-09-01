@@ -1,0 +1,37 @@
+name: Atlante current query builder context
+on:
+  push:
+    branches: [research/atlante-apk-public-config]
+    paths:
+      - scripts/atlante_query_builder_context.py
+      - .github/workflows/atlante-query-builder-context.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get current public Android bundle
+        run: |
+          python - <<'PY'
+          import io,urllib.request,zipfile
+          q=urllib.request.Request('https://d.apkpure.net/b/XAPK/com.atlante.charging?version=latest',headers={'User-Agent':'Mozilla/5.0 (Linux; Android 14) Chrome/140 Mobile','Referer':'https://apkpure.net/'})
+          x=urllib.request.urlopen(q,timeout=90).read()
+          with zipfile.ZipFile(io.BytesIO(x)) as z:
+            apk=next(n for n in z.namelist() if n.endswith('.apk') and 'config.' not in n)
+            with zipfile.ZipFile(io.BytesIO(z.read(apk))) as a:open('/tmp/index.android.bundle','wb').write(a.read('assets/index.android.bundle'))
+          PY
+      - name: Decompile transiently
+        run: |
+          git clone --depth 1 https://github.com/P1sec/hermes-dec.git /tmp/hermes-dec
+          python /tmp/hermes-dec/hbc-decompiler /tmp/index.android.bundle /tmp/decompiled.js
+      - name: Extract sanitized query builder context
+        run: python scripts/atlante_query_builder_context.py /tmp/decompiled.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atlante-query-builder-context
+          path: data/reports/atlante_query_builder_context.json
+          retention-days: 7
