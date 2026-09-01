@@ -1,0 +1,52 @@
+name: France IZIVIA live API probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-izivia-live-api.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public relative API routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/izivia /tmp/izivia
+          BASE='https://fronts-map.izivia.com'
+          python - <<'PY'
+          import json,subprocess,pathlib
+          base='https://fronts-map.izivia.com'
+          cases=[
+            ('POST','/map/markers','{}'),
+            ('POST','/map/markers','{"square":{},"filters":{}}'),
+            ('GET','/marketing-networks?searchText=IZIVIA',None),
+            ('GET','/charging-locations/test',None),
+          ]
+          out=[]
+          for method,path,body in cases:
+              cmd=['curl','-sS','-A','Mozilla/5.0','-H','accept: application/json','-w','\n%{http_code}','-X',method]
+              if body is not None: cmd += ['-H','content-type: application/json','--data',body]
+              cmd += [base+path]
+              r=subprocess.run(cmd,capture_output=True,text=True)
+              text=r.stdout
+              payload,status=text.rsplit('\n',1) if '\n' in text else (text,'')
+              out.append({'method':method,'path':path,'status':status,'body':payload[:12000]})
+          pathlib.Path('reports/france/izivia/live-api-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/izivia/live-api-probe.json
+          git commit -m 'France IZIVIA: publish live API probe' || exit 0
+          git pull --rebase origin main
+          git push
