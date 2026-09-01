@@ -1,0 +1,71 @@
+name: Morocco Kilowatt V9 tariff artifact
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [integration/morocco-kilowatt-v9-tariffs-refresh]
+    paths:
+      - '.github/workflows/morocco-kilowatt-v9-tariff-artifact.yml'
+      - 'scripts/morocco_kilowatt_build_v9_tariff_overlay.py'
+      - 'reports/morocco/kilowatt/latest-public-station-inventory.json'
+      - 'reports/morocco/kilowatt/public-free-tariff-evidence-2026-08-24.json'
+      - 'reports/morocco/kilowatt/v9-tariff-model-2026-09-01.json'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Build station-level Kilowatt tariff overlay
+        run: python3 scripts/morocco_kilowatt_build_v9_tariff_overlay.py
+
+      - name: Validate conservative V9 tariff contract
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('reports/morocco/kilowatt/latest-v9-tariff-overlay.json').read_text())
+          rows=d.get('stations') or []
+          assert len(rows)==43, len(rows)
+          assert d.get('policy',{}).get('station_specific_free_only') is True
+          assert d.get('policy',{}).get('no_city_only_paid_rule') is True
+          dims=['cpo_operator','site_brand','app_source_access_network','tariff_channel','status_source']
+          assert d.get('policy',{}).get('modeling_dimensions_kept_separate')==dims
+          free=[r for r in rows if r.get('tariff_state')=='free_station_specific_public_evidence']
+          unresolved=[r for r in rows if r.get('tariff_state')=='unresolved']
+          assert len(free)+len(unresolved)==43
+          assert free, 'expected at least one station-specific free match'
+          for r in rows:
+            assert r.get('cpo_operator')=='Kilowatt'
+            assert r.get('status_source')
+            assert r.get('app_source_access_network')
+            if r in free:
+              assert r.get('tariff_mad')==0
+              assert r.get('tariff_production_eligible') is True
+              assert r.get('tariff_source')
+            else:
+              assert r.get('tariff_mad') is None
+              assert r.get('tariff_production_eligible') is False
+          print(json.dumps({
+            'stations':len(rows),
+            'free':len(free),
+            'unresolved':len(unresolved),
+            'matched_rules':d.get('summary',{}).get('matched_free_evidence_rules'),
+            'unmatched_rules':d.get('summary',{}).get('unmatched_free_evidence_rules')
+          }, ensure_ascii=False))
+          PY
+
+      - name: Upload sanitized Kilowatt V9 tariff candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: morocco-kilowatt-v9-tariff-candidate
+          path: reports/morocco/kilowatt/latest-v9-tariff-overlay.json
+          if-no-files-found: error
+          retention-days: 3
