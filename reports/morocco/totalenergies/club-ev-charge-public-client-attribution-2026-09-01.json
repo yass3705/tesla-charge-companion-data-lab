@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "investigation": "morocco_non_tesla_ev_charging",
+  "observed_at": "2026-09-01",
+  "scope": "sanitized public evidence only",
+  "subject": "TotalEnergies Club EV-Charge public client attribution and Numocity blocker",
+  "findings": {
+    "publisher": {
+      "value": "TotalEnergies Marketing Maroc / Total Maroc SA",
+      "confidence": "high",
+      "basis": "Apple App Store provider metadata and the app privacy/legal page"
+    },
+    "public_client_conception_realisation": {
+      "value": "GM AFRICA",
+      "confidence": "high",
+      "basis": "The privacy/legal page linked directly by the Apple App Store credits GM AFRICA for conception et realisation."
+    },
+    "latest_public_ios_version_observed": {
+      "version": "3.00.10",
+      "release_date": "2026-07-28",
+      "note": "Apple describes the release as bug fixes and feature enhancement."
+    },
+    "client_capabilities_advertised": [
+      "station discovery/map",
+      "connector filtering",
+      "real-time point availability",
+      "start/stop charging",
+      "real-time charging state",
+      "wallet/payment",
+      "transaction history"
+    ],
+    "numocity_attribution": {
+      "state": "not_publicly_validated",
+      "decision": "Do not model Numocity as app_source, access_network, CPO/operator or status_source solely from prior hypothesis until an independent public technical request shape or vendor attribution is validated.",
+      "note": "The strongest current public client attribution points to TotalEnergies Marketing Maroc as publisher and GM AFRICA as conception/realisation partner. This does not prove that Numocity is absent from the backend stack; it means Numocity remains an unverified implementation hypothesis."
+    },
+    "public_operational_signal": {
+      "state": "degraded_login_reports",
+      "basis": "Several public App Store reviews in 2026 report OTP/login failures or internal errors.",
+      "production_use": "diagnostic_only",
+      "note": "User reviews do not establish backend availability or station status and must not be used as a live status source."
+    }
+  },
+  "modeling": {
+    "cpo_operator": "unresolved_station_specific",
+    "site_brand": "TotalEnergies when station-specific evidence supports it",
+    "app_source_access_network": "Club EV-Charge / TotalEnergies Marketing Maroc",
+    "tariff_channel": "Club EV-Charge direct only when tariff evidence is exposed by the app/native public client",
+    "status_source": "unresolved until a public read-only native request shape is validated",
+    "implementation_partner": "GM AFRICA",
+    "numocity_role": "unverified"
+  },
+  "sources": [
+    {
+      "type": "official_app_store_listing",
+      "publisher": "Apple App Store",
+      "url": "https://apps.apple.com/ma/app/club-ev-charge/id6475968700",
+      "facts_used": [
+        "Provider Total Maroc SA",
+        "version 3.00.10 released 2026-07-28",
+        "advertised station map and real-time availability capabilities",
+        "privacy policy link to gm-africa.com"
+      ]
+    },
+    {
+      "type": "official_app_legal_privacy_page",
+      "publisher": "TotalEnergies Marketing Maroc / GM AFRICA host",
+      "url": "https://www.gm-africa.com/totalenergies/privacypolicy.htm",
+      "facts_used": [
+        "Société éditrice: TotalEnergies Marketing Maroc",
+        "Conception et réalisation: GM AFRICA"
+      ]
+    }
+  ],
+  "safety": {
+    "credentials_used": false,
+    "authenticated_requests_used": false,
+    "write_requests_to_cpo": false,
+    "personal_data_collected": false
+  },
+  "next_validation_targets": [
+    "Identify a public GET/read-only request shape used by the current Club EV-Charge client for station inventory/status without login or account material.",
+    "Treat Numocity as unverified until a public technical endpoint, client bundle reference, DNS/vendor attribution or other independent evidence links it to the current production client.",
+    "Keep CPO/operator, site_brand, app_source/access_network, tariff_channel, status_source and implementation_partner separate."
+  ]
+}
