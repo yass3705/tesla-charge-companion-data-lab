@@ -2,12 +2,20 @@ name: Morocco Club EV-Charge exact runtime entrypoint probe
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/morocco-club-evcharge-runtime-entrypoint.yml'
+      - 'scripts/morocco_club_evcharge_runtime_entrypoint_probe.py'
+      - 'reports/morocco/totalenergies/club-ev-charge-public-root-assets-2026-09-01.json'
+      - 'reports/morocco/totalenergies/club-ev-charge-runtime-entrypoint-2026-09-01.json'
   pull_request:
     branches: [main]
     paths:
       - '.github/workflows/morocco-club-evcharge-runtime-entrypoint.yml'
       - 'scripts/morocco_club_evcharge_runtime_entrypoint_probe.py'
       - 'reports/morocco/totalenergies/club-ev-charge-public-root-assets-2026-09-01.json'
+      - 'reports/morocco/totalenergies/club-ev-charge-runtime-entrypoint-2026-09-01.json'
 
 permissions:
   contents: read
@@ -28,6 +36,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import json
+          import re
           from pathlib import Path
           from urllib.parse import urlsplit
 
@@ -63,6 +72,11 @@ jobs:
           assert req.get('path')=='/main.dart.js'
           assert req.get('request_count')==1
           assert req.get('method')=='GET'
+          assert req.get('status')==200
+          assert 'javascript' in (req.get('content_type') or '').lower()
+          assert req.get('bytes',0)>0
+          assert req.get('sha256')
+          assert req.get('limit_exceeded') is False
           assert not urlsplit(req.get('url')).query
           assert d.get('network',{}).get('total_request_count')==1
           assert d.get('network',{}).get('cross_origin_request_count')==0
@@ -74,6 +88,9 @@ jobs:
           assert model.get('numocity_role')=='unverified_current_production_backend'
 
           findings=d.get('safe_findings',{})
+          assert findings.get('safe_numocity_absolute_url_count')==len(findings.get('safe_numocity_absolute_urls',[]))
+          assert findings.get('safe_numocity_base_literal_count')==len(findings.get('safe_numocity_base_literals',[]))
+          assert findings.get('safe_read_only_api_path_candidate_count')==len(findings.get('safe_read_only_api_path_candidates',[]))
           for value in findings.get('safe_numocity_absolute_urls',[]):
               u=urlsplit(value)
               assert u.scheme=='https'
@@ -88,8 +105,10 @@ jobs:
               u=urlsplit(path)
               lower=path.lower()
               assert path.startswith('/') and not u.scheme and not u.netloc and not u.query and not u.fragment
-              assert '/api/' in lower or '/chargestation/' in lower
-              assert not lower.startswith('/home/')
+              assert lower.startswith(('/api/','/poc/api/','/chargestation/'))
+              assert '%' not in path
+              segments={segment.lower() for segment in path.split('/') if segment}
+              assert not any(re.fullmatch(r'(?:[0-9]{4,}|[0-9a-f]{8}-[0-9a-f-]{27,}|[A-Za-z0-9_-]{24,})',segment,re.I) for segment in segments)
 
           relations=findings.get('getstationstate_marker_relations',{})
           assert relations.get('getstationstate_occurrence_count',0) >= 0
@@ -106,6 +125,8 @@ jobs:
                   for child in value: walk(child)
           walk(d)
 
+          assert d.get('technical_result')=='runtime_public_readonly_request_shape_evidence_identified'
+
           print(json.dumps({
               'ok':True,
               'status':req.get('status'),
@@ -116,6 +137,42 @@ jobs:
               'relations':relations,
               'technical_result':d.get('technical_result'),
           },ensure_ascii=False))
+          PY
+
+      - name: Validate published runtime record matches live probe
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          live=json.loads(Path('artifacts/morocco-club-evcharge-runtime-entrypoint/summary.json').read_text())
+          record=json.loads(Path('reports/morocco/totalenergies/club-ev-charge-runtime-entrypoint-2026-09-01.json').read_text())
+          assert record.get('schema_version')==2
+          source=record.get('source',{})
+          assert source.get('workflow_run_id')==33538726691
+          assert source.get('workflow_conclusion')=='success'
+          assert source.get('head_sha')=='754d75142f95829d358f57e9d21479ccc821bd3d'
+          assert source.get('artifact_id')==9812701285
+          assert source.get('artifact_sha256')=='0e1727285f0f2f85935bf16fe9c53319280ce0c0d5fe3bd9432d663d49ce1fff'
+          for key in (
+              'subject',
+              'policy',
+              'limits',
+              'evidence_gate',
+              'request',
+              'safe_findings',
+              'network',
+              'modeling',
+              'technical_result',
+              'production_decision',
+              'next_step',
+          ):
+              assert record.get(key)==live.get(key), key
+          assert record.get('safe_findings',{}).get('safe_read_only_api_path_candidates')==[
+              '/poc/api/charge-location/info'
+          ]
+          assert record.get('production_decision')=='no_promotion'
+          print(json.dumps({'ok':True,'runtime_record_matches_live_probe':True},ensure_ascii=False))
           PY
 
       - uses: actions/upload-artifact@v4

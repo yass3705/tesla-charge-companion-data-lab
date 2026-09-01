@@ -34,6 +34,11 @@ OUT.mkdir(parents=True, exist_ok=True)
 UA = "Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/2.4)"
 MAX_BYTES = 32 * 1024 * 1024
 MAX_SAFE_PATHS = 40
+SAFE_API_PREFIXES = ("/api/", "/poc/api/", "/chargestation/")
+IDENTIFIER_SEGMENT_RX = re.compile(
+    r"(?:[0-9]{4,}|[0-9a-f]{8}-[0-9a-f-]{27,}|[A-Za-z0-9_-]{24,})",
+    re.I,
+)
 
 TARGET_MARKERS = (
     "csmstotalenergiesma",
@@ -227,6 +232,11 @@ def safe_url(value: str):
         return None
     path = parsed.path or "/"
     lower = path.lower()
+    if "%" in path:
+        return None
+    segments = {segment.lower() for segment in path.split("/") if segment}
+    if any(IDENTIFIER_SEGMENT_RX.fullmatch(segment) for segment in segments):
+        return None
     if any(token in lower for token in SENSITIVE_TOKENS):
         return None
     return f"https://{host}{path}"[:500]
@@ -243,13 +253,14 @@ def safe_read_only_api_path(value: str):
     if not path.startswith("/") or len(path) > 240:
         return None
     lower = path.lower()
-    if lower.startswith("/home/") or lower.startswith("/assets/"):
+    if not lower.startswith(SAFE_API_PREFIXES) or "%" in path:
+        return None
+    segments = {segment.lower() for segment in path.split("/") if segment}
+    if any(IDENTIFIER_SEGMENT_RX.fullmatch(segment) for segment in segments):
         return None
     if any(token in lower for token in SENSITIVE_TOKENS):
         return None
     if not any(token in lower for token in READ_ONLY_TOKENS):
-        return None
-    if "/api/" not in lower and "/chargestation/" not in lower:
         return None
     return path
 
