@@ -1,0 +1,43 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-09-01",
+  "country": "MA",
+  "network": "Kilowatt",
+  "purpose": "Conservative station-level tariff overlay policy for V9",
+  "evidence": {
+    "native_station_inventory": "reports/morocco/kilowatt/latest-public-station-inventory.json",
+    "native_tariff_schema": "reports/morocco/kilowatt/latest-public-tariff-schema.json",
+    "existing_free_tariff_report": "reports/morocco/kilowatt/public-free-tariff-evidence-2026-08-24.json",
+    "totalenergies_pattern": "reports/morocco/kilowatt/totalenergies-network-pattern-2026-08-20.json",
+    "public_station_directory_refresh_2026_09_01": "Atlas Recharge public free-station directory currently lists numerous Kilowatt-operated 22 kW stations as free, including Almaz Mall Casablanca, Carrefour Socco Alto, Ibn Batouta Mall, Sela Gallery, Commune d'Agadir, Parking Inbiaat, TotalEnergies Relais Taourirt and Agora Park Taza.",
+    "user_observation_2026_09_01": "Kilowatt charging is free across most of the network, with only a small number of paid cities/sites; useful first-party user evidence, but not sufficient by itself to assign a paid amount or to identify every exception."
+  },
+  "modeling": {
+    "cpo_operator": "Kilowatt",
+    "site_brand": "station-specific; may be enriched only from explicit native name/address tokens or station-specific corroboration",
+    "app_source_access_network": "Kilowatt public web map/native app where applicable",
+    "tariff_channel": "Kilowatt direct/public access unless a distinct roaming channel is explicitly evidenced",
+    "status_source": "Kilowatt public web map/native source; independent from tariff evidence"
+  },
+  "facts": {
+    "public_station_api_exposes_tariff_fields": false,
+    "native_inventory_production_candidates": 43,
+    "free_charging_is_common": true,
+    "paid_charging_is_exceptional": true,
+    "city_name_alone_is_sufficient_to_mark_paid": false,
+    "null_tariff_field_means_free": false
+  },
+  "v9_policy": {
+    "free_tariff_value_mad": 0,
+    "free_tariff_application": "Apply 0 MAD only when the current native station record can be matched to station-specific public free-access evidence.",
+    "paid_tariff_application": "Apply a non-zero tariff only when the exact station/site and amount are explicitly evidenced by Kilowatt-native data, verified app observation or a sufficiently strong station-specific source.",
+    "unresolved_tariff_application": "Keep tariff null for unmatched stations. A likely-free network behavior may be retained as diagnostic context but must not silently become a production 0 MAD tariff.",
+    "do_not_do": [
+      "Do not infer free solely from a missing native tariff field.",
+      "Do not apply a blanket paid rule to Casablanca or Taza because current station-specific free evidence contradicts it.",
+      "Do not infer CPO from site_brand or tariff source.",
+      "Do not overwrite native status provenance with tariff evidence."
+    ]
+  },
+  "next_step": "Generate a 43-row station-level overlay, report exactly which native stations match current free evidence, leave the residual unmatched stations unresolved, and validate the result as a read-only V9 artifact before any stable integration."
+}
