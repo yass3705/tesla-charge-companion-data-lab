@@ -1,0 +1,58 @@
+name: Probe Alize public map
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-alize-public-map.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public map assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/alize reports/france/alize
+          curl -fLsS --retry 3 https://alize-map.azurewebsites.net/ -o /tmp/alize/index.html
+          python - <<'PY'
+          import re,pathlib,urllib.parse,subprocess,json
+          root=pathlib.Path('/tmp/alize')
+          html=(root/'index.html').read_text(errors='ignore')
+          base='https://alize-map.azurewebsites.net/'
+          assets=[]
+          for m in re.findall(r'(?:src|href)=["\']([^"\']+\.(?:js|css)(?:\?[^"\']*)?)["\']',html,re.I):
+              u=urllib.parse.urljoin(base,m)
+              if u not in assets: assets.append(u)
+          downloaded=[]
+          for i,u in enumerate(assets):
+              p=root/f'asset-{i}.txt'
+              r=subprocess.run(['curl','-fLsS','--retry','2',u,'-o',str(p)])
+              if r.returncode==0: downloaded.append({'url':u,'file':p.name,'bytes':p.stat().st_size})
+          patterns=re.compile(r'https?://[^\s"\'<>]+|[/A-Za-z0-9_.-]*(?:api|ajax|station|borne|charge|evse|tarif|price|marker|geojson)[/A-Za-z0-9_.?=&%-]*',re.I)
+          hits=[]
+          for p in [root/'index.html']+[root/x['file'] for x in downloaded]:
+              text=p.read_text(errors='ignore')
+              for m in patterns.findall(text):
+                  if len(m)>4: hits.append(m[:1000])
+          uniq=[]
+          for h in hits:
+              if h not in uniq: uniq.append(h)
+          report={'source':base,'assetCount':len(assets),'downloaded':downloaded,'candidates':uniq[:2000]}
+          pathlib.Path('reports/france/alize/public-map-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(report,ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish probe report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/alize/public-map-probe.json
+          git commit -m 'France Alize: publish public map probe' || exit 0
+          git push
