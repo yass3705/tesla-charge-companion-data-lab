@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "finding": "A newly surfaced public Morocco-wide roaming/status surface at map.watt.ma documents OCPI 2.2.1 location/tariff interfaces and a GET-only live-status proxy. It also exposes a concrete FastVolt station status on the public map. This is useful as an independent diagnostic/roaming cross-check, but it must not overwrite native CPO attribution or native status when fresher first-party data exists.",
+  "checked_date": "2026-09-01",
+  "evidence": {
+    "network_docs_url": "https://map.watt.ma/docs/",
+    "network_architecture_url": "https://map.watt.ma/network/",
+    "public_map_url": "https://map.watt.ma/",
+    "documented_protocol": "OCPI 2.2.1",
+    "documented_read_only_routes": [
+      "GET /locations",
+      "GET /tariffs",
+      "GET /api/live-status?stationId=X"
+    ],
+    "live_status_contract": {
+      "normalized_examples": ["AVAILABLE", "IN_USE"],
+      "note": "The documentation says the proxy calls an external CPO endpoint only when partner credentials are configured server-side. No credentials are required or stored by this report."
+    },
+    "concrete_public_example": {
+      "station": "FastVolt Morocco Mall",
+      "site_brand": "Morocco Mall",
+      "operator_label_on_map": "Fastvolt",
+      "public_status_observed": "Available",
+      "power_kw": 50,
+      "connector_count": 8,
+      "source": "https://map.watt.ma/",
+      "note": "Treat this as WATT.ma roaming/aggregation evidence, not as FastVolt-native status evidence."
+    }
+  },
+  "modeling": {
+    "cpo_operator": {
+      "rule": "Retain the independently validated physical CPO/operator. A WATT.ma listing or status must never establish or overwrite CPO attribution by itself."
+    },
+    "site_brand": {
+      "rule": "Retain the physical host/site brand independently from the charging operator and roaming surface."
+    },
+    "app_source_access_network": {
+      "value": "WATT.ma public map / OCPI aggregation surface",
+      "role": "third-party roaming/aggregation diagnostic source"
+    },
+    "tariff_channel": {
+      "rule": "Any tariff from WATT.ma is a WATT.ma/OCPI aggregation or roaming tariff unless independently proven identical to the CPO direct tariff. Do not label it direct by inference."
+    },
+    "status_source": {
+      "value": "WATT.ma live-status/OCPI aggregation",
+      "priority": "secondary diagnostic",
+      "rule": "Prefer a fresh native source such as cp.evgo.ma for EVGO/Nareva when available. Use WATT.ma to detect disagreement, roaming lag, or missing native visibility."
+    }
+  },
+  "evone_cross_check": {
+    "use": "WATT.ma can provide an independent third status observation when comparing EVOne roaming freshness against native CPO status.",
+    "production_rule": "EVOne-derived production candidates remain allowlisted to Available, Occupied or Charging only.",
+    "evone_production_status_allowlist": ["Available", "Occupied", "Charging"],
+    "evone_diagnostic_only": ["Faulted", "Offline", "Unknown", "Unavailable"]
+  },
+  "safety": {
+    "read_only": true,
+    "credentials_used": false,
+    "credentials_committed": false,
+    "authenticated_requests_performed": false,
+    "write_or_session_commands_performed": false,
+    "note": "The documentation also mentions POST command routes, but they were neither probed nor used."
+  }
+}
