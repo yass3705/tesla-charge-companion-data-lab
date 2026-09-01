@@ -1,0 +1,66 @@
+name: France IZIVIA fronts-map probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-izivia-fronts-map.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe fronts-map assets and API hints
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/izf reports/france/izivia
+          curl -fLsS --retry 3 https://fronts-map.izivia.com/ -o /tmp/izf/index.html
+          python - <<'PY'
+          import re,json,pathlib,urllib.parse,subprocess
+          html=pathlib.Path('/tmp/izf/index.html').read_text(errors='ignore')
+          base='https://fronts-map.izivia.com/'
+          assets=[]
+          for x in re.findall(r'(?:src|href)=["\']([^"\']+\.(?:js|css)(?:\?[^"\']*)?)["\']',html,re.I):
+              u=urllib.parse.urljoin(base,x)
+              if u not in assets: assets.append(u)
+          queue=list(assets); seen=set(); files=[]
+          while queue and len(seen)<120:
+              u=queue.pop(0)
+              if u in seen: continue
+              seen.add(u); p=pathlib.Path(f'/tmp/izf/a{len(files)}.txt')
+              r=subprocess.run(['curl','-fLsS','--retry','2',u,'-o',str(p)])
+              if r.returncode: continue
+              files.append({'url':u,'file':p.name,'bytes':p.stat().st_size})
+              txt=p.read_text(errors='ignore')
+              for x in re.findall(r'["\']([^"\']+\.js(?:\?[^"\']*)?)["\']',txt,re.I):
+                  nu=urllib.parse.urljoin(u,x)
+                  if 'fronts-map.izivia.com' in nu and nu not in seen: queue.append(nu)
+          pats=re.compile(r'https?://[^\s"\'<>]+|[/A-Za-z0-9_.?=&%:-]*(?:api|graphql|station|location|charge|tarif|price|connector|evse|token|backend)[/A-Za-z0-9_.?=&%:-]*',re.I)
+          hits=[]
+          for p in [pathlib.Path('/tmp/izf/index.html')]+[pathlib.Path('/tmp/izf')/f['file'] for f in files]:
+              txt=p.read_text(errors='ignore')
+              for h in pats.findall(txt):
+                  if len(h)>6 and h not in hits: hits.append(h[:1500])
+          report={'indexBytes':len(html),'assetCount':len(files),'assets':files,'candidates':hits[:5000]}
+          pathlib.Path('reports/france/izivia/fronts-map-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'indexBytes':len(html),'assetCount':len(files),'candidateCount':len(hits),'sample':hits[:120]},ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for i in 1 2 3 4; do
+            git pull --rebase origin main || true
+            git add reports/france/izivia/fronts-map-probe.json
+            git commit -m 'France IZIVIA: publish fronts-map probe' || true
+            git push && exit 0
+            sleep $((i*2))
+          done
+          exit 1
