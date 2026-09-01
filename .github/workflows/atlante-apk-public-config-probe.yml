@@ -1,0 +1,44 @@
+name: Atlante public Android client tariff probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/atlante-apk-public-config
+    paths:
+      - scripts/atlante_apk_public_config_probe.py
+      - .github/workflows/atlante-apk-public-config-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Recover public-client config and obtain read-only station prices
+        run: python scripts/atlante_apk_public_config_probe.py
+      - name: Validate sanitized result
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('data/reports/atlante_apk_public_config_probe.json').read_text())
+          assert r['clientCredentialRecovered'] is True
+          assert r['clientCredentialPersisted'] is False
+          assert r['italyAtlanteMapLocations'] > 0
+          assert r['stationTariffSamples']
+          assert all(not r['security'][k] for k in ('accountCredentialsUsed','loginEndpointsCalled','chargingEndpointsCalled','paymentEndpointsCalled','mutationsCalled'))
+          print({'locations':r['italyAtlanteMapLocations'],'samples':len(r['stationTariffSamples'])})
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlante-public-client-station-price-proof
+          path: data/reports/atlante_apk_public_config_probe.json
+          retention-days: 14
