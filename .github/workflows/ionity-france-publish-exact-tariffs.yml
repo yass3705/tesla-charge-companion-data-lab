@@ -1,0 +1,62 @@
+name: IONITY France publish exact tariffs
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/ionity-france-publish-exact-tariffs.yml"
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Download validated national extraction
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p incoming
+          gh run download 33551594791 \
+            --repo "$GITHUB_REPOSITORY" \
+            --name ionity-france-national-exact-tariffs-parallel \
+            --dir incoming
+          test -s incoming/ionity-france-exact-tariffs.json
+          test -s incoming/summary.json
+          python - <<'PY'
+          import json
+          p='incoming/ionity-france-exact-tariffs.json'
+          o=json.load(open(p))
+          assert o['resolvedEvseCount']/o['evseCount'] >= .90, o
+          assert o['missingPriceCount']==0, o
+          assert o['locationCount']>150, o
+          assert o['failureCount']==3, o
+          expected={'FR*IOY*E1','FR*IOY*E2','FRTSLE2IOYGE'}
+          got={x.get('evseId') for x in o['failures'] if x.get('stage')=='resolve'}
+          assert got==expected,(got,expected)
+          print('validated',o['locationCount'],'locations',o['resolvedEvseCount'],'/',o['evseCount'],'EVSEs')
+          PY
+      - name: Publish source snapshot and report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports
+          cp incoming/ionity-france-exact-tariffs.json data/operator_direct/ionity_exact_france.json
+          cp incoming/summary.json reports/ionity_exact_france_summary.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/operator_direct/ionity_exact_france.json reports/ionity_exact_france_summary.json
+          if git diff --cached --quiet; then
+            echo 'No changes to publish'
+            exit 0
+          fi
+          git commit -m 'IONITY: publish exact France station tariffs'
+          git push origin HEAD:main
