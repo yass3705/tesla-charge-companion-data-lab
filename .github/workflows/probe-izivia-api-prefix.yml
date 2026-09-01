@@ -1,0 +1,50 @@
+name: France IZIVIA API prefix probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-izivia-api-prefix.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe /api endpoints with public client headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/izivia
+          python - <<'PY'
+          import json,subprocess,pathlib,uuid
+          base='https://fronts-map.izivia.com/api'
+          device=str(uuid.uuid4())
+          cases=[
+            ('POST','/map/markers','{}'),
+            ('POST','/map/markers','{"square":{"centerLat":48.8566,"centerLng":2.3522,"zoom":9},"filters":{}}'),
+            ('GET','/marketing-networks?searchText=IZIVIA',None),
+          ]
+          out=[]
+          for method,path,body in cases:
+              cmd=['curl','-sS','-A','Mozilla/5.0','-H','accept: application/json','-H','Accept-Language: fr','-H',f'x-device-id: {device}','-w','\n%{http_code}','-X',method]
+              if body is not None: cmd += ['-H','content-type: application/json','--data',body]
+              cmd += [base+path]
+              r=subprocess.run(cmd,capture_output=True,text=True)
+              payload,status=r.stdout.rsplit('\n',1) if '\n' in r.stdout else (r.stdout,'')
+              out.append({'method':method,'path':path,'status':status,'body':payload[:30000]})
+          pathlib.Path('reports/france/izivia/api-prefix-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/izivia/api-prefix-probe.json
+          git commit -m 'France IZIVIA: publish API prefix probe' || exit 0
+          git pull --rebase origin main
+          git push
