@@ -1,0 +1,40 @@
+name: France IZIVIA base API probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-izivia-base-api.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Locate backend base URL safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLsS https://fronts-map.izivia.com/ -o /tmp/i.html
+          JS=$(grep -Eo 'src="[^"]+\.js' /tmp/i.html | head -1 | cut -d'"' -f2)
+          curl -fLsS "https://fronts-map.izivia.com/${JS#/}" -o /tmp/i.js
+          python - <<'PY'
+          import re,pathlib,json,urllib.parse
+          t=pathlib.Path('/tmp/i.js').read_text(errors='ignore')
+          out={'literalUrls':[],'contexts':[]}
+          for u in re.findall(r'https://[A-Za-z0-9._:-]+(?:/[A-Za-z0-9._~/?#=&%:+-]*)?',t):
+              if re.search(r'(?i)mapbox|token|sentry|google|github|fontawesome|bit\.ly|waze|apple',u):continue
+              if u not in out['literalUrls']:out['literalUrls'].append(u)
+          for needle in ('baseApiUrl','baseURL','O1=','D1='):
+              for m in re.finditer(re.escape(needle),t):
+                  s=t[max(0,m.start()-1000):min(len(t),m.end()+1800)]
+                  if re.search(r'(?i)mapbox|access.?token|api.?key',s):
+                      # retain only URLs and assignment-shaped fragments from this context
+                      vals=re.findall(r'https://[A-Za-z0-9._:-]+(?:/[A-Za-z0-9._~/?#=&%:+-]*)?',s)
+                      s=' URLs='+json.dumps([x for x in vals if not re.search(r'(?i)mapbox|token|sentry|google',x)])
+                  out['contexts'].append(s[:2800])
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
