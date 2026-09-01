@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-01",
+  "subject": "Club EV-Charge and GM AFRICA ma charge public-client lineage",
+  "source": {
+    "repository": "yass3705/tesla-charge-companion-data-lab",
+    "workflow_run_id": 33535717827,
+    "workflow_conclusion": "success",
+    "head_sha": "44b3fa338f9124cb998305d50e18e7dbfb74f741",
+    "artifact_id": 9811539008,
+    "artifact_sha256": "4a0eb1d1fce2d2687179555149b18ed8cc5f55c6db744fc8a37e3dd60285b143"
+  },
+  "policy": {
+    "static_public_client_analysis_only": true,
+    "backend_requests_made": false,
+    "no_login": true,
+    "no_credentials": true,
+    "no_user_or_account_data": true,
+    "no_station_or_connector_identifiers": true,
+    "raw_packages_persisted": false,
+    "arbitrary_bundle_strings_persisted": false,
+    "cross_network_station_data_reused": false,
+    "sibling_client_is_not_a_production_data_source": true
+  },
+  "public_attribution": {
+    "club_ev_charge": {
+      "package_id": "com.namp.totalev",
+      "publisher": "TotalEnergies Marketing Maroc / Total Maroc SA",
+      "implementation_partner": "GM AFRICA"
+    },
+    "ma_charge": {
+      "package_id": "com.namp.macharge",
+      "publisher": "GM AFRICA",
+      "role": "public sibling client comparison only"
+    }
+  },
+  "evidence": {
+    "package_bytes": {
+      "club_ev_charge": 55695146,
+      "ma_charge": 67318963
+    },
+    "package_sha256": {
+      "club_ev_charge": "a13e53871c9a85fb014ff61a9362cd2002f97817530d983f34e8a3a3b88d154e",
+      "ma_charge": "256ad12de5b5c54d8fa683fbaa37a22b98d95facea6c028de9a9daaae5a86375"
+    }
+  },
+  "finding": {
+    "shared_route_markers": [
+      "/api/get-connector-status",
+      "/api/qr-connector",
+      "/api/qr-connector-list",
+      "/chargestation/getstationstate"
+    ],
+    "club_only_route_markers": [],
+    "ma_charge_only_route_markers": [],
+    "shared_public_domains": [
+      "gm-africa.com"
+    ],
+    "club_only_public_domains": [
+      "csmstotalenergiesma.numocity.com"
+    ],
+    "ma_charge_only_public_domains": [],
+    "template_lineage_signal": true,
+    "interpretation": "The identical charging/status route set plus shared gm-africa.com literal corroborates a common reusable client lineage. The Club-only Numocity hostname is target-package static evidence, but it does not validate that Numocity is the current production backend or that any observed route is anonymously callable."
+  },
+  "modeling": {
+    "cpo_operator": "unresolved_station_specific",
+    "site_brand": "TotalEnergies when station-specific evidence supports it",
+    "app_source_access_network": "Club EV-Charge / TotalEnergies Marketing Maroc",
+    "tariff_channel": "unresolved_without_native_station-specific evidence",
+    "status_source": "unresolved_without_validated_public_read-only request",
+    "implementation_partner": "GM AFRICA",
+    "numocity_role": "unverified_current_production_backend"
+  },
+  "production_decision": "diagnostic_only",
+  "next_step": "Reconstruct an exact anonymous read-only inventory/status request solely from Club EV-Charge target-client public configuration. Do not copy ma charge hosts, identifiers, station data or responses, and do not enumerate speculative server paths."
+}

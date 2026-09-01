@@ -7,11 +7,13 @@ on:
     paths:
       - '.github/workflows/morocco-club-evcharge-gmafrica-lineage.yml'
       - 'scripts/morocco_club_evcharge_gmafrica_lineage_probe.py'
+      - 'reports/morocco/totalenergies/club-ev-charge-gmafrica-client-lineage-2026-09-01.json'
   pull_request:
     branches: [main]
     paths:
       - '.github/workflows/morocco-club-evcharge-gmafrica-lineage.yml'
       - 'scripts/morocco_club_evcharge_gmafrica_lineage_probe.py'
+      - 'reports/morocco/totalenergies/club-ev-charge-gmafrica-client-lineage-2026-09-01.json'
 
 permissions:
   contents: read
@@ -71,6 +73,33 @@ jobs:
             'shared_domains':d.get('comparison',{}).get('shared_public_domains',[]),
             'next_step':d.get('next_step'),
           },ensure_ascii=False))
+          PY
+
+      - name: Validate published lineage record matches the live static comparison
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          live=json.loads(Path('artifacts/morocco-club-evcharge-gmafrica-lineage/summary.json').read_text())
+          record=json.loads(Path('reports/morocco/totalenergies/club-ev-charge-gmafrica-client-lineage-2026-09-01.json').read_text())
+          assert record.get('schema_version')==1
+          assert record.get('source',{}).get('workflow_run_id')==33535717827
+          assert record.get('source',{}).get('head_sha')=='44b3fa338f9124cb998305d50e18e7dbfb74f741'
+          expected_hashes=record.get('evidence',{}).get('package_sha256',{})
+          assert expected_hashes=={
+            label:item.get('download_sha256')
+            for label,item in live.get('packages',{}).items()
+          }
+          finding=record.get('finding',{})
+          comparison=live.get('comparison',{})
+          assert finding.get('shared_route_markers')==comparison.get('shared_route_markers')
+          assert finding.get('shared_public_domains')==comparison.get('shared_public_domains')
+          assert finding.get('club_only_public_domains')==comparison.get('club_only_public_domains')
+          assert finding.get('ma_charge_only_public_domains')==comparison.get('ma_charge_only_public_domains')
+          assert record.get('production_decision')=='diagnostic_only'
+          assert record.get('modeling',{}).get('numocity_role')=='unverified_current_production_backend'
+          print(json.dumps({'ok':True,'record_matches_live_static_comparison':True},ensure_ascii=False))
           PY
 
       - uses: actions/upload-artifact@v4
