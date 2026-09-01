@@ -19,12 +19,22 @@ ATLAS_FREE_URL = 'https://atlasrecharge.com/bornes/gratuites'
 EXISTING_REPORT = 'reports/morocco/kilowatt/public-free-tariff-evidence-2026-08-24.json'
 
 # Each rule is deliberately station/site-specific. We do not use a city-only matcher.
+# any_sets is used only for safe spelling/tokenization aliases observed in the native inventory.
 FREE_RULES = [
     {'id': 'al-mazar-mall', 'all': ['al', 'mazar'], 'site_brand': 'Al Mazar Mall'},
     {'id': 'carrefour-socco-alto', 'all': ['carrefour', 'socco', 'alto'], 'site_brand': 'Carrefour'},
     {'id': 'ibn-batouta-mall', 'all': ['ibn', 'batouta', 'mall'], 'site_brand': 'Ibn Batouta Mall'},
     {'id': 'totalenergies-tamesna', 'all': ['totalenergies', 'tamesna'], 'site_brand': 'TotalEnergies'},
-    {'id': 'aswak-assalam-hay-riad', 'all': ['aswak', 'assalam', 'riad'], 'site_brand': 'Aswak Assalam'},
+    {
+        'id': 'aswak-assalam-hay-riad',
+        'any_sets': [
+            ['aswakassalam', 'hayriad'],
+            ['aswakassalam', 'hay', 'riad'],
+            ['aswak', 'assalam', 'hayriad'],
+            ['aswak', 'assalam', 'hay', 'riad'],
+        ],
+        'site_brand': 'Aswak Assalam',
+    },
     {'id': 'sela-gallery', 'all': ['sela', 'gallery'], 'site_brand': 'Sela Gallery'},
     {'id': 'commune-agadir', 'all': ['commune', 'agadir'], 'site_brand': 'Commune d’Agadir'},
     {'id': 'parking-inbiaat-agadir', 'all': ['parking', 'inbiaat'], 'site_brand': None},
@@ -32,7 +42,16 @@ FREE_RULES = [
     {'id': 'shell-exit-casablanca', 'all': ['shell', 'exit', 'casablanca'], 'site_brand': 'Shell'},
     {'id': 'shell-benguerir', 'all': ['shell', 'benguerir'], 'site_brand': 'Shell'},
     {'id': 'totalenergies-relais-mazagan', 'all': ['totalenergies', 'mazagan'], 'site_brand': 'TotalEnergies'},
-    {'id': 'moulay-bousselham', 'all': ['moulay', 'bousselham'], 'site_brand': None},
+    {
+        'id': 'moulay-bousselham',
+        'any_sets': [
+            ['moulay', 'bousselham'],
+            ['moulay', 'bouselham'],
+            ['mly', 'bousselham'],
+            ['mly', 'bouselham'],
+        ],
+        'site_brand': None,
+    },
     {'id': 'commune-saidia', 'all': ['commune', 'saidia'], 'site_brand': 'Commune de Saïdia'},
     {'id': 'marina-saidia', 'all': ['marina', 'saidia'], 'site_brand': 'Marina Saïdia'},
     {'id': 'carrefour-market-sale', 'all': ['carrefour', 'sale'], 'site_brand': 'Carrefour'},
@@ -51,7 +70,14 @@ FREE_RULES = [
     {'id': 'winxo-selouane', 'all': ['winxo', 'selouane'], 'site_brand': 'Winxo'},
     {'id': 'totalenergies-relais-taourirt', 'all': ['totalenergies', 'taourirt'], 'site_brand': 'TotalEnergies'},
     {'id': 'agora-park-taza', 'all': ['agora', 'taza'], 'site_brand': 'Agora Park'},
-    {'id': 'aswak-assalam-temara', 'all': ['aswak', 'assalam', 'temara'], 'site_brand': 'Aswak Assalam'},
+    {
+        'id': 'aswak-assalam-temara',
+        'any_sets': [
+            ['aswakassalam', 'temara'],
+            ['aswak', 'assalam', 'temara'],
+        ],
+        'site_brand': 'Aswak Assalam',
+    },
     {'id': 'sirocco-kasbah-zagora', 'all': ['sirocco', 'zagora'], 'site_brand': 'Sirocco Kasbah'},
 ]
 
