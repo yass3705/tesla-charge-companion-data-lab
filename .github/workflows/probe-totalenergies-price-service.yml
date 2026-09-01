@@ -1,0 +1,45 @@
+name: France TotalEnergies price service probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-totalenergies-price-service.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract price service callsite safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/te reports/france/totalenergies
+          curl -fLsS https://totalms.webgeoservices.com/maps/static/build/js/script.js -o /tmp/te/script.js
+          python - <<'PY'
+          import re,json,pathlib
+          t=pathlib.Path('/tmp/te/script.js').read_text(errors='ignore')
+          contexts=[]
+          for needle in ('total.maps.service.price={get:n}','totalApiUrl','RequMessage','No price data found'):
+              for m in re.finditer(re.escape(needle),t):
+                  s=t[max(0,m.start()-4500):min(len(t),m.end()+2500)]
+                  # strip any suspicious credential-shaped query values but keep route structure
+                  s=re.sub(r'(?i)(token|api[_-]?key|apikey|authorization)([=:"\' ]+)[A-Za-z0-9._-]{8,}',r'\1\2[REDACTED]',s)
+                  if s not in contexts: contexts.append(s)
+          report={'contexts':contexts[:20]}
+          pathlib.Path('reports/france/totalenergies/price-service-callsite.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(report,ensure_ascii=False,indent=2)[:70000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/totalenergies/price-service-callsite.json
+          git commit -m 'France TotalEnergies: publish price service callsite' || exit 0
+          git pull --rebase origin main
+          git push
