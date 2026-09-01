@@ -1,0 +1,52 @@
+name: France Allego map module probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-allego-map-module.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract Allego map AJAX actions safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/allego reports/france/allego
+          curl -fLsS -A 'Mozilla/5.0' 'https://www.allego.eu/fr/wp-content/themes/allego/gutenberg/map/map.js' -o /tmp/allego/map.js
+          python - <<'PY'
+          import re,json,pathlib
+          t=pathlib.Path('/tmp/allego/map.js').read_text(errors='ignore')
+          out={'bytes':len(t),'urls':[],'actions':[],'contexts':[]}
+          for u in re.findall(r'https?://[^\s"\'<>`]+|/[A-Za-z0-9_./?=&%-]+',t):
+              if re.search(r'(?i)mapbox|token|api.?key|secret',u):continue
+              if re.search(r'(?i)ajax|station|charger|price|tarif|charge',u) and u not in out['urls']:out['urls'].append(u[:1600])
+          for m in re.finditer(r'action\s*[:=]\s*["\']([^"\']+)',t,re.I):
+              x=m.group(1)
+              if x not in out['actions']:out['actions'].append(x)
+          for needle in ('admin-ajax','ajax','action','price','charger','station','fetch(','$.post','$.ajax'):
+              for m in re.finditer(re.escape(needle),t,re.I):
+                  s=t[max(0,m.start()-900):min(len(t),m.end()+2000)]
+                  s=re.sub(r'pk\.[A-Za-z0-9._-]{20,}','[REDACTED]',s)
+                  if re.search(r'(?i)sk\.[A-Za-z0-9._-]{20,}',s):continue
+                  if s not in out['contexts']:out['contexts'].append(s)
+          out['contexts']=out['contexts'][:60]
+          raw=json.dumps(out,ensure_ascii=False,indent=2)+'\n'
+          pathlib.Path('reports/france/allego/map-module.json').write_text(raw)
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:70000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/allego/map-module.json
+          git commit -m 'France Allego: publish map AJAX module probe' || exit 0
+          git pull --rebase origin main
+          git push
