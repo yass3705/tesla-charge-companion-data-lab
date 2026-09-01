@@ -1,0 +1,126 @@
+name: Go Electric Italy V9 cost readiness
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - qa/go-electric-italy-v9-cost-readiness
+    paths:
+      - scripts/go_electric_italy_v9_cost_readiness.py
+      - .github/workflows/go-electric-italy-v9-cost-readiness.yml
+
+concurrency:
+  group: go-electric-italy-v9-cost-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  cost-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download validated isolated integration artifact
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/go-electric-integration
+          gh run download 33456319476 \
+            --repo "$GITHUB_REPOSITORY" \
+            -n go-electric-italy-v9-isolated-integration-qa \
+            -D /tmp/go-electric-integration
+          test -s /tmp/go-electric-integration/consolidation/italy_v9_candidate_go_electric_direct_qa.json.gz
+          test -s /tmp/go-electric-integration/reports/go_electric_italy_v9_integration_qa.json
+
+      - name: Apply runtime-safe cost readiness gate
+        run: |
+          python scripts/go_electric_italy_v9_cost_readiness.py \
+            --input /tmp/go-electric-integration/consolidation/italy_v9_candidate_go_electric_direct_qa.json.gz \
+            --integration-report /tmp/go-electric-integration/reports/go_electric_italy_v9_integration_qa.json
+
+      - name: Validate cost-readiness gates
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+
+          report = json.loads(Path('data/reports/go_electric_italy_v9_cost_readiness.json').read_text(encoding='utf-8'))
+          assert report['publicationAllowed'] is False
+          assert all(report['gates'].values())
+          assert report['input']['validatedExactDirectEvse'] == 2214
+          assert report['input']['currentPhysicalGoElectricEvse'] == 2453
+          assert report['runtimeCompatibility']['runtimeRankableEnergyOnlyEvse'] == 816
+          assert report['runtimeCompatibility']['stagedMultiComponentEvse'] == 1398
+          assert report['runtimeCompatibility']['currentPhysicalEvseWithoutAcceptedDirectOffer'] == 239
+          assert report['runtimeCompatibility']['currentPhysicalEvseWithoutRuntimeRankableDirect'] == 1637
+          assert report['after']['rankableDirectEvse'] == 26442
+          assert report['after']['rankableDirectCoveragePct'] == 35.24
+          assert report['after']['rankableDirectByOperator']['Go Electric Stations SRLS'] == 816
+          assert report['after']['goElectricValidatedDirectEvse'] == 2214
+          assert report['after']['goElectricRuntimeRankableDirectEvse'] == 816
+          assert report['after']['goElectricStagedNonRankableDirectEvse'] == 1398
+
+          out = Path('data/consolidation/italy_v9_candidate_go_electric_cost_ready_qa.json.gz')
+          assert out.exists() and out.stat().st_size > 100000
+          with gzip.open(out, 'rt', encoding='utf-8') as fh:
+              data = json.load(fh)
+          assert data['publicationAllowed'] is False
+          assert data['counts']['rankableDirectEvseCount'] == 26442
+          assert data['counts']['rankableDirectCoveragePct'] == 35.24
+          assert data['goElectricIntegration']['acceptedExactEvseOffers'] == 2214
+          assert data['goElectricIntegration']['runtimeRankableEnergyOnlyEvse'] == 816
+          assert data['goElectricIntegration']['stagedMultiComponentEvse'] == 1398
+          assert data['goElectricIntegration']['currentPhysicalEvseWithoutRuntimeRankableDirect'] == 1637
+
+          direct = []
+          rankable = []
+          staged = []
+          residual_legacy = 0
+          for evse in data['evses']:
+              tariff = evse.get('tccV9DirectTariff') or {}
+              if tariff.get('operator') == 'Go Electric Stations SRLS':
+                  direct.append((evse, tariff))
+                  assert 'preAuth' not in json.dumps(tariff)
+                  components = tariff.get('priceComponents') or []
+                  if evse.get('tccV9RankableDirect') is True:
+                      rankable.append((evse, tariff))
+                      assert tariff.get('rankable') is True
+                      assert tariff.get('runtimeRankable') is True
+                      assert len(components) == 1
+                      assert components[0].get('type') == 'energy'
+                      assert components[0].get('unit') == 'per_kWh'
+                  else:
+                      staged.append((evse, tariff))
+                      assert tariff.get('rankable') is False
+                      assert tariff.get('runtimeRankable') is False
+                      assert tariff.get('requiresRuntimeComponentSupport') is True
+                      assert len(components) > 1
+              for emsp in evse.get('tccV9EmspTariffs') or []:
+                  if str(emsp.get('provider') or '').lower() == 'nextcharge' and 'go electric stations' in str(emsp.get('billedBy') or '').lower():
+                      residual_legacy += 1
+
+          assert len(direct) == 2214
+          assert len(rankable) == 816
+          assert len(staged) == 1398
+          assert residual_legacy == 0
+          print(json.dumps(report, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Upload cost-readiness QA candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-cost-readiness
+          path: |
+            data/consolidation/italy_v9_candidate_go_electric_cost_ready_qa.json.gz
+            data/reports/go_electric_italy_v9_cost_readiness.json
+          retention-days: 14
