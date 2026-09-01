@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Capture public map network
+      - name: Capture public IZIVIA API network
         shell: bash
         run: |
           set -euo pipefail
@@ -33,16 +33,17 @@ jobs:
             const rows=[];
             page.on('response',async r=>{
               const u=r.url();
-              if(!/izivia|charging|location|marker|api/i.test(u)) return;
-              const rec={url:u,status:r.status(),method:r.request().method(),resourceType:r.request().resourceType(),contentType:r.headers()['content-type']||''};
-              try{if(/json|text/.test(rec.contentType)){const t=await r.text();rec.bodySample=t.slice(0,6000);}}catch{}
+              if(!u.startsWith('https://fronts-map.izivia.com/api/')) return;
+              const req=r.request();
+              const rec={url:u,status:r.status(),method:req.method(),resourceType:req.resourceType(),contentType:r.headers()['content-type']||'',requestBody:req.postData()||null};
+              try{if(/json|text/.test(rec.contentType)){const t=await r.text();rec.bodySample=t.slice(0,12000);}}catch{}
               rows.push(rec);
             });
             await page.goto('https://fronts-map.izivia.com/',{waitUntil:'networkidle',timeout:90000});
             await page.waitForTimeout(5000);
             const body=await page.locator('body').innerText().catch(()=> '');
             require('fs').writeFileSync('reports/france/izivia/network-probe.json',JSON.stringify({capturedAt:new Date().toISOString(),pageUrl:page.url(),bodySample:body.slice(0,5000),responses:rows},null,2)+'\n');
-            console.log(JSON.stringify(rows.map(x=>({url:x.url,status:x.status,method:x.method,contentType:x.contentType})),null,2));
+            console.log(JSON.stringify(rows.map(x=>({url:x.url,status:x.status,method:x.method,requestBody:x.requestBody,bodySample:x.bodySample?.slice(0,1500)})),null,2));
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
@@ -54,8 +55,9 @@ jobs:
           for i in 1 2 3 4; do
             git pull --rebase origin main || true
             git add reports/france/izivia/network-probe.json
-            git commit -m 'France IZIVIA: publish public map network probe' || true
+            git commit -m 'France IZIVIA: publish sanitized public API probe' || true
             git push && exit 0
+            git reset --soft HEAD~1 || true
             sleep $((i*2))
           done
           exit 1
