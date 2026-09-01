@@ -2,12 +2,16 @@ name: Morocco EVGO fresh sanitized artifact
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
   push:
-    branches: [main]
+    branches: [main, integration/morocco-evgo-fresh-v9]
     paths:
       - '.github/workflows/morocco-evgo-fresh-sanitized-artifact.yml'
       - 'scripts/morocco_evgo_pin_hydration_probe.py'
+      - 'scripts/morocco_evgo_status_overlay_from_hydration.py'
       - 'scripts/morocco_evgo_normalize.py'
+      - 'scripts/morocco_evgo_apply_fresh_status_overlay.py'
 
 permissions:
   contents: read
@@ -26,24 +30,39 @@ jobs:
           python3 scripts/morocco_evgo_pin_hydration_probe.py
           mkdir -p reports/morocco/evgo
           cp artifacts/morocco-evgo-pin-hydration/summary.json reports/morocco/evgo/latest-pin-hydration.json
+          python3 scripts/morocco_evgo_status_overlay_from_hydration.py
           python3 scripts/morocco_evgo_normalize.py
+          python3 scripts/morocco_evgo_apply_fresh_status_overlay.py
 
-      - name: Validate production invariants
+      - name: Validate V9 production invariants
         run: |
           python3 - <<'PY'
           import json
           from pathlib import Path
 
-          p=Path('reports/morocco/evgo/latest-normalized-stations.json')
+          p=Path('reports/morocco/evgo/latest-production-stations.json')
           d=json.loads(p.read_text())
+          overlay=json.loads(Path('reports/morocco/evgo/latest-status-overlay.json').read_text())
+          hydration=json.loads(Path('reports/morocco/evgo/latest-pin-hydration.json').read_text())
           stations=d.get('stations') or []
           assert len(stations)==17, f'expected 17 stations, got {len(stations)}'
           evses=[e for s in stations for e in (s.get('evses') or [])]
           assert len(evses)==43, f'expected 43 EVSE, got {len(evses)}'
+          assert d.get('policy',{}).get('fresh_native_status_overlay_applied') is True
+          assert overlay.get('policy',{}).get('derived_from_same_run_public_hydration') is True
+          assert overlay.get('source_generated_at') == hydration.get('generated_at')
+          assert d.get('source_generated_at') == hydration.get('generated_at')
+          assert d.get('source_status_overlay')=='reports/morocco/evgo/latest-status-overlay.json'
+          dims=['operator_cpo_candidate','site_brand','app_source','tariff_channel','status_source']
+          assert d.get('policy',{}).get('modeling_dimensions_kept_separate')==dims
           for s in stations:
             lat,lon=s.get('latitude'),s.get('longitude')
             assert isinstance(lat,(int,float)) and isinstance(lon,(int,float)), f'missing GPS {s.get("locationId")}'
             assert 20 <= lat <= 37 and -18 <= lon <= 0, f'non-Morocco GPS {s.get("locationId")}: {lat},{lon}'
+            assert s.get('operator_cpo_candidate')=='Nareva Services / EVGO'
+            assert s.get('app_source')=='EVGO'
+            assert s.get('tariff_channel')=='EVGO native'
+            assert s.get('status_source')=='EVGO native backend cp.evgo.ma'
           active={'charging','suspendedev','finishing','preparing'}
           oos={'unavailable','faulted','offline','unknown'}
           for e in evses:
@@ -70,12 +89,14 @@ jobs:
           }, ensure_ascii=False))
           PY
 
-      - name: Upload sanitized fresh dataset
+      - name: Upload sanitized fresh V9 candidate
         uses: actions/upload-artifact@v4
         with:
-          name: morocco-evgo-fresh-sanitized
+          name: morocco-evgo-v9-production-candidate
           path: |
             reports/morocco/evgo/latest-pin-hydration.json
             reports/morocco/evgo/latest-normalized-stations.json
+            reports/morocco/evgo/latest-status-overlay.json
+            reports/morocco/evgo/latest-production-stations.json
           if-no-files-found: error
           retention-days: 3
