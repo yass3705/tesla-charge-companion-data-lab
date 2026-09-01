@@ -1,0 +1,80 @@
+name: Italy V9 Free To X direct candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/freetox-italy-v9-direct
+    paths:
+      - scripts/freetox_italy_pun_direct.py
+      - .github/workflows/freetox-italy-v9-direct.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download latest normalized PUN inventory
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/pun data/national
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
+          CANDIDATE="$(find /tmp/pun -type f -name pun_italy_national.json.gz | head -n1)"
+          test -n "$CANDIDATE" && test -s "$CANDIDATE"
+          cp "$CANDIDATE" data/national/pun_italy_national.json.gz
+      - name: Build Free To X direct candidate
+        run: python scripts/freetox_italy_pun_direct.py
+      - name: Validate conservative pricing model
+        run: |
+          python - <<'PY'
+          import gzip,json
+          with gzip.open('data/national/freetox_direct_stations_italy.json.gz','rt',encoding='utf-8') as f:d=json.load(f)
+          c=d['counts']; p=d['policy']; rows=d['evses']
+          assert d['country']=='IT' and d['punPartyId']=='F2X'
+          assert c['punF2xEvseCount'] > 500
+          assert c['rankableDirectEvseCount'] > 0
+          assert p['cardPaymentAcEurPerKwh']==0.50
+          assert p['cardPaymentDcEurPerKwh']==0.65
+          assert p['cardPaymentHpcEurPerKwh']==0.79
+          assert p['promoDcLe64EurPerKwh']==0.50
+          assert p['promoValidFrom']=='2026-07-15' and p['promoValidThrough']=='2026-09-30'
+          assert p['dcAbove64FailClosedUntilDcHpcThresholdValidated'] is True
+          assert all(str(x.get('evseId') or '').startswith('IT*F2X*') for x in rows)
+          assert all((x['directTariff'] is None) == (not x['rankableDirectTariff']) for x in rows)
+          for x in rows:
+              if x['tariffClass']=='DC_GT64_UNRESOLVED':
+                  assert x['directTariff'] is None
+          print(json.dumps(c,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish validated candidate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/freetox_direct_stations_italy.json.gz data/reports/freetox_italy_pun_direct_report.json
+          if git diff --cached --quiet; then
+            echo "No candidate change to publish."
+            exit 0
+          fi
+          git commit -m "data(freetox): publish Italy direct candidate [run ${GITHUB_RUN_ID}]"
+          git push
+      - name: Upload candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freetox-italy-v9-direct-candidate
+          path: |
+            data/national/freetox_direct_stations_italy.json.gz
+            data/reports/freetox_italy_pun_direct_report.json
+          retention-days: 14
