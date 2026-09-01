@@ -10,6 +10,7 @@ on:
       - 'reports/morocco/kilowatt/latest-public-station-inventory.json'
       - 'reports/morocco/kilowatt/public-free-tariff-evidence-2026-08-24.json'
       - 'reports/morocco/kilowatt/v9-tariff-model-2026-09-01.json'
+      - 'reports/morocco/kilowatt/latest-v9-tariff-overlay-manifest.json'
 
 permissions:
   contents: read
@@ -32,6 +33,7 @@ jobs:
           import json
           from pathlib import Path
           d=json.loads(Path('reports/morocco/kilowatt/latest-v9-tariff-overlay.json').read_text())
+          m=json.loads(Path('reports/morocco/kilowatt/latest-v9-tariff-overlay-manifest.json').read_text())
           rows=d.get('stations') or []
           assert len(rows)==43, len(rows)
           assert d.get('policy',{}).get('station_specific_free_only') is True
@@ -41,6 +43,7 @@ jobs:
           free=[r for r in rows if r.get('tariff_state')=='free_station_specific_public_evidence']
           unresolved=[r for r in rows if r.get('tariff_state')=='unresolved']
           assert len(free)+len(unresolved)==43
+          assert len(free)==26 and len(unresolved)==17
           assert free, 'expected at least one station-specific free match'
           for r in rows:
             assert r.get('cpo_operator')=='Kilowatt'
@@ -53,10 +56,26 @@ jobs:
             else:
               assert r.get('tariff_mad') is None
               assert r.get('tariff_production_eligible') is False
+
+          free_ids={r['station_id'] for r in free}
+          unresolved_ids={r['station_id'] for r in unresolved}
+          assert set(m.get('freeStationIds') or [])==free_ids
+          assert set(m.get('unresolvedStationIds') or [])==unresolved_ids
+          assert free_ids.isdisjoint(unresolved_ids)
+          assert len(free_ids|unresolved_ids)==43
+          assert m.get('summary')=={'productionStations':43,'free':26,'unresolved':17}
+          assert m.get('policy',{}).get('stationSpecificFreeOnly') is True
+          assert m.get('policy',{}).get('missingTariffDoesNotMeanFree') is True
+          assert m.get('policy',{}).get('cityOnlyPaidRuleRejected') is True
+          assert m.get('policy',{}).get('cpoOperator')=='Kilowatt'
+          assert m.get('policy',{}).get('tariffChannel')=='Kilowatt direct/public access'
+          assert m.get('policy',{}).get('currency')=='MAD'
+
           print(json.dumps({
             'stations':len(rows),
             'free':len(free),
             'unresolved':len(unresolved),
+            'manifest_matches_artifact':True,
             'matched_rules':d.get('summary',{}).get('matched_free_evidence_rules'),
             'unmatched_rules':d.get('summary',{}).get('unmatched_free_evidence_rules')
           }, ensure_ascii=False))
