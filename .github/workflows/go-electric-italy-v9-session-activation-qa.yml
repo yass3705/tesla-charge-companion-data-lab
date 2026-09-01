@@ -1,0 +1,126 @@
+name: Go Electric Italy V9 session activation QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - qa/italy-go-electric-session-runtime
+    paths:
+      - scripts/go_electric_italy_v9_session_activation_qa.py
+      - .github/workflows/go-electric-italy-v9-session-activation-qa.yml
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: go-electric-italy-v9-session-activation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  activate-session-candidates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download validated cost-ready and session translation artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ge-cost /tmp/ge-session
+          gh run download 33457245459 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name go-electric-italy-v9-cost-readiness \
+            --dir /tmp/ge-cost
+          gh run download 33458731548 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name go-electric-italy-v9-session-translation-qa \
+            --dir /tmp/ge-session
+          find /tmp/ge-cost /tmp/ge-session -type f -print
+
+      - name: Build session-ready consolidation candidate
+        run: |
+          set -euo pipefail
+          CANDIDATE="$(find /tmp/ge-cost -name 'italy_v9_candidate_go_electric_cost_ready_qa.json.gz' -print -quit)"
+          RUNTIME="$(find /tmp/ge-session -name 'go_electric_italy_v9_session_runtime_offers.json' -print -quit)"
+          ENGINE="$(find /tmp/ge-session -name 'go_electric_italy_v9_session_engine_qa.json' -print -quit)"
+          test -n "$CANDIDATE"
+          test -n "$RUNTIME"
+          test -n "$ENGINE"
+          python scripts/go_electric_italy_v9_session_activation_qa.py \
+            --candidate "$CANDIDATE" \
+            --runtime-offers "$RUNTIME" \
+            --engine-report "$ENGINE"
+
+      - name: Validate session activation gates
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+
+          report = json.loads(Path('data/reports/go_electric_italy_v9_session_activation_qa.json').read_text())
+          assert report['publicationAllowed'] is False
+          assert report['builderActivationAllowed'] is False
+          assert report['validatedGoElectricDirectEvse'] == 2214
+          assert report['promotedEnergyPlusSessionEvse'] == 127
+          assert report['goElectricRuntimeCandidateEvse'] == 943
+          assert report['goElectricStagedEvse'] == 1271
+          assert report['remainingBlocked']['timeComponentOffers'] == 1052
+          assert report['remainingBlocked']['parkingComponentOffers'] == 700
+          assert report['directAccounting']['rankableDirectEvse'] == 26569
+          assert report['directAccounting']['rankableDirectCoveragePct'] == 35.41
+          assert report['directAccounting']['rankableDirectByOperator']['Go Electric Stations SRLS'] == 943
+          assert report['goElectricPhysicalWithoutRuntimeCandidate'] == 1510
+          assert report['engineEvidence']['tested'] == 127
+          assert report['engineEvidence']['passed'] == 127
+          assert report['engineEvidence']['failed'] == 0
+          assert all(report['gates'].values()), report['gates']
+
+          out = Path('data/consolidation/italy_v9_candidate_go_electric_session_ready_qa.json.gz')
+          assert out.exists() and out.stat().st_size > 100000
+          with gzip.open(out, 'rt', encoding='utf-8') as fh:
+              data = json.load(fh)
+          assert data['publicationAllowed'] is False
+          assert data['counts']['rankableDirectEvseCount'] == 26569
+          assert data['counts']['rankableDirectCoveragePct'] == 35.41
+          ge = []
+          promoted = []
+          unsafe = []
+          for evse in data['evses']:
+              tariff = evse.get('tccV9DirectTariff') or {}
+              if tariff.get('operator') != 'Go Electric Stations SRLS':
+                  continue
+              ge.append(evse)
+              comps = {c.get('type') for c in tariff.get('priceComponents') or []}
+              if evse.get('tccV9RankableDirect') is True:
+                  if comps == {'energy', 'session'}:
+                      promoted.append(evse)
+                      pricing = tariff.get('runtimePricing') or {}
+                      assert pricing.get('type') == 'rules'
+                      rule = pricing['rules'][0]
+                      assert 'pricePerKwh' in rule and 'sessionFeeEur' in rule
+                  elif comps != {'energy'}:
+                      unsafe.append(evse.get('evseId'))
+              elif comps == {'energy', 'session'}:
+                  raise AssertionError(f"energy+session not promoted: {evse.get('evseId')}")
+          assert len(ge) == 2214
+          assert sum(1 for e in ge if e.get('tccV9RankableDirect') is True) == 943
+          assert len(promoted) == 127
+          assert not unsafe
+          print(json.dumps(report, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Upload session activation QA candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-electric-italy-v9-session-activation-qa
+          path: |
+            data/consolidation/italy_v9_candidate_go_electric_session_ready_qa.json.gz
+            data/reports/go_electric_italy_v9_session_activation_qa.json
+          retention-days: 14
