@@ -1,0 +1,128 @@
+name: Morocco Club EV-Charge public root asset probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/morocco-club-evcharge-public-root-assets.yml'
+      - 'scripts/morocco_club_evcharge_public_root_assets_probe.py'
+      - 'reports/morocco/totalenergies/club-ev-charge-public-root-assets-2026-09-01.json'
+      - 'reports/morocco/totalenergies/club-ev-charge-exact-target-get-2026-09-01.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/morocco-club-evcharge-public-root-assets.yml'
+      - 'scripts/morocco_club_evcharge_public_root_assets_probe.py'
+      - 'reports/morocco/totalenergies/club-ev-charge-public-root-assets-2026-09-01.json'
+      - 'reports/morocco/totalenergies/club-ev-charge-exact-target-get-2026-09-01.json'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Inspect exact public root and explicit same-origin assets
+        run: python3 scripts/morocco_club_evcharge_public_root_assets_probe.py
+
+      - name: Validate read-only fail-closed contract
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from urllib.parse import urlsplit
+
+          d=json.loads(Path('artifacts/morocco-club-evcharge-public-root-assets/summary.json').read_text())
+          assert d.get('schema_version')==1
+          p=d.get('policy',{})
+          for key in (
+              'pr63_rejected_candidate_record_gate',
+              'anonymous_read_only_get_only',
+              'exact_public_root_only',
+              'assets_must_be_explicit_root_src_or_href',
+              'same_origin_https_assets_only',
+              'asset_discovery_is_not_recursive',
+              'no_path_enumeration',
+              'no_redirects_followed',
+              'no_query_parameters',
+              'no_request_body',
+              'no_login',
+              'no_credentials',
+              'no_cookies',
+              'no_station_or_connector_ids',
+              'no_charging_or_account_actions',
+          ):
+              assert p.get(key) is True
+          assert p.get('raw_root_html_persisted') is False
+          assert p.get('raw_asset_bodies_persisted') is False
+          assert p.get('arbitrary_strings_persisted') is False
+
+          gate=d.get('evidence_gate',{})
+          assert gate.get('gate_passed') is True
+          root=d.get('root',{})
+          assert root.get('url')=='https://csmstotalenergiesma.numocity.com/'
+          assert root.get('request_count')==1
+          assert root.get('method')=='GET'
+          assert root.get('status')==200
+          assert root.get('sha256')
+
+          discovery=d.get('discovery',{})
+          assert discovery.get('asset_limit_exceeded') is False
+          paths=discovery.get('eligible_same_origin_asset_paths',[])
+          assert paths==sorted(set(paths))
+          for path in paths:
+              parsed=urlsplit(path)
+              assert path.startswith('/') and not parsed.query and not parsed.fragment
+              assert path.lower().endswith(('.js','.css'))
+
+          assets=d.get('assets',[])
+          assert [item.get('path') for item in assets]==paths
+          assert all(item.get('status')==200 for item in assets)
+          assert all(item.get('sha256') for item in assets)
+          assert all(item.get('scanned') is True for item in assets)
+
+          network=d.get('network',{})
+          assert network.get('root_request_count')==1
+          assert network.get('asset_request_count')==len(assets)
+          assert network.get('cross_origin_request_count')==0
+          assert network.get('total_request_count')==1+len(assets)
+
+          findings=d.get('safe_findings',{})
+          assert findings.get('runtime_entrypoint_fetched') is False
+          assert findings.get('runtime_entrypoint_path') in (None,'/main.dart.js')
+          assert d.get('production_decision')=='no_promotion'
+          model=d.get('modeling',{})
+          assert model.get('cpo_operator')=='unresolved_station_specific'
+          assert model.get('app_source_access_network')=='Club EV-Charge / TotalEnergies Marketing Maroc'
+          assert model.get('numocity_role')=='unverified_current_production_backend'
+
+          forbidden={'raw_body','raw_html','text','content','source_context'}
+          def walk(value):
+              if isinstance(value,dict):
+                  assert forbidden.isdisjoint(value)
+                  for child in value.values(): walk(child)
+              elif isinstance(value,list):
+                  for child in value: walk(child)
+          walk(d)
+          print(json.dumps({
+              'ok':True,
+              'asset_paths':paths,
+              'runtime_entrypoint':findings.get('runtime_entrypoint_path'),
+              'target_backend_markers_found':findings.get('target_backend_markers_found'),
+              'technical_result':d.get('technical_result'),
+          },ensure_ascii=False))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: morocco-club-evcharge-public-root-assets
+          path: artifacts/morocco-club-evcharge-public-root-assets/summary.json
+          if-no-files-found: error
+          retention-days: 3
