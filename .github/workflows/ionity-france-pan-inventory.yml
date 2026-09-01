@@ -1,0 +1,42 @@
+name: IONITY France PAN inventory
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/ionity-france-pan-inventory.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static'
+          curl -fLsS "$BASE/manifest.json" -o manifest.json
+          FILE=$(python -c "import json;print(json.load(open('manifest.json'))['allFile'])")
+          curl -fLsS "$BASE/$FILE" -o all.json.gz
+          python - <<'PY'
+          import gzip,json,re
+          rows=json.loads(gzip.open('all.json.gz','rb').read().decode())
+          def norm(v):return str(v or '').upper().replace('*','').replace('-','').replace('_','').replace(' ','')
+          stations=[]
+          for r in rows:
+            cfgs=r[8] if len(r)>8 and isinstance(r[8],list) else []
+            pdcs=[]
+            for c in cfgs:
+              if isinstance(c,list) and len(c)>6 and isinstance(c[6],list):pdcs += [str(x) for x in c[6]]
+            if 'IONITY' in str(r[5]).upper() or any('IOY' in norm(x) for x in pdcs):
+              stations.append((r[0],r[1],r[5],pdcs))
+          ids=sorted(set(x for *_,ps in stations for x in ps if 'IOY' in norm(x)))
+          print('IONITY_STATIONS',len(stations))
+          print('IONITY_RAW_EVSES',len(ids))
+          print('SAMPLE_STATIONS')
+          for s in stations[:15]:print(json.dumps(s,ensure_ascii=False))
+          print('SAMPLE_EVSES',json.dumps(ids[:30],ensure_ascii=False))
+          PY
