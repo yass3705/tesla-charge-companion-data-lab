@@ -1,0 +1,65 @@
+name: Atlante current guest station tariff probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/atlante-apk-public-config
+    paths:
+      - scripts/atlante_current_guest_flow_probe.py
+      - .github/workflows/atlante-current-guest-flow-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download public current myAtlante Android package
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import io,urllib.request,zipfile
+          u='https://d.apkpure.net/b/XAPK/com.atlante.charging?version=latest'
+          q=urllib.request.Request(u,headers={'User-Agent':'Mozilla/5.0 (Linux; Android 14) Chrome/140 Mobile','Referer':'https://apkpure.net/'})
+          x=urllib.request.urlopen(q,timeout=90).read()
+          with zipfile.ZipFile(io.BytesIO(x)) as z:
+            apk=next(n for n in z.namelist() if n.endswith('.apk') and 'config.' not in n)
+            with zipfile.ZipFile(io.BytesIO(z.read(apk))) as a:
+              open('/tmp/index.android.bundle','wb').write(a.read('assets/index.android.bundle'))
+          PY
+      - name: Decompile Hermes bundle transiently
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/P1sec/hermes-dec.git /tmp/hermes-dec
+          python /tmp/hermes-dec/hbc-decompiler /tmp/index.android.bundle /tmp/decompiled.js
+          test -s /tmp/decompiled.js
+      - name: Reproduce current guest CPO map tariff flow
+        run: python scripts/atlante_current_guest_flow_probe.py /tmp/decompiled.js
+      - name: Validate actual station prices
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('data/reports/atlante_current_guest_flow_probe.json').read_text())
+          assert r['clientCredentialRecovered'] is True
+          assert r['clientCredentialPersisted'] is False
+          assert r['mapLocationCount'] > 0
+          assert r['stationTariffSamples']
+          assert all(v is False for v in r['security'].values())
+          for s in r['stationTariffSamples']:
+            assert any(float(t['eurPerKwh'])>0 for t in s['tariffs'])
+          print(json.dumps({'selector':r['selectedCpoSelector'],'locations':r['mapLocationCount'],'sampleStations':len(r['stationTariffSamples'])},indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlante-current-guest-station-price-proof
+          path: data/reports/atlante_current_guest_flow_probe.json
+          retention-days: 14
