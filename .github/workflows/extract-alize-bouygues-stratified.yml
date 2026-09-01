@@ -1,0 +1,66 @@
+name: France Alize Bouygues stratified sample
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/extract-alize-bouygues-stratified.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: curl -fLsS --retry 3 https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz -o /tmp/france-all.json.gz
+      - name: Probe one station per Bouygues network
+        shell: bash
+        run: |
+          python - <<'PY'
+          import gzip,json,pathlib,urllib.request,urllib.parse,re,collections
+          rows=json.loads(gzip.open('/tmp/france-all.json.gz','rt',encoding='utf-8').read())
+          norm=lambda x: re.sub(r'[^A-Z0-9]','',str(x or '').upper())
+          chosen={}
+          for r in rows:
+              if 'bouygues' not in str(r[5] or '').lower(): continue
+              net=str(r[10] if len(r)>10 else '')
+              if net not in chosen: chosen[net]=r
+          API='https://alize-map-api-faezg8gfgjfngab9.francecentral-01.azurewebsites.net'
+          def req(url,headers=None,data=None):
+              q=urllib.request.Request(url,data=data,headers=headers or {},method='POST' if data is not None else 'GET')
+              with urllib.request.urlopen(q,timeout=15) as resp:return json.loads(resp.read().decode())
+          out=[]
+          for net,r in chosen.items():
+              pdc=[str(x) for c in (r[8] or []) for x in (c[6] or []) if x]; wanted={norm(x) for x in pdc}
+              up=f"https://drive-api.plugsurfing.com/drive/v1/geosearch/radius?latitude={r[3]}&longitude={r[4]}&distance=2500&aggregate=false"
+              item={'network':net,'stationId':r[0],'name':r[1],'lat':r[3],'lon':r[4],'pdcIds':pdc,'matches':[]}
+              try:
+                  data=req(API+'/drive/markers',{'content-type':'application/json','key':'BYESKEY','accept':'*/*','url':up},b'{"filters":[]}')
+                  item['locations']=len(data.get('locations',[]))
+                  for loc in data.get('locations',[]):
+                      hit=[e.get('evse_id') for e in loc.get('evses',[]) if norm(e.get('evse_id')) in wanted]
+                      if not hit: continue
+                      u='https://drive-api.plugsurfing.com/drive/v1/locations/'+urllib.parse.quote(str(loc.get('id') or ''),safe='')
+                      d=req(API+'/drive/detail',{'key':'BYESKEY','accept':'*/*','url':u})
+                      prices=[]
+                      for e in d.get('evses',[]):
+                          if norm(e.get('evse_id')) in wanted:
+                              prices += [{'evseId':e.get('evse_id'),'price':c.get('price'),'power':c.get('power')} for c in e.get('connectors',[])]
+                      item['matches'].append({'locationName':loc.get('name'),'operator':loc.get('operator'),'hit':hit,'prices':prices})
+              except Exception as e:item['error']=repr(e)
+              out.append(item)
+          report={'networks':len(out),'matchedNetworks':sum(bool(x['matches']) for x in out),'matchedPdc':sum(len({p['evseId'] for m in x['matches'] for p in m['prices']}) for x in out),'results':out}
+          pathlib.Path('reports/france/alize').mkdir(parents=True,exist_ok=True)
+          pathlib.Path('reports/france/alize/bouygues-stratified-sample.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({k:v for k,v in report.items() if k!='results'},indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/alize/bouygues-stratified-sample.json
+          git commit -m 'France Alize: publish stratified Bouygues sample' || exit 0
+          git push
