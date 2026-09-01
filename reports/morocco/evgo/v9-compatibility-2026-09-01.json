@@ -1,25 +1,26 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "country": "MA",
   "network": "EVGO",
   "validated_on": "2026-09-01",
-  "source_workflow_run": 33456426369,
-  "source_artifact_id": 9781593528,
-  "source_branch": "integration/morocco-evgo-fresh-v9",
-  "source_head_sha": "a752855dcb75403ae122831076dd7cc034ead438",
+  "latest_validated_workflow_run": 33482196815,
+  "latest_validated_head_sha": "703888bec40ec702e3df0d9c48a0e0c3be09aa31",
   "validation": {
     "workflow_conclusion": "success",
+    "source_generated_at": "2026-09-01T07:27:16.598791+00:00",
     "stations": 17,
     "evses": 43,
     "gps_valid_morocco": 17,
     "native_status_counts": {
-      "available": 24,
-      "charging": 18,
+      "available": 28,
+      "charging": 10,
+      "preparing": 1,
+      "suspendedEV": 3,
       "unavailable": 1
     },
     "operational_class_counts": {
-      "available": 23,
-      "occupied_or_active_session": 18,
+      "available": 27,
+      "occupied_or_active_session": 14,
       "out_of_service": 2
     },
     "status_precedence_validated": true,
@@ -49,10 +50,12 @@
     "registry_source_id": "morocco-evgo-native",
     "adapter": "morocco-public-v1",
     "profile": "evgo",
-    "current_registry_url": "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-data-lab/main/reports/morocco/evgo/latest-normalized-stations.json",
-    "current_registry_capabilities": ["inventory", "connectors", "access", "status", "tariff"],
-    "compatibility_result": "adapter/profile already present, but registry currently targets the normalized snapshot rather than the fresh-status production snapshot",
-    "required_integration_change_after_publication": "Publish latest-production-stations.json on data-lab main, then switch morocco-evgo-native registry URL to that production snapshot. Do not switch before the file is publicly available on main.",
+    "registry_url": "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-data-lab/main/reports/morocco/evgo/latest-normalized-stations.json",
+    "dynamic_overlay_url": "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-data-lab/main/reports/morocco/evgo/latest-status-overlay.json",
+    "compatibility_result": "compatible",
+    "runtime_behavior": "The morocco-public-v1 EVGO profile derives and loads latest-status-overlay.json from the normalized source URL, applies fresh native status at runtime, validates expected 17-station / 43-EVSE cardinality and usable Morocco GPS, and enforces a default dynamic-status freshness limit of 120 minutes.",
+    "registry_repoint_required": false,
+    "remaining_production_blocker": "The public main-branch latest-status-overlay.json must be regenerated and published frequently enough to remain inside the V9 120-minute freshness gate. The isolated hourly validation workflow proves regeneration but does not publish operator-derived data while the PR remains isolated/read-only.",
     "stable_change_applied": false
   },
   "policy": {
