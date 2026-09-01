@@ -1,0 +1,86 @@
+name: Morocco Club EV-Charge exact target GET probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/morocco-club-evcharge-exact-target-get.yml'
+      - 'scripts/morocco_club_evcharge_exact_target_get_probe.py'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/morocco-club-evcharge-exact-target-get.yml'
+      - 'scripts/morocco_club_evcharge_exact_target_get_probe.py'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run single evidence-gated target GET
+        run: python3 scripts/morocco_club_evcharge_exact_target_get_probe.py
+
+      - name: Validate read-only fail-closed contract
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          d=json.loads(Path('artifacts/morocco-club-evcharge-exact-target-get/summary.json').read_text())
+          assert d.get('schema_version')==1
+          p=d.get('policy',{})
+          assert p.get('target_client_only') is True
+          assert p.get('static_gate_before_network') is True
+          assert p.get('anonymous_read_only_get_only') is True
+          assert p.get('no_path_enumeration') is True
+          assert p.get('no_login') is True
+          assert p.get('no_credentials') is True
+          assert p.get('no_real_station_or_connector_ids') is True
+          assert p.get('no_query_parameters') is True
+          assert p.get('raw_response_body_persisted') is False
+          assert p.get('raw_package_persisted') is False
+
+          candidate=d.get('candidate',{})
+          assert candidate.get('url')=='https://csmstotalenergiesma.numocity.com/2/chargestation/getstationstate'
+          assert candidate.get('constructed_from_target_package_only') is True
+          evidence=candidate.get('static_evidence',{})
+          assert evidence.get('host_literal_hits',0)>0
+          assert evidence.get('route_literal_hits',0)>0
+          assert evidence.get('near_route_numocity_v2_hits',0)>0
+          assert evidence.get('gate_passed') is True
+
+          probe=d.get('probe',{})
+          assert probe.get('request_count')==1
+          assert probe.get('method')=='GET'
+          assert probe.get('query_parameters_used') is False
+          assert probe.get('request_body_used') is False
+          assert isinstance(probe.get('status'),int)
+
+          model=d.get('modeling',{})
+          assert model.get('cpo_operator')=='unresolved_station_specific'
+          assert model.get('app_source_access_network')=='Club EV-Charge / TotalEnergies Marketing Maroc'
+          assert model.get('numocity_role')=='unverified_current_production_backend'
+          assert model.get('status_source')=='unresolved_until_station-specific native payload validation'
+          assert d.get('production_decision')=='no_promotion'
+          print(json.dumps({
+            'ok':True,
+            'status':probe.get('status'),
+            'technical_result':d.get('technical_result'),
+            'safe_response_shape':probe.get('safe_response_shape'),
+          },ensure_ascii=False))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: morocco-club-evcharge-exact-target-get
+          path: artifacts/morocco-club-evcharge-exact-target-get/summary.json
+          if-no-files-found: error
+          retention-days: 3
