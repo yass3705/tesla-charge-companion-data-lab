@@ -1,0 +1,90 @@
+{
+  "schema_version": 2,
+  "country": "MA",
+  "network": "EVGO",
+  "validated_on": "2026-09-01",
+  "latest_validated_workflow_run": 33482196815,
+  "latest_validated_head_sha": "703888bec40ec702e3df0d9c48a0e0c3be09aa31",
+  "validation": {
+    "workflow_conclusion": "success",
+    "source_generated_at": "2026-09-01T07:27:16.598791+00:00",
+    "stations": 17,
+    "evses": 43,
+    "gps_valid_morocco": 17,
+    "native_status_counts": {
+      "available": 28,
+      "charging": 10,
+      "preparing": 1,
+      "suspendedEV": 3,
+      "unavailable": 1
+    },
+    "operational_class_counts": {
+      "available": 27,
+      "occupied_or_active_session": 14,
+      "out_of_service": 2
+    },
+    "status_precedence_validated": true,
+    "long_or_temporary_unavailability_overrides_text_status": true,
+    "suspendedEV_and_active_session_states_classified_occupied": true,
+    "modeling_dimensions_kept_separate": [
+      "operator_cpo_candidate",
+      "site_brand",
+      "app_source",
+      "tariff_channel",
+      "status_source"
+    ]
+  },
+  "published_complete_snapshot": {
+    "path": "reports/morocco/evgo/latest-production-stations.json",
+    "snapshot_generated_at": "2026-08-31T21:06:19.322041+00:00",
+    "source_generated_at": "2026-08-31T21:06:03.044605+00:00",
+    "sha256": "3a501a1ef137495adb63e73e24a3d898a1dc9c504bb71689084612fd7b9ed4c6",
+    "stations": 17,
+    "evses": 43,
+    "gps_valid_morocco": 17,
+    "native_status_counts": {
+      "available": 24,
+      "charging": 18,
+      "unavailable": 1
+    },
+    "operational_class_counts": {
+      "available": 23,
+      "occupied_or_active_session": 18,
+      "out_of_service": 2
+    },
+    "byte_reproducible_from_public_base_and_overlay": true,
+    "non_status_metadata_preserved": true,
+    "runtime_role": "Audit-complete snapshot only. V9 continues to consume the normalized base plus the overlay and independently enforces its 120-minute freshness gate."
+  },
+  "critical_example": {
+    "locationId": 6,
+    "site": "Marjane Menara",
+    "evse_id": "10",
+    "native_text_status": "available",
+    "isAvailable": false,
+    "isLongTermUnavailable": true,
+    "isTemporarilyUnavailable": false,
+    "operational_class": "out_of_service",
+    "interpretation": "Flag precedence is required; the EVSE must not be exposed as available."
+  },
+  "v9_registry_check": {
+    "stable_validated_v9_source_sha": "76891223d71632eb141990c0bda50d5bf72cebf7",
+    "registry_source_id": "morocco-evgo-native",
+    "adapter": "morocco-public-v1",
+    "profile": "evgo",
+    "registry_url": "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-data-lab/main/reports/morocco/evgo/latest-normalized-stations.json",
+    "dynamic_overlay_url": "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-data-lab/main/reports/morocco/evgo/latest-status-overlay.json",
+    "compatibility_result": "compatible",
+    "runtime_behavior": "The morocco-public-v1 EVGO profile derives and loads latest-status-overlay.json from the normalized source URL, applies fresh native status at runtime, validates expected 17-station / 43-EVSE cardinality and usable Morocco GPS, and enforces a default dynamic-status freshness limit of 120 minutes.",
+    "registry_repoint_required": false,
+    "remaining_production_blocker": "The public main-branch latest-status-overlay.json must be regenerated and published frequently enough to remain inside the V9 120-minute freshness gate. Publishing a deterministic complete snapshot closes the regeneration/audit gap but does not make stale dynamic status eligible at runtime.",
+    "stable_change_applied": false
+  },
+  "policy": {
+    "sanitized": true,
+    "read_only_validation": true,
+    "no_credentials": true,
+    "no_personal_data": true,
+    "no_stable_deployment_in_this_commit": true
+  }
+}
