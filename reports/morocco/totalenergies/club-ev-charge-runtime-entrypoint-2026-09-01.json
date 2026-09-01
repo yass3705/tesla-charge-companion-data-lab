@@ -1,0 +1,117 @@
+{
+  "schema_version": 2,
+  "observed_at": "2026-09-01",
+  "subject": "Club EV-Charge exact public Flutter runtime entrypoint",
+  "source": {
+    "repository": "yass3705/tesla-charge-companion-data-lab",
+    "workflow_run_id": 33538726691,
+    "workflow_conclusion": "success",
+    "head_sha": "754d75142f95829d358f57e9d21479ccc821bd3d",
+    "artifact_id": 9812701285,
+    "artifact_sha256": "0e1727285f0f2f85935bf16fe9c53319280ce0c0d5fe3bd9432d663d49ce1fff"
+  },
+  "policy": {
+    "public_shell_record_gate": true,
+    "anonymous_read_only_get_only": true,
+    "exact_same_origin_entrypoint_only": true,
+    "entrypoint_must_be_explicitly_named_by_public_bootstrap": true,
+    "no_discovered_route_requests": true,
+    "no_path_enumeration": true,
+    "no_redirects_followed": true,
+    "no_query_parameters": true,
+    "no_request_body": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_cookies": true,
+    "no_station_or_connector_ids": true,
+    "no_charging_or_account_actions": true,
+    "raw_runtime_body_persisted": false,
+    "arbitrary_strings_persisted": false,
+    "sanitized_read_only_api_candidates_only": true,
+    "ui_navigation_routes_excluded": true
+  },
+  "request": {
+    "url": "https://csmstotalenergiesma.numocity.com/main.dart.js",
+    "path": "/main.dart.js",
+    "request_count": 1,
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/javascript; charset=UTF-8",
+    "bytes": 11067513,
+    "sha256": "8b3807d47902a57f46778fe8e33af5c9702ef64ccae147bee545c4e2bf4add3a",
+    "limit_exceeded": false
+  },
+  "safe_findings": {
+    "target_marker_counts": {
+      "/api/": 329,
+      "/chargestation/": 16,
+      "connectorstatus": 16,
+      "csmstotalenergiesma": 1,
+      "getstationstate": 1,
+      "numocity": 19,
+      "tariff": 884,
+      "totalenergies": 1
+    },
+    "base_config_key_counts": {
+      "baseURL": 6,
+      "endpoint": 12
+    },
+    "quoted_allowlisted_fragment_counts": {},
+    "getstationstate_marker_relations": {
+      "getstationstate_occurrence_count": 1,
+      "unique_occurrence": true,
+      "nearest_marker_distance_chars": {
+        "csmstotalenergiesma": 9934627,
+        "numocity": 57734,
+        "/2": 2743,
+        "/api/": 56,
+        "/chargestation/": 15,
+        "baseurl": 3622686,
+        "endpoint": 82506
+      },
+      "marker_within_256_chars": {
+        "csmstotalenergiesma": false,
+        "numocity": false,
+        "/2": false,
+        "/api/": true,
+        "/chargestation/": true,
+        "baseurl": false,
+        "endpoint": false
+      },
+      "marker_within_1024_chars": {
+        "csmstotalenergiesma": false,
+        "numocity": false,
+        "/2": false,
+        "/api/": true,
+        "/chargestation/": true,
+        "baseurl": false,
+        "endpoint": false
+      }
+    },
+    "safe_numocity_absolute_urls": [],
+    "safe_numocity_base_literals": [],
+    "safe_read_only_api_path_candidates": [
+      "/poc/api/charge-location/info"
+    ],
+    "safe_numocity_absolute_url_count": 0,
+    "safe_numocity_base_literal_count": 0,
+    "safe_read_only_api_path_candidate_count": 1
+  },
+  "network": {
+    "total_request_count": 1,
+    "cross_origin_request_count": 0
+  },
+  "interpretation": "The public Flutter runtime is reachable and contains request-shape evidence linking the sole getstationstate marker very closely to /chargestation/ and /api/, while /2 and the Numocity host are not locally adjacent. This weakens the rejected direct host+/2+/chargestation/getstationstate composition and leaves runtime authority/base-path unresolved. Do not guess variants.",
+  "modeling": {
+    "cpo_operator": "unresolved_station_specific",
+    "site_brand": "TotalEnergies when station-specific evidence supports it",
+    "app_source_access_network": "Club EV-Charge / TotalEnergies Marketing Maroc",
+    "tariff_channel": "unresolved_without_native_station-specific evidence",
+    "status_source": "unresolved_until_station-specific native payload validation",
+    "implementation_partner": "GM AFRICA",
+    "numocity_role": "unverified_current_production_backend"
+  },
+  "technical_result": "runtime_public_readonly_request_shape_evidence_identified",
+  "production_decision": "no_promotion",
+  "next_step": "Resolve the authority/base-path relationship from explicit public client evidence before any exact anonymous GET to a discovered API route. Do not enumerate."
+}
