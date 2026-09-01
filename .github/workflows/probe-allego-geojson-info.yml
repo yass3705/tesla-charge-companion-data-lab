@@ -1,0 +1,73 @@
+name: France Allego geojson info probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-allego-geojson-info.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract embedded station GeoJSON and detail AJAX
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/allego reports/france/allego
+          curl -fLsS -A 'Mozilla/5.0' https://www.allego.eu/fr/trouvez-nous/ -o /tmp/allego/page.html
+          python - <<'PY'
+          import re,json,pathlib,html as htmllib,subprocess,urllib.parse
+          t=pathlib.Path('/tmp/allego/page.html').read_text(errors='ignore')
+          # Capture the inline localization object by extracting balanced JSON-ish assignment around geojson.
+          hits=[]
+          for m in re.finditer(r'ag_block_map_args\s*=\s*',t):
+              s=t[m.end():m.end()+3000000]
+              end=s.find(';</script>')
+              if end<0:end=s.find(';\n')
+              hits.append(s[:end if end>0 else 500000])
+          raw=max(hits,key=len) if hits else ''
+          # WordPress wp_localize_script emits valid JSON object in current page.
+          try: args=json.loads(raw.strip().rstrip(';'))
+          except Exception as e:
+              # fallback: direct geojson object via JSON decoder
+              args={}
+              gm=re.search(r'"geojson"\s*:\s*',raw)
+              if gm:
+                  dec=json.JSONDecoder();geo,_=dec.raw_decode(raw[gm.end():]);args['geojson']=geo
+              for k in ('ajax_station','ajax_status'):
+                  km=re.search(r'"'+k+r'"\s*:\s*"([^"]+)"',raw)
+                  if km:args[k]=km.group(1).replace('\\/','/')
+          geo=args.get('geojson') or {};features=geo.get('features') or []
+          # Never persist map client token or unrelated localized data.
+          summary={'featureCount':len(features),'featureSample':features[:8],'ajax_station':args.get('ajax_station'),'ajax_status':args.get('ajax_status')}
+          attempts=[]
+          ajax=args.get('ajax_station') or 'https://www.allego.eu/fr/wp-admin/admin-ajax.php'
+          for f in features[:12]:
+              p=f.get('properties') or {};post=p.get('post_id') or p.get('id') or p.get('postId')
+              if post is None:continue
+              q=urllib.parse.urlencode({'action':'station_info','post_id':post,'active':'false'})
+              r=subprocess.run(['curl','-sS','-A','Mozilla/5.0','-H','X-Requested-With: XMLHttpRequest','-w','\n%{http_code}',ajax+('?' if '?' not in ajax else '&')+q],capture_output=True,text=True)
+              body,status=r.stdout.rsplit('\n',1) if '\n' in r.stdout else (r.stdout,'')
+              try:data=json.loads(body)
+              except:data=body
+              attempts.append({'post_id':post,'feature':f,'status':status,'response':data if not isinstance(data,str) else data[:20000]})
+          out={**summary,'detailAttempts':attempts}
+          rawout=json.dumps(out,ensure_ascii=False,indent=2)+'\n'
+          rawout=re.sub(r'pk\.[A-Za-z0-9._-]{20,}','[REDACTED]',rawout)
+          pathlib.Path('reports/france/allego/geojson-info-probe.json').write_text(rawout)
+          print(json.dumps({'featureCount':len(features),'ajax_station':args.get('ajax_station'),'sampleProperties':[f.get('properties') for f in features[:5]],'detailAttempts':attempts[:3]},ensure_ascii=False,indent=2)[:70000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/allego/geojson-info-probe.json
+          git commit -m 'France Allego: publish GeoJSON detail probe' || exit 0
+          git pull --rebase origin main
+          git push
