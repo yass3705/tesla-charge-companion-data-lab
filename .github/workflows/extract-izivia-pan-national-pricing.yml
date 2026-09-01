@@ -1,0 +1,112 @@
+name: France IZIVIA PAN national pricing extraction
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/extract-izivia-pan-national-pricing.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - run: curl -fLsS --retry 3 https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz -o /tmp/fr.json.gz
+      - name: Extract strict physical IZIVIA station pricing nationally
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/izivia
+          python - <<'PY'
+          import gzip,json,subprocess,pathlib,uuid,urllib.parse,re,math,concurrent.futures,unicodedata,collections,time,random
+          rows=json.loads(gzip.open('/tmp/fr.json.gz','rt',encoding='utf-8').read())
+          def normtxt(x):
+              s=unicodedata.normalize('NFD',str(x or '')).encode('ascii','ignore').decode().lower()
+              return re.sub(r'[^a-z0-9]+',' ',s).strip()
+          targets=[]
+          for r in rows:
+              if 'izivia' not in str(r[5] or '').lower():continue
+              targets.append({'stationId':r[0],'name':r[1],'address':r[2],'lat':float(r[3]),'lon':float(r[4]),'pdcIds':sorted({str(x) for c in (r[8] or []) for x in (c[6] or []) if x}),'network':r[10] if len(r)>10 else None,'operator':r[5]})
+          base='https://fronts-map.izivia.com/api';device=str(uuid.uuid4())
+          common=['-sS','-A','Mozilla/5.0','-H','accept: application/json','-H','Accept-Language: fr','-H',f'x-device-id: {device}']
+          def call(method,path,body=None,tries=4):
+              for attempt in range(tries):
+                  cmd=['curl',*common,'--max-time','25','-w','\n%{http_code}','-X',method]
+                  if body is not None:cmd+=['-H','content-type: application/json','--data',json.dumps(body,separators=(',',':'))]
+                  cmd += [base+path];r=subprocess.run(cmd,capture_output=True,text=True)
+                  payload,status=r.stdout.rsplit('\n',1) if '\n' in r.stdout else (r.stdout,'')
+                  try:code=int(status or 0)
+                  except:code=0
+                  if code==200:
+                      try:return code,json.loads(payload)
+                      except:return code,payload
+                  time.sleep(.15*(attempt+1)+random.random()*.08)
+              return code,payload
+          ms,markers=call('POST','/map/markers',{'square':{'centerLat':46.6,'centerLng':2.2,'zoom':5},'filters':{}})
+          if ms!=200 or not isinstance(markers,list):raise SystemExit('marker source unavailable')
+          def meters(t,m):
+              p=m.get('pos') or [999,999];lat2=float(p[1]);lon2=float(p[0]);lat=t['lat'];lon=t['lon']
+              x=math.radians(lon2-lon)*math.cos(math.radians((lat+lat2)/2));y=math.radians(lat2-lat)
+              return 6371000*math.sqrt(x*x+y*y)
+          def similarity(a,b):
+              A=set(normtxt(a).split());B=set(normtxt(b if not isinstance(b,dict) else ' '.join(str(v) for v in b.values())).split())
+              A-={'izivia','borne','recharge','station'};B-={'izivia','borne','recharge','station'}
+              return len(A&B)/max(1,len(A|B))
+          # coarse grid for candidates to avoid 7k x 8k full sort
+          grid=collections.defaultdict(list)
+          for m in markers:
+              p=m.get('pos') or []
+              if len(p)>=2:grid[(round(float(p[1]),2),round(float(p[0]),2))].append(m)
+          def nearby(t):
+              la=round(t['lat'],2);lo=round(t['lon'],2);out=[]
+              for di in (-.02,-.01,0,.01,.02):
+                  for dj in (-.02,-.01,0,.01,.02):out += grid.get((round(la+di,2),round(lo+dj,2)),[])
+              return sorted({m['id']:m for m in out}.values(),key=lambda m:meters(t,m))[:8]
+          def process(t):
+              cands=[];errors=[]
+              for m in nearby(t):
+                  dm=meters(t,m)
+                  if dm>250:continue
+                  ds,d=call('POST',f"/charging-locations/{m['id']}",{'filters':{}},3)
+                  if ds!=200 or not isinstance(d,dict):errors.append({'id':m['id'],'status':ds});continue
+                  sim=max(similarity(t['name'],d.get('name')),similarity(t['address'],d.get('address')))
+                  cands.append({'id':m['id'],'name':d.get('name'),'address':d.get('address'),'distanceM':round(dm,2),'similarity':round(sim,3),'legacyId':d.get('legacyId'),'stationEmipId':d.get('firstStationEmipId')})
+              cands.sort(key=lambda x:(x['distanceM'],-x['similarity']))
+              accepted=[c for c in cands if c['distanceM']<=35 or (c['distanceM']<=100 and c['similarity']>=0.28)]
+              if len(accepted)!=1:return {**t,'matchStatus':'none_or_ambiguous','candidates':cands,'errors':errors}
+              c=accepted[0];params={}
+              if c.get('legacyId') is not None:params['legacyId']=c['legacyId']
+              if c.get('stationEmipId'):params['stationEmipId']=c['stationEmipId']
+              ps,p=call('GET',f"/charging-locations/{c['id']}/pricing-info-items?{urllib.parse.urlencode(params)}",4)
+              return {**t,'matchStatus':'matched','crosswalk':c,'pricingStatus':ps,'pricing':p if ps==200 else None,'errors':errors}
+          results=[]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=16) as ex:
+              for i,r in enumerate(ex.map(process,targets)):
+                  results.append(r)
+                  if (i+1)%500==0:print('processed',i+1,'matched',sum(x['matchStatus']=='matched' for x in results),'priced',sum(bool(x.get('pricing')) for x in results),flush=True)
+          raw_counter=collections.Counter()
+          for x in results:
+              for item in x.get('pricing') or []:
+                  if item.get('itemType')=='charging_location':
+                      for s in item.get('pricingInfos') or item.get('rawPricingInfos') or []:raw_counter[str(s)]+=1
+          summary={'panIziviaStations':len(targets),'panIziviaPdc':sum(len(t['pdcIds']) for t in targets),'markerCount':len(markers),'matchedStations':sum(x['matchStatus']=='matched' for x in results),'pricedStations':sum(bool(x.get('pricing')) for x in results),'uniqueChargingLocationTariffTexts':len(raw_counter),'topTariffTexts':raw_counter.most_common(100)}
+          payload={'schemaVersion':1,'source':'IZIVIA public map API','summary':summary,'stations':results}
+          with gzip.open('reports/france/izivia/pan-national-pricing.json.gz','wb',compresslevel=9) as f:f.write(json.dumps(payload,ensure_ascii=False,separators=(',',':')).encode())
+          pathlib.Path('reports/france/izivia/pan-national-pricing-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,indent=2)[:40000])
+          if summary['pricedStations']<100:raise SystemExit('fail closed: unexpectedly low priced coverage')
+          PY
+      - name: Publish with retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/izivia/pan-national-pricing.json.gz reports/france/izivia/pan-national-pricing-summary.json
+          git commit -m 'France IZIVIA: publish national physical pricing snapshot' || exit 0
+          for n in 1 2 3 4 5; do git pull --rebase origin main; git push && exit 0; sleep $((n*2)); done
+          exit 1
