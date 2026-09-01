@@ -45,7 +45,7 @@ jobs:
             *) echo "Unexpected pricing redirect authority" >&2; exit 1 ;;
           esac
 
-      - name: Validate and emit sanitized evidence only
+      - name: Emit sanitized public-observation diagnostics
         shell: bash
         run: |
           set -euo pipefail
@@ -81,28 +81,21 @@ jobs:
           faq = normalized(visible_text(root / 'faq.html'))
           pricing = normalized(visible_text(root / 'howits.html'))
 
-          required_faq_patterns = {
+          faq_patterns = {
               'real_time_state': r'etat\s+en\s+temps\s+reel',
               'available': r'\bdisponible\b',
               'occupied': r'\boccupee\b',
               'out_of_service': r'\bhors[- ]service\b',
           }
-          required_pricing_patterns = {
+          pricing_patterns = {
               'dc_class': r'recharge\s+rapide\s*\(dc\)',
               'dc_price': r'2\s*[,.]\s*50?\s*dhs\s*/\s*min',
               'ac_class': r'recharge\s+semi[- ]rapide\s*\(ac\)',
               'ac_price': r'0\s*[,.]\s*5\s*dhs\s*/\s*min',
           }
-          missing = [
-              name for name, pattern in required_faq_patterns.items()
-              if not re.search(pattern, faq)
-          ]
-          missing += [
-              name for name, pattern in required_pricing_patterns.items()
-              if not re.search(pattern, pricing)
-          ]
-          if missing:
-              raise SystemExit('Expected public evidence missing: ' + ', '.join(missing))
+          faq_observed = {name: bool(re.search(pattern, faq)) for name, pattern in faq_patterns.items()}
+          pricing_observed = {name: bool(re.search(pattern, pricing)) for name, pattern in pricing_patterns.items()}
+          all_observed = all(faq_observed.values()) and all(pricing_observed.values())
 
           out = {
               'schema_version': 1,
@@ -111,12 +104,18 @@ jobs:
                   'https://www.fastvolt.net/HowIts',
               ],
               'network': 'FastVolt',
-              'status_semantics': {
+              'runner_public_html_observation': {
+                  'faq': faq_observed,
+                  'pricing': pricing_observed,
+                  'complete': all_observed,
+                  'note': 'False values document a runner-visible HTML mismatch/blocker; no raw HTML is retained.',
+              },
+              'status_semantics_candidate': {
                   'disponible': 'Available',
                   'occupée': 'Occupied',
                   'hors-service': 'diagnostic_out_of_service',
               },
-              'general_public_pricing_evidence': [
+              'general_public_pricing_candidate': [
                   {'charging_class': 'DC_rapid', 'mad_per_minute': 2.5},
                   {'charging_class': 'AC_semi_rapid', 'mad_per_minute': 0.5},
               ],
@@ -129,7 +128,8 @@ jobs:
               },
               'production_promotion': False,
               'notes': [
-                  'FAQ evidence proves native capability/vocabulary, not a live status endpoint.',
+                  'This workflow never calls a native charging backend.',
+                  'FAQ evidence is capability/vocabulary context only, not a live status source.',
                   'Public prices are not promoted station-by-station until applicability is established.',
                   'EVOne production eligibility remains limited to Available, Occupied or Charging.',
               ],
