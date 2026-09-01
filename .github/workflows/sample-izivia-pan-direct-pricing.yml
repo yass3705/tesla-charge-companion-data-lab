@@ -1,0 +1,80 @@
+name: France IZIVIA PAN direct pricing sample
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/sample-izivia-pan-direct-pricing.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - run: curl -fLsS --retry 3 https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz -o /tmp/fr.json.gz
+      - name: Match physical IZIVIA PAN stations to public map and pricing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/izivia
+          python - <<'PY'
+          import gzip,json,subprocess,pathlib,uuid,urllib.parse,re,math,concurrent.futures
+          rows=json.loads(gzip.open('/tmp/fr.json.gz','rt',encoding='utf-8').read())
+          norm=lambda x:re.sub(r'[^A-Z0-9]','',str(x or '').upper())
+          iz=[r for r in rows if 'izivia' in str(r[5] or '').lower()]
+          targets=[]
+          for r in iz:
+              ids=sorted({str(x) for c in (r[8] or []) for x in (c[6] or []) if x})
+              targets.append({'stationId':r[0],'name':r[1],'lat':float(r[3]),'lon':float(r[4]),'pdcIds':ids,'network':r[10] if len(r)>10 else None,'operator':r[5]})
+          base='https://fronts-map.izivia.com/api';device=str(uuid.uuid4())
+          common=['-sS','-A','Mozilla/5.0','-H','accept: application/json','-H','Accept-Language: fr','-H',f'x-device-id: {device}']
+          def call(method,path,body=None):
+              cmd=['curl',*common,'-w','\n%{http_code}','-X',method]
+              if body is not None:cmd+=['-H','content-type: application/json','--data',json.dumps(body,separators=(',',':'))]
+              cmd += [base+path];r=subprocess.run(cmd,capture_output=True,text=True)
+              payload,status=r.stdout.rsplit('\n',1) if '\n' in r.stdout else (r.stdout,'')
+              try:data=json.loads(payload)
+              except:data=payload
+              return int(status or 0),data
+          ms,markers=call('POST','/map/markers',{'square':{'centerLat':46.6,'centerLng':2.2,'zoom':5},'filters':{}})
+          markers=markers if isinstance(markers,list) else []
+          def dist2(t,m):
+              p=m.get('pos') or [999,999];return (float(p[1])-t['lat'])**2+((float(p[0])-t['lon'])*math.cos(math.radians(t['lat'])))**2
+          def process(t):
+              wanted={norm(x) for x in t['pdcIds']}
+              nearest=sorted(markers,key=lambda m:dist2(t,m))[:8]
+              attempts=[]
+              for m in nearest:
+                  ds,d=call('POST',f"/charging-locations/{m['id']}",{'filters':{}})
+                  if not isinstance(d,dict):continue
+                  emip=d.get('firstStationEmipId');nemip=norm(emip)
+                  hit=nemip in wanted or any(nemip.startswith(x) or x.startswith(nemip) for x in wanted if x and nemip)
+                  attempts.append({'id':m['id'],'name':d.get('name'),'emip':emip,'legacyId':d.get('legacyId'),'hit':hit,'distance2':dist2(t,m)})
+                  if hit:
+                      params={}
+                      if d.get('legacyId') is not None:params['legacyId']=d['legacyId']
+                      if emip:params['stationEmipId']=emip
+                      q=urllib.parse.urlencode(params)
+                      ps,p=call('GET',f"/charging-locations/{m['id']}/pricing-info-items?{q}")
+                      return {**t,'matched':True,'mapDetail':attempts[-1],'pricingStatus':ps,'pricing':p}
+              return {**t,'matched':False,'attempts':attempts}
+          sample=targets[:80];out=[]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=10) as ex:
+              for r in ex.map(process,sample):out.append(r)
+          report={'panIziviaStations':len(targets),'panIziviaPdc':sum(len(t['pdcIds']) for t in targets),'sampleSize':len(out),'matched':sum(x['matched'] for x in out),'pricedNonempty':sum(bool(x.get('pricing')) for x in out),'results':out}
+          pathlib.Path('reports/france/izivia/pan-direct-pricing-sample.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({k:v for k,v in report.items() if k!='results'},ensure_ascii=False,indent=2))
+          print(json.dumps([x for x in out if x.get('matched')][:10],ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/izivia/pan-direct-pricing-sample.json
+          git commit -m 'France IZIVIA: publish physical PAN pricing sample' || exit 0
+          git pull --rebase origin main
+          git push
