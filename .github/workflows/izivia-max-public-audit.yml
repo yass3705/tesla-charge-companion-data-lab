@@ -20,6 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Prepare browser network discovery
+        run: python -m pip install --disable-pip-version-check --quiet "selenium>=4.20,<5"
+
       - name: Extract public IZIVIA MAX inventory and pricing
         shell: bash
         run: |
@@ -38,6 +41,9 @@ jobs:
           import urllib.request
           import uuid
           from pathlib import Path
+
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
 
           PAGE = "https://fronts-map.izivia.com/"
           BASE = "https://fronts-map.izivia.com/api/"
@@ -97,8 +103,69 @@ jobs:
                   absolute = start + item.start()
                   distance = abs(absolute - position)
                   candidate_distance[candidate] = min(candidate_distance.get(candidate, distance), distance)
+
+          discovery_responses = []
+          options = Options()
+          options.page_load_strategy = "eager"
+          options.add_argument("--headless=new")
+          options.add_argument("--no-sandbox")
+          options.add_argument("--disable-dev-shm-usage")
+          options.add_argument("--window-size=1440,1600")
+          options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
+          driver = webdriver.Chrome(options=options)
+          driver.set_page_load_timeout(30)
+          driver.execute_cdp_cmd("Network.enable", {})
+          try:
+              driver.get(PAGE)
+              time.sleep(8)
+              for event in driver.get_log("performance"):
+                  try:
+                      message = json.loads(event["message"])["message"]
+                  except Exception:
+                      continue
+                  if message.get("method") != "Network.responseReceived":
+                      continue
+                  params = message.get("params") or {}
+                  response = params.get("response") or {}
+                  if params.get("type") not in ("XHR", "Fetch"):
+                      continue
+                  try:
+                      body = driver.execute_cdp_cmd(
+                          "Network.getResponseBody", {"requestId": params.get("requestId")}
+                      ).get("body", "")
+                  except Exception:
+                      continue
+                  if "izivia max" not in body.lower():
+                      continue
+                  response_record = {
+                      "url": response.get("url"),
+                      "status": response.get("status"),
+                      "mimeType": response.get("mimeType"),
+                      "body": body[:250000],
+                  }
+                  discovery_responses.append(response_record)
+                  for label_match in re.finditer(r"IZIVIA MAX", body, flags=re.I):
+                      start = max(0, label_match.start() - 5000)
+                      end = min(len(body), label_match.start() + 5000)
+                      for item in re.finditer(r"[0-9a-f]{24}", body[start:end], flags=re.I):
+                          candidate = item.group(0).lower()
+                          absolute = start + item.start()
+                          distance = abs(absolute - label_match.start())
+                          candidate_distance[candidate] = min(
+                              candidate_distance.get(candidate, distance), distance
+                          )
+          finally:
+              driver.quit()
+
           candidates = [key for key, _ in sorted(candidate_distance.items(), key=lambda row: row[1])[:30]]
           if not candidates:
+              Path("out/izivia_max_network_probe.json").write_text(
+                  json.dumps(
+                      {"contexts": contexts, "discoveryResponses": discovery_responses},
+                      ensure_ascii=False,
+                      indent=2,
+                  )
+              )
               raise SystemExit("No marketing-network id candidate found near IZIVIA MAX")
 
           def marker_call(network_id):
@@ -175,7 +242,15 @@ jobs:
                   selected_markers = markers
           if selected is None:
               Path("out/izivia_max_network_probe.json").write_text(
-                  json.dumps({"probes": probes, "contexts": contexts}, ensure_ascii=False, indent=2)
+                  json.dumps(
+                      {
+                          "probes": probes,
+                          "contexts": contexts,
+                          "discoveryResponses": discovery_responses,
+                      },
+                      ensure_ascii=False,
+                      indent=2,
+                  )
               )
               raise SystemExit("Unable to validate an IZIVIA MAX marketing-network id")
 
