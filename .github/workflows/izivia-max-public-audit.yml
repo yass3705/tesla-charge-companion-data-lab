@@ -1,0 +1,299 @@
+name: IZIVIA MAX public inventory and tariff audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/izivia-max-public-audit.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: izivia-max-public-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract public IZIVIA MAX inventory and pricing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          python - <<'PY'
+          import collections
+          import concurrent.futures
+          import csv
+          import hashlib
+          import json
+          import re
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          import uuid
+          from pathlib import Path
+
+          PAGE = "https://fronts-map.izivia.com/"
+          BASE = "https://fronts-map.izivia.com/api/"
+          PAN_STATIC = "https://transport.data.gouv.fr/resources/84013/download"
+          DEVICE = str(uuid.uuid4())
+
+          def request(url, method="GET", body=None, attempts=3):
+              data = None if body is None else json.dumps(body, separators=(",", ":")).encode()
+              headers = {"User-Agent": "Mozilla/5.0 TCC-IZIVIA-MAX-audit"}
+              if url.startswith(BASE):
+                  headers.update({
+                      "Accept": "application/json",
+                      "Accept-Language": "fr",
+                      "Content-Type": "application/json",
+                      "x-device-id": DEVICE,
+                  })
+              else:
+                  headers["Accept"] = "text/html,text/csv,application/javascript,*/*"
+              last = (0, b"")
+              for attempt in range(attempts):
+                  try:
+                      req = urllib.request.Request(url, data=data, headers=headers, method=method)
+                      with urllib.request.urlopen(req, timeout=30) as response:
+                          return response.status, response.read(), response.geturl()
+                  except urllib.error.HTTPError as exc:
+                      last = (exc.code, exc.read(), url)
+                      if exc.code not in (429, 500, 502, 503, 504):
+                          return last
+                  except Exception as exc:
+                      last = (0, repr(exc).encode(), url)
+                  time.sleep(1.2 * (attempt + 1))
+              return last
+
+          status, index_raw, _ = request(PAGE)
+          if status != 200:
+              raise SystemExit(f"IZIVIA map index HTTP {status}")
+          index = index_raw.decode("utf-8", "replace")
+          match = re.search(r"assets/index-[A-Za-z0-9_-]+\.js", index)
+          if not match:
+              raise SystemExit("IZIVIA map bundle not found")
+          bundle_url = urllib.parse.urljoin(PAGE, match.group(0))
+          status, bundle_raw, _ = request(bundle_url)
+          if status != 200:
+              raise SystemExit(f"IZIVIA map bundle HTTP {status}")
+          bundle = bundle_raw.decode("utf-8", "replace")
+
+          label_positions = [m.start() for m in re.finditer(r"IZIVIA MAX", bundle, flags=re.I)]
+          contexts = []
+          candidate_distance = {}
+          for position in label_positions:
+              start = max(0, position - 5000)
+              end = min(len(bundle), position + 5000)
+              context = bundle[start:end]
+              contexts.append(context)
+              for item in re.finditer(r"[0-9a-f]{24}", context, flags=re.I):
+                  candidate = item.group(0).lower()
+                  absolute = start + item.start()
+                  distance = abs(absolute - position)
+                  candidate_distance[candidate] = min(candidate_distance.get(candidate, distance), distance)
+          candidates = [key for key, _ in sorted(candidate_distance.items(), key=lambda row: row[1])[:30]]
+          if not candidates:
+              raise SystemExit("No marketing-network id candidate found near IZIVIA MAX")
+
+          def marker_call(network_id):
+              filters = {
+                  "chargingConnectors": [],
+                  "supportsAutocharge": False,
+                  "onlyTwentyFourSeven": False,
+                  "onlyAvailable": False,
+                  "capabilityTypes": [],
+                  "marketingNetworkIds": [network_id],
+              }
+              status, raw, _ = request(
+                  BASE + "map/markers",
+                  "POST",
+                  {"square": {"centerLng": 2.2, "centerLat": 46.2, "zoom": 5}, "filters": filters},
+              )
+              try:
+                  markers = json.loads(raw.decode()) if status == 200 else []
+              except Exception:
+                  markers = []
+              return filters, status, markers if isinstance(markers, list) else []
+
+          def strings(value):
+              if isinstance(value, str):
+                  yield value
+              elif isinstance(value, dict):
+                  for child in value.values():
+                      yield from strings(child)
+              elif isinstance(value, list):
+                  for child in value:
+                      yield from strings(child)
+
+          probes = []
+          selected = None
+          selected_filters = None
+          selected_markers = None
+          for candidate in candidates:
+              filters, marker_status, markers = marker_call(candidate)
+              matches_max = 0
+              detail_samples = []
+              for marker in markers[:3]:
+                  marker_id = marker.get("id") if isinstance(marker, dict) else None
+                  if not marker_id:
+                      continue
+                  detail_status, detail_raw, _ = request(
+                      BASE + f"charging-locations/{marker_id}", "POST", {"filters": filters}
+                  )
+                  try:
+                      detail = json.loads(detail_raw.decode()) if detail_status == 200 else None
+                  except Exception:
+                      detail = None
+                  haystack = " ".join(strings(detail or {})).lower()
+                  if "izivia max" in haystack:
+                      matches_max += 1
+                  detail_samples.append({
+                      "mapId": marker_id,
+                      "status": detail_status,
+                      "legacyId": (detail or {}).get("legacyId") if isinstance(detail, dict) else None,
+                      "name": (detail or {}).get("name") if isinstance(detail, dict) else None,
+                      "containsIziviaMax": "izivia max" in haystack,
+                  })
+              probe = {
+                  "networkId": candidate,
+                  "distanceFromLabel": candidate_distance[candidate],
+                  "markerStatus": marker_status,
+                  "markerCount": len(markers),
+                  "maxDetailMatches": matches_max,
+                  "detailSamples": detail_samples,
+              }
+              probes.append(probe)
+              if selected is None and markers and matches_max:
+                  selected = candidate
+                  selected_filters = filters
+                  selected_markers = markers
+          if selected is None:
+              Path("out/izivia_max_network_probe.json").write_text(
+                  json.dumps({"probes": probes, "contexts": contexts}, ensure_ascii=False, indent=2)
+              )
+              raise SystemExit("Unable to validate an IZIVIA MAX marketing-network id")
+
+          def detail_and_price(marker):
+              marker_id = marker.get("id") if isinstance(marker, dict) else None
+              record = {"mapId": marker_id, "marker": marker}
+              if not marker_id:
+                  return record
+              detail_status, detail_raw, _ = request(
+                  BASE + f"charging-locations/{marker_id}", "POST", {"filters": selected_filters}
+              )
+              record["detailStatus"] = detail_status
+              try:
+                  detail = json.loads(detail_raw.decode()) if detail_status == 200 else None
+              except Exception:
+                  detail = None
+              record["detail"] = detail
+              if not isinstance(detail, dict):
+                  return record
+              params = {}
+              if detail.get("legacyId") is not None:
+                  params["legacyId"] = detail["legacyId"]
+              if detail.get("firstStationEmipId"):
+                  params["stationEmipId"] = detail["firstStationEmipId"]
+              if not params:
+                  return record
+              pricing_status, pricing_raw, _ = request(
+                  BASE + f"charging-locations/{marker_id}/pricing-info-items?" + urllib.parse.urlencode(params)
+              )
+              record["pricingStatus"] = pricing_status
+              try:
+                  record["pricing"] = json.loads(pricing_raw.decode()) if pricing_status == 200 else None
+              except Exception:
+                  record["pricingRaw"] = pricing_raw.decode("utf-8", "replace")[:20000]
+              return record
+
+          with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+              records = list(executor.map(detail_and_price, selected_markers))
+
+          status, pan_raw, pan_url = request(PAN_STATIC, attempts=4)
+          if status != 200:
+              raise SystemExit(f"PAN static HTTP {status}")
+          pan_text = pan_raw.decode("utf-8-sig", "replace")
+          dialect = csv.Sniffer().sniff(pan_text[:10000], delimiters=",;\t")
+          pan_rows = list(csv.DictReader(pan_text.splitlines(), dialect=dialect))
+          pan_max = []
+          for row in pan_rows:
+              station_id = (row.get("id_station_itinerance") or "").strip().upper()
+              combined = " ".join(
+                  (row.get(key) or "")
+                  for key in ("nom_station", "nom_enseigne", "nom_amenageur", "nom_operateur")
+              ).upper()
+              if "IZIVIA MAX" in combined or station_id.startswith(("FRIMX", "FRIGF", "FRILF")):
+                  pan_max.append(row)
+
+          direct = collections.Counter()
+          subscriptions = collections.Counter()
+          item_types = collections.Counter()
+          for record in records:
+              for item in record.get("pricing") or []:
+                  if not isinstance(item, dict):
+                      continue
+                  item_type = item.get("itemType") or ""
+                  item_types[item_type] += 1
+                  values = item.get("rawPricingInfos") or item.get("pricingInfos") or []
+                  for value in values:
+                      if item_type == "subscription":
+                          subscriptions[(item.get("subscriptionNames") or "", str(value))] += 1
+                      else:
+                          direct[str(value)] += 1
+
+          station_ids = {
+              (row.get("id_station_itinerance") or "").strip()
+              for row in pan_max if (row.get("id_station_itinerance") or "").strip()
+          }
+          pdc_ids = {
+              (row.get("id_pdc_itinerance") or "").strip()
+              for row in pan_max if (row.get("id_pdc_itinerance") or "").strip()
+          }
+          summary = {
+              "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+              "network": "IZIVIA MAX",
+              "marketingNetworkId": selected,
+              "mapMarkerCount": len(selected_markers),
+              "mapDetailCount": sum(isinstance(row.get("detail"), dict) for row in records),
+              "pricingHttp200": sum(row.get("pricingStatus") == 200 for row in records),
+              "nonEmptyPricingLocations": sum(bool(row.get("pricing")) for row in records),
+              "panStaticResolvedUrl": pan_url,
+              "panStationCount": len(station_ids),
+              "panPdcCount": len(pdc_ids),
+              "panRowCount": len(pan_max),
+              "itemTypes": dict(item_types),
+              "directPricingStrings": [
+                  {"count": count, "text": value} for value, count in direct.most_common()
+              ],
+              "subscriptionPricingStrings": [
+                  {"count": count, "subscriptionNames": name, "text": value}
+                  for (name, value), count in subscriptions.most_common()
+              ],
+              "bundleUrl": bundle_url,
+              "bundleSha256": hashlib.sha256(bundle_raw).hexdigest(),
+              "networkCandidateProbes": probes,
+          }
+          Path("out/izivia_max_public_raw.json").write_text(
+              json.dumps(records, ensure_ascii=False, indent=2)
+          )
+          Path("out/izivia_max_pan_rows.json").write_text(
+              json.dumps(pan_max, ensure_ascii=False, indent=2)
+          )
+          Path("out/izivia_max_public_summary.json").write_text(
+              json.dumps(summary, ensure_ascii=False, indent=2)
+          )
+          print(json.dumps(summary, ensure_ascii=False, indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: izivia-max-public-audit
+          path: out
+          retention-days: 3
