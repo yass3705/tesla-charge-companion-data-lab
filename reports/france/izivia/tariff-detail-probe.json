@@ -1,13 +1,6 @@
 {
   "locationId": "693f6fee3fdcff3315e3814d",
-  "detailAttempts": [
-    {
-      "method": "POST",
-      "body": "{\"filters\":{}}",
-      "status": "200",
-      "sample": "{\"id\":\"693f6fee3fdcff3315e3814d\",\"name\":\"SAEMES | Paris - Rue de Montalembert\",\"status\":\"unknown\",\"address\":{\"street\":\"9 Rue de Montalembert\",\"postalCode\":\"75007\",\"city\":\"Paris\",\"country\":\"FRA\"},\"coordinates\":[2.327063,48.856834],\"chargingConnectorsStats\":[{\"standard\":\"t2\",\"maxPowerInW\":7260.000000000,\"availableConnectorCount\":1,\"totalConnectorCount\":1},{\"standard\":\"standard_household\",\"maxPowerInW\":3520.000000000,\"availableConnectorCount\":1,\"totalConnectorCount\":1}],\"openingHours\":{\"hours\":{\"exceptionalClosings\":[],\"exceptionalOpenings\":[],\"regularHours\":[],\"twentyFourSeven\":true}},\"capabilityTypes\":[\"charge_card\"],\"parkingType\":\"public_parking\",\"accessibleForDisabled\":false,\"connectorStandards\":[\"t2\",\"standard_household\"],\"firstStationEmipId\":\"FR*SAE*E75107*001*29*2\"}"
-    }
-  ],
+  "detailStatus": "200",
   "detail": {
     "id": "693f6fee3fdcff3315e3814d",
     "name": "SAEMES | Paris - Rue de Montalembert",
@@ -55,36 +48,54 @@
     ],
     "firstStationEmipId": "FR*SAE*E75107*001*29*2"
   },
-  "hints": [
-    [
-      "chargingConnectorsStats",
-      "list"
-    ],
-    [
-      "chargingConnectorsStats[0].availableConnectorCount",
-      1
-    ],
-    [
-      "chargingConnectorsStats[0].totalConnectorCount",
-      1
-    ],
-    [
-      "chargingConnectorsStats[1].availableConnectorCount",
-      1
-    ],
-    [
-      "chargingConnectorsStats[1].totalConnectorCount",
-      1
-    ],
-    [
-      "connectorStandards",
-      "list"
-    ],
-    [
-      "firstStationEmipId",
-      "FR*SAE*E75107*001*29*2"
-    ]
-  ],
-  "candidateLegacyId": null,
-  "candidateStationEmipId": "FR*SAE*E75107*001*29*2"
+  "pricingAttempts": [
+    {
+      "legacyId": "693f6fee3fdcff3315e3814d",
+      "stationEmipId": "FR*SAE*E75107*001*29*2",
+      "method": "GET",
+      "status": "500",
+      "payload": null,
+      "sample": "com.izivia.emobility.fronts.commons.exception.CodeProblemException: Trying to access deviceId while not initialized yet. Check the server filters.\n\tat com.izivia.emobility.fronts.map.commons.context.DeviceIdContext.currentDeviceId(RequestContexts.kt:55)\n\tat com.izivia.emobility.api.impl.mbp.filter.DeviceIdMbpClientFilterKt.DeviceIdMbpClientFilter$lambda$1$lambda$0(DeviceIdMbpClientFilter.kt:9)\n\tat com.izivia.emobility.api.impl.mbp.filter.LanguageMbpClientFilterKt.LanguageMbpClientFilter$lambda$3$lambda$2$lambda$1(LanguageMbpClientFilter.kt:13)\n\tat com.izivia.emobility.api.impl.mbp.filter.FrontOriginMbpClientFilter.invoke$lambda$1$lambda$0(FrontOriginMbpClientFilter.kt:11)\n\tat com.izivia.emobility.api.impl.mbp.filter.AuthorizationMbpClientFilter.invoke$lambda$1$lambda$0(AuthorizationMbpClientFilter.kt:10)\n\tat com.izivia.emobility.api.impl.mbp.filter.TraceIdMbpClientFilter.invoke$lambda$1$lambda$0(TraceIdMbpClientFilter.kt:10)\n\tat org.http4k.filter.ClientFilters$SetBaseUriFrom$1.invoke$lambda$0(ClientFilters.kt:79)\n\tat org.http4k.filter.ClientFilters$SetHostFrom$1.invoke$lambda$1(ClientFilters.kt:69)\n\tat com.izivia.emobility.fronts.common.http.LogResponse.invoke$lambda$1$lambda$0(Http.kt:13)\n\tat com.izivia.emobility.api.impl.mbp.MbpClientHttpHandler.invoke(MbpClientHttpHandler.kt:19)\n\tat com.izivia.emobility.api.impl.mbp.pricingInfo.PricingInfoMbpClientImpl.searchOneChargeAreaPricingInfo(PricingInfoMbpClientImpl.kt:23)\n\tat com.izivia.emobility.fronts.map.domain.chargingInfra.chargingLocation.ChargingLocationService.searchManyPricingInfoByLegacyIdOrStationEmipId(ChargingLocationService.kt:158)\n\tat com.izivia.emobility.fronts.map.http.chargingLocation.ChargingLocationResource$build$2.invoke(ChargingLocationResource.kt:27)\n\tat com.izivia.emobility.fronts.map.http.chargingLocation.ChargingLocationResource$build$2.invoke(ChargingLocationResource.kt:27)\n\tat com.izivia.emobility.fronts.map.http.chargingLocation.ChargingLocationResource$ChargingLocationPricingInfoRoute.invoke$lambda$1(ChargingLocationResource.kt:63)\n\tat com.izivia.emobility.fronts.map.http.filter.LanguageServerFilterKt.LanguageServerFilter$lambda$2$lambda$1(LanguageServerFilter.kt:16)\n\tat com.izivia.emobility.fronts.map.http.filter.StationGroupIdsServerFilter.invoke$lambda$1$lambda$0(StationGroupIdsServerFilter.kt:21)\n\tat com.izivia.emobility.fronts.common.http.LogResponse.filter$lambda$6$lambda$5(Http.kt:55)\n\tat com.izivia.emobility.fronts.map.http.filter.RequiredDeviceIdServerFilter.invoke$lambda$1$lambda$0(RequiredDeviceIdServerFilter.kt:19)\n\tat com.izivia.emobility.fronts.map.http.filter.AuthorizationServerFilter.invoke$lambda$1$lambda$0(AuthorizationServerFilter.kt:16)\n\tat com.izivia.emobility.fronts.map.http.filter.TraceIdServerFilter.invoke$lambda$1$lambda$0(TraceIdServerFilter.kt:18)\n\tat org.http4k.routing.TemplateRouter.match$lambda$0(Router.kt:188)\n\tat org.http4k.routing.RouterMatch$MatchingHandler.invoke(Router.kt:65)\n\tat org.http4k.routing.RouterMatch$MatchingHandler.invoke(Router.kt:60)\n\tat org.http4k.routing.RouterBasedHttpHandler.invoke(RouterBasedHttpHandler.kt:19)\n\tat org.http4k.routing.RouterBasedHttpHandler.invoke(RouterBasedHttpHandler.kt:13)\n\tat org.http4k.filter.ServerFilters$CatchAll$invoke$2.invoke$lambda$0(ServerFilters.kt:321)\n\tat org.http4k.server.Http4kUndertowHttpHandler.handleRequest(Http4kUndertowHttpHandler.kt:41)\n\tat io.undertow.server.Connectors.executeRootHandler(Connectors.java:395)\n\tat io.undertow.server.HttpServerExchange$1.run(HttpServerExchange.java:861)\n\tat org.jboss.threads.ContextHandler$1.runWith(ContextHandler.java:18)\n\tat org.jboss.threads.EnhancedQueueExecutor$Task.run(EnhancedQueueExecutor.java:2513)\n\tat org.jboss.threads.EnhancedQueueExecutor$ThreadBody.run(EnhancedQueueExecutor.java:1538)\n\tat org.xnio.XnioWorker$WorkerThreadFactory$1$1.run(XnioWorker.java:1282)\n\tat java.base/java.lang.Thread.run(Thread.java:1583)\n"
+    },
+    {
+      "legacyId": "693f6fee3fdcff3315e3814d",
+      "stationEmipId": "FR*SAE*E75107*001*29*2",
+      "method": "POST",
+      "status": "405",
+      "payload": null,
+      "sample": ""
+    },
+    {
+      "legacyId": "FR*SAE*E75107*001*29*2",
+      "stationEmipId": "FR*SAE*E75107*001*29*2",
+      "method": "GET",
+      "status": "500",
+      "payload": null,
+      "sample": "com.izivia.emobility.fronts.commons.exception.CodeProblemException: Trying to access deviceId while not initialized yet. Check the server filters.\n\tat com.izivia.emobility.fronts.map.commons.context.DeviceIdContext.currentDeviceId(RequestContexts.kt:55)\n\tat com.izivia.emobility.api.impl.mbp.filter.DeviceIdMbpClientFilterKt.DeviceIdMbpClientFilter$lambda$1$lambda$0(DeviceIdMbpClientFilter.kt:9)\n\tat com.izivia.emobility.api.impl.mbp.filter.LanguageMbpClientFilterKt.LanguageMbpClientFilter$lambda$3$lambda$2$lambda$1(LanguageMbpClientFilter.kt:13)\n\tat com.izivia.emobility.api.impl.mbp.filter.FrontOriginMbpClientFilter.invoke$lambda$1$lambda$0(FrontOriginMbpClientFilter.kt:11)\n\tat com.izivia.emobility.api.impl.mbp.filter.AuthorizationMbpClientFilter.invoke$lambda$1$lambda$0(AuthorizationMbpClientFilter.kt:10)\n\tat com.izivia.emobility.api.impl.mbp.filter.TraceIdMbpClientFilter.invoke$lambda$1$lambda$0(TraceIdMbpClientFilter.kt:10)\n\tat org.http4k.filter.ClientFilters$SetBaseUriFrom$1.invoke$lambda$0(ClientFilters.kt:79)\n\tat org.http4k.filter.ClientFilters$SetHostFrom$1.invoke$lambda$1(ClientFilters.kt:69)\n\tat com.izivia.emobility.fronts.common.http.LogResponse.invoke$lambda$1$lambda$0(Http.kt:13)\n\tat com.izivia.emobility.api.impl.mbp.MbpClientHttpHandler.invoke(MbpClientHttpHandler.kt:19)\n\tat com.izivia.emobility.api.impl.mbp.pricingInfo.PricingInfoMbpClientImpl.searchOneChargeAreaPricingInfo(PricingInfoMbpClientImpl.kt:23)\n\tat com.izivia.emobility.fronts.map.domain.chargingInfra.chargingLocation.ChargingLocationService.searchManyPricingInfoByLegacyIdOrStationEmipId(ChargingLocationService.kt:158)\n\tat com.izivia.emobility.fronts.map.http.chargingLocation.ChargingLocationResource$build$2.invoke(ChargingLocationResource.kt:27)\n\tat com.izivia.emobility.fronts.map.http.chargingLocation.ChargingLocationResource$build$2.invoke(ChargingLocationResource.kt:27)\n\tat com.izivia.emobility.fronts.map.http.chargingLocation.ChargingLocationResource$ChargingLocationPricingInfoRoute.invoke$lambda$1(ChargingLocationResource.kt:63)\n\tat com.izivia.emobility.fronts.map.http.filter.LanguageServerFilterKt.LanguageServerFilter$lambda$2$lambda$1(LanguageServerFilter.kt:16)\n\tat com.izivia.emobility.fronts.map.http.filter.StationGroupIdsServerFilter.invoke$lambda$1$lambda$0(StationGroupIdsServerFilter.kt:21)\n\tat com.izivia.emobility.fronts.common.http.LogResponse.filter$lambda$6$lambda$5(Http.kt:55)\n\tat com.izivia.emobility.fronts.map.http.filter.RequiredDeviceIdServerFilter.invoke$lambda$1$lambda$0(RequiredDeviceIdServerFilter.kt:19)\n\tat com.izivia.emobility.fronts.map.http.filter.AuthorizationServerFilter.invoke$lambda$1$lambda$0(AuthorizationServerFilter.kt:16)\n\tat com.izivia.emobility.fronts.map.http.filter.TraceIdServerFilter.invoke$lambda$1$lambda$0(TraceIdServerFilter.kt:18)\n\tat org.http4k.routing.TemplateRouter.match$lambda$0(Router.kt:188)\n\tat org.http4k.routing.RouterMatch$MatchingHandler.invoke(Router.kt:65)\n\tat org.http4k.routing.RouterMatch$MatchingHandler.invoke(Router.kt:60)\n\tat org.http4k.routing.RouterBasedHttpHandler.invoke(RouterBasedHttpHandler.kt:19)\n\tat org.http4k.routing.RouterBasedHttpHandler.invoke(RouterBasedHttpHandler.kt:13)\n\tat org.http4k.filter.ServerFilters$CatchAll$invoke$2.invoke$lambda$0(ServerFilters.kt:321)\n\tat org.http4k.server.Http4kUndertowHttpHandler.handleRequest(Http4kUndertowHttpHandler.kt:41)\n\tat io.undertow.server.Connectors.executeRootHandler(Connectors.java:395)\n\tat io.undertow.server.HttpServerExchange$1.run(HttpServerExchange.java:861)\n\tat org.jboss.threads.ContextHandler$1.runWith(ContextHandler.java:18)\n\tat org.jboss.threads.EnhancedQueueExecutor$Task.run(EnhancedQueueExecutor.java:2513)\n\tat org.jboss.threads.EnhancedQueueExecutor$ThreadBody.run(EnhancedQueueExecutor.java:1538)\n\tat org.xnio.XnioWorker$WorkerThreadFactory$1$1.run(XnioWorker.java:1282)\n\tat java.base/java.lang.Thread.run(Thread.java:1583)\n"
+    },
+    {
+      "legacyId": "FR*SAE*E75107*001*29*2",
+      "stationEmipId": "FR*SAE*E75107*001*29*2",
+      "method": "POST",
+      "status": "405",
+      "payload": null,
+      "sample": ""
+    },
+    {
+      "legacyId": "",
+      "stationEmipId": "FR*SAE*E75107*001*29*2",
+      "method": "GET",
+      "status": "500",
+      "payload": null,
+      "sample": "com.izivia.emobility.fronts.commons.exception.CodeProblemException: Trying to access deviceId while not initialized yet. Check the server filters.\n\tat com.izivia.emobility.fronts.map.commons.context.DeviceIdContext.currentDeviceId(RequestContexts.kt:55)\n\tat com.izivia.emobility.api.impl.mbp.filter.DeviceIdMbpClientFilterKt.DeviceIdMbpClientFilter$lambda$1$lambda$0(DeviceIdMbpClientFilter.kt:9)\n\tat com.izivia.emobility.api.impl.mbp.filter.LanguageMbpClientFilterKt.LanguageMbpClientFilter$lambda$3$lambda$2$lambda$1(LanguageMbpClientFilter.kt:13)\n\tat com.izivia.emobility.api.impl.mbp.filter.FrontOriginMbpClientFilter.invoke$lambda$1$lambda$0(FrontOriginMbpClientFilter.kt:11)\n\tat com.izivia.emobility.api.impl.mbp.filter.AuthorizationMbpClientFilter.invoke$lambda$1$lambda$0(AuthorizationMbpClientFilter.kt:10)\n\tat com.izivia.emobility.api.impl.mbp.filter.TraceIdMbpClientFilter.invoke$lambda$1$lambda$0(TraceIdMbpClientFilter.kt:10)\n\tat org.http4k.filter.ClientFilters$SetBaseUriFrom$1.invoke$lambda$0(ClientFilters.kt:79)\n\tat org.http4k.filter.ClientFilters$SetHostFrom$1.invoke$lambda$1(ClientFilters.kt:69)\n\tat com.izivia.emobility.fronts.common.http.LogResponse.invoke$lambda$1$lambda$0(Http.kt:13)\n\tat com.izivia.emobility.api.impl.mbp.MbpClientHttpHandler.invoke(MbpClientHttpHandler.kt:19)\n\tat com.izivia.emobility.api.impl.mbp.pricingInfo.PricingInfoMbpClientImpl.searchOneChargeAreaPricingInfo(PricingInfoMbpClientImpl.kt:23)\n\tat com.izivia.emobility.fronts.map.domain.chargingInfra.chargingLocation.ChargingLocationService.searchManyPricingInfoByLegacyIdOrStationEmipId(ChargingLocationService.kt:158)\n\tat com.izivia.emobility.fronts.map.http.chargingLocation.ChargingLocationResource$build$2.invoke(ChargingLocationResource.kt:27)\n\tat com.izivia.emobility.fronts.map.http.chargingLocation.ChargingLocationResource$build$2.invoke(ChargingLocationResource.kt:27)\n\tat com.izivia.emobility.fronts.map.http.chargingLocation.ChargingLocationResource$ChargingLocationPricingInfoRoute.invoke$lambda$1(ChargingLocationResource.kt:63)\n\tat com.izivia.emobility.fronts.map.http.filter.LanguageServerFilterKt.LanguageServerFilter$lambda$2$lambda$1(LanguageServerFilter.kt:16)\n\tat com.izivia.emobility.fronts.map.http.filter.StationGroupIdsServerFilter.invoke$lambda$1$lambda$0(StationGroupIdsServerFilter.kt:21)\n\tat com.izivia.emobility.fronts.common.http.LogResponse.filter$lambda$6$lambda$5(Http.kt:55)\n\tat com.izivia.emobility.fronts.map.http.filter.RequiredDeviceIdServerFilter.invoke$lambda$1$lambda$0(RequiredDeviceIdServerFilter.kt:19)\n\tat com.izivia.emobility.fronts.map.http.filter.AuthorizationServerFilter.invoke$lambda$1$lambda$0(AuthorizationServerFilter.kt:16)\n\tat com.izivia.emobility.fronts.map.http.filter.TraceIdServerFilter.invoke$lambda$1$lambda$0(TraceIdServerFilter.kt:18)\n\tat org.http4k.routing.TemplateRouter.match$lambda$0(Router.kt:188)\n\tat org.http4k.routing.RouterMatch$MatchingHandler.invoke(Router.kt:65)\n\tat org.http4k.routing.RouterMatch$MatchingHandler.invoke(Router.kt:60)\n\tat org.http4k.routing.RouterBasedHttpHandler.invoke(RouterBasedHttpHandler.kt:19)\n\tat org.http4k.routing.RouterBasedHttpHandler.invoke(RouterBasedHttpHandler.kt:13)\n\tat org.http4k.filter.ServerFilters$CatchAll$invoke$2.invoke$lambda$0(ServerFilters.kt:321)\n\tat org.http4k.server.Http4kUndertowHttpHandler.handleRequest(Http4kUndertowHttpHandler.kt:41)\n\tat io.undertow.server.Connectors.executeRootHandler(Connectors.java:395)\n\tat io.undertow.server.HttpServerExchange$1.run(HttpServerExchange.java:861)\n\tat org.jboss.threads.ContextHandler$1.runWith(ContextHandler.java:18)\n\tat org.jboss.threads.EnhancedQueueExecutor$Task.run(EnhancedQueueExecutor.java:2513)\n\tat org.jboss.threads.EnhancedQueueExecutor$ThreadBody.run(EnhancedQueueExecutor.java:1538)\n\tat org.xnio.XnioWorker$WorkerThreadFactory$1$1.run(XnioWorker.java:1282)\n\tat java.base/java.lang.Thread.run(Thread.java:1583)\n"
+    },
+    {
+      "legacyId": "",
+      "stationEmipId": "FR*SAE*E75107*001*29*2",
+      "method": "POST",
+      "status": "405",
+      "payload": null,
+      "sample": ""
+    }
+  ]
 }
