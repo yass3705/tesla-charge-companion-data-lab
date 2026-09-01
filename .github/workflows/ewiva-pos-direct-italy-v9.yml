@@ -1,0 +1,120 @@
+name: Italy V9 Ewiva POS direct candidate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/ewiva-pos-direct-italy-v9
+    paths:
+      - scripts/ewiva_pos_direct_italy_v9.py
+      - .github/workflows/ewiva-pos-direct-italy-v9.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: ewiva-pos-direct-italy-v9-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download latest normalized PUN Italy inventory
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pun-italy-normalized.yml --branch research/pun-italy-normalized --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/pun data/national
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" -n pun-italy-normalized -D /tmp/pun
+          cp /tmp/pun/national/pun_italy_national.json.gz data/national/pun_italy_national.json.gz
+          test -s data/national/pun_italy_national.json.gz
+          echo "Using normalized PUN run $RUN_ID"
+
+      - name: Build strict Ewiva POS candidate from official sources
+        run: |
+          python -m py_compile scripts/ewiva_pos_direct_italy_v9.py
+          python scripts/ewiva_pos_direct_italy_v9.py
+
+      - name: Validate current source snapshot and fail-closed scope
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+
+          with gzip.open('data/national/ewiva_pos_direct_italy_candidate.json.gz','rt',encoding='utf-8') as handle:
+              data=json.load(handle)
+          report=json.loads(Path('data/reports/ewiva_pos_direct_italy_report.json').read_text())
+          counts=data['counts']
+          assert data['country']=='IT' and data['operator']=='Ewiva' and data['partyId']=='EWI'
+          assert data['tariff']=={
+              'pricingType':'flat','energyEurPerKwh':0.8,'currency':'EUR',
+              'validFrom':'2026-08-01','validThrough':None,'paymentMethod':'contactless_pos'
+          }
+          assert counts['officialInventoryLocations']==542
+          assert counts['officialActiveLocations']==454
+          assert counts['officialNoPosIdsRaw']==82
+          assert counts['officialNoPosIdsUnique']==72
+          assert counts['officialActivePosLocationsIncludingTest']==382
+          assert counts['officialActivePosLocations']==380
+          assert counts['punEwivaStations']==893
+          assert counts['punEwivaEvse']==1753
+          assert counts['matchedPunStations']==647
+          assert counts['matchedOfficialPosSites']==346
+          assert counts['rankableDirectEvse']==1271
+          assert counts['blockedPunStations']=={
+              'ambiguous_active_official_sites_within_25m':5,
+              'metadata_evidence_failed':24,
+              'no_active_official_site_within_25m':98,
+              'official_site_in_nopos_ids':119,
+          }
+          assert all(data['safetyGates'].values())
+          entries=data['entries']
+          ids=[entry['evseId'] for entry in entries]
+          assert len(ids)==len(set(ids))==1271
+          assert all(eid.startswith('IT*EWI*E') for eid in ids)
+          assert all(entry['matchDistanceMeters']<=25 for entry in entries)
+          assert all(entry['matchEvidence']['region'] and (entry['matchEvidence']['city'] or entry['matchEvidence']['street']) for entry in entries)
+          assert all(entry['directTariff']['energyEurPerKwh']==0.8 for entry in entries)
+          assert data['policy']['ambiguousMatchesFailClosed'] is True
+          assert data['policy']['neverExpandPriceToAllEwivaStations'] is True
+          assert report['counts']==counts
+          print(json.dumps(counts,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Publish canonical candidate on the research branch
+        if: github.event_name != 'pull_request' && github.ref_name == 'feature/ewiva-pos-direct-italy-v9'
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/national/ewiva_pos_direct_italy_candidate.json.gz data/reports/ewiva_pos_direct_italy_report.json
+          if git diff --cached --quiet; then
+            echo 'Ewiva POS candidate already current'
+            exit 0
+          fi
+          git commit -m "data(ewiva): publish Italy POS direct candidate [run ${GITHUB_RUN_ID}]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Upload candidate and audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ewiva-pos-direct-italy-v9-candidate
+          path: |
+            data/national/ewiva_pos_direct_italy_candidate.json.gz
+            data/reports/ewiva_pos_direct_italy_report.json
+          if-no-files-found: error
+          retention-days: 14
