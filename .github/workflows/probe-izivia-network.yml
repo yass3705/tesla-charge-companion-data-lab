@@ -1,0 +1,61 @@
+name: France IZIVIA network probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-izivia-network.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Capture public map network
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install playwright@1.55.0 --no-save
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          mkdir -p reports/france/izivia
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1280,height:900}});
+            const rows=[];
+            page.on('response',async r=>{
+              const u=r.url();
+              if(!/izivia|charging|location|marker|api/i.test(u)) return;
+              const rec={url:u,status:r.status(),method:r.request().method(),resourceType:r.request().resourceType(),contentType:r.headers()['content-type']||''};
+              try{if(/json|text/.test(rec.contentType)){const t=await r.text();rec.bodySample=t.slice(0,6000);}}catch{}
+              rows.push(rec);
+            });
+            await page.goto('https://fronts-map.izivia.com/',{waitUntil:'networkidle',timeout:90000});
+            await page.waitForTimeout(5000);
+            const body=await page.locator('body').innerText().catch(()=> '');
+            require('fs').writeFileSync('reports/france/izivia/network-probe.json',JSON.stringify({capturedAt:new Date().toISOString(),pageUrl:page.url(),bodySample:body.slice(0,5000),responses:rows},null,2)+'\n');
+            console.log(JSON.stringify(rows.map(x=>({url:x.url,status:x.status,method:x.method,contentType:x.contentType})),null,2));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for i in 1 2 3 4; do
+            git pull --rebase origin main || true
+            git add reports/france/izivia/network-probe.json
+            git commit -m 'France IZIVIA: publish public map network probe' || true
+            git push && exit 0
+            sleep $((i*2))
+          done
+          exit 1
