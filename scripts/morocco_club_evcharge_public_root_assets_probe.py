@@ -46,6 +46,12 @@ TARGET_MARKERS = (
     "getstationstate",
     "get-connector-status",
 )
+TARGET_RUNTIME_EVIDENCE_MARKERS = (
+    "numocity.com/2",
+    "/chargestation/getstationstate",
+    "/api/get-connector-status",
+    "/api/qr-connector",
+)
 CONFIG_KEYS = (
     "mainJsPath",
     "compileTarget",
@@ -240,6 +246,7 @@ def safe_bootstrap_literals(text: str):
 
 def scan_allowlisted(payloads: list[bytes]):
     target_counts = Counter()
+    runtime_evidence_counts = Counter()
     config_counts = Counter()
     relative_asset_counts = Counter()
     infra_urls = Counter()
@@ -252,6 +259,10 @@ def scan_allowlisted(payloads: list[bytes]):
             count = lower.count(marker.lower())
             if count:
                 target_counts[marker] += count
+        for marker in TARGET_RUNTIME_EVIDENCE_MARKERS:
+            count = lower.count(marker.lower())
+            if count:
+                runtime_evidence_counts[marker] += count
         for key in CONFIG_KEYS:
             count = text.count(key)
             if count:
@@ -273,13 +284,14 @@ def scan_allowlisted(payloads: list[bytes]):
         resolved = None
     return {
         "target_marker_counts": dict(sorted(target_counts.items())),
+        "target_runtime_evidence_marker_counts": dict(sorted(runtime_evidence_counts.items())),
         "config_key_counts": dict(sorted(config_counts.items())),
         "known_relative_asset_counts": dict(sorted(relative_asset_counts.items())),
         "safe_public_infrastructure_url_counts": dict(sorted(infra_urls.items())),
         "safe_flutter_bootstrap_literals": bootstrap,
         "runtime_entrypoint_path": resolved,
         "runtime_entrypoint_fetched": False,
-        "target_backend_markers_found": bool(target_counts),
+        "target_backend_markers_found": bool(runtime_evidence_counts),
     }
 
 
@@ -335,6 +347,7 @@ def main():
         "assets": [],
         "safe_findings": {
             "target_marker_counts": {},
+            "target_runtime_evidence_marker_counts": {},
             "config_key_counts": {},
             "known_relative_asset_counts": {},
             "safe_public_infrastructure_url_counts": {},
