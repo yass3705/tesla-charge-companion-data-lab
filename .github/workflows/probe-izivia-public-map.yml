@@ -1,0 +1,54 @@
+name: France IZIVIA public map probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-izivia-public-map.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public station page and assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/izivia reports/france/izivia
+          URL='https://izivia.com/carte-bornes-electriques-izivia/bornes-de-recharge-bagnac-sur-c%C3%A9l%C3%A9/3-c%C3%B4te-du-s%C3%A9gala/67f7efcbae3bfb53a124f824'
+          curl -fLsS --retry 3 "$URL" -o /tmp/izivia/page.html
+          python - <<'PY'
+          import re,json,pathlib,urllib.parse,subprocess
+          html=pathlib.Path('/tmp/izivia/page.html').read_text(errors='ignore')
+          base='https://izivia.com/'
+          assets=[]
+          for x in re.findall(r'(?:src|href)=["\']([^"\']+\.js(?:\?[^"\']*)?)["\']',html,re.I):
+              u=urllib.parse.urljoin(base,x)
+              if u not in assets: assets.append(u)
+          dl=[]
+          for i,u in enumerate(assets[:40]):
+              p=pathlib.Path(f'/tmp/izivia/a{i}.js')
+              r=subprocess.run(['curl','-fLsS','--retry','2',u,'-o',str(p)])
+              if r.returncode==0:dl.append({'url':u,'file':p.name,'bytes':p.stat().st_size})
+          needles=re.compile(r'https?://[^\s"\'<>]+|[/A-Za-z0-9_.?=&%-]*(?:api|station|borne|charge|tarif|price|connector|evse|graphql|ajax)[/A-Za-z0-9_.?=&%-]*',re.I)
+          hits=[]
+          for p in [pathlib.Path('/tmp/izivia/page.html')]+[pathlib.Path('/tmp/izivia')/x['file'] for x in dl]:
+              txt=p.read_text(errors='ignore')
+              for h in needles.findall(txt):
+                  if len(h)>5 and h not in hits:hits.append(h[:1200])
+          report={'pageBytes':len(html),'assets':dl,'candidates':hits[:2500],'stationIdOccurrences':html.count('67f7efcbae3bfb53a124f824')}
+          pathlib.Path('reports/france/izivia/public-map-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'pageBytes':report['pageBytes'],'assetCount':len(dl),'candidateCount':len(hits),'stationIdOccurrences':report['stationIdOccurrences']},indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/izivia/public-map-probe.json
+          git commit -m 'France IZIVIA: publish public map probe' || exit 0
+          git push
