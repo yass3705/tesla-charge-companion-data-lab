@@ -22,10 +22,10 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import gzip,json,pathlib,urllib.request,urllib.parse,time,collections
+          import gzip,json,pathlib,urllib.request,urllib.parse,time,collections,re
           rows=json.loads(gzip.open('/tmp/france-all.json.gz','rt',encoding='utf-8').read())
-          ops=collections.Counter(str(r[5] or '') for r in rows)
           bou=[r for r in rows if 'bouygues' in str(r[5] or '').lower()]
+          norm=lambda x: re.sub(r'[^A-Z0-9]','',str(x or '').upper())
           targets=[]
           for r in bou:
               ids=[]
@@ -37,42 +37,31 @@ jobs:
               q=urllib.request.Request(url,data=data,headers=headers or {},method='POST' if data is not None else 'GET')
               with urllib.request.urlopen(q,timeout=timeout) as resp:return resp.status,json.loads(resp.read().decode())
           sampled=[]
-          for idx,t in enumerate(targets[:60]):
+          for t in targets[:60]:
               up=f"https://drive-api.plugsurfing.com/drive/v1/geosearch/radius?latitude={t['lat']}&longitude={t['lon']}&distance=1500&aggregate=false"
               try:
                   st,data=req(API+'/drive/markers',{'content-type':'application/json','key':'BYESKEY','accept':'*/*','url':up},b'{"filters":[]}')
-                  wanted={x.upper().replace(' ','') for x in t['pdcIds']}
+                  wanted={norm(x) for x in t['pdcIds']}
                   matches=[]
                   for loc in data.get('locations',[]):
                       evses=loc.get('evses',[])
-                      hit=[e.get('evse_id') for e in evses if str(e.get('evse_id') or '').upper().replace(' ','') in wanted]
+                      hit=[e.get('evse_id') for e in evses if norm(e.get('evse_id')) in wanted]
                       if not hit: continue
                       lid=str(loc.get('id') or '')
-                      enc=urllib.parse.quote(lid,safe='')
-                      detail_url='https://drive-api.plugsurfing.com/drive/v1/locations/'+enc
+                      detail_url='https://drive-api.plugsurfing.com/drive/v1/locations/'+urllib.parse.quote(lid,safe='')
                       prices=[]; detail_status=None
                       try:
                           detail_status,detail=req(API+'/drive/detail',{'key':'BYESKEY','accept':'*/*','url':detail_url})
                           for e in detail.get('evses',[]):
-                              if str(e.get('evse_id') or '').upper().replace(' ','') not in wanted: continue
+                              if norm(e.get('evse_id')) not in wanted: continue
                               for c in e.get('connectors',[]):
                                   prices.append({'evseId':e.get('evse_id'),'power':c.get('power'),'standard':c.get('standard'),'price':c.get('price')})
                       except Exception as de: prices=[{'error':repr(de)}]
                       matches.append({'locationId':lid,'name':loc.get('name'),'operator':loc.get('operator'),'matchedEvseIds':hit,'detailStatus':detail_status,'prices':prices})
                   sampled.append({**t,'markerStatus':st,'returnedLocations':len(data.get('locations',[])),'matches':matches})
-              except Exception as e:
-                  sampled.append({**t,'error':repr(e)})
+              except Exception as e: sampled.append({**t,'error':repr(e)})
               time.sleep(.08)
-          report={
-            'panRows':len(rows),'bouyguesStationRows':len(bou),
-            'bouyguesPdcCount':sum(len(x['pdcIds']) for x in targets),
-            'operatorLabels':dict(collections.Counter(x['operator'] for x in targets)),
-            'networkLabels':dict(collections.Counter(str(x['network']) for x in targets)),
-            'sampleSize':len(sampled),
-            'sampleMatchedStations':sum(bool(x.get('matches')) for x in sampled),
-            'sampleMatchedPdc':sum(len({p['evseId'] for m in x.get('matches',[]) for p in m.get('prices',[]) if p.get('evseId')}) for x in sampled),
-            'sampled':sampled
-          }
+          report={'panRows':len(rows),'bouyguesStationRows':len(bou),'bouyguesPdcCount':sum(len(x['pdcIds']) for x in targets),'operatorLabels':dict(collections.Counter(x['operator'] for x in targets)),'networkLabels':dict(collections.Counter(str(x['network']) for x in targets)),'sampleSize':len(sampled),'sampleMatchedStations':sum(bool(x.get('matches')) for x in sampled),'sampleMatchedPdc':sum(len({p['evseId'] for m in x.get('matches',[]) for p in m.get('prices',[]) if p.get('evseId')}) for x in sampled),'sampled':sampled}
           pathlib.Path('reports/france/alize').mkdir(parents=True,exist_ok=True)
           pathlib.Path('reports/france/alize/bouygues-pan-sample.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
           print(json.dumps({k:v for k,v in report.items() if k!='sampled'},ensure_ascii=False,indent=2))
