@@ -1,0 +1,52 @@
+name: France TotalEnergies stores probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/probe-totalenergies-stores.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public store search and price token
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/totalenergies
+          python - <<'PY'
+          import subprocess,json,pathlib,urllib.parse
+          out=[]
+          def get(url,headers=()):
+              cmd=['curl','-sS','-A','Mozilla/5.0','-w','\n%{http_code}']
+              for h in headers:cmd+=['-H',h]
+              cmd+=[url];r=subprocess.run(cmd,capture_output=True,text=True)
+              body,status=r.stdout.rsplit('\n',1) if '\n' in r.stdout else (r.stdout,'')
+              try:data=json.loads(body)
+              except:data=body
+              return status,data
+          # Loader alias is public/client-side; test whether it is directly accepted as the public search key.
+          for key in ('mapstore-prod-woos',):
+              q=urllib.parse.urlencode({'lat':48.8566,'lng':2.3522,'radius':10000,'stores_by_page':20,'key':key})
+              st,d=get('https://api.woosmap.com/stores/search/?'+q,['Referer: https://totalms.webgeoservices.com/'])
+              out.append({'case':'woosmap-search','keyAlias':key,'status':st,'body':d})
+          st,tok=get('https://totalms.webgeoservices.com/maps/data/token/',['Referer: https://totalms.webgeoservices.com/'])
+          # Do not persist token value; only schema/status.
+          out.append({'case':'price-token','status':st,'bodyType':type(tok).__name__,'keys':list(tok) if isinstance(tok,dict) else [],'hasAccessToken':isinstance(tok,dict) and bool(tok.get('access_token'))})
+          pathlib.Path('reports/france/totalenergies/stores-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/totalenergies/stores-probe.json
+          git commit -m 'France TotalEnergies: publish stores probe' || exit 0
+          git pull --rebase origin main
+          git push
