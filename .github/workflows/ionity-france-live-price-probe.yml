@@ -1,0 +1,82 @@
+name: IONITY France live price probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/ionity-france-live-price-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Resolve EVSEs and fetch public location prices
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          REF=$(python - <<'PY'
+          import uuid
+          print(uuid.uuid4())
+          PY
+          )
+          BASE='https://adhoc-bff.ionity.cloud'
+          for EVSE in 'FR*IOY*E437801' 'FR*IOY*E485771' 'FR*IOY*E469411' 'FR*IOY*E435501'; do
+            SAFE=$(printf '%s' "$EVSE" | tr '*' '_')
+            echo "===== EVSE $EVSE ====="
+            curl -sS -L --max-time 25 --get \
+              -H 'accept: application/json' \
+              -H 'x-adhoc-platform: WEB' \
+              -H "x-adhoc-user-reference: $REF" \
+              --data-urlencode "evseid=$EVSE" \
+              -D "probe/${SAFE}.resolve.headers" \
+              "$BASE/api/v1/evse/uuids-by-evse-id" \
+              -o "probe/${SAFE}.resolve.json" || true
+            sed -n '1,20p' "probe/${SAFE}.resolve.headers" || true
+            cat "probe/${SAFE}.resolve.json" || true
+            echo
+            LOC=$(python - "$SAFE" <<'PY'
+          import json,sys
+          p=f'probe/{sys.argv[1]}.resolve.json'
+          try:
+              o=json.load(open(p))
+              print(o.get('locationUuid') or '')
+          except Exception:
+              print('')
+          PY
+            )
+            if [ -n "$LOC" ]; then
+              echo "LOCATION $LOC"
+              curl -sS -L --max-time 25 \
+                -H 'accept: application/json' \
+                -H 'x-adhoc-platform: WEB' \
+                -H "x-adhoc-user-reference: $REF" \
+                -D "probe/${SAFE}.location.headers" \
+                "$BASE/api/v3/location/$LOC" \
+                -o "probe/${SAFE}.location.json" || true
+              sed -n '1,20p' "probe/${SAFE}.location.headers" || true
+              python - "$SAFE" <<'PY'
+          import json,sys
+          p=f'probe/{sys.argv[1]}.location.json'
+          try:
+              o=json.load(open(p))
+              out={k:o.get(k) for k in ['uuid','name','address','postalCode','city','country','preAuthAmountForCharging']}
+              out['connectors']=[{
+                  'uuid':c.get('uuid'),'evseId':c.get('evseId'),'number':c.get('number'),'type':c.get('type'),'maxPower':c.get('maxPower'),'status':c.get('status'),'adhocPrice':c.get('adhocPrice'),'blockingFee':c.get('blockingFee')
+              } for c in o.get('connectors',[])]
+              print(json.dumps(out,ensure_ascii=False,indent=2))
+          except Exception as e:
+              print(open(p,errors='replace').read()[:8000] if __import__('os').path.exists(p) else e)
+          PY
+            fi
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ionity-france-live-price-probe
+          path: probe
+          retention-days: 3
