@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-01T03:21:57+02:00",
+  "scope": "Sanitized validation of the fresh EVGO V9 production candidate artifact produced by GitHub Actions run 33456426369.",
+  "policy": {
+    "read_only": true,
+    "no_operator_requests": true,
+    "no_credentials": true,
+    "no_session_start": true,
+    "artifact_validation_only": true
+  },
+  "artifact": {
+    "workflow_run_id": 33456426369,
+    "artifact_id": 9781593528,
+    "artifact_name": "morocco-evgo-v9-production-candidate",
+    "artifact_digest": "sha256:9897ac82a1ea435fad52d2cd0bb9ec3e00039964f98b070e7dea6a020c0d0c49",
+    "workflow_conclusion": "success",
+    "head_sha": "a752855dcb75403ae122831076dd7cc034ead438"
+  },
+  "validated_counts": {
+    "stations": 17,
+    "evses": 43,
+    "stations_with_valid_morocco_gps": 17,
+    "invalid_gps": 0,
+    "native_status_counts": {
+      "available": 24,
+      "charging": 18,
+      "unavailable": 1
+    },
+    "operational_class_counts": {
+      "available": 23,
+      "occupied_or_active_session": 18,
+      "out_of_service": 2
+    }
+  },
+  "precedence_example": {
+    "locationId": 6,
+    "station": "Marjane Menara",
+    "site_brand": "Marjane",
+    "operator_cpo_candidate": "Nareva Services / EVGO",
+    "app_source": "EVGO",
+    "tariff_channel": "EVGO native",
+    "status_source": "EVGO native backend cp.evgo.ma",
+    "evse_10": {
+      "text_status": "available",
+      "isAvailable": false,
+      "isLongTermUnavailable": true,
+      "isTemporarilyUnavailable": false,
+      "operational_class": "out_of_service"
+    },
+    "validation": "Long-term/temporary-unavailable flags take precedence over textual available status as intended."
+  },
+  "v9_registry_gap": {
+    "validated_v9_source_sha": "76891223d71632eb141990c0bda50d5bf72cebf7",
+    "current_source_id": "morocco-evgo-native",
+    "current_url": "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-data-lab/main/reports/morocco/evgo/latest-normalized-stations.json",
+    "required_url_after_candidate_publish": "https://raw.githubusercontent.com/yass3705/tesla-charge-companion-data-lab/main/reports/morocco/evgo/latest-production-stations.json",
+    "impact": "The current V9 registry does not consume the freshly overlaid native status candidate yet.",
+    "recommended_sequence": [
+      "publish latest-production-stations.json to data-lab main after PR #42 is made ready and merged",
+      "change only the EVGO Morocco source URL in the isolated V9 source registry to latest-production-stations.json",
+      "run V9 adapter/runtime contract tests before any stable root deployment"
+    ]
+  },
+  "result": "EVGO fresh production candidate validated; data artifact is ready for V9 integration sequencing, but the draft PR state currently prevents merge through the available automation path."
+}
