@@ -34,16 +34,28 @@ jobs:
           from pathlib import Path
           import re, urllib.parse, subprocess
           base='https://payment.ionity.eu/'
-          seen=set()
+          seen=set(); queue=[]
           for p in Path('probe').glob('*.html'):
               text=p.read_text(errors='replace')
-              for src in re.findall(r'<script[^>]+src=["\']([^"\']+)', text, re.I):
-                  u=urllib.parse.urljoin(base,src)
-                  if u in seen: continue
-                  seen.add(u)
-                  out=Path('probe/assets')/(re.sub(r'[^A-Za-z0-9._-]','_',urllib.parse.urlparse(u).path.strip('/')) or 'asset.js')
-                  print('ASSET',u,'->',out)
-                  subprocess.run(['curl','-sS','-L','--max-time','30','-A','Mozilla/5.0',u,'-o',str(out)],check=False)
+              refs=[]
+              refs += re.findall(r'<script[^>]+src=["\']([^"\']+)', text, re.I)
+              refs += re.findall(r'<link[^>]+rel=["\']modulepreload["\'][^>]+href=["\']([^"\']+)', text, re.I)
+              refs += re.findall(r'<link[^>]+href=["\']([^"\']+)["\'][^>]+rel=["\']modulepreload["\']', text, re.I)
+              queue += [urllib.parse.urljoin(base,x) for x in refs]
+          while queue and len(seen)<120:
+              u=queue.pop(0)
+              if u in seen or not u.startswith(base): continue
+              seen.add(u)
+              name=re.sub(r'[^A-Za-z0-9._-]','_',urllib.parse.urlparse(u).path.strip('/')) or 'asset.js'
+              out=Path('probe/assets')/name
+              print('ASSET',u,'->',out)
+              subprocess.run(['curl','-sS','-L','--max-time','30','-A','Mozilla/5.0',u,'-o',str(out)],check=False)
+              if out.exists():
+                  t=out.read_text(errors='replace')
+                  for ref in re.findall(r'["\'](chunk-[A-Za-z0-9_-]+\.js)["\']',t):
+                      queue.append(urllib.parse.urljoin(base,ref))
+                  for ref in re.findall(r'import\(["\']([^"\']+\.js)["\']\)',t):
+                      queue.append(urllib.parse.urljoin(u,ref))
           print('asset_count',len(seen))
           PY
 
@@ -54,16 +66,17 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import re
-          pats=[r'https?://[^"\'`\\ ]+',r'/api/[A-Za-z0-9_./?=&${}:~-]+',r'graphql',r'charger[^"\'`]{0,120}',r'tariff[^"\'`]{0,160}',r'price[^"\'`]{0,160}',r'kwh[^"\'`]{0,120}']
+          pats=[r'https?://[^"\'`\\ ]+',r'/api/[A-Za-z0-9_./?=&${}:~-]+',r'graphql',r'charger[^"\'`]{0,180}',r'tariff[^"\'`]{0,220}',r'price[^"\'`]{0,220}',r'kwh[^"\'`]{0,180}',r'connector[^"\'`]{0,180}',r'location[^"\'`]{0,180}']
           for p in sorted(Path('probe/assets').glob('*')):
               t=p.read_text(errors='replace')
-              print('\n====',p.name,'bytes',len(t.encode()),'====')
               hits=[]
               for pat in pats:
                   for m in re.finditer(pat,t,re.I):
-                      s=re.sub(r'\s+',' ',m.group(0))[:500]
+                      s=re.sub(r'\s+',' ',m.group(0))[:600]
                       if s not in hits: hits.append(s)
-              for h in hits[:300]: print(h)
+              if hits:
+                  print('\n====',p.name,'bytes',len(t.encode()),'====')
+                  for h in hits[:500]: print(h)
           PY
 
       - uses: actions/upload-artifact@v4
