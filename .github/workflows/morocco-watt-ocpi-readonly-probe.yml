@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/morocco-watt-ocpi-readonly-probe.yml'
       - 'scripts/morocco_watt_ocpi_public_probe.py'
+      - 'scripts/morocco_watt_public_client_static_inspect.py'
 
 permissions:
   contents: read
@@ -23,34 +24,49 @@ jobs:
       - name: Probe documented public GET surfaces only
         run: python3 scripts/morocco_watt_ocpi_public_probe.py
 
+      - name: Statically inspect public same-origin client assets
+        run: python3 scripts/morocco_watt_public_client_static_inspect.py
+
       - name: Validate sanitized artifact contract
         run: |
           python3 - <<'PY'
           import json
           from pathlib import Path
-          p=Path('artifacts/morocco-watt-ocpi-public-probe/summary.json')
-          d=json.loads(p.read_text())
-          pol=d.get('policy',{})
+          probe=json.loads(Path('artifacts/morocco-watt-ocpi-public-probe/summary.json').read_text())
+          static=json.loads(Path('artifacts/morocco-watt-public-client-static/summary.json').read_text())
+          pol=probe.get('policy',{})
           assert pol.get('read_only') is True
           assert pol.get('http_methods') == ['GET']
           assert pol.get('credentials_used') is False
           assert pol.get('cookies_used') is False
           assert pol.get('session_or_command_routes_used') is False
           assert pol.get('raw_payloads_committed') is False
-          assert d.get('production_decision') == 'diagnostic_only_until_source_contract_and_identity_mapping_are_validated'
+          assert probe.get('production_decision') == 'diagnostic_only_until_source_contract_and_identity_mapping_are_validated'
+          spol=static.get('policy',{})
+          assert spol.get('read_only') is True
+          assert spol.get('http_methods') == ['GET']
+          assert spol.get('same_origin_only') is True
+          assert spol.get('credentials_used') is False
+          assert spol.get('cookies_used') is False
+          assert spol.get('discovered_routes_invoked') is False
+          assert spol.get('command_or_session_routes_invoked') is False
+          assert spol.get('raw_html_or_js_committed') is False
           print(json.dumps({
-            'locations': d.get('locations_summary',{}).get('record_count'),
-            'tariffs': d.get('tariffs_summary',{}).get('record_count'),
-            'locations_http': d.get('locations_endpoint',{}).get('http_status'),
-            'tariffs_http': d.get('tariffs_endpoint',{}).get('http_status'),
-            'live_http': d.get('fastvolt_morocco_mall_live_status_probe',{}).get('http_status')
+            'locations': probe.get('locations_summary',{}).get('record_count'),
+            'tariffs': probe.get('tariffs_summary',{}).get('record_count'),
+            'locations_http': probe.get('locations_endpoint',{}).get('http_status'),
+            'tariffs_http': probe.get('tariffs_endpoint',{}).get('http_status'),
+            'static_assets': len(static.get('assets_inspected') or []),
+            'likely_data_candidates': static.get('likely_data_candidate_paths')
           }, ensure_ascii=False))
           PY
 
-      - name: Upload sanitized WATT diagnostic summary
+      - name: Upload sanitized WATT diagnostic summaries
         uses: actions/upload-artifact@v4
         with:
           name: morocco-watt-ocpi-readonly-summary
-          path: artifacts/morocco-watt-ocpi-public-probe/summary.json
+          path: |
+            artifacts/morocco-watt-ocpi-public-probe/summary.json
+            artifacts/morocco-watt-public-client-static/summary.json
           if-no-files-found: error
           retention-days: 3
