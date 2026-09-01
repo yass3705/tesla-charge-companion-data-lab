@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "country": "MA",
+  "network": "EVGO",
+  "finding": "Apple's current EVGO App Store listing independently validates both the native operator/app relationship and the cp.evgo.ma branded backend association: the listed provider is Nareva Services, the developer website is evgo.ma, and the privacy-policy link points to cp.evgo.ma.",
+  "evidence": {
+    "source_type": "official_app_store_listing",
+    "source_url": "https://apps.apple.com/fr/app/evgo/id6742823296",
+    "checked_date": "2026-09-01",
+    "app_name": "EVGO",
+    "provider": "Nareva Services",
+    "developer_brand": "EV GO",
+    "developer_website_host": "evgo.ma",
+    "privacy_policy_host": "cp.evgo.ma",
+    "current_version_observed": "3.231.0",
+    "public_features": [
+      "station localisation",
+      "secure in-app payment",
+      "billing history",
+      "reporting non-functional chargers"
+    ]
+  },
+  "modeling": {
+    "cpo_operator": {
+      "value": "Nareva Services / EVGO",
+      "confidence": "high",
+      "scope": "native EVGO network only",
+      "note": "Do not use EVGO visibility in a roaming app to overwrite another physical CPO attribution."
+    },
+    "site_brand": {
+      "rule": "Keep the physical site/host brand separate from EVGO/Nareva."
+    },
+    "app_source_access_network": {
+      "value": "EVGO native app",
+      "confidence": "high"
+    },
+    "tariff_channel": {
+      "rule": "Treat tariffs returned by the native cp.evgo.ma/EVGO client as EVGO direct only when the station payload itself is validated; do not infer tariffs from the App Store listing."
+    },
+    "status_source": {
+      "value": "cp.evgo.ma native backend",
+      "confidence": "high",
+      "reason": "The App Store privacy-policy link independently binds the official EVGO client to cp.evgo.ma, corroborating the already validated anonymous AMPECO routes and fresh native status overlays."
+    }
+  },
+  "roaming_priority": {
+    "rule": "For an EVGO/Nareva station also visible in EVOne, prefer a fresh native cp.evgo.ma status over the EVOne roaming status when both are available.",
+    "evone_production_status_allowlist": [
+      "Available",
+      "Occupied",
+      "Charging"
+    ],
+    "evone_diagnostic_only": [
+      "Faulted",
+      "Offline",
+      "Unknown",
+      "Unavailable"
+    ]
+  },
+  "privacy": {
+    "credentials_committed": false,
+    "personal_contact_details_committed": false,
+    "station_ids_committed": false,
+    "coordinates_committed": false,
+    "raw_response_bodies_committed": false
+  }
+}
