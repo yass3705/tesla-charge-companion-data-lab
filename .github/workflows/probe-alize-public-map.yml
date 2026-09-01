@@ -22,35 +22,32 @@ jobs:
           mkdir -p /tmp/alize reports/france/alize
           API='https://alize-map-api-faezg8gfgjfngab9.francecentral-01.azurewebsites.net'
           UP='https://drive-api.plugsurfing.com/drive/v1/geosearch/radius?latitude=48.8566&longitude=2.3522&distance=30000&aggregate=false'
-          code=$(curl -sS -o /tmp/alize/markers-live.json -w '%{http_code}' -X POST "$API/drive/markers" \
-            -H 'content-type: application/json' -H 'Access-Control-Allow-Origin: *' -H 'key: BYESKEY' -H 'accept: */*' -H "url: $UP" \
-            --data '{"filters":[]}' || true)
-          echo "markers-live HTTP=$code bytes=$(wc -c < /tmp/alize/markers-live.json)"
+          curl -fLsS -X POST "$API/drive/markers" -H 'content-type: application/json' -H 'key: BYESKEY' -H 'accept: */*' -H "url: $UP" --data '{"filters":[]}' -o /tmp/alize/markers-live.json
           python - <<'PY'
           import json,pathlib,subprocess,urllib.parse
-          p=pathlib.Path('/tmp/alize/markers-live.json')
-          raw=p.read_text(errors='ignore')
-          out={'rawStatus':'captured','rawBytes':len(raw),'sample':raw[:5000]}
-          try:
-              data=json.loads(raw); out['topKeys']=list(data) if isinstance(data,dict) else []
-              locs=data.get('locations',[]) if isinstance(data,dict) else []
-              out['locationCount']=len(locs)
-              if locs:
-                  loc=locs[0]; out['firstLocation']=loc
-                  lid=loc.get('id')
-                  candidates=[]
-                  if loc.get('location_url'): candidates.append(loc['location_url'])
-                  if lid:
-                      candidates += [f'https://drive-api.plugsurfing.com/drive/v1/locations/{lid}', f'https://drive-api.plugsurfing.com/drive/v1/locations/{urllib.parse.quote(str(lid),safe="")}']
-                  detail=[]
-                  for u in dict.fromkeys(candidates):
-                      target='https://alize-map-api-faezg8gfgjfngab9.francecentral-01.azurewebsites.net/drive/detail?url='+urllib.parse.quote(u,safe='')
-                      r=subprocess.run(['curl','-sS','-w','\n%{http_code}','-H','key: BYESKEY','-H','accept: */*',target],capture_output=True,text=True)
+          data=json.loads(pathlib.Path('/tmp/alize/markers-live.json').read_text())
+          locs=data.get('locations',[])
+          out={'locationCount':len(locs),'attempts':[]}
+          for loc in locs[:5]:
+              lid=str(loc.get('id') or '')
+              urls=[]
+              if loc.get('location_url'): urls.append(loc['location_url'])
+              if lid:
+                  urls.append('https://drive-api.plugsurfing.com/drive/v1/locations/'+lid)
+                  urls.append('https://drive-api.plugsurfing.com/drive/v1/locations/'+urllib.parse.quote(lid,safe=''))
+              for u in dict.fromkeys(urls):
+                  for mode in ('header','query'):
+                      cmd=['curl','-sS','-w','\n%{http_code}','-H','key: BYESKEY','-H','accept: */*']
+                      target='https://alize-map-api-faezg8gfgjfngab9.francecentral-01.azurewebsites.net/drive/detail'
+                      if mode=='header': cmd += ['-H','url: '+u,target]
+                      else: cmd += [target+'?url='+urllib.parse.quote(u,safe='')]
+                      r=subprocess.run(cmd,capture_output=True,text=True)
                       body,status=r.stdout.rsplit('\n',1) if '\n' in r.stdout else (r.stdout,'')
-                      detail.append({'upstreamUrl':u,'status':status,'body':body[:20000]})
-                  out['detailAttempts']=detail
-          except Exception as e: out['parseError']=repr(e)
-          pathlib.Path('reports/france/alize/live-api-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+                      parsed=None
+                      try: parsed=json.loads(body)
+                      except: pass
+                      out['attempts'].append({'locationName':loc.get('name'),'evseIds':[e.get('evse_id') for e in loc.get('evses',[])[:5]],'upstreamUrl':u,'mode':mode,'status':status,'bodyKeys':list(parsed) if isinstance(parsed,dict) else [],'bodySample':body[:2500]})
+          pathlib.Path('reports/france/alize/detail-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
           print(json.dumps(out,ensure_ascii=False,indent=2)[:30000])
           PY
       - name: Publish probe report
@@ -58,6 +55,6 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add reports/france/alize/live-api-probe.json
-          git commit -m 'France Alize: publish live API probe' || exit 0
+          git add reports/france/alize/detail-probe.json
+          git commit -m 'France Alize: publish detail proxy probe' || exit 0
           git push
