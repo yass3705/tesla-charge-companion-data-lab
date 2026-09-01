@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-01",
+  "country": "MA",
+  "network": "Kilowatt",
+  "purpose": "V9 tariff modeling decision before stable integration",
+  "evidence": {
+    "native_station_inventory": "reports/morocco/kilowatt/latest-public-station-inventory.json",
+    "native_tariff_schema": "reports/morocco/kilowatt/latest-public-tariff-schema.json",
+    "public_free_tariff_evidence": "reports/morocco/kilowatt/public-free-tariff-evidence-2026-08-24.json",
+    "totalenergies_pattern": "reports/morocco/kilowatt/totalenergies-network-pattern-2026-08-20.json",
+    "user_observation_2026_09_01": "Kilowatt charging is free across most of the network, with only a small number of cities/sites charging a fee. Treat this as useful first-party user evidence that must still be reconciled station-by-station for production exceptions."
+  },
+  "modeling": {
+    "cpo_operator": "Kilowatt",
+    "site_brand": "station-specific and independent from CPO",
+    "app_source_access_network": "Kilowatt public web map/native app where applicable",
+    "tariff_channel": "Kilowatt direct unless a distinct roaming/access channel is explicitly evidenced",
+    "status_source": "Kilowatt public web map/native source, independent from tariff evidence"
+  },
+  "facts": {
+    "public_station_api_exposes_tariff_fields": false,
+    "free_charging_is_common": true,
+    "paid_charging_is_exceptional": true,
+    "city_name_alone_is_sufficient_to_mark_paid": false,
+    "null_tariff_field_means_free": false
+  },
+  "v9_policy": {
+    "free_tariff_value_mad": 0,
+    "free_tariff_application": "Apply 0 MAD when free charging is supported by station-specific evidence or by a validated network rule with no paid exception applying to that station.",
+    "paid_tariff_application": "Apply a non-zero tariff only when a station/site/city exception and its amount are explicitly evidenced by Kilowatt-native data, a verified app observation, or a sufficiently strong station-specific source.",
+    "unresolved_tariff_application": "Keep tariff unresolved only for stations where neither the free rule nor a paid exception can be safely established.",
+    "do_not_do": [
+      "Do not mark every Kilowatt station unresolved merely because the public API has no tariff field.",
+      "Do not mark an entire city paid based only on a broad secondary-source statement when station-specific free evidence contradicts it.",
+      "Do not infer CPO from site brand or tariff channel.",
+      "Do not infer free solely from a null or missing tariff field."
+    ]
+  },
+  "known_conflicts_to_reconcile": [
+    {
+      "claim": "Kilowatt is free except Casablanca and Taza",
+      "source": "EVPlug public article summarized in public-free-tariff-evidence-2026-08-24.json",
+      "conflict": "Current station-specific directory evidence lists at least Almaz Mall Casablanca and Agora Park Taza as free.",
+      "decision": "Do not use a blanket Casablanca/Taza paid rule. Resolve paid exceptions at station/site level."
+    }
+  ],
+  "next_step": "Build a station-level tariff overlay for the current 43 production-candidate Kilowatt records: free=0 MAD where corroborated, explicit paid tariff where verified, unresolved only for residual ambiguous records. Preserve TotalEnergies/Carrefour/IKEA/etc. as site_brand rather than CPO."
+}
