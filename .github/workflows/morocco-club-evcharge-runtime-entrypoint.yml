@@ -1,0 +1,115 @@
+name: Morocco Club EV-Charge exact runtime entrypoint probe
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/morocco-club-evcharge-runtime-entrypoint.yml'
+      - 'scripts/morocco_club_evcharge_runtime_entrypoint_probe.py'
+      - 'reports/morocco/totalenergies/club-ev-charge-public-root-assets-2026-09-01.json'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Inspect exact public Flutter runtime entrypoint
+        run: python3 scripts/morocco_club_evcharge_runtime_entrypoint_probe.py
+
+      - name: Validate isolated read-only fail-closed contract
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from urllib.parse import urlsplit
+
+          d=json.loads(Path('artifacts/morocco-club-evcharge-runtime-entrypoint/summary.json').read_text())
+          assert d.get('schema_version')==1
+          p=d.get('policy',{})
+          for key in (
+              'pr64_public_shell_record_gate',
+              'anonymous_read_only_get_only',
+              'exact_same_origin_entrypoint_only',
+              'entrypoint_must_be_explicitly_named_by_public_bootstrap',
+              'no_discovered_route_requests',
+              'no_path_enumeration',
+              'no_redirects_followed',
+              'no_query_parameters',
+              'no_request_body',
+              'no_login',
+              'no_credentials',
+              'no_cookies',
+              'no_station_or_connector_ids',
+              'no_charging_or_account_actions',
+              'sanitized_read_only_candidates_only',
+          ):
+              assert p.get(key) is True, key
+          assert p.get('raw_runtime_body_persisted') is False
+          assert p.get('arbitrary_strings_persisted') is False
+
+          gate=d.get('evidence_gate',{})
+          assert gate.get('gate_passed') is True
+          req=d.get('request',{})
+          assert req.get('url')=='https://csmstotalenergiesma.numocity.com/main.dart.js'
+          assert req.get('path')=='/main.dart.js'
+          assert req.get('request_count')==1
+          assert req.get('method')=='GET'
+          assert not urlsplit(req.get('url')).query
+          assert d.get('network',{}).get('total_request_count')==1
+          assert d.get('network',{}).get('cross_origin_request_count')==0
+          assert d.get('production_decision')=='no_promotion'
+
+          model=d.get('modeling',{})
+          assert model.get('cpo_operator')=='unresolved_station_specific'
+          assert model.get('app_source_access_network')=='Club EV-Charge / TotalEnergies Marketing Maroc'
+          assert model.get('numocity_role')=='unverified_current_production_backend'
+
+          findings=d.get('safe_findings',{})
+          for value in findings.get('safe_numocity_absolute_urls',[]):
+              u=urlsplit(value)
+              assert u.scheme=='https'
+              assert u.hostname=='numocity.com' or (u.hostname or '').endswith('.numocity.com')
+              assert not u.query and not u.fragment
+          for value in findings.get('safe_numocity_base_literals',[]):
+              u=urlsplit(value)
+              assert u.scheme=='https'
+              assert u.hostname=='numocity.com' or (u.hostname or '').endswith('.numocity.com')
+              assert not u.query and not u.fragment
+          for path in findings.get('safe_read_only_path_candidates',[]):
+              u=urlsplit(path)
+              assert path.startswith('/') and not u.scheme and not u.netloc and not u.query and not u.fragment
+
+          forbidden={'raw_body','raw_html','text','content','source_context'}
+          def walk(value):
+              if isinstance(value,dict):
+                  assert forbidden.isdisjoint(value)
+                  for child in value.values(): walk(child)
+              elif isinstance(value,list):
+                  for child in value: walk(child)
+          walk(d)
+
+          print(json.dumps({
+              'ok':True,
+              'status':req.get('status'),
+              'bytes':req.get('bytes'),
+              'absolute_urls':findings.get('safe_numocity_absolute_url_count'),
+              'base_literals':findings.get('safe_numocity_base_literal_count'),
+              'read_only_paths':findings.get('safe_read_only_path_candidate_count'),
+              'technical_result':d.get('technical_result'),
+          },ensure_ascii=False))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: morocco-club-evcharge-runtime-entrypoint
+          path: artifacts/morocco-club-evcharge-runtime-entrypoint/summary.json
+          if-no-files-found: error
+          retention-days: 3
