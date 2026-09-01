@@ -15,50 +15,34 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Probe public station pages and assets
+      - name: Probe current public map iframe
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/izivia reports/france/izivia
           UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/140 Safari/537.36'
-          urls=(
-            'https://izivia.com/carte-bornes-electriques-izivia/bornes-de-recharge-bagnac-sur-c%C3%A9l%C3%A9/3-c%C3%B4te-du-s%C3%A9gala/67f7efcbae3bfb53a124f824/'
-            'https://izivia.com/carte-bornes-electriques-izivia/bornes-de-recharge-Paris/rue-du-conservatoire/60f0cc8770f43242fbc662bf/'
-            'https://izivia.com/carte-bornes-electriques-izivia/'
-          )
-          : > /tmp/izivia/status.txt
-          found=''
-          i=0
-          for u in "${urls[@]}"; do
-            code=$(curl -LsS -A "$UA" -o "/tmp/izivia/page$i.html" -w '%{http_code}' "$u" || true)
-            echo "$code $u $(wc -c < /tmp/izivia/page$i.html)" | tee -a /tmp/izivia/status.txt
-            if [ "$code" = 200 ] && [ -z "$found" ]; then found="/tmp/izivia/page$i.html"; fi
-            i=$((i+1))
-          done
+          URL='https://izivia.com/carte-bornes-electriques-izivia/'
+          curl -fLsS -A "$UA" "$URL" -o /tmp/izivia/page.html
           python - <<'PY'
           import re,json,pathlib,urllib.parse,subprocess
-          pages=list(pathlib.Path('/tmp/izivia').glob('page*.html'))
-          best=max(pages,key=lambda p:p.stat().st_size) if pages else None
-          html=best.read_text(errors='ignore') if best else ''
-          base='https://izivia.com/'
-          assets=[]
-          for x in re.findall(r'(?:src|href)=["\']([^"\']+\.js(?:\?[^"\']*)?)["\']',html,re.I):
-              u=urllib.parse.urljoin(base,x)
-              if u not in assets: assets.append(u)
-          dl=[]
-          for i,u in enumerate(assets[:50]):
-              p=pathlib.Path(f'/tmp/izivia/a{i}.js')
-              r=subprocess.run(['curl','-fLsS','-A','Mozilla/5.0',u,'-o',str(p)])
-              if r.returncode==0:dl.append({'url':u,'file':p.name,'bytes':p.stat().st_size})
-          needles=re.compile(r'https?://[^\s"\'<>]+|[/A-Za-z0-9_.?=&%-]*(?:api|station|borne|charge|tarif|price|connector|evse|graphql|ajax)[/A-Za-z0-9_.?=&%-]*',re.I)
-          hits=[]
-          for p in pages+[pathlib.Path('/tmp/izivia')/x['file'] for x in dl]:
-              txt=p.read_text(errors='ignore')
-              for h in needles.findall(txt):
-                  if len(h)>5 and h not in hits:hits.append(h[:1200])
-          report={'statuses':pathlib.Path('/tmp/izivia/status.txt').read_text().splitlines(),'bestPageBytes':len(html),'assets':dl,'candidates':hits[:2500]}
+          html=pathlib.Path('/tmp/izivia/page.html').read_text(errors='ignore')
+          iframe_tags=re.findall(r'<iframe\b[^>]*>',html,re.I)
+          iframe_srcs=[]
+          for tag in iframe_tags:
+              m=re.search(r'\bsrc=["\']([^"\']+)',tag,re.I)
+              if m: iframe_srcs.append(urllib.parse.urljoin('https://izivia.com/',m.group(1)))
+          contexts=[]
+          for needle in ('borneIframe','iframe','carte-bornes','src =','setAttribute'):
+              for m in re.finditer(re.escape(needle),html,re.I):
+                  contexts.append(html[max(0,m.start()-1200):min(len(html),m.end()+1800)])
+          fetched=[]
+          for i,u in enumerate(dict.fromkeys(iframe_srcs)):
+              p=pathlib.Path(f'/tmp/izivia/iframe-{i}.html')
+              r=subprocess.run(['curl','-LsS','-A','Mozilla/5.0',u,'-o',str(p)])
+              fetched.append({'url':u,'status':r.returncode,'bytes':p.stat().st_size if p.exists() else 0,'sample':p.read_text(errors='ignore')[:5000] if p.exists() else ''})
+          report={'pageBytes':len(html),'iframeTags':iframe_tags,'iframeSrcs':iframe_srcs,'contexts':contexts[:30],'fetchedIframes':fetched}
           pathlib.Path('reports/france/izivia/public-map-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({'statuses':report['statuses'],'bestPageBytes':len(html),'assetCount':len(dl),'candidateCount':len(hits)},indent=2))
+          print(json.dumps({'pageBytes':len(html),'iframeSrcs':iframe_srcs,'contextCount':len(contexts),'fetched':[{k:v for k,v in x.items() if k!='sample'} for x in fetched]},ensure_ascii=False,indent=2))
           PY
       - name: Publish
         run: |
@@ -66,5 +50,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git pull --rebase origin main
           git add reports/france/izivia/public-map-probe.json
-          git commit -m 'France IZIVIA: publish public map probe' || exit 0
+          git commit -m 'France IZIVIA: publish map iframe probe' || exit 0
           git push
