@@ -31,79 +31,76 @@ jobs:
               targets.append(t)
               for x in pdc: global_ids[norm(x)]=(t,x)
           API='https://alize-map-api-faezg8gfgjfngab9.francecentral-01.azurewebsites.net'
-          def fetch_json(url,headers=None,data=None,tries=3):
+          def fetch_json(url,headers=None,data=None,tries=4):
               err=None
               for attempt in range(tries):
                   try:
                       q=urllib.request.Request(url,data=data,headers=headers or {},method='POST' if data is not None else 'GET')
                       with urllib.request.urlopen(q,timeout=20) as resp:return json.loads(resp.read().decode())
                   except Exception as e:
-                      err=e; time.sleep(.15*(attempt+1)+random.random()*.1)
+                      err=e; time.sleep(.2*(attempt+1)+random.random()*.12)
               raise err
           def marker(t):
               up=f"https://drive-api.plugsurfing.com/drive/v1/geosearch/radius?latitude={t['lat']}&longitude={t['lon']}&distance=1800&aggregate=false"
               try:
                   d=fetch_json(API+'/drive/markers',{'content-type':'application/json','key':'BYESKEY','accept':'*/*','url':up},b'{"filters":[]}')
-                  wanted={norm(x) for x in t['pdcIds']}
-                  hits=[]
+                  wanted={norm(x) for x in t['pdcIds']};hits=[]
                   for loc in d.get('locations',[]):
                       ev=[e.get('evse_id') for e in loc.get('evses',[]) if norm(e.get('evse_id')) in wanted]
                       if ev:hits.append({'locationId':str(loc.get('id') or ''),'locationName':loc.get('name'),'mapOperator':loc.get('operator'),'evseIds':ev})
                   return {'stationId':t['stationId'],'hits':hits,'returned':len(d.get('locations',[]))}
               except Exception as e:return {'stationId':t['stationId'],'error':repr(e),'hits':[]}
-          print('targets',len(targets),'pdc',len(global_ids))
           marker_results=[]
-          with concurrent.futures.ThreadPoolExecutor(max_workers=24) as ex:
+          with concurrent.futures.ThreadPoolExecutor(max_workers=20) as ex:
               for i,r in enumerate(ex.map(marker,targets)):
                   marker_results.append(r)
-                  if (i+1)%500==0: print('markers',i+1,'matched stations',sum(bool(x['hits']) for x in marker_results),flush=True)
+                  if (i+1)%500==0: print('markers',i+1,'matched',sum(bool(x['hits']) for x in marker_results),flush=True)
           locations={}
           for r in marker_results:
               for h in r['hits']:
                   rec=locations.setdefault(h['locationId'],{'locationId':h['locationId'],'locationName':h['locationName'],'mapOperator':h['mapOperator'],'targetEvseIds':set(),'sourceStations':set()})
                   rec['targetEvseIds'].update(norm(x) for x in h['evseIds']);rec['sourceStations'].add(r['stationId'])
           def detail(rec):
-              lid=rec['locationId']; u='https://drive-api.plugsurfing.com/drive/v1/locations/'+urllib.parse.quote(lid,safe='')
+              lid=rec['locationId'];u='https://drive-api.plugsurfing.com/drive/v1/locations/'+urllib.parse.quote(lid,safe='')
               try:
                   d=fetch_json(API+'/drive/detail',{'key':'BYESKEY','accept':'*/*','url':u})
                   prices=[]
                   for e in d.get('evses',[]):
                       ne=norm(e.get('evse_id'))
                       if ne not in rec['targetEvseIds']: continue
-                      for c in e.get('connectors',[]):
-                          prices.append({'evseId':e.get('evse_id'),'normalizedEvseId':ne,'power':c.get('power'),'standard':c.get('standard'),'format':c.get('format'),'price':c.get('price')})
+                      for c in e.get('connectors',[]): prices.append({'evseId':e.get('evse_id'),'normalizedEvseId':ne,'power':c.get('power'),'standard':c.get('standard'),'format':c.get('format'),'price':c.get('price')})
                   return {'locationId':lid,'locationName':rec['locationName'],'mapOperator':rec['mapOperator'],'sourceStations':sorted(rec['sourceStations']),'prices':prices}
               except Exception as e:return {'locationId':lid,'locationName':rec['locationName'],'mapOperator':rec['mapOperator'],'sourceStations':sorted(rec['sourceStations']),'error':repr(e),'prices':[]}
-          details=[]
-          vals=list(locations.values())
-          with concurrent.futures.ThreadPoolExecutor(max_workers=20) as ex:
+          vals=list(locations.values());details=[]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=16) as ex:
               for i,r in enumerate(ex.map(detail,vals)):
                   details.append(r)
                   if (i+1)%250==0: print('details',i+1,flush=True)
-          matched_ids={p['normalizedEvseId'] for d in details for p in d['prices'] if p.get('price')}
-          no_price_ids={p['normalizedEvseId'] for d in details for p in d['prices'] if not p.get('price')}
-          errors=[r for r in marker_results if r.get('error')]
-          detail_errors=[d for d in details if d.get('error')]
-          opcounts=collections.Counter((d.get('mapOperator') or {}).get('external_id') or (d.get('mapOperator') or {}).get('name') or 'unknown' for d in details if d['prices'])
-          netmatched=collections.Counter()
+          matched_ids={p['normalizedEvseId'] for d in details for p in d['prices'] if p.get('price')};no_price_ids={p['normalizedEvseId'] for d in details for p in d['prices'] if not p.get('price')}
+          errors=[r for r in marker_results if r.get('error')];detail_errors=[d for d in details if d.get('error')]
+          opcounts=collections.Counter((d.get('mapOperator') or {}).get('external_id') or (d.get('mapOperator') or {}).get('name') or 'unknown' for d in details if d['prices']);netmatched=collections.Counter()
           for ne in matched_ids:
               t,_=global_ids.get(ne,(None,None))
               if t:netmatched[str(t['network'])]+=1
           report={'schemaVersion':1,'source':'Alize public map / Plugsurfing proxy','panStationRows':len(targets),'panPdcCount':len(global_ids),'markerMatchedStations':sum(bool(x['hits']) for x in marker_results),'matchedLocationCount':len(locations),'pricedPdcCount':len(matched_ids),'unpricedMatchedPdcCount':len(no_price_ids),'markerErrorCount':len(errors),'detailErrorCount':len(detail_errors),'mapOperatorCounts':dict(opcounts),'matchedPdcByPanNetwork':dict(netmatched),'details':details,'markerErrors':errors,'detailErrors':detail_errors}
           pathlib.Path('reports/france/alize').mkdir(parents=True,exist_ok=True)
-          raw=json.dumps(report,ensure_ascii=False,separators=(',',':')).encode()
-          with gzip.open('reports/france/alize/bouygues-national-exact.json.gz','wb',compresslevel=9) as f:f.write(raw)
+          with gzip.open('reports/france/alize/bouygues-national-exact.json.gz','wb',compresslevel=9) as f:f.write(json.dumps(report,ensure_ascii=False,separators=(',',':')).encode())
           summary={k:v for k,v in report.items() if k not in ('details','markerErrors','detailErrors')}
           pathlib.Path('reports/france/alize/bouygues-national-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
           print(json.dumps(summary,ensure_ascii=False,indent=2))
           if len(matched_ids)<100: raise SystemExit('fail closed: unexpectedly low exact coverage')
           PY
-      - name: Publish
+      - name: Publish with ref-race retry
         shell: bash
         run: |
+          set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git pull --rebase origin main
           git add reports/france/alize/bouygues-national-exact.json.gz reports/france/alize/bouygues-national-summary.json
           git commit -m 'France Alize: publish national Bouygues exact tariff snapshot' || exit 0
-          git push
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
