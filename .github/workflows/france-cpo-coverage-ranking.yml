@@ -1,0 +1,66 @@
+name: France CPO coverage ranking
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/france-cpo-coverage-ranking.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  rank:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build PAN operator ranking against V9 source registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLsS --retry 3 https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz -o /tmp/fr.json.gz
+          curl -fLsS --retry 3 https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/source-registry.json -o /tmp/registry.json
+          python - <<'PY'
+          import gzip,json,collections,re,pathlib
+          rows=json.loads(gzip.open('/tmp/fr.json.gz','rt',encoding='utf-8').read())
+          reg=json.load(open('/tmp/registry.json'))
+          active=[s for s in reg['sources'] if s.get('countries')==['FR'] and s.get('active')]
+          def norm(s):return re.sub(r'[^a-z0-9]+','-',str(s or '').lower()).strip('-')
+          aliases=set()
+          source_by_alias={}
+          for s in active:
+              if 'tariff' not in s.get('capabilities',[]) and 'subscription' not in s.get('capabilities',[]):continue
+              vals=[]
+              vals += s.get('operatorIds',[]) or []
+              vals += [s.get('label','')]
+              for v in vals:
+                  n=norm(v)
+                  if n: aliases.add(n); source_by_alias.setdefault(n,[]).append(s['id'])
+          byop={}
+          for r in rows:
+              op=str(r[5] or 'Unknown').strip() or 'Unknown'
+              pdc=sum(len(c[6] or []) for c in (r[8] or []))
+              x=byop.setdefault(op,{'stations':0,'pdc':0,'networks':collections.Counter()})
+              x['stations']+=1;x['pdc']+=pdc;x['networks'][str(r[10] if len(r)>10 else '')]+=1
+          out=[]
+          for op,x in byop.items():
+              no=norm(op); matched=[]
+              for a in aliases:
+                  if a and (a in no or no in a):matched += source_by_alias.get(a,[])
+              out.append({'operator':op,'stations':x['stations'],'pdc':x['pdc'],'tariffSources':sorted(set(matched)),'topNetworks':x['networks'].most_common(8)})
+          out.sort(key=lambda x:(-x['pdc'],-x['stations'],x['operator']))
+          report={'totalOperators':len(out),'top100':out[:100]}
+          pathlib.Path('reports/france').mkdir(parents=True,exist_ok=True)
+          pathlib.Path('reports/france/cpo-coverage-ranking.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out[:40],ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/cpo-coverage-ranking.json
+          git commit -m 'France: publish CPO coverage ranking' || exit 0
+          git pull --rebase origin main
+          git push
