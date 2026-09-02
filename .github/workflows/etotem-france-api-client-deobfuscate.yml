@@ -1,0 +1,74 @@
+name: France e-Totem API client deobfuscation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/etotem-france-api-client-deobfuscate.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deobfuscate endpoint table
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/etotem
+          python - <<'PY'
+          import requests,re,json,pathlib
+          txt=requests.get('https://www.e-totem.fr/main.dart.js',timeout=60).text
+          needles=['ConnexionAnonyme','TypesAbonnement','ObjetPage','nearStations','privateStationsList','nConnectorId','bVisibleTarifs','showOnTarifs']
+          contexts={}
+          for n in needles:
+            arr=[];pos=0
+            while True:
+              i=txt.find(n,pos)
+              if i<0:break
+              arr.append({'offset':i,'context':txt[max(0,i-12000):i+18000]})
+              pos=i+len(n)
+              if len(arr)>=20:break
+            contexts[n]=arr
+          # Locate prototype containing each actual API endpoint literal.
+          prototypes=[]
+          for target in ['ConnexionAnonyme','TypesAbonnement','ObjetPage']:
+            for m in re.finditer(re.escape(target),txt):
+              i=m.start()
+              left=txt.rfind('.prototype={',max(0,i-100000),i)
+              if left<0:continue
+              cls_start=txt.rfind('\nA.',max(0,left-200),left+1)
+              nextp=txt.find('\nA.',i+1)
+              seg=txt[cls_start:(nextp if nextp>0 else min(len(txt),i+100000))]
+              prototypes.append({'target':target,'offset':i,'start':cls_start,'end':nextp,'segment':seg[:120000]})
+          # Extract candidate endpoint literals globally with French domain vocabulary.
+          vocab=['Connexion','Abonnement','Borne','Bornes','Station','Stations','Connect','Connecteur','Tarif','Tarifs','Reseau','Reseaux','Réseau','Recharge','Charge','Proxim','Position','Carte','Favori','Public','Operateur','Opérateur','EVSE','Couple','Localisation','Filtre','Filtr','TypePrise']
+          candidates=[]
+          for q in re.finditer(r'(["\'])([^"\'\n]{2,160})\1',txt):
+            v=q.group(2)
+            if any(k.lower() in v.lower() for k in vocab):
+              if v not in [x['value'] for x in candidates]:
+                candidates.append({'value':v,'offset':q.start(),'context':txt[max(0,q.start()-500):q.end()+900]})
+                if len(candidates)>=2500:break
+          # Pull likely HTTP client method prototypes by spotting endpoint literals in strings and surrounding method names.
+          endpointContexts=[]
+          for x in candidates:
+            v=x['value']
+            if re.fullmatch(r'[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9_-]{2,80}',v) and any(k.lower() in v.lower() for k in vocab):
+              c=x['context']
+              if any(z in c for z in ['.get(','.post(','.put(','.delete(','A.bX','A.aR','api']): endpointContexts.append(x)
+          out={'generatedAt':__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat(),'bundleBytes':len(txt),'contextCounts':{k:len(v) for k,v in contexts.items()},'contexts':contexts,'prototypes':prototypes,'candidateEndpoints':endpointContexts[:1500]}
+          summary={'generatedAt':out['generatedAt'],'bundleBytes':len(txt),'contextCounts':out['contextCounts'],'prototypeCount':len(prototypes),'prototypes':[{'target':p['target'],'offset':p['offset'],'start':p['start'],'end':p['end'],'segment':p['segment'][:40000]} for p in prototypes[:12]],'candidateEndpoints':endpointContexts[:600]}
+          pathlib.Path('reports/france/etotem/api-client-deobfuscate.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('reports/france/etotem/api-client-deobfuscate-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False)[:150000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/etotem/api-client-deobfuscate*.json
+          git commit -m 'France e-Totem: publish API client endpoint table' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
