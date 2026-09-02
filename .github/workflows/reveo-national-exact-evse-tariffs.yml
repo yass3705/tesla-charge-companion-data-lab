@@ -1,0 +1,92 @@
+name: France REVEO national exact EVSE tariffs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/reveo-national-exact-evse-tariffs.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact EVSE tariff mapping from official OCPI exports
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/reveo data/operator_direct
+          python - <<'PY'
+          import requests,json,pathlib,datetime,collections
+          base='https://roaming.road.io/files/2ac5b1b4-2d18-4578-98fe-53db518e1a63/'
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          locs=s.get(base+'locations.json',timeout=60); locs.raise_for_status(); locations=locs.json()
+          trs=s.get(base+'tariffs.json',timeout=60); trs.raise_for_status(); tariffs=trs.json()
+          parties={'M31','S12','S34','S48'}
+          now=datetime.datetime.now(datetime.timezone.utc)
+          by_id={t['id']:t for t in tariffs if t.get('party_id') in parties}
+          def active(t):
+              try:
+                  st=t.get('start_date_time'); en=t.get('end_date_time')
+                  if st and datetime.datetime.fromisoformat(st.replace('Z','+00:00'))>now:return False
+                  if en and datetime.datetime.fromisoformat(en.replace('Z','+00:00'))<=now:return False
+              except Exception: pass
+              return True
+          rows=[]; missing=[]; expired=[]; refs=collections.Counter(); party=collections.Counter(); stations=collections.Counter()
+          for loc in locations:
+              if loc.get('country_code')!='FR' or loc.get('party_id') not in parties: continue
+              station_key=f"{loc.get('party_id')}:{loc.get('id')}"
+              stations[loc.get('party_id')]+=1
+              for ev in loc.get('evses',[]) or []:
+                  for c in ev.get('connectors',[]) or []:
+                      tids=c.get('tariff_ids') or []
+                      if isinstance(tids,str): tids=[tids]
+                      defs=[]; active_defs=[]
+                      for tid in tids:
+                          refs[tid]+=1
+                          t=by_id.get(tid)
+                          if t:
+                              defs.append(t)
+                              if active(t): active_defs.append(t)
+                      rec={
+                        'country_code':'FR','party_id':loc.get('party_id'),'location_id':loc.get('id'),
+                        'station_name':loc.get('name'),'address':loc.get('address'),'city':loc.get('city'),'postal_code':loc.get('postal_code'),
+                        'coordinates':loc.get('coordinates'),'operator':loc.get('operator'),'suboperator':loc.get('suboperator'),
+                        'evse_uid':ev.get('uid'),'evse_id':ev.get('evse_id'),'status':ev.get('status'),
+                        'connector_id':c.get('id'),'standard':c.get('standard'),'format':c.get('format'),'power_type':c.get('power_type'),
+                        'max_voltage':c.get('max_voltage'),'max_amperage':c.get('max_amperage'),'max_electric_power':c.get('max_electric_power'),
+                        'tariff_ids':tids,'tariffs':defs,'active_tariffs':active_defs,'last_updated':c.get('last_updated') or ev.get('last_updated') or loc.get('last_updated')
+                      }
+                      party[loc.get('party_id')]+=1
+                      rows.append(rec)
+                      if not tids or not defs: missing.append(rec)
+                      elif not active_defs: expired.append(rec)
+          exact=[r for r in rows if r['active_tariffs']]
+          report={
+            'generatedAt':now.isoformat(),'sourceLocations':base+'locations.json','sourceTariffs':base+'tariffs.json',
+            'partyIds':sorted(parties),'locationCount':sum(stations.values()),'locationCountByParty':dict(stations),
+            'connectorCount':len(rows),'connectorCountByParty':dict(party),'exactActiveTariffConnectorCount':len(exact),
+            'missingTariffConnectorCount':len(missing),'expiredOnlyConnectorCount':len(expired),
+            'coverage':len(exact)/len(rows) if rows else 0,
+            'uniqueTariffRefs':len(refs),'tariffRefCounts':dict(refs),'missingSamples':missing[:30],'expiredSamples':expired[:30]
+          }
+          dataset={
+            'schemaVersion':'1.0.0','dataset':'reveo-official-national-exact-evse-tariffs','generatedAt':now.isoformat(),
+            'operator':'REVEO','country':'FR','sources':[base+'locations.json',base+'tariffs.json'],
+            'classification':{'exactEvseToTariffMapping':True,'failClosed':True,'onlyActiveTariffsPublished':True},
+            'summary':report,'connectors':exact
+          }
+          pathlib.Path('reports/france/reveo/national-exact-coverage.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('data/operator_direct/reveo_national_exact_evse_tariffs.json').write_text(json.dumps(dataset,ensure_ascii=False,separators=(',',':'))+'\n')
+          print(json.dumps(report,ensure_ascii=False,indent=2)[:40000])
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/reveo/national-exact-coverage.json data/operator_direct/reveo_national_exact_evse_tariffs.json
+          git commit -m 'France REVEO: publish exact national EVSE tariffs' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
