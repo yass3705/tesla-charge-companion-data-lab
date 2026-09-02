@@ -1,0 +1,99 @@
+name: France Road E-Flux exact national tariffs fast
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/road-france-exact-national-tariffs-fast.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fast exact connector tariff overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/road data/operator_direct
+          python - <<'PY'
+          import requests,csv,io,json,pathlib,datetime,re,html,concurrent.futures,threading
+          PAN='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          rows=list(csv.DictReader(io.StringIO(requests.get(PAN,timeout=60).text)))
+          road=[r for r in rows if str(r.get('nom_operateur','')).strip().lower()=='road' or str(r.get('id_pdc_itinerance','')).upper().replace('*','').startswith('FREFLEV')]
+          def parse(pid):
+            s=str(pid or '').upper().replace('*','').replace('-','')
+            m=re.search(r'FREFLEV(\d{7})C(\d+)',s); return (m.group(1),m.group(2)) if m else (None,None)
+          groups={};un=[]
+          for r in road:
+            k,c=parse(r.get('id_pdc_itinerance'))
+            if k:groups.setdefault(k,[]).append((c,r))
+            else:un.append(r.get('id_pdc_itinerance'))
+          local=threading.local()
+          def S():
+            if not hasattr(local,'s'):
+              local.s=requests.Session();local.s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'text/html'})
+            return local.s
+          evre=re.compile(r'FR\*EFL\*EV(\d{7})\*C(\d+)',re.I)
+          price_re=re.compile(r'€\s*\d+(?:[.,]\d+)?\s*/\s*(?:kWh|min(?:ute)?|session|hour)',re.I)
+          def vis(x):
+            x=re.sub(r'<[^>]+>',' ',x);x=html.unescape(x);return re.sub(r'\s+',' ',x).strip()
+          def fetch(k):
+            u=f'https://chargestation.road.io/evse/{k}'
+            for timeout in [8,12]:
+              try:
+                r=S().get(u,timeout=timeout)
+                if r.status_code!=200:continue
+                t=r.text
+                # Page contains exact connector IDs in server-rendered payload/DOM. Search a bounded window around each identity.
+                conn={}
+                for m in evre.finditer(t):
+                  if m.group(1)!=k:continue
+                  c=m.group(2); window=t[m.start():min(len(t),m.start()+14000)]
+                  text=vis(window)
+                  # Stop at next connector identity if visible in cleaned text.
+                  nxt=re.search(r'FR\*EFL\*EV\d{7}\*C\d+',text[len(m.group(0)):],re.I)
+                  if nxt:text=text[:len(m.group(0))+nxt.start()]
+                  pcs=list(dict.fromkeys(price_re.findall(text)))
+                  free=bool(re.search(r'\bFree\b|\bGratuit',text,re.I))
+                  noinfo=bool(re.search(r'No pricing information available|Aucune information tarifaire disponible',text,re.I))
+                  # Prefer shortest occurrence for same connector with explicit price.
+                  rec={'evseId':m.group(0),'tariffText':text[:5000],'priceComponents':pcs,'free':free,'noPricingInfo':noinfo,'exactPricingVisible':bool(pcs or free) and not noinfo}
+                  if c not in conn or (rec['exactPricingVisible'] and not conn[c]['exactPricingVisible']):conn[c]=rec
+                return {'status':r.status_code,'url':r.url,'connectors':conn}
+              except Exception:pass
+            return {'status':None,'url':u,'connectors':{}}
+          keys=sorted(groups);results={}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=60) as ex:
+            fut={ex.submit(fetch,k):k for k in keys}
+            for i,f in enumerate(concurrent.futures.as_completed(fut),1):
+              k=fut[f]
+              try:results[k]=f.result()
+              except:results[k]={'status':None,'url':f'https://chargestation.road.io/evse/{k}','connectors':{}}
+              if i%100==0:print('done',i,'/',len(keys))
+          overlay=[];missing=[]
+          for k,pairs in groups.items():
+            res=results.get(k,{})
+            for c,r in pairs:
+              info=(res.get('connectors') or {}).get(c)
+              x={'id_station_itinerance':r.get('id_station_itinerance'),'id_pdc_itinerance':r.get('id_pdc_itinerance'),'lookup_id':k,'connector_id':c,'puissance_nominale':r.get('puissance_nominale'),'scan_pay_url':f'https://chargestation.road.io/evse/{k}','exactness':'official_public_scan_pay_connector'}
+              if info:x.update({'official_evse_id':info['evseId'],'tariff_text':info['tariffText'],'price_components':info['priceComponents'],'free':info['free'],'no_pricing_info':info['noPricingInfo'],'exact_pricing_visible':info['exactPricingVisible']})
+              else:x.update({'official_evse_id':None,'tariff_text':None,'price_components':[],'free':False,'no_pricing_info':False,'exact_pricing_visible':False})
+              overlay.append(x)
+              if not x['exact_pricing_visible']:missing.append({'id_pdc_itinerance':x['id_pdc_itinerance'],'lookup_id':k,'connector_id':c})
+          exact=sum(x['exact_pricing_visible'] for x in overlay)
+          cov={'panRows':len(road),'uniqueLookupIds':len(keys),'pagesHttp200':sum(results.get(k,{}).get('status')==200 for k in keys),'unparsableRows':len(un),'overlayRows':len(overlay),'exactRows':exact,'coveragePct':round(exact*100/len(road),3) if road else 0,'missingRows':len(missing)}
+          out={'schemaVersion':'1.0.0','dataset':'road-eflux-official-france-fast','generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'operator':'Road / E-Flux','country':'FR','coverage':cov,'pdcTariffOverlay':overlay,'missing':missing,'notes':['Exact PAN seven-digit EFL identity to official Road scan-to-pay page; exact connector ID required.','Only visible official price components/free tariffs accepted. Missing entries fail closed.']}
+          pathlib.Path('data/operator_direct/road_eflux_official_france_fast.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('reports/france/road/exact-national-tariffs-fast-summary.json').write_text(json.dumps({'generatedAt':out['generatedAt'],'coverage':cov,'sampleExact':[x for x in overlay if x['exact_pricing_visible']][:15],'sampleMissing':missing[:30]},ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'coverage':cov},ensure_ascii=False))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/operator_direct/road_eflux_official_france_fast.json reports/france/road/exact-national-tariffs-fast-summary.json
+          git commit -m 'data(road): publish fast exact France connector tariffs' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
