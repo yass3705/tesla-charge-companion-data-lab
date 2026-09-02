@@ -30,7 +30,6 @@ jobs:
           const fs=require('fs');
           function redactText(s){
             if(!s) return s;
-            // redact JWTs and common token JSON fields while preserving response structure
             s=s.replace(/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,'<JWT_REDACTED>');
             s=s.replace(/("(?:authToken|anonymousAuthToken|access_token|refresh_token|token|password)"\s*:\s*")[^"]*(")/gi,'$1<REDACTED>$2');
             return s;
@@ -53,14 +52,12 @@ jobs:
             try{
               await page.goto('https://www.e-totem.fr/',{waitUntil:'domcontentloaded',timeout:120000});
               await page.waitForTimeout(25000);
-              // force map/home routes that should trigger anonymous station loading
               for(const hash of ['#/home','#/home/map','#/home/tarifs']){
                 try{await page.evaluate(h=>{location.hash=h},hash);await page.waitForTimeout(7000)}catch(e){}
               }
             }catch(e){errors.push(String(e))}
             const title=await page.title().catch(()=>null);
             await browser.close();
-            // Deduplicate by method/url/postData or url/status/body prefix
             const rq=[];const rs=[];const a=new Set(),b=new Set();
             for(const x of reqs){const k=x.method+' '+x.url+' '+(x.postData||'');if(!a.has(k)){a.add(k);rq.push(x)}}
             for(const x of resps){const k=x.status+' '+x.url+' '+(x.body||'').slice(0,500);if(!b.has(k)){b.add(k);rs.push(x)}}
@@ -70,7 +67,7 @@ jobs:
             console.log(JSON.stringify({title,requests:rq.slice(0,120),responses:rs.slice(0,120),errors}).slice(0,120000));
           })();
           JS
-          node /tmp/capture-etotem.js
+          NODE_PATH="$(npm root)" node /tmp/capture-etotem.js
       - name: Publish
         run: |
           git config user.name 'github-actions[bot]'
