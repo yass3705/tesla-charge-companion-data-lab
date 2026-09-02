@@ -1,0 +1,64 @@
+name: Public safety diagnose
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/public-safety-diagnose.yml']
+permissions:
+  contents: write
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Identify blocked paths without exposing values
+        shell: bash
+        run: |
+          mkdir -p reports/security
+          python - <<'PY'
+          import re,pathlib,json
+          from pathlib import Path
+          ALWAYS_PATTERNS=[
+            (re.compile(rb"ghp_[A-Za-z0-9]{20,}"),'GitHub classic token'),
+            (re.compile(rb"github_pat_[A-Za-z0-9_]{20,}"),'GitHub fine-grained token'),
+            (re.compile(rb"AKIA[0-9A-Z]{16}"),'AWS access key'),
+            (re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH |)PRIVATE KEY-----"),'private key'),
+            (re.compile(rb"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"),'JWT-like token'),
+            (re.compile(rb"sb_(?:publishable|anon)_[A-Za-z0-9_-]{12,}",re.I),'Supabase public client key')]
+          VALUE_PATTERNS=[
+            (re.compile(rb"Authorization\s*:\s*Bearer\s+(?P<value>\S+)",re.I),'Authorization bearer header'),
+            (re.compile(rb"Cookie\s*:\s*(?P<value>\S+)",re.I),'Cookie header'),
+            (re.compile(rb"(?:client_secret|api_key|access_token|refresh_token)\s*[:=]\s*[\"'](?P<value>[^\"']{8,})[\"']",re.I),'embedded credential')]
+          placeholders={'redacted','[redacted]','placeholder','example','dummy','changeme','token','secret','your_token','your-token'}
+          def ph(v):
+            t=v.decode('utf-8','ignore').strip().strip('\"\'').lower()
+            return not t or any(c in t for c in '${}<>') or t in placeholders or t.startswith('***') or t.endswith('***')
+          hits=[]
+          for p in Path('.').rglob('*'):
+            if not p.is_file() or '.git' in p.parts: continue
+            if p.suffix.lower() in {'.apk','.xapk','.aab','.ipa'}:
+              hits.append({'path':str(p),'label':'raw mobile application package'}); continue
+            try: b=p.read_bytes()
+            except: continue
+            for rx,label in ALWAYS_PATTERNS:
+              if rx.search(b): hits.append({'path':str(p),'label':label})
+            for rx,label in VALUE_PATTERNS:
+              if any(not ph(m.group('value')) for m in rx.finditer(b)): hits.append({'path':str(p),'label':label})
+          # de-duplicate; no credential values are emitted.
+          uniq=[]; seen=set()
+          for h in hits:
+            k=(h['path'],h['label'])
+            if k not in seen: seen.add(k); uniq.append(h)
+          Path('reports/security/public-safety-diagnostic.json').write_text(json.dumps({'hits':uniq},indent=2)+'\n')
+          print(json.dumps({'hits':uniq},indent=2))
+          PY
+      - name: Publish diagnostic
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/security/public-safety-diagnostic.json
+          git commit -m 'chore: publish public safety diagnostic' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
