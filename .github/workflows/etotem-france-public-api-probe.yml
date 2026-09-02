@@ -1,0 +1,57 @@
+name: France e-Totem public API probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/etotem-france-public-api-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public e-Totem portal bundles and APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/etotem
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          root='https://www.e-totem.fr/'
+          r=s.get(root,timeout=30); html=r.text
+          scripts=[]
+          for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',html,re.I):
+            u=urllib.parse.urljoin(r.url,src)
+            if u not in scripts:scripts.append(u)
+          out={'rootStatus':r.status_code,'rootFinal':r.url,'rootBytes':len(html),'scripts':scripts,'assets':[]}
+          terms=['api','tarif','price','station','chargepoint','connector','evse','ocpi','graphql','map']
+          for u in scripts[:100]:
+            try:rr=s.get(u,timeout=25);txt=rr.text
+            except Exception:continue
+            urls=sorted(set(re.findall(r'https?://[^"\'`\\\s)]+',txt)))
+            rels=sorted(set(re.findall(r'["\']([^"\']*(?:api|station|tarif|price|evse|charge)[^"\']*)["\']',txt,re.I)))
+            snippets=[];low=txt.lower()
+            for term in terms:
+              pos=0
+              while True:
+                i=low.find(term,pos)
+                if i<0:break
+                snippets.append(txt[max(0,i-400):i+1400]);pos=i+len(term)
+                if len(snippets)>=160:break
+              if len(snippets)>=160:break
+            if urls or rels or snippets:
+              out['assets'].append({'url':u,'status':rr.status_code,'bytes':len(txt),'candidateUrls':[x for x in urls if any(t in x.lower() for t in terms)][:250],'relativeCandidates':rels[:250],'snippets':snippets[:160]})
+          pathlib.Path('reports/france/etotem/public-api-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'rootStatus':r.status_code,'scripts':scripts,'assets':[{'url':a['url'],'candidateUrls':a['candidateUrls'],'relativeCandidates':a['relativeCandidates'],'snippets':a['snippets'][:20]} for a in out['assets']]},ensure_ascii=False)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/etotem/public-api-probe.json
+          git commit -m 'France e-Totem: publish public API probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
