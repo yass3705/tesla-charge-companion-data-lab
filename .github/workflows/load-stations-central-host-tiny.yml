@@ -1,0 +1,50 @@
+name: France Load Stations central host tiny
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/load-stations-central-host-tiny.yml']
+permissions:
+  contents: write
+jobs:
+  isolate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Isolate central host evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,pathlib,re
+          d=json.loads(pathlib.Path('reports/france/load-stations/config-source-extract.json').read_text())
+          urls=set(); paths=set(); snippets=[]
+          for h in d.get('hits',[]):
+            if h.get('needle','').lower() not in ['getcentralsystemserver','centralsystemserver','configservice','loadconfig','configuration','config.json','.json','apiurl','apiurl']:
+              continue
+            c=h.get('context','')
+            for u in re.findall(r'https?://[A-Za-z0-9._:-]+(?:/[A-Za-z0-9_./?=&%:-]*)?',c): urls.add(u)
+            for p in re.findall(r'["\'`]([^"\'`]{1,200}(?:config|environment)[^"\'`]*\.json[^"\'`]*)["\'`]',c,re.I): paths.add(p)
+            if any(k in c.lower() for k in ['getcentralsystemserver','centralsystemserver']):
+              # retain just a small window around the exact symbol
+              for k in ['getCentralSystemServer','centralSystemServer']:
+                i=c.lower().find(k.lower())
+                if i>=0: snippets.append(re.sub(r'\s+',' ',c[max(0,i-900):i+2200])[:3200])
+          probe200=[]
+          for p in d.get('probes',[]):
+            body=str(p.get('body',''))
+            if p.get('status')==200 and ('json' in str(p.get('contentType','')).lower() or any(k in body.lower() for k in ['host','port','protocol','central','server'])):
+              probe200.append({'url':p.get('url'),'final':p.get('final'),'contentType':p.get('contentType'),'body':body[:5000]})
+          out={'urls':sorted(urls)[:100],'configPaths':sorted(paths)[:100],'centralSnippets':list(dict.fromkeys(snippets))[:20],'successfulConfigProbes':probe200[:50]}
+          pathlib.Path('reports/france/load-stations/central-host-tiny.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:30000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/load-stations/central-host-tiny.json
+          git commit -m 'France Load Stations: publish isolated central API host' || exit 0
+          git pull --rebase origin main
+          git push
