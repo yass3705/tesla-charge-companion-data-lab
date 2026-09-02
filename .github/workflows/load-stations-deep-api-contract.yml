@@ -1,0 +1,67 @@
+name: France Load Stations deep API contract
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/load-stations-deep-api-contract.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract Angular API endpoints and public routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/load-stations
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          s=requests.Session();s.headers['User-Agent']='Mozilla/5.0'
+          base='https://loadstations.load-motion.com/'
+          h=s.get(base,timeout=30).text
+          js=[urllib.parse.urljoin(base,x) for x in re.findall(r'<script[^>]+src=["\']([^"\']+)',h,re.I)]
+          rec=[]; candidates=set(); hosts=set()
+          words=['tariff','pricing','price','chargepoint','chargingstation','charging-station','connector','station','site','public','anonymous','guest','roaming','ocpi','transaction','session','map']
+          for u in js:
+            r=s.get(u,timeout=30)
+            if r.status_code!=200:continue
+            t=r.text
+            absu=set(re.findall(r'https?://[^"\'`\\\s)]+',t));hosts|={re.match(r'https?://[^/]+',x).group(0) for x in absu if re.match(r'https?://[^/]+',x)}
+            lits=[]
+            for m in re.finditer(r'(["\'`])(.{1,400}?)\1',t):
+              v=m.group(2);vl=v.lower()
+              if any(w in vl for w in words):
+                if '/' in v or any(w in vl for w in ['tariff','pricing','chargepoint','chargingstation','connector']):
+                  lits.append({'value':v,'offset':m.start(),'context':t[max(0,m.start()-1000):m.end()+2200]})
+                  if '/' in v and len(v)<250:candidates.add(v)
+                if len(lits)>=1200:break
+            rec.append({'url':u,'bytes':len(t),'absoluteUrls':sorted(absu)[:400],'literals':lits})
+          # Probe safe GET/OPTIONS against same-origin candidate API-like paths.
+          probes=[]
+          for p in sorted(candidates):
+            if not p.startswith('/'):continue
+            if not any(w in p.lower() for w in words):continue
+            if any(x in p for x in ['{','}','<','>',' ']):continue
+            u=urllib.parse.urljoin(base,p)
+            for method in ['GET','OPTIONS']:
+              try:
+                q=s.request(method,u,timeout=10,allow_redirects=False)
+                probes.append({'method':method,'url':u,'status':q.status_code,'contentType':q.headers.get('content-type'),'allow':q.headers.get('allow'),'body':q.text[:5000]})
+              except Exception as e:probes.append({'method':method,'url':u,'error':str(e)})
+          out={'scripts':js,'hosts':sorted(hosts),'candidatePaths':sorted(candidates),'assets':rec,'probes':probes}
+          pathlib.Path('reports/france/load-stations/deep-api-contract.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          summary={'scripts':js,'hosts':sorted(hosts),'candidatePaths':sorted(candidates),'assets':[{'url':x['url'],'bytes':x['bytes'],'absoluteUrls':x['absoluteUrls'],'literals':x['literals'][:250]} for x in rec],'probes':probes}
+          pathlib.Path('reports/france/load-stations/deep-api-contract-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False)[:150000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/load-stations/deep-api-contract*.json
+          git commit -m 'France Load Stations: publish deep API contract probe' || exit 0
+          git pull --rebase origin main
+          git push
