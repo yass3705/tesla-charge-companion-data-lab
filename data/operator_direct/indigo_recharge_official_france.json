@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "indigo-recharge-official-france",
+  "generatedAt": "2026-09-02T14:04:00Z",
+  "operator": "GROUPE INDIGO",
+  "country": "FR",
+  "classification": {
+    "nationalRuleWithExplicitCityExceptions": true,
+    "stationLevelLookupRequiredOutsideKnownRules": true,
+    "reason": "INDIGO publishes a France-wide public and member tariff, with an explicitly listed alternative tariff still applicable in Biarritz, Nevers, Saint-Germain-en-Laye and Tours."
+  },
+  "operatorDirect": {
+    "publicTariff": {
+      "scope": "majority_of_indigo_recharge_parkings_france",
+      "sessionFeeEur": 0.99,
+      "eurPerKwh": 0.55,
+      "overstay": {
+        "eurPerMinute": 0.10,
+        "startsAfterHours": 10
+      }
+    },
+    "indigoRechargeAlaCarte": {
+      "requiresIndigoRechargeCard": true,
+      "cardPriceEur": 14.99,
+      "sessionFeeEur": 0.49,
+      "eurPerKwh": 0.45,
+      "overstay": {
+        "eurPerMinute": 0.05,
+        "startsAfterHours": 10
+      }
+    },
+    "monthlyPlans": [
+      {"includedKwh": 100, "monthlyFeeEur": 29.99},
+      {"includedKwh": 200, "monthlyFeeEur": 59.99},
+      {"includedKwh": 300, "monthlyFeeEur": 89.99}
+    ],
+    "monthlyPlanCommonRules": {
+      "sessionFeeEur": 0.0,
+      "overageEurPerKwh": 0.55,
+      "overstay": {
+        "eurPerMinute": 0.05,
+        "startsAfterHours": 16
+      },
+      "indigoRechargeCardIncluded": true
+    },
+    "explicitCityExceptions": {
+      "cities": [
+        "Biarritz",
+        "Nevers",
+        "Saint-Germain-en-Laye",
+        "Tours"
+      ],
+      "tariff": {
+        "eurPerKwh": 0.30,
+        "eurPerMinute": 0.03
+      },
+      "note": "INDIGO states the 0.45 EUR/kWh A La Carte tariff does not yet apply in these cities and that this alternative tariff is displayed automatically in the application."
+    }
+  },
+  "inventory": {
+    "operatorClaimsChargePointsFrance": 7000,
+    "operatorClaimsEquippedParkingsFrance": 270,
+    "panObservedOperatorPdc": 7495,
+    "panObservedOperatorStations": 325
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {
+        "key": "indigoRecharge",
+        "url": "https://www.indigoneo.fr/fr/recharge-electrique",
+        "httpStatus": 200
+      },
+      {
+        "key": "groupIndigoPressRelease",
+        "url": "https://www.group-indigo.com/presse/communique/indigo-simpose-dans-la-recharge-des-vehicules-electriques/",
+        "httpStatus": 200
+      }
+    ]
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "Do not apply the majority tariff to the four explicitly listed exception cities.",
+    "If a station cannot be classified into the published majority rule or the explicit city exceptions, fail closed and require station-level confirmation.",
+    "Parking fees are separate from charging fees and are not modeled here."
+  ]
+}
