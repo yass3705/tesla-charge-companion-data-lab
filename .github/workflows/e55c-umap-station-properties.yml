@@ -1,0 +1,63 @@
+name: France E55C public UMap station properties
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/e55c-umap-station-properties.yml']
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public UMap GeoJSON properties
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/e55c
+          python - <<'PY'
+          import requests,json,pathlib,re
+          S=requests.Session(); S.headers['User-Agent']='Mozilla/5.0'
+          urls=[
+            'https://umap.openstreetmap.fr/fr/map/1234362/geojson/',
+            'https://umap.openstreetmap.fr/fr/map/reseau-e55c_1234362.geojson',
+            'https://umap.openstreetmap.fr/fr/map/reseau-e55c_1234362/geojson/'
+          ]
+          attempts=[]; features=[]
+          for u in urls:
+            try:
+              r=S.get(u,timeout=30,allow_redirects=True)
+              item={'url':u,'finalUrl':r.url,'status':r.status_code,'contentType':r.headers.get('content-type'),'bytes':len(r.content)}
+              if r.ok and ('json' in (r.headers.get('content-type') or '').lower() or r.text.lstrip().startswith('{')):
+                try:
+                  j=r.json(); fs=j.get('features') if isinstance(j,dict) else None
+                  if isinstance(fs,list):
+                    features=fs; item['features']=len(fs); item['propertyKeys']=sorted({str(k) for f in fs[:5000] if isinstance(f,dict) for k in (f.get('properties') or {}).keys()})
+                except Exception as e:item['jsonError']=type(e).__name__
+              attempts.append(item)
+            except Exception as e: attempts.append({'url':u,'error':type(e).__name__})
+          samples=[]; links=[]; ids=[]; tariffish=[]
+          for f in features:
+            p=f.get('properties') or {}
+            if len(samples)<100:samples.append(p)
+            raw=json.dumps(p,ensure_ascii=False)
+            for u in re.findall(r'https?://[^"\'\\\s<>)]+',raw):
+              if u not in links:links.append(u)
+            for k,v in p.items():
+              kl=str(k).lower(); sv=str(v)
+              if any(t in kl for t in ['id','code','evse','borne','station','qr']): ids.append({'key':k,'value':sv[:500]})
+              if any(t in kl for t in ['tarif','price','prix','payment','paiement','charge']): tariffish.append({'key':k,'value':sv[:1200]})
+          out={'attempts':attempts,'features':len(features),'samples':samples,'links':links[:1000],'idLikeProperties':ids[:1000],'tariffLikeProperties':tariffish[:1000]}
+          pathlib.Path('reports/france/e55c/umap-station-properties.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'attempts':attempts,'features':len(features),'links':links[:100],'idLikeProperties':ids[:100],'tariffLikeProperties':tariffish[:100]},ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/e55c/umap-station-properties.json
+          git commit -m 'France E55C: publish public UMap station properties' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
