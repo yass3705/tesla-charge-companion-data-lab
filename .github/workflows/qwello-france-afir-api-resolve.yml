@@ -1,0 +1,67 @@
+name: France Qwello AFIR API resolve
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/qwello-france-afir-api-resolve.yml']
+permissions:
+  contents: write
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve AFIR API and France EVSE coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/qwello data/operator_direct /tmp/qwello
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse,csv,io
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          base='https://tariff.qwello.eu/'
+          files={}
+          queue=['api.js','url.js','money.js','search.js']
+          seen=set()
+          while queue:
+            name=queue.pop(0)
+            if name in seen: continue
+            seen.add(name)
+            u=urllib.parse.urljoin(base,name)
+            r=s.get(u,timeout=30); files[name]={'status':r.status_code,'body':r.text}
+            if r.status_code==200:
+              for imp in re.findall(r"(?:from\s+|import\s*)['\"]([^'\"]+)['\"]",r.text):
+                if imp.startswith('.'):
+                  q=urllib.parse.urljoin(name,imp)
+                  q=q.split('?')[0]
+                  if not q.endswith('.js'): q+='.js'
+                  if q not in seen: queue.append(q)
+          text='\n'.join(v['body'] for v in files.values() if v['status']==200)
+          urls=sorted(set(re.findall(r'https?://[^"\'`\\\s)]+',text)))
+          fetch_expr=[]
+          for m in re.finditer(r'fetch\s*\((.{0,400})',text,re.S): fetch_expr.append(m.group(0)[:900])
+          out={'files':files,'urls':urls,'fetchExpressions':fetch_expr}
+          # Probe absolute URLs and likely API base derived from url.js.
+          attempts=[]
+          candidates=set(urls)
+          # capture quoted endpoint fragments
+          frags=set(re.findall(r"['\"]([^'\"]*(?:station|tariff|evse|api)[^'\"]*)['\"]",text,re.I))
+          out['fragments']=sorted(x for x in frags if len(x)<300)
+          for u in sorted(candidates):
+            if any(k in u.lower() for k in ['api','tariff','station','qwello']):
+              try:
+                rr=s.get(u,timeout=25); attempts.append({'url':u,'status':rr.status_code,'type':rr.headers.get('content-type'),'body':rr.text[:200000]})
+              except Exception as e: attempts.append({'url':u,'error':str(e)})
+          out['attempts']=attempts
+          pathlib.Path('reports/france/qwello/afir-api-resolve.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'files':files,'urls':urls,'fetchExpressions':fetch_expr,'fragments':out['fragments'],'attempts':[{k:v for k,v in a.items() if k!='body'} for a in attempts]},ensure_ascii=False)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/qwello/afir-api-resolve.json
+          git commit -m 'France Qwello: publish AFIR API resolution' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
