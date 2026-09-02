@@ -1,0 +1,169 @@
+{
+  "rootStatus": 200,
+  "page": "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link\n      href=\"https://fonts.googleapis.com/css2?family=Lato&display=swap\"\n      rel=\"stylesheet\"\n    />\n    <title>Tariffs</title>\n    <style>\n      html {\n        font-family: \"Lato\", sans-serif;\n      }\n      .show {\n        opacity: 1;\n      }\n      body {\n        opacity: 0;\n        min-height: 100vh;\n      }\n      h1 {\n        font-size: 30px;\n        color: #2b4047;\n        margin-bottom: 32px;\n      }\n      main {\n        max-width: 80%;\n        margin: 0 auto;\n      }\n      table {\n        width: 100%;\n      }\n      table,\n      th,\n      td {\n        border: 1px solid;\n      }\n      th,\n      td {\n        padding: 1em;\n      }\n      th {\n        border: 2px solid #2b4047;\n        border-left-width: 0;\n      }\n      td {\n        border-top-width: 0;\n        border-left-width: 0;\n        text-align: center;\n        border-color: #a1b1b5;\n      }\n      table {\n        border-spacing: 0;\n        border-top-width: 0;\n      }\n\n      thead,\n      tfoot {\n        color: #2b4047;\n        border: 1px solid #2b4047;\n      }\n      th:first-child {\n        border-left-width: 1px;\n      }\n      td:last-child {\n        border-right-width: 0;\n      }\n      td:nth-of-type(3n) {\n        padding: 0;\n      }\n      tr:last-child td {\n        border-bottom-width: 0;\n      }\n\n      /* cities selector */\n      .cities-container {\n        margin-bottom: 3rem;\n        display: flex;\n        justify-content: space-between;\n        overflow-x: scroll;\n      }\n\n      button {\n        padding: 10px 5px;\n        border-radius: 10px;\n        margin: 5px;\n        border: unset;\n        outline: unset;\n      }\n\n      /* TARIFFS */\n      .tariff-parent {\n        display: grid;\n        grid-template-columns: 1fr 1fr 1fr;\n        grid-template-rows: auto auto;\n        text-align: left;\n      }\n      .tariff-parent + .tariff-parent {\n        margin-top: 8px;\n      }\n      .icon-wrapper {\n        grid-column: 1;\n        grid-row: 1;\n      }\n      .tariff-time {\n        grid-row: 2;\n        grid-column: 1;\n        color: #5e7177;\n        font-size: 14px;\n      }\n      .tariff-value {\n        grid-column: 3;\n        grid-row: 1 / -1;\n        align-self: center;\n      }\n      .tariff-title {\n        color: #2b4047;\n        font-size: 16px;\n      }\n      .conditions {\n        color: #5e7177;\n        font-size: 9px;\n      }\n      .chunk-accent {\n        border-left: 3px solid #ffdf22;\n        padding-left: 6px;\n        padding-bottom: 8px;\n      }\n      .chunk-hr {\n        border: none;\n        border-top: 1px dashed #a1b1b5;\n        margin: 6px 0;\n      }\n      .grace-period {\n        border-top: 1px solid #a1b1b5;\n        margin-top: 12px;\n        padding-top: 8px;\n        color: #5e7177;\n        font-size: 12px;\n        text-align: left;\n      }\n      .tariff-version-badge {\n        display: inline-block;\n        font-size: 10px;\n        font-weight: bold;\n        color: #5e7177;\n        border: 1px solid #a1b1b5;\n        border-radius: 3px;\n        padding: 1px 5px;\n        margin-bottom: 6px;\n      }\n      /* Search */\n      .search-parent {\n        display: grid;\n        grid-template-columns: 1fr 1fr;\n        grid-template-rows: 1fr;\n        max-width: 100%;\n        margin-bottom: 90px;\n      }\n      .search-icon {\n        grid-column: 1;\n        grid-row: 1;\n        z-index: 1;\n        align-self: center;\n        margin-left: 10px;\n      }\n      input[type=\"text\"] {\n        grid-column: 1 / -1;\n        grid-row: 1;\n        border-radius: 30px;\n        border: 1px solid #a1b1b5;\n        outline: 0;\n        font-size: 18px;\n        padding: 0.5em 3em;\n        max-width: 300px;\n      }\n      input[type=\"text\"]::placeholder {\n        color: #c8d1d3;\n      }\n\n      /* IDs */\n      .id {\n        padding: 1em;\n      }\n      /* resets */\n      p {\n        margin: 0;\n      }\n\n      /* custom */\n      #imageDisplay {\n        margin-top: 20px;\n      }\n      img {\n        max-width: 300px;\n        max-height: 300px;\n      }\n      .dropdown {\n        position: relative;\n        display: inline-block;\n        grid-column: 3;\n        grid-row: 1;\n      }\n      .dropdown-content {\n        display: none;\n        position: absolute;\n        background-color: #f9f9f9;\n        box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);\n        z-index: 1;\n        list-style-type: none;\n    padding: 0;\n    margin: 0;\n      }\n      .dropdown-content img {\n        width: 50px;\n        height: 50px;\n        padding: 8px;\n        cursor: pointer;\n      }\n      .dropdown-content img:hover {\n        background-color: #ddd;\n      }\n      .dropdown:hover  .dropdown-content, .dropdown:focus-within .dropdown-content {\n        display: block;\n      }\n      .dropdown-content:hover {\n        display: block;\n      }\n\n.dropdown-content.visible {\n  display: block;\n}\n\n/* Ensure focus is visible */\nbutton:focus,\n.dropdown-content button:focus {\n  outline: 2px solid #4A90E2;\n  outline-offset: 2px;\n}\n\n.gg-select {\n  box-sizing: border-box;\n  position: relative;\n  display: block;\n  transform: scale(var(--ggs, 1));\n  width: 22px;\n  height: 22px;\n}\n.gg-select::after,\n.gg-select::before {\n  content: \"\";\n  display: block;\n  box-sizing: border-box;\n  position: absolute;\n  width: 8px;\n  height: 8px;\n  left: 7px;\n  transform: rotate(-45deg);\n}\n.gg-select::before {\n  border-left: 2px solid;\n  border-bottom: 2px solid;\n  bottom: 4px;\n}\n.gg-select::after {\n  border-right: 2px solid;\n  border-top: 2px solid;\n  top: 4px;\n}\n\n#country-dropdown {\n  padding: 10px 5px;\n}\n\n.gg-select-container {\n  display: flex;\n    flex-direction: row-reverse;\n    gap: 10px;\n  \n}\n\n    </style>\n  </head>\n  <body>\n    <div id=\"app\">\n      <main>\n        <h1>Please enter your Chargerâs EVSE ID to see your Tariff</h1>\n        <div class=\"search-parent\">\n          <img src=\"search-icon.svg\" alt=\"search\" class=\"search-icon\" />\n          <input\n            v-bind:value=\"userInput\"\n            v-on:input=\"handleSearch($event.target.value)\"\n            type=\"text\"\n            placeholder=\"DEQWCEHHMWG11\"\n          />\n\n          <div class=\"dropdown\" ref=\"dropdown\">\n            <button \n              id=\"country-dropdown\"\n              ref=\"countryDropdown\"\n              aria-haspopup=\"true\" \n              aria-expanded=\"false\"\n              @mouseenter=\"openDropdown\"\n              @focus=\"openDropdown\"\n              @mouseleave=\"scheduleClose\"\n              @blur=\"scheduleClose\"\n            >\n              <div class=\"gg-select-container\">\n                <div class=\"gg-select\" />\n              </div>\n              <div>\n                <img\n                :src=\"`./assets/${selectedCountry}.svg`\"\n                :alt=\"selectedCountry\"\n                style=\"margin-left: 5px; display: block; height: 20px\"\n                />\n\n              </div>\n            </button>\n            \n            <ul \n              role=\"menu\" \n              aria-labelledby=\"country-dropdown\" \n              class=\"dropdown-content\"\n              v-show=\"isDropdownOpen\"\n              @mouseenter=\"cancelCloseSchedule\"\n              @mouseleave=\"scheduleClose\"\n              @focusin=\"cancelCloseSchedule\"\n              @focusout=\"scheduleClose\"\n            >\n              <li role=\"menuitem\">\n                <button @click=\"selectCountry('world')\" @keydown.enter=\"selectCountry('world')\">\n                  <img\n                    src=\"./assets/world.svg\"\n                    alt=\"World\"\n                    style=\"display: block; margin: auto; height: 20px\"\n                  />\n                </button>\n              </li>\n              <li \n                v-for=\"(item, index) in countries\" \n                :key=\"index\" \n                role=\"menuitem\"\n              >\n                <button @click=\"selectCountry(item)\" @keydown.enter=\"selectCountry(item)\">\n                  <img\n                    :src=\"`./assets/${item}.svg`\"\n                    :alt=\"item\"\n                    style=\"display: block; margin: auto; height: 20px\"\n                  />\n                </button>\n              </li>\n            </ul>\n          </div>\n\n        </div>\n        <table v-if=\"stations.length\">\n          <thead>\n            <tr>\n              <th>Location</th>\n              <th>City</th>\n              <th>EVSE ID</th>\n              <th>Tariff</th>\n            </tr>\n          </thead>\n          <tbody>\n            <tr v-for=\"station in filteredStations\">\n              <td>{{station.location}}</td>\n              <td>{{station.city}}</td>\n              <td>\n                <div class=\"id\" v-for=\"id in station.id\">{{id}}</div>\n              </td>\n              <td>\n                <template v-if=\"station.tariff.version === 'V2'\">\n                  <template v-for=\"(chunk, index) in station.tariff.chunks\">\n                    <section\n                      :key=\"`${station.location}-${index}`\"\n                      class=\"tariff-parent chunk-accent\"\n                    >\n                      <div class=\"icon-wrapper\">\n                        <p class=\"tariff-title\">{{chunk.title}}</p>\n                      </div>\n                      <p class=\"tariff-time\">{{chunk.time}}</p>\n                      <div class=\"tariff-value\">\n                        {{chunk.costPerKwh}}/kWh\n                        <template v-if=\"chunk.costPerMinute\">\n                          + {{chunk.costPerMinute}}/min\n                        </template>\n                        <div v-if=\"chunk.maxCostTime\" class=\"conditions\">\n                          *pay max {{chunk.maxCostTime}} for charging time\n                        </div>\n                      </div>\n                    </section>\n                    <hr\n                      v-if=\"index < station.tariff.chunks.length - 1\"\n                      :key=\"`hr-${index}`\"\n                      class=\"chunk-hr\"\n                    />\n                  </template>\n                </template>\n                <template v-else>\n                  <section v-if=\"station.tariff.day\" class=\"tariff-parent\">\n                    <div class=\"icon-wrapper\">\n                      <img alt=\"day\" src=\"day-icon.svg\" />\n                      <p v-if=\"station.tariff.night\" class=\"tariff-title\">{{station.tariff.day.title}}</p>\n                      <p v-else class=\"tariff-title\">Rate</p>\n                    </div>\n                    <p v-if=\"station.tariff.night\" class=\"tariff-time\">{{station.tariff.day.time}}</p>\n                    <p class=\"tariff-value\">\n                      {{station.tariff.day.costPerKwh}}/kWh\n                      <template v-if=\"station.tariff.day.costPerMinute\">\n                        + {{station.tariff.day.costPerMinute}}/min\n                      </template>\n                    </p>\n                  </section>\n                  <section v-if=\"station.tariff.night\" class=\"tariff-parent\">\n                    <div class=\"icon-wrapper\">\n                      <img alt=\"night\" src=\"night-icon.svg\" />\n                      <p class=\"tariff-title\">{{station.tariff.night.title}}</p>\n                    </div>\n                    <p class=\"tariff-time\">{{station.tariff.night.time}}</p>\n                    <div class=\"tariff-value\">\n                      {{station.tariff.night.costPerKwh}}/kWh\n                      <template v-if=\"station.tariff.night.costPerMinute\">\n                        + {{station.tariff.night.costPerMinute}}/min\n                      </template>\n                      <div v-if=\"station.tariff.night.maxCostTime\" class=\"conditions\">\n                        *pay max {{station.tariff.night.maxCostTime}} for charging time\n                      </div>\n                    </div>\n                  </section>\n                </template>\n                <div v-if=\"station.tariff.gracePeriodMinutes > 0\" class=\"grace-period\">\n                  Infrastructure fee (per min) starts after {{station.tariff.gracePeriodMinutes}} min\n                </div>\n              </td>\n            </tr>\n          </tbody>\n        </table>\n        <div\n          v-if=\"!stations.length && !errorMsg.length\"\n          style=\"text-align: center\"\n        >\n          Loading: fetching stations\n        </div>\n        <div v-if=\"errorMsg.length\" style=\"text-align: center; color: red\">\n          {{errorMsg}}\n        </div>\n      </main>\n    </div>\n  </body>\n  <script src=\"https://cdn.jsdelivr.net/npm/vue@2\"></script>\n  <script type=\"module\">\n    import { filteredStations, countries, handleSearch } from \"./search.js\";\n    import { getStations } from \"./api.js\";\n    const app = new Vue({\n      el: \"#app\",\n      data: {\n        stations: [],\n        userInput: \"\",\n        errorMsg: \"\",\n        selectedCountry: \"world\",\n        isDropdownOpen: false,\n\n      },\n      methods: {\n        handleSearch,\n        getStations,\n        selectCountry(value) {\n          this.selectedCountry = value;\n          // Your existing selection logic\n          this.closeDropdown();\n        },\n  keepDropdownOpen() {\n    clearTimeout(this.closeTimer);\n  },\n\n  openDropdown() {\n      this.isDropdownOpen = true;\n      this.$refs.countryDropdown.setAttribute('aria-expanded', 'true');\n    },\n\n    scheduleClose() {\n      this.closeTimer = setTimeout(() => {\n        this.closeDropdown();\n      }, 100); // Small delay to allow for interaction\n    },\n\n    cancelCloseSchedule() {\n      if (this.closeTimer) {\n        clearTimeout(this.closeTimer);\n        this.closeTimer = null;\n      }\n    },\n\n    closeDropdown() {\n      this.isDropdownOpen = false;\n      this.$refs.countryDropdown.setAttribute('aria-expanded', 'false');\n    },\n      },\n      computed: {\n        filteredStations,\n        countries,\n      },\n      mounted() {\n        // don't show template before vuejs has completed mounted. Prevents weird flashes on the screen as the templates are converted into vuejs components\n        document.body.classList.add(\"show\");\n        this.getStations();\n        // Add a click event listener to the document to close the dropdown when clicking outside\n        document.addEventListener('click', (event) => {\n          if (!this.$refs.dropdown.contains(event.target)) {\n            this.closeDropdown();\n          }\n        });\n\n      },\n      beforeDestroy() {\n        // Remove the event listener when the component is destroyed\n        document.removeEventListener('click', this.handleOutsideClick);\n      }\n    });\n  </script>\n</html>\n",
+  "scripts": [
+    "https://cdn.jsdelivr.net/npm/vue@2"
+  ],
+  "assets": [
+    {
+      "url": "https://cdn.jsdelivr.net/npm/vue@2",
+      "status": 200,
+      "bytes": 107679,
+      "candidateUrls": [],
+      "snippets": []
+    }
+  ],
+  "panRows": 990,
+  "panSamples": [
+    {
+      "id": "FRQWCE22G4C11",
+      "station": "Qwello France SAS/92dc7662-fa74-477b-bd02-794a787da4c2",
+      "address": "18 Pl. de l'Ãglise, GÃ©vezÃ© 35850 France"
+    },
+    {
+      "id": "FRQWCE22G4C12",
+      "station": "Qwello France SAS/92dc7662-fa74-477b-bd02-794a787da4c2",
+      "address": "18 Pl. de l'Ãglise, GÃ©vezÃ© 35850 France"
+    },
+    {
+      "id": "FRQWCE23HR311",
+      "station": "Qwello France SAS/3e0e2c7f-0542-4b35-8dfd-4f82c14f732d",
+      "address": "11 Place Herdof, Retiers 35240 France"
+    },
+    {
+      "id": "FRQWCE23HR311",
+      "station": "Parking Place Herdorf",
+      "address": "11 Place Herdof, 35240 Retiers"
+    },
+    {
+      "id": "FRQWCE23HR312",
+      "station": "Qwello France SAS/3e0e2c7f-0542-4b35-8dfd-4f82c14f732d",
+      "address": "11 Place Herdof, Retiers 35240 France"
+    },
+    {
+      "id": "FRQWCE23HR312",
+      "station": "Parking Place Herdorf",
+      "address": "11 Place Herdof, 35240 Retiers"
+    },
+    {
+      "id": "FRQWCE27PWV11",
+      "station": "Qwello France SAS/a1e3440b-f4f7-4e9a-bf50-481cfde207b7",
+      "address": "121 Rue de la Mairie, La Chapelle-de-Guinchay 71570 France"
+    },
+    {
+      "id": "FRQWCE27PWV11",
+      "station": "Parking Mairie",
+      "address": "121 Rue de la Mairie , 71570 La Chapelle-de-Guinchay"
+    },
+    {
+      "id": "FRQWCE27PWV12",
+      "station": "Qwello France SAS/a1e3440b-f4f7-4e9a-bf50-481cfde207b7",
+      "address": "121 Rue de la Mairie, La Chapelle-de-Guinchay 71570 France"
+    },
+    {
+      "id": "FRQWCE27PWV12",
+      "station": "Parking Mairie",
+      "address": "121 Rue de la Mairie , 71570 La Chapelle-de-Guinchay"
+    },
+    {
+      "id": "FRQWCE28WGR11",
+      "station": "Qwello France SAS/c3f7209f-4f82-4712-ad70-91b88d1156a2",
+      "address": "1 Place Gabriel Gauthier, Saint-Aubin-sur-Loire 71140 France"
+    },
+    {
+      "id": "FRQWCE28WGR11",
+      "station": "Place Gabriel Gauthier",
+      "address": "1 Place Gabriel Gauthier, 71140 Saint-Aubin-sur-Loire"
+    },
+    {
+      "id": "FRQWCE28WGR12",
+      "station": "Qwello France SAS/c3f7209f-4f82-4712-ad70-91b88d1156a2",
+      "address": "1 Place Gabriel Gauthier, Saint-Aubin-sur-Loire 71140 France"
+    },
+    {
+      "id": "FRQWCE28WGR12",
+      "station": "Place Gabriel Gauthier",
+      "address": "1 Place Gabriel Gauthier, 71140 Saint-Aubin-sur-Loire"
+    },
+    {
+      "id": "FRQWCE2W52M11",
+      "station": "Qwello France SAS/6c49eaf9-9364-462c-81c9-e8fb85d2fd99",
+      "address": " Rue Mgr Sobeaux, Noirmoutier-en-l'Ãle 85330 France"
+    },
+    {
+      "id": "FRQWCE2W52M11",
+      "station": "Parking de Vieil",
+      "address": "Rue Mgr Sobeaux , 85330, Noirmoutier-en-l'Ãle"
+    },
+    {
+      "id": "FRQWCE2W52M21",
+      "station": "Qwello France SAS/8df090b5-8238-4f9f-b3b3-7f9e1563fb87",
+      "address": " Rue Mgr Sobeaux, Noirmoutier-en-l'Ãle 85330 France"
+    },
+    {
+      "id": "FRQWCE2W52M21",
+      "station": "Parking de Vieil",
+      "address": "Rue Mgr Sobeaux , 85330, Noirmoutier-en-l'Ãle"
+    },
+    {
+      "id": "FRQWCE2W52M31",
+      "station": "Qwello France SAS/f7171974-efc2-4698-8738-cab7ae182c44",
+      "address": " Rue Mgr Sobeaux, Noirmoutier-en-l'Ãle 85330 France"
+    },
+    {
+      "id": "FRQWCE2W52M31",
+      "station": "Parking de Vieil",
+      "address": "Rue Mgr Sobeaux , 85330, Noirmoutier-en-l'Ãle"
+    },
+    {
+      "id": "FRQWCE2W52M41",
+      "station": "Qwello France SAS/47f764b0-d381-4390-a223-4bad55925dd3",
+      "address": " Rue Mgr Sobeaux, Noirmoutier-en-l'Ãle 85330 France"
+    },
+    {
+      "id": "FRQWCE2W52M41",
+      "station": "Parking de Vieil",
+      "address": "Rue Mgr Sobeaux , 85330, Noirmoutier-en-l'Ãle"
+    },
+    {
+      "id": "FRQWCE32FVC11",
+      "station": "Qwello France SAS/320e3a01-2ccf-4971-9cd8-fba1b0038531",
+      "address": " Avenue du GÃ©nÃ©ral de Gaulle, Digoin 71160 France"
+    },
+    {
+      "id": "FRQWCE32FVC12",
+      "station": "Qwello France SAS/320e3a01-2ccf-4971-9cd8-fba1b0038531",
+      "address": " Avenue du GÃ©nÃ©ral de Gaulle, Digoin 71160 France"
+    },
+    {
+      "id": "FRQWCE37C7X11",
+      "station": "Qwello France SAS/f29824c8-00af-4061-aa74-01b520735464",
+      "address": "1 Rue du Onze Novembre, Bourbon-Lancy 71140 France"
+    },
+    {
+      "id": "FRQWCE37C7X11",
+      "station": "rue du 11 novembre",
+      "address": "1 Rue du Onze Novembre, 71140 Bourbon-Lancy"
+    },
+    {
+      "id": "FRQWCE37C7X12",
+      "station": "Qwello France SAS/f29824c8-00af-4061-aa74-01b520735464",
+      "address": "1 Rue du Onze Novembre, Bourbon-Lancy 71140 France"
+    },
+    {
+      "id": "FRQWCE37C7X12",
+      "station": "rue du 11 novembre",
+      "address": "1 Rue du Onze Novembre, 71140 Bourbon-Lancy"
+    },
+    {
+      "id": "FRQWCE38JXM11",
+      "station": "Qwello France SAS/0f9735cb-ac44-4e4a-b6b1-12c78efdb3ea",
+      "address": "30 Rue de Dinard, La Richardais 35780 France"
+    },
+    {
+      "id": "FRQWCE38JXM11",
+      "station": "Rue de Dinard",
+      "address": "30 Rue de Dinard, 35780 La Richardais"
+    }
+  ]
+}
