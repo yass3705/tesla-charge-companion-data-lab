@@ -1,0 +1,62 @@
+name: France Stations-e exact national tariffs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/stations-e-france-exact-tariffs.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact fail-closed overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/stations-e data/operator_direct
+          python - <<'PY'
+          import csv,io,requests,re,json,pathlib,datetime
+          src='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          tariff_url='https://stations-e.com/fr/tarification'
+          text=requests.get(src,timeout=60).text
+          rows=list(csv.DictReader(io.StringIO(text)))
+          def get(r,k): return (r.get(k) or '').strip()
+          selected=[r for r in rows if get(r,'nom_operateur').upper()=='STATIONS-E']
+          def power(r):
+              raw=get(r,'puissance_nominale')
+              try: return float(raw.replace(',','.'))
+              except: return None
+          vals={}
+          overlay=[]; gaps=[]
+          for r in selected:
+              p=power(r); vals[str(p)]=vals.get(str(p),0)+1
+              pid=get(r,'id_pdc_itinerance') or get(r,'id_pdc_local')
+              base={'id_pdc_itinerance':pid,'id_station_itinerance':get(r,'id_station_itinerance'),'nom_station':get(r,'nom_station'),'puissance_nominale_kw':p}
+              if p in (22.0,24.0,50.0):
+                  cls='22AC_or_24DC' if p in (22.0,24.0) else '50DC'
+                  base['powerClass']=cls
+                  base['directAdHoc']={'eurPerKwh':0.54}
+                  base['badgeFree']={'monthlyEur':0.0,'eurPerKwh':0.39}
+                  base['expressE']={'monthlyEur':2.90,'eurPerKwh':0.32 if p in (22.0,24.0) else 0.35}
+                  base['accessE']={'monthlyEur':4.90,'eurPerKwh':0.29 if p in (22.0,24.0) else 0.35}
+                  base['postChargeOccupancy']={'freeMinutes':15,'eurPerMinuteAfter':0.10,'waivedWindowLocal':'23:00-07:00' if p==22.0 else None}
+                  overlay.append(base)
+              else:
+                  gaps.append(base)
+          now=datetime.datetime.now(datetime.timezone.utc).isoformat()
+          out={'schemaVersion':'1.0.0','dataset':'stations-e-official-france','generatedAt':now,'operator':'STATIONS-E','country':'FR','source':tariff_url,'scope':'operator-direct-only','rules':{'adHocEurPerKwh':0.54,'badgeFreeEurPerKwh':0.39,'expressE':{'monthlyEur':2.90,'22AC_or_24DC':0.32,'50DC':0.35},'accessE':{'monthlyEur':4.90,'22AC_or_24DC':0.29,'50DC':0.35},'postChargeOccupancy':{'freeMinutes':15,'eurPerMinuteAfter':0.10,'noOccupancyBetween23And07For22AC':True}},'coverage':{'panRows':len(selected),'exactRows':len(overlay),'gapRows':len(gaps),'powerDistribution':vals},'evseTariffs':overlay,'gaps':gaps}
+          pathlib.Path('data/operator_direct/stations_e_official_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('reports/france/stations-e/coverage.json').write_text(json.dumps(out['coverage']|{'gapSamples':gaps[:50]},ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out['coverage'],ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/operator_direct/stations_e_official_france.json reports/france/stations-e/coverage.json
+          git commit -m 'France Stations-e: publish exact official tariffs' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
