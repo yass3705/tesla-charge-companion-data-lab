@@ -2,9 +2,9 @@ name: Spain REVE V9 bootstrap
 
 on:
   workflow_dispatch:
-  push:
+  pull_request:
     branches:
-      - feature/spain-reve-v9
+      - main
     paths:
       - .github/workflows/spain-reve-v9-bootstrap.yml
 
@@ -45,8 +45,6 @@ jobs:
           outdir = pathlib.Path('artifacts/spain/reve')
           outdir.mkdir(parents=True, exist_ok=True)
 
-          # REVE documents a hard ceiling of five requests per hour.
-          # This bootstrap deliberately uses exactly five calls: schema + four national resources.
           endpoints = [
               ('api_docs', '/docs/api-docs.json'),
               ('cpos', '/cpos'),
@@ -115,6 +113,7 @@ jobs:
           retention-days: 7
 
       - name: Commit bootstrap report
+        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
