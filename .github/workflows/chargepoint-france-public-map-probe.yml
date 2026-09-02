@@ -1,0 +1,61 @@
+name: France ChargePoint public map probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/chargepoint-france-public-map-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect official public pages and frontend assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/chargepoint
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          roots=['https://www.chargepoint.com/fr-fr/drivers','https://na.chargepoint.com/charge_point','https://driver.chargepoint.com/']
+          pages=[]; scripts=[]
+          for u in roots:
+            try:
+              r=s.get(u,timeout=25,allow_redirects=True); t=r.text
+              pages.append({'url':u,'status':r.status_code,'final':r.url,'bytes':len(t),'contentType':r.headers.get('content-type')})
+              for x in re.findall(r'<script[^>]+src=["\']([^"\']+)',t,re.I):
+                y=urllib.parse.urljoin(r.url,x)
+                if y not in scripts: scripts.append(y)
+            except Exception as e: pages.append({'url':u,'error':str(e)})
+          findings=[]
+          for u in scripts[:120]:
+            try:
+              r=s.get(u,timeout=20); t=r.text
+              if len(t)>10_000_000: t=t[:10_000_000]
+              urls=sorted(set(re.findall(r'https?://[^"\'\\\s)]+',t)))
+              snippets=[]; low=t.lower()
+              for term in ['station','pricing','tariff','price','map','graphql','api/','network','port']:
+                pos=0
+                while True:
+                  i=low.find(term,pos)
+                  if i<0: break
+                  snippets.append(t[max(0,i-220):i+700]); pos=i+len(term)
+                  if len(snippets)>150: break
+                if len(snippets)>150: break
+              if urls or snippets: findings.append({'url':u,'bytes':len(t),'candidateUrls':[x for x in urls if any(z in x.lower() for z in ['api','station','map','chargepoint','graphql'])][:150],'snippets':snippets[:150]})
+            except: pass
+          out={'pages':pages,'scripts':scripts,'findings':findings}
+          pathlib.Path('reports/france/chargepoint/public-map-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'pages':pages,'scripts':scripts[:30],'findings':[{'url':x['url'],'candidateUrls':x['candidateUrls'][:20]} for x in findings]},ensure_ascii=False)[:40000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/chargepoint/public-map-probe.json
+          git commit -m 'France ChargePoint: publish public map probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
