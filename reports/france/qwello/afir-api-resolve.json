@@ -1,0 +1,45 @@
+{
+  "files": {
+    "api.js": {
+      "status": 200,
+      "body": "import url from './url.js';\nimport { renderMoney } from './money.js';\nimport { localeTimeString } from './time.js';\n\n\nconst urls = {\n  tariff_view: `${url.BASE_URL}/tariff-view.json`,\n};\n\n// Fetching helper\nconst fetcher = async (url, params) => {\n  try {\n    const res = await fetch(url, {\n      method: \"get\",\n      ...params,\n    });\n    const parsed = await res.json();\n      return parsed;\n  } catch ({ message }) {\n    return null;\n  }\n};\n\nconst fetchTariffViewData = async () => fetcher(urls.tariff_view, null);\n\nconst mapChunk = (chunk, currency) => ({\n  ...chunk,\n  costPerKwh: renderMoney({ ...(chunk.costPerKwh || { significand: 0, power: 0 }), currency }),\n  costPerMinute: chunk.costPerMinute\n    ? renderMoney({ ...chunk.costPerMinute, currency })\n    : undefined,\n  maxCostTime: chunk.maxCostTime\n    ? renderMoney({ ...chunk.maxCostTime, currency })\n    : undefined,\n  time: localeTimeString(\n    chunk.time ? chunk.time.start : 0,\n    chunk.time ? chunk.time.end : 0,\n  ),\n});\n\nconst mapTariff = (station) => {\n  const { tariff, currency } = station;\n\n  if (tariff.version === 'V2') {\n    return {\n      ...tariff,\n      chunks: (tariff.chunks || []).map(c => mapChunk(c, currency)),\n    };\n  }\n\n  // V1 (and TARIFF_VERSION_UNSPECIFIED fallback)\n  const day = tariff.day ? mapChunk(tariff.day, currency) : undefined;\n  // NOTE: Don't show tariff when it's maxCostTime is 0\n  const night = tariff.night && tariff.night.maxCostTime?.significand ? mapChunk(tariff.night, currency) : undefined;\n  return {\n    ...tariff,\n    day,\n    night,\n  };\n};\n\nexport async function getStations() {\n  const locationsWithTariffs = await fetchTariffViewData();\n  // show error message\n  if (!locationsWithTariffs) {\n    this.errorMsg = \"Something went wrong, please contact Qwello\";\n    return;\n  }\n  this.stations = locationsWithTariffs.map((station) => ({\n    ...station,\n    tariff: mapTariff(station),\n  }));\n}\n"
+    },
+    "url.js": {
+      "status": 200,
+      "body": "export default { BASE_URL: \"https://tariff-locations-file-production.s3.eu-central-1.amazonaws.com\" }"
+    },
+    "money.js": {
+      "status": 200,
+      "body": "const currencySigns = { EUR: 'â¬', SEK: 'kr', GBP: 'Â£', PLN: 'zÅ' };\n\n// Money conversion helpers\nconst convertToPlaceValue = ({ significand, power }) => 10 ** power * significand;\n\nconst convertToString = (significand, power, currency) => {\n  power = power ?? 0;\n  const minFractionDigits = Math.max(2, Math.abs(power));\n  return significand.toLocaleString('de-DE', {\n    minimumFractionDigits: minFractionDigits,\n  }) + currencySigns[currency];\n};\n\nexport const renderMoney = ({significand, power, currency}) => {\n  return convertToString(convertToPlaceValue({ significand, power }), power, currency);\n}\n"
+    },
+    "search.js": {
+      "status": 200,
+      "body": "export function filteredStations() {\n  let result = this.stations;\n  if (this.selectedCountry && this.selectedCountry != \"world\") {\n    result = this.stations.filter(\n      (station) => station.country === this.selectedCountry\n    );\n  }\n\n  if (this.userInput.length) {\n    const normalizedInput = normalizeString(this.userInput);\n    result = result.filter(\n      (station) =>\n        station.id.some((id) =>\n          id.toLowerCase().match(new RegExp(this.userInput.toLowerCase(), \"g\"))\n        ) ||\n        normalizeString(station.city).match(\n          new RegExp(normalizedInput, \"gi\")\n        ) ||\n        normalizeString(station.location).match(\n          new RegExp(normalizedInput, \"gi\")\n        )\n    );\n  }\n  return result;\n}\n\nexport function countries() {\n  let countriesArray = this.stations.map((station) => station.country);\n  return [...new Set(countriesArray)];\n}\nexport function handleSearch(value) {\n  this.userInput = value;\n}\n\nfunction normalizeString(str) {\n  return str\n    .normalize(\"NFD\") // Normalize to NFD (Normalization Form Decomposition)\n    .replace(/[\\u0300-\\u036f]/g, \"\") // Remove diacritics\n    .replace(/[^a-zA-Z0-9]/g, \"\") // Remove non-alphanumeric characters\n    .toLowerCase(); // Convert to lowercase for case-insensitive comparison\n}\n"
+    },
+    "time.js": {
+      "status": 200,
+      "body": "export function localeTimeString(start, end) {\n  const startHour = start / 60;\n  const endHour = end / 60;\n\n  let time = new Intl.DateTimeFormat('de-DE', {\n    hour: 'numeric',\n    minute: 'numeric',\n  });\n\n  return `${time.format(c_time(startHour))} to ${time.format(c_time(endHour))}`; // time range -> 7:00 to 19:00\n}\n\nconst c_time = (time) => new Date().setHours(time, 0, 0);\n"
+    }
+  },
+  "urls": [
+    "https://tariff-locations-file-production.s3.eu-central-1.amazonaws.com"
+  ],
+  "fetchExpressions": [
+    "fetch(url, {\n      method: \"get\",\n      ...params,\n    });\n    const parsed = await res.json();\n      return parsed;\n  } catch ({ message }) {\n    return null;\n  }\n};\n\nconst fetchTariffViewData = async () => fetcher(urls.tariff_view, null);\n\nconst mapChunk = (chunk, currency) => ({\n  ...chunk,\n  costPerKwh: renderMoney({ ...(chunk.costPerKwh || { significand: 0, power: 0 }), currency }),\n  costPerMinute"
+  ],
+  "fragments": [
+    ")\n        ) ||\n        normalizeString(station.location).match(\n          new RegExp(normalizedInput, ",
+    ") {\n    return {\n      ...tariff,\n      chunks: (tariff.chunks || []).map(c => mapChunk(c, currency)),\n    };\n  }\n\n  // V1 (and TARIFF_VERSION_UNSPECIFIED fallback)\n  const day = tariff.day ? mapChunk(tariff.day, currency) : undefined;\n  // NOTE: Don",
+    "))\n        ) ||\n        normalizeString(station.city).match(\n          new RegExp(normalizedInput, ",
+    ";\n\n\nconst urls = {\n  tariff_view: `${url.BASE_URL}/tariff-view.json`,\n};\n\n// Fetching helper\nconst fetcher = async (url, params) => {\n  try {\n    const res = await fetch(url, {\n      method: ",
+    ";\n    return;\n  }\n  this.stations = locationsWithTariffs.map((station) => ({\n    ...station,\n    tariff: mapTariff(station),\n  }));\n}\n\nexport default { BASE_URL: "
+  ],
+  "attempts": [
+    {
+      "url": "https://tariff-locations-file-production.s3.eu-central-1.amazonaws.com",
+      "status": 403,
+      "type": "application/xml",
+      "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Error><Code>AccessDenied</Code><Message>Access Denied</Message><RequestId>24G8423EVMGTWF5Q</RequestId><HostId>cWBKkoZJsQn97AXNJkehR8OyIRYECoCHCLMD9ygFliN0HjYAk76GVA1/1Wu9p81yt2+dWb1HhK8=</HostId></Error>"
+    }
+  ]
+}
