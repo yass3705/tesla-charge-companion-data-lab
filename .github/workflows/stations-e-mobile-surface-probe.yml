@@ -20,52 +20,57 @@ jobs:
           python - <<'PY'
           import requests,re,json,pathlib,urllib.parse,os,zipfile
           s=requests.Session(); s.headers.update({'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36','Accept-Language':'en-US,en;q=0.8'})
-          pages=[
-            'https://stations-e.en.uptodown.com/android','https://stations-e.en.uptodown.com/android/download',
-            'https://apkpure.net/stations-e-easy-ev-charging/fr.Stationse.prod',
-            'https://apkpure.com/stations-e-easy-ev-charging/fr.Stationse.prod',
+          seeds=[
             'https://apkcombo.com/stations-e-easy-ev-charging/fr.Stationse.prod/',
-            'https://apkcombo.com/stations-e-easy-ev-charging/fr.Stationse.prod/download/apk'
+            'https://apkcombo.com/stations-e-easy-ev-charging/fr.Stationse.prod/download/apk',
+            'https://apkcombo.com/stations-e-easy-ev-charging/fr.Stationse.prod/download/phone-2.1.6-apk',
+            'https://stations-e.en.uptodown.com/android','https://stations-e.en.uptodown.com/android/download',
+            'https://apkpure.net/stations-e-easy-ev-charging/fr.Stationse.prod'
           ]
-          page_recs=[]; candidates=[]
-          for u in pages:
-            try:
-              r=s.get(u,timeout=30,allow_redirects=True)
-              t=r.text
-              page_recs.append({'url':u,'status':r.status_code,'final':r.url,'bytes':len(t),'type':r.headers.get('content-type')})
-              for x in re.findall(r'https?://[^"\'<>\s]+',t):
-                xx=x.replace('&amp;','&').replace('\\u0026','&')
-                if any(z in xx.lower() for z in ['.apk','.xapk','download','d.apkpure','download.apkpure','apkcombo','dw.uptodown']): candidates.append(xx)
-              for x in re.findall(r'(?:href|data-url|data-download-url|data-dt-url)=["\']([^"\']+)',t,re.I):
-                y=urllib.parse.urljoin(r.url,x.replace('&amp;','&'))
-                if any(z in y.lower() for z in ['download','.apk','.xapk','apkpure','apkcombo','dw.uptodown']): candidates.append(y)
-            except Exception as e: page_recs.append({'url':u,'error':str(e)})
-          candidates=list(dict.fromkeys(candidates))[:500]
-          dl=None; attempts=[]
-          for u in candidates:
-            try:
-              r=s.get(u,timeout=60,allow_redirects=True,stream=True)
-              ct=r.headers.get('content-type',''); cd=r.headers.get('content-disposition',''); clen=r.headers.get('content-length')
-              attempts.append({'url':u[:1000],'status':r.status_code,'final':r.url[:1000],'contentType':ct,'contentDisposition':cd,'length':clen})
-              if r.status_code==200 and ('application/' in ct or '.apk' in r.url.lower() or '.xapk' in r.url.lower() or 'attachment' in cd.lower()):
-                p='/tmp/stations-e/app.bin'
-                with open(p,'wb') as f:
-                  total=0
-                  for ch in r.iter_content(1024*1024):
-                    f.write(ch); total+=len(ch)
-                    if total>120_000_000: break
-                if os.path.getsize(p)>1_000_000:
-                  try:
-                    zipfile.ZipFile(p).testzip(); dl=p; break
-                  except Exception: pass
-            except Exception as e: attempts.append({'url':u[:1000],'error':str(e)})
-          findings={'pages':page_recs,'candidateCount':len(candidates),'candidateSamples':candidates[:80],'downloadAttempts':attempts[:120],'downloaded':bool(dl)}
+          page_recs=[]; queue=list(seeds); seen=set(); candidates=[]; attempts=[]; dl=None
+          def links(base,t):
+            out=[]
+            for x in re.findall(r'https?://[^"\'<>\s]+',t): out.append(x.replace('&amp;','&').replace('\\u0026','&'))
+            for x in re.findall(r'(?:href|data-url|data-download-url|data-dt-url|data-file)=["\']([^"\']+)',t,re.I): out.append(urllib.parse.urljoin(base,x.replace('&amp;','&')))
+            return list(dict.fromkeys(out))
+          # Crawl only two public download-page hops, constrained to distribution hosts/download-like links.
+          depth=0
+          while queue and depth<3 and not dl:
+            nextq=[]
+            for u in queue[:250]:
+              if u in seen: continue
+              seen.add(u)
+              try:
+                r=s.get(u,timeout=60,allow_redirects=True,stream=True)
+                ct=r.headers.get('content-type',''); cd=r.headers.get('content-disposition',''); clen=r.headers.get('content-length')
+                rec={'url':u[:1000],'status':r.status_code,'final':r.url[:1000],'contentType':ct,'contentDisposition':cd,'length':clen,'depth':depth}
+                attempts.append(rec)
+                binary=('application/' in ct and 'json' not in ct) or '.apk' in r.url.lower() or '.xapk' in r.url.lower() or 'attachment' in cd.lower()
+                if r.status_code==200 and binary:
+                  p='/tmp/stations-e/app.bin'
+                  with open(p,'wb') as f:
+                    total=0
+                    for ch in r.iter_content(1024*1024):
+                      f.write(ch); total+=len(ch)
+                      if total>120_000_000: break
+                  if os.path.getsize(p)>1_000_000:
+                    try: zipfile.ZipFile(p).testzip(); dl=p; rec['acceptedBinary']=True; break
+                    except Exception: rec['acceptedBinary']=False
+                if r.status_code==200 and 'text/html' in ct:
+                  t=r.text
+                  page_recs.append({'url':u,'status':r.status_code,'final':r.url,'bytes':len(t),'depth':depth})
+                  for y in links(r.url,t):
+                    yl=y.lower()
+                    if any(h in yl for h in ['apkcombo','apkcombo.org','apkcombo.app','download','apk','xapk','uptodown','apkpure']) and not any(b in yl for b in ['facebook','twitter','image','icon','logo']):
+                      candidates.append(y); nextq.append(y)
+              except Exception as e: attempts.append({'url':u[:1000],'error':str(e),'depth':depth})
+            queue=list(dict.fromkeys(nextq)); depth+=1
+          findings={'pages':page_recs[:100],'candidateCount':len(set(candidates)),'candidateSamples':list(dict.fromkeys(candidates))[:120],'downloadAttempts':attempts[:250],'downloaded':bool(dl)}
           if dl:
             try:
               z=zipfile.ZipFile(dl); z.extractall('/tmp/stations-e/unpack')
             except Exception:
-              pathlib.Path('/tmp/stations-e/unpack').mkdir(exist_ok=True)
-              os.rename(dl,'/tmp/stations-e/unpack/base.apk')
+              pathlib.Path('/tmp/stations-e/unpack').mkdir(exist_ok=True); os.rename(dl,'/tmp/stations-e/unpack/base.apk')
             apks=list(pathlib.Path('/tmp/stations-e/unpack').rglob('*.apk'))
             if not apks and pathlib.Path('/tmp/stations-e/unpack/base.apk').exists(): apks=[pathlib.Path('/tmp/stations-e/unpack/base.apk')]
             urls=[]; route_strings=[]
@@ -74,9 +79,8 @@ jobs:
                 with zipfile.ZipFile(ap) as z:
                   for n in z.namelist():
                     if n.endswith(('.dex','.xml','.json','.js','.txt')) and z.getinfo(n).file_size<40_000_000:
-                      txt=z.read(n).decode('latin1','ignore')
+                      txt=z.read(n).decode('latin1','ignore'); low=txt.lower()
                       urls += re.findall(r'https?://[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]{8,}',txt)
-                      low=txt.lower()
                       for term in ['tariff','pricing','price','connector','station','map/network','api/','graphql','ocpi','chargepoint']:
                         pos=0
                         while True:
@@ -90,8 +94,7 @@ jobs:
               except Exception: pass
             urls=[u for u in dict.fromkeys(urls) if any(k in u.lower() for k in ['stations-e','stationse','api','map','charge','ocpi'])]
             findings['apks']=[str(x.name) for x in apks]
-            findings['urls']=urls[:800]
-            findings['routeSnippets']=route_strings[:700]
+            findings['urls']=urls[:800]; findings['routeSnippets']=route_strings[:700]
           pathlib.Path('reports/france/stations-e/mobile-surface-probe.json').write_text(json.dumps(findings,ensure_ascii=False,indent=2)+'\n')
           print(json.dumps(findings,ensure_ascii=False)[:50000])
           PY
@@ -100,6 +103,6 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/france/stations-e/mobile-surface-probe.json
-          git commit -m 'France Stations-e: publish broadened mobile probe' || exit 0
+          git commit -m 'France Stations-e: publish direct APK resolution probe' || exit 0
           for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
           exit 1
