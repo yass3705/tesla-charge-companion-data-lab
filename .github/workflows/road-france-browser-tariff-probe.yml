@@ -1,0 +1,112 @@
+name: France Road browser tariff probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/road-france-browser-tariff-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser
+        run: |
+          python -m pip install -q playwright beautifulsoup4
+          python -m playwright install chromium --with-deps >/dev/null 2>&1
+      - name: Probe connector selection and network
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/road
+          python - <<'PY'
+          import asyncio,json,re,pathlib,requests
+          from bs4 import BeautifulSoup
+          from playwright.async_api import async_playwright
+          ids=['0001063','0012801','0014337','0018086','0034638','0052036','0055754','0119323','0150004','6567796']
+          static=[]
+          for k in ids:
+            u=f'https://chargestation.road.io/evse/{k}'
+            r=requests.get(u,headers={'User-Agent':'Mozilla/5.0'},timeout=20)
+            soup=BeautifulSoup(r.text,'html.parser')
+            for x in soup(['script','style','noscript']): x.decompose()
+            text=' '.join(soup.stripped_strings)
+            conns=re.findall(r'[A-Z]{2}\*EFL\*EV\d{7}\*C\d+',text,re.I)
+            static.append({'id':k,'status':r.status_code,'visibleText':text[:12000],'connectors':list(dict.fromkeys(conns))})
+          async def main():
+            out=[]
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True)
+              page=await browser.new_page()
+              for k in ids:
+                calls=[]
+                async def on_response(resp):
+                  try:
+                    req=resp.request
+                    rt=req.resource_type
+                    if rt not in ('xhr','fetch','document'): return
+                    body=''
+                    ct=(resp.headers.get('content-type') or '').lower()
+                    if 'json' in ct or 'text' in ct or rt in ('xhr','fetch'):
+                      try: body=(await resp.text())[:40000]
+                      except: pass
+                    # Store only endpoint + bounded tariff-relevant response material.
+                    low=body.lower()
+                    keep=any(t in low for t in ['tariff','price','pricing','connector','kwh','sessionfee','parking'])
+                    calls.append({'url':resp.url,'status':resp.status,'method':req.method,'resourceType':rt,'body':body if keep else body[:1500]})
+                  except: pass
+                page.on('response',on_response)
+                u=f'https://chargestation.road.io/evse/{k}'
+                try:
+                  await page.goto(u,wait_until='networkidle',timeout=45000)
+                  text=(await page.locator('body').inner_text())[:15000]
+                  # Try connector-labelled elements first, then buttons/cards under Connectors.
+                  conn=re.search(r'[A-Z]{2}\*EFL\*EV\d{7}\*C\d+',text,re.I)
+                  clicked=False
+                  if conn:
+                    loc=page.get_by_text(conn.group(0),exact=False).first
+                    try:
+                      await loc.click(timeout=5000); clicked=True
+                    except: pass
+                  if not clicked:
+                    for sel in ['button','[role="button"]','a']:
+                      loc=page.locator(sel)
+                      n=min(await loc.count(),40)
+                      for i in range(n):
+                        try:
+                          tx=(await loc.nth(i).inner_text()).strip()
+                          if ('EFL' in tx or 'kW' in tx) and len(tx)<500:
+                            await loc.nth(i).click(timeout=2500); clicked=True; break
+                        except: pass
+                      if clicked: break
+                  if clicked:
+                    await page.wait_for_timeout(2500)
+                  out.append({'id':k,'url':page.url,'clicked':clicked,'bodyAfter':(await page.locator('body').inner_text())[:20000],'network':calls[-100:]})
+                except Exception as e:
+                  out.append({'id':k,'error':str(e),'network':calls[-100:]})
+              await browser.close()
+            return out
+          brows=asyncio.run(main())
+          pathlib.Path('reports/france/road/browser-tariff-probe.json').write_text(json.dumps({'static':static,'browser':brows},ensure_ascii=False,indent=2)+'\n')
+          # concise summary
+          summ=[]
+          for r in brows:
+            txt=r.get('bodyAfter','')
+            price=[x for x in txt.splitlines() if any(t in x.lower() for t in ['€/','€ /','kwh','pricing','tariff','prix','price','session fee','idle'])][:80]
+            eps=[]
+            for x in r.get('network',[]):
+              if x['resourceType'] in ('xhr','fetch'): eps.append({'url':x['url'],'status':x['status'],'method':x['method'],'body':x['body'][:8000]})
+            summ.append({'id':r.get('id'),'clicked':r.get('clicked'),'priceLines':price,'apiCalls':eps[-30:]})
+          pathlib.Path('reports/france/road/browser-tariff-summary.json').write_text(json.dumps({'results':summ},ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summ,ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/road/browser-tariff-*.json
+          git commit -m 'France Road: publish browser tariff probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
