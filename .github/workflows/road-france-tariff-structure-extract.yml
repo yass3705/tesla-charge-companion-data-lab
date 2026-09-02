@@ -1,0 +1,56 @@
+name: France Road E-Flux tariff structure extract
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/road-france-tariff-structure-extract.yml']
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract exact tariff payload structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/road
+          python - <<'PY'
+          import requests,re,json,pathlib,html
+          ids=['0001063','0012801','0014337','6567796']
+          s=requests.Session();s.headers['User-Agent']='Mozilla/5.0'
+          out=[]
+          for x in ids:
+            u=f'https://chargestation.road.io/evse/{x}'
+            r=s.get(u,timeout=30);t=r.text;low=t.lower()
+            contexts=[]
+            for nd in ['tariff','currency','priceComponents','priceComponent','paymentOptions','kwh','fixedPrice','stepSize','vat','elements']:
+              pos=0
+              while True:
+                i=low.find(nd.lower(),pos)
+                if i<0:break
+                c=html.unescape(t[max(0,i-2500):i+5500])
+                contexts.append({'needle':nd,'offset':i,'context':c})
+                pos=i+len(nd)
+                if len(contexts)>100:break
+              if len(contexts)>100:break
+            scripts=[]
+            for m in re.finditer(r'<script[^>]*>(.*?)</script>',t,re.S|re.I):
+              b=html.unescape(m.group(1))
+              if any(k in b.lower() for k in ['tariff','currency','payment_option_scan_to_pay','pricing','pricecomponent']):scripts.append(b[:100000])
+            out.append({'id':x,'url':r.url,'status':r.status_code,'bytes':len(t),'contexts':contexts[:100],'scripts':scripts[:30]})
+          pathlib.Path('reports/france/road/tariff-structure-extract.json').write_text(json.dumps({'samples':out},ensure_ascii=False,indent=2)+'\n')
+          slim={'samples':[{'id':x['id'],'status':x['status'],'bytes':x['bytes'],'contexts':x['contexts'][:30],'scripts':x['scripts'][:8]} for x in out]}
+          pathlib.Path('reports/france/road/tariff-structure-summary.json').write_text(json.dumps(slim,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(slim,ensure_ascii=False)[:120000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/road/tariff-structure-*.json
+          git commit -m 'France Road E-Flux: publish exact tariff payload structure' || exit 0
+          git pull --rebase origin main
+          git push
