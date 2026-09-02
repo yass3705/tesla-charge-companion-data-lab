@@ -1,0 +1,56 @@
+name: France E55C root portal API discovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/e55c-root-bundle-api-discovery.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect root Angular bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/e55c
+          python - <<'PY'
+          import requests,re,json,pathlib,datetime
+          S=requests.Session(); S.headers.update({'User-Agent':'Mozilla/5.0','Accept':'*/*'})
+          origin='https://e55c.evse-portal.com/'
+          assets=['runtime.c6f23d9548c28e7e.js','polyfills.b7c85db827cac9f6.js','scripts.6c76c6e361a30c61.js','main.f0fa855337a6d708.js','assets/js/mongo-chart.js']
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'origin':origin,'assets':[]}
+          for a in assets:
+            u=origin+a
+            try:
+              r=S.get(u,timeout=30); txt=r.text
+              strings=[]
+              for m in re.finditer(r'["\'`](.{1,350}?)["\'`]',txt):
+                z=m.group(1)
+                if any(t in z.lower() for t in ('api','tarif','price','pricing','kwh','scan-pay','charge','connector','station','terminal','evse','payment','guest','auth')):
+                  strings.append(z)
+              urls=sorted(set(re.findall(r'https?://[^"\'`\\\s)]+',txt)))
+              snippets=[]; low=txt.lower()
+              for term in ('environment','baseurl','apiurl','api/','tarif','price','pricing','kwh','scan-pay','connector','station','terminal','evse','payment'):
+                pos=0
+                while True:
+                  i=low.find(term,pos)
+                  if i<0:break
+                  snippets.append(txt[max(0,i-260):i+1000]);pos=i+len(term)
+                  if len(snippets)>=160:break
+              out['assets'].append({'url':u,'status':r.status_code,'contentType':r.headers.get('content-type'),'bytes':len(r.content),'candidateStrings':sorted(set(strings))[:600],'candidateUrls':[x for x in urls if any(t in x.lower() for t in ('api','charge','portal','payment','station'))][:300],'snippets':snippets[:160]})
+            except Exception as e:out['assets'].append({'url':u,'error':str(e)})
+          pathlib.Path('reports/france/e55c/root-bundle-api-discovery.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps([{k:v for k,v in a.items() if k!='snippets'} for a in out['assets']],ensure_ascii=False)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/e55c/root-bundle-api-discovery.json
+          git commit -m 'France E55C: publish root portal API discovery' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
