@@ -1,0 +1,64 @@
+name: France Road E-Flux PAN identity probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/road-france-pan-identity-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve Road PAN identifiers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/road
+          python - <<'PY'
+          import csv,io,requests,re,json,pathlib
+          from urllib.parse import quote
+          src='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          text=s.get(src,timeout=60).text
+          rows=list(csv.DictReader(io.StringIO(text)))
+          def val(r,*keys):
+              for k in keys:
+                  if k in r and r[k]: return r[k]
+              return ''
+          road=[]
+          for r in rows:
+              op=' '.join([val(r,'nom_operateur'),val(r,'nom_amenageur'),val(r,'contact_amenageur'),val(r,'id_pdc_itinerance')])
+              if 'FR*EFL' in op.upper() or re.search(r'\bROAD\b',op,re.I) or 'E-FLUX' in op.upper(): road.append(r)
+          samples=[]
+          for r in road[:80]:
+              pid=val(r,'id_pdc_itinerance','id_pdc_local')
+              sid=val(r,'id_station_itinerance','id_station_local')
+              candidates=[]
+              for raw in [pid,sid]:
+                  for m in re.findall(r'\d{5,12}',raw or ''):
+                      if m not in candidates: candidates.append(m)
+              attempts=[]
+              for num in candidates[:6]:
+                  for u in [f'https://dashboard.e-flux.io/{num}',f'https://chargestation.road.io/{num}']:
+                      try:
+                          rr=s.get(u,timeout=15,allow_redirects=True)
+                          body=rr.text[:12000]
+                          attempts.append({'url':u,'status':rr.status_code,'finalUrl':rr.url,'bytes':len(rr.content),'looksStation':any(x in body.lower() for x in ['connector','tariff','charging station','charge station','evse'])})
+                      except Exception as e: attempts.append({'url':u,'error':str(e)})
+              samples.append({'idPdc':pid,'idStation':sid,'operator':val(r,'nom_operateur'),'name':val(r,'nom_station'),'address':val(r,'adresse_station'),'candidates':candidates,'attempts':attempts})
+          out={'generatedAt':__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat(),'resource':src,'roadRows':len(road),'samples':samples}
+          pathlib.Path('reports/france/road/pan-identity-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          ok=[x for x in samples if any(a.get('status')==200 and a.get('looksStation') for a in x['attempts'])]
+          print(json.dumps({'roadRows':len(road),'resolvedSamples':len(ok),'examples':ok[:10]},ensure_ascii=False)[:40000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/road/pan-identity-probe.json
+          git commit -m 'France Road E-Flux: publish PAN identity probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
