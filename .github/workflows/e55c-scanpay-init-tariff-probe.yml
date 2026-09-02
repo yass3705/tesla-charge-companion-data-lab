@@ -1,0 +1,57 @@
+name: France E55C anonymous scan-pay tariff probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/e55c-scanpay-init-tariff-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: GET anonymous scan-pay initialization on public connector sample
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/e55c
+          python - <<'PY'
+          import requests,re,json,pathlib,datetime,html,urllib.parse
+          S=requests.Session();S.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json,text/plain,*/*','Content-Type':'application/json'})
+          dl=S.get('https://umap.openstreetmap.fr/fr/datalayer/1234362/45a8c330-b19e-4fb8-a437-ab6e1827b8df/',timeout=45).json()
+          samples=[]
+          for f in dl.get('features') or []:
+            p=f.get('properties') or {}; name=html.unescape(str(p.get('name') or ''))
+            if '[PRIVEE]' in name.upper():continue
+            desc=html.unescape(str(p.get('description') or ''))
+            for u in re.findall(r'href=["\'](https://ev-qr\.com/\?[^"\']+)',desc,re.I):
+              q=urllib.parse.parse_qs(urllib.parse.urlsplit(html.unescape(u)).query)
+              evse=(q.get('b') or [''])[0]; con=(q.get('c') or ['1'])[0]
+              if evse and not any(x['evse']==evse and x['connector']==con for x in samples):
+                samples.append({'station':re.sub(r'<[^>]+>',' ',name).strip(),'evse':evse,'connector':con,'sourceUrl':u})
+              if len(samples)>=24:break
+            if len(samples)>=24:break
+          attempts=[]
+          base='https://rest.service-evse.com/v1/auth/scan-pay/initialize'
+          for x in samples:
+            u=base+'/'+urllib.parse.quote(x['evse'],safe='')+'/'+urllib.parse.quote(x['connector'],safe='')
+            try:
+              r=S.get(u,params={'Tenant':'e55c'},timeout=15)
+              try:j=r.json()
+              except:j=None
+              attempts.append({**x,'url':r.url,'status':r.status_code,'contentType':r.headers.get('content-type'),'json':j,'body':r.text[:12000]})
+            except Exception as e:attempts.append({**x,'url':u,'error':str(e)})
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'sampleCount':len(samples),'attempts':attempts}
+          pathlib.Path('reports/france/e55c/scanpay-init-tariff-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/e55c/scanpay-init-tariff-probe.json
+          git commit -m 'France E55C: publish anonymous scan-pay tariff probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
