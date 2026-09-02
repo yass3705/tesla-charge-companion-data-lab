@@ -1,0 +1,69 @@
+name: France E55C ev-qr exact connector tariff probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/e55c-evqr-tariff-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract ev-qr links and exact tariff surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/e55c
+          python - <<'PY'
+          import requests,re,json,pathlib,html,urllib.parse,datetime
+          S=requests.Session(); S.headers.update({'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'text/html,application/json,text/plain,*/*'})
+          u='https://umap.openstreetmap.fr/fr/datalayer/1234362/45a8c330-b19e-4fb8-a437-ab6e1827b8df/'
+          r=S.get(u,timeout=45); r.raise_for_status(); j=r.json(); features=j.get('features') or []
+          links=[]
+          for f in features:
+            p=f.get('properties') or {}; name=p.get('name'); desc=html.unescape(str(p.get('description') or '')); coords=(f.get('geometry') or {}).get('coordinates')
+            for url in re.findall(r'https://ev-qr\.com/\?[^"\'<>\s]+',desc):
+              url=html.unescape(url).rstrip('.,;)'); q=urllib.parse.parse_qs(urllib.parse.urlsplit(url).query); links.append({'station':name,'coordinates':coords,'url':url,'terminal':(q.get('b') or [None])[0],'connector':(q.get('c') or [None])[0]})
+          uniq=[]; seen=set()
+          for x in links:
+            if x['url'] not in seen: seen.add(x['url']); uniq.append(x)
+          probes=[]
+          for x in uniq:
+            try:
+              rr=S.get(x['url'],timeout=20,allow_redirects=True); body=rr.text[:300000]
+              clean=html.unescape(re.sub(r'\s+',' ',re.sub(r'<[^>]+>',' ',body)))
+              hits=[]
+              for pat in [r'.{0,120}\d+[\.,]\d+\s*(?:€|EUR|€/kWh|€\s*/\s*kWh|€/min).{0,180}',r'.{0,120}(?:tarif|tariff|prix|price|kWh|minute).{0,280}']:
+                for m in re.finditer(pat,clean,re.I):
+                  s=m.group(0)
+                  if s not in hits:hits.append(s)
+                  if len(hits)>=15:break
+              scripts=[]; findings=[]
+              for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',body,re.I):
+                su=urllib.parse.urljoin(rr.url,src)
+                if su not in scripts:scripts.append(su)
+              for su in scripts[:30]:
+                try:
+                  sr=S.get(su,timeout=15); st=sr.text; urls=[]
+                  for z in re.findall(r'https?://[^"\'\\\s)]+|["\'](/[^"\']{1,180})["\']',st):
+                    zz=z if isinstance(z,str) else z[0]
+                    if zz and any(t in zz.lower() for t in ('api','tarif','price','charge','connector','station')):urls.append(zz)
+                  if urls:findings.append({'script':su,'urls':sorted(set(urls))[:80]})
+                except:pass
+              probes.append({'station':x['station'],'terminal':x['terminal'],'connector':x['connector'],'url':x['url'],'finalUrl':rr.url,'status':rr.status_code,'contentType':rr.headers.get('content-type'),'bytes':len(rr.content),'tariffHits':hits,'scripts':scripts,'findings':findings,'body':body[:50000]})
+            except Exception as e:probes.append({'station':x['station'],'terminal':x['terminal'],'connector':x['connector'],'url':x['url'],'error':str(e)})
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'featureCount':len(features),'linkCount':len(links),'uniqueLinks':len(uniq),'probes':probes}
+          pathlib.Path('reports/france/e55c/evqr-tariff-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'featureCount':len(features),'linkCount':len(links),'uniqueLinks':len(uniq),'samples':[{k:v for k,v in p.items() if k not in ('body','scripts','findings')} for p in probes[:40]]},ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/e55c/evqr-tariff-probe.json
+          git commit -m 'France E55C: publish ev-qr connector tariff probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
