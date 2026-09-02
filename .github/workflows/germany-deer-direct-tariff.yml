@@ -1,0 +1,51 @@
+name: Germany deer direct tariff
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_deer_direct_tariff.py'
+      - '.github/workflows/germany-deer-direct-tariff.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract official deer ad-hoc tariff
+        run: python scripts/germany_deer_direct_tariff.py
+      - name: Validate deer tariff artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/deer_direct_tariff.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-deer-direct-tariff'
+          assert d['scope']['stagedOnly'] is True
+          assert d['scope']['publishesToTcc'] is False
+          assert d['scope']['operatorOwnNetworkOnly'] is True
+          assert d['scope']['siteScalarPriceSafe'] is True
+          assert d['operator']['bnetzaExactOperators']==['deer GmbH']
+          own=d['directOwnNetwork']
+          assert 0.20 <= own['eurPerKwh'] <= 1.50, own
+          assert own['acDcSamePrice'] is True
+          assert own['accessMethod']=='ad_hoc_qr'
+          assert own['registrationRequired'] is False
+          b=own['blockingFee']
+          assert b['afterMinutes'] >= 60
+          assert 0.01 <= b['eurPerMinute'] <= 1.00
+          assert 1.0 <= b['capEurPerSession'] <= 100.0
+          assert d['evidence']['officialOwnNetworkQrScopeConfirmed'] is True
+          print('TCC_DEER_DIRECT_TARIFF_VALIDATED='+json.dumps(own,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-deer-direct-tariff
+          path: data/germany/deer_direct_tariff.json
+          if-no-files-found: error
+          retention-days: 30
