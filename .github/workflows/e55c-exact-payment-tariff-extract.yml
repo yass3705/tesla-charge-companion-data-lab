@@ -1,0 +1,127 @@
+name: France E55C exact payment tariff extract
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/e55c-exact-payment-tariff-extract.yml']
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract uMap connector links and payment tariff surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/e55c
+          python - <<'PY'
+          import requests,re,json,pathlib,html,urllib.parse,datetime,collections
+          S=requests.Session(); S.headers.update({'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'text/html,application/json,text/plain,*/*'})
+          page_url='https://umap.openstreetmap.fr/fr/map/reseau-e55c_1234362'
+          page=S.get(page_url,timeout=35); page.raise_for_status(); txt=page.text
+          m=re.search(r'<script id="map-settings" data-settings="([^"]+)"',txt)
+          if not m: raise SystemExit('map settings not found')
+          settings=json.loads(html.unescape(m.group(1)))
+          layers=settings.get('properties',{}).get('datalayers') or settings.get('datalayers') or []
+          layer_ids=[]
+          for l in layers:
+            lid=l.get('id') or l.get('pk')
+            if lid: layer_ids.append(str(lid))
+          # known public layer fallback from current map settings
+          if '45a8c330-b19e-4fb8-a437-ab6e1827b8df' not in layer_ids: layer_ids.append('45a8c330-b19e-4fb8-a437-ab6e1827b8df')
+          layer_attempts=[]; features=[]
+          for lid in layer_ids:
+            urls=[f'https://umap.openstreetmap.fr/fr/datalayer/1234362/{lid}/',f'https://umap.openstreetmap.fr/fr/datalayer/1234362/{lid}',f'https://umap.openstreetmap.fr/fr/map/1234362/datalayer/{lid}/']
+            got=None
+            for u in urls:
+              try:
+                r=S.get(u,timeout=35,headers={'Accept':'application/json,application/geo+json,text/plain,*/*'})
+                rec={'url':u,'status':r.status_code,'contentType':r.headers.get('content-type'),'bytes':len(r.content),'body':r.text[:1000]}
+                layer_attempts.append(rec)
+                if r.ok:
+                  try:
+                    j=r.json()
+                    fs=j.get('features') if isinstance(j,dict) else None
+                    if isinstance(fs,list): got=j; break
+                  except: pass
+              except Exception as e: layer_attempts.append({'url':u,'error':str(e)})
+            if got:
+              for f in got.get('features') or []:
+                f['_layerId']=lid; features.append(f)
+          # if direct datalayer endpoint changed, map geojson can expose all features
+          if not features:
+            for u in ['https://umap.openstreetmap.fr/fr/map/1234362/geojson/','https://umap.openstreetmap.fr/fr/map/reseau-e55c_1234362.geojson']:
+              try:
+                r=S.get(u,timeout=40); layer_attempts.append({'url':u,'status':r.status_code,'contentType':r.headers.get('content-type'),'bytes':len(r.content),'body':r.text[:1000]})
+                if r.ok:
+                  j=r.json(); features += j.get('features') or []
+                  if features: break
+              except Exception as e: layer_attempts.append({'url':u,'error':str(e)})
+          links=[]
+          for f in features:
+            p=f.get('properties') or {}; name=p.get('name') or p.get('Nom') or p.get('title'); coords=(f.get('geometry') or {}).get('coordinates')
+            for k,v in p.items():
+              if not re.match(r'(?i)^URL\s*\d+$',str(k)): continue
+              if not isinstance(v,str) or not v.strip(): continue
+              # uMap may encode markdown [[url|label]]
+              urls=re.findall(r'https?://[^\s\]|<>"\']+',v)
+              if not urls and v.strip().startswith('http'): urls=[v.strip()]
+              n=re.search(r'(\d+)',str(k)); idx=n.group(1) if n else None
+              prise=p.get('Prise '+idx) if idx else None
+              for u in urls: links.append({'station':name,'coordinates':coords,'prise':prise,'field':k,'url':u.rstrip('.,;)')})
+          # unique payment pages
+          probes=[]; seen={}
+          for link in links:
+            u=link['url']
+            if u in seen: continue
+            try:
+              r=S.get(u,timeout=25,allow_redirects=True)
+              body=r.text[:350000]
+              scripts=[]
+              if 'html' in (r.headers.get('content-type') or '').lower() or '<html' in body.lower():
+                for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',body,re.I): scripts.append(urllib.parse.urljoin(r.url,src))
+              tariff_hits=[]
+              clean=re.sub(r'<[^>]+>',' ',body)
+              clean=html.unescape(re.sub(r'\s+',' ',clean))
+              for pat in [r'.{0,100}\b\d+[\.,]\d+\s*€.{0,120}',r'.{0,100}\b\d+[\.,]\d+\s*(?:EUR|€/kWh|€\s*/\s*kWh|centimes?\s*/\s*kWh).{0,120}',r'.{0,100}(?:tarif|tariff|price|prix).{0,220}']:
+                for mm in re.finditer(pat,clean,re.I):
+                  s=mm.group(0)
+                  if s not in tariff_hits: tariff_hits.append(s)
+                  if len(tariff_hits)>=20: break
+              asset_findings=[]
+              for su in scripts[:40]:
+                try:
+                  sr=S.get(su,timeout=18); st=sr.text
+                  cand=sorted(set(re.findall(r'https?://[^"\'\\\s)]+',st)))
+                  paths=sorted(set(re.findall(r'["\'](/[^"\']{1,200})["\']',st)))
+                  useful=[x for x in cand+paths if any(t in x.lower() for t in ('api','tarif','price','pricing','charge','session','connector','terminal'))]
+                  sn=[]; low=st.lower()
+                  for token in ('tarif','price','pricing','kwh','connector','terminal'):
+                    pos=0
+                    while len(sn)<30:
+                      i=low.find(token,pos)
+                      if i<0:break
+                      sn.append(st[max(0,i-180):i+600]); pos=i+len(token)
+                  if useful or sn: asset_findings.append({'url':su,'status':sr.status_code,'bytes':len(sr.content),'useful':useful[:80],'snippets':sn[:30]})
+                except Exception as e: asset_findings.append({'url':su,'error':str(e)})
+              rec={'url':u,'finalUrl':r.url,'status':r.status_code,'contentType':r.headers.get('content-type'),'bytes':len(r.content),'tariffHits':tariff_hits,'scripts':scripts,'assetFindings':asset_findings,'body':body[:120000]}
+              seen[u]=len(probes); probes.append(rec)
+            except Exception as e: probes.append({'url':u,'error':str(e)})
+          # fan-out result back to station/connector rows
+          for link in links:
+            idx=seen.get(link['url']); link['probeIndex']=idx
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'mapModifiedAt':settings.get('properties',{}).get('modified_at'),'layerIds':layer_ids,'layerAttempts':layer_attempts,'featureCount':len(features),'linkCount':len(links),'uniquePaymentLinks':len(seen),'links':links,'probes':probes}
+          pathlib.Path('reports/france/e55c/exact-payment-tariff-extract.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'featureCount':len(features),'linkCount':len(links),'uniquePaymentLinks':len(seen),'layerAttempts':layer_attempts,'linkSamples':links[:20],'probeSummary':[{k:v for k,v in p.items() if k not in ('body','assetFindings','scripts')} | {'assetFindings':p.get('assetFindings',[])[:3]} for p in probes[:30]]},ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/e55c/exact-payment-tariff-extract.json
+          git commit -m 'France E55C: publish exact payment tariff extraction' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
