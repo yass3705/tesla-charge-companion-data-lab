@@ -1,0 +1,70 @@
+name: France Road scan-pay structure probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/road-france-scanpay-structure-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect successful public scan-pay pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/road
+          python - <<'PY'
+          import requests,re,json,pathlib,html
+          ids=['0001063','0012801','0014337','0018086','0034638','0052036','0055754','0119323','0150004','0176757']
+          out=[]
+          for k in ids:
+            u=f'https://chargestation.road.io/evse/{k}'
+            r=requests.get(u,headers={'User-Agent':'Mozilla/5.0'},timeout=20)
+            txt=r.text
+            rec={'id':k,'status':r.status_code,'final':r.url,'bytes':len(txt),'scripts':re.findall(r'<script[^>]+src=["\']([^"\']+)',txt,re.I)[:80]}
+            # Keep only bounded text/JSON snippets around tariff/price/currency/connector markers.
+            snippets=[]
+            low=txt.lower()
+            for term in ['tariff','pricing','price','eur','€','connector','evse','kwh','minute','session']:
+              pos=0
+              while True:
+                i=low.find(term,pos)
+                if i<0: break
+                s=html.unescape(txt[max(0,i-500):min(len(txt),i+1500)])
+                s=re.sub(r'\s+',' ',s)
+                snippets.append({'term':term,'snippet':s[:2200]})
+                pos=i+len(term)
+                if len(snippets)>=80: break
+              if len(snippets)>=80: break
+            rec['snippets']=snippets
+            # Extract Next.js / serialized JSON script bodies only when bounded.
+            json_scripts=[]
+            for m in re.finditer(r'<script[^>]*(?:id=["\']__NEXT_DATA__["\']|type=["\']application/json["\'])[^>]*>(.*?)</script>',txt,re.I|re.S):
+              body=html.unescape(m.group(1))
+              json_scripts.append(body[:120000])
+            rec['jsonScripts']=json_scripts[:10]
+            out.append(rec)
+          pathlib.Path('reports/france/road/scanpay-structure-probe.json').write_text(json.dumps({'results':out},ensure_ascii=False,indent=2)+'\n')
+          # Distill keys and price-like fragments for quick review.
+          dist=[]
+          pr=re.compile(r'(?:€|EUR|price|tariff|pricing).{0,180}',re.I)
+          for rec in out:
+            fr=[]
+            for sn in rec['snippets']:
+              for m in pr.finditer(sn['snippet']): fr.append(m.group(0))
+            dist.append({'id':rec['id'],'status':rec['status'],'fragments':list(dict.fromkeys(fr))[:80]})
+          pathlib.Path('reports/france/road/scanpay-structure-summary.json').write_text(json.dumps({'results':dist},ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(dist,ensure_ascii=False)[:30000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/road/scanpay-structure-*.json
+          git commit -m 'France Road: publish scan-pay structure probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
