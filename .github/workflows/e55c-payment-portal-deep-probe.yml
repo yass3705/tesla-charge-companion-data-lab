@@ -1,0 +1,91 @@
+name: France E55C direct payment portal deep probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/e55c-payment-portal-deep-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public direct-card portal and tariff endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/e55c
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse,datetime
+          S=requests.Session(); S.headers.update({'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36','Accept':'text/html,application/xhtml+xml,application/json,text/plain,*/*','Referer':'https://www.e55c.com/'})
+          starts=['https://map.e55c.com/','https://map.e55c.com']
+          pages=[]; scripts=[]
+          for u in starts:
+            try:
+              r=S.get(u,timeout=30,allow_redirects=True)
+              body=r.text[:500000]
+              pages.append({'url':u,'finalUrl':r.url,'status':r.status_code,'headers':dict(r.headers),'contentType':r.headers.get('content-type'),'bytes':len(r.content),'body':body})
+              if 'html' in (r.headers.get('content-type') or '').lower() or '<html' in body.lower():
+                for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',body,re.I):
+                  su=urllib.parse.urljoin(r.url,src)
+                  if su not in scripts:scripts.append(su)
+                for src in re.findall(r'(?:src|href)=["\']([^"\']+\.(?:js|mjs)(?:\?[^"\']*)?)',body,re.I):
+                  su=urllib.parse.urljoin(r.url,src)
+                  if su not in scripts:scripts.append(su)
+            except Exception as e: pages.append({'url':u,'error':str(e)})
+          assets=[]; candidates=set(); snippets=[]
+          toks=('api','tarif','tariff','price','pricing','station','terminal','connector','charge','payment','stripe','evse','ocpp','graphql')
+          for u in scripts[:150]:
+            try:
+              r=S.get(u,timeout=30); txt=r.text
+              rec={'url':u,'status':r.status_code,'contentType':r.headers.get('content-type'),'bytes':len(r.content)}
+              if r.ok:
+                for x in re.findall(r'https?://[^"\'\\\s)]+',txt):
+                  if any(t in x.lower() for t in toks): candidates.add(x.rstrip(';,}'))
+                for x in re.findall(r'["\'](/[^"\']{1,220})["\']',txt):
+                  if any(t in x.lower() for t in toks): candidates.add(x)
+                low=txt.lower()
+                for tok in toks:
+                  pos=0
+                  while len(snippets)<350:
+                    i=low.find(tok,pos)
+                    if i<0: break
+                    snippets.append({'asset':u,'token':tok,'text':txt[max(0,i-260):i+900]}); pos=i+len(tok)
+                  if len(snippets)>=350: break
+              assets.append(rec)
+            except Exception as e: assets.append({'url':u,'error':str(e)})
+          # Probe only discovered GET-looking URLs and likely public metadata endpoints.
+          hosts=[]
+          for p in pages:
+            if p.get('finalUrl'):
+              z=urllib.parse.urlsplit(p['finalUrl']); hosts.append(z.scheme+'://'+z.netloc)
+          hosts += ['https://map.e55c.com']
+          probes=[]; seen=set(); test=[]
+          for c in sorted(candidates):
+            if c.startswith('http'): test.append(c)
+            elif c.startswith('/'):
+              for h in hosts:test.append(h+c)
+          for h in hosts:
+            for p in ['/api','/api/','/api/stations','/api/stations/','/stations','/stations/','/api/locations','/api/locations/','/api/tariffs','/api/tariffs/','/api/prices','/api/prices/','/api/config','/config.json','/manifest.json']:
+              test.append(h+p)
+          for u in test[:250]:
+            if u in seen:continue
+            seen.add(u)
+            try:
+              r=S.get(u,timeout=15,allow_redirects=True); body=r.text[:120000]
+              probes.append({'url':u,'finalUrl':r.url,'status':r.status_code,'contentType':r.headers.get('content-type'),'bytes':len(r.content),'priceLike':bool(re.search(r'(?i)(tarif|tariff|price|eur|kwh|minute|currency)',body)),'body':body})
+            except Exception as e: probes.append({'url':u,'error':str(e)})
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'pages':pages,'scripts':scripts,'assets':assets,'candidateUrls':sorted(candidates),'snippets':snippets,'probes':probes}
+          pathlib.Path('reports/france/e55c/payment-portal-deep-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'pages':[{k:v for k,v in p.items() if k not in ('body','headers')} for p in pages],'scripts':scripts,'candidateUrls':sorted(candidates)[:250],'probes':[{k:v for k,v in p.items() if k!='body'} for p in probes if p.get('status') or p.get('error')][:250]},ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/e55c/payment-portal-deep-probe.json
+          git commit -m 'France E55C: publish direct payment portal probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
