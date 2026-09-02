@@ -1,0 +1,99 @@
+name: France Vianeo Android static API discovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/vianeo-android-static-api-discovery.yml']
+permissions:
+  contents: write
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download public APK/XAPK and discover endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/vianeo /tmp/vianeo-apk
+          python - <<'PY'
+          import requests,pathlib,json,re,zipfile,io,os,subprocess,urllib.parse
+          pkg='com.engie.vianeo'
+          urls=[f'https://d.apkpure.com/b/XAPK/{pkg}?version=latest',f'https://d.apkpure.com/b/APK/{pkg}?version=latest']
+          data=None; used=None; ct=None
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          for u in urls:
+            try:
+              r=s.get(u,timeout=60,allow_redirects=True)
+              if r.status_code==200 and len(r.content)>1000000:
+                data=r.content; used=r.url; ct=r.headers.get('content-type'); break
+            except Exception: pass
+          out={'package':pkg,'downloaded':bool(data),'downloadBytes':len(data or b''),'contentType':ct}
+          if not data:
+            pathlib.Path('reports/france/vianeo/android-static-api-discovery.json').write_text(json.dumps(out,indent=2)+'\n'); raise SystemExit(0)
+          p=pathlib.Path('/tmp/vianeo-apk/app.bin'); p.write_bytes(data)
+          apks=[]
+          if zipfile.is_zipfile(io.BytesIO(data)):
+            with zipfile.ZipFile(io.BytesIO(data)) as z:
+              for n in z.namelist():
+                if n.endswith('.apk'):
+                  dest=pathlib.Path('/tmp/vianeo-apk')/pathlib.Path(n).name
+                  dest.write_bytes(z.read(n)); apks.append(dest)
+          else:
+            apks=[p]
+          # Use strings; also unzip APK resources/dex and scan printable strings. Do not persist binary.
+          alltext=[]
+          for apk in apks[:20]:
+            try:
+              q=subprocess.run(['strings','-a',str(apk)],capture_output=True,text=True,timeout=60)
+              alltext.append(q.stdout)
+            except Exception: pass
+            try:
+              with zipfile.ZipFile(apk) as z:
+                for n in z.namelist():
+                  if n.endswith(('.xml','.json','.js','.txt','.properties','.dex')) and z.getinfo(n).file_size<50_000_000:
+                    b=z.read(n)
+                    # Extract ASCII-ish runs only
+                    alltext.append('\n'.join(x.decode('utf-8','ignore') for x in re.findall(rb'[ -~]{12,}',b)))
+            except Exception: pass
+          text='\n'.join(alltext)
+          raw_urls=sorted(set(re.findall(r'https?://[^\s"\'<>\\)\]]{5,}',text)))
+          # Accept likely API/backend/app service URLs only, sanitize query values.
+          candidates=[]
+          for u in raw_urls:
+            lu=u.lower()
+            if any(t in lu for t in ['engie','vianeo','api','graphql','charge','station','ocpi','evse','payment','auth','identity']):
+              try:
+                parts=urllib.parse.urlsplit(u)
+                # Remove query/fragment entirely to avoid persisting credentials.
+                clean=urllib.parse.urlunsplit((parts.scheme,parts.netloc,parts.path,'',''))
+              except Exception: clean=u.split('?')[0].split('#')[0]
+              if clean not in candidates: candidates.append(clean[:1000])
+          # Also extract hostname-looking strings near key terms.
+          snippets=[]
+          for term in ['baseurl','apiurl','graphql','stations','station','evse','tariff','price','charging','ocpi']:
+            low=text.lower(); pos=0
+            while True:
+              i=low.find(term,pos)
+              if i<0: break
+              sn=text[max(0,i-180):i+500]
+              # Redact bearer/JWT/key-ish material and emails
+              sn=re.sub(r'(?i)(authorization|bearer|token|secret|api[_-]?key)\s*[:=]?\s*[A-Za-z0-9._~-]{12,}',r'\1=[REDACTED]',sn)
+              sn=re.sub(r'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}','[JWT_REDACTED]',sn)
+              if sn not in snippets: snippets.append(sn[:800])
+              pos=i+len(term)
+              if len(snippets)>=300: break
+            if len(snippets)>=300: break
+          out.update({'apkCount':len(apks),'candidateUrls':candidates[:500],'snippets':snippets[:300]})
+          pathlib.Path('reports/france/vianeo/android-static-api-discovery.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'downloaded':out['downloaded'],'bytes':out['downloadBytes'],'apkCount':len(apks),'candidateUrls':candidates[:200],'snippetCount':len(snippets)},ensure_ascii=False,indent=2)[:40000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/vianeo/android-static-api-discovery.json
+          git commit -m 'France Vianeo: publish sanitized Android API discovery' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
