@@ -1,0 +1,67 @@
+name: France EVzen public API base tariff probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/evzen-api-base-tariff-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve EVzen public API base and exact tariff access
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/evzen /tmp/evzen
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          S=requests.Session(); S.headers['User-Agent']='Mozilla/5.0'
+          page=S.get('https://charge.evzen.com/auth',timeout=30).text
+          scripts=[urllib.parse.urljoin('https://charge.evzen.com/',x) for x in re.findall(r'<script[^>]+src=["\']([^"\']+)',page,re.I)]
+          findings=[]; absolute=set(); api_context=[]
+          for u in scripts:
+            try:
+              txt=S.get(u,timeout=30).text; low=txt.lower()
+              for uu in re.findall(r'https?://[A-Za-z0-9._:-]+(?:/[A-Za-z0-9_./{}?=&%:+~-]*)?',txt):
+                absolute.add(uu[:500])
+              for term in ['baseurl','axios.create','tariff-display','clustered-stations','qrcode-evses','/stations','apiurl','api_url','next_public']:
+                pos=0
+                while True:
+                  i=low.find(term,pos)
+                  if i<0: break
+                  api_context.append({'script':u,'term':term,'text':txt[max(0,i-500):i+1200]}); pos=i+len(term)
+                  if len(api_context)>=250: break
+                if len(api_context)>=250: break
+            except: pass
+          # Candidate API origins from absolute URLs, excluding obvious static/content hosts.
+          origins=[]
+          for uu in sorted(absolute):
+            p=urllib.parse.urlparse(uu)
+            host=p.netloc.lower()
+            if not host or host in ('charge.evzen.com','www.evzen.com','fonts.googleapis.com','fonts.gstatic.com'): continue
+            if any(t in host for t in ['sentry','google','facebook','linkedin','stripe','apple']): continue
+            o=p.scheme+'://'+p.netloc
+            if o not in origins: origins.append(o)
+          attempts=[]
+          for o in origins[:40]:
+            for path in ['/stations','/clustered-stations','/evses','/api/stations','/api/clustered-stations']:
+              try:
+                r=S.get(o+path,timeout=15)
+                attempts.append({'url':o+path,'status':r.status_code,'contentType':r.headers.get('content-type'),'body':r.text[:5000]})
+              except Exception as e: attempts.append({'url':o+path,'error':type(e).__name__})
+          out={'scripts':scripts,'absoluteUrls':sorted(absolute)[:1500],'candidateOrigins':origins,'apiContext':api_context,'anonymousAttempts':attempts}
+          pathlib.Path('reports/france/evzen/api-base-tariff-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'candidateOrigins':origins,'apiContext':api_context[:30],'anonymousAttempts':attempts},ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/evzen/api-base-tariff-probe.json
+          git commit -m 'France EVzen: publish public API base tariff probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
