@@ -1,0 +1,113 @@
+name: France Road E-Flux exact national tariffs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/road-france-exact-national-tariffs.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact connector tariff overlay from public scan-pay pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/road data/operator_direct
+          python - <<'PY'
+          import requests,csv,io,json,pathlib,datetime,re,html,concurrent.futures,threading,time
+          PAN='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          rows=list(csv.DictReader(io.StringIO(requests.get(PAN,timeout=90).text)))
+          road=[r for r in rows if str(r.get('nom_operateur','')).strip().lower()=='road' or 'e-flux' in str(r.get('nom_operateur','')).lower() or 'fr*efl' in str(r.get('id_pdc_itinerance','')).lower() or str(r.get('id_pdc_itinerance','')).upper().startswith('FREFLEV')]
+          def parse_pan_id(pid):
+            s=str(pid or '').upper().replace('*','').replace('-','')
+            m=re.search(r'FREFLEV(\d{7})C(\d+)',s)
+            return (m.group(1),m.group(2)) if m else (None,None)
+          by_lookup={}; unparsable=[]
+          for r in road:
+            k,c=parse_pan_id(r.get('id_pdc_itinerance'))
+            if not k:unparsable.append(r.get('id_pdc_itinerance'));continue
+            by_lookup.setdefault(k,[]).append((c,r))
+          local=threading.local()
+          def S():
+            if not hasattr(local,'s'):
+              local.s=requests.Session();local.s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'text/html,application/xhtml+xml'})
+            return local.s
+          price_re=re.compile(r'€\s*\d+(?:[.,]\d+)?\s*/\s*(?:kWh|min(?:ute)?|session|hour)',re.I)
+          money_re=re.compile(r'€\s*\d+(?:[.,]\d+)?',re.I)
+          connector_re=re.compile(r'FR\*EFL\*EV(\d{7})\*C(\d+)',re.I)
+          def visible(seg):
+            seg=re.sub(r'<!--.*?-->',' ',seg,flags=re.S)
+            seg=re.sub(r'<script.*?</script>',' ',seg,flags=re.S|re.I)
+            seg=re.sub(r'<style.*?</style>',' ',seg,flags=re.S|re.I)
+            seg=re.sub(r'<[^>]+>',' ',seg)
+            seg=html.unescape(seg)
+            return re.sub(r'\s+',' ',seg).strip()
+          def fetch(k):
+            u=f'https://chargestation.road.io/evse/{k}'
+            err=None
+            for attempt in range(3):
+              try:
+                r=S().get(u,timeout=25,allow_redirects=True)
+                if r.status_code==200 and 'Charging station not found' not in r.text:
+                  t=r.text
+                  # Only parse server-rendered DOM before RSC/script payload to avoid translation false positives.
+                  dom=t.split('<script',1)[0]
+                  ms=list(connector_re.finditer(dom))
+                  cs={}
+                  for i,m in enumerate(ms):
+                    if m.group(1)!=k:continue
+                    c=m.group(2); end=ms[i+1].start() if i+1<len(ms) else len(dom)
+                    text=visible(dom[m.start():end])
+                    # Keep pricing text after pricing header, but before action buttons when possible.
+                    pl=text.lower().find('pricing')
+                    tariff=text[pl:] if pl>=0 else text
+                    components=list(dict.fromkeys(price_re.findall(tariff)))
+                    # 'Free' is an exact tariff too; keep explicit no-price state separately.
+                    free=bool(re.search(r'\bfree\b|sans frais|gratuit',tariff,re.I))
+                    noinfo=bool(re.search(r'No pricing information available|Aucune information tarifaire disponible',tariff,re.I))
+                    cs[c]={'evseId':m.group(0),'tariffText':tariff[:4000],'priceComponents':components,'free':free,'noPricingInfo':noinfo,'exactPricingVisible':bool(components or free) and not noinfo}
+                  return {'lookupId':k,'url':r.url,'status':200,'connectors':cs,'pageBytes':len(t)}
+                err=f'status={r.status_code}'
+              except Exception as e:err=str(e)
+              time.sleep(attempt+1)
+            return {'lookupId':k,'url':u,'error':err,'connectors':{}}
+          results={}
+          keys=sorted(by_lookup)
+          with concurrent.futures.ThreadPoolExecutor(max_workers=18) as ex:
+            for i,res in enumerate(ex.map(fetch,keys),1):
+              results[res['lookupId']]=res
+              if i%100==0:print('pages',i,'/',len(keys))
+          overlay=[];missing=[];pages_ok=0
+          for k,pairs in by_lookup.items():
+            res=results.get(k,{})
+            if res.get('status')==200:pages_ok+=1
+            for c,r in pairs:
+              info=(res.get('connectors') or {}).get(c)
+              rec={'id_station_itinerance':r.get('id_station_itinerance'),'id_pdc_itinerance':r.get('id_pdc_itinerance'),'lookup_id':k,'connector_id':c,'puissance_nominale':r.get('puissance_nominale'),'nom_station':r.get('nom_station'),'adresse_station':r.get('adresse_station'),'scan_pay_url':f'https://chargestation.road.io/evse/{k}','exactness':'official_public_scan_pay_connector'}
+              if info:
+                rec.update({'official_evse_id':info['evseId'],'tariff_text':info['tariffText'],'price_components':info['priceComponents'],'free':info['free'],'exact_pricing_visible':info['exactPricingVisible'],'no_pricing_info':info['noPricingInfo']})
+              else:
+                rec.update({'official_evse_id':None,'tariff_text':None,'price_components':[],'free':False,'exact_pricing_visible':False,'no_pricing_info':False})
+              overlay.append(rec)
+              if not rec['exact_pricing_visible']:
+                missing.append({'id_pdc_itinerance':r.get('id_pdc_itinerance'),'lookup_id':k,'connector_id':c,'reason':'connector_missing_or_no_public_exact_price'})
+          exact=sum(1 for x in overlay if x['exact_pricing_visible'])
+          cov={'panRows':len(road),'uniqueLookupIds':len(keys),'pagesHttp200':pages_ok,'unparsablePanRows':len(unparsable),'overlayRows':len(overlay),'rowsWithExactPublicPricing':exact,'coveragePct':round(100*exact/len(road),3) if road else 0,'missingRows':len(missing)}
+          out={'schemaVersion':'1.0.0','dataset':'road-eflux-official-france','generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'operator':'Road / E-Flux','country':'FR','source':{'type':'official_public_scan_to_pay','urlTemplate':'https://chargestation.road.io/evse/{7_digit_id}'},'coverage':cov,'pdcTariffOverlay':overlay,'missing':missing,'notes':['PAN FREFLEV seven-digit EVSE identifier maps directly to Road public scan-to-pay route.','Each connector is matched by exact FR*EFL*EVxxxxxxx*Cn identity.','Only pricing visibly rendered by the official public page is accepted; missing/no-pricing connectors fail closed.']}
+          pathlib.Path('data/operator_direct/road_eflux_official_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          summary={'generatedAt':out['generatedAt'],'coverage':cov,'sampleExact':[x for x in overlay if x['exact_pricing_visible']][:12],'sampleMissing':missing[:20]}
+          pathlib.Path('reports/france/road/exact-national-tariffs-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/operator_direct/road_eflux_official_france.json reports/france/road/exact-national-tariffs-summary.json
+          git commit -m 'data(road): publish exact France scan-pay connector tariffs' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
