@@ -1,0 +1,61 @@
+name: France Electra GraphQL failure summary
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/electra-graphql-failure-summary.yml']
+permissions:
+  contents: write
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Summarize failures and retry representative sample
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/electra
+          python - <<'PY'
+          import json,pathlib,collections,requests,time
+          d=json.loads(pathlib.Path('reports/france/electra/pan-exact-tariff-snapshot.json').read_text())
+          stations=d.get('stations',[])
+          stats=collections.Counter()
+          bad=[]
+          for x in stations:
+            if x.get('location'): stats['ok']+=1
+            elif x.get('error'): stats['exception']+=1; bad.append(x)
+            else: stats[f"http_{x.get('status')}"]+=1; bad.append(x)
+          gql='''query LocationLiveData($locationId: ID!) { location(id: $locationId) { id evses { id status connectors { id } } chargeTariffs { chargeTariffId currency currentPricePerKwh elements { restrictions { dayOfWeek startTime endTime } priceComponents { type price } } } } }'''
+          endpoint='https://emsp.go-electra.com/graphql'
+          retries=[]
+          s=requests.Session(); s.headers.update({'content-type':'application/json','User-Agent':'Mozilla/5.0'})
+          for x in bad[:40]:
+            ws=x.get('station',{}); sid=ws.get('id')
+            if not sid: continue
+            rec={'id':sid,'name':ws.get('name'),'previousStatus':x.get('status'),'previousErrors':x.get('errors'),'previousException':x.get('error')}
+            for attempt in range(1,4):
+              try:
+                r=s.post(endpoint,json={'query':gql,'variables':{'locationId':sid}},timeout=25)
+                j=r.json() if r.ok else None
+                loc=(j or {}).get('data',{}).get('location') if isinstance(j,dict) else None
+                rec.setdefault('attempts',[]).append({'attempt':attempt,'status':r.status_code,'hasLocation':bool(loc),'errors':(j or {}).get('errors') if isinstance(j,dict) else None,'retryAfter':r.headers.get('retry-after')})
+                if loc:
+                  rec['recovered']=True; rec['tariffCount']=len(loc.get('chargeTariffs') or []); break
+              except Exception as e:
+                rec.setdefault('attempts',[]).append({'attempt':attempt,'exception':str(e)})
+              time.sleep(attempt*1.2)
+            retries.append(rec); time.sleep(.35)
+          out={'originalCoverage':d.get('coverage'),'statusSummary':dict(stats),'badCount':len(bad),'retrySampleCount':len(retries),'retryRecovered':sum(1 for r in retries if r.get('recovered')),'retries':retries}
+          pathlib.Path('reports/france/electra/graphql-failure-summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/electra/graphql-failure-summary.json
+          git commit -m 'France Electra: publish GraphQL failure summary' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
