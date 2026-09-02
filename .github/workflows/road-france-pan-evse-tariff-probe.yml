@@ -1,0 +1,70 @@
+name: France Road E-Flux PAN EVSE tariff probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/road-france-pan-evse-tariff-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe exact PAN EVSE IDs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/road
+          python - <<'PY'
+          import requests,csv,io,json,re,pathlib,html,urllib.parse
+          U='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          rows=list(csv.DictReader(io.StringIO(requests.get(U,timeout=60).text)))
+          rr=[r for r in rows if str(r.get('nom_operateur','')).strip().lower()=='road' or 'fr*efl' in str(r.get('nom_operateur','')).lower()]
+          pats={}; samples=[]
+          for r in rr:
+            pid=str(r.get('id_pdc_itinerance') or '')
+            sid=str(r.get('id_station_itinerance') or '')
+            m=re.search(r'(?:FR\*?EFL\*?EV|FREFLEV)(\d+)',pid,re.I)
+            key=m.group(1) if m else None
+            if key and key not in pats:
+              pats[key]={'id_pdc_itinerance':pid,'id_station_itinerance':sid,'nom_station':r.get('nom_station'),'adresse_station':r.get('adresse_station'),'puissance_nominale':r.get('puissance_nominale')}
+          s=requests.Session();s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'text/html,application/xhtml+xml'})
+          for key,meta in list(pats.items())[:40]:
+            rec={'lookupId':key,'pan':meta,'attempts':[]}
+            for u in [f'https://chargestation.road.io/en/evse/{key}',f'https://chargestation.road.io/evse/{key}',f'https://chargestation.road.io/fr/evse/{key}']:
+              try:r=s.get(u,timeout=25,allow_redirects=True)
+              except Exception as e:rec['attempts'].append({'url':u,'error':str(e)});continue
+              t=r.text
+              needles=[]
+              low=t.lower()
+              for nd in ['tariff','price','pricing','kwh','€','eur','connector','scan_to_pay','scan-to-pay','payment']:
+                pos=0
+                while True:
+                  i=low.find(nd.lower(),pos)
+                  if i<0:break
+                  needles.append({'needle':nd,'context':html.unescape(re.sub('<[^>]+>',' ',t[max(0,i-500):i+1500]))[:3000]})
+                  pos=i+len(nd)
+                  if len(needles)>=80:break
+                if len(needles)>=80:break
+              nextdata=[]
+              for sm in re.finditer(r'<script[^>]*>(.*?)</script>',t,re.S|re.I):
+                body=html.unescape(sm.group(1))
+                if any(x in body.lower() for x in ['tariff','pricing','evseid','connector','chargingstationevseid']):nextdata.append(body[:20000])
+              rec['attempts'].append({'url':u,'status':r.status_code,'finalUrl':r.url,'bytes':len(t),'title':(re.search(r'<title[^>]*>(.*?)</title>',t,re.S|re.I).group(1) if re.search(r'<title[^>]*>(.*?)</title>',t,re.S|re.I) else None),'needles':needles[:80],'scripts':nextdata[:20]})
+            samples.append(rec)
+          out={'panRows':len(rr),'uniqueLookupIds':len(pats),'idSamples':list(pats.items())[:20],'probeSamples':samples}
+          pathlib.Path('reports/france/road/pan-evse-tariff-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          slim={'panRows':len(rr),'uniqueLookupIds':len(pats),'idSamples':list(pats.items())[:20],'probeSamples':[{'lookupId':x['lookupId'],'pan':x['pan'],'attempts':[{k:v for k,v in a.items() if k!='scripts'} for a in x['attempts']]} for x in samples]}
+          pathlib.Path('reports/france/road/pan-evse-tariff-summary.json').write_text(json.dumps(slim,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(slim,ensure_ascii=False)[:120000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/road/pan-evse-tariff-*.json
+          git commit -m 'France Road E-Flux: publish PAN scan-pay tariff probe' || exit 0
+          git pull --rebase origin main
+          git push
