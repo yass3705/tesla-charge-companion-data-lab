@@ -1,0 +1,61 @@
+name: France YES55 Load Stations summarize
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/yes55-loadstations-summarize.yml']
+permissions:
+  contents: write
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Summarize probe
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,pathlib,re
+          p=pathlib.Path('reports/france/yes55/loadstations-tenant-probe.json')
+          d=json.loads(p.read_text())
+          def trim(x,n=1800):
+            s=str(x); return s[:n]
+          roots=[{k:v for k,v in x.items() if k!='body'} for x in d.get('roots',[])]
+          assets=[{k:v for k,v in x.items() if k!='body'} for x in d.get('assets',[])]
+          common=[]
+          for x in d.get('commonPathAttempts',[]):
+            y={k:v for k,v in x.items() if k!='body'}
+            body=x.get('body','')
+            if body: y['bodyPreview']=body[:1200]
+            common.append(y)
+          snippets=[]
+          seen=set()
+          for x in d.get('routeSnippets',[]):
+            s=x.get('snippet','')
+            if not any(t in s.lower() for t in ['loadstations-api','charging-station','tariff','price','captcha','recaptcha','tenant','guest','/v1/']): continue
+            key=re.sub(r'\s+',' ',s)[:500]
+            if key in seen: continue
+            seen.add(key)
+            snippets.append({'asset':x.get('asset'),'term':x.get('term'),'snippet':s[:2200]})
+            if len(snippets)>=60: break
+          out={
+            'sourceBytes':p.stat().st_size,
+            'roots':roots,
+            'assets':assets,
+            'candidateApiUrls':d.get('candidateApiUrls',[])[:120],
+            'commonPathAttempts':common,
+            'routeSnippets':snippets
+          }
+          pathlib.Path('reports/france/yes55/loadstations-tenant-probe-summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False)[:40000])
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/yes55/loadstations-tenant-probe-summary.json
+          git commit -m 'France YES55: publish tenant probe summary' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
