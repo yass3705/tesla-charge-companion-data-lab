@@ -1,0 +1,78 @@
+name: France Modulo Virta browser network capture
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/modulo-virta-browser-network-capture.yml']
+permissions:
+  contents: write
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture real browser network calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -q selenium
+          mkdir -p reports/france/modulo
+          python - <<'PY'
+          import json,time,datetime,pathlib
+          from selenium import webdriver
+          from selenium.webdriver.chrome.options import Options
+          from selenium.webdriver.common.by import By
+          opts=Options()
+          opts.add_argument('--headless=new');opts.add_argument('--no-sandbox');opts.add_argument('--disable-dev-shm-usage')
+          opts.add_argument('--window-size=1440,1200');opts.add_argument('--lang=fr-FR')
+          opts.set_capability('goog:loggingPrefs', {'performance':'ALL','browser':'ALL'})
+          driver=webdriver.Chrome(options=opts)
+          driver.execute_cdp_cmd('Network.enable', {})
+          url='https://modulo.poweredbyvirta.com/'
+          driver.get(url)
+          time.sleep(12)
+          # Trigger map activity: zoom/scroll and geolocation-ish page interactions if buttons exist.
+          try:
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight/2)")
+          except Exception: pass
+          time.sleep(5)
+          logs=driver.get_log('performance')
+          reqs={};responses={}
+          for item in logs:
+            try: m=json.loads(item['message'])['message']; p=m.get('params',{})
+            except Exception: continue
+            if m['method']=='Network.requestWillBeSent':
+              r=p.get('request',{}); u=r.get('url',''); rid=p.get('requestId')
+              if any(t in u.lower() for t in ('sage','map','station','location','tariff','price','charging')):
+                reqs[rid]={'url':u,'method':r.get('method'),'postData':r.get('postData'),'headers':r.get('headers',{}),'type':p.get('type')}
+            elif m['method']=='Network.responseReceived':
+              rid=p.get('requestId');res=p.get('response',{});u=res.get('url','')
+              if rid in reqs or any(t in u.lower() for t in ('sage','map','station','location','tariff','price','charging')):
+                responses[rid]={'url':u,'status':res.get('status'),'mimeType':res.get('mimeType'),'headers':res.get('headers',{})}
+          out=[]
+          for rid,r in reqs.items():
+            x={'requestId':rid,'request':r,'response':responses.get(rid)}
+            if responses.get(rid) and (responses[rid].get('mimeType','').startswith('application/json') or any(t in r['url'].lower() for t in ('sage','map/blocks','station'))):
+              try:
+                b=driver.execute_cdp_cmd('Network.getResponseBody',{'requestId':rid}).get('body','')
+                x['responseBody']=b[:1000000]
+              except Exception as e: x['responseBodyError']=str(e)
+            out.append(x)
+          browser=[]
+          try: browser=driver.get_log('browser')
+          except Exception: pass
+          driver.quit()
+          result={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'page':url,'requests':out,'browserLog':browser}
+          pathlib.Path('reports/france/modulo/browser-network-capture.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'requests':[{'url':x['request']['url'],'method':x['request']['method'],'postData':x['request'].get('postData'),'status':(x.get('response') or {}).get('status'),'bodySample':x.get('responseBody','')[:1500]} for x in out]},ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/modulo/browser-network-capture.json
+          git commit -m 'France Modulo: publish live browser network capture' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
