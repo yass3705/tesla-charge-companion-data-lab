@@ -1,0 +1,61 @@
+name: France Modulo Virta POST contract extract
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/modulo-virta-post-contract-extract.yml']
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract exact callsite around public map endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/modulo /tmp/modulo
+          curl -fLsS --retry 3 'https://modulo.poweredbyvirta.com/' -o /tmp/modulo/index.html
+          python - <<'PY'
+          import re,urllib.parse,requests,json,pathlib
+          html=pathlib.Path('/tmp/modulo/index.html').read_text(errors='replace')
+          assets=[]
+          for x in re.findall(r'(?:src|href)=["\']([^"\']+\.js[^"\']*)',html,re.I):
+              u=urllib.parse.urljoin('https://modulo.poweredbyvirta.com/',x)
+              if u not in assets: assets.append(u)
+          out={'assets':[]}
+          needles=['map/blocks','sage/public/v1','/blocks','bounding','northEast','southWest','latitude','longitude','zoom']
+          for u in assets:
+              r=requests.get(u,timeout=40)
+              txt=r.text
+              hits=[]
+              for n in needles:
+                  start=0
+                  while True:
+                      i=txt.find(n,start)
+                      if i<0: break
+                      hits.append({'needle':n,'offset':i,'context':txt[max(0,i-5000):i+8000]})
+                      start=i+len(n)
+                      if sum(1 for h in hits if h['needle']==n)>=12: break
+              if hits:
+                  out['assets'].append({'url':u,'bytes':len(txt),'hits':hits})
+          pathlib.Path('reports/france/modulo/virta-post-contract-extract.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          # compact log focusing exact endpoint
+          exact=[]
+          for a in out['assets']:
+              for h in a['hits']:
+                  if h['needle'] in ('map/blocks','sage/public/v1','/blocks'):
+                      exact.append({'url':a['url'],'needle':h['needle'],'offset':h['offset'],'context':h['context']})
+          print(json.dumps(exact,ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/modulo/virta-post-contract-extract.json
+          git commit -m 'France Modulo: publish Virta POST contract extract' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
