@@ -1,0 +1,114 @@
+name: France Stations-e browser APK probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/stations-e-browser-apk-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser
+        run: |
+          python -m pip install -q playwright
+          python -m playwright install chromium --with-deps >/dev/null 2>&1
+      - name: Resolve public mobile package and inspect strings
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/stations-e /tmp/stations-e
+          python - <<'PY'
+          import asyncio,json,pathlib,re,zipfile,os
+          from playwright.async_api import async_playwright
+          async def main():
+            out={'pages':[],'downloads':[]}
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True)
+              ctx=await browser.new_context(accept_downloads=True,locale='en-US')
+              page=await ctx.new_page()
+              targets=[
+                'https://apkpure.net/stations-e-easy-ev-charging/fr.Stationse.prod',
+                'https://stations-e.en.uptodown.com/android/download',
+                'https://apkcombo.com/stations-e-easy-ev-charging/fr.Stationse.prod/download/phone-2.1.6-apk'
+              ]
+              saved=None
+              for u in targets:
+                try:
+                  await page.goto(u,wait_until='domcontentloaded',timeout=45000)
+                  await page.wait_for_timeout(2500)
+                  body=(await page.locator('body').inner_text())[:30000]
+                  links=[]
+                  a=page.locator('a')
+                  for i in range(min(await a.count(),300)):
+                    try:
+                      el=a.nth(i); txt=' '.join((await el.inner_text()).split()); href=await el.get_attribute('href')
+                      if href and ('download' in txt.lower() or any(x in href.lower() for x in ['download','.apk','.xapk'])):
+                        links.append({'text':txt[:500],'href':href[:2000]})
+                    except: pass
+                  out['pages'].append({'url':u,'final':page.url,'title':await page.title(),'body':body,'links':links[:100]})
+                  # Prefer explicit downloadable anchors and capture browser download event if emitted.
+                  candidates=[]
+                  for x in links:
+                    txt=x['text'].lower(); h=x['href'].lower()
+                    if ('download apk' in txt or 'download xapk' in txt or h.endswith('.apk') or h.endswith('.xapk') or '/download/' in h): candidates.append(x)
+                  for x in candidates[:30]:
+                    try:
+                      loc=page.locator(f'a[href="{x["href"]}"]').first
+                      async with page.expect_download(timeout=12000) as di:
+                        await loc.click(timeout=5000)
+                      d=await di.value
+                      path='/tmp/stations-e/mobile.bin'; await d.save_as(path)
+                      out['downloads'].append({'source':u,'suggestedFilename':d.suggested_filename,'size':os.path.getsize(path)})
+                      if os.path.getsize(path)>1_000_000:
+                        try: zipfile.ZipFile(path).testzip(); saved=path; break
+                        except: pass
+                    except: pass
+                  if saved: break
+                except Exception as e: out['pages'].append({'url':u,'error':str(e)})
+              await browser.close()
+            if saved:
+              unpack=pathlib.Path('/tmp/stations-e/unpack'); unpack.mkdir(exist_ok=True)
+              try: zipfile.ZipFile(saved).extractall(unpack)
+              except: (unpack/'base.apk').write_bytes(pathlib.Path(saved).read_bytes())
+              apks=list(unpack.rglob('*.apk'))
+              if not apks and (unpack/'base.apk').exists(): apks=[unpack/'base.apk']
+              urls=[]; snippets=[]
+              for ap in apks[:30]:
+                try:
+                  with zipfile.ZipFile(ap) as z:
+                    for n in z.namelist():
+                      if n.endswith(('.dex','.xml','.json','.js','.txt')) and z.getinfo(n).file_size<50_000_000:
+                        t=z.read(n).decode('latin1','ignore'); low=t.lower()
+                        urls += re.findall(r'https?://[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]{8,}',t)
+                        for term in ['tariff','pricing','price','connector','station','map/network','api/','graphql','ocpi']:
+                          pos=0
+                          while True:
+                            i=low.find(term,pos)
+                            if i<0: break
+                            sn=t[max(0,i-250):i+800]
+                            if any(c.isalpha() for c in sn): snippets.append(sn)
+                            pos=i+len(term)
+                            if len(snippets)>8000: break
+                          if len(snippets)>8000: break
+                except: pass
+              out['apks']=[x.name for x in apks]
+              out['urls']=[u for u in dict.fromkeys(urls) if any(k in u.lower() for k in ['stations-e','stationse','api','map','charge','ocpi'])][:1000]
+              out['routeSnippets']=snippets[:1000]
+            out['downloaded']=bool(saved)
+            return out
+          out=asyncio.run(main())
+          pathlib.Path('reports/france/stations-e/browser-apk-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'downloaded':out.get('downloaded'),'downloads':out.get('downloads'),'urls':out.get('urls',[])[:100]},ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/stations-e/browser-apk-probe.json
+          git commit -m 'France Stations-e: publish browser APK probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*3)); done
+          exit 1
