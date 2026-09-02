@@ -1,0 +1,65 @@
+name: France Load Stations config source extract
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/load-stations-config-source-extract.yml']
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve config source and central API host
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/load-stations
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          base='https://loadstations.load-motion.com/'
+          h=requests.get(base,timeout=30).text
+          js=[urllib.parse.urljoin(base,x) for x in re.findall(r'<script[^>]+src=["\']([^"\']+)',h,re.I)]
+          hits=[];cands=set()
+          needles=['getCentralSystemServer','centralSystemServer','ConfigService','loadConfig','configuration','config.json','.json','protocol','host','port']
+          for u in js:
+            try:r=requests.get(u,timeout=30)
+            except:continue
+            if r.status_code!=200:continue
+            t=r.text;lo=t.lower()
+            for nd in needles:
+              pos=0
+              while True:
+                i=lo.find(nd.lower(),pos)
+                if i<0:break
+                c=t[max(0,i-3500):i+7000]
+                lits=list(dict.fromkeys(re.findall(r'["\'`]([^"\'`]{1,500})["\'`]',c)))
+                interesting=[x for x in lits if any(k in x.lower() for k in ['config','json','asset','http','server','host','protocol','port'])]
+                for x in interesting:
+                  if '.json' in x.lower() or 'config' in x.lower():cands.add(x)
+                hits.append({'asset':u,'needle':nd,'offset':i,'literals':interesting[:120],'context':c})
+                pos=i+len(nd)
+                if len(hits)>=250:break
+              if len(hits)>=250:break
+          probes=[]
+          for x in list(cands)[:100]:
+            if '${' in x or '<' in x or ' ' in x:continue
+            u=urllib.parse.urljoin(base,x)
+            try:r=requests.get(u,timeout=15,allow_redirects=True);probes.append({'candidate':x,'url':u,'status':r.status_code,'final':r.url,'contentType':r.headers.get('content-type'),'body':r.text[:20000]})
+            except Exception as e:probes.append({'candidate':x,'url':u,'error':str(e)})
+          out={'candidates':sorted(cands),'hits':hits,'probes':probes}
+          pathlib.Path('reports/france/load-stations/config-source-extract.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          slim={'candidates':sorted(cands),'hits':[{'needle':x['needle'],'literals':x['literals'],'context':x['context'][:9000]} for x in hits[:80]],'probes':probes}
+          pathlib.Path('reports/france/load-stations/config-source-summary.json').write_text(json.dumps(slim,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(slim,ensure_ascii=False)[:120000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/load-stations/config-source-*.json
+          git commit -m 'France Load Stations: publish central API config source' || exit 0
+          git pull --rebase origin main
+          git push
