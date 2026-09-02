@@ -1,0 +1,45 @@
+name: France CPO queue snapshot
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/france-cpo-queue-snapshot.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build queue snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,pathlib,re
+          rank=json.loads(pathlib.Path('reports/france/cpo-coverage-ranking.json').read_text())
+          files=[p.name for p in pathlib.Path('data/operator_direct').glob('*.json')]
+          norm=lambda s: re.sub(r'[^a-z0-9]+','',str(s).lower())
+          out=[]
+          for i,x in enumerate(rank.get('top100',[]),1):
+            op=x.get('operator',''); n=norm(op)
+            hits=[]
+            for f in files:
+              fn=norm(f.replace('.json',''))
+              # deliberately permissive heuristic, for navigation only, never status classification
+              toks=[t for t in re.findall(r'[a-z0-9]+',op.lower()) if len(t)>=4 and t not in {'france','charging','services','network','energies','electric'}]
+              if n and n in fn or any(t in fn for t in toks[:4]): hits.append(f)
+            out.append({'rank':i,'operator':op,'stations':x.get('stations'),'pdc':x.get('pdc'),'tariffSources':x.get('tariffSources',[]),'candidateDirectFiles':hits[:20]})
+          snap={'totalOperators':rank.get('totalOperators'),'top100':out}
+          pathlib.Path('reports/france/cpo-review-queue-snapshot.json').write_text(json.dumps(snap,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(snap,ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/cpo-review-queue-snapshot.json
+          git commit -m 'France CPO: publish review queue snapshot' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
