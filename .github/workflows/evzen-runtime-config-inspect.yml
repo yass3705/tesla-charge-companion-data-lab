@@ -1,0 +1,61 @@
+name: France EVzen public runtime config inspect
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/evzen-runtime-config-inspect.yml']
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public web bundle configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/evzen
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          S=requests.Session(); S.headers['User-Agent']='Mozilla/5.0'
+          auth=S.get('https://charge.evzen.com/auth',timeout=30).text
+          scripts=[urllib.parse.urljoin('https://charge.evzen.com/',x) for x in re.findall(r'<script[^>]+src=["\']([^"\']+)',auth,re.I)]
+          next_data=None
+          m=re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>',auth,re.S)
+          if m:
+            try: next_data=json.loads(m.group(1))
+            except: pass
+          findings=[]
+          for u in scripts:
+            try: txt=S.get(u,timeout=30).text
+            except: continue
+            low=txt.lower(); snippets=[]
+            for term in ['/tariff-display/','axios.create','baseurl','next_public','clustered-stations','qrcode-evses','/stations','/evses']:
+              pos=0
+              while True:
+                i=low.find(term,pos)
+                if i<0: break
+                snippets.append({'term':term,'context':txt[max(0,i-5000):i+7000]})
+                pos=i+len(term)
+                if len(snippets)>=80: break
+            strings=[]
+            for s in re.findall(r'["\']([^"\']{4,240})["\']',txt):
+              sl=s.lower()
+              if ('evzen' in sl or 'api' in sl or 'backend' in sl) and any(ch in s for ch in ['.','/']):
+                strings.append(s[:240])
+            if snippets or strings:
+              findings.append({'url':u,'bytes':len(txt),'strings':list(dict.fromkeys(strings))[:500],'snippets':snippets[:80]})
+          out={'scripts':scripts,'nextData':next_data,'findings':findings}
+          pathlib.Path('reports/france/evzen/runtime-config-inspect.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'scripts':scripts,'nextData':next_data,'findings':[{'url':x['url'],'strings':x['strings'][:100]} for x in findings]},ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/evzen/runtime-config-inspect.json
+          git commit -m 'France EVzen: publish public runtime config inspect' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
