@@ -6,13 +6,13 @@ on:
     branches:
       - research/italy-hera-apk-discovery-20260902
     paths:
-      - scripts/hera_italy_apk_discovery.py
+      - scripts/hera_apk_probe_compact.py
       - .github/workflows/hera-italy-apk-discovery.yml
   pull_request:
     branches:
       - main
     paths:
-      - scripts/hera_italy_apk_discovery.py
+      - scripts/hera_apk_probe_compact.py
       - data/reports/hera_italy_apk_discovery.json
       - docs/hera-italy-apk-discovery.md
       - .github/workflows/hera-italy-apk-discovery.yml
@@ -44,14 +44,14 @@ jobs:
           curl --fail --location --retry 4 --retry-all-errors \
             --output /tmp/hera-ricarica.apk \
             'https://d.apkpure.net/b/APK/com.siemens.hera.mobility?versionCode=62015'
-          sha256sum /tmp/hera-ricarica.apk
+          echo '05c1d24c96ef16e62cf3e2330e526109ab7df87ccbd687d15312024218791018  /tmp/hera-ricarica.apk' | sha256sum --check --strict
 
       - name: Inspect public APK and probe only safe read endpoints
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check 'androguard==4.1.4' 'requests==2.32.5'
-          python -m py_compile scripts/hera_italy_apk_discovery.py
-          LOGURU_LEVEL=CRITICAL python scripts/hera_italy_apk_discovery.py \
+          python -m py_compile scripts/hera_apk_probe_compact.py
+          LOGURU_LEVEL=CRITICAL python scripts/hera_apk_discovery.py \
             --apk /tmp/hera-ricarica.apk \
             --output /tmp/hera_italy_apk_discovery.json
 
@@ -68,7 +68,7 @@ jobs:
           assert app['package']=='com.siemens.hera.mobility'
           assert app['versionName']=='6.2.15'
           assert app['versionCode']=='62015'
-          assert len(app['apkSha256'])==64
+          assert app['apkSha256']=='05c1d24c96ef16e62cf3e2330e526109ab7df87ccbd687d15312024218791018'
           assert len(app['certificates'])==1
           assert report['safety']=={
               'credentialLikeValuesPersisted':False,
