@@ -1,0 +1,94 @@
+name: France e-Totem route and Firebase probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/etotem-france-route-firebase-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve route literals and Firebase surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/etotem
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          s=requests.Session(); s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'*/*'})
+          base='https://www.e-totem.fr/'
+          r=s.get(base+'main.dart.js',timeout=50); txt=r.text
+          # Candidate route-like literals from compiled Dart. Keep only plausible app routes/endpoints.
+          vals=[]
+          for m in re.finditer(r'(["\'])(.{1,350}?)\1',txt):
+            v=m.group(2)
+            if v not in vals: vals.append(v)
+          markers=['station','borne','tarif','price','connector','evse','charge','network','reseau','public','anonymous','token','map','moyenpaiement','session','auth']
+          routes=[]
+          for v in vals:
+            vl=v.lower()
+            if (v.startswith('/') or v.startswith('http')) and any(x in vl for x in markers):
+              routes.append(v)
+          # More permissive list for /public and likely API namespaces.
+          public_routes=[v for v in vals if v.startswith('/') and (v.startswith('/public') or v.startswith('/api') or v.startswith('/rest') or v.startswith('/ws') or v.startswith('/v1') or v.startswith('/v2'))]
+          # Exact context around app-specific markers, not framework terms.
+          target=['anonymousAuthToken','nearStations','privateStationsList','bVisibleTarifs','showOnTarifs','nConnectorId','reseauxBornes','/charge/start','/charge/stop','tarifs','ocpi_']
+          contexts={}
+          for t in target:
+            arr=[];pos=0
+            while True:
+              i=txt.find(t,pos)
+              if i<0:break
+              arr.append(txt[max(0,i-1800):i+2800]);pos=i+len(t)
+              if len(arr)>=12:break
+            contexts[t]=arr
+          # Probe sourcemap/symbol metadata if accidentally published.
+          aux=[]
+          for name in ['main.dart.js.map','main.dart.js.symbols','version.json','manifest.json','flutter_service_worker.js']:
+            try:
+              q=s.get(base+name,timeout=25)
+              aux.append({'url':q.url,'status':q.status_code,'type':q.headers.get('content-type'),'bytes':len(q.content),'body':q.text[:10000]})
+            except Exception as e:aux.append({'url':base+name,'error':str(e)})
+          # Firebase RTDB anonymous read probes. These are public GETs only.
+          fb='https://etotem-be896.firebaseio.com'
+          fbpaths=['/.json?shallow=true','/stations.json?shallow=true','/station.json?shallow=true','/bornes.json?shallow=true','/tarifs.json?shallow=true','/tariffs.json?shallow=true','/networks.json?shallow=true','/reseaux.json?shallow=true','/config.json','/configuration.json','/public.json?shallow=true']
+          firebase=[]
+          for p in fbpaths:
+            try:
+              q=s.get(fb+p,timeout=20)
+              firebase.append({'url':q.url,'status':q.status_code,'type':q.headers.get('content-type'),'body':q.text[:30000]})
+            except Exception as e:firebase.append({'url':fb+p,'error':str(e)})
+          # Probe same-origin candidate public routes that are concrete (avoid templated dynamic routes and payment actions).
+          routeprobes=[]
+          seen=set()
+          for v in routes+public_routes:
+            if not v.startswith('/') or ':' in v or '{' in v or '?' in v or len(v)>220: continue
+            vl=v.lower()
+            if any(x in vl for x in ['charge/start','charge/stop','paiement','password','inscription','admin']): continue
+            u=urllib.parse.urljoin(base,v)
+            if u in seen:continue
+            seen.add(u)
+            try:
+              q=s.get(u,timeout=12)
+              if q.status_code!=404:
+                routeprobes.append({'url':u,'status':q.status_code,'final':q.url,'type':q.headers.get('content-type'),'body':q.text[:10000]})
+            except Exception as e:routeprobes.append({'url':u,'error':str(e)})
+            if len(routeprobes)>=250:break
+          out={'bundleBytes':len(r.content),'routes':routes[:2500],'publicRoutes':public_routes[:2500],'contexts':contexts,'aux':aux,'firebase':firebase,'routeProbes':routeprobes}
+          summary={'bundleBytes':len(r.content),'routes':routes[:700],'publicRoutes':public_routes[:700],'contextCounts':{k:len(v) for k,v in contexts.items()},'contexts':{k:v[:3] for k,v in contexts.items()},'aux':aux,'firebase':firebase,'routeProbes':routeprobes}
+          pathlib.Path('reports/france/etotem/route-firebase-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('reports/france/etotem/route-firebase-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False)[:120000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/etotem/route-firebase-*.json
+          git commit -m 'France e-Totem: publish route and Firebase probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
