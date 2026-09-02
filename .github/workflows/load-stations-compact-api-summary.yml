@@ -1,0 +1,49 @@
+name: France Load Stations compact API summary
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/load-stations-compact-api-summary.yml']
+permissions:
+  contents: write
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compact findings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,pathlib,collections,re
+          d=json.loads(pathlib.Path('reports/france/load-stations/deep-api-contract.json').read_text())
+          hosts=d.get('hosts',[])[:100]
+          paths=[]
+          for p in d.get('candidatePaths',[]):
+            if any(k in p.lower() for k in ['api','tariff','price','station','chargepoint','chargingstation','connector','site','public','anonymous','guest','map']):
+              paths.append(p)
+          probes=[]
+          for p in d.get('probes',[]):
+            st=p.get('status');ct=str(p.get('contentType',''));allow=p.get('allow')
+            if st not in [404,None] or 'json' in ct.lower() or allow:
+              probes.append({'method':p.get('method'),'url':p.get('url'),'status':st,'contentType':ct,'allow':allow,'bodyPrefix':str(p.get('body',''))[:500]})
+          vals=[]
+          for a in d.get('assets',[]):
+            for x in a.get('literals',[]):
+              v=str(x.get('value',''))
+              if len(v)<=300 and any(k in v.lower() for k in ['api','tariff','pricing','chargepoint','chargingstation','connector','anonymous','guest']):vals.append(v)
+          vals=list(dict.fromkeys(vals))
+          out={'hosts':hosts,'candidatePaths':paths[:250],'interestingProbes':probes[:100],'interestingLiteralValues':vals[:250]}
+          pathlib.Path('reports/france/load-stations/deep-api-compact.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/load-stations/deep-api-compact.json
+          git commit -m 'France Load Stations: publish compact API findings' || exit 0
+          git pull --rebase origin main
+          git push
