@@ -1,0 +1,166 @@
+name: France Road browser national exact tariffs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/road-france-browser-national-exact.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser
+        run: |
+          python -m pip install -q playwright
+          python -m playwright install chromium --with-deps >/dev/null 2>&1
+      - name: Build exact public connector tariff overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/road data/operator_direct
+          python - <<'PY'
+          import asyncio,json,pathlib,re,datetime,collections
+          from playwright.async_api import async_playwright
+
+          src=json.loads(pathlib.Path('data/operator_direct/road_eflux_official_france_fast.json').read_text())
+          rows=src['pdcTariffOverlay']
+          groups=collections.defaultdict(list)
+          for i,r in enumerate(rows): groups[str(r['lookup_id'])].append((i,r))
+          keys=sorted(groups)
+          results=[None]*len(rows)
+          page_stats={}
+          q=asyncio.Queue()
+          for k in keys: q.put_nowait(k)
+
+          # Exact price-component parser: preserves the full official rendered tariff text;
+          # components are only machine-readable helpers, never inferred beyond visible text.
+          money_re=re.compile(r'(?P<amount>\d+(?:[.,]\d{1,4})?)\s*€\s*(?:/|per\s+)?\s*(?P<unit>kwh|kw h|minute|min|hour|h|session)?',re.I)
+          def components(text):
+            out=[]
+            for m in money_re.finditer(text):
+              unit=(m.group('unit') or '').lower().replace('kw h','kwh')
+              if unit=='min': unit='minute'
+              if unit=='h': unit='hour'
+              out.append({'amountEur':float(m.group('amount').replace(',','.')),'unit':unit or None,'evidence':m.group(0)})
+            return out
+          def tariff_excerpt(card_text):
+            lines=[x.strip() for x in card_text.splitlines() if x.strip()]
+            ev=[i for i,x in enumerate(lines) if re.fullmatch(r'FR\*EFL\*EV\d{7}\*C\d+',x,re.I)]
+            keep=[]
+            for i,x in enumerate(lines):
+              low=x.lower()
+              if '€' in x or 'kwh' in low or any(t in low for t in ['tariff','price','pricing','session fee','idle','minute','per min','starting fee','connection fee']):
+                keep.extend(lines[max(0,i-2):min(len(lines),i+3)])
+            # preserve order, drop generic instruction-only lines
+            seen=[]
+            for x in keep:
+              if x not in seen and not x.startswith('View charging station tariffs'): seen.append(x)
+            return '\n'.join(seen)
+
+          async def worker(num,browser):
+            context=await browser.new_context(locale='en-US')
+            page=await context.new_page()
+            while True:
+              try: k=q.get_nowait()
+              except asyncio.QueueEmpty: break
+              expected=groups[k]
+              stat={'lookup_id':k,'expectedRows':len(expected),'pageLoaded':False,'resolved':0,'error':None}
+              try:
+                resp=await page.goto(f'https://chargestation.road.io/evse/{k}',wait_until='domcontentloaded',timeout=25000)
+                stat['httpStatus']=resp.status if resp else None
+                await page.wait_for_selector('button',timeout=12000)
+                stat['pageLoaded']=True
+                # Wait specifically for at least one exact connector label.
+                first=expected[0][1]
+                first_ev=f"FR*EFL*EV{k}*C{first['connector_id']}"
+                try: await page.get_by_text(first_ev,exact=False).first.wait_for(timeout=8000)
+                except: pass
+                for idx,r in expected:
+                  ev=f"FR*EFL*EV{k}*C{r['connector_id']}"
+                  base=dict(r)
+                  base.update({'official_evse_id':ev,'exact_pricing_visible':False,'tariff_text':None,'price_components':[],'capture_method':'public_scan_pay_browser_connector_card'})
+                  try:
+                    btn=page.locator('button').filter(has_text=ev).first
+                    if await btn.count()==0:
+                      base['resolution']='connector_button_not_found'
+                      results[idx]=base; continue
+                    await btn.scroll_into_view_if_needed()
+                    await btn.click(timeout=5000)
+                    await page.wait_for_timeout(450)
+                    # Card containing this connector button. Pricing content expands inside it.
+                    card=btn.locator('xpath=ancestor::div[contains(@class,"tw-w-full")][1]')
+                    txt=(await card.inner_text()) if await card.count() else (await btn.inner_text())
+                    excerpt=tariff_excerpt(txt)
+                    comps=components(excerpt or txt)
+                    # Exact only if visible monetary tariff exists in THIS connector card.
+                    if '€' in txt and comps:
+                      base['exact_pricing_visible']=True
+                      base['tariff_text']=excerpt or txt.strip()
+                      base['price_components']=comps
+                      base['resolution']='exact_public_connector_card'
+                      stat['resolved']+=1
+                    else:
+                      base['resolution']='no_visible_monetary_tariff_in_connector_card'
+                      base['card_evidence']=txt[:3000]
+                    results[idx]=base
+                    # collapse to leave stable state for next connector
+                    try: await btn.click(timeout=2000)
+                    except: pass
+                  except Exception as e:
+                    base['resolution']='connector_interaction_error'; base['error']=str(e)[:500]
+                    results[idx]=base
+              except Exception as e:
+                stat['error']=str(e)[:1000]
+                for idx,r in expected:
+                  if results[idx] is None:
+                    b=dict(r); b.update({'official_evse_id':f"FR*EFL*EV{k}*C{r['connector_id']}",'exact_pricing_visible':False,'tariff_text':None,'price_components':[],'capture_method':'public_scan_pay_browser_connector_card','resolution':'page_error','error':str(e)[:500]}); results[idx]=b
+              page_stats[k]=stat
+              q.task_done()
+            await context.close()
+
+          async def main():
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True)
+              await asyncio.gather(*[worker(i,browser) for i in range(10)])
+              await browser.close()
+          asyncio.run(main())
+
+          exact=sum(1 for r in results if r and r.get('exact_pricing_visible'))
+          page_loaded=sum(1 for x in page_stats.values() if x.get('pageLoaded'))
+          lookup_with_exact=sum(1 for x in page_stats.values() if x.get('resolved',0)>0)
+          unresolved=collections.Counter((r or {}).get('resolution') for r in results if not (r or {}).get('exact_pricing_visible'))
+          generated=datetime.datetime.now(datetime.timezone.utc).isoformat()
+          out={
+            'schemaVersion':'1.1.0','dataset':'road-eflux-exact-france','generatedAt':generated,
+            'operator':'Road / E-Flux','country':'FR',
+            'classification':{
+              'officialPublicSource':True,
+              'stationLevelPriceLookupRequired':True,
+              'connectorLevelExactTariff':True,
+              'failClosed':True,
+              'treated':True if exact>0 else False,
+              'note':'Exact tariff is accepted only when rendered inside the matching public scan-pay connector card. Unresolved rows receive no Road overlay.'
+            },
+            'coverage':{
+              'panRows':len(results),'uniqueLookupIds':len(keys),'pagesLoaded':page_loaded,'lookupIdsWithExactTariff':lookup_with_exact,
+              'exactRows':exact,'coveragePct':round(100*exact/len(results),2) if results else 0,'missingRows':len(results)-exact,
+              'unresolvedReasons':dict(unresolved)
+            },
+            'pdcTariffOverlay':results
+          }
+          pathlib.Path('data/operator_direct/road_eflux_exact_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          summary={'generatedAt':generated,'classification':out['classification'],'coverage':out['coverage'],'pageFailures':[v for v in page_stats.values() if v.get('error')][:100]}
+          pathlib.Path('reports/france/road/browser-national-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/operator_direct/road_eflux_exact_france.json reports/france/road/browser-national-summary.json
+          git commit -m 'data(road): publish exact public connector tariffs France' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*3)); done
+          exit 1
