@@ -21,13 +21,13 @@ jobs:
           import requests,json,pathlib,html,urllib.parse,collections,datetime,re
           u='https://umap.openstreetmap.fr/fr/datalayer/1234362/45a8c330-b19e-4fb8-a437-ab6e1827b8df/'
           r=requests.get(u,timeout=45,headers={'User-Agent':'Mozilla/5.0'}); r.raise_for_status(); j=r.json()
+          features=j.get('features') or []
           rows=[]
-          for f in j.get('features') or []:
+          for f in features:
             p=f.get('properties') or {}; name=p.get('name'); coords=(f.get('geometry') or {}).get('coordinates')
             for k,v in p.items():
-              if re.fullmatch(r'URL\s*\d+',str(k),re.I) and v:
+              if str(k).lower().startswith('url') and v:
                 raw=html.unescape(str(v)).strip()
-                # unwrap UMap markdown [[url|label]] / [label](url) when present
                 m=re.search(r'https?://[^\s\]|)<>]+',raw)
                 url=m.group(0) if m else raw
                 url=url.rstrip('.,;)\]')
@@ -37,15 +37,22 @@ jobs:
           uniq=[];seen=set()
           for x in rows:
             if x['url'] not in seen: seen.add(x['url']);uniq.append(x)
-          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'featureCount':len(j.get('features') or []),'urlRows':len(rows),'uniqueUrls':len(uniq),'hosts':collections.Counter(x['host'] for x in uniq).most_common(),'queryKeySets':collections.Counter(tuple(x['queryKeys']) for x in uniq).most_common(),'samples':uniq[:80]}
+          propkeys=collections.Counter()
+          samples=[]
+          for f in features:
+            p=f.get('properties') or {}
+            propkeys.update(map(str,p.keys()))
+            if len(samples)<12:
+              samples.append({'geometry':f.get('geometry'),'properties':{str(k):(str(v)[:1200] if v is not None else None) for k,v in p.items()}})
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'featureCount':len(features),'topPropertyKeys':propkeys.most_common(120),'featureSamples':samples,'urlRows':len(rows),'uniqueUrls':len(uniq),'hosts':collections.Counter(x['host'] for x in uniq).most_common(),'queryKeySets':collections.Counter(tuple(x['queryKeys']) for x in uniq).most_common(),'urlSamples':uniq[:80]}
           pathlib.Path('reports/france/e55c/url-fields-summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps(out,ensure_ascii=False,indent=2)[:50000])
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:60000])
           PY
       - name: Publish
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/france/e55c/url-fields-summary.json
-          git commit -m 'France E55C: publish connector payment URL summary' || exit 0
+          git commit -m 'France E55C: publish UMap property and URL summary' || exit 0
           for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
           exit 1
