@@ -58,10 +58,11 @@ jobs:
           token=tok.get('access_token') if isinstance(tok,dict) else None
           price_attempts=[]
           if token:
+              auth_name='Authorization'
               for f in selected[:8]:
                   sid=f.get('properties',{}).get('store_id');name=f.get('properties',{}).get('name')
                   url='https://api.vista.alzp.tgscloud.net/REVERSE/api/Info/Poi?'+urllib.parse.urlencode({'Lang':'fr_FR','AdditionalData':'Items','AdditionalDataFields':'Items_Code,Items_Price,Items_Availability,Items_UpdateDate','Code':sid})
-                  variants=[('raw',['Authorization: '+token]),('bearer',['Authorization: Bearer '+token])]
+                  variants=[('raw',[auth_name+': '+token]),('bearer',[auth_name+': '+'Bearer '+token])]
                   for label,headers in variants:
                       st,d,rc,err=get(url,headers,('--http1.1',))
                       price_attempts.append({'store_id':sid,'name':name,'authVariant':label,'status':st,'curlReturnCode':rc,'stderr':err,'response':d})
