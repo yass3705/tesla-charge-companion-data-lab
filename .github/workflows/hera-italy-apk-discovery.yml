@@ -1,0 +1,100 @@
+name: Italy HERA official APK discovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/italy-hera-apk-discovery-20260902
+    paths:
+      - scripts/hera_italy_apk_discovery.py
+      - .github/workflows/hera-italy-apk-discovery.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/hera_italy_apk_discovery.py
+      - data/reports/hera_italy_apk_discovery.json
+      - docs/hera-italy-apk-discovery.md
+      - .github/workflows/hera-italy-apk-discovery.yml
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: hera-italy-apk-discovery-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download and pin Hera Ricarica 6.2.15
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 4 --retry-all-errors \
+            --output /tmp/hera-ricarica.apk \
+            'https://d.apkpure.net/b/APK/com.siemens.hera.mobility?versionCode=62015'
+          echo '4300171fe767b0a79f4edc41dc05aad5563308630cabf97247a7dff7e80092c0  /tmp/hera-ricarica.apk' | sha256sum --check --strict
+
+      - name: Inspect public APK and probe only safe read endpoints
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'androguard==4.1.4' 'requests==2.32.5'
+          python -m py_compile scripts/hera_italy_apk_discovery.py
+          LOGURU_LEVEL=CRITICAL python scripts/hera_italy_apk_discovery.py \
+            --apk /tmp/hera-ricarica.apk \
+            --output /tmp/hera_italy_apk_discovery.json
+
+      - name: Validate identity, sanitization and official-host discovery
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from urllib.parse import urlsplit
+
+          report=json.loads(Path('/tmp/hera_italy_apk_discovery.json').read_text())
+          app=report['application']
+          assert report['country']=='IT'
+          assert app['package']=='com.siemens.hera.mobility'
+          assert app['versionName']=='6.2.15'
+          assert app['versionCode']=='62015'
+          assert app['apkSha256']=='4300171fe767b0a79f4edc41dc05aad5563308630cabf97247a7dff7e80092c0'
+          assert len(app['certificates'])==1
+          assert report['safety']=={
+              'credentialLikeValuesPersisted':False,
+              'httpMethod':'GET',
+              'privateHostsExcluded':True,
+              'queryStringsPersisted':False,
+              'stateChangingPathsExcluded':True,
+              'userAccountUsed':False,
+          }
+          urls=report['discovery']['urls']
+          assert urls and all(not urlsplit(url).query for url in urls)
+          serialized=json.dumps(report).casefold()
+          forbidden=('access_token=', 'refresh_token=', 'client_secret=', 'authorization: bearer')
+          assert not any(value in serialized for value in forbidden)
+          assert any('hera' in host.casefold() for host in report['discovery']['hosts'])
+          print(json.dumps({
+              'hosts':report['discovery']['hosts'],
+              'endpointPaths':report['discovery']['endpointPaths'][:50],
+              'probes':report['readOnlyProbes'],
+          },ensure_ascii=False,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hera-italy-apk-public-discovery
+          path: /tmp/hera_italy_apk_discovery.json
+          if-no-files-found: error
+          retention-days: 14
