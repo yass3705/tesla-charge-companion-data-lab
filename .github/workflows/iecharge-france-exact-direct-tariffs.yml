@@ -1,0 +1,76 @@
+name: France IECharge exact direct tariffs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/iecharge-france-exact-direct-tariffs.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact national direct overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/iecharge data/operator_direct
+          python - <<'PY'
+          import csv,io,requests,json,pathlib,datetime
+          src='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          pricing='https://iecharge.io/fr/prix/'
+          r=requests.get(src,timeout=60); r.raise_for_status()
+          rows=list(csv.DictReader(io.StringIO(r.text)))
+          def v(row,k): return (row.get(k) or '').strip()
+          selected=[]
+          for row in rows:
+              op=v(row,'nom_operateur')
+              ids=' '.join([v(row,'id_pdc_itinerance'),v(row,'id_station_itinerance')]).upper()
+              if 'IECHARGE' in op.upper() or 'FR*IEC' in ids or ('NW' in op.upper() and 'CHARGE' in op.upper()):
+                  selected.append(row)
+          evses=[]
+          for row in selected:
+              evses.append({
+                  'id_pdc_itinerance':v(row,'id_pdc_itinerance'),
+                  'id_pdc_local':v(row,'id_pdc_local'),
+                  'id_station_itinerance':v(row,'id_station_itinerance'),
+                  'nom_station':v(row,'nom_station'),
+                  'adresse_station':v(row,'adresse_station'),
+                  'puissance_nominale_kw':v(row,'puissance_nominale'),
+                  'directTariff':{
+                      'currency':'EUR','eurPerKwh':0.25,
+                      'paymentChannels':['IECharge_app','bank_card'],
+                      'scope':'IECharge_direct_customer'
+                  }
+              })
+          out={
+            'schemaVersion':'1.0.0','dataset':'iecharge-official-france','operator':'NW IECharge','country':'FR',
+            'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'classification':{
+              'singleGuaranteedNationalCpoDirectTariff':True,
+              'stationLevelLookupRequired':False,
+              'reason':'IECharge official pricing states that direct customers pay 0.25 EUR/kWh at all IECharge charging locations via the IECharge app or bank card.'
+            },
+            'operatorDirect':{
+              'app':{'eurPerKwh':0.25},'bankCard':{'eurPerKwh':0.25},
+              'evChargeCard':{'operatorDirect':False,'price':'set_by_eMSP','includedInOverlay':False}
+            },
+            'sourceEvidence':{'officialPricingUrl':pricing,'panResource':src},
+            'coverage':{'panEvseRows':len(evses),'exactDirectTariffRows':len(evses),'coveragePct':100.0 if evses else 0.0},
+            'evseTariffs':evses
+          }
+          pathlib.Path('data/operator_direct/iecharge_official_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('reports/france/iecharge/coverage.json').write_text(json.dumps(out['coverage']|{'sample':evses[:10]},ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out['coverage'],ensure_ascii=False,indent=2))
+          if not evses: raise SystemExit('No IECharge PAN rows found; fail closed')
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/operator_direct/iecharge_official_france.json reports/france/iecharge/coverage.json
+          git commit -m 'France IECharge: publish exact official direct tariffs' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
