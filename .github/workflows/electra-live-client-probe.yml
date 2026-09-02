@@ -1,0 +1,103 @@
+name: France Electra live client probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/electra-live-client-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect live price client module and test public endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/electra
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse,html as htmllib
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          root='https://stations.go-electra.com/fr'
+          page=s.get(root,timeout=30).text
+          scripts=[urllib.parse.urljoin(root,x) for x in re.findall(r'<script[^>]+src=["\']([^"\']+)',page,re.I)]
+          mapurl=next(x for x in scripts if 'Map.astro' in x)
+          maptxt=s.get(mapurl,timeout=30).text
+          mm=re.search(r'["\'](\./live-client\.[^"\']+\.js)["\']',maptxt)
+          liveurl=urllib.parse.urljoin(mapurl,mm.group(1)) if mm else None
+          live=s.get(liveurl,timeout=30).text if liveurl else ''
+          def redact(x):
+            x=re.sub(r'(?i)(pk|sk)\.[A-Za-z0-9._-]{20,}','[TOKEN_REDACTED]',x)
+            x=re.sub(r'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}','[JWT_REDACTED]',x)
+            return x
+          contexts=[]
+          for pat in ['fetch(', 'price','chart','currentHourPrice','station','connector','live','/api/','http']:
+            pos=0; low=live.lower(); needle=pat.lower()
+            while True:
+              i=low.find(needle,pos)
+              if i<0: break
+              sn=redact(live[max(0,i-700):i+1300])
+              if sn not in contexts: contexts.append(sn)
+              pos=i+len(needle)
+              if len(contexts)>=80: break
+            if len(contexts)>=80: break
+          urls=[]
+          for x in re.findall(r'https?://[^"\'\\\s)]+',live):
+            try:
+              p=urllib.parse.urlsplit(x); clean=urllib.parse.urlunsplit((p.scheme,p.netloc,p.path,'',''))
+            except: clean=x.split('?')[0]
+            clean=redact(clean)
+            if clean not in urls: urls.append(clean)
+          strings=[]
+          for x in re.findall(r'[`"\']([^`"\']{2,300})[`"\']',live):
+            if any(t in x.lower() for t in ['price','station','chart','connector','live','api']):
+              x=redact(x)
+              if x not in strings: strings.append(x)
+          # Station sample
+          sm=re.search(r'<script[^>]+id=["\']stations-data["\'][^>]*>(.*?)</script>',page,re.I|re.S)
+          arr=[]
+          if sm:
+            try: arr=json.loads(htmllib.unescape(sm.group(1)))
+            except: pass
+          if isinstance(arr,dict): arr=arr.get('features',[])
+          sample_ids=[]
+          for x in arr[:20]:
+            if isinstance(x,dict):
+              p=x.get('properties',x); sid=p.get('id')
+              if sid: sample_ids.append(sid)
+          # Infer endpoint templates from fetch/template literal strings. Test GET only.
+          endpoints=[]
+          for sn in contexts:
+            for x in re.findall(r'(?:fetch\(|new URL\()[`"\']([^`"\']+)',sn):
+              if x not in endpoints: endpoints.append(x)
+          attempts=[]
+          # Also generate from static path strings containing station/price and replace common placeholders with sample id.
+          candidates=[]
+          for x in strings+endpoints:
+            if x.startswith('/') or x.startswith('http'):
+              candidates.append(x)
+          sid=sample_ids[0] if sample_ids else None
+          for templ in candidates[:50]:
+            if not sid: break
+            u=templ.replace('${e}',sid).replace('${t}',sid).replace('${id}',sid).replace(':id',sid)
+            if '${' in u: continue
+            if u.startswith('/'): u=urllib.parse.urljoin(root,u)
+            try:
+              rr=s.get(u,timeout=15,headers={'Accept':'application/json'})
+              if rr.status_code<500:
+                attempts.append({'template':templ,'url':u.replace(sid,'[STATION_ID]'),'status':rr.status_code,'contentType':rr.headers.get('content-type'),'body':redact(rr.text[:5000])})
+            except Exception as ex: pass
+          out={'mapUrl':mapurl,'liveUrl':liveurl,'liveBytes':len(live),'sampleIds':sample_ids[:20],'urls':urls[:100],'strings':strings[:300],'contexts':contexts[:80],'attempts':attempts}
+          pathlib.Path('reports/france/electra/live-client-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'liveUrl':liveurl,'liveBytes':len(live),'sampleIds':sample_ids[:10],'urls':urls[:50],'strings':strings[:150],'contexts':contexts[:30],'attempts':attempts},ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/electra/live-client-probe.json
+          git commit -m 'France Electra: publish live client probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
