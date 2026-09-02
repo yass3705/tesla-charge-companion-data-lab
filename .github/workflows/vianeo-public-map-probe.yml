@@ -28,6 +28,17 @@ jobs:
           for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',html,re.I):
               u=urllib.parse.urljoin('https://www.engie-vianeo.com/',src)
               if u not in scripts: scripts.append(u)
+          inline=[]
+          low=html.lower()
+          for tok in ('storefinder','uberall','locator','businessid','storefinderid'):
+              pos=0
+              while True:
+                  i=low.find(tok,pos)
+                  if i<0: break
+                  inline.append(html[max(0,i-500):i+1200])
+                  pos=i+len(tok)
+                  if len(inline)>=40: break
+              if len(inline)>=40: break
           findings=[]
           toks=('api','station','map','tarif','price','graphql','charge')
           for u in scripts[:80]:
@@ -35,22 +46,19 @@ jobs:
               if r.returncode: continue
               txt=r.stdout
               urls=sorted(set(re.findall(r'https?://[^"\'\\\s)]+',txt)))
-              snippets=[]
-              low=txt.lower()
+              snippets=[]; ll=txt.lower()
               for tok in toks:
                   pos=0
                   while True:
-                      i=low.find(tok,pos)
+                      i=ll.find(tok,pos)
                       if i<0: break
-                      snippets.append(txt[max(0,i-180):i+420])
-                      pos=i+len(tok)
+                      snippets.append(txt[max(0,i-180):i+420]); pos=i+len(tok)
                       if len(snippets)>=80: break
                   if len(snippets)>=80: break
-              if urls or snippets:
-                  findings.append({'url':u,'bytes':len(txt),'candidateUrls':[x for x in urls if any(t in x.lower() for t in toks)][:100],'snippets':snippets[:80]})
-          out={'pageBytes':len(html),'scripts':scripts,'findings':findings}
+              if urls or snippets: findings.append({'url':u,'bytes':len(txt),'candidateUrls':[x for x in urls if any(t in x.lower() for t in toks)][:100],'snippets':snippets[:80]})
+          out={'pageBytes':len(html),'scripts':scripts,'inlineConfigSnippets':inline,'findings':findings}
           pathlib.Path('reports/france/vianeo/public-map-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({'scripts':scripts,'findings':[{'url':x['url'],'candidateUrls':x['candidateUrls'][:20]} for x in findings]},ensure_ascii=False,indent=2)[:30000])
+          print(json.dumps({'inlineConfigSnippets':inline[:20],'scripts':scripts},ensure_ascii=False,indent=2)[:30000])
           PY
       - name: Publish
         shell: bash
