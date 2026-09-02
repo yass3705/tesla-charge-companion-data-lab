@@ -1,0 +1,76 @@
+name: France Vianeo backend surface probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/vianeo-backend-surface-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Discover public read-only backend surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/vianeo
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          s=requests.Session(); s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json','Origin':'https://charge.engie-vianeo.com','Referer':'https://charge.engie-vianeo.com/'})
+          web='https://charge.engie-vianeo.com/'
+          html=s.get(web,timeout=30).text
+          scripts=[urllib.parse.urljoin(web,x) for x in re.findall(r'<script[^>]+src=["\']([^"\']+)',html,re.I)]
+          bundle='\n'.join(s.get(u,timeout=30).text for u in scripts if u.endswith('.js') or '.js?' in u)
+          def redact(x):
+            x=re.sub(r'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}','[JWT_REDACTED]',x)
+            x=re.sub(r'(?i)(token|secret|api[_-]?key)\s*[:=]\s*["\']?[A-Za-z0-9._~-]{16,}',r'\1=[REDACTED]',x)
+            return x
+          # Extract endpoint-like literal strings from the public client.
+          paths=[]
+          for x in re.findall(r'[`"\'](/[^`"\']{1,250})[`"\']',bundle):
+            if any(t in x.lower() for t in ['location','evse','tariff','station','map','search','ca/','setting','config']):
+              x=x.split('?')[0]
+              if x not in paths: paths.append(x)
+          contexts=[]
+          for token in ['/locations','select-evse','/ca/tariff','evses/detail','baseurl','backend-api']:
+            pos=0; low=bundle.lower(); needle=token.lower()
+            while True:
+              i=low.find(needle,pos)
+              if i<0: break
+              sn=redact(bundle[max(0,i-800):i+1800])
+              if sn not in contexts: contexts.append(sn)
+              pos=i+len(needle)
+              if len(contexts)>100: break
+          base='https://backend-api.engie-vianeo.com'
+          docs=['/','/swagger','/swagger-ui','/swagger-ui/index.html','/v3/api-docs','/v3/api-docs/swagger-config','/openapi.json','/api-docs','/actuator','/actuator/mappings']
+          attempts=[]
+          for p in docs:
+            try:
+              r=s.get(base+p,timeout=18)
+              attempts.append({'path':p,'status':r.status_code,'contentType':r.headers.get('content-type'),'allow':r.headers.get('allow'),'body':redact(r.text[:30000]) if r.status_code==200 else redact(r.text[:1500])})
+            except Exception as e: attempts.append({'path':p,'error':str(e)})
+          # Only GET obvious collection/search paths discovered or conventional; do not mutate state.
+          safe_candidates=['/locations','/locations/evses','/locations/search','/locations/map','/stations','/stations/search','/ca/settings','/settings','/config']
+          for p in paths:
+            if '${' in p or '{' in p or '}' in p: continue
+            if p.startswith('/locations') and p not in safe_candidates: safe_candidates.append(p)
+          for p in safe_candidates[:50]:
+            try:
+              r=s.get(base+p,timeout=18)
+              attempts.append({'path':p,'status':r.status_code,'contentType':r.headers.get('content-type'),'allow':r.headers.get('allow'),'body':redact(r.text[:30000]) if r.status_code==200 else redact(r.text[:1500])})
+            except Exception as e: attempts.append({'path':p,'error':str(e)})
+          out={'clientLiteralPaths':paths[:500],'clientContexts':contexts[:100],'attempts':attempts}
+          pathlib.Path('reports/france/vianeo/backend-surface-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'clientLiteralPaths':paths[:200],'attempts':[{k:v for k,v in a.items() if k!='body'}|({'body':a.get('body','')[:3000]} if a.get('status')==200 else {}) for a in attempts]},ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/vianeo/backend-surface-probe.json
+          git commit -m 'France Vianeo: publish backend surface probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
