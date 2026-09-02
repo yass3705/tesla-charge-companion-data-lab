@@ -1,0 +1,74 @@
+name: France E55C payment map backend discovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/e55c-map-app-discovery.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Discover public E55C payment map API
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/e55c
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse,html,datetime
+          S=requests.Session(); S.headers.update({'User-Agent':'Mozilla/5.0','Accept':'text/html,application/xhtml+xml,application/json,text/plain,*/*'})
+          seeds=['https://map.e55c.com/','https://www.e55c.com/tutoriel-de-recharge/']
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'pages':[],'assets':[]}
+          scripts=[]
+          for u in seeds:
+            try:
+              r=S.get(u,timeout=30,allow_redirects=True)
+              body=r.text
+              page={'url':u,'finalUrl':r.url,'status':r.status_code,'contentType':r.headers.get('content-type'),'bytes':len(r.content),'headers':{k:v for k,v in r.headers.items() if k.lower() in ('server','location','content-security-policy','x-powered-by')}}
+              page['snippets']=[]
+              clean=html.unescape(body)
+              for term in ('api','station','connector','tarif','price','ev-qr','graphql','fetch(','axios','baseurl'):
+                pos=0; low=clean.lower()
+                while True:
+                  i=low.find(term,pos)
+                  if i<0: break
+                  page['snippets'].append(clean[max(0,i-220):i+650]);pos=i+len(term)
+                  if len(page['snippets'])>=80: break
+              for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',body,re.I):
+                su=urllib.parse.urljoin(r.url,html.unescape(src))
+                if su not in scripts:scripts.append(su)
+              page['scripts']=scripts.copy()
+              out['pages'].append(page)
+            except Exception as e: out['pages'].append({'url':u,'error':str(e)})
+          for su in scripts[:80]:
+            try:
+              r=S.get(su,timeout=20); txt=r.text
+              cand=sorted(set(re.findall(r'https?://[^"\'\\\s)]+',txt)))
+              paths=[]
+              for m in re.finditer(r'["\']([^"\']{2,220})["\']',txt):
+                x=m.group(1)
+                if any(t in x.lower() for t in ('api','station','connector','tarif','price','charge','evse','terminal','payment')) and (x.startswith('/') or 'http' in x.lower()): paths.append(x)
+              snippets=[]; low=txt.lower()
+              for term in ('api','station','connector','tarif','price','evse','terminal','payment','baseurl','graphql'):
+                pos=0
+                while True:
+                  i=low.find(term,pos)
+                  if i<0:break
+                  snippets.append(txt[max(0,i-220):i+600]);pos=i+len(term)
+                  if len(snippets)>=100:break
+              out['assets'].append({'url':su,'status':r.status_code,'bytes':len(r.content),'candidateUrls':[x for x in cand if any(t in x.lower() for t in ('api','station','price','charge','payment','evse'))][:120],'candidatePaths':sorted(set(paths))[:200],'snippets':snippets[:100]})
+            except Exception as e: out['assets'].append({'url':su,'error':str(e)})
+          pathlib.Path('reports/france/e55c/map-app-discovery.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'pages':out['pages'],'assets':[{k:v for k,v in a.items() if k!='snippets'} for a in out['assets']]},ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/e55c/map-app-discovery.json
+          git commit -m 'France E55C: publish payment map backend discovery' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
