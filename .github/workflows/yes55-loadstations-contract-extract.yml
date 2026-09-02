@@ -1,0 +1,66 @@
+name: France YES55 Load Stations contract extract
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/yes55-loadstations-contract-extract.yml']
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract YES55 public tenant contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/yes55 /tmp/yes55
+          curl -fLsS 'https://yes55.load-motion.com/assets/config.json' -o /tmp/yes55/config.json
+          curl -fLsS 'https://yes55.load-motion.com/main.f31607260351ed46.js' -o /tmp/yes55/main.js
+          python - <<'PY'
+          import json,re,pathlib
+          cfg=json.loads(pathlib.Path('/tmp/yes55/config.json').read_text())
+          js=pathlib.Path('/tmp/yes55/main.js').read_text(errors='replace')
+          yes=cfg.get('HostsBrandingOverwrite',{}).get('yes55.load-motion.com')
+          all_urls=[]
+          def walk(x,path=''):
+            if isinstance(x,dict):
+              for k,v in x.items(): walk(v,path+'/'+str(k))
+            elif isinstance(x,list):
+              for i,v in enumerate(x): walk(v,path+'/'+str(i))
+            elif isinstance(x,str) and ('http://' in x or 'https://' in x or 'api' in path.lower() or 'host' in path.lower() or 'server' in path.lower()):
+              all_urls.append({'path':path,'value':x})
+          walk(cfg)
+          # Extract literal endpoint constants relevant to guest access and pricing.
+          constants=[]
+          for m in re.finditer(r'([A-Z0-9_]*(?:GUEST|PRICE|PRICING|TARIFF|CHARGING_STATION|SITE|PUBLIC)[A-Z0-9_]*)=\\?"([^"\\]{1,180})\\?"',js):
+            constants.append({'name':m.group(1),'value':m.group(2)})
+          # Broader snippets around API base construction / host / guest / pricing definitions.
+          snippets=[]
+          terms=['CentralSystemServer','centralServer','apiBase','baseURL','baseUrl','loadstations-api','REST_AUTH_GUEST','REST_GUEST','pricing-definitions','pricingDefinitions','tariff','captchaSiteKey','tenantName']
+          low=js.lower()
+          for term in terms:
+            p=0; n=0
+            while True:
+              i=low.find(term.lower(),p)
+              if i<0: break
+              snippets.append({'term':term,'snippet':js[max(0,i-700):i+1800]})
+              p=i+len(term); n+=1
+              if n>=8: break
+          # literal domain-ish strings around loadstations
+          domains=sorted(set(re.findall(r'[A-Za-z0-9._-]{2,}\.(?:loadstations-api|load-motion)\.[A-Za-z0-9.-]+',js)))
+          out={'yes55Config':yes,'configRelevantValues':all_urls[:150],'domains':domains[:100],'endpointConstants':constants[:500],'snippets':snippets[:100]}
+          pathlib.Path('reports/france/yes55/loadstations-contract-extract.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/yes55/loadstations-contract-extract.json
+          git commit -m 'France YES55: publish tenant API contract extract' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
