@@ -1,0 +1,91 @@
+name: France e-Totem exact tariffs fast
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/etotem-france-exact-tariffs-fast.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fast exact mapping
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/etotem data/operator_direct
+          python - <<'PY'
+          import requests,csv,io,json,pathlib,datetime,re,html,concurrent.futures,threading
+          U='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          rows=list(csv.DictReader(io.StringIO(requests.get(U,timeout=60).text)))
+          et=[r for r in rows if 'totem' in str(r.get('nom_operateur','')).lower()]
+          def norm(x):return re.sub('[^A-Z0-9]','',str(x or '').upper())
+          sts={}
+          for r in et:
+            try:lat=float(r['consolidated_latitude']);lon=float(r['consolidated_longitude'])
+            except:continue
+            k=norm(r.get('id_station_itinerance'))
+            if k:sts.setdefault(k,{'sid':r.get('id_station_itinerance'),'lat':lat,'lon':lon,'rows':[]})['rows'].append(r)
+          b=requests.Session();a=b.post('https://www.e-totem.fr/api/ConnexionAnonyme',timeout=20).json()
+          def tok(x):
+            if isinstance(x,dict):
+              for k,v in x.items():
+                if isinstance(v,str) and ('token' in k.lower() or (v.count('.')==2 and len(v)>60)):return v
+              for v in x.values():
+                z=tok(v)
+                if z:return z
+            if isinstance(x,list):
+              for v in x:
+                z=tok(v)
+                if z:return z
+          T=tok(a);assert T
+          H={'Authorization':'Bearer '+T,'Accept':'application/json','User-Agent':'Mozilla/5.0'};local=threading.local()
+          def S():
+            if not hasattr(local,'s'):local.s=requests.Session();local.s.headers.update(H)
+            return local.s
+          def ask(pair,wide=False):
+            k,st=pair;dlat,dlon=((.012,.018) if wide else (.0045,.007))
+            p={'fLatSudOuest':st['lat']-dlat,'fLongSudOuest':st['lon']-dlon,'fLatNordEst':st['lat']+dlat,'fLongNordEst':st['lon']+dlon,'bUniquementBornesDisponibles':0,'bCompatibleAutocharge':0,'nZoom':18,'bNePasClusteriser':1,'nBornesPrivees':0,'bRecupererBorneLaPlusProche':0}
+            try:
+              r=S().get('https://www.e-totem.fr/api/Stations',params=p,timeout=6);els=r.json().get('aElements',[]) if r.status_code==200 else []
+              for e in els:
+                if not isinstance(e,dict):continue
+                ids=[norm(e.get('sIdPool'))]+[norm(x.get('sEmi3Pool')) for x in (e.get('aBornes') or []) if isinstance(x,dict)]
+                if k in ids:return k,e
+            except:pass
+            return k,None
+          found={}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=36) as ex:
+            for k,e in ex.map(ask,list(sts.items())):
+              if e:found[k]=e
+          miss=[(k,sts[k]) for k in sts if k not in found]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=24) as ex:
+            for k,e in ex.map(lambda x:ask(x,True),miss):
+              if e:found[k]=e
+          def clean(v):
+            x=html.unescape(str(v or ''));x=re.sub(r'<br\s*/?>','\n',x,flags=re.I);x=re.sub('<[^>]+>',' ',x);return re.sub(r'\s+',' ',x).strip()
+          overlay=[];stations=[]
+          for k,st in sts.items():
+            e=found.get(k)
+            if not e:continue
+            th=e.get('sWebTexte') or next((b.get('sWebTexte') for b in (e.get('aBornes') or []) if isinstance(b,dict) and b.get('sWebTexte')),'')
+            tt=clean(th)
+            stations.append({'panStationId':st['sid'],'apiPoolId':e.get('sIdPool'),'network':e.get('sNomReseau'),'name':e.get('sLibelle'),'tariffText':tt,'tariffHtml':th})
+            for r in st['rows']:overlay.append({'id_station_itinerance':r.get('id_station_itinerance'),'id_pdc_itinerance':r.get('id_pdc_itinerance'),'puissance_nominale':r.get('puissance_nominale'),'api_pool_id':e.get('sIdPool'),'network':e.get('sNomReseau'),'tariff_text':tt,'tariff_html':th,'source':'https://www.e-totem.fr/api/Stations','exactness':'official_station_rule_exact'})
+          cov={'panRows':len(et),'uniqueStations':len(sts),'matchedStations':len(found),'stationsWithTariff':sum(bool(x['tariffText']) for x in stations),'matchedPanRows':len(overlay),'matchedPanRowsWithTariff':sum(bool(x['tariff_text']) for x in overlay),'missingStationIds':[sts[k]['sid'] for k in sts if k not in found]}
+          out={'schemaVersion':'1.0.0','dataset':'etotem-official-france-fast','generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'operator':'E-Totem','country':'FR','coverage':cov,'stations':stations,'pdcTariffOverlay':overlay,'notes':['Exact normalized station-id match only; unmatched stations fail closed.','Official sWebTexte is preserved without tariff inference.']}
+          pathlib.Path('data/operator_direct/etotem_official_france_fast.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('reports/france/etotem/exact-national-tariffs-fast-summary.json').write_text(json.dumps({'generatedAt':out['generatedAt'],'coverage':cov,'sample':stations[:5]},ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'coverage':cov,'sample':stations[:3]},ensure_ascii=False)[:30000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/operator_direct/etotem_official_france_fast.json reports/france/etotem/exact-national-tariffs-fast-summary.json
+          git commit -m 'data(etotem): publish fast exact France tariff map' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
