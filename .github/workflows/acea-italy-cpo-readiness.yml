@@ -1,0 +1,132 @@
+name: Italy ACEA CPO readiness
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/italy-acea-cpo-readiness-20260902
+    paths:
+      - scripts/acea_italy_cpo_readiness.py
+      - data/reports/acea_italy_cpo_readiness_snapshot.json
+      - docs/acea-italy-cpo-readiness.md
+      - .github/workflows/acea-italy-cpo-readiness.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scripts/acea_italy_cpo_readiness.py
+      - data/reports/acea_italy_cpo_readiness_snapshot.json
+      - docs/acea-italy-cpo-readiness.md
+      - .github/workflows/acea-italy-cpo-readiness.yml
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: acea-italy-cpo-readiness-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download latest successful Italy V9 consolidation
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow italy-v9-consolidation.yml \
+            --branch research/italy-consolidation-v9-a2a \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/italy-consolidation
+          gh run download "$RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name italy-v9-consolidated-candidate \
+            --dir /tmp/italy-consolidation
+          INPUT="$(find /tmp/italy-consolidation -name 'italy_v9_candidate.json.gz' -print -quit)"
+          test -n "$INPUT" && test -s "$INPUT"
+          cp "$INPUT" /tmp/italy_v9_candidate.json.gz
+          echo "Using Italy V9 consolidation run $RUN_ID"
+
+      - name: Build current ACEA classification
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/acea_italy_cpo_readiness.py
+          python scripts/acea_italy_cpo_readiness.py \
+            --consolidated /tmp/italy_v9_candidate.json.gz \
+            --output /tmp/acea_italy_cpo_readiness_current.json
+
+      - name: Validate fail-closed decisions and committed snapshot
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          current=json.loads(Path('/tmp/acea_italy_cpo_readiness_current.json').read_text())
+          snapshot=json.loads(Path('data/reports/acea_italy_cpo_readiness_snapshot.json').read_text())
+
+          assert current['country']=='IT'
+          assert current['identity']['partyId']=='ACE'
+          assert current['identity']['physicalCpo']=='Acea Innovation'
+          assert current['identity']['classification']=='active_physical_cpo_retired_direct_emsp'
+          assert current['scope']['evse']>=1600
+          assert current['scope']['stations']>=640
+          assert current['identity']['operatorAliasesInPun']['ACEA ENERGIA']>0
+          assert current['commercialStatus']['chargingServiceEndedAt']=='2025-12-19'
+          assert current['commercialStatus']['rankableDirectEvse']==0
+          assert current['commercialStatus']['rankableSelectedSubscriptionEvse']==0
+          assert current['commercialStatus']['rankableEmspEvse']==0
+          assert current['legacyPunTariffs']['rankablePunDirectTariffEvse']==0
+          assert current['publicationScope']=='classification_and_queue_only'
+          assert current['stableTariffPublicationAllowed'] is False
+          assert current['queue']['paused']['operator']=='Atlante'
+          assert current['queue']['paused']['status']=='paused_by_user'
+          assert current['queue']['next']['partyId']=='HER'
+          assert current['queue']['next']['evse']>=1000
+          assert all(current['safetyGates'].values()),current['safetyGates']
+
+          assert snapshot['scope']['evse']==1649
+          assert snapshot['scope']['stations']==652
+          assert snapshot['identity']['operatorAliasesInPun']=={
+              'ACE':170,
+              'ACEA ENERGIA':1471,
+              'ACEA INNOVATION':8,
+          }
+          assert snapshot['legacyPunTariffs']['evseWithTariffBlock']==832
+          assert snapshot['legacyPunTariffs']['rankablePunDirectTariffEvse']==0
+          assert snapshot['queue']['next']['partyId']=='HER'
+          assert snapshot['queue']['next']['evse']==1137
+          assert all(snapshot['safetyGates'].values()),snapshot['safetyGates']
+          print(json.dumps({
+              'currentScope':current['scope'],
+              'snapshotScope':snapshot['scope'],
+              'decision':current['commercialStatus']['decision'],
+              'next':current['queue']['next'],
+          },ensure_ascii=False,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: acea-italy-cpo-readiness
+          path: |
+            /tmp/acea_italy_cpo_readiness_current.json
+            data/reports/acea_italy_cpo_readiness_snapshot.json
+          if-no-files-found: error
+          retention-days: 14
