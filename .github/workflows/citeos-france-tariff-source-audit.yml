@@ -1,0 +1,84 @@
+name: France CITEOS tariff source audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/citeos-france-tariff-source-audit.yml']
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit CITEOS PAN fields and direct-source candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/citeos /tmp/citeos
+          curl -fLsS --retry 3 'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz' -o /tmp/citeos/all.json.gz
+          python - <<'PY'
+          import gzip,json,collections,pathlib,re,os
+          rows=json.loads(gzip.open('/tmp/citeos/all.json.gz','rt',encoding='utf-8').read())
+          target=[]
+          for r in rows:
+            if isinstance(r,list) and len(r)>10 and ('citeos' in str(r[5] or '').lower() or 'cogelum' in str(r[5] or '').lower()):
+              target.append(r)
+          maxlen=max(map(len,target)) if target else 0
+          def typ(v):
+            if v is None:return 'null'
+            if isinstance(v,bool):return 'bool'
+            if isinstance(v,(int,float)):return 'number'
+            if isinstance(v,str):return 'string'
+            if isinstance(v,list):return 'list'
+            if isinstance(v,dict):return 'dict'
+            return type(v).__name__
+          profiles=[]
+          for i in range(maxlen):
+            vals=[r[i] for r in target if len(r)>i]
+            tc=collections.Counter(typ(v) for v in vals)
+            examples=[]
+            seen=set()
+            for v in vals:
+              s=json.dumps(v,ensure_ascii=False,sort_keys=True) if isinstance(v,(list,dict)) else str(v)
+              if s in seen: continue
+              seen.add(s); examples.append(s[:1200])
+              if len(examples)>=8:break
+            profiles.append({'index':i,'types':dict(tc),'examples':examples})
+          # Preserve only public/static tariff-looking fragments and IDs, no credentials.
+          tariff_hits=[]
+          for r in target:
+            raw=json.dumps(r,ensure_ascii=False)
+            if re.search(r'(?i)(eur|€|kwh|tarif|price|minute|session|idle|occup)',raw):
+              tariff_hits.append({'id':r[0] if r else None,'network':r[10] if len(r)>10 else None,'row':r})
+              if len(tariff_hits)>=80: break
+          # Network/department matrix; postal code from address.
+          matrix={}
+          for r in target:
+            net=str(r[10] or '')
+            addr=str(r[2] or '')
+            m=re.search(r'\b(\d{5})\b',addr); dep=m.group(1)[:2] if m else '??'
+            z=matrix.setdefault(net,{'rows':0,'departments':collections.Counter(),'sampleIds':[]})
+            z['rows']+=1; z['departments'][dep]+=1
+            if len(z['sampleIds'])<8:z['sampleIds'].append(r[0])
+          matrix={k:{'rows':v['rows'],'departments':v['departments'].most_common(),'sampleIds':v['sampleIds']} for k,v in matrix.items()}
+          # Find already-curated direct source files with geography/network terms relevant to CITEOS scope.
+          names=[]
+          d=pathlib.Path('data/operator_direct')
+          if d.exists():
+            for p in d.glob('*.json'):
+              n=p.name.lower()
+              if any(t in n for t in ['mobive','vaucluse','ulys','echarge54','sde54','sydeel66','perpignan','bourgogne','bfc','yonne','nievre','dijon','territoire_energie_90','territoire-energie-90','smoys','sigeif','sehv','te47','sde24','chargeurs64','sieil','sde36','cchpb','pange']): names.append(p.name)
+          out={'operatorRows':len(target),'maxRowLength':maxlen,'fieldProfiles':profiles,'tariffLikeStaticRows':tariff_hits,'networkDepartmentMatrix':matrix,'candidateExistingDirectSources':sorted(names)}
+          pathlib.Path('reports/france/citeos/tariff-source-audit.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'operatorRows':len(target),'fieldProfiles':profiles,'networkDepartmentMatrix':matrix,'candidateExistingDirectSources':sorted(names)},ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/citeos/tariff-source-audit.json
+          git commit -m 'France CITEOS: publish tariff source audit' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
