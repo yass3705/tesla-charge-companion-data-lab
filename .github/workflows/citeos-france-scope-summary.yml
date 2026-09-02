@@ -1,0 +1,50 @@
+name: France CITEOS scope summary
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/citeos-france-scope-summary.yml']
+permissions:
+  contents: write
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Summarize CITEOS PAN scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/citeos /tmp/citeos
+          curl -fLsS --retry 3 'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz' -o /tmp/citeos/all.json.gz
+          python - <<'PY'
+          import gzip,json,collections,pathlib
+          rows=json.loads(gzip.open('/tmp/citeos/all.json.gz','rt',encoding='utf-8').read())
+          target=[]; networks=collections.Counter(); samples={}; deps=collections.Counter()
+          for r in rows:
+            if not isinstance(r,list) or len(r)<11: continue
+            op=str(r[5] or '')
+            if 'citeos' not in op.lower() and 'cogelum' not in op.lower(): continue
+            target.append(r)
+            net=str(r[10] or '')
+            networks[net]+=1
+            samples.setdefault(net,[])
+            if len(samples[net])<4:samples[net].append(r)
+            # infer department from address/postal text for cross-check
+            txt=' '.join(str(x or '') for x in r[:3])
+            import re
+            m=re.search(r'\b(\d{5})\b',txt)
+            if m: deps[m.group(1)[:2]]+=1
+          out={'operatorRows':len(target),'networkCounts':networks.most_common(),'departmentCounts':deps.most_common(),'networkSamples':samples}
+          pathlib.Path('reports/france/citeos/pan-scope-summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'operatorRows':len(target),'networkCounts':networks.most_common(),'departmentCounts':deps.most_common(30),'sampleKeys':list(samples)[:50]},ensure_ascii=False,indent=2)[:30000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/citeos/pan-scope-summary.json
+          git commit -m 'France CITEOS: publish PAN scope summary' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
