@@ -1,0 +1,85 @@
+name: France E55C ev-qr backend discovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/e55c-evqr-backend-discovery.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect a small sample of live connector pages and assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/e55c
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse,html,datetime
+          S=requests.Session(); S.headers.update({'User-Agent':'Mozilla/5.0','Accept':'text/html,application/json,text/plain,*/*'})
+          dl=S.get('https://umap.openstreetmap.fr/fr/datalayer/1234362/45a8c330-b19e-4fb8-a437-ab6e1827b8df/',timeout=45).json()
+          links=[]
+          for f in dl.get('features') or []:
+            p=f.get('properties') or {}; desc=html.unescape(str(p.get('description') or ''))
+            for u in re.findall(r'href=["\'](https://ev-qr\.com/\?[^"\']+)',desc,re.I):
+              u=html.unescape(u)
+              if u not in [x['url'] for x in links]: links.append({'station':p.get('name'),'url':u})
+              if len(links)>=8: break
+            if len(links)>=8: break
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'samples':[],'assets':[]}
+          assets=[]
+          for x in links:
+            try:
+              r=S.get(x['url'],timeout=25,allow_redirects=True); body=r.text
+              clean=html.unescape(re.sub(r'\s+',' ',re.sub(r'<[^>]+>',' ',body)))
+              scripts=[]
+              for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',body,re.I):
+                su=urllib.parse.urljoin(r.url,html.unescape(src))
+                if su not in scripts:scripts.append(su)
+                if su not in assets:assets.append(su)
+              inline=[]
+              for term in ('tarif','price','kwh','api','fetch(','axios','graphql','connector','terminal','charge'):
+                low=body.lower();pos=0
+                while True:
+                  i=low.find(term,pos)
+                  if i<0:break
+                  inline.append(body[max(0,i-250):i+800]);pos=i+len(term)
+                  if len(inline)>=80:break
+              hits=[]
+              for pat in [r'.{0,120}\d+[\.,]\d+\s*(?:€|EUR).{0,180}',r'.{0,120}(?:tarif|prix|price|kwh).{0,260}']:
+                for m in re.finditer(pat,clean,re.I):
+                  s=m.group(0)
+                  if s not in hits:hits.append(s)
+                  if len(hits)>=30:break
+              out['samples'].append({'station':x['station'],'url':x['url'],'finalUrl':r.url,'status':r.status_code,'contentType':r.headers.get('content-type'),'bytes':len(r.content),'scripts':scripts,'tariffTextHits':hits[:30],'inlineSnippets':inline[:80]})
+            except Exception as e:out['samples'].append({'url':x['url'],'error':str(e)})
+          for su in assets[:30]:
+            try:
+              r=S.get(su,timeout=20); txt=r.text; cand=[]; snippets=[]
+              for m in re.finditer(r'["\']([^"\']{2,260})["\']',txt):
+                z=m.group(1)
+                if any(t in z.lower() for t in ('api','tarif','price','kwh','charge','connector','station','terminal','graphql')) and (z.startswith('/') or z.startswith('http')): cand.append(z)
+              low=txt.lower()
+              for term in ('baseurl','api','tarif','price','kwh','connector','station','terminal','fetch(','axios','graphql'):
+                pos=0
+                while True:
+                  i=low.find(term,pos)
+                  if i<0:break
+                  snippets.append(txt[max(0,i-250):i+850]);pos=i+len(term)
+                  if len(snippets)>=120:break
+              out['assets'].append({'url':su,'status':r.status_code,'contentType':r.headers.get('content-type'),'bytes':len(r.content),'candidatePaths':sorted(set(cand))[:240],'snippets':snippets[:120]})
+            except Exception as e:out['assets'].append({'url':su,'error':str(e)})
+          pathlib.Path('reports/france/e55c/evqr-backend-discovery.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'samples':[{k:v for k,v in x.items() if k not in ('inlineSnippets',)} for x in out['samples']],'assets':[{k:v for k,v in a.items() if k!='snippets'} for a in out['assets']]},ensure_ascii=False)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/e55c/evqr-backend-discovery.json
+          git commit -m 'France E55C: publish ev-qr tariff backend discovery' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
