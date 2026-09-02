@@ -1,0 +1,67 @@
+name: France Vianeo Uberall deep probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/vianeo-uberall-deep-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deep probe public locator
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/vianeo /tmp/vianeo
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          page=requests.get('https://www.engie-vianeo.com/carte-borne-recharge-voiture-electrique/',timeout=30).text
+          key=re.search(r'data-key=["\']([^"\']+)',page).group(1)
+          js=requests.get('https://locator.uberall.com/locator-assets/storeFinderWidget-v2.js',timeout=30).text
+          out={'key':key,'widgetJs':js}
+          # Public Uberall locator bootstrap: try known hosts/settings forms without credentials.
+          hosts=['https://locator.uberall.com','https://uberall.com','https://api.uberall.com']
+          paths=[]
+          for h in hosts:
+            for p in [f'/api/storefinders/{key}/settings/fr',f'/api/storefinders/{key}/settings/fr?widgetOriginUrl=https%3A%2F%2Fwww.engie-vianeo.com%2Fcarte-borne-recharge-voiture-electrique',f'/api/storefinders/{key}/settings/fr?language=fr']:
+              paths.append(h+p)
+          attempts=[]
+          sess=requests.Session(); sess.headers['User-Agent']='Mozilla/5.0'
+          for u in paths:
+            try:
+              r=sess.get(u,timeout=20)
+              attempts.append({'url':u,'status':r.status_code,'contentType':r.headers.get('content-type'),'body':r.text[:200000]})
+            except Exception as e: attempts.append({'url':u,'error':str(e)})
+          out['settingsAttempts']=attempts
+          # Harvest URLs, API paths, location endpoints and any tariff-ish fields from successful settings payloads.
+          harvested=[]
+          for a in attempts:
+            body=a.get('body','')
+            if a.get('status')==200:
+              urls=sorted(set(re.findall(r'https?://[^"\'\\\s]+',body)))
+              terms=[]
+              low=body.lower()
+              for term in ['location','locations','price','tarif','charge','station','api/']:
+                pos=0
+                while True:
+                  i=low.find(term,pos)
+                  if i<0: break
+                  terms.append(body[max(0,i-250):i+700]); pos=i+len(term)
+                  if len(terms)>100: break
+              harvested.append({'source':a['url'],'urls':urls[:300],'snippets':terms[:100]})
+          out['harvested']=harvested
+          pathlib.Path('reports/france/vianeo/uberall-deep-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'key':key,'attempts':[{k:v for k,v in a.items() if k!='body'} for a in attempts],'harvested':harvested},ensure_ascii=False)[:40000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/vianeo/uberall-deep-probe.json
+          git commit -m 'France Vianeo: publish Uberall deep probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
