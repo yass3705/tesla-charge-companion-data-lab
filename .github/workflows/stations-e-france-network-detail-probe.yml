@@ -1,0 +1,69 @@
+name: France Stations-e network detail probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/stations-e-france-network-detail-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve station payload and detail routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/stations-e /tmp/se
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          base='https://m.stations-e.io/m'
+          r=s.get(base+'/map/network/',timeout=30)
+          try:data=r.json()
+          except:data={'raw':r.text[:500000]}
+          out={'networkStatus':r.status_code,'network':data}
+          stations=data.get('stations',[]) if isinstance(data,dict) else []
+          # inspect payload keys and sample all 25-ish power references if present
+          def walk(x,path=''):
+            vals=[]
+            if isinstance(x,dict):
+              for k,v in x.items(): vals+=walk(v,path+'/'+str(k))
+            elif isinstance(x,list):
+              for i,v in enumerate(x[:10000]): vals+=walk(v,path+'/'+str(i))
+            elif isinstance(x,(str,int,float,bool)) or x is None:
+              vals.append((path,x))
+            return vals
+          flat=walk(stations[:30])
+          out['sampleFlat']=flat[:20000]
+          # derive identifiers from first stations and probe conservative likely public detail routes
+          ids=[]
+          for st in stations[:100]:
+            if isinstance(st,dict):
+              for k in ['id','station_id','stationId','slug','uuid','code','name']:
+                v=st.get(k)
+                if v is not None and str(v) not in ids: ids.append(str(v))
+          attempts=[]
+          patterns=['/map/network/{id}','/map/station/{id}','/station/{id}','/stations/{id}','/chargepoint/{id}','/map/network/station/{id}']
+          for ident in ids[:10]:
+            for p in patterns:
+              u=base+p.format(id=urllib.parse.quote(ident,safe=''))
+              try:
+                rr=s.get(u,timeout=15)
+                if rr.status_code!=404:
+                  attempts.append({'url':u,'status':rr.status_code,'type':rr.headers.get('content-type'),'body':rr.text[:100000]})
+              except Exception as e: attempts.append({'url':u,'error':str(e)})
+          out['detailAttempts']=attempts
+          pathlib.Path('reports/france/stations-e/network-detail-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'networkStatus':r.status_code,'stationCount':len(stations),'sample':stations[:5],'ids':ids[:20],'detailAttempts':[{k:v for k,v in a.items() if k!='body'} for a in attempts]},ensure_ascii=False)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/stations-e/network-detail-probe.json
+          git commit -m 'France Stations-e: publish network detail probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
