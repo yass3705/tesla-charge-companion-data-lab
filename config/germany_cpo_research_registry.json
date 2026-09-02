@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "scope": {
+    "keyType": "canonical_evse_party_prefix",
+    "prefixFormat": "DE + 3-character party id, separators removed",
+    "purpose": "Track researched CPO prefixes that are not yet fully represented by exact tariff evidence in the staging catalog."
+  },
+  "entries": {
+    "DECNT": {
+      "status": "partial",
+      "operator": "GP Joule Connect GmbH",
+      "reason": "Official AFIR/Mobilithek publication discovery is implemented, but exact tariff-to-station/EVSE mapping is not yet exhaustive.",
+      "evidencePaths": [
+        "scripts/germany_mobilithek_search_contract_probe.py",
+        ".github/workflows/germany-mobilithek-search-contract-probe.yml"
+      ],
+      "neededToComplete": "Resolve the official publication payload and attach each exact ad-hoc tariff to the corresponding station/EVSE without extrapolation."
+    },
+    "DEQRM": {
+      "status": "partial",
+      "operator": "Qwello Deutschland GmbH",
+      "reason": "Public web/API discovery is implemented, but tariff-to-EVSE mapping is not yet exhaustive and station prices can vary.",
+      "evidencePaths": [
+        "scripts/germany_qwello_api_discovery.py",
+        "scripts/germany_qwello_chunk_discovery.py",
+        ".github/workflows/germany-qwello-api-discovery.yml",
+        ".github/workflows/germany-qwello-chunk-discovery.yml"
+      ],
+      "neededToComplete": "Resolve an exact public tariff endpoint or equivalent verifiable mapping for every DEQRM EVSE."
+    },
+    "DEQWC": {
+      "status": "partial",
+      "operator": "Qwello Deutschland GmbH",
+      "reason": "Public web/API discovery is implemented, but tariff-to-EVSE mapping is not yet exhaustive and station prices can vary.",
+      "evidencePaths": [
+        "scripts/germany_qwello_api_discovery.py",
+        "scripts/germany_qwello_chunk_discovery.py",
+        ".github/workflows/germany-qwello-api-discovery.yml",
+        ".github/workflows/germany-qwello-chunk-discovery.yml"
+      ],
+      "neededToComplete": "Resolve an exact public tariff endpoint or equivalent verifiable mapping for every DEQWC EVSE."
+    },
+    "DEI2G": {
+      "status": "blocked",
+      "operator": "inno2grid GmbH",
+      "reason": "No verifiable public station-level CPO ad-hoc tariff has been found after source review. Public station directories expose ad-hoc availability but still report the direct price as unknown; eMSP roaming prices are not substituted for the CPO ad-hoc price.",
+      "evidencePaths": [],
+      "neededToComplete": "An official/public ad-hoc checkout or QR tariff endpoint, station-level CPO price export, or another verifiable source that maps exact direct prices to DEI2G EVSEs."
+    }
+  }
+}
