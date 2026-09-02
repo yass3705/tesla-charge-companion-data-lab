@@ -1,0 +1,116 @@
+name: France e-Totem exact API inventory
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/etotem-france-exact-api-inventory.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch public stations with ephemeral anonymous token
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/etotem data/operator_direct
+          python - <<'PY'
+          import requests,json,pathlib,datetime,re,collections
+          s=requests.Session();s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json'})
+          base='https://www.e-totem.fr/api'
+          ar=s.post(base+'/ConnexionAnonyme',timeout=30)
+          try: ad=ar.json()
+          except Exception: ad={}
+          def find_token(x):
+            if isinstance(x,dict):
+              for k,v in x.items():
+                if isinstance(v,str) and ('token' in k.lower() or (v.count('.')==2 and len(v)>60)): return v
+              for v in x.values():
+                z=find_token(v)
+                if z:return z
+            elif isinstance(x,list):
+              for v in x:
+                z=find_token(v)
+                if z:return z
+          token=find_token(ad)
+          if not token: raise SystemExit('anonymous token not found')
+          h={'Authorization':'Bearer '+token,'Accept':'application/json'}
+          params={
+            'fLatSudOuest':'41.0','fLongSudOuest':'-5.8','fLatNordEst':'51.6','fLongNordEst':'10.0',
+            'bUniquementBornesDisponibles':'0','bCompatibleAutocharge':'0','nZoom':'6','bNePasClusteriser':'1',
+            'nBornesPrivees':'0','bRecupererBorneLaPlusProche':'0'
+          }
+          r=s.get(base+'/Stations',params=params,headers=h,timeout=90)
+          try:d=r.json()
+          except Exception:d={'raw':r.text[:20000]}
+          elems=d.get('aElements',[]) if isinstance(d,dict) else []
+          if not elems and isinstance(d,list): elems=d
+          def scrub(x):
+            if isinstance(x,dict):
+              o={}
+              for k,v in x.items():
+                if 'token' in k.lower() or 'authorization' in k.lower(): o[k]='<REDACTED>'
+                else:o[k]=scrub(v)
+              return o
+            if isinstance(x,list):return [scrub(v) for v in x]
+            if isinstance(x,str) and x.count('.')==2 and len(x)>80:return '<JWT_REDACTED>'
+            return x
+          clean=scrub(d)
+          # Discover key shapes and tariff/connector/EVSE signals.
+          keys=collections.Counter(); signals=collections.Counter(); examples={}
+          def walk(x,path=''):
+            if isinstance(x,dict):
+              for k,v in x.items():
+                keys[k]+=1; kl=k.lower(); p=(path+'.'+k).strip('.')
+                for sig in ['tarif','price','prix','cout','cost','evse','connector','connecteur','puissance','power','emi3','ocpi','idborne','id_borne','station']:
+                  if sig in kl:
+                    signals[p]+=1
+                    if p not in examples:examples[p]=scrub(v)
+                walk(v,p)
+            elif isinstance(x,list):
+              for v in x[:2000]:walk(v,path+'[]')
+          walk(d)
+          # Try likely detail identifiers from first stations, following exact client route Stations/{c}/{b}.
+          detail_attempts=[]
+          def scalar_ids(obj):
+            if not isinstance(obj,dict):return []
+            arr=[]
+            for k,v in obj.items():
+              if isinstance(v,(str,int)) and any(t in k.lower() for t in ['id','code','borne','station','reseau']):arr.append((k,str(v)))
+            return arr
+          for st in elems[:8]:
+            ids=scalar_ids(st)
+            # conservative combinations, log only successful non-404; anonymous token remains ephemeral
+            vals=[]
+            for k,v in ids:
+              if v and v not in [z[1] for z in vals]:vals.append((k,v))
+            for kc,c in vals[:8]:
+              for kb,b in vals[:8]:
+                if c==b:continue
+                try:
+                  q=s.get(base+'/Stations/'+requests.utils.quote(c,safe='')+'/'+requests.utils.quote(b,safe=''),headers=h,timeout=12)
+                  if q.status_code not in (404,400):
+                    body=q.json() if 'json' in q.headers.get('content-type','') else q.text[:8000]
+                    detail_attempts.append({'stationSeed':scrub(st),'cField':kc,'bField':kb,'status':q.status_code,'urlPath':'Stations/{'+kc+'}/'+'{'+kb+'}','body':scrub(body)})
+                except Exception as e:pass
+                if len(detail_attempts)>=20:break
+              if len(detail_attempts)>=20:break
+            if len(detail_attempts)>=20:break
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'anonymousAuthStatus':ar.status_code,'stationsStatus':r.status_code,'stationsUrl':r.url,'stationCount':len(elems),'topLevelKeys':list(d.keys()) if isinstance(d,dict) else None,'keyCounts':keys.most_common(300),'signalPaths':signals.most_common(300),'signalExamples':examples,'stations':clean,'detailAttempts':detail_attempts}
+          pathlib.Path('reports/france/etotem/exact-api-inventory.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          summary={k:out[k] for k in ['generatedAt','anonymousAuthStatus','stationsStatus','stationsUrl','stationCount','topLevelKeys','keyCounts','signalPaths','signalExamples','detailAttempts']}
+          pathlib.Path('reports/france/etotem/exact-api-inventory-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False)[:180000])
+          PY
+      - name: Publish sanitized evidence
+        run: |
+          if grep -R -E 'eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}' reports/france/etotem/exact-api-inventory*.json; then echo 'JWT leak guard'; exit 1; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/etotem/exact-api-inventory*.json
+          git commit -m 'France e-Totem: publish exact anonymous station API inventory' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
