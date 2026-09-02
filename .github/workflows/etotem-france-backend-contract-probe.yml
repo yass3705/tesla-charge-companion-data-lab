@@ -1,0 +1,74 @@
+name: France e-Totem backend contract probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/etotem-france-backend-contract-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract concise backend contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/etotem
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse,collections
+          s=requests.Session(); s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'*/*'})
+          u='https://www.e-totem.fr/main.dart.js'
+          r=s.get(u,timeout=45); txt=r.text
+          keys=['firebase','firestore','cloudfunctions','functions','projectId','apiKey','authDomain','storageBucket','baseUrl','baseURL','graphql','ocpi','tariff','tarif','pricing','price','station','chargepoint','connector','evse','token','oauth']
+          urls=sorted(set(re.findall(r'https?://[^"\'`\\\s)<>]+',txt)))
+          domains=collections.Counter()
+          for x in urls:
+            try: domains[urllib.parse.urlparse(x).netloc]+=1
+            except: pass
+          # Keep concise contexts around high-value terms.
+          contexts={}
+          low=txt.lower()
+          for k in keys:
+            arr=[]; pos=0
+            kl=k.lower()
+            while True:
+              i=low.find(kl,pos)
+              if i<0: break
+              sn=txt[max(0,i-350):i+900]
+              if sn not in arr: arr.append(sn)
+              pos=i+len(kl)
+              if len(arr)>=35: break
+            if arr: contexts[k]=arr
+          # Extract string literals that look like routes or backend identifiers.
+          strings=[]
+          for m in re.finditer(r'(["\'])(.{1,300}?)\1',txt):
+            v=m.group(2)
+            vl=v.lower()
+            if any(k.lower() in vl for k in keys) or (v.startswith('/') and any(k in vl for k in ['station','charge','tarif','price','evse','connector','api','map'])):
+              if v not in strings: strings.append(v)
+              if len(strings)>=1200: break
+          # Probe only explicit HTTP URLs from bundle that look application-related, GET/OPTIONS, no credentials.
+          appurls=[x.rstrip('.,;') for x in urls if any(t in x.lower() for t in ['e-totem','etotem','firebase','googleapis.com','cloudfunctions','api'])]
+          probes=[]
+          for x in appurls[:120]:
+            try:
+              q=s.get(x,timeout=10,allow_redirects=True)
+              probes.append({'url':x,'status':q.status_code,'final':q.url,'type':q.headers.get('content-type'),'body':q.text[:4000] if len(q.text)<200000 else q.text[:4000]})
+            except Exception as e: probes.append({'url':x,'error':str(e)})
+          out={'bundleStatus':r.status_code,'bundleBytes':len(r.content),'domains':domains.most_common(100),'applicationUrls':appurls[:500],'candidateStrings':strings,'contexts':contexts,'probes':probes}
+          pathlib.Path('reports/france/etotem/backend-contract-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          summary={'bundleStatus':r.status_code,'bundleBytes':len(r.content),'domains':domains.most_common(40),'applicationUrls':appurls[:100],'candidateStrings':strings[:250],'contextKeys':{k:len(v) for k,v in contexts.items()},'probes':probes[:120]}
+          pathlib.Path('reports/france/etotem/backend-contract-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False)[:80000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/etotem/backend-contract-*.json
+          git commit -m 'France e-Totem: publish backend contract probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
