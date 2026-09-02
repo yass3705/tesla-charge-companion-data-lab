@@ -9,7 +9,7 @@ permissions:
 jobs:
   sample:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
       - name: Match PAN sample to e-Totem API
@@ -18,30 +18,21 @@ jobs:
           set -euo pipefail
           mkdir -p reports/france/etotem
           python - <<'PY'
-          import requests,csv,io,json,pathlib,datetime,math,collections
+          import requests,csv,io,json,pathlib,datetime,math
           s=requests.Session();s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json'})
           pan_url='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
-          txt=s.get(pan_url,timeout=60).text
-          rows=list(csv.DictReader(io.StringIO(txt)))
-          # find operator and coordinate columns dynamically
-          cols=rows[0].keys()
-          opcol=next((c for c in cols if c.lower() in ['nom_operateur','nom opérateur','operateur','operator']),None)
-          latcol=next((c for c in cols if c.lower() in ['consolidated_latitude','latitude','ylatitude']),None)
-          loncol=next((c for c in cols if c.lower() in ['consolidated_longitude','longitude','xlongitude']),None)
-          sidcol=next((c for c in cols if c.lower()=='id_station_itinerance'),None)
-          pdcid=next((c for c in cols if c.lower()=='id_pdc_itinerance'),None)
-          namecol=next((c for c in cols if c.lower() in ['nom_station','nom_enseigne']),None)
-          et=[r for r in rows if 'totem' in str(r.get(opcol,'')).lower()]
-          # unique stations with valid coords
-          seen=set(); stations=[]
+          rows=list(csv.DictReader(io.StringIO(s.get(pan_url,timeout=50).text)));cols=rows[0].keys()
+          opcol=next(c for c in cols if c.lower() in ['nom_operateur','nom opérateur','operateur','operator'])
+          latcol=next(c for c in cols if c.lower() in ['consolidated_latitude','latitude','ylatitude']);loncol=next(c for c in cols if c.lower() in ['consolidated_longitude','longitude','xlongitude'])
+          sidcol=next((c for c in cols if c.lower()=='id_station_itinerance'),None);pdcid=next((c for c in cols if c.lower()=='id_pdc_itinerance'),None);namecol=next((c for c in cols if c.lower() in ['nom_station','nom_enseigne']),None)
+          et=[r for r in rows if 'totem' in str(r.get(opcol,'')).lower()];seen=set();stations=[]
           for r in et:
             k=r.get(sidcol) or (r.get(latcol),r.get(loncol),r.get(namecol))
-            if k in seen: continue
+            if k in seen:continue
             try:lat=float(r[latcol]);lon=float(r[loncol])
             except:continue
             seen.add(k);stations.append({'panStationId':r.get(sidcol),'panPdcId':r.get(pdcid),'name':r.get(namecol),'lat':lat,'lon':lon,'operator':r.get(opcol)})
-          base='https://www.e-totem.fr/api'
-          ad=s.post(base+'/ConnexionAnonyme',timeout=30).json()
+          base='https://www.e-totem.fr/api';ad=s.post(base+'/ConnexionAnonyme',timeout=20).json()
           def tok(x):
             if isinstance(x,dict):
               for k,v in x.items():
@@ -53,29 +44,24 @@ jobs:
               for v in x:
                 z=tok(v)
                 if z:return z
-          t=tok(ad);assert t
-          h={'Authorization':'Bearer '+t,'Accept':'application/json'}
-          probes=[]
-          for st in stations[:12]:
-            dlat=0.008;dlon=0.012
-            p={'fLatSudOuest':str(st['lat']-dlat),'fLongSudOuest':str(st['lon']-dlon),'fLatNordEst':str(st['lat']+dlat),'fLongNordEst':str(st['lon']+dlon),'bUniquementBornesDisponibles':'0','bCompatibleAutocharge':'0','nZoom':'18','bNePasClusteriser':'1','nBornesPrivees':'0','bRecupererBorneLaPlusProche':'0'}
+          h={'Authorization':'Bearer '+tok(ad),'Accept':'application/json'};probes=[]
+          for st in stations[:3]:
+            p={'fLatSudOuest':str(st['lat']-0.005),'fLongSudOuest':str(st['lon']-0.008),'fLatNordEst':str(st['lat']+0.005),'fLongNordEst':str(st['lon']+0.008),'bUniquementBornesDisponibles':'0','bCompatibleAutocharge':'0','nZoom':'19','bNePasClusteriser':'1','nBornesPrivees':'0','bRecupererBorneLaPlusProche':'0'}
             try:
-              r=s.get(base+'/Stations',params=p,headers=h,timeout=25);d=r.json();els=d.get('aElements',[]) if isinstance(d,dict) else []
+              r=s.get(base+'/Stations',params=p,headers=h,timeout=12);d=r.json();els=d.get('aElements',[]) if isinstance(d,dict) else []
               def dist(x):
                 try:return math.hypot((float(x.get('fLatitude'))-st['lat'])*111,(float(x.get('fLongitude'))-st['lon'])*75)
                 except:return 999
-              els_sorted=sorted([x for x in els if isinstance(x,dict)],key=dist)
-              probes.append({'pan':st,'status':r.status_code,'count':len(els),'nearest':[dict(x,distanceKm=dist(x)) for x in els_sorted[:8]]})
+              els=sorted([x for x in els if isinstance(x,dict)],key=dist);probes.append({'pan':st,'status':r.status_code,'count':len(els),'nearest':[dict(x,distanceKm=dist(x)) for x in els[:10]]})
             except Exception as e:probes.append({'pan':st,'error':type(e).__name__+': '+str(e)})
-          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'panColumns':list(cols),'operatorColumn':opcol,'latitudeColumn':latcol,'longitudeColumn':loncol,'eTotemPanRows':len(et),'uniqueStations':len(stations),'sampleStations':stations[:12],'probes':probes}
-          pathlib.Path('reports/france/etotem/pan-nearby-sample.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps(out,ensure_ascii=False)[:160000])
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'panColumns':list(cols),'operatorColumn':opcol,'latitudeColumn':latcol,'longitudeColumn':loncol,'eTotemPanRows':len(et),'uniqueStations':len(stations),'sampleStations':stations[:3],'probes':probes}
+          pathlib.Path('reports/france/etotem/pan-nearby-sample.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n');print(json.dumps(out,ensure_ascii=False)[:120000])
           PY
       - name: Publish
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/france/etotem/pan-nearby-sample.json
-          git commit -m 'France e-Totem: publish PAN nearby API sample' || exit 0
+          git commit -m 'France e-Totem: publish fast PAN nearby API sample' || exit 0
           for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
           exit 1
