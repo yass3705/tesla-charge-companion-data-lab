@@ -45,7 +45,6 @@ jobs:
               if rx.search(b): hits.append({'path':str(p),'label':label})
             for rx,label in VALUE_PATTERNS:
               if any(not ph(m.group('value')) for m in rx.finditer(b)): hits.append({'path':str(p),'label':label})
-          # de-duplicate; no credential values are emitted.
           uniq=[]; seen=set()
           for h in hits:
             k=(h['path'],h['label'])
