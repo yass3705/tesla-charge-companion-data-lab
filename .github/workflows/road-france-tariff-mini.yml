@@ -1,0 +1,51 @@
+name: France Road E-Flux tariff mini extract
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/road-france-tariff-mini.yml']
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Isolate tariff payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import requests,re,json,html,pathlib
+          ids=['0001063','0012801','6567796']
+          out=[]
+          for x in ids:
+            t=requests.get(f'https://chargestation.road.io/evse/{x}',headers={'User-Agent':'Mozilla/5.0'},timeout=30).text
+            decoded=html.unescape(t).replace('\\"','"').replace('\\u0026','&')
+            matches=[]
+            for pat in [r'.{0,500}tariff.{0,1400}',r'.{0,500}currency.{0,1400}',r'.{0,500}(?:EUR|€).{0,1400}',r'.{0,500}(?:kWh|KWH).{0,1400}',r'.{0,500}paymentOptions.{0,1400}']:
+              for m in re.finditer(pat,decoded,re.I|re.S):
+                s=re.sub(r'\s+',' ',m.group(0))
+                if s not in matches:matches.append(s[:2200])
+                if len(matches)>=40:break
+              if len(matches)>=40:break
+            # Extract compact JSON-ish fragments for tariff fields.
+            fields=[]
+            for key in ['tariff','tariffs','currency','elements','priceComponents','price','stepSize','vat','paymentOptions','customerGroupIds']:
+              for m in re.finditer(r'["\']?'+re.escape(key)+r'["\']?\s*[:=]',decoded,re.I):
+                fields.append({'key':key,'snippet':re.sub(r'\s+',' ',decoded[max(0,m.start()-180):m.start()+1000])[:1200]})
+                if len(fields)>=80:break
+              if len(fields)>=80:break
+            out.append({'id':x,'bytes':len(t),'matches':matches[:40],'fields':fields[:80]})
+          p=pathlib.Path('reports/france/road/tariff-mini.json');p.write_text(json.dumps({'samples':out},ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'samples':out},ensure_ascii=False)[:40000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/road/tariff-mini.json
+          git commit -m 'France Road E-Flux: publish isolated tariff payload' || exit 0
+          git pull --rebase origin main
+          git push
