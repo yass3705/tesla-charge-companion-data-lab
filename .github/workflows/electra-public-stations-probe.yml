@@ -16,12 +16,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p reports/france/electra /tmp/electra
+          mkdir -p reports/france/electra
           python - <<'PY'
           import requests,re,json,pathlib,urllib.parse
           root='https://stations.go-electra.com/fr'
           s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
           r=s.get(root,timeout=30); html=r.text
+          def redact(x):
+            if not isinstance(x,str): return x
+            x=re.sub(r'(?i)(pk|sk)\.[A-Za-z0-9._-]{20,}','[MAP_TOKEN_REDACTED]',x)
+            x=re.sub(r'(?i)(access[_-]?token|token|secret|api[_-]?key)\s*[:=]\s*["\']?[A-Za-z0-9._~-]{12,}',r'\1=[REDACTED]',x)
+            x=re.sub(r'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}','[JWT_REDACTED]',x)
+            return x
           scripts=[]
           for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',html,re.I):
             u=urllib.parse.urljoin(root,src)
@@ -33,36 +39,50 @@ jobs:
           findings=[]
           toks=('api','graphql','station','price','pricing','tarif','kwh','connector','charge','availability')
           for u in scripts[:100]:
-            try:
-              rr=s.get(u,timeout=20); txt=rr.text
+            try: rr=s.get(u,timeout=20); txt=rr.text
             except Exception: continue
-            urls=sorted(set(re.findall(r'https?://[^"\'\\\s)]+',txt)))
-            rel=sorted(set(re.findall(r'["\'](/[^"\']*(?:api|station|price|tarif|charge)[^"\']*)["\']',txt,re.I)))
+            urls=[]
+            for x in sorted(set(re.findall(r'https?://[^"\'\\\s)]+',txt))):
+              if any(t in x.lower() for t in toks):
+                try:
+                  p=urllib.parse.urlsplit(x); x=urllib.parse.urlunsplit((p.scheme,p.netloc,p.path,'',''))
+                except Exception: x=x.split('?')[0].split('#')[0]
+                x=redact(x)
+                if x not in urls: urls.append(x)
+            rel=[]
+            for x in sorted(set(re.findall(r'["\'](/[^"\']*(?:api|station|price|tarif|charge)[^"\']*)["\']',txt,re.I))):
+              x=redact(x.split('?')[0])
+              if x not in rel: rel.append(x)
             snippets=[]; low=txt.lower()
-            for tok in toks:
+            for tok in ('graphql','price','pricing','tarif','kwh','station'):
               pos=0
               while True:
                 i=low.find(tok,pos)
                 if i<0: break
-                snippets.append(txt[max(0,i-220):i+650]); pos=i+len(tok)
-                if len(snippets)>=150: break
-              if len(snippets)>=150: break
-            if urls or rel or snippets:
-              findings.append({'url':u,'status':rr.status_code,'bytes':len(txt),'candidateUrls':[x for x in urls if any(t in x.lower() for t in toks)][:200],'relativeCandidates':rel[:200],'snippets':snippets[:150]})
-          # Look for embedded JSON / Next/Nuxt state and price strings in HTML.
-          embeds=[]
+                sn=redact(txt[max(0,i-180):i+500])
+                if sn not in snippets: snippets.append(sn)
+                pos=i+len(tok)
+                if len(snippets)>=100: break
+              if len(snippets)>=100: break
+            if urls or rel or snippets: findings.append({'url':u,'status':rr.status_code,'bytes':len(txt),'candidateUrls':urls[:200],'relativeCandidates':rel[:200],'snippets':snippets[:100]})
+          # Keep only safe structural hints from inline scripts, not raw blobs.
+          embeddedHints=[]
           for m in re.finditer(r'<script[^>]*>(.*?)</script>',html,re.I|re.S):
             body=m.group(1).strip()
-            if body and any(t in body.lower() for t in toks): embeds.append(body[:200000])
-          out={'rootStatus':r.status_code,'pageBytes':len(html),'scripts':scripts,'links':links[:1000],'embeddedCandidates':embeds[:20],'findings':findings}
+            if not body: continue
+            for tok in ('api','graphql','price','tarif','kwh','station'):
+              i=body.lower().find(tok)
+              if i>=0:
+                embeddedHints.append(redact(body[max(0,i-200):i+600])); break
+          out={'rootStatus':r.status_code,'pageBytes':len(html),'scripts':scripts,'links':links[:1000],'embeddedHints':embeddedHints[:30],'findings':findings}
           pathlib.Path('reports/france/electra/public-stations-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({'rootStatus':r.status_code,'scripts':scripts,'links':links[:100],'findings':[{'url':x['url'],'candidateUrls':x['candidateUrls'][:30],'relativeCandidates':x['relativeCandidates'][:30]} for x in findings]},ensure_ascii=False,indent=2)[:40000])
+          print(json.dumps({'rootStatus':r.status_code,'scripts':scripts,'links':links[:100],'findings':[{'url':x['url'],'candidateUrls':x['candidateUrls'][:30],'relativeCandidates':x['relativeCandidates'][:30],'snippets':x['snippets'][:8]} for x in findings]},ensure_ascii=False,indent=2)[:40000])
           PY
       - name: Publish
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/france/electra/public-stations-probe.json
-          git commit -m 'France Electra: publish public stations probe' || exit 0
+          git commit -m 'France Electra: publish sanitized public stations probe' || exit 0
           for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
           exit 1
