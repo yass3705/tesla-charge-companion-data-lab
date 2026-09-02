@@ -1,0 +1,60 @@
+name: France EVzen exact station tariff probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/evzen-exact-station-tariff-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public web client and tariff APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/evzen
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          S=requests.Session(); S.headers['User-Agent']='Mozilla/5.0'
+          bases=['https://charge.evzen.com/','https://www.evzen.com/fr/rechercher-une-borne']
+          pages=[]; scripts=[]
+          for u in bases:
+            try:
+              r=S.get(u,timeout=30,allow_redirects=True)
+              pages.append({'url':u,'finalUrl':r.url,'status':r.status_code,'bytes':len(r.content),'contentType':r.headers.get('content-type')})
+              if r.ok:
+                for s in re.findall(r'<script[^>]+src=["\']([^"\']+)',r.text,re.I): scripts.append(urllib.parse.urljoin(r.url,s))
+            except Exception as e: pages.append({'url':u,'error':type(e).__name__+': '+str(e)[:200]})
+          findings=[]
+          for u in list(dict.fromkeys(scripts))[:100]:
+            try:
+              r=S.get(u,timeout=30); txt=r.text; low=txt.lower()
+              urls=sorted(set(re.findall(r'https?://[^"\'\\\s<>)]+',txt)))
+              paths=sorted(set(re.findall(r'["\'](/[^"\']{2,180})["\']',txt)))
+              relpaths=[p for p in paths if any(t in p.lower() for t in ['api','location','station','tarif','price','connector','evse','charge','graphql'])]
+              sn=[]
+              for term in ['tariff','tarif','price','pricing','evse','connector','station','graphql','api/','greenflux','lastmilesolutions']:
+                pos=0
+                while True:
+                  i=low.find(term,pos)
+                  if i<0:break
+                  sn.append(txt[max(0,i-220):i+800]);pos=i+len(term)
+                  if len(sn)>=120:break
+              findings.append({'url':u,'status':r.status_code,'bytes':len(r.content),'candidateUrls':[x for x in urls if any(t in x.lower() for t in ['api','charge','evzen','greenflux','lastmile','station','location'])][:300],'candidatePaths':relpaths[:500],'snippets':sn[:120]})
+            except Exception as e: findings.append({'url':u,'error':type(e).__name__})
+          out={'operator':'EVzen','country':'FR','pages':pages,'scripts':scripts,'findings':findings}
+          pathlib.Path('reports/france/evzen/exact-station-tariff-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'pages':pages,'scripts':scripts,'findings':[{k:v for k,v in x.items() if k!='snippets'} for x in findings]},ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/evzen/exact-station-tariff-probe.json
+          git commit -m 'France EVzen: publish exact station tariff probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
