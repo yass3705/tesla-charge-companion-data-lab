@@ -1,0 +1,74 @@
+name: France V9 Electra schema diag
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/france-v9-electra-schema-diag.yml']
+permissions:
+  contents: write
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Diagnose schemas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/electra /tmp/diag
+          curl -fLsS --retry 3 'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz' -o /tmp/diag/all.json.gz
+          python - <<'PY'
+          import gzip,json,requests,re,html as htmllib,pathlib
+          raw=json.loads(gzip.open('/tmp/diag/all.json.gz','rt',encoding='utf-8').read())
+          def shape(x,depth=0):
+            if depth>3:return type(x).__name__
+            if isinstance(x,dict):return {k:shape(v,depth+1) for k,v in list(x.items())[:30]}
+            if isinstance(x,list):return {'type':'list','len':len(x),'sample':shape(x[0],depth+1) if x else None}
+            return type(x).__name__
+          out={'v9RootType':type(raw).__name__,'v9Shape':shape(raw)}
+          # Locate lists with Electra strings recursively; report paths + safe sample structural keys/coords/name fields.
+          found=[]
+          def scan(x,path='root',depth=0):
+            if depth>6:return
+            if isinstance(x,list):
+              electra=[]
+              for i,v in enumerate(x[:200000]):
+                try:s=json.dumps(v,ensure_ascii=False).lower()
+                except:s=''
+                if 'electra' in s: electra.append((i,v))
+                if len(electra)>=3: break
+              if electra:
+                found.append({'path':path,'listLen':len(x),'sampleIndexes':[i for i,_ in electra],'samples':[shape(v) for _,v in electra]})
+              for i,v in enumerate(x[:5]):scan(v,path+'[]',depth+1)
+            elif isinstance(x,dict):
+              for k,v in list(x.items())[:80]:scan(v,path+'/'+str(k),depth+1)
+          scan(raw)
+          out['electraListCandidates']=found[:30]
+          # Public Electra station-data schema.
+          page=requests.get('https://stations.go-electra.com/fr',headers={'User-Agent':'Mozilla/5.0'},timeout=30).text
+          m=re.search(r'<script[^>]+id=["\']stations-data["\'][^>]*>(.*?)</script>',page,re.I|re.S)
+          web=json.loads(htmllib.unescape(m.group(1))) if m else []
+          if isinstance(web,dict): web=web.get('features',[]) or web.get('stations',[]) or []
+          out['publicCount']=len(web)
+          out['publicSamples']=[]
+          for x in web[:25]:
+            if not isinstance(x,dict):continue
+            p=x.get('properties',x)
+            safe={k:v for k,v in p.items() if isinstance(v,(str,int,float,bool,type(None),list)) and k.lower() not in ('token','access_token','apikey','api_key')}
+            # truncate long values/lists
+            for k,v in list(safe.items()):
+              if isinstance(v,str) and len(v)>500:safe[k]=v[:500]
+              if isinstance(v,list) and len(v)>20:safe[k]=v[:20]
+            out['publicSamples'].append({'topKeys':list(x.keys()),'properties':safe,'geometry':x.get('geometry')})
+          pathlib.Path('reports/france/electra/schema-diag.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/electra/schema-diag.json
+          git commit -m 'France: publish V9 Electra schema diagnostics' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
