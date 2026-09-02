@@ -1,0 +1,74 @@
+name: France E55C UMap datalayers
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/e55c-umap-datalayers.yml']
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve public UMap datalayers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/e55c
+          python - <<'PY'
+          import requests,json,pathlib,re,urllib.parse
+          S=requests.Session(); S.headers['User-Agent']='Mozilla/5.0'
+          base='https://umap.openstreetmap.fr'
+          u=base+'/fr/map/1234362/geojson/'
+          r=S.get(u,timeout=30); r.raise_for_status(); j=r.json()
+          out={'mapUrl':u,'rootType':type(j).__name__,'rootKeys':list(j.keys()) if isinstance(j,dict) else [],'root':j}
+          # Recursively collect URLs and IDs that look like datalayer resources.
+          cand=[]
+          def walk(x,path=''):
+            if isinstance(x,dict):
+              for k,v in x.items():
+                p=path+'/'+str(k)
+                if isinstance(v,(str,int,float)) and any(t in str(k).lower() for t in ['datalayer','layer','id','url']): cand.append({'path':p,'value':str(v)[:1000]})
+                walk(v,p)
+            elif isinstance(x,list):
+              for i,v in enumerate(x):walk(v,path+'[]')
+          walk(j)
+          out['candidates']=cand[:2000]
+          urls=[]
+          raw=json.dumps(j,ensure_ascii=False)
+          for uu in re.findall(r'https?://[^"\'\\\s<>)]+',raw): urls.append(uu)
+          # Known UMap datalayer endpoints from any numeric layer IDs found in root.
+          ids=[]
+          for c in cand:
+            val=c['value']
+            if re.fullmatch(r'\d{1,12}',val) and ('layer' in c['path'].lower()): ids.append(val)
+          ids=list(dict.fromkeys(ids))
+          layer_results=[]
+          for lid in ids[:100]:
+            for p in [f'/fr/datalayer/{lid}/',f'/fr/datalayer/{lid}/geojson/',f'/fr/datalayer/{lid}/download/']:
+              try:
+                rr=S.get(base+p,timeout=20)
+                item={'id':lid,'path':p,'status':rr.status_code,'contentType':rr.headers.get('content-type'),'bytes':len(rr.content)}
+                if rr.ok and rr.text.lstrip().startswith(('{','[')):
+                  try:
+                    x=rr.json(); fs=x.get('features') if isinstance(x,dict) else None
+                    if isinstance(fs,list):
+                      item['features']=len(fs); item['samples']=[f.get('properties') for f in fs[:20] if isinstance(f,dict)]
+                  except:pass
+                layer_results.append(item)
+              except Exception as e:layer_results.append({'id':lid,'path':p,'error':type(e).__name__})
+          out['urls']=list(dict.fromkeys(urls))[:1000]
+          out['layerResults']=layer_results
+          pathlib.Path('reports/france/e55c/umap-datalayers.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'rootKeys':out['rootKeys'],'candidates':cand[:100],'urls':out['urls'][:100],'layerResults':layer_results},ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/e55c/umap-datalayers.json
+          git commit -m 'France E55C: publish UMap datalayer inspection' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
