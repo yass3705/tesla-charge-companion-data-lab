@@ -1,4 +1,4 @@
-name: Spain REVE V9 one-shot bootstrap
+name: Spain REVE V9 auth diagnostic
 
 on:
   push:
@@ -10,65 +10,56 @@ permissions:
   contents: read
 
 jobs:
-  bootstrap:
+  auth-diagnostic:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     env:
       REVE_API_KEY: ${{ secrets.MAPA_REVE_API_KEY }}
       BASE_URL: https://www.mapareve.es/api/external/v1
     steps:
-      - name: Validate secret
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${REVE_API_KEY:-}" || { echo "MAPA_REVE_API_KEY is missing" >&2; exit 2; }
-
-      - name: Fetch five documented REVE resources
+      - name: Test sanitized API key without exposing it
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts/spain/reve
           python - <<'PY'
-          import json, os, pathlib, urllib.request, urllib.error, datetime
-          base=os.environ['BASE_URL'].rstrip('/')
-          key=os.environ['REVE_API_KEY']
-          out=pathlib.Path('artifacts/spain/reve')
-          endpoints=[
-            ('api_docs','/docs/api-docs.json'),
-            ('cpos','/cpos'),
-            ('locations','/locations'),
-            ('operational_status','/evses/operational_status'),
-            ('connector_tariffs','/connectors/tariffs'),
-          ]
-          report={'source':'Mapa REVE / Red Electrica de Espana','retrieved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'endpoints':{}}
-          for name,path in endpoints:
-            req=urllib.request.Request(base+path,headers={'x-api-key':key,'Accept':'application/json','User-Agent':'tesla-charge-companion-data-lab/1.0'})
+          import json, os, pathlib, urllib.request, urllib.error, hashlib, datetime
+          raw=os.environ.get('REVE_API_KEY','')
+          key=raw.strip()
+          report={
+            'retrieved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'secret_present':bool(raw),
+            'raw_length':len(raw),
+            'trimmed_length':len(key),
+            'had_outer_whitespace': raw != key,
+          }
+          if not key:
+            report['result']='missing_secret'
+          else:
+            url=os.environ['BASE_URL'].rstrip('/') + '/cpos?page=1&limit=1'
+            req=urllib.request.Request(url,headers={'x-api-key':key,'Accept':'application/json','User-Agent':'tesla-charge-companion-data-lab/1.0'})
             try:
-              with urllib.request.urlopen(req,timeout=120) as r:
-                body=r.read(); status=r.status
+              with urllib.request.urlopen(req,timeout=90) as r:
+                body=r.read()
+                report.update({'http_status':r.status,'result':'authenticated','response_bytes':len(body)})
+                try:
+                  data=json.loads(body)
+                  report['response_type']=type(data).__name__
+                  if isinstance(data,list): report['count']=len(data)
+                except Exception:
+                  report['response_type']='non-json'
             except urllib.error.HTTPError as e:
-              body=e.read(); (out/f'{name}.error.txt').write_bytes(body)
-              report['endpoints'][name]={'path':path,'http_status':e.code,'error_preview':body[:500].decode('utf-8','replace')}
-              (out/'bootstrap_report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
-              raise
-            data=json.loads(body)
-            (out/f'{name}.json').write_text(json.dumps(data,ensure_ascii=False),encoding='utf-8')
-            meta={'path':path,'http_status':status,'bytes':len(body),'json_type':type(data).__name__}
-            if isinstance(data,list):
-              meta['count']=len(data)
-              if data and isinstance(data[0],dict): meta['sample_keys']=sorted(data[0].keys())
-            elif isinstance(data,dict):
-              meta['top_level_keys']=sorted(data.keys())
-              meta['list_fields']={k:len(v) for k,v in data.items() if isinstance(v,list)}
-            report['endpoints'][name]=meta
-          (out/'bootstrap_report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+              body=e.read()
+              report.update({'http_status':e.code,'result':'unauthorized_or_http_error','error_preview':body[:300].decode('utf-8','replace')})
+          pathlib.Path('artifacts/spain/reve/auth_diagnostic.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
           print(json.dumps(report,ensure_ascii=False,indent=2))
+          if report.get('result')!='authenticated': raise SystemExit(1)
           PY
 
-      - name: Upload REVE bootstrap artifact
+      - name: Upload diagnostic
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: spain-reve-v9-bootstrap-main
+          name: spain-reve-v9-auth-diagnostic
           path: artifacts/spain/reve/
           retention-days: 7
