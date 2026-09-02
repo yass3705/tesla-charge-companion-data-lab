@@ -9,7 +9,7 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - name: Probe direct network filters
@@ -21,7 +21,7 @@ jobs:
           import requests,json,pathlib,datetime,collections
           s=requests.Session();s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json'})
           base='https://www.e-totem.fr/api'
-          ar=s.post(base+'/ConnexionAnonyme',timeout=30);ad=ar.json()
+          ad=s.post(base+'/ConnexionAnonyme',timeout=20).json()
           def tok(x):
             if isinstance(x,dict):
               for k,v in x.items():
@@ -29,33 +29,32 @@ jobs:
               for v in x.values():
                 z=tok(v)
                 if z:return z
-            if isinstance(x,list):
+            elif isinstance(x,list):
               for v in x:
                 z=tok(v)
                 if z:return z
           t=tok(ad);assert t
           h={'Authorization':'Bearer '+t,'Accept':'application/json'}
           vals=['E-TOTEM TI','ETOTEM TI','E-Totem TI','TI','SEMOB','3M','G1O','SUPER U','CARREFOUR','E-TOTEM']
+          common={'fLatSudOuest':'41','fLongSudOuest':'-5.8','fLatNordEst':'51.6','fLongNordEst':'10','bUniquementBornesDisponibles':'0','bCompatibleAutocharge':'0','nZoom':'6','bNePasClusteriser':'0','nBornesPrivees':'0','bRecupererBorneLaPlusProche':'0'}
           out=[]
-          common={'fLatSudOuest':'41','fLongSudOuest':'-5.8','fLatNordEst':'51.6','fLongNordEst':'10','bUniquementBornesDisponibles':'0','bCompatibleAutocharge':'0','nZoom':'16','bNePasClusteriser':'1','nBornesPrivees':'0','bRecupererBorneLaPlusProche':'0'}
           for v in vals:
-            p=dict(common);p['sReseauBorne']=v
-            r=s.get(base+'/Stations',params=p,headers=h,timeout=50)
-            try:d=r.json()
-            except:d={}
-            elems=d.get('aElements',[]) if isinstance(d,dict) else []
-            types=collections.Counter(str(x.get('szTypeMarqueur')) for x in elems if isinstance(x,dict))
-            keys=collections.Counter(k for x in elems[:100] if isinstance(x,dict) for k in x)
-            out.append({'filter':v,'status':r.status_code,'count':len(elems),'markerTypes':types,'keys':keys.most_common(),'samples':elems[:5]})
+            try:
+              p=dict(common);p['sReseauBorne']=v
+              r=s.get(base+'/Stations',params=p,headers=h,timeout=20);d=r.json()
+              elems=d.get('aElements',[]) if isinstance(d,dict) else []
+              total=sum(int(x.get('nNbMarkers') or 1) for x in elems if isinstance(x,dict))
+              out.append({'filter':v,'status':r.status_code,'elements':len(elems),'representedMarkers':total,'markerTypes':dict(collections.Counter(str(x.get('szTypeMarqueur')) for x in elems if isinstance(x,dict))),'samples':elems[:3]})
+            except Exception as e: out.append({'filter':v,'error':type(e).__name__+': '+str(e)})
           clean={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'probes':out}
-          pathlib.Path('reports/france/etotem/direct-network-probe.json').write_text(json.dumps(clean,ensure_ascii=False,indent=2,default=lambda x:dict(x))+'\n')
-          print(json.dumps(clean,ensure_ascii=False,default=lambda x:dict(x))[:120000])
+          pathlib.Path('reports/france/etotem/direct-network-probe.json').write_text(json.dumps(clean,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(clean,ensure_ascii=False)[:100000])
           PY
       - name: Publish
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/france/etotem/direct-network-probe.json
-          git commit -m 'France e-Totem: publish direct network filter probe' || exit 0
+          git commit -m 'France e-Totem: publish lightweight direct network filter probe' || exit 0
           for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
           exit 1
