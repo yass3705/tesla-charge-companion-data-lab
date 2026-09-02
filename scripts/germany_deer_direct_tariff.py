@@ -76,7 +76,7 @@ def main():
         re.I,
     )
     block_match = re.search(
-        r"Blockiergebühr.*?([0-9]+[,.][0-9]{2})\s*€\s*/\s*Min\..*?ab\s*Min\.\s*(\d+).*?max\.\s*([0-9]+[,.][0-9]{2})\s*€",
+        r"Blockiergebühr.*?([0-9]+[,.][0-9]{2})\s*€\s*/\s*Min\..*?ab\s*Min\.\s*(\d+).*?max\.\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*€",
         section,
         re.I,
     )
