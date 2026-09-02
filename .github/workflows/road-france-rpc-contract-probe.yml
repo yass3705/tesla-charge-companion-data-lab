@@ -1,0 +1,71 @@
+name: France Road E-Flux RPC contract probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/road-france-rpc-contract-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve RPC service and transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/road /tmp/road
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          s=requests.Session();s.headers['User-Agent']='Mozilla/5.0'
+          page=s.get('https://chargestation.road.io/evse',timeout=30).text
+          assets=[]
+          for u in re.findall(r'(?:src|href)=["\']([^"\']+\.js[^"\']*)',page):
+            u=urllib.parse.urljoin('https://chargestation.road.io/evse',u)
+            if u not in assets:assets.append(u)
+          # include known route chunk from previous successful probe
+          known='https://chargestation.road.io/_next/static/chunks/app/%5Blocale%5D/evse/page-071724e5defd4ba3.js'
+          if known not in assets:assets.append(known)
+          needles=['connectrpc','grpc','serviceName','typeName','methodName','localName','GetEvse','GetEVSE','evseId','chargingStationEvseId','ScanToPay','scan-to-pay','scan_to_pay','tariff','chargingStation','createPromiseClient','createClient','createConnectTransport','baseUrl','baseURL','fetch(']
+          recs=[]
+          all_hosts=set(); all_paths=set()
+          for u in assets:
+            try:r=s.get(u,timeout=25)
+            except Exception as e:continue
+            if r.status_code!=200:continue
+            t=r.text
+            hosts=set(re.findall(r'https?://[A-Za-z0-9._:-]+',t))
+            all_hosts|=hosts
+            # string literals and local contexts around meaningful symbols
+            hits=[]
+            low=t.lower()
+            for nd in needles:
+              start=0
+              while True:
+                i=low.find(nd.lower(),start)
+                if i<0:break
+                c=t[max(0,i-1600):i+3200]
+                lits=re.findall(r'["\'`]([^"\'`]{1,300})["\'`]',c)
+                paths=[x for x in lits if ('/' in x or '.' in x) and any(q in x.lower() for q in ['evse','charge','tariff','api','rpc','grpc','scan','station'])]
+                for p in paths:all_paths.add(p)
+                hits.append({'needle':nd,'offset':i,'literals':paths[:80],'context':c})
+                start=i+len(nd)
+                if len(hits)>500:break
+              if len(hits)>500:break
+            recs.append({'url':u,'bytes':len(t),'hosts':sorted(hosts),'hits':hits})
+          out={'assets':assets,'hosts':sorted(all_hosts),'candidatePaths':sorted(all_paths),'records':recs}
+          pathlib.Path('reports/france/road/rpc-contract-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          summary={'assets':assets,'hosts':sorted(all_hosts),'candidatePaths':sorted(all_paths),'records':[{'url':x['url'],'bytes':x['bytes'],'hosts':x['hosts'],'hits':x['hits'][:120]} for x in recs]}
+          pathlib.Path('reports/france/road/rpc-contract-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False)[:120000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/road/rpc-contract-*.json
+          git commit -m 'France Road E-Flux: publish scan-pay RPC contract probe' || exit 0
+          git pull --rebase origin main
+          git push
