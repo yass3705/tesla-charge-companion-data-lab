@@ -1,0 +1,51 @@
+name: France E55C connector payment URL extract
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/e55c-url-fields-extract.yml']
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract URLs from UMap station fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/e55c
+          python - <<'PY'
+          import requests,json,pathlib,html,urllib.parse,collections,datetime,re
+          u='https://umap.openstreetmap.fr/fr/datalayer/1234362/45a8c330-b19e-4fb8-a437-ab6e1827b8df/'
+          r=requests.get(u,timeout=45,headers={'User-Agent':'Mozilla/5.0'}); r.raise_for_status(); j=r.json()
+          rows=[]
+          for f in j.get('features') or []:
+            p=f.get('properties') or {}; name=p.get('name'); coords=(f.get('geometry') or {}).get('coordinates')
+            for k,v in p.items():
+              if re.fullmatch(r'URL\s*\d+',str(k),re.I) and v:
+                raw=html.unescape(str(v)).strip()
+                # unwrap UMap markdown [[url|label]] / [label](url) when present
+                m=re.search(r'https?://[^\s\]|)<>]+',raw)
+                url=m.group(0) if m else raw
+                url=url.rstrip('.,;)\]')
+                sp=urllib.parse.urlsplit(url)
+                q=urllib.parse.parse_qs(sp.query)
+                rows.append({'station':name,'coordinates':coords,'field':k,'raw':raw,'url':url,'host':sp.netloc,'path':sp.path,'queryKeys':sorted(q.keys()),'query':{a:b[:3] for a,b in q.items()}})
+          uniq=[];seen=set()
+          for x in rows:
+            if x['url'] not in seen: seen.add(x['url']);uniq.append(x)
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'featureCount':len(j.get('features') or []),'urlRows':len(rows),'uniqueUrls':len(uniq),'hosts':collections.Counter(x['host'] for x in uniq).most_common(),'queryKeySets':collections.Counter(tuple(x['queryKeys']) for x in uniq).most_common(),'samples':uniq[:80]}
+          pathlib.Path('reports/france/e55c/url-fields-summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/e55c/url-fields-summary.json
+          git commit -m 'France E55C: publish connector payment URL summary' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
