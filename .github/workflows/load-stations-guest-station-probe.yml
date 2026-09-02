@@ -1,0 +1,73 @@
+name: France Load Stations guest station probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/load-stations-guest-station-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe documented guest route without bypassing captcha
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/load-stations
+          python - <<'PY'
+          import requests,csv,io,json,pathlib,re,datetime
+          PAN='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          rows=list(csv.DictReader(io.StringIO(requests.get(PAN,timeout=60).text)))
+          cand=[]
+          for r in rows:
+            blob=' '.join(str(r.get(k,'') or '') for k in ['nom_operateur','nom_enseigne','nom_station','contact_amenageur','id_station_itinerance','id_pdc_itinerance']).lower()
+            if 'load stations' in blob or 'load motion' in blob or 'load-motion' in blob:
+              cand.append(r)
+          samples=[];seen=set()
+          for r in cand:
+            sid=str(r.get('id_station_itinerance') or '')
+            pid=str(r.get('id_pdc_itinerance') or '')
+            if (sid,pid) not in seen:
+              seen.add((sid,pid));samples.append({'stationId':sid,'pdcId':pid,'name':r.get('nom_station'),'operator':r.get('nom_operateur'),'network':r.get('nom_enseigne')})
+            if len(samples)>=20:break
+          s=requests.Session();s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json','Content-Type':'application/json'})
+          base='https://loadstations.load-motion.com'
+          endpoints=[base+'/v1/auth/guests/charging-station/check',base+'/v1/api/pricing-definitions',base+'/v1/api/charging-stations']
+          attempts=[]
+          # Safe discovery: ordinary GET/OPTIONS plus the actual guest POST with an empty captcha; no captcha bypass is attempted.
+          for u in endpoints:
+            for meth in ['GET','OPTIONS']:
+              try:
+                r=s.request(meth,u,timeout=15,allow_redirects=False)
+                attempts.append({'kind':'surface','method':meth,'url':u,'status':r.status_code,'allow':r.headers.get('allow'),'contentType':r.headers.get('content-type'),'wwwAuthenticate':r.headers.get('www-authenticate'),'body':r.text[:5000]})
+              except Exception as e:attempts.append({'kind':'surface','method':meth,'url':u,'error':str(e)})
+          for sm in samples[:8]:
+            sid=sm['stationId']; pid=sm['pdcId']
+            # Connector candidates use only identifiers already publicly present in PAN; do not guess secrets.
+            connector_candidates=[]
+            for x in [pid, re.split(r'[*-]',pid)[-1] if pid else '', '1']:
+              if x and x not in connector_candidates:connector_candidates.append(x)
+            for tenant in ['loadstations','']:
+              for connector in connector_candidates[:3]:
+                payload={'tenant':tenant,'captcha':'','chargingStationID':sid,'connectorID':connector}
+                try:
+                  r=s.post(base+'/v1/auth/guests/charging-station/check',json=payload,timeout=20,allow_redirects=False)
+                  attempts.append({'kind':'guestCheck','pan':sm,'tenant':tenant,'connectorCandidate':connector,'status':r.status_code,'contentType':r.headers.get('content-type'),'body':r.text[:12000]})
+                except Exception as e:attempts.append({'kind':'guestCheck','pan':sm,'tenant':tenant,'connectorCandidate':connector,'error':str(e)})
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'panMatchedRows':len(cand),'samplePan':samples,'attempts':attempts,'policyNote':'Only the documented guest API and an empty captcha were tested. No CAPTCHA bypass or authenticated endpoint access was attempted.'}
+          pathlib.Path('reports/france/load-stations/guest-station-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          compact={'panMatchedRows':len(cand),'samplePan':samples,'results':[{k:a.get(k) for k in ['kind','method','url','pan','tenant','connectorCandidate','status','allow','contentType','wwwAuthenticate','body','error'] if a.get(k) is not None} for a in attempts]}
+          pathlib.Path('reports/france/load-stations/guest-station-probe-summary.json').write_text(json.dumps(compact,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(compact,ensure_ascii=False)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/load-stations/guest-station-probe*.json
+          git commit -m 'France Load Stations: publish official guest station probe' || exit 0
+          git pull --rebase origin main
+          git push
