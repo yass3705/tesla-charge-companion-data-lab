@@ -16,42 +16,49 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p reports/france/spie-citynetworks /tmp/spie
-          curl -fLsS --retry 3 https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz -o /tmp/spie/france.json.gz
+          mkdir -p reports/france/spie-citynetworks
           python - <<'PY'
-          import gzip,json,collections,pathlib,datetime,re
-          data=json.load(gzip.open('/tmp/spie/france.json.gz','rt',encoding='utf-8'))
-          rows=data if isinstance(data,list) else data.get('stations') or data.get('data') or []
-          out=[]
-          def txt(x): return '' if x is None else str(x)
-          for s in rows:
-            op=txt(s.get('operator') or s.get('nom_operateur') or s.get('operatorName'))
-            net=txt(s.get('network') or s.get('nom_enseigne') or s.get('networkName'))
-            if 'spie citynetworks' not in op.lower(): continue
-            # support station with evses list and flat station rows
-            evses=s.get('evses') or s.get('points') or s.get('chargePoints') or []
-            if not evses: evses=[s]
-            for e in evses:
-              tariff=txt(e.get('tarification') or e.get('tariff') or s.get('tarification') or s.get('tariff')).strip()
-              pdc=txt(e.get('id_pdc_itinerance') or e.get('evseId') or e.get('id') or '')
-              power=e.get('powerKw') or e.get('puissance_nominale') or e.get('maxPowerKw') or s.get('powerKw') or s.get('puissance_nominale')
-              out.append({'stationId':s.get('id_station_itinerance') or s.get('stationId') or s.get('id'),'pdcId':pdc,'station':s.get('name') or s.get('nom_station'),'operator':op,'network':net,'powerKw':power,'tarification':tariff})
+          import requests,json,collections,pathlib,datetime,csv,io
+          S=requests.Session(); S.headers['User-Agent']='TeslaChargeCompanion-data-audit/1.0'
+          meta=S.get('https://www.data.gouv.fr/api/1/datasets/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques/',timeout=30).json()
+          cand=[]
+          for x in meta.get('resources') or []:
+            if str(x.get('format') or '').lower()!='csv': continue
+            title=str(x.get('title') or '').lower(); schema=((x.get('schema') or {}).get('name') if isinstance(x.get('schema'),dict) else '') or ''
+            if 'consolid' in title or 'schema-irve-statique' in schema: cand.append(x)
+          cand.sort(key=lambda x:str(x.get('last_modified') or x.get('modified') or ''),reverse=True)
+          if not cand: raise SystemExit('no consolidated CSV')
+          chosen=cand[0]; r=S.get(chosen['url'],timeout=120); r.raise_for_status(); text=r.content.decode('utf-8-sig','replace')
+          try:d=csv.Sniffer().sniff(text[:100000],delimiters=',;\t')
+          except:d=csv.excel
+          rd=csv.DictReader(io.StringIO(text),dialect=d); fields=rd.fieldnames or []
+          low={str(f).lower():f for f in fields}
+          def pick(*xs):
+            for x in xs:
+              if x.lower() in low:return low[x.lower()]
+            for f in fields:
+              if any(x.lower() in str(f).lower() for x in xs):return f
+          fop=pick('nom_operateur','operator'); fnet=pick('nom_enseigne','nom_reseau','network'); ft=pick('tarification','tarif'); fp=pick('puissance_nominale','power'); fid=pick('id_pdc_itinerance'); fsid=pick('id_station_itinerance'); fname=pick('nom_station'); faddr=pick('adresse_station')
           nets=collections.defaultdict(lambda:{'rows':0,'withTariff':0,'tariffs':collections.Counter(),'powers':collections.Counter(),'missingSamples':[],'pricedSamples':[]})
-          for r in out:
-            n=r['network'] or '(blank)'; x=nets[n]; x['rows']+=1
-            p=str(r.get('powerKw') or '')
-            if p: x['powers'][p]+=1
-            t=r['tarification']
-            if t and t.lower() not in ('nan','none','null','non renseigné','non renseigne'):
-              x['withTariff']+=1; x['tariffs'][t]+=1
-              if len(x['pricedSamples'])<8:x['pricedSamples'].append(r)
-            elif len(x['missingSamples'])<12:x['missingSamples'].append(r)
+          total=priced=0
+          for row in rd:
+            op=str(row.get(fop,'') if fop else '')
+            if 'spie citynetworks' not in op.lower(): continue
+            total+=1; net=str(row.get(fnet,'') if fnet else '') or '(blank)'; x=nets[net]; x['rows']+=1
+            p=str(row.get(fp,'') if fp else '').strip();
+            if p:x['powers'][p]+=1
+            t=str(row.get(ft,'') if ft else '').strip(); valid=t and t.lower() not in ('nan','none','null','non renseigné','non renseigne')
+            rec={'stationId':row.get(fsid) if fsid else None,'pdcId':row.get(fid) if fid else None,'station':row.get(fname) if fname else None,'address':row.get(faddr) if faddr else None,'power':p,'tarification':t}
+            if valid:
+              priced+=1; x['withTariff']+=1; x['tariffs'][t]+=1
+              if len(x['pricedSamples'])<8:x['pricedSamples'].append(rec)
+            elif len(x['missingSamples'])<15:x['missingSamples'].append(rec)
           summary=[]
           for n,x in sorted(nets.items(),key=lambda kv:kv[1]['rows'],reverse=True):
-            summary.append({'network':n,'rows':x['rows'],'withTariff':x['withTariff'],'coverage':x['withTariff']/x['rows'] if x['rows'] else 0,'topTariffs':x['tariffs'].most_common(20),'powers':x['powers'].most_common(20),'missingSamples':x['missingSamples'],'pricedSamples':x['pricedSamples']})
-          result={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'operator':'SPIE CityNetworks','rows':len(out),'withTariff':sum(1 for r in out if r['tarification']),'coverage':sum(1 for r in out if r['tarification'])/len(out) if out else 0,'networks':summary}
-          pathlib.Path('reports/france/spie-citynetworks/pan-tariff-audit.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({'rows':result['rows'],'coverage':result['coverage'],'networks':[{k:v for k,v in x.items() if k not in ('missingSamples','pricedSamples')} for x in summary]},ensure_ascii=False,indent=2)[:50000])
+            summary.append({'network':n,'rows':x['rows'],'withTariff':x['withTariff'],'coverage':x['withTariff']/x['rows'] if x['rows'] else 0,'topTariffs':x['tariffs'].most_common(30),'powers':x['powers'].most_common(20),'missingSamples':x['missingSamples'],'pricedSamples':x['pricedSamples']})
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'operator':'SPIE CityNetworks','resource':{'title':chosen.get('title'),'url':chosen.get('url'),'lastModified':chosen.get('last_modified')},'rows':total,'withTariff':priced,'coverage':priced/total if total else 0,'networks':summary}
+          pathlib.Path('reports/france/spie-citynetworks/pan-tariff-audit.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'rows':total,'withTariff':priced,'coverage':out['coverage'],'networks':[{k:v for k,v in x.items() if k not in ('missingSamples','pricedSamples','topTariffs')} | {'topTariffs':x['topTariffs'][:5]} for x in summary]},ensure_ascii=False,indent=2)[:50000])
           PY
       - name: Publish
         run: |
