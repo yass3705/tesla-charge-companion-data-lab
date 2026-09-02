@@ -1,0 +1,45 @@
+name: France Load Stations distill API
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/load-stations-distill-api.yml']
+permissions:
+  contents: write
+jobs:
+  distill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Distill existing deep API report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,pathlib,re
+          d=json.loads(pathlib.Path('reports/france/load-stations/deep-api-contract.json').read_text())
+          paths=[x for x in d.get('candidatePaths',[]) if any(k in x.lower() for k in ['api','tariff','price','station','charge','connector','site','map','public','guest','anonymous'])]
+          probes=[]
+          for p in d.get('probes',[]):
+            if p.get('status') not in [404] or p.get('allow') or 'json' in str(p.get('contentType','')).lower():
+              probes.append({k:p.get(k) for k in ['method','url','status','contentType','allow','body','error'] if p.get(k) is not None})
+          hosts=d.get('hosts',[])
+          lits=[]
+          for a in d.get('assets',[]):
+            for x in a.get('literals',[]):
+              v=x.get('value','')
+              if any(k in v.lower() for k in ['api','tariff','pricing','chargepoint','chargingstation','connector','anonymous','guest','ocpi']):
+                lits.append({'asset':a.get('url'),'value':v,'context':x.get('context','')[:5000]})
+          out={'hosts':hosts,'candidatePaths':paths[:1000],'interestingProbes':probes[:1000],'interestingLiterals':lits[:500]}
+          pathlib.Path('reports/france/load-stations/deep-api-distilled.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False)[:120000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/load-stations/deep-api-distilled.json
+          git commit -m 'France Load Stations: publish distilled API contract' || exit 0
+          git pull --rebase origin main
+          git push
