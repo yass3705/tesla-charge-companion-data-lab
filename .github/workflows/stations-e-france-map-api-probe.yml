@@ -1,0 +1,62 @@
+name: France Stations-e map API probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/stations-e-france-map-api-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public website bundles and endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/stations-e /tmp/se
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          roots=['https://stations-e.com/fr','https://pre.stations-e.com/fr']
+          out={'roots':[],'assets':[]}
+          seen=set()
+          for root in roots:
+              try:r=s.get(root,timeout=30)
+              except Exception as e: out['roots'].append({'url':root,'error':str(e)});continue
+              html=r.text; scripts=[]
+              for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',html,re.I):
+                  u=urllib.parse.urljoin(r.url,src)
+                  if u not in scripts:scripts.append(u)
+              out['roots'].append({'url':root,'status':r.status_code,'finalUrl':r.url,'bytes':len(html),'scripts':scripts,'htmlSnippets':[html[max(0,m.start()-250):m.start()+1000] for m in re.finditer(r'(?:api|station|borne|tarif|price)',html,re.I)][:60]})
+              for u in scripts:
+                  if u in seen: continue
+                  seen.add(u)
+                  try:rr=s.get(u,timeout=25);txt=rr.text
+                  except Exception:continue
+                  urls=sorted(set(re.findall(r'https?://[^"\'\\\s)]+',txt)))
+                  rels=sorted(set(re.findall(r'["\'](/[^"\']*(?:api|station|charge|tarif|price)[^"\']*)["\']',txt,re.I)))
+                  snippets=[];low=txt.lower()
+                  for term in ['api','station','connector','tarif','price','chargepoint','ocpi','graphql']:
+                      pos=0
+                      while True:
+                          i=low.find(term,pos)
+                          if i<0:break
+                          snippets.append(txt[max(0,i-350):i+1100]);pos=i+len(term)
+                          if len(snippets)>=100:break
+                      if len(snippets)>=100:break
+                  if urls or rels or snippets:
+                      out['assets'].append({'url':u,'status':rr.status_code,'bytes':len(txt),'candidateUrls':[x for x in urls if any(k in x.lower() for k in ['api','station','charge','tarif','price'])][:150],'relativeCandidates':rels[:150],'snippets':snippets[:100]})
+          pathlib.Path('reports/france/stations-e/map-api-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'roots':out['roots'],'assets':[{'url':a['url'],'candidateUrls':a['candidateUrls'],'relativeCandidates':a['relativeCandidates'],'snippets':a['snippets'][:10]} for a in out['assets']]},ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/stations-e/map-api-probe.json
+          git commit -m 'France Stations-e: publish map API probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
