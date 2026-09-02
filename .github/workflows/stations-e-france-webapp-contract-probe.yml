@@ -1,0 +1,82 @@
+name: France Stations-e webapp contract probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/stations-e-france-webapp-contract-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public webapp and API routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/stations-e
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse,collections
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          roots=['https://m.stations-e.io/','https://m.stations-e.io/m/','https://m.stations-e.io/m/map/']
+          pages=[]; assets=[]
+          for u in roots:
+            try:r=s.get(u,timeout=30)
+            except Exception as e: pages.append({'url':u,'error':str(e)}); continue
+            pages.append({'url':u,'status':r.status_code,'final':r.url,'type':r.headers.get('content-type'),'body':r.text[:150000]})
+            for x in re.findall(r'(?:src|href)=["\']([^"\']+)',r.text,re.I):
+              a=urllib.parse.urljoin(r.url,x)
+              if a not in assets and ('.js' in a or '.css' in a): assets.append(a)
+          terms=['tarif','price','pricing','connector','evse','station','chargepoint','network','api','payment','session']
+          findings=[]
+          allstrings=[]
+          for a in assets[:100]:
+            try:r=s.get(a,timeout=25);txt=r.text
+            except:continue
+            if not txt:continue
+            urls=sorted(set(re.findall(r'https?://[^"\'`\\\s)<>]+',txt)))
+            strings=[]
+            for m in re.finditer(r'(["\'])(.{1,260}?)\1',txt):
+              v=m.group(2);vl=v.lower()
+              if any(t in vl for t in terms) and (v.startswith('/') or 'http' in vl or len(v)<180):
+                if v not in strings:strings.append(v)
+                if v not in allstrings:allstrings.append(v)
+                if len(strings)>=400:break
+            snippets=[];low=txt.lower()
+            for t in terms:
+              pos=0
+              while True:
+                i=low.find(t,pos)
+                if i<0:break
+                snippets.append(txt[max(0,i-250):i+650]);pos=i+len(t)
+                if len(snippets)>=100:break
+              if len(snippets)>=100:break
+            if urls or strings:findings.append({'url':a,'status':r.status_code,'bytes':len(r.content),'urls':urls[:200],'strings':strings[:400],'snippets':snippets[:100]})
+          # Probe conservative route families for one known public station UUID.
+          nr=s.get('https://m.stations-e.io/m/map/network/',timeout=30)
+          nd=nr.json(); sts=nd.get('stations',[]) if isinstance(nd,dict) else []
+          sid=str(sts[0].get('id')) if sts else ''
+          patterns=['/m/map/network/{id}','/m/map/network/{id}/','/m/map/network/{id}/connectors','/m/map/network/{id}/connector','/m/map/network/{id}/evses','/m/map/network/{id}/tariffs','/m/map/network/{id}/tariff','/m/map/station/{id}','/m/station/{id}','/m/stations/{id}','/m/api/stations/{id}','/m/api/stations/{id}/connectors','/m/api/stations/{id}/tariffs']
+          probes=[]
+          for p in patterns:
+            u='https://m.stations-e.io'+p.format(id=urllib.parse.quote(sid,safe=''))
+            for method in ['GET','OPTIONS']:
+              try:
+                rr=s.request(method,u,timeout=15)
+                if rr.status_code!=404 or method=='OPTIONS': probes.append({'method':method,'url':u,'status':rr.status_code,'allow':rr.headers.get('allow'),'type':rr.headers.get('content-type'),'body':rr.text[:8000]})
+              except Exception as e:probes.append({'method':method,'url':u,'error':str(e)})
+          summary={'pages':[{k:v for k,v in p.items() if k!='body'} for p in pages],'assets':assets,'assetFindings':[{'url':x['url'],'status':x['status'],'bytes':x['bytes'],'urls':x['urls'][:80],'strings':x['strings'][:120]} for x in findings],'stationCount':len(sts),'sampleStationId':sid,'routeProbes':probes}
+          pathlib.Path('reports/france/stations-e/webapp-contract-probe.json').write_text(json.dumps({'pages':pages,'assets':assets,'findings':findings,'stationCount':len(sts),'sampleStationId':sid,'routeProbes':probes},ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('reports/france/stations-e/webapp-contract-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False)[:80000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/stations-e/webapp-contract-*.json
+          git commit -m 'France Stations-e: publish webapp tariff contract probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
