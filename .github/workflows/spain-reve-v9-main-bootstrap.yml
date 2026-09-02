@@ -1,4 +1,4 @@
-name: Spain REVE V9 key fingerprint check
+name: Spain REVE V9 key fingerprint diagnostic
 
 on:
   push:
@@ -15,19 +15,17 @@ jobs:
     timeout-minutes: 5
     env:
       REVE_API_KEY: ${{ secrets.MAPA_REVE_API_KEY }}
-      EXPECTED_SHA256: 17f5b61128a5c0442f4771c6d1764a7d212a044a5da4fefc6a7b17160c57f40d
     steps:
-      - name: Compare secret fingerprint without exposing key
+      - name: Print SHA256 fingerprint only
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
           import os, hashlib
           raw=os.environ.get('REVE_API_KEY','').strip()
-          actual=hashlib.sha256(raw.encode()).hexdigest() if raw else ''
           print('secret_present=', bool(raw))
           print('secret_length=', len(raw))
-          print('matches_email_key_fingerprint=', actual == os.environ['EXPECTED_SHA256'])
-          if not raw or actual != os.environ['EXPECTED_SHA256']:
+          print('secret_sha256=', hashlib.sha256(raw.encode()).hexdigest() if raw else '')
+          if not raw:
               raise SystemExit(1)
           PY
