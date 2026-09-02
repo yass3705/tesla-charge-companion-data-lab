@@ -1,0 +1,104 @@
+name: France Vianeo Uberall locations probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/vianeo-uberall-locations-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public locations and tariff-like fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/vianeo
+          python - <<'PY'
+          import requests,re,json,pathlib
+          page=requests.get('https://www.engie-vianeo.com/carte-borne-recharge-voiture-electrique/',timeout=30).text
+          key=re.search(r'data-key=["\']([^"\']+)',page).group(1)
+          base=f'https://uberall.com/api/store-finders/{key}'
+          sess=requests.Session(); sess.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json'})
+          urls=[base+'/locations/all?country=FR',base+'/locations?country=FR&limit=1000']
+          responses=[]
+          def clean_str(s):
+            # do not persist likely access tokens/keys
+            if re.search(r'(?i)(^|[?=&])(access_?token|token|secret|private_?key)=',s) or re.search(r'(?i)\b(sk\.|pk\.)[A-Za-z0-9._-]{20,}',s):
+              return '[REDACTED]'
+            return s
+          def sanitize(x):
+            if isinstance(x,dict):
+              out={}
+              for k,v in x.items():
+                lk=str(k).lower()
+                if any(t in lk for t in ['token','secret','privatekey','private_key','mapboxtoken','accesskey','access_key']):
+                  out[k]='[REDACTED]'
+                else: out[k]=sanitize(v)
+              return out
+            if isinstance(x,list): return [sanitize(v) for v in x]
+            if isinstance(x,str): return clean_str(x)
+            return x
+          for u in urls:
+            r=sess.get(u,timeout=30)
+            item={'url':u.replace(key,'[STORE_KEY]'),'status':r.status_code,'contentType':r.headers.get('content-type')}
+            try: item['json']=sanitize(r.json())
+            except Exception: item['body']=clean_str(r.text[:5000])
+            responses.append(item)
+          # Collect all locations from first successful payload.
+          locs=[]
+          for item in responses:
+            j=item.get('json')
+            if not isinstance(j,dict): continue
+            resp=j.get('response',{})
+            for candidate in [resp.get('locations'), resp.get('results'), j.get('locations')]:
+              if isinstance(candidate,list) and candidate:
+                locs=candidate; break
+            if locs: break
+          # Detail sample: all if modest, otherwise first 40 + every ~Nth to cover geography.
+          samples=[]
+          if locs:
+            idxs=list(range(min(40,len(locs))))
+            if len(locs)>40:
+              step=max(1,len(locs)//40)
+              idxs=sorted(set(idxs+list(range(0,len(locs),step))[:40]))
+            for i in idxs[:80]:
+              lid=locs[i].get('id') if isinstance(locs[i],dict) else None
+              if lid is None: continue
+              u=base+f'/locations/{lid}'
+              try:
+                r=sess.get(u,timeout=20)
+                try: body=sanitize(r.json())
+                except Exception: body=clean_str(r.text[:5000])
+                samples.append({'id':lid,'status':r.status_code,'body':body})
+              except Exception as e: samples.append({'id':lid,'error':str(e)})
+          # Pull tariff-relevant snippets/fields from sanitized JSON recursively.
+          needles=('price','pricing','tarif','tariff','kwh','minute','hour','fee','cost','charge','connector','power','payment','custom')
+          hits=[]
+          def walk(x,path=''):
+            if isinstance(x,dict):
+              for k,v in x.items():
+                p=f'{path}/{k}'
+                if any(n in str(k).lower() for n in needles): hits.append({'path':p,'value':v})
+                walk(v,p)
+            elif isinstance(x,list):
+              for i,v in enumerate(x[:1000]): walk(v,f'{path}/{i}')
+            elif isinstance(x,str) and any(n in x.lower() for n in needles):
+              hits.append({'path':path,'value':x})
+          walk({'responses':responses,'detailSamples':samples})
+          out={'locationCount':len(locs),'responses':responses,'detailSamples':samples,'tariffLikeHits':hits[:3000]}
+          pathlib.Path('reports/france/vianeo/uberall-locations-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'locationCount':len(locs),'statuses':[(x['url'],x['status']) for x in responses],'hitCount':len(hits),'hits':hits[:100]},ensure_ascii=False)[:30000])
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/vianeo/uberall-locations-probe.json
+          git commit -m 'France Vianeo: publish sanitized Uberall locations probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
