@@ -1,0 +1,86 @@
+name: France REVEO official OCPI direct probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/reveo-official-ocpi-direct-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe official tariffs, PAN scope and public OCPI siblings
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/reveo data/operator_direct /tmp/reveo
+          python - <<'PY'
+          import requests,json,gzip,io,re,pathlib,datetime,collections
+          T='https://roaming.road.io/files/2ac5b1b4-2d18-4578-98fe-53db518e1a63/tariffs.json'
+          sess=requests.Session();sess.headers['User-Agent']='Mozilla/5.0'
+          tr=sess.get(T,timeout=30); tr.raise_for_status(); tariffs=tr.json()
+          base=T.rsplit('/',1)[0]+'/'
+          siblings={}
+          for name in ['locations.json','evses.json','stations.json','credentials.json','versions.json']:
+              u=base+name
+              try:
+                  r=sess.get(u,timeout=20); siblings[name]={'url':u,'status':r.status_code,'contentType':r.headers.get('content-type'),'body':r.text[:300000]}
+              except Exception as e: siblings[name]={'url':u,'error':str(e)}
+          page=sess.get('https://reveocharge.com/tarifs/',timeout=30).text
+          roaming=sess.get('https://reveocharge.com/tarif-roaming/',timeout=30).text
+          pdfs=sorted(set(re.findall(r'https?://[^"\'\s>]+\.pdf',page+roaming,re.I)))
+          # Current unified France static payload.
+          u='https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz'
+          rr=sess.get(u,timeout=60); rr.raise_for_status(); raw=gzip.decompress(rr.content); data=json.loads(raw)
+          # Traverse dictionaries containing REVEO signals and likely EVSE/station identity.
+          matches=[]
+          def walk(x,path=''):
+              if isinstance(x,dict):
+                  try: blob=json.dumps(x,ensure_ascii=False).lower()
+                  except: blob=''
+                  if ('reveo' in blob or 'révéo' in blob or 'fr*m31' in blob or 'fr*s12' in blob or 'fr*s34' in blob or 'fr*s48' in blob):
+                      keys=set(map(str.lower,x.keys()))
+                      if keys & {'evse_id','id_pdc_itinerance','operator','operateur','network','reseau','station_id','chargepointid','evseid','id'}:
+                          matches.append({'path':path,'record':x})
+                  for k,v in x.items(): walk(v,path+'/'+str(k))
+              elif isinstance(x,list):
+                  for i,v in enumerate(x): walk(v,path+'/'+str(i))
+          walk(data)
+          # de-duplicate serialized records, keep manageable representative scope plus extracted IDs.
+          uniq=[];seen=set(); ids=[]
+          for m in matches:
+              s=json.dumps(m['record'],sort_keys=True,ensure_ascii=False)
+              if s in seen: continue
+              seen.add(s); uniq.append(m)
+              for k,v in m['record'].items():
+                  kl=str(k).lower()
+                  if isinstance(v,(str,int)) and any(t in kl for t in ['evse','pdc','station','id']): ids.append({'key':k,'value':str(v)})
+          parties=collections.Counter(t.get('party_id') for t in tariffs)
+          active=[]
+          now=datetime.datetime.now(datetime.timezone.utc)
+          for t in tariffs:
+              end=t.get('end_date_time'); start=t.get('start_date_time')
+              ok=True
+              try:
+                  if end and datetime.datetime.fromisoformat(end.replace('Z','+00:00'))<=now: ok=False
+                  if start and datetime.datetime.fromisoformat(start.replace('Z','+00:00'))>now: ok=False
+              except: pass
+              if ok: active.append(t)
+          report={'generatedAt':now.isoformat(),'officialTariffsUrl':T,'tariffCount':len(tariffs),'activeTariffCount':len(active),'partyCounts':parties,'tariffs':tariffs,'publicSiblingAttempts':siblings,'officialTariffsPagePdfLinks':pdfs,'panMatchCountRaw':len(matches),'panMatchCountUnique':len(uniq),'panSamples':uniq[:80],'identityFields':ids[:500]}
+          pathlib.Path('reports/france/reveo/official-ocpi-direct-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2,default=lambda o:dict(o))+'\n')
+          candidate={'schemaVersion':'1.0.0','dataset':'reveo-official-ocpi-direct','generatedAt':now.isoformat(),'operator':'REVEO','country':'FR','source':T,'officialEvidencePage':'https://reveocharge.com/tarif-roaming/','partyIds':['M31','S12','S34','S48'],'tariffs':active,'classification':{'exactTariffDefinitionsAvailable':True,'evseToTariffMappingStatus':'pending_exact_mapping','failClosed':True}}
+          pathlib.Path('data/operator_direct/reveo_official_ocpi_direct.json').write_text(json.dumps(candidate,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'tariffCount':len(tariffs),'active':len(active),'parties':dict(parties),'siblings':{k:{kk:vv for kk,vv in v.items() if kk!='body'} for k,v in siblings.items()},'panUnique':len(uniq),'pdfs':pdfs,'samples':uniq[:6]},ensure_ascii=False,indent=2,default=lambda o:dict(o))[:60000])
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/reveo/official-ocpi-direct-probe.json data/operator_direct/reveo_official_ocpi_direct.json
+          git commit -m 'France REVEO: publish official OCPI tariff probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
