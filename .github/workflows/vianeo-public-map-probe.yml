@@ -1,0 +1,63 @@
+name: France ENGIE Vianeo public map probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/vianeo-public-map-probe.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public Vianeo map assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/vianeo /tmp/vianeo
+          curl -fLsS --retry 3 'https://www.engie-vianeo.com/carte-borne-recharge-voiture-electrique/' -o /tmp/vianeo/page.html
+          python - <<'PY'
+          import re,json,pathlib,urllib.parse,subprocess
+          html=pathlib.Path('/tmp/vianeo/page.html').read_text(errors='replace')
+          scripts=[]
+          for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',html,re.I):
+              u=urllib.parse.urljoin('https://www.engie-vianeo.com/',src)
+              if u not in scripts: scripts.append(u)
+          findings=[]
+          toks=('api','station','map','tarif','price','graphql','charge')
+          for u in scripts[:80]:
+              r=subprocess.run(['curl','-LsS','--max-time','15',u],capture_output=True,text=True)
+              if r.returncode: continue
+              txt=r.stdout
+              urls=sorted(set(re.findall(r'https?://[^"\'\\\s)]+',txt)))
+              snippets=[]
+              low=txt.lower()
+              for tok in toks:
+                  pos=0
+                  while True:
+                      i=low.find(tok,pos)
+                      if i<0: break
+                      snippets.append(txt[max(0,i-180):i+420])
+                      pos=i+len(tok)
+                      if len(snippets)>=80: break
+                  if len(snippets)>=80: break
+              if urls or snippets:
+                  findings.append({'url':u,'bytes':len(txt),'candidateUrls':[x for x in urls if any(t in x.lower() for t in toks)][:100],'snippets':snippets[:80]})
+          out={'pageBytes':len(html),'scripts':scripts,'findings':findings}
+          pathlib.Path('reports/france/vianeo/public-map-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'scripts':scripts,'findings':[{'url':x['url'],'candidateUrls':x['candidateUrls'][:20]} for x in findings]},ensure_ascii=False,indent=2)[:30000])
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/vianeo/public-map-probe.json
+          git commit -m 'France Vianeo: publish public map probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
