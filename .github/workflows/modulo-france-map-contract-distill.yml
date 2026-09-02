@@ -1,0 +1,51 @@
+name: France Modulo map contract distill
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/modulo-france-map-contract-distill.yml']
+permissions:
+  contents: write
+jobs:
+  distill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Distill existing deobfuscation evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,re,pathlib
+          p=pathlib.Path('reports/france/modulo/map-contract-deobfuscate.json')
+          d=json.loads(p.read_text())
+          keys=['map/blocks','/blocks','pricing','tariff','station','sage/public','bounds','bounding','bbox']
+          out=[]
+          for a in d.get('assets',[]):
+            rec={'url':a.get('url'),'hits':[],'strings':[]}
+            for name,arr in (a.get('contexts') or {}).items():
+              for x in arr:
+                c=x.get('context','')
+                if any(k.lower() in c.lower() for k in keys):
+                  # retain only neighborhoods around URLs/api-looking fragments
+                  pieces=[]
+                  for m in re.finditer(r'(https?://[^\"\'`\s]+|/[A-Za-z0-9_./?=&:-]{4,160})',c):
+                    s=m.group(0)
+                    if any(k.lower() in s.lower() for k in ['map','block','station','tariff','pricing','api','sage']):
+                      pieces.append({'match':s,'context':c[max(0,m.start()-700):m.end()+1200]})
+                  if pieces:rec['hits'].extend(pieces[:30])
+            for x in a.get('strings') or []:
+              v=x.get('value','')
+              if any(k.lower() in v.lower() for k in keys):rec['strings'].append(x)
+            out.append(rec)
+          pathlib.Path('reports/france/modulo/map-contract-distilled.json').write_text(json.dumps({'assets':out},ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'assets':[{'url':x['url'],'hits':x['hits'][:40],'strings':x['strings'][:80]} for x in out]},ensure_ascii=False)[:100000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/modulo/map-contract-distilled.json
+          git commit -m 'France Modulo: publish distilled Virta map contract' || exit 0
+          git pull --rebase origin main
+          git push
