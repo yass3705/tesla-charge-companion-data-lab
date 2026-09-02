@@ -1,0 +1,43 @@
+name: France Road E-Flux compact PAN EVSE probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/road-france-pan-evse-compact.yml']
+permissions:
+  contents: write
+jobs:
+  compact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compact findings
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,pathlib,re
+          d=json.loads(pathlib.Path('reports/france/road/pan-evse-tariff-probe.json').read_text())
+          samples=[]; success=withPrice=withTariff=0
+          for x in d.get('probeSamples',[]):
+            ats=[]
+            for a in x.get('attempts',[]):
+              txt=' '.join(y.get('context','') for y in a.get('needles',[]))
+              hasTariff=('tariff' in txt.lower());hasPrice=any(k in txt.lower() for k in ['€/','eur','kwh','price'])
+              if a.get('status')==200:success+=1
+              withTariff+=hasTariff;withPrice+=hasPrice
+              ats.append({'url':a.get('url'),'status':a.get('status'),'finalUrl':a.get('finalUrl'),'bytes':a.get('bytes'),'title':a.get('title'),'hasTariffText':hasTariff,'hasPriceLikeText':hasPrice,'needleNames':list(dict.fromkeys(y.get('needle') for y in a.get('needles',[])))[:20]})
+            samples.append({'lookupId':x.get('lookupId'),'pan':x.get('pan'),'attempts':ats})
+          out={'panRows':d.get('panRows'),'uniqueLookupIds':d.get('uniqueLookupIds'),'probeSampleCount':len(samples),'http200Attempts':success,'attemptsWithTariffText':withTariff,'attemptsWithPriceLikeText':withPrice,'idSamples':d.get('idSamples',[])[:20],'samples':samples[:40]}
+          pathlib.Path('reports/france/road/pan-evse-tariff-compact.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/road/pan-evse-tariff-compact.json
+          git commit -m 'France Road E-Flux: publish compact PAN EVSE probe' || exit 0
+          git pull --rebase origin main
+          git push
