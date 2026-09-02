@@ -1,0 +1,67 @@
+name: France Modulo map contract deobfuscation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/modulo-france-map-contract-deobfuscate.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract current map call contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/modulo
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          s=requests.Session();s.headers['User-Agent']='Mozilla/5.0'
+          html=s.get('https://modulo.poweredbyvirta.com/',timeout=30).text
+          assets=[]
+          for x in re.findall(r'(?:src|href)=["\']([^"\']+)',html):
+            u=urllib.parse.urljoin('https://modulo.poweredbyvirta.com/',x)
+            if '.js' in u and u not in assets:assets.append(u)
+          out={'assets':[]}
+          needles=['map/blocks','/blocks','blocks','bounding','bounds','bbox','zoom','latitude','longitude','sage/public','station','tariff','pricing']
+          for u in assets:
+            r=s.get(u,timeout=45);txt=r.text
+            contexts={}
+            for n in needles:
+              arr=[];pos=0
+              while True:
+                i=txt.lower().find(n.lower(),pos)
+                if i<0:break
+                arr.append({'offset':i,'context':txt[max(0,i-3500):i+6500]});pos=i+len(n)
+                if len(arr)>=25:break
+              if arr:contexts[n]=arr
+            strings=[]
+            for m in re.finditer(r'(["\'`])(.{1,300}?)\1',txt):
+              v=m.group(2);vl=v.lower()
+              if any(n.lower() in vl for n in needles):
+                if v not in [x['value'] for x in strings]: strings.append({'value':v,'offset':m.start(),'context':txt[max(0,m.start()-1200):m.end()+2200]})
+                if len(strings)>=1200:break
+            # sourcemap probe
+            maps=[]
+            for mu in [u+'.map',re.sub(r'\.js(?:\?.*)?$', '.js.map',u)]:
+              if mu in [x['url'] for x in maps]:continue
+              try:
+                q=s.get(mu,timeout=30);maps.append({'url':mu,'status':q.status_code,'bytes':len(q.content),'type':q.headers.get('content-type'),'head':q.text[:2000]})
+              except Exception as e:maps.append({'url':mu,'error':str(e)})
+            out['assets'].append({'url':u,'status':r.status_code,'bytes':len(r.content),'contexts':contexts,'strings':strings,'sourceMaps':maps})
+          pathlib.Path('reports/france/modulo/map-contract-deobfuscate.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          summary={'assets':[{'url':a['url'],'status':a['status'],'bytes':a['bytes'],'contextCounts':{k:len(v) for k,v in a['contexts'].items()},'contexts':{k:v[:6] for k,v in a['contexts'].items()},'strings':a['strings'][:300],'sourceMaps':a['sourceMaps']} for a in out['assets']]}
+          pathlib.Path('reports/france/modulo/map-contract-deobfuscate-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False)[:180000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/modulo/map-contract-deobfuscate*.json
+          git commit -m 'France Modulo: publish Virta map contract deobfuscation' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
