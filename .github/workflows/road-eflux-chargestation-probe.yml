@@ -1,0 +1,62 @@
+name: France Road E-Flux public charge station probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/road-eflux-chargestation-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe official Road charge station UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/road /tmp/road
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          base='https://chargestation.road.io/5846928'
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          r=s.get(base,timeout=30,allow_redirects=True)
+          html=r.text
+          scripts=[]
+          for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',html,re.I):
+              u=urllib.parse.urljoin(r.url,src)
+              if u not in scripts: scripts.append(u)
+          assets=[]
+          needles=['api','tariff','price','pricing','connector','evse','station','graphql','axios','fetch(']
+          for u in scripts[:100]:
+              try:
+                  rr=s.get(u,timeout=30)
+                  txt=rr.text
+              except Exception:
+                  continue
+              urls=sorted(set(re.findall(r'https?://[^"\'\\\s)]+',txt)))
+              snippets=[]; low=txt.lower()
+              for n in needles:
+                  pos=0
+                  while True:
+                      i=low.find(n,pos)
+                      if i<0: break
+                      snippets.append(txt[max(0,i-250):i+700]); pos=i+len(n)
+                      if len(snippets)>=120: break
+                  if len(snippets)>=120: break
+              if urls or snippets:
+                  assets.append({'url':u,'status':rr.status_code,'bytes':len(txt),'candidateUrls':[x for x in urls if any(k in x.lower() for k in ['api','road','e-flux','charge','station'])][:200],'snippets':snippets[:120]})
+          out={'requestedUrl':base,'finalUrl':r.url,'status':r.status_code,'pageBytes':len(html),'scripts':scripts,'assets':assets,'page':html[:200000]}
+          pathlib.Path('reports/france/road/chargestation-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'finalUrl':r.url,'status':r.status_code,'scripts':scripts,'assets':[{'url':a['url'],'candidateUrls':a['candidateUrls'][:30]} for a in assets]},ensure_ascii=False)[:40000])
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/road/chargestation-probe.json
+          git commit -m 'France Road E-Flux: publish public charge station probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
