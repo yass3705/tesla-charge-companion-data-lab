@@ -1,0 +1,79 @@
+name: France Qwello official exact tariff build
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/qwello-france-official-build.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build France exact official tariff inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/qwello data/operator_direct
+          python - <<'PY'
+          import requests,json,pathlib,re,datetime
+          url='https://tariff-locations-file-production.s3.eu-central-1.amazonaws.com/tariff-view.json'
+          r=requests.get(url,headers={'User-Agent':'Mozilla/5.0'},timeout=45)
+          r.raise_for_status(); rows=r.json()
+          fr=[x for x in rows if str(x.get('country','')).upper() in ('FR','FRA','FRANCE')]
+          def money(m):
+            if not isinstance(m,dict): return None
+            try:return m.get('significand',0)*(10**m.get('power',0))
+            except:return None
+          outrows=[]
+          for st in fr:
+            tariff=st.get('tariff') or {}; ver=tariff.get('version')
+            chunks=[]
+            if ver=='V2': src=tariff.get('chunks') or []
+            else:
+              src=[]
+              if tariff.get('day'): src.append(dict(tariff['day'], period='day'))
+              if tariff.get('night'): src.append(dict(tariff['night'], period='night'))
+            for c in src:
+              chunks.append({
+                'period':c.get('period'),
+                'time':c.get('time'),
+                'eurPerKwh':money(c.get('costPerKwh')),
+                'eurPerMinute':money(c.get('costPerMinute')),
+                'maxCostTimeEur':money(c.get('maxCostTime')),
+                'raw':c
+              })
+            ids=st.get('id') or []
+            if isinstance(ids,str): ids=[ids]
+            outrows.append({
+              'ids':ids,'city':st.get('city'),'location':st.get('location'),'country':st.get('country'),
+              'currency':st.get('currency'),'tariffVersion':ver,'tariff':tariff,'normalizedTariffChunks':chunks
+            })
+          ids=[i for x in outrows for i in x['ids']]
+          uniq=set(str(i).upper().replace('*','').replace('-','').replace(' ','') for i in ids)
+          report={
+            'source':url,'httpStatus':r.status_code,'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'globalStations':len(rows),'franceStations':len(outrows),'franceIds':len(ids),'uniqueNormalizedFranceIds':len(uniq),
+            'sample':outrows[:10]
+          }
+          data={
+            'schemaVersion':'1.0.0','dataset':'qwello-official-france','operator':'Qwello','country':'FR',
+            'source':{'url':url,'classification':'official_public_AFIR_tariff_view','exactPerStationOrEvse':True},
+            'generatedAt':report['generatedAt'],'stations':outrows,
+            'failClosed':True,
+            'notes':['Only exact tariffs returned by Qwello public AFIR source are included.','No tariff is inferred for an EVSE absent from this source.']
+          }
+          pathlib.Path('data/operator_direct/qwello_official_france.json').write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('reports/france/qwello/official-france-build.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(report,ensure_ascii=False,indent=2)[:40000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/operator_direct/qwello_official_france.json reports/france/qwello/official-france-build.json
+          git commit -m 'data(qwello): publish official France exact tariffs' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
