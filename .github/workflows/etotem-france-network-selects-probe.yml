@@ -1,0 +1,50 @@
+name: France e-Totem network selects probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/etotem-france-network-selects-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch public selector endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/etotem
+          python - <<'PY'
+          import requests,json,pathlib,datetime,re
+          s=requests.Session();s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json'})
+          base='https://www.e-totem.fr/api'
+          endpoints=['Legende','SelectsBornes','TypesAbonnement?sCodePrive&bVisibleTarifs=1']
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'responses':[]}
+          for ep in endpoints:
+            r=s.get(base+'/'+ep,timeout=30)
+            try:d=r.json()
+            except Exception:d=r.text[:100000]
+            out['responses'].append({'endpoint':ep,'status':r.status_code,'type':r.headers.get('content-type'),'body':d})
+          def find_matches(x,path=''):
+            z=[]
+            if isinstance(x,dict):
+              for k,v in x.items():z+=find_matches(v,(path+'.'+k).strip('.'))
+            elif isinstance(x,list):
+              for i,v in enumerate(x):z+=find_matches(v,f'{path}[{i}]')
+            elif isinstance(x,str) and any(t in x.lower() for t in ['e-totem','etotem','e totem','tiers investissement','saint-etienne','saint etienne']):z.append({'path':path,'value':x})
+            return z
+          out['etotemMatches']=find_matches(out['responses'])
+          pathlib.Path('reports/france/etotem/network-selects-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'generatedAt':out['generatedAt'],'statuses':[(x['endpoint'],x['status']) for x in out['responses']],'etotemMatches':out['etotemMatches'],'responseShapes':[{'endpoint':x['endpoint'],'body':x['body']} for x in out['responses']]},ensure_ascii=False)[:100000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/etotem/network-selects-probe.json
+          git commit -m 'France e-Totem: publish network and tariff selectors' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
