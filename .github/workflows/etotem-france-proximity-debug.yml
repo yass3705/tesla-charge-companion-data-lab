@@ -1,0 +1,99 @@
+name: France e-Totem proximity debug
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/etotem-france-proximity-debug.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare unmatched PAN stations with official map candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/etotem
+          python - <<'PY'
+          import requests,csv,io,json,pathlib,re,math,concurrent.futures,threading
+          U='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          rows=list(csv.DictReader(io.StringIO(requests.get(U,timeout=60).text)))
+          et=[r for r in rows if 'totem' in str(r.get('nom_operateur','')).lower()]
+          def norm(x):return re.sub('[^A-Z0-9]','',str(x or '').upper())
+          sts={}
+          for r in et:
+            try:lat=float(r['consolidated_latitude']);lon=float(r['consolidated_longitude'])
+            except:continue
+            k=norm(r.get('id_station_itinerance'))
+            if k:sts.setdefault(k,{'sid':r.get('id_station_itinerance'),'lat':lat,'lon':lon,'name':r.get('nom_station'),'address':r.get('adresse_station'),'network':r.get('nom_enseigne'),'rows':0})['rows']+=1
+          prev=json.loads(pathlib.Path('reports/france/etotem/exact-national-tariffs-fast-summary.json').read_text())
+          missing=set(norm(x) for x in prev['coverage']['missingStationIds'])
+          # Stratified sample by ID prefix + geography, capped at 80.
+          buckets={}
+          for k,st in sts.items():
+            if k not in missing:continue
+            pref=k[:7]
+            buckets.setdefault(pref,[]).append((k,st))
+          sample=[]
+          for pref,arr in sorted(buckets.items()):sample.extend(arr[:5])
+          sample=sample[:80]
+          ss=requests.Session();auth=ss.post('https://www.e-totem.fr/api/ConnexionAnonyme',timeout=20).json()
+          def tok(x):
+            if isinstance(x,dict):
+              for k,v in x.items():
+                if isinstance(v,str) and ('token' in k.lower() or (v.count('.')==2 and len(v)>60)):return v
+              for v in x.values():
+                z=tok(v)
+                if z:return z
+            if isinstance(x,list):
+              for v in x:
+                z=tok(v)
+                if z:return z
+          T=tok(auth);assert T
+          H={'Authorization':'Bearer '+T,'Accept':'application/json','User-Agent':'Mozilla/5.0'}
+          local=threading.local()
+          def S():
+            if not hasattr(local,'s'):local.s=requests.Session();local.s.headers.update(H)
+            return local.s
+          def dist(a,b,c,d):
+            R=6371000;p1=math.radians(a);p2=math.radians(c);dp=math.radians(c-a);dl=math.radians(d-b)
+            z=math.sin(dp/2)**2+math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
+            return 2*R*math.asin(math.sqrt(z))
+          def q(pair):
+            k,st=pair;lat,lon=st['lat'],st['lon'];p={'fLatSudOuest':lat-.04,'fLongSudOuest':lon-.06,'fLatNordEst':lat+.04,'fLongNordEst':lon+.06,'bUniquementBornesDisponibles':0,'bCompatibleAutocharge':0,'nZoom':18,'bNePasClusteriser':1,'nBornesPrivees':0,'bRecupererBorneLaPlusProche':0}
+            try:r=S().get('https://www.e-totem.fr/api/Stations',params=p,timeout=12);body=r.json() if r.status_code==200 else {}
+            except Exception as e:return {'pan':st,'panNorm':k,'error':str(e)}
+            cand=[]
+            for e in body.get('aElements',[]) if isinstance(body,dict) else []:
+              if not isinstance(e,dict):continue
+              try:d=dist(lat,lon,float(e.get('fLatitude')),float(e.get('fLongitude')))
+              except:d=None
+              cand.append({'distanceM':round(d,1) if d is not None else None,'sIdPool':e.get('sIdPool'),'name':e.get('sLibelle'),'network':e.get('sNomReseau'),'origin':e.get('sOrigine'),'tariffText':e.get('sWebTexte'),'borneIds':[b.get('sEmi3Pool') for b in (e.get('aBornes') or []) if isinstance(b,dict)]})
+            cand.sort(key=lambda x:1e99 if x['distanceM'] is None else x['distanceM'])
+            return {'pan':st,'panNorm':k,'status':r.status_code,'elementCount':len(cand),'nearest':cand[:8]}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:res=list(ex.map(q,sample))
+          out={'sampleSize':len(sample),'results':res}
+          pathlib.Path('reports/france/etotem/proximity-debug.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          # Compact diagnosis statistics
+          near25=near75=near250=0;withcand=0
+          for x in res:
+            n=x.get('nearest') or []
+            if n:
+              withcand+=1;d=n[0].get('distanceM')
+              if d is not None:
+                near25+=d<=25;near75+=d<=75;near250+=d<=250
+          summary={'sampleSize':len(res),'withCandidate':withcand,'nearestWithin25m':near25,'nearestWithin75m':near75,'nearestWithin250m':near250,'results':res}
+          pathlib.Path('reports/france/etotem/proximity-debug-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False)[:120000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/etotem/proximity-debug*.json
+          git commit -m 'France e-Totem: publish PAN proximity diagnosis' || exit 0
+          git pull --rebase origin main
+          git push
