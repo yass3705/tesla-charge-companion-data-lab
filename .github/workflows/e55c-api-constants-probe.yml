@@ -1,0 +1,86 @@
+name: France E55C scan-pay API constants probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/e55c-api-constants-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract routes, base URLs and test safe GET surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/e55c
+          python - <<'PY'
+          import requests,re,json,pathlib,datetime,urllib.parse
+          S=requests.Session();S.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json,text/plain,*/*'})
+          js=S.get('https://e55c.evse-portal.com/main.f0fa855337a6d708.js',timeout=60).text
+          names=['REST_SCAN_PAY_SETUP_PAYMENT','REST_SCAN_PAY_CONFIRM_PAYMENT','REST_PRICING_MODEL_RESOLVE','REST_PRICING_MODEL_PRICE_TRANSACTION','REST_PRICING_DEFINITION_BY_IDS','REST_PRICING_DEFINITIONS','REST_TENANT_BILLING_PRICING','REST_REGISTRATION_PAYMENT_KEY','REST_SCAN_PAY_SIGN_IN','REST_SCAN_PAY_SIGN_UP','REST_SETTINGS']
+          constants={}
+          for n in names:
+            pats=[rf'{re.escape(n)}\s*=\s*["\'`]([^"\'`]+)',rf'{re.escape(n)}\s*:\s*["\'`]([^"\'`]+)']
+            vals=[]
+            for p in pats:
+              vals += re.findall(p,js)
+            constants[n]=list(dict.fromkeys(vals))
+          # extract absolute URLs + nearby assignment contexts
+          urls=sorted(set(re.findall(r'https?://[^"\'`\\\s)]+',js)))
+          interesting=[u for u in urls if any(k in u.lower() for k in ('api','evse','charge','server','portal','e55c'))]
+          contexts=[]
+          low=js.lower()
+          for term in ('centralrestserverservicebaseurl','restserverauthurl','restserverurl','scanpay','scan-pay','pricingmodelresolve','setup-payment'):
+            pos=0
+            while True:
+              i=low.find(term,pos)
+              if i<0:break
+              contexts.append(js[max(0,i-700):i+1800]);pos=i+len(term)
+              if len(contexts)>160:break
+          # Resolve likely central REST bases from literal URLs and contexts.
+          basec=[]
+          for u in interesting:
+            sp=urllib.parse.urlsplit(u)
+            if sp.scheme and sp.netloc:
+              root=f'{sp.scheme}://{sp.netloc}'
+              if root not in basec:basec.append(root)
+          # Safe GET probes only. Use one public connector ID; no charging/payment mutation.
+          evse='FR*55C*EFR77100*P52QJPP*0'; connector='1'
+          paths=set()
+          for n,vs in constants.items():
+            for v in vs:
+              if v.startswith('/') or not v.startswith('http'):
+                paths.add(v)
+          # Add likely public/resolve patterns inferred from named routes; GET only.
+          attempts=[]
+          for base in basec[:12]:
+            for p in list(paths)[:80]:
+              pp=p
+              repl={'{chargingStationID}':evse,'{chargingStationId}':evse,'{deviceId}':evse,'{id}':evse,'{connectorId}':connector,'{connectorID}':connector}
+              for a,b in repl.items(): pp=pp.replace(a,b)
+              if any(x in pp for x in ('{','}')): continue
+              u=urllib.parse.urljoin(base+'/',pp.lstrip('/'))
+              if not any(k in (n+' '+pp).lower() for n in constants for k in ['pricing','scan','setting']): pass
+              try:
+                r=S.get(u,timeout=8,allow_redirects=False)
+                if r.status_code not in (404,405) or 'pricing' in pp.lower() or 'scan' in pp.lower():
+                  attempts.append({'url':u,'status':r.status_code,'contentType':r.headers.get('content-type'),'body':r.text[:4000]})
+              except Exception as e: attempts.append({'url':u,'error':str(e)})
+              if len(attempts)>=180:break
+            if len(attempts)>=180:break
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'constants':constants,'interestingUrls':interesting[:300],'baseCandidates':basec,'contexts':contexts[:160],'safeGetAttempts':attempts}
+          pathlib.Path('reports/france/e55c/api-constants-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'constants':constants,'interestingUrls':interesting[:100],'baseCandidates':basec,'safeGetAttempts':attempts},ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/e55c/api-constants-probe.json
+          git commit -m 'France E55C: publish scan-pay API constants probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
