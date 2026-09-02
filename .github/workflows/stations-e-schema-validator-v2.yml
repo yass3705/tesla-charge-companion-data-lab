@@ -1,0 +1,46 @@
+name: France Stations-e schema validator v2
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/stations-e-schema-validator-v2.yml']
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate exact rows from explicit overlay membership
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/stations-e
+          python - <<'PY'
+          import json,pathlib,datetime
+          d=json.loads(pathlib.Path('data/operator_direct/stations_e_official_france.json').read_text())
+          rows=d.get('evseTariffs') or []
+          gaps=d.get('gaps') or []
+          valid=[]; invalid=[]
+          for r in rows:
+            objs=[r.get('directAdHoc') or {},r.get('badgeFree') or {},r.get('expressE') or {},r.get('accessE') or {}]
+            cls=r.get('powerClass')
+            numeric=all(isinstance(x.get('eurPerKwh'),(int,float)) for x in objs)
+            if cls in ('22AC_or_24DC','50DC') and numeric and r.get('id_pdc_itinerance'): valid.append(r)
+            else: invalid.append(r)
+          ids_valid={r.get('id_pdc_itinerance') for r in valid if r.get('id_pdc_itinerance')}
+          ids_gap={r.get('id_pdc_itinerance') for r in gaps if r.get('id_pdc_itinerance')}
+          overlap=sorted(ids_valid & ids_gap)
+          out={'validatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'source':d.get('source'),'rules':d.get('rules'),'storedCoverage':d.get('coverage'),'validation':{'pricedRows':len(rows),'validExactPricedRows':len(valid),'invalidPricedRows':len(invalid),'gapRows':len(gaps),'uniqueValidPdc':len(ids_valid),'uniqueGapPdc':len(ids_gap),'validGapIdOverlapCount':len(overlap),'invalidSamples':invalid[:20],'overlapSamples':overlap[:20]},'classification':{'treated':len(valid)>0 and len(invalid)==0,'exactOfficialSource':True,'failClosed':True,'unmatchedPolicy':'No Stations-e overlay for rows in gaps; lower-priority source may fill them.','reason':'The official tariff dataset explicitly separates priced evseTariffs from gaps. Validation accepts only rows already placed in evseTariffs, with an explicit supported tariff class and complete numeric official price objects; it never maps 25 kW or other gap powers to a tariff class.'}}
+          pathlib.Path('reports/france/stations-e/schema-validation-v2.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/stations-e/schema-validation-v2.json
+          git commit -m 'France Stations-e: publish fail-closed schema validation' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
