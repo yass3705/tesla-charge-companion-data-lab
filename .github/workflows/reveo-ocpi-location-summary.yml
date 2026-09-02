@@ -1,0 +1,66 @@
+name: France REVEO OCPI location summary
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/reveo-ocpi-location-summary.yml']
+permissions:
+  contents: write
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Summarize sibling/location evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,pathlib,collections
+          p=pathlib.Path('reports/france/reveo/official-ocpi-direct-probe.json')
+          d=json.loads(p.read_text())
+          sib=d.get('publicSiblingAttempts',{})
+          slim={}
+          for k,v in sib.items():
+              x={kk:vv for kk,vv in v.items() if kk!='body'}
+              body=v.get('body','')
+              x['bodyBytes']=len(body)
+              x['bodySample']=body[:3000]
+              if k=='locations.json' and v.get('status')==200:
+                  try:
+                      j=json.loads(body)
+                      arr=j if isinstance(j,list) else j.get('data',j.get('locations',[])) if isinstance(j,dict) else []
+                      tariff_ids=[]; evses=[]
+                      for loc in arr if isinstance(arr,list) else []:
+                          for ev in loc.get('evses',[]) or []:
+                              evses.append(ev.get('evse_id') or ev.get('uid'))
+                              for con in ev.get('connectors',[]) or []:
+                                  tariff_ids.append(con.get('tariff_ids') or con.get('tariff_id'))
+                      x['parsedLocationCount']=len(arr) if isinstance(arr,list) else None
+                      x['parsedEvseCount']=len([z for z in evses if z])
+                      x['tariffIdRefs']=tariff_ids[:100]
+                  except Exception as e: x['parseError']=str(e)
+              slim[k]=x
+          out={
+            'tariffCount':d.get('tariffCount'),
+            'activeTariffCount':d.get('activeTariffCount'),
+            'partyCounts':d.get('partyCounts'),
+            'publicSiblingAttempts':slim,
+            'panMatchCountRaw':d.get('panMatchCountRaw'),
+            'panMatchCountUnique':d.get('panMatchCountUnique'),
+            'panSamples':d.get('panSamples',[])[:12],
+            'identityFields':d.get('identityFields',[])[:100]
+          }
+          pathlib.Path('reports/france/reveo/ocpi-location-summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/reveo/ocpi-location-summary.json
+          git commit -m 'France REVEO: publish OCPI location summary' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
