@@ -1,0 +1,128 @@
+name: France Vianeo exhaustive public probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/vianeo-exhaustive-public-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exhaust public locator and Android app surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/vianeo /tmp/vianeo
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse,subprocess,zipfile,os
+          S=requests.Session(); S.headers['User-Agent']='Mozilla/5.0'
+          out={'schemaVersion':'1.0.0','operator':'ENGIE Vianeo','country':'FR'}
+          # 1) official page + Uberall public settings
+          page=S.get('https://www.engie-vianeo.com/carte-borne-recharge-voiture-electrique/',timeout=30).text
+          m=re.search(r'data-key=["\']([^"\']+)',page); key=m.group(1) if m else None
+          out['locator']={'provider':'Uberall','publicKeyPresent':bool(key)}
+          api_paths=set(); domains=set(); keywords=set(); settings_keys=set()
+          if key:
+            u=f'https://locator.uberall.com/api/storefinders/{key}/settings/fr'
+            r=S.get(u,timeout=30); out['locator']['settingsStatus']=r.status_code
+            if r.ok:
+              try:
+                j=r.json()
+                def walk(x,path=''):
+                  if isinstance(x,dict):
+                    for k,v in x.items():
+                      settings_keys.add((path+'/'+str(k))[:240]); walk(v,path+'/'+str(k))
+                  elif isinstance(x,list):
+                    for i,v in enumerate(x[:1000]): walk(v,path+'[]')
+                  elif isinstance(x,str):
+                    for uu in re.findall(r'https?://[^"\'\\\s]+',x):
+                      p=urllib.parse.urlparse(uu); domains.add(p.netloc); api_paths.add(p.path)
+                walk(j)
+                # v3 locator bundle URL is a stable public asset returned by settings
+                txt=r.text
+                mm=re.search(r'https://locator\.uberall\.com/locator-assets/v3/store-finder-widget-bundle\.js',txt)
+                if mm:
+                  b=S.get(mm.group(0),timeout=30).text
+                  out['locator']['bundleBytes']=len(b)
+                  for uu in re.findall(r'https?://[^"\'\\\s)]+',b):
+                    p=urllib.parse.urlparse(uu); domains.add(p.netloc); api_paths.add(p.path)
+                  for pth in re.findall(r'[/][A-Za-z0-9_{}:$.-]+(?:/[A-Za-z0-9_{}:$.-]+){1,8}',b):
+                    if any(t in pth.lower() for t in ('api','location','storefinder','search','nearby')): api_paths.add(pth[:300])
+              except Exception as e: out['locator']['parseError']=type(e).__name__
+          out['locator']['domains']=sorted(domains)
+          out['locator']['candidatePaths']=sorted(api_paths)[:1000]
+          out['locator']['settingsKeyPaths']=sorted(settings_keys)[:1500]
+          # 2) current official tariff pages: evidence only, no guessing
+          for name,url in [('prices','https://www.engie-vianeo.com/tarifs-recharge-voiture-electrique/'),('terms','https://www.engie-vianeo.com/cguv/')]:
+            rr=S.get(url,timeout=30); text=re.sub(r'<[^>]+>',' ',rr.text); text=re.sub(r'\s+',' ',text)
+            out.setdefault('officialPages',{})[name]={'status':rr.status_code,'mentionsStationPrice':bool(re.search(r'(station|borne).{0,120}(prix|tarif)|(prix|tarif).{0,120}(station|borne)',text,re.I)),'mentionsApp':('application' in text.lower())}
+          # 3) Android public distributable analysis (public APK/XAPK, static strings only)
+          apk_url='https://d.apkpure.net/b/XAPK/com.engie.vianeo?version=latest'
+          try:
+            rr=S.get(apk_url,timeout=90,allow_redirects=True)
+            out['android']={'downloadStatus':rr.status_code,'bytes':len(rr.content),'contentType':rr.headers.get('content-type')}
+            if rr.ok and len(rr.content)>1000000:
+              xapk='/tmp/vianeo/app.xapk'; pathlib.Path(xapk).write_bytes(rr.content)
+              with zipfile.ZipFile(xapk) as z:
+                apks=[n for n in z.namelist() if n.endswith('.apk')]
+                out['android']['apkEntries']=apks[:50]
+                z.extractall('/tmp/vianeo/xapk')
+              files=[]
+              for a in apks:
+                ap='/tmp/vianeo/xapk/'+a
+                try:
+                  with zipfile.ZipFile(ap) as z:
+                    for n in z.namelist():
+                      if n.endswith(('.dex','.js','.json','.xml','.txt')) or 'bundle' in n.lower():
+                        try:
+                          data=z.read(n)
+                          if len(data)<=80_000_000: files.append((a+'!'+n,data))
+                        except: pass
+                except: pass
+              ds=set(); urls=set(); snippets=[]
+              urlre=re.compile(rb'https?://[A-Za-z0-9._:-]+(?:/[A-Za-z0-9_./{}?=&%:+~-]*)?')
+              for name,data in files:
+                for mb in urlre.findall(data):
+                  try:
+                    u=mb.decode('utf-8','ignore')[:500]
+                    p=urllib.parse.urlparse(u); host=p.netloc.lower()
+                    if host:
+                      ds.add(host)
+                      # Never persist query strings, fragments, credentials or token-like values.
+                      urls.add(p.scheme+'://'+host+p.path)
+                  except: pass
+                # extract printable context around pricing/API words, but redact token-like material
+                text=''.join(chr(b) if 32<=b<127 else ' ' for b in data[:40_000_000])
+                for term in ('tariff','tarif','price','pricing','station','evse','connector','ocpi','greenflux','chargetrip','graphql','api/'):
+                  low=text.lower(); pos=0
+                  while True:
+                    i=low.find(term,pos)
+                    if i<0: break
+                    s=text[max(0,i-180):i+500]
+                    s=re.sub(r'(?i)(sk|pk)\.[A-Za-z0-9._-]{20,}','<redacted-token>',s)
+                    s=re.sub(r'eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9._-]{20,}(?:\.[A-Za-z0-9._-]{10,})?','<redacted-jwt>',s)
+                    if any(x in s.lower() for x in ('http','tarif','price','api','greenflux','chargetrip','ocpi')): snippets.append({'file':name,'term':term,'text':s[:700]})
+                    pos=i+len(term)
+                    if len(snippets)>=300: break
+                  if len(snippets)>=300: break
+                if len(snippets)>=300: break
+              out['android']['domains']=sorted(ds)
+              out['android']['urlsWithoutQuery']=sorted(urls)[:1500]
+              out['android']['snippets']=snippets[:300]
+          except Exception as e:
+            out['android']={'error':type(e).__name__+': '+str(e)[:200]}
+          pathlib.Path('reports/france/vianeo/exhaustive-public-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'locator':out.get('locator'),'officialPages':out.get('officialPages'),'android':{k:v for k,v in out.get('android',{}).items() if k!='snippets'}},ensure_ascii=False)[:50000])
+          PY
+      - name: Publish sanitized report
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/vianeo/exhaustive-public-probe.json
+          git commit -m 'France Vianeo: publish exhaustive sanitized probe' || exit 0
+          git pull --rebase origin main
+          git push
