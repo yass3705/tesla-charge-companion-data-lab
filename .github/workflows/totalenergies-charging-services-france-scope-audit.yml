@@ -1,0 +1,50 @@
+name: France TotalEnergies Charging Services scope audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/totalenergies-charging-services-france-scope-audit.yml']
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit PAN scope and existing tariff sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/totalenergies-charging-services /tmp/tecs
+          curl -fLsS --retry 3 'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz' -o /tmp/tecs/all.json.gz
+          python - <<'PY'
+          import gzip,json,collections,pathlib,re
+          rows=json.loads(gzip.open('/tmp/tecs/all.json.gz','rt',encoding='utf-8').read())
+          target=[]
+          for r in rows:
+            if isinstance(r,list) and len(r)>10 and str(r[5] or '').strip().lower()=='totalenergies charging services': target.append(r)
+          nets=collections.Counter(); deps=collections.Counter(); samples={}
+          for r in target:
+            net=str(r[10] or ''); nets[net]+=1; samples.setdefault(net,[])
+            if len(samples[net])<6:samples[net].append(r)
+            m=re.search(r'\b(\d{5})\b',str(r[2] or ''))
+            if m:deps[m.group(1)[:2]]+=1
+          names=[]
+          d=pathlib.Path('data/operator_direct')
+          if d.exists():
+            for p in d.glob('*.json'):
+              n=p.name.lower()
+              if any(t in n for t in ['totalenergies','total_energies','ilewat','iléwat','metpark','compiegne','compiègne','interparking','plagne']): names.append(p.name)
+          out={'operatorRows':len(target),'networkCounts':nets.most_common(),'departmentCounts':deps.most_common(),'networkSamples':samples,'candidateExistingDirectSources':sorted(names)}
+          pathlib.Path('reports/france/totalenergies-charging-services/pan-scope-audit.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'operatorRows':len(target),'networkCounts':nets.most_common(),'departmentCounts':deps.most_common(40),'candidateExistingDirectSources':sorted(names)},ensure_ascii=False,indent=2)[:40000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/totalenergies-charging-services/pan-scope-audit.json
+          git commit -m 'France TotalEnergies Charging Services: publish PAN scope audit' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
