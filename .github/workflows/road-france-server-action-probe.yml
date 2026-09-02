@@ -1,0 +1,56 @@
+name: France Road E-Flux server action probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/road-france-server-action-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract route server actions and lookup contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/road
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          s=requests.Session();s.headers['User-Agent']='Mozilla/5.0'
+          urls=['https://chargestation.road.io/_next/static/chunks/app/%5Blocale%5D/evse/page-071724e5defd4ba3.js','https://chargestation.road.io/_next/static/chunks/220-9d5dc9eedc896b24.js','https://chargestation.road.io/_next/static/chunks/49-522aea269b86f403.js','https://chargestation.road.io/_next/static/chunks/280-37e42bc4d2dbe59a.js','https://chargestation.road.io/_next/static/chunks/582-0e3a7d77785a3e4d.js']
+          out=[]
+          pats=['createServerReference','server-reference','actionId','ACTION_ID','callServer','use server','evseId','chargingStationEvseId','PAYMENT_OPTION_SCAN_TO_PAY','tariff','lookup','findEvse','getEvse','GetEvse']
+          for u in urls:
+            r=s.get(u,timeout=25)
+            if r.status_code!=200:continue
+            t=r.text;hits=[]
+            for p in pats:
+              for m in list(re.finditer(re.escape(p),t,re.I))[:100]:
+                c=t[max(0,m.start()-3000):m.end()+6000]
+                # probable server-action IDs and module references
+                ids=sorted(set(re.findall(r'["\'`]([0-9a-f]{32,64})["\'`]',c,re.I)))
+                strs=[]
+                for sm in re.finditer(r'["\'`]([^"\'`]{1,500})["\'`]',c):
+                  v=sm.group(1)
+                  if any(q in v.lower() for q in ['evse','tariff','station','charge','lookup','scan','api','grpc','road']):strs.append(v)
+                hits.append({'needle':p,'offset':m.start(),'actionIds':ids,'strings':strs[:120],'context':c})
+            # extract all 40ish hex tokens globally and module header around each action-reference-looking site
+            hexids=sorted(set(re.findall(r'["\'`]([0-9a-f]{40})["\'`]',t,re.I)))
+            out.append({'url':u,'bytes':len(t),'hex40':hexids,'hits':hits})
+          data={'assets':out}
+          pathlib.Path('reports/france/road/server-action-probe.json').write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
+          slim={'assets':[{'url':x['url'],'bytes':x['bytes'],'hex40':x['hex40'],'hits':x['hits'][:150]} for x in out]}
+          pathlib.Path('reports/france/road/server-action-summary.json').write_text(json.dumps(slim,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(slim,ensure_ascii=False)[:150000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/road/server-action-*.json
+          git commit -m 'France Road E-Flux: publish server action tariff probe' || exit 0
+          git pull --rebase origin main
+          git push
