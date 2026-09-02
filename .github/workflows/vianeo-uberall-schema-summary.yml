@@ -1,0 +1,96 @@
+name: France Vianeo Uberall schema summary
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/vianeo-uberall-schema-summary.yml']
+permissions:
+  contents: write
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Summarize station schema and price candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,re,pathlib,collections
+          src=pathlib.Path('reports/france/vianeo/uberall-locations-probe.json')
+          d=json.loads(src.read_text())
+          locs=[]
+          for item in d.get('responses',[]):
+            j=item.get('json')
+            if not isinstance(j,dict): continue
+            r=j.get('response',{})
+            for c in (r.get('locations'),r.get('results'),j.get('locations')):
+              if isinstance(c,list) and c:
+                locs=c; break
+            if locs: break
+          key_counts=collections.Counter()
+          nested_counts=collections.Counter()
+          custom_examples=[]
+          candidates=[]
+          money_re=re.compile(r'(?i)(?:\b\d+[,.]\d{1,3}\s*(?:€|eur|€/\s*kwh|eur\s*/\s*kwh)|(?:€|eur)\s*\d+[,.]\d{1,3}|\b\d+[,.]\d{1,3}\s*(?:€/kwh|eur/kwh|€/min|eur/min))')
+          terms_re=re.compile(r'(?i)\b(?:tarif|price|pricing|kwh|€/kwh|eur/kwh|cost|paiement|payment|borne|recharge|connector|puissance|power)\b')
+          def walk(x,path,locidx):
+            if isinstance(x,dict):
+              for k,v in x.items():
+                p=f'{path}/{k}'
+                nested_counts[p]+=1
+                lk=k.lower()
+                if 'custom' in lk and len(custom_examples)<100:
+                  custom_examples.append({'locationIndex':locidx,'path':p,'value':v})
+                walk(v,p,locidx)
+            elif isinstance(x,list):
+              for i,v in enumerate(x[:500]): walk(v,f'{path}[]',locidx)
+            elif isinstance(x,str):
+              if money_re.search(x) or terms_re.search(x):
+                candidates.append({'locationIndex':locidx,'path':path,'value':x[:1500]})
+          for i,loc in enumerate(locs):
+            if isinstance(loc,dict):
+              key_counts.update(loc.keys())
+              walk(loc,'',i)
+          # inspect detail samples too, because details may expose extra fields
+          detail_candidates=[]
+          detail_key_counts=collections.Counter()
+          for s in d.get('detailSamples',[]):
+            b=s.get('body')
+            if isinstance(b,dict):
+              def w2(x,path=''):
+                if isinstance(x,dict):
+                  for k,v in x.items():
+                    detail_key_counts[path+'/'+k]+=1; w2(v,path+'/'+k)
+                elif isinstance(x,list):
+                  for v in x[:500]: w2(v,path+'[]')
+                elif isinstance(x,str) and (money_re.search(x) or terms_re.search(x)):
+                  detail_candidates.append({'id':s.get('id'),'path':path,'value':x[:1500]})
+              w2(b)
+          # dedupe candidate values
+          seen=set(); uniq=[]
+          for x in candidates+detail_candidates:
+            sig=(x.get('path'),x.get('value'))
+            if sig not in seen:
+              seen.add(sig); uniq.append(x)
+          out={
+            'locationCount':len(locs),
+            'topLevelKeys':key_counts.most_common(),
+            'commonNestedPaths':nested_counts.most_common(250),
+            'customExamples':custom_examples[:100],
+            'priceOrTariffCandidateCount':len(uniq),
+            'priceOrTariffCandidates':uniq[:500],
+            'detailCommonPaths':detail_key_counts.most_common(250)
+          }
+          pathlib.Path('reports/france/vianeo/uberall-schema-summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'locationCount':out['locationCount'],'topLevelKeys':out['topLevelKeys'],'customExamples':out['customExamples'][:20],'candidateCount':len(uniq),'candidates':uniq[:80]},ensure_ascii=False,indent=2)[:40000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/vianeo/uberall-schema-summary.json
+          git commit -m 'France Vianeo: publish Uberall schema summary' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
