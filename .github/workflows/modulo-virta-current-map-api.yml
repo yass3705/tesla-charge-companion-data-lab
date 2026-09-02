@@ -1,0 +1,51 @@
+name: France Modulo current Virta map API
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/modulo-virta-current-map-api.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect current PoweredByVirta bundle around map blocks
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/modulo
+          python - <<'PY'
+          import requests,re,json,pathlib,datetime,urllib.parse
+          H={'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'*/*'}
+          origin='https://modulo.poweredbyvirta.com/'
+          page=requests.get(origin,headers=H,timeout=30).text
+          assets=[]
+          for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',page,re.I):
+            u=urllib.parse.urljoin(origin,src)
+            if u not in assets:assets.append(u)
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'assets':[]}
+          terms=('api/sage/public/v1/map/blocks','map/blocks','sage/public','latitude','longitude','bounding','viewport')
+          for u in assets:
+            r=requests.get(u,headers=H,timeout=60);txt=r.text;low=txt.lower();ctx=[]
+            for term in terms:
+              pos=0
+              while True:
+                i=low.find(term.lower(),pos)
+                if i<0:break
+                ctx.append({'term':term,'text':txt[max(0,i-2500):i+5000]});pos=i+len(term)
+                if len(ctx)>=60:break
+            out['assets'].append({'url':u,'status':r.status_code,'bytes':len(r.content),'contexts':ctx})
+          pathlib.Path('reports/france/modulo/current-map-api.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/modulo/current-map-api.json
+          git commit -m 'France Modulo: publish current Virta map API context' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
