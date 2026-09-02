@@ -1,0 +1,76 @@
+name: France Electra live price endpoint discovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/electra-live-price-endpoint-discovery.yml']
+permissions:
+  contents: write
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract station IDs and live price fetch implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/electra
+          python - <<'PY'
+          import requests,re,json,pathlib,html as htmllib,urllib.parse
+          root='https://stations.go-electra.com/fr'
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          page=s.get(root,timeout=30).text
+          m=re.search(r'<script[^>]+id=["\']stations-data["\'][^>]*>(.*?)</script>',page,re.I|re.S)
+          station_data=[]
+          if m:
+            try: station_data=json.loads(htmllib.unescape(m.group(1)))
+            except Exception: pass
+          # Fetch Map bundle from page.
+          scripts=[urllib.parse.urljoin(root,x) for x in re.findall(r'<script[^>]+src=["\']([^"\']+)',page,re.I)]
+          mapurl=next((x for x in scripts if '/Map.' in x or 'Map.astro' in x),None)
+          txt=s.get(mapurl,timeout=30).text if mapurl else ''
+          def redact(x):
+            x=re.sub(r'(?i)(pk|sk)\.[A-Za-z0-9._-]{20,}','[MAP_TOKEN_REDACTED]',x)
+            x=re.sub(r'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}','[JWT_REDACTED]',x)
+            return x
+          contexts=[]
+          patterns=['fetch(', 'currentHourPrice','connectors.availableCount','stations-data','prices','chart','/api/','/_actions/','action','stationId']
+          for pat in patterns:
+            low=txt.lower(); needle=pat.lower(); pos=0
+            while True:
+              i=low.find(needle,pos)
+              if i<0: break
+              sn=redact(txt[max(0,i-1200):i+1800])
+              if sn not in contexts: contexts.append(sn)
+              pos=i+len(needle)
+              if len(contexts)>=120: break
+            if len(contexts)>=120: break
+          # Extract static string paths and URL-ish strings around likely fetch implementation.
+          strings=sorted(set(re.findall(r'[`"\']([^`"\']{2,350})[`"\']',txt)))
+          candidates=[]
+          for x in strings:
+            lx=x.lower()
+            if any(t in lx for t in ['price','station','live','api','chart','connector','availability','astro']):
+              x=redact(x)
+              if x not in candidates: candidates.append(x)
+          # Summarize first station IDs/names safely.
+          samples=[]
+          arr=station_data if isinstance(station_data,list) else station_data.get('features',[]) if isinstance(station_data,dict) else []
+          for x in arr[:20]:
+            if isinstance(x,dict):
+              p=x.get('properties',x)
+              samples.append({'id':p.get('id'),'name':p.get('name'),'maxPower':p.get('maxPower'),'coords':x.get('geometry',{}).get('coordinates') if isinstance(x.get('geometry'),dict) else None})
+          out={'mapBundle':mapurl,'stationCount':len(arr),'stationSamples':samples,'candidateStrings':candidates[:500],'contexts':contexts[:120]}
+          pathlib.Path('reports/france/electra/live-price-endpoint-discovery.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'stationCount':len(arr),'stationSamples':samples,'candidateStrings':candidates[:180],'contexts':contexts[:20]},ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/electra/live-price-endpoint-discovery.json
+          git commit -m 'France Electra: publish live price endpoint discovery' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
