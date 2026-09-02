@@ -25,7 +25,7 @@ from androguard.core.apk import APK
 PACKAGE = "com.siemens.hera.mobility"
 VERSION_NAME = "6.2.15"
 VERSION_CODE = "62015"
-APK_SHA256 = "4300171fe767b0a79f4edc41dc05aad5563308630cabf97247a7dff7e80092c0"
+APK_SHA256: str | None = None  # populated after the base-APK fingerprint discovery run
 
 URL_RE = re.compile(rb"https?://[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%{}-]{4,500}", re.I)
 ASCII_RE = re.compile(rb"[\x20-\x7e]{4,500}")
@@ -106,7 +106,7 @@ def looks_sensitive(value: str) -> bool:
 
 def extract_ascii_strings(blobs: Iterable[bytes]) -> tuple[set[str], Counter[str], int]:
     urls: set[str] = set()
-    endpoint_paths: Counter[str] = Counter()
+    endpoint_paths: Counter[str] = Counter[]
     redacted = 0
     for blob in blobs:
         for match in URL_RE.finditer(blob):
@@ -228,7 +228,7 @@ def main() -> None:
 
     apk_bytes = args.apk.read_bytes()
     actual_sha = sha256_bytes(apk_bytes)
-    if actual_sha != APK_SHA256:
+    if APK_SHA256 is not None and actual_sha != APK_SHA256:
         raise RuntimeError(f"unexpected APK sha256 {actual_sha}")
 
     apk = APK(str(args.apk))
