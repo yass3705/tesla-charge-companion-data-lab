@@ -1,0 +1,95 @@
+name: France Vianeo charge web API probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/vianeo-charge-web-api-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Discover public charge web app endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/vianeo
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          root='https://charge.engie-vianeo.com/'
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          r=s.get(root,timeout=30); html=r.text
+          scripts=[]
+          for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',html,re.I):
+            u=urllib.parse.urljoin(root,src)
+            if u not in scripts: scripts.append(u)
+          # Some React builds expose asset-manifest.
+          manifests=[]
+          for u in [urllib.parse.urljoin(root,'asset-manifest.json'),urllib.parse.urljoin(root,'manifest.json')]:
+            try:
+              rr=s.get(u,timeout=20)
+              if rr.status_code==200: manifests.append({'url':u,'body':rr.text[:200000]})
+              try:
+                j=rr.json()
+                vals=[]
+                def walk(x):
+                  if isinstance(x,dict):
+                    for v in x.values(): walk(v)
+                  elif isinstance(x,list):
+                    for v in x: walk(v)
+                  elif isinstance(x,str) and x.endswith('.js'): vals.append(urllib.parse.urljoin(root,x))
+                walk(j)
+                for x in vals:
+                  if x not in scripts: scripts.append(x)
+              except Exception: pass
+            except Exception: pass
+          def redact(x):
+            x=re.sub(r'(?i)(pk|sk)\.[A-Za-z0-9._-]{20,}','[TOKEN_REDACTED]',x)
+            x=re.sub(r'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}','[JWT_REDACTED]',x)
+            x=re.sub(r'(?i)(access[_-]?token|token|secret|api[_-]?key)\s*[:=]\s*["\']?[A-Za-z0-9._~-]{12,}',r'\1=[REDACTED]',x)
+            return x
+          findings=[]
+          for u in scripts[:100]:
+            try: rr=s.get(u,timeout=25); txt=rr.text
+            except Exception: continue
+            urls=[]
+            for x in re.findall(r'https?://[^"\'\\\s)]+',txt):
+              lx=x.lower()
+              if any(t in lx for t in ['engie','vianeo','api','charge','station','evse','ocpi','price','tarif','payment','graphql']):
+                try:
+                  p=urllib.parse.urlsplit(x); clean=urllib.parse.urlunsplit((p.scheme,p.netloc,p.path,'',''))
+                except Exception: clean=x.split('?')[0]
+                clean=redact(clean)
+                if clean not in urls: urls.append(clean)
+            rel=[]
+            for x in re.findall(r'["\'](/[^"\']{2,300})["\']',txt):
+              if any(t in x.lower() for t in ['api','station','evse','price','tarif','charge','payment']):
+                x=redact(x.split('?')[0]);
+                if x not in rel: rel.append(x)
+            snippets=[]; low=txt.lower()
+            for tok in ['baseurl','apiurl','station','evse','tariff','price','charging','connector','payment']:
+              pos=0
+              while True:
+                i=low.find(tok,pos)
+                if i<0: break
+                sn=redact(txt[max(0,i-180):i+600])
+                if sn not in snippets: snippets.append(sn)
+                pos=i+len(tok)
+                if len(snippets)>=120: break
+              if len(snippets)>=120: break
+            if urls or rel or snippets: findings.append({'script':u,'bytes':len(txt),'candidateUrls':urls[:200],'relativePaths':rel[:200],'snippets':snippets[:120]})
+          out={'rootStatus':r.status_code,'pageBytes':len(html),'scripts':scripts,'findings':findings}
+          pathlib.Path('reports/france/vianeo/charge-web-api-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'rootStatus':r.status_code,'scripts':scripts,'findings':[{'script':x['script'],'candidateUrls':x['candidateUrls'][:50],'relativePaths':x['relativePaths'][:50],'snippets':x['snippets'][:12]} for x in findings]},ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/vianeo/charge-web-api-probe.json
+          git commit -m 'France Vianeo: publish sanitized charge web API probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
