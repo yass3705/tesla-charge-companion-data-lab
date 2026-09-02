@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "eborn-easycharge-official-france",
+  "generatedAt": "2026-09-02T14:12:00Z",
+  "operator": "EASYCHARGE",
+  "network": "eborn",
+  "country": "FR",
+  "classification": {
+    "networkWideTariffByPowerClass": true,
+    "coversAllEasychargeNetworks": false,
+    "reason": "The published eborn tariff applies to the eborn network only. EASYCHARGE also operates other networks, which must be qualified separately."
+  },
+  "subscription": {
+    "aLaCarteAnnualFeeEur": 14.0,
+    "monthlyBundleFeeEur": 49.0,
+    "monthlyBundleIncludedKwh": 250,
+    "bundleOverageUsesAlaCarteRate": true
+  },
+  "powerClasses": [
+    {
+      "class": "accelerated",
+      "maxPowerKwInclusive": 25,
+      "aLaCarteEurPerKwh": 0.310,
+      "nonSubscriberEurPerKwh": 0.433,
+      "postChargeAlaCarteEurPerMin": 0.05,
+      "postChargeNonSubscriberEurPerMin": 0.075
+    },
+    {
+      "class": "fast",
+      "minPowerKwExclusive": 25,
+      "maxPowerKwInclusive": 60,
+      "aLaCarteEurPerKwh": 0.433,
+      "nonSubscriberEurPerKwh": 0.573,
+      "postChargeAlaCarteEurPerMin": 0.075,
+      "postChargeNonSubscriberEurPerMin": 0.12
+    },
+    {
+      "class": "ultra_fast",
+      "minPowerKwExclusive": 60,
+      "aLaCarteEurPerKwh": 0.588,
+      "nonSubscriberEurPerKwh": 0.650,
+      "postChargeAlaCarteEurPerMin": 0.075,
+      "postChargeNonSubscriberEurPerMin": 0.12
+    }
+  ],
+  "postChargePolicy": {
+    "startsMinutesAfterChargeEnd": 30,
+    "acceleratedClassActiveWindowLocal": {"start": "08:00", "end": "20:00"}
+  },
+  "billingRules": {
+    "startedKwhIsBilled": true,
+    "otherEmspPricingOwnedByEmsp": true,
+    "ebornPassPartnerNetworkMarkupPct": 15
+  },
+  "inventory": {
+    "operatorClaimsNetworkChargePoints": 3000,
+    "panObservedEasychargeEbornStations": 1619
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "sources": [
+      {"key": "tariffs", "url": "https://www.eborn.fr/tarifs/", "httpStatus": 200},
+      {"key": "network", "url": "https://www.eborn.fr/", "httpStatus": 200},
+      {"key": "legalOperator", "url": "https://www.eborn.fr/mentions-legales/", "httpStatus": 200}
+    ]
+  },
+  "publicationStatus": "candidate_validated_source",
+  "notes": [
+    "Do not apply this tariff to AVIA VOLT by EASYCHARGE or other EASYCHARGE networks.",
+    "On fast/ultra-fast stations, the published non-subscriber tariff also applies to lower-power Type 2 charging on those stations.",
+    "Other eMSP tariffs are separate roaming prices."
+  ]
+}
