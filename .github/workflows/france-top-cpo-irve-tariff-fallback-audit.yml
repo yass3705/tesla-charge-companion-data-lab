@@ -1,0 +1,105 @@
+name: France top CPO national IRVE tariff fallback audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/france-top-cpo-irve-tariff-fallback-audit.yml']
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download latest consolidated national IRVE and audit tariff field
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/irve-fallback /tmp/irve
+          python - <<'PY'
+          import requests,json,pathlib,datetime,re,sys,os,collections,csv,io
+          S=requests.Session(); S.headers['User-Agent']='TeslaChargeCompanion-data-audit/1.0'
+          slugs=[
+            'base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques',
+            'base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques'
+          ]
+          meta=None; meta_url=None
+          for slug in slugs:
+            u='https://www.data.gouv.fr/api/1/datasets/'+slug+'/'
+            r=S.get(u,timeout=30)
+            if r.ok:
+              meta=r.json(); meta_url=u; break
+          if not meta: raise SystemExit('dataset metadata unavailable')
+          resources=meta.get('resources') or []
+          candidates=[]
+          for x in resources:
+            fmt=str(x.get('format') or '').lower()
+            title=str(x.get('title') or '')
+            schema=((x.get('schema') or {}).get('name') if isinstance(x.get('schema'),dict) else '') or ''
+            if fmt=='csv' and ('consolid' in title.lower() or 'irve' in title.lower() or 'schema-irve-statique' in schema):
+              candidates.append(x)
+          def dt(x): return str(x.get('last_modified') or x.get('modified') or x.get('created_at') or '')
+          candidates.sort(key=dt,reverse=True)
+          if not candidates: raise SystemExit('no CSV resource candidate')
+          chosen=candidates[0]
+          url=chosen.get('url')
+          rr=S.get(url,timeout=120)
+          rr.raise_for_status()
+          raw=rr.content
+          # Robust decoding/dialect
+          text=raw.decode('utf-8-sig','replace')
+          sample=text[:100000]
+          try: dialect=csv.Sniffer().sniff(sample,delimiters=',;\t')
+          except: dialect=csv.excel
+          reader=csv.DictReader(io.StringIO(text),dialect=dialect)
+          fields=reader.fieldnames or []
+          def pick(*names):
+            low={str(f).strip().lower():f for f in fields}
+            for n in names:
+              if n.lower() in low:return low[n.lower()]
+            for f in fields:
+              lf=str(f).lower()
+              if any(n.lower() in lf for n in names):return f
+            return None
+          fop=pick('nom_operateur','operateur','operator')
+          fnet=pick('nom_enseigne','nom_reseau','network')
+          ft=pick('tarification','tarif','pricing')
+          fpdc=pick('id_pdc_itinerance')
+          fst=pick('id_station_itinerance')
+          fname=pick('nom_station')
+          faddr=pick('adresse_station')
+          targets={
+            'citeos': lambda op,net: ('citeos' in op.lower() or 'cogelum' in op.lower() or 'citeos' in net.lower()),
+            'totalenergies_charging_services': lambda op,net: op.strip().lower()=='totalenergies charging services',
+            'electric55': lambda op,net: ('electric 55' in op.lower() or 'e55c' in op.lower()),
+            'easycharge': lambda op,net: ('easycharge' in op.lower() or 'easy charge' in op.lower()),
+            'spie_citynetworks': lambda op,net: ('spie citynetworks' in op.lower()),
+            'etotem': lambda op,net: ('e-totem' in op.lower() or 'etotem' in op.lower())
+          }
+          stats={k:{'rows':0,'nonEmptyTarificationRows':0,'uniqueTarifications':collections.Counter(),'networks':collections.Counter(),'samples':[]} for k in targets}
+          for row in reader:
+            op=str(row.get(fop,'') if fop else '')
+            net=str(row.get(fnet,'') if fnet else '')
+            tariff=str(row.get(ft,'') if ft else '').strip()
+            for key,match in targets.items():
+              if match(op,net):
+                s=stats[key]; s['rows']+=1; s['networks'][net]+=1
+                if tariff and tariff.lower() not in ('nan','none','null','non renseigné','non renseigne'):
+                  s['nonEmptyTarificationRows']+=1; s['uniqueTarifications'][tariff]+=1
+                  if len(s['samples'])<30:
+                    s['samples'].append({'stationId':row.get(fst) if fst else None,'pdcId':row.get(fpdc) if fpdc else None,'station':row.get(fname) if fname else None,'address':row.get(faddr) if faddr else None,'operator':op,'network':net,'tarification':tariff})
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'datasetMetadataApi':meta_url,'resource':{'title':chosen.get('title'),'url':url,'lastModified':chosen.get('last_modified') or chosen.get('modified'),'bytes':len(raw)},'fields':{'operator':fop,'network':fnet,'tarification':ft,'stationId':fst,'pdcId':fpdc},'targets':{}}
+          for k,s in stats.items():
+            out['targets'][k]={'rows':s['rows'],'nonEmptyTarificationRows':s['nonEmptyTarificationRows'],'coverage':(s['nonEmptyTarificationRows']/s['rows'] if s['rows'] else 0),'uniqueTarifications':s['uniqueTarifications'].most_common(100),'networks':s['networks'].most_common(100),'samples':s['samples']}
+          pathlib.Path('reports/france/irve-fallback/top-cpo-tariff-coverage.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({k:{kk:v for kk,v in x.items() if kk!='samples'} for k,x in out['targets'].items()},ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/irve-fallback/top-cpo-tariff-coverage.json
+          git commit -m 'France: publish national IRVE tariff fallback coverage' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
