@@ -1,0 +1,121 @@
+name: Allego IRVE PDC mapping probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/allego-irve-pdc-mapping-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download current national IRVE static consolidation
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 \
+            'https://www.data.gouv.fr/api/1/datasets/r/4ca78c71-4ea4-475d-bd3a-d4aef88f7bf8' \
+            -o /tmp/irve.csv
+          test -s /tmp/irve.csv
+
+      - name: Validate Allego PDC suffix convention
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv, json, re
+          from collections import Counter
+
+          SAMPLES = {
+              'FRALLEGO800130': {1, 2},
+              'FRALLEGO800990': {1, 2},
+              'FRALLEGO900108': {1, 2},
+              'FRALLEGO999088': {1, 2},
+              'FRALLEGO800261': {1, 2},
+          }
+
+          def norm(v):
+              return re.sub(r'[^A-Z0-9]', '', str(v or '').upper())
+
+          rows = []
+          allego = []
+          with open('/tmp/irve.csv', encoding='utf-8-sig', newline='') as f:
+              reader = csv.DictReader(f)
+              for r in reader:
+                  raw = r.get('id_pdc_itinerance') or ''
+                  n = norm(raw)
+                  if n.startswith('FRALLEGO'):
+                      rec = {
+                          'raw': raw,
+                          'norm': n,
+                          'station': r.get('id_station_itinerance'),
+                          'operator': r.get('nom_operateur'),
+                          'power': r.get('puiss_max'),
+                      }
+                      allego.append(rec)
+                      if any(n.startswith(cp) for cp in SAMPLES):
+                          rows.append(rec)
+
+          print('samplePanRows=', json.dumps(rows, ensure_ascii=False, indent=2))
+          print('allegoPdcCount=', len(allego))
+
+          suffix_shape = Counter()
+          valid_single_digit = 0
+          for r in allego:
+              if re.match(r'^(FRALLEGO[A-Z0-9]+?)(\d)$', r['norm']):
+                  valid_single_digit += 1
+                  suffix_shape['single_digit'] += 1
+              else:
+                  suffix_shape['other'] += 1
+
+          print('suffixShape=', dict(suffix_shape))
+          print('singleDigitShare=', round(valid_single_digit / len(allego), 6) if allego else 0)
+
+          checks = []
+          failures = []
+          present_samples = 0
+          for cp, visual_ids in SAMPLES.items():
+              observed = sorted({
+                  int(r['norm'][-1]) for r in rows
+                  if r['norm'].startswith(cp)
+                  and len(r['norm']) == len(cp) + 1
+                  and r['norm'][-1].isdigit()
+              })
+              expected = sorted(visual_ids)
+              if observed:
+                  present_samples += 1
+                  ok = observed == expected
+                  state = 'current_pan'
+              else:
+                  # A charge point may still resolve in DXP after it has disappeared
+                  # from the current PAN. That is an expected unmatched record, not a
+                  # reason to weaken the canonical-inventory guardrail.
+                  ok = True
+                  state = 'dxp_only_not_current_pan'
+              item = {
+                  'chargePointId': cp,
+                  'expectedVisualIds': expected,
+                  'panSuffixes': observed,
+                  'state': state,
+                  'ok': ok,
+              }
+              checks.append(item)
+              if not ok:
+                  failures.append(item)
+          print('sampleChecks=', json.dumps(checks, indent=2))
+
+          if failures:
+              raise SystemExit('sample DXP/PAN mapping mismatch')
+          if present_samples < 3:
+              raise SystemExit('too few current PAN samples to validate Allego suffix mapping')
+          if not allego or valid_single_digit / len(allego) < 0.99:
+              raise SystemExit('Allego PAN IDs do not consistently use a one-digit EVSE suffix')
+          print('RESULT mappingRuleValidated=True')
+          PY
