@@ -1,0 +1,63 @@
+name: France SPIE CityNetworks exact tariff audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/france-spie-citynetworks-audit.yml']
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit SPIE CityNetworks PAN scope and tariff coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/spie-citynetworks /tmp/spie
+          curl -fLsS --retry 3 https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz -o /tmp/spie/france.json.gz
+          python - <<'PY'
+          import gzip,json,collections,pathlib,datetime,re
+          data=json.load(gzip.open('/tmp/spie/france.json.gz','rt',encoding='utf-8'))
+          rows=data if isinstance(data,list) else data.get('stations') or data.get('data') or []
+          out=[]
+          def txt(x): return '' if x is None else str(x)
+          for s in rows:
+            op=txt(s.get('operator') or s.get('nom_operateur') or s.get('operatorName'))
+            net=txt(s.get('network') or s.get('nom_enseigne') or s.get('networkName'))
+            if 'spie citynetworks' not in op.lower(): continue
+            # support station with evses list and flat station rows
+            evses=s.get('evses') or s.get('points') or s.get('chargePoints') or []
+            if not evses: evses=[s]
+            for e in evses:
+              tariff=txt(e.get('tarification') or e.get('tariff') or s.get('tarification') or s.get('tariff')).strip()
+              pdc=txt(e.get('id_pdc_itinerance') or e.get('evseId') or e.get('id') or '')
+              power=e.get('powerKw') or e.get('puissance_nominale') or e.get('maxPowerKw') or s.get('powerKw') or s.get('puissance_nominale')
+              out.append({'stationId':s.get('id_station_itinerance') or s.get('stationId') or s.get('id'),'pdcId':pdc,'station':s.get('name') or s.get('nom_station'),'operator':op,'network':net,'powerKw':power,'tarification':tariff})
+          nets=collections.defaultdict(lambda:{'rows':0,'withTariff':0,'tariffs':collections.Counter(),'powers':collections.Counter(),'missingSamples':[],'pricedSamples':[]})
+          for r in out:
+            n=r['network'] or '(blank)'; x=nets[n]; x['rows']+=1
+            p=str(r.get('powerKw') or '')
+            if p: x['powers'][p]+=1
+            t=r['tarification']
+            if t and t.lower() not in ('nan','none','null','non renseigné','non renseigne'):
+              x['withTariff']+=1; x['tariffs'][t]+=1
+              if len(x['pricedSamples'])<8:x['pricedSamples'].append(r)
+            elif len(x['missingSamples'])<12:x['missingSamples'].append(r)
+          summary=[]
+          for n,x in sorted(nets.items(),key=lambda kv:kv[1]['rows'],reverse=True):
+            summary.append({'network':n,'rows':x['rows'],'withTariff':x['withTariff'],'coverage':x['withTariff']/x['rows'] if x['rows'] else 0,'topTariffs':x['tariffs'].most_common(20),'powers':x['powers'].most_common(20),'missingSamples':x['missingSamples'],'pricedSamples':x['pricedSamples']})
+          result={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'operator':'SPIE CityNetworks','rows':len(out),'withTariff':sum(1 for r in out if r['tarification']),'coverage':sum(1 for r in out if r['tarification'])/len(out) if out else 0,'networks':summary}
+          pathlib.Path('reports/france/spie-citynetworks/pan-tariff-audit.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'rows':result['rows'],'coverage':result['coverage'],'networks':[{k:v for k,v in x.items() if k not in ('missingSamples','pricedSamples')} for x in summary]},ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/spie-citynetworks/pan-tariff-audit.json
+          git commit -m 'France SPIE CityNetworks: publish tariff coverage audit' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
