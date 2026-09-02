@@ -1,0 +1,65 @@
+name: France E55C runtime config discovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/e55c-runtime-config-discovery.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Discover runtime configuration and central REST host
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/e55c
+          python - <<'PY'
+          import requests,re,json,pathlib,datetime
+          S=requests.Session();S.headers.update({'User-Agent':'Mozilla/5.0','Accept':'*/*'})
+          origin='https://e55c.evse-portal.com'
+          main=S.get(origin+'/main.f0fa855337a6d708.js',timeout=60).text
+          # literals that look like config/static resources
+          lits=[]
+          for m in re.finditer(r'["\'`]([^"\'`]{1,220})["\'`]',main):
+            z=m.group(1)
+            if any(t in z.lower() for t in ('config','environment','settings')) and ('.json' in z.lower() or 'assets/' in z.lower() or z.startswith('/')):
+              lits.append(z)
+          common=['/assets/config.json','/assets/config/config.json','/assets/configuration.json','/assets/config/configuration.json','/assets/settings.json','/assets/environment.json','/assets/env.json','/config.json','/configuration.json','/settings.json','/environment.json','/env.json','/assets/config/runtime.json','/assets/runtime-config.json','/runtime-config.json']
+          candidates=[]
+          for z in lits+common:
+            if z.startswith('http'):u=z
+            elif z.startswith('/'):u=origin+z
+            else:u=origin+'/'+z.lstrip('./')
+            if u not in candidates:candidates.append(u)
+          attempts=[]
+          for u in candidates[:160]:
+            try:
+              r=S.get(u,timeout=10,allow_redirects=False)
+              ct=r.headers.get('content-type','');body=r.text[:30000]
+              if r.status_code!=404 or 'json' in ct.lower():attempts.append({'url':u,'status':r.status_code,'contentType':ct,'body':body})
+            except Exception as e:attempts.append({'url':u,'error':str(e)})
+          # locate config service context for file naming
+          contexts=[];low=main.lower()
+          for term in ('getcentralsystemserver','centralsystemserver','loadconfig','configuration','environment'):
+            pos=0
+            while True:
+              i=low.find(term,pos)
+              if i<0:break
+              contexts.append(main[max(0,i-1000):i+2600]);pos=i+len(term)
+              if len(contexts)>=80:break
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'literalCandidates':lits[:300],'attempts':attempts,'contexts':contexts}
+          pathlib.Path('reports/france/e55c/runtime-config-discovery.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'literalCandidates':lits[:100],'attempts':attempts},ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/e55c/runtime-config-discovery.json
+          git commit -m 'France E55C: publish runtime config discovery' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
