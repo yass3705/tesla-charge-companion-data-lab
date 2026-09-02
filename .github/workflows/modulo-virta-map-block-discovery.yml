@@ -1,0 +1,64 @@
+name: France Modulo Virta public map block discovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/modulo-virta-map-block-discovery.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public map API call and probe Nancy viewport
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/modulo
+          python - <<'PY'
+          import requests,re,json,pathlib,datetime,urllib.parse
+          H={'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'application/json,text/plain,*/*'}
+          js=requests.get('https://modulo.poweredbyvirta.com/assets/index-CRTvsiKX.js',headers=H,timeout=60).text
+          contexts=[]; low=js.lower(); term='/api/sage/public/v1/map/blocks/'
+          pos=0
+          while True:
+            i=low.find(term,pos)
+            if i<0:break
+            contexts.append(js[max(0,i-1800):i+3500]);pos=i+len(term)
+          # collect nearby parameter tokens likely used by the request builder
+          toks=[]
+          for c in contexts:
+            for m in re.finditer(r'["\'`]([A-Za-z][A-Za-z0-9_\-]{1,40})["\'`]',c):
+              z=m.group(1)
+              if z.lower() in ('latitude','longitude','lat','lng','lon','north','south','east','west','zoom','bounds','bbox','limit','offset','minlat','maxlat','minlon','maxlon','nelat','nelng','swlat','swlng','block','blocks','brandidentity','language','country'): toks.append(z)
+          base='https://modulo.poweredbyvirta.com/api/sage/public/v1/map/blocks/'
+          variants=[
+            {},
+            {'latitude':'48.69','longitude':'6.18','zoom':'12'},
+            {'lat':'48.69','lng':'6.18','zoom':'12'},
+            {'north':'48.90','south':'48.45','east':'6.55','west':'5.90','zoom':'12'},
+            {'minLat':'48.45','maxLat':'48.90','minLng':'5.90','maxLng':'6.55','zoom':'12'},
+            {'bbox':'5.90,48.45,6.55,48.90','zoom':'12'},
+          ]
+          attempts=[]
+          for q in variants:
+            try:
+              r=requests.get(base,params=q,headers=H,timeout=20)
+              try:j=r.json()
+              except:j=None
+              attempts.append({'url':r.url,'status':r.status_code,'contentType':r.headers.get('content-type'),'json':j,'body':None if j is not None else r.text[:8000]})
+            except Exception as e: attempts.append({'params':q,'error':str(e)})
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'contexts':contexts,'parameterTokens':sorted(set(toks)),'attempts':attempts}
+          pathlib.Path('reports/france/modulo/virta-map-block-discovery.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'parameterTokens':sorted(set(toks)),'attempts':attempts},ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/modulo/virta-map-block-discovery.json
+          git commit -m 'France Modulo: publish Virta map block discovery' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
