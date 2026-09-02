@@ -1,0 +1,69 @@
+name: France Qwello AFIR deep probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/qwello-france-afir-deep-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reverse inline AFIR data source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/qwello /tmp/qwello
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          root='https://tariff.qwello.eu/'
+          r=s.get(root,timeout=30); html=r.text
+          inline=[]
+          for m in re.finditer(r'<script(?:\s[^>]*)?>(.*?)</script>',html,re.I|re.S):
+              txt=m.group(1)
+              if txt.strip(): inline.append(txt)
+          snippets=[]; urls=set(); rels=set()
+          pats=[r'fetch\s*\(\s*["\']([^"\']+)',r'axios(?:\.get)?\s*\(\s*["\']([^"\']+)',r'["\']([^"\']+\.(?:json|csv|js))["\']',r'["\']([^"\']*(?:station|tariff|evse)[^"\']*)["\']']
+          for txt in inline:
+              low=txt.lower()
+              for term in ['fetch','axios','station','tariff','evse','json','country']:
+                  pos=0
+                  while True:
+                      i=low.find(term,pos)
+                      if i<0: break
+                      snippets.append(txt[max(0,i-400):i+1400]); pos=i+len(term)
+                      if len(snippets)>=200: break
+                  if len(snippets)>=200: break
+              for p in pats:
+                  for x in re.findall(p,txt,re.I):
+                      if x.startswith('http'): urls.add(x)
+                      else: rels.add(x)
+          candidates=set(urls)
+          for x in rels:
+              if len(x)<300 and not x.startswith('#'):
+                  candidates.add(urllib.parse.urljoin(root,x))
+          for x in ['stations.json','data.json','tariffs.json','tariff.json','data/stations.json','assets/stations.json','stations-fr.json','fr.json']:
+              candidates.add(urllib.parse.urljoin(root,x))
+          attempts=[]
+          for u in sorted(candidates):
+              try:
+                  rr=s.get(u,timeout=20)
+                  body=rr.text
+                  attempts.append({'url':u,'status':rr.status_code,'contentType':rr.headers.get('content-type'),'bytes':len(body),'head':body[:20000]})
+              except Exception as e: attempts.append({'url':u,'error':str(e)})
+          out={'rootStatus':r.status_code,'inlineScriptCount':len(inline),'inlineScripts':inline[:20],'candidateUrls':sorted(candidates),'attempts':attempts,'snippets':snippets[:200]}
+          pathlib.Path('reports/france/qwello/afir-deep-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'candidateUrls':sorted(candidates),'attempts':[{k:v for k,v in a.items() if k!='head'} for a in attempts],'snippets':snippets[:30]},ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/qwello/afir-deep-probe.json
+          git commit -m 'France Qwello: publish AFIR deep probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
