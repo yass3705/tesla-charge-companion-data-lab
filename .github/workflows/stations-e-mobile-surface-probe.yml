@@ -1,0 +1,92 @@
+name: France Stations-e mobile surface probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/stations-e-mobile-surface-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public Android distribution and network strings
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/stations-e /tmp/stations-e
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse,subprocess,os,zipfile
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          pages=['https://stations-e.en.uptodown.com/android','https://stations-e.en.uptodown.com/android/download']
+          page_recs=[]; candidates=[]
+          for u in pages:
+            try:
+              r=s.get(u,timeout=30,allow_redirects=True)
+              t=r.text
+              page_recs.append({'url':u,'status':r.status_code,'final':r.url,'bytes':len(t)})
+              for x in re.findall(r'https?://[^"\'<>\s]+',t):
+                if any(z in x.lower() for z in ['.apk','.xapk','download','dw.uptodown']): candidates.append(x.replace('&amp;','&'))
+              for x in re.findall(r'(?:href|data-url|data-download-url)=["\']([^"\']+)',t,re.I):
+                y=urllib.parse.urljoin(r.url,x)
+                if any(z in y.lower() for z in ['download','.apk','.xapk','dw.uptodown']): candidates.append(y.replace('&amp;','&'))
+            except Exception as e: page_recs.append({'url':u,'error':str(e)})
+          candidates=list(dict.fromkeys(candidates))[:200]
+          dl=None; attempts=[]
+          for u in candidates:
+            try:
+              r=s.get(u,timeout=45,allow_redirects=True,stream=True)
+              ct=r.headers.get('content-type',''); cd=r.headers.get('content-disposition','')
+              attempts.append({'url':u,'status':r.status_code,'final':r.url,'contentType':ct,'contentDisposition':cd,'length':r.headers.get('content-length')})
+              if r.status_code==200 and ('application/' in ct or '.apk' in r.url.lower() or '.xapk' in r.url.lower() or 'attachment' in cd.lower()):
+                p='/tmp/stations-e/app.bin';
+                with open(p,'wb') as f:
+                  for ch in r.iter_content(1024*1024): f.write(ch)
+                if os.path.getsize(p)>1000000: dl=p; break
+            except Exception as e: attempts.append({'url':u,'error':str(e)})
+          findings={'pages':page_recs,'candidateCount':len(candidates),'downloadAttempts':attempts[:80],'downloaded':bool(dl)}
+          if dl:
+            # XAPK/APK are zip containers. Extract APK(s), then mine DEX/resources for public URLs and API route strings.
+            try:
+              z=zipfile.ZipFile(dl); z.extractall('/tmp/stations-e/unpack')
+            except Exception:
+              pathlib.Path('/tmp/stations-e/unpack').mkdir(exist_ok=True)
+              os.rename(dl,'/tmp/stations-e/unpack/base.apk')
+            apks=list(pathlib.Path('/tmp/stations-e/unpack').rglob('*.apk'))
+            urls=[]; route_strings=[]
+            for ap in apks[:20]:
+              try:
+                with zipfile.ZipFile(ap) as z:
+                  for n in z.namelist():
+                    if n.endswith(('.dex','.xml','.json','.js','.txt')) and z.getinfo(n).file_size<30000000:
+                      b=z.read(n)
+                      txt=b.decode('latin1','ignore')
+                      urls += re.findall(r'https?://[A-Za-z0-9._~:/?#\[\]@!$&()*+,;=%-]{8,}',txt)
+                      for term in ['tariff','pricing','price','connector','station','map/network','api/','graphql']:
+                        pos=0; low=txt.lower()
+                        while True:
+                          i=low.find(term,pos)
+                          if i<0: break
+                          sn=txt[max(0,i-180):i+500]
+                          if any(c.isalpha() for c in sn): route_strings.append(sn)
+                          pos=i+len(term)
+                          if len(route_strings)>2000: break
+                        if len(route_strings)>2000: break
+              except Exception: pass
+            urls=[u for u in dict.fromkeys(urls) if any(k in u.lower() for k in ['stations-e','stationse','api','map','charge'])]
+            findings['apks']=[str(x.name) for x in apks]
+            findings['urls']=urls[:500]
+            findings['routeSnippets']=route_strings[:400]
+          pathlib.Path('reports/france/stations-e/mobile-surface-probe.json').write_text(json.dumps(findings,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(findings,ensure_ascii=False)[:40000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/stations-e/mobile-surface-probe.json
+          git commit -m 'France Stations-e: publish mobile surface probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
