@@ -1,0 +1,53 @@
+name: France Load Motion config endpoint probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/load-motion-config-endpoint-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public configuration and endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/load-stations
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          host='https://loadstations.load-motion.com'
+          probes=[]
+          for p in ['/assets/config.json','/assets/configuration.json','/config.json','/assets/config/config.json','/assets/i18n/en.json','/assets/i18n/fr.json']:
+              try:
+                  r=s.get(host+p,timeout=20)
+                  probes.append({'url':host+p,'status':r.status_code,'contentType':r.headers.get('content-type'),'body':r.text[:200000]})
+              except Exception as e: probes.append({'url':host+p,'error':str(e)})
+          main=s.get(host+'/main.f31607260351ed46.js',timeout=40).text
+          patterns={}
+          for term in ['CentralSystemServer','charge-stations','charging-stations','pricing','tariff','connector','anonymous','public','roaming','api/','rest/']:
+              arr=[]; low=main.lower(); needle=term.lower(); pos=0
+              while True:
+                  i=low.find(needle,pos)
+                  if i<0: break
+                  arr.append(main[max(0,i-500):i+1400]); pos=i+len(needle)
+                  if len(arr)>=40: break
+              patterns[term]=arr
+          urls=sorted(set(re.findall(r'https?://[^"\'\\\s)]+',main)))
+          rel=sorted(set(re.findall(r'["\'](/[^"\']{1,180})["\']',main)))
+          out={'configProbes':probes,'mainBytes':len(main),'absoluteUrls':urls[:1000],'interestingRelative':[x for x in rel if any(k in x.lower() for k in ['station','charge','price','tariff','connector','api','roaming'])][:1000],'patterns':patterns}
+          pathlib.Path('reports/france/load-stations/config-endpoint-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'configProbes':[{k:v for k,v in x.items() if k!='body'}|({'body':x.get('body','')[:3000]} if x.get('status')==200 else {}) for x in probes],'mainBytes':len(main),'absoluteUrls':urls[:100],'interestingRelative':out['interestingRelative'][:200]},ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/load-stations/config-endpoint-probe.json
+          git commit -m 'France Load Stations: publish config endpoint probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
