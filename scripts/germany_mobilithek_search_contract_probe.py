@@ -37,13 +37,33 @@ def offers(obj):
 def main():
     tests=[]
     fields=("searchTerm","search","query","text","term")
-    terms=("chargecloud","eRound","Qwello","AFIR-recharging-dyn-chargecloud-json","AFIR-recharging-dyn-eRound")
+    # Keep known working probes and explicitly add GP JOULE's official AFIR
+    # publication names. This is discovery only: no tariff is inferred from
+    # the operator name or from another station.
+    terms=(
+        "chargecloud",
+        "eRound",
+        "Qwello",
+        "AFIR-recharging-dyn-chargecloud-json",
+        "AFIR-recharging-dyn-eRound",
+        "GP JOULE",
+        "AFIR-recharging-stat-GP JOULE Connect GmbH",
+        "AFIR-recharging-dyn-GP JOULE Connect GmbH",
+    )
     for term in terms:
         for field in fields:
             payload={field:term}
             status,data,error=post(payload)
             rows=offers(data) if data is not None else []
-            hit=[r for r in rows if term.lower() in json.dumps(r,ensure_ascii=False).lower() or ("afir-recharging-dyn" in str(r.get("title","")).lower())]
+            term_low=term.lower()
+            hit=[]
+            for r in rows:
+                row_text=json.dumps(r,ensure_ascii=False).lower()
+                direct=term_low in row_text
+                gpjoule=("gp joule" in term_low and "gp joule" in row_text and "afir-recharging" in row_text)
+                known_dynamic=("afir-recharging-dyn" in str(r.get("title","")).lower())
+                if direct or gpjoule or known_dynamic:
+                    hit.append(r)
             tests.append({"term":term,"field":field,"status":status,"error":error,"offerCount":len(rows),"hits":hit[:30]})
             if hit:
                 print("TCC_MOBILITHEK_SEARCH_HIT="+json.dumps({"term":term,"field":field,"hits":hit[:30]},ensure_ascii=False,sort_keys=True))
