@@ -1,0 +1,134 @@
+name: France Modulo PAN to Virta exact tariff resolver
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/modulo-pan-virta-resolver.yml']
+permissions:
+  contents: write
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve PAN Modulo EVSEs to Virta station detail
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/modulo
+          python - <<'PY'
+          import requests,csv,io,json,pathlib,datetime,re,urllib.parse,math,unicodedata,time
+          S=requests.Session(); S.headers.update({'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'application/json,text/plain,*/*'})
+          # latest national consolidation
+          meta=S.get('https://www.data.gouv.fr/api/1/datasets/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques/',timeout=30).json()
+          cs=[]
+          for x in meta.get('resources') or []:
+            if str(x.get('format') or '').lower()!='csv': continue
+            t=str(x.get('title') or '').lower(); u=str(x.get('url') or '').lower()
+            if 'consolidation' in t and 'documentation' not in t and 'ref-table' not in u:
+              cs.append(x)
+          cs.sort(key=lambda x:(1 if 'dernière version' in str(x.get('title') or '').lower() or 'derniere version' in str(x.get('title') or '').lower() else 0,str(x.get('last_modified') or '')),reverse=True)
+          chosen=cs[0]; rr=S.get(chosen['url'],timeout=120); rr.raise_for_status(); text=rr.content.decode('utf-8-sig','replace')
+          try:d=csv.Sniffer().sniff(text[:100000],delimiters=',;\t')
+          except:d=csv.excel
+          rd=csv.DictReader(io.StringIO(text),dialect=d); fields=rd.fieldnames or []; low={str(f).strip().lower():f for f in fields}
+          def pick(*xs):
+            for x in xs:
+              if x.lower() in low:return low[x.lower()]
+            for f in fields:
+              if any(x.lower() in str(f).lower() for x in xs):return f
+          fop=pick('nom_operateur','operator'); fnet=pick('nom_enseigne','nom_reseau'); fid=pick('id_pdc_itinerance'); fsid=pick('id_station_itinerance'); fname=pick('nom_station'); faddr=pick('adresse_station'); flat=pick('consolidated_latitude','latitude'); flon=pick('consolidated_longitude','longitude'); fp=pick('puissance_nominale')
+          pans=[]
+          for row in rd:
+            op=str(row.get(fop,'') if fop else '')
+            net=str(row.get(fnet,'') if fnet else '')
+            if 'modulo' not in (op+' '+net).lower(): continue
+            pans.append({'pdcId':str(row.get(fid,'') if fid else '').strip(),'stationId':str(row.get(fsid,'') if fsid else '').strip(),'station':str(row.get(fname,'') if fname else '').strip(),'address':str(row.get(faddr,'') if faddr else '').strip(),'lat':str(row.get(flat,'') if flat else '').strip(),'lon':str(row.get(flon,'') if flon else '').strip(),'power':str(row.get(fp,'') if fp else '').strip(),'operator':op,'network':net})
+          base='https://modulo.charge.virtaglobal.com'
+          def variants(v):
+            if not v:return []
+            vals=[]
+            def add(x):
+              x=x.strip()
+              if x and x not in vals:vals.append(x)
+            add(v); add(v.replace('*','')); add(v.replace('*','-')); add(v.replace('*','_'))
+            add(re.sub(r'^FR\*?','',v,flags=re.I)); add(re.sub(r'^FR','',v,flags=re.I))
+            # common eMI3: country*operator*E... -> compact and terminal suffixes
+            parts=re.split(r'\*',v)
+            if len(parts)>=3:
+              add(''.join(parts)); add(parts[-1]); add(parts[-1].lstrip('EPeP'))
+              add(parts[1]+parts[-1])
+            return vals
+          def norm(s):
+            s=unicodedata.normalize('NFKD',str(s)).encode('ascii','ignore').decode().lower()
+            return re.sub(r'[^a-z0-9]+',' ',s).strip()
+          cache={}; search_cache={}
+          def detail(k):
+            if k in cache:return cache[k]
+            u=base+'/api/stations/'+urllib.parse.quote(k,safe='')
+            try:
+              r=S.get(u,timeout=12); j=r.json() if r.ok else None
+              cache[k]={'url':u,'status':r.status_code,'json':j,'body':r.text[:5000]}
+            except Exception as e: cache[k]={'url':u,'error':str(e)}
+            return cache[k]
+          def search(q):
+            nq=norm(q)
+            if not nq:return []
+            if nq in search_cache:return search_cache[nq]
+            u=base+'/api/stations/?search='+urllib.parse.quote(q)
+            try:
+              r=S.get(u,timeout=15); j=r.json() if r.ok else []
+              if isinstance(j,dict): j=j.get('results') or j.get('data') or []
+              search_cache[nq]=j if isinstance(j,list) else []
+            except: search_cache[nq]=[]
+            return search_cache[nq]
+          matches=[]; unresolved=[]
+          for i,p in enumerate(pans):
+            found=[]
+            # 1 exact ID variants
+            for ident in variants(p['pdcId'])+variants(p['stationId']):
+              d=detail(ident); j=d.get('json')
+              if isinstance(j,dict) and (j.get('custom_evse_id') or j.get('id')):
+                found.append({'method':'id_variant','candidate':ident,'detail':j}); break
+            # 2 search by exact PAN identifiers/name/address
+            if not found:
+              queries=[]
+              for q in [p['pdcId'],p['stationId'],p['station'],p['address']]:
+                if q and q not in queries:queries.append(q)
+              for q in queries:
+                arr=search(q)
+                for s in arr[:30]:
+                  sid=str(s.get('custom_evse_id') or s.get('customEvseId') or s.get('id') or s.get('deviceId') or '')
+                  if not sid: continue
+                  dj=detail(sid).get('json')
+                  if not isinstance(dj,dict): continue
+                  # score name/address/ID exactness; only accept strong identity
+                  blob=norm(' '.join(str(dj.get(k) or '') for k in ('name','address','city','custom_evse_id','customEvseId')))
+                  score=0
+                  if norm(p['pdcId']) and norm(p['pdcId']).replace(' ','') in blob.replace(' ',''):score+=5
+                  if norm(p['stationId']) and norm(p['stationId']).replace(' ','') in blob.replace(' ',''):score+=4
+                  pn=norm(p['station']); pa=norm(p['address'])
+                  if pn and len(pn)>8 and (pn in blob or blob in pn):score+=3
+                  if pa:
+                    toks=[x for x in pa.split() if len(x)>3]
+                    score+=min(3,sum(1 for x in toks if x in blob))
+                  if score>=4: found.append({'method':'search_strong','query':q,'candidate':sid,'score':score,'detail':dj}); break
+                if found:break
+            if found:
+              j=found[0]['detail']; pricing=j.get('pricing'); otp=j.get('oneTimePricing') or j.get('one_time_pricing')
+              matches.append({'pan':p,'match':{k:v for k,v in found[0].items() if k!='detail'},'virta':{'id':j.get('id'),'custom_evse_id':j.get('custom_evse_id') or j.get('customEvseId'),'name':j.get('name'),'address':j.get('address'),'city':j.get('city'),'pricing':pricing,'oneTimePricing':otp,'connectors':j.get('connectors')}})
+            else: unresolved.append(p)
+            if i and i%100==0: print('processed',i,'/',len(pans),'matches',len(matches))
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'resource':{'title':chosen.get('title'),'url':chosen.get('url')},'panRows':len(pans),'matched':len(matches),'unresolved':len(unresolved),'coverage':len(matches)/len(pans) if pans else 0,'matches':matches,'unresolvedRows':unresolved[:500],'searchQueries':len(search_cache),'detailQueries':len(cache)}
+          pathlib.Path('reports/france/modulo/pan-virta-resolver.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'panRows':len(pans),'matched':len(matches),'unresolved':len(unresolved),'coverage':out['coverage'],'matchSamples':matches[:20],'unresolvedSamples':unresolved[:20]},ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/modulo/pan-virta-resolver.json
+          git commit -m 'France Modulo: publish PAN to Virta resolver' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
