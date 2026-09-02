@@ -1,0 +1,99 @@
+name: France EVzen public exact EVSE tariffs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/evzen-public-exact-tariffs.yml']
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Query official public API using PAN EVSE identifiers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/evzen data/operator_direct /tmp/evzen
+          curl -fLsS --retry 3 'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz' -o /tmp/evzen/all.json.gz
+          python - <<'PY'
+          import requests,gzip,json,pathlib,datetime,time,re
+          S=requests.Session(); S.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json'})
+          api='https://api.charge.evzen.com/api/v1'
+          rows=json.loads(gzip.open('/tmp/evzen/all.json.gz','rt',encoding='utf-8').read())
+          evses=[]; stations=[]
+          for r in rows:
+            if not isinstance(r,list) or len(r)<9: continue
+            op=str(r[5] or '').lower(); net=str(r[10] or '').lower() if len(r)>10 else ''
+            if 'evzen' not in op and 'evzen' not in net: continue
+            st=str(r[0] or '');
+            if st and st not in stations: stations.append(st)
+            for group in (r[8] or []):
+              if isinstance(group,list) and len(group)>6 and isinstance(group[6],list):
+                for e in group[6]:
+                  e=str(e or '').strip()
+                  if e and e not in evses: evses.append(e)
+          # Public discovery endpoints first.
+          discovery=[]
+          for p in ['/stations','/clustered-stations']:
+            try:
+              rr=S.get(api+p,timeout=25)
+              discovery.append({'path':p,'status':rr.status_code,'contentType':rr.headers.get('content-type'),'body':rr.text[:10000]})
+            except Exception as e: discovery.append({'path':p,'error':type(e).__name__})
+          attempts=[]; exact=[]
+          # Test PAN IDs plus common normalization forms on a bounded sample first, then expand only on success.
+          def variants(e):
+            vals=[e,e.replace('*',''),e.replace('*','-'),e.replace('*','_')]
+            return list(dict.fromkeys(vals))
+          success_pattern=None
+          for e in evses[:40]:
+            for v in variants(e):
+              for endpoint in [f'/evses/{v}',f'/qrcode-evses/{v}',f'/tariff-display/{v}']:
+                try:
+                  rr=S.get(api+endpoint,timeout=15)
+                  body=rr.text[:20000]
+                  price_like=bool(re.search(r'(?i)(tariff|price|pricing|amount|energy|kwh|minute)',body)) and rr.status_code==200
+                  attempts.append({'evse':e,'variant':v,'endpoint':endpoint,'status':rr.status_code,'priceLike':price_like,'body':body[:3000]})
+                  if endpoint.startswith('/tariff-display/') and rr.status_code==200 and price_like:
+                    success_pattern=(e,v); exact.append({'evseId':e,'queryId':v,'response':rr.json() if 'json' in (rr.headers.get('content-type') or '').lower() else body})
+                    break
+                except Exception as ex: attempts.append({'evse':e,'variant':v,'endpoint':endpoint,'error':type(ex).__name__})
+              if success_pattern: break
+            if success_pattern: break
+          # If PAN IDs are accepted, collect exact tariffs for all EVzen EVSEs with gentle pacing.
+          if success_pattern:
+            # Determine normalizer from successful pair.
+            src,q=success_pattern
+            mode='raw' if q==src else 'nostar' if q==src.replace('*','') else 'dash' if q==src.replace('*','-') else 'underscore'
+            def norm(e):
+              return e if mode=='raw' else e.replace('*','') if mode=='nostar' else e.replace('*','-') if mode=='dash' else e.replace('*','_')
+            done={x['evseId'] for x in exact}
+            for i,e in enumerate(evses):
+              if e in done: continue
+              q=norm(e)
+              try:
+                rr=S.get(api+'/tariff-display/'+q,timeout=15)
+                if rr.status_code==200:
+                  try:data=rr.json()
+                  except:data={'raw':rr.text[:20000]}
+                  exact.append({'evseId':e,'queryId':q,'response':data})
+              except: pass
+              if i%40==0: time.sleep(.3)
+          report={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'api':api,'panStations':len(stations),'panEvses':len(evses),'discovery':discovery,'sampleAttempts':attempts,'successPattern':success_pattern,'exactTariffsCount':len(exact)}
+          pathlib.Path('reports/france/evzen/public-exact-tariff-summary.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          if exact:
+            out={'schemaVersion':'1.0.0','dataset':'evzen-exact-france','generatedAt':report['generatedAt'],'operator':'EVzen','country':'FR','classification':{'source':'official_public_api','exactPerEvse':True,'failClosed':True},'apiBase':api,'coverage':{'panStations':len(stations),'panEvses':len(evses),'exactTariffs':len(exact)},'tariffs':exact}
+            pathlib.Path('data/operator_direct/evzen_exact_france.json').write_text(json.dumps(out,ensure_ascii=False,separators=(',',':'))+'\n')
+          print(json.dumps({k:v for k,v in report.items() if k!='sampleAttempts'},ensure_ascii=False,indent=2)[:30000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/evzen/public-exact-tariff-summary.json
+          test ! -f data/operator_direct/evzen_exact_france.json || git add data/operator_direct/evzen_exact_france.json
+          git commit -m 'France EVzen: publish public exact EVSE tariff results' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
