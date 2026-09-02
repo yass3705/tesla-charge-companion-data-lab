@@ -1,0 +1,120 @@
+name: France Electra PAN exact tariff snapshot
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/electra-pan-exact-tariff-snapshot.yml']
+permissions:
+  contents: write
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Match Electra public map to France PAN and fetch tariffs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/electra data/operator_direct /tmp/electra
+          curl -fLsS --retry 3 'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz' -o /tmp/electra/all.json.gz
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse,html as htmllib,gzip,math,concurrent.futures,datetime
+          s=requests.Session(); s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json'})
+          page=s.get('https://stations.go-electra.com/fr',timeout=30).text
+          sm=re.search(r'<script[^>]+id=["\']stations-data["\'][^>]*>(.*?)</script>',page,re.I|re.S)
+          web=[]
+          if sm:
+            web=json.loads(htmllib.unescape(sm.group(1)))
+          if isinstance(web,dict): web=web.get('features',[]) or web.get('stations',[]) or []
+          # Normalize public-map stations.
+          w=[]
+          for x in web:
+            if not isinstance(x,dict): continue
+            p=x.get('properties',x)
+            geom=x.get('geometry') if isinstance(x.get('geometry'),dict) else None
+            co=geom.get('coordinates') if geom else None
+            lat=p.get('lat') or p.get('latitude'); lon=p.get('lng') or p.get('lon') or p.get('longitude')
+            if isinstance(co,list) and len(co)>=2: lon,lat=co[0],co[1]
+            try: lat=float(lat); lon=float(lon)
+            except: continue
+            sid=p.get('id') or x.get('id')
+            if not sid: continue
+            w.append({'id':str(sid),'name':p.get('name'),'lat':lat,'lon':lon,'properties':p})
+          # France PAN V9: extract Electra station coords recursively.
+          raw=json.loads(gzip.open('/tmp/electra/all.json.gz','rt',encoding='utf-8').read())
+          rows=raw if isinstance(raw,list) else raw.get('stations') or raw.get('data') or raw.get('items') or []
+          pan=[]
+          def coord_from(r):
+            found={}
+            def walk(x):
+              if isinstance(x,dict):
+                for k,v in x.items():
+                  lk=str(k).lower()
+                  if isinstance(v,(int,float,str)):
+                    try: fv=float(str(v).replace(',','.'))
+                    except: fv=None
+                    if fv is not None:
+                      if lk in ('lat','latitude','ylat','y_lat'): found.setdefault('lat',fv)
+                      if lk in ('lng','lon','longitude','xlon','x_lon'): found.setdefault('lon',fv)
+                  if lk in ('coordinates','coordonnees','coords') and isinstance(v,(list,tuple)) and len(v)>=2:
+                    try:
+                      a,b=float(v[0]),float(v[1])
+                      if -180<=a<=180 and -90<=b<=90: found.setdefault('lon',a); found.setdefault('lat',b)
+                    except: pass
+                  walk(v)
+              elif isinstance(x,list):
+                for v in x: walk(v)
+            walk(r); return found.get('lat'),found.get('lon')
+          for r in rows:
+            try: txt=json.dumps(r,ensure_ascii=False).lower()
+            except: continue
+            if 'electra' not in txt: continue
+            lat,lon=coord_from(r)
+            if lat is None or lon is None: continue
+            pan.append({'lat':lat,'lon':lon})
+          # Haversine nearest map station for each PAN Electra row; dedupe public ids. 750m guards highway offsets.
+          def hav(a,b,c,d):
+            R=6371000; p1=math.radians(a); p2=math.radians(c); dp=math.radians(c-a); dl=math.radians(d-b)
+            q=math.sin(dp/2)**2+math.cos(p1)*math.cos(p2)*math.sin(dl/2)**2
+            return 2*R*math.asin(min(1,math.sqrt(q)))
+          matched={}; distances=[]
+          for pr in pan:
+            best=None; bd=1e99
+            for ws in w:
+              # cheap bounding gate
+              if abs(ws['lat']-pr['lat'])>.02 or abs(ws['lon']-pr['lon'])>.03: continue
+              d=hav(pr['lat'],pr['lon'],ws['lat'],ws['lon'])
+              if d<bd: bd=d; best=ws
+            if best and bd<=750:
+              matched[best['id']]=best; distances.append(bd)
+          gql='''query LocationLiveData($locationId: ID!) { location(id: $locationId) { id evses { id status connectors { id } } chargeTariffs { chargeTariffId currency currentPricePerKwh elements { restrictions { dayOfWeek startTime endTime } priceComponents { type price } } } } }'''
+          endpoint='https://emsp.go-electra.com/graphql'
+          def fetch_one(ws):
+            try:
+              rr=requests.post(endpoint,headers={'content-type':'application/json','User-Agent':'Mozilla/5.0'},json={'query':gql,'variables':{'locationId':ws['id']}},timeout=25)
+              j=rr.json() if rr.ok else None
+              loc=(j or {}).get('data',{}).get('location') if isinstance(j,dict) else None
+              return {'station':{k:ws[k] for k in ('id','name','lat','lon')},'status':rr.status_code,'location':loc,'errors':(j or {}).get('errors') if isinstance(j,dict) else None}
+            except Exception as e:return {'station':{k:ws[k] for k in ('id','name','lat','lon')},'error':str(e)}
+          stations=[]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=16) as ex:
+            for r in ex.map(fetch_one,list(matched.values())): stations.append(r)
+          ok=[x for x in stations if x.get('location')]
+          priced=[x for x in ok if (x.get('location') or {}).get('chargeTariffs')]
+          # Current price calculation mirrors Electra public JS: choose most restricted then lowest base; time/day applied by app dynamically.
+          out={'schemaVersion':'1.0.0','dataset':'electra-exact-france-public','generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'country':'FR','operator':'Electra','sources':{'publicMap':'https://stations.go-electra.com/fr','graphql':endpoint,'panV9':'tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz'},'coverage':{'panElectraRowsWithCoords':len(pan),'publicMapStationsEurope':len(w),'matchedPublicStations':len(matched),'graphqlOk':len(ok),'stationsWithChargeTariffs':len(priced),'maxMatchDistanceM':max(distances) if distances else None},'stations':stations}
+          pathlib.Path('reports/france/electra/pan-exact-tariff-snapshot.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          # Publish candidate direct only if substantial coverage; still fail closed at station level.
+          if len(matched)>=400 and len(ok)>=int(.95*len(matched)):
+            pathlib.Path('data/operator_direct/electra_exact_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'coverage':out['coverage'],'samplePriced':[{'station':x['station'],'tariffs':x['location'].get('chargeTariffs')} for x in priced[:8]]},ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/electra/pan-exact-tariff-snapshot.json data/operator_direct/electra_exact_france.json 2>/dev/null || true
+          git commit -m 'France Electra: publish PAN-matched exact public tariffs' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
