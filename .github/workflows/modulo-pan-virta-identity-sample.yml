@@ -1,0 +1,88 @@
+name: France Modulo PAN Virta identity sample
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/modulo-pan-virta-identity-sample.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe identity mapping on representative PAN rows
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/modulo
+          python - <<'PY'
+          import requests,csv,io,json,pathlib,datetime,re,urllib.parse,concurrent.futures
+          S=requests.Session(); S.headers.update({'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'application/json,text/plain,*/*'})
+          meta=S.get('https://www.data.gouv.fr/api/1/datasets/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques/',timeout=30).json()
+          cs=[x for x in meta.get('resources') or [] if str(x.get('format') or '').lower()=='csv' and 'consolidation' in str(x.get('title') or '').lower() and 'documentation' not in str(x.get('title') or '').lower()]
+          cs.sort(key=lambda x:str(x.get('last_modified') or ''),reverse=True); chosen=cs[0]
+          text=S.get(chosen['url'],timeout=120).content.decode('utf-8-sig','replace')
+          try:d=csv.Sniffer().sniff(text[:100000],delimiters=',;\t')
+          except:d=csv.excel
+          rd=csv.DictReader(io.StringIO(text),dialect=d); fields=rd.fieldnames or []; low={str(f).strip().lower():f for f in fields}
+          def pick(*xs):
+            for x in xs:
+              if x.lower() in low:return low[x.lower()]
+            for f in fields:
+              if any(x.lower() in str(f).lower() for x in xs):return f
+          fop=pick('nom_operateur'); fnet=pick('nom_enseigne'); fid=pick('id_pdc_itinerance'); fsid=pick('id_station_itinerance'); fn=pick('nom_station'); fa=pick('adresse_station'); flat=pick('consolidated_latitude','latitude'); flon=pick('consolidated_longitude','longitude')
+          rows=[];seen=set()
+          for r in rd:
+            if 'modulo' not in (str(r.get(fop,''))+' '+str(r.get(fnet,''))).lower():continue
+            key=str(r.get(fid,'')).strip()
+            if key in seen:continue
+            seen.add(key);rows.append({'pdcId':key,'stationId':str(r.get(fsid,'')).strip(),'name':str(r.get(fn,'')).strip(),'address':str(r.get(fa,'')).strip(),'lat':str(r.get(flat,'')).strip(),'lon':str(r.get(flon,'')).strip()})
+          # choose first 12 plus evenly distributed 12
+          if rows:
+            idx=sorted(set(list(range(min(12,len(rows))))+[round(i*(len(rows)-1)/11) for i in range(12)]))
+            sample=[rows[i] for i in idx]
+          else:sample=[]
+          base='https://modulo.charge.virtaglobal.com'
+          def vars(v):
+            if not v:return []
+            out=[]
+            for z in [v,v.replace('*',''),v.replace('*','-'),v.replace('*','_'),re.sub(r'^FR\*?','',v,flags=re.I),v.split('*')[-1]]:
+              if z and z not in out:out.append(z)
+            return out
+          def get(u):
+            try:
+              r=requests.get(u,headers={'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'application/json,text/plain,*/*'},timeout=12)
+              try:j=r.json()
+              except:j=None
+              return {'url':u,'status':r.status_code,'json':j,'body':r.text[:4000]}
+            except Exception as e:return {'url':u,'error':str(e)}
+          tests=[]
+          for p in sample:
+            us=[]
+            for ident in vars(p['pdcId'])+vars(p['stationId']):us.append(base+'/api/stations/'+urllib.parse.quote(ident,safe=''))
+            for q in [p['pdcId'],p['stationId'],p['name']]:
+              if q:us.append(base+'/api/stations/?search='+urllib.parse.quote(q))
+            tests.append((p,list(dict.fromkeys(us))))
+          outrows=[]
+          for p,us in tests:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex: res=list(ex.map(get,us))
+            interesting=[]
+            for x in res:
+              j=x.get('json')
+              if x.get('status')==200 and j not in (None,[],{}): interesting.append(x)
+              elif x.get('status') not in (404,): interesting.append(x)
+            outrows.append({'pan':p,'interesting':interesting,'attemptCount':len(res),'statuses':{str(s):sum(1 for x in res if x.get('status')==s) for s in set(x.get('status') for x in res)}})
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'resource':{'title':chosen.get('title'),'url':chosen.get('url')},'totalModuloPdc':len(rows),'sampleCount':len(sample),'samples':outrows}
+          pathlib.Path('reports/france/modulo/pan-virta-identity-sample.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/modulo/pan-virta-identity-sample.json
+          git commit -m 'France Modulo: publish PAN Virta identity sample' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
