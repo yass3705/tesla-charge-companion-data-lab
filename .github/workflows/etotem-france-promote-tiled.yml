@@ -1,0 +1,41 @@
+name: France e-Totem promote resilient overlay
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/etotem-france-promote-tiled.yml']
+permissions:
+  contents: write
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Promote validated fail-closed overlay
+        run: |
+          set -euo pipefail
+          cp data/operator_direct/etotem_official_france_tiled.json data/operator_direct/etotem_official_france.json
+          python - <<'PY'
+          import json,pathlib,datetime
+          p=pathlib.Path('data/operator_direct/etotem_official_france.json')
+          d=json.loads(p.read_text())
+          d['dataset']='etotem-official-france'
+          d['publicationStatus']='validated_fail_closed'
+          d['classification']={
+            'treated': True,
+            'exactOfficialSource': True,
+            'unmatchedPanRowsPolicy':'no_overlay_fallback_to_lower_priority_source',
+            'reason':'Official anonymous e-Totem map API was exhaustively tiled across all PAN station geographies. Exact station IDs yielded public tariff text for current exposed stations; PAN-only or no-tariff entries remain intentionally unpriced.'
+          }
+          p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n')
+          summary=json.loads(pathlib.Path('reports/france/etotem/tiled-exact-tariffs-summary.json').read_text())
+          pathlib.Path('reports/france/etotem/validated-summary.json').write_text(json.dumps({'validatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'classification':d['classification'],'coverage':summary['coverage']},ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/operator_direct/etotem_official_france.json reports/france/etotem/validated-summary.json
+          git commit -m 'data(etotem): validate fail-closed France tariff overlay' || exit 0
+          git pull --rebase origin main
+          git push
