@@ -1,0 +1,93 @@
+name: France Modulo Virta exact tariff probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/modulo-virta-exact-tariff-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve station/device identifiers and public one-time prices
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/modulo
+          python - <<'PY'
+          import requests,json,pathlib,datetime,re,urllib.parse,time
+          S=requests.Session(); S.headers.update({'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'application/json,text/plain,*/*'})
+          base='https://modulo.charge.virtaglobal.com'
+          r=S.get(base+'/api/stations/',timeout=30); r.raise_for_status(); raw=r.text
+          try: stations=r.json()
+          except Exception: raise SystemExit('station endpoint not JSON: '+raw[:500])
+          def walk(x,path=''):
+            if isinstance(x,dict):
+              yield x,path
+              for k,v in x.items():
+                yield from walk(v,path+'/'+str(k))
+            elif isinstance(x,list):
+              for i,v in enumerate(x): yield from walk(v,path+'/'+str(i))
+          idkeys=('deviceid','device_id','device','stationid','station_id','evseid','evse_id','connectorid','connector_id','id')
+          ids=[]; objects=[]
+          for obj,path in walk(stations):
+            rec={'path':path,'keys':list(obj.keys()),'name':obj.get('name') or obj.get('title') or obj.get('stationName') or obj.get('address')}
+            found=[]
+            for k,v in obj.items():
+              lk=str(k).lower().replace('-','_')
+              if any(tok in lk for tok in ('device','station','evse','connector')) or lk=='id':
+                if isinstance(v,(str,int,float)) and str(v).strip():
+                  found.append((k,str(v)))
+                  ids.append({'key':k,'value':str(v),'path':path,'name':rec['name']})
+            if found: rec['ids']=found; objects.append(rec)
+          # Unique candidate IDs, prioritizing explicit device IDs.
+          seen=set(); candidates=[]
+          for x in sorted(ids,key=lambda z:(0 if 'device' in z['key'].lower() else 1,0 if 'evse' in z['key'].lower() else 1)):
+            key=(x['key'],x['value'])
+            if key in seen: continue
+            seen.add(key); candidates.append(x)
+          attempts=[]; successful=[]
+          endpoints=['/api/charging/checkonetime-v2?deviceId={}','/api/charging/chargeid?deviceId={}']
+          for x in candidates[:500]:
+            val=urllib.parse.quote(x['value'],safe='')
+            for tmpl in endpoints:
+              u=base+tmpl.format(val)
+              try:
+                rr=S.get(u,timeout=15); body=rr.text[:120000]
+                item={'candidate':x,'url':u,'status':rr.status_code,'contentType':rr.headers.get('content-type'),'bytes':len(rr.content),'body':body}
+                attempts.append(item)
+                if rr.ok and body and body.strip() not in ('{}','[]','null'):
+                  low=body.lower()
+                  if any(t in low for t in ('price','tariff','currency','kwh','minute','eur','cost')):
+                    successful.append(item)
+                if rr.status_code not in (400,404,422) and len(body)>100:
+                  # one useful response per candidate is enough
+                  break
+              except Exception as e: attempts.append({'candidate':x,'url':u,'error':str(e)})
+            if len(successful)>=80: break
+          # Also test station detail routes using station-looking ids.
+          details=[]
+          for x in candidates[:150]:
+            if not any(t in x['key'].lower() for t in ('station','id')): continue
+            u=base+'/api/stations/'+urllib.parse.quote(x['value'],safe='')
+            try:
+              rr=S.get(u,timeout=12); body=rr.text[:100000]
+              if rr.status_code!=404:
+                details.append({'candidate':x,'url':u,'status':rr.status_code,'contentType':rr.headers.get('content-type'),'bytes':len(rr.content),'body':body})
+            except Exception as e: details.append({'candidate':x,'url':u,'error':str(e)})
+            if len(details)>=80: break
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'stationEndpoint':{'url':r.url,'status':r.status_code,'bytes':len(r.content),'json':stations},'identifierObjects':objects[:500],'candidateIds':candidates[:1000],'attempts':attempts,'successfulPriceLike':successful,'stationDetails':details}
+          pathlib.Path('reports/france/modulo/virta-exact-tariff-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'stationJsonType':type(stations).__name__,'candidateIds':candidates[:80],'attemptSummary':[{'candidate':a.get('candidate'),'url':a.get('url'),'status':a.get('status'),'bytes':a.get('bytes'),'priceLike':a in successful} for a in attempts[:180]],'successful':[{k:v for k,v in a.items() if k!='body'} | {'body':a.get('body','')[:3000]} for a in successful[:20]],'details':[{k:v for k,v in a.items() if k!='body'} | {'body':a.get('body','')[:1500]} for a in details[:20]]},ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/modulo/virta-exact-tariff-probe.json
+          git commit -m 'France Modulo: publish exact Virta tariff probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
