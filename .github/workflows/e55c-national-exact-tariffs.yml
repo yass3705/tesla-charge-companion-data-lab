@@ -1,0 +1,119 @@
+name: France E55C national exact connector tariffs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/e55c-national-exact-tariffs.yml']
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract every UMap connector tariff and reconcile PAN
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/e55c data/operator_direct
+          python - <<'PY'
+          import requests,re,json,pathlib,datetime,html,urllib.parse,concurrent.futures,csv,io,hashlib,collections,time
+          H={'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'application/json,text/plain,*/*','Content-Type':'application/json'}
+          def normid(x): return re.sub(r'[^A-Z0-9]','',str(x or '').upper())
+          # Official E55C UMap data layer used by the operator's public map
+          dsurl='https://umap.openstreetmap.fr/fr/datalayer/1234362/45a8c330-b19e-4fb8-a437-ab6e1827b8df/'
+          dl=requests.get(dsurl,headers=H,timeout=60).json()
+          features=dl.get('features') or []
+          links=[]; feature_summary=[]
+          for f in features:
+            p=f.get('properties') or {}; rawname=html.unescape(str(p.get('name') or '')); desc=html.unescape(str(p.get('description') or ''))
+            name=re.sub(r'<[^>]+>',' ',rawname); name=re.sub(r'\s+',' ',name).strip()
+            is_private='[PRIVEE]' in name.upper() or '[PRIVÉE]' in name.upper()
+            found=[]
+            for u in re.findall(r'href=["\'](https://ev-qr\.com/\?[^"\']+)',desc,re.I):
+              u=html.unescape(u); q=urllib.parse.parse_qs(urllib.parse.urlsplit(u).query)
+              evse=(q.get('b') or [''])[0]; con=(q.get('c') or ['1'])[0]
+              if not evse: continue
+              key=(evse,str(con))
+              if key not in [(x['evse'],x['connector']) for x in links]:
+                x={'station':name,'private':is_private,'evse':evse,'connector':str(con),'sourceUrl':u,'coordinates':(f.get('geometry') or {}).get('coordinates')}
+                links.append(x); found.append({'evse':evse,'connector':str(con)})
+            feature_summary.append({'station':name,'private':is_private,'coordinates':(f.get('geometry') or {}).get('coordinates'),'connectors':found})
+          # Anonymous scan-pay initialize gives the exact matching pricing definition before payment.
+          base='https://rest.service-evse.com/v1/auth/scan-pay/initialize'
+          def probe(x):
+            u=base+'/'+urllib.parse.quote(x['evse'],safe='')+'/'+urllib.parse.quote(x['connector'],safe='')
+            for attempt in range(3):
+              try:
+                r=requests.get(u,params={'Tenant':'e55c'},headers=H,timeout=20)
+                try:j=r.json()
+                except:j=None
+                if r.status_code>=500 and attempt<2:
+                  time.sleep(0.4*(attempt+1)); continue
+                return x|{'endpoint':r.url,'status':r.status_code,'json':j,'body':None if j is not None else r.text[:2000]}
+              except Exception as e:
+                if attempt<2: time.sleep(0.4*(attempt+1)); continue
+                return x|{'endpoint':u,'error':str(e)}
+          results=[]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=28) as ex:
+            for i,r in enumerate(ex.map(probe,links)):
+              results.append(r)
+              if (i+1)%100==0: print('E55C init',i+1,'/',len(links))
+          # compact / deduplicate pricing definitions
+          defs={}; connector_rows=[]; status_counts=collections.Counter(); no_pricing=[]
+          for r in results:
+            status_counts[str(r.get('status','error'))]+=1; j=r.get('json')
+            ids=[]
+            if isinstance(j,dict):
+              for d in j.get('pricingDefinitions') or []:
+                did=str(d.get('_id') or hashlib.sha256(json.dumps(d,sort_keys=True,ensure_ascii=False).encode()).hexdigest()[:24])
+                defs[did]=d; ids.append(did)
+              cs=j.get('chargingStation') or {}; cp=(cs.get('chargePoints') or [{}])[0] if isinstance(cs.get('chargePoints'),list) else {}
+              co=j.get('connector') or {}; state=j.get('chargerState') or {}
+              connector_rows.append({'station':r['station'],'private':r['private'],'evse':r['evse'],'connector':r['connector'],'coordinates':r.get('coordinates'),'httpStatus':r.get('status'),'chargingStationId':cs.get('id'),'siteAreaName':cs.get('siteAreaName'),'chargerIdAlias':cs.get('chargerIdAlias'),'powerW':cp.get('power'),'currentType':co.get('currentType') or cp.get('currentType'),'connectorType':co.get('type'),'chargerState':state.get('state'),'pricingDefinitionIds':ids})
+            else:
+              connector_rows.append({'station':r['station'],'private':r['private'],'evse':r['evse'],'connector':r['connector'],'coordinates':r.get('coordinates'),'httpStatus':r.get('status'),'error':r.get('error') or r.get('body'),'pricingDefinitionIds':[]})
+            if not ids:no_pricing.append({'station':r['station'],'private':r['private'],'evse':r['evse'],'connector':r['connector'],'status':r.get('status'),'error':r.get('error') or r.get('body')})
+          # Current PAN reconciliation
+          meta=requests.get('https://www.data.gouv.fr/api/1/datasets/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques/',headers=H,timeout=30).json()
+          cs=[x for x in meta.get('resources') or [] if str(x.get('format') or '').lower()=='csv' and 'consolidation' in str(x.get('title') or '').lower() and 'documentation' not in str(x.get('title') or '').lower()]
+          cs.sort(key=lambda x:(1 if 'dernière version' in str(x.get('title') or '').lower() or 'derniere version' in str(x.get('title') or '').lower() else 0,str(x.get('last_modified') or '')),reverse=True); chosen=cs[0]
+          raw=requests.get(chosen['url'],headers=H,timeout=120).content.decode('utf-8-sig','replace')
+          try:dialect=csv.Sniffer().sniff(raw[:100000],delimiters=',;\t')
+          except:dialect=csv.excel
+          rd=csv.DictReader(io.StringIO(raw),dialect=dialect); fields=rd.fieldnames or []; low={str(f).strip().lower():f for f in fields}
+          def pick(*xs):
+            for x in xs:
+              if x.lower() in low:return low[x.lower()]
+            for f in fields:
+              if any(x.lower() in str(f).lower() for x in xs):return f
+          fop=pick('nom_operateur','operator'); fnet=pick('nom_enseigne','nom_reseau'); fid=pick('id_pdc_itinerance'); fsid=pick('id_station_itinerance'); fn=pick('nom_station'); fa=pick('adresse_station')
+          pan=[]
+          for row in rd:
+            op=str(row.get(fop,'') if fop else ''); net=str(row.get(fnet,'') if fnet else '')
+            blob=(op+' '+net).lower()
+            if not ('electric 55 charging' in blob or 'e55c' in blob):continue
+            pan.append({'pdcId':str(row.get(fid,'') if fid else '').strip(),'stationId':str(row.get(fsid,'') if fsid else '').strip(),'station':str(row.get(fn,'') if fn else '').strip(),'address':str(row.get(fa,'') if fa else '').strip(),'operator':op,'network':net})
+          exact_by_norm={normid(x['chargingStationId'] or x['evse']):x for x in connector_rows if x.get('pricingDefinitionIds')}
+          pan_matches=[]; pan_unmatched=[]
+          for p in pan:
+            n=normid(p['pdcId']); m=exact_by_norm.get(n)
+            if m: pan_matches.append({'pan':p,'exact':{'evse':m['evse'],'connector':m['connector'],'pricingDefinitionIds':m['pricingDefinitionIds']}})
+            else: pan_unmatched.append(p)
+          exact_public=[x for x in connector_rows if not x['private'] and x.get('pricingDefinitionIds')]
+          public_links=[x for x in connector_rows if not x['private']]
+          report={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'operator':'ELECTRIC 55 CHARGING','sources':{'umap':dsurl,'scanPayInit':'https://rest.service-evse.com/v1/auth/scan-pay/initialize/:chargingStationId/:connectorId','pan':{'title':chosen.get('title'),'url':chosen.get('url'),'lastModified':chosen.get('last_modified')}},'umapFeatures':len(features),'privateFeatures':sum(1 for x in feature_summary if x['private']),'connectorLinks':len(links),'publicConnectorLinks':len(public_links),'initStatusCounts':dict(status_counts),'connectorsWithExactPricing':sum(1 for x in connector_rows if x.get('pricingDefinitionIds')),'publicConnectorsWithExactPricing':len(exact_public),'connectorsWithoutPricing':len(no_pricing),'uniquePricingDefinitions':len(defs),'panRows':len(pan),'panExactMatched':len(pan_matches),'panUnmatched':len(pan_unmatched),'panCoverage':len(pan_matches)/len(pan) if pan else None,'publicationReady':bool(pan) and len(pan_unmatched)==0 and len(no_pricing)==0,'noPricingSamples':no_pricing[:100],'panUnmatchedSamples':pan_unmatched[:150]}
+          snapshot={'schemaVersion':'1.0.0','dataset':'e55c-exact-france','generatedAt':report['generatedAt'],'operator':'ELECTRIC 55 CHARGING','country':'FR','classification':{'stationLevelExactTariffAvailableAnonymously':True,'source':'ChargeKeeper scan-pay initialization','noTariffExtrapolation':True,'publicationReady':report['publicationReady']},'pricingDefinitions':defs,'connectors':connector_rows,'panMatches':pan_matches}
+          pathlib.Path('reports/france/e55c/national-exact-tariff-audit.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('data/operator_direct/e55c_exact_france.json').write_text(json.dumps(snapshot,ensure_ascii=False,separators=(',',':'))+'\n')
+          print(json.dumps(report,ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/e55c/national-exact-tariff-audit.json data/operator_direct/e55c_exact_france.json
+          git commit -m 'France E55C: publish national exact connector tariffs' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
