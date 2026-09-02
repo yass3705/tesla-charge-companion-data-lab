@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-09-02T17:48:00Z",
+  "operator": "ELECTRIC 55 CHARGING",
+  "country": "FR",
+  "status": "treated_fail_closed",
+  "directTariffMethod": {
+    "source": "official E55C public UMap payment links -> ChargeKeeper anonymous scan-pay initialization",
+    "endpoint": "https://rest.service-evse.com/v1/auth/scan-pay/initialize/:chargingStationId/:connectorId?Tenant=e55c",
+    "exactStationOrEvsePricing": true,
+    "anonymous": true,
+    "noExtrapolation": true
+  },
+  "coverage": {
+    "panRows": 1891,
+    "exactPanMatches": 1880,
+    "exactPanCoverage": 0.9941829719725013,
+    "officialMapFeatures": 606,
+    "officialMapConnectorLinks": 1885,
+    "connectorsReturningExactPricing": 1881,
+    "uniqueExactPricingDefinitions": 5,
+    "panRowsWithoutExactDirectTariff": 11
+  },
+  "failClosedPolicy": {
+    "completeCpoTreatment": true,
+    "unresolvedDirectTariffsAreNotInvented": true,
+    "unresolvedRowsFallThroughToLowerPriorityTariffSources": true,
+    "reason": "The remaining PAN-only/stale connector identities are absent from the current official E55C payment surface or return HTTP 404 from the current E55C scan-pay backend after canonical and alternate identity probes. They therefore receive no E55C direct-price overlay.",
+    "evidence": [
+      "reports/france/e55c/national-exact-tariff-audit.json",
+      "reports/france/e55c/pan-gap-recovery.json",
+      "reports/france/e55c/scanpay-init-tariff-probe.json",
+      "data/operator_direct/e55c_exact_france.json"
+    ]
+  },
+  "notes": [
+    "This classification treats the CPO workstream as complete without pretending that the 11 unresolved PAN rows have an exact E55C direct tariff.",
+    "If those connector identities reappear in the official E55C payment map/backend, a subsequent refresh can populate them automatically."
+  ]
+}
