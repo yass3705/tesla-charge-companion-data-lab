@@ -1,0 +1,86 @@
+name: France YES55 Load Stations tenant probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/yes55-loadstations-tenant-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public YES55 tenant frontend and API contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/yes55 /tmp/yes55
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          sess=requests.Session(); sess.headers['User-Agent']='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126 Safari/537.36'
+          roots=['https://yes55.load-motion.com/','https://yes55.load-motion.com']
+          out={'roots':[],'assets':[],'candidateApiUrls':[],'routeSnippets':[],'commonPathAttempts':[]}
+          html=''
+          for u in roots:
+            try:
+              r=sess.get(u,timeout=25,allow_redirects=True)
+              out['roots'].append({'url':u,'finalUrl':r.url,'status':r.status_code,'contentType':r.headers.get('content-type'),'body':r.text[:120000]})
+              if r.ok and len(r.text)>len(html): html=r.text
+            except Exception as e: out['roots'].append({'url':u,'error':str(e)})
+          base='https://yes55.load-motion.com/'
+          candidates=[]
+          for p in ['/assets/config.json','/config.json','/assets/config/config.json','/manifest.json','/manifest.webmanifest','/asset-manifest.json','/version.json','/flutter_service_worker.js','/main.dart.js']:
+            candidates.append(urllib.parse.urljoin(base,p))
+          if html:
+            for x in re.findall(r'(?:src|href)=["\']([^"\']+)',html,re.I):
+              u=urllib.parse.urljoin(base,x)
+              if any(t in u.lower() for t in ('.js','.json','manifest','config')): candidates.append(u)
+          seen=set(); texts=[]
+          for u in candidates:
+            if u in seen: continue
+            seen.add(u)
+            try:
+              r=sess.get(u,timeout=35,allow_redirects=True)
+              body=r.text if 'text' in (r.headers.get('content-type') or '') or 'json' in (r.headers.get('content-type') or '') or u.endswith(('.js','.json')) else ''
+              out['assets'].append({'url':u,'finalUrl':r.url,'status':r.status_code,'contentType':r.headers.get('content-type'),'bytes':len(r.content),'body':body[:250000]})
+              if r.ok and body: texts.append((u,body))
+            except Exception as e: out['assets'].append({'url':u,'error':str(e)})
+          apiurls=set(); snippets=[]
+          terms=['loadstations-api','centralapi','charging-station','chargingStation','station/check','pricing','tariff','price','tenant','recaptcha','captcha','guest','/v1/','/v2/']
+          for u,txt in texts:
+            for m in re.findall(r'https?://[^"\'\\\s<>]+',txt):
+              if any(t in m.lower() for t in ['api','loadstation','load-motion','yes55']): apiurls.add(m[:1000])
+            low=txt.lower()
+            for term in terms:
+              p=0
+              while True:
+                i=low.find(term.lower(),p)
+                if i<0: break
+                snippets.append({'asset':u,'term':term,'snippet':txt[max(0,i-350):i+1000]})
+                p=i+len(term)
+                if len(snippets)>=350: break
+              if len(snippets)>=350: break
+          out['candidateApiUrls']=sorted(apiurls)[:500]
+          out['routeSnippets']=snippets[:350]
+          # Only harmless unauthenticated GETs against common configuration/map surfaces.
+          host='https://centralapi.app.prod.loadstations-api.com'
+          common=['/','/health','/v1/configuration','/v1/config','/v1/settings','/v1/charging-stations','/v1/stations','/v1/map','/v1/auth/guests/configuration','/v1/auth/guests/charging-stations']
+          for p in common:
+            try:
+              r=sess.get(host+p,timeout=20)
+              out['commonPathAttempts'].append({'url':host+p,'status':r.status_code,'contentType':r.headers.get('content-type'),'body':r.text[:50000]})
+            except Exception as e: out['commonPathAttempts'].append({'url':host+p,'error':str(e)})
+          pathlib.Path('reports/france/yes55/loadstations-tenant-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'roots':[{k:v for k,v in x.items() if k!='body'} for x in out['roots']], 'assets':[{k:v for k,v in x.items() if k!='body'} for x in out['assets']], 'apiUrls':out['candidateApiUrls'][:100], 'snippets':out['routeSnippets'][:40], 'common':out['commonPathAttempts']},ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/yes55/loadstations-tenant-probe.json
+          git commit -m 'France YES55: publish Load Stations tenant probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
