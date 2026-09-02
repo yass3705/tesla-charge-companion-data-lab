@@ -1,0 +1,55 @@
+name: France Load Stations auth config extract
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/load-stations-auth-config-extract.yml']
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract guest API base and constants
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/load-stations
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          h=requests.get('https://loadstations.load-motion.com/',timeout=30).text
+          js=[urllib.parse.urljoin('https://loadstations.load-motion.com/',x) for x in re.findall(r'<script[^>]+src=["\']([^"\']+)',h,re.I)]
+          needles=['restServerAuthURL','REST_GUESTS_CHECK_CHARGING_STATION','REST_GUESTS_REGISTER','REST_GUESTS_VERIFY_EMAIL','REST_CHARGING_STATIONS','REST_SERVER','serverAuth','authURL','environment','apiUrl','apiURL']
+          hits=[]
+          for u in js:
+            try:r=requests.get(u,timeout=30)
+            except:continue
+            if r.status_code!=200:continue
+            t=r.text;lo=t.lower()
+            for nd in needles:
+              pos=0
+              while True:
+                i=lo.find(nd.lower(),pos)
+                if i<0:break
+                c=t[max(0,i-2500):i+4500]
+                lits=list(dict.fromkeys(re.findall(r'["\'`]([^"\'`]{1,300})["\'`]',c)))
+                hits.append({'asset':u,'needle':nd,'offset':i,'literals':[x for x in lits if any(k in x.lower() for k in ['http','api','guest','charging','station','auth','rest'])][:100],'context':c})
+                pos=i+len(nd)
+                if len(hits)>300:break
+              if len(hits)>300:break
+          out={'scripts':js,'hits':hits}
+          pathlib.Path('reports/france/load-stations/auth-config-extract.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          slim={'scripts':js,'hits':[{'asset':x['asset'],'needle':x['needle'],'literals':x['literals'],'context':x['context'][:7000]} for x in hits[:120]]}
+          pathlib.Path('reports/france/load-stations/auth-config-summary.json').write_text(json.dumps(slim,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(slim,ensure_ascii=False)[:100000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/load-stations/auth-config-*.json
+          git commit -m 'France Load Stations: publish guest API config extract' || exit 0
+          git pull --rebase origin main
+          git push
