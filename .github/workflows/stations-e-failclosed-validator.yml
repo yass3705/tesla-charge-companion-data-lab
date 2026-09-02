@@ -1,0 +1,57 @@
+name: France Stations-e fail-closed validator
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/stations-e-failclosed-validator.yml']
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate existing exact overlay without inference
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/stations-e
+          python - <<'PY'
+          import json,pathlib,collections,datetime
+          p=pathlib.Path('data/operator_direct/stations_e_official_france.json')
+          d=json.loads(p.read_text())
+          # Locate list-shaped overlay without assuming legacy field name.
+          candidates=[]
+          for k,v in d.items():
+            if isinstance(v,list) and v and isinstance(v[0],dict): candidates.append((k,v))
+          summary={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'topLevelKeys':list(d.keys()),'listCandidates':[{'key':k,'rows':len(v),'sampleKeys':list(v[0].keys())[:80]} for k,v in candidates]}
+          # Prefer known overlay-like list.
+          chosen=None
+          for k,v in candidates:
+            if any(x in k.lower() for x in ['overlay','tariff','pdc','evse']): chosen=(k,v); break
+          if chosen:
+            k,rows=chosen
+            exact=[]; gaps=[]
+            for r in rows:
+              # Accept exact only when the existing record itself explicitly marks exact/visible and carries tariff material.
+              mark=bool(r.get('exact_pricing_visible') or r.get('exact') or str(r.get('exactness','')).lower().startswith('exact') or r.get('tariffExact') is True)
+              has=bool(r.get('tariff_text') or r.get('price_components') or r.get('tariff') or r.get('pricing') or r.get('pricePerKwh') is not None or r.get('eurPerKwh') is not None)
+              (exact if mark and has else gaps).append(r)
+            powers=collections.Counter(str(r.get('puissance_nominale') or r.get('powerKw') or r.get('power') or '') for r in rows)
+            exact_powers=collections.Counter(str(r.get('puissance_nominale') or r.get('powerKw') or r.get('power') or '') for r in exact)
+            summary.update({'chosenList':k,'rows':len(rows),'exactRowsByStrictExistingFlags':len(exact),'gapRowsByStrictExistingFlags':len(gaps),'powerDistribution':dict(powers),'exactPowerDistribution':dict(exact_powers),'exactSamples':exact[:5],'gapSamples':gaps[:10]})
+            summary['classification']={'treated':len(exact)>0,'failClosed':True,'reason':'Existing rows are accepted only where the stored overlay already carries explicit exactness plus tariff material; all other rows remain unpriced.'}
+          else:
+            summary['classification']={'treated':False,'failClosed':True,'reason':'No overlay-like list detected.'}
+          pathlib.Path('reports/france/stations-e/failclosed-validation.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/stations-e/failclosed-validation.json
+          git commit -m 'France Stations-e: publish fail-closed validation' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
