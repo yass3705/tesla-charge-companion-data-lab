@@ -1,0 +1,97 @@
+name: France E55C PAN gap recovery
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/e55c-pan-gap-recovery.yml']
+permissions:
+  contents: write
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe PAN-only IDs and nearest UMap identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/e55c
+          python - <<'PY'
+          import requests,csv,io,json,pathlib,datetime,re,html,urllib.parse,math
+          H={'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'application/json,text/plain,*/*','Content-Type':'application/json'}
+          def norm(x):return re.sub(r'[^A-Z0-9]','',str(x or '').upper())
+          # rebuild latest PAN E55C rows incl coordinates
+          meta=requests.get('https://www.data.gouv.fr/api/1/datasets/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques/',headers=H,timeout=30).json()
+          cs=[x for x in meta.get('resources') or [] if str(x.get('format') or '').lower()=='csv' and 'consolidation' in str(x.get('title') or '').lower() and 'documentation' not in str(x.get('title') or '').lower()];cs.sort(key=lambda x:str(x.get('last_modified') or ''),reverse=True);chosen=cs[0]
+          raw=requests.get(chosen['url'],headers=H,timeout=120).content.decode('utf-8-sig','replace')
+          try:d=csv.Sniffer().sniff(raw[:100000],delimiters=',;\t')
+          except:d=csv.excel
+          rd=csv.DictReader(io.StringIO(raw),dialect=d);fields=rd.fieldnames or [];low={str(f).strip().lower():f for f in fields}
+          def pick(*xs):
+            for x in xs:
+              if x.lower() in low:return low[x.lower()]
+            for f in fields:
+              if any(x.lower() in str(f).lower() for x in xs):return f
+          fop=pick('nom_operateur');fnet=pick('nom_enseigne');fid=pick('id_pdc_itinerance');fsid=pick('id_station_itinerance');fn=pick('nom_station');fa=pick('adresse_station');flat=pick('consolidated_latitude','latitude');flon=pick('consolidated_longitude','longitude')
+          pan=[]
+          for r in rd:
+            blob=(str(r.get(fop,''))+' '+str(r.get(fnet,''))).lower()
+            if 'electric 55 charging' not in blob and 'e55c' not in blob:continue
+            try:lat=float(str(r.get(flat,'')).replace(',','.'));lon=float(str(r.get(flon,'')).replace(',','.'))
+            except:lat=lon=None
+            pan.append({'pdcId':str(r.get(fid,'')).strip(),'stationId':str(r.get(fsid,'')).strip(),'station':str(r.get(fn,'')).strip(),'address':str(r.get(fa,'')).strip(),'lat':lat,'lon':lon})
+          # current exact connector snapshot from previous job
+          snap=json.loads(pathlib.Path('data/operator_direct/e55c_exact_france.json').read_text())
+          exactnorm={norm(x.get('chargingStationId') or x.get('evse')) for x in snap.get('connectors') or [] if x.get('pricingDefinitionIds')}
+          gaps=[p for p in pan if norm(p['pdcId']) not in exactnorm]
+          # UMap features with URLs / coords for nearest mapping
+          dl=requests.get('https://umap.openstreetmap.fr/fr/datalayer/1234362/45a8c330-b19e-4fb8-a437-ab6e1827b8df/',headers=H,timeout=60).json();um=[]
+          for f in dl.get('features') or []:
+            p=f.get('properties') or {};name=re.sub(r'\s+',' ',re.sub(r'<[^>]+>',' ',html.unescape(str(p.get('name') or '')))).strip();desc=html.unescape(str(p.get('description') or ''));coords=(f.get('geometry') or {}).get('coordinates') or [None,None]
+            ids=[]
+            for u in re.findall(r'href=["\'](https://ev-qr\.com/\?[^"\']+)',desc,re.I):
+              q=urllib.parse.parse_qs(urllib.parse.urlsplit(html.unescape(u)).query);e=(q.get('b') or [''])[0];c=(q.get('c') or ['1'])[0]
+              if e:ids.append({'evse':e,'connector':str(c)})
+            um.append({'name':name,'lon':coords[0],'lat':coords[1],'ids':ids})
+          def hav(a,b,c,d):
+            if None in (a,b,c,d):return None
+            R=6371000;pa=math.radians(a);pc=math.radians(c);dp=math.radians(c-a);dl=math.radians(d-b);x=math.sin(dp/2)**2+math.cos(pa)*math.cos(pc)*math.sin(dl/2)**2;return 2*R*math.asin(math.sqrt(x))
+          base='https://rest.service-evse.com/v1/auth/scan-pay/initialize'
+          recovered=[]
+          for p in gaps:
+            rawid=norm(p['pdcId']);body=rawid[5:] if rawid.startswith('FR55C') else rawid
+            variants=[]
+            # canonical E55C eMI3 reconstruction: FR*55C*<location>*<local>*<point-index>
+            m=re.match(r'^(EFR\d{5})(.+?)(\d)$',body)
+            if m:variants.append('FR*55C*'+m.group(1)+'*'+m.group(2)+'*'+m.group(3))
+            variants += [p['pdcId'],rawid,'FR*55C*'+body]
+            variants=list(dict.fromkeys([x for x in variants if x]))
+            probes=[]
+            for evse in variants:
+              for con in ('1','0','2'):
+                u=base+'/'+urllib.parse.quote(evse,safe='')+'/'+con
+                try:
+                  r=requests.get(u,params={'Tenant':'e55c'},headers=H,timeout=15);j=r.json() if 'json' in r.headers.get('content-type','').lower() else None
+                  probes.append({'evse':evse,'connector':con,'status':r.status_code,'json':j if r.status_code==200 else None,'body':None if j is not None else r.text[:1500]})
+                  if r.status_code==200 and isinstance(j,dict) and j.get('pricingDefinitions'):break
+                except Exception as e:probes.append({'evse':evse,'connector':con,'error':str(e)})
+              if any(x.get('status')==200 and isinstance(x.get('json'),dict) and x['json'].get('pricingDefinitions') for x in probes):break
+            near=[]
+            for u in um:
+              dist=hav(p['lat'],p['lon'],u['lat'],u['lon'])
+              if dist is not None:near.append((dist,u))
+            near.sort(key=lambda x:x[0]);near=[{'distanceM':round(d,1),**u} for d,u in near[:5]]
+            recovered.append({'pan':p,'probes':probes,'nearestUmap':near})
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'gapCount':len(gaps),'recovered':recovered}
+          pathlib.Path('reports/france/e55c/pan-gap-recovery.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/e55c/pan-gap-recovery.json
+          git commit -m 'France E55C: publish PAN gap recovery probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
