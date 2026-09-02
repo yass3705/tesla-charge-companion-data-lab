@@ -7,13 +7,16 @@ on:
       - research/italy-hera-apk-discovery-20260902
     paths:
       - scripts/hera_apk_probe_compact.py
+      - scripts/hera_apk_targeted_extract.py
       - .github/workflows/hera-italy-apk-discovery.yml
   pull_request:
     branches:
       - main
     paths:
       - scripts/hera_apk_probe_compact.py
+      - scripts/hera_apk_targeted_extract.py
       - data/reports/hera_italy_apk_discovery.json
+      - data/reports/hera_italy_apk_targeted.json
       - docs/hera-italy-apk-discovery.md
       - .github/workflows/hera-italy-apk-discovery.yml
 
@@ -46,48 +49,52 @@ jobs:
             'https://d.apkpure.net/b/APK/com.siemens.hera.mobility?versionCode=62015'
           echo '05c1d24c96ef16e62cf3e2330e526109ab7df87ccbd687d15312024218791018  /tmp/hera-ricarica.apk' | sha256sum --check --strict
 
-      - name: Inspect public APK and probe only safe read endpoints
+      - name: Inspect public APK and extract targeted HERA routes
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check 'androguard==4.1.4' 'requests==2.32.5'
-          python -m py_compile scripts/hera_apk_probe_compact.py
+          python -m py_compile scripts/hera_apk_probe_compact.py scripts/hera_apk_targeted_extract.py
           LOGURU_LEVEL=CRITICAL python scripts/hera_apk_probe_compact.py \
             --apk /tmp/hera-ricarica.apk \
             --output /tmp/hera_italy_apk_discovery.json
+          python scripts/hera_apk_targeted_extract.py \
+            --apk /tmp/hera-ricarica.apk \
+            --output /tmp/hera_italy_apk_targeted.json
 
-      - name: Validate identity, sanitization and official-host discovery
+      - name: Validate identity, sanitization and targeted production-host evidence
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
           from urllib.parse import urlsplit
 
-          report=json.loads(Path('/tmp/hera_italy_apk_discovery.json').read_text())
-          app=report['application']
-          assert report['country']=='IT'
+          discovery=json.loads(Path('/tmp/hera_italy_apk_discovery.json').read_text())
+          targeted=json.loads(Path('/tmp/hera_italy_apk_targeted.json').read_text())
+          app=discovery['application']
+          assert discovery['country']=='IT'
           assert app['package']=='com.siemens.hera.mobility'
           assert app['versionName']=='6.2.15'
           assert app['versionCode']=='62015'
           assert app['apkSha256']=='05c1d24c96ef16e62cf3e2330e526109ab7df87ccbd687d15312024218791018'
           assert len(app['certificates'])==1
-          assert report['safety']=={
-              'credentialLikeValuesPersisted':False,
-              'httpMethod':'GET',
-              'privateHostsExcluded':True,
-              'queryStringsPersisted':False,
-              'stateChangingPathsExcluded':True,
-              'userAccountUsed':False,
-          }
-          urls=report['discovery']['urls']
-          assert urls and all(not urlsplit(url).query for url in urls)
-          serialized=json.dumps(report).casefold()
+          assert targeted['application']['apkSha256']==app['apkSha256']
+          assert targeted['safety']['queryStringsPersisted'] is False
+          assert targeted['safety']['sensitiveKeyValuesPersisted'] is False
+          assert targeted['safety']['userAccountUsed'] is False
+          assert targeted['safety']['networkRequestsMadeByExtractor'] is False
+          urls=targeted['officialUrls']
+          assert len(urls)>=3 and all(not urlsplit(url).query for url in urls)
+          assert any('heraricarica-mobileapp.gruppohera.it' in url for url in urls)
+          assert targeted['officialHostContexts']
+          assert targeted['relevantLiterals']
+          serialized=(json.dumps(discovery)+json.dumps(targeted)).casefold()
           forbidden=('access_token=', 'refresh_token=', 'client_secret=', 'authorization: bearer')
           assert not any(value in serialized for value in forbidden)
-          assert any('hera' in host.casefold() for host in report['discovery']['hosts'])
           print(json.dumps({
-              'hosts':report['discovery']['hosts'],
-              'endpointPaths':report['discovery']['endpointPaths'][:50],
-              'probes':report['readOnlyProbes'],
+              'officialUrls':urls,
+              'hostContexts':targeted['officialHostContexts'],
+              'relevantLiterals':targeted['relevantLiterals'][:250],
+              'configs':targeted['configs'],
           },ensure_ascii=False,indent=2))
           PY
 
@@ -95,6 +102,8 @@ jobs:
         if: always()
         with:
           name: hera-italy-apk-public-discovery
-          path: /tmp/hera_italy_apk_discovery.json
+          path: |
+            /tmp/hera_italy_apk_discovery.json
+            /tmp/hera_italy_apk_targeted.json
           if-no-files-found: error
           retention-days: 14
