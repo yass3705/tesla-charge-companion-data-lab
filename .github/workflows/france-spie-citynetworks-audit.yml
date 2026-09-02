@@ -24,15 +24,18 @@ jobs:
           cand=[]
           for x in meta.get('resources') or []:
             if str(x.get('format') or '').lower()!='csv': continue
-            title=str(x.get('title') or '').lower(); schema=((x.get('schema') or {}).get('name') if isinstance(x.get('schema'),dict) else '') or ''
-            if 'consolid' in title or 'schema-irve-statique' in schema: cand.append(x)
-          cand.sort(key=lambda x:str(x.get('last_modified') or x.get('modified') or ''),reverse=True)
-          if not cand: raise SystemExit('no consolidated CSV')
-          chosen=cand[0]; r=S.get(chosen['url'],timeout=120); r.raise_for_status(); text=r.content.decode('utf-8-sig','replace')
+            title=str(x.get('title') or ''); tl=title.lower(); url=str(x.get('url') or '').lower()
+            if 'consolidation' not in tl or 'documentation' in tl or 'ref-table' in url: continue
+            score=(2 if 'dernière version' in tl or 'derniere version' in tl else 1,
+                   str(x.get('last_modified') or x.get('modified') or x.get('created_at') or ''))
+            cand.append((score,x))
+          cand.sort(key=lambda z:z[0],reverse=True)
+          if not cand: raise SystemExit('no actual consolidation CSV')
+          chosen=cand[0][1]; r=S.get(chosen['url'],timeout=120); r.raise_for_status(); text=r.content.decode('utf-8-sig','replace')
           try:d=csv.Sniffer().sniff(text[:100000],delimiters=',;\t')
           except:d=csv.excel
           rd=csv.DictReader(io.StringIO(text),dialect=d); fields=rd.fieldnames or []
-          low={str(f).lower():f for f in fields}
+          low={str(f).strip().lower():f for f in fields}
           def pick(*xs):
             for x in xs:
               if x.lower() in low:return low[x.lower()]
@@ -41,24 +44,25 @@ jobs:
           fop=pick('nom_operateur','operator'); fnet=pick('nom_enseigne','nom_reseau','network'); ft=pick('tarification','tarif'); fp=pick('puissance_nominale','power'); fid=pick('id_pdc_itinerance'); fsid=pick('id_station_itinerance'); fname=pick('nom_station'); faddr=pick('adresse_station')
           nets=collections.defaultdict(lambda:{'rows':0,'withTariff':0,'tariffs':collections.Counter(),'powers':collections.Counter(),'missingSamples':[],'pricedSamples':[]})
           total=priced=0
+          empty={'','nan','none','null','non renseigné','non renseigne','non renseignée','non renseignee'}
           for row in rd:
             op=str(row.get(fop,'') if fop else '')
             if 'spie citynetworks' not in op.lower(): continue
             total+=1; net=str(row.get(fnet,'') if fnet else '') or '(blank)'; x=nets[net]; x['rows']+=1
-            p=str(row.get(fp,'') if fp else '').strip();
+            p=str(row.get(fp,'') if fp else '').strip()
             if p:x['powers'][p]+=1
-            t=str(row.get(ft,'') if ft else '').strip(); valid=t and t.lower() not in ('nan','none','null','non renseigné','non renseigne')
+            t=str(row.get(ft,'') if ft else '').strip(); valid=t.lower() not in empty
             rec={'stationId':row.get(fsid) if fsid else None,'pdcId':row.get(fid) if fid else None,'station':row.get(fname) if fname else None,'address':row.get(faddr) if faddr else None,'power':p,'tarification':t}
             if valid:
               priced+=1; x['withTariff']+=1; x['tariffs'][t]+=1
-              if len(x['pricedSamples'])<8:x['pricedSamples'].append(rec)
-            elif len(x['missingSamples'])<15:x['missingSamples'].append(rec)
+              if len(x['pricedSamples'])<12:x['pricedSamples'].append(rec)
+            elif len(x['missingSamples'])<30:x['missingSamples'].append(rec)
           summary=[]
           for n,x in sorted(nets.items(),key=lambda kv:kv[1]['rows'],reverse=True):
-            summary.append({'network':n,'rows':x['rows'],'withTariff':x['withTariff'],'coverage':x['withTariff']/x['rows'] if x['rows'] else 0,'topTariffs':x['tariffs'].most_common(30),'powers':x['powers'].most_common(20),'missingSamples':x['missingSamples'],'pricedSamples':x['pricedSamples']})
-          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'operator':'SPIE CityNetworks','resource':{'title':chosen.get('title'),'url':chosen.get('url'),'lastModified':chosen.get('last_modified')},'rows':total,'withTariff':priced,'coverage':priced/total if total else 0,'networks':summary}
+            summary.append({'network':n,'rows':x['rows'],'withTariff':x['withTariff'],'missing':x['rows']-x['withTariff'],'coverage':x['withTariff']/x['rows'] if x['rows'] else 0,'topTariffs':x['tariffs'].most_common(30),'powers':x['powers'].most_common(20),'missingSamples':x['missingSamples'],'pricedSamples':x['pricedSamples']})
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'operator':'SPIE CityNetworks','resource':{'title':chosen.get('title'),'url':chosen.get('url'),'lastModified':chosen.get('last_modified') or chosen.get('modified')},'rows':total,'withTariff':priced,'missing':total-priced,'coverage':priced/total if total else 0,'networks':summary}
           pathlib.Path('reports/france/spie-citynetworks/pan-tariff-audit.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({'rows':total,'withTariff':priced,'coverage':out['coverage'],'networks':[{k:v for k,v in x.items() if k not in ('missingSamples','pricedSamples','topTariffs')} | {'topTariffs':x['topTariffs'][:5]} for x in summary]},ensure_ascii=False,indent=2)[:50000])
+          print(json.dumps({'resource':out['resource'],'rows':total,'withTariff':priced,'missing':total-priced,'coverage':out['coverage'],'networks':[{k:v for k,v in x.items() if k not in ('missingSamples','pricedSamples','topTariffs')} | {'topTariffs':x['topTariffs'][:8]} for x in summary]},ensure_ascii=False,indent=2)[:50000])
           PY
       - name: Publish
         run: |
