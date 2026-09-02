@@ -1,0 +1,54 @@
+name: France e-Totem Flutter deep probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/etotem-france-flutter-deep-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe Flutter app assets and backend URLs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/etotem
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          root='https://www.e-totem.fr/'
+          names=['','flutter.js','flutter_bootstrap.js','main.dart.js','version.json','manifest.json','assets/AssetManifest.json','assets/AssetManifest.bin.json','assets/FontManifest.json','assets/NOTICES']
+          out={'files':[]}
+          terms=['api','https://','wss://','graphql','station','chargepoint','connector','evse','tarif','price','ocpi','oauth','token']
+          for name in names:
+            u=urllib.parse.urljoin(root,name)
+            try:r=s.get(u,timeout=35)
+            except Exception as e:out['files'].append({'url':u,'error':str(e)});continue
+            txt=r.text if 'text' in r.headers.get('content-type','') or 'javascript' in r.headers.get('content-type','') or 'json' in r.headers.get('content-type','') or name.endswith('.js') else ''
+            urls=sorted(set(re.findall(r'https?://[^"\'`\\\s)]+',txt))) if txt else []
+            snippets=[];low=txt.lower()
+            if txt:
+              for term in terms:
+                pos=0
+                while True:
+                  i=low.find(term,pos)
+                  if i<0:break
+                  snippets.append(txt[max(0,i-500):i+1700]);pos=i+len(term)
+                  if len(snippets)>=250:break
+                if len(snippets)>=250:break
+            out['files'].append({'url':u,'status':r.status_code,'type':r.headers.get('content-type'),'bytes':len(r.content),'urls':[x for x in urls if any(t in x.lower() for t in ['api','e-totem','etotem','charge','station','oauth'])][:300],'snippets':snippets[:250]})
+          pathlib.Path('reports/france/etotem/flutter-deep-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'files':[{'url':f.get('url'),'status':f.get('status'),'type':f.get('type'),'bytes':f.get('bytes'),'urls':f.get('urls'),'snippets':(f.get('snippets') or [])[:25]} for f in out['files']]},ensure_ascii=False)[:80000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/etotem/flutter-deep-probe.json
+          git commit -m 'France e-Totem: publish Flutter deep probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
