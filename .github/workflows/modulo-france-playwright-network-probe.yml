@@ -1,0 +1,77 @@
+name: France Modulo Playwright network probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/modulo-france-playwright-network-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+      - name: Capture map network contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/modulo
+          cat > /tmp/capture.js <<'JS'
+          const { chromium } = require('playwright');
+          const fs=require('fs');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const ctx=await browser.newContext({locale:'fr-FR', viewport:{width:1440,height:1000}});
+            const page=await ctx.newPage();
+            const reqs=[], responses=[], errors=[];
+            page.on('request', req=>{
+              const u=req.url();
+              if(u.includes('poweredbyvirta') || u.includes('/api/') || u.includes('sage')){
+                reqs.push({url:u,method:req.method(),headers:req.headers(),postData:req.postData()});
+              }
+            });
+            page.on('response', async res=>{
+              const u=res.url();
+              if(u.includes('poweredbyvirta') || u.includes('/api/') || u.includes('sage')){
+                let body=''; try{body=(await res.text()).slice(0,20000)}catch(e){}
+                responses.push({url:u,status:res.status(),headers:res.headers(),body});
+              }
+            });
+            page.on('pageerror',e=>errors.push(String(e)));
+            try{
+              await page.goto('https://modulo.poweredbyvirta.com/',{waitUntil:'domcontentloaded',timeout:90000});
+              await page.waitForTimeout(12000);
+              // Interact conservatively with map/search if controls are available.
+              const texts=['Accepter','Tout accepter','Accept all','OK'];
+              for(const t of texts){try{const b=page.getByText(t,{exact:false}).first(); if(await b.isVisible({timeout:700})) await b.click();}catch(e){}}
+              await page.mouse.move(700,500); await page.mouse.wheel(0,-1300); await page.waitForTimeout(5000);
+              await page.mouse.wheel(0,800); await page.waitForTimeout(5000);
+            }catch(e){errors.push(String(e))}
+            const html=(await page.content()).slice(0,30000);
+            await browser.close();
+            const interesting=reqs.filter(x=>x.url.includes('/api/')||x.url.includes('sage'));
+            const interestingResponses=responses.filter(x=>x.url.includes('/api/')||x.url.includes('sage'));
+            const out={generatedAt:new Date().toISOString(),requests:reqs,responses,interesting,interestingResponses,errors,html};
+            fs.writeFileSync('reports/france/modulo/playwright-network-probe.json',JSON.stringify(out,null,2));
+            fs.writeFileSync('reports/france/modulo/playwright-network-summary.json',JSON.stringify({generatedAt:out.generatedAt,interesting,interestingResponses,errors},null,2));
+            console.log(JSON.stringify({interesting,interestingResponses,errors}).slice(0,100000));
+          })();
+          JS
+          node /tmp/capture.js
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/modulo/playwright-network-*.json
+          git commit -m 'France Modulo: publish Playwright map network contract' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
