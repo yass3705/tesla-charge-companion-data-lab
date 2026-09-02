@@ -1,0 +1,122 @@
+name: France e-Totem exact national tariffs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/etotem-france-exact-tariffs.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact national station tariff overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/etotem data/operator_direct
+          python - <<'PY'
+          import requests,csv,io,json,pathlib,datetime,math,re,html,time,concurrent.futures,threading
+          pan_url='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          txt=requests.get(pan_url,timeout=90).text
+          rows=list(csv.DictReader(io.StringIO(txt)))
+          cols=rows[0].keys()
+          opcol='nom_operateur'; latcol='consolidated_latitude'; loncol='consolidated_longitude'; sidcol='id_station_itinerance'; pdcid='id_pdc_itinerance'
+          et=[r for r in rows if 'totem' in str(r.get(opcol,'')).lower()]
+          def norm(s): return re.sub(r'[^A-Z0-9]','',str(s or '').upper())
+          station_rows={}
+          for r in et:
+            sid=r.get(sidcol)
+            try: lat=float(r.get(latcol)); lon=float(r.get(loncol))
+            except: continue
+            station_rows.setdefault(norm(sid),{'sid':sid,'lat':lat,'lon':lon,'rows':[]})['rows'].append(r)
+          # One anonymous token is sufficient for the public map API.
+          boot=requests.Session();boot.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json'})
+          auth=boot.post('https://www.e-totem.fr/api/ConnexionAnonyme',timeout=30).json()
+          def find_token(x):
+            if isinstance(x,dict):
+              for k,v in x.items():
+                if isinstance(v,str) and ('token' in k.lower() or (v.count('.')==2 and len(v)>60)): return v
+              for v in x.values():
+                z=find_token(v)
+                if z:return z
+            if isinstance(x,list):
+              for v in x:
+                z=find_token(v)
+                if z:return z
+          token=find_token(auth); assert token
+          headers={'Authorization':'Bearer '+token,'Accept':'application/json','User-Agent':'Mozilla/5.0'}
+          local=threading.local()
+          def sess():
+            if not hasattr(local,'s'):
+              local.s=requests.Session(); local.s.headers.update(headers)
+            return local.s
+          def clean_html(v):
+            s=html.unescape(str(v or ''))
+            s=re.sub(r'<br\s*/?>','\n',s,flags=re.I); s=re.sub(r'<[^>]+>',' ',s)
+            s=re.sub(r'[ \t\r\f\v]+',' ',s); s=re.sub(r' *\n *','\n',s)
+            return s.strip()
+          def query(item):
+            key,st=item; lat,lon=st['lat'],st['lon']
+            # try progressively wider boxes; exact station-id equality is mandatory.
+            for dlat,dlon in [(0.004,0.006),(0.010,0.015),(0.025,0.035)]:
+              p={'fLatSudOuest':lat-dlat,'fLongSudOuest':lon-dlon,'fLatNordEst':lat+dlat,'fLongNordEst':lon+dlon,'bUniquementBornesDisponibles':0,'bCompatibleAutocharge':0,'nZoom':18,'bNePasClusteriser':1,'nBornesPrivees':0,'bRecupererBorneLaPlusProche':0}
+              try:
+                r=sess().get('https://www.e-totem.fr/api/Stations',params=p,timeout=20)
+                if r.status_code!=200: continue
+                data=r.json(); els=data.get('aElements',[]) if isinstance(data,dict) else []
+                for e in els:
+                  if not isinstance(e,dict): continue
+                  if norm(e.get('sIdPool'))==key:
+                    return {'ok':True,'station':e,'queryUrl':r.url}
+                  for b in e.get('aBornes') or []:
+                    if isinstance(b,dict) and norm(b.get('sEmi3Pool'))==key:
+                      return {'ok':True,'station':e,'queryUrl':r.url}
+              except Exception: pass
+            return {'ok':False}
+          items=list(station_rows.items())
+          matched={}; missing=[]
+          with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:
+            futs={ex.submit(query,it):it[0] for it in items}
+            for i,f in enumerate(concurrent.futures.as_completed(futs),1):
+              k=futs[f]
+              try: res=f.result()
+              except Exception as e: res={'ok':False,'error':str(e)}
+              if res.get('ok'): matched[k]=res
+              else: missing.append(k)
+              if i%50==0: print('progress',i,'/',len(items),'matched',len(matched))
+          overlays=[]; stations=[]
+          for key,st in station_rows.items():
+            m=matched.get(key)
+            if not m: continue
+            e=m['station']; tariff_html=e.get('sWebTexte') or ''
+            if not tariff_html:
+              # sometimes tariff is present on the first borne/pool copy
+              for b in e.get('aBornes') or []:
+                if isinstance(b,dict) and b.get('sWebTexte'):
+                  tariff_html=b['sWebTexte']; break
+            tariff_text=clean_html(tariff_html)
+            station_rec={'panStationId':st['sid'],'apiPoolId':e.get('sIdPool'),'apiOrigin':e.get('sOrigine'),'apiPoolNumericId':e.get('nIdPool'),'name':e.get('sLibelle'),'network':e.get('sNomReseau'),'latitude':e.get('fLatitude'),'longitude':e.get('fLongitude'),'tariffHtml':tariff_html,'tariffText':tariff_text,'queryUrl':m.get('queryUrl'),'borneCount':len(e.get('aBornes') or [])}
+            stations.append(station_rec)
+            # Exact station-level official tariff text is attached to every PAN PDC; connector power is retained for tier selection.
+            for r in st['rows']:
+              overlays.append({'id_station_itinerance':r.get(sidcol),'id_pdc_itinerance':r.get(pdcid),'puissance_nominale':r.get('puissance_nominale'),'prise_type_2':r.get('prise_type_2'),'prise_type_combo_ccs':r.get('prise_type_combo_ccs'),'prise_type_chademo':r.get('prise_type_chademo'),'api_pool_id':e.get('sIdPool'),'network':e.get('sNomReseau'),'tariff_text':tariff_text,'tariff_html':tariff_html,'exactness':'official_station_rule_exact','source':'https://www.e-totem.fr/api/Stations'})
+          with_tariff=sum(1 for s in stations if s['tariffText'])
+          pdc_with_tariff=sum(1 for x in overlays if x['tariff_text'])
+          out={'schemaVersion':'1.0.0','dataset':'etotem-official-france','generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'operator':'E-Totem','country':'FR','source':{'anonymousAuth':'https://www.e-totem.fr/api/ConnexionAnonyme','stations':'https://www.e-totem.fr/api/Stations','official':True},'coverage':{'panRows':len(et),'panUniqueStations':len(items),'matchedStations':len(stations),'matchedStationsWithTariffText':with_tariff,'matchedPanRows':len(overlays),'matchedPanRowsWithTariffText':pdc_with_tariff,'missingStationIds':[station_rows[k]['sid'] for k in missing]},'stations':stations,'pdcTariffOverlay':overlays,'notes':['Matching is fail-closed: exact normalized PAN station id must equal official e-Totem sIdPool/sEmi3Pool.','No tariff is inferred for unmatched stations.','tariff_text preserves official station pricing rules, including power-dependent and occupancy/time components; puissance_nominale is retained per PDC for deterministic rule selection.']}
+          pathlib.Path('data/operator_direct/etotem_official_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          summary={'generatedAt':out['generatedAt'],'coverage':out['coverage'],'sampleStations':stations[:5],'sampleOverlay':overlays[:8]}
+          pathlib.Path('reports/france/etotem/exact-national-tariffs-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/operator_direct/etotem_official_france.json reports/france/etotem/exact-national-tariffs-summary.json
+          git commit -m 'data(etotem): publish exact France station tariff overlay' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*3)); done
+          exit 1
