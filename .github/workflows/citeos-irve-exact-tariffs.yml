@@ -1,0 +1,59 @@
+name: France CITEOS exact IRVE tariffs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/citeos-irve-exact-tariffs.yml']
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract exact CITEOS EVSE tariffs from current national IRVE
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/france/citeos
+          python - <<'PY'
+          import requests,csv,io,json,pathlib,datetime,collections
+          S=requests.Session(); S.headers['User-Agent']='TeslaChargeCompanion-data-audit/1.0'
+          u='https://www.data.gouv.fr/api/1/datasets/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques/'
+          meta=S.get(u,timeout=30).json()
+          cand=[]
+          for x in meta.get('resources',[]):
+            title=str(x.get('title') or ''); tl=title.lower(); url=str(x.get('url') or '')
+            if str(x.get('format') or '').lower()=='csv' and 'consolidation' in tl and 'documentation' not in tl and 'ref-table' not in url.lower():
+              cand.append(((2 if 'dernière version' in tl or 'derniere version' in tl else 1,str(x.get('last_modified') or '')),x))
+          cand.sort(key=lambda z:z[0],reverse=True); res=cand[0][1]
+          r=S.get(res['url'],timeout=120); r.raise_for_status(); text=r.content.decode('utf-8-sig','replace')
+          try:d=csv.Sniffer().sniff(text[:100000],delimiters=',;\t')
+          except:d=csv.excel
+          rd=csv.DictReader(io.StringIO(text),dialect=d)
+          rows=[]; stations=set(); operators=collections.Counter(); networks=collections.Counter(); missing=0
+          for x in rd:
+            op=str(x.get('nom_operateur') or ''); net=str(x.get('nom_enseigne') or ''); tariff=str(x.get('tarification') or '').strip()
+            if not ('citeos' in op.lower() or 'cogelum' in op.lower() or 'citeos' in net.lower()): continue
+            if not tariff: missing+=1; continue
+            pdc=str(x.get('id_pdc_itinerance') or '').strip(); station=str(x.get('id_station_itinerance') or '').strip()
+            if not pdc: continue
+            rows.append({'evseId':pdc,'stationId':station or None,'stationName':x.get('nom_station') or None,'operator':op,'network':net or None,'tarification':tariff})
+            if station:stations.add(station)
+            operators[op]+=1; networks[net]+=1
+          rows.sort(key=lambda x:x['evseId'])
+          out={'schemaVersion':'1.0.0','dataset':'citeos-irve-exact-france','generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'country':'FR','classification':{'sourceTier':'national_irve_tariff_fallback','exactPerEvse':True,'directOperatorSourcePreferredWhenAvailable':True,'failClosed':True},'source':{'datasetApi':u,'resourceTitle':res.get('title'),'resourceUrl':res.get('url'),'lastModified':res.get('last_modified')},'coverage':{'evses':len(rows),'stations':len(stations),'missingTarificationRows':missing,'operators':operators.most_common(),'networks':networks.most_common()},'tariffs':rows}
+          pathlib.Path('data/operator_direct/citeos_irve_exact_france.json').write_text(json.dumps(out,ensure_ascii=False,separators=(',',':'))+'\n')
+          pathlib.Path('reports/france/citeos/irve-exact-summary.json').write_text(json.dumps({k:v for k,v in out.items() if k!='tariffs'},ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out['coverage'],ensure_ascii=False,indent=2)[:30000])
+          if missing: raise SystemExit('CITEOS tariff coverage incomplete: '+str(missing))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/operator_direct/citeos_irve_exact_france.json reports/france/citeos/irve-exact-summary.json
+          git commit -m 'France CITEOS: publish exact EVSE IRVE tariffs' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
