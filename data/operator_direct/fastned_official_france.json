@@ -1,34 +1,38 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "dataset": "fastned-official-france",
-  "generatedAt": "2026-08-19T20:32:02.216403Z",
+  "generatedAt": "2026-09-02T23:03:00+01:00",
   "operator": "Fastned",
   "country": "FR",
   "classification": {
-    "singleNationalOperatorTariff": true,
+    "singleGuaranteedNationalCpoDirectTariff": true,
     "stationLevelPriceLookupRequiredForFastnedDirect": false,
-    "reason": "Fastned publishes a France country tariff and sampled official French station pages match it."
+    "reason": "Fastned publishes one France-wide direct standard tariff and a France-wide Gold tariff; official French station pages sampled by the validator match those country tariffs."
   },
   "operatorDirect": {
     "standard": {
       "pricePerKwh": 0.61,
       "currency": "EUR",
-      "billingUnit": "kWh"
+      "billingUnit": "kWh",
+      "vatIncluded": true,
+      "scope": "Fastned stations in France"
     },
     "appDirect": {
       "discountPercent": 10.0,
-      "calculatedPricePerKwh": 0.549,
-      "calculatedPriceStatus": "calculated_from_official_discount_not_separately_displayed",
-      "monthlyFeeEur": 0.0
+      "pricePerKwh": null,
+      "priceStatus": "official_percentage_rule_only",
+      "monthlyFeeEur": 0.0,
+      "note": "Do not materialize a rounded kWh value that Fastned does not separately display; apply the official 10% rule in the tariff engine."
     },
     "gold": {
       "pricePerKwh": 0.43,
-      "discountPercent": 30.0,
-      "monthlyFeeEur": null,
-      "monthlyFeePromotionEnd": null,
-      "monthlyFeeAfterPromotionEur": null,
-      "monthlyFeeAfterPromotionStatus": "not_stated_on_current_official_france_tariff_page",
-      "vehicleLimitPerHousehold": 3
+      "currency": "EUR",
+      "billingUnit": "kWh",
+      "discountDescription": "30% off standard price",
+      "monthlyFeeEur": 5.99,
+      "monthlyFeePromotionValidThrough": "2026-09-30",
+      "vehicleLimitPerHousehold": 3,
+      "scope": "all Fastned locations"
     }
   },
   "payment": {
@@ -90,11 +94,13 @@
   ],
   "sourceEvidence": {
     "officialOnly": true,
+    "checkedAt": "2026-09-02",
     "sources": [
       {
         "key": "tariffs",
         "url": "https://www.fastnedcharging.com/fr/recharge/tarifs",
-        "httpStatus": 200
+        "httpStatus": 200,
+        "observed": "France standard EUR 0.61/kWh; France Gold EUR 0.43/kWh; app direct discount 10%; Gold monthly fee EUR 5.99 through 2026-09-30."
       },
       {
         "key": "how_to_charge",
@@ -126,13 +132,12 @@
         "url": "https://www.fastnedcharging.com/fr/emplacements/la-croix-blanche",
         "httpStatus": 200
       }
-    ],
-    "relevantTariffFingerprintSha256": "46e48883632bfeafe4d4d0bfad008e5e6e4e68eab84af56cb4ecd408bfd6bd95"
+    ]
   },
-  "publicationStatus": "candidate_validated_source",
-  "notes": [
-    "The free app discount is stored as a 10% rule; the 0.549 EUR/kWh value is calculated from the official 0.61 EUR/kWh standard tariff rather than separately displayed by Fastned.",
-    "Third-party charge-card pricing is roaming pricing and must not be treated as Fastned direct pricing.",
-    "No network-wide Fastned idle fee is stated on the current official tariff/terms pages; external location-specific parking rules are not ruled out."
-  ]
+  "failClosed": {
+    "doNotApplyToThirdPartyChargeCardRoaming": true,
+    "doNotInventRoundedAppDiscountPrice": true,
+    "doNotExtendPromotionalMonthlyFeePastExplicitEndDate": true
+  },
+  "publicationStatus": "ready_for_ingestion"
 }
