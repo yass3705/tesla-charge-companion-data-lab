@@ -1,0 +1,95 @@
+name: France Vianeo Uberall identifier tariff probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/vianeo-uberall-identifier-tariff-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test public locator identifiers against charge backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/vianeo
+          python - <<'PY'
+          import json,pathlib,re,requests,urllib.parse
+          d=json.loads(pathlib.Path('reports/france/vianeo/uberall-locations-probe.json').read_text())
+          locs=[]
+          for item in d.get('responses',[]):
+            j=item.get('json')
+            if isinstance(j,dict):
+              resp=j.get('response',{})
+              for c in (resp.get('locations'),resp.get('results'),j.get('locations')):
+                if isinstance(c,list) and c: locs=c; break
+            if locs: break
+          identifiers=[]
+          for x in locs:
+            if isinstance(x,dict):
+              v=x.get('identifier')
+              if v is not None:
+                v=str(v).strip()
+                if v and v not in identifiers: identifiers.append(v)
+          base='https://backend-api.engie-vianeo.com'
+          def redact(txt):
+            txt=re.sub(r'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}','[JWT_REDACTED]',txt)
+            txt=re.sub(r'(?i)(token|secret|key)\s*[":=]+\s*["\']?[A-Za-z0-9._~-]{16,}',r'\1:[REDACTED]',txt)
+            return txt
+          attempts=[]
+          for ident in identifiers[:40]:
+            sess=requests.Session(); sess.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json','Origin':'https://charge.engie-vianeo.com','Referer':'https://charge.engie-vianeo.com/'})
+            q=urllib.parse.quote(ident,safe='')
+            local=[]
+            for step,method,path in [('detail','GET',f'/locations/evses/detail/{q}'),('select','PUT',f'/ca/select-evse/{q}'),('tariff','GET',f'/ca/tariff/{q}')]:
+              try:
+                rr=sess.request(method,base+path,timeout=18)
+                body=redact(rr.text[:15000])
+                rec={'identifier':ident,'step':step,'status':rr.status_code,'body':body}
+                attempts.append(rec); local.append(rec)
+              except Exception as e: attempts.append({'identifier':ident,'step':step,'error':str(e)})
+            # Harvest plausible IDs from any 200 response and test read-only detail/tariff endpoints.
+            cands=[]
+            for rec in local:
+              if rec.get('status') not in (200,201,204): continue
+              try:j=json.loads(rec.get('body') or '{}')
+              except:j=None
+              def walk(x,k=''):
+                if isinstance(x,dict):
+                  for kk,v in x.items():
+                    lk=str(kk).lower()
+                    if isinstance(v,(str,int)) and any(z in lk for z in ('id','evse','code','identifier')):
+                      sv=str(v)
+                      if 1<len(sv)<150 and sv not in cands:cands.append(sv)
+                    walk(v,lk)
+                elif isinstance(x,list):
+                  for v in x:walk(v,k)
+              if j is not None: walk(j)
+            for cand in cands[:15]:
+              q2=urllib.parse.quote(cand,safe='')
+              for step,path in [('derived_detail',f'/locations/evses/detail/{q2}'),('derived_tariff',f'/ca/tariff/{q2}')]:
+                try:
+                  rr=sess.get(base+path,timeout=18)
+                  attempts.append({'identifier':ident,'derived':cand,'step':step,'status':rr.status_code,'body':redact(rr.text[:15000])})
+                except Exception:pass
+          good=[a for a in attempts if a.get('status') in (200,201,204)]
+          price=[]
+          for a in good:
+            b=a.get('body','')
+            if re.search(r'(?i)(price|tariff|tarif|kwh|eur|€)',b): price.append(a)
+          out={'locatorLocationCount':len(locs),'uniqueIdentifiers':len(identifiers),'identifierSamples':identifiers[:80],'attempts':attempts,'successful':good,'priceLikeSuccesses':price}
+          pathlib.Path('reports/france/vianeo/uberall-identifier-tariff-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'locatorLocationCount':len(locs),'identifierSamples':identifiers[:30],'successCount':len(good),'successes':good[:30],'priceLike':price[:20]},ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/vianeo/uberall-identifier-tariff-probe.json
+          git commit -m 'France Vianeo: publish locator identifier tariff probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
