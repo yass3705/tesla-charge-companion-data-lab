@@ -29,6 +29,11 @@ SEEDS = {
     "monta-dynamic": "963870983660167168",
     "qwello-static": "972963216296222720",
     "edri-static": "972837891969273856",
+    # Official CC0 Mobilithek AFIR offer linked for GP JOULE Connect GmbH.
+    # Keeping the exact offer ID here allows the metadata probe to resolve the
+    # publication/payload URLs without inferring any tariff from operator-wide
+    # examples or from a different charging station.
+    "gpjoule-static": "997111469996658688",
 }
 
 
