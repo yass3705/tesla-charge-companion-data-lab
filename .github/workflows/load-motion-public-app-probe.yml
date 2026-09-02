@@ -1,0 +1,67 @@
+name: France Load Motion public app probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/load-motion-public-app-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public web application assets and APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/load-stations /tmp/load
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          roots=['https://loadstations.load-motion.com/','https://loadstations.load-motion.com/auth/login']
+          s=requests.Session(); s.headers.update({'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/128 Safari/537.36'})
+          pages=[]; scripts=[]
+          for root in roots:
+            try:
+              r=s.get(root,timeout=30,allow_redirects=True)
+              pages.append({'url':root,'finalUrl':r.url,'status':r.status_code,'body':r.text[:200000]})
+              for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',r.text,re.I):
+                u=urllib.parse.urljoin(r.url,src)
+                if u not in scripts: scripts.append(u)
+              for href in re.findall(r'<link[^>]+href=["\']([^"\']+)',r.text,re.I):
+                if href.endswith('.js'):
+                  u=urllib.parse.urljoin(r.url,href)
+                  if u not in scripts: scripts.append(u)
+            except Exception as e: pages.append({'url':root,'error':str(e)})
+          findings=[]
+          needles=['api','station','connector','evse','tariff','price','pricing','chargepoint','map','graphql','axios','fetch(','baseurl','environment']
+          for u in scripts[:150]:
+            try:
+              rr=s.get(u,timeout=30); txt=rr.text
+            except Exception: continue
+            urls=sorted(set(re.findall(r'https?://[^"\'\\\s)]+',txt)))
+            rel=sorted(set(re.findall(r'["\'](/[^"\']*(?:api|station|connector|tariff|price|evse|charge)[^"\']*)["\']',txt,re.I)))
+            snippets=[]; low=txt.lower()
+            for n in needles:
+              pos=0
+              while True:
+                i=low.find(n,pos)
+                if i<0: break
+                snippets.append(txt[max(0,i-300):i+900]); pos=i+len(n)
+                if len(snippets)>=180: break
+              if len(snippets)>=180: break
+            if urls or rel or snippets:
+              findings.append({'url':u,'status':rr.status_code,'bytes':len(txt),'candidateUrls':[x for x in urls if any(k in x.lower() for k in ['api','load-motion','loadstations','station','charge'])][:300],'relativeEndpoints':rel[:300],'snippets':snippets[:180]})
+          out={'pages':pages,'scripts':scripts,'findings':findings}
+          pathlib.Path('reports/france/load-stations/public-app-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'pages':[{k:v for k,v in p.items() if k!='body'} for p in pages],'scripts':scripts,'findings':[{'url':f['url'],'candidateUrls':f['candidateUrls'][:50],'relativeEndpoints':f['relativeEndpoints'][:80]} for f in findings]},ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/load-stations/public-app-probe.json
+          git commit -m 'France Load Stations: publish Load Motion public app probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
