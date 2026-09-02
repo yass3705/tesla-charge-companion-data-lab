@@ -1,0 +1,88 @@
+name: France Modulo Virta public tariff probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/modulo-virta-public-tariff-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public Modulo/Virta frontend and tariff surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/modulo
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse,datetime
+          S=requests.Session(); S.headers['User-Agent']='Mozilla/5.0 TeslaChargeCompanion/1.0'
+          starts=['https://modulo.charge.virtaglobal.com/','https://modulo.poweredbyvirta.com/','https://modulo.webapp.virtaglobal.com/']
+          pages=[]; scripts=[]
+          for u in starts:
+            try:
+              r=S.get(u,timeout=25,allow_redirects=True)
+              pages.append({'url':u,'finalUrl':r.url,'status':r.status_code,'contentType':r.headers.get('content-type'),'bytes':len(r.content),'body':r.text[:250000]})
+              if 'html' in (r.headers.get('content-type') or ''):
+                for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',r.text,re.I):
+                  su=urllib.parse.urljoin(r.url,src)
+                  if su not in scripts:scripts.append(su)
+                for src in re.findall(r'(?:src|href)=["\']([^"\']+\.js(?:\?[^"\']*)?)',r.text,re.I):
+                  su=urllib.parse.urljoin(r.url,src)
+                  if su not in scripts:scripts.append(su)
+            except Exception as e: pages.append({'url':u,'error':str(e)})
+          assets=[]; candidates=set(); snippets=[]
+          toks=('api','tariff','price','pricing','evse','station','charger','chargepoint','connector','ocpi','location','graphql')
+          for u in scripts[:120]:
+            try:
+              r=S.get(u,timeout=25); txt=r.text
+              item={'url':u,'status':r.status_code,'bytes':len(r.content),'contentType':r.headers.get('content-type')}
+              if r.ok:
+                urls=set(re.findall(r'https?://[^"\'\\\s)]+',txt))
+                for x in urls:
+                  if any(t in x.lower() for t in toks): candidates.add(x.rstrip(';,}'))
+                for m in re.findall(r'["\'](/[^"\']{1,180})["\']',txt):
+                  if any(t in m.lower() for t in toks): candidates.add(m)
+                low=txt.lower()
+                for tok in toks:
+                  pos=0
+                  while len(snippets)<250:
+                    i=low.find(tok,pos)
+                    if i<0:break
+                    snippets.append({'asset':u,'token':tok,'text':txt[max(0,i-220):i+700]}); pos=i+len(tok)
+                  if len(snippets)>=250:break
+              assets.append(item)
+            except Exception as e: assets.append({'url':u,'error':str(e)})
+          # Probe only public, non-destructive GET endpoints discovered verbatim or safely normalized.
+          probes=[]
+          test_urls=[]
+          for c in sorted(candidates):
+            if c.startswith('http'):
+              test_urls.append(c)
+            elif c.startswith('/'):
+              for h in ['https://modulo.poweredbyvirta.com','https://modulo.charge.virtaglobal.com']:
+                test_urls.append(h+c)
+          seen=set()
+          for u in test_urls[:180]:
+            if u in seen:continue
+            seen.add(u)
+            try:
+              r=S.get(u,timeout=12,allow_redirects=True)
+              body=r.text[:25000]
+              probes.append({'url':u,'finalUrl':r.url,'status':r.status_code,'contentType':r.headers.get('content-type'),'bytes':len(r.content),'priceLike':bool(re.search(r'(?i)(tariff|price|eur|kwh|minute|currency)',body)),'body':body})
+            except Exception as e: probes.append({'url':u,'error':str(e)})
+          out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'pages':pages,'scripts':scripts,'assets':assets,'candidateUrls':sorted(candidates),'snippets':snippets,'probes':probes}
+          pathlib.Path('reports/france/modulo/virta-public-tariff-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'pages':[{k:v for k,v in p.items() if k!='body'} for p in pages],'scripts':scripts,'candidateUrls':sorted(candidates)[:200],'probes':[{k:v for k,v in p.items() if k!='body'} for p in probes if p.get('status') or p.get('error')]},ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/modulo/virta-public-tariff-probe.json
+          git commit -m 'France Modulo: publish Virta public tariff probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
