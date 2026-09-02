@@ -1,0 +1,39 @@
+name: France V9 Electra row sample
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/france-v9-electra-row-sample.yml']
+permissions:
+  contents: write
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract compact Electra row samples
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/electra /tmp/electra
+          curl -fLsS --retry 3 'https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz' -o /tmp/electra/all.json.gz
+          python - <<'PY'
+          import gzip,json,pathlib
+          rows=json.loads(gzip.open('/tmp/electra/all.json.gz','rt',encoding='utf-8').read())
+          samples=[]
+          for i,r in enumerate(rows):
+            if 'electra' in json.dumps(r,ensure_ascii=False).lower():
+              samples.append({'index':i,'row':r})
+              if len(samples)>=12:break
+          out={'rowCount':len(rows),'samples':samples}
+          pathlib.Path('reports/france/electra/v9-row-samples.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/electra/v9-row-samples.json
+          git commit -m 'France: publish V9 Electra row samples' || exit 0
+          git pull --rebase origin main && git push
