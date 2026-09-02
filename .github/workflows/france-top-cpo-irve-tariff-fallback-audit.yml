@@ -18,7 +18,7 @@ jobs:
           set -euo pipefail
           mkdir -p reports/france/irve-fallback /tmp/irve
           python - <<'PY'
-          import requests,json,pathlib,datetime,re,sys,os,collections,csv,io
+          import requests,json,pathlib,datetime,collections,csv,io
           S=requests.Session(); S.headers['User-Agent']='TeslaChargeCompanion-data-audit/1.0'
           slugs=[
             'base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques',
@@ -36,24 +36,21 @@ jobs:
           for x in resources:
             fmt=str(x.get('format') or '').lower()
             title=str(x.get('title') or '')
-            schema=((x.get('schema') or {}).get('name') if isinstance(x.get('schema'),dict) else '') or ''
-            if fmt=='csv' and ('consolid' in title.lower() or 'irve' in title.lower() or 'schema-irve-statique' in schema):
-              candidates.append(x)
-          def dt(x): return str(x.get('last_modified') or x.get('modified') or x.get('created_at') or '')
-          candidates.sort(key=dt,reverse=True)
-          if not candidates: raise SystemExit('no CSV resource candidate')
-          chosen=candidates[0]
+            tl=title.lower()
+            # Actual national data resource, never the documentation/reference-table CSV.
+            if fmt=='csv' and 'consolidation' in tl and 'documentation' not in tl and 'ref-table' not in str(x.get('url') or '').lower():
+              score=(2 if 'dernière version' in tl or 'derniere version' in tl else 1,
+                     str(x.get('last_modified') or x.get('modified') or x.get('created_at') or ''))
+              candidates.append((score,x))
+          candidates.sort(key=lambda z:z[0],reverse=True)
+          if not candidates: raise SystemExit('no consolidation CSV candidate')
+          chosen=candidates[0][1]
           url=chosen.get('url')
-          rr=S.get(url,timeout=120)
-          rr.raise_for_status()
-          raw=rr.content
-          # Robust decoding/dialect
+          rr=S.get(url,timeout=120); rr.raise_for_status(); raw=rr.content
           text=raw.decode('utf-8-sig','replace')
-          sample=text[:100000]
-          try: dialect=csv.Sniffer().sniff(sample,delimiters=',;\t')
+          try: dialect=csv.Sniffer().sniff(text[:100000],delimiters=',;\t')
           except: dialect=csv.excel
-          reader=csv.DictReader(io.StringIO(text),dialect=dialect)
-          fields=reader.fieldnames or []
+          reader=csv.DictReader(io.StringIO(text),dialect=dialect); fields=reader.fieldnames or []
           def pick(*names):
             low={str(f).strip().lower():f for f in fields}
             for n in names:
@@ -62,13 +59,10 @@ jobs:
               lf=str(f).lower()
               if any(n.lower() in lf for n in names):return f
             return None
-          fop=pick('nom_operateur','operateur','operator')
-          fnet=pick('nom_enseigne','nom_reseau','network')
-          ft=pick('tarification','tarif','pricing')
-          fpdc=pick('id_pdc_itinerance')
-          fst=pick('id_station_itinerance')
-          fname=pick('nom_station')
-          faddr=pick('adresse_station')
+          fop=pick('nom_operateur','operateur','operator'); fnet=pick('nom_enseigne','nom_reseau','network')
+          ft=pick('tarification','tarif','pricing'); fpdc=pick('id_pdc_itinerance'); fst=pick('id_station_itinerance')
+          fname=pick('nom_station'); faddr=pick('adresse_station')
+          if not fop or not ft or not fpdc: raise SystemExit('unexpected IRVE fields: '+repr(fields[:80]))
           targets={
             'citeos': lambda op,net: ('citeos' in op.lower() or 'cogelum' in op.lower() or 'citeos' in net.lower()),
             'totalenergies_charging_services': lambda op,net: op.strip().lower()=='totalenergies charging services',
@@ -78,22 +72,22 @@ jobs:
             'etotem': lambda op,net: ('e-totem' in op.lower() or 'etotem' in op.lower())
           }
           stats={k:{'rows':0,'nonEmptyTarificationRows':0,'uniqueTarifications':collections.Counter(),'networks':collections.Counter(),'samples':[]} for k in targets}
+          empty_tokens={'','nan','none','null','non renseigné','non renseigne','non renseignée','non renseignee'}
           for row in reader:
-            op=str(row.get(fop,'') if fop else '')
-            net=str(row.get(fnet,'') if fnet else '')
-            tariff=str(row.get(ft,'') if ft else '').strip()
+            op=str(row.get(fop,'') or ''); net=str(row.get(fnet,'') or '') if fnet else ''
+            tariff=str(row.get(ft,'') or '').strip()
             for key,match in targets.items():
               if match(op,net):
                 s=stats[key]; s['rows']+=1; s['networks'][net]+=1
-                if tariff and tariff.lower() not in ('nan','none','null','non renseigné','non renseigne'):
+                if tariff.lower() not in empty_tokens:
                   s['nonEmptyTarificationRows']+=1; s['uniqueTarifications'][tariff]+=1
-                  if len(s['samples'])<30:
-                    s['samples'].append({'stationId':row.get(fst) if fst else None,'pdcId':row.get(fpdc) if fpdc else None,'station':row.get(fname) if fname else None,'address':row.get(faddr) if faddr else None,'operator':op,'network':net,'tarification':tariff})
+                  if len(s['samples'])<40:
+                    s['samples'].append({'stationId':row.get(fst) if fst else None,'pdcId':row.get(fpdc),'station':row.get(fname) if fname else None,'address':row.get(faddr) if faddr else None,'operator':op,'network':net,'tarification':tariff})
           out={'generatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'datasetMetadataApi':meta_url,'resource':{'title':chosen.get('title'),'url':url,'lastModified':chosen.get('last_modified') or chosen.get('modified'),'bytes':len(raw)},'fields':{'operator':fop,'network':fnet,'tarification':ft,'stationId':fst,'pdcId':fpdc},'targets':{}}
           for k,s in stats.items():
-            out['targets'][k]={'rows':s['rows'],'nonEmptyTarificationRows':s['nonEmptyTarificationRows'],'coverage':(s['nonEmptyTarificationRows']/s['rows'] if s['rows'] else 0),'uniqueTarifications':s['uniqueTarifications'].most_common(100),'networks':s['networks'].most_common(100),'samples':s['samples']}
+            out['targets'][k]={'rows':s['rows'],'nonEmptyTarificationRows':s['nonEmptyTarificationRows'],'coverage':(s['nonEmptyTarificationRows']/s['rows'] if s['rows'] else 0),'uniqueTarifications':s['uniqueTarifications'].most_common(120),'networks':s['networks'].most_common(120),'samples':s['samples']}
           pathlib.Path('reports/france/irve-fallback/top-cpo-tariff-coverage.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({k:{kk:v for kk,v in x.items() if kk!='samples'} for k,x in out['targets'].items()},ensure_ascii=False,indent=2)[:50000])
+          print(json.dumps({'resource':out['resource'],'fields':out['fields'],'targets':{k:{kk:v for kk,v in x.items() if kk!='samples'} for k,x in out['targets'].items()}},ensure_ascii=False,indent=2)[:50000])
           PY
       - name: Publish
         run: |
