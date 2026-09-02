@@ -1,0 +1,68 @@
+name: France Electra public stations probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/electra-public-stations-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public Electra stations site
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/electra /tmp/electra
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          root='https://stations.go-electra.com/fr'
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          r=s.get(root,timeout=30); html=r.text
+          scripts=[]
+          for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',html,re.I):
+            u=urllib.parse.urljoin(root,src)
+            if u not in scripts: scripts.append(u)
+          links=[]
+          for href in re.findall(r'href=["\']([^"\']+)',html,re.I):
+            u=urllib.parse.urljoin(root,href)
+            if 'stations.go-electra.com' in u and u not in links: links.append(u)
+          findings=[]
+          toks=('api','graphql','station','price','pricing','tarif','kwh','connector','charge','availability')
+          for u in scripts[:100]:
+            try:
+              rr=s.get(u,timeout=20); txt=rr.text
+            except Exception: continue
+            urls=sorted(set(re.findall(r'https?://[^"\'\\\s)]+',txt)))
+            rel=sorted(set(re.findall(r'["\'](/[^"\']*(?:api|station|price|tarif|charge)[^"\']*)["\']',txt,re.I)))
+            snippets=[]; low=txt.lower()
+            for tok in toks:
+              pos=0
+              while True:
+                i=low.find(tok,pos)
+                if i<0: break
+                snippets.append(txt[max(0,i-220):i+650]); pos=i+len(tok)
+                if len(snippets)>=150: break
+              if len(snippets)>=150: break
+            if urls or rel or snippets:
+              findings.append({'url':u,'status':rr.status_code,'bytes':len(txt),'candidateUrls':[x for x in urls if any(t in x.lower() for t in toks)][:200],'relativeCandidates':rel[:200],'snippets':snippets[:150]})
+          # Look for embedded JSON / Next/Nuxt state and price strings in HTML.
+          embeds=[]
+          for m in re.finditer(r'<script[^>]*>(.*?)</script>',html,re.I|re.S):
+            body=m.group(1).strip()
+            if body and any(t in body.lower() for t in toks): embeds.append(body[:200000])
+          out={'rootStatus':r.status_code,'pageBytes':len(html),'scripts':scripts,'links':links[:1000],'embeddedCandidates':embeds[:20],'findings':findings}
+          pathlib.Path('reports/france/electra/public-stations-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'rootStatus':r.status_code,'scripts':scripts,'links':links[:100],'findings':[{'url':x['url'],'candidateUrls':x['candidateUrls'][:30],'relativeCandidates':x['relativeCandidates'][:30]} for x in findings]},ensure_ascii=False,indent=2)[:40000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/electra/public-stations-probe.json
+          git commit -m 'France Electra: publish public stations probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
