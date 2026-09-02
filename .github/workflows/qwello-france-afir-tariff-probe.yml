@@ -1,0 +1,62 @@
+name: France Qwello AFIR tariff probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/qwello-france-afir-tariff-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reverse public AFIR tariff lookup and test French EVSEs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/qwello /tmp/qwello
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse,csv,io
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          root='https://tariff.qwello.eu/'
+          r=s.get(root,timeout=30); html=r.text
+          scripts=[]
+          for src in re.findall(r'<script[^>]+src=["\']([^"\']+)',html,re.I):
+              u=urllib.parse.urljoin(r.url,src)
+              if u not in scripts:scripts.append(u)
+          assets=[]
+          for u in scripts:
+              try: rr=s.get(u,timeout=30); txt=rr.text
+              except Exception: continue
+              urls=sorted(set(re.findall(r'https?://[^"\'\\\s)]+',txt)))
+              snippets=[]; low=txt.lower()
+              for term in ['evse','tariff','station','api','axios','fetch(','graphql']:
+                  p=0
+                  while True:
+                      i=low.find(term,p)
+                      if i<0:break
+                      snippets.append(txt[max(0,i-400):i+1200]);p=i+len(term)
+                      if len(snippets)>=100:break
+                  if len(snippets)>=100:break
+              assets.append({'url':u,'status':rr.status_code,'bytes':len(txt),'candidateUrls':[x for x in urls if any(k in x.lower() for k in ['api','tariff','qwello','station'])][:200],'snippets':snippets[:100]})
+          pan='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          rows=list(csv.DictReader(io.StringIO(s.get(pan,timeout=60).text)))
+          fr=[]
+          for x in rows:
+              op=(x.get('nom_operateur') or '').upper(); pid=(x.get('id_pdc_itinerance') or '')
+              if 'QWELLO' in op or 'FR*QWC' in pid.upper():
+                  fr.append({'id':pid,'station':x.get('nom_station'),'address':x.get('adresse_station')})
+          out={'rootStatus':r.status_code,'page':html[:100000],'scripts':scripts,'assets':assets,'panRows':len(fr),'panSamples':fr[:30]}
+          pathlib.Path('reports/france/qwello/afir-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'scripts':scripts,'assets':[{'url':a['url'],'candidateUrls':a['candidateUrls'][:30],'snippets':a['snippets'][:6]} for a in assets],'panRows':len(fr),'panSamples':fr[:10]},ensure_ascii=False)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/qwello/afir-probe.json
+          git commit -m 'France Qwello: publish AFIR tariff probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
