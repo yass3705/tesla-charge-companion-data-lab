@@ -7,6 +7,15 @@
     "purpose": "Track researched CPO prefixes that are not yet fully represented by exact tariff evidence in the staging catalog."
   },
   "entries": {
+    "DEALL": {
+      "status": "partial",
+      "operator": "Allego GmbH",
+      "reason": "Official current Germany direct pricing is exact for the 350 kW (0.76 EUR/kWh) and 150 kW (0.66 EUR/kWh) product bands, but the official regular/50 kW band is only published as a 0.48-0.60 EUR/kWh range. Allego also publishes a Germany HPC overstay fee of 0.246 EUR/min after 45 minutes when charging has ended. The exact regular-band station price therefore cannot be assigned network-wide without a station/QR mapping.",
+      "evidencePaths": [
+        "data/germany/research/allego_ionity_direct_pricing_2026-09-02.json"
+      ],
+      "neededToComplete": "Resolve Allego's public station/QR tariff payload or equivalent official station-level feed and attach the exact current direct tariff to every DEALL station/EVSE. Do not infer the exact 0.48-0.60 EUR/kWh regular-band value from power alone."
+    },
     "DECNT": {
       "status": "partial",
       "operator": "GP Joule Connect GmbH",
@@ -17,15 +26,21 @@
       ],
       "neededToComplete": "Resolve the official publication payload and attach each exact ad-hoc tariff to the corresponding station/EVSE without extrapolation."
     },
-    "DETMO": {
+    "DEI2G": {
       "status": "partial",
-      "operator": "TEAG Mobil GmbH",
-      "reason": "The official own-network TEAG app tariff is exact and a current energy-volume promotion is modeled, but other payment methods explicitly use the tariff displayed at each station/billing system; those station-level direct prices are not yet mapped exhaustively.",
+      "operator": "inno2grid GmbH",
+      "reason": "At least one verifiable public inno2grid station-level ad-hoc tariff is now available (Areal Böhler Autowerk, Meerbusch: 0.49 EUR/kWh), while other inno2grid stations still report the direct ad-hoc price as unknown. A network-wide tariff therefore must not be extrapolated.",
+      "evidencePaths": [],
+      "neededToComplete": "Map the verified 0.49 EUR/kWh station to its exact DEI2G EVSEs, then obtain an official/public ad-hoc checkout, QR tariff endpoint, station-level CPO export, or equivalent verifiable exact price for every remaining DEI2G station/EVSE."
+    },
+    "DEION": {
+      "status": "partial",
+      "operator": "IONITY GmbH",
+      "reason": "IONITY's current Germany page exposes 0.72 EUR/kWh Direct and 0.68 EUR/kWh App as minimum prices, while the official July 2026 pricing explanation says Germany direct/ad-hoc can be up to 0.76 EUR/kWh and the applicable price is shown in the app or on the charger. Official support confirms a public QR/manual charger-selection flow at payment.ionity.eu. A single national tariff must therefore not be applied to all DEION EVSEs.",
       "evidencePaths": [
-        "scripts/germany_teag_direct_tariff.py",
-        ".github/workflows/germany-teag-direct-tariff.yml"
+        "data/germany/research/allego_ionity_direct_pricing_2026-09-02.json"
       ],
-      "neededToComplete": "Map the exact ad-hoc/other-payment tariff shown for every DETMO station/EVSE, and enable the V9 billing layer to represent the app promotion exactly (0.49 EUR/kWh for kWh 1-28 then 0.29 EUR/kWh from kWh 29 through 2026-09-30) without flattening it."
+      "neededToComplete": "Resolve a stable public station/EVSE identifier-to-price contract in payment.ionity.eu or another official station feed and capture the applicable exact direct tariff for every DEION EVSE."
     },
     "DEQRM": {
       "status": "partial",
@@ -51,12 +66,15 @@
       ],
       "neededToComplete": "Resolve an exact public tariff endpoint or equivalent verifiable mapping for every DEQWC EVSE."
     },
-    "DEI2G": {
+    "DETMO": {
       "status": "partial",
-      "operator": "inno2grid GmbH",
-      "reason": "At least one verifiable public inno2grid station-level ad-hoc tariff is now available (Areal Böhler Autowerk, Meerbusch: 0.49 EUR/kWh), while other inno2grid stations still report the direct ad-hoc price as unknown. A network-wide tariff therefore must not be extrapolated.",
-      "evidencePaths": [],
-      "neededToComplete": "Map the verified 0.49 EUR/kWh station to its exact DEI2G EVSEs, then obtain an official/public ad-hoc checkout, QR tariff endpoint, station-level CPO export, or equivalent verifiable exact price for every remaining DEI2G station/EVSE."
+      "operator": "TEAG Mobil GmbH",
+      "reason": "The official own-network TEAG app tariff is exact and a current energy-volume promotion is modeled, but other payment methods explicitly use the tariff displayed at each station/billing system; those station-level direct prices are not yet mapped exhaustively.",
+      "evidencePaths": [
+        "scripts/germany_teag_direct_tariff.py",
+        ".github/workflows/germany-teag-direct-tariff.yml"
+      ],
+      "neededToComplete": "Map the exact ad-hoc/other-payment tariff shown for every DETMO station/EVSE, and enable the V9 billing layer to represent the app promotion exactly (0.49 EUR/kWh for kWh 1-28 then 0.29 EUR/kWh from kWh 29 through 2026-09-30) without flattening it."
     }
   }
 }
