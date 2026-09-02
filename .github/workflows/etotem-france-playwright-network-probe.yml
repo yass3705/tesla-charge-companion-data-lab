@@ -28,43 +28,25 @@ jobs:
           cat > /tmp/capture-etotem.js <<'JS'
           const { chromium } = require('playwright');
           const fs=require('fs');
-          function redactText(s){
-            if(!s) return s;
-            s=s.replace(/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,'<JWT_REDACTED>');
-            s=s.replace(/("(?:authToken|anonymousAuthToken|access_token|refresh_token|token|password)"\s*:\s*")[^"]*(")/gi,'$1<REDACTED>$2');
-            return s;
-          }
-          function cleanHeaders(h){
-            const o={}; for(const [k,v] of Object.entries(h||{})){
-              if(['authorization','cookie','set-cookie','x-auth-token'].includes(k.toLowerCase())) o[k]='<REDACTED_PRESENT>';
-              else if(!k.toLowerCase().includes('token')) o[k]=v;
-            } return o;
-          }
+          function redactText(s){if(!s)return s;s=s.replace(/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,'<JWT_REDACTED>');return s.replace(/("(?:authToken|anonymousAuthToken|access_token|refresh_token|token|password)"\s*:\s*")[^"]*(")/gi,'$1<REDACTED>$2')}
+          function cleanHeaders(h){const o={};for(const[k,v]of Object.entries(h||{})){if(['authorization','cookie','set-cookie','x-auth-token'].includes(k.toLowerCase()))o[k]='<REDACTED_PRESENT>';else if(!k.toLowerCase().includes('token'))o[k]=v}return o}
           (async()=>{
-            const browser=await chromium.launch({headless:true});
-            const ctx=await browser.newContext({locale:'fr-FR',viewport:{width:1440,height:1000}});
-            const page=await ctx.newPage();
-            const reqs=[],resps=[],errors=[];
-            const interesting=u=> (u.includes('e-totem')||u.includes('etotem')||u.includes('firebaseio')||u.includes('/api/')) && !u.includes('maps.googleapis') && !u.includes('gstatic');
-            page.on('request', req=>{const u=req.url();if(interesting(u))reqs.push({url:u,method:req.method(),headers:cleanHeaders(req.headers()),postData:redactText(req.postData())});});
-            page.on('response', async res=>{const u=res.url();if(interesting(u)){let body='';try{body=redactText((await res.text()).slice(0,150000))}catch(e){}resps.push({url:u,status:res.status(),headers:cleanHeaders(res.headers()),body});}});
-            page.on('pageerror',e=>errors.push(String(e)));
+            const browser=await chromium.launch({headless:true});const ctx=await browser.newContext({locale:'fr-FR',viewport:{width:1440,height:1000},permissions:['geolocation'],geolocation:{latitude:48.8566,longitude:2.3522}});const page=await ctx.newPage();
+            const reqs=[],resps=[],errors=[],ui=[];const interesting=u=>(u.includes('e-totem')||u.includes('etotem')||u.includes('firebaseio')||u.includes('/api/'))&&!u.includes('maps.googleapis')&&!u.includes('gstatic');
+            page.on('request',req=>{const u=req.url();if(interesting(u))reqs.push({url:u,method:req.method(),headers:cleanHeaders(req.headers()),postData:redactText(req.postData())})});
+            page.on('response',async res=>{const u=res.url();if(interesting(u)){let body='';try{body=redactText((await res.text()).slice(0,200000))}catch(e){}resps.push({url:u,status:res.status(),headers:cleanHeaders(res.headers()),body})}});page.on('pageerror',e=>errors.push(String(e)));
             try{
-              await page.goto('https://www.e-totem.fr/',{waitUntil:'domcontentloaded',timeout:120000});
-              await page.waitForTimeout(25000);
-              for(const hash of ['#/home','#/home/map','#/home/tarifs']){
-                try{await page.evaluate(h=>{location.hash=h},hash);await page.waitForTimeout(7000)}catch(e){}
+              await page.goto('https://www.e-totem.fr/',{waitUntil:'domcontentloaded',timeout:120000});await page.waitForTimeout(22000);
+              try{await page.locator('flt-semantics-placeholder').click({timeout:2000})}catch(e){}
+              ui.push({stage:'initial',url:page.url(),text:(await page.locator('body').innerText().catch(()=>'' )).slice(0,30000)});
+              for(const label of ['Où se recharger','Carte des bornes','Bornes à proximité','Rechercher votre borne','Map']){
+                try{const x=page.getByText(label,{exact:false}).first();if(await x.isVisible({timeout:1200})){await x.click();ui.push({clicked:label,url:page.url()});await page.waitForTimeout(9000)}}catch(e){ui.push({clickFailed:label,error:String(e).slice(0,500)})}
               }
+              for(const hash of ['#/home/map','#/map','#/home/stations','#/stations']){try{await page.evaluate(h=>location.hash=h,hash);await page.waitForTimeout(7000);ui.push({hash,url:page.url(),text:(await page.locator('body').innerText().catch(()=>'' )).slice(0,10000)})}catch(e){}}
             }catch(e){errors.push(String(e))}
-            const title=await page.title().catch(()=>null);
-            await browser.close();
-            const rq=[];const rs=[];const a=new Set(),b=new Set();
-            for(const x of reqs){const k=x.method+' '+x.url+' '+(x.postData||'');if(!a.has(k)){a.add(k);rq.push(x)}}
-            for(const x of resps){const k=x.status+' '+x.url+' '+(x.body||'').slice(0,500);if(!b.has(k)){b.add(k);rs.push(x)}}
-            const out={generatedAt:new Date().toISOString(),title,requests:rq,responses:rs,errors};
-            fs.writeFileSync('reports/france/etotem/playwright-network-probe.json',JSON.stringify(out,null,2));
-            fs.writeFileSync('reports/france/etotem/playwright-network-summary.json',JSON.stringify({generatedAt:out.generatedAt,title,requests:rq.slice(0,250),responses:rs.slice(0,250),errors},null,2));
-            console.log(JSON.stringify({title,requests:rq.slice(0,120),responses:rs.slice(0,120),errors}).slice(0,120000));
+            const title=await page.title().catch(()=>null);await browser.close();
+            const rq=[],rs=[],a=new Set(),b=new Set();for(const x of reqs){const k=x.method+' '+x.url+' '+(x.postData||'');if(!a.has(k)){a.add(k);rq.push(x)}}for(const x of resps){const k=x.status+' '+x.url+' '+(x.body||'').slice(0,500);if(!b.has(k)){b.add(k);rs.push(x)}}
+            const out={generatedAt:new Date().toISOString(),title,ui,requests:rq,responses:rs,errors};fs.writeFileSync('reports/france/etotem/playwright-network-probe.json',JSON.stringify(out,null,2));fs.writeFileSync('reports/france/etotem/playwright-network-summary.json',JSON.stringify({generatedAt:out.generatedAt,title,ui,requests:rq.slice(0,300),responses:rs.slice(0,300),errors},null,2));console.log(JSON.stringify({title,ui,apiRequests:rq.filter(x=>x.url.includes('/api/')),apiResponses:rs.filter(x=>x.url.includes('/api/')).map(x=>({url:x.url,status:x.status,body:x.body.slice(0,3000)})),errors}).slice(0,150000));
           })();
           JS
           NODE_PATH="$(npm root)" node /tmp/capture-etotem.js
@@ -73,6 +55,6 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/france/etotem/playwright-network-*.json
-          git commit -m 'France e-Totem: publish anonymous web API contract' || exit 0
+          git commit -m 'France e-Totem: publish station-map API contract' || exit 0
           for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
           exit 1
