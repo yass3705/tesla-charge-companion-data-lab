@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "1.0.0",
+  "operator": "ENGIE Vianeo",
+  "country": "FR",
+  "status": "set_aside_requires_authenticated_capture_or_internal_evse_mapping",
+  "classification": {
+    "publicDirectTariffIsStationSpecific": true,
+    "exactStationTariffRequired": true,
+    "publicAnonymousExactTariffResolved": false,
+    "safeToUseNationalPublicFallback": false
+  },
+  "validatedPublicSurfaces": {
+    "officialWebsite": true,
+    "officialPublicMap": true,
+    "thirdPartyMapProvider": "Uberall",
+    "publicMapInventoryHarvested": true,
+    "webJavascriptBundlesInspected": true,
+    "androidStaticSurfaceInspected": true,
+    "officialBackendHostIdentified": "backend-api.engie-vianeo.com",
+    "exactTariffRoutesIdentified": [
+      "/ca/select-evse/{evse}",
+      "/locations/evses/detail/{evse}",
+      "/ca/tariff/{evse}",
+      "/ca/charge-pricing"
+    ],
+    "panToPublicMapMatchingAttempted": true,
+    "panAndUberallEvseIdVariantsTested": true
+  },
+  "coverage": {
+    "matchedStations": 622,
+    "candidateEvseIds": 4083,
+    "successfulAnonymousExactTariffResponses": 0,
+    "priceLikeAnonymousResponses": 0
+  },
+  "blocker": {
+    "reason": "The exact pricing backend surface is identifiable, but anonymous probes using public PAN/Uberall identifiers do not resolve an exact tariff. Current web client behavior uses session context, and the backend may also require an internal EVSE identifier not derivable safely from public data.",
+    "nextUsefulEvidence": [
+      "sanitized authenticated mobile/web capture of a station tariff request",
+      "publicly documented backend EVSE identifier mapping",
+      "new official anonymous station tariff endpoint"
+    ]
+  },
+  "knownNonPublicFallbacks": {
+    "vianeoMax": {
+      "monthlyEur": 9.99,
+      "energyEurPerKwh": 0.33,
+      "scope": "France passenger Vianeo stations",
+      "note": "Station-specific minute/occupancy fees can still apply; this subscription price must not be substituted for the public station tariff."
+    },
+    "appWithoutSubscription": {
+      "discountVsPublicPercent": 10,
+      "exactStationBasePriceStillRequired": true
+    }
+  },
+  "failClosedRules": [
+    "Do not invent or extrapolate a national public Vianeo tariff.",
+    "Do not apply Vianeo Max to users without that subscription.",
+    "Do not infer a station public price from the 10% app discount without the exact station base price."
+  ]
+}
