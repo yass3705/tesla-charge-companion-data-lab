@@ -1,0 +1,62 @@
+name: France Road E-Flux deep API probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/road-france-deep-api-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve Next app API and route contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/road
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse
+          s=requests.Session();s.headers['User-Agent']='Mozilla/5.0'
+          roots=['https://chargestation.road.io/','https://chargestation.road.io/1']
+          urls=[];pages=[]
+          for root in roots:
+            r=s.get(root,timeout=30); pages.append({'url':root,'status':r.status_code,'final':r.url,'body':r.text[:20000]})
+            for x in re.findall(r'(?:src|href)=["\']([^"\']+)',r.text):
+              u=urllib.parse.urljoin(r.url,x)
+              if '.js' in u and u not in urls:urls.append(u)
+            # Next manifests often reveal route-specific chunks
+            for p in ['/_next/static/chunks/app/page.js','/_next/static/chunks/app/%5Bid%5D/page.js','/_next/static/chunks/app/[id]/page.js','/_next/static/chunks/app/charge/[id]/page.js','/_next/static/chunks/app/station/[id]/page.js','/_next/static/build-manifest.json','/_next/static/app-build-manifest.json']:
+              u=urllib.parse.urljoin('https://chargestation.road.io',p)
+              if u not in urls:urls.append(u)
+          findings=[]
+          needles=['tariff','price','pricing','chargepoint','charge-point','station','connector','evse','api/','graphql','session','payment','location']
+          for u in urls[:100]:
+            try:r=s.get(u,timeout=20)
+            except Exception:continue
+            if r.status_code!=200 or len(r.text)>8_000_000:continue
+            t=r.text
+            strings=[]
+            for m in re.finditer(r'(["\'`])(.{1,350}?)\1',t):
+              v=m.group(2);vl=v.lower()
+              if any(n in vl for n in needles):
+                strings.append({'value':v,'offset':m.start(),'context':t[max(0,m.start()-800):m.end()+1400]})
+                if len(strings)>=350:break
+            absurls=sorted(set(re.findall(r'https?://[^"\'`\\\s)]+',t)))
+            if strings or absurls:findings.append({'url':u,'status':r.status_code,'bytes':len(t),'strings':strings,'urls':[x for x in absurls if any(n in x.lower() for n in needles)][:100]})
+          out={'pages':pages,'assets':urls,'findings':findings}
+          pathlib.Path('reports/france/road/deep-api-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          summary={'pages':[{k:v for k,v in p.items() if k!='body'} for p in pages],'assets':urls,'findings':[{'url':x['url'],'bytes':x['bytes'],'urls':x['urls'],'strings':x['strings'][:80]} for x in findings]}
+          pathlib.Path('reports/france/road/deep-api-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False)[:100000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/road/deep-api-*.json
+          git commit -m 'France Road E-Flux: publish deep scan-pay API probe' || exit 0
+          git pull --rebase origin main
+          git push
