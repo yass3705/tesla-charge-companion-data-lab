@@ -50,7 +50,6 @@ jobs:
             try{
               await page.goto('https://modulo.poweredbyvirta.com/',{waitUntil:'domcontentloaded',timeout:90000});
               await page.waitForTimeout(12000);
-              // Interact conservatively with map/search if controls are available.
               const texts=['Accepter','Tout accepter','Accept all','OK'];
               for(const t of texts){try{const b=page.getByText(t,{exact:false}).first(); if(await b.isVisible({timeout:700})) await b.click();}catch(e){}}
               await page.mouse.move(700,500); await page.mouse.wheel(0,-1300); await page.waitForTimeout(5000);
@@ -66,7 +65,7 @@ jobs:
             console.log(JSON.stringify({interesting,interestingResponses,errors}).slice(0,100000));
           })();
           JS
-          node /tmp/capture.js
+          NODE_PATH="$(npm root)" node /tmp/capture.js
       - name: Publish
         run: |
           git config user.name 'github-actions[bot]'
