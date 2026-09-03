@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "yes55-exact-status-france",
+  "operator": "YES55",
+  "country": "FR",
+  "classification": {
+    "treated": false,
+    "blocked": true,
+    "setAside": true,
+    "failClosed": true,
+    "stationLevelPriceRequired": true,
+    "reason": "YES55 allows site owners to choose/customize monetization tariffs. The public Load Motion/YES55 web contract exposes station/pricing APIs, but exact guest station resolution is protected by reCAPTCHA and secured pricing routes require authentication. The current native YES55 app is published by SAS LOAD STATIONS and explicitly includes tariff display, but no anonymous public mobile endpoint or static tariff feed has been found. ChargePoint public exact-EVSE oracle found no YES55-attributed exact tariff rows."
+  },
+  "evidence": [
+    {"key":"tenantContract","path":"reports/france/yes55/loadstations-contract-extract.json"},
+    {"key":"chargepointOracle","path":"reports/france/chargepoint-oracle/yes55-summary.json"},
+    {"key":"officialPricingCustomization","url":"https://yes55.fr/entreprise-ou-collectivite/"},
+    {"key":"officialMobileApp","url":"https://play.google.com/store/apps/details?id=com.loadstations.yes55"}
+  ],
+  "unblockRequirement": "Authenticated/legitimate app capture or another public source that returns the exact direct tariff for a YES55 EVSE without extrapolation."
+}
