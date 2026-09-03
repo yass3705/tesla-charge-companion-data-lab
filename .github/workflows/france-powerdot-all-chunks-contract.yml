@@ -1,0 +1,78 @@
+name: France Powerdot all chunks API contract
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/france-powerdot-all-chunks-contract.yml']
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect all referenced JS chunks
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/powerdot
+          python - <<'PY'
+          import requests,re,json,pathlib,datetime,urllib.parse
+          base='https://adhoc.pwrdt.com/assets/'
+          main_url=base+'index-ZiTXuOX8.js'
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          main=s.get(main_url,timeout=45).text
+          names=[]
+          for x in re.findall(r'assets/([A-Za-z0-9_.-]+\.js)',main):
+            if x not in names: names.append(x)
+          # Add known lazy chunks in case dynamic import syntax escaped extraction.
+          known=['_adhoc-B7D5bCl3.js','location-EE_gtQUd.js','connector-selection-tKj6B5hB.js','locations-CuJIiVUP.js','payment-d_7-_iXT.js','preparing-connector-D-Zxc48B.js','vendor-pwdt-Bcd98cRl.js']
+          for x in known:
+            if x not in names: names.append(x)
+          targets=[('index-ZiTXuOX8.js',main)]
+          for name in names:
+            try:
+              r=s.get(base+name,timeout=45)
+              if r.status_code==200: targets.append((name,r.text))
+            except Exception: pass
+          service_re=re.compile(r'powerdot\.adhoc\.v1\.[A-Za-z0-9_]+')
+          endpoint_re=re.compile(r'/powerdot\.adhoc\.v1\.AdhocAPI/[A-Za-z0-9_]+')
+          method_words=re.compile(r'\b(?:Get|List|Find|Search|Fetch|Resolve|Init|Start|Stop|Update|Validate)[A-Z][A-Za-z0-9_]{2,80}\b')
+          out={'schemaVersion':'1.0.0','evaluatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'files':[],'global':{'protoNames':[],'rpcPaths':[],'methodWords':[]}}
+          gp=[]; gr=[]; gm=[]
+          terms=['powerdot.adhoc.v1','AdhocAPI','chargerName','locationId','connectorNumber','tariff','pricePerUnit','minPricePerUnit','getLocation','getConnector','GetLocation','GetConnector','useQuery','kind:"unary"','kind:"server_streaming"','localName','methodKind']
+          for name,text in targets:
+            protos=list(dict.fromkeys(service_re.findall(text)))
+            paths=list(dict.fromkeys(endpoint_re.findall(text)))
+            methods=list(dict.fromkeys(method_words.findall(text)))
+            for v in protos:
+              if v not in gp: gp.append(v)
+            for v in paths:
+              if v not in gr: gr.append(v)
+            for v in methods:
+              if v not in gm: gm.append(v)
+            snippets={}
+            for term in terms:
+              arr=[]; pos=0; low=text.lower(); q=term.lower()
+              while len(arr)<20:
+                i=low.find(q,pos)
+                if i<0: break
+                arr.append(text[max(0,i-1400):i+2600]); pos=i+len(q)
+              if arr: snippets[term]=arr
+            if protos or paths or snippets:
+              out['files'].append({'file':name,'length':len(text),'protoNames':protos[:300],'rpcPaths':paths[:100],'methodWords':methods[:500],'snippets':snippets})
+          out['global']={'protoNames':gp[:1000],'rpcPaths':gr[:500],'methodWords':gm[:1500]}
+          pathlib.Path('reports/france/powerdot/all-chunks-contract.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          compact={'downloadedFiles':[{'file':x['file'],'length':x['length'],'protoNames':x['protoNames'],'rpcPaths':x['rpcPaths'],'methodWords':[m for m in x['methodWords'] if any(k in m.lower() for k in ['location','connector','charger','tariff','price'])][:120]} for x in out['files']], 'global':out['global']}
+          pathlib.Path('reports/france/powerdot/all-chunks-contract-summary.json').write_text(json.dumps(compact,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(compact,ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/powerdot/all-chunks-contract*.json
+          git commit -m 'France Powerdot: publish all chunks API contract' || exit 0
+          for i in 1 2 3 4; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
