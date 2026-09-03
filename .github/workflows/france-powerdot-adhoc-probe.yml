@@ -1,0 +1,85 @@
+name: France Powerdot adhoc public probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/france-powerdot-adhoc-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect adhoc webapp and public APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/powerdot
+          python - <<'PY'
+          import requests,re,json,pathlib,urllib.parse,datetime
+          base='https://adhoc.pwrdt.com/'
+          s=requests.Session(); s.headers.update({'User-Agent':'Mozilla/5.0'})
+          out={'schemaVersion':'1.0.0','operator':'Powerdot','evaluatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'base':base}
+          r=s.get(base,timeout=30); out['home']={'status':r.status_code,'contentType':r.headers.get('content-type'),'length':len(r.text)}
+          html=r.text
+          assets=[]
+          for pat in [r'<script[^>]+src=["\']([^"\']+)',r'<link[^>]+href=["\']([^"\']+)']:
+            for x in re.findall(pat,html,re.I):
+              u=urllib.parse.urljoin(base,x)
+              if u not in assets: assets.append(u)
+          out['assets']=assets
+          blobs=[]
+          for u in assets:
+            if not (u.endswith('.js') or '.js?' in u): continue
+            try:
+              rr=s.get(u,timeout=45); txt=rr.text
+              urls=sorted(set(re.findall(r'https?://[^"\'\\\s<>]+',txt)))
+              # Literal path-like strings and focused snippets around API/tariff/price/connector/evse terms.
+              paths=sorted(set(x for x in re.findall(r'["\'](/[^"\']{2,180})["\']',txt) if any(t in x.lower() for t in ['api','price','tariff','connector','station','charge','evse','payment'])))
+              snippets=[]; low=txt.lower()
+              for term in ['baseurl','apiurl','graphql','tariff','pricing','price','evseid','connector','preauthorization','payment']:
+                pos=0; n=0
+                while True:
+                  i=low.find(term,pos)
+                  if i<0 or n>=12: break
+                  snippets.append(txt[max(0,i-220):i+520]); pos=i+len(term); n+=1
+              blobs.append({'url':u,'status':rr.status_code,'length':len(txt),'urls':urls[:300],'paths':paths[:500],'snippets':snippets[:100]})
+            except Exception as e: blobs.append({'url':u,'error':str(e)})
+          out['scripts']=blobs
+          # Probe the root with exact official EVSE IDs only in conservative path/query forms; no session creation/payment mutation.
+          samples=['FRPD1EASCGUYBBC0011','FRPD1EDUVVRSKP0013','FRPD1ECACSDSIES50013']
+          guesses=[]
+          hosts={base.rstrip('/')}
+          for b in blobs:
+            for u in b.get('urls',[]):
+              try:
+                p=urllib.parse.urlsplit(u)
+                if p.scheme in ('http','https') and p.netloc: hosts.add(f'{p.scheme}://{p.netloc}')
+              except: pass
+          safe_templates=['/{id}','/evse/{id}','/station/{id}','/connector/{id}','/charge-point/{id}','/?evseId={id}','/?evse={id}','/?id={id}']
+          for h in list(hosts)[:25]:
+            for evse in samples[:1]:
+              for t in safe_templates:
+                u=h+t.format(id=urllib.parse.quote(evse,safe=''))
+                try:
+                  rr=s.get(u,timeout=12,allow_redirects=True)
+                  body=rr.text[:120000]
+                  relevant=bool(re.search(r'(?i)(€|eur|price|tariff|pricing|kwh|FRPD1)',body))
+                  guesses.append({'url':u,'finalUrl':rr.url,'status':rr.status_code,'contentType':rr.headers.get('content-type'),'length':len(rr.content),'relevant':relevant,'bodySample':body[:3500] if relevant else ''})
+                except Exception as e: guesses.append({'url':u,'error':str(e)})
+          out['safeGetGuesses']=guesses
+          pathlib.Path('reports/france/powerdot/adhoc-public-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          compact={'home':out['home'],'assets':assets,'scripts':[{'url':b.get('url'),'status':b.get('status'),'length':b.get('length'),'urls':b.get('urls',[])[:30],'paths':b.get('paths',[])[:80]} for b in blobs],'relevantGuesses':[g for g in guesses if g.get('relevant')][:20]}
+          pathlib.Path('reports/france/powerdot/adhoc-public-probe-summary.json').write_text(json.dumps(compact,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(compact,ensure_ascii=False,indent=2)[:45000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/powerdot/adhoc-public-probe*.json
+          git commit -m 'France Powerdot: publish adhoc public probe' || exit 0
+          for i in 1 2 3 4; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
