@@ -1,11 +1,11 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-09-03T01:45:00Z",
+  "updatedAt": "2026-09-03T02:18:00Z",
   "denominator": 291,
-  "treated": 34,
-  "remaining": 257,
+  "treated": 35,
+  "remaining": 256,
   "setAside": 3,
-  "activeRemaining": 254,
+  "activeRemaining": 253,
   "baselineBeforeRun": 22,
   "newlyTreatedSinceBaseline": [
     "Road / E-Flux",
@@ -19,7 +19,8 @@
     "E.Leclerc",
     "EASYCHARGE",
     "SPIE CityNetworks",
-    "DRIVECO"
+    "DRIVECO",
+    "Power Dot France"
   ],
   "setAsideOperators": [
     {
@@ -37,10 +38,22 @@
   ],
   "activeInvestigations": [
     {
-      "operator": "Power Dot France",
+      "operator": "Bouygues Energies & Services",
       "status": "active",
-      "note": "Powerdot explicitly exposes ad-hoc charging through its public adhoc.pwrdt.com webapp and QR flow. The webapp assets/API surface are being probed using exact official EVSE IDs; no tariff is accepted until the connector-specific price is returned by the public flow."
+      "note": "Bouygues operates/supervises many public partner networks through alizé. Exact tariffs are network/station dependent; the official alizé website/app explicitly exposes station tariff details. Current investigation is mapping PAN EVSEs to alizé public station/network surfaces and extracting the exact guest/public tariff without applying a generic Bouygues price."
     }
   ],
+  "treatedEvidence": {
+    "Power Dot France": {
+      "source": "https://api.pwrdt.com/powerdot.adhoc.v1.AdhocAPI/GetChargerInfo",
+      "sourceType": "direct_cpo_public_adhoc_api",
+      "uniqueIrvePdc": 7616,
+      "coveredIrvePdc": 7069,
+      "coveredIrveStations": 1098,
+      "pricedConnectors": 7063,
+      "unresolvedPdc": 547,
+      "rule": "Only connector tariffs returned by the official Power Dot public ad-hoc API are overlaid; all unmatched or failed rows remain fail-closed."
+    }
+  },
   "method": "A CPO is counted treated only when an exact non-extrapolated tariff source has been made usable for at least a validated subset and all unresolved rows are explicitly fail-closed. A CPO is set aside only after official site/map, web bundles/APIs, public or guest endpoints/open data/EVSE IDs, useful third-party station services, and available mobile-app surfaces have been explored without obtaining a usable exact tariff source."
 }
