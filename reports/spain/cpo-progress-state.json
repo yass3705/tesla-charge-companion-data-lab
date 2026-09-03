@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-09-03T22:52:00Z",
+  "updatedAt": "2026-09-03T22:54:00Z",
   "denominator": 189,
   "denominatorStatus": "provisional_authoritative_baseline",
   "denominatorBasis": "Red Electrica reported in April 2025 that 189 charging infrastructure operators had been contacted for REVE integration; replace with the live /cpos count as soon as REVE authentication is restored or a complete current public inventory is recovered.",
@@ -27,14 +27,14 @@
     "EMT Madrid",
     "P-app"
   ],
-  "treated": 2,
-  "remaining": 187,
+  "treated": 3,
+  "remaining": 186,
   "setAside": 0,
-  "activeRemaining": 187,
-  "newlyTreatedSinceBaseline": ["Zunder", "Repsol"],
-  "easyQueue": ["Wenea", "Powerdot", "Eranovum"],
+  "activeRemaining": 186,
+  "newlyTreatedSinceBaseline": ["Zunder", "Repsol", "Wenea"],
+  "easyQueue": ["Powerdot", "Eranovum"],
   "setAsideOperators": [],
-  "activeInvestigations": ["Wenea"],
+  "activeInvestigations": ["Powerdot"],
   "treatedEvidence": {
     "Zunder": {
       "source": "https://www.zunder.com/usuario-ve/",
@@ -52,6 +52,15 @@
       "ultraFastCarChargeEurPerKwh": 0.56,
       "fastCarChargePublishedAsFromEurPerKwh": 0.48,
       "rule": "Use only exact normal and ultra-fast Repsol-owned Spain tariffs. The fast-charge price is published as 'from 0.48 EUR/kWh' and therefore remains fail-closed rather than being extrapolated. Partner/roaming points and unresolved charge classes also remain unpriced."
+    },
+    "Wenea": {
+      "source": "https://wenea.com/tarifas-de-carga/",
+      "sourceType": "official_cpo_country_power_band_tariff",
+      "candidateDataset": "data/operator_direct/wenea_official_spain.json",
+      "ac7_4To22KwEurPerKwh": 0.39,
+      "dc50To150KwEurPerKwh": 0.49,
+      "hpc151To400KwEurPerKwh": 0.59,
+      "rule": "Apply only to Wenea-owned Spain EVSEs in a positively established published power band. Partner/collaboration stations can vary and remain fail-closed. Wenea Everyday subscription prices are stored separately and only apply when that subscription is selected."
     }
   },
   "inventoryNote": "The earlier 20-CPO figure was a priority shortlist, not a complete national denominator. REVE states that Spain has more than 180 infrastructure operators; the 189-operator figure is retained only as the best official baseline until the current live CPO inventory can be recovered.",
