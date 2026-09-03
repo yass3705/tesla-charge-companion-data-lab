@@ -1,11 +1,11 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-09-03T12:08:00Z",
+  "updatedAt": "2026-09-03T13:02:00Z",
   "denominator": 291,
-  "treated": 36,
-  "remaining": 255,
+  "treated": 37,
+  "remaining": 254,
   "setAside": 3,
-  "activeRemaining": 252,
+  "activeRemaining": 251,
   "baselineBeforeRun": 22,
   "newlyTreatedSinceBaseline": [
     "Road / E-Flux",
@@ -21,7 +21,8 @@
     "SPIE CityNetworks",
     "DRIVECO",
     "Power Dot France",
-    "WAAT"
+    "WAAT",
+    "Bouygues Energies & Services"
   ],
   "setAsideOperators": [
     {
@@ -37,13 +38,7 @@
       "reason": "Exact guest tariff path is protected by reCAPTCHA/authentication; no anonymous exact EVSE feed found."
     }
   ],
-  "activeInvestigations": [
-    {
-      "operator": "Bouygues Energies & Services",
-      "status": "active",
-      "note": "Bouygues operates/supervises many public partner networks through alizé. Exact tariffs are network/station dependent; the official alizé website/app explicitly exposes station tariff details. Current investigation is mapping PAN EVSEs to alizé public station/network surfaces and extracting the exact guest/public tariff without applying a generic Bouygues price."
-    }
-  ],
+  "activeInvestigations": [],
   "treatedEvidence": {
     "Power Dot France": {
       "source": "https://api.pwrdt.com/powerdot.adhoc.v1.AdhocAPI/GetChargerInfo",
@@ -68,6 +63,19 @@
         {"evse":"FR*WA2*E4420327","priceKwh":0.333,"parkingFee":0.055,"currency":"EUR","ocpiTariff":"FRWAAT16480"}
       ],
       "rule": "Use only rows whose exact EVSE ID starts FR*WA2* and the tariff fields returned by Monta's public CPO pricing dataset. Never apply a site, operator or national fallback; every PAN EVSE absent from the public export remains fail-closed/unpriced."
+    },
+    "Bouygues Energies & Services": {
+      "source": "Alize public map / Plugsurfing proxy",
+      "sourceType": "public_station_map_exact_evse_tariff",
+      "panStationRows": 5881,
+      "panPdcCount": 15866,
+      "markerMatchedStations": 1896,
+      "matchedLocationCount": 1368,
+      "pricedPdcCount": 4296,
+      "unpricedMatchedPdcCount": 1,
+      "markerErrorCount": 30,
+      "detailErrorCount": 2,
+      "rule": "Use only exact PDC tariffs returned for PAN-matched Alize public-map locations. Do not infer a Bouygues-wide or sub-network-wide tariff. Any unmatched PDC, marker/detail error, or matched PDC without a returned price remains fail-closed/unpriced."
     }
   },
   "method": "A CPO is counted treated only when an exact non-extrapolated tariff source has been made usable for at least a validated subset and all unresolved rows are explicitly fail-closed. A CPO is set aside only after official site/map, web bundles/APIs, public or guest endpoints/open data/EVSE IDs, useful third-party station services, and available mobile-app surfaces have been explored without obtaining a usable exact tariff source."
