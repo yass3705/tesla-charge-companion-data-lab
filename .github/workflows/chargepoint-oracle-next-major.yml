@@ -1,0 +1,97 @@
+name: France ChargePoint oracle next major CPOs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/chargepoint-oracle-next-major.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe exact public EVSE tariffs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/chargepoint-oracle-next data/operator_direct
+          python - <<'PY'
+          import csv,io,json,re,requests,pathlib,urllib.parse,concurrent.futures
+          from datetime import datetime,timezone
+          PAN='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          S=requests.Session(); S.headers.update({'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'application/json,*/*'})
+          rows=list(csv.DictReader(io.StringIO(S.get(PAN,timeout=90).content.decode('utf-8-sig',errors='replace'))))
+          def v(r,*ns):
+            for n in ns:
+              if r.get(n): return str(r[n]).strip()
+            return ''
+          def nrm(s):return re.sub('[^A-Z0-9]','',str(s).upper())
+          def coord(r):
+            z=re.findall(r'-?\d+(?:\.\d+)?',v(r,'coordonneesXY','coordonnees_xy'))
+            if len(z)>=2:
+              a,b=map(float,z[:2])
+              if abs(a)<=10 and 40<=b<=52:return b,a
+              if abs(b)<=10 and 40<=a<=52:return a,b
+          specs={
+            'greenflux':{'label':'Greenflux','target':['greenflux'],'attrib':['greenflux']},
+            'qovoltis':{'label':'QOVOLTIS','target':['qovoltis'],'attrib':['qovoltis']},
+            'eleclerc':{'label':'E.Leclerc','target':['e.leclerc','leclerc'],'attrib':['leclerc']},
+            'easycharge':{'label':'EASYCHARGE','target':['easycharge'],'attrib':['easycharge']}
+          }
+          targets={k:[] for k in specs}
+          for r in rows:
+            hay=' | '.join([v(r,'nom_amenageur'),v(r,'nom_operateur'),v(r,'nom_enseigne'),v(r,'contact_amenageur')]).lower()
+            for k,s in specs.items():
+              if any(a in hay for a in s['target']):targets[k].append(r)
+          allc={}
+          for k,rs in targets.items():
+            for r in rs:
+              c=coord(r)
+              if c:allc.setdefault((round(c[0],6),round(c[1],6)),set()).add(k)
+          MAP='https://mc.chargepoint.com/map-prod/v2?';INFO='https://mc.chargepoint.com/map-prod/v3/station/info?deviceId='
+          filt={x:False for x in ['price_free','status_available','dc_fast_charging','disabled_parking','van_accessible','network_chargepoint','network_mercedes','connector_l1','connector_l2','connector_l2_nema_1450','connector_l2_tesla','connector_chademo','connector_combo','connector_tesla']}
+          def near(c):
+            lat,lon=c;d=.003;q={'station_list':{'screen_width':800,'screen_height':800,'ne_lat':lat+d,'ne_lon':lon+d,'sw_lat':lat-d,'sw_lon':lon-d,'page_size':60,'page_offset':'','sort_by':'distance','reference_lat':lat,'reference_lon':lon,'include_map_bound':True,'filter':filt,'bound_output':True}}
+            u=MAP+urllib.parse.quote(json.dumps(q,separators=(',',':')),safe='{}:,"')
+            try:
+              r=S.post(u,timeout=18);j=r.json() if r.ok else {};return c,[x.get('device_id') for x in ((j.get('station_list')or{}).get('stations')or[]) if x.get('device_id')]
+            except:return c,[]
+          cds={}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=48) as ex:
+            for c,ds in ex.map(near,allc):cds[c]=ds
+          devs=sorted({d for ds in cds.values() for d in ds})
+          def inf(d):
+            try:r=S.get(INFO+str(d),timeout=18);return d,(r.json() if r.ok else None)
+            except:return d,None
+          infos={}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=56) as ex:
+            for d,j in ex.map(inf,devs):infos[d]=j
+          for k,s in specs.items():
+            idx={}
+            for d,j in infos.items():
+              if not j:continue
+              attr=' '.join([str(j.get('hostName')or''),str((j.get('network')or{}).get('displayName')or''),str((j.get('network')or{}).get('name')or'')]).lower()
+              if not any(a in attr for a in s['attrib']):continue
+              for p in ((j.get('portsInfo')or{}).get('ports')or[]):
+                if p.get('evseId'):idx[nrm(p['evseId'])]=(p['evseId'],d,j,p)
+            exact=[];gaps=[]
+            for r in targets[k]:
+              pid=v(r,'id_pdc_itinerance');x=idx.get(nrm(pid))
+              if x and x[2].get('stationPrice') is not None:
+                eid,d,j,p=x;exact.append({'id_pdc_itinerance':pid,'id_station_itinerance':v(r,'id_station_itinerance'),'deviceId':d,'evseId':eid,'stationName':(j.get('name')or[None])[0],'hostName':j.get('hostName'),'network':j.get('network'),'stationPrice':j.get('stationPrice'),'sourceUrl':INFO+str(d)})
+              else:gaps.append({'id_pdc_itinerance':pid,'reason':'no_exact_attributed_chargepoint_evse_price'})
+            out={'generatedAt':datetime.now(timezone.utc).isoformat(),'operator':s['label'],'classification':{'sourceType':'public_third_party_station_detail','source':'ChargePoint public driver map','exactEvseMatchRequired':True,'operatorAttributionRequired':True,'failClosed':True,'treated':bool(exact)},'coverage':{'panRows':len(targets[k]),'exactRows':len(exact),'missingRows':len(gaps),'coveragePct':round(100*len(exact)/len(targets[k]),2) if targets[k] else 0,'attributedVisibleEvseIds':len(idx)},'exact':exact,'gaps':gaps}
+            pathlib.Path(f'data/operator_direct/{k}_chargepoint_exact_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+            pathlib.Path(f'reports/france/chargepoint-oracle-next/{k}-summary.json').write_text(json.dumps({'classification':out['classification'],'coverage':out['coverage'],'sampleExact':exact[:5]},ensure_ascii=False,indent=2)+'\n')
+            print(k,json.dumps(out['coverage']))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/operator_direct/*_chargepoint_exact_france.json reports/france/chargepoint-oracle-next/*.json
+          git commit -m 'France: publish ChargePoint exact probes for next major CPOs' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
