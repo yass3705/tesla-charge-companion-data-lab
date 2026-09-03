@@ -1,11 +1,11 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-09-03T02:18:00Z",
+  "updatedAt": "2026-09-03T12:08:00Z",
   "denominator": 291,
-  "treated": 35,
-  "remaining": 256,
+  "treated": 36,
+  "remaining": 255,
   "setAside": 3,
-  "activeRemaining": 253,
+  "activeRemaining": 252,
   "baselineBeforeRun": 22,
   "newlyTreatedSinceBaseline": [
     "Road / E-Flux",
@@ -20,7 +20,8 @@
     "EASYCHARGE",
     "SPIE CityNetworks",
     "DRIVECO",
-    "Power Dot France"
+    "Power Dot France",
+    "WAAT"
   ],
   "setAsideOperators": [
     {
@@ -53,6 +54,20 @@
       "pricedConnectors": 7063,
       "unresolvedPdc": 547,
       "rule": "Only connector tariffs returned by the official Power Dot public ad-hoc API are overlaid; all unmatched or failed rows remain fail-closed."
+    },
+    "WAAT": {
+      "source": "https://app.monta.app/roaming/monta-as-a-cpo-pricing",
+      "sourceType": "public_cpo_platform_exact_evse_pricing",
+      "exportCsv": "https://app.monta.app/roaming/monta-as-a-cpo-pricing/export/csv",
+      "exportJson": "https://app.monta.app/roaming/monta-as-a-cpo-pricing/export/json",
+      "evsePrefix": "FR*WA2*",
+      "validatedExamples": [
+        {"evse":"FR*WA2*E4408728","priceKwh":0.21,"currency":"EUR","ocpiTariff":"FRRENT16443"},
+        {"evse":"FR*WA2*E4408928","priceKwh":0.5,"currency":"EUR","ocpiTariff":"FRRENT16444"},
+        {"evse":"FR*WA2*E4420310","priceKwh":0.23,"currency":"EUR","ocpiTariff":"FRWAAT16479"},
+        {"evse":"FR*WA2*E4420327","priceKwh":0.333,"parkingFee":0.055,"currency":"EUR","ocpiTariff":"FRWAAT16480"}
+      ],
+      "rule": "Use only rows whose exact EVSE ID starts FR*WA2* and the tariff fields returned by Monta's public CPO pricing dataset. Never apply a site, operator or national fallback; every PAN EVSE absent from the public export remains fail-closed/unpriced."
     }
   },
   "method": "A CPO is counted treated only when an exact non-extrapolated tariff source has been made usable for at least a validated subset and all unresolved rows are explicitly fail-closed. A CPO is set aside only after official site/map, web bundles/APIs, public or guest endpoints/open data/EVSE IDs, useful third-party station services, and available mobile-app surfaces have been explored without obtaining a usable exact tariff source."
