@@ -1,0 +1,74 @@
+name: Morocco WATT FastVolt status diagnostic
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/morocco-watt-fastvolt-status-diagnostic.yml'
+      - 'scripts/morocco_watt_fastvolt_status_probe.py'
+  push:
+    branches:
+      - 'investigation/morocco-watt-fastvolt-status-diagnostic'
+    paths:
+      - '.github/workflows/morocco-watt-fastvolt-status-diagnostic.yml'
+      - 'scripts/morocco_watt_fastvolt_status_probe.py'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Fetch one public WATT map and extract bounded FastVolt diagnostic tuple
+        run: python3 scripts/morocco_watt_fastvolt_status_probe.py
+
+      - name: Validate diagnostic-only modeling and EVOne status guardrails
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          d=json.loads(Path('artifacts/morocco-watt-fastvolt-status/summary.json').read_text())
+          assert d.get('http_status') == 200
+          p=d.get('policy') or {}
+          assert p.get('read_only') is True
+          assert p.get('http_method') == 'GET'
+          assert p.get('single_public_request') is True
+          assert p.get('credentials_used') is False
+          assert p.get('cookies_used') is False
+          assert p.get('query_parameters_used') is False
+          assert p.get('station_ids_used') is False
+          assert p.get('secondary_aggregation_evidence_only') is True
+          assert p.get('do_not_infer_or_overwrite_cpo') is True
+          assert p.get('do_not_infer_direct_tariff') is True
+          assert p.get('do_not_label_as_native_status') is True
+          assert p.get('evone_production_status_allowlist') == ['Available','Occupied','Charging']
+          assert p.get('evone_diagnostic_only_statuses') == ['Faulted','Offline','Unknown','Unavailable']
+
+          o=d.get('observation') or {}
+          assert o.get('station_name') == 'FastVolt Morocco Mall'
+          assert o.get('site_brand') == 'Morocco Mall'
+          assert o.get('app_source_access_network') == 'WATT.ma public map / OCPI aggregation surface'
+          assert o.get('tariff_channel') is None
+          assert o.get('status_source') == 'WATT.ma public map / OCPI aggregation'
+          assert o.get('status') in {'Available','Occupied','Offline'}
+          assert o.get('power_kw') == 50
+          assert o.get('connector_count') == 8
+          assert o.get('production_role') == 'diagnostic_crosscheck_only'
+          print(json.dumps({'ok':True,'station':o.get('station_name'),'status':o.get('status'),'role':o.get('production_role')},ensure_ascii=False))
+          PY
+
+      - name: Upload sanitized diagnostic artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: morocco-watt-fastvolt-status-diagnostic
+          path: artifacts/morocco-watt-fastvolt-status/summary.json
+          if-no-files-found: error
+          retention-days: 3
