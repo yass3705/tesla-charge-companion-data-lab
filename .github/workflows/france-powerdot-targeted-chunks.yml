@@ -1,0 +1,54 @@
+name: France Powerdot targeted tariff chunks
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/france-powerdot-targeted-chunks.yml']
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Targeted chunk inspection
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/powerdot
+          python - <<'PY'
+          import requests,re,json,pathlib,datetime
+          base='https://adhoc.pwrdt.com/assets/'
+          files=['_adhoc-B7D5bCl3.js','location-EE_gtQUd.js','connector-selection-tKj6B5hB.js','locations-CuJIiVUP.js','payment-d_7-_iXT.js','preparing-connector-D-Zxc48B.js','vendor-pwdt-Bcd98cRl.js']
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          out={'schemaVersion':'1.0.0','evaluatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'files':[]}
+          terms=['AdhocAPI','useQuery','chargerName','locationId','connectorNumber','tariff','pricePerUnit','GetConnector','GetLocation','GetCharger','ListLocations','SearchLocations','getLocation','getConnector','getCharger']
+          for f in files:
+            r=s.get(base+f,timeout=30); t=r.text
+            entry={'file':f,'status':r.status_code,'length':len(t),'snippets':{},'capitalized':[]}
+            if r.status_code==200:
+              words=list(dict.fromkeys(re.findall(r'\b(?:Get|List|Find|Search|Fetch|Resolve)[A-Z][A-Za-z0-9_]{2,80}\b',t)))
+              entry['capitalized']=words
+              low=t.lower()
+              for term in terms:
+                arr=[]; pos=0; q=term.lower()
+                while len(arr)<12:
+                  i=low.find(q,pos)
+                  if i<0: break
+                  arr.append(t[max(0,i-1000):i+1800]); pos=i+len(q)
+                if arr: entry['snippets'][term]=arr
+            out['files'].append(entry)
+          pathlib.Path('reports/france/powerdot/targeted-chunks.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          compact={'files':[{'file':x['file'],'status':x['status'],'length':x['length'],'capitalized':x['capitalized'],'terms':{k:len(v) for k,v in x['snippets'].items()}} for x in out['files']]}
+          pathlib.Path('reports/france/powerdot/targeted-chunks-summary.json').write_text(json.dumps(compact,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(compact,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/powerdot/targeted-chunks*.json
+          git commit -m 'France Powerdot: publish targeted tariff chunk inspection' || exit 0
+          for i in 1 2 3 4; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
