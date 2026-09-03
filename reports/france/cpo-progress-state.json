@@ -1,11 +1,11 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-09-03T21:01:00Z",
+  "updatedAt": "2026-09-03T21:08:00Z",
   "denominator": 291,
-  "treated": 39,
-  "remaining": 252,
+  "treated": 40,
+  "remaining": 251,
   "setAside": 3,
-  "activeRemaining": 249,
+  "activeRemaining": 248,
   "baselineBeforeRun": 22,
   "newlyTreatedSinceBaseline": [
     "Road / E-Flux",
@@ -24,7 +24,8 @@
     "WAAT",
     "Bouygues Energies & Services",
     "IZIVIA",
-    "TotalEnergies Marketing France"
+    "TotalEnergies Marketing France",
+    "TotalEnergies Charging Services"
   ],
   "setAsideOperators": [
     {
@@ -41,7 +42,7 @@
     }
   ],
   "activeInvestigations": [
-    "TotalEnergies Charging Services"
+    "Allego"
   ],
   "treatedEvidence": {
     "Power Dot France": {
@@ -103,6 +104,20 @@
       "occupationFeeStartsAfterMinutes": 45,
       "officialZenInventoryRows": 1939,
       "rule": "Apply the official station-service tariff only to EVSE proven to be TotalEnergies station-service chargers and classify by the EVSE's documented power. Do not apply it to TotalEnergies-operated local concessions, roadside networks, partner networks or Charge+ roaming rows; those remain fail-closed unless their own exact tariff is proven."
+    },
+    "TotalEnergies Charging Services": {
+      "source": "official sub-network tariff publications including ilewatt and TotalEnergies Charge+ City Aix-Marseille-Provence",
+      "sourceType": "official_verified_subnetwork_tariffs",
+      "candidateDataset": "data/operator_direct/totalenergies_official_france.json",
+      "ilewattVisitor": {
+        "acUpTo22KwEurPerKwh": 0.39,
+        "dcUpTo50KwEurPerKwh": 0.41,
+        "dcUpTo200KwEurPerKwh": 0.48,
+        "acDayIdleEurPerMin": 0.03,
+        "dcIdleEurPerMin": 0.04
+      },
+      "aixMarseillePublicAcEurPerKwh": 0.54,
+      "rule": "Apply a tariff only when the PAN row can be positively tied to the exact published TotalEnergies-operated sub-network and its power/time conditions. Never extend an Ilewatt, Aix-Marseille, station-service or other local tariff to generic TotalEnergies Charging Services rows. Every unclassified sub-network, unmatched EVSE, or tariff component not machine-validated remains fail-closed."
     }
   },
   "method": "A CPO is counted treated only when an exact non-extrapolated tariff source has been made usable for at least a validated subset and all unresolved rows are explicitly fail-closed. A CPO is set aside only after official site/map, web bundles/APIs, public or guest endpoints/open data/EVSE IDs, useful third-party station services, and available mobile-app surfaces have been explored without obtaining a usable exact tariff source."
