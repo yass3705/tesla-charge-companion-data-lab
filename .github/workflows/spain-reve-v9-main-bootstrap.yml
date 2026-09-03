@@ -31,7 +31,7 @@ jobs:
           python - <<'PY'
           import json, os, pathlib, urllib.request, urllib.error, datetime
           base=os.environ['BASE_URL'].rstrip('/')
-          key=os.environ['REVE_API_KEY']
+          key=os.environ['REVE_API_KEY'].strip()
           out=pathlib.Path('artifacts/spain/reve')
           endpoints=[
             ('api_docs','/docs/api-docs.json'),
@@ -40,7 +40,7 @@ jobs:
             ('operational_status','/evses/operational_status'),
             ('connector_tariffs','/connectors/tariffs'),
           ]
-          report={'source':'Mapa REVE / Red Electrica de Espana','retrieved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'endpoints':{}}
+          report={'source':'Mapa REVE / Red Electrica de Espana','retrieved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'key_length_after_strip':len(key),'endpoints':{}}
           for name,path in endpoints:
             req=urllib.request.Request(base+path,headers={'x-api-key':key,'Accept':'application/json','User-Agent':'tesla-charge-companion-data-lab/1.0'})
             try:
