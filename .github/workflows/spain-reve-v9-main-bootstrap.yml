@@ -41,28 +41,33 @@ jobs:
             ('connector_tariffs','/connectors/tariffs'),
           ]
           report={'source':'Mapa REVE / Red Electrica de Espana','retrieved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'key_length_after_strip':len(key),'endpoints':{}}
+          failures=0
           for name,path in endpoints:
             req=urllib.request.Request(base+path,headers={'x-api-key':key,'Accept':'application/json','User-Agent':'tesla-charge-companion-data-lab/1.0'})
             try:
               with urllib.request.urlopen(req,timeout=120) as r:
                 body=r.read(); status=r.status
+              data=json.loads(body)
+              (out/f'{name}.json').write_text(json.dumps(data,ensure_ascii=False),encoding='utf-8')
+              meta={'path':path,'http_status':status,'bytes':len(body),'json_type':type(data).__name__}
+              if isinstance(data,list):
+                meta['count']=len(data)
+                if data and isinstance(data[0],dict): meta['sample_keys']=sorted(data[0].keys())
+              elif isinstance(data,dict):
+                meta['top_level_keys']=sorted(data.keys())
+                meta['list_fields']={k:len(v) for k,v in data.items() if isinstance(v,list)}
+              report['endpoints'][name]=meta
             except urllib.error.HTTPError as e:
+              failures += 1
               body=e.read(); (out/f'{name}.error.txt').write_bytes(body)
               report['endpoints'][name]={'path':path,'http_status':e.code,'error_preview':body[:500].decode('utf-8','replace')}
-              (out/'bootstrap_report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
-              raise
-            data=json.loads(body)
-            (out/f'{name}.json').write_text(json.dumps(data,ensure_ascii=False),encoding='utf-8')
-            meta={'path':path,'http_status':status,'bytes':len(body),'json_type':type(data).__name__}
-            if isinstance(data,list):
-              meta['count']=len(data)
-              if data and isinstance(data[0],dict): meta['sample_keys']=sorted(data[0].keys())
-            elif isinstance(data,dict):
-              meta['top_level_keys']=sorted(data.keys())
-              meta['list_fields']={k:len(v) for k,v in data.items() if isinstance(v,list)}
-            report['endpoints'][name]=meta
+            except Exception as e:
+              failures += 1
+              report['endpoints'][name]={'path':path,'error':type(e).__name__,'message':str(e)[:500]}
           (out/'bootstrap_report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
           print(json.dumps(report,ensure_ascii=False,indent=2))
+          if failures:
+            raise SystemExit(1)
           PY
 
       - name: Upload REVE bootstrap artifact
