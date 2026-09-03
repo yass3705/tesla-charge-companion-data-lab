@@ -1,11 +1,11 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-09-03T21:08:00Z",
+  "updatedAt": "2026-09-03T22:20:00Z",
   "denominator": 291,
-  "treated": 40,
-  "remaining": 251,
+  "treated": 41,
+  "remaining": 250,
   "setAside": 3,
-  "activeRemaining": 248,
+  "activeRemaining": 247,
   "baselineBeforeRun": 22,
   "newlyTreatedSinceBaseline": [
     "Road / E-Flux",
@@ -25,7 +25,8 @@
     "Bouygues Energies & Services",
     "IZIVIA",
     "TotalEnergies Marketing France",
-    "TotalEnergies Charging Services"
+    "TotalEnergies Charging Services",
+    "Allego"
   ],
   "setAsideOperators": [
     {
@@ -42,7 +43,7 @@
     }
   ],
   "activeInvestigations": [
-    "Allego"
+    "GROUPE INDIGO"
   ],
   "treatedEvidence": {
     "Power Dot France": {
@@ -118,6 +119,14 @@
       },
       "aixMarseillePublicAcEurPerKwh": 0.54,
       "rule": "Apply a tariff only when the PAN row can be positively tied to the exact published TotalEnergies-operated sub-network and its power/time conditions. Never extend an Ilewatt, Aix-Marseille, station-service or other local tariff to generic TotalEnergies Charging Services rows. Every unclassified sub-network, unmatched EVSE, or tariff component not machine-validated remains fail-closed."
+    },
+    "Allego": {
+      "source": "Allego official Pricing page + Find Us map / Allego app Price Details",
+      "sourceType": "official_exact_charger_price_surface",
+      "candidateDataset": "data/operator_direct/allego_official_france.json",
+      "panStations": 587,
+      "panPdc": 4951,
+      "rule": "Never apply Allego's country headline tariffs as a universal station fallback. Use only the current rate and any time/occupancy fees shown for the exact charger on Allego's official Find Us map/app Price Details surface; unmatched or unqueried EVSE remain fail-closed."
     }
   },
   "method": "A CPO is counted treated only when an exact non-extrapolated tariff source has been made usable for at least a validated subset and all unresolved rows are explicitly fail-closed. A CPO is set aside only after official site/map, web bundles/APIs, public or guest endpoints/open data/EVSE IDs, useful third-party station services, and available mobile-app surfaces have been explored without obtaining a usable exact tariff source."
