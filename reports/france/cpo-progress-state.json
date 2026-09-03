@@ -1,11 +1,11 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-09-03T13:02:00Z",
+  "updatedAt": "2026-09-03T19:05:00Z",
   "denominator": 291,
-  "treated": 37,
-  "remaining": 254,
+  "treated": 38,
+  "remaining": 253,
   "setAside": 3,
-  "activeRemaining": 251,
+  "activeRemaining": 250,
   "baselineBeforeRun": 22,
   "newlyTreatedSinceBaseline": [
     "Road / E-Flux",
@@ -22,7 +22,8 @@
     "DRIVECO",
     "Power Dot France",
     "WAAT",
-    "Bouygues Energies & Services"
+    "Bouygues Energies & Services",
+    "IZIVIA"
   ],
   "setAsideOperators": [
     {
@@ -76,6 +77,17 @@
       "markerErrorCount": 30,
       "detailErrorCount": 2,
       "rule": "Use only exact PDC tariffs returned for PAN-matched Alize public-map locations. Do not infer a Bouygues-wide or sub-network-wide tariff. Any unmatched PDC, marker/detail error, or matched PDC without a returned price remains fail-closed/unpriced."
+    },
+    "IZIVIA": {
+      "source": "IZIVIA public map / national physical pricing snapshot",
+      "sourceType": "public_station_map_exact_station_tariff",
+      "panIziviaStations": 7118,
+      "panIziviaPdc": 14602,
+      "markerCount": 10000,
+      "matchedStations": 905,
+      "pricedStations": 904,
+      "uniqueChargingLocationTariffTexts": 53,
+      "rule": "Use only tariff text returned for the exact matched IZIVIA public-map station/location. Never substitute a national, network or power-band tariff when an exact station tariff is absent; every unmatched or unpriced PAN station/PDC remains fail-closed."
     }
   },
   "method": "A CPO is counted treated only when an exact non-extrapolated tariff source has been made usable for at least a validated subset and all unresolved rows are explicitly fail-closed. A CPO is set aside only after official site/map, web bundles/APIs, public or guest endpoints/open data/EVSE IDs, useful third-party station services, and available mobile-app surfaces have been explored without obtaining a usable exact tariff source."
