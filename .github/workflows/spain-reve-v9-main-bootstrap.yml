@@ -1,4 +1,4 @@
-name: Spain REVE V9 key fingerprint diagnostic
+name: Spain REVE V9 one-shot bootstrap
 
 on:
   push:
@@ -10,22 +10,65 @@ permissions:
   contents: read
 
 jobs:
-  fingerprint:
+  bootstrap:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     env:
       REVE_API_KEY: ${{ secrets.MAPA_REVE_API_KEY }}
+      BASE_URL: https://www.mapareve.es/api/external/v1
     steps:
-      - name: Print SHA256 fingerprint only
+      - name: Validate secret
         shell: bash
         run: |
           set -euo pipefail
+          test -n "${REVE_API_KEY:-}" || { echo "MAPA_REVE_API_KEY is missing" >&2; exit 2; }
+
+      - name: Fetch five documented REVE resources
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/spain/reve
           python - <<'PY'
-          import os, hashlib
-          raw=os.environ.get('REVE_API_KEY','').strip()
-          print('secret_present=', bool(raw))
-          print('secret_length=', len(raw))
-          print('secret_sha256=', hashlib.sha256(raw.encode()).hexdigest() if raw else '')
-          if not raw:
-              raise SystemExit(1)
+          import json, os, pathlib, urllib.request, urllib.error, datetime
+          base=os.environ['BASE_URL'].rstrip('/')
+          key=os.environ['REVE_API_KEY']
+          out=pathlib.Path('artifacts/spain/reve')
+          endpoints=[
+            ('api_docs','/docs/api-docs.json'),
+            ('cpos','/cpos'),
+            ('locations','/locations'),
+            ('operational_status','/evses/operational_status'),
+            ('connector_tariffs','/connectors/tariffs'),
+          ]
+          report={'source':'Mapa REVE / Red Electrica de Espana','retrieved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'endpoints':{}}
+          for name,path in endpoints:
+            req=urllib.request.Request(base+path,headers={'x-api-key':key,'Accept':'application/json','User-Agent':'tesla-charge-companion-data-lab/1.0'})
+            try:
+              with urllib.request.urlopen(req,timeout=120) as r:
+                body=r.read(); status=r.status
+            except urllib.error.HTTPError as e:
+              body=e.read(); (out/f'{name}.error.txt').write_bytes(body)
+              report['endpoints'][name]={'path':path,'http_status':e.code,'error_preview':body[:500].decode('utf-8','replace')}
+              (out/'bootstrap_report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+              raise
+            data=json.loads(body)
+            (out/f'{name}.json').write_text(json.dumps(data,ensure_ascii=False),encoding='utf-8')
+            meta={'path':path,'http_status':status,'bytes':len(body),'json_type':type(data).__name__}
+            if isinstance(data,list):
+              meta['count']=len(data)
+              if data and isinstance(data[0],dict): meta['sample_keys']=sorted(data[0].keys())
+            elif isinstance(data,dict):
+              meta['top_level_keys']=sorted(data.keys())
+              meta['list_fields']={k:len(v) for k,v in data.items() if isinstance(v,list)}
+            report['endpoints'][name]=meta
+          (out/'bootstrap_report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(report,ensure_ascii=False,indent=2))
           PY
+
+      - name: Upload REVE bootstrap artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spain-reve-v9-bootstrap-main
+          path: artifacts/spain/reve/
+          retention-days: 7
