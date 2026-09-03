@@ -1,0 +1,65 @@
+name: France Powerdot public GetChargerInfo read only
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/france-powerdot-getcharger-readonly.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Query read-only charger info using exact official EVSE-derived identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/powerdot
+          python - <<'PY'
+          import requests,json,pathlib,datetime,re
+          api='https://api.pwrdt.com/powerdot.adhoc.v1.AdhocAPI/GetChargerInfo'
+          evses=['FRPD1EASCGUYBBC0011','FRPD1EDUVVRSKP0013','FRPD1ECACSDSIES50013']
+          s=requests.Session(); s.headers.update({'User-Agent':'Mozilla/5.0','Accept':'application/json','Content-Type':'application/json','Connect-Protocol-Version':'1','Origin':'https://adhoc.pwrdt.com','Referer':'https://adhoc.pwrdt.com/'})
+          attempts=[]
+          for evse in evses:
+            raw=evse.replace('*','')
+            variants=[]
+            # Exact official eMI3 format is FRPD1E + chargerName + one-digit connector.
+            if raw.startswith('FRPD1E') and len(raw)>7:
+              variants += [raw[6:-1], raw[6:], raw]
+            variants += [evse]
+            variants=list(dict.fromkeys(v for v in variants if v))
+            for charger in variants:
+              bodies=[{'chargerName':charger},{'chargerName':charger,'emspCode':''}]
+              for body in bodies:
+                try:
+                  r=s.post(api,json=body,timeout=20)
+                  txt=r.text
+                  attempts.append({'evse':evse,'chargerName':charger,'request':body,'status':r.status_code,'contentType':r.headers.get('content-type'),'body':txt[:200000]})
+                except Exception as e:
+                  attempts.append({'evse':evse,'chargerName':charger,'request':body,'error':str(e)})
+          successes=[]
+          for a in attempts:
+            if a.get('status')==200:
+              try: obj=json.loads(a.get('body',''))
+              except: obj=None
+              if obj is not None: successes.append({**a,'json':obj})
+          out={'schemaVersion':'1.0.0','operator':'Powerdot','evaluatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'api':api,'attempts':attempts,'successCount':len(successes)}
+          pathlib.Path('reports/france/powerdot/getcharger-readonly.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          def compact_success(a):
+            obj=a.get('json')
+            return {'evse':a['evse'],'chargerName':a['chargerName'],'request':a['request'],'status':a['status'],'response':obj}
+          summary={'api':api,'attempts':[{'evse':a['evse'],'chargerName':a['chargerName'],'request':a['request'],'status':a.get('status'),'contentType':a.get('contentType'),'bodySample':a.get('body','')[:1000]} for a in attempts],'successes':[compact_success(a) for a in successes]}
+          pathlib.Path('reports/france/powerdot/getcharger-readonly-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,indent=2)[:60000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/powerdot/getcharger-readonly*.json
+          git commit -m 'France Powerdot: publish read-only GetChargerInfo probe' || exit 0
+          for i in 1 2 3 4; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
