@@ -1,0 +1,83 @@
+name: France EASYCHARGE official tariffs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/easycharge-official-france.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact official EASYCHARGE overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/france/easycharge
+          python - <<'PY'
+          import csv,io,json,re,requests,pathlib,collections
+          from datetime import datetime,timezone
+          PAN='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          rows=list(csv.DictReader(io.StringIO(requests.get(PAN,timeout=90).content.decode('utf-8-sig',errors='replace'))))
+          def v(r,*ns):
+            for n in ns:
+              if r.get(n):return str(r[n]).strip()
+            return ''
+          target=[]
+          for r in rows:
+            hay=' | '.join([v(r,'nom_operateur'),v(r,'nom_amenageur'),v(r,'nom_enseigne'),v(r,'nom_station'),v(r,'contact_amenageur')]).lower()
+            if 'easycharge' in hay or 'easy charge services' in hay: target.append(r)
+          exact=[];gaps=[];families=collections.Counter()
+          ecs_places=('la baule','le chesnay','rocquencourt','vienne','grand chalon','chalon-sur-saone','chalon-sur-saône')
+          for r in target:
+            pid=v(r,'id_pdc_itinerance'); sid=v(r,'id_station_itinerance'); name=v(r,'nom_station'); brand=v(r,'nom_enseigne'); addr=v(r,'adresse_station')
+            hay=' | '.join([name,brand,addr,v(r,'nom_amenageur')]).lower()
+            try:p=float(v(r,'puissance_nominale') or 0)
+            except:p=0
+            item={'id_pdc_itinerance':pid,'id_station_itinerance':sid,'station':name,'brand':brand,'address':addr,'powerKw':p}
+            # eborn: official 2026 power-class grid; non-subscriber/direct rate retained.
+            if 'eborn' in hay or pid.upper().startswith('FR*EBN') or sid.upper().startswith('FR*EBN'):
+              families['eborn']+=1
+              if 0<p<=25:
+                item.update({'family':'eborn','energyEurPerKwh':0.433,'postChargeEurPerMinute':0.075,'postChargeStartsMinutesAfterChargeEnd':30,'postChargeWindowLocal':{'start':'08:00','end':'20:00'},'sourceUrl':'https://www.eborn.fr/tarifs/'})
+              elif 25<p<=60:
+                item.update({'family':'eborn','energyEurPerKwh':0.573,'postChargeEurPerMinute':0.12,'postChargeStartsMinutesAfterChargeEnd':30,'sourceUrl':'https://www.eborn.fr/tarifs/'})
+              elif p>60:
+                item.update({'family':'eborn','energyEurPerKwh':0.650,'postChargeEurPerMinute':0.12,'postChargeStartsMinutesAfterChargeEnd':30,'sourceUrl':'https://www.eborn.fr/tarifs/'})
+              else:
+                gaps.append({**item,'family':'eborn','reason':'missing_power_for_official_power_class'});continue
+              exact.append(item);continue
+            # AVIA VOLT by EASYCHARGE: official national tariff in force 20 Feb 2026.
+            if 'avia volt' in hay:
+              families['avia_volt']+=1
+              price=0.52 if ('casino' in hay and ('isle-d' in hay or 'espagnac' in hay or '16340' in hay)) else 0.59
+              item.update({'family':'avia_volt','energyEurPerKwh':price,'postChargeEurPer15Minutes':2.0,'postChargeStartsMinutesAfterUnplugThreshold':30,'sourceUrl':'https://www.easycharge-vinci.com/tarifs-aviavolt-by-easycharge/','nationalRule':price==0.59,'specificCasinoIsleEspagnac':price==0.52})
+              exact.append(item);continue
+            # EASYCHARGE Services own municipal network tariff page, explicitly advertised for La Baule, Le Chesnay-Rocquencourt, Vienne and Grand Chalon.
+            if any(x in hay for x in ecs_places):
+              families['ecs_municipal']+=1
+              if 0<p<=25:
+                item.update({'family':'ecs_municipal','energyEurPerKwh':0.39,'postChargeEurPer15Minutes':2.0,'postChargeStartsHoursAfterPlugIn':4,'postChargeInactiveWindowLocal':{'start':'22:00','end':'08:00'},'sourceUrl':'https://www.easycharge-vinci.com/ecs-tarifs-eborn/'})
+                exact.append(item);continue
+              elif p>50:
+                item.update({'family':'ecs_municipal','energyEurPerKwh':0.56,'postChargeEurPer15Minutes':2.0,'postChargeStartsMinutesAfterPlugIn':30,'sourceUrl':'https://www.easycharge-vinci.com/ecs-tarifs-eborn/'})
+                exact.append(item);continue
+              gaps.append({**item,'family':'ecs_municipal','reason':'power_25_to_50_not_unambiguously_covered_by_published_normal_or_gt50_fast_classes'});continue
+            families['other_easycharge']+=1
+            gaps.append({**item,'family':'other_easycharge','reason':'network_family_not_identified_to_an_official_exact_tariff_rule'})
+          out={'schemaVersion':'1.0.0','dataset':'easycharge-official-exact-france','generatedAt':datetime.now(timezone.utc).isoformat(),'operator':'EASYCHARGE','country':'FR','classification':{'treated':True,'failClosed':True,'exactFamilyRuleRequired':True,'note':'EASYCHARGE is treated as a CPO because multiple official direct tariff families are now executable (eborn, AVIA VOLT by EASYCHARGE, and specifically named ECS municipal networks). Rows not unambiguously belonging to one published rule remain without overlay.'},'coverage':{'panRows':len(target),'exactRows':len(exact),'gaps':len(gaps),'coveragePct':round(100*len(exact)/len(target),2) if target else 0,'familyCounts':dict(families)},'exact':exact,'gaps':gaps,'sources':[{'key':'eborn','url':'https://www.eborn.fr/tarifs/'},{'key':'aviaVolt','url':'https://www.easycharge-vinci.com/tarifs-aviavolt-by-easycharge/','inForce':'2026-02-20'},{'key':'ecsMunicipal','url':'https://www.easycharge-vinci.com/ecs-tarifs-eborn/','publishedGridEffective':'2024-03-01','pageStillMarksGridInForce':True}]}
+          pathlib.Path('data/operator_direct/easycharge_official_exact_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('reports/france/easycharge/official-exact-summary.json').write_text(json.dumps({'classification':out['classification'],'coverage':out['coverage'],'sampleExact':exact[:10],'sampleGaps':gaps[:20]},ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'classification':out['classification'],'coverage':out['coverage'],'sampleExact':exact[:5]},ensure_ascii=False,indent=2)[:30000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/operator_direct/easycharge_official_exact_france.json reports/france/easycharge/official-exact-summary.json
+          git commit -m 'data(easycharge): publish official fail-closed tariff overlay' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
