@@ -1,0 +1,46 @@
+name: France Powerdot AdhocAPI descriptor
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/france-powerdot-service-snippet.yml']
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract descriptor
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/powerdot
+          python - <<'PY'
+          import requests,json,pathlib,re,datetime
+          u='https://adhoc.pwrdt.com/assets/index-ZiTXuOX8.js'
+          t=requests.get(u,headers={'User-Agent':'Mozilla/5.0'},timeout=45).text
+          needle='powerdot.adhoc.v1.AdhocAPI'
+          occ=[]; pos=0
+          while True:
+            i=t.find(needle,pos)
+            if i<0: break
+            occ.append(t[max(0,i-7000):i+18000]); pos=i+len(needle)
+          methods=[]
+          for s in occ:
+            # generated protobuf/connect descriptors usually expose method names as string literals nearby
+            for m in re.findall(r'["\']([A-Z][A-Za-z0-9]{2,80})["\']',s):
+              if any(v in m.lower() for v in ['get','list','create','update','start','stop','location','connector','session','tariff','price','payment','charger']):
+                methods.append(m)
+          out={'schemaVersion':'1.0.0','evaluatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'service':needle,'occurrenceCount':len(occ),'methodLikeStrings':list(dict.fromkeys(methods)),'snippets':occ}
+          pathlib.Path('reports/france/powerdot/adhoc-api-service-descriptor.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'service':needle,'occurrenceCount':len(occ),'methodLikeStrings':out['methodLikeStrings'],'snippet':occ[0] if occ else None},ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/powerdot/adhoc-api-service-descriptor.json
+          git commit -m 'France Powerdot: publish AdhocAPI descriptor' || exit 0
+          git pull --rebase origin main
+          git push
