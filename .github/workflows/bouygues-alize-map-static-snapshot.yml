@@ -1,0 +1,64 @@
+name: France Bouygues Alize map static snapshot
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/bouygues-alize-map-static-snapshot.yml']
+permissions:
+  contents: write
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Snapshot public map assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/bouygues
+          python - <<'PY'
+          import requests,re,json,urllib.parse,pathlib,html
+          s=requests.Session(); s.headers['User-Agent']='Mozilla/5.0'
+          bases=['https://alize-map.azurewebsites.net/','https://alize-map.azurewebsites.net/reveo','https://alize-map.azurewebsites.net/passpass']
+          report={'pages':[],'assets':[],'apiClues':[],'contexts':[]}
+          assets=set(); blobs=[]
+          for u in bases:
+            try:
+              r=s.get(u,timeout=15); t=r.text
+              report['pages'].append({'url':u,'finalUrl':r.url,'status':r.status_code,'contentType':r.headers.get('content-type'),'length':len(r.content),'html':t[:50000]})
+              blobs.append((r.url,t))
+              for v in re.findall(r'<script[^>]+src=["\']([^"\']+)',t,re.I): assets.add(urllib.parse.urljoin(r.url,v))
+            except Exception as e: report['pages'].append({'url':u,'error':repr(e)})
+          for u in sorted(assets):
+            try:
+              r=s.get(u,timeout=20); t=r.text
+              report['assets'].append({'url':u,'status':r.status_code,'contentType':r.headers.get('content-type'),'length':len(r.content)})
+              if r.status_code==200 and len(t)<=12000000: blobs.append((u,t))
+            except Exception as e: report['assets'].append({'url':u,'error':repr(e)})
+          clues=set()
+          for src,t in blobs:
+            t=html.unescape(t); low=t.lower()
+            for x in re.findall(r'https?://[^"\'<>\\\s)]+',t):
+              if any(k in x.lower() for k in ['api','alize','azure','charge','station','tarif','price']): clues.add(x.rstrip('.,;'))
+            for x in re.findall(r'["\']([^"\']*(?:api|tarif|price|station|chargepoint|evse|connector)[^"\']*)["\']',t,re.I):
+              if len(x)<350: clues.add(x)
+            for term in ['tarif','price','pricing','chargepoint','evse','connector','station','api']:
+              pos=0
+              for _ in range(8):
+                i=low.find(term,pos)
+                if i<0: break
+                report['contexts'].append({'source':src,'term':term,'text':t[max(0,i-300):i+900]})
+                pos=i+len(term)
+          report['apiClues']=sorted(clues)[:1500]
+          pathlib.Path('reports/france/bouygues/alize-map-static-snapshot.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'pages':[{k:v for k,v in p.items() if k!='html'} for p in report['pages']], 'assets':report['assets'], 'apiClues':report['apiClues'][:100], 'contexts':len(report['contexts'])},ensure_ascii=False,indent=2)[:30000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/bouygues/alize-map-static-snapshot.json
+          git commit -m 'France Bouygues: publish Alize static snapshot' || exit 0
+          git pull --rebase origin main
+          git push
