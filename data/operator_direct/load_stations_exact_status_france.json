@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "load-stations-exact-status-france",
+  "operator": "Load Stations",
+  "country": "FR",
+  "classification": {
+    "treated": false,
+    "blocked": true,
+    "setAside": true,
+    "failClosed": true,
+    "stationLevelPriceRequired": true,
+    "reason": "Load Stations/Load Motion exposes a public application and a guest charging-station check route, but the exact guest station flow requires a valid reCAPTCHA token and secured pricing-definitions/station APIs require authentication. Extensive bundle/config/API probing identified the pricing contract but not an anonymous tariff feed. The current native Load Stations app supports QR start, payment and tariff display, but no anonymous public mobile tariff endpoint has been found. ChargePoint public exact-EVSE oracle found no Load Stations-attributed exact tariff rows."
+  },
+  "evidence": [
+    {"key":"guestProbe","path":"reports/france/load-stations/guest-station-probe-summary.json"},
+    {"key":"tenantContract","path":"reports/france/yes55/loadstations-contract-extract.json"},
+    {"key":"chargepointOracle","path":"reports/france/chargepoint-oracle/load_stations-summary.json"},
+    {"key":"officialSite","url":"https://load-stations.com/"},
+    {"key":"officialMobileApp","url":"https://play.google.com/store/apps/details?id=com.loadstations.loadmotion"}
+  ],
+  "unblockRequirement": "Authenticated/legitimate app capture, a valid user-driven guest flow, or another public source that returns the exact direct tariff for a Load Stations EVSE without extrapolation."
+}
