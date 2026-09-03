@@ -1,0 +1,96 @@
+name: France Bouygues Alize map deep probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/bouygues-alize-map-deep-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe Alize public map and bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/bouygues
+          python - <<'PY'
+          import requests,re,json,urllib.parse,pathlib,html as htmllib
+          from bs4 import BeautifulSoup
+          base='https://alize-map.azurewebsites.net/'
+          s=requests.Session(); s.headers.update({'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126 Safari/537.36','Accept-Language':'fr-FR,fr;q=0.9,en;q=0.8'})
+          out={'base':base,'pages':[],'assets':[],'candidateUrls':[],'snippets':[],'probes':[]}
+          pages=[base,urllib.parse.urljoin(base,'reveo'),urllib.parse.urljoin(base,'passpass')]
+          asset_urls=set(); blobs=[]
+          for u in pages:
+            try:
+              r=s.get(u,timeout=30,allow_redirects=True)
+              out['pages'].append({'url':u,'finalUrl':r.url,'status':r.status_code,'contentType':r.headers.get('content-type'),'length':len(r.content),'textHead':r.text[:3000]})
+              if 'html' in (r.headers.get('content-type') or '').lower() or '<html' in r.text[:1000].lower():
+                soup=BeautifulSoup(r.text,'html.parser')
+                for tag,attr in [('script','src'),('link','href')]:
+                  for el in soup.find_all(tag):
+                    v=el.get(attr)
+                    if not v: continue
+                    au=urllib.parse.urljoin(r.url,v)
+                    if urllib.parse.urlparse(au).netloc==urllib.parse.urlparse(base).netloc and (tag=='script' or any(x in au.lower() for x in ['.css','bundle','main','runtime'])):
+                      asset_urls.add(au)
+              blobs.append((r.url,r.text))
+            except Exception as e: out['pages'].append({'url':u,'error':repr(e)})
+          for u in sorted(asset_urls):
+            try:
+              r=s.get(u,timeout=40)
+              text=r.text
+              out['assets'].append({'url':u,'status':r.status_code,'contentType':r.headers.get('content-type'),'length':len(r.content)})
+              if r.status_code==200 and len(text)<15_000_000: blobs.append((u,text))
+            except Exception as e: out['assets'].append({'url':u,'error':repr(e)})
+          # harvest absolute URLs, route-like strings, and contexts around pricing/station vocabulary
+          cand=set()
+          terms=['tarif','price','pricing','station','borne','chargepoint','connector','evse','poi','map','location','api','ocpi','roaming']
+          for src,text in blobs:
+            dec=htmllib.unescape(text)
+            for m in re.findall(r'https?://[^"\'<>\\\s)]+',dec): cand.add(m.rstrip('.,;'))
+            for m in re.findall(r'["\']((?:/|\\/)(?:api|v1|v2|v3|stations?|chargepoints?|connectors?|evses?|locations?|prices?|tariffs?|map)[^"\']{0,180})["\']',dec,re.I):
+              cand.add(urllib.parse.urljoin(base,m.replace('\\/','/')))
+            low=dec.lower()
+            for term in terms:
+              start=0; n=0
+              while n<18:
+                i=low.find(term,start)
+                if i<0: break
+                sn=dec[max(0,i-350):min(len(dec),i+950)]
+                out['snippets'].append({'source':src,'term':term,'text':sn})
+                start=i+len(term); n+=1
+          out['candidateUrls']=sorted(cand)[:1000]
+          # safely GET promising same-origin or API-looking absolute endpoints only
+          seen=set()
+          for u in out['candidateUrls']:
+            if u in seen: continue
+            seen.add(u)
+            pu=urllib.parse.urlparse(u)
+            if pu.scheme not in ('http','https'): continue
+            if not (pu.netloc.endswith('azurewebsites.net') or any(k in u.lower() for k in ['alize','api'])): continue
+            if any(ext in pu.path.lower() for ext in ['.png','.jpg','.jpeg','.gif','.svg','.woff','.ttf','.map']): continue
+            try:
+              r=s.get(u,timeout=15)
+              ct=r.headers.get('content-type') or ''
+              body=r.text[:120000] if ('text' in ct or 'json' in ct or not ct) else ''
+              out['probes'].append({'url':u,'status':r.status_code,'contentType':ct,'length':len(r.content),'body':body})
+            except Exception as e: out['probes'].append({'url':u,'error':repr(e)})
+            if len(out['probes'])>=120: break
+          pathlib.Path('reports/france/bouygues/alize-map-deep-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          summary={'pages':[{k:v for k,v in x.items() if k!='textHead'} for x in out['pages']], 'assets':out['assets'], 'candidates':len(out['candidateUrls']), 'probes':[ {k:v for k,v in p.items() if k!='body'} for p in out['probes'][:120]], 'snippetCount':len(out['snippets'])}
+          print(json.dumps(summary,ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/bouygues/alize-map-deep-probe.json
+          git commit -m 'France Bouygues: publish Alize map deep probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
