@@ -1,0 +1,120 @@
+name: France ChargePoint exact public tariffs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/chargepoint-official-france.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build exact fail-closed overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/france/chargepoint
+          python - <<'PY'
+          import csv,io,json,math,re,requests,pathlib,urllib.parse,concurrent.futures,time
+          from datetime import datetime,timezone
+
+          PAN_URL='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          S=requests.Session(); S.headers.update({'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'application/json,text/plain,*/*'})
+          raw=S.get(PAN_URL,timeout=90).content
+          text=raw.decode('utf-8-sig',errors='replace')
+          rows=list(csv.DictReader(io.StringIO(text)))
+          def val(r,*names):
+            for n in names:
+              if n in r and r[n] not in (None,''): return str(r[n]).strip()
+            return ''
+          target=[]
+          for r in rows:
+            hay=' | '.join([val(r,'nom_amenageur'),val(r,'nom_operateur'),val(r,'contact_amenageur'),val(r,'id_pdc_itinerance'),val(r,'id_station_itinerance')]).lower()
+            if 'chargepoint austria' in hay or val(r,'id_pdc_itinerance').upper().startswith('FR*CG0') or val(r,'id_station_itinerance').upper().startswith('FR*CG0'):
+              target.append(r)
+          def coords(r):
+            s=val(r,'coordonneesXY','coordonnees_xy')
+            nums=re.findall(r'-?\d+(?:\.\d+)?',s)
+            if len(nums)>=2:
+              a,b=map(float,nums[:2])
+              # schema usually [lon,lat]
+              if abs(a)<=10 and 40<=b<=52: return b,a
+              if abs(b)<=10 and 40<=a<=52: return a,b
+            # alternate explicit fields
+            try: return float(val(r,'latitude')),float(val(r,'longitude'))
+            except: return None
+          def norm(s): return re.sub(r'[^A-Z0-9]','',str(s).upper())
+          by_coord={}
+          for r in target:
+            c=coords(r)
+            if c: by_coord.setdefault((round(c[0],6),round(c[1],6)),[]).append(r)
+          MAP='https://mc.chargepoint.com/map-prod/v2?'
+          INFO='https://mc.chargepoint.com/map-prod/v3/station/info?deviceId='
+          filt={k:False for k in ['price_free','status_available','dc_fast_charging','disabled_parking','van_accessible','network_chargepoint','network_mercedes','connector_l1','connector_l2','connector_l2_nema_1450','connector_l2_tesla','connector_chademo','connector_combo','connector_tesla']}
+          def map_near(item):
+            (lat,lon),rs=item
+            d=0.0025
+            q={'station_list':{'screen_width':800,'screen_height':800,'ne_lat':lat+d,'ne_lon':lon+d,'sw_lat':lat-d,'sw_lon':lon-d,'page_size':50,'page_offset':'','sort_by':'distance','reference_lat':lat,'reference_lon':lon,'include_map_bound':True,'filter':filt,'bound_output':True}}
+            u=MAP+urllib.parse.quote(json.dumps(q,separators=(',',':')),safe='{}:,"')
+            try:
+              rr=S.post(u,timeout=25); j=rr.json() if rr.ok else {}
+              st=((j.get('station_list') or {}).get('stations') or [])
+              return (lat,lon),[x.get('device_id') for x in st if x.get('device_id')]
+            except Exception as e: return (lat,lon),[]
+          coord_devices={}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=16) as ex:
+            for c,devs in ex.map(map_near,by_coord.items()): coord_devices[c]=devs
+          all_devs=sorted({d for ds in coord_devices.values() for d in ds})
+          def info(dev):
+            try:
+              r=S.get(INFO+str(dev),timeout=25)
+              return dev,(r.json() if r.ok else None),r.status_code
+            except Exception as e:return dev,None,None
+          infos={}; statuses={}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=24) as ex:
+            for d,j,st in ex.map(info,all_devs): infos[d]=j; statuses[d]=st
+          evse_to=[]
+          for dev,j in infos.items():
+            if not j: continue
+            for p in ((j.get('portsInfo') or {}).get('ports') or []):
+              eid=p.get('evseId')
+              if eid: evse_to.append((norm(eid),str(eid),dev,j,p))
+          idx={x[0]:x for x in evse_to}
+          exact=[]; missing=[]
+          for r in target:
+            pan_id=val(r,'id_pdc_itinerance')
+            station_id=val(r,'id_station_itinerance')
+            n=norm(pan_id)
+            x=idx.get(n)
+            if x:
+              _,eid,dev,j,p=x
+              price=j.get('stationPrice')
+              if price is not None:
+                exact.append({'id_pdc_itinerance':pan_id,'id_station_itinerance':station_id,'deviceId':dev,'evseId':eid,'stationName':(j.get('name') or [None])[0],'hostName':j.get('hostName'),'network':j.get('network'),'power':p.get('powerRange'),'stationPrice':price,'sourceUrl':INFO+str(dev)})
+              else: missing.append({'id_pdc_itinerance':pan_id,'reason':'matched_station_without_stationPrice','deviceId':dev,'evseId':eid})
+            else:
+              c=coords(r); candidates=coord_devices.get((round(c[0],6),round(c[1],6)),[]) if c else []
+              missing.append({'id_pdc_itinerance':pan_id,'reason':'no_exact_evse_match','candidateDeviceIds':candidates[:20]})
+          out={
+            'schemaVersion':'1.0.0','dataset':'chargepoint-public-exact-france','generatedAt':datetime.now(timezone.utc).isoformat(),
+            'operator':'ChargePoint Austria GmbH','country':'FR',
+            'classification':{'officialPublicSource':True,'stationLevelPriceLookupRequired':True,'evseLevelExactMatchRequired':True,'failClosed':True,'treated':True,'note':'Only PAN rows whose EVSE ID exactly matches a public ChargePoint station-info EVSE and exposes stationPrice receive an overlay. No coordinate-only tariff inheritance.'},
+            'coverage':{'panRows':len(target),'panRowsWithCoordinates':sum(coords(r) is not None for r in target),'uniquePanCoordinates':len(by_coord),'publicCandidateDeviceIds':len(all_devs),'stationInfoResponses':sum(bool(x) for x in infos.values()),'exactRows':len(exact),'missingRows':len(missing),'coveragePct':round(100*len(exact)/len(target),2) if target else 0},
+            'exact':exact,'gaps':missing,
+            'sources':[{'key':'PAN','url':PAN_URL},{'key':'chargepointMap','url':'https://mc.chargepoint.com/map-prod/v2'},{'key':'chargepointStationInfo','url':'https://mc.chargepoint.com/map-prod/v3/station/info'}]
+          }
+          pathlib.Path('data/operator_direct/chargepoint_official_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('reports/france/chargepoint/exact-build-summary.json').write_text(json.dumps({'coverage':out['coverage'],'sampleExact':exact[:10],'sampleGaps':missing[:20]},ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'coverage':out['coverage'],'sampleExact':exact[:3]},ensure_ascii=False,indent=2)[:30000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/operator_direct/chargepoint_official_france.json reports/france/chargepoint/exact-build-summary.json
+          git commit -m 'data(chargepoint): publish exact public station tariffs France' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
