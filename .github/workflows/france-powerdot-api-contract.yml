@@ -1,0 +1,54 @@
+name: France Powerdot public API contract hints
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/france-powerdot-api-contract.yml']
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract API contract hints
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/powerdot
+          python - <<'PY'
+          import requests,re,json,pathlib,datetime
+          u='https://adhoc.pwrdt.com/assets/index-ZiTXuOX8.js'
+          t=requests.get(u,headers={'User-Agent':'Mozilla/5.0'},timeout=45).text
+          terms=['api.pwrdt.com','connector-selection','connectrpc','typeName','serviceName','tariff','pricing','price','evseId','evse_id','connectorId','connector_id','locationId','getConnector','GetConnector','getLocation','GetLocation','adhoc']
+          out={'schemaVersion':'1.0.0','operator':'Powerdot','evaluatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'bundle':u,'bundleLength':len(t),'snippets':{}}
+          for term in terms:
+            pos=0; arr=[]
+            while len(arr)<30:
+              i=t.lower().find(term.lower(),pos)
+              if i<0: break
+              arr.append(t[max(0,i-500):i+1200])
+              pos=i+len(term)
+            out['snippets'][term]=arr
+          # Harvest likely Connect/RPC service and method literals.
+          strings=re.findall(r'["\']([^"\'\\]{2,160})["\']',t)
+          interesting=[]
+          for s in strings:
+            sl=s.lower()
+            if any(x in sl for x in ['connector','location','tariff','pricing','price','adhoc','payment','session']) and ('.' in s or '/' in s or s[:1].isupper()):
+              interesting.append(s)
+          out['interestingStrings']=list(dict.fromkeys(interesting))[:1200]
+          pathlib.Path('reports/france/powerdot/api-contract-hints.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          compact={'bundleLength':len(t),'terms':{k:len(v) for k,v in out['snippets'].items()},'interestingStrings':out['interestingStrings'][:300], 'selectedSnippets':{k:v[:4] for k,v in out['snippets'].items() if k in ['api.pwrdt.com','connectrpc','typeName','serviceName','tariff','pricing','price','evseId','connectorId','getConnector','GetConnector']}}
+          pathlib.Path('reports/france/powerdot/api-contract-hints-summary.json').write_text(json.dumps(compact,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(compact,ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/powerdot/api-contract-hints*.json
+          git commit -m 'France Powerdot: publish API contract hints' || exit 0
+          for i in 1 2 3 4; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
