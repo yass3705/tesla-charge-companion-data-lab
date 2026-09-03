@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "indigo-official-france",
+  "generatedAt": "2026-09-03T02:12:00Z",
+  "operator": "GROUPE INDIGO",
+  "country": "FR",
+  "classification": {
+    "operatorDirectExact": true,
+    "stationSpecificLookupRequiredForPublicDirect": false,
+    "reason": "INDIGO publishes one public direct tariff for its equipped car parks in France; member/card exceptions are separately scoped and must not alter public direct pricing."
+  },
+  "operatorDirect": {
+    "publicRate": {
+      "scope": "INDIGO car parks equipped with INDIGO charging points in France",
+      "currency": "EUR",
+      "energyEurPerKwh": 0.55,
+      "sessionFeeEur": 0.99,
+      "overstay": {
+        "eurPerMinute": 0.10,
+        "startsAfterChargingMinutes": 600
+      },
+      "paymentMode": "public rate without INDIGO Recharge card",
+      "exact": true
+    }
+  },
+  "memberOffers": {
+    "aLaCarte": {
+      "cardRequired": true,
+      "energyEurPerKwh": 0.45,
+      "sessionFeeEur": 0.49,
+      "overstay": {
+        "eurPerMinute": 0.05,
+        "startsAfterChargingMinutes": 600
+      },
+      "exceptions": {
+        "cities": ["Biarritz", "Nevers", "Saint-Germain-en-Laye", "Tours"],
+        "publishedTariff": {
+          "energyEurPerKwh": 0.30,
+          "timeEurPerMinute": 0.03
+        },
+        "note": "INDIGO states the 0.45 EUR/kWh A La Carte tariff is not yet applied in these cities; do not infer additional fees beyond the two components explicitly published for the exception."
+      }
+    },
+    "monthlyBundles": [
+      {"includedKwh": 100, "monthlyFeeEur": 29.99},
+      {"includedKwh": 200, "monthlyFeeEur": 59.99},
+      {"includedKwh": 300, "monthlyFeeEur": 89.99}
+    ],
+    "bundleOverage": {
+      "energyEurPerKwh": 0.55,
+      "overstay": {"eurPerMinute": 0.05, "startsAfterChargingMinutes": 960}
+    }
+  },
+  "scopeSafety": {
+    "applyOnlyWhenCpoIsIndigo": true,
+    "excludeThirdPartyCposLocatedInsideIndigoCarParks": true,
+    "examplesExcluded": ["Electra-operated HPC inside INDIGO car parks"],
+    "failClosed": true
+  },
+  "sourceEvidence": {
+    "officialOnly": true,
+    "checkedAt": "2026-09-03",
+    "sources": [
+      {
+        "url": "https://www.indigoneo.fr/fr/recharge-electrique",
+        "scope": "France public, A La Carte and monthly INDIGO Recharge tariffs"
+      }
+    ]
+  }
+}
