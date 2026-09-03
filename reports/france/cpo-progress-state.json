@@ -1,11 +1,11 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-09-03T19:05:00Z",
+  "updatedAt": "2026-09-03T21:01:00Z",
   "denominator": 291,
-  "treated": 38,
-  "remaining": 253,
+  "treated": 39,
+  "remaining": 252,
   "setAside": 3,
-  "activeRemaining": 250,
+  "activeRemaining": 249,
   "baselineBeforeRun": 22,
   "newlyTreatedSinceBaseline": [
     "Road / E-Flux",
@@ -23,7 +23,8 @@
     "Power Dot France",
     "WAAT",
     "Bouygues Energies & Services",
-    "IZIVIA"
+    "IZIVIA",
+    "TotalEnergies Marketing France"
   ],
   "setAsideOperators": [
     {
@@ -39,7 +40,9 @@
       "reason": "Exact guest tariff path is protected by reCAPTCHA/authentication; no anonymous exact EVSE feed found."
     }
   ],
-  "activeInvestigations": [],
+  "activeInvestigations": [
+    "TotalEnergies Charging Services"
+  ],
   "treatedEvidence": {
     "Power Dot France": {
       "source": "https://api.pwrdt.com/powerdot.adhoc.v1.AdhocAPI/GetChargerInfo",
@@ -88,6 +91,18 @@
       "pricedStations": 904,
       "uniqueChargingLocationTariffTexts": 53,
       "rule": "Use only tariff text returned for the exact matched IZIVIA public-map station/location. Never substitute a national, network or power-band tariff when an exact station tariff is absent; every unmatched or unpriced PAN station/PDC remains fail-closed."
+    },
+    "TotalEnergies Marketing France": {
+      "source": "https://chargeplus.totalenergies.com/fr/conseils-recharge-electrique/cout-recharge-voiture-electrique/",
+      "sourceType": "official_cpo_station_service_power_band_tariff",
+      "candidateDataset": "data/operator_direct/totalenergies_official_france.json",
+      "effectiveSince": "2025-03-05",
+      "upToAndIncluding50KwEurPerKwh": 0.52,
+      "over50KwEurPerKwh": 0.62,
+      "occupationFeeEurPerMin": 0.5,
+      "occupationFeeStartsAfterMinutes": 45,
+      "officialZenInventoryRows": 1939,
+      "rule": "Apply the official station-service tariff only to EVSE proven to be TotalEnergies station-service chargers and classify by the EVSE's documented power. Do not apply it to TotalEnergies-operated local concessions, roadside networks, partner networks or Charge+ roaming rows; those remain fail-closed unless their own exact tariff is proven."
     }
   },
   "method": "A CPO is counted treated only when an exact non-extrapolated tariff source has been made usable for at least a validated subset and all unresolved rows are explicitly fail-closed. A CPO is set aside only after official site/map, web bundles/APIs, public or guest endpoints/open data/EVSE IDs, useful third-party station services, and available mobile-app surfaces have been explored without obtaining a usable exact tariff source."
