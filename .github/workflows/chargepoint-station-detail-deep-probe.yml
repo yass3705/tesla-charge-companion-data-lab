@@ -1,0 +1,80 @@
+name: France ChargePoint station detail deep probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/chargepoint-station-detail-deep-probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Playwright
+        run: |
+          pip install playwright requests
+          playwright install --with-deps chromium
+      - name: Probe anonymous station detail pricing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/chargepoint
+          python - <<'PY'
+          import asyncio,json,re,pathlib
+          from playwright.async_api import async_playwright
+
+          TARGETS=[1002258205,1003668095,1004322765]
+          async def main():
+            async with async_playwright() as p:
+              browser=await p.chromium.launch(headless=True)
+              page=await browser.new_page(viewport={"width":1280,"height":900})
+              calls=[]
+              async def on_response(resp):
+                u=resp.url
+                if any(x in u for x in ['chargepoint.com','internal-api','webservices','map-prod']):
+                  try:
+                    body=await resp.text()
+                  except: body=''
+                  if len(body)>300000: body=body[:300000]
+                  calls.append({'url':u,'status':resp.status,'method':resp.request.method,'postData':resp.request.post_data or '', 'body':body})
+              page.on('response', on_response)
+              await page.goto('https://driver.chargepoint.com/mapCenter/48.8566/2.3522/13?view=list',wait_until='networkidle',timeout=90000)
+              await page.wait_for_timeout(3000)
+              # Click first station card/list item to force station-detail calls.
+              texts=['ABPT Paris, Parking Marché Saint-Germain','LAMH Charenton, Renault','SGAC Montreuil, rue Armand Carrel']
+              clicked=[]
+              for t in texts:
+                loc=page.get_by_text(t,exact=False)
+                try:
+                  if await loc.count():
+                    await loc.first.click(timeout=10000)
+                    clicked.append(t)
+                    await page.wait_for_timeout(4000)
+                except Exception as e:
+                  clicked.append({'text':t,'error':str(e)})
+              body=await page.locator('body').inner_text()
+              # Keep only calls useful for pricing/station detail plus map APIs.
+              useful=[]
+              for c in calls:
+                s=(c['url']+' '+c['postData']+' '+c['body'][:50000]).lower()
+                if any(k in s for k in ['price','pricing','tariff','cost','device_id','station','currency','flexbilling','payment']):
+                  useful.append(c)
+              out={'clicked':clicked,'pageUrl':page.url,'body':body[:120000],'calls':useful}
+              pathlib.Path('reports/france/chargepoint/station-detail-deep-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+              print(json.dumps({'clicked':clicked,'pageUrl':page.url,'usefulCalls':[{'url':c['url'],'status':c['status'],'method':c['method'],'postData':c['postData'][:1000],'body':c['body'][:3000]} for c in useful]},ensure_ascii=False)[:50000])
+              await browser.close()
+          asyncio.run(main())
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/chargepoint/station-detail-deep-probe.json
+          git commit -m 'France ChargePoint: publish anonymous station detail deep probe' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
