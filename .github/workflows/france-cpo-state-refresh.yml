@@ -1,0 +1,66 @@
+name: France CPO state refresh
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/france-cpo-state-refresh.yml']
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build current operator inventory and direct-data evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france
+          python - <<'PY'
+          import csv,io,json,re,requests,pathlib,collections
+          from datetime import datetime,timezone
+          PAN='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          rows=list(csv.DictReader(io.StringIO(requests.get(PAN,timeout=90).content.decode('utf-8-sig',errors='replace'))))
+          def v(r,*ns):
+            for n in ns:
+              if r.get(n): return str(r[n]).strip()
+            return ''
+          counts=collections.defaultdict(lambda:{'pdc':0,'stations':set()})
+          for r in rows:
+            op=v(r,'nom_operateur') or '(vide)'
+            counts[op]['pdc']+=1; counts[op]['stations'].add(v(r,'id_station_itinerance') or v(r,'nom_station') or str(counts[op]['pdc']))
+          def norm(s):return re.sub(r'[^a-z0-9]+','',str(s).lower())
+          evidence=[]
+          for p in pathlib.Path('data/operator_direct').glob('*.json'):
+            try:d=json.loads(p.read_text())
+            except:continue
+            operator=d.get('operator') or d.get('network') or d.get('cpo') or ''
+            cls=d.get('classification') if isinstance(d.get('classification'),dict) else {}
+            treated=cls.get('treated')
+            cov=d.get('coverage') if isinstance(d.get('coverage'),dict) else {}
+            evidence.append({'file':str(p),'operator':operator,'operatorNorm':norm(operator),'treated':treated,'publicationStatus':d.get('publicationStatus'),'dataset':d.get('dataset'),'coverage':cov})
+          out=[]
+          for op,x in counts.items():
+            no=norm(op)
+            matches=[]
+            for e in evidence:
+              ne=e['operatorNorm']; fn=norm(pathlib.Path(e['file']).stem)
+              if no and (no==ne or no in ne or ne in no or (len(no)>=5 and no in fn)):
+                matches.append({k:v for k,v in e.items() if k!='operatorNorm'})
+            out.append({'operator':op,'stations':len(x['stations']),'pdc':x['pdc'],'directEvidence':matches,'hasExplicitTreated':any(e.get('treated') is True for e in matches)})
+          out.sort(key=lambda z:(-z['pdc'],z['operator']))
+          report={'generatedAt':datetime.now(timezone.utc).isoformat(),'totalOperators':len(out),'panRows':len(rows),'operators':out}
+          pathlib.Path('reports/france/cpo-review-state-current.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          summary={'generatedAt':report['generatedAt'],'totalOperators':len(out),'panRows':len(rows),'top80':[{'rank':i+1,'operator':z['operator'],'stations':z['stations'],'pdc':z['pdc'],'hasExplicitTreated':z['hasExplicitTreated'],'evidenceFiles':[e['file'] for e in z['directEvidence'][:8]]} for i,z in enumerate(out[:80])]}
+          pathlib.Path('reports/france/cpo-review-state-current-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False,indent=2)[:50000])
+          PY
+      - name: Publish
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/cpo-review-state-current*.json
+          git commit -m 'France: publish refreshed CPO review state' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
