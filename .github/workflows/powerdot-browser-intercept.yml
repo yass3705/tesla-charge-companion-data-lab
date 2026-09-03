@@ -1,0 +1,77 @@
+name: France Powerdot browser intercept
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/powerdot-browser-intercept.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm i playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Capture public Powerdot ad-hoc flow
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/powerdot
+          cat > /tmp/probe.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'fs';
+          const charger='ASCGUYBBC001';
+          const urls=[
+            `https://adhoc.pwrdt.com/connector-selection?charger_name=${charger}`,
+            `https://adhoc.pwrdt.com/?charger_name=${charger}`,
+            `https://adhoc.pwrdt.com/_adhoc/connector-selection?charger_name=${charger}`
+          ];
+          const browser=await chromium.launch({headless:true});
+          const out={evaluatedAt:new Date().toISOString(),charger,attempts:[]};
+          for (const target of urls) {
+            const ctx=await browser.newContext({locale:'fr-FR'});
+            const page=await ctx.newPage();
+            const net=[];
+            page.on('request', req=>{
+              const u=req.url();
+              if (/pwrdt|powerdot|grpc|connect|adhoc/i.test(u)) {
+                let b=null; try { const x=req.postDataBuffer(); if(x) b=x.toString('base64'); } catch{}
+                net.push({kind:'request',url:u,method:req.method(),headers:req.headers(),postDataBase64:b,postDataText:req.postData()});
+              }
+            });
+            page.on('response', async res=>{
+              const u=res.url();
+              if (/api\.pwrdt|grpc|connect|AdhocAPI|adhoc/i.test(u)) {
+                let bodyBase64=null,bodyText=null;
+                try { const b=await res.body(); bodyBase64=b.toString('base64'); const ct=(await res.allHeaders())['content-type']||''; if(/json|text|grpc-web-text|connect\+json/i.test(ct)) bodyText=b.toString('utf8').slice(0,200000); } catch{}
+                net.push({kind:'response',url:u,status:res.status(),headers:await res.allHeaders(),bodyBase64,bodyText});
+              }
+            });
+            let navError=null;
+            try { await page.goto(target,{waitUntil:'domcontentloaded',timeout:45000}); await page.waitForTimeout(10000); } catch(e) { navError=String(e); }
+            let text=''; try { text=(await page.locator('body').innerText()).slice(0,100000); } catch{}
+            out.attempts.push({target,finalUrl:page.url(),title:await page.title().catch(()=>''),navError,text,network:net});
+            await ctx.close();
+          }
+          await browser.close();
+          fs.writeFileSync('reports/france/powerdot/browser-intercept.json',JSON.stringify(out,null,2)+'\n');
+          const summary=out.attempts.map(a=>({target:a.target,finalUrl:a.finalUrl,text:a.text.slice(0,2000),network:a.network.map(x=>({kind:x.kind,url:x.url,method:x.method,status:x.status,contentType:x.headers?.['content-type'],postDataText:x.postDataText,postDataBase64:x.postDataBase64?.slice(0,500),bodyText:x.bodyText?.slice(0,3000),bodyBase64:x.bodyBase64?.slice(0,1000)}))}));
+          console.log(JSON.stringify(summary,null,2));
+          JS
+          node /tmp/probe.mjs
+      - name: Publish report
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/powerdot/browser-intercept.json
+          git commit -m 'France Powerdot: publish public ad-hoc browser capture' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
