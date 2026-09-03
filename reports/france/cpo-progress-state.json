@@ -1,41 +1,19 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-09-03T23:03:00Z",
+  "updatedAt": "2026-09-03T23:04:00Z",
   "denominator": 291,
-  "treated": 43,
-  "remaining": 248,
+  "treated": 44,
+  "remaining": 247,
   "setAside": 3,
-  "activeRemaining": 245,
+  "activeRemaining": 244,
   "baselineBeforeRun": 22,
-  "newlyTreatedSinceBaseline": [
-    "Road / E-Flux",
-    "ChargePoint Austria GmbH",
-    "Modulo",
-    "Freshmile",
-    "Atlante",
-    "ENGIE Vianeo",
-    "Greenflux",
-    "QOVOLTIS",
-    "E.Leclerc",
-    "EASYCHARGE",
-    "SPIE CityNetworks",
-    "DRIVECO",
-    "Power Dot France",
-    "WAAT",
-    "Bouygues Energies & Services",
-    "IZIVIA",
-    "TotalEnergies Marketing France",
-    "TotalEnergies Charging Services",
-    "Allego",
-    "GROUPE INDIGO",
-    "Tesla"
-  ],
+  "newlyTreatedSinceBaseline": ["Road / E-Flux","ChargePoint Austria GmbH","Modulo","Freshmile","Atlante","ENGIE Vianeo","Greenflux","QOVOLTIS","E.Leclerc","EASYCHARGE","SPIE CityNetworks","DRIVECO","Power Dot France","WAAT","Bouygues Energies & Services","IZIVIA","TotalEnergies Marketing France","TotalEnergies Charging Services","Allego","GROUPE INDIGO","Tesla","Lidl France"],
   "setAsideOperators": [
     {"operator":"AVIA/Picoty","reason":"Exact direct station tariff still unresolved after direct/operator and public ChargePoint EVSE checks."},
     {"operator":"YES55","reason":"Exact guest tariff path is protected by reCAPTCHA/authentication; no anonymous exact EVSE feed found."},
     {"operator":"Load Stations","reason":"Exact guest tariff path is protected by reCAPTCHA/authentication; no anonymous exact EVSE feed found."}
   ],
-  "activeInvestigations": ["Lidl France"],
+  "activeInvestigations": ["Electra"],
   "treatedEvidence": {
     "Power Dot France":{"source":"https://api.pwrdt.com/powerdot.adhoc.v1.AdhocAPI/GetChargerInfo","sourceType":"direct_cpo_public_adhoc_api","uniqueIrvePdc":7616,"coveredIrvePdc":7069,"coveredIrveStations":1098,"pricedConnectors":7063,"unresolvedPdc":547,"rule":"Only connector tariffs returned by the official Power Dot public ad-hoc API are overlaid; all unmatched or failed rows remain fail-closed."},
     "WAAT":{"source":"https://app.monta.app/roaming/monta-as-a-cpo-pricing","sourceType":"public_cpo_platform_exact_evse_pricing","exportCsv":"https://app.monta.app/roaming/monta-as-a-cpo-pricing/export/csv","exportJson":"https://app.monta.app/roaming/monta-as-a-cpo-pricing/export/json","evsePrefix":"FR*WA2*","rule":"Use only rows whose exact EVSE ID starts FR*WA2* and the tariff fields returned by Monta's public CPO pricing dataset. Never apply a site, operator or national fallback; every PAN EVSE absent from the public export remains fail-closed/unpriced."},
@@ -45,7 +23,8 @@
     "TotalEnergies Charging Services":{"source":"official sub-network tariff publications including ilewatt and TotalEnergies Charge+ City Aix-Marseille-Provence","sourceType":"official_verified_subnetwork_tariffs","candidateDataset":"data/operator_direct/totalenergies_official_france.json","ilewattVisitor":{"acUpTo22KwEurPerKwh":0.39,"dcUpTo50KwEurPerKwh":0.41,"dcUpTo200KwEurPerKwh":0.48,"acDayIdleEurPerMin":0.03,"dcIdleEurPerMin":0.04},"aixMarseillePublicAcEurPerKwh":0.54,"rule":"Apply a tariff only when the PAN row can be positively tied to the exact published TotalEnergies-operated sub-network and its power/time conditions. Never extend an Ilewatt, Aix-Marseille, station-service or other local tariff to generic TotalEnergies Charging Services rows. Every unclassified sub-network, unmatched EVSE, or tariff component not machine-validated remains fail-closed."},
     "Allego":{"source":"Allego official Pricing page + Find Us map / Allego app Price Details","sourceType":"official_exact_charger_price_surface","candidateDataset":"data/operator_direct/allego_official_france.json","panStations":587,"panPdc":4951,"rule":"Never apply Allego's country headline tariffs as a universal station fallback. Use only the current rate and any time/occupancy fees shown for the exact charger on Allego's official Find Us map/app Price Details surface; unmatched or unqueried EVSE remain fail-closed."},
     "GROUPE INDIGO":{"source":"https://www.indigoneo.fr/fr/recharge-electrique","sourceType":"official_national_tariff_with_explicit_city_exceptions","candidateDataset":"data/operator_direct/indigo_recharge_official_france.json","panStations":325,"panPdc":7495,"publicTariff":{"sessionFeeEur":0.99,"eurPerKwh":0.55,"overstayEurPerMin":0.10,"overstayStartsAfterHours":10},"explicitCityExceptions":{"cities":["Biarritz","Nevers","Saint-Germain-en-Laye","Tours"],"eurPerKwh":0.30,"eurPerMinute":0.03},"rule":"Use the official public tariff only for INDIGO Recharge parking EVSE proven to be within its published scope. Apply the published 0.30 EUR/kWh + 0.03 EUR/min exception only to the four explicitly named cities. Any non-classifiable station or separately operated fast-charging partner remains fail-closed."},
-    "Tesla":{"source":"https://www.tesla.com/findus","sourceType":"official_public_station_exact_pricing","candidateDataset":"data/operator_direct/tesla_findus_exact_france.json","panStations":251,"panPdc":4917,"validatedSites":["Rouen","Lexy"],"pricingModel":"site-specific time bands with separate Tesla-owner and other-EV rates","congestionFeeFranceEurPerMinute":0.50,"rule":"Use only the current tariff bands displayed on the exact official Tesla Find Us Supercharger page. Preserve time bands and Tesla-owner versus other-EV pricing. Never infer a national tariff or copy a nearby site's price; unresolved sites remain fail-closed."}
+    "Tesla":{"source":"https://www.tesla.com/findus","sourceType":"official_public_station_exact_pricing","candidateDataset":"data/operator_direct/tesla_findus_exact_france.json","panStations":251,"panPdc":4917,"validatedSites":["Rouen","Lexy"],"pricingModel":"site-specific time bands with separate Tesla-owner and other-EV rates","congestionFeeFranceEurPerMinute":0.50,"rule":"Use only the current tariff bands displayed on the exact official Tesla Find Us Supercharger page. Preserve time bands and Tesla-owner versus other-EV pricing. Never infer a national tariff or copy a nearby site's price; unresolved sites remain fail-closed."},
+    "Lidl France":{"source":"https://www.lidl.fr/c/tarifs-bornes/s10027299","sourceType":"official_national_direct_power_type_tariff","candidateDataset":"data/operator_direct/lidl_tariff_rules_france.json","panStations":887,"panPdc":4912,"directAcEurPerKwh":0.29,"directDcEurPerKwh":0.39,"billingBasis":"kWh_only","rule":"Apply 0.29 EUR/kWh only to Lidl direct AC points and 0.39 EUR/kWh only to Lidl direct DC points whose operator/scope and type are established. Third-party mobility-card commissions are outside the Lidl direct tariff and must not be inferred. Unclassifiable rows remain fail-closed."}
   },
   "method": "A CPO is counted treated only when an exact non-extrapolated tariff source has been made usable for at least a validated subset and all unresolved rows are explicitly fail-closed. A CPO is set aside only after official site/map, web bundles/APIs, public or guest endpoints/open data/EVSE IDs, useful third-party station services, and available mobile-app surfaces have been explored without obtaining a usable exact tariff source."
 }
