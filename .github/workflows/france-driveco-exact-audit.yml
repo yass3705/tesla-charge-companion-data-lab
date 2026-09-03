@@ -1,0 +1,133 @@
+name: France DRIVECO exact EVSE tariff audit
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/france-driveco-exact-audit.yml']
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit exact DRIVECO tariff file and official inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/france/driveco
+          python - <<'PY'
+          import json, csv, io, re, collections, pathlib, requests, datetime
+
+          src=pathlib.Path('data/operator_direct/driveco_evse_tariffs.json')
+          data=json.loads(src.read_text())
+          diag={
+            'schemaVersion':'1.0.0',
+            'operator':'DRIVECO',
+            'evaluatedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'sourcePath':str(src),
+            'topLevelType':type(data).__name__,
+          }
+          if isinstance(data,dict):
+            diag['topLevelKeys']=list(data.keys())[:100]
+            diag['topLevelValueTypes']={str(k):type(v).__name__ for k,v in list(data.items())[:100]}
+          elif isinstance(data,list):
+            diag['topLevelLength']=len(data)
+
+          # Find record-like dicts; preserve only compact primitive samples.
+          keyfreq=collections.Counter(); typefreq=collections.Counter(); dicts=[]
+          def walk(x,depth=0):
+            typefreq[type(x).__name__]+=1
+            if isinstance(x,dict):
+              dicts.append(x)
+              for k,v in x.items():
+                keyfreq[str(k)]+=1
+                if depth<8: walk(v,depth+1)
+            elif isinstance(x,list):
+              for v in x:
+                if depth<8: walk(v,depth+1)
+          walk(data)
+          diag['dictCount']=len(dicts)
+          diag['commonKeys']=keyfreq.most_common(120)
+
+          id_keys=['displayId','displayID','evseId','evseID','evse_id','evse','identifier','id_pdc_itinerance','idPdcItinerance','chargePointId','chargepointId','uid']
+          tariff_tokens=('tariff','price','pricing','cost','fee')
+          candidates=[]
+          for d in dicts:
+            keys=[str(k) for k in d]
+            has_id=any(k in d and isinstance(d.get(k),(str,int)) for k in id_keys)
+            has_tariff=any(any(t in k.lower() for t in tariff_tokens) for k in keys)
+            if has_id and has_tariff:
+              candidates.append(d)
+          diag['candidateRecordCount']=len(candidates)
+          def compact(d):
+            out={}
+            for k,v in d.items():
+              if isinstance(v,(str,int,float,bool)) or v is None:
+                s=v if not isinstance(v,str) else v[:500]
+                out[str(k)]=s
+              elif isinstance(v,dict):
+                sub={kk:(vv[:300] if isinstance(vv,str) else vv) for kk,vv in v.items() if isinstance(vv,(str,int,float,bool)) or vv is None}
+                if sub: out[str(k)]=sub
+              elif isinstance(v,list) and len(v)<=10:
+                prim=[vv for vv in v if isinstance(vv,(str,int,float,bool)) or vv is None]
+                if len(prim)==len(v): out[str(k)]=prim
+            return out
+          diag['candidateSamples']=[compact(d) for d in candidates[:12]]
+
+          # Build exact ID set from candidate records only (no fuzzy/proximity matching).
+          exact_ids=[]
+          for d in candidates:
+            for k in id_keys:
+              v=d.get(k)
+              if isinstance(v,(str,int)) and str(v).strip():
+                exact_ids.append(str(v).strip())
+                break
+          diag['candidateExactIdCount']=len(exact_ids)
+          diag['candidateExactIdUnique']=len(set(exact_ids))
+          diag['candidateExactIdSamples']=exact_ids[:30]
+
+          # Official DRIVECO inventory from the operator-published data.gouv resource.
+          inv_url='https://www.data.gouv.fr/api/1/datasets/r/775dd5a9-c0e4-4bb7-8995-f4b5a4148836'
+          r=requests.get(inv_url,timeout=60); r.raise_for_status()
+          txt=r.content.decode('utf-8-sig',errors='replace')
+          sniffer=csv.Sniffer()
+          try: dialect=sniffer.sniff(txt[:20000],delimiters=',;\t')
+          except Exception: dialect=csv.excel
+          rows=list(csv.DictReader(io.StringIO(txt),dialect=dialect))
+          cols=list(rows[0].keys()) if rows else []
+          diag['inventory']={'url':inv_url,'rows':len(rows),'columns':cols}
+          evse_cols=[c for c in cols if any(t in c.lower() for t in ['id_pdc_itinerance','id pdc itinerance','evse'])]
+          diag['inventory']['evseColumns']=evse_cols
+          def norm(v): return re.sub(r'[^A-Z0-9]','',str(v or '').upper())
+          tariff_norm={norm(x):x for x in exact_ids if norm(x)}
+          best=None
+          for c in evse_cols:
+            vals=[str(row.get(c) or '').strip() for row in rows if str(row.get(c) or '').strip()]
+            matched=sum(1 for v in vals if norm(v) in tariff_norm)
+            item={'column':c,'nonEmpty':len(vals),'exactNormalizedMatches':matched,'coverage':matched/len(vals) if vals else 0}
+            if best is None or matched>best['exactNormalizedMatches']: best=item
+          diag['inventory']['bestExactJoin']=best
+          if best:
+            c=best['column']; gaps=[]; matches=[]
+            for row in rows:
+              v=str(row.get(c) or '').strip()
+              if not v: continue
+              if norm(v) in tariff_norm:
+                if len(matches)<20: matches.append({'inventoryEvse':v,'tariffId':tariff_norm[norm(v)]})
+              elif len(gaps)<20: gaps.append(v)
+            diag['inventory']['matchSamples']=matches
+            diag['inventory']['gapSamples']=gaps
+
+          pathlib.Path('reports/france/driveco/exact-audit.json').write_text(json.dumps(diag,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(diag,ensure_ascii=False)[:45000])
+          PY
+      - name: Publish audit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/driveco/exact-audit.json
+          git commit -m 'France DRIVECO: publish exact EVSE tariff audit' || exit 0
+          for i in 1 2 3 4; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
