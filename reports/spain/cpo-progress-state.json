@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-09-03T21:52:00Z",
+  "updatedAt": "2026-09-03T22:52:00Z",
   "denominator": 189,
   "denominatorStatus": "provisional_authoritative_baseline",
   "denominatorBasis": "Red Electrica reported in April 2025 that 189 charging infrastructure operators had been contacted for REVE integration; replace with the live /cpos count as soon as REVE authentication is restored or a complete current public inventory is recovered.",
@@ -27,14 +27,14 @@
     "EMT Madrid",
     "P-app"
   ],
-  "treated": 1,
-  "remaining": 188,
+  "treated": 2,
+  "remaining": 187,
   "setAside": 0,
-  "activeRemaining": 188,
-  "newlyTreatedSinceBaseline": ["Zunder"],
-  "easyQueue": ["Repsol", "Wenea", "Powerdot", "Eranovum"],
+  "activeRemaining": 187,
+  "newlyTreatedSinceBaseline": ["Zunder", "Repsol"],
+  "easyQueue": ["Wenea", "Powerdot", "Eranovum"],
   "setAsideOperators": [],
-  "activeInvestigations": ["Repsol"],
+  "activeInvestigations": ["Wenea"],
   "treatedEvidence": {
     "Zunder": {
       "source": "https://www.zunder.com/usuario-ve/",
@@ -43,6 +43,15 @@
       "standardAcUpTo50KwEurPerKwh": 0.42,
       "standardFastOver50KwEurPerKwh": 0.59,
       "rule": "Apply only to standard Zunder Spain EVSEs whose power/tariff class is positively established. Time-band, municipal/partner agreement and specific-location exceptions remain fail-closed until their exact station price is proven. Published ranges and 'from' prices are never used as exact tariffs."
+    },
+    "Repsol": {
+      "source": "https://www.repsol.es/particulares/vehiculos/movilidad-electrica/pago-por-recarga/",
+      "sourceType": "official_cpo_country_charge_class_tariff",
+      "candidateDataset": "data/operator_direct/repsol_official_spain.json",
+      "normalCarChargeEurPerKwh": 0.36,
+      "ultraFastCarChargeEurPerKwh": 0.56,
+      "fastCarChargePublishedAsFromEurPerKwh": 0.48,
+      "rule": "Use only exact normal and ultra-fast Repsol-owned Spain tariffs. The fast-charge price is published as 'from 0.48 EUR/kWh' and therefore remains fail-closed rather than being extrapolated. Partner/roaming points and unresolved charge classes also remain unpriced."
     }
   },
   "inventoryNote": "The earlier 20-CPO figure was a priority shortlist, not a complete national denominator. REVE states that Spain has more than 180 infrastructure operators; the 189-operator figure is retained only as the best official baseline until the current live CPO inventory can be recovered.",
