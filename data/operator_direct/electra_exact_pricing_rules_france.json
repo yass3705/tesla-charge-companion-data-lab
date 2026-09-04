@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "1.0.0",
+  "operator": "Electra",
+  "country": "FR",
+  "capturedAt": "2026-09-04T00:06:00Z",
+  "panScope": {
+    "stations": 522,
+    "pdc": 3035
+  },
+  "officialSources": [
+    "https://stations.go-electra.com/",
+    "https://www.go-electra.com/fr/newsroom/cout-de-rechargement-ve/",
+    "https://www.go-electra.com/en/brand-refresh/"
+  ],
+  "pricingModel": {
+    "standardAppPriceRangeEurPerKwh": [0.39, 0.61],
+    "dynamicByStationTimeAndDemand": true,
+    "priceDisplayedBeforeSession": true,
+    "priceLockedForSession": true,
+    "moreThanHalfStationsSingleRateAllDay": true,
+    "withoutAppDebitCardOrPassStartsAtEurPerKwh": 0.61
+  },
+  "rule": "Never apply the 0.39-0.61 EUR/kWh range, a nearby station price, or any headline Electra price as a station fallback. For a TCC station/EVSE, use only the current exact tariff shown for that exact station in the official Electra app or on the charger before plugging in, preserving any time-dependent price band. If that exact station price is not captured or cannot be mapped deterministically, leave the station/EVSE fail-closed and unpriced.",
+  "notes": "Electra's July/August 2026 official materials state that France app pricing is dynamic by time and station demand and ranges from 0.39 to 0.61 EUR/kWh; the exact rate is shown before the session and is then locked. The official station site also states that the user pays the price shown in the app or on the charger before plugging in."
+}
