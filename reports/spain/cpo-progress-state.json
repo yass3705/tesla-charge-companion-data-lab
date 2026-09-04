@@ -1,16 +1,16 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-09-04T00:50:00Z",
+  "updatedAt": "2026-09-04T01:53:00Z",
   "denominator": 189,
   "denominatorStatus": "provisional_authoritative_baseline",
   "denominatorBasis": "Red Electrica reported in April 2025 that 189 charging infrastructure operators had been contacted for REVE integration; replace with the live /cpos count as soon as REVE authentication is restored or a complete current public inventory is recovered.",
   "namedInventoryCount": 20,
   "namedInventory": ["Iberdrola","Endesa","Repsol","bp pulse","Electromaps","Wenea","EDP Charge","Acciona","Powerdot","Zunder","Tesla","Eranovum","TotalEnergies","Telpark","Galp","Plenoil","Atlante","Bonpreu","EMT Madrid","P-app"],
-  "treated": 6,
-  "remaining": 183,
+  "treated": 7,
+  "remaining": 182,
   "setAside": 0,
-  "activeRemaining": 183,
-  "newlyTreatedSinceBaseline": ["Zunder","Repsol","Wenea","Eranovum","EMT Madrid","Plenergy (Plenoil)"],
+  "activeRemaining": 182,
+  "newlyTreatedSinceBaseline": ["Zunder","Repsol","Wenea","Eranovum","EMT Madrid","Plenergy (Plenoil)","ACCIONA"],
   "easyQueue": [],
   "setAsideOperators": [],
   "activeInvestigations": ["Powerdot","Telpark","Galp"],
@@ -20,7 +20,8 @@
     "Wenea": {"source":"https://wenea.com/tarifas-de-carga/","sourceType":"official_cpo_country_power_band_tariff","candidateDataset":"data/operator_direct/wenea_official_spain.json","ac7_4To22KwEurPerKwh":0.39,"dc50To150KwEurPerKwh":0.49,"hpc151To400KwEurPerKwh":0.59,"rule":"Apply only to Wenea-owned Spain EVSEs in a positively established published power band. Partner/collaboration stations can vary and remain fail-closed. Wenea Everyday subscription prices are stored separately and only apply when that subscription is selected."},
     "Eranovum": {"source":"https://eranovum.energy/es/nuestras-tarifas/","sourceType":"official_cpo_country_power_band_tariff","candidateDataset":"data/operator_direct/eranovum_official_spain.json","upTo22KwEurPerKwh":0.35,"30KwEurPerKwh":0.40,"60KwEurPerKwh":0.43,"120KwEurPerKwh":0.46,"from150KwEurPerKwh":0.49,"rule":"Apply only to Eranovum Spain EVSEs whose power class is positively established; preserve any exact station-level price that differs from the country table. Occupancy penalties are stored separately and are not part of the base energy price."},
     "EMT Madrid": {"source":"https://www.emtmadrid.es/emting/eulaelectroemt.aspx","sourceType":"official_cpo_current_legal_tariff","candidateDataset":"data/operator_direct/emt_madrid_official_spain.json","colonRapidEurPerKwh":0.40,"emtManagedCarParksRapidEurPerKwh":0.35,"designatedSlowCarParksEurPerKwh":0.35,"rotationAndMixedSlowEurPerKwh":0.00,"rule":"Apply only to EMT Madrid EVSEs whose official category is positively established. Preserve exact station-level prices for special hubs (including Canalejas) and leave unresolved/new hub categories fail-closed."},
-    "Plenergy (Plenoil)": {"sources":["https://plenergy.es/estacion/plenergy-castellon-de-la-plana-v/?lang=en","https://plenergy.es/estacion/plenoil-madrid-III/","https://plenergy.es/estacion/plenergy-ondara-i/","https://plenergy.es/estacion/plenergy-mairena-del-alcor-i/?lang=en"],"sourceType":"official_cpo_station_page_exact_tariff","candidateDataset":"data/operator_direct/plenergy_official_spain.json","validatedStationEurPerKwh":0.36,"validatedStationCount":4,"rule":"Use 0.36 EUR/kWh only for exact station pages currently publishing the numeric charger price and matched by station identity. Do not generalize network-wide; pages with an empty charger price remain fail-closed."}
+    "Plenergy (Plenoil)": {"sources":["https://plenergy.es/estacion/plenergy-castellon-de-la-plana-v/?lang=en","https://plenergy.es/estacion/plenoil-madrid-III/","https://plenergy.es/estacion/plenergy-ondara-i/","https://plenergy.es/estacion/plenergy-mairena-del-alcor-i/?lang=en"],"sourceType":"official_cpo_station_page_exact_tariff","candidateDataset":"data/operator_direct/plenergy_official_spain.json","validatedStationEurPerKwh":0.36,"validatedStationCount":4,"rule":"Use 0.36 EUR/kWh only for exact station pages currently publishing the numeric charger price and matched by station identity. Do not generalize network-wide; pages with an empty charger price remain fail-closed."},
+    "ACCIONA": {"source":"https://recarga.acciona.com/es","sourceType":"official_cpo_country_power_band_tariff","candidateDataset":"data/operator_direct/acciona_official_spain.json","upTo22KwEurPerKwh":0.35,"over22KwEurPerKwh":0.55,"rule":"Apply only to ACCIONA Spain EVSEs whose charger power is positively established: 0.35 EUR/kWh up to and including 22 kW, and 0.55 EUR/kWh above 22 kW. Unresolved station ownership, power, or location-specific exceptions remain fail-closed."}
   },
   "inventoryNote": "The earlier 20-CPO figure was a priority shortlist, not a complete national denominator. REVE states that Spain has more than 180 infrastructure operators; the 189-operator figure is retained only as the best official baseline until the current live CPO inventory can be recovered.",
   "method": "A CPO is counted treated only when an exact non-extrapolated tariff source has been made usable for at least a validated subset and all unresolved rows are explicitly fail-closed. A CPO is set aside only after official site/map, web bundles/APIs, public or guest endpoints/open data/EVSE IDs, useful third-party station services, and available mobile-app surfaces have been explored without obtaining a usable exact tariff source."
