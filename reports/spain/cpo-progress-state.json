@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-09-04T02:56:00Z",
+  "updatedAt": "2026-09-04T04:54:00Z",
   "denominator": 189,
   "denominatorStatus": "provisional_authoritative_baseline",
   "denominatorBasis": "Red Electrica reported in April 2025 that 189 charging infrastructure operators had been contacted for REVE integration; replace with the live /cpos count as soon as REVE authentication is restored or a complete current public inventory is recovered.",
@@ -8,12 +8,15 @@
   "namedInventory": ["Iberdrola","Endesa","Repsol","bp pulse","Electromaps","Wenea","EDP Charge","Acciona","Powerdot","Zunder","Tesla","Eranovum","TotalEnergies","Telpark","Galp","Plenoil","Atlante","Bonpreu","EMT Madrid","P-app"],
   "treated": 8,
   "remaining": 181,
-  "setAside": 0,
-  "activeRemaining": 181,
+  "setAside": 2,
+  "activeRemaining": 179,
   "newlyTreatedSinceBaseline": ["Zunder","Repsol","Wenea","Eranovum","EMT Madrid","Plenergy (Plenoil)","ACCIONA","Endesa"],
   "easyQueue": [],
-  "setAsideOperators": [],
-  "activeInvestigations": ["Powerdot","Telpark","Galp","TotalEnergies","Iberdrola"],
+  "setAsideOperators": [
+    {"operator":"Powerdot","reason":"Official Powerdot FAQ states exact charging prices vary by location, charging power and site-specific fees and instructs users to consult an EMSP for the exact charger tariff. Public station pages expose station identity, connectors and QR/payment methods but not the numeric tariff; the current Electroverse Spain subscription (updated August 2026) publishes only a 29% discount for EUR 1.99/month, not an absolute station price. No non-extrapolated public base tariff could be recovered.","sources":["https://powerdot.eu/es/preguntas-frecuentes","https://powerdot.eu/es/blog/marker/diagonal-mar","https://electroverse.com/es-ES/community/electroverse-features/octopus-electroverse-suscripciones-de-carga"]},
+    {"operator":"Telpark","reason":"Current official Telpark terms publish a 30% charging discount for eligible subscribers through 31 December 2026, applicable across participating Spanish Telpark car parks, but do not publish the underlying absolute charger price. Public parking pages identify charging availability but not connector-level energy tariffs, so applying the percentage without the base price would require extrapolation.","sources":["https://www.telpark.com/es/particulares/promociones/tyc-abonos-ev/","https://www.telpark.com/es/ciudades/badajoz/parking-san-aton/"]}
+  ],
+  "activeInvestigations": ["Galp","TotalEnergies","Iberdrola","EDP Charge","Bonpreu"],
   "treatedEvidence": {
     "Zunder": {"source":"https://www.zunder.com/usuario-ve/","sourceType":"official_cpo_country_power_band_tariff","candidateDataset":"data/operator_direct/zunder_official_spain.json","standardAcUpTo50KwEurPerKwh":0.42,"standardFastOver50KwEurPerKwh":0.59,"rule":"Apply only to standard Zunder Spain EVSEs whose power/tariff class is positively established. Time-band, municipal/partner agreement and specific-location exceptions remain fail-closed until their exact station price is proven. Published ranges and 'from' prices are never used as exact tariffs."},
     "Repsol": {"source":"https://www.repsol.es/particulares/vehiculos/movilidad-electrica/pago-por-recarga/","sourceType":"official_cpo_country_charge_class_tariff","candidateDataset":"data/operator_direct/repsol_official_spain.json","normalCarChargeEurPerKwh":0.36,"ultraFastCarChargeEurPerKwh":0.56,"fastCarChargePublishedAsFromEurPerKwh":0.48,"rule":"Use only exact normal and ultra-fast Repsol-owned Spain tariffs. The fast-charge price is published as 'from 0.48 EUR/kWh' and therefore remains fail-closed rather than being extrapolated. Partner/roaming points and unresolved charge classes also remain unpriced."},
@@ -25,5 +28,5 @@
     "Endesa": {"source":"https://www.endesaxway.com/content/dam/endesa-x-way/pdfs/TarifarioEE_2026_05.15.pdf","sourceType":"official_cpo_country_connector_power_time_band_tariff","candidateDataset":"data/operator_direct/endesa_official_spain.json","regionScope":["ES-peninsula","ES-balearic-islands"],"eFlex":{"acUnder50Kw":{"day":0.35,"night":0.30},"dcUnder100Kw":{"day":0.43,"night":0.37},"dcAtLeast100Kw":{"day":0.55,"night":0.47}},"rule":"Apply only to positively identified Endesa public-network EVSEs in mainland Spain or the Balearic Islands with connector type/power and session start time known. Connector-specific/promotional prices shown in the app override the standard table; Canary Islands, partner/roaming EVSEs and unresolved exceptions remain fail-closed. Subscription tariffs are stored separately and only apply when selected."}
   },
   "inventoryNote": "The earlier 20-CPO figure was a priority shortlist, not a complete national denominator. REVE states that Spain has more than 180 infrastructure operators; the 189-operator figure is retained only as the best official baseline until the current live CPO inventory can be recovered.",
-  "method": "A CPO is counted treated only when an exact non-extrapolated tariff source has been made usable for at least a validated subset and all unresolved rows are explicitly fail-closed. A CPO is set aside only after official site/map, web bundles/APIs, public or guest endpoints/open data/EVSE IDs, useful third-party station services, and available mobile-app surfaces have been explored without obtaining a usable exact tariff source."
+  "method": "A CPO is counted treated only when an exact non-extrapolated tariff source has been made usable for at least a validated subset and all unresolved rows are explicitly fail-closed. A CPO is set aside only after official site/map, indexed public web/API/QR surfaces and useful third-party station services have been explored without obtaining a usable exact tariff source; mobile-app-only values are not inferred or reconstructed when they are not publicly exposed."
 }
