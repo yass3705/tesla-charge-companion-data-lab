@@ -1,25 +1,26 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-09-03T23:56:00Z",
+  "updatedAt": "2026-09-04T00:50:00Z",
   "denominator": 189,
   "denominatorStatus": "provisional_authoritative_baseline",
   "denominatorBasis": "Red Electrica reported in April 2025 that 189 charging infrastructure operators had been contacted for REVE integration; replace with the live /cpos count as soon as REVE authentication is restored or a complete current public inventory is recovered.",
   "namedInventoryCount": 20,
   "namedInventory": ["Iberdrola","Endesa","Repsol","bp pulse","Electromaps","Wenea","EDP Charge","Acciona","Powerdot","Zunder","Tesla","Eranovum","TotalEnergies","Telpark","Galp","Plenoil","Atlante","Bonpreu","EMT Madrid","P-app"],
-  "treated": 5,
-  "remaining": 184,
+  "treated": 6,
+  "remaining": 183,
   "setAside": 0,
-  "activeRemaining": 184,
-  "newlyTreatedSinceBaseline": ["Zunder","Repsol","Wenea","Eranovum","EMT Madrid"],
+  "activeRemaining": 183,
+  "newlyTreatedSinceBaseline": ["Zunder","Repsol","Wenea","Eranovum","EMT Madrid","Plenergy (Plenoil)"],
   "easyQueue": [],
   "setAsideOperators": [],
-  "activeInvestigations": ["Powerdot","Telpark"],
+  "activeInvestigations": ["Powerdot","Telpark","Galp"],
   "treatedEvidence": {
     "Zunder": {"source":"https://www.zunder.com/usuario-ve/","sourceType":"official_cpo_country_power_band_tariff","candidateDataset":"data/operator_direct/zunder_official_spain.json","standardAcUpTo50KwEurPerKwh":0.42,"standardFastOver50KwEurPerKwh":0.59,"rule":"Apply only to standard Zunder Spain EVSEs whose power/tariff class is positively established. Time-band, municipal/partner agreement and specific-location exceptions remain fail-closed until their exact station price is proven. Published ranges and 'from' prices are never used as exact tariffs."},
     "Repsol": {"source":"https://www.repsol.es/particulares/vehiculos/movilidad-electrica/pago-por-recarga/","sourceType":"official_cpo_country_charge_class_tariff","candidateDataset":"data/operator_direct/repsol_official_spain.json","normalCarChargeEurPerKwh":0.36,"ultraFastCarChargeEurPerKwh":0.56,"fastCarChargePublishedAsFromEurPerKwh":0.48,"rule":"Use only exact normal and ultra-fast Repsol-owned Spain tariffs. The fast-charge price is published as 'from 0.48 EUR/kWh' and therefore remains fail-closed rather than being extrapolated. Partner/roaming points and unresolved charge classes also remain unpriced."},
     "Wenea": {"source":"https://wenea.com/tarifas-de-carga/","sourceType":"official_cpo_country_power_band_tariff","candidateDataset":"data/operator_direct/wenea_official_spain.json","ac7_4To22KwEurPerKwh":0.39,"dc50To150KwEurPerKwh":0.49,"hpc151To400KwEurPerKwh":0.59,"rule":"Apply only to Wenea-owned Spain EVSEs in a positively established published power band. Partner/collaboration stations can vary and remain fail-closed. Wenea Everyday subscription prices are stored separately and only apply when that subscription is selected."},
     "Eranovum": {"source":"https://eranovum.energy/es/nuestras-tarifas/","sourceType":"official_cpo_country_power_band_tariff","candidateDataset":"data/operator_direct/eranovum_official_spain.json","upTo22KwEurPerKwh":0.35,"30KwEurPerKwh":0.40,"60KwEurPerKwh":0.43,"120KwEurPerKwh":0.46,"from150KwEurPerKwh":0.49,"rule":"Apply only to Eranovum Spain EVSEs whose power class is positively established; preserve any exact station-level price that differs from the country table. Occupancy penalties are stored separately and are not part of the base energy price."},
-    "EMT Madrid": {"source":"https://www.emtmadrid.es/emting/eulaelectroemt.aspx","sourceType":"official_cpo_current_legal_tariff","candidateDataset":"data/operator_direct/emt_madrid_official_spain.json","colonRapidEurPerKwh":0.40,"emtManagedCarParksRapidEurPerKwh":0.35,"designatedSlowCarParksEurPerKwh":0.35,"rotationAndMixedSlowEurPerKwh":0.00,"rule":"Apply only to EMT Madrid EVSEs whose official category is positively established. Preserve exact station-level prices for special hubs (including Canalejas) and leave unresolved/new hub categories fail-closed."}
+    "EMT Madrid": {"source":"https://www.emtmadrid.es/emting/eulaelectroemt.aspx","sourceType":"official_cpo_current_legal_tariff","candidateDataset":"data/operator_direct/emt_madrid_official_spain.json","colonRapidEurPerKwh":0.40,"emtManagedCarParksRapidEurPerKwh":0.35,"designatedSlowCarParksEurPerKwh":0.35,"rotationAndMixedSlowEurPerKwh":0.00,"rule":"Apply only to EMT Madrid EVSEs whose official category is positively established. Preserve exact station-level prices for special hubs (including Canalejas) and leave unresolved/new hub categories fail-closed."},
+    "Plenergy (Plenoil)": {"sources":["https://plenergy.es/estacion/plenergy-castellon-de-la-plana-v/?lang=en","https://plenergy.es/estacion/plenoil-madrid-III/","https://plenergy.es/estacion/plenergy-ondara-i/","https://plenergy.es/estacion/plenergy-mairena-del-alcor-i/?lang=en"],"sourceType":"official_cpo_station_page_exact_tariff","candidateDataset":"data/operator_direct/plenergy_official_spain.json","validatedStationEurPerKwh":0.36,"validatedStationCount":4,"rule":"Use 0.36 EUR/kWh only for exact station pages currently publishing the numeric charger price and matched by station identity. Do not generalize network-wide; pages with an empty charger price remain fail-closed."}
   },
   "inventoryNote": "The earlier 20-CPO figure was a priority shortlist, not a complete national denominator. REVE states that Spain has more than 180 infrastructure operators; the 189-operator figure is retained only as the best official baseline until the current live CPO inventory can be recovered.",
   "method": "A CPO is counted treated only when an exact non-extrapolated tariff source has been made usable for at least a validated subset and all unresolved rows are explicitly fail-closed. A CPO is set aside only after official site/map, web bundles/APIs, public or guest endpoints/open data/EVSE IDs, useful third-party station services, and available mobile-app surfaces have been explored without obtaining a usable exact tariff source."
