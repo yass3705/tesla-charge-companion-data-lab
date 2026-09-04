@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0.0",
+  "date": "2026-09-04",
+  "country": "FR",
+  "operator": "Enerstock | FR*ENT",
+  "panStations": 103,
+  "panPdc": 792,
+  "status": "set_aside_fail_closed",
+  "reason": "Enerstock confirms that all direct prices are shown in its mobile application and that occasional users can enter through the charger QR-code payment flow, but no anonymous public station/EVSE tariff feed, reusable guest API, or deterministic PAN FR*ENT EVSE-to-QR/app-price mapping was recovered. Current official material also documents promotional/privilege pricing at individual sites, so a national or power-band fallback would be unsafe.",
+  "pathsChecked": [
+    "official website and FAQ",
+    "official public project/station pages",
+    "official QR-code occasional-payment documentation",
+    "official iOS application listing and version history",
+    "public web/search surfaces for app/API/endpoints and FR*ENT/legacy FR*ENR identifiers",
+    "Gireve/Hubject interoperability references",
+    "third-party station tariff surfaces as corroboration only"
+  ],
+  "officialEvidence": [
+    {
+      "url": "https://enerstock.fr/",
+      "finding": "Official FAQ states that all prices are indicated in the Enerstock application; occasional charging is initiated by scanning the charger QR code and entering a payment method."
+    },
+    {
+      "url": "https://enerstock.fr/2021/06/23/le-saviez-vous-enerstock-est-operateur-de-recharge/",
+      "finding": "Official operator page confirms public-partner chargers use QR/NFC and may be paid or free."
+    },
+    {
+      "url": "https://enerstock.fr/nos-realisations/intermarche-saint-gilles/",
+      "finding": "Official site documents site-specific commercial actions giving Enerstock users a privileged recharge price, proving that one operator-wide price cannot be safely inferred."
+    },
+    {
+      "url": "https://apps.apple.com/fr/app/enerstock/id6741111475",
+      "finding": "Official app listing supports station-ID/QR launch and price-related restrictions/promotional tariffs, but does not expose an anonymous reusable tariff feed."
+    }
+  ],
+  "tccRule": "Do not assign an Enerstock price unless an exact tariff is captured for the same station/EVSE from the official app/QR payment surface or another source that deterministically identifies that EVSE. Leave every other FR*ENT row unpriced."
+}
