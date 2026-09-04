@@ -1,22 +1,25 @@
 {
   "schemaVersion":"1.0.0",
-  "updatedAt":"2026-09-04T06:12:00Z",
+  "updatedAt":"2026-09-04T07:03:00Z",
   "denominator":291,
-  "treated":57,
-  "remaining":234,
-  "setAside":5,
-  "activeRemaining":229,
-  "supersedes":"reports/france/cpo-progress-state.json@86b5a480f34637f6ecc5995d3349e2b05aeb13f2",
-  "newlyTreatedSincePreviousPersistedPoint":["Soregies","SOREGIES MOBILITES","Sowatt Solutions","R3"],
-  "newlySetAsideSincePreviousPersistedPoint":["Ze-Watt","RossiniEnergy"],
-  "setAsideOperators":["AVIA/Picoty","YES55","Load Stations","Ze-Watt","RossiniEnergy"],
-  "activeInvestigations":[],
+  "treated":59,
+  "remaining":232,
+  "setAside":6,
+  "activeRemaining":226,
+  "supersedes":"reports/france/cpo-progress-state-latest.json@d95f3656bafc8cc87d7d57991c7aeb9c85431ac6",
+  "newlyTreatedSincePreviousPersistedPoint":["BOUYGUES ENERGIES SERVICES","SEOLIS"],
+  "newlySetAsideSincePreviousPersistedPoint":["Enerstock | FR*ENT"],
+  "setAsideOperators":["AVIA/Picoty","YES55","Load Stations","Ze-Watt","RossiniEnergy","Enerstock | FR*ENT"],
+  "activeInvestigations":["DREAM ENERGY"],
   "newEvidence":[
-    "data/operator_direct/soregies_tariff_rules_france_2026.json",
-    "data/operator_direct/sowatt_exact_pricing_rules_france.json",
-    "data/operator_direct/r3_monta_exact_pricing_rules_france.json",
-    "reports/france/ze-watt/set-aside-2026-09-04.json",
-    "reports/france/rossinienergy/set-aside-2026-09-04.json"
+    "reports/france/enerstock/set-aside-2026-09-04.json",
+    "data/operator_direct/bouygues_energies_services_alias_exact_pricing_rules_france.json",
+    "data/operator_direct/seolis_alterbase_tariff_rules_france_2026.json"
+  ],
+  "notes":[
+    "Enerstock exposes exact prices in its official app/QR flow and documents site-specific promotional pricing, but no anonymous reusable EVSE tariff feed or deterministic FR*ENT EVSE-to-QR/app-price mapping was recovered; all unresolved rows stay fail-closed.",
+    "BOUYGUES ENERGIES SERVICES is covered only as an identity alias through the already validated Bouygues/Alize exact-PDC public-map tariff path; no operator-wide price inheritance is allowed.",
+    "SEOLIS/AlterBase current official direct grid is power/mode/profile-specific: subscriber AC/DC <24 kW 0.432 EUR/kWh, DC >25 kW 0.528; occasional AC/DC <24 kW 0.528, DC >25 kW 0.612 plus 0.996 EUR/session. Official 24-25 kW boundary remains fail-closed."
   ],
   "method":"Count a CPO treated only when an exact non-extrapolated tariff source/rule is usable for validated direct EVSE scope and unresolved rows remain fail-closed. Set aside only after reasonable official web/map, JS/API/guest/open-data/EVSE, third-party service and app/payment surfaces have been exhausted."
 }
