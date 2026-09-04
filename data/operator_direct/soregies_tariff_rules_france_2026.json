@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0.0",
+  "operator": "Sorégies Mobilités",
+  "country": "FR",
+  "verifiedAt": "2026-09-04",
+  "source": "https://www.soregies.fr/wp-content/uploads/sites/10/2025/11/Tarifs-soregies-mobilites-TTC-01-11.pdf",
+  "liveSource": "https://www.soregies.fr/professionnels/soregies-mobilites-pro/",
+  "scope": "Only EVSE positively identified as Sorégies-operated charging points. Roaming/partner EVSE never inherit these rates.",
+  "timeBandsLocal": {
+    "offPeak": ["12:00-17:00", "22:00-07:00"],
+    "peak": ["07:00-12:00", "17:00-22:00"]
+  },
+  "publicDirect": {
+    "sessionFeeEur": 0.99,
+    "bands": [
+      {"class":"normal","powerKw":"<=22","offPeakEurPerKwh":0.36,"peakEurPerKwh":0.41,"overstayEurPerMinute":0.01,"overstayAfterMinutes":420},
+      {"class":"accelerated","powerKw":">22 and <=50","offPeakEurPerKwh":0.42,"peakEurPerKwh":0.47,"overstayEurPerMinute":0.16,"overstayAfterMinutes":120},
+      {"class":"rapid","powerKw":">50 and <=200","offPeakEurPerKwh":0.67,"peakEurPerKwh":0.71,"overstayEurPerMinute":0.30,"overstayAfterMinutes":60}
+    ]
+  },
+  "soregiesCard": {
+    "sessionFeeEur": 0.99,
+    "bands": [
+      {"class":"normal","powerKw":"<=22","offPeakEurPerKwh":0.27,"peakEurPerKwh":0.38},
+      {"class":"accelerated","powerKw":">22 and <=50","offPeakEurPerKwh":0.33,"peakEurPerKwh":0.44},
+      {"class":"rapid","powerKw":">50 and <=200","offPeakEurPerKwh":0.42,"peakEurPerKwh":0.59}
+    ]
+  },
+  "failClosed": true,
+  "rule": "Apply only when operator identity, nominal EVSE power and local time band are known. Never infer an ultra-rapid >200 kW price from the <=200 kW grid and never apply Sorégies direct prices to roaming partners."
+}
