@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0.0",
+  "operator": "E-Totem",
+  "country": "FR",
+  "capturedAt": "2026-09-04T00:10:00Z",
+  "panScope": {"stations": 607, "pdc": 2790, "networks": {"FR*ETI": 486, "Saint-Etienne-Metropole": 121}},
+  "status": "active_not_treated",
+  "officialSurfacesChecked": [
+    "https://www.e-totem.eu/services/operateur-ou-delegataire-de-service/",
+    "https://www.e-totem.fr/#/home/ou_se_recharger",
+    "https://www.e-totem.eu/application-e-totem/",
+    "https://saint-etienne-metropole.e-totem.fr/"
+  ],
+  "findings": [
+    "Current official mobility page says the national Liberte offer bills actual consumption in kWh and the SEMOB subscription is 45 EUR/month for 100 kWh, i.e. 0.45 EUR/kWh instead of 0.59 EUR/kWh.",
+    "Official material also states that Liberte pricing depends on each network; therefore 0.59 EUR/kWh cannot safely be applied to every E-Totem-operated EVSE.",
+    "Older official station/network pages show materially different tariffs (for example Saint-Etienne network and individual retail-site examples), confirming that historical or network-specific values must not be extrapolated.",
+    "The public charging map itself is a JavaScript shell and did not expose an anonymous indexed station-level tariff payload in this pass. The private account surface is authenticated."
+  ],
+  "nextChecks": [
+    "Inspect current web-app bundles and network calls for anonymous station/EVSE tariff endpoints.",
+    "Test exact EVSE identifiers from FR*ETI and FR*ESE open-data inventories against any guest endpoint discovered.",
+    "Inspect the mobile app only if the public web/API route remains insufficient."
+  ],
+  "failClosedRule": "Do not apply 0.59 EUR/kWh, 0.45 EUR/kWh SEMOB subscriber pricing, historical Saint-Etienne tariffs, or any site example outside its explicitly published scope."
+}
