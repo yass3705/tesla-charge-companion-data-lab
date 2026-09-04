@@ -1,19 +1,19 @@
 {
   "schemaVersion": "1.0.0",
-  "updatedAt": "2026-09-04T04:25:00Z",
+  "updatedAt": "2026-09-04T04:31:00Z",
   "denominator": 291,
-  "treated": 52,
-  "remaining": 239,
+  "treated": 53,
+  "remaining": 238,
   "setAside": 3,
-  "activeRemaining": 236,
+  "activeRemaining": 235,
   "baselineBeforeRun": 22,
-  "newlyTreatedSinceBaseline": ["Road / E-Flux","ChargePoint Austria GmbH","Modulo","Freshmile","Atlante","ENGIE Vianeo","Greenflux","QOVOLTIS","E.Leclerc","EASYCHARGE","SPIE CityNetworks","DRIVECO","Power Dot France","WAAT","Bouygues Energies & Services","IZIVIA","TotalEnergies Marketing France","TotalEnergies Charging Services","Allego","GROUPE INDIGO","Tesla","Lidl France","Electra","E-Totem","Bump","EVzen","STATIONS-E","LIDL France","TESLA France SARL","Interparking France"],
+  "newlyTreatedSinceBaseline": ["Road / E-Flux","ChargePoint Austria GmbH","Modulo","Freshmile","Atlante","ENGIE Vianeo","Greenflux","QOVOLTIS","E.Leclerc","EASYCHARGE","SPIE CityNetworks","DRIVECO","Power Dot France","WAAT","Bouygues Energies & Services","IZIVIA","TotalEnergies Marketing France","TotalEnergies Charging Services","Allego","GROUPE INDIGO","Tesla","Lidl France","Electra","E-Totem","Bump","EVzen","STATIONS-E","LIDL France","TESLA France SARL","Interparking France","Virta"],
   "setAsideOperators": [
     {"operator":"AVIA/Picoty","reason":"Exact direct station tariff still unresolved after direct/operator and public ChargePoint EVSE checks."},
     {"operator":"YES55","reason":"Exact guest tariff path is protected by reCAPTCHA/authentication; no anonymous exact EVSE feed found."},
     {"operator":"Load Stations","reason":"Exact guest tariff path is protected by reCAPTCHA/authentication; no anonymous exact EVSE feed found."}
   ],
-  "activeInvestigations": ["Virta"],
+  "activeInvestigations": ["Ze-Watt"],
   "treatedEvidence": {
     "Power Dot France":{"source":"https://api.pwrdt.com/powerdot.adhoc.v1.AdhocAPI/GetChargerInfo","sourceType":"direct_cpo_public_adhoc_api","uniqueIrvePdc":7616,"coveredIrvePdc":7069,"coveredIrveStations":1098,"pricedConnectors":7063,"unresolvedPdc":547,"rule":"Only connector tariffs returned by the official Power Dot public ad-hoc API are overlaid; all unmatched or failed rows remain fail-closed."},
     "WAAT":{"source":"https://app.monta.app/roaming/monta-as-a-cpo-pricing","sourceType":"public_cpo_platform_exact_evse_pricing","exportCsv":"https://app.monta.app/roaming/monta-as-a-cpo-pricing/export/csv","exportJson":"https://app.monta.app/roaming/monta-as-a-cpo-pricing/export/json","evsePrefix":"FR*WA2*","rule":"Use only rows whose exact EVSE ID starts FR*WA2* and the tariff fields returned by Monta's public CPO pricing dataset. Never apply a site, operator or national fallback; every PAN EVSE absent from the public export remains fail-closed/unpriced."},
@@ -32,7 +32,8 @@
     "STATIONS-E":{"source":"https://stations-e.com/fr/tarification","sourceType":"official_direct_network_tariff_grid","candidateDataset":"data/operator_direct/stations_e_tariff_rules_france.json","panStations":566,"panPdc":1160,"directPaymentEurPerKwh":0.54,"badgeUniversalEurPerKwh":{"ac22OrDc24":0.39,"dc50":0.39},"expressEEurPerKwh":{"ac22OrDc24":0.32,"dc50":0.35},"accessEEurPerKwh":{"ac22OrDc24":0.29,"dc50":0.35},"postCharge":{"graceMinutes":15,"eurPerMinute":0.10,"ac22ExemptWindowLocal":"23:00-07:00"},"rule":"Apply only to EVSE positively identified as direct STATIONS-E points and classified as 22AC, 24DC or 50DC. Partner stations use partner-defined prices and must never inherit STATIONS-E direct rates. Unknown or ambiguous EVSE remain fail-closed."},
     "LIDL France":{"source":"https://www.lidl.fr/c/tarifs-bornes/s10027299","sourceType":"official_national_direct_power_type_tariff","candidateDataset":"data/operator_direct/lidl_tariff_rules_france.json","panStations":186,"panPdc":954,"directAcEurPerKwh":0.29,"directDcEurPerKwh":0.39,"billingBasis":"kWh_only","rule":"Same official Lidl France direct tariff applies only to rows positively identified as Lidl-operated direct charging points; classify AC versus DC from documented connector type. Mobility-card surcharges and ambiguous rows remain fail-closed."},
     "TESLA France SARL":{"source":"https://www.tesla.com/findus","sourceType":"official_public_station_exact_pricing","panStations":33,"panPdc":940,"pricingModel":"site-specific time bands; exact Find Us/app tariff only","congestionFeeFranceEurPerMinute":0.50,"rule":"Treat the legal-entity PAN label as Tesla direct only where the EVSE/site is positively matched to an official Tesla Supercharger location. Use only that exact site's current Find Us/app price bands; never inherit a national or nearby Tesla price. Unmatched rows remain fail-closed."},
-    "Interparking France":{"source":"https://www.interparking.fr/fr/recharge-vehicule-electrique-parking/","sourceType":"official_direct_network_tariff","candidateDataset":"data/operator_direct/interparking_tariff_rules_france.json","panStations":38,"panPdc":904,"activationFeeEur":0,"eurPerKwh":0.50,"connectionFeeEur":0,"rule":"Apply only to EVSE positively identified as Interparking France direct charging points in the published scope. Third-party mobility-card surcharges are external and must not be inferred; ambiguous or separately operated rows remain fail-closed."}
+    "Interparking France":{"source":"https://www.interparking.fr/fr/recharge-vehicule-electrique-parking/","sourceType":"official_direct_network_tariff","candidateDataset":"data/operator_direct/interparking_tariff_rules_france.json","panStations":38,"panPdc":904,"activationFeeEur":0,"eurPerKwh":0.50,"connectionFeeEur":0,"rule":"Apply only to EVSE positively identified as Interparking France direct charging points in the published scope. Third-party mobility-card surcharges are external and must not be inferred; ambiguous or separately operated rows remain fail-closed."},
+    "Virta":{"source":"https://charge.virtaglobal.com/","sourceType":"official_anonymous_exact_chargepoint_pricing_surface","candidateDataset":"data/operator_direct/virta_exact_pricing_rules_france.json","panStations":886,"panPdc":891,"pricingModel":"charge-point specific; operator-controlled exact price displayed before charging","authentication":"not_required_for_one_time_payment","rule":"Never infer a Virta-wide tariff. Use only tariff components shown for the exact charger ID on Virta's official one-time-payment website or mobile app. Preserve energy, time, session and alternate-period components; Connected-to-Virta and roaming points may differ. Unmatched EVSE remain fail-closed."}
   },
   "method": "A CPO is counted treated only when an exact non-extrapolated tariff source has been made usable for at least a validated subset and all unresolved rows are explicitly fail-closed. A CPO is set aside only after official site/map, web bundles/APIs, public or guest endpoints/open data/EVSE IDs, useful third-party station services, and available mobile-app surfaces have been explored without obtaining a usable exact tariff source."
 }
