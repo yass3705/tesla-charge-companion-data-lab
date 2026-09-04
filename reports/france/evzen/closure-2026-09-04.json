@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-09-04T03:06:44Z",
+  "operator": "EVzen",
+  "status": "treated",
+  "panScope": {"stations": 414, "pdc": 1612},
+  "existingEvidence": [
+    "data/operator_direct/riviera_francaise_carf_evzen_official_paca.json",
+    "data/operator_direct/larecharge_evzen_official_paca.json",
+    "data/operator_direct/wiiiz_evzen_official_paca.json",
+    "data/operator_direct/simone_evzen_official_paca.json"
+  ],
+  "officialSources": [
+    "https://www.evzen.com/fr/recharger-mon-vehicule",
+    "https://www.evzen.com/fr/rechercher-une-borne",
+    "https://www.evzen.com/fr/reseau-simone",
+    "https://www.evzen.com/fr/reseau-carf",
+    "https://www.evzen.com/fr/reseau-larecharge",
+    "https://www.evzen.com/fr/reseau-wiiiz"
+  ],
+  "directNetwork": {
+    "headlineRangeEurPerKwh": [0.39, 0.55],
+    "exactPriceSurfaces": ["EVzen Charge app", "charger screen", "charger QR code"],
+    "rule": "The range is never a fallback; use only the exact station tariff from an official exact-price surface."
+  },
+  "managedNetworks": {
+    "Simone": "Official network-specific power/subscriber/time tariff grid",
+    "Riviera Francaise": "Official time-of-connection tariff grid, with Moulinet exception",
+    "larecharge": "Official power-band and day/night time-of-connection tariff grid",
+    "WiiiZ": "Official zone/time/subscriber tariff grid"
+  },
+  "failClosedRule": "Apply a published grid only when a PAN station/EVSE is positively tied to the exact EVzen-operated network and tariff conditions. Never transfer rates between networks or use the 0.39-0.55 EUR/kWh headline range as a price. Unmatched rows remain unpriced."
+}
