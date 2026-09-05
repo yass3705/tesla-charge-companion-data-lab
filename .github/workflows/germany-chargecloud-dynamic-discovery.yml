@@ -1,0 +1,53 @@
+name: Germany chargecloud dynamic discovery
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_chargecloud_dynamic_discovery.py'
+      - '.github/workflows/germany-chargecloud-dynamic-discovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Discover and probe chargecloud dynamic AFIR offer
+        run: python scripts/germany_chargecloud_dynamic_discovery.py
+
+      - name: Validate discovery artifact contract
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/germany/chargecloud_dynamic_discovery.json')
+          d=json.loads(p.read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-chargecloud-dynamic-offer-discovery'
+          assert d['scope']['stagedOnly'] is True
+          assert d['scope']['publishesToTcc'] is False
+          assert d['knownStaticOfferId']=='978597062404620288'
+          assert isinstance(d['candidateOfferIds'], list)
+          if d['resolved']:
+              assert d['resolvedDynamicOfferId'] in d['candidateOfferIds']
+              probe=next(x for x in d['probes'] if x['offerId']==d['resolvedDynamicOfferId'])
+              assert probe['file']['isDynamicStatusPublication'] is True
+          print('TCC_CHARGECLOUD_DISCOVERY_VALIDATED='+json.dumps({
+              'resolved': d['resolved'],
+              'resolvedDynamicOfferId': d['resolvedDynamicOfferId'],
+              'candidateCount': len(d['candidateOfferIds']),
+              'knownStaticMetadataReachable': d.get('knownStaticMetadataReachable'),
+          },sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-chargecloud-dynamic-discovery
+          path: data/germany/chargecloud_dynamic_discovery.json
+          if-no-files-found: error
+          retention-days: 30

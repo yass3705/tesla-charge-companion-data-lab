@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "capturedAt": "2026-09-02",
+  "purpose": "Official-source research contract for exact direct/ad-hoc pricing. Values that are ranges, minima, or maxima are deliberately not projected to individual stations/EVSEs.",
+  "operators": {
+    "DEALL": {
+      "operator": "Allego GmbH",
+      "status": "partial",
+      "officialSources": [
+        "https://www.allego.eu/de/preisgestaltung/",
+        "https://www.allego.eu/overstay-fee/",
+        "https://www.allego.eu/de/finden-sie-uns/"
+      ],
+      "verifiedDirectPricingGermany": {
+        "ultrafast350KwhEur": 0.76,
+        "fast150KwhEur": 0.66,
+        "regular50KwhEurRange": [0.48, 0.60],
+        "note": "The official Germany pricing page publishes exact direct prices for the 350 kW and 150 kW product bands, but only a 0.48-0.60 EUR/kWh range for the regular/50 kW band. The exact tariff is displayed before charging; the range must not be flattened or assigned by inference."
+      },
+      "verifiedHpcOverstay": {
+        "eurPerMinute": 0.246,
+        "startsAfterMinutesFromSessionStart": 45,
+        "condition": "charging has ended",
+        "scope": "Allego-owned HPC chargers in Germany"
+      },
+      "stationFinderPowerFiltersKw": [
+        "0-22",
+        "22-50",
+        "50-150",
+        "200+"
+      ],
+      "neededToComplete": "Resolve Allego's public station/QR tariff payload (or equivalent official station-level feed) so every DEALL station can be assigned its exact current direct price, especially the regular/<=50 kW stations whose official national page only exposes a price range. Do not infer the exact value from power alone without a documented Allego mapping."
+    },
+    "DEIOY": {
+      "operator": "IONITY GmbH",
+      "status": "partial",
+      "officialSources": [
+        "https://www.ionity.eu/",
+        "https://www.ionity.eu/at/stories/why-are-charging-prices-changing-across-europe",
+        "https://support.ionity.eu/faqs/how-can-i-start-the-charging-process-via-qr-code",
+        "https://payment.ionity.eu/"
+      ],
+      "verifiedGermanyPricing": {
+        "currentWebsiteMinimums": {
+          "directEurPerKwh": 0.72,
+          "appEurPerKwh": 0.68,
+          "powerAnnualEurPerKwh": 0.42,
+          "powerMonthlyEurPerKwh": 0.41,
+          "motionAnnualEurPerKwh": 0.53,
+          "motionMonthlyEurPerKwh": 0.51
+        },
+        "officialJuly2026DirectAdHocMaximumEurPerKwh": 0.76,
+        "note": "IONITY explicitly states that its website values are current minimum prices and the station price can be higher. Its July 2026 pricing explanation states that Germany direct/ad-hoc pricing is up to 0.76 EUR/kWh and that the applicable price is shown in the app or on the charger. Therefore 0.72 EUR/kWh must not be applied network-wide."
+      },
+      "publicDirectFlow": {
+        "paymentWebsite": "https://payment.ionity.eu/",
+        "chargerSelection": "Official support confirms that the charger can be selected manually on the payment website or opened from the charger QR code."
+      },
+      "neededToComplete": "Discover a stable public station/EVSE identifier-to-price contract in payment.ionity.eu or another official station feed, then capture the applicable direct tariff for every DEIOY EVSE. The national minimum/maximum values are not sufficient for exact station-level assignment."
+    }
+  }
+}

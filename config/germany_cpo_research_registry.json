@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "0.1.1",
+  "countryCode": "DE",
+  "scope": {
+    "keyType": "canonical_evse_party_prefix",
+    "prefixFormat": "DE + 3-character party id, separators removed",
+    "purpose": "Track researched CPO prefixes that are not yet fully represented by exact tariff evidence in the staging catalog."
+  },
+  "entries": {
+    "DE811": {
+      "status": "partial",
+      "operator": "Robert Bosch GmbH",
+      "reason": "Multiple exact Bosch station/EVSE prices are verifiable, but they materially vary across sites and connector types: examples include 0.38 EUR/kWh AC, 0.55 EUR/kWh DC and other sites with 0.45/0.65 EUR/kWh plus a post-45-minute time fee. A single Bosch network tariff would therefore be an unsafe extrapolation.",
+      "evidencePaths": ["data/germany/research/cpo_batch_lvp_mer_enercity_bosch_hochtief_2026-09-02.json"],
+      "neededToComplete": "Build an exact DE811 EVSE tariff map from Mobilithek/AFIR or public QR/payment station payloads, including per-EVSE energy price and any blocking/time component."
+    },
+    "DEALL": {
+      "status": "partial",
+      "operator": "Allego GmbH",
+      "reason": "Official current Germany direct pricing is exact for the 350 kW (0.76 EUR/kWh) and 150 kW (0.66 EUR/kWh) product bands, but the official regular/50 kW band is only published as a 0.48-0.60 EUR/kWh range. Allego also publishes a Germany HPC overstay fee of 0.246 EUR/min after 45 minutes when charging has ended. The exact regular-band station price therefore cannot be assigned network-wide without a station/QR mapping.",
+      "evidencePaths": ["data/germany/research/allego_ionity_direct_pricing_2026-09-02.json"],
+      "neededToComplete": "Resolve Allego's public station/QR tariff payload or equivalent official station-level feed and attach the exact current direct tariff to every DEALL station/EVSE. Do not infer the exact 0.48-0.60 EUR/kWh regular-band value from power alone."
+    },
+    "DECNT": {
+      "status": "partial",
+      "operator": "GP Joule Connect GmbH",
+      "reason": "Official AFIR/Mobilithek publication discovery is implemented, but exact tariff-to-station/EVSE mapping is not yet exhaustive.",
+      "evidencePaths": ["scripts/germany_mobilithek_search_contract_probe.py", ".github/workflows/germany-mobilithek-search-contract-probe.yml"],
+      "neededToComplete": "Resolve the official publication payload and attach each exact ad-hoc tariff to the corresponding station/EVSE without extrapolation."
+    },
+    "DEENC": {
+      "status": "partial",
+      "operator": "enercity AG",
+      "reason": "enercity officially states that ad-hoc/FlexLaden current prices are shown at the station and that selected stations can use dynamic prices. SmartLaden also adds app-specific dynamic behavior and time-dependent blocking-fee rules. A national flat direct tariff would therefore be incorrect.",
+      "evidencePaths": ["data/germany/research/cpo_batch_lvp_mer_enercity_bosch_hochtief_2026-09-02.json"],
+      "neededToComplete": "Resolve the current public payment/display or AFIR/Mobilithek station/EVSE price feed, including time validity and blocking rules, for all DEENC EVSEs."
+    },
+    "DEESB": {
+      "status": "partial",
+      "operator": "Energie Südbayern GmbH",
+      "reason": "ESB officially confirms QR/app/card activation and publishes its authenticated FLEX mobil card tariff, but that subscriber tariff is not the direct/ad-hoc tariff. A current station-level aggregator reports 0.49 EUR/kWh ad-hoc for its priced DEESB sample, yet that sample covers only 86 charge points versus 1,459 EVSEs represented by the V9 staging catalog. Network-wide exact pricing and blocking conditions therefore cannot be extrapolated.",
+      "evidencePaths": ["data/germany/research/esb_direct_pricing_2026-09-02.json"],
+      "neededToComplete": "Resolve the direct QR/card-payment tariff contract for every ESB station/EVSE via the public checkout, Ladenetz/Smartlab payload, Mobilithek/AFIR tariff feed, or equivalent verifiable station-level source, including any blocking or parking conditions."
+    },
+    "DEHTL": {
+      "status": "partial",
+      "operator": "HOCHTIEF Ladepartner GmbH",
+      "reason": "Exact station-level ad-hoc tariffs are verifiable for a subset of DEHTL, including 0.44, 0.52 and 0.55 EUR/kWh examples. The variation proves that a flat network tariff must not be inferred from one site.",
+      "evidencePaths": ["data/germany/research/cpo_batch_lvp_mer_enercity_bosch_hochtief_2026-09-02.json"],
+      "neededToComplete": "Harvest the exact tariff for every DEHTL EVSE from Mobilithek/Eco-Movement-derived open data or public QR/payment pages, preserving connector-specific energy and time/blocking components."
+    },
+    "DEI2G": {
+      "status": "partial",
+      "operator": "inno2grid GmbH",
+      "reason": "At least one verifiable public inno2grid station-level ad-hoc tariff is now available (Areal Böhler Autowerk, Meerbusch: 0.49 EUR/kWh), while other inno2grid stations still report the direct ad-hoc price as unknown. A network-wide tariff therefore must not be extrapolated.",
+      "evidencePaths": [],
+      "neededToComplete": "Map the verified 0.49 EUR/kWh station to its exact DEI2G EVSEs, then obtain an official/public ad-hoc checkout, QR tariff endpoint, station-level CPO export, or equivalent verifiable exact price for every remaining DEI2G station/EVSE."
+    },
+    "DEIOY": {
+      "status": "partial",
+      "operator": "IONITY GmbH",
+      "reason": "IONITY's current Germany page exposes 0.72 EUR/kWh Direct and 0.68 EUR/kWh App as minimum prices, while the official July 2026 pricing explanation says Germany direct/ad-hoc can be up to 0.76 EUR/kWh and the applicable price is shown in the app or on the charger. Official support confirms a public QR/manual charger-selection flow at payment.ionity.eu. A single national tariff must therefore not be applied to all DEIOY EVSEs.",
+      "evidencePaths": ["data/germany/research/allego_ionity_direct_pricing_2026-09-02.json"],
+      "neededToComplete": "Resolve a stable public station/EVSE identifier-to-price contract in payment.ionity.eu or another official station feed and capture the applicable exact direct tariff for every DEIOY EVSE."
+    },
+    "DELVP": {
+      "status": "partial",
+      "operator": "LadeVerbundPlus / N-ERGIE and partners",
+      "reason": "Official LadeVerbundPlus pricing publishes the network energy component (ad-hoc 0.52 EUR/kWh AC and 0.62 EUR/kWh DC), but blocking-fee applicability is explicitly station-dependent: selected AC stations can charge 0.05 EUR/min from minute 241 during 08:00-20:00, and DC time-fee conditions must be resolved per applicable tariff/station. Exact total cost therefore needs station-level surcharge applicability.",
+      "evidencePaths": ["data/germany/research/cpo_batch_lvp_mer_enercity_bosch_hochtief_2026-09-02.json"],
+      "neededToComplete": "Attach the official ad-hoc AC/DC energy tariff only to confirmed LadeVerbundPlus EVSEs and resolve the per-station blocking-fee flag/rule from the app, QR checkout or other official station metadata before declaring complete."
+    },
+    "DEMER": {
+      "status": "partial",
+      "operator": "Mer Germany GmbH",
+      "reason": "Mer officially publishes exact Connect Me prices by power band (0.49 EUR/kWh AC <=49 kW, 0.57 EUR/kWh DC 50-75 kW, 0.69 EUR/kWh HPC 76-400 kW) and states no blocking fee, but ad-hoc prices are only published as maxima and can vary by station. Maxima cannot be used as exact station tariffs.",
+      "evidencePaths": ["data/germany/research/cpo_batch_lvp_mer_enercity_bosch_hochtief_2026-09-02.json"],
+      "neededToComplete": "Apply the exact Connect Me app tariff by validated connector power band and resolve every station/EVSE ad-hoc tariff from Mer's station/payment surface or equivalent official station-level feed."
+    },
+    "DEQRM": {
+      "status": "partial",
+      "operator": "Qwello Deutschland GmbH",
+      "reason": "Public web/API discovery is implemented, but tariff-to-EVSE mapping is not yet exhaustive and station prices can vary.",
+      "evidencePaths": ["scripts/germany_qwello_api_discovery.py", "scripts/germany_qwello_chunk_discovery.py", ".github/workflows/germany-qwello-api-discovery.yml", ".github/workflows/germany-qwello-chunk-discovery.yml"],
+      "neededToComplete": "Resolve an exact public tariff endpoint or equivalent verifiable mapping for every DEQRM EVSE."
+    },
+    "DEQWC": {
+      "status": "partial",
+      "operator": "Qwello Deutschland GmbH",
+      "reason": "Public web/API discovery is implemented, but tariff-to-EVSE mapping is not yet exhaustive and station prices can vary.",
+      "evidencePaths": ["scripts/germany_qwello_api_discovery.py", "scripts/germany_qwello_chunk_discovery.py", ".github/workflows/germany-qwello-api-discovery.yml", ".github/workflows/germany-qwello-chunk-discovery.yml"],
+      "neededToComplete": "Resolve an exact public tariff endpoint or equivalent verifiable mapping for every DEQWC EVSE."
+    },
+    "DETMO": {
+      "status": "partial",
+      "operator": "TEAG Mobil GmbH",
+      "reason": "The official own-network TEAG app tariff is exact and a current energy-volume promotion is modeled, but other payment methods explicitly use the tariff displayed at each station/billing system; those station-level direct prices are not yet mapped exhaustively.",
+      "evidencePaths": ["scripts/germany_teag_direct_tariff.py", ".github/workflows/germany-teag-direct-tariff.yml"],
+      "neededToComplete": "Map the exact ad-hoc/other-payment tariff shown for every DETMO station/EVSE, and enable the V9 billing layer to represent the app promotion exactly (0.49 EUR/kWh for kWh 1-28 then 0.29 EUR/kWh from kWh 29 through 2026-09-30) without flattening it."
+    }
+  }
+}

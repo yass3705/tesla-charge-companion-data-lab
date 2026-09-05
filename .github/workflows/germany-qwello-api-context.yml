@@ -1,0 +1,37 @@
+name: Germany Qwello API context
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_qwello_api_context.py'
+      - '.github/workflows/germany-qwello-api-context.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  context:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture Qwello API code context
+        run: python scripts/germany_qwello_api_context.py
+      - name: Validate context
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/qwello_api_context.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-qwello-api-context'
+          assert d['contexts']['https://services.qwello.eu/v1']
+          assert d['contexts']['https://services.qwello.eu/v1/us/public/web']
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-qwello-api-context
+          path: data/germany/qwello_api_context.json
+          if-no-files-found: error
+          retention-days: 30

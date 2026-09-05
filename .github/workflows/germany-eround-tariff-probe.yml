@@ -1,0 +1,49 @@
+name: Germany eRound tariff structure probe
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_eround_tariff_probe.py'
+      - '.github/workflows/germany-eround-tariff-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inspect eRound actual raw price structures
+        run: python scripts/germany_eround_tariff_probe.py
+
+      - name: Validate probe artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/eround_tariff_probe.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-eround-afir-tariff-structure-probe'
+          assert d['provider']=='eround'
+          assert d['scope']['stagedOnly'] is True
+          assert d['scope']['publishesToTcc'] is False
+          assert d['scope']['tariffsRankable'] is False
+          assert d['scope']['emptyEnergyPriceIsNotTariff'] is True
+          s=d['stats']
+          assert s['sites'] > 5000, s
+          assert s['normalizedTariffSites'] > 1000, s
+          assert s['sitesWithActualRawPrice'] > 1000, s
+          assert s['actualRawPriceButParserMissedSites'] >= 0, s
+          print('TCC_EROUND_TARIFF_PROBE_VALIDATED='+json.dumps(s,sort_keys=True))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-eround-tariff-probe
+          path: data/germany/eround_tariff_probe.json
+          if-no-files-found: error
+          retention-days: 30
