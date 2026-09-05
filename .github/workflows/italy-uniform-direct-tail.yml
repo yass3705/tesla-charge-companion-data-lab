@@ -1,0 +1,86 @@
+name: Italy smaller uniform direct tariffs
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/italy-cpo-priority-20260905
+    paths:
+      - scripts/viafast_italy_direct.py
+      - scripts/italy_uniform_direct_tail.py
+      - scripts/flyelectric_italy_direct.py
+      - .github/workflows/italy-uniform-direct-tail.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: italy-uniform-tail-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/italy-cpo-priority-20260905
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download latest successful Italy V9 consolidation
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow italy-v9-consolidation.yml --branch research/italy-consolidation-v9-a2a --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/italy-consolidation
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name italy-v9-consolidated-candidate --dir /tmp/italy-consolidation
+          INPUT="$(find /tmp/italy-consolidation -name 'italy_v9_candidate.json.gz' -print -quit)"
+          test -n "$INPUT" && test -s "$INPUT"
+          cp "$INPUT" /tmp/italy_v9_candidate.json.gz
+      - name: Build smaller uniform candidates
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/viafast_italy_direct.py scripts/italy_uniform_direct_tail.py scripts/flyelectric_italy_direct.py
+          python scripts/viafast_italy_direct.py --input /tmp/italy_v9_candidate.json.gz --output data/national/viafast_direct_italy.json.gz --report data/reports/viafast_italy_direct_report.json
+          python scripts/italy_uniform_direct_tail.py --input /tmp/italy_v9_candidate.json.gz --output data/national/italy_uniform_direct_tail.json.gz --report data/reports/italy_uniform_direct_tail_report.json
+          python scripts/flyelectric_italy_direct.py --input /tmp/italy_v9_candidate.json.gz --output data/national/flyelectric_direct_italy.json.gz --report data/reports/flyelectric_italy_direct_report.json
+      - name: Validate fail-closed coverage
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          v=json.loads(Path('data/reports/viafast_italy_direct_report.json').read_text())
+          t=json.loads(Path('data/reports/italy_uniform_direct_tail_report.json').read_text())
+          f=json.loads(Path('data/reports/flyelectric_italy_direct_report.json').read_text())
+          assert v['counts']=={'evse':167,'stations':84,'rankableDirectEvse':165,'unresolvedEvse':2},v['counts']
+          assert t['counts']['evse']==230 and t['counts']['rankableDirectEvse']==223 and t['counts']['unresolvedEvse']==7,t['counts']
+          assert f['counts']=={'evse':50,'stations':29,'rankableDirectEvse':50,'unresolvedEvse':0},f['counts']
+          print('validated smaller uniform candidates')
+          PY
+      - name: Publish candidates
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/viafast_direct_italy.json.gz data/national/italy_uniform_direct_tail.json.gz data/national/flyelectric_direct_italy.json.gz data/reports/viafast_italy_direct_report.json data/reports/italy_uniform_direct_tail_report.json data/reports/flyelectric_italy_direct_report.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(italy): publish smaller uniform direct tariffs [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:research/italy-cpo-priority-20260905
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: italy-smaller-uniform-direct-tariffs
+          path: |
+            data/national/viafast_direct_italy.json.gz
+            data/national/italy_uniform_direct_tail.json.gz
+            data/national/flyelectric_direct_italy.json.gz
+            data/reports/viafast_italy_direct_report.json
+            data/reports/italy_uniform_direct_tail_report.json
+            data/reports/flyelectric_italy_direct_report.json
+          if-no-files-found: error
+          retention-days: 14
