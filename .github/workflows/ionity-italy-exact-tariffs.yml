@@ -68,12 +68,14 @@ jobs:
       - name: Publish exact candidate
         run: |
           set -euo pipefail
+          BRANCH="research/italy-cpo-priority-20260905"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/national/ionity_exact_italy.json.gz data/reports/ionity_exact_italy_summary.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "data(ionity): publish exact Italy station tariffs [run ${GITHUB_RUN_ID}]"
-          git push origin HEAD:research/italy-cpo-priority-20260905
+          git pull --rebase origin "$BRANCH"
+          git push origin HEAD:"$BRANCH"
 
       - uses: actions/upload-artifact@v4
         if: always()
