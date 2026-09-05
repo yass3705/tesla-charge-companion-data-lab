@@ -1,0 +1,102 @@
+name: Italy uniform direct tariff candidates
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/italy-cpo-priority-20260905
+    paths:
+      - scripts/italy_uniform_direct_tariffs.py
+      - .github/workflows/italy-uniform-direct-tariffs.yml
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: italy-uniform-direct-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/italy-cpo-priority-20260905
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download latest successful Italy V9 consolidation
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow italy-v9-consolidation.yml \
+            --branch research/italy-consolidation-v9-a2a \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/italy-consolidation
+          gh run download "$RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name italy-v9-consolidated-candidate \
+            --dir /tmp/italy-consolidation
+          INPUT="$(find /tmp/italy-consolidation -name 'italy_v9_candidate.json.gz' -print -quit)"
+          test -n "$INPUT" && test -s "$INPUT"
+          cp "$INPUT" /tmp/italy_v9_candidate.json.gz
+          echo "Using Italy V9 consolidation run $RUN_ID"
+
+      - name: Build uniform direct tariff layer
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/italy_uniform_direct_tariffs.py
+          python scripts/italy_uniform_direct_tariffs.py \
+            --input /tmp/italy_v9_candidate.json.gz \
+            --output data/national/italy_uniform_direct_candidate.json.gz \
+            --report data/reports/italy_uniform_direct_report.json
+
+      - name: Validate coverage
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('data/reports/italy_uniform_direct_report.json').read_text())
+          c=r['counts']
+          assert c['operators']==6,c
+          assert c['evse']==24708,c
+          assert c['rankableDirectEvse']==24708,c
+          assert c['unresolvedEvse']==0,c
+          assert set(c['byOperator'])=={'ENX','ONS','IPE','FWY','ENH','ENB'},c
+          print(json.dumps(c,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Publish candidate and audit report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/italy_uniform_direct_candidate.json.gz data/reports/italy_uniform_direct_report.json
+          if git diff --cached --quiet; then
+            echo "No candidate change to publish."
+            exit 0
+          fi
+          git commit -m "data(italy): publish uniform direct tariffs [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:research/italy-cpo-priority-20260905
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: italy-uniform-direct-tariffs
+          path: |
+            data/national/italy_uniform_direct_candidate.json.gz
+            data/reports/italy_uniform_direct_report.json
+          if-no-files-found: error
+          retention-days: 14
