@@ -1,0 +1,71 @@
+name: Magis Italy uniform subscriptions
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/italy-cpo-priority-20260905
+    paths:
+      - scripts/magis_italy_subscriptions.py
+      - .github/workflows/magis-italy-subscriptions.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/italy-cpo-priority-20260905
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download latest successful Italy V9 consolidation
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow italy-v9-consolidation.yml --branch research/italy-consolidation-v9-a2a --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          mkdir -p /tmp/italy-consolidation
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name italy-v9-consolidated-candidate --dir /tmp/italy-consolidation
+          INPUT="$(find /tmp/italy-consolidation -name 'italy_v9_candidate.json.gz' -print -quit)"
+          test -n "$INPUT" && test -s "$INPUT"
+          cp "$INPUT" /tmp/italy_v9_candidate.json.gz
+      - name: Build Magis subscription applicability
+        run: |
+          python -m py_compile scripts/magis_italy_subscriptions.py
+          python scripts/magis_italy_subscriptions.py --input /tmp/italy_v9_candidate.json.gz --output data/national/magis_subscriptions_italy.json.gz --report data/reports/magis_subscriptions_italy_report.json
+      - name: Validate
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('data/reports/magis_subscriptions_italy_report.json').read_text())
+          c=r['counts']
+          assert c['evse']==258 and c['stations']==135,c
+          assert c['evseWithApplicableSubscription']>0,c
+          assert r['policy']['basePayPerUseFailClosed'] is True
+          print(json.dumps(c,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/magis_subscriptions_italy.json.gz data/reports/magis_subscriptions_italy_report.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(magis): publish Italy uniform subscriptions [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:research/italy-cpo-priority-20260905
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: magis-italy-uniform-subscriptions
+          path: |
+            data/national/magis_subscriptions_italy.json.gz
+            data/reports/magis_subscriptions_italy_report.json
+          if-no-files-found: error
+          retention-days: 14
