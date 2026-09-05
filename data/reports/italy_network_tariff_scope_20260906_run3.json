@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "generatedAt": "2026-09-06T00:55:31+01:00",
+  "policy": {
+    "directVsEmspSeparated": true,
+    "failClosed": true,
+    "atlanteLast": true
+  },
+  "candidates": [
+    {
+      "partyId": "IOY",
+      "canonicalName": "IONITY GMBH",
+      "inventoryEvse": 313,
+      "inventoryStations": 43,
+      "priority": "network-wide",
+      "statusRecommendation": "treated",
+      "tariffModel": "country_network_wide_by_channel",
+      "tariffChannel": "direct CPO / native app / subscription",
+      "tariffs": [
+        {"channel": "IONITY Direct", "energyEurPerKwh": 0.85, "monthlyFeeEur": 0},
+        {"channel": "IONITY App Go", "energyEurPerKwh": 0.80, "monthlyFeeEur": 0},
+        {"channel": "IONITY Motion monthly", "energyEurPerKwh": 0.60, "monthlyFeeEur": 5.99},
+        {"channel": "IONITY Motion annual", "energyEurPerKwh": 0.63, "annualFeeEur": 59.99},
+        {"channel": "IONITY Power monthly", "energyEurPerKwh": 0.48, "monthlyFeeEur": 11.99},
+        {"channel": "IONITY Power annual", "energyEurPerKwh": 0.50, "annualFeeEur": 119.99}
+      ],
+      "validFrom": "2026-07-01",
+      "officialUrls": [
+        "https://www.ionity.eu/it",
+        "https://www.ionity.eu/fr/stories/pourquoi-les-prix-de-recharge-evoluent-ils-en-europe"
+      ],
+      "positiveEvidence": "IONITY official Italy price table explicitly lists Italy and each native/direct channel; tariff is country-wide and not station-specific.",
+      "coverage": {"rankableEvse": 313, "uncoveredEvse": 0},
+      "confidence": "high"
+    },
+    {
+      "partyId": "ELC",
+      "canonicalName": "Electra Italia s.r.l.",
+      "inventoryEvse": 514,
+      "inventoryStations": 81,
+      "priority": "network-wide",
+      "statusRecommendation": "treated",
+      "tariffModel": "country_network_wide_by_channel",
+      "tariffChannel": "direct CPO native app / bank card terminal",
+      "tariffs": [
+        {"channel": "Electra App / Autocharge", "energyEurPerKwh": 0.69},
+        {"channel": "bank card at terminal", "energyEurPerKwh": 0.79}
+      ],
+      "validFrom": "2026-07-01",
+      "officialUrls": [
+        "https://intercom.help/go-electra/it/articles/7987274-le-nostre-tariffe-di-ricarica",
+        "https://intercom.help/go-electra/it/articles/10749707-tariffe-electra-e-prezzi-variabili"
+      ],
+      "positiveEvidence": "Electra official help center states Italy has fixed prices, no variable station/time pricing in Italy, for slow and fast AC/DC charging.",
+      "fees": {
+        "overstay": "Separate occupancy fee may apply on fast chargers only when SOC >=80% and station saturated; 5-minute grace. Preserve as conditional fee, not energy tariff."
+      },
+      "coverage": {"rankableEvse": 514, "uncoveredEvse": 0},
+      "confidence": "high"
+    },
+    {
+      "partyId": "FLY",
+      "canonicalName": "FlyElectric srl",
+      "inventoryEvse": 50,
+      "inventoryStations": 29,
+      "priority": "network-wide",
+      "statusRecommendation": "treated",
+      "tariffModel": "single_network_price",
+      "tariffChannel": "direct CPO native app",
+      "tariffs": [
+        {"scope": "own network, 22 kW and 50 kW", "energyEurPerKwh": 0.69}
+      ],
+      "officialUrls": ["https://flyelectric.it/home"],
+      "positiveEvidence": "FlyElectric official site says 'Un unico prezzo per tutto' and explicitly applies the same 0.69 EUR/kWh to 22 kW and 50 kW connectors. Roaming starts at 0.74 EUR/kWh and is kept separate as eMSP pricing.",
+      "coverage": {"rankableEvse": 50, "uncoveredEvse": 0},
+      "confidence": "high"
+    },
+    {
+      "partyId": "ENB",
+      "canonicalName": "ENERBROKER S.R.L. (R-ev)",
+      "inventoryEvse": 87,
+      "inventoryStations": 73,
+      "priority": "class-wide",
+      "statusRecommendation": "treated",
+      "tariffModel": "power_band_network_wide",
+      "tariffChannel": "R-ev WALLET",
+      "tariffs": [
+        {"class": "AC", "energyEurPerKwh": 0.65},
+        {"class": "DC <=150 kW", "energyEurPerKwh": 0.85},
+        {"class": "DC >150 kW HPC", "energyEurPerKwh": 0.89}
+      ],
+      "officialUrls": [
+        "https://www.r-ev.it/termini-di-utilizzo-abbonamenti/",
+        "https://www.r-ev.it/termini-di-utilizzo-app/"
+      ],
+      "positiveEvidence": "R-ev official terms define exact WALLET price bands by connector class/power with taxes included.",
+      "coverage": {"rankableIfConnectorPowerKnown": 87, "uncoveredEvse": 0},
+      "confidence": "high"
+    }
+  ],
+  "summary": {
+    "newDeterministicCpos": 4,
+    "newDeterministicEvse": 964,
+    "networkWideCpos": 3,
+    "classWideCpos": 1,
+    "stationLevelInvestigationsDeferred": true
+  }
+}
