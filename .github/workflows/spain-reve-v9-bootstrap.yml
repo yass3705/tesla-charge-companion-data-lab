@@ -1,0 +1,128 @@
+name: Spain REVE V9 bootstrap
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/spain-reve-v9-bootstrap.yml
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      REVE_API_KEY: ${{ secrets.MAPA_REVE_API_KEY }}
+      BASE_URL: https://www.mapareve.es/api/external/v1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/spain-reve-v9
+
+      - name: Validate secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${REVE_API_KEY:-}" ]; then
+            echo "MAPA_REVE_API_KEY is missing" >&2
+            exit 2
+          fi
+
+      - name: Fetch REVE national API snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/spain/reve reports/spain
+          python - <<'PY'
+          import json, os, pathlib, urllib.request, urllib.error, datetime
+
+          base = os.environ['BASE_URL'].rstrip('/')
+          key = os.environ['REVE_API_KEY']
+          outdir = pathlib.Path('artifacts/spain/reve')
+          outdir.mkdir(parents=True, exist_ok=True)
+
+          endpoints = [
+              ('api_docs', '/docs/api-docs.json'),
+              ('cpos', '/cpos'),
+              ('locations', '/locations'),
+              ('operational_status', '/evses/operational_status'),
+              ('connector_tariffs', '/connectors/tariffs'),
+          ]
+
+          report = {
+              'source': 'Mapa REVE / Red Electrica de Espana',
+              'base_url': base,
+              'retrieved_at_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              'request_budget_used': len(endpoints),
+              'request_budget_documented_per_hour': 5,
+              'endpoints': {},
+          }
+
+          def describe(data):
+              d = {'json_type': type(data).__name__}
+              if isinstance(data, list):
+                  d['count'] = len(data)
+                  if data and isinstance(data[0], dict):
+                      d['sample_keys'] = sorted(data[0].keys())
+              elif isinstance(data, dict):
+                  d['top_level_keys'] = sorted(data.keys())
+                  for k, v in data.items():
+                      if isinstance(v, list):
+                          d.setdefault('list_fields', {})[k] = len(v)
+              return d
+
+          for name, path in endpoints:
+              req = urllib.request.Request(
+                  base + path,
+                  headers={'x-api-key': key, 'Accept': 'application/json', 'User-Agent': 'tesla-charge-companion-data-lab/1.0'},
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=90) as r:
+                      body = r.read()
+                      status = r.status
+                      ctype = r.headers.get('content-type', '')
+              except urllib.error.HTTPError as e:
+                  body = e.read()
+                  pathlib.Path(outdir / f'{name}.error.txt').write_bytes(body)
+                  raise RuntimeError(f'{name}: HTTP {e.code}; response saved') from e
+              if status != 200:
+                  raise RuntimeError(f'{name}: unexpected HTTP {status}')
+              try:
+                  data = json.loads(body)
+              except Exception as e:
+                  pathlib.Path(outdir / f'{name}.raw').write_bytes(body)
+                  raise RuntimeError(f'{name}: response is not JSON ({ctype})') from e
+              (outdir / f'{name}.json').write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+              report['endpoints'][name] = {'path': path, 'http_status': status, 'bytes': len(body), **describe(data)}
+
+          pathlib.Path('reports/spain/reve_bootstrap_report.json').write_text(
+              json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8'
+          )
+          print(json.dumps(report, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Upload raw REVE snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: spain-reve-v9-bootstrap
+          path: artifacts/spain/reve/
+          retention-days: 7
+
+      - name: Commit bootstrap report
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/spain/reve_bootstrap_report.json
+          if git diff --cached --quiet; then
+            echo "No report change"
+          else
+            git commit -m "Add Spain REVE API bootstrap report"
+            git push origin HEAD:feature/spain-reve-v9
+          fi
