@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "run": "run24",
+  "generatedAt": "2026-09-06T21:50:53+01:00",
+  "country": "IT",
+  "phase": "second-pass",
+  "policy": {
+    "firstPassComplete": true,
+    "failClosed": true,
+    "directVsEmspSeparated": true,
+    "atlanteLast": true
+  },
+  "investigations": [
+    {
+      "partyId": "ASS",
+      "canonicalName": "AGSM AIM SMART SOLUTIONS S.R.L. / Magis Smart",
+      "inventory": {"evse": 258, "stations": 135},
+      "classification": "station-level-direct-pay-per-use-with-deterministic-subscriptions-separate",
+      "officialEvidence": [
+        {
+          "url": "https://www.magissmart.it/nuova-app-magis-e-mobility",
+          "date": "2026-05-04",
+          "finding": "Magis launched the new e-mobility platform for 275 charging points and explicitly revised the tariff model; pay-per-use cost varies by kWh consumed and AC/DC charger type."
+        },
+        {
+          "url": "https://www.aimmobilita.it/it/web/magis-smart/agsmaim_e-mobility/abbonamenti",
+          "finding": "Current FAQ states pay-per-use price is calculated from tariffs shown in the app at time of use; subscriptions are separately deterministic: AC Small 0.60 EUR/kWh + 5 EUR/month, Medium 0.58 + 10, Large 0.50 + 20; DC Flat 0.74 EUR/kWh + 10 EUR/month, with combined plans."
+        },
+        {
+          "url": "https://www.magissmart.it/e-mobility/app/termini.php",
+          "finding": "Terms distinguish native Magis subscriptions from roaming and expose post-charge penalty rules; roaming tariffs are station-specific and must not be treated as direct CPO pricing."
+        }
+      ],
+      "tariffModel": "direct pay-per-use price displayed in app at time of use; subscription grid deterministic and separate",
+      "tariffChannel": "Magis E-mobility direct; roaming eMSP separate",
+      "subscriptions": [
+        {"name": "Small", "scope": "AC", "energyEurPerKwh": 0.60, "monthlyEur": 5},
+        {"name": "Medium", "scope": "AC", "energyEurPerKwh": 0.58, "monthlyEur": 10},
+        {"name": "Large", "scope": "AC", "energyEurPerKwh": 0.50, "monthlyEur": 20},
+        {"name": "Flat DC", "scope": "DC", "energyEurPerKwh": 0.74, "monthlyEur": 10}
+      ],
+      "fees": {"postChargePenaltyEurPerMin": 0.12, "note": "terms provide connector/time applicability; direct energy price still app-resolved"},
+      "rankableDirectEvseAdded": 0,
+      "blockage": "Current standard pay-per-use energy tariff is not published as a deterministic numeric network grid; app station/connector payload is required.",
+      "resumeCondition": "Resolve Magis E-mobility guest/app backend and map ASS EVSE/connector to exact current pay-per-use price.",
+      "confidence": "high",
+      "negativePaths": ["Do not substitute subscription prices for standard pay-per-use.", "Do not use roaming tariffs as physical CPO direct pricing."]
+    },
+    {
+      "partyId": "NRG",
+      "canonicalName": "NRG4YOU SRL",
+      "inventory": {"evse": 136, "stations": 76},
+      "classification": "station-level",
+      "officialEvidence": [
+        {"url": "https://www.nrg4you.it/", "finding": "NRG4YOU currently advertises charging-station services but publishes no current public network-wide charging tariff."},
+        {"url": "https://restation.it/charging-stations", "finding": "Official Restation portal exposes public station search but no tariff values in the public station listing."},
+        {"url": "https://restation.it/register", "finding": "Portal registration/account flow confirms user/account-gated workflow for service use."}
+      ],
+      "tariffModel": "station/account-session resolved",
+      "tariffChannel": "NRG4YOU Restation direct portal",
+      "rankableDirectEvseAdded": 0,
+      "blockage": "Exact current tariff is not exposed in public station listing and cannot be generalized from stale individual station examples.",
+      "resumeCondition": "Obtain Restation station detail/session payload exposing exact current tariff and join NRG EVSE IDs deterministically.",
+      "confidence": "high",
+      "negativePaths": ["Do not generalize older third-party 0.60 EUR/kWh station examples."]
+    },
+    {
+      "partyId": "GMT",
+      "canonicalName": "G.M.T. S.P.A.",
+      "inventory": {"evse": 325, "stations": 132},
+      "classification": "station-level-platform-configurable",
+      "officialEvidence": [
+        {"url": "https://zapgrid.net/gestionale-zapgrid/", "finding": "ZapGrid by G.M.T. describes its operator management platform as customizable and designed to give station managers control over their charging stations; this is incompatible with assuming one GMT-wide tariff without station mapping."}
+      ],
+      "tariffModel": "operator/site configurable in ZapGrid",
+      "tariffChannel": "ZapGrid hosted direct station pricing; roaming separate",
+      "rankableDirectEvseAdded": 0,
+      "blockage": "No current deterministic G.M.T.-wide price grid; hosted networks may use different prices.",
+      "resumeCondition": "Resolve public/guest ZapGrid station endpoint and map GMT EVSE to hosted operator/site tariff.",
+      "confidence": "high",
+      "negativePaths": ["Do not generalize known individual ZapGrid hosted-network examples to all GMT EVSE."]
+    },
+    {
+      "partyId": "CPO",
+      "canonicalName": "Nucleo - Special Concepts srl",
+      "inventory": {"evse": 160, "stations": 41},
+      "classification": "station-level-with-proven-Coop-Power-subnetwork",
+      "evidence": [
+        {"url": "https://www.vaielettrico.it/le-tariffe-da-sogno-di-coop-power-a-genova-039-euro-in-ac-e-049-in-dc/", "date": "2025-01-20", "finding": "Coop Power stations built with Nucleo were reported at 0.39 EUR/kWh AC 22 kW and from 0.49 EUR/kWh DC 160 kW, with direct card/Charge Assist payment."}
+      ],
+      "tariffModel": "subnetwork/site-specific",
+      "tariffChannel": "direct card/Charge Assist on mapped Coop Power sites; other Nucleo sites unresolved",
+      "rankableDirectEvseAdded": 0,
+      "blockage": "Coop Power pricing is evidence for a specific Nucleo subnetwork, not proof for the full 160-EVSE CPO scope; exact EVSE-to-subnetwork mapping is required and current 2026 price continuity must be verified before promotion.",
+      "resumeCondition": "Map CPO EVSE to Coop Power stations and verify current per-station Charge Assist/direct tariff payload.",
+      "confidence": "medium-high",
+      "negativePaths": ["Do not generalize Coop Power tariffs to all Nucleo EVSE."]
+    }
+  ],
+  "result": {
+    "newlyTreatedCpos": [],
+    "newRankableEvse": 0,
+    "newStatusTransitions": 0,
+    "pathsClosedWithoutNewEvidenceRequirement": ["ASS generic pay-per-use tariff search", "NRG public network-wide tariff search", "GMT network-wide tariff search", "CPO/Nucleo global tariff extrapolation"]
+  }
+}
