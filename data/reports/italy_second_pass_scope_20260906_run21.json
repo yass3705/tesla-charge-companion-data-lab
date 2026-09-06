@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "run": "run21",
+  "generatedAt": "2026-09-06T18:55:00+01:00",
+  "policy": {
+    "firstPassComplete": true,
+    "secondPassOnly": true,
+    "atlanteLast": true,
+    "failClosed": true,
+    "directVsEmspSeparated": true
+  },
+  "investigations": [
+    {
+      "partyId": "F2X",
+      "canonicalName": "Free To X S.p.A.",
+      "status": "partial",
+      "priority": "class-wide",
+      "physicalEvse": 894,
+      "tariffChannel": "direct CPO / ad-hoc card",
+      "currentTariffs": [
+        {"class": "AC", "energyEurPerKwh": 0.50, "vatIncluded": true},
+        {"class": "DC", "energyEurPerKwh": 0.65, "vatIncluded": true},
+        {"class": "HPC", "energyEurPerKwh": 0.79, "vatIncluded": true},
+        {"class": "DC<=64kW promotional", "energyEurPerKwh": 0.50, "vatIncluded": true, "validFrom": "2026-07-15", "validThrough": "2026-09-30", "paymentCondition": "credit/debit card"}
+      ],
+      "officialUrls": [
+        "https://freeto-x.it/metodi-di-pagamento/pagamento-con-carta-di-credito/",
+        "https://freeto-x.it/promo/"
+      ],
+      "positiveEvidence": [
+        "Official Free To X payment page currently publishes AC 0.50 EUR/kWh, DC 0.65 EUR/kWh and HPC 0.79 EUR/kWh, VAT included, for card payment.",
+        "Official Charge&Save promotion gives an exact deterministic temporary class: DC charging up to 64 kW at 0.50 EUR/kWh, VAT included, from 2026-07-15 through 2026-09-30 when paying by credit/debit card.",
+        "Free To X states all motorway stations have a card terminal; the terminal can control chargers/connectors at the site."
+      ],
+      "negativePaths": [
+        "Do not inherit eMSP tariffs from roaming providers.",
+        "Do not map generic DC versus HPC labels to unresolved EVSE without a deterministic connector/power classification.",
+        "Do not apply the <=64 kW promotion to EVSE lacking verified maximum power <=64 kW."
+      ],
+      "blockage": "Existing residual F2X fail-closed EVSE still require deterministic EVSE power/class extraction before the published DC/HPC grid or <=64 kW promotion can be applied.",
+      "resumeCondition": "Join the current 894-EVSE F2X inventory to connector maximum power and classify only exact AC, DC<=64kW, other DC and HPC subpopulations; preserve validity window for the promotion.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "220",
+      "canonicalName": "Route220 Srl Sb",
+      "status": "active",
+      "priority": "station-level",
+      "physicalEvse": 422,
+      "tariffModel": "station/operator-specific via evway",
+      "tariffChannel": "evway/eMSP or direct context only where station ownership is proven",
+      "positiveEvidence": [
+        "Current evway FAQ states the tariff for each charging point is shown in that station detail page in the app.",
+        "evway states rates differ by operator and recommends checking each station before charging.",
+        "Current evway terms identify Route220 SB S.r.l. as the service provider."
+      ],
+      "negativePaths": [
+        "No Route220-wide current direct tariff grid found.",
+        "evway interoperable prices cannot be treated as direct CPO prices unless the physical Route220 station relationship and native tariff are proven."
+      ],
+      "blockage": "Exact station/EVSE tariff is app-detail specific; no public bulk station-price endpoint established in this run.",
+      "resumeCondition": "Resolve evway station-detail backend and map Route220 PUN EVSE to exact station tariffs.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "ERX",
+      "canonicalName": "ENERGETIX S.RL.",
+      "status": "active",
+      "priority": "station-level",
+      "physicalEvse": 24,
+      "tariffModel": "station-owner-configured ChargePoint pricing",
+      "tariffChannel": "ChargePoint/direct station where physical ownership is proven",
+      "positiveEvidence": [
+        "Energetix official site confirms Energetix designs, builds and manages its charging stations.",
+        "ChargePoint official driver documentation states station owners set charging prices individually and exact pricing is visible on the station/app/driver portal."
+      ],
+      "negativePaths": [
+        "No deterministic Energetix-wide current price grid found.",
+        "Do not infer Energetix prices from generic ChargePoint roaming or other station owners."
+      ],
+      "blockage": "Exact current price must be resolved station-by-station in ChargePoint.",
+      "resumeCondition": "Map the 5 Energetix stations / 24 EVSE to ChargePoint station records and capture exact current owner-set tariffs.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "JOI",
+      "canonicalName": "GEWISS - S.P.A.",
+      "status": "active",
+      "priority": "station-level",
+      "physicalEvse": 14,
+      "tariffModel": "operator/site-configurable via JOINON LARGE NET",
+      "tariffChannel": "JOINON Charge&Go/direct where exact station tariff is exposed",
+      "positiveEvidence": [
+        "GEWISS states JOINON LARGE NET allows setting station powers, prices and connectors.",
+        "JOINON Charge&Go officially displays prices for selected charging stations."
+      ],
+      "negativePaths": [
+        "No deterministic GEWISS/JOINON network-wide tariff grid is supported by current official material.",
+        "Hardware examples or brochure prices must not be generalized to the 14 JOI EVSE."
+      ],
+      "blockage": "Price is configurable per station/connector and the exact public station-price payload remains unresolved.",
+      "resumeCondition": "Resolve JOINON Charge&Go/backend station payload and map JOI PUN EVSE to exact station/connector tariffs.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    }
+  ],
+  "queueImpact": {
+    "firstPassRemaining": 0,
+    "newlyTreatedCpos": [],
+    "newRankableEvse": 0,
+    "meaningfulNewEvidence": ["F2X exact <=64kW temporary class and current direct card tariff grid"]
+  }
+}
