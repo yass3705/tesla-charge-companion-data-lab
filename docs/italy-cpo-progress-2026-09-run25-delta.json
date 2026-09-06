@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 25,
+  "generatedAt": "2026-09-06T22:52:23+01:00",
+  "classificationUpdates": [
+    {
+      "partyId": "ENH",
+      "status": "treated",
+      "priority": "class-wide",
+      "tariffModel": "network-wide AC/DC classes",
+      "tariffChannel": "direct CPO Enerhub / EnerApp + guest",
+      "tariffs": [
+        {"channel":"EnerApp","class":"AC <=22 kW","energyEurPerKwh":0.60},
+        {"channel":"EnerApp","class":"DC <=400 kW","energyEurPerKwh":0.79},
+        {"channel":"guest","class":"AC <=22 kW","energyEurPerKwh":0.65},
+        {"channel":"guest","class":"DC <=400 kW","energyEurPerKwh":0.95}
+      ],
+      "officialUrls": ["https://enerhub.it/ricarica/"],
+      "coverage": {"physicalEvse":139,"rankableDirectEvse":139,"unresolvedEvse":0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06",
+      "lastChanged": "2026-09-06",
+      "historyAppend": "2026-09-06 run25: official Enerhub page proves network-wide Enerhub tariffs by AC/DC class for EnerApp and guest access; promoted active -> treated."
+    },
+    {
+      "partyId": "ENB",
+      "status": "treated",
+      "priority": "class-wide",
+      "tariffModel": "R-ev WALLET by AC/DC power class",
+      "tariffChannel": "direct R-ev app/WALLET",
+      "tariffs": [
+        {"class":"AC","energyEurPerKwh":0.65},
+        {"class":"DC <=150 kW","energyEurPerKwh":0.85},
+        {"class":"DC >150 kW (HPC)","energyEurPerKwh":0.89}
+      ],
+      "officialUrls": [
+        "https://www.r-ev.it/termini-di-utilizzo-abbonamenti/",
+        "https://www.r-ev.it/termini-di-utilizzo-app/"
+      ],
+      "coverage": {"physicalEvse":87,"rankableDirectEvse":87,"unresolvedEvse":0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06",
+      "lastChanged": "2026-09-06",
+      "historyAppend": "2026-09-06 run25: official R-ev terms prove WALLET 0.65 AC / 0.85 DC<=150 / 0.89 HPC>150 EUR/kWh on R-ev network; promoted active -> treated."
+    },
+    {
+      "partyId": "A22",
+      "status": "treated",
+      "priority": "class-wide",
+      "tariffModel": "official A22 charger-type classes",
+      "tariffChannel": "direct A22",
+      "tariffs": [
+        {"class":"AC Type2 up to 22 kW","energyEurPerKwh":0.33},
+        {"class":"multi-standard 50 kW DC / Type2 up to 43 kW","energyEurPerKwh":0.38},
+        {"class":"ultra-fast CCS up to 180 kW","energyEurPerKwh":0.43}
+      ],
+      "officialUrls": [
+        "https://www.autobrennero.it/it/sostenibilita/elettrico/",
+        "https://www.autobrennero.it/it/servizi/aree-di-servizio/"
+      ],
+      "coverage": {"physicalEvse":80,"rankableDirectEvse":80,"unresolvedEvse":0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06",
+      "lastChanged": "2026-09-06",
+      "historyAppend": "2026-09-06 run25: current official A22 service-area pages repeatedly expose deterministic 0.33 / 0.38 / 0.43 EUR/kWh by charger class; promoted active -> treated."
+    },
+    {
+      "partyId": "CVG",
+      "status": "active",
+      "priority": "station-level",
+      "tariffChannel": "direct EVO",
+      "paymentMethods": ["EVO card","smartphone"],
+      "fees": {"preauthorizationEur":35},
+      "blockage": "Official EVO public page does not expose a current exact energy price.",
+      "resumeCondition": "Current EVO portal/session payload or first-party tariff document with exact station/EVSE price.",
+      "lastInvestigated": "2026-09-06",
+      "historyAppend": "2026-09-06 run25: official EVO page confirms 22 kW Type2 network and EUR35 preauthorization, but no exact current energy tariff; remains fail-closed."
+    },
+    {
+      "partyId": "AXS",
+      "status": "active",
+      "priority": "station-level",
+      "blockage": "No current first-party EV charging tariff attributable to AXS physical party scope found; electricity retail offers excluded.",
+      "resumeCondition": "Current Axpo charging page/app/backend or station-specific ad-hoc tariff mapped to AXS EVSE.",
+      "lastInvestigated": "2026-09-06",
+      "historyAppend": "2026-09-06 run25: generic Axpo electricity offers explicitly rejected as EV charging evidence; no rankable AXS tariff found."
+    }
+  ],
+  "countsAfter": {
+    "treated": 19,
+    "partial": 10,
+    "setAside": 1,
+    "active": 56,
+    "canonicalTotal": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88,
+    "observedEvse": 75025
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "19+10+1+56=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "duplicateCanonicalPartyIds": 0,
+    "atlanteSetAside": true,
+    "firstPassComplete": "86/86",
+    "result": "pass"
+  },
+  "historyAppend": [
+    "2026-09-06 run25: ENH Enerhub promoted treated from current official network tariffs.",
+    "2026-09-06 run25: ENB R-ev promoted treated from official WALLET power classes.",
+    "2026-09-06 run25: A22 promoted treated from official charger-class tariffs.",
+    "2026-09-06 run25: CVG and AXS remain fail-closed after current first-party review."
+  ]
+}
