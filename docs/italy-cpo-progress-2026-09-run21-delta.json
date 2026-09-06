@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "run": "run21",
+  "generatedAt": "2026-09-06T18:55:00+01:00",
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run20-delta.json"],
+  "firstPassAudit": {
+    "completed": true,
+    "remainingNeverInvestigated": 0
+  },
+  "safeStatusTransitions": [],
+  "classificationUpdates": [
+    {
+      "partyId": "F2X",
+      "status": "partial",
+      "priority": "class-wide",
+      "tariffModel": "network class-wide direct card tariff with temporary <=64kW promotion",
+      "tariffChannel": "direct CPO / ad-hoc card; roaming eMSP separate",
+      "tariffs": [
+        {"class": "AC", "energyEurPerKwh": 0.50, "vatIncluded": true},
+        {"class": "DC", "energyEurPerKwh": 0.65, "vatIncluded": true},
+        {"class": "HPC", "energyEurPerKwh": 0.79, "vatIncluded": true},
+        {"class": "DC<=64kW promotional", "energyEurPerKwh": 0.50, "vatIncluded": true, "validFrom": "2026-07-15", "validThrough": "2026-09-30", "eligibility": "credit/debit card"}
+      ],
+      "officialUrls": [
+        "https://freeto-x.it/metodi-di-pagamento/pagamento-con-carta-di-credito/",
+        "https://freeto-x.it/promo/"
+      ],
+      "positiveEvidence": [
+        "Official current Free To X card prices: AC 0.50, DC 0.65, HPC 0.79 EUR/kWh VAT included.",
+        "Official temporary promotion: DC up to 64 kW at 0.50 EUR/kWh VAT included with credit/debit card from 2026-07-15 through 2026-09-30."
+      ],
+      "negativePaths": [
+        "Do not inherit MSP roaming prices.",
+        "Do not assign unresolved EVSE to DC/HPC or <=64kW class without verified connector maximum power."
+      ],
+      "blockage": "Residual F2X EVSE require deterministic EVSE power/class extraction.",
+      "resumeCondition": "Join F2X inventory to verified connector maximum power and apply only exact class mappings, preserving promotion validity.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "220",
+      "priority": "station-level",
+      "tariffModel": "station/operator-specific via evway",
+      "blockage": "evway exposes exact price in station detail, but no bulk public station-price endpoint was established",
+      "resumeCondition": "resolve evway station-detail backend and exact PUN EVSE mapping",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "ERX",
+      "priority": "station-level",
+      "tariffModel": "station-owner-configured ChargePoint pricing",
+      "blockage": "exact current owner-set tariff must be resolved station-by-station",
+      "resumeCondition": "map the 5 Energetix stations / 24 EVSE to ChargePoint station records",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "JOI",
+      "priority": "station-level",
+      "tariffModel": "operator/site-configurable via JOINON LARGE NET",
+      "blockage": "exact price is configurable per station/connector; public backend payload unresolved",
+      "resumeCondition": "resolve JOINON Charge&Go station payload and map JOI PUN EVSE",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    }
+  ],
+  "postApplyCounts": {
+    "treated": 16,
+    "partial": 10,
+    "setAside": 1,
+    "active": 59,
+    "supersededAlias": 2,
+    "totalCanonicalCpos": 86,
+    "inventoryPartyIds": 88
+  },
+  "queueImpact": {
+    "firstPassRemaining": 0,
+    "networkOrClassWideRemaining": 1,
+    "stationLevelActiveCanonicalCpos": 59,
+    "newRankableEvse": 0,
+    "newlyTreatedCpos": []
+  },
+  "coherence": {
+    "canonicalStatusSumExcludingAliases": 86,
+    "canonicalStatusSumIncludingSupersededAliasRows": 88,
+    "matchesInventoryPartyIds": true,
+    "artifactPartyIds": 88,
+    "artifactEvse": 75025,
+    "atlanteRemainsSetAside": true,
+    "firstPassComplete": true
+  },
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260906_run21.json"],
+  "history": [
+    "Run21 continued second pass only; no first-pass CPO was reopened as uninvestigated.",
+    "Free To X gained stronger current official deterministic class-wide evidence including a temporary exact DC<=64kW card tariff valid through 2026-09-30.",
+    "Route220/evway, Energetix/ChargePoint and GEWISS/JOINON were reconfirmed station-level with exact resume conditions; no unsafe tariff propagation was performed.",
+    "No status transition or new rankable EVSE was recorded because exact EVSE power/station mappings are still required.",
+    "Atlante remains setAside and last."
+  ]
+}
