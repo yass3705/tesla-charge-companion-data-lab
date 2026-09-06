@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-06T07:51:52+01:00",
+  "country": "IT",
+  "policy": {
+    "networkWideFirst": true,
+    "failClosed": true,
+    "directVsEmspSeparated": true,
+    "atlanteLast": true
+  },
+  "classifications": [
+    {
+      "partyId": "220",
+      "canonicalName": "Route220 Srl Sb",
+      "evse": 422,
+      "priority": "station-level",
+      "statusTransition": null,
+      "tariffModel": "station_specific_or_owner_configured",
+      "tariffChannel": "direct CPO / evway platform; eMSP tariffs must remain separate",
+      "positiveEvidence": [
+        "Route220 first-party CPMS page states the platform supports personalized tariff management.",
+        "evway first-party site states prices and accepted payment types are shown for each charging station."
+      ],
+      "negativeFindings": [
+        "No deterministic Route220-wide direct/ad-hoc tariff applicable to all 422 EVSE was established."
+      ],
+      "blockage": "exact current direct/ad-hoc tariff requires station/EVSE lookup in evway/Route220 backend or QR flow",
+      "resumeCondition": "enumerate partyId 220 stations/EVSE and map each to an exact current direct/ad-hoc tariff from first-party backend/QR/app",
+      "confidence": "high",
+      "officialUrls": [
+        "https://route220.it/",
+        "https://evway.net/"
+      ]
+    },
+    {
+      "partyId": "P62",
+      "canonicalName": "EUM GENOSSENSCHAFT",
+      "evse": 12,
+      "priority": "station-level",
+      "statusTransition": null,
+      "tariffModel": "direct_tariff_unresolved",
+      "tariffChannel": "direct/ad-hoc not established; roaming offers observed only as discovery evidence",
+      "positiveEvidence": [
+        "EUM first-party site confirms the cooperative and its local energy activities but exposes no current public EV charging tariff in the reviewed pages.",
+        "Public station records for EUM locations show different access modes, including some stations without reported ad-hoc access and another with ad-hoc availability but unknown direct price."
+      ],
+      "negativeFindings": [
+        "No EUM-wide deterministic EV charging tariff found.",
+        "Roaming/eMSP prices from third parties were not promoted to direct CPO prices."
+      ],
+      "blockage": "exact current EUM direct/ad-hoc tariff is not publicly exposed in reviewed first-party material",
+      "resumeCondition": "EUM publication, QR/app/backend capture, or deterministic EVSE-level direct tariff source",
+      "confidence": "medium"
+    },
+    {
+      "partyId": "TAP",
+      "canonicalName": "TANZI AURELIO PETROLI SPA",
+      "priority": "station-level",
+      "statusTransition": null,
+      "tariffModel": "site_or_station_specific_direct_unresolved",
+      "tariffChannel": "direct CPO/ad-hoc unresolved",
+      "positiveEvidence": [
+        "Tanzi Aurelio Petroli first-party pages confirm FAST 50 kW and ULTRAFAST 150 kW charging infrastructure on its network."
+      ],
+      "negativeFindings": [
+        "No current deterministic TAP-wide EV charging price was published in the reviewed first-party charging pages.",
+        "Fuel-card/app information concerns fuel transactions and was not reused as EV charging tariff evidence."
+      ],
+      "blockage": "exact EV charging price not exposed on reviewed first-party charging pages",
+      "resumeCondition": "station QR/payment flow, app/backend tariff, or first-party tariff publication",
+      "confidence": "medium-high",
+      "officialUrls": [
+        "https://www.tanziaureliopetroli.it/colonnine-elettriche/",
+        "https://www.tanziaureliopetroli.it/sostenibilita/"
+      ]
+    }
+  ],
+  "queueImpact": {
+    "networkWideCandidatesRemoved": ["220", "P62", "TAP"],
+    "knownEvseRemovedFromGlobalGeneralizationRisk": 434,
+    "note": "TAP EVSE count intentionally omitted from this total because it was not re-read from the canonical record during this run."
+  },
+  "consistency": {
+    "statusCountsChanged": false,
+    "postApplyCounts": {"treated": 16, "partial": 7, "setAside": 1, "active": 64, "total": 88},
+    "statusSum": 88,
+    "duplicatePartyIdsIntroduced": 0,
+    "atlanteRemainsSetAside": true,
+    "canonicalRewritePending": true
+  }
+}
