@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "baseCanonicalSha": "6f14fe04d0190fe3170d117a94e870b1089c8938",
+  "dependsOn": "docs/italy-cpo-progress-2026-09-run3-delta.json",
+  "generatedAt": "2026-09-06T01:48:00+01:00",
+  "safeStatusTransitions": [
+    {"partyId":"ENX","from":"active","to":"treated","priority":"class-wide","reason":"current official Enel native tariff is deterministic by exact AC/DC/HPC power bands and charge start time on Enel X stations"}
+  ],
+  "classificationUpdatesWithoutStatusTransition": [
+    {"partyId":"ESH","priority":"station-level","reason":"Uattzy native FAQ states tariff is connector-specific and may vary by power, duration and occupancy"},
+    {"partyId":"GAS","priority":"station-level","reason":"GASGAS is now under Uattzy/UAU commercial network; native price is per connector rather than globally fixed"},
+    {"partyId":"UTZ","priority":"station-level","reason":"UAU/Uattzy native price is shown per connector and may vary"},
+    {"partyId":"ENB","priority":"class-wide","reason":"official deterministic AC/DC<=150/DC>150 tariff retained; inventory completeness check still pending"},
+    {"partyId":"VFS","priority":"class-wide","reason":"official deterministic AC<=22/DC60-180 tariff retained; inventory completeness check still pending"}
+  ],
+  "aliasDecisions": [
+    {"commercialBrand":"Uattzy","partyIds":["ESH","GAS","UTZ"],"decision":"record shared brand/ownership relationship but keep distinct canonical partyId inventory scopes until explicit PUN/OCPI migration proof; no double-counting introduced"}
+  ],
+  "postApplyCounts": {"treated":13,"partial":5,"setAside":1,"active":69,"total":88},
+  "priorityQueueKnown": {
+    "classWideStillActive": ["ENB","VFS"],
+    "stationLevelConfirmed": ["GES","TSL","HER","PWY","EMO","EDN","ESH","GAS","UTZ"],
+    "unclassifiedActive": "remaining active entries still require network-wide-first classification",
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSum": 88,
+    "matchesInventory": true,
+    "duplicatePartyIdsIntroduced": 0,
+    "atlanteRemainsSetAside": true,
+    "fullAuditPerformed": true,
+    "canonicalRewritePending": true,
+    "canonicalRewriteReason": "Main canonical is minified and connector only supports whole-file replacement; preserving all 88 detailed entries is safer than an incomplete rewrite. Run3/run4 deltas are authoritative pending consolidation."
+  },
+  "evidenceReports": ["data/reports/italy_network_tariff_scope_20260906_run4.json"],
+  "history": [
+    "Run 4 full coherence audit confirmed 88 unique canonical partyIds and no alias double count.",
+    "ENX promoted to treated from current official native class/time tariff, adding deterministic coverage for 22,798 EVSE.",
+    "Uattzy commercial consolidation (E-Shore/GASGAS/UAU) recorded without collapsing distinct PUN partyIds; these scopes classified station-level.",
+    "R-ev and VIAFAST remain active class-wide until archived candidate connector/power metadata can be exhaustively checked.",
+    "Atlante unchanged and last."
+  ]
+}
