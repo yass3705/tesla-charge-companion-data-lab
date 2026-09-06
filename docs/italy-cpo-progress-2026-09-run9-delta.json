@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run8-delta.json"],
+  "generatedAt": "2026-09-06T06:54:00+01:00",
+  "safeStatusTransitions": [],
+  "classificationUpdatesWithoutStatusTransition": [
+    {"partyId":"ES1","priority":"station-level","reason":"no first-party deterministic Eurospin/Spesa Intelligente EV charging tariff found; retail app does not expose charging tariffs","blockage":"exact current EVSE/ad-hoc tariff not publicly exposed","resumeCondition":"QR/app/backend/PUN exact EVSE tariff mapping or first-party tariff publication","confidence":"medium-high"},
+    {"partyId":"ES2","priority":"station-level","reason":"no entity-specific deterministic network-wide tariff established; shared Eurospin brand does not prove tariff inheritance","blockage":"exact current EVSE/ad-hoc tariff not publicly exposed","resumeCondition":"QR/app/backend/PUN exact EVSE tariff mapping or first-party tariff publication","confidence":"medium-high"},
+    {"partyId":"ES3","priority":"station-level","reason":"no entity-specific deterministic network-wide tariff established; shared Eurospin brand does not prove tariff inheritance","blockage":"exact current EVSE/ad-hoc tariff not publicly exposed","resumeCondition":"QR/app/backend/PUN exact EVSE tariff mapping or first-party tariff publication","confidence":"medium-high"},
+    {"partyId":"ES5","priority":"station-level","reason":"no entity-specific deterministic network-wide tariff established","blockage":"exact current EVSE/ad-hoc tariff not publicly exposed","resumeCondition":"QR/app/backend/PUN exact EVSE tariff mapping or first-party tariff publication","confidence":"medium-high"},
+    {"partyId":"ES4","priority":"station-level","reason":"no entity-specific deterministic network-wide tariff established","blockage":"exact current EVSE/ad-hoc tariff not publicly exposed","resumeCondition":"QR/app/backend/PUN exact EVSE tariff mapping or first-party tariff publication","confidence":"medium-high"}
+  ],
+  "aliasDecisions": [
+    {"commercialBrand":"Eurospin","partyIds":["ES1","ES2","ES3","ES4","ES5"],"decision":"retain distinct canonical partyId scopes; do not inherit tariffs across legal entities without explicit applicability proof"}
+  ],
+  "postApplyCounts": {"treated":16,"partial":7,"setAside":1,"active":64,"total":88},
+  "queueImpact": {"networkWideCandidatesRemoved":["ES1","ES2","ES3","ES4","ES5"],"evseRemovedFromGlobalCandidateQueue":80,"atlanteLast":true},
+  "consistency": {"statusSum":88,"matchesInventory":true,"duplicatePartyIdsIntroduced":0,"artifactPartyIds":88,"artifactEvse":75025,"atlanteRemainsSetAside":true,"canonicalRewritePending":true},
+  "evidenceReports": ["data/reports/italy_network_tariff_scope_20260906_run9.json"],
+  "history": [
+    "Run 9 classified the five Eurospin-related PUN partyIds as station-level/direct-unresolved after official-site/app, tariff-search and PUN/Pienotto review.",
+    "No tariff was inherited between Eurospin legal entities and no shared-brand alias was collapsed into a single CPO.",
+    "80 EVSE removed from network-wide generalization risk; status counts unchanged.",
+    "Atlante unchanged and reserved for last."
+  ]
+}
