@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run7b-delta.json"],
+  "generatedAt": "2026-09-06T05:51:57+01:00",
+  "safeStatusTransitions": [],
+  "classificationUpdatesWithoutStatusTransition": [
+    {"partyId":"AXS","priority":"station-level","reason":"first-party Axpo/AESI pages expose bespoke EV infrastructure/management but no deterministic public AXS-wide charging tariff","blockage":"exact public/ad-hoc EVSE tariff mapping not identified","resumeCondition":"QR/app/backend/OCPI/PUN exact station tariff mapping or first-party deterministic rule","confidence":"medium-high"},
+    {"partyId":"YFL","priority":"station-level","reason":"YourFill app explicitly exposes the tariff applied per charging point and business pricing is site-owner dependent","blockage":"exact tariff requires station/connector lookup","resumeCondition":"enumerate YFL EVSE and resolve app/backend tariff","confidence":"high"},
+    {"partyId":"JOI","priority":"station-level","reason":"GEWISS Charge&Go displays selected station/socket prices and LARGE NET allows per-station price configuration","blockage":"public/app backend EVSE->current tariff endpoint not captured","resumeCondition":"identify JOINON guest/public backend or another deterministic station-price source","confidence":"high"},
+    {"partyId":"ECM","priority":"station-level","reason":"June 2026 evidence confirms active Enercom public charging infrastructure but no deterministic network-wide EV charging tariff; electricity supply tariffs are non-applicable","blockage":"direct/ad-hoc EV tariff source not exposed in searched public pages","resumeCondition":"QR/app/PUN/Pienotto/OCPI exact mapping or first-party charging tariff publication","confidence":"medium"}
+  ],
+  "postApplyCounts":{"treated":16,"partial":7,"setAside":1,"active":64,"total":88},
+  "queueImpact":{"networkWideCandidatesRemoved":["AXS","YFL","JOI","ECM"],"evseRemovedFromGlobalCandidateQueue":128,"atlanteLast":true},
+  "consistency":{"statusSum":88,"matchesInventory":true,"duplicatePartyIdsIntroduced":0,"artifactPartyIds":88,"artifactEvse":75025,"atlanteRemainsSetAside":true,"canonicalRewritePending":true},
+  "evidenceReports":["data/reports/italy_network_tariff_scope_20260906_run8.json"],
+  "history":["Run 8 classified AXS, YFL, JOI and ECM as station-level after first-party/current-source review.","GEWISS brochure example prices were explicitly rejected as universal tariffs because LARGE NET supports configurable prices and Charge&Go exposes selected-station prices.","Enercom household electricity supply prices were explicitly excluded from EV charging pricing.","No status count changed; 128 EVSE were safely removed from network-wide generalization risk.","Atlante unchanged and reserved for last."]
+}
