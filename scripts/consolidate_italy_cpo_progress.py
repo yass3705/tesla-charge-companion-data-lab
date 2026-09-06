@@ -29,7 +29,6 @@ def deep_merge(dst: dict[str, Any], src: dict[str, Any]) -> dict[str, Any]:
         if isinstance(v, dict) and isinstance(dst.get(k), dict):
             deep_merge(dst[k], v)
         elif isinstance(v, list) and isinstance(dst.get(k), list):
-            # Preserve order while avoiding exact duplicate scalar/dict entries.
             for item in v:
                 if item not in dst[k]:
                     dst[k].append(copy.deepcopy(item))
@@ -48,6 +47,23 @@ def run_key(path: Path) -> tuple[int, str]:
 def load_json(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as fh:
         return json.load(fh)
+
+
+def updates_for(delta: dict[str, Any]) -> list[dict[str, Any]]:
+    """Accept historical and current delta field names without losing metadata."""
+    out: list[dict[str, Any]] = []
+    for key in (
+        "classificationUpdatesWithoutStatusTransition",
+        "classificationUpdates",
+        "cpoUpdates",
+    ):
+        value = delta.get(key, [])
+        if value is None:
+            continue
+        if not isinstance(value, list):
+            raise SystemExit(f"{key} must be a list")
+        out.extend(value)
+    return out
 
 
 def main() -> int:
@@ -82,22 +98,17 @@ def main() -> int:
             expected = tr.get("from")
             target = tr.get("to")
             if expected is not None and current != expected:
-                # Idempotency: a previously consolidated target is acceptable.
                 if current != target:
                     raise SystemExit(f"{path.name}: {pid} status {current!r} != expected {expected!r}")
+            if target is None:
+                raise SystemExit(f"{path.name}: {pid} transition missing target status")
             row["status"] = target
             deep_merge(row, tr)
 
-        for upd in delta.get("classificationUpdatesWithoutStatusTransition", []):
+        for upd in updates_for(delta):
             pid = upd["partyId"]
             if pid not in by_id:
-                raise SystemExit(f"{path.name}: unknown classification partyId {pid}")
-            deep_merge(by_id[pid], upd)
-
-        for upd in delta.get("cpoUpdates", []):
-            pid = upd["partyId"]
-            if pid not in by_id:
-                raise SystemExit(f"{path.name}: unknown cpoUpdates partyId {pid}")
+                raise SystemExit(f"{path.name}: unknown update partyId {pid}")
             deep_merge(by_id[pid], upd)
 
         group = delta.get("canonicalGroupUpdate")
@@ -117,7 +128,6 @@ def main() -> int:
                 history.append(line)
         applied.append(path.name)
 
-    # Canonical current-CPO denominator excludes rows explicitly superseded as aliases.
     status_counts: dict[str, int] = {}
     for row in cpos:
         st = row.get("status", "active")
@@ -135,7 +145,6 @@ def main() -> int:
     if current_sum != total_canonical:
         raise SystemExit(f"current canonical status sum {current_sum} != {total_canonical}")
 
-    # Atlante invariants.
     ate = by_id.get("ATE")
     if not ate or ate.get("status") != "setAside":
         raise SystemExit("Atlante must remain setAside")
