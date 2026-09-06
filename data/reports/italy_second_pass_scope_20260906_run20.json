@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "run": "run20",
+  "generatedAt": "2026-09-06T17:50:00+01:00",
+  "scope": "Italy V9 second-pass evidence audit after completion of the first nominative sweep",
+  "firstPassAudit": {
+    "completed": true,
+    "proof": "run14 recorded classification.completed=true and remainingUnclassifiedActive=0; run15 subsequently reconciled ESH/GAS as superseded aliases of UTZ without introducing an uninvestigated canonical CPO",
+    "canonicalCpoCountAfterAliasReconciliation": 86,
+    "remainingNeverInvestigated": 0,
+    "policy": "Do not return to partial/blocked CPOs until every canonical CPO has been investigated at least once; this condition is now satisfied."
+  },
+  "investigations": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "priority": "station-level",
+      "inventory": {"evse": 849, "stations": 296},
+      "result": "fail-closed remains correct; no EMOBITALY-wide direct tariff can be inferred",
+      "positiveEvidence": [
+        "Current EMOBITALY Interparking portal exposes a deterministic direct/ad-hoc tariff for that specific managed subnetwork: 0.58 EUR/kWh VAT included.",
+        "The same portal exposes a fixed session-start fee whose current range is 0.50-1.40 EUR VAT included and explicitly separates roaming-provider pricing.",
+        "Interparking connectors are Type 2 with maximum 22 kW, proving a directly rankable subnetwork only when an EMOBITALY EVSE can be deterministically mapped to Interparking."
+      ],
+      "negativeEvidence": [
+        "EMOBITALY operates/hosts charging infrastructure for multiple owners and the Interparking tariff is explicitly scoped to that service, not proven network-wide for all EMO partyId EVSE.",
+        "No deterministic mapping of all 849 PUN EMO EVSE to Interparking versus other managed owners was established in this run."
+      ],
+      "coveredSubpopulation": {
+        "rule": "Only EVSE deterministically identified as Interparking-managed may inherit the Interparking tariff.",
+        "rankableEvse": 0,
+        "reason": "PUN EVSE-to-Interparking mapping not yet established."
+      },
+      "uncoveredSubpopulation": {"evse": 849, "reason": "owner/site-specific tariff mapping missing"},
+      "resumeCondition": "Enumerate the EMOBITALY public/native station backend and map PUN EVSE IDs to managed owner/subnetwork and exact current tariff before promotion.",
+      "confidence": "high"
+    },
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "priority": "station-level",
+      "inventory": {"evse": 1137, "stations": 523},
+      "result": "fail-closed remains correct for energy price",
+      "positiveEvidence": [
+        "Hera's EV Driver tariff portal remains publicly reachable and exposes post-charge penalties.",
+        "Current public penalty terms are 0.08 EUR/min after 60 minutes for Type 2/Type 3A from 07:00-23:00 and 0.15 EUR/min for CHAdeMO/CCS2 24h."
+      ],
+      "negativeEvidence": [
+        "The public tariff page does not expose a current deterministic energy EUR/kWh value for the pay-as-you-go offer in the fetched public view.",
+        "No safe direct CPO energy tariff can therefore be generalized to the 1137 HER EVSE."
+      ],
+      "coveredSubpopulation": {"rankableEnergyEvse": 0, "reason": "energy tariff absent from public tariff view"},
+      "resumeCondition": "Resolve authenticated/guest Hera EV Driver station tariff payload or exact station/EVSE QR tariff and map it deterministically.",
+      "confidence": "high on penalty terms; low on current energy price"
+    },
+    {
+      "partyId": "EDN",
+      "canonicalName": "Edison Next S.P.A.",
+      "priority": "station-level",
+      "inventory": {"evse": 826, "stations": 377},
+      "result": "station/site-specific pricing confirmed; no network-wide promotion",
+      "positiveEvidence": [
+        "Edison Next announced on 2026-04-30 a specific Galbusera Agrate Brianza site with a launch promotion of 0.59 EUR/kWh VAT included on DC chargers, payable by POS or EVWAY app.",
+        "The publication explicitly scopes the price to the new site and to DC chargers, supporting site/class-specific rather than universal pricing."
+      ],
+      "negativeEvidence": [
+        "No current Edison Next nationwide direct tariff grid applicable to all 826 EDN EVSE was found.",
+        "The Galbusera launch promotion must not be extrapolated to other EDN locations or AC connectors."
+      ],
+      "coveredSubpopulation": {"rankableEvse": 0, "reason": "exact PUN EDN EVSE mapping to the promoted Galbusera DC connectors not established"},
+      "uncoveredSubpopulation": {"evse": 826, "reason": "exact site/EVSE tariff mapping required"},
+      "resumeCondition": "Map EDN PUN EVSE to Edison Next/EVWAY station records and retain only tariffs with explicit site, connector class and validity.",
+      "confidence": "high"
+    }
+  ],
+  "coherence": {
+    "canonicalCpoCount": 86,
+    "physicalPartyIdCount": 88,
+    "treated": 16,
+    "partial": 10,
+    "setAside": 1,
+    "active": 59,
+    "supersededAlias": 2,
+    "canonicalStatusEquation": "16 + 10 + 1 + 59 = 86",
+    "physicalPartyIdEquation": "86 canonical + 2 superseded aliases = 88 physical partyIds",
+    "networkOrClassWideUnresolved": 1,
+    "activeStationLevel": 59,
+    "atlanteLast": true
+  },
+  "notes": [
+    "No status transition or EVSE promotion this run; evidence was strengthened without extrapolation.",
+    "The first-pass completion prerequisite is satisfied, so revisiting blocked/partial cases is now permitted.",
+    "Generic exhausted routes for Uattzy, Alpha Mobility and SEMM were not repeated."
+  ]
+}
