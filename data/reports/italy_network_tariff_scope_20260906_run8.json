@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "generatedAt": "2026-09-06T05:51:57+01:00",
+  "policy": {"priorityOrder":["network-wide","class-wide","station-level"],"failClosed":true,"directVsEmspSeparated":true,"atlanteLast":true},
+  "classifications": [
+    {
+      "partyId":"AXS","canonicalName":"Axpo Energy Solutions Italia S.p.A.","evse":63,"stations":15,"priority":"station-level","status":"active",
+      "finding":"Current first-party Axpo/AESI pages describe bespoke EV infrastructure, monitoring and energy-management solutions, but expose no deterministic public CPO-wide charging tariff applicable to the AXS PUN scope.",
+      "positiveEvidence":["https://www.axpo.com/it/it/chi-siamo/business-units/AESI.html","https://www.axpo.com/it/it/efficienza-energetica/Mobilita-sostenibile.html"],
+      "negativePaths":["first-party tariff search: no current public network-wide charging price found"],
+      "blockage":"exact public/ad-hoc station or EVSE tariff mapping not yet identified",
+      "resumeCondition":"public QR/app/backend/OCPI/PUN station mapping with exact price, or first-party deterministic tariff rule",
+      "confidence":"medium-high"
+    },
+    {
+      "partyId":"YFL","canonicalName":"Y&F Srl / YourFill","evse":37,"stations":14,"priority":"station-level","status":"active",
+      "finding":"YourFill first-party material states the app shows the tariff applied for each charging point; business economics are site-owner dependent. No safe YFL-wide price rule is established.",
+      "positiveEvidence":["https://www.yourfill.it/noleggio/","https://apps.apple.com/it/app/yourfill/id6446286777"],
+      "blockage":"exact tariff must be collected per station/connector from app/backend",
+      "resumeCondition":"enumerate YFL EVSE and resolve app/backend tariff deterministically",
+      "confidence":"high"
+    },
+    {
+      "partyId":"JOI","canonicalName":"GEWISS - S.P.A. / JOINON","evse":14,"stations":8,"priority":"station-level","status":"active",
+      "finding":"GEWISS first-party JOINON Charge&Go displays prices for the selected station/socket, while LARGE NET explicitly lets the operator set station powers, prices and sockets. This proves station-level pricing and rules out applying brochure example prices globally.",
+      "positiveEvidence":["https://www.gewiss.com/it/it/servizi/piattaforme-app-joinon/joinon-charge-and-go","https://www.gewiss.com/it/it/servizi/piattaforme-app-joinon/large-net"],
+      "nonApplicableEvidence":["GEWISS managed-services brochure example 0.60 AC / 0.85 DC is an economic example, not a universal tariff"],
+      "blockage":"JOINON public/app backend endpoint mapping EVSE -> current tariff not yet captured",
+      "resumeCondition":"identify Charge&Go guest/public backend or another deterministic station-price source",
+      "confidence":"high"
+    },
+    {
+      "partyId":"ECM","canonicalName":"ENERCOM S.r.l.","evse":14,"stations":7,"priority":"station-level","status":"active",
+      "finding":"Fresh June 2026 municipal/industry sources confirm Enercom's active public 22 kW network expansion and interoperability, but current searches found no official deterministic network-wide charging tariff. Electricity retail offers on enercom.it are not EV charging tariffs and are excluded.",
+      "positiveEvidence":["https://comune.cremosano.cr.it/notizie/3600074/enercom-porta-cremosano-prime-infrastrutture","https://www.energiamercato.it/notizie/nuova-mobilita/enercom-colonnine-ricarica-cremosano"],
+      "negativePaths":["enercom.it tariff pages found only household/business electricity supply prices, not public EV charging prices"],
+      "blockage":"direct/ad-hoc EV tariff source not exposed publicly in searched first-party pages",
+      "resumeCondition":"station QR/app/PUN/Pienotto/OCPI mapping or first-party charging tariff publication",
+      "confidence":"medium"
+    }
+  ],
+  "queueImpact":{"networkWideCandidatesRemoved":["AXS","YFL","JOI","ECM"],"evseRemovedFromGlobalCandidateQueue":128,"statusTransitions":0,"atlanteLast":true},
+  "consistency":{"postApplyCounts":{"treated":16,"partial":7,"setAside":1,"active":64,"total":88},"statusSum":88,"artifactPartyIds":88,"artifactEvse":75025,"duplicatePartyIdsIntroduced":0},
+  "notes":["No eMSP roaming price was promoted to a direct CPO tariff.","No brochure/example price was generalized without applicability proof.","This run advances classification only; no CPO status transition is justified by the evidence above."]
+}
