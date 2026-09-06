@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run10-delta.json"],
+  "generatedAt": "2026-09-06T08:55:00+01:00",
+  "safeStatusTransitions": [],
+  "classificationUpdatesWithoutStatusTransition": [
+    {
+      "partyId": "ERX",
+      "priority": "station-level",
+      "reason": "Energetix first-party charging page directs users to credit-card payment or ChargePoint app and publishes no deterministic network-wide tariff",
+      "tariffChannel": "direct card / ChargePoint app; roaming must remain separate",
+      "officialUrls": ["https://www.energetix.it/", "https://www.energetix.it/ricarica"],
+      "blockage": "exact current direct/ad-hoc tariff requires per-station/EVSE ChargePoint or card-flow lookup",
+      "resumeCondition": "enumerate ERX EVSE and deterministically map ChargePoint/card tariff",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "TDM",
+      "priority": "station-level",
+      "reason": "current public records identify T.D.M. as operator at Tamoil sites with EV charging, but no deterministic TDM-wide EV tariff was found",
+      "blockage": "exact direct/ad-hoc EV tariff requires station QR/payment/app/backend evidence",
+      "resumeCondition": "map TDM EVSE to exact first-party/ad-hoc tariff source",
+      "confidence": "medium",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "CLE",
+      "priority": "station-level",
+      "reason": "multiple distinct Italian companies share the Clean Energy name and no network-wide tariff tied safely to PUN partyId CLE was found",
+      "blockage": "exact operator identity and tariff must be resolved from CLE EVSE identifiers/addresses",
+      "resumeCondition": "resolve legal/operator identity from PUN EVSE examples, then inspect QR/app/backend",
+      "confidence": "medium-high",
+      "lastInvestigated": "2026-09-06"
+    }
+  ],
+  "postApplyCounts": {"treated":16,"partial":7,"setAside":1,"active":64,"total":88},
+  "queueImpact": {
+    "networkWideCandidatesRemoved": ["ERX","TDM","CLE"],
+    "knownEvseRemovedFromGlobalGeneralizationRisk": 87
+  },
+  "consistency": {
+    "statusSum": 88,
+    "matchesInventory": true,
+    "duplicatePartyIdsIntroduced": 0,
+    "artifactPartyIds": 88,
+    "artifactEvse": 75025,
+    "atlanteRemainsSetAside": true,
+    "canonicalRewritePending": true
+  },
+  "evidenceReports": ["data/reports/italy_network_tariff_scope_20260906_run11.json"],
+  "history": [
+    "Run 11 removed Energetix, T.D.M. and Clean Energy from network-wide generalization risk.",
+    "Energetix classified station-level with high confidence because first-party charging uses card/ChargePoint and no universal tariff is published.",
+    "T.D.M. and Clean Energy remain fail-closed pending exact station/EVSE direct tariff evidence.",
+    "No status transitions; counts remain 16 treated / 7 partial / 1 setAside / 64 active.",
+    "Atlante unchanged and reserved for last."
+  ]
+}
