@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "run": "run22",
+  "generatedAt": "2026-09-06T19:54:00+01:00",
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run21-delta.json"],
+  "firstPassAudit": {
+    "completed": true,
+    "remainingNeverInvestigated": 0
+  },
+  "safeStatusTransitions": [],
+  "classificationUpdates": [
+    {
+      "partyId": "SAG",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "site-owner configurable pricing on Sagelio platform",
+      "tariffChannel": "direct/ad-hoc card possible; roaming partners separate",
+      "officialUrls": [
+        "https://sagelio.com/",
+        "https://sagelio.com/blog/monetizzare-la-ricarica-come-impostare-le-tariffe-per-i-tuoi-clienti/",
+        "https://sagelio.com/blog/ricaricare-auto-elettrica-con-carta-di-credito-da-oggi-si-puo/"
+      ],
+      "positiveEvidence": [
+        "Current Sagelio platform documentation gives site operators control over pricing.",
+        "Sagelio 2026-04-15 article explicitly says there is no tariff valid for all sites; 0.59 EUR/kWh is only an illustrative retailer-set price.",
+        "Direct QR/card charging is supported but remains linked to the station-specific price."
+      ],
+      "negativePaths": [
+        "Do not generalize 0.59 EUR/kWh example network-wide.",
+        "Do not treat roaming partner prices as Sagelio direct tariffs."
+      ],
+      "blockage": "Exact current tariff is station/connector specific.",
+      "resumeCondition": "Resolve Sagelio/Electromaps station or QR backend and map SAG EVSE to exact current price.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "DRW",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "station/app-detail specific; no public network-wide tariff established",
+      "tariffChannel": "Unoenergy DriWe map/app direct workflow; roaming separate",
+      "officialUrls": [
+        "https://www.driwe.eu/faq/",
+        "https://www.unoenergy.it/casa/colonnine-ricarica/ricarica-start/"
+      ],
+      "positiveEvidence": [
+        "Current Unoenergy documentation confirms map/app functions to view, reserve and pay at chargers.",
+        "DriWe FAQ does not publish a CPO-wide public tariff and describes charging cost as tariff-dependent."
+      ],
+      "negativePaths": [
+        "Do not use domestic charging cost examples as public charging tariffs.",
+        "PUN-derived station pages report tariffs not communicated to PUN."
+      ],
+      "blockage": "Exact current public tariff requires station/app detail mapping.",
+      "resumeCondition": "Resolve Unoenergy DriWe map/app payload and join DRW PUN EVSE to exact station tariff.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    }
+  ],
+  "postApplyCounts": {
+    "treated": 16,
+    "partial": 10,
+    "setAside": 1,
+    "active": 59,
+    "supersededAlias": 2,
+    "totalCanonicalCpos": 86,
+    "inventoryPartyIds": 88
+  },
+  "queueImpact": {
+    "firstPassRemaining": 0,
+    "networkOrClassWideRemaining": 1,
+    "stationLevelActiveCanonicalCpos": 59,
+    "newRankableEvse": 0,
+    "newlyTreatedCpos": []
+  },
+  "coherence": {
+    "canonicalStatusSumExcludingAliases": 86,
+    "canonicalStatusSumIncludingSupersededAliasRows": 88,
+    "matchesInventoryPartyIds": true,
+    "artifactPartyIds": 88,
+    "artifactEvse": 75025,
+    "atlanteRemainsSetAside": true,
+    "firstPassComplete": true
+  },
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260906_run22.json"],
+  "history": [
+    "Run22 continued second pass without reopening first-pass coverage.",
+    "Sagelio was strengthened as station-level from current first-party evidence explicitly allowing site-specific pricing.",
+    "Unoenergy DriWe was strengthened as station-level; current public sources expose map/app payment but no deterministic CPO-wide tariff.",
+    "No tariff was propagated and no EVSE became rankable without exact station mapping.",
+    "Atlante remains setAside and last."
+  ]
+}
