@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "generatedAt": "2026-09-06T13:53:00+01:00",
+  "cpo": {"partyId":"AM1","canonicalName":"ALPHA MOBILITY SRL"},
+  "inventory": {
+    "sourceWorkflowRun": 33308407226,
+    "artifact": "italy-v9-consolidated-candidate",
+    "artifactId": 9731212787,
+    "stations": 15,
+    "evse": 50
+  },
+  "method": "Exact native chargestation id joined to exact PUN EVSE prefix; no address-only tariff propagation and no tariff propagation to sibling EVSE with different ids.",
+  "positiveMappings": [
+    {
+      "nativeStationId": "IT0721090094",
+      "nativeUrl": "https://ricaricaveicolo.it/chargestation/IT0721090094",
+      "address": "VIA COPPARO 132",
+      "city": "Ferrara",
+      "punStationId": "6654942a04fa7171d3b7189b",
+      "punEvseIds": ["IT0721090094*1","IT0721090094*2"],
+      "connectorCount": 2,
+      "connectorStandard": "Type 2",
+      "maxPowerKw": 22,
+      "tariffChannel": "direct Alpha Mobility native RicaricaVeicolo web payment",
+      "energyEurPerKwh": 0.65,
+      "minimumChargeEur": 2.5,
+      "preauthorizationEur": 100,
+      "paymentMethods": ["credit card"],
+      "rankableDirect": true,
+      "confidence": "high",
+      "evidence": "Native page identifies #IT0721090094 at VIA COPPARO 132 FERRARA, two Type 2 connectors, recharge cost 0.65 EUR/kWh, minimum 2.5 EUR and pre-authorization 100 EUR. PUN artifact contains exact EVSE ids IT0721090094*1 and *2 under AM1 at the same address."
+    }
+  ],
+  "samePunStationUnresolved": {
+    "punStationId": "6654942a04fa7171d3b7189b",
+    "reason": "The PUN station aggregates six EVSE prefixes (0041, 0056, 0094). The native page for 0094 covers exactly two connectors only. Do not propagate 0.65 EUR/kWh to 0041 or 0056 without their own native pages/current price.",
+    "evseIds": ["IT0721090041*1","IT0721090041*2","IT0721090056*1","IT0721090056*2"]
+  },
+  "otherNativePagesObservedButNotMappedToAM1Inventory": [
+    {"nativeStationId":"IT0721090213","city":"Campi Bisenzio","energyEurPerKwh":0.61,"discountedEurPerKwh":0.49,"note":"Useful proof of station-level variation; not present in current AM1 PUN 15-station inventory, so not counted."},
+    {"nativeStationId":"IT0721090074","city":"Frosinone","energyEurPerKwh":0.81,"note":"Useful proof of station-level variation; not present in current AM1 PUN inventory, so not counted."},
+    {"nativeStationId":"IT0721090070","city":"Laterina","energyEurPerKwh":0.61,"note":"Useful proof of station-level variation; not present in current AM1 PUN inventory, so not counted."},
+    {"nativeStationId":"CNTS20120043","city":"Fiumicello","energyEurPerKwh":0.61,"note":"Native platform page found, but id does not deterministically join to current AM1 PUN EVSE; not counted."}
+  ],
+  "coverage": {
+    "rankableDirectEvse": 2,
+    "unresolvedEvse": 48,
+    "coveragePct": 4.0,
+    "statusRecommendation": "partial"
+  },
+  "blockage": "48 AM1 EVSE still require exact native RicaricaVeicolo station-id/connector mapping and current direct tariff. Search-engine indexing is incomplete; address-level matches alone are insufficient.",
+  "resumeCondition": "Enumerate native RicaricaVeicolo station pages or backend for the remaining exact PUN EVSE prefixes, then join prefix -> native station tariff and fees.",
+  "failClosed": true,
+  "atlanteTouched": false
+}
