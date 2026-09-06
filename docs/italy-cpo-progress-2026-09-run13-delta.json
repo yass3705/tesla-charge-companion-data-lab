@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run12-delta.json"],
+  "generatedAt": "2026-09-06T10:55:00+01:00",
+  "safeStatusTransitions": [],
+  "classificationUpdatesWithoutStatusTransition": [
+    {
+      "partyId": "SEM",
+      "canonicalName": "ISCAT s.r.l. / Circuito SEMM",
+      "priority": "station-level",
+      "tariffModel": "default_power_band_with_station_overrides",
+      "tariffChannel": "direct CPO / THOR / RFID",
+      "tariffs": [
+        {"class":"default AC <=22 kW","energyEurPerKwh":0.55},
+        {"class":"default DC <=90 kW","energyEurPerKwh":0.65},
+        {"fee":"post-charge occupancy","eurPerHour":2.0}
+      ],
+      "blockage": "First-party SEMM page explicitly allows station-specific personalized/promotional tariffs; default grid is therefore not universally deterministic.",
+      "resumeCondition": "Enumerate all 7 canonical stations in THOR/QR Details and capture the exact station/EVSE tariff; use default only where no override is shown.",
+      "confidence": "high",
+      "officialUrls": ["https://iscat.com/circuito-di-ricarica-semm-by-iscat/", "https://iscat.com/2026/05/29/valle-po-piu-connessa-arrivano-le-colonnine-di-ricarica-semm-a-revello/"],
+      "lastInvestigated": "2026-09-06",
+      "lastChanged": "2026-09-06"
+    },
+    {"partyId":"KIW","canonicalName":"Kiwih srl / KiwihCharge","priority":"station-level","tariffModel":"app_platform_own_plus_roaming","blockage":"No current first-party network-wide direct price grid; app mixes own-network and roaming scopes.","resumeCondition":"Map the 4 canonical EVSE in KiwihCharge/app backend and capture direct CPO price.","confidence":"medium-high","lastInvestigated":"2026-09-06","lastChanged":"2026-09-06"},
+    {"partyId":"VCS","canonicalName":"VALLE CAMONICA SERVIZI VENDITE SPA","priority":"station-level","tariffModel":"operator_identity_requires_station_reconciliation","blockage":"Current project information points to Be Charge concession operation while PUN inventory retains distinct VCS partyId; no safe tariff inheritance.","resumeCondition":"Map 4 canonical VCS stations/7 EVSE to current QR/app/operator and exact direct price.","confidence":"medium","lastInvestigated":"2026-09-06","lastChanged":"2026-09-06"},
+    {"partyId":"BEY","canonicalName":"Beyfin SpA Società Benefit","priority":"station-level","tariffModel":"single_site_direct_unresolved","blockage":"First-party Beyfin confirms the 22 kW Marina di Pisa charger but publishes no current charging price.","resumeCondition":"Inspect site QR/payment/backend for exact direct tariff.","confidence":"high on identity / low on price","lastInvestigated":"2026-09-06","lastChanged":"2026-09-06"},
+    {"partyId":"TEX","canonicalName":"AECOS SRL","priority":"station-level","tariffModel":"single_site_direct_unresolved","blockage":"Charging site identity found, no deterministic current price.","resumeCondition":"Resolve PratoSardo station QR/app/payment endpoint.","confidence":"medium","lastInvestigated":"2026-09-06","lastChanged":"2026-09-06"},
+    {"partyId":"EMV","canonicalName":"Prestige Building srl","priority":"station-level","tariffModel":"installer_or_site_operator_unresolved","blockage":"No first-party public network tariff or deterministic global pricing model found.","resumeCondition":"Resolve both canonical stations by address/EVSE and payment backend.","confidence":"medium-low","lastInvestigated":"2026-09-06","lastChanged":"2026-09-06"},
+    {"partyId":"CAR","canonicalName":"Greendata.solutions","priority":"station-level","tariffModel":"platform_or_custom_operator_unresolved","blockage":"Current company material describes a custom OCPP/payment platform rather than a uniform public CPO tariff.","resumeCondition":"Resolve canonical EVSE customer/operator context then inspect exact payment backend.","confidence":"medium","lastInvestigated":"2026-09-06","lastChanged":"2026-09-06"},
+    {"partyId":"MWT","canonicalName":"COOL ENERGY SERVICE SRL","priority":"station-level","tariffModel":"single_site_direct_unresolved","blockage":"No current public direct EV tariff found; current operator identity also requires verification.","resumeCondition":"Inspect the single canonical site QR/app/payment flow and operator identity.","confidence":"medium-low","lastInvestigated":"2026-09-06","lastChanged":"2026-09-06"}
+  ],
+  "postApplyCounts": {"treated":16,"partial":8,"setAside":1,"active":63,"total":88},
+  "queueImpact": {
+    "networkOrClassWidePromotions": 0,
+    "reclassifiedToStationLevel": ["SEM","KIW","VCS","BEY","TEX","EMV","CAR","MWT"],
+    "reclassifiedEvse": 47,
+    "newRankableEvse": 0,
+    "newFailClosedEvse": 47
+  },
+  "consistency": {
+    "statusSum": 88,
+    "matchesInventory": true,
+    "duplicatePartyIdsIntroduced": 0,
+    "artifactPartyIds": 88,
+    "artifactEvse": 75025,
+    "atlanteRemainsSetAside": true,
+    "fullAuditPerformed": false,
+    "canonicalRewritePending": true,
+    "canonicalPhysicalSnapshotStillStale": true
+  },
+  "evidenceReports": ["data/reports/italy_network_tariff_scope_20260906_run13.json"],
+  "history": [
+    "Run13 continued the mandatory network/class-wide-first classification pass on small remaining scopes.",
+    "SEMM/ISCAT default 0.55 AC / 0.65 DC grid was not promoted network-wide because ISCAT explicitly permits station-specific promotional/personalized overrides.",
+    "KIW, VCS, BEY, TEX, EMV, CAR and MWT were routed to station-level with explicit resume conditions instead of speculative global pricing.",
+    "No status count changed; 47 EVSE were newly classified fail-closed pending exact station-level mapping.",
+    "Atlante unchanged and reserved for last."
+  ]
+}
