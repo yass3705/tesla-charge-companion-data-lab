@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "run": "run23",
+  "generatedAt": "2026-09-06T20:53:00+01:00",
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run22-delta.json"],
+  "firstPassAudit": {
+    "completed": true,
+    "remainingNeverInvestigated": 0
+  },
+  "safeStatusTransitions": [],
+  "classificationUpdates": [
+    {
+      "partyId": "PWY",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "station/location/operator-specific according to current Powy FAQ",
+      "tariffChannel": "Powy Charge direct workflow; roaming eMSP separate",
+      "officialUrls": [
+        "https://powy.energy/ricarica-veicolo/powy-charge/",
+        "https://powy.energy/news/comunicati-stampa/powy-acquisizione-raw-charging-network-italy/"
+      ],
+      "positiveEvidence": [
+        "Current Powy FAQ says prices vary by operator, charger location and other factors and must be checked for the specific station in the app/site.",
+        "Powy Charge uses an EUR 80 preauthorisation for payment methods.",
+        "Powy acquired RAW Charging Network Italy in June 2026, adding 138 charging points in five outlet locations."
+      ],
+      "negativePaths": [
+        "Do not generalize third-party March 2026 0.67 EUR/kWh AC app value to the whole PWY physical network.",
+        "Do not conflate Powy eMSP/roaming prices with physical CPO direct pricing."
+      ],
+      "blockage": "Exact direct price requires station/connector mapping from Powy app/site payload.",
+      "resumeCondition": "Resolve Powy Charge public/guest backend or per-station web payload and join PWY EVSE to exact current tariff.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "TCA",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "station/platform-specific; historical class grid only available through eMSP evidence",
+      "tariffChannel": "BeaglePlug/eMSP and other roaming channels; direct CPO price separate",
+      "officialUrls": [
+        "https://www.beagleplug.com/en/terms-and-conditions-beagleplug-electriease/"
+      ],
+      "positiveEvidence": [
+        "Current BeaglePlug terms define PayXUse station cost parameters as EUR/min, EUR/kWh and start fee, with tariff plans exposed in the app."
+      ],
+      "negativePaths": [
+        "A 2024 report of T-Carica AC 0.55 / DC Fast 0.65 / DC Ultrafast 0.70 EUR/kWh via BeaglePlug is stale eMSP evidence and is not a 2026 direct-CPO network tariff.",
+        "No current first-party deterministic T-Carica-wide direct grid was found."
+      ],
+      "blockage": "Current exact direct/ad-hoc T-Carica tariff cannot be deterministically mapped from public first-party evidence.",
+      "resumeCondition": "Obtain current T-Carica/BeaglePlug station payload or direct QR/payment page mapping TCA EVSE to exact direct tariff.",
+      "confidence": "medium-high",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "BPA",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "platform-managed station PayXUse/subscription pricing",
+      "tariffChannel": "BeaglePlug eMSP/platform; physical CPO direct channel must be separated",
+      "officialUrls": [
+        "https://www.beagleplug.com/",
+        "https://www.beagleplug.com/en/terms-and-conditions-beagleplug-electriease/"
+      ],
+      "positiveEvidence": [
+        "Current BeaglePlug terms refer to the PayXUse tariff of the charging station used and allow EUR/min, EUR/kWh and start-fee components.",
+        "BeaglePlug describes multiple operators and both Pay Per Use and Flat plans, confirming eMSP aggregation."
+      ],
+      "negativePaths": [
+        "No current first-party ElectriEase physical-network tariff grid applicable to all BPA EVSE was found.",
+        "Public third-party station prices are discovery-only and cannot identify the physical direct tariff channel safely."
+      ],
+      "blockage": "Exact physical-CPO price requires station/connector-level BeaglePlug/ElectriEase mapping and direct-vs-eMSP discrimination.",
+      "resumeCondition": "Resolve public/guest BeaglePlug/ElectriEase station endpoint and map BPA EVSE to exact tariff/channel.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    }
+  ],
+  "postApplyCounts": {
+    "treated": 16,
+    "partial": 10,
+    "setAside": 1,
+    "active": 59,
+    "supersededAlias": 2,
+    "totalCanonicalCpos": 86,
+    "inventoryPartyIds": 88
+  },
+  "queueImpact": {
+    "firstPassRemaining": 0,
+    "networkOrClassWideRemaining": 1,
+    "stationLevelActiveCanonicalCpos": 59,
+    "newRankableEvse": 0,
+    "newlyTreatedCpos": []
+  },
+  "coherence": {
+    "canonicalStatusSumExcludingAliases": 86,
+    "canonicalStatusSumIncludingSupersededAliasRows": 88,
+    "matchesInventoryPartyIds": true,
+    "artifactPartyIds": 88,
+    "artifactEvse": 75025,
+    "atlanteRemainsSetAside": true,
+    "firstPassComplete": true,
+    "physicalCanonicalFileStillNeedsLosslessDeltaConsolidation": true
+  },
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260906_run23.json"],
+  "history": [
+    "Run23 continued second pass without reopening already exhausted first-pass paths.",
+    "PWY/Powy was strengthened as station-level from current first-party FAQ explicitly stating prices vary by operator/location/other factors.",
+    "T-Carica historical BeaglePlug class prices remain discovery-only because they are stale eMSP evidence and not a proven 2026 direct CPO tariff.",
+    "ElectriEase/BeaglePlug was confirmed platform/station-level; direct physical-CPO pricing remains separate from eMSP tariffs.",
+    "No tariff was generalized and no EVSE became rankable without deterministic station mapping.",
+    "Atlante remains setAside and last."
+  ]
+}
