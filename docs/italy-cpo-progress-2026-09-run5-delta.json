@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": [
+    "docs/italy-cpo-progress-2026-09-run3-delta.json",
+    "docs/italy-cpo-progress-2026-09-run4-delta.json",
+    "docs/italy-cpo-progress-2026-09-run4b-delta.json"
+  ],
+  "generatedAt": "2026-09-06T03:14:00+01:00",
+  "safeStatusTransitions": [
+    {"partyId":"ENB","from":"active","to":"treated","priority":"class-wide","reason":"87/87 ENB EVSE map deterministically to current official R-ev WALLET AC/DC power bands"},
+    {"partyId":"VFS","from":"active","to":"partial","priority":"class-wide","reason":"165/167 EVSE map to current official VIAFAST DC 60-180kW tariff; two 10/40kW DC EVSE remain outside published band and fail-closed"},
+    {"partyId":"A22","from":"active","to":"treated","priority":"class-wide","reason":"80/80 EVSE map to current first-party A22 charging types/prices; station page confirms ultra-rapid price for locations whose candidate capability is reported above the page's nominal rating"},
+    {"partyId":"CGS","from":"active","to":"partial","priority":"class-wide","reason":"59/60 EVSE are AC and map to current official Quick Cogeser network tariff; one 25kW DC EVSE lacks a deterministic native direct tariff and remains fail-closed"}
+  ],
+  "classificationUpdatesWithoutStatusTransition": [
+    {"partyId":"NRG","priority":"station-level","reason":"no current official deterministic network tariff exposed; historical Community Charger pricing not transposed"},
+    {"partyId":"TCA","priority":"station-level","reason":"discoverable fixed AC/DC values are Electriease/BeaglePlug eMSP prices, not proven T-Carica direct/ad-hoc tariff"},
+    {"partyId":"BPA","priority":"station-level","reason":"no first-party deterministic native network-wide direct tariff established; station/eMSP evidence only"}
+  ],
+  "coverageAdded": {
+    "ENB":{"rankableEvse":87,"failClosedEvse":0},
+    "VFS":{"rankableEvse":165,"failClosedEvse":2},
+    "A22":{"rankableEvse":80,"failClosedEvse":0},
+    "CGS":{"rankableEvse":59,"failClosedEvse":1},
+    "totalNewlyClassifiedRankableEvse":391,
+    "totalNewFailClosedEvse":3
+  },
+  "postApplyCounts": {"treated":16,"partial":7,"setAside":1,"active":64,"total":88},
+  "priorityQueueKnown": {
+    "classWideStillActive": [],
+    "stationLevelNewlyClassified": ["NRG","TCA","BPA"],
+    "unclassifiedActive": "remaining active entries still require network-wide-first classification before station-level investigation",
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSum": 88,
+    "matchesInventory": true,
+    "duplicatePartyIdsIntroduced": 0,
+    "artifactPartyIds": 88,
+    "artifactEvse": 75025,
+    "atlanteRemainsSetAside": true,
+    "fullAuditPerformed": true,
+    "canonicalRewritePending": true,
+    "canonicalRewriteReason": "Run5 verified status transitions are recorded as an additive delta because replacing the minified 88-entry canonical through the connector without a lossless local copy would risk deleting per-CPO metadata. Consolidate deltas into the main canonical only with a lossless whole-file reconstruction."
+  },
+  "evidenceReports": ["data/reports/italy_network_tariff_scope_20260906_run5.json"],
+  "history": [
+    "Run 5 downloaded and inspected workflow run 33308407226 consolidated candidate directly (75025 EVSE).",
+    "R-ev ENB closed 87/87 with official WALLET class mapping.",
+    "VIAFAST VFS moved to partial: 165/167 mapped; ITPW-00096*1 (10kW DC) and ITPW-00116*1 (40kW DC) fail-closed outside the published 60-180kW DC band.",
+    "A22 closed 80/80 using current first-party charging-type pricing.",
+    "Cogeser moved partial: 59 AC EVSE covered, one 25kW DC EVSE in Inzago remains fail-closed.",
+    "NRG4YOU, T-Carica and Electriease classified station-level/direct-unresolved rather than misusing historical or eMSP prices.",
+    "Atlante unchanged and reserved for last."
+  ]
+}
