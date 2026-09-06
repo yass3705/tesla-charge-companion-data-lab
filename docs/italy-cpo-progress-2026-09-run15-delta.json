@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run14-delta.json"],
+  "generatedAt": "2026-09-06T12:53:00+01:00",
+  "safeStatusTransitions": [
+    {
+      "partyId":"ESH",
+      "canonicalName":"E-Shore s.r.l.",
+      "from":"active",
+      "to":"supersededAlias",
+      "canonicalParentPartyId":"UTZ",
+      "reason":"UAU S.R.L. has the same legal registration/VAT identifier 02382770507 and E-SHORE S.R.L. is its recorded previous legal name effective 2025-10-16. Preserve 892 EVSE as legacy inventory scope under Uattzy."
+    },
+    {
+      "partyId":"GAS",
+      "canonicalName":"GASGAS S.R.L.",
+      "from":"active",
+      "to":"supersededAlias",
+      "canonicalParentPartyId":"UTZ",
+      "reason":"GASGAS S.R.L. is recorded inactive following a merger/acquisition effective 2025-07-16 with successor E-SHORE S.R.L.; E-Shore subsequently became UAU. Preserve 290 EVSE as legacy inventory scope under Uattzy."
+    }
+  ],
+  "canonicalGroupUpdate": {
+    "partyId":"UTZ",
+    "canonicalName":"UAU S.R.L. / Uattzy",
+    "aliases":["UAU srl","Uattzy","E-Shore s.r.l.","E-SHORE S.R.L.","GASGAS S.R.L.","EnerMia & E-Shore Mobility"],
+    "aliasPartyIds":["UTZ","ESH","GAS"],
+    "status":"active",
+    "priority":"station-level",
+    "evseScopes":{"UTZ":16,"ESH":892,"GAS":290,"aggregateObserved":1198},
+    "tariffModel":"connector/station displayed; current Uattzy app/RFID/POS conditions; roaming separated",
+    "tariffChannel":"direct Uattzy app/RFID/POS",
+    "blockage":"Exact current connector tariff and any extra fee are not yet mapped deterministically over all 1,198 EVSE across legacy/current partyIds.",
+    "resumeCondition":"Enumerate Uattzy native app/backend, reconcile UTZ/ESH/GAS EVSE to current station/connectors, capture exact native tariff/fees and keep roaming separate.",
+    "officialUrls":["https://www.uattzy.com/","https://www.uattzy.com/faq/","https://enermia.org/come-ricaricare/ricarica-pubblica/"],
+    "legalReferences":["https://lei.bloomberg.com/leis/view/9845006C83E8F64RAD22","https://lei.bloomberg.com/leis/view/815600E589DF143BB831"],
+    "confidence":"high",
+    "lastInvestigated":"2026-09-06",
+    "lastChanged":"2026-09-06"
+  },
+  "countSemantics": {
+    "inventoryPartyIds":88,
+    "canonicalCpoGroups":86,
+    "supersededAliasPartyIds":2,
+    "note":"PartyId inventory remains lossless at 88, while user-facing CPO progress denominator is deduplicated to 86 canonical CPO groups so aliases are not counted twice."
+  },
+  "postApplyCounts": {"treated":16,"partial":8,"setAside":1,"active":61,"supersededAlias":2,"totalCanonicalCpos":86,"inventoryPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideRemaining":0,
+    "stationLevelActiveCanonicalCpos":61,
+    "newRankableEvse":0,
+    "newFailClosedEvse":0,
+    "deduplicatedCpoCount":2,
+    "unifiedStationLevelScopeEvse":1198
+  },
+  "consistency": {
+    "canonicalStatusSumExcludingAliases":86,
+    "canonicalStatusSumIncludingSupersededAliasRows":88,
+    "matchesInventoryPartyIds":true,
+    "duplicateCanonicalCpoAliasesAfterCorrection":0,
+    "artifactPartyIds":88,
+    "artifactEvse":75025,
+    "atlanteRemainsSetAside":true,
+    "fullAuditPerformed":true,
+    "canonicalRewritePending":true,
+    "canonicalPhysicalSnapshotStillStale":true
+  },
+  "evidenceReports":["data/reports/italy_uattzy_alias_reconciliation_20260906_run15.json"],
+  "history":[
+    "Run15 began station-level phase after run14 exhausted network/class-wide classification.",
+    "Detected and corrected a canonical double-count: ESH/E-Shore and GAS/GASGAS are legacy legal/partyId scopes of current UAU/Uattzy, not independent current CPOs.",
+    "ESH and GAS were marked supersededAlias under UTZ while preserving all legacy EVSE inventory scopes.",
+    "Canonical CPO denominator corrected from 88 partyId-derived rows to 86 deduplicated current CPO groups; physical inventory remains 88 partyIds / 75,025 EVSE.",
+    "Uattzy remains fail-closed station-level: first-party FAQ says tariff/extra fees are shown by connector and may vary; no secondary price was generalized.",
+    "Atlante unchanged and reserved for last."
+  ]
+}
