@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "generatedAt": "2026-09-06T04:51:47+01:00",
+  "purpose": "network-wide-first classification pass; fail-closed",
+  "results": [
+    {
+      "partyId": "UFC",
+      "canonicalName": "E.ON DRIVE INFRASTRUCTURE ITALY S.R.L.",
+      "evse": 48,
+      "decision": "station-level",
+      "statusTransition": false,
+      "reason": "Current first-party Italian tariff page publishes ad-hoc bands as 'From' values (AC <45 kW from EUR 0.695/kWh; DC <100 kW from EUR 0.79/kWh; HPC 100-400 kW from EUR 0.79/kWh). 'From' is not a deterministic mapping for every EVSE in the party scope, so no network-wide value is promoted.",
+      "tariffChannel": "direct CPO/ad-hoc",
+      "officialUrls": ["https://www.edri.com/it-it/tariffs"],
+      "positiveEvidence": ["official Italy tariff page confirms power bands and ad-hoc payment without registration"],
+      "negativeEvidence": ["prices are explicitly lower bounds ('From'), not exact universal values"],
+      "resumeCondition": "deterministic station/EVSE exact tariff from EDRI station finder, QR/ad-hoc endpoint, app/backend, or an official rule proving exact applicability",
+      "confidence": "high",
+      "rankableCoverage": "0/48 until exact EVSE price mapping is proven"
+    },
+    {
+      "partyId": "ALL",
+      "canonicalName": "Allego Italy S.r.l.",
+      "evse": 28,
+      "decision": "station-level",
+      "statusTransition": false,
+      "reason": "Current first-party Allego pricing explicitly states that station prices may vary and instructs users to check the specific price by QR code or in the Allego app. Country-level illustrative ranges must not be generalized to all Italian EVSE.",
+      "tariffChannel": "direct CPO/ad-hoc/app",
+      "officialUrls": ["https://www.allego.eu/app/", "https://www.allego.eu/da/priser/"],
+      "positiveEvidence": ["official app supports per-charger price lookup", "official pricing page says station prices can vary and directs users to QR/app"],
+      "negativeEvidence": ["published country/speed figures include ranges and are not proof of a single exact party-wide tariff"],
+      "resumeCondition": "map each Italian Allego EVSE to its current QR/app/backend exact tariff",
+      "confidence": "high",
+      "rankableCoverage": "0/28 until exact EVSE price mapping is proven"
+    }
+  ],
+  "counts": {
+    "newlyTreated": 0,
+    "newlyPartial": 0,
+    "newStationLevelClassifications": 2,
+    "evseRemovedFromGlobalCandidateQueue": 76
+  },
+  "notes": [
+    "No tariff was invented or generalized from roaming/eMSP evidence.",
+    "Atlante was not touched and remains last."
+  ]
+}
