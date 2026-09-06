@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "generatedAt": "2026-09-06T09:54:00+01:00",
+  "run": 12,
+  "policy": {
+    "priority": "network-wide/class-wide before station-level",
+    "failClosed": true,
+    "directVsEmspSeparated": true,
+    "noTariffExtrapolation": true
+  },
+  "results": [
+    {
+      "partyId": "UOC",
+      "canonicalName": "UNIONE CHARGING S.R.L.",
+      "brand": "UniOne",
+      "inventory": {"evse": 7, "stations": 3},
+      "classification": "partial",
+      "priority": "class-wide",
+      "tariffModel": "power_class",
+      "tariffChannel": "direct CPO; credit card/POS or app",
+      "officialTariffs": [
+        {"powerKw": 22, "energyEurPerKwh": 0.50},
+        {"powerKw": 80, "energyEurPerKwh": 0.70}
+      ],
+      "activeNetworkObserved": [
+        {"site": "Via Ugo Foscolo 4, Mestrino PD", "connectors": [{"type":"DC CCS2","powerKw":80},{"type":"AC Type2","powerKw":22}]},
+        {"site": "Via Colli Euganei 4, Saccolongo PD", "connectors": [{"type":"DC CCS2","powerKw":120},{"type":"AC Type2","powerKw":22},{"type":"AC Type2","powerKw":22}]},
+        {"site": "Via Mattei 11, Saccolongo PD", "connectors": [{"type":"AC Type2","powerKw":22},{"type":"AC Type2","powerKw":22}]}
+      ],
+      "coverage": {
+        "rankableExactEvse": 6,
+        "unresolvedEvse": 1,
+        "rankableBreakdown": {"AC22":5,"DC80":1},
+        "unresolvedBreakdown": {"DC120":1}
+      },
+      "blockage": "Official tariff page publishes 22 kW and 80 kW prices but no deterministic price for the active 120 kW CCS2 EVSE at Via Colli Euganei 4; applying the 80 kW tariff to 120 kW would be an unsupported extrapolation.",
+      "resumeCondition": "First-party UniOne tariff, POS/ad-hoc flow, app/backend response, or other deterministic evidence for the 120 kW EVSE.",
+      "officialUrls": [
+        "https://www.uni-one.eu/tariffe/",
+        "https://www.uni-one.eu/rete-di-ricarica/"
+      ],
+      "positiveEvidence": [
+        "UniOne tariff page: 22 kW = EUR 0.50/kWh; 80 kW = EUR 0.70/kWh.",
+        "UniOne network page exposes the active 7-EVSE footprint matching the canonical UOC count across 3 active sites.",
+        "Five active EVSE are AC 22 kW, one is DC 80 kW, and one is DC 120 kW."
+      ],
+      "negativeEvidence": [
+        "No 120 kW tariff appears on the official tariff page as of 2026-09-06."
+      ],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    }
+  ],
+  "consistencyAudit": {
+    "preCounts": {"treated":16,"partial":7,"setAside":1,"active":64,"total":88},
+    "postCounts": {"treated":16,"partial":8,"setAside":1,"active":63,"total":88},
+    "statusSum": 88,
+    "matchesCanonicalInventoryPartyIds": true,
+    "canonicalInventoryEvse": 75025,
+    "duplicatePartyIdsIntroduced": 0,
+    "atlanteRemainsSetAside": true
+  }
+}
