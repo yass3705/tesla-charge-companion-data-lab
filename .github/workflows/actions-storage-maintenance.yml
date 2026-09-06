@@ -1,0 +1,175 @@
+name: Actions storage maintenance
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "47 3 * * 0"
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/actions-storage-maintenance.yml"
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: actions-storage-maintenance
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Remove obsolete Actions runs while preserving live references
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          MAX_DELETES: "1500"
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.error, urllib.request
+          from collections import defaultdict
+          from datetime import datetime, timedelta, timezone
+
+          repo = os.environ['REPOSITORY']
+          token = os.environ['GH_TOKEN']
+          max_deletes = int(os.environ.get('MAX_DELETES', '1500'))
+          base = f'https://api.github.com/repos/{repo}/'
+          headers = {
+              'Authorization': f'Bearer {token}',
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+              'User-Agent': 'tcc-actions-storage-maintenance',
+          }
+
+          def request(method, path):
+              req = urllib.request.Request(base + path.lstrip('/'), headers=headers, method=method)
+              try:
+                  with urllib.request.urlopen(req, timeout=45) as r:
+                      raw = r.read()
+                      return json.loads(raw.decode()) if raw else None
+              except urllib.error.HTTPError as e:
+                  body = e.read().decode('utf-8', 'replace')[:500]
+                  if method == 'DELETE' and e.code == 404:
+                      return None
+                  raise RuntimeError(f'{method} {path}: HTTP {e.code}: {body}')
+
+          def paginate(path, key, max_pages=20):
+              out = []
+              sep = '&' if '?' in path else '?'
+              for page in range(1, max_pages + 1):
+                  data = request('GET', f'{path}{sep}per_page=100&page={page}') or {}
+                  batch = list(data.get(key) or [])
+                  out.extend(batch)
+                  if len(batch) < 100:
+                      break
+              return out
+
+          now = datetime.now(timezone.utc)
+          recent_cutoff = now - timedelta(hours=12)
+
+          workflows = paginate('actions/workflows', 'workflows', 10)
+          artifacts = paginate('actions/artifacts', 'artifacts', 20)
+          live_artifacts = [a for a in artifacts if not a.get('expired')]
+
+          # Keep the newest live artifact for every exact artifact name, plus every artifact
+          # created in the last 12 hours so an in-flight multi-workflow handoff cannot be broken.
+          newest_by_name = {}
+          keep = set()
+          artifacts_by_run = defaultdict(list)
+          for a in live_artifacts:
+              run = a.get('workflow_run') or {}
+              rid = int(run.get('id') or 0)
+              if rid:
+                  artifacts_by_run[rid].append(a)
+              name = str(a.get('name') or '')
+              old = newest_by_name.get(name)
+              if old is None or str(a.get('created_at') or '') > str(old.get('created_at') or ''):
+                  newest_by_name[name] = a
+              try:
+                  created = datetime.fromisoformat(str(a.get('created_at')).replace('Z', '+00:00'))
+              except Exception:
+                  created = now
+              if rid and created >= recent_cutoff:
+                  keep.add(rid)
+          for a in newest_by_name.values():
+              rid = int((a.get('workflow_run') or {}).get('id') or 0)
+              if rid:
+                  keep.add(rid)
+
+          # Keep the latest successful run for every workflow still present in the repository.
+          latest_success = 0
+          for wf in workflows:
+              wid = int(wf.get('id') or 0)
+              if not wid:
+                  continue
+              try:
+                  data = request('GET', f'actions/workflows/{wid}/runs?status=success&per_page=1') or {}
+                  runs = data.get('workflow_runs') or []
+                  if runs:
+                      keep.add(int(runs[0]['id']))
+                      latest_success += 1
+              except Exception as exc:
+                  print(f'warning: latest success lookup failed for workflow {wid}: {exc}')
+
+          deleted = []
+          reclaimed = 0
+          errors = []
+          page = 2  # always preserve the newest 100 completed runs globally for diagnostics/canary.
+          empty_passes = 0
+
+          while len(deleted) < max_deletes and page <= 30:
+              data = request('GET', f'actions/runs?status=completed&per_page=100&page={page}') or {}
+              runs = data.get('workflow_runs') or []
+              if not runs:
+                  break
+              progress = 0
+              for run in runs:
+                  if len(deleted) >= max_deletes:
+                      break
+                  rid = int(run['id'])
+                  if rid in keep:
+                      continue
+                  try:
+                      reclaimed += sum(int(a.get('size_in_bytes') or 0) for a in artifacts_by_run.get(rid, []))
+                      request('DELETE', f'actions/runs/{rid}')
+                      deleted.append(rid)
+                      progress += 1
+                  except Exception as exc:
+                      errors.append({'runId': rid, 'error': str(exc)})
+              if progress:
+                  page = 2
+                  empty_passes = 0
+                  time.sleep(0.2)
+              else:
+                  page += 1
+                  empty_passes += 1
+                  if empty_passes >= 8:
+                      break
+
+          mib_before = sum(int(a.get('size_in_bytes') or 0) for a in live_artifacts) / 1024 / 1024
+          mib_reclaimed = reclaimed / 1024 / 1024
+          summary = {
+              'repository': repo,
+              'workflowCount': len(workflows),
+              'liveArtifactCountBefore': len(live_artifacts),
+              'liveArtifactMiBBefore': round(mib_before, 2),
+              'protectedRunCount': len(keep),
+              'latestSuccessProtected': latest_success,
+              'deletedCompletedRuns': len(deleted),
+              'estimatedArtifactMiBReclaimed': round(mib_reclaimed, 2),
+              'deleteErrors': len(errors),
+          }
+          print(json.dumps(summary, indent=2))
+          if errors:
+              print(json.dumps(errors[:20], indent=2))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as f:
+              f.write('## Actions storage maintenance\n\n')
+              for k, v in summary.items():
+                  f.write(f'- **{k}**: {v}\n')
+          if errors:
+              raise SystemExit(2)
+          PY
