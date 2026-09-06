@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 27,
+  "generatedAt": "2026-09-07T01:10:00+01:00",
+  "scope": "second-pass class-wide/network-wide candidates before station-level",
+  "policy": {
+    "failClosed": true,
+    "directVsEmspSeparated": true,
+    "atlanteLast": true,
+    "doNotRepeatExhaustedGenericResearchWithoutNewEvidence": true
+  },
+  "investigations": [
+    {
+      "partyId": "CGS",
+      "canonicalName": "COGESER ENERGIA SRL",
+      "inventory": {"evse": 60, "stations": 27},
+      "classification": "class-wide candidate, not yet fully rankable",
+      "officialEvidence": [
+        {
+          "url": "https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico",
+          "observed": "2026-09-07",
+          "facts": [
+            "Official public-charging page states Cogeser network Quick AC tariff 0.67 EUR/kWh VAT included, effective from 2025-10-01.",
+            "Cogeser electricity-bill customers may charge on Cogeser network at 0.49 EUR/kWh VAT included from 2025-10-01.",
+            "Roaming non-Cogeser AC 0.73 EUR/kWh and DC 0.89 EUR/kWh are explicitly separate and must not be promoted as direct CPO tariffs.",
+            "Access supports app, RFID and QR-code spot charging."
+          ]
+        }
+      ],
+      "negativeOrLimitingEvidence": [
+        "Current Cogeser communications also reference Fast Charge availability in 2026, while the public tariff table only proves the Quick Cogeser AC class.",
+        "Therefore 0.67 EUR/kWh cannot safely be generalized to all 60 CGS EVSE without an EVSE-to-class join."
+      ],
+      "nextUsefulStep": "Join current CGS EVSE connector/power metadata to the proven Quick AC class; keep Fast/non-AC fail-closed until a current official direct tariff is found.",
+      "confidence": "high"
+    },
+    {
+      "partyId": "ALL",
+      "canonicalName": "Allego Italy S.r.l.",
+      "inventory": {"evse": 28, "stations": 8},
+      "classification": "class-wide candidate, not yet fully rankable",
+      "officialEvidence": [
+        {
+          "url": "https://www.allego.eu/app/",
+          "observed": "2026-09-07",
+          "facts": [
+            "Official Allego app page exposes country-specific Italy pricing as a distinct block.",
+            "Italy Allego Plus: Ultrafast 350 kW 0.55 EUR/kWh, Fast 150 kW 0.70 EUR/kWh, 9.99 EUR/month.",
+            "Italy Allego Smart: Ultrafast 350 kW 0.75 EUR/kWh, Fast 150 kW 0.70 EUR/kWh, free subscription in app.",
+            "Italy pay-as-you-go: Ultrafast 350 kW 0.81 EUR/kWh, Fast 150 kW 0.70 EUR/kWh, no app/card required.",
+            "All prices include VAT; overstay charges may apply."
+          ]
+        }
+      ],
+      "negativeOrLimitingEvidence": [
+        "The tariff classes are deterministic, but the canonical 28 EVSE still need a deterministic EVSE-to-Fast/Ultrafast mapping before rankable promotion.",
+        "No Regular class is shown for Italy in the current Allego country block, but this alone is not used to infer every canonical EVSE class."
+      ],
+      "nextUsefulStep": "Join PUN/OCPI connector maximum power to Allego Italy Fast versus Ultrafast classes and validate threshold semantics from the current Allego metadata.",
+      "confidence": "high"
+    },
+    {
+      "partyId": "P62",
+      "canonicalName": "EUM GENOSSENSCHAFT",
+      "inventory": {"evse": 12, "stations": 6},
+      "classification": "station-level / unresolved direct public-charging tariff",
+      "officialEvidence": [
+        {
+          "url": "https://www.eum.bz/de/strom",
+          "observed": "2026-09-07",
+          "facts": ["Official site confirms EUM electricity distribution/supply role in Moos in Passeier."]
+        }
+      ],
+      "negativeOrLimitingEvidence": [
+        "Official member electricity tariffs (0.07/0.09 EUR/kWh plus VAT) are retail electricity-supply prices, not public EV charging tariffs, and are excluded.",
+        "No current first-party public EV charging tariff was found in this pass."
+      ],
+      "nextUsefulStep": "Resume only from a charger page, QR/ad-hoc flow, app/backend, or current first-party EV tariff document.",
+      "confidence": "high"
+    },
+    {
+      "partyId": "TDM",
+      "canonicalName": "T.D.M. S.R.L.",
+      "inventory": {"evse": 52, "stations": 26},
+      "classification": "station-level / unresolved direct public-charging tariff",
+      "positiveEvidence": [
+        "Recent public fuel-station records corroborate T.D.M. operation of Tamoil sites offering EV charging."
+      ],
+      "negativeOrLimitingEvidence": [
+        "No current T.D.M./Tamoil first-party EV charging price or deterministic network-wide grid was found.",
+        "Fuel prices are unrelated and excluded."
+      ],
+      "nextUsefulStep": "Resolve exact TDM EVSE identifiers to the native charging platform/QR backend; do not repeat generic web tariff search without new evidence.",
+      "confidence": "medium"
+    }
+  ],
+  "queueImpact": {
+    "newlyTreatedCpos": [],
+    "newRankableEvse": 0,
+    "classWideCandidatesStrengthened": ["CGS", "ALL"],
+    "genericNetworkWidePathsClosed": ["P62", "TDM"],
+    "atlanteLast": true
+  }
+}
