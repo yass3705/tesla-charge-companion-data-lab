@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "generatedAt": "2026-09-06T14:55:00+01:00",
+  "phase": "station-level",
+  "canonicalAudit": {
+    "physicalCanonicalSnapshot": "docs/italy-cpo-progress-2026-09.json",
+    "snapshotStillPreDelta": true,
+    "latestDelta": "docs/italy-cpo-progress-2026-09-run16-delta.json",
+    "effectiveCounts": {
+      "treated": 16,
+      "partial": 9,
+      "setAside": 1,
+      "active": 60,
+      "supersededAlias": 2,
+      "totalCanonicalCpos": 86,
+      "inventoryPartyIds": 88,
+      "inventoryEvse": 75025
+    },
+    "networkOrClassWideRemaining": 0,
+    "consistency": "16+9+1+60=86 current canonical CPO groups; +2 supersededAlias rows=88 physical partyIds",
+    "remediation": {
+      "script": "scripts/consolidate_italy_cpo_progress.py",
+      "commit": "5bfb4402aaab1a9cb0ad79fd8240fc7a4e9bb3ce",
+      "behavior": "ordered lossless merge of all run deltas with transition validation, alias semantics, count recomputation and Atlante invariant before write"
+    }
+  },
+  "cpos": [
+    {
+      "partyId": "SEM",
+      "canonicalName": "ISCAT s.r.l. / Circuito SEMM",
+      "status": "active",
+      "priority": "station-level",
+      "inventory": {"stations": 7, "evse": 7},
+      "tariffModel": "default power bands with station-specific overrides",
+      "tariffChannel": "direct SEMM / THOR / RFID / credit-card webapp",
+      "currentFirstPartyEvidence": {
+        "officialUrl": "https://iscat.com/circuito-di-ricarica-semm-by-iscat/",
+        "publishedTariffUpdateDate": "2024-05-06",
+        "defaultTariffs": [
+          {"class": "AC max 22 kW", "energyEurPerKwh": 0.55},
+          {"class": "DC max 90 kW", "energyEurPerKwh": 0.65}
+        ],
+        "postChargeOccupancyEurPerHour": 2.0,
+        "cardPreauthorizationEur": 30.0,
+        "stationOverrideRule": "personalized/promotional tariffs may exist and are explicitly shown on each THOR station Details page",
+        "thorUrl": "https://my.thor.tools/"
+      },
+      "positiveEvidence": [
+        "ISCAT first-party page remains live and explicitly documents default tariffs, occupancy fee, THOR exact-station Details pages and EUR 30 card preauthorization.",
+        "ISCAT 2026-05-29 Revello announcement gives exact current station examples: Revello1 AC 22 kW EUR 0.55/kWh and Revello2 DC 30 kW EUR 0.65/kWh."
+      ],
+      "negativePaths": [
+        "Do not promote default grid to all 7 canonical stations because first-party source explicitly permits per-station personalized/promotional tariffs.",
+        "THOR public landing page is JavaScript-only in current crawler and exact station Details endpoints were not enumerated in this run."
+      ],
+      "blockage": "Need deterministic mapping of the seven PUN SEM stations/EVSE to THOR Details pages to verify whether any override applies.",
+      "resumeCondition": "Enumerate THOR public station map/backend or recover exact QR/Details URLs, then join each of seven canonical stations before rankable promotion.",
+      "confidence": "high on pricing model and default grid; fail-closed on station applicability"
+    },
+    {
+      "partyId": "UTZ",
+      "canonicalName": "UAU S.R.L. / Uattzy",
+      "status": "active",
+      "priority": "station-level",
+      "aggregateObservedEvse": 1198,
+      "aliasPartyIds": ["UTZ", "ESH", "GAS"],
+      "tariffModel": "connector-specific native tariff with possible activation/occupancy extras",
+      "tariffChannel": "direct Uattzy app/RFID/POS; roaming eMSP separate",
+      "currentFirstPartyEvidence": {
+        "officialUrls": ["https://www.uattzy.com/", "https://www.uattzy.com/faq/"],
+        "networkScaleClaim": "over 3000 charging points installed and managed in Italy on current homepage",
+        "appPreauthorizationEur": 15.0,
+        "pricingRule": "native Uattzy app/account shows tariff for every connector and any extra activation/occupancy costs before charging; prices may vary with power, session duration and bay occupancy",
+        "paymentModes": ["Uattzy app", "Uattzy RFID", "QR where enabled", "POS where enabled"]
+      },
+      "negativePaths": [
+        "No uniform price can be inferred across the 1198 observed legacy/current EVSE scopes.",
+        "Third-party eMSP prices must remain separated from native Uattzy direct pricing."
+      ],
+      "blockage": "Native connector tariff requires app/backend enumeration over UTZ/ESH/GAS legacy/current scopes.",
+      "resumeCondition": "Identify Uattzy public/guest app backend and map PUN EVSE identifiers to native connectors and exact current price/fees.",
+      "confidence": "high on model/alias grouping; unresolved on exact connector prices"
+    }
+  ],
+  "atlante": {"status": "setAside", "investigated": false, "reason": "reserved for last per policy"},
+  "statusTransitions": [],
+  "newRankableEvse": 0
+}
