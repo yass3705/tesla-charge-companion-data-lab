@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "generatedAt": "2026-09-06T01:45:00+01:00",
+  "policy": {"networkWideFirst": true, "failClosed": true, "atlanteLast": true, "directVsEmspSeparated": true},
+  "findings": [
+    {
+      "partyId": "ENX",
+      "canonicalName": "ENEL X WAY ITALIA SRL",
+      "inventoryEvse": 22798,
+      "inventoryStations": 11123,
+      "priority": "class-wide",
+      "statusRecommendation": "treated",
+      "tariffModel": "power_and_time_band_native_network",
+      "tariffChannel": "Enel On Your Way native service on Enel X stations",
+      "tariffs": [
+        {"plan":"Pay Per Use Basic","class":"AC <=43 kW","time":"07:00-20:59","energyEurPerKwh":0.67},
+        {"plan":"Pay Per Use Basic","class":"AC <=43 kW","time":"21:00-06:59","energyEurPerKwh":0.58},
+        {"plan":"Pay Per Use Basic","class":"DC 43-99 kW","time":"07:00-20:59","energyEurPerKwh":0.75},
+        {"plan":"Pay Per Use Basic","class":"DC 43-99 kW","time":"21:00-06:59","energyEurPerKwh":0.64},
+        {"plan":"Pay Per Use Basic","class":"HPC >99 kW","time":"Mon-Sat 07:00-20:59","energyEurPerKwh":0.83},
+        {"plan":"Pay Per Use Basic","class":"HPC >99 kW","time":"Mon-Sat 21:00-06:59 and Sunday","energyEurPerKwh":0.78}
+      ],
+      "officialUrls": [
+        "https://www.enel.it/it-it/mobilita-elettrica/tariffe-abbonamenti",
+        "https://www.enel.it/content/dam/asset/documenti/enel-x-way/tariffe-abbonamenti/Enel-X-i-di-piani-ricarica.pdf"
+      ],
+      "positiveEvidence": "Current Enel official tariff page and June-2026 tariff PDF explicitly state these consumption prices are valid on Enel X and Ewiva stations and define exact AC/DC/HPC and time bands. The PDF also states Plug&Go Super is valid through 2027-01-14; Basic is the base consumption tariff.",
+      "coverage": {"rankableByPowerAndStartTime": 22798, "uncoveredEvse": 0},
+      "confidence": "high",
+      "notes": "Keep Ewiva physical party EWI separate; do not duplicate EWI as ENX inventory even though the native Enel tariff also applies on Ewiva."
+    },
+    {
+      "partyIds": ["ESH","GAS","UTZ"],
+      "commercialBrand": "Uattzy / UAU srl",
+      "priorityRecommendation": "station-level",
+      "statusRecommendation": "active",
+      "officialUrls": ["https://www.uattzy.com/","https://www.uattzy.com/faq/"],
+      "positiveEvidence": "Uattzy states it is the brand born from E-Shore, GASGAS and EnerMia. Its FAQ says the native tariff is shown for each connector and may vary with power, session duration and bay occupancy; therefore no safe single network-wide price is implied.",
+      "aliasDecision": "Commercial consolidation recorded, but legacy PUN partyIds remain distinct inventory scopes; do not deduplicate them without an explicit PUN/OCPI partyId migration proof.",
+      "confidence": "high"
+    },
+    {
+      "partyId": "ENB",
+      "canonicalName": "ENERBROKER S.R.L. (R-ev)",
+      "priority": "class-wide",
+      "statusRecommendation": "active",
+      "blockage": "Official tariff bands are deterministic, but this run could not inspect the archived 7.2 MB candidate payload deeply enough to prove connector/power metadata completeness for every ENB EVSE.",
+      "resumeCondition": "Verify all 87 ENB EVSE have connector class and exact power sufficient for AC / DC<=150 / DC>150 mapping."
+    },
+    {
+      "partyId": "VFS",
+      "canonicalName": "VIAFAST SRL",
+      "priority": "class-wide",
+      "statusRecommendation": "active",
+      "blockage": "Official tariff bands are deterministic, but exact connector/power completeness still needs inventory-level verification before treated.",
+      "resumeCondition": "Verify all 167 VFS EVSE fall deterministically into AC<=22 or DC 60-180 kW with no unsupported power class."
+    }
+  ],
+  "coherenceAudit": {
+    "baseCanonicalPartyIds": 88,
+    "baseCanonicalStatusSum": 88,
+    "baseDuplicatePartyIds": 0,
+    "run3DeltaExpectedCounts": {"treated":12,"partial":5,"setAside":1,"active":70,"total":88},
+    "run4PostApplyExpectedCounts": {"treated":13,"partial":5,"setAside":1,"active":69,"total":88},
+    "atlanteRemainsSetAside": true,
+    "issueDetected": "Main canonical file still reflects pre-run3 statuses while run3 delta is separate; consolidate deltas into canonical on next safe full-file rewrite."
+  }
+}
