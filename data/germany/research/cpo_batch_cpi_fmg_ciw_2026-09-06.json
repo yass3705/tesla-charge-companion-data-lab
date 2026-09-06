@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "runDate": "2026-09-06",
+  "prefixes": {
+    "DECPI": {
+      "classification": "partial",
+      "alias": "shared ChargePoint/KLING-associated prefix with multiple physical operators",
+      "scope": {"evses": 290, "sites": 97},
+      "canonicalEvidence": "The certified Germany coverage audit shows DECPI across 97 sites with multiple physical operators; top operators include KLING Charging Solutions GmbH, Stadtwerke Gütersloh GmbH and GEW Wilhelmshaven GmbH.",
+      "evidence": [
+        {"type":"station_level_discovery","url":"https://www.preisstation.de/ladestation/39900-hyc-seefeld-seefeld/","finding":"DE*CPI EVSEs at a KLING Charging Solutions site, confirming the prefix is used in public infrastructure."},
+        {"type":"station_level_discovery","url":"https://www.preisstation.de/ladestation/30134-ah-ebe-dc-fast-2-ebersberg/","finding":"DE*CPI EVSEs also occur at an Autohaus Ebersberg-operated site, confirming the prefix is not one homogeneous physical CPO."}
+      ],
+      "decision":"No DECPI-wide tariff. Resolve physical operator and exact direct tariff per EVSE/site.",
+      "failClosed": true,
+      "unblockForComplete":"Map all DECPI EVSEs to physical tariff authority and authoritative station-level direct-payment contract."
+    },
+    "DEFMG": {
+      "classification": "partial",
+      "alias": "Flughafen München GmbH",
+      "scope": {"evses": 285, "sites": 2},
+      "evidence": [
+        {"type":"official","url":"https://www.munich-airport.de/e-mob","finding":"Munich Airport publishes current campus charging tariffs: AC 0.49 EUR/kWh and DC 0.69 EUR/kWh."},
+        {"type":"official","url":"https://www.munich-airport.de/schnellladesaeulen-42609847","finding":"Airport-operated fast chargers: ad-hoc 0.69 EUR/kWh plus 0.20 EUR/min after 90 minutes; partner Audi/ENI stations explicitly excluded from airport tariff authority."},
+        {"type":"official","url":"https://www.munich-airport.de/elektrofahrzeug-laden-8467114","finding":"P44/P51 self-service AC charging is 0.49 EUR/kWh with QR/smartphone direct payment; parking remains separate where applicable."}
+      ],
+      "decision":"Official tariff rules are exact, but keep partial until the 285 canonical DEFMG EVSEs are deterministically mapped to the applicable AC versus airport-operated DC rule and any non-FMG partner chargers are excluded by EVSE identity.",
+      "failClosed": true,
+      "unblockForComplete":"Attach each canonical DEFMG EVSE to AC 0.49 rule or airport-operated DC 0.69 + post-90min 0.20/min rule; prove no partner-operated EVSE is incorrectly included."
+    },
+    "DECIW": {
+      "classification": "partial",
+      "alias": "Citywatt GmbH",
+      "scope": {"evses": 262, "sites": 64},
+      "evidence": [
+        {"type":"official_historical/current-context","url":"https://www.citywatt.de/news/riesenerfolg-fuer-citywatt/","finding":"CITYWATT publicly described ad-hoc charging at 0.65 EUR/kWh, but the page is older and cannot prove a 2026 network-wide current tariff."},
+        {"type":"station_level_discovery","url":"https://adhocladen.de/salzweg/citywatt-am-gewerbepark-2/","finding":"Current station-level data via Mobilithek discovery shows DE*CIW AC EVSEs at 0.44 EUR/kWh."},
+        {"type":"station_level_discovery","url":"https://www.e-stations.de/ladestationen/thiersheim/citywatt-thiersheim-01-300kw-36322","finding":"Current station-level DE*CIW HPC EVSEs at Thiersheim show 0.70 EUR/kWh."}
+      ],
+      "decision":"Observed current DECIW prices differ by station/power and the official 0.65 page is not sufficient current exhaustive proof. No global Citywatt fallback; resolve exact price per EVSE/site.",
+      "failClosed": true,
+      "unblockForComplete":"Enumerate all 262 DECIW EVSEs and obtain authoritative current QR/direct-payment tariffs or Mobilithek/AFIR station-level records with source provenance and fee components."
+    }
+  }
+}
