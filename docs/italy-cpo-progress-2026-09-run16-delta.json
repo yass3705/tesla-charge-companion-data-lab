@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run15-delta.json"],
+  "generatedAt": "2026-09-06T13:53:00+01:00",
+  "safeStatusTransitions": [
+    {
+      "partyId": "AM1",
+      "canonicalName": "ALPHA MOBILITY SRL",
+      "from": "active",
+      "to": "partial",
+      "reason": "Exact native RicaricaVeicolo station id IT0721090094 maps deterministically to PUN EVSE IT0721090094*1 and *2 at Via Copparo 132 Ferrara, with current direct price 0.65 EUR/kWh. Remaining 48 EVSE stay fail-closed."
+    }
+  ],
+  "cpoUpdates": [
+    {
+      "partyId": "AM1",
+      "priority": "station-level",
+      "tariffModel": "native station/connector-specific",
+      "tariffChannel": "direct Alpha Mobility / RicaricaVeicolo web payment",
+      "prices": [{"scopeEvseIds":["IT0721090094*1","IT0721090094*2"],"energyEurPerKwh":0.65,"minimumChargeEur":2.5,"preauthorizationEur":100,"validThrough":null}],
+      "coverage": {
+        "physicalEvse": 50,
+        "rankableDirectEvse": 2,
+        "unresolvedEvse": 48,
+        "coveragePct": 4.0,
+        "coveredSubpopulations": [{"punStationId":"6654942a04fa7171d3b7189b","nativeStationId":"IT0721090094","evseIds":["IT0721090094*1","IT0721090094*2"],"reason":"exact id-prefix and address join"}],
+        "uncoveredSubpopulations": [{"evseCount":48,"reason":"exact native station/connector tariff mapping not yet recovered"}]
+      },
+      "positiveEvidence": ["https://ricaricaveicolo.it/chargestation/IT0721090094","workflow artifact 9731212787 / italy-v9-consolidated-candidate"],
+      "negativePaths": ["No party-wide tariff: native pages show materially different prices (0.61, 0.65, 0.81 EUR/kWh)","Do not propagate Ferrara 0094 tariff to sibling EVSE prefixes 0041/0056 at the same PUN station aggregation"],
+      "blockage": "48 AM1 EVSE require exact native RicaricaVeicolo mapping; public indexing does not expose all station ids.",
+      "resumeCondition": "Enumerate RicaricaVeicolo public/native backend for remaining exact PUN EVSE prefixes and join exact id -> current price/fees.",
+      "confidence": "high for 2 mapped EVSE; unresolved remainder fail-closed",
+      "lastInvestigated": "2026-09-06",
+      "lastChanged": "2026-09-06",
+      "artifacts": ["data/reports/italy_alpha_mobility_station_mapping_20260906_run16.json"],
+      "commits": ["c2f6bbed4469bb7559cad246194f479817c519ea"]
+    }
+  ],
+  "postApplyCounts": {"treated":16,"partial":9,"setAside":1,"active":60,"supersededAlias":2,"totalCanonicalCpos":86,"inventoryPartyIds":88},
+  "queueImpact": {"networkOrClassWideRemaining":0,"stationLevelActiveCanonicalCpos":60,"newRankableEvse":2,"newFailClosedEvse":0,"newlyPartialCpos":["AM1"]},
+  "consistency": {
+    "canonicalStatusSumExcludingAliases":86,
+    "canonicalStatusSumIncludingSupersededAliasRows":88,
+    "matchesInventoryPartyIds":true,
+    "duplicateCanonicalCpoAliases":0,
+    "artifactPartyIds":88,
+    "artifactEvse":75025,
+    "atlanteRemainsSetAside":true,
+    "canonicalRewritePending":true,
+    "canonicalPhysicalSnapshotStillStale":true
+  },
+  "history": [
+    "Run16 continued station-level phase; network/class-wide queue remains exhausted.",
+    "AM1 Alpha Mobility advanced active -> partial using an exact native station-id to PUN EVSE-prefix join.",
+    "Exactly two Ferrara EVSE are rankable at direct 0.65 EUR/kWh; minimum charge 2.5 EUR and preauthorization 100 EUR recorded.",
+    "Four sibling Ferrara EVSE and all other AM1 EVSE remain fail-closed; no address-level or party-level extrapolation performed.",
+    "Atlante unchanged and reserved for last."
+  ]
+}
