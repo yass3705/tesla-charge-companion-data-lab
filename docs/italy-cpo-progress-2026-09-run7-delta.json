@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": [
+    "docs/italy-cpo-progress-2026-09-run3-delta.json",
+    "docs/italy-cpo-progress-2026-09-run4-delta.json",
+    "docs/italy-cpo-progress-2026-09-run4b-delta.json",
+    "docs/italy-cpo-progress-2026-09-run5-delta.json",
+    "docs/italy-cpo-progress-2026-09-run6-delta.json"
+  ],
+  "generatedAt": "2026-09-06T04:51:47+01:00",
+  "safeStatusTransitions": [],
+  "classificationUpdatesWithoutStatusTransition": [
+    {
+      "partyId": "UFC",
+      "priority": "station-level",
+      "reason": "first-party EDRI Italy prices are explicitly 'From' lower bounds by power class, not exact universal party-wide values",
+      "blockage": "exact per-EVSE ad-hoc tariff not exposed by the generic tariff table",
+      "resumeCondition": "exact station/EVSE tariff mapping from EDRI finder/QR/app/backend or exact first-party applicability rule",
+      "confidence": "high"
+    },
+    {
+      "partyId": "ALL",
+      "priority": "station-level",
+      "reason": "first-party Allego pricing states station prices may vary and directs exact lookup to QR/app",
+      "blockage": "country/speed figures and ranges cannot be generalized to each Italian EVSE",
+      "resumeCondition": "exact Italian EVSE -> current QR/app/backend tariff mapping",
+      "confidence": "high"
+    }
+  ],
+  "postApplyCounts": {"treated":16,"partial":7,"setAside":1,"active":64,"total":88},
+  "queueImpact": {
+    "networkWideCandidatesRemoved": ["UFC","ALL"],
+    "evseRemovedFromGlobalCandidateQueue": 76,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSum": 88,
+    "matchesInventory": true,
+    "duplicatePartyIdsIntroduced": 0,
+    "artifactPartyIds": 88,
+    "artifactEvse": 75025,
+    "atlanteRemainsSetAside": true,
+    "canonicalRewritePending": true
+  },
+  "evidenceReports": ["data/reports/italy_network_tariff_scope_20260906_run7.json"],
+  "history": [
+    "Run 7 removed E.ON Drive Infrastructure Italy and Allego Italy from the deterministic global tariff queue.",
+    "EDRI Italy retained its published power bands only as discovery metadata because each price is presented as a lower bound ('From').",
+    "Allego retained station-level resolution because first-party pricing explicitly says station prices may vary and exact prices should be checked by QR/app.",
+    "No status count changed; 76 EVSE were safely reclassified away from global-price generalization.",
+    "Atlante unchanged and reserved for last."
+  ]
+}
