@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run16-delta.json"],
+  "generatedAt": "2026-09-06T14:55:00+01:00",
+  "safeStatusTransitions": [],
+  "cpoUpdates": [
+    {
+      "partyId": "SEM",
+      "priority": "station-level",
+      "tariffModel": "default_power_band_with_station_overrides",
+      "tariffChannel": "direct SEMM / THOR / RFID / credit-card webapp",
+      "tariffs": [
+        {"class":"default AC max 22 kW","energyEurPerKwh":0.55,"publishedUpdateDate":"2024-05-06"},
+        {"class":"default DC max 90 kW","energyEurPerKwh":0.65,"publishedUpdateDate":"2024-05-06"},
+        {"fee":"post-charge occupancy","eurPerHour":2.0},
+        {"paymentHold":"credit-card preauthorization","eur":30.0}
+      ],
+      "officialUrls": ["https://iscat.com/circuito-di-ricarica-semm-by-iscat/", "https://iscat.com/2026/05/29/valle-po-piu-connessa-arrivano-le-colonnine-di-ricarica-semm-a-revello/", "https://my.thor.tools/"],
+      "positiveEvidence": ["First-party ISCAT page explicitly states station-specific personalized/promotional tariffs are shown on THOR Details pages.", "2026-05-29 first-party Revello publication confirms Revello1 AC 22 kW at 0.55 EUR/kWh and Revello2 DC 30 kW at 0.65 EUR/kWh."],
+      "negativePaths": ["THOR landing page is JavaScript-only to the crawler; exact seven-station Details URLs not enumerated in this run.", "Default tariff grid not promoted to all SEM EVSE because override applicability must be checked station by station."],
+      "blockage": "Exact mapping of all seven canonical SEM stations/EVSE to THOR Details pages is still required.",
+      "resumeCondition": "Enumerate THOR map/backend or exact QR Details URLs and verify override/non-override for each canonical station.",
+      "confidence": "high on model/default prices; unresolved station applicability",
+      "lastInvestigated": "2026-09-06",
+      "lastChanged": "2026-09-06"
+    },
+    {
+      "partyId": "UTZ",
+      "priority": "station-level",
+      "tariffModel": "connector-specific native tariff with possible activation/occupancy extras",
+      "tariffChannel": "direct Uattzy app/RFID/POS; roaming eMSP separate",
+      "fees": [{"paymentHold":"app card preauthorization on some chargers","eur":15.0}],
+      "officialUrls": ["https://www.uattzy.com/", "https://www.uattzy.com/faq/"],
+      "positiveEvidence": ["Current Uattzy FAQ says native app/account displays the applied tariff for every connector and any extra activation/occupancy costs before charging.", "Current FAQ says price may vary by delivered power, session duration and bay occupancy.", "Current homepage identifies Uattzy as UAU public-charging brand born from E-Shore, GASGAS and EnerMia and claims over 3000 charging points installed/managed in Italy."],
+      "negativePaths": ["No party-wide direct tariff inferred across UTZ/ESH/GAS legacy/current EVSE scopes.", "Roaming app/RFID prices remain separate from native Uattzy direct pricing."],
+      "blockage": "Exact native connector tariff mapping over the 1,198 observed UTZ/ESH/GAS EVSE scope requires Uattzy app/backend enumeration.",
+      "resumeCondition": "Identify Uattzy public/guest backend and join exact PUN EVSE identifiers to native connectors and tariff/fee payloads.",
+      "confidence": "high on alias/model; exact connector prices unresolved",
+      "lastInvestigated": "2026-09-06",
+      "lastChanged": "2026-09-06"
+    }
+  ],
+  "canonicalMaintenance": {
+    "physicalSnapshotWasStale": true,
+    "newConsolidationScript": "scripts/consolidate_italy_cpo_progress.py",
+    "scriptCommit": "5bfb4402aaab1a9cb0ad79fd8240fc7a4e9bb3ce",
+    "scriptGuarantees": ["ordered run/suffix delta application", "status-transition validation", "idempotent re-application", "deep metadata merge", "supersededAlias denominator semantics", "88-partyId inventory coverage check", "Atlante setAside invariant", "recomputed canonical counts before write"],
+    "canonicalRewritePendingExecution": true
+  },
+  "postApplyCounts": {"treated":16,"partial":9,"setAside":1,"active":60,"supersededAlias":2,"totalCanonicalCpos":86,"inventoryPartyIds":88},
+  "queueImpact": {"networkOrClassWideRemaining":0,"stationLevelActiveCanonicalCpos":60,"newRankableEvse":0,"newlyPartialCpos":[]},
+  "consistency": {"canonicalStatusSumExcludingAliases":86,"canonicalStatusSumIncludingSupersededAliasRows":88,"matchesInventoryPartyIds":true,"artifactPartyIds":88,"artifactEvse":75025,"atlanteRemainsSetAside":true,"fullAuditPerformed":true,"canonicalPhysicalSnapshotStillStale":true},
+  "evidenceReports": ["data/reports/italy_station_level_scope_20260906_run17.json"],
+  "history": ["Run17 performed a complete delta-chain coherence review before further station-level promotion.", "Added a deterministic fail-closed canonical consolidation script so the stale physical snapshot can be rebuilt without dropping per-CPO metadata.", "SEMM/ISCAT current first-party model revalidated: default AC/DC grid remains published but station-specific overrides require THOR Details verification; EUR 30 card preauthorization recorded.", "Uattzy current first-party model revalidated: tariff and extra fees are connector-specific; EUR 15 app card preauthorization on some chargers recorded; native versus roaming pricing remains separated.", "No speculative tariff or status promotion was made. Atlante remains setAside and last."]
+}
