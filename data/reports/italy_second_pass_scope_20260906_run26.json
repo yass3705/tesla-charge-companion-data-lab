@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 26,
+  "generatedAt": "2026-09-06T23:52:00+01:00",
+  "policy": {
+    "firstPassComplete": true,
+    "secondPass": true,
+    "priority": ["network-wide", "class-wide", "station-level"],
+    "failClosed": true,
+    "atlanteLast": true
+  },
+  "investigations": [
+    {
+      "partyId": "IOY",
+      "canonicalName": "IONITY GMBH",
+      "inventory": {"evse": 313, "stations": 43},
+      "result": "treated",
+      "priority": "network-wide",
+      "tariffModel": "country-wide IONITY Italy tariff",
+      "tariffChannel": "direct CPO",
+      "tariffs": [
+        {"channel": "IONITY Direct", "energyEurPerKwh": 0.85, "eligibility": "without app or account"},
+        {"channel": "IONITY Go", "energyEurPerKwh": 0.80, "eligibility": "IONITY app, no monthly subscription"}
+      ],
+      "positiveEvidence": [
+        "Current official IONITY access-and-payments page exposes the Italy country row with Direct 0.85 EUR/kWh and Go 0.80 EUR/kWh.",
+        "The tariff is country-wide rather than station-specific, so all 313 IOY EVSE are directly rankable for the Direct channel."
+      ],
+      "officialUrls": ["https://www.ionity.eu/network/access-and-payments"],
+      "coverage": {"physicalEvse": 313, "rankableDirectEvse": 313, "unresolvedEvse": 0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06",
+      "lastChanged": "2026-09-06"
+    },
+    {
+      "partyId": "ELC",
+      "canonicalName": "Electra Italia s.r.l.",
+      "inventory": {"evse": 514, "stations": 81},
+      "result": "treated",
+      "priority": "network-wide",
+      "tariffModel": "fixed Italy-wide AC/DC tariff independent of station power/time",
+      "tariffChannel": "direct Electra",
+      "tariffs": [
+        {"channel": "Electra app / Autocharge", "energyEurPerKwh": 0.69, "vatIncluded": true},
+        {"channel": "bank card at terminal", "energyEurPerKwh": 0.79, "vatIncluded": true}
+      ],
+      "paymentMethods": ["Electra app", "Autocharge", "bank card at charger terminal"],
+      "conditions": [
+        "Official help page dated 2026-07-01 states these prices apply to sessions started with the Electra app, Autocharge or bank card at the terminal.",
+        "RFID badges may add fees outside Electra's control and are kept separate.",
+        "Electra FAQ explicitly states Italy does not use variable pricing; the fixed tariff applies regardless of power or time."
+      ],
+      "positiveEvidence": [
+        "Official Electra help center, updated 2026-07-01, lists Italy: 0.69 EUR/kWh app and 0.79 EUR/kWh terminal card for slow/fast AC-DC.",
+        "Current Electra+ FAQ states no variable pricing in Italy and discounts apply at every Electra station regardless of power or time."
+      ],
+      "officialUrls": [
+        "https://intercom.help/go-electra/it/articles/7987274-le-nostre-tariffe-di-ricarica",
+        "https://www.go-electra.com/it/electra-plus/"
+      ],
+      "coverage": {"physicalEvse": 514, "rankableDirectEvse": 514, "unresolvedEvse": 0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06",
+      "lastChanged": "2026-09-06"
+    }
+  ],
+  "runImpact": {
+    "newlyTreatedCpos": ["IOY", "ELC"],
+    "newRankableEvse": 827,
+    "aliasesResolved": [],
+    "stationLevelInvestigationsDeferred": true,
+    "reason": "network-wide deterministic candidates take precedence"
+  }
+}
