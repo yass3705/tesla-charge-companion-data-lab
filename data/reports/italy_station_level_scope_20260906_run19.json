@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 19,
+  "generatedAt": "2026-09-06T16:55:00+01:00",
+  "branch": "research/italy-cpo-priority-20260905",
+  "policy": {
+    "priorityOrder": ["network-wide", "class-wide", "station-level"],
+    "failClosed": true,
+    "atlanteLast": true,
+    "directVsEmspSeparated": true
+  },
+  "inventoryEvidence": {
+    "sourceWorkflowRun": 33308407226,
+    "artifact": "italy-v9-consolidated-candidate",
+    "artifactId": 9731212787,
+    "artifactExpired": false,
+    "partyIds": 88,
+    "evse": 75025
+  },
+  "uattzy": {
+    "partyId": "UTZ",
+    "aliases": ["ESH", "GAS"],
+    "status": "partial",
+    "priority": "class-wide",
+    "observedLegacyAndCurrentEvse": 1198,
+    "tariffsEffectiveFrom": "2026-07-01",
+    "tariffs": [
+      {"class":"Quick","payment":"Uattzy app/RFID","energyEurPerKwh":0.57},
+      {"class":"Fast/Ultra Fast","payment":"Uattzy app/RFID","energyEurPerKwh":0.67},
+      {"class":"Quick","payment":"POS","energyEurPerKwh":0.61},
+      {"class":"Fast/Ultra Fast","payment":"POS","energyEurPerKwh":0.72}
+    ],
+    "newEvidence": [
+      "Current Uattzy website still uses Quick and Fast product terminology for its active 2026 network and states that Uattzy/UAU combines E-Shore, GASGAS and EnerMia.",
+      "A March 2026 interview with Uattzy states the active network is predominantly Quick in AC, but does not establish the converse rule that every AC connector is Quick or an exact current kW threshold.",
+      "Historical GASGAS first-party material associates Quick with 2x22 kW and Fast with 50 kW; this remains useful lineage evidence but is not sufficient to impose a 2026 Uattzy class threshold on all legacy/current EVSE."
+    ],
+    "negativePaths": [
+      "Repeated current-site searches for an explicit 2026 Quick/Fast kW threshold returned no first-party threshold definition.",
+      "Do not infer the current Uattzy class solely from maxPowerKw or AC/DC until first-party current taxonomy or native class metadata is found."
+    ],
+    "blockage": "The unified prices are proven but current deterministic Quick versus Fast/Ultra Fast assignment is still not published in a sufficiently explicit first-party form.",
+    "resumeCondition": "Resume only on new evidence: current Uattzy tariff PDF/card with class definition, app/backend class metadata, or a first-party current technical specification. Do not repeat generic web taxonomy searches without new evidence.",
+    "rankableDirectEvse": 0,
+    "uncoveredEvse": 1198,
+    "confidence": "high on prices and unified-network scope; medium on taxonomy lineage; insufficient for EVSE mapping"
+  },
+  "semm": {
+    "partyId": "SEM",
+    "canonicalName": "ISCAT s.r.l. / Circuito SEMM",
+    "status": "active",
+    "priority": "station-level",
+    "canonicalInventory": {
+      "stations": 7,
+      "evse": 7,
+      "maxPowerKw": 7.4,
+      "locations": [
+        {"city":"Monzambano","address":"Via dalla Chiesa Carlo Alberto","evseIds":["nc-18e18703e33"]},
+        {"city":"Volta Mantovana","address":"Via Tonello G.","evseIds":["nc-18e2ca7934d","nc-18e2ca900ed","nc-18e2ca9717d","nc-18e2ca9ab6d","nc-18e2ca9ca2d","nc-18e2ca9e8bd"]}
+      ]
+    },
+    "officialDefaultTariff": {
+      "acMax22KwEurPerKwh": 0.55,
+      "dcMax90KwEurPerKwh": 0.65,
+      "postChargeOccupancyEurPerHour": 2.0,
+      "cardPreauthorizationEur": 30.0,
+      "stationOverridesPossible": true
+    },
+    "newEvidence": [
+      "The exact current PUN candidate SEM scope is seven 7.4 kW EVSE located at Monzambano and Volta Mantovana.",
+      "The May 2026 first-party Revello announcement proves 0.55 EUR/kWh at Revello1 AC 22 kW and 0.65 EUR/kWh at Revello2 DC 30 kW, but those stations are not the seven canonical PUN SEM rows.",
+      "ISCAT explicitly states that personalized/promotional station tariffs are shown in each THOR Details page."
+    ],
+    "correction": "Do not use Revello station-specific evidence as coverage for the canonical SEM PUN rows. Previous report's default tariff remains background only until the exact Monzambano/Volta Mantovana THOR Details pages are resolved.",
+    "blockage": "Exact THOR station identifiers/details for the seven canonical Lombardy EVSE are not exposed by the PUN nc-* identifiers and were not found by address/name web search.",
+    "resumeCondition": "Find THOR Details/QR/backend records for Monzambano and Volta Mantovana and capture their current station-specific tariff; otherwise remain fail-closed.",
+    "rankableDirectEvse": 0,
+    "uncoveredEvse": 7,
+    "confidence": "high on canonical inventory and fail-closed decision"
+  },
+  "alphaMobility": {
+    "partyId": "AM1",
+    "status": "partial",
+    "canonicalInventory": {"stations":15,"evse":50},
+    "rankableDirectEvse": 2,
+    "unresolvedEvse": 48,
+    "newInventoryExtraction": {
+      "stationPrefixes": [
+        "IT0721090032","IT0721090061","IT0721090067","IT0721090075","IT0721080092","IT0721080090","IT0721090029","IT0721090010","IT0721090041","IT0721090056","IT0721090094","TEISON20070108","IT0721090031","IT0721090084","IT0721090086","IT0721090054","IT0721090082","IT0721090060","IT0721090065","IT0721090037","IT0721090097","IT0721090133","IT0721090050","IT0721090085","IT0721090095","IT0721090043","IT0721090068"
+      ]
+    },
+    "newEvidence": [
+      "The workflow artifact was downloaded and the complete AM1 PUN station/EVSE inventory was enumerated, removing the previous dependency on partial search indexing.",
+      "Batch searches of the first remaining exact Alpha station IDs did not surface indexed native station pages; only already-known 0094 and non-canonical examples were indexed."
+    ],
+    "resumeCondition": "Use native map/backend enumeration rather than repeating search-engine lookups of the exact IDs."
+  },
+  "statusDelta": {"treated":0,"partial":0,"setAside":0,"active":0,"supersededAlias":0},
+  "coverageDelta": {"newRankableEvse":0},
+  "consistency": {
+    "treated":16,
+    "partial":10,
+    "setAside":1,
+    "active":59,
+    "supersededAlias":2,
+    "totalCanonicalCpos":86,
+    "inventoryPartyIds":88,
+    "inventoryEvse":75025,
+    "canonicalStatusSumExcludingAliases":86,
+    "canonicalStatusSumIncludingSupersededAliasRows":88,
+    "matchesInventoryPartyIds":true,
+    "atlanteRemainsSetAside":true
+  },
+  "queueImpact": {
+    "networkOrClassWideRemaining":1,
+    "stationLevelActiveCanonicalCpos":59,
+    "note":"Uattzy is the sole class-wide partial blocker; generic class-threshold web research is now marked exhausted until new evidence."
+  },
+  "atlanteTouched": false
+}
