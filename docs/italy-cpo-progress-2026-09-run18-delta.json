@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run17-delta.json"],
+  "generatedAt": "2026-09-06T15:51:43+01:00",
+  "safeStatusTransitions": [
+    {
+      "partyId": "UTZ",
+      "from": "active",
+      "to": "partial",
+      "priority": "class-wide",
+      "tariffModel": "network-wide charging-type classes with payment-channel split",
+      "tariffChannel": "direct Uattzy app/RFID and ad-hoc POS; roaming eMSP separate",
+      "validFrom": "2026-07-01",
+      "tariffs": [
+        {"class": "Quick", "payment": "Uattzy app/RFID", "energyEurPerKwh": 0.57},
+        {"class": "Fast/Ultra Fast", "payment": "Uattzy app/RFID", "energyEurPerKwh": 0.67},
+        {"class": "Quick", "payment": "POS", "energyEurPerKwh": 0.61},
+        {"class": "Fast/Ultra Fast", "payment": "POS", "energyEurPerKwh": 0.72}
+      ],
+      "fees": {"activationFeeEur": 0, "perMinuteDuringChargingEur": 0},
+      "coverage": {
+        "observedLegacyAndCurrentEvse": 1198,
+        "rankableDirectEvse": 0,
+        "uncoveredEvse": 1198,
+        "reason": "Unified network tariffs are proven, but exact Quick versus Fast/Ultra Fast assignment is not yet deterministic for each PUN EVSE."
+      },
+      "officialUrls": [
+        "https://www.uattzy.com/",
+        "https://it.linkedin.com/posts/steven-scapin_scopri-la-nuova-tariffa-sulla-rete-proprietaria-activity-7478345472005558272-gHti"
+      ],
+      "corroboratingUrls": [
+        "https://e-ricarica.it/uattzy-cambia-le-tariffe-stop-ai-costi-al-minuto/page/249/"
+      ],
+      "positiveEvidence": [
+        "Official Uattzy July 2026 announcement says tariffs are unified across the proprietary network by charging type, effective 1 July, with no activation fee and no per-minute charging fee.",
+        "Contemporaneous E-Ricarica report gives exact four price points: app/RFID 0.57 Quick and 0.67 Fast/Ultra Fast; POS 0.61 Quick and 0.72 Fast/Ultra Fast."
+      ],
+      "negativePaths": [
+        "Prior station-level assumption superseded by newer July 2026 network-wide tariff announcement.",
+        "Do not infer Quick/Fast boundary from power alone until exact official thresholds or native class mapping are established.",
+        "Roaming eMSP pricing remains excluded."
+      ],
+      "blockage": "Exact EVSE class assignment to Quick versus Fast/Ultra Fast remains unresolved.",
+      "resumeCondition": "Find official class definitions/thresholds or native Uattzy class metadata and map UTZ/ESH/GAS EVSE deterministically.",
+      "confidence": "high on tariff structure and values; medium on EVSE class mapping",
+      "lastInvestigated": "2026-09-06",
+      "lastChanged": "2026-09-06"
+    }
+  ],
+  "postApplyCounts": {
+    "treated": 16,
+    "partial": 10,
+    "setAside": 1,
+    "active": 59,
+    "supersededAlias": 2,
+    "totalCanonicalCpos": 86,
+    "inventoryPartyIds": 88
+  },
+  "queueImpact": {
+    "networkOrClassWideRemaining": 1,
+    "stationLevelActiveCanonicalCpos": 59,
+    "newRankableEvse": 0,
+    "newlyPartialCpos": ["UTZ"]
+  },
+  "consistency": {
+    "canonicalStatusSumExcludingAliases": 86,
+    "canonicalStatusSumIncludingSupersededAliasRows": 88,
+    "matchesInventoryPartyIds": true,
+    "artifactPartyIds": 88,
+    "artifactEvse": 75025,
+    "atlanteRemainsSetAside": true,
+    "fullAuditPerformed": false,
+    "canonicalPhysicalSnapshotStillStale": true
+  },
+  "evidenceReports": ["data/reports/italy_uattzy_tariff_reclassification_20260906_run18.json"],
+  "history": [
+    "Run18 found newer July 2026 first-party evidence that supersedes the previous Uattzy station-level classification.",
+    "UTZ moved active -> partial and station-level -> class-wide; ESH/GAS remain supersededAlias rows under the unified Uattzy/UAU scope.",
+    "Unified Uattzy proprietary-network tariffs effective 2026-07-01 recorded: app/RFID 0.57 Quick and 0.67 Fast/Ultra Fast; POS 0.61 Quick and 0.72 Fast/Ultra Fast; no activation or per-minute charging fee.",
+    "No EVSE promoted rankable until Quick versus Fast/Ultra Fast assignment is deterministic.",
+    "Atlante remains setAside and last."
+  ]
+}
