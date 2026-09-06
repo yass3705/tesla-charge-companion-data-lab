@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "run": "run24",
+  "generatedAt": "2026-09-06T21:50:53+01:00",
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run23-delta.json"],
+  "firstPassAudit": {"completed": true, "remainingNeverInvestigated": 0},
+  "safeStatusTransitions": [],
+  "classificationUpdates": [
+    {
+      "partyId": "ASS",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "standard pay-per-use resolved in Magis E-mobility app at time of use; deterministic subscription grid separate",
+      "tariffChannel": "Magis direct app; roaming eMSP separate",
+      "officialUrls": [
+        "https://www.magissmart.it/nuova-app-magis-e-mobility",
+        "https://www.aimmobilita.it/it/web/magis-smart/agsmaim_e-mobility/abbonamenti",
+        "https://www.magissmart.it/e-mobility/app/termini.php"
+      ],
+      "positiveEvidence": [
+        "04 May 2026 Magis launch confirms revised tariff model and direct pay-per-use varying by consumption and AC/DC charger type.",
+        "Current FAQ states standard pay-per-use cost is calculated from tariffs shown in the app at the moment of use.",
+        "Current deterministic subscriptions: AC 0.60 EUR/kWh +5 EUR/month; AC 0.58 +10; AC 0.50 +20; DC 0.74 +10, with combined plans.",
+        "Terms distinguish native Magis pricing from roaming and define post-charge penalty 0.12 EUR/min under connector/time conditions."
+      ],
+      "negativePaths": [
+        "Do not use subscription grid as standard pay-per-use direct tariff.",
+        "Do not use roaming prices as physical CPO direct pricing.",
+        "Generic web search for a single 2026 standard numeric pay-per-use grid is exhausted without new evidence."
+      ],
+      "blockage": "Exact standard direct energy tariff is app-resolved per selected station/connector and is not published as a deterministic numeric network grid.",
+      "resumeCondition": "Resolve Magis E-mobility app/guest backend and join ASS EVSE/connector to current pay-per-use tariff.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "NRG",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "station/account-session resolved in Restation",
+      "tariffChannel": "NRG4YOU Restation direct portal",
+      "officialUrls": ["https://www.nrg4you.it/", "https://restation.it/charging-stations", "https://restation.it/register"],
+      "positiveEvidence": [
+        "Current NRG4YOU site confirms charging-station activity.",
+        "Official Restation public station search is available but does not expose tariff values in the public listing.",
+        "Restation has an account/registration workflow for service use."
+      ],
+      "negativePaths": [
+        "Do not generalize stale individual 0.60 EUR/kWh examples.",
+        "Public network-wide tariff search exhausted absent a new Restation payload."
+      ],
+      "blockage": "Exact current direct tariff is not publicly exposed in the station listing.",
+      "resumeCondition": "Obtain Restation station-detail/session payload exposing current price and join NRG EVSE deterministically.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "GMT",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "operator/site configurable ZapGrid hosted pricing",
+      "tariffChannel": "ZapGrid by G.M.T. direct hosted station; roaming separate",
+      "officialUrls": ["https://zapgrid.net/gestionale-zapgrid/"],
+      "positiveEvidence": ["ZapGrid by G.M.T. officially describes the operator platform as customizable and giving station managers control of their stations."],
+      "negativePaths": ["Do not generalize individual hosted-network tariffs to all GMT EVSE.", "Generic GMT-wide tariff search exhausted absent a station endpoint."],
+      "blockage": "No deterministic GMT-wide tariff because hosted sites/operators can be configured independently.",
+      "resumeCondition": "Resolve public/guest ZapGrid station endpoint and map GMT EVSE to hosted operator/site tariff.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "CPO",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "subnetwork/site-specific; Coop Power is a proven subnetwork only",
+      "tariffChannel": "direct card/Charge Assist on mapped Coop Power sites; remainder unresolved",
+      "positiveEvidence": [
+        "Coop Power/Nucleo evidence reports 0.39 EUR/kWh AC 22 kW and from 0.49 EUR/kWh DC 160 kW on specified Coop Liguria sites, with direct card or Charge Assist payment."
+      ],
+      "negativePaths": [
+        "Do not propagate Coop Power prices to all 160 Nucleo EVSE.",
+        "Do not promote 2025 subnetwork values without current 2026 station continuity verification."
+      ],
+      "blockage": "Exact EVSE-to-Coop-Power-subnetwork mapping and current station tariff continuity are not yet proven.",
+      "resumeCondition": "Map CPO EVSE to Coop Power sites and verify current Charge Assist/direct station payload.",
+      "confidence": "medium-high",
+      "lastInvestigated": "2026-09-06"
+    }
+  ],
+  "postApplyCounts": {
+    "treated": 16,
+    "partial": 10,
+    "setAside": 1,
+    "active": 59,
+    "supersededAlias": 2,
+    "totalCanonicalCpos": 86,
+    "inventoryPartyIds": 88
+  },
+  "queueImpact": {
+    "firstPassRemaining": 0,
+    "networkOrClassWideRemaining": 1,
+    "stationLevelActiveCanonicalCpos": 59,
+    "newRankableEvse": 0,
+    "newlyTreatedCpos": []
+  },
+  "coherence": {
+    "canonicalStatusSumExcludingAliases": 86,
+    "canonicalStatusSumIncludingSupersededAliasRows": 88,
+    "artifactPartyIds": 88,
+    "artifactEvse": 75025,
+    "atlanteRemainsSetAside": true,
+    "firstPassComplete": true,
+    "physicalCanonicalFileStillNeedsLosslessDeltaConsolidation": true
+  },
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260906_run24.json"],
+  "history": [
+    "Run24 continued second pass without reopening exhausted paths.",
+    "ASS/Magis 2026 tariff-model change was documented: standard pay-per-use is app-resolved; deterministic subscription prices are tracked separately and not substituted for direct pay-per-use.",
+    "NRG4YOU Restation public listing was confirmed tariff-free; account/session payload is now the only meaningful resume path.",
+    "GMT/ZapGrid was strengthened as site/operator configurable from first-party platform documentation.",
+    "Nucleo Coop Power values remain subnetwork-only and require EVSE mapping plus 2026 continuity verification.",
+    "No status transition or tariff generalization occurred without deterministic mapping; Atlante remains last."
+  ]
+}
