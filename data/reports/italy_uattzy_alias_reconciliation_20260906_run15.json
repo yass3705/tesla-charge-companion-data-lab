@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-06T12:53:00+01:00",
+  "scope": "Italy V9 canonical CPO alias reconciliation and station-level tariff routing",
+  "finding": {
+    "canonicalGroup": "UAU / Uattzy",
+    "currentLegalEntity": "UAU S.R.L.",
+    "currentVatId": "02382770507",
+    "currentBrand": "Uattzy",
+    "partyIds": ["UTZ", "ESH", "GAS"],
+    "inventoryScopes": [
+      {"partyId":"UTZ","label":"UAU srl","evse":16,"stations":8,"role":"current partyId / canonical anchor"},
+      {"partyId":"ESH","label":"E-Shore s.r.l.","evse":892,"stations":306,"role":"legacy legal-name/partyId scope; superseded alias"},
+      {"partyId":"GAS","label":"GASGAS S.R.L.","evse":290,"stations":137,"role":"legacy acquired/merged legal entity partyId scope; superseded alias"}
+    ],
+    "aggregateObservedEvseAcrossPartyIds": 1198,
+    "aggregateObservedStationRowsAcrossPartyIds": 451,
+    "stationCountNote": "Station rows are summed only for scope visibility; do not treat as deduplicated physical-location count until coordinates/EVSE are reconciled.",
+    "legalEvidence": [
+      {
+        "source":"Uattzy first party",
+        "url":"https://www.uattzy.com/",
+        "evidence":"Uattzy is the public-charging brand of UAU; UAU states it was formed from E-Shore, GASGAS and EnerMia; footer identifies UAU srl VAT 02382770507."
+      },
+      {
+        "source":"GLEIF/LEI data surfaced by Bloomberg",
+        "url":"https://lei.bloomberg.com/leis/view/9845006C83E8F64RAD22",
+        "evidence":"UAU S.R.L. VAT/registration identifier 02382770507; E-SHORE S.R.L. is recorded as PREVIOUS_LEGAL_NAME, effective 2025-10-16."
+      },
+      {
+        "source":"GLEIF/LEI data surfaced by Bloomberg",
+        "url":"https://lei.bloomberg.com/leis/view/815600E589DF143BB831",
+        "evidence":"GASGAS S.R.L. is inactive/retired; merger/acquisition effective 2025-07-16; successor entity E-SHORE S.R.L."
+      },
+      {
+        "source":"Uattzy current corporate material",
+        "url":"https://www.uattzy.com/",
+        "evidence":"Current network described as Uattzy/UAU, with over 3,000 installed/managed charging points."
+      }
+    ],
+    "tariffRouting": {
+      "priority":"station-level",
+      "tariffChannel":"Uattzy app/RFID/POS; roaming eMSP separated",
+      "model":"connector/station-displayed tariff with possible additional fees",
+      "firstPartyEvidence":"Uattzy FAQ states that before charging, the app displays the tariff at each connector and any extra fee; prices may vary by delivered power, session duration and stall occupancy. Other eMSP apps may apply different conditions.",
+      "secondaryCurrentCandidateOnly": {
+        "source":"e-ricarica, 2026",
+        "appOrRfidQuickEurPerKwh":0.57,
+        "appOrRfidFastUltraEurPerKwh":0.67,
+        "posQuickEurPerKwh":0.61,
+        "posFastUltraEurPerKwh":0.72,
+        "promotionStatus":"discovery/corroboration only; not promoted to EVSE without first-party deterministic applicability"
+      },
+      "blockage":"No deterministic mapping yet from all legacy ESH/GAS and current UTZ EVSE to the current Uattzy connector tariff and any station-specific fee. Historical partyId split must not cause three independent CPO investigations.",
+      "resumeCondition":"Enumerate Uattzy native app/backend for all UTZ+ESH+GAS inventory EVSE, reconcile legacy IDs to current stations, capture connector tariff and additional fees, and distinguish native Uattzy from roaming prices.",
+      "rankableEvseAddedThisRun":0,
+      "failClosedEvseInUnifiedScope":1198,
+      "confidence":"high for legal/alias consolidation; high that current tariff is connector/station displayed; no EVSE-level tariff promoted"
+    }
+  },
+  "canonicalCorrection": {
+    "inventoryPartyIdsRemain":88,
+    "canonicalCpoGroupsBefore":88,
+    "canonicalCpoGroupsAfter":86,
+    "supersededAliasPartyIds":["ESH","GAS"],
+    "canonicalAnchorPartyId":"UTZ",
+    "countingRule":"ESH and GAS remain preserved as inventory partyId aliases with their EVSE scope but are not counted as independent CPOs; UTZ/ESH/GAS form one active Uattzy canonical CPO group.",
+    "statusImpactFromRun14EffectiveCounts": {
+      "before":{"treated":16,"partial":8,"setAside":1,"active":63,"totalCanonicalCpos":88},
+      "after":{"treated":16,"partial":8,"setAside":1,"active":61,"totalCanonicalCpos":86,"supersededAliasPartyIds":2}
+    }
+  },
+  "negativeChecks": [
+    "Did not merge EnerMia as an inventory partyId because no separate EnerMia partyId exists in the 88-partyId canonical snapshot.",
+    "Did not assume the four secondary-source Uattzy prices apply uniformly to every connector; first-party FAQ explicitly requires connector-level display and allows varying conditions.",
+    "Did not discard legacy ESH/GAS EVSE: they remain inventory scopes under the unified Uattzy canonical CPO."
+  ]
+}
