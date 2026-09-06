@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-06T03:12:00+01:00",
+  "inventory": {
+    "workflowRun": 33308407226,
+    "artifact": "italy-v9-consolidated-candidate",
+    "observedEvse": 75025,
+    "partyIds": 88
+  },
+  "results": [
+    {
+      "partyId": "ENB",
+      "canonicalName": "ENERBROKER S.R.L. (R-ev)",
+      "statusRecommendation": "treated",
+      "priority": "class-wide",
+      "tariffChannel": "native R-ev WALLET/pay-per-use",
+      "officialUrl": "https://www.r-ev.it/termini-di-utilizzo-abbonamenti/",
+      "tariffs": [
+        {"class": "AC", "energyEurPerKwh": 0.65},
+        {"class": "DC<=150kW", "energyEurPerKwh": 0.85},
+        {"class": "DC>150kW", "energyEurPerKwh": 0.89}
+      ],
+      "idleFee": {"energyClass": "AC/DC/HPC", "eurPerMinute": 0.25, "notes": "AC extra-stay nighttime exception per app terms; DC/HPC 24h"},
+      "inventoryCheck": {
+        "evse": 87,
+        "stations": 73,
+        "missingPower": 0,
+        "missingConnector": 0,
+        "powerDistributionKw": {"22": 60, "24": 17, "50": 6, "60": 4},
+        "mapped": 87,
+        "failClosed": 0
+      },
+      "confidence": "high",
+      "evidence": "Official R-ev WALLET price bands apply to R-ev infrastructure; all ENB EVSE in candidate fit a published class."
+    },
+    {
+      "partyId": "VFS",
+      "canonicalName": "VIAFAST SRL",
+      "statusRecommendation": "partial",
+      "priority": "class-wide",
+      "tariffChannel": "native VIAFAST pay-per-use",
+      "officialUrl": "https://www.viafast.net/viafast-tariffe/",
+      "tariffs": [
+        {"class": "AC<=22kW", "energyEurPerKwh": 0.60},
+        {"class": "DC 60-180kW", "energyEurPerKwh": 0.85}
+      ],
+      "idleFee": {"graceMinutes": 5, "eurPerMinute": 0.25, "applies": "24h after charge"},
+      "inventoryCheck": {
+        "evse": 167,
+        "stations": 84,
+        "missingPower": 0,
+        "missingConnector": 0,
+        "powerDistributionKw": {"100": 155, "90": 6, "60": 4, "40": 1, "10": 1},
+        "mapped": 165,
+        "failClosed": 2,
+        "uncovered": [
+          {"evseId": "ITPW-00096*1", "station": "VIAFAST SRL – Via Lombardia", "city": "Cepagatti", "powerKw": 10, "reason": "DC power below published 60-180kW band"},
+          {"evseId": "ITPW-00116*1", "station": "VIAFAST SRL – Via Bruno Buozzi", "city": "Tolentino", "powerKw": 40, "reason": "DC power below published 60-180kW band"}
+        ]
+      },
+      "confidence": "high for 165 mapped EVSE; fail-closed for 2 uncovered EVSE",
+      "resumeCondition": "direct current tariff evidence for the two 10/40kW DC EVSE or authoritative correction of their power metadata"
+    },
+    {
+      "partyId": "A22",
+      "canonicalName": "Autostrada del Brennero S.p.A.",
+      "statusRecommendation": "treated",
+      "priority": "class-wide",
+      "tariffChannel": "direct CPO/ad-hoc",
+      "officialUrl": "https://www.autobrennero.it/it/la-societa/storia/passo-del-brennero/",
+      "tariffs": [
+        {"class": "standard AC<=22kW", "energyEurPerKwh": 0.33},
+        {"class": "multi-standard AC/DC<=50kW", "energyEurPerKwh": 0.38},
+        {"class": "ultra-rapid/HPC>50kW", "energyEurPerKwh": 0.43}
+      ],
+      "inventoryCheck": {
+        "evse": 80,
+        "stations": 17,
+        "missingPower": 0,
+        "mapped": 80,
+        "failClosed": 0,
+        "mappedByPrice": {"0.33": 6, "0.38": 34, "0.43": 40},
+        "note": "Six candidate EVSE expose 200kW capability while A22's current site labels the corresponding Plessi/Campogalliano hardware up to 180kW; current first-party site price for those ultra-rapid stations is still 0.43 EUR/kWh."
+      },
+      "confidence": "high"
+    },
+    {
+      "partyId": "CGS",
+      "canonicalName": "COGESER ENERGIA SRL",
+      "statusRecommendation": "partial",
+      "priority": "class-wide",
+      "tariffChannel": "Cogeser customer tariff / spot QR available",
+      "officialUrl": "https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico",
+      "tariffs": [
+        {"class": "Quick Cogeser AC", "energyEurPerKwh": 0.67, "validFrom": "2025-10-01"},
+        {"class": "Cogeser energy customer with bill debit on Cogeser network", "energyEurPerKwh": 0.49, "eligibility": "active Cogeser billing conditions"}
+      ],
+      "inventoryCheck": {
+        "evse": 60,
+        "stations": 27,
+        "mapped": 59,
+        "failClosed": 1,
+        "uncovered": [{"evseId": "IT*CGS*E12420008690001*1", "station": "COGESER ENERGIA SRL – Via Sciascia 5", "city": "Inzago", "powerKw": 25, "powerType": "DC", "reason": "official own-network public table specifies Quick Cogeser AC but no deterministic native DC price"}]
+      },
+      "confidence": "high for 59 AC EVSE; fail-closed for one DC EVSE",
+      "resumeCondition": "current direct/spot Cogeser price for the Via Sciascia 25kW DC EVSE"
+    }
+  ],
+  "negativeChecks": [
+    {"partyId": "NRG", "note": "Official NRG4YOU public site confirms charging-station activity but no current network tariff table found; do not infer historical Community Charger pricing."},
+    {"partyId": "TCA", "note": "Current discoverable 0.55/0.65/0.70 EUR/kWh values are explicitly tied to Electriease/BeaglePlug eMSP access, not proven native T-Carica direct/ad-hoc pricing; keep separate."},
+    {"partyId": "BPA", "note": "Search surfaced station-level/eMSP prices only; no first-party deterministic network-wide direct tariff established in this run."}
+  ],
+  "consistency": {
+    "artifactPartyIdCount": 88,
+    "artifactEvseCount": 75025,
+    "duplicatePartyIdsInCanonicalBaseline": 0,
+    "atlanteUnchanged": true
+  }
+}
