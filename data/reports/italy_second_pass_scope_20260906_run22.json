@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "run": "run22",
+  "generatedAt": "2026-09-06T19:54:00+01:00",
+  "scope": "Italy V9 second pass; first pass remains complete",
+  "firstPassCompleted": true,
+  "investigations": [
+    {
+      "partyId": "SAG",
+      "canonicalName": "Sagelio srl società benefit",
+      "evse": 405,
+      "stations": 316,
+      "priority": "station-level",
+      "tariffModel": "site-owner configurable pricing on Sagelio platform",
+      "tariffChannel": "direct/ad-hoc possible by card; roaming partners separate",
+      "officialUrls": [
+        "https://sagelio.com/",
+        "https://sagelio.com/blog/monetizzare-la-ricarica-come-impostare-le-tariffe-per-i-tuoi-clienti/",
+        "https://sagelio.com/blog/ricaricare-auto-elettrica-con-carta-di-credito-da-oggi-si-puo/"
+      ],
+      "positiveEvidence": [
+        "Sagelio current site states operators have control over pricing in the platform.",
+        "Sagelio article dated 2026-04-15 explicitly says there is no tariff valid for all sites and gives 0.59 EUR/kWh only as an example chosen by a retail operator.",
+        "Sagelio supports direct card payment via QR; historical documentation states card price follows the station/Electromaps price plus Stripe fees, so direct payment exists but remains station-specific."
+      ],
+      "negativePaths": [
+        "Do not promote the 0.59 EUR/kWh worked example to the network.",
+        "Do not inherit Be Charge/Electromaps roaming prices as direct Sagelio tariffs."
+      ],
+      "blockage": "No deterministic network-wide tariff; exact current station price must be resolved per station/connector.",
+      "resumeCondition": "Resolve Sagelio/Electromaps station detail or QR backend and map SAG PUN EVSE to exact station price.",
+      "confidence": "high"
+    },
+    {
+      "partyId": "DRW",
+      "canonicalName": "UnoEnergy DriWe spa",
+      "evse": 287,
+      "stations": 103,
+      "priority": "station-level",
+      "tariffModel": "station-specific / tariff selected in map-app; no current public network grid established",
+      "tariffChannel": "DriWe/Unoenergy app-map direct workflow; roaming separate",
+      "officialUrls": [
+        "https://www.driwe.eu/faq/",
+        "https://www.unoenergy.it/casa/colonnine-ricarica/ricarica-start/"
+      ],
+      "positiveEvidence": [
+        "Unoenergy current page confirms a map/app workflow to view, reserve and pay at Unoenergy DriWe chargers.",
+        "DriWe FAQ states charging cost depends on the selected electricity tariff rather than publishing a public CPO-wide tariff."
+      ],
+      "corroboration": [
+        "PUN-derived Pienotto station pages for UnoEnergy DriWe state that tariffs have not been communicated to PUN."
+      ],
+      "negativePaths": [
+        "No current official network-wide direct tariff was found.",
+        "Do not use domestic wallbox electricity examples as public CPO tariffs."
+      ],
+      "blockage": "Exact public charging tariff must be resolved through the station/app detail; no deterministic bulk tariff endpoint established.",
+      "resumeCondition": "Resolve Unoenergy DriWe public/app map payload and map DRW PUN EVSE to exact station tariff.",
+      "confidence": "high"
+    }
+  ],
+  "statusTransitions": [],
+  "newRankableEvse": 0,
+  "coherence": {
+    "treated": 16,
+    "partial": 10,
+    "setAside": 1,
+    "active": 59,
+    "supersededAlias": 2,
+    "totalCanonicalCpos": 86,
+    "inventoryPartyIds": 88,
+    "inventoryEvse": 75025,
+    "statusSumExcludingAliases": 86,
+    "firstPassRemaining": 0,
+    "atlanteLast": true
+  }
+}
