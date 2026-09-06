@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run18-delta.json"],
+  "generatedAt": "2026-09-06T16:55:00+01:00",
+  "safeStatusTransitions": [],
+  "metadataUpdates": [
+    {
+      "partyId": "UTZ",
+      "status": "partial",
+      "priority": "class-wide",
+      "lastInvestigated": "2026-09-06",
+      "negativePathsAdd": [
+        "Current Uattzy web searches did not expose an explicit 2026 Quick/Fast kW threshold.",
+        "Historical GASGAS Quick 2x22 kW / Fast 50 kW taxonomy is retained as lineage evidence only and is not promoted as a current Uattzy mapping rule."
+      ],
+      "blockage": "Unified July 2026 class prices are proven, but current deterministic Quick versus Fast/Ultra Fast assignment remains unresolved.",
+      "resumeCondition": "Only resume class-boundary investigation on new first-party current evidence (tariff card/PDF, app/backend class metadata, or current technical definition); do not repeat generic taxonomy searches.",
+      "coverage": {"observedLegacyAndCurrentEvse":1198,"rankableDirectEvse":0,"uncoveredEvse":1198}
+    },
+    {
+      "partyId": "SEM",
+      "status": "active",
+      "priority": "station-level",
+      "lastInvestigated": "2026-09-06",
+      "inventory": {
+        "stations": 7,
+        "evse": 7,
+        "sourceWorkflowRun": 33308407226,
+        "artifact": "italy-v9-consolidated-candidate",
+        "artifactId": 9731212787,
+        "subpopulations": [
+          {"city":"Monzambano","address":"Via dalla Chiesa Carlo Alberto","evseIds":["nc-18e18703e33"],"covered":false},
+          {"city":"Volta Mantovana","address":"Via Tonello G.","evseIds":["nc-18e2ca7934d","nc-18e2ca900ed","nc-18e2ca9717d","nc-18e2ca9ab6d","nc-18e2ca9ca2d","nc-18e2ca9e8bd"],"covered":false}
+        ]
+      },
+      "positiveEvidenceAdd": [
+        "Exact PUN artifact extraction shows all seven canonical SEM rows are 7.4 kW EVSE at Monzambano/Volta Mantovana.",
+        "ISCAT Revello 2026 prices are station-specific positive evidence but do not map to these seven canonical PUN rows."
+      ],
+      "negativePathsAdd": [
+        "Do not count Revello1/Revello2 tariff evidence as canonical SEM coverage: neither Revello station appears in the current seven-row SEM PUN scope.",
+        "Address/name searches did not expose THOR Details records for Monzambano or Volta Mantovana."
+      ],
+      "blockage": "The seven canonical SEM EVSE need exact THOR Details/QR/backend records because ISCAT explicitly permits station overrides.",
+      "resumeCondition": "Map Monzambano/Volta Mantovana nc-* rows to current THOR station records and capture exact tariff; otherwise keep all seven fail-closed.",
+      "coverage": {"rankableDirectEvse":0,"uncoveredEvse":7}
+    },
+    {
+      "partyId": "AM1",
+      "status": "partial",
+      "priority": "station-level",
+      "lastInvestigated": "2026-09-06",
+      "positiveEvidenceAdd": [
+        "Downloaded workflow artifact 9731212787 and enumerated the complete 15-station/50-EVSE AM1 PUN inventory and exact remaining native-style prefixes."
+      ],
+      "negativePathsAdd": [
+        "Batch search-engine lookups for the first remaining exact station IDs did not surface additional native RicaricaVeicolo pages."
+      ],
+      "resumeCondition": "Enumerate RicaricaVeicolo native map/backend instead of repeating exact-ID search-engine queries.",
+      "coverage": {"rankableDirectEvse":2,"uncoveredEvse":48}
+    }
+  ],
+  "postApplyCounts": {
+    "treated":16,
+    "partial":10,
+    "setAside":1,
+    "active":59,
+    "supersededAlias":2,
+    "totalCanonicalCpos":86,
+    "inventoryPartyIds":88
+  },
+  "queueImpact": {
+    "networkOrClassWideRemaining":1,
+    "stationLevelActiveCanonicalCpos":59,
+    "newRankableEvse":0,
+    "newlyTreatedCpos":[],
+    "newlyPartialCpos":[]
+  },
+  "consistency": {
+    "canonicalStatusSumExcludingAliases":86,
+    "canonicalStatusSumIncludingSupersededAliasRows":88,
+    "matchesInventoryPartyIds":true,
+    "artifactPartyIds":88,
+    "artifactEvse":75025,
+    "atlanteRemainsSetAside":true,
+    "fullAuditPerformed":false,
+    "canonicalPhysicalSnapshotStillStale":true
+  },
+  "evidenceReports": ["data/reports/italy_station_level_scope_20260906_run19.json"],
+  "history": [
+    "Run19 exhausted the generic current-web path for Uattzy Quick/Fast class thresholds without finding a sufficiently explicit first-party 2026 boundary; the path is now classified and must not be repeated absent new evidence.",
+    "Run19 downloaded the still-valid consolidated Italy workflow artifact and enumerated exact AM1 and SEM canonical inventory.",
+    "SEM correction: canonical SEM rows are seven 7.4 kW EVSE at Monzambano/Volta Mantovana, so Revello 2026 tariff announcements cannot be counted as coverage for those rows.",
+    "AM1 complete native-style prefix list is now recorded; next investigation should target the RicaricaVeicolo map/backend rather than repeating search-engine ID lookups.",
+    "No tariff or CPO was promoted without deterministic mapping; Atlante remains setAside and last."
+  ]
+}
