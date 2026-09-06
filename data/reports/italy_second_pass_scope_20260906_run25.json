@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 25,
+  "generatedAt": "2026-09-06T22:52:23+01:00",
+  "policy": {
+    "failClosed": true,
+    "directVsEmspSeparated": true,
+    "atlanteLast": true,
+    "secondPass": true
+  },
+  "updates": [
+    {
+      "partyId": "ENH",
+      "canonicalName": "Enerhub Srl",
+      "previousStatus": "active",
+      "status": "treated",
+      "priority": "class-wide",
+      "evse": 139,
+      "stations": 69,
+      "tariffModel": "network-wide by AC/DC class and access channel",
+      "tariffChannel": "direct CPO Enerhub / EnerApp and guest",
+      "tariffs": [
+        {"channel":"EnerApp","class":"AC <=22 kW","energyEurPerKwh":0.60},
+        {"channel":"EnerApp","class":"DC <=400 kW","energyEurPerKwh":0.79},
+        {"channel":"guest no registration","class":"AC <=22 kW","energyEurPerKwh":0.65},
+        {"channel":"guest no registration","class":"DC <=400 kW","energyEurPerKwh":0.95}
+      ],
+      "officialUrls": ["https://enerhub.it/ricarica/"],
+      "positiveEvidence": "Official Enerhub tariff page explicitly states tariffs valid on Enerhub charging stations.",
+      "coverage": {"scope":"entire ENH party scope by AC/DC class","rankable":"yes"},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06",
+      "lastChanged": "2026-09-06"
+    },
+    {
+      "partyId": "ENB",
+      "canonicalName": "ENERBROKER S.R.L. (R-ev)",
+      "previousStatus": "active",
+      "status": "treated",
+      "priority": "class-wide",
+      "evse": 87,
+      "stations": 73,
+      "tariffModel": "network-wide WALLET by power class",
+      "tariffChannel": "direct R-ev app/WALLET on R-ev network",
+      "tariffs": [
+        {"class":"AC","energyEurPerKwh":0.65},
+        {"class":"DC <=150 kW","energyEurPerKwh":0.85},
+        {"class":"DC >150 kW (HPC)","energyEurPerKwh":0.89}
+      ],
+      "fees": {
+        "extraStay": "Official app terms currently state 0.25 EUR/min for AC, DC <=150 kW and HPC >150 kW; AC exemption window and edge cases must follow the current terms text rather than older FAQ snippets."
+      },
+      "officialUrls": [
+        "https://www.r-ev.it/termini-di-utilizzo-abbonamenti/",
+        "https://www.r-ev.it/termini-di-utilizzo-app/",
+        "https://www.r-ev.it/scarica-la-app/"
+      ],
+      "positiveEvidence": "Official R-ev terms define deterministic WALLET rates and exact 150 kW DC/HPC threshold; app documentation exposes tariffs per station and distinguishes third-party roaming networks.",
+      "coverage": {"scope":"R-ev physical network / ENB party scope by AC/DC power class","rankable":"yes"},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06",
+      "lastChanged": "2026-09-06"
+    },
+    {
+      "partyId": "A22",
+      "canonicalName": "Autostrada del Brennero S.p.A.",
+      "previousStatus": "active",
+      "status": "treated",
+      "priority": "class-wide",
+      "evse": 80,
+      "stations": 17,
+      "tariffModel": "network-wide charger-class tariff",
+      "tariffChannel": "direct A22 charging infrastructure",
+      "tariffs": [
+        {"class":"AC Type2 up to 22 kW (11 kW when two vehicles share charger)","energyEurPerKwh":0.33},
+        {"class":"multi-standard CCS/CHAdeMO 50 kW plus Type2 up to 43 kW","energyEurPerKwh":0.38},
+        {"class":"ultra-fast CCS up to 180 kW","energyEurPerKwh":0.43}
+      ],
+      "officialUrls": [
+        "https://www.autobrennero.it/it/sostenibilita/elettrico/",
+        "https://www.autobrennero.it/it/servizi/aree-di-servizio/"
+      ],
+      "positiveEvidence": "Current official A22 service-area pages enumerate charger classes and exact EUR/kWh prices repeatedly across the network.",
+      "coverage": {"scope":"A22 party scope by official charger type","rankable":"yes"},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06",
+      "lastChanged": "2026-09-06"
+    },
+    {
+      "partyId": "CVG",
+      "canonicalName": "CONVERGENZE S.p.A. Società Benefit",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 90,
+      "stations": 44,
+      "tariffChannel": "direct EVO",
+      "positiveEvidence": "Official EVO page confirms two Type2 22 kW outlets, smartphone/card access and 35 EUR pre-authorization.",
+      "blockage": "No current exact energy tariff was exposed on the public official page inspected.",
+      "resumeCondition": "EVO portal/session payload or current official tariff document exposing exact EUR/kWh.",
+      "confidence": "medium",
+      "lastInvestigated": "2026-09-06"
+    },
+    {
+      "partyId": "AXS",
+      "canonicalName": "Axpo Energy Solutions Italia S.p.A.",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 63,
+      "stations": 15,
+      "blockage": "No current first-party EV charging tariff attributable to the AXS physical party scope was found; electricity-supply offers are not EV charging tariffs.",
+      "resumeCondition": "Current Axpo/Axpo Energy Solutions charging page, app/backend or station-specific ad-hoc tariff mapped to AXS EVSE.",
+      "confidence": "medium",
+      "lastInvestigated": "2026-09-06"
+    }
+  ],
+  "summary": {
+    "newlyTreated": ["ENH","ENB","A22"],
+    "newlyPartial": [],
+    "aliasesResolved": [],
+    "rankableEvseScopeAdded": 306,
+    "note": "306 is the full observed EVSE scope of ENH+ENB+A22; tariffs are applied by deterministic official charger/power class, not by extrapolation."
+  }
+}
