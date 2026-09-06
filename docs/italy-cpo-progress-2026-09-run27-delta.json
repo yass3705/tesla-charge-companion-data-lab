@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 27,
+  "generatedAt": "2026-09-07T01:12:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run26-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "CGS",
+      "status": "active",
+      "priority": "class-wide",
+      "tariffModel": "proven Quick Cogeser AC class plus unresolved Fast/non-AC remainder",
+      "tariffChannel": "direct CPO; customer electricity-bill discount kept separate from standard direct tariff",
+      "tariffs": [
+        {"class": "Quick Cogeser Energia AC", "energyEurPerKwh": 0.67, "vatIncluded": true, "validFrom": "2025-10-01"},
+        {"class": "Cogeser electricity-bill customers on Cogeser network", "energyEurPerKwh": 0.49, "vatIncluded": true, "validFrom": "2025-10-01", "eligibility": "customer with charging costs debited on Cogeser electricity bill"}
+      ],
+      "separateEmspTariffs": [
+        {"class": "non-Cogeser roaming AC", "energyEurPerKwh": 0.73, "rankableAsDirectCpo": false},
+        {"class": "non-Cogeser roaming DC", "energyEurPerKwh": 0.89, "rankableAsDirectCpo": false}
+      ],
+      "paymentMethods": ["Cogeser E-move app", "RFID", "QR code spot charging"],
+      "officialUrls": ["https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico"],
+      "coverage": {
+        "physicalEvse": 60,
+        "rankableDirectEvse": 0,
+        "unresolvedEvse": 60,
+        "coveredSubpopulationRule": "EVSE deterministically identified as Quick Cogeser Energia AC can use 0.67 EUR/kWh standard direct tariff; eligible bill-debit customers can use 0.49 EUR/kWh",
+        "uncoveredSubpopulationReason": "current 2026 network also references Fast charging; exact CGS EVSE-to-Quick/Fast mapping has not yet been joined"
+      },
+      "blockage": "EVSE-to-class join required; Fast/non-AC direct tariff not proven from current official tariff table",
+      "resumeCondition": "current PUN/OCPI connector/power join plus official direct Fast tariff if any",
+      "positiveEvidence": ["Official Cogeser public charging page publishes Quick Cogeser AC 0.67 EUR/kWh VAT included from 2025-10-01 and separates non-Cogeser roaming."],
+      "negativeEvidence": ["Do not generalize Quick AC price to all CGS EVSE because current Cogeser communications reference Fast Charge availability."],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run27: current official Cogeser tariff table proves Quick AC direct class (0.67 EUR/kWh; eligible bill-debit customers 0.49), but Fast/non-AC remains fail-closed pending EVSE mapping and tariff proof."
+    },
+    {
+      "partyId": "ALL",
+      "status": "active",
+      "priority": "class-wide",
+      "tariffModel": "Italy country tariff by Allego Fast/Ultrafast class and payment plan",
+      "tariffChannel": "direct Allego / app subscription / pay-as-you-go",
+      "tariffs": [
+        {"plan": "Allego Plus", "class": "Ultrafast 350 kW", "energyEurPerKwh": 0.55, "monthlyFeeEur": 9.99},
+        {"plan": "Allego Plus", "class": "Fast 150 kW", "energyEurPerKwh": 0.70, "monthlyFeeEur": 9.99},
+        {"plan": "Allego Smart", "class": "Ultrafast 350 kW", "energyEurPerKwh": 0.75, "monthlyFeeEur": 0},
+        {"plan": "Allego Smart", "class": "Fast 150 kW", "energyEurPerKwh": 0.70, "monthlyFeeEur": 0},
+        {"plan": "Pay as you go", "class": "Ultrafast 350 kW", "energyEurPerKwh": 0.81, "eligibility": "no app or card required"},
+        {"plan": "Pay as you go", "class": "Fast 150 kW", "energyEurPerKwh": 0.70, "eligibility": "no app or card required"}
+      ],
+      "conditions": ["VAT included", "overstay fees may apply"],
+      "officialUrls": ["https://www.allego.eu/app/", "https://www.allego.eu/pricing/"],
+      "coverage": {
+        "physicalEvse": 28,
+        "rankableDirectEvse": 0,
+        "unresolvedEvse": 28,
+        "reason": "country tariff classes are proven, but canonical EVSE-to-Fast/Ultrafast mapping is not yet materialized"
+      },
+      "blockage": "deterministic EVSE maximum-power/class join required",
+      "resumeCondition": "join PUN/OCPI connector maximum power to current Allego Fast versus Ultrafast class semantics",
+      "positiveEvidence": ["Official Allego app page exposes a distinct Italy tariff block with Fast and Ultrafast prices for Plus, Smart and pay-as-you-go."],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run27: current official Allego Italy class-wide tariff grid captured; remains fail-closed until 28 EVSE are deterministically mapped to Fast/Ultrafast."
+    },
+    {
+      "partyId": "P62",
+      "status": "active",
+      "priority": "station-level",
+      "blockage": "no current first-party public EV charging tariff found; EUM member electricity-supply tariffs are not public charger tariffs",
+      "resumeCondition": "charger/QR/app/backend or current first-party EV tariff evidence",
+      "officialUrls": ["https://www.eum.bz/de/strom", "https://www.eum.bz/de/strom/strom-detail/tarife-mitglieder"],
+      "negativeEvidence": ["0.07/0.09 EUR/kWh EUM member electricity prices excluded as retail electricity supply, not public EV charging."],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run27: generic network-wide EUM tariff route closed; member electricity rates are not EV charging tariffs."
+    },
+    {
+      "partyId": "TDM",
+      "status": "active",
+      "priority": "station-level",
+      "blockage": "no current T.D.M./Tamoil first-party EV charging tariff or deterministic network grid found",
+      "resumeCondition": "resolve TDM EVSE to native charging platform/QR backend or obtain first-party tariff evidence",
+      "negativeEvidence": ["Fuel prices excluded; generic Tamoil/T.D.M. tariff search exhausted for this pass."],
+      "confidence": "medium",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run27: TDM remains station-level; generic first-party tariff search produced no EV charging grid, so next attempt must be EVSE/platform-specific."
+    }
+  ],
+  "countsAfter": {"treated": 22, "partial": 10, "setAside": 1, "active": 53, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
+  "queueImpact": {
+    "firstPassRemaining": 0,
+    "newlyTreatedCpos": [],
+    "newRankableEvse": 0,
+    "remainingClassWideCandidates": ["CGS", "ALL"],
+    "genericNetworkWidePathsClosed": ["P62", "TDM"],
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "22+10+1+53=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "duplicateCanonicalPartyIds": 0,
+    "atlanteSetAside": true,
+    "firstPassComplete": "86/86",
+    "result": "pass"
+  },
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run27.json"],
+  "historyAppend": [
+    "2026-09-07 run27: Cogeser current direct Quick AC class captured; Fast/non-AC remains fail-closed pending EVSE mapping and direct tariff proof.",
+    "2026-09-07 run27: Allego current Italy Fast/Ultrafast grid captured for Plus/Smart/pay-as-you-go; EVSE class join still required.",
+    "2026-09-07 run27: EUM retail electricity tariffs rejected as EV charging evidence; TDM generic tariff path closed.",
+    "2026-09-07 run27: no counter change; consistency remains 22/10/1/53 plus 2 superseded aliases; Atlante remains last."
+  ]
+}
