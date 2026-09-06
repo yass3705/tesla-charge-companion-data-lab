@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run11-delta.json"],
+  "generatedAt": "2026-09-06T09:54:00+01:00",
+  "safeStatusTransitions": [
+    {
+      "partyId": "UOC",
+      "from": "active",
+      "to": "partial",
+      "priority": "class-wide",
+      "canonicalName": "UNIONE CHARGING S.R.L.",
+      "aliases": ["UNIONE CHARGING S.R.L.", "UniOne"],
+      "tariffModel": "power_class",
+      "tariffChannel": "direct CPO; credit card/POS or app",
+      "tariffs": [
+        {"class":"AC 22 kW","energyEurPerKwh":0.50},
+        {"class":"DC 80 kW","energyEurPerKwh":0.70}
+      ],
+      "coverage": {
+        "physicalEvse": 7,
+        "rankableExactEvse": 6,
+        "unresolvedEvse": 1,
+        "coveredSubpopulations": [
+          {"class":"AC Type2 22 kW","evse":5,"priceEurPerKwh":0.50},
+          {"class":"DC CCS2 80 kW","evse":1,"priceEurPerKwh":0.70}
+        ],
+        "uncoveredSubpopulations": [
+          {"class":"DC CCS2 120 kW","evse":1,"reason":"no official deterministic 120 kW tariff published"}
+        ]
+      },
+      "officialUrls": [
+        "https://www.uni-one.eu/tariffe/",
+        "https://www.uni-one.eu/rete-di-ricarica/"
+      ],
+      "blockage": "The active 120 kW CCS2 EVSE at Via Colli Euganei 4 is outside the two tariff classes explicitly published by UniOne; no extrapolation from 80 kW is permitted.",
+      "resumeCondition": "Obtain first-party UniOne tariff/POS/app/backend evidence for the active 120 kW EVSE.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-06",
+      "lastChanged": "2026-09-06"
+    }
+  ],
+  "classificationUpdatesWithoutStatusTransition": [],
+  "postApplyCounts": {"treated":16,"partial":8,"setAside":1,"active":63,"total":88},
+  "queueImpact": {
+    "networkWideCandidatesResolved": ["UOC"],
+    "newRankableEvse": 6,
+    "newFailClosedEvse": 1
+  },
+  "consistency": {
+    "statusSum": 88,
+    "matchesInventory": true,
+    "duplicatePartyIdsIntroduced": 0,
+    "artifactPartyIds": 88,
+    "artifactEvse": 75025,
+    "atlanteRemainsSetAside": true,
+    "fullAuditPerformed": true,
+    "canonicalRewritePending": true,
+    "canonicalPhysicalSnapshotStillStale": true
+  },
+  "evidenceReports": ["data/reports/italy_network_tariff_scope_20260906_run12.json"],
+  "history": [
+    "Run 12 performed the periodic consistency audit after run11.",
+    "UOC/UniOne moved active -> partial after first-party tariff and network pages were reconciled against the canonical 7-EVSE/3-station footprint.",
+    "6/7 UOC EVSE are exactly rankable: five AC 22 kW at EUR 0.50/kWh and one DC 80 kW at EUR 0.70/kWh.",
+    "One active DC 120 kW EVSE remains fail-closed because UniOne publishes no deterministic 120 kW tariff.",
+    "Counts now 16 treated / 8 partial / 1 setAside / 63 active; sum 88; no duplicate partyId introduced.",
+    "Atlante unchanged and reserved for last."
+  ]
+}
