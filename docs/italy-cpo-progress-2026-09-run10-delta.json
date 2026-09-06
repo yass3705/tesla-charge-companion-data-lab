@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run9-delta.json"],
+  "generatedAt": "2026-09-06T07:51:52+01:00",
+  "safeStatusTransitions": [],
+  "classificationUpdatesWithoutStatusTransition": [
+    {
+      "partyId": "220",
+      "priority": "station-level",
+      "reason": "Route220 first-party CPMS supports personalized tariffs and evway exposes prices per station; no universal direct/ad-hoc tariff proven",
+      "blockage": "exact current direct/ad-hoc tariff requires station/EVSE lookup",
+      "resumeCondition": "enumerate partyId 220 EVSE and map first-party evway/Route220 backend or QR tariff",
+      "confidence": "high"
+    },
+    {
+      "partyId": "P62",
+      "priority": "station-level",
+      "reason": "no deterministic EUM-wide EV tariff published; observed public station records have non-uniform access modes and no proven universal direct price",
+      "blockage": "exact current direct/ad-hoc tariff not exposed in reviewed first-party material",
+      "resumeCondition": "first-party publication or QR/app/backend EVSE mapping",
+      "confidence": "medium"
+    },
+    {
+      "partyId": "TAP",
+      "priority": "station-level",
+      "reason": "TAP publishes FAST 50 kW and ULTRAFAST 150 kW infrastructure but no deterministic network-wide EV charging price on reviewed first-party pages",
+      "blockage": "exact current EV tariff not exposed publicly",
+      "resumeCondition": "station QR/payment flow, app/backend tariff or first-party tariff publication",
+      "confidence": "medium-high"
+    }
+  ],
+  "postApplyCounts": {"treated":16,"partial":7,"setAside":1,"active":64,"total":88},
+  "queueImpact": {
+    "networkWideCandidatesRemoved": ["220","P62","TAP"],
+    "knownEvseRemovedFromGlobalGeneralizationRisk": 434,
+    "note": "Known count includes Route220 422 + EUM 12; TAP EVSE count deliberately excluded because it was not re-read from canonical in this run."
+  },
+  "consistency": {
+    "statusSum": 88,
+    "matchesInventory": true,
+    "duplicatePartyIdsIntroduced": 0,
+    "artifactPartyIds": 88,
+    "artifactEvse": 75025,
+    "atlanteRemainsSetAside": true,
+    "canonicalRewritePending": true
+  },
+  "evidenceReports": ["data/reports/italy_network_tariff_scope_20260906_run10.json"],
+  "history": [
+    "Run 10 removed Route220, EUM Genossenschaft and Tanzi Aurelio Petroli from network-wide generalization risk.",
+    "Route220 classified station-level with high confidence because first-party tooling explicitly supports customized tariffs and station-specific displayed prices.",
+    "EUM and TAP kept fail-closed pending exact direct/ad-hoc station tariff evidence.",
+    "No status transitions; counts remain 16 treated / 7 partial / 1 setAside / 64 active.",
+    "Atlante unchanged and reserved for last."
+  ]
+}
