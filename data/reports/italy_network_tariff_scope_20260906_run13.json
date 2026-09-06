@@ -1,0 +1,147 @@
+{
+  "country": "IT",
+  "run": 13,
+  "generatedAt": "2026-09-06T10:55:00+01:00",
+  "branch": "research/italy-cpo-priority-20260905",
+  "policy": {
+    "priorityOrder": ["network-wide", "class-wide", "station-level"],
+    "failClosed": true,
+    "atlanteLast": true,
+    "directVsEmspSeparated": true
+  },
+  "inventory": {"partyIds": 88, "evse": 75025},
+  "classifications": [
+    {
+      "partyId": "SEM",
+      "canonicalName": "ISCAT s.r.l. / Circuito SEMM",
+      "evse": 7,
+      "stations": 7,
+      "priority": "station-level",
+      "status": "active",
+      "tariffModel": "default_power_band_with_station_overrides",
+      "tariffChannel": "direct CPO / THOR / RFID",
+      "defaultTariffs": [
+        {"class": "AC <=22 kW", "energyEurPerKwh": 0.55},
+        {"class": "DC <=90 kW", "energyEurPerKwh": 0.65},
+        {"fee": "post-charge occupancy", "eurPerHour": 2.0}
+      ],
+      "positiveEvidence": [
+        "ISCAT official SEMM tariff page publishes default AC/DC tariffs and occupancy fee",
+        "ISCAT official page explicitly states some stations may have personalized/promotional tariffs visible in THOR station Details",
+        "2026 Revello1 and Revello2 official announcement confirms 0.55 AC / 0.65 DC on those two stations"
+      ],
+      "blockage": "Default grid cannot be applied blindly because first-party source explicitly allows station-specific overrides.",
+      "resumeCondition": "Enumerate all 7 canonical SEM stations in THOR/QR Details and prove exact tariff per station/EVSE; default may be used only where station detail confirms no override.",
+      "officialUrls": [
+        "https://iscat.com/circuito-di-ricarica-semm-by-iscat/",
+        "https://iscat.com/2026/05/29/valle-po-piu-connessa-arrivano-le-colonnine-di-ricarica-semm-a-revello/"
+      ],
+      "confidence": "high"
+    },
+    {
+      "partyId": "KIW",
+      "canonicalName": "Kiwih srl / KiwihCharge",
+      "evse": 4,
+      "stations": 2,
+      "priority": "station-level",
+      "status": "active",
+      "tariffModel": "app_platform_own_plus_roaming",
+      "tariffChannel": "KiwihCharge app / RFID",
+      "positiveEvidence": [
+        "KiwihCharge app describes a platform combining its own chargers and partner circuits",
+        "2025 Spinetoli commissioning confirms app/RFID access for a Kiwih-operated 22 kW station"
+      ],
+      "blockage": "No current first-party network-wide price grid found; own-network and roaming scopes must remain separated.",
+      "resumeCondition": "Resolve each canonical KIW EVSE in KiwihCharge/app backend and capture direct CPO tariff.",
+      "confidence": "medium-high"
+    },
+    {
+      "partyId": "VCS",
+      "canonicalName": "VALLE CAMONICA SERVIZI VENDITE SPA",
+      "evse": 7,
+      "stations": 4,
+      "priority": "station-level",
+      "status": "active",
+      "tariffModel": "operator_identity_requires_station_reconciliation",
+      "positiveEvidence": [
+        "Current public Valle Camonica mobility information states project charging stations are managed in concession by Be Charge",
+        "PUN/TariffEV-derived inventory still exposes a distinct VCS partyId scope"
+      ],
+      "blockage": "Physical/current operator relationship and direct VCS tariff are not proven; cannot inherit Be Charge pricing merely from project concession evidence.",
+      "resumeCondition": "Map the 4 canonical VCS stations/7 EVSE to current operator/QR/app and exact direct tariff.",
+      "confidence": "medium"
+    },
+    {
+      "partyId": "BEY",
+      "canonicalName": "Beyfin SpA Società Benefit",
+      "evse": 2,
+      "stations": 1,
+      "priority": "station-level",
+      "status": "active",
+      "tariffModel": "single_site_direct_unresolved",
+      "positiveEvidence": ["Beyfin first-party page confirms a 22 kW EV charger at Marina di Pisa"],
+      "blockage": "No current first-party EV charging price published for the canonical site.",
+      "resumeCondition": "Inspect site QR/payment flow or public backend for exact direct price.",
+      "officialUrls": ["https://www.beyfin.it/news/beyfin-marina-di-pisa/"],
+      "confidence": "high on station identity, low on price"
+    },
+    {
+      "partyId": "TEX",
+      "canonicalName": "AECOS SRL",
+      "evse": 6,
+      "stations": 1,
+      "priority": "station-level",
+      "status": "active",
+      "tariffModel": "single_site_direct_unresolved",
+      "positiveEvidence": ["AECOS public Stazione Ricarica Auto PratoSardo contact page identifies the charging site"],
+      "blockage": "No deterministic current charging tariff found.",
+      "resumeCondition": "Resolve PratoSardo station QR/app/payment endpoint and exact tariff.",
+      "confidence": "medium"
+    },
+    {
+      "partyId": "EMV",
+      "canonicalName": "Prestige Building srl",
+      "evse": 5,
+      "stations": 2,
+      "priority": "station-level",
+      "status": "active",
+      "tariffModel": "installer_or_site_operator_unresolved",
+      "positiveEvidence": ["Public company references associate Prestige Building with photovoltaic and EV charging installations"],
+      "blockage": "No first-party public network tariff or deterministic global pricing model found.",
+      "resumeCondition": "Resolve both canonical stations by EVSE/address, QR/app/backend and legal operator identity.",
+      "confidence": "medium-low"
+    },
+    {
+      "partyId": "CAR",
+      "canonicalName": "Greendata.solutions",
+      "evse": 4,
+      "stations": 2,
+      "priority": "station-level",
+      "status": "active",
+      "tariffModel": "platform_or_custom_operator_unresolved",
+      "positiveEvidence": ["Greendata.solutions currently describes an OCPP EV charging platform with custom payment UX and fleet management"],
+      "blockage": "Company is demonstrably a platform/engineering provider; no public network-wide direct tariff attributable to partyId CAR found.",
+      "resumeCondition": "Resolve canonical EVSE addresses and customer/operator context, then inspect payment backend for exact direct tariff.",
+      "confidence": "medium"
+    },
+    {
+      "partyId": "MWT",
+      "canonicalName": "COOL ENERGY SERVICE SRL",
+      "evse": 2,
+      "stations": 1,
+      "priority": "station-level",
+      "status": "active",
+      "tariffModel": "single_site_direct_unresolved",
+      "positiveEvidence": ["Current company registry/search evidence identifies Cool Energy Service as a local electrical/HVAC installer at the same San Vincenzo address seen in charging inventory"],
+      "blockage": "No current first-party public direct EV tariff found; company status also requires current operator verification.",
+      "resumeCondition": "Inspect the single canonical site QR/app/payment flow and current operator identity.",
+      "confidence": "medium-low"
+    }
+  ],
+  "statusDelta": {"treated": 0, "partial": 0, "setAside": 0, "active": 0},
+  "notes": [
+    "No CPO was promoted to rankable solely from third-party tariff tables.",
+    "SEMM default tariff is not safe network-wide because ISCAT explicitly documents station-specific overrides.",
+    "Atlante was not investigated in this run."
+  ]
+}
