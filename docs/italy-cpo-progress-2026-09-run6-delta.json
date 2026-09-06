@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "dependsOn": [
+    "docs/italy-cpo-progress-2026-09-run3-delta.json",
+    "docs/italy-cpo-progress-2026-09-run4-delta.json",
+    "docs/italy-cpo-progress-2026-09-run4b-delta.json",
+    "docs/italy-cpo-progress-2026-09-run5-delta.json"
+  ],
+  "generatedAt": "2026-09-06T03:50:00+01:00",
+  "safeStatusTransitions": [],
+  "classificationUpdatesWithoutStatusTransition": [
+    {"partyId":"ASS","priority":"station-level","reason":"current first-party Magis pay-per-use is priced from the tariff displayed in-app at time of use; only subscription products have deterministic global AC/DC rates"},
+    {"partyId":"CPO","priority":"station-level","reason":"Coop Power tariffs are location/sub-network evidence and 'starting at' values, not proof for all Nucleo EVSE"},
+    {"partyId":"DRW","priority":"station-level","reason":"current UnoEnergy public material does not establish a deterministic public-network tariff for all DriWe EVSE"},
+    {"partyId":"GMT","priority":"station-level","reason":"ZapGrid evidence shows tenant/operator-specific prices rather than one GMT party-wide tariff"},
+    {"partyId":"WRM","priority":"station-level","reason":"available Wroom prices are eMSP roaming evidence, not native deterministic pricing for the WRM physical CPO scope"}
+  ],
+  "tariffMetadata": {
+    "ASS": {
+      "payPerUse":"station/app-specific",
+      "subscriptions":[
+        {"name":"Small","eligibility":"subscription","class":"AC","energyEurPerKwh":0.60,"monthlyEur":5},
+        {"name":"Medium","eligibility":"subscription","class":"AC","energyEurPerKwh":0.58,"monthlyEur":10},
+        {"name":"Large","eligibility":"subscription","class":"AC","energyEurPerKwh":0.50,"monthlyEur":20},
+        {"name":"Flat DC","eligibility":"subscription","class":"DC","energyEurPerKwh":0.74,"monthlyEur":10}
+      ],
+      "officialUrls":[
+        "https://www.aimmobilita.it/it/web/magis-smart/mobilita-sostenibile",
+        "https://www.aimmobilita.it/it/web/magis-smart/agsmaim_e-mobility/abbonamenti"
+      ]
+    }
+  },
+  "postApplyCounts": {"treated":16,"partial":7,"setAside":1,"active":64,"total":88},
+  "priorityQueueKnown": {
+    "networkOrClassWideConfirmedStillActive": [],
+    "stationLevelNewlyClassified": ["ASS","CPO","DRW","GMT","WRM"],
+    "stationLevelPreviouslyClassified": ["NRG","TCA","BPA"],
+    "unclassifiedActive": "remaining active entries still require one network-wide-first classification pass before station-level resolution",
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSum": 88,
+    "matchesInventory": true,
+    "duplicatePartyIdsIntroduced": 0,
+    "artifactPartyIds": 88,
+    "artifactEvse": 75025,
+    "atlanteRemainsSetAside": true,
+    "canonicalRewritePending": true
+  },
+  "evidenceReports": ["data/reports/italy_network_tariff_scope_20260906_run6.json"],
+  "history": [
+    "Run 6 preserved status counts and advanced five active CPOs from unclassified to station-level/direct-unresolved.",
+    "AGSM AIM deterministic subscription prices retained separately; native pay-per-use remains app/station-specific.",
+    "Nucleo Coop Power evidence not generalized beyond its proven sub-network.",
+    "DriWe, GMT and Wroom prevented from accidental promotion using illustrative, tenant-specific or eMSP prices.",
+    "Atlante unchanged and reserved for last."
+  ]
+}
