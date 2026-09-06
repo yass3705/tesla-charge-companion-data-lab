@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 11,
+  "generatedAt": "2026-09-06T08:55:00+01:00",
+  "policy": {
+    "networkWideFirst": true,
+    "failClosed": true,
+    "directVsEmspSeparated": true,
+    "atlanteLast": true
+  },
+  "investigations": [
+    {
+      "partyId": "ERX",
+      "canonicalName": "ENERGETIX S.RL.",
+      "inventoryEvse": 24,
+      "inventoryStations": 5,
+      "classification": "station-level",
+      "statusTransition": null,
+      "positiveEvidence": [
+        "Energetix first-party site states users can pay by credit card or use the ChargePoint app at Energetix stations.",
+        "Energetix first-party site explicitly distinguishes its own stations from roaming on other networks."
+      ],
+      "negativeEvidence": [
+        "No tariff or price is published on the first-party home or charging pages reviewed on 2026-09-06.",
+        "No deterministic network-wide AC/DC/HPC price grid was found."
+      ],
+      "officialUrls": [
+        "https://www.energetix.it/",
+        "https://www.energetix.it/ricarica"
+      ],
+      "blockage": "exact current direct/ad-hoc tariff must be resolved from ChargePoint/card flow per station or EVSE",
+      "resumeCondition": "enumerate ERX EVSE and map ChargePoint or card-payment tariff deterministically",
+      "confidence": "high"
+    },
+    {
+      "partyId": "TDM",
+      "canonicalName": "T.D.M. S.R.L.",
+      "inventoryEvse": 52,
+      "inventoryStations": 26,
+      "classification": "station-level",
+      "statusTransition": null,
+      "positiveEvidence": [
+        "Current public station records identify T.D.M. S.R.L. as operator of multiple Tamoil sites offering EV charging."
+      ],
+      "negativeEvidence": [
+        "Reviewed current public sources expose fuel pricing but no T.D.M.-wide EV charging tariff.",
+        "No deterministic first-party EV AC/DC/HPC tariff grid was found."
+      ],
+      "blockage": "exact EV tariff requires station QR/payment/app/backend evidence",
+      "resumeCondition": "map all TDM EVSE to first-party/ad-hoc payment channel and exact tariff",
+      "confidence": "medium"
+    },
+    {
+      "partyId": "CLE",
+      "canonicalName": "Clean Energy srl",
+      "inventoryEvse": 11,
+      "inventoryStations": 2,
+      "classification": "station-level",
+      "statusTransition": null,
+      "positiveEvidence": [],
+      "negativeEvidence": [
+        "Search results contain several distinct Italian companies named Clean Energy; company-name evidence alone cannot safely identify the PUN partyId tariff source.",
+        "No deterministic direct/ad-hoc network-wide tariff was found for partyId CLE."
+      ],
+      "blockage": "operator identity and exact direct tariff must be tied to CLE EVSE identifiers before ranking",
+      "resumeCondition": "use PUN EVSE identifiers/addresses to resolve the exact legal/operator entity, then inspect QR/app/backend tariff",
+      "confidence": "medium-high"
+    }
+  ],
+  "queueImpact": {
+    "networkWideCandidatesRemoved": ["ERX", "TDM", "CLE"],
+    "knownEvseRemovedFromGlobalGeneralizationRisk": 87,
+    "stationLevelEvseAdded": 87
+  },
+  "consistency": {
+    "effectiveCounts": {"treated":16,"partial":7,"setAside":1,"active":64,"total":88},
+    "statusSum": 88,
+    "artifactPartyIds": 88,
+    "artifactEvse": 75025,
+    "duplicatePartyIdsIntroduced": 0,
+    "atlanteRemainsSetAside": true,
+    "canonicalRewritePending": true
+  }
+}
