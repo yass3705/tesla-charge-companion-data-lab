@@ -1,0 +1,78 @@
+{
+  "run": 51,
+  "generatedAt": "2026-09-08T00:55:00+01:00",
+  "baseEffectiveState": {"treated": 35, "partial": 10, "setAside": 1, "active": 38, "canonicalTotal": 84, "supersededAlias": 4, "physicalPartyIds": 88},
+  "changes": [
+    {
+      "partyId": "VFS",
+      "canonicalName": "VIAFAST SRL",
+      "statusFrom": "active",
+      "statusTo": "treated",
+      "priority": "class-wide",
+      "evse": 167,
+      "stations": 84,
+      "tariffModel": "connector_power_class_network_wide",
+      "tariffChannel": "direct CPO",
+      "tariffs": [
+        {"class":"AC Type2 up to 22 kW","energyEurPerKwh":0.60},
+        {"class":"DC FAST 60 kW / ULTRAFAST 90-180 kW","energyEurPerKwh":0.85}
+      ],
+      "fees": [{"type":"post_charge_occupancy","graceMinutes":5,"eurPerMinute":0.25,"applies":"24/7 after charging ends"}],
+      "officialUrls": ["https://www.viafast.net/viafast-tariffe/"],
+      "positiveEvidence": ["official ViaFast tariff page explicitly publishes 0.60 EUR/kWh for AC up to 22 kW and flat 0.85 EUR/kWh for DC 60/90-180 kW", "same page states a 5-minute post-charge grace period followed by 0.25 EUR/min occupancy fee 24/7 on ViaFast stations"],
+      "coverage": {"rankableDirectEvse":167,"uncoveredEvse":0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08"
+    },
+    {
+      "partyId": "ENH",
+      "canonicalName": "Enerhub Srl",
+      "statusFrom": "active",
+      "statusTo": "treated",
+      "priority": "class-wide",
+      "evse": 139,
+      "stations": 69,
+      "tariffModel": "power_class_and_payment_channel_network_wide",
+      "tariffChannel": "direct CPO app / guest",
+      "tariffs": [
+        {"channel":"EnerApp registered","class":"AC up to 22 kW","energyEurPerKwh":0.60},
+        {"channel":"EnerApp registered","class":"DC up to 400 kW","energyEurPerKwh":0.79},
+        {"channel":"Guest without registration","class":"AC up to 22 kW","energyEurPerKwh":0.65},
+        {"channel":"Guest without registration","class":"DC up to 400 kW","energyEurPerKwh":0.95}
+      ],
+      "officialUrls": ["https://enerhub.it/ricarica/"],
+      "positiveEvidence": ["official Enerhub charging page explicitly says the published tariffs are valid on Enerhub charging stations", "page separates registered EnerApp and guest direct tariffs with exact AC/DC limits"],
+      "coverage": {"rankableDirectEvse":139,"uncoveredEvse":0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08"
+    },
+    {
+      "partyId": "A22",
+      "canonicalName": "Autostrada del Brennero S.p.A.",
+      "statusFrom": "active",
+      "statusTo": "treated",
+      "priority": "class-wide",
+      "evse": 80,
+      "stations": 17,
+      "tariffModel": "charger_class_network_wide",
+      "tariffChannel": "direct CPO/ad-hoc",
+      "tariffs": [
+        {"class":"AC Type2 up to 22 kW","energyEurPerKwh":0.33},
+        {"class":"multi-standard AC/DC up to 50 kW (Type2 up to 43 kW / CCS / CHAdeMO)","energyEurPerKwh":0.38},
+        {"class":"ultra-rapid CCS up to 180 kW","energyEurPerKwh":0.43},
+        {"class":"authorized heavy-vehicle HPC CCS/MCS 600-1000 kW","energyEurPerKwh":0.43,"eligibility":"heavy vehicles authorized by A22 only"}
+      ],
+      "officialUrls": ["https://www.autobrennero.it/it/in-viaggio/sosta-e-servizi/aree-di-servizio/"],
+      "positiveEvidence": ["current official A22 service-area pages enumerate each charger class and bind exact costs: 0.33, 0.38 and 0.43 EUR/kWh", "heavy-vehicle 600 kW CCS / 1 MW MCS points are explicitly restricted to authorized heavy vehicles and remain separately classified"],
+      "coverage": {"rankableDirectEvse":80,"uncoveredEvse":0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08"
+    }
+  ],
+  "effectiveCountsAfter": {"treated": 38, "partial": 10, "setAside": 1, "active": 35, "canonicalTotal": 84, "supersededAlias": 4, "physicalPartyIds": 88},
+  "consistency": {"statusSumCanonical":84,"aliasesExcludedFromCanonicalCount":true,"physicalPartyIdsAccounted":88,"duplicateCanonicalPartyIds":0},
+  "history": ["2026-09-08 run51: promoted VIAFAST, Enerhub and Autostrada del Brennero from active to treated after fresh first-party verification; 386 EVSE added to rankable direct coverage; charger/payment classes and A22 heavy-vehicle eligibility preserved exactly; roaming/eMSP tariffs not used."]
+}
