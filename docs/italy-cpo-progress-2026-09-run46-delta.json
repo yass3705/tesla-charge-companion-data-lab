@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 46,
+  "generatedAt": "2026-09-07T19:58:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run45-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 849,
+      "stations": 296,
+      "tariffModel": "point-owner-specific with identifiable site/subnetwork exceptions",
+      "tariffChannel": "direct EMOBITALY app/RFID/ad-hoc card; roaming eMSP separate",
+      "officialUrls": [
+        "https://interparking.emobitaly.it/",
+        "https://www.emobitaly.it/wp-content/uploads/2017/05/EMOBITALY-Guida.pdf"
+      ],
+      "positiveEvidence": [
+        "Current Interparking/EMOBITALY page states direct EMOBITALY charging is available ad-hoc by card, app or RFID and exposes a current site/subnetwork tariff of EUR 0.58/kWh including VAT plus a fixed start fee between EUR 0.50 and EUR 1.40.",
+        "EMOBITALY management documentation states the owner of each charging point decides that point's tariff and that tariff may include fixed, energy and time components.",
+        "Direct EMOBITALY pricing is explicitly separated from roaming-provider pricing."
+      ],
+      "negativePaths": [
+        "The Interparking tariff is not propagated to all IT*EMO EVSE because first-party EMOBITALY documentation explicitly allows owner-specific point tariffs.",
+        "Historical generic EMOBITALY plan values are not used as current network-wide direct prices."
+      ],
+      "blockage": "No complete deterministic mapping yet from IT*EMO EVSE to current point-owner tariff; current first-party evidence proves station/point-level variability.",
+      "resumeCondition": "map IT*EMO identifiers to EMOBITALY app/ad-hoc station records and capture current point tariff; separately identify Interparking EVSE before applying EUR 0.58/kWh + start fee",
+      "coverage": {"rankableDirectEvse":0,"uncoveredEvse":849,"knownDeterministicSubnetwork":"Interparking","subnetworkPrice":{"energyEurPerKwh":0.58,"fixedStartFeeMinEur":0.50,"fixedStartFeeMaxEur":1.40},"reason":"subnetwork-to-EVSE mapping not yet proven"},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run46: current Interparking tariff found, but fail-closed retained because EMOBITALY first-party material explicitly makes tariff point-owner-specific."
+    },
+    {
+      "partyId": "EDN",
+      "canonicalName": "Edison Next S.P.A.",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 826,
+      "stations": 377,
+      "tariffModel": "station-specific price exposed in Edison Plug&Go+ / selected charger",
+      "tariffChannel": "Edison Plug&Go+ eMSP/app; direct CPO scope must remain separated",
+      "officialUrls": [
+        "https://www.edisonenergia.it/edison/app-pluggo"
+      ],
+      "positiveEvidence": [
+        "Current Edison Plug&Go+ page states Pay Per Use charges follow the tariffs of the selected charging station and Wallet gives 5% discount on those charging sessions.",
+        "Current Edison mobility material states station power and tariffs are visible in real time in the app."
+      ],
+      "negativePaths": [
+        "No current first-party network-wide direct Edison Next CPO tariff was found.",
+        "Edison Plug&Go+ interoperable/eMSP prices are not promoted as direct IT*EDN CPO prices."
+      ],
+      "blockage": "Exact current direct price requires deterministic mapping of IT*EDN EVSE to the native/direct station record; app-wide Edison eMSP prices cannot stand in for CPO direct tariff.",
+      "resumeCondition": "map IT*EDN EVSE to native Edison Next/Plug&Go station payload and verify ownership/channel before extracting exact tariff",
+      "coverage": {"rankableDirectEvse":0,"uncoveredEvse":826,"reason":"station-level price/current channel ownership unresolved"},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run46: current Edison app documentation reconfirms selected-station pricing; no safe network-wide direct CPO tariff."
+    },
+    {
+      "partyId": "220",
+      "canonicalName": "Route220 Srl Sb",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 422,
+      "stations": 270,
+      "tariffModel": "per-station tariff in evway app with energy/time/starting-fee components",
+      "tariffChannel": "evway eMSP; direct Route220 CPO price must be distinguished",
+      "officialUrls": [
+        "https://evway.net/tariffe-e-metodi-di-pagamento/",
+        "https://evway.net/faq/",
+        "https://evway.net/terms-app/"
+      ],
+      "positiveEvidence": [
+        "Current evway tariff page says prices vary by operator and each station's kWh/time conditions are displayed in the app.",
+        "Current FAQ states each session includes starting fee, energy component and time component; AC time fee starts after 3 hours (suspended 00:00-08:00) and DC time fee after 1 hour.",
+        "Route220's January 2026 app terms govern evway as an eMSP service."
+      ],
+      "negativePaths": [
+        "No current first-party evidence proves one direct Route220 CPO tariff across all IT*220 EVSE.",
+        "evway partner-roaming prices are not treated as direct Route220 CPO tariffs."
+      ],
+      "blockage": "Need deterministic IT*220 EVSE -> evway/native station payload mapping plus proof of direct CPO ownership/channel for each tariff.",
+      "resumeCondition": "capture station records for IT*220 identifiers from evway/native backend and separate Route220-owned direct tariffs from partner roaming tariffs",
+      "coverage": {"rankableDirectEvse":0,"uncoveredEvse":422,"reason":"station tariff visible but direct-CPO ownership/channel mapping incomplete"},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run46: evway current terms/FAQ lock Route220 investigation to station-level and require direct-vs-roaming ownership mapping."
+    }
+  ],
+  "countsAfter": {"treated":30,"partial":10,"setAside":1,"active":43,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88,"observedEvse":75025},
+  "queueImpact": {"firstPassRemaining":0,"newlyTreatedCpos":[],"newRankableEvse":0,"aliasesResolved":[],"newlyLockedStationLevel":["EMO","EDN","220"],"remainingNetworkOrClassWideCandidates":[],"classWideQueueExhausted":true,"atlanteLast":true},
+  "consistency": {"statusSumCanonical":84,"expectedCanonical":84,"equation":"30+10+1+43=84","aliasesCountedOutsideCanonical":4,"inventoryPartyIds":88,"physicalEquation":"84+4=88","duplicateCanonicalPartyIds":0,"atlanteSetAside":true,"canonicalPhysicalSnapshotStillStale":true,"result":"pass_with_known_snapshot_staleness"},
+  "historyAppend": [
+    "2026-09-07 run46: EMOBITALY, Edison Next and Route220 current first-party evidence reviewed; all remain station-level/fail-closed pending deterministic EVSE-to-current-direct-tariff mapping.",
+    "2026-09-07 run46: Interparking/EMOBITALY EUR 0.58/kWh + start-fee tariff recorded only as a deterministic subnetwork clue; not propagated beyond mapped Interparking EVSE."
+  ]
+}
