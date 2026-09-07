@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 34,
+  "generatedAt": "2026-09-07T08:10:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run33-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "SAG",
+      "canonicalName": "Sagelio srl società benefit",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 405,
+      "stations": 316,
+      "tariffModel": "host/site-configured retail pricing",
+      "tariffChannel": "native Sagelio point/session",
+      "positiveEvidence": [
+        "Sagelio first-party 2026 host guidance says there is no tariff valid for all contexts and explains host/site economics drive the retail tariff."
+      ],
+      "negativePaths": [
+        "0.59 EUR/kWh in Sagelio article is a worked example only and must not be promoted network-wide"
+      ],
+      "blockage": "exact direct tariff varies by host/site",
+      "resumeCondition": "map IT*SAG EVSE to native point/QR/session payload and exact current tariff components",
+      "officialUrls": ["https://sagelio.com/blog/monetizzare-la-ricarica-come-impostare-le-tariffe-per-i-tuoi-clienti/"],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run34: Sagelio locked station-level from first-party host pricing guidance; 0.59 EUR/kWh example explicitly not generalized."
+    },
+    {
+      "partyId": "GAS",
+      "canonicalName": "GASGAS S.R.L.",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 290,
+      "stations": 137,
+      "tariffModel": "point-specific pricing under Uattzy/UAU",
+      "tariffChannel": "Uattzy app / RFID",
+      "aliases": ["GASGAS S.R.L.", "Uattzy/UAU corporate family"],
+      "blockage": "exact current direct price requires point-selected Uattzy payload",
+      "resumeCondition": "extract Uattzy native point payload for IT*GAS EVSE; fail-close unmatched EVSE",
+      "officialUrls": ["https://www.uattzy.com/"],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run34: GAS locked station-level under current Uattzy point-specific model; no family-wide price or premature partyId deduplication."
+    },
+    {
+      "partyId": "UTZ",
+      "canonicalName": "UAU srl",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 16,
+      "stations": 8,
+      "tariffModel": "point-specific pricing under Uattzy/UAU",
+      "tariffChannel": "Uattzy app / RFID",
+      "aliases": ["UAU srl", "Uattzy"],
+      "blockage": "exact current direct price requires point-selected Uattzy payload",
+      "resumeCondition": "extract Uattzy native point payload for IT*UTZ EVSE; fail-close unmatched EVSE",
+      "officialUrls": ["https://www.uattzy.com/"],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run34: UTZ locked station-level; no unsafe family-wide tariff propagation or deduplication."
+    }
+  ],
+  "countsAfter": {"treated": 23, "partial": 10, "setAside": 1, "active": 52, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
+  "queueImpact": {
+    "firstPassRemaining": 0,
+    "newlyTreatedCpos": [],
+    "newRankableEvse": 0,
+    "remainingClassWideCandidates": ["CGS", "ALL"],
+    "stationLevelClassificationAdvanced": ["SAG", "GAS", "UTZ"],
+    "remainingStationLevelActiveApprox": 50,
+    "aliasReview": {"family": ["ESH", "GAS", "UTZ"], "decision": "document corporate family but do not deduplicate without physical inventory overlap/partyId continuity proof"},
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "23+10+1+52=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "inventoryPartyIds": 88,
+    "duplicateCanonicalPartyIds": 0,
+    "atlanteSetAside": true,
+    "firstPassComplete": "86/86",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "result": "pass-with-known-stale-physical-canonical"
+  },
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run34.json"],
+  "historyAppend": [
+    "2026-09-07 run34: SAG locked station-level from first-party site-configured tariff model.",
+    "2026-09-07 run34: GAS and UTZ locked station-level under point-specific Uattzy pricing; corporate family preserved without unsafe deduplication.",
+    "2026-09-07 run34: counts unchanged at 23/10/1/52; no tariff generalized; Atlante remains last."
+  ]
+}
