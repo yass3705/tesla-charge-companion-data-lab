@@ -1,0 +1,65 @@
+{
+  "country": "IT",
+  "run": 39,
+  "generatedAt": "2026-09-07T12:53:49+01:00",
+  "scope": "second-pass deterministic tariffs before station-level",
+  "findings": [
+    {
+      "partyId": "VFS",
+      "canonicalName": "VIAFAST SRL",
+      "decision": "treated",
+      "evse": 167,
+      "stations": 84,
+      "tariffModel": "network-wide connector/power classes",
+      "directTariffs": [
+        {"class": "AC <=22 kW", "energyEurPerKwh": 0.60},
+        {"class": "DC FAST 60 kW / ULTRAFAST 90-180 kW", "energyEurPerKwh": 0.85}
+      ],
+      "fees": [{"type":"post-charge occupancy", "graceMinutes":5, "amountEurPerMinute":0.25, "applies":"24h/24 after grace period"}],
+      "officialUrls": ["https://www.viafast.net/viafast-tariffe/"],
+      "proof": "Current first-party VIAFAST tariff page explicitly publishes the AC and DC/ultrafast direct prices and the occupancy fee.",
+      "confidence": "high"
+    },
+    {
+      "partyId": "ENB",
+      "canonicalName": "ENERBROKER S.R.L. (R-ev)",
+      "decision": "treated",
+      "evse": 87,
+      "stations": 73,
+      "tariffModel": "network-wide AC/DC/HPC wallet classes on R-ev infrastructure",
+      "directTariffs": [
+        {"class": "AC", "energyEurPerKwh": 0.65},
+        {"class": "DC <=150 kW", "energyEurPerKwh": 0.85},
+        {"class": "DC >150 kW HPC", "energyEurPerKwh": 0.89}
+      ],
+      "fees": [{"type":"extra-stay", "amountEurPerMinute":0.25, "note":"AC exemption window 23:00-07:00 subject to terms; DC/HPC 24h"}],
+      "paymentMethods": ["R-ev app wallet", "RFID", "card/prepaid card", "PayPal"],
+      "officialUrls": ["https://www.r-ev.it/tariffe/", "https://www.r-ev.it/termini-di-utilizzo-abbonamenti/", "https://www.r-ev.it/termini-di-utilizzo-app/"],
+      "proof": "First-party R-ev tariff/terms pages publish exact Wallet AC/DC/HPC prices; the terms distinguish R-ev infrastructure from third-party CPO roaming and state included subscription kWh are usable only on R-ev infrastructure.",
+      "confidence": "high"
+    },
+    {
+      "partyId": "A22",
+      "canonicalName": "Autostrada del Brennero S.p.A.",
+      "decision": "active-station-level",
+      "evse": 80,
+      "stations": 17,
+      "tariffModel": "station/type-specific first-party prices",
+      "observedTariffs": [
+        {"type": "AC up to 22 kW", "energyEurPerKwh": 0.33},
+        {"type": "multi-standard up to 50 kW DC / 43 kW AC", "energyEurPerKwh": 0.38},
+        {"type": "ultrafast up to 180 kW", "energyEurPerKwh": 0.43, "note":"some first-party station cards show 0.38 instead, so not safely global"}
+      ],
+      "officialUrls": ["https://www.autobrennero.it/it/sostenibilita/elettrico/", "https://www.autobrennero.it/it/servizi/aree-di-servizio/"],
+      "blockage": "First-party station cards expose exact prices but ultrafast price is not uniform across all sites; EVSE-to-station join is required before ranking.",
+      "resumeCondition": "join IT*A22 EVSE/station names to current A22 station cards and assign only exact card price; fail-close unmatched EVSE",
+      "confidence": "high"
+    }
+  ],
+  "queueImpact": {
+    "newlyTreatedCpos": ["VFS", "ENB"],
+    "newRankableEvse": 254,
+    "stationLevelClassificationAdvanced": ["A22"],
+    "atlanteLast": true
+  }
+}
