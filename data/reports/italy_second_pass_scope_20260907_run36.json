@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 36,
+  "generatedAt": "2026-09-07T09:52:45+01:00",
+  "scope": "station-level second pass by EVSE size/source quality; network/class-wide queue exhausted; Atlante last",
+  "findings": [
+    {
+      "partyId": "PWY",
+      "canonicalName": "TheF Charging S.r.l.",
+      "canonicalBrand": "Powy",
+      "aliases": ["TheF Charging S.r.l.", "Powy", "Powy Energy", "Powy Charge"],
+      "evse": 1080,
+      "stations": 387,
+      "classification": "active/station-level",
+      "tariffModel": "point/power/duration-specific native pricing",
+      "tariffChannel": "Powy Charge app / direct QR payment / RFID",
+      "positiveEvidence": [
+        "Current first-party Powy site identifies Powy as a brand of TheF Charging S.r.l., resolving the commercial-name alias without creating a second CPO.",
+        "Current first-party FAQ states charging costs vary according to charging-point power and charging duration and are shown in Powy Charge before starting.",
+        "Current first-party direct-payment page allows app-less charging by QR/code and states selected stations can expose promotional rates; therefore point-specific tariff capture is required."
+      ],
+      "negativePaths": [
+        "Do not infer one network-wide Powy/TheF price from third-party eMSP tables.",
+        "Do not count Powy as a separate canonical CPO from TheF Charging partyId PWY.",
+        "Do not promote a station tariff to all PWY EVSE because first-party documentation explicitly allows variation by power/duration and selected-station promotions."
+      ],
+      "blockage": "exact current direct tariff components are exposed at the selected point/session rather than as one deterministic public network tariff",
+      "resumeCondition": "crawl Powy Charge/direct-payment QR backend for IT*PWY EVSE and persist exact energy/time/start/occupancy components plus validity; fail-close unmatched EVSE",
+      "officialUrls": [
+        "https://powy.energy/",
+        "https://powy.energy/ricarica-veicolo/powy-charge/",
+        "https://powy.energy/en/charge-your-ev/"
+      ],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07"
+    },
+    {
+      "partyId": "ASS",
+      "canonicalName": "AGSM AIM SMART SOLUTIONS S.R.L.",
+      "aliases": ["AGSM AIM SMART SOLUTIONS S.R.L.", "Magis Smart S.r.l."],
+      "evse": 258,
+      "stations": 135,
+      "classification": "active/station-level",
+      "tariffModel": "native app current-value pricing with subscription discounts; roaming separately point-priced",
+      "tariffChannel": "AGSM AIM E-MOBILITY app / native AGSM AIM stations; roaming separated",
+      "positiveEvidence": [
+        "Current 2026 first-party terms state subscription commercial value and included energy are displayed in the app at purchase time.",
+        "Fast Flat costs 10 EUR and grants a 10% discount on the Fast charging tariff, only on AGSM AIM-owned stations.",
+        "Roaming is explicitly separated and the transaction price is shown on the selected connector activation screen.",
+        "Current terms define an occupancy penalty of 0.12 EUR/min after the allowed post-charge window for AC up to 22 kW during 07:00-23:00; other connector/time rules remain document/app-specific."
+      ],
+      "negativePaths": [
+        "Do not reuse 2023/2024 package or pay-per-use prices as current September 2026 energy tariffs without current app evidence.",
+        "Do not treat AGSM AIM eMSP roaming prices as direct CPO prices.",
+        "Do not infer the underlying Fast tariff from the 10% Fast Flat discount alone."
+      ],
+      "blockage": "current direct energy price(s) are not enumerated in the public 2026 terms and are exposed dynamically in the app",
+      "resumeCondition": "capture current AGSM AIM E-MOBILITY native connector payload for IT*ASS EVSE, preserving base energy tariff, subscription eligibility and occupancy penalty; fail-close unmatched EVSE",
+      "officialUrls": [
+        "https://www.agsmaimsmartsolutions.it/documents/533308/713981/TERMINI%2BE%2BCONDIZIONI%2BAPP%2BE-MOBILITY.pdf",
+        "https://www.agsmaimsmartsolutions.it/web/agsmaim/w/e-mobility-lancio-smart"
+      ],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07"
+    },
+    {
+      "partyId": "DRW",
+      "canonicalName": "UnoEnergy DriWe spa",
+      "aliases": ["UnoEnergy DriWe spa", "DriWe", "Unoenergy DriWe"],
+      "evse": 287,
+      "stations": 103,
+      "classification": "active/station-level",
+      "tariffModel": "NextCharge-connected station-specific pricing / host-managed CPO infrastructure",
+      "tariffChannel": "DriWe Charge infrastructure surfaced through NextCharge; Unoenergy/DriWe native ecosystem",
+      "positiveEvidence": [
+        "Current DriWe first-party App & Card page states DriWe Charge stations are geolocated on the NextCharge app and station/session information is accessed through that platform.",
+        "Unoenergy confirms it acquired DriWe and identifies DriWe as a Charging Point Operator and technology integrator.",
+        "Current Unoenergy charging pages expose the DriWe map as the place to visualize, book and pay rather than publishing one retail network tariff."
+      ],
+      "negativePaths": [
+        "Do not infer a DriWe network-wide direct tariff from generic NextCharge eMSP prices.",
+        "Do not assume Unoenergy domestic wallbox pricing has any relationship to public DRW charging tariffs."
+      ],
+      "blockage": "no current first-party deterministic network tariff is published; retail price must be joined at station/EVSE level from the connected platform/native point",
+      "resumeCondition": "bulk join IT*DRW EVSE to NextCharge/native DriWe station payload and retain exact current direct/eMSP channel distinction and price components; fail-close unmatched EVSE",
+      "officialUrls": [
+        "https://www.driwe.eu/app/",
+        "https://www.unoenergy.it/comunicati-stampa/il-gruppo-unoenergy-annuncia-lacquisizione-di-driwe/",
+        "https://www.unoenergy.it/casa/colonnine-ricarica/ricarica-start/"
+      ],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07"
+    }
+  ],
+  "queue": {
+    "remainingNetworkOrClassWideCandidates": [],
+    "classWideQueueExhausted": true,
+    "stationLevelClassificationAdvanced": ["PWY", "DRW", "ASS"],
+    "aliasResolution": [{"partyId":"PWY","alias":"Powy","decision":"same canonical CPO as TheF Charging S.r.l.; do not double-count"}],
+    "atlanteLast": true
+  },
+  "sources": [
+    "https://powy.energy/",
+    "https://powy.energy/ricarica-veicolo/powy-charge/",
+    "https://powy.energy/en/charge-your-ev/",
+    "https://www.agsmaimsmartsolutions.it/documents/533308/713981/TERMINI%2BE%2BCONDIZIONI%2BAPP%2BE-MOBILITY.pdf",
+    "https://www.driwe.eu/app/",
+    "https://www.unoenergy.it/comunicati-stampa/il-gruppo-unoenergy-annuncia-lacquisizione-di-driwe/",
+    "https://www.unoenergy.it/casa/colonnine-ricarica/ricarica-start/"
+  ]
+}
