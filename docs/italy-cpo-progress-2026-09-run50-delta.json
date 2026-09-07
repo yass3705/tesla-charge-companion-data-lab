@@ -1,0 +1,83 @@
+{
+  "run": 50,
+  "generatedAt": "2026-09-07T23:58:00+01:00",
+  "baseEffectiveState": {"treated": 32, "partial": 10, "setAside": 1, "active": 41, "canonicalTotal": 84, "supersededAlias": 4, "physicalPartyIds": 88},
+  "changes": [
+    {
+      "partyId": "ONS",
+      "canonicalName": "On Electric Charge Mobility / On Charge",
+      "statusFrom": "active",
+      "statusTo": "treated",
+      "priority": "network-wide",
+      "evse": 716,
+      "stations": 342,
+      "tariffModel": "power_band_network_wide",
+      "tariffChannel": "direct CPO",
+      "tariffs": [
+        {"class": "AC<=22kW", "energyEurPerKwh": 0.65},
+        {"class": "DC<=50kW", "energyEurPerKwh": 0.85},
+        {"class": "DC_ultrafast<=350kW", "energyEurPerKwh": 0.95}
+      ],
+      "subscriptions": [
+        {"name":"On Basic","monthlyFeeEur":4.90,"discountPct":10},
+        {"name":"On Premium","monthlyFeeEur":9.90,"discountPct":20},
+        {"name":"On Gold","monthlyFeeEur":14.90,"discountPct":30,"includes":"RFID card"}
+      ],
+      "eligibility": "consumption tariffs and subscription discounts apply to On Charge stations; roaming tariffs remain separate",
+      "officialUrls": ["https://onmobility.oncharge.it/ricarica", "https://onmobility.oncharge.it/termini-e-condizioni"],
+      "positiveEvidence": ["official current page shows 0.65/0.85/0.95 EUR/kWh by AC/DC power class", "official terms state subscription discounts apply exclusively at On Charge charging stations"],
+      "confidence": "high",
+      "coverage": {"rankableDirectEvse": 716, "uncoveredEvse": 0},
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07"
+    },
+    {
+      "partyId": "IPE",
+      "canonicalName": "IPlanet",
+      "statusFrom": "active",
+      "statusTo": "treated",
+      "priority": "network-wide",
+      "evse": 547,
+      "stations": 189,
+      "tariffModel": "power_band_and_payment_channel_network_wide",
+      "tariffChannel": "direct CPO / ad-hoc POS",
+      "tariffs": [
+        {"channel":"APP/RFID","class":"AC<=22kW","energyEurPerKwh":0.60},
+        {"channel":"APP/RFID","class":"DC any power","energyEurPerKwh":0.74},
+        {"channel":"POS","class":"DC any power","energyEurPerKwh":0.79}
+      ],
+      "eligibility": "prices explicitly valid on IPlanet stations; prices for other operators must be read in the app and are not direct CPO tariffs",
+      "officialUrls": ["https://iplanet.eu/tariffe/"],
+      "positiveEvidence": ["current official tariff page binds 0.60 EUR/kWh to AC <=22kW, 0.74 to DC 50-150 and 150+, and 0.79 to direct POS DC at IPlanet stations"],
+      "confidence": "high",
+      "coverage": {"rankableDirectEvse": 547, "uncoveredEvse": 0},
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07"
+    },
+    {
+      "partyId": "FWY",
+      "canonicalName": "FastWay",
+      "statusFrom": "active",
+      "statusTo": "treated",
+      "priority": "network-wide",
+      "evse": 421,
+      "stations": 213,
+      "tariffModel": "connector_type_network_wide",
+      "tariffChannel": "direct CPO app/POS",
+      "tariffs": [
+        {"class":"AC Type2","energyEurPerKwh":0.68},
+        {"class":"DC CCS Combo 2","energyEurPerKwh":0.88}
+      ],
+      "fees": [{"type":"post_charge_parking","freeMinutes":60,"afterwards":"per-minute fee varies by charger type; exact minute amount not globally specified on the public page and remains fail-closed unless station-specific value is available"}],
+      "officialUrls": ["https://www.fastway.energy/guida-alla-ricarica/"],
+      "positiveEvidence": ["official current charging guide publishes App/POS tariffs 0.68 EUR/kWh AC Type2 and 0.88 EUR/kWh DC CCS2", "official page explicitly separates roaming partner tariffs from FastWay direct tariffs"],
+      "confidence": "high",
+      "coverage": {"rankableEnergyEvse": 421, "uncoveredEnergyEvse": 0, "postChargeParkingFeeExact":"fail-closed where station-specific value is absent"},
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07"
+    }
+  ],
+  "effectiveCountsAfter": {"treated": 35, "partial": 10, "setAside": 1, "active": 38, "canonicalTotal": 84, "supersededAlias": 4, "physicalPartyIds": 88},
+  "consistency": {"statusSumCanonical": 84, "aliasesExcludedFromCanonicalCount": true, "physicalPartyIdsAccounted": 88, "duplicateCanonicalPartyIds": 0},
+  "history": ["2026-09-07 run50: promoted ONS, IPE and FWY from active to treated after fresh first-party verification; 1,684 EVSE added to rankable direct coverage; roaming/eMSP pricing kept separate; FastWay post-charge parking minute fee remains fail-closed unless station-specific value is available."]
+}
