@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 35,
+  "generatedAt": "2026-09-07T08:50:00+01:00",
+  "scope": "finish network/class-wide queue before station-level; Atlante last",
+  "findings": [
+    {
+      "partyId": "CGS",
+      "canonicalName": "COGESER ENERGIA SRL",
+      "evse": 60,
+      "stations": 27,
+      "classification": "active/station-level",
+      "previousPriority": "class-wide",
+      "tariffModel": "mixed native AC/DC network with incomplete current direct public tariff grid",
+      "tariffChannel": "Cogeser Energia E-move app / RFID / QR spot / bill debit for eligible customers",
+      "positiveEvidence": [
+        "Current first-party Cogeser public charging page lists Quick Cogeser Energia AC at 0.67 EUR/kWh VAT included, effective 2025-10-01.",
+        "The same current page lists 0.49 EUR/kWh on the Cogeser network for customers enrolled in bill-debit pricing, but does not publish a current native Cogeser DC price.",
+        "First-party Cogeser announcement dated 2025-11-25 proves the native network now includes a 25 kW DC Circontrol Rapid charger alongside 22 kW AC, so the 60-EVSE party scope cannot be treated as AC-only."
+      ],
+      "negativePaths": [
+        "Do not apply the 0.67 EUR/kWh Quick AC price to native Cogeser DC EVSE.",
+        "Do not reuse the older Neogy/Cogeser contract grid (Quick/Fast/Hyper 0.55/0.67/0.73 EUR/kWh) as current direct Cogeser pricing because the current first-party page supersedes its AC value and omits native DC.",
+        "Do not use 0.89 EUR/kWh shown on the current page for DC stations outside the Cogeser network: that row is explicitly roaming, not native direct CPO pricing."
+      ],
+      "knownDirectTariffs": [
+        {"population": "Quick Cogeser Energia AC", "price": 0.67, "unit": "EUR/kWh", "vatIncluded": true, "effectiveFrom": "2025-10-01", "eligibility": "published public charging tariff"},
+        {"population": "Cogeser network for eligible customers with charging debited on electricity bill", "price": 0.49, "unit": "EUR/kWh", "vatIncluded": true, "effectiveFrom": "2025-10-01", "eligibility": "Cogeser customer + bill-debit enrollment"}
+      ],
+      "blockage": "native Cogeser DC exists but its current direct/ad-hoc tariff is not published on the current first-party tariff page; exact EVSE-to-AC/DC mapping is also required for full party coverage",
+      "resumeCondition": "join IT*CGS EVSE to connector/current type and obtain native Cogeser app/QR/session tariff for DC; rank AC only where deterministic AC mapping is proven; fail-close unmatched/DC until exact current direct tariff is captured",
+      "officialUrls": [
+        "https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico",
+        "https://www.cogeserenergia.it/it/inzago-inaugurata-nuova-stazione-ricarica-auto-elettriche"
+      ],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07"
+    },
+    {
+      "partyId": "ENX",
+      "canonicalName": "ENEL X WAY ITALIA SRL",
+      "evse": 22798,
+      "stations": 11123,
+      "classification": "active/station-level/current-validity-review",
+      "tariffModel": "technology/time-band retail pricing exposed by Enel On Your Way, with dated promotional validity windows",
+      "tariffChannel": "Enel On Your Way eMSP/direct Enel-network retail touchpoint",
+      "positiveEvidence": [
+        "Current Enel tariff page exposes Quick AC <=43 kW, Fast DC 43-99 kW and HPC >99 kW retail bands and explicitly distinguishes Enel/Ewiva stations from third-party operators.",
+        "The public page still displays Pay Per Use values 0.67/0.58 AC day/night, 0.75/0.64 DC day/night and 0.86 HPC, but labels that offer window as valid 4 May through 31 July."
+      ],
+      "negativePaths": [
+        "Do not promote a tariff whose displayed validity window ended 2026-07-31 as the current September 2026 direct tariff.",
+        "Do not use the June 2026 operator-by-operator PDF as direct CPO pricing for ENX because it is an Enel On Your Way eMSP roaming table."
+      ],
+      "blockage": "current September 2026 direct Enel-network Pay Per Use validity is not unambiguously established by the public tariff page despite stale displayed values",
+      "resumeCondition": "obtain a current post-2026-07-31 Enel-network tariff document/app payload or explicit extension, then map deterministic technology/time classes; otherwise retain fail-closed",
+      "officialUrls": ["https://www.enel.it/it-it/mobilita-elettrica/tariffe-abbonamenti"],
+      "confidence": "high on non-promotion of expired-window values; medium on current replacement pricing",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07"
+    },
+    {
+      "partyId": "220",
+      "canonicalName": "Route220 Srl Sb",
+      "evse": 422,
+      "stations": 270,
+      "classification": "active/station-level",
+      "tariffModel": "host/CPO configurable tariffs through Route220 CPMS",
+      "tariffChannel": "Route220 CPMS / evway / POS depending site",
+      "positiveEvidence": [
+        "Current first-party Route220 CPMS page states independent CPOs can manage their network autonomously and explicitly lists tariff management and integrated POS/white-label app payments.",
+        "This proves Route220-managed infrastructure does not imply one deterministic Route220 retail tariff across all partyId 220 EVSE."
+      ],
+      "negativePaths": [
+        "Do not infer a Route220 network-wide tariff from evway eMSP prices.",
+        "Do not treat CPMS ownership/management as proof of a single retail price."
+      ],
+      "blockage": "tariff is configurable by network/site owner within the Route220 platform",
+      "resumeCondition": "map IT*220 EVSE to native Route220/evway point payload or ad-hoc POS tariff and preserve exact site/EVSE components; fail-close unmatched EVSE",
+      "officialUrls": ["https://route220.it/", "https://route220.it/attivita/", "https://route220.it/evwaypay-pagamento-via-pos/"],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07"
+    }
+  ],
+  "queue": {
+    "remainingNetworkOrClassWideCandidates": [],
+    "classWideQueueExhausted": true,
+    "stationLevelClassificationAdvanced": ["CGS", "ENX", "220"],
+    "atlanteLast": true
+  },
+  "sources": [
+    "https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico",
+    "https://www.cogeserenergia.it/it/inzago-inaugurata-nuova-stazione-ricarica-auto-elettriche",
+    "https://www.enel.it/it-it/mobilita-elettrica/tariffe-abbonamenti",
+    "https://route220.it/attivita/",
+    "https://route220.it/evwaypay-pagamento-via-pos/"
+  ]
+}
