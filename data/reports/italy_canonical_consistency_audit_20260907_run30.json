@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "auditRun": 30,
+  "generatedAt": "2026-09-07T03:50:08+01:00",
+  "trigger": "two consecutive runs without nominal treated-count progression",
+  "branch": "research/italy-cpo-priority-20260905",
+  "branchHeadBeforeAuditRecord": "2e1557892a599586b47a2f176a53942dfac600db",
+  "physicalCanonical": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "blobSha": "6f14fe04d0190fe3170d117a94e870b1089c8938",
+    "generatedAt": "2026-09-05T23:54:48+01:00",
+    "storedCounts": {"treated": 4, "partial": 5, "setAside": 1, "active": 78, "totalPhysicalRows": 88},
+    "inventory": {"partyIds": 88, "observedEvse": 75025},
+    "stale": true,
+    "reason": "later deltas run10 through run30 contain status transitions, alias decisions and classification metadata that are not yet folded into the physical snapshot"
+  },
+  "effectiveStateFromLatestValidatedDelta": {
+    "source": "docs/italy-cpo-progress-2026-09-run30-delta.json",
+    "treated": 23,
+    "partial": 10,
+    "setAside": 1,
+    "active": 52,
+    "canonicalTotal": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88,
+    "observedEvse": 75025,
+    "equationCanonical": "23+10+1+52=86",
+    "equationPhysical": "86+2=88"
+  },
+  "checks": {
+    "canonicalStatusCoverage": "pass-effective-state",
+    "aliasCountOutsideCanonical": 2,
+    "duplicateCanonicalPartyIds": 0,
+    "inventoryPartyIdsStable": true,
+    "inventoryEvseStable": true,
+    "atlanteSetAside": true,
+    "firstPassComplete": "86/86",
+    "classWideQueue": ["CGS", "ALL"],
+    "classWideQueueCount": 2,
+    "activeStationLevelOrStationLevelQueueCount": 50,
+    "run29ToRun30StatusTransitionCount": 0,
+    "run30ClassificationUpdatesCount": 4
+  },
+  "consolidator": {
+    "path": "scripts/consolidate_italy_cpo_progress.py",
+    "blobSha": "a8a148c07ccc5a86cd58c02d8c8eb01e11602344",
+    "classificationUpdatesSupported": true,
+    "safeStatusTransitionsSupported": true,
+    "aliasValidationSupported": true,
+    "atlanteInvariantSupported": true,
+    "writePerformedThisRun": false,
+    "writeBlocker": "runtime cannot safely materialize and execute the complete repository state including all delta files and compressed Italy inventory artifacts; partial manual overwrite would violate lossless-canonical requirement"
+  },
+  "corrections": [
+    "No unsafe counter rewrite performed: physical canonical remains explicitly flagged stale rather than being partially reconstructed.",
+    "Run30 classification metadata stored in a delta so the lossless consolidator can fold it later.",
+    "Enercom Portugal tariff search results explicitly excluded from Enercom Italy evidence."
+  ],
+  "result": "pass-effective-state-with-known-stale-physical-canonical",
+  "nextSafeActions": [
+    "Do not repeat generic network-price research for ECM, CAR, VCS or BEY.",
+    "Resolve CGS and ALL only when a deterministic current EVSE-to-power/class join is available.",
+    "Otherwise proceed to the largest active station-level CPO with a native public/guest station or payment payload.",
+    "Keep Atlante last."
+  ]
+}
