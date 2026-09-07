@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "0.2.0",
+  "countryCode": "DE",
+  "operationalDenominator": 591,
+  "canonicalCountPolicy": "Frozen at last user-directed known total; no canonical reconstruction during first-pass traversal.",
+  "firstPassPriority": true,
+  "historicalSeenCountCertified": false,
+  "reliableNewFirstPassesSinceCanonicalFreeze": 43,
+  "reliableClassificationSinceCanonicalFreeze": {
+    "complete": 6,
+    "partialOrDeferred": 37,
+    "blocked": 0
+  },
+  "thisRun": {
+    "newFirstPasses": 3,
+    "complete": 2,
+    "partial": 1,
+    "blocked": 0,
+    "completed": ["Stadtwerke Duisburg AG", "Stadtwerke Neuss Energie und Wasser GmbH"],
+    "deferredAfterFirstPass": ["Stadtwerke Solingen GmbH"],
+    "aliasesResolved": {
+      "Stadtwerke Duisburg AG": ["Stadtwerke Duisburg", "SWDU", "Stadtwerke-Ladekarte Duisburg"],
+      "Stadtwerke Neuss Energie und Wasser GmbH": ["Stadtwerke Neuss", "Stadtwerke Neuss GmbH", "SWN Neuss"],
+      "Stadtwerke Solingen GmbH": ["Stadtwerke Solingen", "SWS Solingen", "Stadtwerke Solingen Lade-App", "Klingen-TankE"]
+    },
+    "authoritativePrefixMappings": {
+      "Stadtwerke Duisburg AG": null,
+      "Stadtwerke Neuss Energie und Wasser GmbH": null,
+      "Stadtwerke Solingen GmbH": null
+    }
+  },
+  "consistency": {
+    "reAuditedDeferredCpos": 0,
+    "canonicalRebuildRetried": false,
+    "prefixWideTariffExtrapolations": 0,
+    "duplicateAliasFindings": 0,
+    "identicalInvestigationOverTwoRuns": 0,
+    "denominatorCheck": "591 retained as frozen operational denominator; legacy 568 remains reference-only.",
+    "activePr": "yass3705/tesla-charge-companion-data-lab PR #73, branch feature/germany-national-base",
+    "registryPrecheck": {
+      "Stadtwerke Duisburg AG": "no occurrence as a previously audited operator in the active PR patch before this pass",
+      "Stadtwerke Neuss Energie und Wasser GmbH": "no occurrence in the active PR patch before this pass",
+      "Stadtwerke Solingen GmbH": "no occurrence in the active PR patch before this pass"
+    },
+    "notes": [
+      "Duisburg official current ad-hoc contract is complete: 1 EUR/session; 0.58 EUR/kWh AC; 0.68 EUR/kWh DC; 0.05 EUR/min from minute 181 AC or 61 DC, charged 09:00-21:00.",
+      "Neuss current official page continues to publish QR ad-hoc AC 0.56 EUR/kWh + 5.90 EUR/session and DC 0.66 EUR/kWh + 9.90 EUR/session; no additional component was invented.",
+      "Solingen explicitly states public prices are station-specific and shown in the app/ad-hoc EVSE page, so the operator remains fail-closed pending station-level tariff harvesting.",
+      "No subscription, home-charging or roaming tariff was generalized to a physical CPO direct price.",
+      "No authoritative eMI3 prefix was invented for any of the three CPOs."
+    ]
+  },
+  "evidencePath": "data/germany/research/cpo_batch_duisburg_neuss_solingen_2026-09-07.json",
+  "nextPolicy": "Continue only with identities absent from active PR first-pass evidence; prioritize official QR/direct-payment price surfaces, then AFIR/Mobilithek/DATEX II station-level mapping."
+}
