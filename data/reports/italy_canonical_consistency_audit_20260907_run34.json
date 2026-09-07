@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 34,
+  "generatedAt": "2026-09-07T08:18:00+01:00",
+  "auditScope": [
+    "docs/italy-cpo-progress-2026-09.json",
+    "docs/italy-cpo-progress-2026-09-run*-delta.json through run34",
+    "data/reports/italy_second_pass_scope_*.json through run34",
+    "Italy research commits on research/italy-cpo-priority-20260905"
+  ],
+  "effectiveCounts": {
+    "treated": 23,
+    "partial": 10,
+    "setAside": 1,
+    "active": 52,
+    "canonicalTotal": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88,
+    "observedEvse": 75025,
+    "firstPass": "86/86"
+  },
+  "checks": {
+    "statusPartitionEquation": {"expression": "23+10+1+52=86", "pass": true},
+    "canonicalPlusSupersededAliases": {"expression": "86+2=88", "pass": true},
+    "duplicateCanonicalPartyIdsDetected": 0,
+    "aliasesCountedAsIndependentCanonicalCpos": 0,
+    "atlanteSetAsideAndLast": true,
+    "remainingClassWideCandidates": ["CGS", "ALL"],
+    "remainingStationLevelActiveApprox": 50,
+    "corporateFamilyReview": {
+      "partyIds": ["ESH", "GAS", "UTZ"],
+      "finding": "current UAU/Uattzy corporate family relationship is proven but physical overlap/partyId continuity is not",
+      "decision": "do not deduplicate yet; preserve separate physical partyIds until overlap is deterministically demonstrated"
+    }
+  },
+  "run34ChangesAudited": [
+    "SAG remains active and is locked station-level from first-party site-configured pricing evidence; 0.59 EUR/kWh worked example is non-rankable.",
+    "GAS remains active and is locked station-level under Uattzy point-specific pricing.",
+    "UTZ remains active and is locked station-level under Uattzy point-specific pricing.",
+    "No rankable EVSE added and no status transition claimed in run34."
+  ],
+  "knownStructuralInconsistency": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "issue": "physical canonical snapshot predates the effective delta chain and therefore does not yet materialize the current 23/10/1/52 nominative state",
+    "severity": "major-structural-but-contained",
+    "effectiveStatePreservedBy": "ordered delta chain through docs/italy-cpo-progress-2026-09-run34-delta.json",
+    "safeFixConstraint": "do not replace the canonical file until all per-CPO historical fields from base plus every delta can be merged and validated without information loss",
+    "autoCorrectionThisRun": "not performed because no verified consolidator was discoverable in the repository code search; partial overwrite would violate the canonical-detail requirement",
+    "resumeCondition": "materialize and validate a lossless base+delta consolidator, verify 86 canonical entries plus 2 superseded aliases and status partition, then update the physical canonical atomically"
+  },
+  "antiRepetition": {
+    "doNotRepeatWithoutNewEvidence": [
+      "SAG generic network tariff search",
+      "GAS generic family-wide tariff search",
+      "UTZ generic family-wide tariff search",
+      "ESH/GAS/UTZ alias merge based solely on corporate relationship"
+    ],
+    "nextUsefulPaths": [
+      "CGS deterministic EVSE-to-Quick/Fast join and current direct DC tariff",
+      "ALL exact station/EVSE mapping using Allego official charging-station pages and app.allego.eu price endpoint",
+      "largest remaining station-level native QR/app/backend payloads after class-wide queue is exhausted"
+    ]
+  },
+  "result": "PASS_EFFECTIVE_STATE_WITH_KNOWN_STALE_PHYSICAL_CANONICAL"
+}
