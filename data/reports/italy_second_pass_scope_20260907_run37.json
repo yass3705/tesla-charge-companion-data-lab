@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 37,
+  "generatedAt": "2026-09-07T10:52:31+01:00",
+  "scope": "second-pass station/network tariff reconciliation",
+  "findings": [
+    {
+      "partyId": "ELC",
+      "canonicalName": "Electra Italia s.r.l.",
+      "inventory": {"evse": 514, "stations": 81},
+      "decision": "treated",
+      "priority": "network-wide",
+      "tariffModel": "country-wide direct CPO pay-per-use tariff",
+      "tariffChannel": "Electra app / Autocharge / bank-card terminal",
+      "tariffs": [
+        {"channel": "Electra app or Autocharge", "energyEurPerKwh": 0.69, "vatIncluded": true},
+        {"channel": "bank card at terminal", "energyEurPerKwh": 0.79, "vatIncluded": true}
+      ],
+      "countryVatPct": 22,
+      "validity": {"sourcePublished": "2026-07-01", "checked": "2026-09-07", "validThrough": null},
+      "eligibility": "public charging on Electra-owned Italy network; subscription discounts are separate and must not replace the public direct tariff",
+      "positiveEvidence": [
+        "Electra help article published 2026-07-01 states the listed prices apply to sessions started via Electra app, Autocharge or bank-card terminal.",
+        "Italy row lists 0.69 EUR/kWh app and 0.79 EUR/kWh card, VAT included, for slow and fast charging (AC-DC).",
+        "Electra variable-pricing article published 2026-07-07 explicitly identifies France, Belgium and Spain as countries using station/time-variable pricing; Italy is not included in that variable-pricing set."
+      ],
+      "negativePaths": [
+        "RFID/eMSP prices may include third-party costs and are not promoted as direct CPO tariffs.",
+        "Electra+ subscription discounts are eligibility-specific and are not substituted for the public tariff.",
+        "ChargeLeague partner-network prices are kept separate from native Electra-network direct pricing."
+      ],
+      "officialUrls": [
+        "https://intercom.help/go-electra/it/articles/7987274-le-nostre-tariffe-di-ricarica",
+        "https://intercom.help/go-electra/it/articles/10749707-tariffe-electra-e-prezzi-variabili",
+        "https://intercom.help/go-electra/it/articles/15180231-abbonamenti-electra"
+      ],
+      "coverage": {"rankableDirectEvse": 514, "uncoveredEvse": 0, "basis": "partyId ELC exact inventory scope + country-wide Italy public tariff"},
+      "confidence": "high"
+    },
+    {
+      "partyId": "IOY",
+      "canonicalName": "IONITY GMBH",
+      "inventory": {"evse": 313, "stations": 43},
+      "decision": "remain active / station-level",
+      "priority": "station-level",
+      "reason": "IONITY publishes current Italy country prices, but its current access-and-payment page states displayed values are minimum prices and the price at an individual charger may be higher; therefore no exact deterministic country-wide direct price is promoted.",
+      "resumeCondition": "join IT*IOY EVSE to current IONITY station/QR/app payload and retain exact charger price; fail-close unmatched EVSE",
+      "officialUrls": ["https://www.ionity.eu/de/netzwerk/zugang-und-zahlung"],
+      "confidence": "high"
+    }
+  ],
+  "queueCorrection": {
+    "issue": "run36 declared the network/class-wide queue exhausted while ELC still had a current deterministic country-wide Italy direct tariff",
+    "resolution": "ELC treated in run37; IOY explicitly rejected as network-wide because current official pricing can be higher at individual chargers",
+    "remainingNetworkOrClassWideCandidates": []
+  },
+  "countsAfter": {"treated": 24, "partial": 10, "setAside": 1, "active": 51, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
+  "consistency": {"equation": "24+10+1+51=86", "duplicateCanonicalPartyIds": 0, "atlanteSetAside": true, "networkClassWideQueueExhaustedAfterCorrection": true, "physicalCanonicalSnapshotStillStale": true}
+}
