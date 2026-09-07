@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 28,
+  "generatedAt": "2026-09-07T01:53:42+01:00",
+  "scope": "second-pass network/class-wide before station-level",
+  "findings": [
+    {
+      "partyId": "VFS",
+      "canonicalName": "VIAFAST SRL",
+      "inventory": {"evse": 167, "stations": 84},
+      "decision": "treated",
+      "priority": "class-wide",
+      "tariffChannel": "direct CPO VIAFAST pay-per-use",
+      "tariffModel": "connector/power-class deterministic network tariff",
+      "tariffs": [
+        {"class": "AC 22 kW", "energyEurPerKwh": 0.60},
+        {"class": "DC Fast 60 kW / Ultrafast 90-180 kW", "energyEurPerKwh": 0.85}
+      ],
+      "occupation": {"graceMinutesAfterCharge": 5, "eurPerMinuteAfterGrace": 0.25, "applies": "24/7"},
+      "payment": {
+        "webapp": true,
+        "rfid": true,
+        "automaticChargeAtSessionEnd": true,
+        "preauthorizationEur": 45
+      },
+      "eligibilityNotes": [
+        "Sponsored free charging may be available through advertiser interactions; it is not used as the baseline rankable tariff.",
+        "Third-party stations accessible through VIAFAST use the third-party owner's tariffs and are excluded from the direct CPO rule."
+      ],
+      "officialUrls": [
+        "https://www.viafast.net/viafast-tariffe/",
+        "https://www.viafast.net/viafast-webapp-termini-e-condizioni/",
+        "https://www.viafast.net/"
+      ],
+      "positiveEvidence": [
+        "Current official VIAFAST tariff page publishes AC 22 kW at EUR 0.60/kWh and DC Fast 60 kW / Ultrafast 90-180 kW at flat EUR 0.85/kWh.",
+        "Official terms separate VIAFAST-owned charging stations from third-party stations and state third-party tariffs are set by the third-party owner.",
+        "Official terms document webapp/RFID access, automatic payment and EUR 45 preauthorization."
+      ],
+      "coverage": {"physicalEvse": 167, "rankableDirectEvse": 167, "unresolvedEvse": 0},
+      "confidence": "high"
+    }
+  ],
+  "queueImpact": {
+    "newlyTreatedCpos": ["VFS"],
+    "newRankableEvse": 167,
+    "countsAfter": {"treated": 23, "partial": 10, "setAside": 1, "active": 52, "canonicalTotal": 86, "supersededAlias": 2},
+    "remainingClassWideCandidates": ["CGS", "ALL"],
+    "atlanteLast": true
+  },
+  "consistency": {
+    "equation": "23+10+1+52=86",
+    "duplicateCanonicalPartyIds": 0,
+    "firstPassComplete": "86/86",
+    "result": "pass"
+  }
+}
