@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "country": "ES",
-  "updatedAt": "2026-09-07T10:39:00Z",
+  "updatedAt": "2026-09-07T10:46:00Z",
   "status": "FIRST_PASS_IN_PROGRESS",
   "inventory": {
     "legacyWorkLabelCount": 618,
@@ -13,130 +13,35 @@
     "pagesCompleted": 146,
     "totalPages": 146,
     "fullPassValidated": true,
-    "note": "The former 618 figure is retained only as the historical first-pass label queue. The completed REVE national snapshot currently observes 148 distinct CPO identities after REVE-side normalization; aliases/platform labels must not be counted as additional physical CPOs. The full nominative current inventory remains in coverage.json and is referenced here rather than duplicated."
+    "note": "618 is retained only as the historical label queue. The completed REVE snapshot currently observes 148 distinct CPO identities; aliases/platform labels must not increment the physical-CPO count. The full nominative current inventory remains in coverage.json."
   },
   "firstPass": {
-    "legacy618ReviewedMinimum": 11,
-    "legacy618RemainingMaximum": 607,
+    "legacy618ReviewedMinimum": 13,
+    "legacy618RemainingMaximum": 605,
     "countIsLowerBound": true,
-    "reason": "The historical 618-label list itself is not present on current main, so exact carry-forward of prior reviewed-label counters cannot be proven. This run intentionally does not invent that number. The queue continues from the current REVE nominative inventory while preserving 618 as the historical work-label denominator until aliases are reconciled."
+    "reason": "The historical nominative 618-label file is absent from current main, so exact carry-forward cannot be proven and is not invented."
+  },
+  "countsFromDecisions": {
+    "sourceValidated": 6,
+    "partial": 2,
+    "active": 5,
+    "setAside": 0,
+    "decisionsTotal": 13
   },
   "decisions": [
-    {
-      "canonical": "Repsol",
-      "status": "sourceValidated",
-      "priority": "class-wide",
-      "tariffModel": "official/reference power-class rules with station override preferred",
-      "coverage": "reference rules: normal 0.36 EUR/kWh, fast 0.48, ultrafast 0.56; station override preferred",
-      "evidence": ["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "Wenea",
-      "status": "sourceValidated",
-      "priority": "class-wide",
-      "tariffModel": "power-band direct tariff; station override preferred",
-      "coverage": "0-22 kW 0.39 EUR/kWh; 50-150 kW 0.49; 151-400 kW 0.59",
-      "evidence": ["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "Zunder",
-      "status": "sourceValidated",
-      "priority": "class-wide",
-      "tariffModel": "power-class reference tariff with station override required",
-      "coverage": "<=50 kW 0.42 EUR/kWh; >50 kW 0.59 reference",
-      "evidence": ["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "Moeve",
-      "status": "sourceValidated",
-      "priority": "network-wide",
-      "tariffModel": "own ultrafast network",
-      "coverage": "0.60 EUR/kWh on own ultrafast network only",
-      "evidence": ["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "Eranovum",
-      "status": "sourceValidated",
-      "priority": "class-wide",
-      "tariffModel": "power-class direct tariff plus idle rules",
-      "coverage": "<=22 kW 0.35; 30 kW 0.40; 60 kW 0.43; 120 kW 0.46; >=150 kW 0.49 EUR/kWh",
-      "evidence": ["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "Atlante",
-      "status": "active",
-      "priority": "station-level",
-      "tariffModel": "station override required",
-      "blocker": "exact direct tariff remains station-specific; no network-wide value may be extrapolated",
-      "resumeCondition": "deterministic station/EVSE tariff extraction from REVE/myAtlante public/guest path",
-      "evidence": ["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "Iberdrola | bp pulse",
-      "status": "active",
-      "priority": "station-level",
-      "tariffModel": "station override required",
-      "blocker": "current seed explicitly requires station-specific tariff mapping",
-      "resumeCondition": "deterministic REVE/app station or connector mapping",
-      "evidence": ["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "Endesa X Way",
-      "status": "active",
-      "priority": "station-level",
-      "tariffModel": "station override required",
-      "blocker": "current seed explicitly requires station-specific tariff mapping",
-      "resumeCondition": "deterministic REVE/Endesa On Your Way station or connector mapping",
-      "evidence": ["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "Powerdot",
-      "status": "active",
-      "priority": "station-level",
-      "tariffModel": "station override required",
-      "blocker": "current seed explicitly requires station-specific tariff mapping",
-      "resumeCondition": "deterministic direct-CPO station/EVSE tariff source, excluding roaming eMSP values",
-      "evidence": ["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "EDP Charge España",
-      "status": "active",
-      "priority": "station-level",
-      "tariffModel": "station override required",
-      "blocker": "seed confidence is medium and does not establish one deterministic network tariff",
-      "resumeCondition": "exact direct station/EVSE price from EDP/REVE public or guest source",
-      "evidence": ["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "Tesla",
-      "status": "partial",
-      "priority": "station-level",
-      "tariffModel": "existing TCC Tesla Spain feed; station override required",
-      "coverage": "station inventory source exists; exact tariff remains station/time/member dependent where not exposed",
-      "evidence": ["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    }
+    {"canonical":"Repsol","status":"sourceValidated","priority":"class-wide","tariffModel":"reference power classes; station override preferred","coverage":"normal 0.36, fast 0.48, ultrafast 0.56 EUR/kWh","evidence":["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],"lastInvestigated":"2026-09-07","lastChanged":"2026-09-07"},
+    {"canonical":"Wenea","status":"sourceValidated","priority":"class-wide","tariffModel":"power-band direct tariff; station override preferred","coverage":"0-22 kW 0.39; 50-150 kW 0.49; 151-400 kW 0.59 EUR/kWh","evidence":["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],"lastInvestigated":"2026-09-07","lastChanged":"2026-09-07"},
+    {"canonical":"Zunder","status":"sourceValidated","priority":"class-wide","tariffModel":"power-class reference tariff with station override required","coverage":"<=50 kW 0.42; >50 kW 0.59 EUR/kWh reference","evidence":["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],"lastInvestigated":"2026-09-07","lastChanged":"2026-09-07"},
+    {"canonical":"Moeve","status":"sourceValidated","priority":"network-wide","tariffModel":"own ultrafast network","coverage":"0.60 EUR/kWh on own ultrafast network only","evidence":["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],"lastInvestigated":"2026-09-07","lastChanged":"2026-09-07"},
+    {"canonical":"Eranovum","status":"sourceValidated","priority":"class-wide","tariffModel":"power-class direct tariff plus idle rules","coverage":"<=22 kW 0.35; 30 kW 0.40; 60 kW 0.43; 120 kW 0.46; >=150 kW 0.49 EUR/kWh","evidence":["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],"lastInvestigated":"2026-09-07","lastChanged":"2026-09-07"},
+    {"canonical":"Ajuntament de Calvia","partyId":"CAL","status":"sourceValidated","priority":"network-wide","tariffModel":"municipal public charging","coverage":"municipally owned Calvia charging points from 2026-02-02: 0.25 EUR/kWh; 3 EUR per hour or fraction beyond 4 free parking hours","evidence":["https://www.calvia.com/es/calvia-al-dia/noticias/el-ayuntamiento-de-calvia-iniciara-el-cobro-del-servicio-de-recarga-de-vehiculos-electricos-a-partir-del-2-de-febrero-de-2026-3"],"lastInvestigated":"2026-09-07","lastChanged":"2026-09-07"},
+    {"canonical":"Atlante","status":"active","priority":"station-level","tariffModel":"station override required","blocker":"exact direct tariff is station-specific; no network-wide extrapolation","resumeCondition":"deterministic REVE/myAtlante station/EVSE tariff extraction","evidence":["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],"lastInvestigated":"2026-09-07","lastChanged":"2026-09-07"},
+    {"canonical":"Iberdrola | bp pulse","status":"active","priority":"station-level","tariffModel":"station override required","blocker":"seed requires station-specific mapping","resumeCondition":"deterministic REVE/app station or connector mapping","evidence":["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],"lastInvestigated":"2026-09-07","lastChanged":"2026-09-07"},
+    {"canonical":"Endesa X Way","status":"active","priority":"station-level","tariffModel":"station override required","blocker":"seed requires station-specific mapping","resumeCondition":"deterministic REVE/Endesa On Your Way station or connector mapping","evidence":["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],"lastInvestigated":"2026-09-07","lastChanged":"2026-09-07"},
+    {"canonical":"Powerdot","status":"active","priority":"station-level","tariffModel":"station override required","blocker":"seed requires station-specific mapping","resumeCondition":"deterministic direct-CPO station/EVSE tariff source excluding roaming values","evidence":["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],"lastInvestigated":"2026-09-07","lastChanged":"2026-09-07"},
+    {"canonical":"EDP Charge España","status":"active","priority":"station-level","tariffModel":"station override required","blocker":"seed confidence medium; no deterministic network tariff established","resumeCondition":"exact direct station/EVSE price from EDP/REVE public or guest source","evidence":["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],"lastInvestigated":"2026-09-07","lastChanged":"2026-09-07"},
+    {"canonical":"Tesla","status":"partial","priority":"station-level","tariffModel":"existing TCC Tesla Spain feed; station override required","coverage":"station inventory source exists; exact tariff remains station/time/member dependent where not exposed","evidence":["tesla-charge-companion-stable:data/spain_reve/operator_tariffs_seed.json"],"lastInvestigated":"2026-09-07","lastChanged":"2026-09-07"},
+    {"canonical":"Consejo Insular de la Energia de Gran Canaria","partyId":"MGC","status":"partial","priority":"station-level","tariffModel":"insular public network with station/power/time-dependent tariffs","coverage":"current official network page confirms tariffs remain in force and new app since Apr 2026; ULPGC Tafira subset published 2026-01-16 at 0.25 EUR/kWh for the new 100 kW installation; older 2020/2022 grid is not generalized to 2026","blocker":"current 2026 network-wide tariff table is not exposed on the public page, so older tariff bands are not promoted","resumeCondition":"current tariff table/app/backend mapping by station/power","evidence":["https://www.energiagrancanaria.com/movilidad-electrica/","https://www.energiagrancanaria.com/2026/01/16/gran-canaria-impulsa-la-movilidad-electrica-en-la-ulpgc-con-dos-nuevos-cargadores/"],"lastInvestigated":"2026-09-07","lastChanged":"2026-09-07"}
   ],
   "aliases": {
     "source": "yass3705/tesla-charge-companion-stable@spain-reve-preintegration:data/spain_reve/operator_aliases_es.json",
@@ -145,21 +50,12 @@
     "rule": "Aliases and platform labels never increment the physical-CPO denominator unless current REVE proves an independent party identity."
   },
   "coherence": {
-    "checkedAt": "2026-09-07T10:39:00Z",
+    "checkedAt": "2026-09-07T10:46:00Z",
     "result": "GREEN_WITH_DOCUMENTED_LEGACY_COUNTER_UNCERTAINTY",
-    "checks": [
-      "REVE national pass is complete 146/146",
-      "current snapshot exposes 148 distinct CPO identities",
-      "legacy 618 is no longer treated as authoritative physical-CPO count",
-      "no tariff inferred beyond the existing high/medium-confidence seed semantics",
-      "stationOverrideRequired operators remain active/partial rather than promoted to network-wide rankable",
-      "historical reviewed-label count is not invented because its exact nominative 618-label file is absent from current main"
-    ]
+    "checks": ["REVE national pass complete 146/146","current snapshot exposes 148 distinct CPO identities","618 retained only as legacy work-label queue","counts derive exactly from 13 decisions: 6 sourceValidated + 2 partial + 5 active","no current tariff inferred from older Gran Canaria tariff bands","stationOverrideRequired operators remain active/partial","historical reviewed-label count not invented"]
   },
   "history": [
-    {
-      "date": "2026-09-07",
-      "change": "Rebuilt Spain canonical progress after completed REVE national pass. Corrected denominator semantics: 618 retained as legacy work-label queue; current REVE snapshot observes 148 distinct CPOs. Initialized first-pass decisions from the existing Spain tariff seed without extrapolation."
-    }
+    {"date":"2026-09-07","change":"Rebuilt Spain canonical progress after completed REVE national pass; corrected denominator semantics and initialized first-pass decisions from existing tariff seed."},
+    {"date":"2026-09-07","change":"First-pass batch: promoted Ajuntament de Calvia from current official municipal tariff; classified Gran Canaria partial using current official network evidence and exact ULPGC subset while refusing to generalize older tariff bands."}
   ]
 }
