@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 43,
+  "generatedAt": "2026-09-07T17:02:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run42-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "ENX",
+      "canonicalName": "ENEL X WAY ITALIA SRL",
+      "status": "treated",
+      "priority": "class-wide",
+      "evse": 22798,
+      "stations": 11123,
+      "tariffModel": "technology_and_time_band_network_wide",
+      "tariffChannel": "direct Enel X public charging via Enel On Your Way; other CPO roaming tariffs excluded",
+      "tariffs": [
+        {"class": "AC up to 43 kW", "time": "07:00-20:59", "energyEurPerKwh": 0.67, "vatIncluded": true},
+        {"class": "AC up to 43 kW", "time": "21:00-06:59", "energyEurPerKwh": 0.58, "vatIncluded": true},
+        {"class": "DC 43-99 kW", "time": "07:00-20:59", "energyEurPerKwh": 0.75, "vatIncluded": true},
+        {"class": "DC 43-99 kW", "time": "21:00-06:59", "energyEurPerKwh": 0.64, "vatIncluded": true},
+        {"class": "HPC >99 kW", "time": "00:00-23:59", "energyEurPerKwh": 0.86, "vatIncluded": true}
+      ],
+      "conditions": [
+        "Tariff applied according to the time at which charging starts.",
+        "Prices are explicitly stated by Enel as applicable on Enel X and Ewiva stations; this ENX promotion uses only the Enel X partyId scope.",
+        "Prices for stations of other operators shown in Enel On Your Way remain eMSP roaming and are not propagated to ENX.",
+        "The expired 4 May-31 July 2026 Ewiva HPC dynamic-price promotion is excluded from the ENX rule."
+      ],
+      "officialUrls": [
+        "https://www.enel.it/it-it/mobilita-elettrica/tariffe-abbonamenti",
+        "https://www.enel.it/content/dam/asset/documenti/enel-x-way/tariffe-abbonamenti/enel-x-piani-di-ricarica.pdf"
+      ],
+      "positiveEvidence": [
+        "Current Enel tariff page explicitly states that consumption prices are provided on Enel X and Ewiva stations and directs users to the app for other operators.",
+        "Current first-party PDF gives Basic Pay Per Use prices of 0.67/0.58 EUR-kWh AC day/night, 0.75/0.64 DC day/night and 0.86 HPC, with the prices marked valid on Enel and Ewiva stations.",
+        "The first-party page is live in September 2026 and separately advertises plans valid through 30 September/31 October 2026, removing the previous stale-page-only concern for the Enel network tariff context."
+      ],
+      "negativePaths": [
+        "The June 2026 per-operator roaming PDF is not used as direct CPO evidence for ENX.",
+        "The 4 May-31 July Ewiva dynamic HPC promotion is treated as expired and is not applied to ENX.",
+        "No third-party tariff is used to fill any ENX class."
+      ],
+      "coverage": {
+        "rankableDirectEvse": 22798,
+        "uncoveredEvse": 0,
+        "scope": "IT*ENX inventory, deterministic by connector technology/power class and session start time"
+      },
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run43: ENX moved active -> treated after current first-party Enel evidence established deterministic Pay Per Use Basic prices on Enel X stations by technology and start-time band; expired Ewiva promotion and third-party roaming excluded."
+    }
+  ],
+  "countsAfter": {"treated": 30, "partial": 10, "setAside": 1, "active": 45, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
+  "queueImpact": {"firstPassRemaining": 0, "newlyTreatedCpos": ["ENX"], "newRankableEvse": 22798, "remainingNetworkOrClassWideCandidates": [], "classWideQueueExhausted": true, "atlanteLast": true},
+  "consistency": {"statusSumCanonical": 86, "expectedCanonical": 86, "equation": "30+10+1+45=86", "aliasesCountedOutsideCanonical": 2, "inventoryPartyIds": 88, "duplicateCanonicalPartyIds": 0, "atlanteSetAside": true, "firstPassComplete": "86/86", "canonicalPhysicalSnapshotStillStale": true, "result": "pass_with_known_snapshot_staleness"},
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run43.json"],
+  "historyAppend": [
+    "2026-09-07 run43: ENX promoted to treated with 22,798 direct rankable EVSE using current official Enel class/time-band pricing.",
+    "2026-09-07 run43: expired Ewiva dynamic promotion and Enel On Your Way roaming tariffs for third-party CPOs remain excluded."
+  ]
+}
