@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 42,
+  "checkedAt": "2026-09-07T15:53:15+01:00",
+  "sourceOfTruth": "docs/italy-cpo-progress-2026-09.json plus ordered run deltas through run42",
+  "inventory": {"physicalPartyIds": 88, "canonicalCpos": 86, "supersededAliases": 2, "observedEvse": 75025},
+  "effectiveCounts": {"treated": 29, "partial": 10, "setAside": 1, "active": 46, "sum": 86},
+  "checks": {
+    "statusSumMatchesCanonical": true,
+    "canonicalPlusAliasesMatchesPhysicalPartyIds": true,
+    "duplicateCanonicalPartyIds": 0,
+    "atlanteSetAsideAndLast": true,
+    "networkOrClassWideQueueRemaining": 0,
+    "firstPassComplete": true,
+    "firstPassProgress": "86/86",
+    "physicalCanonicalSnapshotCurrent": false
+  },
+  "knownIssue": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "description": "Physical canonical snapshot still contains the original 88-partyId reconstruction and stale counters; effective state is carried by the ordered delta chain.",
+    "risk": "A consumer reading only the physical snapshot can misreport progress and priority state.",
+    "safeHandling": "Do not overwrite with a partial hand merge. Use the lossless consolidator added previously, verify 88 physical partyIds / 86 canonical + 2 superseded aliases and metadata preservation before replacing the snapshot.",
+    "status": "open_nonblocking"
+  },
+  "run42Corrections": [
+    "TDM/T.D.M. S.R.L. classified station-level; no Tamoil fuel price or roaming price promoted.",
+    "ECM/Enercom classified station-level; retail electricity and wallbox prices explicitly excluded from public CPO pricing.",
+    "YFL/Y&F classified station-level; Sagelio partnership does not create an alias or tariff inheritance."
+  ],
+  "result": "pass_with_known_snapshot_staleness"
+}
