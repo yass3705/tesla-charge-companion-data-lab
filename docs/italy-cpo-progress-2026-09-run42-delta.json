@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 42,
+  "generatedAt": "2026-09-07T15:53:15+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run41-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "TDM",
+      "canonicalName": "T.D.M. S.R.L.",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 52,
+      "stations": 26,
+      "tariffModel": "station/ad-hoc unresolved",
+      "tariffChannel": "direct CPO/ad-hoc unknown; roaming eMSP must remain separate",
+      "positiveEvidence": [
+        "Current public station evidence associates T.D.M. S.R.L. with multiple Tamoil service stations that offer EV charging, confirming a physical station footprint rather than a single virtual tariff product.",
+        "Different T.D.M./Tamoil locations are independently identified by service-station identifiers and locations, so exact EVSE-to-site mapping is required before any price can be ranked."
+      ],
+      "negativePaths": [
+        "No current first-party Italy-wide T.D.M. EV charging tariff grid was found after searches for T.D.M., Tamoil and EV charging pricing.",
+        "Fuel prices and third-party roaming tariffs are explicitly not used as substitutes for direct CPO EV charging prices."
+      ],
+      "blockage": "No deterministic current IT*TDM EVSE -> direct ad-hoc tariff mapping has been found; only physical Tamoil/T.D.M. charging-site evidence is currently available.",
+      "resumeCondition": "map each IT*TDM EVSE to its Tamoil/T.D.M. site and capture the native QR/POS/app/backend direct tariff; fail-close unmatched EVSE",
+      "confidence": "medium-high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run42: TDM locked station-level; network-wide tariff path closed pending new deterministic first-party evidence."
+    },
+    {
+      "partyId": "ECM",
+      "canonicalName": "ENERCOM S.r.l.",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 14,
+      "stations": 7,
+      "tariffModel": "direct public charging tariff unresolved",
+      "tariffChannel": "direct CPO/ad-hoc unknown; retail electricity and wallbox offers excluded",
+      "officialUrls": [
+        "https://www.enercom.it/offer/wallbox-ricarica-auto-elettriche/",
+        "https://www.enercom.it/contatti-servizio-clienti/"
+      ],
+      "positiveEvidence": [
+        "Current Enercom material confirms an EV charging/wallbox activity and OCPP-capable charging hardware, but the published offer is a private wallbox product rather than a public charging tariff.",
+        "Current Enercom customer/app pages concern retail energy services and do not establish a deterministic public EV charging price for IT*ECM."
+      ],
+      "negativePaths": [
+        "Retail electricity €/kWh offers were explicitly excluded because they are not public CPO charging tariffs.",
+        "No current first-party network-wide public charging price applicable to all IT*ECM EVSE was found."
+      ],
+      "blockage": "The PUN inventory contains IT*ECM EVSE, but current first-party web material does not expose their direct public charging tariff or a deterministic global grid.",
+      "resumeCondition": "identify IT*ECM station IDs/QR/app/backend and retrieve the direct pre-session tariff per station/EVSE; keep retail electricity and roaming data separate",
+      "confidence": "medium",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run42: ECM/Enercom classified station-level; retail-energy and wallbox pricing rejected as non-CPO tariff evidence."
+    },
+    {
+      "partyId": "YFL",
+      "canonicalName": "Y&F Srl",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 37,
+      "stations": 14,
+      "tariffModel": "station/operator-specific unresolved",
+      "tariffChannel": "direct CPO/ad-hoc unknown",
+      "positiveEvidence": [
+        "Recent public procurement evidence confirms Y&F Srl is active in EV charging infrastructure projects, including an ATI with Sagelio, but does not establish a shared tariff or inventory identity with Sagelio."
+      ],
+      "negativePaths": [
+        "No current first-party deterministic network-wide tariff for IT*YFL was found.",
+        "The Sagelio commercial relationship is not treated as proof that Y&F EVSE inherit Sagelio prices or partyId semantics."
+      ],
+      "blockage": "No deterministic IT*YFL EVSE -> current direct tariff mapping or first-party global tariff grid has been obtained.",
+      "resumeCondition": "resolve Y&F station/EVSE ownership and native QR/app/backend pricing; only merge/alias with another network if physical EVSE overlap or partyId continuity is proven",
+      "confidence": "medium",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run42: YFL locked station-level; Sagelio partnership recorded as discovery evidence only, not as tariff inheritance or alias proof."
+    }
+  ],
+  "countsAfter": {"treated": 29, "partial": 10, "setAside": 1, "active": 46, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
+  "queueImpact": {"firstPassRemaining": 0, "newlyTreatedCpos": [], "newRankableEvse": 0, "remainingNetworkOrClassWideCandidates": [], "classWideQueueExhausted": true, "stationLevelClassificationAdvanced": ["TDM", "ECM", "YFL"], "classifiedEvseThisRun": 103, "atlanteLast": true},
+  "consistency": {"statusSumCanonical": 86, "expectedCanonical": 86, "equation": "29+10+1+46=86", "aliasesCountedOutsideCanonical": 2, "inventoryPartyIds": 88, "duplicateCanonicalPartyIds": 0, "atlanteSetAside": true, "firstPassComplete": "86/86", "canonicalPhysicalSnapshotStillStale": true, "result": "pass_with_known_snapshot_staleness"},
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run42.json", "data/reports/italy_canonical_consistency_audit_20260907_run42.json"],
+  "historyAppend": ["2026-09-07 run42: TDM, ECM and YFL moved to documented station-level investigation paths; no tariff was extrapolated.", "2026-09-07 run42: periodic canonical consistency audit performed; logical counters remain 29/10/1/46 over 86 canonical CPOs plus 2 superseded aliases."]
+}
