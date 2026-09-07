@@ -30,11 +30,38 @@
       "lastInvestigated": "2026-09-07",
       "lastChanged": "2026-09-07",
       "historyAppend": "2026-09-07 run41: UFC/E.ON Drive Infrastructure Italy locked station-level from current first-party FAQ; network-wide path closed pending new deterministic evidence."
+    },
+    {
+      "partyId": "WRM",
+      "canonicalName": "WROOM SRL SB a socio unico",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 242,
+      "stations": 242,
+      "tariffModel": "per-station/per-CPO tariff exposed in Wroom app",
+      "tariffChannel": "Wroom direct-owned subset plus eMSP interoperability; must be separated",
+      "officialUrls": ["https://www.wroom.tech/", "https://www.wroom.tech/terms-app-wroom/"],
+      "positiveEvidence": [
+        "Wroom identifies its app as an eMSP and its CPMS as a management platform for CPO networks.",
+        "Current Wroom terms state transactions are subject to tariffs indicated for each charging station.",
+        "Terms explicitly state tariffs may include per-kWh, per-minute charging, parking/idle and activation fees and may vary with station brand/model, geography, power and owning CPO.",
+        "All tariffs are displayed in the app before activation; Wroom may change them at any time."
+      ],
+      "negativePaths": [
+        "No safe uniform tariff exists for the full WRM partyId based on current first-party terms.",
+        "Wroom eMSP prices for third-party CPOs must not be treated as direct WRM CPO prices."
+      ],
+      "blockage": "Need deterministic mapping of IT*WRM EVSE to Wroom-owned/direct charging subset and the exact current pre-session tariff for each point.",
+      "resumeCondition": "extract Wroom app/backend tariff payload by EVSE, distinguish Wroom-owned from roaming third-party points, preserve activation/time/idle components, fail-close unmatched points",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run41: WRM/Wroom locked station-level from current first-party terms; no network-wide price may be propagated."
     }
   ],
   "countsAfter": {"treated": 29, "partial": 10, "setAside": 1, "active": 46, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
-  "queueImpact": {"firstPassRemaining": 0, "newlyTreatedCpos": [], "newRankableEvse": 0, "remainingNetworkOrClassWideCandidates": [], "classWideQueueExhausted": true, "stationLevelClassificationAdvanced": ["UFC"], "atlanteLast": true},
+  "queueImpact": {"firstPassRemaining": 0, "newlyTreatedCpos": [], "newRankableEvse": 0, "remainingNetworkOrClassWideCandidates": [], "classWideQueueExhausted": true, "stationLevelClassificationAdvanced": ["UFC", "WRM"], "atlanteLast": true},
   "consistency": {"statusSumCanonical": 86, "expectedCanonical": 86, "equation": "29+10+1+46=86", "aliasesCountedOutsideCanonical": 2, "inventoryPartyIds": 88, "duplicateCanonicalPartyIds": 0, "atlanteSetAside": true, "firstPassComplete": "86/86", "canonicalPhysicalSnapshotStillStale": true, "result": "pass"},
   "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run41.json"],
-  "historyAppend": ["2026-09-07 run41: E.ON Drive Infrastructure Italy/UFC moved to a fully documented station-level investigation path; no current global tariff may be propagated."]
+  "historyAppend": ["2026-09-07 run41: E.ON Drive Infrastructure Italy/UFC and Wroom/WRM moved to fully documented station-level investigation paths; no current global tariff may be propagated for either network."]
 }
