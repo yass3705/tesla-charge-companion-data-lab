@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "0.2.0",
+  "countryCode": "DE",
+  "runDate": "2026-09-07",
+  "policy": "First-pass traversal only; no re-audit of deferred CPOs; no tariff extrapolation beyond explicit operator/source scope.",
+  "cpos": [
+    {
+      "canonicalName": "SWU Energie GmbH",
+      "aliases": ["SWU Stadtwerke Ulm/Neu-Ulm", "Stadtwerke Ulm", "SWU"],
+      "firstPass": true,
+      "classification": "partial",
+      "operatorIdentityEvidence": "Bundesnetzagentur-derived station records identify SWU Energie GmbH as operator in Ulm; some current BNetzA records do not publish EVSE IDs, so a unique eMI3 prefix is not certified in this pass.",
+      "directPricing": {
+        "effectiveFrom": "2026-01-01",
+        "channel": "ad-hoc direct payment via ladeapp/web browser with credit card",
+        "acEurPerKwh": 0.64,
+        "dcEurPerKwh": 0.74,
+        "sourceScope": "official SWU public charging page"
+      },
+      "subscriptionPricingKeptSeparate": {
+        "product": "SWU LadeStrom classic",
+        "acEurPerKwh": 0.47,
+        "dcEurPerKwh": 0.57,
+        "monthlyAccountFeeEur": 2.50,
+        "monthlyCardFeeEur": 2.50
+      },
+      "reasonPartial": "Exact official ad-hoc AC/DC prices are established, but the currently accessible BNetzA station samples do not certify a unique EVSE prefix/complete station-to-prefix mapping. Keep operator-level tariff evidence separate from any prefix-wide implementation until identity mapping is explicit.",
+      "sources": [
+        "https://www.swu.de/privatkunden/produkte-leistungen/elektromobilitaet/swu-ladestrom-karte",
+        "https://chargemyride.live/station/1042921"
+      ]
+    },
+    {
+      "canonicalName": "Stadtwerke Augsburg Energie GmbH",
+      "aliases": ["swa", "Stadtwerke Augsburg", "swa eMobilität"],
+      "firstPass": true,
+      "classification": "partial",
+      "operatorIdentityEvidence": "Bundesnetzagentur-derived station records identify Stadtwerke Augsburg Energie GmbH at multiple Augsburg charging sites, including a 200 kW site commissioned 2026-06-08; older and some current registry entries omit EVSE IDs, so a unique eMI3 prefix is not certified in this pass.",
+      "directPricing": {
+        "effectiveFrom": "2026-04-01",
+        "channel": "AdHoc-Payment",
+        "ac": {
+          "07:00-21:00": 0.37,
+          "21:00-07:00": 0.35
+        },
+        "dcUpTo200Kw": {
+          "07:00-21:00": 0.44,
+          "21:00-07:00": 0.42
+        },
+        "dcOver200To400Kw": {
+          "07:00-21:00": 0.49,
+          "21:00-07:00": 0.45
+        },
+        "blockingFees": {
+          "ac": "0.07 EUR/min from no later than 180 minutes, applicable 08:00-21:00",
+          "dc": "0.14 EUR/min from no later than 60 minutes, applicable 24h"
+        },
+        "adhocStartFeeEur": 1.50,
+        "sourceScope": "official swa Spring 2026 magazine tariff table"
+      },
+      "reasonPartial": "The official 2026 ad-hoc tariff matrix is complete at operator/channel level, but the BNetzA samples accessed in this pass do not establish a unique EVSE prefix across the swa estate. Do not invent a prefix alias.",
+      "sources": [
+        "https://www.sw-augsburg.de/privatkunden/mobilitaet/swa-emobilitaet/swa-eladekarte-app-konditionen",
+        "https://www.sw-augsburg.de/fileadmin/content/6_pdf_Downloadcenter/7_Engagement/Magazin/swa_Magazin_1-26__Aktuelle_f%C3%BCr_alle_Kan%C3%A4le__klein.pdf",
+        "https://www.chargemyride.live/station/1159334"
+      ]
+    }
+  ],
+  "safety": {
+    "prefixWideTariffExtrapolations": 0,
+    "deferredCposReopened": 0,
+    "canonicalRebuildRetried": false
+  }
+}
