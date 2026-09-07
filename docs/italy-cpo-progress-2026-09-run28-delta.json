@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 28,
+  "generatedAt": "2026-09-07T01:53:42+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run27-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "VFS",
+      "canonicalName": "VIAFAST SRL",
+      "aliases": ["VIAFAST SRL", "VFS"],
+      "status": "treated",
+      "priority": "class-wide",
+      "evse": 167,
+      "stations": 84,
+      "tariffModel": "connector/power-class deterministic network tariff",
+      "tariffChannel": "direct CPO VIAFAST pay-per-use",
+      "tariffs": [
+        {"class": "AC 22 kW", "energyEurPerKwh": 0.60},
+        {"class": "DC Fast 60 kW / Ultrafast 90-180 kW", "energyEurPerKwh": 0.85}
+      ],
+      "occupationFees": [{"afterChargeGraceMinutes": 5, "eurPerMinute": 0.25, "schedule": "24/7"}],
+      "paymentMethods": ["VIAFAST webapp", "RFID", "automatic payment at end of session"],
+      "preauthorizationEur": 45,
+      "conditions": [
+        "Baseline rankable tariff excludes optional sponsored/free-charge promotions.",
+        "Third-party stations visible in VIAFAST are explicitly excluded because their tariffs are set by the third-party station owner."
+      ],
+      "officialUrls": [
+        "https://www.viafast.net/viafast-tariffe/",
+        "https://www.viafast.net/viafast-webapp-termini-e-condizioni/",
+        "https://www.viafast.net/"
+      ],
+      "positiveEvidence": [
+        "Official current VIAFAST tariff page: AC 22 kW EUR 0.60/kWh; DC Fast 60 kW and Ultrafast 90-180 kW flat EUR 0.85/kWh; EUR 0.25/min occupation after 5 free minutes.",
+        "Official VIAFAST terms distinguish VIAFAST-owned from third-party stations and document webapp/RFID, automatic payment and EUR 45 preauthorization."
+      ],
+      "coverage": {"physicalEvse": 167, "rankableDirectEvse": 167, "unresolvedEvse": 0},
+      "blockage": null,
+      "resumeCondition": null,
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run28: VIAFAST promoted active->treated; current first-party deterministic AC/DC network tariff covers all 167 canonical EVSE, with third-party roaming explicitly separated."
+    }
+  ],
+  "countsAfter": {"treated": 23, "partial": 10, "setAside": 1, "active": 52, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
+  "queueImpact": {
+    "firstPassRemaining": 0,
+    "newlyTreatedCpos": ["VFS"],
+    "newRankableEvse": 167,
+    "remainingClassWideCandidates": ["CGS", "ALL"],
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "23+10+1+52=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "duplicateCanonicalPartyIds": 0,
+    "atlanteSetAside": true,
+    "firstPassComplete": "86/86",
+    "result": "pass"
+  },
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run28.json"],
+  "historyAppend": [
+    "2026-09-07 run28: VIAFAST current direct network tariff verified and promoted to treated; 167 EVSE newly rankable.",
+    "2026-09-07 run28: AC 22 kW 0.60 EUR/kWh; DC Fast 60 kW / Ultrafast 90-180 kW 0.85 EUR/kWh; occupation 0.25 EUR/min after 5 free minutes.",
+    "2026-09-07 run28: third-party stations accessible via VIAFAST remain separated from VIAFAST direct CPO tariff.",
+    "2026-09-07 run28: consistency 23/10/1/52 plus 2 superseded aliases; Atlante remains last."
+  ]
+}
