@@ -10,24 +10,30 @@
       "evse": 48,
       "stations": 15,
       "result": "station-level locked",
-      "directEvidence": [
-        "EDRI FAQ: ad-hoc prices are set by E.ON Drive based on local energy costs, infrastructure and market conditions.",
-        "EDRI FAQ: prices vary by location, charger type and payment method; current ad-hoc price is displayed at charger.",
-        "EDRI FAQ: roaming provider sets roaming-card price; direct payment is via charger/QR/contactless and is distinct.",
-        "EDRI FAQ: some locations have idle fees shown before session."
-      ],
+      "directEvidence": ["EDRI says direct ad-hoc price varies by location, charger type and payment method and is shown at the charger/QR; roaming pricing is separate; some sites may add displayed idle fees."],
       "officialUrls": ["https://www.edri.com/faq", "https://www.edri.com/en-de/faq"],
-      "safeDecision": "Do not infer an Italy-wide tariff. Resolve each IT*UFC EVSE via its charger/QR/weblink/backend price payload and fail-close unmatched points.",
+      "safeDecision": "Do not infer an Italy-wide tariff; resolve each IT*UFC EVSE from charger/QR/weblink/backend payload.",
       "resumeCondition": "bulk EVSE-to-direct-price mapping preserving payment channel and site-specific idle fees"
+    },
+    {
+      "partyId": "WRM",
+      "name": "WROOM SRL SB a socio unico",
+      "evse": 242,
+      "stations": 242,
+      "result": "station-level locked",
+      "directEvidence": ["Wroom terms define the app as an eMSP with owned and interoperable third-party stations; tariffs are specified for each station and can contain energy, charging-time, parking/idle and activation components; prices may vary by charger brand/model, geography, power and owning CPO and are displayed before activation."],
+      "officialUrls": ["https://www.wroom.tech/", "https://www.wroom.tech/terms-app-wroom/"],
+      "safeDecision": "Do not infer a WRM-wide tariff and do not mix Wroom eMSP roaming prices with direct Wroom-owned CPO prices.",
+      "resumeCondition": "extract Wroom app/backend per-EVSE tariff and ownership/channel, preserving fixed/time/idle components"
     }
   ],
   "countsBefore": {"treated": 29, "partial": 10, "setAside": 1, "active": 46, "canonicalTotal": 86},
   "countsAfter": {"treated": 29, "partial": 10, "setAside": 1, "active": 46, "canonicalTotal": 86},
   "newlyTreated": [],
   "newRankableEvse": 0,
-  "stationLevelClassificationAdvanced": ["UFC"],
+  "stationLevelClassificationAdvanced": ["UFC", "WRM"],
   "networkOrClassWideRemaining": 0,
   "atlanteLast": true,
   "consistency": {"equation": "29+10+1+46=86", "aliasesOutsideCanonical": 2, "physicalPartyIds": 88, "duplicateCanonicalPartyIds": 0, "result": "pass"},
-  "notes": ["No roaming/eMSP price was promoted as a direct CPO tariff.", "No stale or geographically unrelated E.ON price was extrapolated to Italy."]
+  "notes": ["No roaming/eMSP price was promoted as a direct CPO tariff.", "No stale or geographically unrelated tariff was extrapolated."]
 }
