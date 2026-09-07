@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 34,
+  "generatedAt": "2026-09-07T08:10:00+01:00",
+  "scope": "class-wide-first then station-level; Atlante last",
+  "findings": [
+    {
+      "partyId": "SAG",
+      "canonicalName": "Sagelio srl società benefit",
+      "evse": 405,
+      "stations": 316,
+      "classification": "active/station-level",
+      "tariffModel": "host/site-configured retail pricing",
+      "tariffChannel": "native Sagelio-managed charging point; exact price must be read for the selected point/session",
+      "positiveEvidence": [
+        "Sagelio official 2026 guidance to host businesses explains that the retail charging tariff is set according to the individual site's energy cost and economics.",
+        "The same first-party guidance explicitly states that there is no tariff valid for every installation/context and uses 0.59 EUR/kWh only as a worked example, not a network tariff."
+      ],
+      "negativePaths": [
+        "Do not promote the 0.59 EUR/kWh example as a Sagelio network-wide price.",
+        "Do not infer a tariff from Sagelio business-model examples or host energy cost.",
+        "Third-party eMSP prices remain discovery/corroboration only unless mapped to direct CPO pricing."
+      ],
+      "blockage": "exact direct tariff varies by host/site and is not exposed as one nationwide deterministic grid",
+      "resumeCondition": "map IT*SAG EVSE to Sagelio/native point payload or QR/session tariff; preserve energy/start/time/parking components and fail-close unmatched EVSE",
+      "officialUrls": [
+        "https://sagelio.com/blog/monetizzare-la-ricarica-come-impostare-le-tariffe-per-i-tuoi-clienti/"
+      ],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07"
+    },
+    {
+      "partyId": "GAS",
+      "canonicalName": "GASGAS S.R.L.",
+      "evse": 290,
+      "stations": 137,
+      "classification": "active/station-level",
+      "tariffModel": "point-specific pricing under Uattzy/UAU platform",
+      "tariffChannel": "Uattzy app / RFID; direct CPO and eMSP roles coexist",
+      "positiveEvidence": [
+        "Uattzy official corporate material places GASGAS in the UAU/Uattzy family together with E-Shore and EnerMia.",
+        "Current Uattzy app flow requires selecting a charging point and checking its costs before charging, supporting point-level rather than one family-wide deterministic tariff."
+      ],
+      "negativePaths": [
+        "Do not infer a single GASGAS tariff from Uattzy family averages/ranges.",
+        "Do not deduplicate GAS with ESH/UTZ solely from corporate-family membership; physical inventory overlap/partyId continuity remains unproven."
+      ],
+      "blockage": "full deterministic IT*GAS EVSE-to-current direct tariff mapping requires selected-point Uattzy backend/app data",
+      "resumeCondition": "extract Uattzy native point payload for IT*GAS EVSE and map exact price/fees; fail-close unmatched EVSE",
+      "officialUrls": ["https://www.uattzy.com/"],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07"
+    },
+    {
+      "partyId": "UTZ",
+      "canonicalName": "UAU srl",
+      "evse": 16,
+      "stations": 8,
+      "classification": "active/station-level",
+      "tariffModel": "point-specific pricing under Uattzy/UAU platform",
+      "tariffChannel": "Uattzy app / RFID; direct CPO and eMSP roles coexist",
+      "positiveEvidence": [
+        "UAU/Uattzy is the current corporate platform and the app instructs users to select a charging point and inspect the point cost before charging."
+      ],
+      "negativePaths": [
+        "No single family-wide Uattzy tariff is promoted without a deterministic rule applicable to every IT*UTZ EVSE.",
+        "No automatic ESH/GAS/UTZ deduplication without physical inventory overlap/partyId continuity proof."
+      ],
+      "blockage": "exact direct price is point-specific and requires native payload mapping",
+      "resumeCondition": "extract Uattzy native point payload for IT*UTZ EVSE; fail-close unmatched EVSE",
+      "officialUrls": ["https://www.uattzy.com/"],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07"
+    }
+  ],
+  "queue": {
+    "remainingClassWideCandidates": ["CGS", "ALL"],
+    "stationLevelClassificationAdvanced": ["SAG", "GAS", "UTZ"],
+    "corporateFamilyNoPrematureDedup": ["ESH", "GAS", "UTZ"],
+    "atlanteLast": true
+  },
+  "sources": [
+    "https://sagelio.com/blog/monetizzare-la-ricarica-come-impostare-le-tariffe-per-i-tuoi-clienti/",
+    "https://www.uattzy.com/"
+  ]
+}
