@@ -19,28 +19,15 @@
         {"channel": "bank card at terminal", "energyEurPerKwh": 0.79, "unit": "EUR/kWh", "vatIncluded": true}
       ],
       "paymentMethods": ["Electra app", "Autocharge", "bank card at terminal"],
-      "eligibility": "public Electra Italy network; Electra+ subscription discounts and ChargeLeague/roaming tariffs remain separate",
-      "validFrom": null,
-      "validThrough": null,
-      "officialUrls": [
-        "https://intercom.help/go-electra/it/articles/7987274-le-nostre-tariffe-di-ricarica",
-        "https://intercom.help/go-electra/it/articles/10749707-tariffe-electra-e-prezzi-variabili",
-        "https://intercom.help/go-electra/it/articles/15180231-abbonamenti-electra"
-      ],
-      "positiveEvidence": [
-        "2026-07-01 first-party tariff article states Italy AC-DC public charging is 0.69 EUR/kWh via app and 0.79 EUR/kWh by card, VAT included.",
-        "2026-07-07 first-party variable-pricing article limits station/time variable pricing to France, Belgium and Spain, excluding Italy."
-      ],
-      "negativePaths": [
-        "RFID/eMSP extra costs not promoted as direct tariff.",
-        "Electra+ discounts not substituted for public tariff.",
-        "ChargeLeague partner-network rates kept separate."
-      ],
+      "eligibility": "public Electra Italy network; subscriptions and roaming remain separate",
+      "officialUrls": ["https://intercom.help/go-electra/it/articles/7987274-le-nostre-tariffe-di-ricarica","https://intercom.help/go-electra/it/articles/10749707-tariffe-electra-e-prezzi-variabili"],
+      "positiveEvidence": ["2026-07-01 first-party Italy row: 0.69 EUR/kWh app/Autocharge and 0.79 EUR/kWh card, VAT included, AC-DC.","2026-07-07 variable pricing article limits station/time variability to France, Belgium and Spain."],
+      "negativePaths": ["RFID/eMSP extra costs excluded.","Subscription discounts kept eligibility-specific.","ChargeLeague partner prices kept separate."],
       "coverage": {"rankableDirectEvse": 514, "uncoveredEvse": 0, "coveragePct": 100},
       "confidence": "high",
       "lastInvestigated": "2026-09-07",
       "lastChanged": "2026-09-07",
-      "historyAppend": "2026-09-07 run37: ELC promoted active→treated after current first-party Italy country tariff verification; 514/514 EVSE rankable under direct native public tariff."
+      "historyAppend": "2026-09-07 run37: ELC active→treated; 514/514 EVSE rankable under current direct Italy tariff."
     },
     {
       "partyId": "IOY",
@@ -49,16 +36,36 @@
       "priority": "station-level",
       "evse": 313,
       "stations": 43,
-      "tariffModel": "charger-price potentially above published country minimum",
+      "tariffModel": "charger price can exceed published country minimum",
       "tariffChannel": "IONITY app / direct QR",
-      "blockage": "current official country values are explicitly minimum prices and an individual charger price may be higher",
-      "resumeCondition": "join each IT*IOY EVSE to current IONITY station/QR/app exact price; fail-close unmatched EVSE",
+      "blockage": "official current country prices are minimums and charger price may be higher",
+      "resumeCondition": "join each IT*IOY EVSE to exact station/QR/app current price; fail-close unmatched EVSE",
       "officialUrls": ["https://www.ionity.eu/de/netzwerk/zugang-und-zahlung"],
-      "negativePaths": ["Do not promote current Italy minimum country prices as exact network-wide tariff."],
+      "negativePaths": ["Do not promote country minimum as exact network-wide tariff."],
       "confidence": "high",
       "lastInvestigated": "2026-09-07",
       "lastChanged": "2026-09-07",
-      "historyAppend": "2026-09-07 run37: IOY explicitly rejected as network-wide despite current Italy country price table because first-party terms allow higher charger-specific price."
+      "historyAppend": "2026-09-07 run37: IOY explicitly kept station-level because charger-specific price may exceed country minimum."
+    },
+    {
+      "partyId": "GMT",
+      "canonicalName": "G.M.T. S.P.A.",
+      "aliasesAppend": ["Magis Mobilità (legacy app developer/operator label)"],
+      "status": "active",
+      "priority": "station-level",
+      "evse": 325,
+      "stations": 132,
+      "tariffModel": "native connector/app pay-per-use; AC/DC subscription classes in current Magis ecosystem",
+      "tariffChannel": "legacy Magis Mobilità / current Magis E-mobility lineage",
+      "positiveEvidence": ["Legacy Magis Mobilità app identifies G.M.T. S.p.A. as developer and exposes own-network charging plus roaming.","Magis Smart announced 2026-05-04 migration from Magis Mobilità to Magis E-mobility and revised pricing.","Current Magis page lists subscription AC 0.60/0.58/0.50 EUR/kWh and DC 0.74 EUR/kWh; pay-per-use price is shown in-app at time of use."],
+      "negativePaths": ["No merge of GMT with Magis Smart/ASS without proven EVSE overlap.","Subscription discounts are not substituted for default pay-per-use."],
+      "blockage": "current default pay-per-use price is app/connector-specific and canonical identity overlap with newer Magis party scope is not yet proven",
+      "resumeCondition": "join IT*GMT EVSE to current Magis/native backend and compare exact EVSE/location inventory against ASS/Magis Smart before any alias consolidation",
+      "officialUrls": ["https://www.magissmart.it/nuova-app-magis-e-mobility","https://www.magissmart.it/agsmaim_e-mobility/abbonamenti"],
+      "confidence": "medium-high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run37: GMT locked station-level; Magis app lineage recorded; no unsafe dedup with ASS/Magis Smart."
     }
   ],
   "countsAfter": {"treated": 24, "partial": 10, "setAside": 1, "active": 51, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
@@ -68,8 +75,9 @@
     "newRankableEvse": 514,
     "remainingNetworkOrClassWideCandidates": [],
     "classWideQueueExhausted": true,
-    "stationLevelClassificationAdvanced": ["IOY"],
+    "stationLevelClassificationAdvanced": ["IOY", "GMT"],
     "aliasesResolved": [],
+    "aliasCandidatesHeldFailClosed": [{"partyId":"GMT","candidate":"Magis Smart/ASS","reason":"app lineage without proven physical EVSE overlap"}],
     "atlanteLast": true
   },
   "consistency": {
@@ -86,8 +94,8 @@
   },
   "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run37.json"],
   "historyAppend": [
-    "2026-09-07 run37: corrected queue-audit miss: ELC still had a deterministic current Italy network-wide tariff and is now treated.",
-    "2026-09-07 run37: IOY moved explicitly to station-level because published country values are minimums and charger price may be higher.",
-    "2026-09-07 run37: counts advanced to 24/10/1/51; +514 rankable EVSE; Atlante remains last."
+    "2026-09-07 run37: corrected queue miss and promoted ELC to treated (+514 EVSE).",
+    "2026-09-07 run37: IOY and GMT locked station-level with precise resume conditions; no unsafe country-minimum promotion or Magis alias merge.",
+    "2026-09-07 run37: counts advanced to 24/10/1/51; Atlante remains last."
   ]
 }
