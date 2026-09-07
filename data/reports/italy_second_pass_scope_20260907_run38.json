@@ -1,0 +1,37 @@
+{
+  "country": "IT",
+  "run": 38,
+  "generatedAt": "2026-09-07T11:54:09+01:00",
+  "policy": {"directVsEmspSeparated": true, "failClosed": true, "atlanteLast": true},
+  "findings": [
+    {
+      "partyId": "ENH",
+      "name": "Enerhub Srl",
+      "inventory": {"evse": 139, "stations": 69},
+      "result": "network-wide deterministic direct tariff found",
+      "officialSource": "https://enerhub.it/ricarica/",
+      "directTariffs": {
+        "app": {"AC<=22kW": "0.60 EUR/kWh", "DC<=400kW": "0.79 EUR/kWh"},
+        "guest": {"AC<=22kW": "0.65 EUR/kWh", "DC<=400kW": "0.95 EUR/kWh"}
+      },
+      "scopeRule": "apply only to Enerhub network EVSE; partner roaming excluded",
+      "decision": "treated",
+      "rankableEvseAdded": 139
+    },
+    {
+      "partyId": "CVG",
+      "name": "CONVERGENZE S.p.A. Società Benefit",
+      "inventory": {"evse": 90, "stations": 44},
+      "result": "network-wide deterministic direct tariff found",
+      "officialSource": "https://convergenze.it/it/servizi/energia/evo",
+      "directTariffs": {"AC Type2 22kW": "0.60 EUR/kWh VAT included"},
+      "otherTerms": {"preauthorisation": "35 EUR", "finalDebit": "actual charging cost only", "access": ["EVO card", "smartphone"]},
+      "scopeRule": "Convergenze EVO network only",
+      "decision": "treated",
+      "rankableEvseAdded": 90
+    }
+  ],
+  "delta": {"newlyTreatedCpos": 2, "newRankableEvse": 229, "countsAfter": {"treated": 26, "partial": 10, "setAside": 1, "active": 49, "canonicalTotal": 86}},
+  "consistency": {"equation": "26+10+1+49=86", "duplicateCanonicalPartyIds": 0, "atlanteSetAside": true, "physicalPartyIds": 88, "observedEvse": 75025},
+  "knownStructuralIssue": "docs/italy-cpo-progress-2026-09.json remains an old physical snapshot; run deltas are currently required to reconstruct effective state. No lossy overwrite performed."
+}
