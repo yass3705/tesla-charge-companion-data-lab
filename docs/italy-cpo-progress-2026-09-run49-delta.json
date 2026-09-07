@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 49,
+  "generatedAt": "2026-09-07T22:53:25+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run48-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "ELC",
+      "canonicalName": "Electra",
+      "aliases": ["Electra", "ELC"],
+      "status": "treated",
+      "priority": "network-wide",
+      "evse": 514,
+      "tariffModel": "Italy-wide fixed direct CPO price, identical for slow/fast AC-DC within each supported direct payment channel",
+      "tariffChannel": "Electra app / Autocharge / direct bank-card terminal; RFID/eMSP roaming kept separate",
+      "tariffs": [
+        {"eligibility":"Electra app or Autocharge on Electra-owned Italian stations","energyEurPerKwh":0.69,"unit":"EUR/kWh","vatIncluded":true},
+        {"eligibility":"bank card payment at Electra terminal on Italian stations","energyEurPerKwh":0.79,"unit":"EUR/kWh","vatIncluded":true}
+      ],
+      "validFrom": "2026-07-01",
+      "paymentMethods": ["Electra app", "Autocharge", "bank card at terminal"],
+      "eligibilityConditions": [
+        "Prices apply to charging sessions started through the Electra application, Autocharge or bank-card terminal.",
+        "RFID payments may incur additional costs outside Electra's control and are not used as the direct reference tariff.",
+        "Published Italy table covers slow and fast AC-DC charging; no station-level dynamic pricing is stated for Italy in the current tariff article."
+      ],
+      "officialUrls": [
+        "https://intercom.help/go-electra/it/articles/7987274-le-nostre-tariffe-di-ricarica",
+        "https://intercom.help/go-electra/en/articles/7987274-our-charging-rates"
+      ],
+      "positiveEvidence": [
+        "Electra tariff article dated 1 July 2026 explicitly binds the Italy row to 0.69 EUR/kWh via Electra app and 0.79 EUR/kWh by bank card at terminal.",
+        "The same article states the prices apply to Electra app, Autocharge and card-terminal sessions and separates possible RFID costs.",
+        "Current Electra+ documentation says variable prices concern France, Belgium and Spain; Italy is therefore not in the variable-pricing group."
+      ],
+      "negativePaths": [
+        "Prior run48 extraction could prove fixed Italy pricing but not bind the numeric row reliably; this is superseded by the explicit current help-center Italy table.",
+        "Third-party eMSP/ChargeLeague tariffs are not substituted for direct CPO pricing.",
+        "Expired 2025 Italian promotional prices are historical only and not applied."
+      ],
+      "coverage": {"rankableDirectEvse":514,"uncoveredEvse":0,"reason":"current first-party Electra tariff table explicitly publishes Italy-wide direct prices"},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run49: ELC promoted active->treated after first-party Electra help center explicitly bound Italy to 0.69 EUR/kWh app/Autocharge and 0.79 EUR/kWh bank-card terminal pricing."
+    }
+  ],
+  "countsAfter": {"treated":32,"partial":10,"setAside":1,"active":41,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88,"observedEvse":75025},
+  "queueImpact": {"firstPassRemaining":0,"newlyTreatedCpos":["ELC"],"newRankableEvse":514,"aliasesResolved":[],"remainingNetworkOrClassWideCandidates":[],"classWideQueueExhausted":true,"remainingStationLevelActive":41,"atlanteLast":true},
+  "consistency": {"statusSumCanonical":84,"expectedCanonical":84,"equation":"32+10+1+41=84","aliasesCountedOutsideCanonical":4,"inventoryPartyIds":88,"physicalEquation":"84+4=88","duplicateCanonicalPartyIds":0,"atlanteSetAside":true,"canonicalPhysicalSnapshotStillStale":true,"result":"pass_with_known_snapshot_staleness"},
+  "historyAppend": [
+    "2026-09-07 run49: fresh first-party Electra tariff table resolved the numeric country-row ambiguity left by run48 and safely promoted ELC.",
+    "2026-09-07 run49: network/class-wide queue rechecked after ELC promotion and is empty again."
+  ]
+}
