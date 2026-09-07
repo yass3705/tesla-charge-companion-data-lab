@@ -23,10 +23,7 @@
       "paymentMethods": ["EnerApp", "guest direct flow"],
       "eligibility": "prices explicitly stated as valid on Enerhub charging stations; roaming partner networks excluded",
       "officialUrls": ["https://enerhub.it/ricarica/", "https://enerhub.it/"],
-      "positiveEvidence": [
-        "Current first-party Enerhub charging page states the four direct tariffs and exact AC/DC power ceilings.",
-        "First-party page explicitly labels the app prices as valid on the Enerhub network and separates partner roaming networks."
-      ],
+      "positiveEvidence": ["Current first-party Enerhub charging page states the four direct tariffs and exact AC/DC power ceilings.", "First-party page explicitly labels the app prices as valid on the Enerhub network and separates partner roaming networks."],
       "negativePaths": ["Third-party/eMSP tariffs are excluded from direct CPO ranking.", "Partner roaming visible in EnerApp is not assigned Enerhub direct prices."],
       "coverage": {"rankableDirectEvse": 139, "uncoveredEvse": 0, "coveragePct": 100},
       "confidence": "high",
@@ -43,52 +40,80 @@
       "stations": 44,
       "tariffModel": "network-wide AC tariff",
       "tariffChannel": "direct CPO EVO / Convergenze",
-      "tariffs": [
-        {"channel": "direct EVO", "class": "AC Type 2 22 kW", "energyEurPerKwh": 0.60, "unit": "EUR/kWh", "vatIncluded": true}
-      ],
+      "tariffs": [{"channel": "direct EVO", "class": "AC Type 2 22 kW", "energyEurPerKwh": 0.60, "unit": "EUR/kWh", "vatIncluded": true}],
       "fees": [{"type": "preauthorisation", "amountEur": 35.00, "chargedAsFinalFee": false, "note": "only actual charging cost is debited after session"}],
       "paymentMethods": ["EVO card", "smartphone/web portal"],
       "eligibility": "direct Convergenze EVO network; first-party page describes EVO stations as dual Type 2 22 kW points",
       "officialUrls": ["https://convergenze.it/it/servizi/energia/evo"],
-      "positiveEvidence": [
-        "Current first-party EVO page states 60 euro-cents/kWh VAT included.",
-        "The same page defines EVO as Convergenze's own charging network and describes its stations as two Type 2 IEC62196 22 kW sockets.",
-        "The direct flow supports Card or smartphone and uses a EUR35 preauthorisation with only actual charging cost finally charged."
-      ],
+      "positiveEvidence": ["Current first-party EVO page states 60 euro-cents/kWh VAT included.", "The same page defines EVO as Convergenze's own charging network and describes its stations as two Type 2 IEC62196 22 kW sockets.", "The direct flow supports Card or smartphone and uses a EUR35 preauthorisation with only actual charging cost finally charged."],
       "negativePaths": ["Household electricity offers from Convergenze are unrelated and excluded.", "No roaming/eMSP price substituted for direct EVO tariff."],
       "coverage": {"rankableDirectEvse": 90, "uncoveredEvse": 0, "coveragePct": 100},
       "confidence": "high",
       "lastInvestigated": "2026-09-07",
       "lastChanged": "2026-09-07",
       "historyAppend": "2026-09-07 run38: CVG active→treated; 90/90 EVSE rankable under current direct EVO tariff."
+    },
+    {
+      "partyId": "FLY",
+      "canonicalName": "FlyElectric srl",
+      "status": "treated",
+      "priority": "network-wide",
+      "evse": 50,
+      "stations": 29,
+      "tariffModel": "single direct network tariff independent of 22/50 kW connector",
+      "tariffChannel": "direct CPO flyElectric app/RFID",
+      "tariffs": [{"channel": "flyElectric own network", "class": "22 kW or 50 kW", "energyEurPerKwh": 0.69, "unit": "EUR/kWh"}],
+      "paymentMethods": ["flyElectric app", "RFID card", "card saved in app"],
+      "eligibility": "own flyElectric charging stations only; roaming explicitly priced separately",
+      "officialUrls": ["https://flyelectric.it/home", "https://flyelectric.it/faq"],
+      "positiveEvidence": ["Current first-party home page states 'Un unico prezzo per tutto' and 0.69 EUR/kWh for both 22 kW and 50 kW charging.", "The same first-party page explicitly states roaming tariff separately at 0.74 EUR/kWh.", "FAQ confirms own-network and roaming chargers coexist in the app and station detail exposes power and price."],
+      "negativePaths": ["0.74 EUR/kWh roaming tariff is not assigned to FLY direct CPO EVSE."],
+      "coverage": {"rankableDirectEvse": 50, "uncoveredEvse": 0, "coveragePct": 100},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run38: FLY active→treated; 50/50 EVSE rankable at current direct 0.69 EUR/kWh tariff."
+    },
+    {
+      "partyId": "BPA",
+      "canonicalName": "ELECTRIEASE SRL",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 124,
+      "stations": 78,
+      "tariffModel": "white-label CPMS with CPO-selected end-user price profile",
+      "tariffChannel": "direct QR/POS or partner-branded app depending on managed CPO",
+      "blockage": "ElectriEase is a white-label platform and its payment product lets each CPO choose the end-user price profile; no platform-wide direct tariff exists",
+      "resumeCondition": "map each IT*BPA EVSE to owning/managed CPO and exact EASEpayment/app tariff payload; fail-close unmatched EVSE",
+      "officialUrls": ["https://www.electriease.com/it/clienti/", "https://www.electriease.com/it/entra-in-vigore-la-normativa-afir-sui-pagamenti-per-le-ricariche-elettriche/"],
+      "positiveEvidence": ["First-party site describes ElectriEase as a white-label EV charging platform used by multiple CPO categories.", "First-party EASEpayment article states the CPO can collect directly and decide the price profile applied to the end user."],
+      "negativePaths": ["No BeaglePlug/eMSP tariff may be promoted as a direct ElectriEase network tariff."],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run38: BPA locked station-level; platform-wide tariff search closed."
+    },
+    {
+      "partyId": "TCA",
+      "canonicalName": "T-CARICA S.R.L.",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 123,
+      "stations": 64,
+      "tariffModel": "direct tariff not currently established; known public tariff evidence is eMSP-specific",
+      "tariffChannel": "direct CPO unknown / ElectriEase-BeaglePlug eMSP separately observed",
+      "blockage": "published 0.55/0.65/0.70 EUR/kWh values found in public reporting are explicitly associated with ElectriEase-BeaglePlug, not proven as T-Carica direct ad-hoc prices",
+      "resumeCondition": "obtain current T-Carica native QR/app/direct-payment payload or first-party direct tariff document and map to IT*TCA EVSE",
+      "negativePaths": ["Do not transpose BeaglePlug/eMSP AC/Fast/Ultrafast prices to direct CPO ranking."],
+      "confidence": "medium-high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run38: TCA locked station-level; eMSP prices explicitly separated from direct CPO evidence."
     }
   ],
-  "countsAfter": {"treated": 26, "partial": 10, "setAside": 1, "active": 49, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
-  "queueImpact": {
-    "firstPassRemaining": 0,
-    "newlyTreatedCpos": ["ENH", "CVG"],
-    "newRankableEvse": 229,
-    "remainingNetworkOrClassWideCandidates": [],
-    "classWideQueueExhausted": true,
-    "aliasesResolved": [],
-    "atlanteLast": true
-  },
-  "consistency": {
-    "statusSumCanonical": 86,
-    "expectedCanonical": 86,
-    "equation": "26+10+1+49=86",
-    "aliasesCountedOutsideCanonical": 2,
-    "inventoryPartyIds": 88,
-    "duplicateCanonicalPartyIds": 0,
-    "atlanteSetAside": true,
-    "firstPassComplete": "86/86",
-    "canonicalPhysicalSnapshotStillStale": true,
-    "result": "pass-with-known-stale-physical-canonical"
-  },
+  "countsAfter": {"treated": 27, "partial": 10, "setAside": 1, "active": 48, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
+  "queueImpact": {"firstPassRemaining": 0, "newlyTreatedCpos": ["ENH", "CVG", "FLY"], "newRankableEvse": 279, "remainingNetworkOrClassWideCandidates": [], "classWideQueueExhausted": true, "stationLevelClassificationAdvanced": ["BPA", "TCA"], "aliasesResolved": [], "atlanteLast": true},
+  "consistency": {"statusSumCanonical": 86, "expectedCanonical": 86, "equation": "27+10+1+48=86", "aliasesCountedOutsideCanonical": 2, "inventoryPartyIds": 88, "duplicateCanonicalPartyIds": 0, "atlanteSetAside": true, "firstPassComplete": "86/86", "canonicalPhysicalSnapshotStillStale": true, "result": "pass-with-known-stale-physical-canonical"},
   "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run38.json"],
-  "historyAppend": [
-    "2026-09-07 run38: discovered two overlooked deterministic direct tariffs and promoted ENH and CVG.",
-    "2026-09-07 run38: +229 rankable EVSE; counts advanced to 26/10/1/49.",
-    "2026-09-07 run38: roaming/partner prices kept separate and Atlante remains last."
-  ]
+  "historyAppend": ["2026-09-07 run38: discovered three overlooked deterministic direct tariffs and promoted ENH, CVG and FLY.", "2026-09-07 run38: +279 rankable EVSE; counts advanced to 27/10/1/48.", "2026-09-07 run38: BPA and TCA locked station-level with direct-vs-eMSP separation; Atlante remains last."]
 }
