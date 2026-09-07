@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 31,
+  "generatedAt": "2026-09-07T04:51:15+01:00",
+  "priorityOrder": ["network-wide", "class-wide", "station-level"],
+  "classWideOpen": ["CGS", "ALL"],
+  "investigated": [
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "evse": 1137,
+      "stations": 523,
+      "result": "station-level confirmed / no safe network-wide promotion",
+      "positiveEvidence": [
+        "Adiconsum/TariffEV March 2026 observes a proprietary HERA app price for DC Fast, proving a native retail channel exists.",
+        "The same current market evidence also shows materially different roaming prices on HERA, so roaming must remain separate from direct CPO pricing."
+      ],
+      "negativePaths": [
+        "Current Hera official public pages searched do not expose a current nationwide EV public-charging tariff grid.",
+        "Historical Hera Ricarica Pubblica flat/pay-per-use offers are not promoted because current applicability to the canonical IT*HER inventory is not proven."
+      ],
+      "blockage": "native current EVSE/station tariff payload is not publicly mapped to the 1,137 canonical EVSE",
+      "resumeCondition": "capture the current HERA native app/backend or station QR payload and join each IT*HER EVSE to its exact direct price; keep eMSP roaming prices separate",
+      "confidence": "high"
+    },
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "evse": 849,
+      "stations": 296,
+      "result": "station-level confirmed with current PUN price variability",
+      "positiveEvidence": [
+        "Current PUN-backed station pages expose different EMOBITALY direct prices at different locations.",
+        "Examples observed: Gallarate AC 0.45 EUR/kWh plus 0.74 EUR activation and DC 0.60 EUR/kWh plus 0.74 EUR activation; San Vito dei Normanni AC examples differ at 0.50 and 0.59 EUR/kWh."
+      ],
+      "blockage": "price varies by station/EVSE; no deterministic network-wide rule proven",
+      "resumeCondition": "bulk join canonical IT*EMO EVSE to current PUN/native station tariffs, including activation fee and connector class, and fail-close missing/ambiguous EVSE",
+      "confidence": "high"
+    }
+  ],
+  "queueImpact": {
+    "newlyTreatedCpos": [],
+    "newRankableEvse": 0,
+    "stationLevelClassificationAdvanced": ["HER", "EMO"],
+    "remainingClassWideCandidates": ["CGS", "ALL"],
+    "atlanteLast": true
+  },
+  "sources": [
+    "https://adiconsum.it/wp-content/uploads/2026/04/Marzo-2026-OSSERVATORIO-PREZZI-TARIFFE-RICARICA.pdf",
+    "https://pienotto.it/stazioni/270548-emobitaly-s-r-l-gallarate-va",
+    "https://pienotto.it/stazioni/266379-emobitaly-s-r-l-san-martino-siccomario-pv",
+    "https://pienotto.it/stazioni/262826-emobitaly-s-r-l-san-vito-dei-normanni-br"
+  ]
+}
