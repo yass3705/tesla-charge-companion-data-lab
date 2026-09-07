@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 44,
+  "generatedAt": "2026-09-07T17:50:29+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run43-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "TSL",
+      "canonicalName": "Tesla Italia Srl.",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 2399,
+      "stations": 617,
+      "tariffModel": "site_and_vehicle_class_specific_dynamic",
+      "tariffChannel": "direct Tesla Supercharger",
+      "fees": [{"type":"congestion_fee_typical","value":0.50,"unit":"EUR/min","country":"IT"}],
+      "officialUrls": [
+        "https://www.tesla.com/it_it/support/charging/supercharger/fees",
+        "https://www.tesla.com/it_IT/findus/"
+      ],
+      "positiveEvidence": [
+        "Tesla's current Italy support page confirms Italy-specific congestion fees and states charging costs are billed according to the selected Tesla-app payment method.",
+        "Current Tesla Find Us station pages expose separate pricing sections for Tesla/members and non-Tesla vehicles, confirming site/eligibility-specific pricing rather than one national deterministic energy price."
+      ],
+      "negativePaths": [
+        "No national EUR/kWh energy value from the congestion-fee page is used as a charging tariff.",
+        "Search-engine snippets or third-party averages are not propagated to IT*TSL EVSE."
+      ],
+      "blockage": "Exact current energy prices are exposed per Supercharger/site and eligibility class; the public text extraction does not expose the numeric station energy prices reliably.",
+      "resumeCondition": "deterministic Tesla station identifier -> current Tesla/member/non-Tesla price payload from Tesla app/site/backend",
+      "coverage": {"rankableDirectEvse":0,"uncoveredEvse":2399,"reason":"exact station tariff mapping not yet captured"},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run44: Tesla kept active station-level; current first-party evidence confirms per-site/per-eligibility pricing and Italy congestion fee, but numeric energy tariff payload remains uncaptured."
+    },
+    {
+      "partyId": "AM1",
+      "canonicalName": "ALPHA MOBILITY SRL",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 50,
+      "stations": 15,
+      "tariffModel": "station_specific_with_minimum_and_preauthorization",
+      "tariffChannel": "direct station web checkout / RicaricaVeicolo backend",
+      "positiveEvidence": [
+        "Live Alpha Mobility-managed station pages expose different station energy prices: IT0721090094 shows 0.65 EUR/kWh while IT0721090213 shows 0.61 EUR/kWh and a discounted 0.49 EUR/kWh option.",
+        "The same backend exposes station-specific minimum charge and pre-authorization amounts, proving that these fields must be captured at station level rather than inferred network-wide."
+      ],
+      "negativePaths": [
+        "The 0.65 EUR/kWh value from one Alpha Mobility station is not generalized to all IT*AM1 EVSE.",
+        "The 0.61/0.49 EUR/kWh values from another managed station are likewise not generalized."
+      ],
+      "exampleStationIds": ["IT0721090094","IT0721090213"],
+      "blockage": "No single network-wide Alpha Mobility tariff exists in the observed native station checkout pages; exact tariff requires deterministic station/EVSE mapping.",
+      "resumeCondition": "enumerate IT*AM1 station identifiers and collect each current native station checkout tariff payload",
+      "coverage": {"rankableDirectEvse":0,"uncoveredEvse":50,"reason":"station-specific prices observed; complete EVSE mapping pending"},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run44: AM1 locked station-level after direct station checkout pages showed materially different current prices across Alpha Mobility-managed stations."
+    }
+  ],
+  "countsAfter": {"treated":30,"partial":10,"setAside":1,"active":45,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88,"observedEvse":75025},
+  "queueImpact": {"firstPassRemaining":0,"newlyTreatedCpos":[],"newRankableEvse":0,"newlyLockedStationLevel":["TSL","AM1"],"remainingNetworkOrClassWideCandidates":[],"classWideQueueExhausted":true,"atlanteLast":true},
+  "consistency": {"statusSumCanonical":86,"expectedCanonical":86,"equation":"30+10+1+45=86","aliasesCountedOutsideCanonical":2,"inventoryPartyIds":88,"duplicateCanonicalPartyIds":0,"atlanteSetAside":true,"firstPassComplete":"86/86","canonicalPhysicalSnapshotStillStale":true,"result":"pass_with_known_snapshot_staleness"},
+  "historyAppend": [
+    "2026-09-07 run44: TSL retained station-level; current Tesla first-party pages confirm site/eligibility-specific pricing, numeric energy payload still requires native station mapping.",
+    "2026-09-07 run44: AM1 retained active but definitively station-level after live Alpha Mobility-managed checkout pages showed different per-station energy prices and payment conditions."
+  ]
+}
