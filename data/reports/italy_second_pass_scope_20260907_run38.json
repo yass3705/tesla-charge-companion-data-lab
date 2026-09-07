@@ -10,10 +10,7 @@
       "inventory": {"evse": 139, "stations": 69},
       "result": "network-wide deterministic direct tariff found",
       "officialSource": "https://enerhub.it/ricarica/",
-      "directTariffs": {
-        "app": {"AC<=22kW": "0.60 EUR/kWh", "DC<=400kW": "0.79 EUR/kWh"},
-        "guest": {"AC<=22kW": "0.65 EUR/kWh", "DC<=400kW": "0.95 EUR/kWh"}
-      },
+      "directTariffs": {"app": {"AC<=22kW": "0.60 EUR/kWh", "DC<=400kW": "0.79 EUR/kWh"}, "guest": {"AC<=22kW": "0.65 EUR/kWh", "DC<=400kW": "0.95 EUR/kWh"}},
       "scopeRule": "apply only to Enerhub network EVSE; partner roaming excluded",
       "decision": "treated",
       "rankableEvseAdded": 139
@@ -29,9 +26,40 @@
       "scopeRule": "Convergenze EVO network only",
       "decision": "treated",
       "rankableEvseAdded": 90
+    },
+    {
+      "partyId": "FLY",
+      "name": "FlyElectric srl",
+      "inventory": {"evse": 50, "stations": 29},
+      "result": "network-wide deterministic direct tariff found",
+      "officialSources": ["https://flyelectric.it/home", "https://flyelectric.it/faq"],
+      "directTariffs": {"22kW_or_50kW": "0.69 EUR/kWh"},
+      "separateRoamingTariff": "0.74 EUR/kWh",
+      "scopeRule": "0.69 applies to flyElectric own stations; roaming explicitly separate",
+      "decision": "treated",
+      "rankableEvseAdded": 50
+    },
+    {
+      "partyId": "BPA",
+      "name": "ELECTRIEASE SRL",
+      "inventory": {"evse": 124, "stations": 78},
+      "result": "station-level platform-controlled pricing proven",
+      "officialSources": ["https://www.electriease.com/it/clienti/", "https://www.electriease.com/it/entra-in-vigore-la-normativa-afir-sui-pagamenti-per-le-ricariche-elettriche/"],
+      "reason": "white-label CPMS; EASEpayment explicitly allows CPO to decide end-user price profile",
+      "decision": "active/station-level",
+      "resumeCondition": "EVSE-to-owning-CPO plus exact EASEpayment/app price payload"
+    },
+    {
+      "partyId": "TCA",
+      "name": "T-CARICA S.R.L.",
+      "inventory": {"evse": 123, "stations": 64},
+      "result": "station-level direct price still unresolved",
+      "discoveryEvidence": "public 0.55/0.65/0.70 EUR/kWh AC/Fast/Ultrafast values are associated with ElectriEase-BeaglePlug rather than proven direct T-Carica ad-hoc pricing",
+      "decision": "active/station-level",
+      "resumeCondition": "native T-Carica QR/app/direct-payment payload or current first-party direct tariff"
     }
   ],
-  "delta": {"newlyTreatedCpos": 2, "newRankableEvse": 229, "countsAfter": {"treated": 26, "partial": 10, "setAside": 1, "active": 49, "canonicalTotal": 86}},
-  "consistency": {"equation": "26+10+1+49=86", "duplicateCanonicalPartyIds": 0, "atlanteSetAside": true, "physicalPartyIds": 88, "observedEvse": 75025},
+  "delta": {"newlyTreatedCpos": 3, "newRankableEvse": 279, "stationLevelClassificationAdvanced": ["BPA", "TCA"], "countsAfter": {"treated": 27, "partial": 10, "setAside": 1, "active": 48, "canonicalTotal": 86}},
+  "consistency": {"equation": "27+10+1+48=86", "duplicateCanonicalPartyIds": 0, "atlanteSetAside": true, "physicalPartyIds": 88, "observedEvse": 75025},
   "knownStructuralIssue": "docs/italy-cpo-progress-2026-09.json remains an old physical snapshot; run deltas are currently required to reconstruct effective state. No lossy overwrite performed."
 }
