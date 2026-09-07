@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 39,
+  "generatedAt": "2026-09-07T12:53:49+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run38-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "VFS",
+      "canonicalName": "VIAFAST SRL",
+      "aliases": ["VIAFAST SRL", "VFS"],
+      "status": "treated",
+      "priority": "network-wide",
+      "evse": 167,
+      "stations": 84,
+      "tariffModel": "network-wide connector/power classes",
+      "tariffChannel": "direct CPO VIAFAST",
+      "tariffs": [
+        {"class": "AC <=22 kW", "energyEurPerKwh": 0.60, "unit": "EUR/kWh"},
+        {"class": "DC FAST 60 kW / ULTRAFAST 90-180 kW", "energyEurPerKwh": 0.85, "unit": "EUR/kWh"}
+      ],
+      "fees": [{"type": "post-charge occupancy", "graceMinutes": 5, "amountEurPerMinute": 0.25, "applies": "24h/24"}],
+      "officialUrls": ["https://www.viafast.net/viafast-tariffe/"],
+      "positiveEvidence": ["Current first-party VIAFAST tariff page publishes 0.60 EUR/kWh for AC 22 kW and 0.85 EUR/kWh for DC 60 kW and ultrafast 90-180 kW.", "The same page publishes a five-minute free post-charge grace period followed by 0.25 EUR/min occupancy fee."],
+      "negativePaths": ["No roaming/eMSP tariff substituted for VIAFAST direct CPO pricing."],
+      "coverage": {"rankableDirectEvse": 167, "uncoveredEvse": 0, "coveragePct": 100},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run39: VFS active→treated; 167/167 EVSE rankable from current first-party VIAFAST tariffs."
+    },
+    {
+      "partyId": "ENB",
+      "canonicalName": "ENERBROKER S.R.L. (R-ev)",
+      "aliases": ["ENERBROKER S.R.L. (R-ev)", "R-ev", "ENB"],
+      "status": "treated",
+      "priority": "network-wide",
+      "evse": 87,
+      "stations": 73,
+      "tariffModel": "network-wide AC/DC/HPC wallet classes",
+      "tariffChannel": "direct R-ev app/wallet on R-ev infrastructure",
+      "tariffs": [
+        {"class": "AC", "energyEurPerKwh": 0.65, "unit": "EUR/kWh", "vatIncluded": true},
+        {"class": "DC <=150 kW", "energyEurPerKwh": 0.85, "unit": "EUR/kWh", "vatIncluded": true},
+        {"class": "DC >150 kW HPC", "energyEurPerKwh": 0.89, "unit": "EUR/kWh", "vatIncluded": true}
+      ],
+      "fees": [{"type": "extra-stay", "amountEurPerMinute": 0.25, "note": "AC has a 23:00-07:00 exemption window under current terms; DC/HPC apply 24h, subject to detailed conditions."}],
+      "paymentMethods": ["R-ev app wallet", "RFID", "credit/prepaid card", "PayPal"],
+      "eligibility": "direct R-ev infrastructure; third-party CPO roaming is explicitly distinguished in current terms",
+      "officialUrls": ["https://www.r-ev.it/tariffe/", "https://www.r-ev.it/termini-di-utilizzo-abbonamenti/", "https://www.r-ev.it/termini-di-utilizzo-app/"],
+      "positiveEvidence": ["Current first-party R-ev terms publish Wallet tariffs of 0.65/0.85/0.89 EUR/kWh for AC/DC<=150/HPC>150 kW, VAT included.", "R-ev documentation explicitly distinguishes its own network from third-party CPO roaming and states included plan kWh are usable only on R-ev infrastructure."],
+      "negativePaths": ["Third-party CPO prices visible in R-ev are not assigned to ENB direct CPO EVSE."],
+      "coverage": {"rankableDirectEvse": 87, "uncoveredEvse": 0, "coveragePct": 100},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run39: ENB active→treated; 87/87 EVSE rankable using direct R-ev Wallet classes."
+    },
+    {
+      "partyId": "A22",
+      "canonicalName": "Autostrada del Brennero S.p.A.",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 80,
+      "stations": 17,
+      "tariffModel": "station/type-specific first-party price cards",
+      "tariffChannel": "direct A22",
+      "pricesObserved": [
+        {"class": "AC up to 22 kW", "energyEurPerKwh": 0.33},
+        {"class": "multi-standard up to 50 kW DC / 43 kW AC", "energyEurPerKwh": 0.38},
+        {"class": "ultrafast up to 180 kW", "energyEurPerKwh": 0.43, "note": "not uniform; at least one official station card exposes ultrafast at 0.38 EUR/kWh"}
+      ],
+      "officialUrls": ["https://www.autobrennero.it/it/sostenibilita/elettrico/", "https://www.autobrennero.it/it/servizi/aree-di-servizio/"],
+      "positiveEvidence": ["Current A22 first-party pages expose exact per-station charger types and prices.", "AC 22 kW cards are shown at 0.33 EUR/kWh, multi-standard at 0.38 EUR/kWh, and many ultrafast 180 kW cards at 0.43 EUR/kWh."],
+      "negativePaths": ["Do not generalize 0.43 EUR/kWh to every ultrafast A22 charger: first-party station listings include at least one ultrafast card at 0.38 EUR/kWh."],
+      "blockage": "EVSE-to-current A22 station-card mapping is required before ranking because same broad charger class can have different station prices.",
+      "resumeCondition": "join IT*A22 EVSE/station names to current first-party A22 station cards and assign only exact card price; fail-close unmatched EVSE",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run39: A22 locked station-level after first-party evidence showed non-uniform ultrafast price across stations."
+    }
+  ],
+  "countsAfter": {"treated": 29, "partial": 10, "setAside": 1, "active": 46, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
+  "queueImpact": {"firstPassRemaining": 0, "newlyTreatedCpos": ["VFS", "ENB"], "newRankableEvse": 254, "remainingNetworkOrClassWideCandidates": [], "classWideQueueExhausted": true, "stationLevelClassificationAdvanced": ["A22"], "aliasesResolved": ["R-ev→ENB/Enerbroker"], "atlanteLast": true},
+  "consistency": {"statusSumCanonical": 86, "expectedCanonical": 86, "equation": "29+10+1+46=86", "aliasesCountedOutsideCanonical": 2, "inventoryPartyIds": 88, "duplicateCanonicalPartyIds": 0, "atlanteSetAside": true, "firstPassComplete": "86/86", "canonicalPhysicalSnapshotStillStale": true, "result": "pass-with-known-stale-physical-canonical"},
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run39.json"],
+  "historyAppend": ["2026-09-07 run39: promoted VIAFAST and R-ev/Enerbroker from active to treated using current deterministic first-party tariff grids.", "2026-09-07 run39: +254 rankable EVSE; counts advanced to 29/10/1/46.", "2026-09-07 run39: A22 locked station-level because official ultrafast price is not uniform across station cards; exact EVSE-to-station mapping required."]
+}
