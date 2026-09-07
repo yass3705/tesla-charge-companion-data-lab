@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "country": "IT",
   "run": 34,
-  "generatedAt": "2026-09-07T08:10:00+01:00",
+  "generatedAt": "2026-09-07T08:24:00+01:00",
   "dependsOn": ["docs/italy-cpo-progress-2026-09-run33-delta.json"],
   "classificationUpdates": [
     {
@@ -14,12 +14,8 @@
       "stations": 316,
       "tariffModel": "host/site-configured retail pricing",
       "tariffChannel": "native Sagelio point/session",
-      "positiveEvidence": [
-        "Sagelio first-party 2026 host guidance says there is no tariff valid for all contexts and explains host/site economics drive the retail tariff."
-      ],
-      "negativePaths": [
-        "0.59 EUR/kWh in Sagelio article is a worked example only and must not be promoted network-wide"
-      ],
+      "positiveEvidence": ["Sagelio first-party 2026 host guidance says there is no tariff valid for all contexts and explains host/site economics drive the retail tariff."],
+      "negativePaths": ["0.59 EUR/kWh in Sagelio article is a worked example only and must not be promoted network-wide"],
       "blockage": "exact direct tariff varies by host/site",
       "resumeCondition": "map IT*SAG EVSE to native point/QR/session payload and exact current tariff components",
       "officialUrls": ["https://sagelio.com/blog/monetizzare-la-ricarica-come-impostare-le-tariffe-per-i-tuoi-clienti/"],
@@ -38,9 +34,10 @@
       "tariffModel": "point-specific pricing under Uattzy/UAU",
       "tariffChannel": "Uattzy app / RFID",
       "aliases": ["GASGAS S.R.L.", "Uattzy/UAU corporate family"],
+      "positiveEvidence": ["Uattzy FAQ states exact tariff and any activation/parking costs are displayed for each connector before charging."],
       "blockage": "exact current direct price requires point-selected Uattzy payload",
       "resumeCondition": "extract Uattzy native point payload for IT*GAS EVSE; fail-close unmatched EVSE",
-      "officialUrls": ["https://www.uattzy.com/"],
+      "officialUrls": ["https://www.uattzy.com/", "https://www.uattzy.com/faq/"],
       "confidence": "high",
       "lastInvestigated": "2026-09-07",
       "lastChanged": "2026-09-07",
@@ -56,13 +53,47 @@
       "tariffModel": "point-specific pricing under Uattzy/UAU",
       "tariffChannel": "Uattzy app / RFID",
       "aliases": ["UAU srl", "Uattzy"],
+      "positiveEvidence": ["Uattzy FAQ states exact tariff and any activation/parking costs are displayed for each connector before charging."],
       "blockage": "exact current direct price requires point-selected Uattzy payload",
       "resumeCondition": "extract Uattzy native point payload for IT*UTZ EVSE; fail-close unmatched EVSE",
-      "officialUrls": ["https://www.uattzy.com/"],
+      "officialUrls": ["https://www.uattzy.com/", "https://www.uattzy.com/faq/"],
       "confidence": "high",
       "lastInvestigated": "2026-09-07",
       "lastChanged": "2026-09-07",
       "historyAppend": "2026-09-07 run34: UTZ locked station-level; no unsafe family-wide tariff propagation or deduplication."
+    },
+    {
+      "partyId": "ALL",
+      "canonicalName": "Allego Italy",
+      "status": "active",
+      "priority": "station-level",
+      "previousPriority": "class-wide",
+      "evse": 28,
+      "stations": 8,
+      "tariffModel": "official native station/EVSE direct tariff",
+      "tariffChannel": "direct Allego / ad-hoc",
+      "positiveEvidence": [
+        "Official Milano station page exposes 0.805 EUR/kWh DC with four exact 300 kW EVSE: ITALLEGO0100082, ITALLEGO0100071, ITALLEGO0100072, ITALLEGO0100081.",
+        "Repository already contains scripts/allego_station_tariffs.py implementing official station-page and app.allego.eu/price/<EVSE> exact-price extraction for France."
+      ],
+      "fees": {"hpcOverstayItaly": {"price": 0.253, "unit": "EUR/min", "startsAfterMinutes": 45}},
+      "negativePaths": [
+        "Do not apply a rounded national speed-band tariff when an official station page gives an exact direct value.",
+        "Do not infer all 28 EVSE from the known Milano 300 kW station."
+      ],
+      "exampleEvseIds": ["ITALLEGO0100082", "ITALLEGO0100071", "ITALLEGO0100072", "ITALLEGO0100081"],
+      "blockage": "all eight inventory stations / 28 EVSE must be exhaustively joined to official station pages or exact EVSE price endpoints",
+      "resumeCondition": "adapt/run scripts/allego_station_tariffs.py for Italy; require deterministic match for every EVSE and fail-close unmatched EVSE",
+      "officialUrls": [
+        "https://www.allego.eu/charging-station/via-giovanni-battista-cassinis-16-milano/",
+        "https://www.allego.eu/pricing/",
+        "https://www.allego.eu/overstay-fee/"
+      ],
+      "repoEvidence": ["scripts/allego_station_tariffs.py"],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run34: ALL moved class-wide -> station-level because native Allego station pages expose exact station/EVSE direct prices; exact collector path identified."
     }
   ],
   "countsAfter": {"treated": 23, "partial": 10, "setAside": 1, "active": 52, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
@@ -70,9 +101,9 @@
     "firstPassRemaining": 0,
     "newlyTreatedCpos": [],
     "newRankableEvse": 0,
-    "remainingClassWideCandidates": ["CGS", "ALL"],
-    "stationLevelClassificationAdvanced": ["SAG", "GAS", "UTZ"],
-    "remainingStationLevelActiveApprox": 50,
+    "remainingClassWideCandidates": ["CGS"],
+    "stationLevelClassificationAdvanced": ["SAG", "GAS", "UTZ", "ALL"],
+    "remainingStationLevelActiveApprox": 51,
     "aliasReview": {"family": ["ESH", "GAS", "UTZ"], "decision": "document corporate family but do not deduplicate without physical inventory overlap/partyId continuity proof"},
     "atlanteLast": true
   },
@@ -92,6 +123,7 @@
   "historyAppend": [
     "2026-09-07 run34: SAG locked station-level from first-party site-configured tariff model.",
     "2026-09-07 run34: GAS and UTZ locked station-level under point-specific Uattzy pricing; corporate family preserved without unsafe deduplication.",
+    "2026-09-07 run34: ALL moved class-wide to station-level after native exact station pricing/EVSE path was verified.",
     "2026-09-07 run34: counts unchanged at 23/10/1/52; no tariff generalized; Atlante remains last."
   ]
 }
