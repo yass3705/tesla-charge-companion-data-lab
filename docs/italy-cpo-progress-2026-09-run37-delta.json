@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 37,
+  "generatedAt": "2026-09-07T10:52:31+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run36-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "ELC",
+      "canonicalName": "Electra Italia s.r.l.",
+      "status": "treated",
+      "priority": "network-wide",
+      "evse": 514,
+      "stations": 81,
+      "tariffModel": "country-wide direct CPO pay-per-use tariff",
+      "tariffChannel": "Electra app / Autocharge / bank-card terminal",
+      "tariffs": [
+        {"channel": "Electra app or Autocharge", "energyEurPerKwh": 0.69, "unit": "EUR/kWh", "vatIncluded": true},
+        {"channel": "bank card at terminal", "energyEurPerKwh": 0.79, "unit": "EUR/kWh", "vatIncluded": true}
+      ],
+      "paymentMethods": ["Electra app", "Autocharge", "bank card at terminal"],
+      "eligibility": "public Electra Italy network; Electra+ subscription discounts and ChargeLeague/roaming tariffs remain separate",
+      "validFrom": null,
+      "validThrough": null,
+      "officialUrls": [
+        "https://intercom.help/go-electra/it/articles/7987274-le-nostre-tariffe-di-ricarica",
+        "https://intercom.help/go-electra/it/articles/10749707-tariffe-electra-e-prezzi-variabili",
+        "https://intercom.help/go-electra/it/articles/15180231-abbonamenti-electra"
+      ],
+      "positiveEvidence": [
+        "2026-07-01 first-party tariff article states Italy AC-DC public charging is 0.69 EUR/kWh via app and 0.79 EUR/kWh by card, VAT included.",
+        "2026-07-07 first-party variable-pricing article limits station/time variable pricing to France, Belgium and Spain, excluding Italy."
+      ],
+      "negativePaths": [
+        "RFID/eMSP extra costs not promoted as direct tariff.",
+        "Electra+ discounts not substituted for public tariff.",
+        "ChargeLeague partner-network rates kept separate."
+      ],
+      "coverage": {"rankableDirectEvse": 514, "uncoveredEvse": 0, "coveragePct": 100},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run37: ELC promoted active→treated after current first-party Italy country tariff verification; 514/514 EVSE rankable under direct native public tariff."
+    },
+    {
+      "partyId": "IOY",
+      "canonicalName": "IONITY GMBH",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 313,
+      "stations": 43,
+      "tariffModel": "charger-price potentially above published country minimum",
+      "tariffChannel": "IONITY app / direct QR",
+      "blockage": "current official country values are explicitly minimum prices and an individual charger price may be higher",
+      "resumeCondition": "join each IT*IOY EVSE to current IONITY station/QR/app exact price; fail-close unmatched EVSE",
+      "officialUrls": ["https://www.ionity.eu/de/netzwerk/zugang-und-zahlung"],
+      "negativePaths": ["Do not promote current Italy minimum country prices as exact network-wide tariff."],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run37: IOY explicitly rejected as network-wide despite current Italy country price table because first-party terms allow higher charger-specific price."
+    }
+  ],
+  "countsAfter": {"treated": 24, "partial": 10, "setAside": 1, "active": 51, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
+  "queueImpact": {
+    "firstPassRemaining": 0,
+    "newlyTreatedCpos": ["ELC"],
+    "newRankableEvse": 514,
+    "remainingNetworkOrClassWideCandidates": [],
+    "classWideQueueExhausted": true,
+    "stationLevelClassificationAdvanced": ["IOY"],
+    "aliasesResolved": [],
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "24+10+1+51=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "inventoryPartyIds": 88,
+    "duplicateCanonicalPartyIds": 0,
+    "atlanteSetAside": true,
+    "firstPassComplete": "86/86",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "result": "pass-with-known-stale-physical-canonical"
+  },
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run37.json"],
+  "historyAppend": [
+    "2026-09-07 run37: corrected queue-audit miss: ELC still had a deterministic current Italy network-wide tariff and is now treated.",
+    "2026-09-07 run37: IOY moved explicitly to station-level because published country values are minimums and charger price may be higher.",
+    "2026-09-07 run37: counts advanced to 24/10/1/51; +514 rankable EVSE; Atlante remains last."
+  ]
+}
