@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 41,
+  "generatedAt": "2026-09-07T14:58:33+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run40-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "UFC",
+      "canonicalName": "E.ON DRIVE INFRASTRUCTURE ITALY S.R.L.",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 48,
+      "stations": 15,
+      "tariffModel": "location/type/payment-method specific",
+      "tariffChannel": "direct ad-hoc at charger/QR; roaming eMSP separate",
+      "officialUrls": ["https://www.edri.com/faq", "https://www.edri.com/en-de/faq"],
+      "positiveEvidence": [
+        "Current E.ON Drive Infrastructure FAQ states ad-hoc prices are set by E.ON Drive based on local energy costs, infrastructure and market conditions.",
+        "Current FAQ states charging prices vary by location, charger type (AC/DC) and payment method and that the current ad-hoc price is shown on the charger screen.",
+        "Current FAQ explicitly separates roaming-card pricing from direct payment and notes idle fees may apply only at some sites and are displayed before charging."
+      ],
+      "negativePaths": [
+        "No deterministic current Italy-wide AC/DC/HPC grid found on the first-party EDRI pages.",
+        "No eMSP/roaming tariff substituted for direct CPO pricing."
+      ],
+      "blockage": "No bulk deterministic IT*UFC EVSE -> current direct ad-hoc price mapping has been obtained; first-party pricing is site/type/payment dependent.",
+      "resumeCondition": "capture charger-screen/QR/weblink or EDRI public/backend payload per IT*UFC EVSE, preserving payment method and any idle fee; fail-close unmatched EVSE",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run41: UFC/E.ON Drive Infrastructure Italy locked station-level from current first-party FAQ; network-wide path closed pending new deterministic evidence."
+    }
+  ],
+  "countsAfter": {"treated": 29, "partial": 10, "setAside": 1, "active": 46, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
+  "queueImpact": {"firstPassRemaining": 0, "newlyTreatedCpos": [], "newRankableEvse": 0, "remainingNetworkOrClassWideCandidates": [], "classWideQueueExhausted": true, "stationLevelClassificationAdvanced": ["UFC"], "atlanteLast": true},
+  "consistency": {"statusSumCanonical": 86, "expectedCanonical": 86, "equation": "29+10+1+46=86", "aliasesCountedOutsideCanonical": 2, "inventoryPartyIds": 88, "duplicateCanonicalPartyIds": 0, "atlanteSetAside": true, "firstPassComplete": "86/86", "canonicalPhysicalSnapshotStillStale": true, "result": "pass"},
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run41.json"],
+  "historyAppend": ["2026-09-07 run41: E.ON Drive Infrastructure Italy/UFC moved to a fully documented station-level investigation path; no current global tariff may be propagated."]
+}
