@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 40,
+  "generatedAt": "2026-09-07T13:55:36+01:00",
+  "scope": "second-pass station-level classification plus canonical-state repair tooling",
+  "findings": [
+    {
+      "partyId": "NRG",
+      "canonicalName": "NRG4YOU SRL",
+      "evse": 136,
+      "stations": 76,
+      "decision": "keep active; lock station-level; do not repeat network-wide tariff search without new evidence",
+      "priority": "station-level",
+      "tariffModel": "installation/site-specific or backend-specific; no current public network-wide direct tariff established",
+      "tariffChannel": "direct CPO not yet resolved; third-party/eMSP values excluded",
+      "positiveEvidence": [
+        "Current first-party NRG4YOU site describes EV charging stations as customized solutions and presents installation/project activity rather than a uniform public charging tariff product.",
+        "Current first-party charging-map page is publicly reachable but does not publish a deterministic network-wide price grid in the indexed content."
+      ],
+      "negativePaths": [
+        "No current official AC/DC/HPC network tariff grid found on NRG4YOU tariff, service, map or current-site pages.",
+        "No third-party roaming price promoted as direct NRG4YOU price."
+      ],
+      "officialUrls": [
+        "https://www.nrg4you.it/",
+        "https://www.nrg4you.it/mappa-colonnine-ricarica-auto-elettriche/"
+      ],
+      "blockage": "A deterministic EVSE/station -> current direct NRG4YOU price mapping is not exposed by the indexed first-party public pages.",
+      "resumeCondition": "obtain per-EVSE/QR/app/backend tariff payload or a new first-party deterministic network/class tariff grid; otherwise fail-close unmatched EVSE",
+      "confidence": "medium-high",
+      "lastInvestigated": "2026-09-07"
+    },
+    {
+      "partyId": "CPO",
+      "canonicalName": "Nucleo - Special Concepts srl",
+      "evse": 160,
+      "stations": 41,
+      "decision": "retain active station-level; no network-wide promotion",
+      "priority": "station-level",
+      "tariffModel": "site/brand-owner-specific",
+      "tariffChannel": "direct/ad-hoc at individual hosted networks; Charge Assist observed for Coop Power sites",
+      "positiveEvidence": [
+        "Nucleo is the technology/operator partner behind Coop Liguria's Coop Power sites, where public prices are site/brand-specific (0.39 EUR/kWh AC and from 0.49 EUR/kWh DC in the published 2025 launch evidence).",
+        "Those values are evidence for the Coop Power subset only, not for all 160 Nucleo partyId EVSE."
+      ],
+      "negativePaths": [
+        "Do not propagate Coop Power subset pricing to all Nucleo/Special Concepts EVSE.",
+        "No current first-party deterministic tariff grid covering the complete Nucleo partyId inventory was established in this run."
+      ],
+      "blockage": "Need deterministic inventory partition by hosted brand/site and exact current direct tariff for each subpopulation.",
+      "resumeCondition": "join IT*CPO EVSE to hosted network/site identity, then use exact native/QR/Charge Assist price for each matched subpopulation; fail-close the rest",
+      "confidence": "medium",
+      "lastInvestigated": "2026-09-07"
+    }
+  ],
+  "canonicalRepair": {
+    "problem": "docs/italy-cpo-progress-2026-09.json remains the stale pre-delta snapshot",
+    "action": "added scripts/italy_cpo_progress_consolidate.py to losslessly merge numeric run deltas by partyId, preserve metadata/history, recompute counts and fail closed on duplicates/inventory mismatch",
+    "commit": "8c320d8c7dc71a8eeb0eff41db1f71fd6b1df104",
+    "note": "The canonical file itself is not overwritten until the consolidator is executed against the full branch checkout; this avoids destructive partial reconstruction."
+  },
+  "queue": {
+    "networkOrClassWideCandidatesRemaining": 0,
+    "stationLevelAdvanced": ["NRG", "CPO"],
+    "atlanteLast": true
+  }
+}
