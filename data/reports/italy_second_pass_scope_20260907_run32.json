@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 32,
+  "generatedAt": "2026-09-07T05:50:29+01:00",
+  "scope": "second-pass class-wide-first then station-level",
+  "findings": [
+    {
+      "partyId": "CGS",
+      "canonicalName": "COGESER ENERGIA SRL",
+      "evse": 60,
+      "stations": 27,
+      "classification": "active/class-wide",
+      "positiveEvidence": [
+        "Official Cogeser public charging page: Quick Cogeser Energia AC tariff 0.67 EUR/kWh VAT included, effective 2025-10-01; eligible bill-debit customers 0.49 EUR/kWh; roaming explicitly separate.",
+        "Official Cogeser Inzago announcement: own-network site includes one Circontrol Rapid 25 kW DC charger and one eVolve 22 kW AC charger, proving the physical Cogeser network is not AC-only."
+      ],
+      "negativePaths": [
+        "Do not propagate 0.67 EUR/kWh to all CGS EVSE because official tariff table labels it Quick/AC while official own-network inventory includes DC.",
+        "Do not use non-Cogeser roaming tariffs 0.73 AC / 0.89 DC as direct CPO prices."
+      ],
+      "resumeCondition": "deterministic canonical IT*CGS EVSE-to-AC/DC/Quick/Fast mapping plus current direct tariff for the DC class; AC Quick subset may then be promoted exactly",
+      "confidence": "high"
+    },
+    {
+      "partyId": "ALL",
+      "canonicalName": "Allego Italy S.r.l.",
+      "evse": 28,
+      "stations": 8,
+      "classification": "active/class-wide",
+      "positiveEvidence": [
+        "Current Allego Italy pricing exposes distinct pay-as-you-go power classes, including Fast 150 kW and Ultrafast 350 kW.",
+        "Official Allego Florence/Tamoil announcement identifies two Alpitronic 300 kW chargers at an Italian Allego site, deterministically placing those connectors in the ultrafast class."
+      ],
+      "negativePaths": [
+        "Do not assign a tariff to all 28 ALL EVSE without canonical EVSE power mapping.",
+        "Do not infer 150 kW class for unknown-power connectors."
+      ],
+      "resumeCondition": "join canonical IT*ALL EVSE connector power to Allego power classes; fail-close unknown/ambiguous connectors",
+      "confidence": "high"
+    },
+    {
+      "partyId": "AM1",
+      "canonicalName": "ALPHA MOBILITY SRL",
+      "evse": 50,
+      "stations": 15,
+      "classification": "active/station-level",
+      "positiveEvidence": [
+        "Native Alpha Mobility station page for Linate Business Park exposes a station-specific 200 kWh package priced at 110 EUR and card/PayPal/mobile-wallet checkout.",
+        "Alpha Mobility/Green Blue hardware pages describe operator-managed payment/accounting infrastructure rather than a single national retail grid."
+      ],
+      "negativePaths": [
+        "The 110 EUR / 200 kWh package is not generalized to other AM1 stations or to pay-as-you-go sessions.",
+        "No current nationwide direct Alpha Mobility tariff grid was found."
+      ],
+      "resumeCondition": "crawl native ricaricaveicolo.it station/package/session pages by canonical AM1 station/EVSE and map exact eligible package or pay-as-you-go tariff",
+      "confidence": "high"
+    }
+  ],
+  "queue": {
+    "remainingClassWideCandidates": ["CGS", "ALL"],
+    "stationLevelAdvanced": ["AM1"],
+    "atlanteLast": true
+  },
+  "sources": [
+    "https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico",
+    "https://www.cogeserenergia.it/it/inzago-inaugurata-nuova-stazione-ricarica-auto-elettriche",
+    "https://www.allego.eu/it/notizie/florence-fast-charging-facility-now-open/",
+    "https://www.allego.eu/",
+    "https://www.ricaricaveicolo.it/chargestation/IT0721090097/packages",
+    "https://green-blue.it/04evc/"
+  ]
+}
