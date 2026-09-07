@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 29,
+  "generatedAt": "2026-09-07T02:52:17+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run28-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "CGS",
+      "canonicalName": "COGESER ENERGIA SRL",
+      "status": "active",
+      "priority": "class-wide",
+      "evse": 60,
+      "stations": 27,
+      "tariffModel": "Quick Cogeser AC official class; deterministic EVSE-to-class join pending",
+      "tariffChannel": "direct CPO / spot QR / registered app; eligible customer bill-discount separated",
+      "tariffs": [
+        {"class": "Quick Cogeser Energia AC", "energyEurPerKwh": 0.67, "vatIncluded": true, "validFrom": "2025-10-01"},
+        {"class": "Cogeser customer billed on electricity bill", "energyEurPerKwh": 0.49, "vatIncluded": true, "eligibility": "Cogeser customer with charging costs debited on electricity bill"}
+      ],
+      "officialUrls": ["https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico"],
+      "blockage": "exact EVSE-to-Quick/Fast/current class mapping missing",
+      "resumeCondition": "join current PUN/native Cogeser EVSE power/connectors and verify any DC/Fast direct tariff",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run29: current direct Quick AC tariff reconfirmed at EUR 0.67/kWh (eligible bill-pay customer EUR 0.49/kWh); no network-wide propagation until exact EVSE class join."
+    },
+    {
+      "partyId": "ALL",
+      "canonicalName": "Allego Italy S.r.l.",
+      "status": "active",
+      "priority": "class-wide",
+      "evse": 28,
+      "stations": 8,
+      "tariffModel": "Italy country-specific 150/350 kW classes",
+      "tariffChannel": "direct Allego pay-as-you-go / app plans",
+      "tariffs": [
+        {"plan": "pay-as-you-go", "class": "Ultrafast 350 kW", "energyEurPerKwh": 0.81},
+        {"plan": "pay-as-you-go", "class": "Fast 150 kW", "energyEurPerKwh": 0.70},
+        {"plan": "Allego Smart", "class": "Ultrafast 350 kW", "energyEurPerKwh": 0.75},
+        {"plan": "Allego Smart", "class": "Fast 150 kW", "energyEurPerKwh": 0.70},
+        {"plan": "Allego Plus", "class": "Ultrafast 350 kW", "energyEurPerKwh": 0.55, "monthlyEur": 9.99},
+        {"plan": "Allego Plus", "class": "Fast 150 kW", "energyEurPerKwh": 0.70, "monthlyEur": 9.99}
+      ],
+      "officialUrls": ["https://www.allego.eu/app/", "https://www.allego.eu/fr/tarifs/"],
+      "blockage": "exact mapping of 28 canonical EVSE to 150 kW versus 350 kW classes missing",
+      "resumeCondition": "join current PUN/native Allego EVSE power to official Italy price classes",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run29: Italy class tariffs reconfirmed current; promotion remains fail-closed pending deterministic EVSE power-class join."
+    },
+    {
+      "partyId": "UFC",
+      "canonicalName": "E.ON DRIVE INFRASTRUCTURE ITALY S.R.L.",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 48,
+      "stations": 15,
+      "tariffModel": "localized station/connector pricing",
+      "tariffChannel": "direct EDRI app/contactless/RFID/QR",
+      "officialUrls": ["https://www.edri.com/it-it/support/payment", "https://www.edri.com"],
+      "blockage": "no current Italy-wide first-party tariff grid found on inspected Italian public pages",
+      "resumeCondition": "capture deterministic price from Italy EDRI app/pay/QR station payload",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run29: EDRI Italy classified station-level; payment channels proven, but no Italy-wide tariff table found."
+    },
+    {
+      "partyId": "SMB",
+      "canonicalName": "Smartbit",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "THOR operator/site configurable",
+      "tariffChannel": "THOR app/webapp/card or free access depending installation",
+      "officialUrls": ["https://smartbit.io/", "https://smartbit.io/prodotti-per-la-ricarica-veicoli-elettrici/"],
+      "blockage": "no network-wide Smartbit public-car tariff; physical site/operator price must be mapped",
+      "resumeCondition": "identify canonical EVSE in THOR/native map and capture exact station price payload",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run29: Smartbit/THOR classified station-level; platform supports operator-configured paid/free installations, so no global tariff is safe."
+    }
+  ],
+  "countsAfter": {"treated": 23, "partial": 10, "setAside": 1, "active": 52, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
+  "queueImpact": {
+    "firstPassRemaining": 0,
+    "newlyTreatedCpos": [],
+    "newRankableEvse": 0,
+    "remainingClassWideCandidates": ["CGS", "ALL"],
+    "stationLevelClassificationAdvanced": ["UFC", "SMB"],
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "23+10+1+52=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "inventoryPartyIds": 88,
+    "duplicateCanonicalPartyIds": 0,
+    "atlanteSetAside": true,
+    "firstPassComplete": "86/86",
+    "fullAuditPerformed": true,
+    "canonicalPhysicalSnapshotStillStale": true,
+    "result": "pass-with-known-stale-physical-canonical"
+  },
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run29.json"],
+  "historyAppend": [
+    "2026-09-07 run29: full consistency audit passed at 23 treated / 10 partial / 1 setAside / 52 active over 86 canonical CPO groups plus 2 superseded aliases.",
+    "2026-09-07 run29: Cogeser and Allego class-wide prices reconfirmed but remain fail-closed pending deterministic EVSE-to-class joins.",
+    "2026-09-07 run29: E.ON Drive Infrastructure Italy and Smartbit/THOR classified station-level; future runs should go directly to native station/pay payloads rather than repeat global tariff searches.",
+    "2026-09-07 run29: Atlante remains set aside and last."
+  ]
+}
