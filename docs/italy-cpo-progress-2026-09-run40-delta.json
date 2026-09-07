@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 40,
+  "generatedAt": "2026-09-07T13:55:36+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run39-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "NRG",
+      "canonicalName": "NRG4YOU SRL",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 136,
+      "stations": 76,
+      "tariffModel": "installation/site-specific or backend-specific",
+      "tariffChannel": "direct CPO unresolved; eMSP excluded",
+      "officialUrls": ["https://www.nrg4you.it/", "https://www.nrg4you.it/mappa-colonnine-ricarica-auto-elettriche/"],
+      "positiveEvidence": ["Current first-party site presents charging stations as customized solutions rather than a uniform public tariff product.", "Current first-party map is public but indexed pages do not expose a deterministic whole-network price grid."],
+      "negativePaths": ["No current official whole-network AC/DC/HPC grid found.", "No roaming/eMSP price substituted for direct NRG4YOU pricing."],
+      "blockage": "No deterministic station/EVSE -> current direct tariff mapping exposed in current indexed public first-party pages.",
+      "resumeCondition": "per-EVSE QR/app/backend tariff payload or new first-party deterministic network/class grid",
+      "confidence": "medium-high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run40: NRG locked station-level; network-wide path exhausted pending new evidence."
+    },
+    {
+      "partyId": "CPO",
+      "canonicalName": "Nucleo - Special Concepts srl",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 160,
+      "stations": 41,
+      "tariffModel": "hosted-brand/site-specific",
+      "tariffChannel": "direct/ad-hoc by hosted network/site",
+      "positiveEvidence": ["Nucleo operates technology behind Coop Power sites whose public tariff evidence is specific to that branded subset, not the entire Nucleo partyId inventory."],
+      "negativePaths": ["Coop Power subset values are not propagated to all Nucleo EVSE.", "No deterministic current grid covering all 160 partyId EVSE established."],
+      "blockage": "Need inventory partition by hosted brand/site plus exact current tariff for each subpopulation.",
+      "resumeCondition": "join IT*CPO EVSE to hosted network/site and exact native/QR/Charge Assist tariff; fail-close unmatched EVSE",
+      "confidence": "medium",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run40: Nucleo retained active but locked station-level; Coop Power pricing treated only as subset evidence."
+    }
+  ],
+  "countsAfter": {"treated": 29, "partial": 10, "setAside": 1, "active": 46, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
+  "queueImpact": {"firstPassRemaining": 0, "newlyTreatedCpos": [], "newRankableEvse": 0, "remainingNetworkOrClassWideCandidates": [], "classWideQueueExhausted": true, "stationLevelClassificationAdvanced": ["NRG", "CPO"], "atlanteLast": true},
+  "canonicalRepair": {"script": "scripts/italy_cpo_progress_consolidate.py", "commit": "8c320d8c7dc71a8eeb0eff41db1f71fd6b1df104", "purpose": "lossless full-delta merge with fail-closed consistency checks"},
+  "consistency": {"statusSumCanonical": 86, "expectedCanonical": 86, "equation": "29+10+1+46=86", "aliasesCountedOutsideCanonical": 2, "inventoryPartyIds": 88, "duplicateCanonicalPartyIds": 0, "atlanteSetAside": true, "firstPassComplete": "86/86", "canonicalPhysicalSnapshotStillStale": true, "result": "pass-with-repair-tool-added"},
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run40.json"],
+  "historyAppend": ["2026-09-07 run40: NRG4YOU and Nucleo/Special Concepts locked station-level to prevent repeated invalid network-wide searches.", "2026-09-07 run40: added lossless canonical consolidator; stale physical canonical remains untouched until full-branch merge can be executed safely."]
+}
