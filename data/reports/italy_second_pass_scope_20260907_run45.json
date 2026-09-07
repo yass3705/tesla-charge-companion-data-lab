@@ -1,0 +1,30 @@
+{
+  "country":"IT",
+  "run":45,
+  "date":"2026-09-07",
+  "focus":"canonical alias reconciliation and station-level tariff classification",
+  "findings":[
+    {
+      "canonicalPartyId":"UTZ",
+      "canonicalOperator":"UAU S.R.L. / Uattzy",
+      "legacyPartyIds":["ESH","GAS"],
+      "physicalEvseByPartyId":{"UTZ":16,"ESH":892,"GAS":290},
+      "aggregatePhysicalEvse":1198,
+      "officialEvidence":[
+        "https://www.uattzy.com/",
+        "https://www.uattzy.com/faq/"
+      ],
+      "result":"ESH and GAS are legacy aliases of the current UAU/Uattzy operator and must not be counted as independent current CPOs",
+      "tariffClassification":"station-level / connector-level",
+      "reason":"first-party FAQ displays tariff per connector and states price/additional fees may vary by power, duration and bay occupation; third-party eMSP pricing is explicitly separate",
+      "rankableEvseAdded":0,
+      "failClosedEvse":1198,
+      "resume":"capture deterministic legacy/current EVSE -> Uattzy native connector tariff mapping"
+    }
+  ],
+  "countsBefore":{"treated":30,"partial":10,"setAside":1,"active":45,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter":{"treated":30,"partial":10,"setAside":1,"active":43,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+  "consistency":"30+10+1+43=84 canonical; 84+4 superseded aliases=88 physical partyIds",
+  "atlanteLast":true,
+  "notes":["No historical E-Shore/GASGAS price was inherited.","No eMSP tariff was promoted as direct Uattzy pricing.","Unique consolidated physical station count was not inferred by summing constituent partyId station counts."]
+}
