@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 47,
+  "generatedAt": "2026-09-07T20:55:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run46-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "SAG",
+      "canonicalName": "Sagelio srl società benefit",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 405,
+      "stations": 316,
+      "tariffModel": "location/operator-specific pricing managed by Sagelio platform; direct QR/card available on Sagelio network",
+      "tariffChannel": "direct Sagelio QR/card where enabled; eMSP/app roaming separate",
+      "officialUrls": [
+        "https://sagelio.com/",
+        "https://sagelio.com/blog/ricaricare-auto-elettrica-con-carta-di-credito-da-oggi-si-puo/"
+      ],
+      "positiveEvidence": [
+        "Current Sagelio site states location owners have pricing control through Sagelio's platform and that the network exceeds 400 charging points.",
+        "Sagelio documents direct card payment on its network through station QR codes; the direct card flow selects the connector before activation.",
+        "Sagelio states the direct card price follows the station's Electromaps price plus Stripe commission, proving the direct checkout is connector/station-resolved rather than a safe universal network price."
+      ],
+      "negativePaths": [
+        "No current first-party universal EUR/kWh tariff was found for all IT*SAG EVSE.",
+        "Historical or third-party eMSP Sagelio prices are not promoted as direct CPO prices."
+      ],
+      "blockage": "Exact current direct price must be resolved for each IT*SAG connector/station through Sagelio QR/direct-payment or native backend; pricing control can vary by location.",
+      "resumeCondition": "map IT*SAG EVSE identifiers to Sagelio station/QR records and capture the current connector price and any Stripe/fixed/time components",
+      "coverage": {"rankableDirectEvse":0,"uncoveredEvse":405,"reason":"station/connector tariff mapping not yet captured"},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run47: current Sagelio first-party material locks partyId SAG to station-level; no universal direct tariff propagated."
+    },
+    {
+      "partyId": "ASS",
+      "canonicalName": "AGSM AIM SMART SOLUTIONS S.R.L.",
+      "aliases": ["AGSM AIM SMART SOLUTIONS S.R.L.", "Magis Smart S.r.l.", "Magis E-mobility"],
+      "status": "active",
+      "priority": "station-level",
+      "evse": 258,
+      "stations": 135,
+      "tariffModel": "pay-per-use tariff shown in Magis E-mobility app at time of use; optional AC/DC subscription discounts are class-wide only for eligible subscribers",
+      "tariffChannel": "direct Magis E-mobility app on AGSM AIM/Magis stations; roaming separate",
+      "officialUrls": [
+        "https://www.aimmobilita.it/it/web/magis-smart/agsmaim_e-mobility/abbonamenti"
+      ],
+      "tariffs": [
+        {"eligibility":"Small subscription","class":"AC","energyEurPerKwh":0.60,"subscriptionEur":5},
+        {"eligibility":"Medium subscription","class":"AC","energyEurPerKwh":0.58,"subscriptionEur":10},
+        {"eligibility":"Large subscription","class":"AC","energyEurPerKwh":0.50,"subscriptionEur":20},
+        {"eligibility":"Flat DC subscription","class":"DC","energyEurPerKwh":0.74,"subscriptionEur":10}
+      ],
+      "positiveEvidence": [
+        "Current official Magis E-mobility page states the standard pay-per-use cost is calculated according to tariffs displayed in the app at the time of use.",
+        "The same current page publishes deterministic subscriber discounts for AC and DC classes, but these require paid subscription eligibility and are not the universal ad-hoc/pay-per-use tariff.",
+        "AGSM AIM identifies its public charging service and direct app as the service used on AGSM AIM Smart Solutions stations."
+      ],
+      "negativePaths": [
+        "Subscriber prices are not promoted as the default direct/ad-hoc tariff for all users.",
+        "No current first-party universal pay-per-use EUR/kWh value was found outside the station/app context."
+      ],
+      "blockage": "Default direct pay-per-use tariff is app/station-resolved; exact IT*ASS EVSE-to-current-price mapping is missing.",
+      "resumeCondition": "map IT*ASS identifiers to Magis E-mobility native station records and capture current pay-per-use tariff; retain subscription tariffs only behind explicit eligibility filters",
+      "coverage": {"rankableDirectEvse":0,"uncoveredEvse":258,"eligibleClassWideTariffsRecorded":true,"reason":"default pay-per-use station price unresolved"},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run47: ASS/Magis direct service reviewed; subscriber AC/DC grids preserved with eligibility, default pay-per-use remains station/app-level."
+    }
+  ],
+  "countsAfter": {"treated":30,"partial":10,"setAside":1,"active":43,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88,"observedEvse":75025},
+  "queueImpact": {"firstPassRemaining":0,"newlyTreatedCpos":[],"newRankableEvse":0,"aliasesResolved":[],"newlyLockedStationLevel":["SAG","ASS"],"newlyLockedStationLevelEvse":663,"remainingNetworkOrClassWideCandidates":[],"classWideQueueExhausted":true,"atlanteLast":true},
+  "consistency": {"statusSumCanonical":84,"expectedCanonical":84,"equation":"30+10+1+43=84","aliasesCountedOutsideCanonical":4,"inventoryPartyIds":88,"physicalEquation":"84+4=88","duplicateCanonicalPartyIds":0,"atlanteSetAside":true,"canonicalPhysicalSnapshotStillStale":true,"result":"pass_with_known_snapshot_staleness"},
+  "historyAppend": [
+    "2026-09-07 run47: Sagelio and AGSM AIM/Magis current first-party evidence reviewed; both locked to station-level for default direct pricing.",
+    "2026-09-07 run47: Magis subscription AC/DC tariffs recorded only with explicit eligibility and not substituted for default pay-per-use."
+  ]
+}
