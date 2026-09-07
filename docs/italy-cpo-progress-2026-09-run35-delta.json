@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 35,
+  "generatedAt": "2026-09-07T08:50:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run34-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "CGS",
+      "canonicalName": "COGESER ENERGIA SRL",
+      "status": "active",
+      "priority": "station-level",
+      "previousPriority": "class-wide",
+      "evse": 60,
+      "stations": 27,
+      "tariffModel": "mixed native AC/DC with incomplete current direct public tariff grid",
+      "tariffChannel": "Cogeser Energia E-move app / RFID / QR spot / eligible bill debit",
+      "tariffs": [
+        {"population": "Quick Cogeser Energia AC", "energyEurPerKwh": 0.67, "vatIncluded": true, "validFrom": "2025-10-01"},
+        {"population": "eligible Cogeser bill-debit customers on Cogeser network", "energyEurPerKwh": 0.49, "vatIncluded": true, "validFrom": "2025-10-01", "eligibility": "Cogeser customer + bill-debit enrollment"}
+      ],
+      "positiveEvidence": [
+        "Current first-party tariff page publishes Quick Cogeser AC 0.67 EUR/kWh and eligible bill-debit Cogeser-network 0.49 EUR/kWh.",
+        "First-party 2025-11-25 Inzago announcement proves native Cogeser network includes 25 kW DC in addition to 22 kW AC."
+      ],
+      "negativePaths": [
+        "0.67 EUR/kWh must not be propagated to native DC.",
+        "Current 0.89 EUR/kWh DC row is explicitly non-Cogeser roaming, not native direct pricing.",
+        "Older Neogy/Cogeser Quick/Fast/Hyper grid is not promoted because current first-party pricing supersedes its AC value and omits native DC."
+      ],
+      "blockage": "current native Cogeser DC direct/ad-hoc tariff and exhaustive EVSE AC/DC mapping are not both established",
+      "resumeCondition": "join IT*CGS EVSE to exact AC/DC type and obtain native app/QR/session DC price; rank only deterministic covered subpopulations",
+      "officialUrls": [
+        "https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico",
+        "https://www.cogeserenergia.it/it/inzago-inaugurata-nuova-stazione-ricarica-auto-elettriche"
+      ],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run35: CGS moved class-wide -> station-level; native DC existence proven while current direct DC price remains unpublished."
+    },
+    {
+      "partyId": "ENX",
+      "canonicalName": "ENEL X WAY ITALIA SRL",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 22798,
+      "stations": 11123,
+      "tariffModel": "technology/time-band with current-validity ambiguity",
+      "tariffChannel": "Enel On Your Way retail touchpoint",
+      "positiveEvidence": ["Current Enel page still exposes Quick/Fast/HPC day-night structure and explicitly distinguishes own/Ewiva network from third-party operators."],
+      "negativePaths": ["Displayed Pay Per Use values are tied to an offer window ending 2026-07-31 and are not promoted as current September 2026 pricing.", "June 2026 operator table is eMSP roaming evidence, not direct ENX CPO tariff."],
+      "blockage": "post-2026-07-31 current direct Enel-network tariff validity not proven",
+      "resumeCondition": "capture current app/native payload or post-July official tariff/extension, then map exact technology/time classes",
+      "officialUrls": ["https://www.enel.it/it-it/mobilita-elettrica/tariffe-abbonamenti"],
+      "confidence": "medium-high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run35: ENX stale public Pay Per Use values explicitly fail-closed after their displayed validity window; current native payload/document required."
+    },
+    {
+      "partyId": "220",
+      "canonicalName": "Route220 Srl Sb",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 422,
+      "stations": 270,
+      "tariffModel": "host/CPO-configurable CPMS pricing",
+      "tariffChannel": "Route220 CPMS / evway / POS depending site",
+      "positiveEvidence": ["Current first-party Route220 CPMS documentation explicitly provides autonomous tariff management and POS/white-label app payment tooling to independent CPOs."],
+      "negativePaths": ["No network-wide Route220 price inferred from evway eMSP pricing or CPMS management."],
+      "blockage": "retail tariff is configurable by network/site owner",
+      "resumeCondition": "map IT*220 EVSE to native point/ad-hoc payload and exact price components; fail-close unmatched EVSE",
+      "officialUrls": ["https://route220.it/attivita/", "https://route220.it/evwaypay-pagamento-via-pos/"],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run35: Route220 locked station-level from first-party configurable-CPMS tariff model."
+    }
+  ],
+  "countsAfter": {"treated": 23, "partial": 10, "setAside": 1, "active": 52, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
+  "queueImpact": {
+    "firstPassRemaining": 0,
+    "newlyTreatedCpos": [],
+    "newRankableEvse": 0,
+    "remainingNetworkOrClassWideCandidates": [],
+    "classWideQueueExhausted": true,
+    "stationLevelClassificationAdvanced": ["CGS", "ENX", "220"],
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "23+10+1+52=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "inventoryPartyIds": 88,
+    "duplicateCanonicalPartyIds": 0,
+    "atlanteSetAside": true,
+    "firstPassComplete": "86/86",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "result": "pass-with-known-stale-physical-canonical"
+  },
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run35.json"],
+  "historyAppend": [
+    "2026-09-07 run35: CGS moved class-wide -> station-level after current first-party evidence proved mixed AC/DC but omitted a native DC tariff.",
+    "2026-09-07 run35: network/class-wide queue exhausted; subsequent work can proceed station-level by size/source quality.",
+    "2026-09-07 run35: ENX current public values fail-closed because their displayed validity ended 2026-07-31; Route220 locked configurable station-level.",
+    "2026-09-07 run35: counts unchanged at 23/10/1/52; Atlante remains last."
+  ]
+}
