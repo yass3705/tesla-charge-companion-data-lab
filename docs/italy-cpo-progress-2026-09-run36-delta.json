@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 36,
+  "generatedAt": "2026-09-07T09:52:45+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run35-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "PWY",
+      "canonicalName": "TheF Charging S.r.l.",
+      "aliasesAppend": ["Powy", "Powy Energy", "Powy Charge"],
+      "status": "active",
+      "priority": "station-level",
+      "evse": 1080,
+      "stations": 387,
+      "tariffModel": "point/power/duration-specific native pricing",
+      "tariffChannel": "Powy Charge app / direct QR payment / RFID",
+      "positiveEvidence": [
+        "Powy current first-party site identifies Powy as a brand of TheF Charging S.r.l.",
+        "First-party FAQ states cost varies with charging-point power and charging duration and is displayed in Powy Charge before charging.",
+        "Direct-payment flow supports QR/code and selected-station promotional rates."
+      ],
+      "negativePaths": [
+        "Powy is not a separate canonical CPO from PWY/TheF Charging.",
+        "No network-wide price is inferred from third-party roaming/eMSP tables."
+      ],
+      "blockage": "current direct tariff is exposed at point/session level rather than as one deterministic network tariff",
+      "resumeCondition": "crawl Powy Charge/direct QR backend for IT*PWY EVSE; persist energy/time/start/occupancy components and validity; fail-close unmatched EVSE",
+      "officialUrls": ["https://powy.energy/", "https://powy.energy/ricarica-veicolo/powy-charge/", "https://powy.energy/en/charge-your-ev/"],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run36: Powy resolved as current commercial brand/alias of TheF Charging partyId PWY; station-level model confirmed from first-party current pricing semantics."
+    },
+    {
+      "partyId": "ASS",
+      "canonicalName": "AGSM AIM SMART SOLUTIONS S.R.L.",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 258,
+      "stations": 135,
+      "tariffModel": "native app current-value pricing with subscription discounts; roaming point-priced separately",
+      "tariffChannel": "AGSM AIM E-MOBILITY app",
+      "fees": [{"type":"occupancy","amountEurPerMinute":0.12,"population":"AC <=22 kW","window":"07:00-23:00 after allowed post-charge grace/limit per current terms"}],
+      "positiveEvidence": [
+        "Current 2026 terms expose subscription commercial value in-app at purchase time.",
+        "Fast Flat costs 10 EUR and grants 10% discount on the Fast charging tariff only at AGSM AIM-owned stations.",
+        "Roaming is explicitly separate and selected-connector transaction price is shown on activation screen."
+      ],
+      "negativePaths": [
+        "2023/2024 package/pay-per-use prices are not promoted as current September 2026 energy tariffs.",
+        "Fast base energy price is not reverse-inferred from the discount."
+      ],
+      "blockage": "current native direct energy price(s) are app-exposed but not enumerated in the public 2026 terms",
+      "resumeCondition": "capture current native connector payload for IT*ASS EVSE and preserve base tariff, subscription eligibility, occupancy/time components; fail-close unmatched EVSE",
+      "officialUrls": ["https://www.agsmaimsmartsolutions.it/documents/533308/713981/TERMINI%2BE%2BCONDIZIONI%2BAPP%2BE-MOBILITY.pdf"],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run36: AGSM AIM locked station-level from current 2026 terms; roaming separated; current energy values require app/native connector capture."
+    },
+    {
+      "partyId": "DRW",
+      "canonicalName": "UnoEnergy DriWe spa",
+      "aliasesAppend": ["DriWe", "Unoenergy DriWe"],
+      "status": "active",
+      "priority": "station-level",
+      "evse": 287,
+      "stations": 103,
+      "tariffModel": "NextCharge-connected station-specific pricing / host-managed CPO infrastructure",
+      "tariffChannel": "DriWe Charge surfaced through NextCharge/native Unoenergy-DriWe ecosystem",
+      "positiveEvidence": [
+        "Current DriWe App & Card documentation states DriWe Charge stations are surfaced through NextCharge and station/session data is accessed there.",
+        "Unoenergy acquisition documentation identifies DriWe as a CPO and technology integrator.",
+        "Current Unoenergy pages direct users to the DriWe map to visualize, book and pay rather than publishing one network retail tariff."
+      ],
+      "negativePaths": [
+        "Generic NextCharge eMSP price is not promoted as a DriWe direct network tariff.",
+        "Domestic wallbox offers are unrelated to public DRW charging tariffs."
+      ],
+      "blockage": "no current deterministic first-party network tariff; price must be joined at station/EVSE level",
+      "resumeCondition": "bulk join IT*DRW EVSE to NextCharge/native DriWe payload and retain exact channel plus current price components; fail-close unmatched EVSE",
+      "officialUrls": ["https://www.driwe.eu/app/", "https://www.unoenergy.it/comunicati-stampa/il-gruppo-unoenergy-annuncia-lacquisizione-di-driwe/", "https://www.unoenergy.it/casa/colonnine-ricarica/ricarica-start/"],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-07",
+      "lastChanged": "2026-09-07",
+      "historyAppend": "2026-09-07 run36: DriWe/Unoenergy locked station-level; NextCharge-connected infrastructure confirmed, with no safe network-wide direct price."
+    }
+  ],
+  "countsAfter": {"treated": 23, "partial": 10, "setAside": 1, "active": 52, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88, "observedEvse": 75025},
+  "queueImpact": {
+    "firstPassRemaining": 0,
+    "newlyTreatedCpos": [],
+    "newRankableEvse": 0,
+    "remainingNetworkOrClassWideCandidates": [],
+    "classWideQueueExhausted": true,
+    "stationLevelClassificationAdvanced": ["PWY", "DRW", "ASS"],
+    "aliasesResolved": [{"partyId":"PWY","alias":"Powy","decision":"same canonical CPO; no additional count"}],
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "23+10+1+52=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "inventoryPartyIds": 88,
+    "duplicateCanonicalPartyIds": 0,
+    "atlanteSetAside": true,
+    "firstPassComplete": "86/86",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "result": "pass-with-known-stale-physical-canonical"
+  },
+  "evidenceReports": ["data/reports/italy_second_pass_scope_20260907_run36.json"],
+  "historyAppend": [
+    "2026-09-07 run36: PWY/Powy alias resolved without double-counting; current first-party pricing semantics lock PWY station-level.",
+    "2026-09-07 run36: DRW and ASS locked station-level with native/app/backend resume conditions and roaming separation.",
+    "2026-09-07 run36: counts unchanged at 23/10/1/52; network/class-wide queue remains exhausted; Atlante remains last."
+  ]
+}
