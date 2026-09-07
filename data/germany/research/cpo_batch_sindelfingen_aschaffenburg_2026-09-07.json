@@ -2,17 +2,18 @@
   "schemaVersion": "0.2.0",
   "countryCode": "DE",
   "date": "2026-09-07",
-  "purpose": "First-pass exact direct-pricing research for previously undocumented German CPO identities; fail closed where a numeric current tariff is not publicly extractable.",
+  "purpose": "First-pass exact direct-pricing research for previously undocumented German CPO identities; fail closed where exhaustive current EVSE pricing is not established.",
   "cpos": [
     {
       "canonicalName": "Stadtwerke Sindelfingen GmbH",
       "aliases": ["Stadtwerke Sindelfingen", "SW Sindelfingen", "Sindelfingen Card Stromtankkarte"],
-      "status": "complete",
-      "operatorScope": "Stadtwerke Sindelfingen GmbH-operated public charging stations using charge it easy / online direct payment",
-      "directPricing": {
+      "status": "partial",
+      "operatorScope": "Stadtwerke Sindelfingen GmbH-operated public charging stations",
+      "validatedDirectPricing": {
+        "scope": "official direct-payment product for charging up to 22 kW",
         "currency": "EUR",
         "validityEvidence": "Official page states Stand: Juli 2026",
-        "energy": [{"maxPowerKw": 22, "pricePerKwh": 0.56}],
+        "energyPricePerKwh": 0.56,
         "sessionFee": 0.0,
         "blocking": {"pricePerMinute": 0.05, "startsAfterMinutesFromChargeEnd": 30, "billingStartsMinute": 31}
       },
@@ -26,10 +27,12 @@
         {
           "type": "official_cpo",
           "url": "https://www.stadtwerke-sindelfingen.de/service/news/artikel/elektromobilitaet-als-baustein-der-energiewende-bei-den-stadtwerken-sindelfingen/",
-          "facts": "Official 2026 network context confirms Stadtwerke Sindelfingen public charging infrastructure and that the network also includes higher-power sites; the exact 0.56 tariff above is therefore only attached to the official <=22 kW direct-payment product scope, not extrapolated to unpriced higher-power EVSEs."
+          "facts": "Official 18 June 2026 network context states 37 public charging stations at 16 sites with power from 22 kW up to 180 kW."
         }
       ],
-      "guardrail": "Complete only for the official <=22 kW direct-payment product scope. Any Stadtwerke Sindelfingen EVSE above 22 kW remains fail-closed unless its exact station tariff is separately verified; roaming is not generalized."
+      "reasonDeferred": "The exact July 2026 direct tariff is explicitly published for charging up to 22 kW, while the operator also runs public EVSEs up to 180 kW. No authoritative current numeric direct tariff for those higher-power EVSEs was established in this pass.",
+      "neededToComplete": "Resolve the exact direct price and any time/blocking components for every >22 kW Stadtwerke Sindelfingen station/EVSE from the official direct-payment surface, public QR checkout or authoritative station feed.",
+      "guardrail": "Do not extrapolate the <=22 kW 0.56 EUR/kWh tariff to higher-power EVSEs and do not substitute roaming prices."
     },
     {
       "canonicalName": "Stadtwerke Aschaffenburg / Aschaffenburger Versorgungs-GmbH",
@@ -61,7 +64,8 @@
     }
   ],
   "consistencyNotes": [
-    "Neither operator name appears in the current PR #73 patch before this pass, so these are new first-pass identities in the active branch.",
+    "Neither operator name appeared in the PR #73 patch before this pass, so both are new first-pass identities in the active branch.",
+    "Sindelfingen was corrected from product-scope complete to CPO-scope partial immediately after detecting official >22 kW EVSEs.",
     "No roaming/subscriber price was promoted to direct CPO pricing.",
     "No eMI3 prefix was invented where an authoritative mapping was not established.",
     "No image-only numeric tariff was guessed for Aschaffenburg."
