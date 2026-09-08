@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 63,
+  "generatedAt": "2026-09-08T11:55:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run62-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "partial",
+      "priority": "station-level",
+      "evse": 849,
+      "stations": 296,
+      "tariffModel": "station_specific_owner_pricing",
+      "tariffChannel": "direct CPO tariff published through Piattaforma Unica Nazionale (surfaced by Pienotto)",
+      "coverageBefore": {"rankableDirectEvse": 194, "uncoveredEvse": 655, "coveragePct": 22.85},
+      "coverageAfter": {"rankableDirectEvse": 200, "uncoveredEvse": 649, "coveragePct": 23.56},
+      "newExactMappings": [
+        {
+          "location": "Via dell'Acquacalda, 2481, Lucca (LU)",
+          "evseIds": ["IT*EMO*E2160*1", "IT*EMO*E2160*2"],
+          "connector": "Type 2",
+          "powerKw": 22,
+          "energyEurPerKwh": 0.45,
+          "activationEur": 0.74,
+          "source": "PUN via Pienotto",
+          "url": "https://pienotto.it/stazioni/259993-emobitaly-s-r-l-lucca-lu",
+          "checkedAt": "2026-09-08"
+        },
+        {
+          "location": "Viale Carducci, Lucca (LU)",
+          "evseIds": ["IT*EMOE784", "IT*EMOE785", "IT*EMOE786", "IT*EMOE787"],
+          "connector": "Type 2",
+          "powerKw": 11,
+          "energyEurPerKwh": 0.45,
+          "activationEur": 0.74,
+          "source": "PUN via Pienotto",
+          "url": "https://pienotto.it/stazioni/273018-emobitaly-s-r-l-lucca-lu",
+          "checkedAt": "2026-09-08"
+        }
+      ],
+      "positiveEvidence": [
+        "Both current Pienotto station pages identify Gestore EMOBITALY S.r.l., expose exact IT*EMO identifiers, connector power and current PUN energy/activation prices.",
+        "The two Lucca locations are distinct from the Via C. Gianni and Via Don Giovanni Minzoni mappings already recorded in run54."
+      ],
+      "negativePaths": [
+        "No tariff is propagated to other Lucca or EMOBITALY stations.",
+        "649 EMOBITALY EVSE remain fail-closed pending exact current mapping."
+      ],
+      "blockage": "649 EVSE remain without exact current station/EVSE tariff mapping",
+      "resumeCondition": "continue deterministic PUN/Pienotto/native backend enumeration; never infer between locations",
+      "confidence": "high for mapped 200 EVSE",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08",
+      "historyAppend": "2026-09-08 run63: added six exact EMOBITALY EVSE mappings at two Lucca locations; coverage 194 -> 200/849."
+    }
+  ],
+  "countsBefore": {"treated":40,"partial":12,"setAside":1,"active":33,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":40,"partial":12,"setAside":1,"active":33,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 33,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "rankableEvseAdded": 6,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "40+12+1+33=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "result": "pass",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-08 run63: EMOBITALY exact PUN coverage increased by six EVSE in Lucca to 200/849 (23.56%); no tariff transposition."
+  ]
+}
