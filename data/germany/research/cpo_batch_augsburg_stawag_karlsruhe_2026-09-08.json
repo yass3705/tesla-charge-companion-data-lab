@@ -1,0 +1,61 @@
+{
+  "schemaVersion": "0.2.0",
+  "countryCode": "DE",
+  "observedAt": "2026-09-08",
+  "cpos": [
+    {
+      "name": "Stadtwerke Augsburg Energie GmbH",
+      "aliases": ["Stadtwerke Augsburg", "swa", "swa eMobilität", "swa eLadepunkte"],
+      "status": "complete",
+      "directPayment": {
+        "available": true,
+        "methods": ["QR", "app without registration", "PayPal", "NFC/card on supported DC"],
+        "effectiveFrom": "2026-04-01",
+        "tariff": [
+          {"scope": "AC <=22 kW", "time": "07:00-21:00", "energyEurPerKwh": 0.37},
+          {"scope": "AC <=22 kW", "time": "21:00-07:00", "energyEurPerKwh": 0.35},
+          {"scope": "DC <=200 kW", "time": "07:00-21:00", "energyEurPerKwh": 0.44},
+          {"scope": "DC <=200 kW", "time": "21:00-07:00", "energyEurPerKwh": 0.42},
+          {"scope": "DC >200 to <=400 kW", "time": "07:00-21:00", "energyEurPerKwh": 0.49},
+          {"scope": "DC >200 to <=400 kW", "time": "21:00-07:00", "energyEurPerKwh": 0.45}
+        ],
+        "sessionFeeEur": 1.50,
+        "blocking": {
+          "AC": {"eurPerMinute": 0.07, "activeWindow": "08:00-21:00", "trigger": "15 minutes after charge end, or no later than 180 minutes"},
+          "DC": {"eurPerMinute": 0.14, "activeWindow": "00:00-24:00", "trigger": "15 minutes after charge end, or no later than 60 minutes"}
+        }
+      },
+      "evidence": [
+        {"type": "official_web", "url": "https://www.sw-augsburg.de/privatkunden/mobilitaet/swa-emobilitaet/oefentliche-ladeinfrastruktur-in-und-um-augsburg", "note": "Confirms contract-free QR/app payment and current tariff effective 2026-04-01."},
+        {"type": "official_pdf", "url": "https://www.sw-augsburg.de/fileadmin/content/6_pdf_Downloadcenter/7_Engagement/Magazin/swa_Magazin_1-26__Aktuelle_f%C3%BCr_alle_Kan%C3%A4le__klein.pdf", "note": "Official tariff table with exact ad-hoc energy/session/blocking components."}
+      ],
+      "guardrail": "Tariff applies to swa own charging points per official publication; roaming card prices are excluded."
+    },
+    {
+      "name": "STAWAG – Stadt- und Städteregionswerke Aachen AG",
+      "aliases": ["STAWAG", "Stadtwerke Aachen", "Städteregionswerke Aachen"],
+      "status": "partial",
+      "directPayment": {"available": null, "tariff": null},
+      "evidence": [
+        {"type": "official_web", "url": "https://www.stawag.de/produkte/elektromobilitaet", "note": "Current official e-mobility page exposes STAWAG and Basis tariff sheets, stated valid from 2025-04-01, but no sufficiently explicit 2026 contract-free direct-payment matrix was verified in this pass."},
+        {"type": "official_web", "url": "https://store.stawag.de/elektromobilitaet/unterwegs-laden", "note": "Confirms STAWAG operates more than 700 publicly usable charging points in the Aachen region and offers card-based ladenetz access."}
+      ],
+      "deferReason": "Current operator/card tariffs exist, but exact 2026 ad-hoc/direct tariff authority by EVSE was not established; do not promote card/subscriber prices to direct CPO pricing."
+    },
+    {
+      "name": "Stadtwerke Karlsruhe GmbH",
+      "aliases": ["Stadtwerke Karlsruhe", "SWK Karlsruhe", "SW Karlsruhe"],
+      "status": "partial",
+      "directPayment": {"available": null, "tariff": null},
+      "evidence": [
+        {"type": "official_web", "url": "https://www.stadtwerke-karlsruhe.de/de/pk/energiedienstleister.php", "note": "Official page states Stadtwerke Karlsruhe builds and operates charging stations in the Karlsruhe city area."}
+      ],
+      "deferReason": "No current official 2026 direct-payment/QR tariff matrix or public EVSE checkout payload was verified. Operator existence is confirmed, tariff remains fail-closed."
+    }
+  ],
+  "consistencyNotes": [
+    "No roaming, subscription or customer-card tariff was generalized as ad-hoc pricing.",
+    "No eMI3 prefix was inferred without authoritative evidence.",
+    "Augsburg blocking-fee trigger wording is preserved from the official tariff footnote rather than simplified into an unsupported single threshold."
+  ]
+}
