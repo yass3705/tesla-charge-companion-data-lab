@@ -1,0 +1,88 @@
+{
+  "country": "IT",
+  "run": 78,
+  "generatedAt": "2026-09-09T00:49:00+01:00",
+  "effectiveCounts": {
+    "treated": 43,
+    "partial": 14,
+    "setAside": 1,
+    "active": 28,
+    "canonicalTotal": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88,
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 28
+  },
+  "findings": [
+    {
+      "partyId": "EDN",
+      "result": "partial_exact_site_mapping",
+      "coverageAdded": 8,
+      "site": "Galbusera Tre Marie Bistrot Caffetteria Store, Via Guglielmo Marconi 20, Agrate Brianza",
+      "tariff": {"class":"DC CCS 120 kW","energyEurPerKwh":0.59,"vatIncluded":true},
+      "paymentMethods": ["POS payment card","EVWAY app"],
+      "evseIds": ["IT*EDN*ED00691","IT*EDN*ED00692","IT*EDN*ED00701","IT*EDN*ED00702","IT*EDN*ED00711","IT*EDN*ED00712","IT*EDN*ED00721","IT*EDN*ED00722"],
+      "unresolved": ["4 AC Type2 22 kW EVSE at same site have no proven current direct price","814 EDN EVSE elsewhere remain without deterministic direct tariff mapping"],
+      "official": "https://www.edison.it/it/edison-next-e-galbusera-nuove-colonnine-di-ricarica-veicoli-elettrici",
+      "mappingDiscovery": "https://app.pumpapp.co/it/stazione-di-ricarica-route220-via-guglielmo-marconi-20-agrate-brianza/68cf0f24-273b-11f1-8003-97ef5f588a6c"
+    },
+    {
+      "partyId": "ASS",
+      "result": "partial_subscription_classwide",
+      "legalRename": "AGSM AIM Smart Solutions S.r.l. -> Magis Smart S.r.l. effective 2026-03-01",
+      "conditionalCoverageEvse": 258,
+      "defaultPayPerUseCoverageAdded": 0,
+      "subscriptionTariffs": {
+        "AC": [
+          {"plan":"Small","monthlyFeeEur":5,"energyEurPerKwh":0.60},
+          {"plan":"Medium","monthlyFeeEur":10,"energyEurPerKwh":0.58},
+          {"plan":"Large","monthlyFeeEur":20,"energyEurPerKwh":0.50}
+        ],
+        "DC": [{"plan":"Flat DC","monthlyFeeEur":10,"energyEurPerKwh":0.74}],
+        "combined": [
+          {"plan":"Small + Flat DC","monthlyFeeEur":15,"acEnergyEurPerKwh":0.60,"dcEnergyEurPerKwh":0.74},
+          {"plan":"Medium + Flat DC","monthlyFeeEur":20,"acEnergyEurPerKwh":0.58,"dcEnergyEurPerKwh":0.74},
+          {"plan":"Large + Flat DC","monthlyFeeEur":30,"acEnergyEurPerKwh":0.50,"dcEnergyEurPerKwh":0.74}
+        ]
+      },
+      "occupation": "official terms specify EUR 0.12/min after the contractual post-charge grace period; AC 07:00-23:00, DC/HPC 24h",
+      "unresolved": "pay-per-use standard AC/DC energy price is displayed in app at use time and is not publicly deterministic",
+      "official": [
+        "https://www.magissmart.it/agsmaim_e-mobility/abbonamenti",
+        "https://www.magissmart.it/nuova-app-magis-e-mobility",
+        "https://www.magissmart.it/e-mobility/app/termini.php",
+        "https://www.comune.verona.it/Amministrazione/Documenti-e-dati/Documenti-tecnici-di-supporto/Enti-di-diritto-privato-in-controllo-dell-Amministrazione-Anno-2024"
+      ]
+    },
+    {
+      "partyId": "HER",
+      "result": "no_safe_promotion",
+      "notes": [
+        "Current HeraRicarica tariff portal remains reachable and exposes post-charge penalties, but the crawl does not expose a current energy-price table.",
+        "A 2025 official/public product document contains historical AC/DC amounts, but it is not promoted as current 2026 evidence."
+      ]
+    },
+    {
+      "partyId": "220",
+      "result": "no_safe_promotion",
+      "notes": [
+        "Current Route220 site states its CPMS supports customized tariffs and evway displays station prices; no network-wide direct tariff was found.",
+        "Old third-party tariff grids were ignored as non-current and not first-party."
+      ]
+    }
+  ],
+  "consistency": {
+    "canonicalEquation": "43+14+1+28=86",
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "atlanteLast": true,
+    "result": "pass"
+  },
+  "next": [
+    "continue station-level work on HER and EDN beyond Agrate only with new exact mapping evidence",
+    "seek Magis E-mobility pay-per-use prices from public app/backend before any default direct promotion",
+    "resume EMO only behind full-delta dedup guard",
+    "PWY only with new QR/backend evidence",
+    "ATE Atlante last"
+  ]
+}
