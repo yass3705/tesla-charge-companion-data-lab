@@ -19,7 +19,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -fLsS --retry 3 https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/france-static/all.json.gz -o /tmp/fr.json.gz
+          # Pin the exact France baseline that produced totalOperators=291 on 2026-09-01.
+          # This makes the historical denominator reproducible instead of following a moving branch.
+          curl -fLsS --retry 3 https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/1b10d25bde552abd2c3e6b0c93e6cbc60b5b3a88/data/v9/france-static/all.json.gz -o /tmp/fr.json.gz
           curl -fLsS --retry 3 https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/source-registry.json -o /tmp/registry.json
           python - <<'PY'
           import gzip,json,collections,re,pathlib
@@ -50,10 +52,17 @@ jobs:
                   if a and (a in no or no in a):matched += source_by_alias.get(a,[])
               out.append({'operator':op,'stations':x['stations'],'pdc':x['pdc'],'tariffSources':sorted(set(matched)),'topNetworks':x['networks'].most_common(8)})
           out.sort(key=lambda x:(-x['pdc'],-x['stations'],x['operator']))
-          report={'totalOperators':len(out),'top100':out[:100]}
+          report={
+              'totalOperators':len(out),
+              'historicalBaselineCommit':'1b10d25bde552abd2c3e6b0c93e6cbc60b5b3a88',
+              'top100':out[:100],
+              'allOperators':out,
+          }
+          if len(out) != 291:
+              raise SystemExit(f'historical denominator drift: expected 291, got {len(out)}')
           pathlib.Path('reports/france').mkdir(parents=True,exist_ok=True)
           pathlib.Path('reports/france/cpo-coverage-ranking.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps(out[:40],ensure_ascii=False,indent=2))
+          print(json.dumps({'totalOperators':len(out),'first':out[:3],'last':out[-3:]},ensure_ascii=False,indent=2))
           PY
       - name: Publish
         shell: bash
@@ -61,6 +70,6 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add reports/france/cpo-coverage-ranking.json
-          git commit -m 'France: publish CPO coverage ranking' || exit 0
+          git commit -m 'France: publish full nominative CPO coverage ranking' || exit 0
           git pull --rebase origin main
           git push
