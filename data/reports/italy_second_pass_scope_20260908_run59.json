@@ -1,0 +1,40 @@
+{
+  "run": 59,
+  "country": "IT",
+  "generatedAt": "2026-09-08T08:53:48+01:00",
+  "effectiveState": {"treated":39,"partial":11,"setAside":1,"active":35,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queues": {"networkOrClassWideRemaining":0,"stationLevelActiveRemaining":35,"atlanteLast":true},
+  "progress": {
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "rankableEvseAdded": 0,
+    "rankableEvseRemovedForSafety": 313,
+    "identityCorrections": ["ESH supersededAlias -> active", "GAS supersededAlias -> active", "DRW/GES global alias rejected from mixed current prefix samples"]
+  },
+  "investigated": [
+    {"partyId":"IOY","result":"treated -> active/station-level","reason":"current official country prices are minima; station price may be higher"},
+    {"partyId":"ESH","result":"supersededAlias -> active","reason":"corporate UAU/Uattzy formation does not prove operational EVSE/partyId replacement"},
+    {"partyId":"GAS","result":"supersededAlias -> active","reason":"corporate UAU/Uattzy formation does not prove operational EVSE/partyId replacement"},
+    {"partyId":"DRW","result":"global alias with GES rejected","reason":"current DriWe-labelled samples expose both IT*DRW and IT*GES identifiers"},
+    {"partyId":"HER","result":"station-level remains fail-closed","reason":"current PUN sample exposes IT*HRA identifiers but no tariff communicated"},
+    {"partyId":"PWY","result":"station-level remains fail-closed","reason":"current public evidence identifies exact IT*PWY connectors but no direct ad-hoc price; roaming price observations excluded"}
+  ],
+  "consistency": {
+    "effectiveStatusSum":86,
+    "expectedCanonicalTotal":86,
+    "physicalPartyIds":88,
+    "supersededAliases":2,
+    "physicalEquation":"86+2=88",
+    "duplicateEffectiveCanonicalPartyIds":0,
+    "canonicalSnapshotStillStale":true,
+    "repairTool":"scripts/italy_cpo_progress_consolidate.py",
+    "note":"Run59 contains deterministic corrections needed by the existing lossless consolidator. The GitHub connector used in this run cannot execute repository-local Python or dispatch an arbitrary consolidation workflow; the stale physical snapshot was therefore not destructively hand-rewritten."
+  },
+  "next": [
+    "Continue biggest active station-level CPOs with exact native/PUN/QR mapping, prioritizing HERA, Powy/TheF and remaining EMOBITALY while avoiding exhausted global-tariff paths.",
+    "Partition UnoEnergy DriWe-labelled inventory by actual DRW/GES EVSE prefix before any identity merge or tariff propagation.",
+    "Keep ESH and GAS independent until EVSE-level replacement proof exists.",
+    "Resolve IONITY by exact station prices only, never from country minimums.",
+    "Keep Atlante last unless directly exploitable exact tariff/backend evidence appears."
+  ]
+}
