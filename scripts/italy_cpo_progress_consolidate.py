@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Losslessly consolidate Italy CPO progress deltas into the canonical JSON.
 
-The script treats docs/italy-cpo-progress-2026-09.json as the inventory seed and
-applies docs/italy-cpo-progress-2026-09-run*-delta.json in numeric run order.
-For each classificationUpdates entry, fields are merged by partyId without
-removing pre-existing metadata. historyAppend values are appended to the CPO
-history and top-level history. Counts are recomputed from the resulting named
-records. The script fails closed on duplicate partyIds or counter mismatch.
+The canonical file is the inventory seed. Ordered run deltas are then replayed.
+Both historical `changes` arrays and modern `classificationUpdates` arrays are
+supported. Every raw party-scoped update is retained in `deltaEvidence`, so
+newer summary fields can supersede older values without discarding the evidence
+that produced them. Non-CPO relationship records are retained at top level.
+
+The script recomputes named status counts and fails closed on duplicate partyIds
+or physical-inventory mismatch. It does not use GitHub code search for EVSE
+deduplication; run `italy_cpo_delta_evse_dedup_audit.py` before promotion.
 """
 from __future__ import annotations
 
@@ -25,17 +28,38 @@ def load_json(path: Path):
 
 
 def deep_merge(dst, src):
+    """Merge latest summary fields while raw update history is stored separately."""
     if isinstance(dst, dict) and isinstance(src, dict):
         out = copy.deepcopy(dst)
         for key, value in src.items():
+            if key in {"historyAppend", "deltaEvidence"}:
+                continue
             if key in out and isinstance(out[key], dict) and isinstance(value, dict):
                 out[key] = deep_merge(out[key], value)
-            elif key == "historyAppend":
-                continue
             else:
                 out[key] = copy.deepcopy(value)
         return out
     return copy.deepcopy(src)
+
+
+def iter_updates(delta):
+    # Historical files used `changes`; newer files use `classificationUpdates`.
+    for upd in delta.get("changes") or []:
+        yield "changes", upd
+    for upd in delta.get("classificationUpdates") or []:
+        yield "classificationUpdates", upd
+
+
+def normalize_party_update(update):
+    upd = copy.deepcopy(update)
+    if not upd.get("status") and upd.get("statusTo"):
+        upd["status"] = upd["statusTo"]
+    return upd
+
+
+def append_unique(seq, item):
+    if item not in seq:
+        seq.append(item)
 
 
 def main():
@@ -65,36 +89,59 @@ def main():
     delta_paths.sort()
 
     top_history = list(canonical.get("history") or [])
+    non_cpo_evidence = list(canonical.get("nonCpoDeltaEvidence") or [])
     last_run = None
+
     for run, path in delta_paths:
         delta = load_json(path)
         last_run = run
-        for upd in delta.get("classificationUpdates") or []:
-            pid = upd.get("partyId")
+        for shape, raw_update in iter_updates(delta):
+            pid = raw_update.get("partyId")
             if not pid:
-                raise SystemExit(f"{path}: classification update without partyId")
+                append_unique(non_cpo_evidence, {
+                    "run": run,
+                    "path": str(path),
+                    "shape": shape,
+                    "update": copy.deepcopy(raw_update),
+                })
+                continue
+
+            upd = normalize_party_update(raw_update)
             if pid not in by_id:
-                # New aliases/partyIds are permitted only when explicitly marked supersededAlias.
                 if upd.get("status") != "supersededAlias":
                     raise SystemExit(f"{path}: unknown partyId {pid}; refusing inventory expansion")
-                by_id[pid] = {}
+                by_id[pid] = {"partyId": pid}
                 order.append(pid)
+
+            prior_evidence = list(by_id[pid].get("deltaEvidence") or [])
             merged = deep_merge(by_id[pid], upd)
+            evidence_entry = {
+                "run": run,
+                "path": str(path),
+                "shape": shape,
+                "update": copy.deepcopy(raw_update),
+            }
+            append_unique(prior_evidence, evidence_entry)
+            merged["deltaEvidence"] = prior_evidence
+
             h = list(merged.get("history") or [])
             ha = upd.get("historyAppend")
-            if isinstance(ha, str) and ha not in h:
-                h.append(ha)
+            if isinstance(ha, str):
+                append_unique(h, ha)
             elif isinstance(ha, list):
                 for item in ha:
-                    if item not in h:
-                        h.append(item)
+                    append_unique(h, item)
             if h:
                 merged["history"] = h
             merged.pop("historyAppend", None)
             by_id[pid] = merged
-        for item in delta.get("historyAppend") or []:
-            if item not in top_history:
-                top_history.append(item)
+
+        for key in ("history", "historyAppend"):
+            items = delta.get(key) or []
+            if isinstance(items, str):
+                items = [items]
+            for item in items:
+                append_unique(top_history, item)
 
     out_cpos = [by_id[pid] for pid in order]
     seen = set()
@@ -120,6 +167,7 @@ def main():
 
     canonical["cpos"] = out_cpos
     canonical["history"] = top_history
+    canonical["nonCpoDeltaEvidence"] = non_cpo_evidence
     canonical["counts"] = {
         "treated": status_counts["treated"],
         "partial": status_counts["partial"],
@@ -135,6 +183,9 @@ def main():
         "duplicatePartyIds": len(out_cpos) - len(seen),
         "lastAppliedDeltaRun": last_run,
         "result": "pass",
+        "deltaShapesReplayed": ["changes", "classificationUpdates"],
+        "rawDeltaEvidenceRetained": True,
+        "evseDedupGuard": "scripts/italy_cpo_delta_evse_dedup_audit.py",
     }
 
     output = Path(args.output) if args.output else canonical_path
