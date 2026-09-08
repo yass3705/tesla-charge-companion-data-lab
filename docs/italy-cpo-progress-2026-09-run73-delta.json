@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 73,
+  "generatedAt": "2026-09-08T20:58:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run72-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "UTZ",
+      "canonicalName": "UAU srl / Uattzy",
+      "status": "active",
+      "priority": "station-level",
+      "operatorGroup": "Uattzy / UAU",
+      "aliases": ["UAU srl", "Uattzy"],
+      "relatedLegacyPartyIds": ["ESH", "GAS"],
+      "relatedLegacyNames": ["E-Shore s.r.l.", "GASGAS S.R.L."],
+      "positiveEvidence": [
+        "Official Uattzy site states Uattzy is the public-charging brand of UAU, a company born from the union of E-Shore, GASGAS and EnerMia.",
+        "Official Uattzy FAQ states Uattzy is both CPO and eMSP and shows connector-specific tariffs before charge start."
+      ],
+      "tariffModel": "connector/station-specific",
+      "tariffChannel": "Uattzy app/RFID/QR/POS where enabled; roaming eMSP separated",
+      "blockage": "Official FAQ states price can vary by delivered power, session duration and stall occupancy and is shown per connector before start. No deterministic network-wide tariff is published.",
+      "resumeCondition": "obtain exact current station/EVSE -> direct Uattzy tariff mapping from Uattzy app/backend, QR/ad-hoc flow or PUN; do not apply a network-wide price",
+      "officialUrls": ["https://www.uattzy.com/", "https://www.uattzy.com/faq/"],
+      "confidence": "high for corporate/operator-group relationship; physical PUN partyId consolidation intentionally not assumed",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08",
+      "historyAppend": "2026-09-08 run73: resolved Uattzy/UAU corporate operator-group relationship. ESH and GAS are legacy/current physical PUN partyIds tied to the same UAU/Uattzy operator group, but remain separately counted until deterministic physical-partyId migration/dedup evidence exists."
+    },
+    {
+      "partyId": "ESH",
+      "canonicalName": "E-Shore s.r.l.",
+      "status": "active",
+      "priority": "station-level",
+      "operatorGroup": "Uattzy / UAU",
+      "supersessionCandidate": "UTZ / UAU srl",
+      "blockage": "Corporate union into UAU/Uattzy is proven, but PUN still exposes E-Shore physical stations/partyId and no exact migration map is proven; tariff remains connector/station-specific.",
+      "resumeCondition": "deduplicate only after exact ESH EVSE -> UAU/Uattzy migration or shared backend identity is proven; otherwise resolve tariffs station-by-station",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08"
+    },
+    {
+      "partyId": "GAS",
+      "canonicalName": "GASGAS S.R.L.",
+      "status": "active",
+      "priority": "station-level",
+      "operatorGroup": "Uattzy / UAU",
+      "supersessionCandidate": "UTZ / UAU srl",
+      "blockage": "Corporate union into UAU/Uattzy is proven, but PUN still exposes GASGAS physical stations/partyId and no exact migration map is proven; tariff remains connector/station-specific.",
+      "resumeCondition": "deduplicate only after exact GAS EVSE -> UAU/Uattzy migration or shared backend identity is proven; otherwise resolve tariffs station-by-station",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08"
+    }
+  ],
+  "countsBefore": {"treated":40,"partial":13,"setAside":1,"active":32,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":40,"partial":13,"setAside":1,"active":32,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {"networkOrClassWideRemaining":0,"stationLevelActiveRemaining":32,"newlyTreatedCpos":[],"newlyPartialCpos":[],"aliasesResolved":["ESH/GAS/UTZ -> Uattzy/UAU operator group (no physical dedup yet)"],"rankableEvseAdded":0,"atlanteLast":true},
+  "consistency": {
+    "statusSumCanonical":86,
+    "expectedCanonical":86,
+    "equation":"40+13+1+32=86",
+    "aliasesCountedOutsideCanonical":2,
+    "physicalPartyIds":88,
+    "physicalEquation":"86+2=88",
+    "duplicateCanonicalPartyIds":0,
+    "result":"counts_pass_operator_group_alias_relation_added_without_unproven_physical_dedup"
+  },
+  "historyAppend": [
+    "2026-09-08 run73: official Uattzy evidence links UAU, E-Shore, GASGAS and EnerMia into one corporate/operator group; no counter reduction performed because legacy physical PUN partyIds remain visible and migration is not deterministically mapped.",
+    "2026-09-08 run73: Uattzy direct tariffs confirmed non-network-wide: official FAQ says price is displayed per connector and may vary with power, duration and stall occupancy; remain fail-closed without station/EVSE mapping."
+  ]
+}
