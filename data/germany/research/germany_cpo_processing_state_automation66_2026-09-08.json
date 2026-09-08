@@ -5,32 +5,41 @@
   "canonicalCountPolicy": "Frozen at last user-directed known total; no canonical reconstruction during first-pass traversal.",
   "firstPassPriority": true,
   "historicalSeenCountCertified": false,
-  "reliableNewFirstPassesSinceCanonicalFreeze": 64,
+  "reliableNewFirstPassesSinceCanonicalFreeze": 67,
   "reliableClassificationSinceCanonicalFreeze": {
     "complete": 12,
-    "partialOrDeferred": 52,
+    "partialOrDeferred": 55,
     "blocked": 0
   },
   "thisRun": {
-    "newFirstPasses": 3,
+    "newFirstPasses": 6,
     "complete": 0,
-    "partial": 3,
+    "partial": 6,
     "blocked": 0,
     "completed": [],
     "deferredAfterFirstPass": [
       "Stadtwerke München GmbH",
       "SachsenEnergie AG",
-      "swb AG / swb Vertrieb Bremen GmbH"
+      "swb AG / swb Vertrieb Bremen GmbH",
+      "REWAG Regensburger Energie- und Wasserversorgung AG & Co KG",
+      "Mainova AG",
+      "Stadtwerke Baden-Baden"
     ],
     "aliasesResolved": {
       "Stadtwerke München GmbH": ["Stadtwerke München", "SWM München", "SWM", "SWM Ladestationen"],
       "SachsenEnergie AG": ["SachsenEnergie", "SachsenEnergie Dresden", "StromTanken App"],
-      "swb AG / swb Vertrieb Bremen GmbH": ["swb", "swb Bremen", "swb Mobilstromkarte"]
+      "swb AG / swb Vertrieb Bremen GmbH": ["swb", "swb Bremen", "swb Mobilstromkarte"],
+      "REWAG Regensburger Energie- und Wasserversorgung AG & Co KG": ["REWAG", "REWAG Regensburg", "r.charge", "rewario.strom.mobil"],
+      "Mainova AG": ["Mainova", "Mainova Frankfurt", "Mainova Ladepunkte"],
+      "Stadtwerke Baden-Baden": ["Stadtwerke Baden-Baden", "SW Baden-Baden", "e-laden Baden-Baden"]
     },
     "authoritativePrefixMappings": {
       "Stadtwerke München GmbH": null,
       "SachsenEnergie AG": null,
-      "swb AG / swb Vertrieb Bremen GmbH": null
+      "swb AG / swb Vertrieb Bremen GmbH": null,
+      "REWAG Regensburger Energie- und Wasserversorgung AG & Co KG": null,
+      "Mainova AG": null,
+      "Stadtwerke Baden-Baden": null
     }
   },
   "consistency": {
@@ -39,7 +48,7 @@
     "prefixWideTariffExtrapolations": 0,
     "duplicateAliasFindings": 0,
     "identicalInvestigationOverTwoRuns": 0,
-    "denominatorCheck": "591 retained as frozen operational denominator; 64 reliable new first passes since freeze; 527 remaining in that traversal.",
+    "denominatorCheck": "591 retained as frozen operational denominator; 67 reliable new first passes since freeze; 524 remaining in that traversal.",
     "activePr": "yass3705/tesla-charge-companion-data-lab PR #73, branch feature/germany-national-base",
     "stateDebt": {
       "detected": true,
@@ -51,9 +60,15 @@
       "Munich SWM: official QR/credit-card direct payment exists, but the post-2026-07-01 numeric ad-hoc tariff is not exposed in the audited public pages; the 0 EUR/month Flex card product is not substituted for ad-hoc.",
       "SachsenEnergie: official without-contract own-network energy price is 0.50 EUR/kWh AC/DC, but the ad-hoc blocking/time component is not numerically resolved.",
       "swb: 0.47 EUR/kWh AC / 0.57 EUR/kWh DC is explicitly the Mobilstromkarte contract tariff and is not generalized to contract-free charging.",
+      "REWAG: exact direct prices are 0.50 EUR/kWh <=49 kW and 0.55 EUR/kWh >=50 kW, but blocking-fee applicability is station-specific and still needs EVSE mapping.",
+      "Mainova: current official Shell partnership does not expose a numeric network-wide direct tariff; discount statements are not inverted into an underlying price.",
+      "Baden-Baden: the exact official ad-hoc matrix found is historical (valid from 2023-02-01) and is not promoted as current 2026 pricing.",
       "No authoritative eMI3 prefix was invented."
     ]
   },
-  "evidencePath": "data/germany/research/cpo_batch_munich_sachsenenergie_swb_2026-09-08.json",
+  "evidencePaths": [
+    "data/germany/research/cpo_batch_munich_sachsenenergie_swb_2026-09-08.json",
+    "data/germany/research/cpo_batch_rewag_mainova_badenbaden_2026-09-08.json"
+  ],
   "nextPolicy": "Continue only with identities absent from active PR first-pass evidence; prioritize official direct-payment/QR surfaces and station-level checkout evidence. Continue cumulative ledger reconstruction strictly from committed evidence without changing the frozen denominator."
 }
