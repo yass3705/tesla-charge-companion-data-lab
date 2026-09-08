@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 62,
+  "generatedAt": "2026-09-08T10:55:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run61-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "ENB",
+      "canonicalName": "ENERBROKER S.R.L. (R-ev)",
+      "aliases": ["ENERBROKER S.R.L. (R-ev)", "R-ev", "ENB"],
+      "status": "treated",
+      "priority": "class-wide",
+      "evse": 87,
+      "stations": 73,
+      "tariffModel": "direct CPO class-wide AC/DC/HPC",
+      "tariffChannel": "direct R-ev network; app/wallet; roaming on third-party CPO kept separate",
+      "tariffs": [
+        {"class":"AC","powerRule":"AC Type 2 up to 22 kW","energyEurPerKwh":0.55,"vatIncluded":true,"rankable":true},
+        {"class":"DC","powerRule":"CCS Combo 2 up to 150 kW","energyEurPerKwh":0.75,"vatIncluded":true,"rankable":true},
+        {"class":"HPC","powerRule":"CCS Combo 2 over 150 kW","energyEurPerKwh":0.85,"vatIncluded":true,"rankable":true}
+      ],
+      "occupancyFees": [
+        {"class":"AC","graceAfterChargeMinutes":45,"feeEurPerMinute":0.25,"nightExemption":"23:00-07:00 subject to the edge-case wording in current terms"},
+        {"class":"DC/HPC","graceAfterChargeMinutes":15,"feeEurPerMinute":0.25,"nightExemption":false}
+      ],
+      "paymentMethods": ["R-ev app", "RFID associated to account", "card/prepaid card/PayPal as account payment methods"],
+      "eligibility": "R-ev network tariff; third-party roaming excluded from direct CPO pricing",
+      "validFrom": "2026-07",
+      "validThrough": null,
+      "officialUrls": [
+        "https://www.r-ev.it/tariffe/",
+        "https://www.r-ev.it/termini-di-utilizzo-app/",
+        "https://www.r-ev.it/ti-serve-aiuto/"
+      ],
+      "positiveEvidence": [
+        "Current R-ev tariff page (published July 2026 assets) displays AC 0.55 EUR/kWh, DC 0.75 EUR/kWh and HPC 0.85 EUR/kWh, VAT included.",
+        "Current R-ev terms define AC as Type 2 up to 22 kW, DC CCS2 up to 150 kW and HPC CCS2 over 150 kW, providing deterministic class thresholds.",
+        "Current R-ev help/terms separate the R-ev network from third-party CPO roaming and state the app exposes station tariffs and network eligibility.",
+        "Existing canonical inventory already reconciles partyId ENB as ENERBROKER S.R.L. (R-ev); this run does not create a new cross-partyId alias merge."
+      ],
+      "negativePaths": [
+        "Legacy wallet prices 0.65/0.85/0.89 found in older terms are superseded for ranking by the newer July 2026 official tariff assets 0.55/0.75/0.85.",
+        "Do not apply R-ev direct tariffs to third-party infrastructure visible in the R-ev app.",
+        "Do not infer any additional fixed/session fee beyond the documented occupancy penalties."
+      ],
+      "coverage": {
+        "rankableDirectEvse": 87,
+        "uncoveredEvse": 0,
+        "coveredSubpopulations": [
+          {"population":"IT*ENB inventory on R-ev network, AC <=22 kW","tariff":"0.55 EUR/kWh"},
+          {"population":"IT*ENB inventory on R-ev network, DC <=150 kW","tariff":"0.75 EUR/kWh"},
+          {"population":"IT*ENB inventory on R-ev network, HPC >150 kW","tariff":"0.85 EUR/kWh"}
+        ],
+        "uncoveredSubpopulations": []
+      },
+      "blockage": null,
+      "resumeCondition": "re-open only if R-ev publishes a new tariff grid or inventory evidence breaks ENB->R-ev party scope",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08",
+      "historyAppend": "2026-09-08 run62: ENB promoted active -> treated after current July-2026 R-ev AC/DC/HPC tariff assets were combined with official class thresholds and roaming separation."
+    }
+  ],
+  "countsBefore": {"treated":39,"partial":12,"setAside":1,"active":34,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":40,"partial":12,"setAside":1,"active":33,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 33,
+    "newlyTreatedCpos": ["ENB"],
+    "newlyPartialCpos": [],
+    "rankableEvseAdded": 87,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "40+12+1+33=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "result": "pass_after_ENB_treated_promotion",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-08 run62: ENB/R-ev promoted active -> treated; 87 EVSE added to deterministic direct rankable coverage using current official 0.55/0.75/0.85 EUR/kWh AC/DC/HPC grid and exact official power-class thresholds."
+  ]
+}
