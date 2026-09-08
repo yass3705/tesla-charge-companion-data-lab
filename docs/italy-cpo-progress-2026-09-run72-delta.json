@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 72,
+  "generatedAt": "2026-09-08T19:51:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run71-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "partial",
+      "priority": "station-level",
+      "evse": 849,
+      "stations": 296,
+      "tariffModel": "station_specific_owner_pricing",
+      "tariffChannel": "direct CPO tariff published through Piattaforma Unica Nazionale (surfaced by Pienotto)",
+      "coverageBeforeReported": {"rankableDirectEvse": 396, "uncoveredEvse": 453, "coveragePct": 46.64},
+      "coverageAfter": {"rankableDirectEvse": 296, "uncoveredEvse": 553, "coveragePct": 34.86},
+      "coverageCorrection": {
+        "reason": "cross-run duplicate EVSE mappings were credited as new coverage in runs64, 67, 70 and 71; default-branch GitHub code search did not see research-branch deltas and therefore produced false-negative duplicate checks",
+        "baselineVerifiedAtRun58": 194,
+        "postBaselineUniqueAdds": {
+          "run63": 6,
+          "run64": 2,
+          "run65": 21,
+          "run66": 64,
+          "run67": 0,
+          "run70": 2,
+          "run71": 7
+        },
+        "recomputedUniqueCoverage": 296,
+        "reportedCoverageBeforeCorrection": 396,
+        "overstatementEvse": 100,
+        "duplicateDetails": [
+          "run64 credited 22 EVSE but 20 were already present in run55; only San Vito dei Normanni Viale Paesi Bassi IT*EMOE748 and Giussano IT*EMOE136 were new",
+          "run67 credited 20 EMO EVSE but all 20 were already present in run54 (Milano Piazza Piemonte 12, Catanzaro 2, San Martino Siccomario 6)",
+          "run70 credited 45 EMO EVSE but 43 were already present in runs54-55; only Pontecagnano Faiano IT*EMOE407/408 were new",
+          "run71 newExactMappings contains 25 EVSE although queueImpact/coverage credited 24; 18 IDs were already present in run56, leaving seven genuinely new IDs at Padova, Porto Sant'Elpidio, Ragusa and San Benedetto del Tronto"
+        ]
+      },
+      "negativePaths": [
+        "Via L. Riva, Gallarate was not unresolved: IT*EMO*E2079*1/*2/*3 were already recorded in run54; later duplicate-safety notes claiming it remained excluded were stale.",
+        "Via Fossa Lupara 12, Salerno was not unresolved: IT*EMOE1261 was already recorded in run56 at 0.35 EUR/kWh plus 0.74 EUR activation.",
+        "553 EMOBITALY EVSE remain fail-closed pending exact current station/EVSE tariff mapping."
+      ],
+      "resumeCondition": "before any future EMO promotion, compare candidate EVSE IDs against the ordered research-branch deltas themselves (not default-branch code search); promote only set-difference IDs",
+      "confidence": "high for the run58->run71 deduplication correction; earlier 194-EVSE baseline retained because run58 explicitly reconciles run54-56 plus four Monopoli EVSE",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08",
+      "historyAppend": "2026-09-08 run72: mandatory cross-run dedup audit corrected EMOBITALY rankable coverage from reported 396/849 to 296/849 unique EVSE. Runs64/67/70/71 had reused research-branch IDs missed by default-branch code search. No tariff evidence was discarded; only duplicate coverage credits were removed."
+    }
+  ],
+  "countsBefore": {"treated":40,"partial":13,"setAside":1,"active":32,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":40,"partial":13,"setAside":1,"active":32,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {"networkOrClassWideRemaining":0,"stationLevelActiveRemaining":32,"newlyTreatedCpos":[],"newlyPartialCpos":[],"rankableEvseAdded":0,"rankableEvseCorrection":-100,"atlanteLast":true},
+  "consistency": {
+    "statusSumCanonical":86,
+    "expectedCanonical":86,
+    "equation":"40+13+1+32=86",
+    "aliasesCountedOutsideCanonical":2,
+    "physicalPartyIds":88,
+    "physicalEquation":"86+2=88",
+    "duplicateCanonicalPartyIds":0,
+    "emoCoverageEquation":"194 + 6 + 2 + 21 + 64 + 0 + 2 + 7 = 296",
+    "result":"counts_pass_evse_duplicate_defect_corrected",
+    "canonicalPhysicalSnapshotStillStale":true,
+    "canonicalRepairScript":"scripts/italy_cpo_progress_consolidate.py",
+    "consolidatorKnownDefect":"current consolidator processes classificationUpdates but older deltas use changes; list fields are overwritten rather than losslessly deduplicated"
+  },
+  "historyAppend": [
+    "2026-09-08 run72: corrected a 100-EVSE EMOBITALY cross-run overcount; effective unique coverage is 296/849 (34.86%), 553 fail-closed.",
+    "2026-09-08 run72: resolved stale duplicate-safety notes: Gallarate Via L. Riva was already in run54 and Salerno Via Fossa Lupara in run56."
+  ]
+}
