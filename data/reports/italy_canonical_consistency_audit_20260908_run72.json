@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 72,
+  "checkedAt": "2026-09-08T19:51:00+01:00",
+  "scope": "ordered Italy progress deltas, with focused EVSE-level cross-run audit for EMOBITALY",
+  "nominalCounts": {
+    "treated": 40,
+    "partial": 13,
+    "setAside": 1,
+    "active": 32,
+    "canonicalTotal": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88,
+    "equations": ["40+13+1+32=86", "86+2=88"]
+  },
+  "emoAudit": {
+    "inventoryEvse": 849,
+    "verifiedBaselineRun58UniqueEvse": 194,
+    "reportedRun71Coverage": 396,
+    "correctedUniqueCoverage": 296,
+    "correctedUncovered": 553,
+    "correctedCoveragePct": 34.86,
+    "overstatementRemoved": 100,
+    "postRun58": [
+      {"run":63,"claimedAdded":6,"uniqueAdded":6,"duplicateCredits":0},
+      {"run":64,"claimedAdded":22,"uniqueAdded":2,"duplicateCredits":20,"duplicateAgainst":[55]},
+      {"run":65,"claimedAdded":21,"uniqueAdded":21,"duplicateCredits":0},
+      {"run":66,"claimedAdded":64,"uniqueAdded":64,"duplicateCredits":0},
+      {"run":67,"claimedAdded":20,"uniqueAdded":0,"duplicateCredits":20,"duplicateAgainst":[54]},
+      {"run":70,"claimedAdded":45,"uniqueAdded":2,"duplicateCredits":43,"duplicateAgainst":[54,55]},
+      {"run":71,"claimedAdded":24,"listedEvse":25,"uniqueAdded":7,"effectiveOverstatement":17,"duplicateIdsListed":18,"duplicateAgainst":[56]}
+    ],
+    "resolvedStaleNotes": [
+      "Gallarate Via L. Riva / IT*EMO*E2079*1..3 was already mapped in run54 and must not be described as unresolved.",
+      "Salerno Via Fossa Lupara / IT*EMOE1261 was already mapped in run56 and must not be described as unresolved."
+    ],
+    "rootCause": "duplicate checks used GitHub code search that covers the default branch, while the active evidence lived on research/italy-cpo-priority-20260905; repeated IDs therefore returned false negatives",
+    "guardrail": "scripts/italy_cpo_delta_evse_dedup_audit.py audits checked-out branch delta files and should be run before future EVSE coverage promotion"
+  },
+  "otherCpoChecks": [
+    {
+      "partyId":"HER",
+      "result":"no_progress",
+      "evidence":"current PUN/Pienotto HERA sample at Cervia still says tariffs not communicated to PUN",
+      "decision":"remain active station-level fail-closed"
+    },
+    {
+      "partyId":"PWY",
+      "result":"no_progress",
+      "evidence":"current Powy site confirms costs vary with charging-point power/duration and are shown in Powy Charge before charging; site/QR mapping remains necessary",
+      "decision":"remain active station-level fail-closed"
+    }
+  ],
+  "physicalCanonical": {
+    "path":"docs/italy-cpo-progress-2026-09.json",
+    "state":"stale legacy snapshot",
+    "safeDecision":"do not overwrite until consolidator is fixed to replay both legacy changes and classificationUpdates losslessly; run72 delta is authoritative correction overlay in the meantime",
+    "knownConsolidatorDefects":[
+      "scripts/italy_cpo_progress_consolidate.py currently ignores legacy delta `changes` arrays",
+      "list evidence fields are overwritten by deep_merge rather than retained losslessly"
+    ]
+  },
+  "result":"major_evse_coverage_inconsistency_corrected_in_overlay; nominal CPO/alias counts remain consistent"
+}
