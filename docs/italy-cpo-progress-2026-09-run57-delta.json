@@ -1,0 +1,63 @@
+{
+  "run": 57,
+  "generatedAt": "2026-09-08T06:50:00+01:00",
+  "baseEffectiveState": {"treated":40,"partial":11,"setAside":1,"active":32,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+  "changes": [
+    {
+      "partyId": "DRW",
+      "canonicalName": "UnoEnergy DriWe spa",
+      "statusFrom": "active",
+      "statusTo": "active",
+      "priority": "station-level",
+      "evse": 287,
+      "stations": 103,
+      "newEvidence": [
+        "Current PUN/Pienotto record for UnoEnergy DriWe spa at Via Lario 37, Gallarate exposes EVSE identifiers IT*GES*E69R6D and IT*GES*EOA45U rather than IT*DRW identifiers.",
+        "The same current PUN record states that tariffs have not been communicated to PUN, so no price is promoted."
+      ],
+      "aliasDecision": "Do not merge DRW into GES yet. This is a material partyId/operator-label collision requiring inventory-wide reconciliation before deduplication; one station is insufficient to prove that all DRW inventory is a GES alias.",
+      "blockage": "Direct current tariff absent from PUN and current operator-label to EVSE-partyId mapping is inconsistent with canonical DRW label.",
+      "resumeCondition": "Enumerate additional DriWe PUN/native records; if all/most DriWe records resolve to IT*GES EVSE IDs, reconcile DRW/GES inventory and dedupe only with deterministic one-to-one evidence.",
+      "confidence": "high for observed Gallarate collision; low for network-wide alias conclusion",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08"
+    },
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "statusFrom": "partial",
+      "statusTo": "partial",
+      "priority": "station-level",
+      "evse": 849,
+      "stations": 296,
+      "coverageBefore": {"rankableDirectEvse":190,"uncoveredEvse":659,"coveragePct":22.38},
+      "coverageAfter": {"rankableDirectEvse":190,"uncoveredEvse":659,"coveragePct":22.38},
+      "newDiscoveryEvidence": [
+        "Pienotto/PUN national current price index (last update 2026-09-07, six-hour refresh) exposes additional EMOBITALY priced locations not yet mapped in prior run55/run56 exact subpopulations, including Padova Via Fra G. Eremitano 10, Porto Sant'Elpidio Strada S. Filippo 5/N, Ragusa Viale delle Americhe 143 and San Benedetto del Tronto Viale Rinascimento 141 at 0.45 EUR/kWh.",
+        "Current city indexes also expose EMOBITALY Via Giovanni Macchi 61 Varese at 0.50 EUR/kWh and two Monopoli locations at 0.55 EUR/kWh.",
+        "These location-level prices are not promoted because the currently retrievable index pages do not expose the exact EVSE identifiers needed for deterministic station/EVSE mapping."
+      ],
+      "decision": "Discovery only; zero new rankable EVSE in this run. Preserve fail-closed until exact station pages/native backend provide EVSE identifiers.",
+      "resumeCondition": "Resolve exact PUN station pages or native identifiers for the newly discovered priced locations, then add only explicitly listed EVSE IDs.",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08"
+    }
+  ],
+  "effectiveCountsAfter": {"treated":40,"partial":11,"setAside":1,"active":32,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+  "coverageAdded": {"rankableEvse":0,"networkWideEvse":0,"stationLevelEvse":0},
+  "priorityQueuesAfter": {"networkOrClassWideRemaining":0,"stationLevelActiveRemaining":32},
+  "consistency": {
+    "statusSumCanonicalEffective":84,
+    "aliasesExcludedFromCanonicalCount":true,
+    "physicalPartyIdsAccounted":88,
+    "duplicateCanonicalPartyIdsEffective":0,
+    "physicalCanonicalSnapshotOutdated":true,
+    "physicalCanonicalSnapshotCounts":{"treated":4,"partial":5,"setAside":1,"active":78,"total":88},
+    "effectiveOverlayCounts":{"treated":40,"partial":11,"setAside":1,"active":32,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+    "correctionDecision":"Do not destructively replace the one-line legacy canonical without a lossless merge of all ordered deltas. Record this as a major consistency defect requiring deterministic consolidation."
+  },
+  "history": [
+    "2026-09-08 run57: no unsafe tariff promotion. Detected current DriWe operator-label / IT*GES EVSE-ID collision at Gallarate and retained DRW separately pending inventory-wide proof.",
+    "2026-09-08 run57: performed mandatory consistency audit after repeated runs without nominative status progression; confirmed the physical canonical snapshot is materially stale versus ordered deltas through run56."
+  ]
+}
