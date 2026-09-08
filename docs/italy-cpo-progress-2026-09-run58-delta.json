@@ -1,0 +1,99 @@
+{
+  "run": 58,
+  "generatedAt": "2026-09-08T07:52:00+01:00",
+  "baseEffectiveState": {"treated":40,"partial":11,"setAside":1,"active":32,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+  "changes": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "statusFrom": "partial",
+      "statusTo": "partial",
+      "priority": "station-level",
+      "evse": 849,
+      "stations": 296,
+      "coverageBefore": {"rankableDirectEvse":190,"uncoveredEvse":659,"coveragePct":22.38},
+      "coverageAfter": {"rankableDirectEvse":194,"uncoveredEvse":655,"coveragePct":22.85},
+      "newExactMappings": [
+        {"location":"Via Gregorio Munno, 6, Monopoli (BA)","evseIds":["IT*EMOE267","IT*EMOE268"],"connector":"Type 2","powerKw":22,"energyEurPerKwh":0.55,"activationEur":0.74,"source":"PUN via Pienotto","checkedAt":"2026-09-08"},
+        {"location":"Via Remigio Ferretti, Monopoli (BA)","evseIds":["IT*EMOE265","IT*EMOE266"],"connector":"Type 2","powerKw":22,"energyEurPerKwh":0.55,"activationEur":0.74,"source":"PUN via Pienotto","checkedAt":"2026-09-08"}
+      ],
+      "decision": "Promote only the four explicitly listed EVSE IDs; no propagation to other Monopoli or EMOBITALY stations.",
+      "resumeCondition": "Continue exact station-page enumeration for the remaining 655 EVSE.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08"
+    },
+    {
+      "partyId": "SAG",
+      "canonicalName": "Sagelio srl società benefit",
+      "statusFrom": "active",
+      "statusTo": "active",
+      "priority": "station-level",
+      "evse": 405,
+      "stations": 316,
+      "newEvidence": [
+        "Current Sagelio commercial material explicitly lets site owners control pricing and states there is no single tariff valid for all contexts.",
+        "Sagelio supports direct credit-card activation by QR across its network, but current per-station direct price remains connector/site specific."
+      ],
+      "blockage": "No current deterministic network-wide price; exact QR/app station mapping required.",
+      "resumeCondition": "Capture direct QR or current PUN/native price for each station/EVSE.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08"
+    },
+    {
+      "partyId": "ESH",
+      "canonicalName": "E-Shore s.r.l.",
+      "statusFrom": "active",
+      "statusTo": "active",
+      "priority": "station-level",
+      "evse": 892,
+      "stations": 306,
+      "newEvidence": [
+        "Current Uattzy site confirms UAU/Uattzy was created from the union of E-Shore, GASGAS and EnerMia.",
+        "Current Uattzy FAQ states tariff is displayed per connector and may vary with delivered power, session duration and occupancy time."
+      ],
+      "aliasDecision": "Do not mark ESH/GAS/UTZ as superseded aliases solely from corporate merger evidence; preserve separate partyIds until inventory/native identifiers prove operational replacement or deterministic equivalence.",
+      "blockage": "Per-connector tariff required; corporate consolidation does not establish one tariff or one partyId.",
+      "resumeCondition": "Map current Uattzy/native connector records to ESH/GAS/UTZ EVSE IDs and dedupe only where identifiers prove replacement.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08"
+    },
+    {
+      "partyId": "DRW",
+      "canonicalName": "UnoEnergy DriWe spa",
+      "statusFrom": "active",
+      "statusTo": "active",
+      "priority": "station-level",
+      "evse": 287,
+      "stations": 103,
+      "newEvidence": [
+        "Rechecked current PUN/Pienotto Gallarate record: operator label UnoEnergy DriWe spa exposes IT*GES EVSE identifiers IT*GES*E69R6D and IT*GES*EOA45U, with no tariff communicated to PUN.",
+        "Current PUN search results show additional UnoEnergy DriWe locations, but no second exact EVSE-ID sample was retrieved in this run to justify network-wide aliasing."
+      ],
+      "aliasDecision": "Keep DRW distinct pending multiple exact current samples; do not merge into GES.",
+      "blockage": "PartyId collision unresolved and direct current tariff absent.",
+      "resumeCondition": "Retrieve additional exact DriWe station pages and compare their EVSE prefixes network-wide.",
+      "confidence": "high for Gallarate collision, insufficient for network-wide alias conclusion",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08"
+    }
+  ],
+  "effectiveCountsAfter": {"treated":40,"partial":11,"setAside":1,"active":32,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+  "coverageAdded": {"rankableEvse":4,"networkWideEvse":0,"stationLevelEvse":4},
+  "priorityQueuesAfter": {"networkOrClassWideRemaining":0,"stationLevelActiveRemaining":32},
+  "consistency": {
+    "statusSumCanonicalEffective":84,
+    "aliasesExcludedFromCanonicalCount":true,
+    "physicalPartyIdsAccounted":88,
+    "duplicateCanonicalPartyIdsEffective":0,
+    "physicalCanonicalSnapshotOutdated":true,
+    "safeAction":"Preserve ordered overlay and avoid destructive canonical replacement until a lossless deterministic replay of all deltas is performed."
+  },
+  "history": [
+    "2026-09-08 run58: added four exact EMOBITALY EVSE mappings in Monopoli from current PUN station pages; coverage 190 -> 194/849.",
+    "2026-09-08 run58: reconfirmed Sagelio and Uattzy/E-Shore as station-level; no unsafe alias merge or network-wide tariff promotion.",
+    "2026-09-08 run58: DriWe/GES collision remains unresolved; preserved fail-closed identity handling."
+  ]
+}
