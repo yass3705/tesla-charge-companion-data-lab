@@ -1,0 +1,75 @@
+{
+  "run": 53,
+  "generatedAt": "2026-09-08T02:52:00+01:00",
+  "baseEffectiveState": {"treated": 39, "partial": 10, "setAside": 1, "active": 34, "canonicalTotal": 84, "supersededAlias": 4, "physicalPartyIds": 88},
+  "changes": [
+    {
+      "partyId": "CVG",
+      "canonicalName": "CONVERGENZE S.p.A. Società Benefit",
+      "statusFrom": "active",
+      "statusTo": "treated",
+      "priority": "network-wide",
+      "evse": 90,
+      "stations": 44,
+      "tariffModel": "single_network_wide_energy_price",
+      "tariffChannel": "direct CPO EVO network",
+      "tariffs": [
+        {"scope":"Convergenze EVO network, Type 2 AC 22 kW","energyEurPerKwh":0.60,"currency":"EUR","tax":"VAT included"}
+      ],
+      "paymentMethods": ["EVO Card","smartphone/web portal","credit card","PayPal"],
+      "preauthorization": {"amountEur":35.0,"note":"authorization only; final charge equals actual session cost"},
+      "officialUrls": ["https://convergenze.it/it/servizi/energia/evo"],
+      "positiveEvidence": [
+        "official Convergenze EVO page states Costo per kWh 60 cent./EUR IVA inclusa",
+        "same page defines EVO as Convergenze's own EV charging network and states its charging points use two Type 2 IEC62196 sockets at 22 kW each",
+        "same page documents direct EVO Card and smartphone/web payment flows"
+      ],
+      "negativeEvidence": [],
+      "coverage": {"rankableDirectEvse":90,"uncoveredEvse":0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08"
+    },
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "statusFrom": "active",
+      "statusTo": "partial",
+      "priority": "station-level",
+      "evse": 849,
+      "stations": 296,
+      "tariffModel": "station_specific_owner_pricing",
+      "tariffChannel": "direct CPO tariff published through Piattaforma Unica Nazionale (surfaced by Pienotto)",
+      "coveredSubpopulations": [
+        {"location":"Via Olgettina 60, Milano","evseCount":40,"evsePattern":"IT*EMO*E2016*1..40","connector":"Type 2 22 kW","energyEurPerKwh":0.48,"activationFeeEur":1.14,"source":"PUN via Pienotto"},
+        {"location":"Via Giacomo Manzù 33, Bergamo","evseCount":21,"evsePattern":"IT*EMO*E2015*1..21","connector":"Type 2 22 kW","energyEurPerKwh":0.48,"activationFeeEur":1.14,"source":"PUN via Pienotto"},
+        {"location":"Piazza Giulio Cesare, Bari","evseCount":12,"evsePattern":"IT*EMO*E2290*1..IT*EMO*E2301*1","connector":"Type 2 22 kW","energyEurPerKwh":0.48,"activationFeeEur":1.14,"source":"PUN via Pienotto"},
+        {"location":"Via Scipione Crisanzio 1/B, Bari","evseCount":12,"evsePattern":"IT*EMO*E2267*1..IT*EMO*E2278*1","connector":"Type 2 22 kW","energyEurPerKwh":0.48,"activationFeeEur":1.14,"source":"PUN via Pienotto"}
+      ],
+      "officialOrAuthoritativeUrls": [
+        "https://pienotto.it/stazioni/258489-emobitaly-s-r-l-milano-mi",
+        "https://pienotto.it/stazioni/259081-emobitaly-s-r-l-bergamo-bg",
+        "https://pienotto.it/stazioni/258859-emobitaly-s-r-l-bari-ba",
+        "https://pienotto.it/stazioni/265687-emobitaly-s-r-l-bari-ba"
+      ],
+      "positiveEvidence": [
+        "each cited page explicitly identifies Gestore: EMOBITALY S.r.l., lists exact IT*EMO EVSE IDs, connector type/power, energy price and activation fee",
+        "each cited page states Dati della Piattaforma Unica Nazionale and shows a recent hourly refresh timestamp"
+      ],
+      "negativeEvidence": [
+        "EMOBITALY pricing is location/owner specific; 0.48 EUR/kWh + 1.14 EUR activation must not be extrapolated beyond the explicitly mapped EVSEs",
+        "other EMOBITALY stations have different current PUN prices, confirming station-level variability"
+      ],
+      "coverage": {"rankableDirectEvse":85,"uncoveredEvse":764,"coveragePct":10.01},
+      "blockage": "764 EVSE remain without exact current station/EVSE tariff mapping",
+      "resumeCondition": "continue PUN/Pienotto/native backend enumeration and only promote EVSEs with explicit current tariff records",
+      "confidence": "high for mapped 85 EVSE; medium for remaining network classification",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08"
+    }
+  ],
+  "effectiveCountsAfter": {"treated": 40, "partial": 11, "setAside": 1, "active": 32, "canonicalTotal": 84, "supersededAlias": 4, "physicalPartyIds": 88},
+  "coverageAdded": {"rankableEvse":175,"networkWideEvse":90,"stationLevelEvse":85},
+  "consistency": {"statusSumCanonical":84,"aliasesExcludedFromCanonicalCount":true,"physicalPartyIdsAccounted":88,"duplicateCanonicalPartyIds":0},
+  "history": ["2026-09-08 run53: promoted Convergenze/CVG to treated after official EVO page confirmed a network-wide 0.60 EUR/kWh VAT-included direct price on its 22 kW Type 2 network; promoted EMOBITALY from active to partial after mapping 85 exact IT*EMO EVSEs to current PUN-reported direct prices of 0.48 EUR/kWh plus 1.14 EUR activation fee across four locations; no EMOBITALY price was extrapolated to unmapped EVSEs."]
+}
