@@ -1,0 +1,39 @@
+{
+  "run": 59,
+  "generatedAt": "2026-09-08T08:53:48+01:00",
+  "subject": "UnoEnergy DriWe / DRW / GES identity collision",
+  "result": "global_alias_rejected_mixed_partyid_subpopulations_confirmed",
+  "samples": [
+    {
+      "operatorLabel": "UnoEnergy DriWe spa",
+      "location": "Via Lario 37, Gallarate (VA)",
+      "source": "PUN via Pienotto",
+      "evseIds": ["IT*GES*E69R6D", "IT*GES*EOA45U"],
+      "tariff": null,
+      "tariffState": "not communicated to PUN",
+      "interpretation": "Current DriWe-labelled infrastructure can retain GES-prefixed EVSE identifiers."
+    },
+    {
+      "operatorLabel": "UNOENERGY DRIWE S.P.A.",
+      "location": "Viale Tito Livio / Via Luzio snc, Schio (VI)",
+      "source": "PUMP current station record",
+      "evseIds": ["IT*DRW*EDWITCB240695*1", "IT*DRW*EDWITCB240695*2", "IT*DRW*EDWITCB240695*3"],
+      "connectors": ["CCS 60 kW", "Type 2 22 kW", "CHAdeMO 50 kW"],
+      "interpretation": "Current DriWe-labelled infrastructure also uses native DRW-prefixed EVSE identifiers."
+    }
+  ],
+  "canonicalDecision": {
+    "mergeDRWIntoGES": false,
+    "mergeGESIntoDRW": false,
+    "reason": "Two current DriWe-labelled samples demonstrate both GES and DRW prefixes. A global alias in either direction would incorrectly collapse physically valid identifier subpopulations.",
+    "statusDRW": "active",
+    "priorityDRW": "station-level",
+    "statusGES": "partial",
+    "priorityGES": "station-level",
+    "rankableCoverageAdded": 0
+  },
+  "blockage": "Exact ownership/legacy partition and current direct tariff remain unresolved for DriWe-labelled GES EVSE; no price was available in the sampled PUN record.",
+  "resumeCondition": "Sample additional UnoEnergy DriWe stations across regions, classify EVSE prefixes into DRW versus GES subpopulations, and obtain native direct QR/app/backend tariffs per EVSE; do not dedupe solely from operator label.",
+  "confidence": "high for rejecting a global DRW/GES alias; medium for full subpopulation partition",
+  "lastInvestigated": "2026-09-08"
+}
