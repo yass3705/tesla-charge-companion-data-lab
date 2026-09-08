@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 61,
+  "generatedAt": "2026-09-08T10:12:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run60-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "ASS",
+      "canonicalName": "AGSM AIM SMART SOLUTIONS S.R.L. / Magis Smart",
+      "aliases": ["AGSM AIM SMART SOLUTIONS S.R.L.", "Magis Smart S.r.l.", "Magis E-mobility", "ASS"],
+      "status": "partial",
+      "priority": "class-wide",
+      "evse": 258,
+      "stations": 135,
+      "tariffModel": "direct CPO subscription class-wide tariffs plus unresolved pay-per-use connector price",
+      "tariffChannel": "direct Magis E-mobility app; subscription and pay-per-use separated; roaming separate",
+      "tariffs": [
+        {"plan":"Small","eligibility":"active Magis subscription; AC","subscriptionEur":5.00,"energyEurPerKwh":0.60,"rankable":true},
+        {"plan":"Medium","eligibility":"active Magis subscription; AC","subscriptionEur":10.00,"energyEurPerKwh":0.58,"rankable":true},
+        {"plan":"Large","eligibility":"active Magis subscription; AC","subscriptionEur":20.00,"energyEurPerKwh":0.50,"rankable":true},
+        {"plan":"Flat DC","eligibility":"active Magis subscription; DC","subscriptionEur":10.00,"energyEurPerKwh":0.74,"rankable":true},
+        {"plan":"Small + Flat DC","eligibility":"active Magis combined subscription","subscriptionEur":15.00,"acEnergyEurPerKwh":0.60,"dcEnergyEurPerKwh":0.74,"rankable":true},
+        {"plan":"Medium + Flat DC","eligibility":"active Magis combined subscription","subscriptionEur":20.00,"acEnergyEurPerKwh":0.58,"dcEnergyEurPerKwh":0.74,"rankable":true},
+        {"plan":"Large + Flat DC","eligibility":"active Magis combined subscription","subscriptionEur":30.00,"acEnergyEurPerKwh":0.50,"dcEnergyEurPerKwh":0.74,"rankable":true}
+      ],
+      "officialUrls": [
+        "https://www.aimmobilita.it/it/web/magis-smart/agsmaim_e-mobility/abbonamenti",
+        "https://www.aimmobilita.it/it/web/magis-smart/mobilita-sostenibile"
+      ],
+      "positiveEvidence": [
+        "Current official Magis page publishes the seven subscription formulas and exact AC/DC energy prices above, VAT included.",
+        "Official FAQ states Magis public charging can be used either pay-per-use or subscription; subscription prices are discounted relative to pay-per-use.",
+        "Official mobility page states Magis operates the public charging service and separates roaming on third-party infrastructure."
+      ],
+      "negativePaths": [
+        "Do not infer the standard pay-per-use tariff from subscription discounts; official FAQ says the current pay-per-use amount is shown in-app at use time.",
+        "Do not apply Magis subscription tariffs to third-party roaming infrastructure.",
+        "Do not count all 258 EVSE as rankable until inventory mapping verifies each EVSE is a Magis public station enabled for the relevant AC/DC subscription class."
+      ],
+      "coverage": {
+        "coveredSubpopulations": [
+          {"population":"Magis public AC EVSE enabled for subscription","model":"deterministic plan-specific AC prices","exactEvseCount":"pending inventory mapping"},
+          {"population":"Magis public DC EVSE enabled for subscription","model":"deterministic Flat DC 0.74 EUR/kWh","exactEvseCount":"pending inventory mapping"}
+        ],
+        "uncoveredSubpopulations": [
+          {"population":"pay-per-use sessions","reason":"exact current standard price is displayed in app at use time; no deterministic public network-wide value found"},
+          {"population":"third-party roaming","reason":"separate eMSP/roaming pricing; excluded from direct CPO model"}
+        ],
+        "rankableDirectEvse":"pending deterministic inventory/power/eligibility mapping",
+        "uncoveredEvse":"not safely quantifiable yet"
+      },
+      "blockage": "Need inventory-level AC/DC and Magis-public eligibility mapping for exact EVSE coverage; pay-per-use remains station/app-level.",
+      "resumeCondition": "map IT*ASS inventory to AC/DC public Magis stations and capture current app/QR pay-per-use prices where needed",
+      "confidence": "high for subscription tariff grid and direct-vs-roaming separation",
+      "lastInvestigated": "2026-09-08",
+      "lastChanged": "2026-09-08",
+      "historyAppend": "2026-09-08 run61: ASS promoted active -> partial after current first-party Magis subscription grid established deterministic direct AC/DC prices; pay-per-use remains fail-closed."
+    }
+  ],
+  "countsBefore": {"treated":39,"partial":11,"setAside":1,"active":35,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":39,"partial":12,"setAside":1,"active":34,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 34,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": ["ASS"],
+    "rankableEvseAdded": "pending inventory mapping; no EVSE count claimed in fail-closed mode",
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "39+12+1+34=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "result": "pass_after_ASS_partial_promotion",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-08 run61: AGSM AIM/Magis ASS promoted active -> partial with current deterministic direct subscription tariffs by AC/DC class; pay-per-use kept station/app-level fail-closed."
+  ]
+}
