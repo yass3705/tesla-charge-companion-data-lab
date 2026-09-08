@@ -20,7 +20,6 @@ jobs:
         run: |
           set -euo pipefail
           # Pin the exact France baseline that produced totalOperators=291 on 2026-09-01.
-          # This makes the historical denominator reproducible instead of following a moving branch.
           curl -fLsS --retry 3 https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/1b10d25bde552abd2c3e6b0c93e6cbc60b5b3a88/data/v9/france-static/all.json.gz -o /tmp/fr.json.gz
           curl -fLsS --retry 3 https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/refactor/unified-data-engine-v9/data/v9/source-registry.json -o /tmp/registry.json
           python - <<'PY'
@@ -29,13 +28,10 @@ jobs:
           reg=json.load(open('/tmp/registry.json'))
           active=[s for s in reg['sources'] if s.get('countries')==['FR'] and s.get('active')]
           def norm(s):return re.sub(r'[^a-z0-9]+','-',str(s or '').lower()).strip('-')
-          aliases=set()
-          source_by_alias={}
+          aliases=set(); source_by_alias={}
           for s in active:
               if 'tariff' not in s.get('capabilities',[]) and 'subscription' not in s.get('capabilities',[]):continue
-              vals=[]
-              vals += s.get('operatorIds',[]) or []
-              vals += [s.get('label','')]
+              vals=(s.get('operatorIds',[]) or [])+[s.get('label','')]
               for v in vals:
                   n=norm(v)
                   if n: aliases.add(n); source_by_alias.setdefault(n,[]).append(s['id'])
@@ -44,32 +40,28 @@ jobs:
               op=str(r[5] or 'Unknown').strip() or 'Unknown'
               pdc=sum(len(c[6] or []) for c in (r[8] or []))
               x=byop.setdefault(op,{'stations':0,'pdc':0,'networks':collections.Counter()})
-              x['stations']+=1;x['pdc']+=pdc;x['networks'][str(r[10] if len(r)>10 else '')]+=1
+              x['stations']+=1; x['pdc']+=pdc; x['networks'][str(r[10] if len(r)>10 else '')]+=1
           out=[]
           for op,x in byop.items():
               no=norm(op); matched=[]
               for a in aliases:
-                  if a and (a in no or no in a):matched += source_by_alias.get(a,[])
+                  if a and (a in no or no in a): matched += source_by_alias.get(a,[])
               out.append({'operator':op,'stations':x['stations'],'pdc':x['pdc'],'tariffSources':sorted(set(matched)),'topNetworks':x['networks'].most_common(8)})
           out.sort(key=lambda x:(-x['pdc'],-x['stations'],x['operator']))
-          report={
-              'totalOperators':len(out),
-              'historicalBaselineCommit':'1b10d25bde552abd2c3e6b0c93e6cbc60b5b3a88',
-              'top100':out[:100],
-              'allOperators':out,
-          }
-          if len(out) != 291:
-              raise SystemExit(f'historical denominator drift: expected 291, got {len(out)}')
-          pathlib.Path('reports/france').mkdir(parents=True,exist_ok=True)
-          pathlib.Path('reports/france/cpo-coverage-ranking.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
-          print(json.dumps({'totalOperators':len(out),'first':out[:3],'last':out[-3:]},ensure_ascii=False,indent=2))
+          if len(out) != 291: raise SystemExit(f'historical denominator drift: expected 291, got {len(out)}')
+          root=pathlib.Path('reports/france'); root.mkdir(parents=True,exist_ok=True)
+          report={'totalOperators':len(out),'historicalBaselineCommit':'1b10d25bde552abd2c3e6b0c93e6cbc60b5b3a88','top100':out[:100],'allOperators':out}
+          root.joinpath('cpo-coverage-ranking.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          compact={'totalOperators':291,'historicalBaselineCommit':'1b10d25bde552abd2c3e6b0c93e6cbc60b5b3a88','operators':[{'rank':i+1,'operator':x['operator'],'stations':x['stations'],'pdc':x['pdc']} for i,x in enumerate(out)]}
+          root.joinpath('cpo-operators-291.json').write_text(json.dumps(compact,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'totalOperators':291,'first':compact['operators'][:3],'last':compact['operators'][-3:]},ensure_ascii=False,indent=2))
           PY
       - name: Publish
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add reports/france/cpo-coverage-ranking.json
-          git commit -m 'France: publish full nominative CPO coverage ranking' || exit 0
+          git add reports/france/cpo-coverage-ranking.json reports/france/cpo-operators-291.json
+          git commit -m 'France: publish compact 291-CPO nominative ledger' || exit 0
           git pull --rebase origin main
           git push
