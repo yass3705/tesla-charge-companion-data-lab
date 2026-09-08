@@ -1,0 +1,53 @@
+{
+  "country": "IT",
+  "run": 73,
+  "generatedAt": "2026-09-08T21:02:00+01:00",
+  "effectiveCounts": {
+    "treated": 40,
+    "partial": 13,
+    "setAside": 1,
+    "active": 32,
+    "canonicalTotal": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 32
+  },
+  "findings": [
+    {
+      "group": "Uattzy / UAU",
+      "partyIds": ["UTZ", "ESH", "GAS"],
+      "result": "operator_group_resolved_no_physical_dedup",
+      "officialEvidence": [
+        "https://www.uattzy.com/",
+        "https://www.uattzy.com/faq/"
+      ],
+      "notes": [
+        "Uattzy is the public-charging brand of UAU; UAU was formed from E-Shore, GASGAS and EnerMia.",
+        "Uattzy is both CPO and eMSP.",
+        "Direct Uattzy tariff is displayed per connector before charge start and may vary with power, duration and stall occupancy.",
+        "Legacy ESH and GAS PUN partyIds are still observable, so they are not converted to supersededAlias without a deterministic EVSE migration map."
+      ],
+      "coverageAdded": 0,
+      "rankable": false,
+      "resumeCondition": "native Uattzy app/backend or QR/ad-hoc/PUN mapping yielding exact station/EVSE direct tariff; or deterministic ESH/GAS->UTZ EVSE migration map"
+    },
+    {
+      "partyId": "PWY",
+      "result": "station_level_confirmed",
+      "notes": [
+        "No first-party network-wide tariff found.",
+        "Powy public material describes public charging cost as provider/tariff-dependent; prior canonical station-level classification retained."
+      ],
+      "coverageAdded": 0
+    }
+  ],
+  "consistency": {
+    "canonicalEquation": "40+13+1+32=86",
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "atlanteLast": true,
+    "result": "pass"
+  },
+  "next": ["PWY native app/guest backend or QR/ad-hoc tariff mapping", "HER exact PUN/QR mappings", "EMO only with research-branch EVSE dedup guard", "CVG remaining exact mappings", "EDN/220", "ASS/Magis", "ATE Atlante last"]
+}
