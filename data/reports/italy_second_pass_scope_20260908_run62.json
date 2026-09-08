@@ -1,0 +1,37 @@
+{
+  "country": "IT",
+  "run": 62,
+  "generatedAt": "2026-09-08T10:58:00+01:00",
+  "effectiveCounts": {"treated":40,"partial":12,"setAside":1,"active":33,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "priorityQueue": {"networkOrClassWideRemaining":0,"stationLevelActiveRemaining":33,"atlanteLast":true},
+  "progress": {
+    "newlyTreated": ["ENB"],
+    "newlyPartial": [],
+    "rankableEvseAdded": 87,
+    "tariffModelsFound": [
+      "ENB/R-ev direct network grid: AC 0.55 EUR/kWh, DC 0.75 EUR/kWh, HPC 0.85 EUR/kWh, VAT included; classes AC Type2 <=22 kW, DC CCS2 <=150 kW, HPC CCS2 >150 kW"
+    ],
+    "aliasesResolved": [],
+    "identityNotes": [
+      "No new cross-partyId alias was created. Existing canonical label ENERBROKER S.R.L. (R-ev) was preserved."
+    ],
+    "failClosedNotes": [
+      "R-ev third-party roaming remains excluded from ENB direct CPO pricing.",
+      "Legacy 0.65/0.85/0.89 wallet tariff text is superseded for ranking by newer July-2026 first-party tariff assets 0.55/0.75/0.85; class thresholds and occupancy rules remain sourced from current official terms."
+    ]
+  },
+  "sources": [
+    "https://www.r-ev.it/tariffe/",
+    "https://www.r-ev.it/termini-di-utilizzo-app/",
+    "https://www.r-ev.it/ti-serve-aiuto/"
+  ],
+  "nextTargets": ["EMO exact PUN EVSE enumeration","HER exact station tariff mapping","PWY native QR/app tariff payloads","EDN/220 native tariff payloads","ASS inventory AC/DC eligibility mapping"],
+  "atlante": "last unless new directly exploitable tariff backend evidence appears",
+  "consistency": {
+    "equation":"40+12+1+33=86 canonical; +2 supersededAlias=88 physical",
+    "duplicateCanonicalPartyIds":0,
+    "result":"pass",
+    "canonicalPhysicalSnapshotStillStale":true,
+    "repairScript":"scripts/italy_cpo_progress_consolidate.py"
+  }
+}
