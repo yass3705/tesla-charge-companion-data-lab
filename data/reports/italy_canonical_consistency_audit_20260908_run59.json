@@ -1,0 +1,62 @@
+{
+  "run": 59,
+  "generatedAt": "2026-09-08T08:53:48+01:00",
+  "scope": [
+    "docs/italy-cpo-progress-2026-09.json legacy physical snapshot",
+    "ordered italy-cpo-progress deltas through run59",
+    "run45 ESH/GAS alias decision versus run56/run58 later evidence",
+    "run48 IONITY network-wide decision versus current official IONITY minimum-price wording"
+  ],
+  "result": "effective_state_corrected_physical_snapshot_requires_consolidator_execution",
+  "findings": [
+    {
+      "type": "unsafe_alias_classification",
+      "partyIds": ["ESH", "GAS"],
+      "oldDecision": "supersededAlias -> UTZ from run45",
+      "newDecision": "active station-level",
+      "reason": "Later current Uattzy evidence proves corporate formation/continuity but not deterministic operational partyId replacement or EVSE-level identity continuity. Run58 itself explicitly rejected aliasing solely from corporate merger evidence.",
+      "safeCorrection": "Reactivate ESH and GAS and require EVSE-level proof before any future deduplication."
+    },
+    {
+      "type": "unsafe_network_wide_tariff_assumption",
+      "partyId": "IOY",
+      "oldDecision": "treated network-wide; 313 EVSE rankable",
+      "newDecision": "active station-level; 313 EVSE fail-closed",
+      "reason": "Current official IONITY pricing wording states displayed country prices are minimum prices and individual station prices may be higher.",
+      "safeCorrection": "Do not rank a station from the country-level minimum; require exact current station/EVSE price mapping."
+    },
+    {
+      "type": "stale_physical_canonical_snapshot",
+      "path": "docs/italy-cpo-progress-2026-09.json",
+      "legacyCounts": {"treated":4,"partial":5,"setAside":1,"active":78,"total":88},
+      "correctedEffectiveCounts": {"treated":39,"partial":11,"setAside":1,"active":35,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+      "repairTool": "scripts/italy_cpo_progress_consolidate.py",
+      "repairToolCommitRecordedInRun40": "8c320d8c7dc71a8eeb0eff41db1f71fd6b1df104",
+      "note": "Run59 is deliberately expressed as a normal classification delta so the existing lossless consolidator deterministically produces the corrected physical canonical when executed; no destructive manual replacement was attempted."
+    }
+  ],
+  "checks": {
+    "canonicalStatusEquation": "39+11+1+35=86",
+    "canonicalStatusSum": 86,
+    "supersededAliases": 2,
+    "physicalEquation": "86+2=88",
+    "physicalPartyIds": 88,
+    "duplicateCanonicalPartyIdsKnown": 0,
+    "atlanteSetAsideAndLast": true,
+    "networkOrClassWideRemainingKnown": 0,
+    "stationLevelActiveRemaining": 35,
+    "pass": true
+  },
+  "coverageCorrections": {
+    "rankableEvseRemoved": 313,
+    "reason": "IONITY country prices are official minima, not guaranteed exact station prices",
+    "aliasesReactivatedPhysicalEvse": {"ESH":892,"GAS":290},
+    "note": "Alias reactivation changes identity accounting but does not add rankable EVSE."
+  },
+  "resume": [
+    "Execute scripts/italy_cpo_progress_consolidate.py in a repository-capable runtime and commit the resulting docs/italy-cpo-progress-2026-09.json; the current connector can edit GitHub files but cannot execute repository-local scripts or dispatch an arbitrary protected workflow.",
+    "Continue station-level exact mappings, prioritizing HERA/Powy/EMOBITALY and identity sampling for DRW/GES, while keeping Atlante last.",
+    "Do not re-alias ESH/GAS to UTZ without EVSE-level identity/replacement proof.",
+    "Do not re-promote IOY network-wide from country minimum prices; require exact station-level values."
+  ]
+}
