@@ -1,0 +1,65 @@
+name: Germany Wirelane direct tariffs
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_wirelane_direct_tariffs.py'
+      - '.github/workflows/germany-wirelane-direct-tariffs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore latest classified national catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data/germany
+          ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=germany-national-non-tesla-catalog-staging&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[0].id // empty')"
+          test -n "$ARTIFACT_ID"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/germany-catalog.zip
+          unzip -q /tmp/germany-catalog.zip -d data/germany
+          test -s data/germany/germany_non_tesla_catalog_staging_tariff_classified.json.gz
+      - name: Extract all Wirelane direct-payment tariffs
+        run: python scripts/germany_wirelane_direct_tariffs.py --workers 12
+      - name: Validate Wirelane national tariff extraction
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          with gzip.open('data/germany/wirelane_direct_tariffs.json.gz','rt',encoding='utf-8') as f: d=json.load(f)
+          m=json.loads(Path('data/germany/wirelane_direct_tariffs_manifest.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-wirelane-direct-tariffs'
+          assert d['scope']['stagedOnly'] is True and d['scope']['publishesToTcc'] is False
+          assert d['scope']['tariffModel']=='evse_specific'
+          s=d['stats']
+          assert s['operatorSites']==1118, s
+          assert s['sitesWithExpectedEvse']==1118, s
+          assert s['uniqueEvse'] > 2000, s
+          assert s['duplicateEvseAssignments']==0, s
+          assert s['evseReachable']/s['evseExpected'] >= 0.95, s
+          assert s['evseIdConfirmed']/s['evseExpected'] >= 0.95, s
+          assert s['providerConfirmed']/s['evseExpected'] >= 0.95, s
+          assert s['tariffTextFound']/s['evseExpected'] >= 0.95, s
+          assert s['kwhParsed']/s['evseExpected'] >= 0.95, s
+          assert s['sitesFullyCovered'] >= 1000, s
+          assert s['sitesFullyCovered']+s.get('sitesPartial',0)+s.get('sitesWithoutWirelaneEvse',0)==1118, s
+          assert m['stats']==s
+          print('TCC_WIRELANE_DIRECT_TARIFFS_VALIDATED='+json.dumps({'stats':s,'prices':d['priceDistribution'][:20],'top':d['topStructuredTariffSignatures'][:15]},ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-wirelane-direct-tariffs
+          path: |
+            data/germany/wirelane_direct_tariffs.json.gz
+            data/germany/wirelane_direct_tariffs_manifest.json
+          if-no-files-found: error
+          retention-days: 30

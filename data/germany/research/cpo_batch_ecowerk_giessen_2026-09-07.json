@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "researchedAt": "2026-09-07",
+  "cpos": [
+    {
+      "operator": "ecowerk e-charge GmbH",
+      "aliases": ["ecowerk e-charge", "Stadtwerke Tübingen e-charge", "TüStrom Laden"],
+      "authoritativePrefix": "DETUE",
+      "status": "complete",
+      "scope": "own ecowerk e-charge operated stations",
+      "tariff": {
+        "effectiveFrom": "2026-04-01",
+        "adhoc": {
+          "ac_le_22_kw_eur_per_kwh": 0.42,
+          "dc_le_50_kw_eur_per_kwh": 0.49,
+          "dc_le_300_kw_eur_per_kwh": 0.58
+        },
+        "blocking": {
+          "ac": {"eur_per_min": 0.08, "starts_minute": 241, "active_window": "08:00-24:00", "cap_eur": 18.0},
+          "dc_le_50_kw": {"eur_per_min": 0.10, "starts_minute": 181, "active_window": "00:00-24:00", "cap_eur": 18.0},
+          "dc_le_300_kw": {"eur_per_min": 0.10, "starts_minute": 91, "active_window": "00:00-24:00", "cap_eur": 18.0}
+        }
+      },
+      "evidence": [
+        {
+          "type": "official_current_tariff_page",
+          "url": "https://www.ecowerk-echarge.de/ladetarife.html",
+          "note": "Official current tariff page publishes exact ad-hoc prices and blocking fees for ecowerk-operated AC <=22 kW, DC <=50 kW and DC <=300 kW stations."
+        },
+        {
+          "type": "official_press_release",
+          "url": "https://www.ecowerk-echarge.de/pressemitteilungen/detail/guenstiger-das-e-auto-laden-tuebinger-stadtwerke-tochter-senkt-die-ladetarife.html",
+          "note": "Official 2026-03-24 release confirms new tariff structure effective 2026-04-01 and payment-terminal/QR improvements."
+        },
+        {
+          "type": "station_level_prefix_corrobation",
+          "url": "https://www.automatenwegweiser.de/automat/ecowerk-e-charge-gmbh/waldenbuch/swt-alfred-ritter-strasse-27-waldenbuch",
+          "note": "Station-level BNetzA/Mobilithek-derived listing exposes ecowerk EVSE IDs DE*TUE*E00025*001 and *002, corroborating DETUE."
+        }
+      ],
+      "guardrails": [
+        "Do not apply ecowerk own-network tariffs to external roaming stations.",
+        "Do not flatten blocking fees into a kWh-only price.",
+        "Only attach the tariff to validated ecowerk-operated DETUE EVSEs."
+      ]
+    },
+    {
+      "operator": "Stadtwerke Gießen AG",
+      "aliases": ["Stadtwerke Giessen AG", "SWG Gießen", "SWG Giessen", "E-Tanken Gießen"],
+      "authoritativePrefix": null,
+      "status": "partial",
+      "reason": "The official E-Tanken page confirms that SWG charging-point prices are shown for each currently connected charging point inside the E-Tanken app and that activation/payment is app/account based. No current official 2026 numeric station-level tariff matrix or public direct/QR checkout price was found in the first pass, so neither an app-wide nor prefix-wide price can be inferred.",
+      "evidence": [
+        {
+          "type": "official_operator_page",
+          "url": "https://www.stadtwerke-giessen.de/de/nahverkehr-e-mobilitaet/e-mobilitaet/e-tanken",
+          "note": "Official page says the overview map and prices at currently connected charging points are available in the E-Tanken app; registration creates an e-mobility contract and billing is by SEPA."
+        },
+        {
+          "type": "operator_infrastructure_corrobation",
+          "url": "https://www.giessener-allgemeine.de/kreis-giessen/neue-ladesaeulen-fuer-fahrzeuge-93627841.html",
+          "note": "2025 station deployment corroborates SWG operation and E-Tanken activation but does not provide a numeric direct tariff."
+        }
+      ],
+      "neededToComplete": "Resolve the current E-Tanken/chargecloud station payload or another official/public station-level source that exposes exact current price, fees and EVSE identifiers for every SWG-operated point. Do not reuse the home-wallbox electricity tariff or historic free-charging material.",
+      "guardrails": [
+        "No home-wallbox tariff is used for public charging.",
+        "No historical free-charging policy is treated as current.",
+        "No eMI3 prefix is invented without authoritative mapping."
+      ]
+    }
+  ]
+}

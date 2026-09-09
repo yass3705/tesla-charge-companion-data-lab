@@ -1,0 +1,48 @@
+name: Germany EWE Go direct tariff
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_ewe_go_direct_tariff.py'
+      - '.github/workflows/germany-ewe-go-direct-tariff.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract official EWE Go tariff
+        run: python scripts/germany_ewe_go_direct_tariff.py
+      - name: Validate EWE Go tariff artifact
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/ewe_go_direct_tariff.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-ewe-go-direct-tariff'
+          assert d['scope']['stagedOnly'] is True
+          assert d['scope']['publishesToTcc'] is False
+          own=d['directOwnNetwork']; partner=d['roamingPartner']
+          assert 0.20 <= own['eurPerKwh'] <= 1.50, own
+          assert 0.20 <= partner['eurPerKwh'] <= 1.50, partner
+          assert own['taxIncluded'] is True
+          assert own['monthlyFeeEur'] == 0.0
+          assert own['blockingFee'] is None
+          assert partner['blockingFee']['afterMinutes'] == 240
+          assert partner['blockingFee']['eurPerMinute'] == 0.10
+          assert partner['blockingFee']['capEurPerSession'] == 24.0
+          assert d['operator']['bnetzaExactOperators']==['EWE Go GmbH']
+          print('TCC_EWE_GO_DIRECT_TARIFF_VALIDATED='+json.dumps({'own':own,'partner':partner},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-ewe-go-direct-tariff
+          path: data/germany/ewe_go_direct_tariff.json
+          if-no-files-found: error
+          retention-days: 30

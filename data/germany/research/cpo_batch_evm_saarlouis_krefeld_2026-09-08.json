@@ -1,0 +1,65 @@
+{
+  "date": "2026-09-08",
+  "scope": "Germany V9 first-pass CPO tariff audit",
+  "guardrails": [
+    "No tariff generalized beyond the explicit official source scope.",
+    "Third-party station data is discovery/supporting evidence only unless the official CPO source confirms the tariff.",
+    "Previously deferred CPOs are not re-audited without new evidence."
+  ],
+  "cpos": [
+    {
+      "canonical_name": "Energieversorgung Mittelrhein AG (evm)",
+      "aliases": ["evm", "Energieversorgung Mittelrhein", "evm Koblenz"],
+      "status": "complete",
+      "direct_payment": "Official evm public-charging page publishes current ad-hoc tariffs and supports flexible credit-card payment.",
+      "tariff": {
+        "ac_energy_eur_per_kwh": 0.47,
+        "dc_energy_eur_per_kwh": 0.56,
+        "ac_blocking_fee_eur_per_min_after_240min": 0.10,
+        "dc_blocking_fee_eur_per_min_after_60min": 0.10,
+        "ac_blocking_fee_suspended_from": "20:00",
+        "ac_blocking_fee_suspended_until": "08:00"
+      },
+      "scope_note": "The official evm page labels these as Ad-hoc-Ladetarife and states DC 0.56 EUR/kWh plus 0.10 EUR/min from minute 61, AC 0.47 EUR/kWh plus 0.10 EUR/min from minute 241, with no AC blocking fee between 20:00 and 08:00. The page contains a conflicting footer-style 'Preisstand 01.05.2025' while the tariff heading says 'ab 01.05.2026'; values are retained as the current official page tariff without inventing any alternative validity date.",
+      "sources": [
+        "https://www.evm.de/privatkunden/rund-ums-haus/ladestationen-elektroauto/"
+      ]
+    },
+    {
+      "canonical_name": "Stadtwerke Saarlouis GmbH",
+      "aliases": ["Stadtwerke Saarlouis", "SW SLS", "SWSLS"],
+      "status": "complete",
+      "direct_payment": "Official Stadtwerke Saarlouis public-charging page publishes the public charging conditions valid from 2026-01-01.",
+      "tariff": {
+        "ac_energy_eur_per_kwh_up_to_22kw": 0.49,
+        "dc_energy_eur_per_kwh_up_to_150kw": 0.59,
+        "post_charge_parking_fee_eur_per_15min": 0.50
+      },
+      "scope_note": "The official table applies to public charging and explicitly separates AC up to 22 kW and DC up to 150 kW. The parking component is preserved as published and is not converted into an unsupported per-minute tariff.",
+      "sources": [
+        "https://www.swsls.de/forschung-innovation/elektromobilitaet/oeffentliches-laden"
+      ]
+    },
+    {
+      "canonical_name": "SWK Energie GmbH / Stadtwerke Krefeld",
+      "aliases": ["SWK Energie", "Stadtwerke Krefeld", "SWK Krefeld", "SWK E-TANKE"],
+      "status": "partial_deferred",
+      "direct_payment": "Official SWK page confirms QR-code ad-hoc charging without app or registration, with credit-card payment.",
+      "tariff": null,
+      "reason": "SWK explicitly states that the currently valid tariff is shown in the SWK E-TANKE app before each session and that costs can differ from location to location. A station-level discovery source currently shows 0.59 EUR/kWh at Bismarckplatz, but that value cannot be generalized to the SWK network.",
+      "unlock_needed": "Resolve the public SWK QR/payment checkout or another authoritative station-level EVSE-to-price feed and capture the exact current tariff for each SWK E-TANKE, including any time or blocking component.",
+      "sources": [
+        "https://www.swk.de/privatkunden/de/mobilitaet/sharing-und-emobility/laden-unterwegs"
+      ]
+    }
+  ],
+  "consistency": {
+    "new_identities": 3,
+    "complete_delta": 2,
+    "partial_delta": 1,
+    "blocked_delta": 0,
+    "duplicate_first_pass_detected": false,
+    "re_audit_of_deferred_without_new_evidence": false,
+    "identical_investigation_over_2_runs": false
+  }
+}

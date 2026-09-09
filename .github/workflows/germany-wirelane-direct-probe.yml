@@ -1,0 +1,54 @@
+name: Germany Wirelane direct tariff probe
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_wirelane_direct_probe.py'
+      - '.github/workflows/germany-wirelane-direct-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore latest classified national catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p data/germany
+          ARTIFACT_ID="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=germany-national-non-tesla-catalog-staging&per_page=100" --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[0].id // empty')"
+          test -n "$ARTIFACT_ID"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/germany-catalog.zip
+          unzip -q /tmp/germany-catalog.zip -d data/germany
+          test -s data/germany/germany_non_tesla_catalog_staging_tariff_classified.json.gz
+      - name: Probe Wirelane direct-payment pages
+        run: python scripts/germany_wirelane_direct_probe.py --limit 150 --workers 8
+      - name: Validate Wirelane probe
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/wirelane_direct_probe.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-wirelane-direct-tariff-probe'
+          assert d['scope']['stagedOnly'] is True and d['scope']['publishesToTcc'] is False
+          assert d['candidateSitesWithWirelaneEvse'] > 500, d
+          s=d['stats']
+          assert s['attempted'] >= 100, s
+          assert s.get('reachable',0) >= 50, s
+          assert s.get('tariffTextFound',0) >= 25, s
+          assert s.get('kwhParsed',0) >= 25, s
+          print('TCC_WIRELANE_DIRECT_PROBE_VALIDATED='+json.dumps({'candidateSitesWithWirelaneEvse':d['candidateSitesWithWirelaneEvse'],'stats':s,'top':d['topTariffSignatures'][:15]},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-wirelane-direct-tariff-probe
+          path: data/germany/wirelane_direct_probe.json
+          if-no-files-found: error
+          retention-days: 30

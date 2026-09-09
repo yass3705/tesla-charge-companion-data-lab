@@ -1,0 +1,37 @@
+name: Germany Wirelane BNetzA identifier probe
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_wirelane_bnetza_id_probe.py'
+      - '.github/workflows/germany-wirelane-bnetza-id-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect Wirelane BNetzA identifier fields
+        run: python scripts/germany_wirelane_bnetza_id_probe.py
+      - name: Validate probe
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('data/germany/wirelane_bnetza_id_probe.json').read_text(encoding='utf-8'))
+          assert d['dataset']=='germany-wirelane-bnetza-id-probe'
+          assert d['stats']['rows'] > 1000, d['stats']
+          print('TCC_WIRELANE_BNETZA_ID_PROBE_VALIDATED='+json.dumps(d['stats'],sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-wirelane-bnetza-id-probe
+          path: data/germany/wirelane_bnetza_id_probe.json
+          if-no-files-found: error
+          retention-days: 30

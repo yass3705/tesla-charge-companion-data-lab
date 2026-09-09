@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "0.2.1",
+  "countryCode": "DE",
+  "operationalDenominator": 591,
+  "canonicalCountPolicy": "Frozen at last user-directed known total; no canonical reconstruction during first-pass traversal.",
+  "firstPassPriority": true,
+  "historicalSeenCountCertified": false,
+  "reliableNewFirstPassesSinceCanonicalFreeze": 61,
+  "reliableClassificationSinceCanonicalFreeze": {
+    "complete": 12,
+    "partialOrDeferred": 49,
+    "blocked": 0
+  },
+  "thisRun": {
+    "newFirstPasses": 3,
+    "complete": 0,
+    "partial": 3,
+    "blocked": 0,
+    "completed": [],
+    "deferredAfterFirstPass": [
+      "Stadtwerke Kiel AG",
+      "Stadtwerke Energie Jena-Pößneck GmbH",
+      "Stadtwerke Flensburg GmbH"
+    ],
+    "aliasesResolved": {
+      "Stadtwerke Kiel AG": ["Stadtwerke Kiel", "Stromfahrer", "ePower Kiel"],
+      "Stadtwerke Energie Jena-Pößneck GmbH": ["Stadtwerke Jena", "Stadtwerke Energie Jena-Pößneck", "Jena-Pößneck", "DEJEN", "DEJOB"],
+      "Stadtwerke Flensburg GmbH": ["Stadtwerke Flensburg", "SWFL", "Flensburg Ladekarte"]
+    },
+    "authoritativePrefixMappings": {
+      "Stadtwerke Kiel AG": null,
+      "Stadtwerke Energie Jena-Pößneck GmbH": null,
+      "Stadtwerke Flensburg GmbH": null
+    }
+  },
+  "consistency": {
+    "reAuditedDeferredCpos": 0,
+    "canonicalRebuildRetried": false,
+    "prefixWideTariffExtrapolations": 0,
+    "duplicateAliasFindings": 0,
+    "identicalInvestigationOverTwoRuns": 0,
+    "denominatorCheck": "591 retained as frozen operational denominator; 61 reliable new first passes since freeze; 530 remaining in that traversal.",
+    "activePr": "yass3705/tesla-charge-companion-data-lab PR #73, branch feature/germany-national-base",
+    "stateDebt": {
+      "detected": true,
+      "issue": "Recent checkpoints preserve cumulative counters but not one cumulative nominative ledger containing every first-pass identity and classification.",
+      "safeHandling": "Frozen counters remain unchanged except for proven new first-pass deltas. Reconstruct cumulative nominative ledger only from committed batch/checkpoint evidence; never infer missing identities from aggregate counts.",
+      "impact": "Forward counters are certified; cumulative nominative completeness remains pending ledger reconstruction."
+    },
+    "notes": [
+      "Kiel: official public network confirms QR/NFC chargecloud ad-hoc Direct Payment, but no numeric current direct tariff is exposed publicly.",
+      "Jena-Pößneck: official 2026 0.49/0.59 EUR/kWh matrix is explicitly tied to the charging-card contract with monthly base fee; not generalized to ad-hoc.",
+      "Flensburg: official 2026 0.39/0.49 EUR/kWh matrix is a contractual RFID card product. Generic Direct Pay exists in SWFL business charging solutions, but scope to every public SWFL EVSE is not proven.",
+      "No authoritative eMI3 prefix was invented."
+    ]
+  },
+  "evidencePath": "data/germany/research/cpo_batch_kiel_jena_flensburg_2026-09-08.json",
+  "nextPolicy": "Continue only with identities absent from active PR first-pass evidence; prioritize official direct-payment/QR surfaces and station-level checkout evidence. Continue cumulative ledger reconstruction strictly from committed evidence without changing the frozen denominator."
+}

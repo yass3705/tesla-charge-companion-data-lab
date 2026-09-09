@@ -1,0 +1,128 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "researchedAt": "2026-09-02T23:55:00+01:00",
+  "policy": "Exact station/EVSE tariffs only; no network-wide extrapolation from samples, ranges or maxima.",
+  "cpos": [
+    {
+      "prefix": "DELVP",
+      "operatorScope": "LadeVerbundPlus / N-ERGIE and participating partners represented under DELVP",
+      "representedSites": 477,
+      "representedEvses": 1551,
+      "classification": "partial",
+      "verifiedEvidence": [
+        {
+          "type": "official_cpo_network",
+          "url": "https://produkte.n-ergie.de/ladeverbundplus/",
+          "observed": "Current public tariff table states ad-hoc 0.52 EUR/kWh AC and 0.62 EUR/kWh DC throughout LadeVerbundPlus; registered app 0.48/0.58 and N-ERGIE electricity customers 0.42/0.52."
+        },
+        {
+          "type": "official_help_center",
+          "url": "https://support.ladeverbundplus.de/support/solutions/articles/101000393017-was-ist-die-blockiergeb%C3%BChr-",
+          "observed": "Blocking-fee applicability is station-dependent. AC: selected stations, 08:00-20:00, from minute 241, 0.05 EUR/min. DC: after 45 minutes, 0.10 EUR/min for registered customers; station information must be checked for applicability."
+        },
+        {
+          "type": "official_help_center",
+          "url": "https://support.ladeverbundplus.de/support/solutions/articles/101000392599-muss-ich-mich-registrieren-wenn-ich-die-ladestationen-im-ladeverbundplus-nutzen-m%C3%B6chte-",
+          "observed": "Each LadeVerbundPlus charge point supports ad-hoc activation by QR without registration."
+        }
+      ],
+      "reasonPartial": "The energy component is published network-wide, but exact blocking-fee applicability is explicitly station-specific. A full exact-cost overlay therefore requires the per-station blocking-fee flag/rule instead of applying the surcharge to every DELVP EVSE."
+    },
+    {
+      "prefix": "DEMER",
+      "operatorScope": "Mer Germany GmbH",
+      "representedSites": 195,
+      "representedEvses": 953,
+      "classification": "partial",
+      "verifiedEvidence": [
+        {
+          "type": "official_cpo",
+          "url": "https://de.mer.eco/news/glossar/ladestation/e-auto-laden-kosten/",
+          "observed": "Mer Connect Me prices are exact by power band: AC up to 49 kW 0.49 EUR/kWh; DC 50-75 kW 0.57 EUR/kWh; HPC 76-400 kW 0.69 EUR/kWh. Mer states no blocking fee. Ad-hoc values are published only as maxima: AC max 0.58, DC max 0.69, HPC max 0.79 EUR/kWh, and prices can vary by station."
+        },
+        {
+          "type": "official_cpo",
+          "url": "https://de.mer.eco/news/glossar/ladestation/e-auto-laden-ohne-ladekarte/",
+          "observed": "Confirms the same Connect Me tariff bands and only maximum ad-hoc values, so maxima cannot be promoted as exact station tariffs."
+        }
+      ],
+      "reasonPartial": "The direct Mer app tariff is exact by power band, but ad-hoc station prices are explicitly variable and only bounded by maxima. Exact station/EVSE ad-hoc mapping is still required."
+    },
+    {
+      "prefix": "DEENC",
+      "operatorScope": "enercity AG / DEENC represented stations",
+      "representedSites": 333,
+      "representedEvses": 914,
+      "classification": "partial",
+      "verifiedEvidence": [
+        {
+          "type": "official_cpo_help_center",
+          "url": "https://helpcenter.enercity.de/hc/de/articles/42764634944529-Wie-lade-ich-%C3%B6ffentlich",
+          "observed": "enercity states ad-hoc/FlexLaden is available at selected stations and that the current price is shown on the station display; selected stations can use dynamic prices."
+        },
+        {
+          "type": "official_cpo_press",
+          "url": "https://www.enercity.de/presse/pressemitteilungen/2025/pilotprojekt-dynamisches-pricing",
+          "observed": "Official pilot documentation confirms dynamic ad-hoc prices between 0.37 and 0.67 EUR/kWh at 12 public fast-charging stations / 24 charge points, demonstrating station/time variability."
+        },
+        {
+          "type": "official_cpo_press",
+          "url": "https://www.enercity.de/presse/pressemitteilungen/2026/intelligentes-oeffentliches-laden",
+          "observed": "2026 SmartLaden introduces additional app-specific dynamic behavior and time-dependent blocking-fee rules on public AC points; these subscriber rules must remain distinct from ad-hoc pricing."
+        }
+      ],
+      "reasonPartial": "enercity explicitly makes direct prices station-visible and can use dynamic pricing, so a national flat tariff would be incorrect. Exact station/EVSE and time-valid price data is required from the public payment/display backend or AFIR/Mobilithek feed."
+    },
+    {
+      "prefix": "DE811",
+      "operatorScope": "Robert Bosch GmbH",
+      "representedSites": 106,
+      "representedEvses": 1353,
+      "classification": "partial",
+      "verifiedEvidence": [
+        {
+          "type": "station_level_aggregator",
+          "url": "https://www.automatenwegweiser.de/automat/robert-bosch-gmbh/reutlingen/ladestation-811-markwiesenstrasse-46-reutlingen",
+          "observed": "Bosch Markwiesenstrasse 46, Reutlingen: 22 kW AC, 2 points, 0.38 EUR/kWh, with live/status provenance described as operator open data via Mobilithek."
+        },
+        {
+          "type": "station_level_aggregator",
+          "url": "https://ladestau.de/salzgitter/bosch-j-f-kennedy-strasse/",
+          "observed": "Bosch Salzgitter J.-F.-Kennedy-Strasse exposes exact EVSE-level variation: multiple DE*811 AC EVSE at 0.38 EUR/kWh and DC 150/250 kW EVSE at 0.55 EUR/kWh."
+        },
+        {
+          "type": "station_level_aggregator",
+          "url": "https://www.ladeguru.de/ladestation/robert-bosch-gesellschaft-mit-beschr%C3%A4nkter-haftung/97944-boxberg/39814",
+          "observed": "Bosch Boxberg lists DC up to 300 kW at 0.65 EUR/kWh with 0.10 EUR/min after 45 minutes and AC at 0.45 EUR/kWh, proving prices and surcharge rules differ by station/connector."
+        }
+      ],
+      "reasonPartial": "Multiple exact station/EVSE prices are verifiable, but they materially vary across Bosch sites and connector types. The 0.38 EUR/kWh sample must not be generalized; full Mobilithek/AFIR or QR/payment mapping is needed for all DE811 EVSE."
+    },
+    {
+      "prefix": "DEHTL",
+      "operatorScope": "HOCHTIEF Ladepartner GmbH",
+      "representedSites": 312,
+      "representedEvses": 629,
+      "classification": "partial",
+      "verifiedEvidence": [
+        {
+          "type": "station_level_aggregator",
+          "url": "https://adhocladen.de/herne/hochtief-ladepartner-neumarkt-9a/",
+          "observed": "Herne Neumarkt 9a: DE*HTL*E200528*1 and *2, 300 kW CCS, exact ad-hoc 0.55 EUR/kWh; source identifies live/operator data and direct card/QR access."
+        },
+        {
+          "type": "station_level_aggregator",
+          "url": "https://www.ladeguru.de/ladestation/hochtief-ladepartner-gmbh/47198-duisburg/301826",
+          "observed": "Duisburg Passstrasse 13: two 22 kW AC points at exact direct-payment 0.52 EUR/kWh."
+        },
+        {
+          "type": "station_level_aggregator",
+          "url": "https://adhocladen.de/muelheim-an-der-ruhr/hochtief-ladepartner-fichtestrasse-66/",
+          "observed": "Muelheim Fichtestrasse 66: exact ad-hoc 0.44 EUR/kWh AC, demonstrating station-level variability inside DEHTL."
+        }
+      ],
+      "reasonPartial": "Exact station-level prices are available for a growing subset, but 0.44/0.52/0.55 EUR/kWh examples prove no safe flat tariff. Full exact EVSE coverage should be built from Mobilithek/Eco-Movement-derived open data or public QR/payment pages before completion."
+    }
+  ]
+}

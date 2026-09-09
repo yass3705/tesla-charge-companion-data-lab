@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "0.2.1",
+  "countryCode": "DE",
+  "date": "2026-09-08",
+  "purpose": "First-pass CPO tariff evidence for previously unvisited Germany identities. No tariff is generalized beyond its evidenced payment surface.",
+  "cpos": [
+    {
+      "canonicalName": "Stadtwerke Kiel AG",
+      "aliases": ["Stadtwerke Kiel", "Stromfahrer", "ePower Kiel"],
+      "status": "partial_deferred",
+      "operatorEvidence": "Official Stadtwerke Kiel public-charging page confirms its charging infrastructure and a contract-free Ad-hoc / Direct Payment path via QR code or NFC into the chargecloud payment surface with credit card settlement.",
+      "tariffEvidence": "The official public page does not expose a numeric 2026 direct-payment tariff. No subscriber/app value was substituted and no chargecloud tariff was inferred without an EVSE-specific checkout payload.",
+      "sources": [
+        "https://www.stadtwerke-kiel.de/e-mobilitaet/laden-in-der-kiel-region",
+        "https://www.stadtwerke-kiel.de/e-mobilitaet/bestellung-ladekarte"
+      ],
+      "neededToComplete": "A current EVSE-level chargecloud Direct Payment checkout payload or an official Stadtwerke Kiel ad-hoc price matrix linking prices to the operator's EVSEs.",
+      "authoritativePrefix": null
+    },
+    {
+      "canonicalName": "Stadtwerke Energie Jena-Pößneck GmbH",
+      "aliases": ["Stadtwerke Jena", "Stadtwerke Energie Jena-Pößneck", "Jena-Pößneck", "DEJEN", "DEJOB"],
+      "status": "partial_deferred",
+      "operatorEvidence": "Official operator page states that more than 100 public points in Jena and surroundings are operated by Stadtwerke Energie and identifies operator charge-point identifiers beginning DEJEN or DEJOB.",
+      "tariffEvidence": "Official prices from 2026-01-01 are 0.49 EUR/kWh AC and 0.59 EUR/kWh DC plus a 3 EUR/month card base fee and blocking fee rules; the page explicitly presents these as Stadtwerke Energie charging-card prices. They are therefore not promoted as contract-free ad-hoc pricing.",
+      "sources": [
+        "https://www.stadtwerke-jena.de/energie/privatkunden/produkte/elektromobilitaet/oeffentliches-laden/",
+        "https://www.stadtwerke-jena.de/energie/privatkunden/news/detail/elektromobilitaet--stadtwerke-energie-senken-ladepreise-zum-1--januar-2026-~9aa3412f-3355-4c61-927e-7ea251866180"
+      ],
+      "neededToComplete": "An official direct-payment/ad-hoc price surface or EVSE checkout for DEJEN/DEJOB points, distinct from the monthly charging-card contract.",
+      "authoritativePrefix": null,
+      "observedOperatorIdentifiers": ["DEJEN", "DEJOB"]
+    },
+    {
+      "canonicalName": "Stadtwerke Flensburg GmbH",
+      "aliases": ["Stadtwerke Flensburg", "SWFL", "Flensburg Ladekarte"],
+      "status": "partial_deferred",
+      "operatorEvidence": "Official current page states that Stadtwerke Flensburg operates 48 charging points and that third-party roaming cards also work on the network. A separate official business solution documents Direct Pay by PayPal or credit card, but does not prove that identical Direct Pay is enabled or identically priced on every public SWFL EVSE.",
+      "tariffEvidence": "Official Flensburg Ladekarte tariff valid from 2026-02-01 is 0.39 EUR/kWh AC, 0.49 EUR/kWh DC and 0.10 EUR/min blocking fee after 240 minutes capped at 12 EUR, with a one-time 9.50 EUR card/chip provisioning fee. Because this is a contractual RFID product and the public-network FAQ says other providers' tariffs depend on the provider, it is not substituted as ad-hoc/direct pricing.",
+      "sources": [
+        "https://www.stadtwerke-flensburg.de/produkte/e-mobilitaet/ladekarte",
+        "https://www.stadtwerke-flensburg.de/fileadmin/user_upload/PDFs/1.1.4_E-Mobilitaet/Preis_und_Informationsblatt_Ladekarte.pdf",
+        "https://www.stadtwerke-flensburg.de/gewerbe/produkte/e-mobilitaet/e-mobilitaet-fuer-hotels-ferienhaeuser-gastronomie"
+      ],
+      "neededToComplete": "A public-SWFL-EVSE Direct Pay checkout/QR payload or an official ad-hoc price sheet for the public network; the hotel/gastronomy Direct Pay product alone is insufficient to generalize.",
+      "authoritativePrefix": null
+    }
+  ],
+  "guardrails": [
+    "No subscriber, Ladekarte or roaming tariff generalized to ad-hoc.",
+    "No third-party sampled price generalized network-wide.",
+    "No eMI3 prefix invented; DEJEN/DEJOB retained only as operator-published charge-point identifier prefixes for Jena.",
+    "Previously deferred CPOs were not re-audited."
+  ]
+}

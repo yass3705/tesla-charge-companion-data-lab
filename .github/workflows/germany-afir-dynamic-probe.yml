@@ -1,0 +1,24 @@
+name: Germany AFIR dynamic schema probe
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_afir_dynamic_probe.py'
+      - '.github/workflows/germany-afir-dynamic-probe.yml'
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect dynamic AFIR schemas
+        run: python scripts/germany_afir_dynamic_probe.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-afir-dynamic-schema-${{ github.run_id }}
+          path: data/germany/afir_dynamic_schema_probe.json
+          if-no-files-found: error
+          retention-days: 7

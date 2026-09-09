@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "runDate": "2026-09-08",
+  "policy": "First-pass traversal only; exact ad-hoc pricing only when supported by current operator-direct evidence; no tariff extrapolation beyond source scope.",
+  "cpos": [
+    {
+      "canonicalName": "Stadtwerke Ingolstadt Energie GmbH",
+      "aliases": ["Stadtwerke Ingolstadt", "SWI", "SWI e-Motion"],
+      "firstPass": true,
+      "classification": "complete",
+      "operatorIdentityEvidence": "Official SWI public-charging page states SWI operates roughly 200 public charging points in Ingolstadt and the region and publishes separate Ad-hoc charging prices.",
+      "directPricing": {
+        "effectiveFrom": "2026-09-01",
+        "channel": "Ad-hoc charging",
+        "acEurPerKwh": 0.49,
+        "dcEurPerKwh": 0.59,
+        "dcBlockingEurPerMinute": 0.10,
+        "dcBlockingStartsAfterMinutes": 45,
+        "notes": "Official page lists 49 ct/kWh AC and 59 ct/kWh DC for Ad-hoc. The published Fair Use fee of 10 ct/min from minute 46 is shown for DC. No separate AC ad-hoc blocking fee is asserted beyond what the official table explicitly exposes.",
+        "source": "https://sw-i.de/e-mobilitaet/oeffentliches-laden/"
+      }
+    },
+    {
+      "canonicalName": "Stadtwerke Dachau",
+      "aliases": ["SWD", "Stadtwerke Dachau Ladesäulen"],
+      "firstPass": true,
+      "classification": "complete",
+      "operatorIdentityEvidence": "Official Stadtwerke Dachau e-mobility pages state 23 locations with more than 60 charging points and describe direct payment at their own stations.",
+      "directPricing": {
+        "channel": "Direktbezahlung via Smartphone / credit card or PayPal",
+        "acEurPerKwh": 0.65,
+        "acBlockingEurPerMinute": 0.18,
+        "acBlockingStartsAfterMinutes": 120,
+        "acMinimumChargeEur": 4.58,
+        "dcEurPerKwh": 0.94,
+        "dcBlockingEurPerMinute": 0.36,
+        "dcBlockingStartsAfterMinutes": 45,
+        "dcMinimumChargeEur": 4.70,
+        "source": "https://www.stadtwerke-dachau.de/tarife-angebote/e-mobilitaet/ladekarte-und-preise"
+      }
+    },
+    {
+      "canonicalName": "Stadtwerke Rosenheim GmbH & Co. KG",
+      "aliases": ["Stadtwerke Rosenheim", "SWRO"],
+      "firstPass": true,
+      "classification": "partial",
+      "operatorIdentityEvidence": "Official SWRO electromobility page lists operator-run public charging stations in Rosenheim and explicitly allows a one-time charging card without a contractual relationship at the SWRO headquarters station.",
+      "directPricing": {
+        "channel": "Einmalladekarte ohne Vertragsverhältnis",
+        "priceStatus": "not numerically published on the current official public surface",
+        "source": "https://www.swro.de/de/elektromobilitaet"
+      },
+      "deferredReason": "Current operator-direct page confirms contract-free charging but does not expose a current numeric ad-hoc tariff. No household/mobile-electricity tariff or third-party estimate is substituted. Resume only with new official checkout/QR/card tariff evidence or station-level authoritative pricing."
+    }
+  ],
+  "consistency": {
+    "registryPrecheck": {
+      "Stadtwerke Ingolstadt Energie GmbH": "no occurrence found in the current PR patch before this batch",
+      "Stadtwerke Dachau": "no occurrence found in the current PR patch before this batch",
+      "Stadtwerke Rosenheim GmbH & Co. KG": "no occurrence found in the current PR patch before this batch"
+    },
+    "reAuditedDeferredCpos": 0,
+    "duplicateAliasFindings": 0,
+    "identicalInvestigationOverTwoRuns": 0,
+    "unsafeTariffExtrapolations": 0
+  }
+}

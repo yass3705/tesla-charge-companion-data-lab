@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "0.2.0",
+  "countryCode": "DE",
+  "runDate": "2026-09-07",
+  "cpos": [
+    {
+      "canonicalName": "Stadtwerke Rüsselsheim GmbH",
+      "aliases": ["Stadtwerke Rüsselsheim", "SWR"],
+      "status": "complete",
+      "emi3Prefix": null,
+      "pricingAuthority": "operator-direct",
+      "adHoc": {
+        "access": "direct ad-hoc by credit card without registration",
+        "acEurPerKwh": 0.60,
+        "dcEurPerKwh": 0.65,
+        "extraFees": "No additional ad-hoc fee is stated in the current official tariff table/FAQ; 75 EUR is a temporary card pre-authorisation, not a charging fee."
+      },
+      "evidence": [
+        {
+          "type": "official_cpo",
+          "url": "https://www.stadtwerke-ruesselsheim.de/de/Geschaeftskunden/E-Mobilitaet/E-Mobilitaet/Unsere-oeffentlichen-Ladestationen/",
+          "finding": "Official access/tariff page explicitly lists Ad-Hoc at 0.60 EUR/kWh AC and 0.65 EUR/kWh DC and explains direct charging without registration by credit card."
+        },
+        {
+          "type": "official_cpo",
+          "url": "https://www.stadtwerke-ruesselsheim.de/de/Privatkunden/Mobilitaet/E-Mobilitaet/Ladetarife/",
+          "finding": "Independent current official tariff page repeats 0.60 EUR/kWh AC and 0.65 EUR/kWh DC for Ad-Hoc."
+        }
+      ],
+      "scopeDecision": "Network-wide direct tariff accepted because two current official operator pages explicitly identify the values as Ad-Hoc at SWR stations. No station-level extrapolation was used.",
+      "integrationNote": "Tariff is complete; retain name-based/operator ownership matching until an authoritative exclusive eMI3 prefix is established rather than inventing one."
+    },
+    {
+      "canonicalName": "Stadtwerke Hanau Gesellschaft mit beschränkter Haftung",
+      "aliases": ["Stadtwerke Hanau GmbH", "Stadtwerke Hanau", "SWH Hanau"],
+      "status": "partial",
+      "emi3Prefix": null,
+      "pricingAuthority": "operator-direct contract tariff confirmed; ad-hoc numeric tariff unresolved",
+      "contractTariff": {
+        "monthlyCardFeeEur": 4.49,
+        "sessionFeeEur": 0.29,
+        "ownNetworkAcEurPerKwh": 0.34,
+        "blockingFeeEurPerMin": 0.10,
+        "blockingAfterMinutes": {"ac": 480, "dc": 60}
+      },
+      "evidence": [
+        {
+          "type": "official_cpo",
+          "url": "https://stadtwerke-hanau.de/energiedienstleistungen/ladekarte",
+          "finding": "Official SWH card tariff lists 4.49 EUR/month, 0.29 EUR/session, 0.34 EUR/kWh AC on own SWH charge points, plus blocking rules. This is a contract/RFID tariff and is not generalized to ad-hoc."
+        },
+        {
+          "type": "municipal",
+          "url": "https://www.hanau.de/rathaus/was-finde-ich-wo/etankstellen/",
+          "finding": "City of Hanau confirms public Stadtwerke Hanau charging locations and links the SWH charging map."
+        },
+        {
+          "type": "discovery_only",
+          "url": "https://www.goingelectric.de/stromtankstellen/Deutschland/Hanau/Stadtwerke-Leipziger-Strasse-17/29776/",
+          "finding": "Current station page confirms ad-hoc availability at Leipziger Strasse 17 but explicitly reports the direct price as unknown; therefore no numeric ad-hoc price is inferred."
+        }
+      ],
+      "deferReason": "Current official sources publish the RFID/card tariff but not a numeric direct/QR ad-hoc tariff. A public checkout/QR endpoint or current operator price sheet exposing the direct price per station/EVSE is required.",
+      "guardrail": "Do not reuse 0.34 EUR/kWh as ad-hoc and do not invent an eMI3 prefix."
+    }
+  ]
+}
