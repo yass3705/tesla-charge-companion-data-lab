@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "auditRun": 101,
+  "auditedAt": "2026-09-09T21:05:00+01:00",
+  "scope": [
+    "docs/italy-cpo-progress-2026-09.json",
+    "ordered delta chain through docs/italy-cpo-progress-2026-09-run101-delta.json",
+    "EMOBITALY EVSE-level credits after the run72 mandatory dedup correction",
+    "nominal canonical counters and superseded aliases"
+  ],
+  "effectiveState": {
+    "treated":48,
+    "partial":22,
+    "setAside":1,
+    "active":15,
+    "canonicalTotal":86,
+    "supersededAlias":2,
+    "physicalPartyIds":88,
+    "networkOrClassWideActiveRemaining":0,
+    "stationLevelActiveRemaining":15
+  },
+  "checks": [
+    {"check":"canonical status sum","equation":"48+22+1+15=86","result":"pass"},
+    {"check":"physical inventory reconciliation","equation":"86+2 supersededAlias=88 physical partyIds","result":"pass"},
+    {"check":"duplicate canonical partyId","value":0,"result":"pass"},
+    {"check":"Atlante ordering","result":"pass","detail":"ATE remains setAside/station-level and last"},
+    {"check":"EMOBITALY run88 replay","result":"corrected","detail":"14 EVSE had already been included through run54/run72 baseline"},
+    {"check":"EMOBITALY run90 replay","result":"corrected","detail":"IT*EMOE748 was already one of run64's two unique additions retained by run72"},
+    {"check":"EMOBITALY run91 replay","result":"corrected","detail":"all 9 EVSE were already present in run55/run72 baseline"},
+    {"check":"EMOBITALY run100 replay","result":"corrected","detail":"all 6 Lucca EVSE were already present in run63 and explicitly included by run72"},
+    {"check":"EMOBITALY corrected coverage","equation":"463-30=433; 849-433=416","result":"pass"},
+    {"check":"canonical physical snapshot freshness","result":"known_stale","detail":"physical docs/italy-cpo-progress-2026-09.json remains seed; effective truth is ordered replay through run101 pending lossless consolidation"}
+  ],
+  "automaticCorrections": [
+    {
+      "partyId":"EMO",
+      "field":"coverage.rankableDirectEvse",
+      "before":463,
+      "after":433,
+      "delta":-30,
+      "reason":"post-run72 cross-run duplicate credits"
+    }
+  ],
+  "rootCause": "Several later duplicate checks searched the repository's indexed/default-branch view rather than the ordered research-branch delta ledger. Run72 had already documented this exact failure mode, but the guard was not consistently applied afterward.",
+  "preventiveRule": "For EMOBITALY, every future candidate EVSE ID must be compared against the full ordered research-branch ledger/baseline before coverage credit. Search results may be used for discovery only, never as proof of absence.",
+  "result":"pass_effective_state_major_evse_duplicate_inconsistency_corrected",
+  "nextAuditTrigger":"run104 at latest, or immediately after two further executions without nominative progression"
+}
