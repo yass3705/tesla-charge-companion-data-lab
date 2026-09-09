@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 80,
+  "generatedAt": "2026-09-09T02:03:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run79-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "FLY",
+      "canonicalName": "flyElectric Srl",
+      "aliases": ["FlyElectric srl", "flyElectric Srl", "flyElectric"],
+      "status": "treated",
+      "priority": "network-wide",
+      "evse": 50,
+      "stations": 29,
+      "inventorySource": "PUN inventory snapshot from canonical Italy reconstruction",
+      "inventoryTimestamp": "2026-08-30T11:14:39.750794Z",
+      "tariffModel": "single-price direct network tariff",
+      "tariffChannel": "direct flyElectric app on flyElectric-owned charging points; roaming explicitly separate",
+      "prices": {
+        "directNetworkEnergyEurPerKwh": 0.69,
+        "roamingViaFlyElectricAppEurPerKwh": 0.74,
+        "unit": "EUR/kWh"
+      },
+      "classes": [
+        {"class":"22 kW charging point","energyEurPerKwh":0.69},
+        {"class":"50 kW charging point","energyEurPerKwh":0.69}
+      ],
+      "conditions": [
+        "Official site states one price for its 22 kW and 50 kW charging points.",
+        "The 0.74 EUR/kWh roaming tariff is explicitly separate and must not be substituted for the direct FLY tariff.",
+        "Direct use requires the flyElectric app/account and a payment method; no ad-hoc QR/card tariff was inferred."
+      ],
+      "paymentMethods": ["payment method stored in flyElectric app/account"],
+      "coveredSubpopulations": [
+        {
+          "scope": "canonical PUN partyId FLY physical network",
+          "stations": 29,
+          "evse": 50,
+          "rankableEvse": 50,
+          "energyEurPerKwh": 0.69,
+          "reason": "first-party flyElectric page explicitly advertises a single price for its 22 kW and 50 kW charging points"
+        }
+      ],
+      "uncoveredSubpopulations": [],
+      "coverage": {
+        "rankableDirectEvse": 50,
+        "uncoveredEvse": 0,
+        "coveragePct": 100.0,
+        "failClosedRule": "If future FLY inventory exposes a charger class other than the officially described 22 kW or 50 kW points, leave that new class fail-closed until first-party applicability is proven."
+      },
+      "officialUrls": ["https://flyelectric.it/home"],
+      "positiveEvidence": [
+        "Current official flyElectric home page states 'Un unico prezzo per tutto' and explicitly compares 22 kW and 50 kW outlets as having the same price.",
+        "Current official page publishes 0.69 EUR/kWh and separately labels 0.74 EUR/kWh as the roaming tariff.",
+        "Official page describes app registration, payment-method entry, charger selection, session start and payment, confirming the direct app channel."
+      ],
+      "negativeEvidence": [
+        "No ad-hoc QR/contactless direct tariff was inferred from the app-only public instructions.",
+        "Roaming stations visible in flyElectric must remain outside partyId FLY direct-network coverage."
+      ],
+      "blockage": null,
+      "resumeCondition": "Re-open if flyElectric changes the published direct price, adds a new charger class outside 22/50 kW, or publishes a distinct ad-hoc tariff.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run80: FLY active->treated. Current official flyElectric page publishes one direct-network price of EUR 0.69/kWh for 22 kW and 50 kW charging points, while explicitly separating a EUR 0.74/kWh roaming tariff; 50/50 canonical FLY EVSE rankable."
+    }
+  ],
+  "countsBefore": {"treated":44,"partial":14,"setAside":1,"active":27,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":45,"partial":14,"setAside":1,"active":26,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 26,
+    "newlyTreatedCpos": ["FLY"],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 50,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "45+14+1+26=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "result": "pass_with_fly_network_wide_promotion",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-09 run80: FLY promoted active->treated with 50/50 direct-rankable EVSE at EUR 0.69/kWh; EUR 0.74/kWh roaming channel retained separately."
+  ]
+}
