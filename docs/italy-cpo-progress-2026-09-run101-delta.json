@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 101,
+  "generatedAt": "2026-09-09T21:05:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run100-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "aliases": ["EMOBITALY S.r.l.", "EMO"],
+      "status": "partial",
+      "priority": "station-level",
+      "evse": 849,
+      "stations": 296,
+      "tariffModel": "direct_PUN_station_EVSE_exact",
+      "tariffChannel": "Piattaforma Unica Nazionale tariff data surfaced by Pienotto; direct CPO/ad-hoc only; no eMSP roaming transposition",
+      "coverageBeforeReported": {
+        "rankableDirectEvse": 463,
+        "failClosedEvse": 386,
+        "coveragePct": 54.53
+      },
+      "coverageAfterCorrection": {
+        "rankableDirectEvse": 433,
+        "failClosedEvse": 416,
+        "coveragePct": 51.00
+      },
+      "coverageCorrection": {
+        "rankableDirectEvseCorrection": -30,
+        "reason": "post-run72 duplicate regression: later runs used incomplete/default-branch duplicate checks and re-credited EVSE already included in the corrected historical baseline or earlier ordered research-branch deltas",
+        "duplicateCreditsRemoved": [
+          {
+            "run": 88,
+            "evseCount": 14,
+            "idsOrFamilies": ["IT*EMO*E2011*1..6", "IT*EMOE969", "IT*EMOE970", "IT*EMOE788", "IT*EMOE789", "IT*EMOE790", "IT*EMOE791", "IT*EMO*E2158*1", "IT*EMO*E2158*2"],
+            "alreadyPresentIn": "run54 / run72 corrected baseline"
+          },
+          {
+            "run": 90,
+            "evseCount": 1,
+            "idsOrFamilies": ["IT*EMOE748"],
+            "alreadyPresentIn": "run64 unique set explicitly retained by run72 correction"
+          },
+          {
+            "run": 91,
+            "evseCount": 9,
+            "idsOrFamilies": ["IT*EMOE327", "IT*EMOE1348", "IT*EMOE151", "IT*EMOE152", "IT*EMOE175", "IT*EMOE200", "IT*EMOE735", "IT*EMOE736", "IT*EMOE553"],
+            "alreadyPresentIn": "run55 / run72 corrected baseline"
+          },
+          {
+            "run": 100,
+            "evseCount": 6,
+            "idsOrFamilies": ["IT*EMO*E2160*1", "IT*EMO*E2160*2", "IT*EMOE784", "IT*EMOE785", "IT*EMOE786", "IT*EMOE787"],
+            "alreadyPresentIn": "run63 unique set explicitly included by run72 correction"
+          }
+        ]
+      },
+      "positiveEvidence": [
+        "Run72 explicitly corrected EMOBITALY to a 296-EVSE unique baseline and states that run54/run55 evidence plus run63, run64, run65, run66 and selected later unique additions are already included.",
+        "Run54 contains all fourteen EVSE later re-credited by run88.",
+        "Run72 explicitly names IT*EMOE748 as one of the two genuinely new run64 EVSE, so run90 must not credit it again.",
+        "Run55 contains all nine EVSE later re-credited by run91.",
+        "Run63 contains the six Lucca EVSE later re-credited by run100."
+      ],
+      "negativeEvidence": [
+        "No tariff evidence is deleted by this correction; only duplicate coverage credits are removed.",
+        "No unverified candidate discovered during run101 is promoted without exact current station/EVSE identifiers."
+      ],
+      "blockage": "416 canonical EMOBITALY EVSE still need exact current station/EVSE -> direct tariff evidence after deduplication correction.",
+      "resumeCondition": "build future EMOBITALY set-difference against the ordered research-branch EVSE ledger, never default-branch code search alone; promote only IDs absent from the full historical set",
+      "confidence": "high for the 30-EVSE correction",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run101: mandatory post-run72 dedup audit removed 30 duplicate EMOBITALY coverage credits from runs88, 90, 91 and 100; effective unique coverage corrected 463 -> 433/849 (51.00%), 416 fail-closed. Tariff evidence retained."
+    }
+  ],
+  "countsBefore": {"treated":48,"partial":22,"setAside":1,"active":15,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":48,"partial":22,"setAside":1,"active":15,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {"networkOrClassWideActiveRemaining":0,"stationLevelActiveRemaining":15,"newlyTreatedCpos":[],"newlyPartialCpos":[],"aliasesResolved":[],"rankableDirectEvseAdded":0,"rankableDirectEvseCorrection":-30,"atlanteLast":true},
+  "consistency": {
+    "statusSumCanonical":86,
+    "expectedCanonical":86,
+    "equation":"48+22+1+15=86",
+    "aliasesCountedOutsideCanonical":2,
+    "physicalPartyIds":88,
+    "physicalEquation":"86+2=88",
+    "duplicateCanonicalPartyIds":0,
+    "emoCoverageEquation":"463-14-1-9-6=433; 849-433=416",
+    "result":"pass_nominal_post_run72_evse_duplicate_regression_corrected",
+    "canonicalPhysicalSnapshotStillStale":true,
+    "canonicalRepairScript":"scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-09 run101: corrected a second EMOBITALY cross-run duplicate regression: -30 false coverage credits; effective direct unique coverage 433/849.",
+    "2026-09-09 run101: nominal state unchanged at 48 treated + 22 partial + 1 setAside + 15 active = 86 canonical; +2 superseded aliases = 88 physical partyIds.",
+    "2026-09-09 run101: future EMOBITALY promotion must use an ordered branch-level EVSE ledger/set-difference rather than repository code search."
+  ]
+}
