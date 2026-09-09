@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "partyId": "EMO",
+  "run": 102,
+  "generatedAt": "2026-09-09T22:55:31+01:00",
+  "purpose": "Fresh PUN/Pienotto exact station-EVSE tariff candidates discovered after run101; intentionally not promoted until full ordered research-branch EVSE ledger set-difference passes.",
+  "policy": {
+    "failClosed": true,
+    "noPromotionWithoutFullLedgerDedup": true,
+    "tariffChannel": "Piattaforma Unica Nazionale data surfaced by Pienotto; direct CPO/ad-hoc only; no eMSP roaming transposition"
+  },
+  "baseline": {
+    "rankableDirectEvse": 433,
+    "failClosedEvse": 416,
+    "inventoryEvse": 849,
+    "source": "docs/italy-cpo-progress-2026-09-run101-delta.json"
+  },
+  "candidates": [
+    {
+      "location": "Via L. Riva 19, Gallarate (VA)",
+      "evseIds": ["IT*EMO*E2079*1", "IT*EMO*E2079*2", "IT*EMO*E2079*3"],
+      "tariffs": [
+        {"class": "AC", "energyEurPerKwh": 0.45, "activationEur": 0.74, "evseIds": ["IT*EMO*E2079*1"]},
+        {"class": "DC", "energyEurPerKwh": 0.60, "activationEur": 0.74, "evseIds": ["IT*EMO*E2079*2", "IT*EMO*E2079*3"]}
+      ],
+      "sourceUrl": "https://pienotto.it/stazioni/270548-emobitaly-s-r-l-gallarate-va",
+      "promotionStatus": "pending_full_ledger_dedup"
+    },
+    {
+      "location": "Via Emilia 92/B, Catanzaro (CZ)",
+      "evseIds": ["IT*EMO*E2095*1", "IT*EMO*E2095*2"],
+      "tariffs": [
+        {"class": "DC", "energyEurPerKwh": 0.55, "activationEur": 0.74, "evseIds": ["IT*EMO*E2095*1", "IT*EMO*E2095*2"]}
+      ],
+      "sourceUrl": "https://pienotto.it/stazioni/285169-emobitaly-s-r-l-catanzaro-cz",
+      "promotionStatus": "pending_full_ledger_dedup"
+    },
+    {
+      "location": "Viale Germania, Zona PIP, San Vito dei Normanni (BR)",
+      "evseIds": ["IT*EMOE969", "IT*EMOE970"],
+      "tariffs": [
+        {"class": "AC", "energyEurPerKwh": 0.50, "activationEur": 0.74, "evseIds": ["IT*EMOE969", "IT*EMOE970"]}
+      ],
+      "sourceUrl": "https://pienotto.it/stazioni/262826-emobitaly-s-r-l-san-vito-dei-normanni-br",
+      "promotionStatus": "known_historical_duplicate_run54_do_not_credit"
+    },
+    {
+      "location": "Via Stefano Nicolai 2, Santa Teresa Gallura (SS)",
+      "evseIds": ["IT*EMOE1206", "IT*EMOE1207"],
+      "tariffs": [
+        {"class": "AC", "energyEurPerKwh": 0.60, "activationEur": 0.74, "evseIds": ["IT*EMOE1206", "IT*EMOE1207"]}
+      ],
+      "sourceUrl": "https://pienotto.it/stazioni/259994-emobitaly-s-r-l-santa-teresa-gallura-ss",
+      "promotionStatus": "pending_full_ledger_dedup"
+    },
+    {
+      "location": "Piazza Piemonte 14, Milano (MI)",
+      "evsePattern": "IT*EMO*E2361*1..IT*EMO*E2372*1",
+      "evseIds": ["IT*EMO*E2361*1", "IT*EMO*E2362*1", "IT*EMO*E2363*1", "IT*EMO*E2364*1", "IT*EMO*E2365*1", "IT*EMO*E2366*1", "IT*EMO*E2367*1", "IT*EMO*E2368*1", "IT*EMO*E2369*1", "IT*EMO*E2370*1", "IT*EMO*E2371*1", "IT*EMO*E2372*1"],
+      "tariffs": [
+        {"class": "AC", "energyEurPerKwh": 0.48, "activationEur": 1.14, "evseCount": 12}
+      ],
+      "sourceUrl": "https://pienotto.it/stazioni/260123-emobitaly-s-r-l-milano-mi",
+      "promotionStatus": "pending_full_ledger_dedup"
+    }
+  ],
+  "candidateEvseTotal": 21,
+  "knownDuplicateEvse": 2,
+  "pendingDedupEvse": 19,
+  "countsChanged": false,
+  "nextAction": "Run scripts/italy_cpo_delta_evse_dedup_audit.py against the checked-out research branch with every pending candidate ID; promote only candidateNovelIds, then update the canonical replay delta and coverage counts."
+}
