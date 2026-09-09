@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 79,
+  "generatedAt": "2026-09-09T01:54:58+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run78-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "A22",
+      "canonicalName": "Autostrada del Brennero S.p.A.",
+      "aliases": ["Autostrada del Brennero S.p.A.", "A22", "Brennerautobahn AG"],
+      "status": "treated",
+      "priority": "class-wide",
+      "evse": 80,
+      "stations": 17,
+      "inventorySource": "PUN inventory snapshot from canonical Italy reconstruction; 80 EVSE / 17 stations",
+      "inventoryTimestamp": "2026-08-30T11:14:39.750794Z",
+      "tariffModel": "operator-wide deterministic charger-class tariff",
+      "tariffChannel": "direct CPO / ad-hoc at A22-operated chargers; roaming eMSP prices kept separate",
+      "tariffs": [
+        {
+          "class": "dedicated AC charger",
+          "connectorApplicability": "Type 2 dedicated AC charger, up to 22 kW per vehicle / 11 kW when two vehicles share the charger",
+          "energyEurPerKwh": 0.33,
+          "unit": "EUR/kWh"
+        },
+        {
+          "class": "multi-standard fast charger",
+          "connectorApplicability": "CCS Combo 2 50 kW, CHAdeMO 50 kW, or Type 2 up to 43 kW on the A22 multi-standard charger topology",
+          "energyEurPerKwh": 0.38,
+          "unit": "EUR/kWh"
+        },
+        {
+          "class": "ultra-rapid / HPC A22 charger",
+          "connectorApplicability": "CCS Combo 2 up to 180 kW on public passenger sites; A22 also publishes the same EUR 0.43/kWh for its 600 kW CCS / 1000 kW MCS heavy-vehicle-only equipment",
+          "energyEurPerKwh": 0.43,
+          "unit": "EUR/kWh"
+        }
+      ],
+      "conditions": [
+        "Apply by exact charger topology/connector class, not by a generic arbitrary power threshold when the EVSE topology is unknown.",
+        "Bolzano Sud/Firmian 600 kW CCS and CCS+MCS installation is explicitly restricted to heavy vehicles authorized by A22 and must not be ranked as an ordinary passenger-car charging option.",
+        "Third-party operators physically near A22 sites (Tesla, Electra, Enel X, Ewiva, etc.) retain their own partyIds and tariffs and are not covered by this A22 rule."
+      ],
+      "paymentMethods": [
+        "direct/ad-hoc charging supported at A22 chargers; payment implementation documented in A22 usage instructions / current station metadata",
+        "roaming/eMSP, where available, remains a separate tariff channel"
+      ],
+      "coveredSubpopulations": [
+        {
+          "scope": "PUN partyId A22 public passenger-car inventory",
+          "stations": 17,
+          "evse": 80,
+          "coverageType": "class-wide deterministic direct tariff",
+          "reason": "Current official A22 service-area page enumerates the public passenger charging sites and assigns explicit EUR/kWh prices to each A22 charger topology; the canonical PUN A22 inventory contains 17 public stations."
+        }
+      ],
+      "uncoveredSubpopulations": [
+        {
+          "site": "Bolzano Sud/Firmian",
+          "scope": "600 kW CCS and CCS+MCS heavy-vehicle-only chargers",
+          "reason": "Official A22 page explicitly restricts these chargers to heavy vehicles authorized by A22; excluded from ordinary passenger-car ranking even though the published energy price is 0.43 EUR/kWh."
+        }
+      ],
+      "coverage": {
+        "rankableDirectEvse": 80,
+        "uncoveredCanonicalPassengerEvse": 0,
+        "coveragePct": 100.0,
+        "eligibilityExcludedOutsideCanonicalPassengerScope": "Bolzano Sud/Firmian heavy-vehicle-only equipment",
+        "failClosedRule": "If an imported A22 EVSE cannot be mapped to one of the three published A22 charger topologies, do not rank it until topology is resolved."
+      },
+      "officialUrls": [
+        "https://www.autobrennero.it/it/in-viaggio/sosta-e-servizi/aree-di-servizio/"
+      ],
+      "discoveryUrls": [
+        "https://app.pumpapp.co/it/stazione-di-ricarica-autostrada-del-brennero-a22-po-ovest-bagnolo-san-vito/a141d49e-42c3-4722-ab76-d9b44408028c"
+      ],
+      "positiveEvidence": [
+        "Current official A22 page publishes 0.33 EUR/kWh for dedicated AC chargers (Type 2 up to 22 kW / 11 kW shared).",
+        "Current official A22 page publishes 0.38 EUR/kWh for multi-standard chargers (CCS 50 kW, CHAdeMO 50 kW, Type 2 up to 43 kW).",
+        "Current official A22 page publishes 0.43 EUR/kWh for ultra-rapid CCS up to 180 kW and separately for the restricted Bolzano Sud/Firmian 600 kW CCS / 1000 kW MCS heavy-vehicle installation.",
+        "The official page enumerates 17 passenger-accessible A22 charging sites; this matches the canonical PUN A22 station count of 17. A separate Bolzano Sud/Firmian heavy-vehicle-only installation is explicitly eligibility-restricted.",
+        "Current PUMP discovery metadata for A22 Po Ovest corroborates the exact mixed topology: dedicated Type 2 22 kW plus multi-standard Type 2 43 kW / CCS 50 kW / CHAdeMO 50 kW."
+      ],
+      "negativeEvidence": [
+        "Do not infer A22 pricing for co-located Tesla/Electra/Enel X/Ewiva hardware; those use different partyIds.",
+        "Do not make the Bolzano Sud/Firmian heavy-vehicle-only installation a passenger-car result merely because a tariff is public."
+      ],
+      "blockage": null,
+      "resumeCondition": "Re-open only if A22 changes its official tariff table/topologies, the PUN A22 station inventory no longer matches the public A22 site scope, or a new A22 EVSE topology appears outside the published classes.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run79: A22 active->treated. Current official A22 service-area page provides deterministic direct prices by charger topology: AC 0.33 EUR/kWh, multi-standard 0.38 EUR/kWh, ultra-rapid/HPC 0.43 EUR/kWh. Canonical PUN scope is 80 EVSE / 17 public stations; Bolzano Sud/Firmian heavy-vehicle-only equipment is explicitly excluded from passenger ranking."
+    }
+  ],
+  "countsBefore": {"treated":43,"partial":14,"setAside":1,"active":28,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":44,"partial":14,"setAside":1,"active":27,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 27,
+    "newlyTreatedCpos": ["A22"],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 80,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "44+14+1+27=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "a22CanonicalStationCount": 17,
+    "a22OfficialPassengerSiteCount": 17,
+    "eligibilityExcludedSite": "Bolzano Sud/Firmian heavy-vehicle-only",
+    "result": "pass_with_a22_class_wide_promotion",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-09 run79: A22 promoted active->treated after current first-party tariff classes and 17-site passenger scope were reconciled with the canonical PUN inventory; 80 EVSE become direct-rankable by exact charger topology. Heavy-vehicle-only Bolzano Sud/Firmian remains eligibility-excluded."
+  ]
+}
