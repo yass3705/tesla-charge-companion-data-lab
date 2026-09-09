@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 90,
+  "checkedAt": "2026-09-09T10:58:00+01:00",
+  "scope": "full consistency audit triggered after two runs without nominative CPO-status progression; reconciles run88 baseline, run89 and run90, alias safeguards, EMOBITALY EVSE set-difference, priority order, and physical canonical state",
+  "baseline": {"run":88,"treated":46,"partial":17,"setAside":1,"active":22,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88,"reference":"data/reports/italy_canonical_consistency_audit_20260909_run88.json"},
+  "transitionLedger": [
+    {"run":89,"statusEffect":"none","note":"EMO exact EVSE coverage +1: IT*EMOE980"},
+    {"run":90,"statusEffect":"none","note":"EMO exact EVSE coverage +1: IT*EMOE748"}
+  ],
+  "reconciledCounts": {"treated":46,"partial":17,"setAside":1,"active":22,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88,"canonicalEquation":"46+17+1+22=86","physicalEquation":"86+2=88"},
+  "duplicateChecks": {
+    "canonicalPartyIds":"no new canonical partyId introduced in runs89-90",
+    "aliases":"superseded aliases remain outside canonical total; physical total remains 88",
+    "EMO":"run88 San Vito credit is Viale Germania IDs IT*EMOE969/IT*EMOE970; run90 Viale Paesi Bassi ID IT*EMOE748 is distinct; run89 IT*EMOE980 is also distinct",
+    "tariffTransposition":"none; all run89-90 promotions are exact station/EVSE mappings"
+  },
+  "priorityCheck": {"result":"pass","networkOrClassWideActiveRemaining":0,"stationLevelActiveRemaining":22,"atlanteLast":true},
+  "coverageChecks": {
+    "EMO":{"physicalEvse":849,"rankableDirectEvse":389,"uncoveredEvse":460,"coveragePct":45.82,"equation":"387 + 1(run89) + 1(run90) = 389; 849-389=460","decision":"partial; exact station/EVSE mappings only"},
+    "EDN":{"decision":"partial; known 8 CCS Agrate promotional subset only; current Salerno PUN sample remains n.d., so no blanket promotion"},
+    "ELC":{"decision":"partial; Bergamo Via Autostrada six 400 kW EVSE remain n.d. on PUN and motorway exception policy prevents blanket tariff"},
+    "UFC":{"decision":"partial; current PUN still exposes the known Mantova priced subset only; no expansion this audit"}
+  },
+  "physicalCanonical": {
+    "path":"docs/italy-cpo-progress-2026-09.json",
+    "observedCounts":{"treated":4,"partial":5,"setAside":1,"active":78,"total":88},
+    "state":"stale legacy inventory seed; inconsistent with reconciled nominative overlay through run90",
+    "severity":"major structural inconsistency with the user-mandated physical canonical source-of-truth requirement",
+    "safeDecision":"do not overwrite with a partial reconstruction; the checked-in lossless consolidator must replay the complete ordered delta chain in a repository checkout before replacement",
+    "repairScript":"scripts/italy_cpo_progress_consolidate.py",
+    "guardrail":"scripts/italy_cpo_delta_evse_dedup_audit.py",
+    "requiredPostcondition":"physical canonical counts 46/17/1/22, canonicalTotal 86, supersededAlias 2, physicalPartyIds 88, lastAppliedDeltaRun 90, with all deltaEvidence retained"
+  },
+  "result":"pass for effective nominative state and run90 EVSE set-difference; major known structural issue remains: physical canonical seed is stale and must be losslessly replayed before it can again serve alone as source of truth"
+}
