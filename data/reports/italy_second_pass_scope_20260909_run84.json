@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 84,
+  "checkedAt": "2026-09-09T05:51:00+01:00",
+  "effectiveCounts": {
+    "treated": 46,
+    "partial": 17,
+    "setAside": 1,
+    "active": 22,
+    "canonicalTotal": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88
+  },
+  "priorityQueues": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 22,
+    "atlanteLast": true
+  },
+  "progress": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "result": "coverage_progress",
+      "rankableDirectEvseAdded": 48,
+      "coverageBeforeDeduplicated": "296/849",
+      "coverageAfterDeduplicated": "344/849",
+      "coveragePctAfter": 40.52,
+      "locations": [
+        "Isola Nova del Tronchetto 33/m, Venezia: 40 Type 2 22 kW EVSE, 0.48 EUR/kWh + 1.14 EUR activation",
+        "Piazzale della Stazione 23, Venezia: 8 Type 2 22 kW EVSE, 0.48 EUR/kWh + 1.14 EUR activation"
+      ],
+      "sources": [
+        "https://pienotto.it/stazioni/259698-emobitaly-s-r-l-venezia-ve",
+        "https://pienotto.it/stazioni/259537-emobitaly-s-r-l-venezia-ve"
+      ],
+      "safety": "No tariff transposition. Run72 deduplicated baseline used instead of inflated run71 counter."
+    }
+  ],
+  "recheckedNoPromotion": [
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "evidence": "Current PUN-derived Cervia sample still states tariffs not communicated to PUN for IT*HRA*E19XP22T3KK1AL00009*1/*2.",
+      "decision": "remain active station-level fail-closed; do not repeat identical PUN path absent new evidence"
+    },
+    {
+      "partyId": "ELC",
+      "canonicalName": "Electra Italia s.r.l.",
+      "evidence": "Current PUN-derived Bergamo Via Autostrada 30 sample exposes six IT*ELC 400 kW EVSE but no tariff communicated to PUN.",
+      "decision": "retain partial classification from run81; autoroute/non-autoroute mapping remains required before broad 0.69/0.79 application"
+    }
+  ],
+  "consistency": {
+    "statusEquation": "46+17+1+22=86",
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "emoCoverageEquation": "296+48=344; 849-344=505",
+    "result": "pass",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py",
+    "note": "The authoritative effective state remains the physical snapshot plus ordered lossless deltas through run84 until the repaired consolidator can be executed on a full branch checkout."
+  },
+  "next": [
+    "Continue EMOBITALY exact PUN enumeration behind branch-local EVSE dedup guardrail.",
+    "Continue Edison Next station/EVSE mappings, prioritizing exact PUN/official promotional site mappings.",
+    "Continue Electra station classification into motorway vs non-motorway before applying deterministic direct tariffs.",
+    "Do not revisit HERA via the same Cervia/PUN route without new evidence.",
+    "Keep Atlante last."
+  ]
+}
