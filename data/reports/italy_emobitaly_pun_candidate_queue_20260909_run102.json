@@ -4,7 +4,8 @@
   "partyId": "EMO",
   "run": 102,
   "generatedAt": "2026-09-09T22:55:31+01:00",
-  "purpose": "Fresh PUN/Pienotto exact station-EVSE tariff candidates discovered after run101; intentionally not promoted until full ordered research-branch EVSE ledger set-difference passes.",
+  "reconciledAt": "2026-09-09T23:55:00+01:00",
+  "purpose": "PUN/Pienotto station-EVSE tariff candidates discovered after run101 and reconciled against the ordered research-branch ledger before any promotion.",
   "policy": {
     "failClosed": true,
     "noPromotionWithoutFullLedgerDedup": true,
@@ -25,7 +26,7 @@
         {"class": "DC", "energyEurPerKwh": 0.60, "activationEur": 0.74, "evseIds": ["IT*EMO*E2079*2", "IT*EMO*E2079*3"]}
       ],
       "sourceUrl": "https://pienotto.it/stazioni/270548-emobitaly-s-r-l-gallarate-va",
-      "promotionStatus": "pending_full_ledger_dedup"
+      "promotionStatus": "historical_duplicate_run54_do_not_credit"
     },
     {
       "location": "Via Emilia 92/B, Catanzaro (CZ)",
@@ -34,7 +35,7 @@
         {"class": "DC", "energyEurPerKwh": 0.55, "activationEur": 0.74, "evseIds": ["IT*EMO*E2095*1", "IT*EMO*E2095*2"]}
       ],
       "sourceUrl": "https://pienotto.it/stazioni/285169-emobitaly-s-r-l-catanzaro-cz",
-      "promotionStatus": "pending_full_ledger_dedup"
+      "promotionStatus": "historical_duplicate_run54_do_not_credit"
     },
     {
       "location": "Viale Germania, Zona PIP, San Vito dei Normanni (BR)",
@@ -43,7 +44,7 @@
         {"class": "AC", "energyEurPerKwh": 0.50, "activationEur": 0.74, "evseIds": ["IT*EMOE969", "IT*EMOE970"]}
       ],
       "sourceUrl": "https://pienotto.it/stazioni/262826-emobitaly-s-r-l-san-vito-dei-normanni-br",
-      "promotionStatus": "known_historical_duplicate_run54_do_not_credit"
+      "promotionStatus": "historical_duplicate_run54_do_not_credit"
     },
     {
       "location": "Via Stefano Nicolai 2, Santa Teresa Gallura (SS)",
@@ -52,7 +53,7 @@
         {"class": "AC", "energyEurPerKwh": 0.60, "activationEur": 0.74, "evseIds": ["IT*EMOE1206", "IT*EMOE1207"]}
       ],
       "sourceUrl": "https://pienotto.it/stazioni/259994-emobitaly-s-r-l-santa-teresa-gallura-ss",
-      "promotionStatus": "pending_full_ledger_dedup"
+      "promotionStatus": "historical_duplicate_run54_do_not_credit"
     },
     {
       "location": "Piazza Piemonte 14, Milano (MI)",
@@ -62,12 +63,14 @@
         {"class": "AC", "energyEurPerKwh": 0.48, "activationEur": 1.14, "evseCount": 12}
       ],
       "sourceUrl": "https://pienotto.it/stazioni/260123-emobitaly-s-r-l-milano-mi",
-      "promotionStatus": "pending_full_ledger_dedup"
+      "promotionStatus": "historical_duplicate_run54_do_not_credit"
     }
   ],
   "candidateEvseTotal": 21,
-  "knownDuplicateEvse": 2,
-  "pendingDedupEvse": 19,
+  "knownDuplicateEvse": 21,
+  "pendingDedupEvse": 0,
+  "novelEvse": 0,
   "countsChanged": false,
-  "nextAction": "Run scripts/italy_cpo_delta_evse_dedup_audit.py against the checked-out research branch with every pending candidate ID; promote only candidateNovelIds, then update the canonical replay delta and coverage counts."
+  "reconciliationEvidence": "docs/italy-cpo-progress-2026-09-run54-delta.json contains all five station groups and all 21 EVSE/pattern mappings; run72 also explicitly identifies Gallarate and Milano among previously recorded mappings.",
+  "nextAction": "Discard this queue from coverage promotion. Continue with genuinely new PUN station pages (Taggia, Terracina, Cantu, Lomazzo, Seregno, Vertemate, Caltanissetta, Davoli, Padova) and require exact EVSE IDs plus ordered-ledger set-difference before credit."
 }
