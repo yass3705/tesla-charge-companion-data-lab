@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "auditRun": 99,
+  "auditedAt": "2026-09-09T18:54:00+01:00",
+  "scope": [
+    "docs/italy-cpo-progress-2026-09.json",
+    "ordered delta chain through docs/italy-cpo-progress-2026-09-run99-delta.json",
+    "recent classification transitions and alias groups",
+    "nominal canonical counters versus physical partyId inventory"
+  ],
+  "effectiveState": {
+    "treated": 48,
+    "partial": 22,
+    "setAside": 1,
+    "active": 15,
+    "canonicalTotal": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88,
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 15
+  },
+  "checks": [
+    {"check":"canonical status sum","equation":"48+22+1+15=86","result":"pass"},
+    {"check":"physical inventory reconciliation","equation":"86+2 supersededAlias=88 physical partyIds","result":"pass"},
+    {"check":"duplicate canonical partyId","value":0,"result":"pass"},
+    {"check":"Atlante ordering","result":"pass","detail":"ATE remains setAside/station-level and last unless directly exploitable new tariff backend evidence appears"},
+    {"check":"Uattzy family dedup","result":"pass","detail":"ESH/GAS/UTZ remain distinct physical partyIds; corporate/brand consolidation is not treated as tariff-partyId supersession"},
+    {"check":"ElectriEASE/Fortech relation","result":"pass","detail":"BPA retained distinct; 2026 Fortech acquisition recorded as corporate continuity only"},
+    {"check":"direct versus eMSP separation","result":"pass","detail":"No Enel X Way, NextCharge, Electromaps, BeaglePlug or other roaming/eMSP tariff was promoted as a direct CPO tariff in run99"},
+    {"check":"canonical physical snapshot freshness","result":"known_stale","detail":"docs/italy-cpo-progress-2026-09.json remains the original seed; effective truth is ordered replay through run99 pending lossless consolidation"}
+  ],
+  "recentTransitionReconciliation": [
+    "run94: Uattzy/UAU ESH/GAS/UTZ corporate family reconciled with all partyIds retained distinct",
+    "run95: VFS, A22 and ASS active -> partial; counts 48/20/1/17",
+    "run96: ELC active -> partial; counts 48/21/1/16",
+    "run97: EMO exact-EVSE coverage increased without nominal transition",
+    "run98: UFC active -> partial and EMO exact-EVSE coverage increased; counts 48/22/1/15",
+    "run99: BPA/SAG/DRW station-level classifications and corporate evidence added; no nominal transition"
+  ],
+  "knownStructuralIssue": {
+    "path":"docs/italy-cpo-progress-2026-09.json",
+    "issue":"physical snapshot is stale relative to ordered delta chain",
+    "risk":"future consumers reading only the seed will see obsolete counts/statuses",
+    "safeCurrentPolicy":"do not overwrite with a partial hand reconstruction; preserve ordered lossless delta chain",
+    "repairPath":"scripts/italy_cpo_progress_consolidate.py",
+    "requiredPostRepairInvariant":"48 treated + 22 partial + 1 setAside + 15 active = 86 canonical; 2 superseded aliases outside canonical = 88 physical partyIds, with all per-CPO evidence/history retained"
+  },
+  "result":"pass_effective_state_with_known_stale_physical_snapshot",
+  "automaticCorrections": [],
+  "nextAuditTrigger":"at most four further executions, or immediately after two executions without nominative progression"
+}
