@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 83,
+  "generatedAt": "2026-09-09T04:50:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run82-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "UFC",
+      "canonicalName": "E.ON DRIVE INFRASTRUCTURE ITALY S.R.L.",
+      "aliases": ["E.ON DRIVE INFRASTRUCTURE ITALY S.R.L.", "E.ON Drive Infrastructure Italy", "UFC"],
+      "status": "partial",
+      "priority": "station-level",
+      "evse": 48,
+      "stations": 15,
+      "inventorySource": "PUN inventory snapshot from canonical Italy reconstruction",
+      "inventoryTimestamp": "2026-08-30T11:14:39.750794Z",
+      "tariffModel": "station-level PUN-published direct tariff; no safe network-wide extrapolation",
+      "tariffChannel": "direct CPO/ad-hoc price as published through PUN; eMSP tariffs excluded",
+      "coveredSubpopulations": [
+        {
+          "station": "Strada Circonvallazione Sud, 78A, Mantova (MN)",
+          "scope": "4 HPC CCS EVSE",
+          "evseIds": ["IT*UFC*E500012*1", "IT*UFC*E500012*2", "IT*UFC*E500013*1", "IT*UFC*E500013*2"],
+          "powerKw": 400,
+          "energyEurPerKwh": 0.79,
+          "unit": "EUR/kWh",
+          "additionalPublishedFields": {"tempoRaw": "0.15 EUR", "unitUnresolved": true},
+          "rankableDirectEvse": 4,
+          "source": "https://pienotto.it/stazioni/271120-e-on-drive-infrastructure-italy-s-r-l-mantova-mn",
+          "sourceBasis": "PUN data mirrored by Pienotto; current on 2026-09-09"
+        }
+      ],
+      "uncoveredSubpopulations": [
+        {
+          "scope": "remaining 44 UFC EVSE",
+          "reason": "no deterministic current EVSE->tariff mapping yet",
+          "exampleNegativeStation": "Via Cremona, 36, Mantova (MN) is listed under the same CPO with tariff n.d.",
+          "resumeCondition": "PUN/official station page, QR/ad-hoc checkout, or first-party backend exposing exact current price for each remaining EVSE/station"
+        }
+      ],
+      "positiveEvidence": [
+        "PUN-derived station page identifies the CPO as E.ON DRIVE INFRASTRUCTURE ITALY S.R.L. and publishes 0.790 EUR/kWh for the Mantova Strada Circonvallazione Sud site.",
+        "The same page maps the price to four exact 400 kW CCS EVSE IDs IT*UFC*E500012*1/*2 and IT*UFC*E500013*1/*2."
+      ],
+      "negativeEvidence": [
+        "Another E.ON Drive Infrastructure Italy station in Mantova, Via Cremona 36, is explicitly shown as tariff n.d. in the same current PUN-derived city listing; therefore 0.79 EUR/kWh is not promoted network-wide.",
+        "No eMSP or foreign E.ON tariff is used to fill missing Italian UFC prices."
+      ],
+      "coverage": {"physicalEvse": 48, "rankableDirectEvse": 4, "uncoveredEvse": 44, "coveragePct": 8.33},
+      "blockage": "Remaining UFC stations do not yet have exact current direct tariffs mapped to their EVSE IDs.",
+      "resumeCondition": "Enumerate remaining UFC stations through PUN and promote only individually priced station/EVSE mappings; keep n.d. stations fail-closed.",
+      "confidence": "high for the four mapped EVSE; fail-closed for remainder",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run83: UFC/E.ON Drive Infrastructure Italy active->partial. Four Mantova HPC EVSE mapped exactly to current PUN-published 0.79 EUR/kWh; another same-CPO Mantova station is n.d., proving station-level rather than network-wide applicability."
+    },
+    {
+      "partyId": "SAG",
+      "canonicalName": "Sagelio srl società benefit",
+      "aliases": ["Sagelio srl società benefit", "Sagelio", "SAG"],
+      "status": "active",
+      "priority": "station-level",
+      "evse": 405,
+      "stations": 316,
+      "tariffModel": "site-owner configurable pricing managed through Sagelio platform",
+      "tariffChannel": "direct/card via Sagelio/Electromaps path; exact tariff varies by location owner",
+      "officialUrls": [
+        "https://sagelio.com/",
+        "https://sagelio.com/blog/monetizzare-la-ricarica-come-impostare-le-tariffe-per-i-tuoi-clienti/",
+        "https://sagelio.com/blog/ricaricare-auto-elettrica-con-carta-di-credito-da-oggi-si-puo/"
+      ],
+      "positiveEvidence": [
+        "Sagelio states location owners define pricing and operating modes according to their objectives.",
+        "Sagelio documents multiple possible pricing models: free, spend-threshold free, per-kWh, per-minute, flat/session, dynamic and hybrid.",
+        "Sagelio documents direct card payment by QR across its network, with the direct-card price tied to the station/Electromaps price plus Stripe fees."
+      ],
+      "negativeEvidence": [
+        "No single network-wide or class-wide numeric tariff can be safely applied to all SAG EVSE because pricing is configurable per managed location."
+      ],
+      "blockage": "Exact price must be resolved station-by-station/EVSE-by-EVSE from QR/backend/PUN; no deterministic network tariff exists.",
+      "resumeCondition": "Obtain station-specific QR/ad-hoc checkout or exact current PUN tariff mappings; do not repeat network-wide tariff search absent new evidence.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run83: SAG classified definitively station-level from first-party evidence: Sagelio lets each location choose its pricing model. Network-wide tariff search exhausted; future work must use exact station/QR/PUN mappings."
+    }
+  ],
+  "countsBefore": {"treated":46,"partial":16,"setAside":1,"active":23,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":46,"partial":17,"setAside":1,"active":22,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 22,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": ["UFC"],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 4,
+    "classifiedNoRepeat": ["SAG network-wide search exhausted; station-level only"],
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "46+17+1+22=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "result": "pass",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-09 run83: UFC/E.ON Drive Infrastructure Italy active->partial; 4/48 EVSE exactly mapped to 0.79 EUR/kWh via current PUN evidence; 44 remain fail-closed.",
+    "2026-09-09 run83: SAG/Sagelio network-wide tariff route formally exhausted from first-party evidence; pricing is owner-configurable per location, so future investigation is station/EVSE-level only."
+  ]
+}
