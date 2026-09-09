@@ -20,8 +20,30 @@ concurrency:
 jobs:
   cleanup:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
+      - name: Remove rebuildable Actions caches
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          deleted=0
+          while true; do
+            ids="$(gh api "repos/${GITHUB_REPOSITORY}/actions/caches?per_page=100" --jq '.actions_caches[].id' || true)"
+            [[ -z "$ids" ]] && break
+            progress=0
+            while read -r id; do
+              [[ -z "$id" ]] && continue
+              if gh api --method DELETE "repos/${GITHUB_REPOSITORY}/actions/caches/$id" >/dev/null 2>&1; then
+                deleted=$((deleted+1))
+                progress=$((progress+1))
+              fi
+            done <<< "$ids"
+            [[ "$progress" -eq 0 ]] && break
+          done
+          echo "Deleted rebuildable caches: $deleted"
+
       - name: Remove obsolete Actions runs while preserving live references
         shell: bash
         env:
@@ -76,7 +98,7 @@ jobs:
           live_artifacts = [a for a in artifacts if not a.get('expired')]
 
           # Keep the newest live artifact for every exact artifact name, plus every artifact
-          # created in the last 12 hours so an in-flight multi-workflow handoff cannot be broken.
+          # created in the last 12 hours so an in-flight country handoff cannot be broken.
           newest_by_name = {}
           keep = set()
           artifacts_by_run = defaultdict(list)
@@ -140,6 +162,10 @@ jobs:
                       progress += 1
                   except Exception as exc:
                       errors.append({'runId': rid, 'error': str(exc)})
+                      if 'rate limit' in str(exc).lower() or 'HTTP 403' in str(exc):
+                          break
+              if errors and ('rate limit' in errors[-1]['error'].lower() or 'HTTP 403' in errors[-1]['error']):
+                  break
               if progress:
                   page = 2
                   empty_passes = 0
@@ -170,6 +196,6 @@ jobs:
               f.write('## Actions storage maintenance\n\n')
               for k, v in summary.items():
                   f.write(f'- **{k}**: {v}\n')
-          if errors:
+          if errors and not any('rate limit' in e['error'].lower() or 'HTTP 403' in e['error'] for e in errors):
               raise SystemExit(2)
           PY
