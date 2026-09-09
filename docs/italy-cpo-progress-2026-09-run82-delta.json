@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 82,
+  "generatedAt": "2026-09-09T03:54:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run81-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "ENB",
+      "canonicalName": "ENERBROKER S.R.L. (R-ev)",
+      "aliases": ["ENERBROKER S.R.L. (R-ev)", "R-ev", "ENB"],
+      "status": "treated",
+      "priority": "class-wide",
+      "evse": 87,
+      "stations": 73,
+      "inventorySource": "PUN inventory snapshot from canonical Italy reconstruction",
+      "inventoryTimestamp": "2026-08-30T11:14:39.750794Z",
+      "tariffModel": "network-wide power-band WALLET tariff on R-ev infrastructure",
+      "tariffChannel": "direct R-ev app/WALLET; roaming networks kept separate",
+      "prices": [
+        {"class":"AC","energyEurPerKwh":0.65,"unit":"EUR/kWh"},
+        {"class":"DC<=150kW","energyEurPerKwh":0.85,"unit":"EUR/kWh"},
+        {"class":"DC>150kW (HPC)","energyEurPerKwh":0.89,"unit":"EUR/kWh"}
+      ],
+      "subscriptions": [
+        {"name":"City","monthlyEur":55,"includedKwh":100,"scope":"R-ev infrastructure only"},
+        {"name":"Metro","monthlyEur":6,"discountPct":10,"scope":"tariff displayed in app; separate from default WALLET ranking"}
+      ],
+      "fees": {
+        "extraStay": {
+          "AC<=22kW":"0.25 EUR/min subject to published time-window rules",
+          "DC<=150kW":"0.25 EUR/min",
+          "HPC>150kW":"0.25 EUR/min"
+        }
+      },
+      "eligibility": "R-ev account/app; WALLET is the direct pay-per-use tariff. City kWh are explicitly limited to R-ev infrastructure.",
+      "officialUrls": [
+        "https://www.r-ev.it/tariffe/",
+        "https://www.r-ev.it/termini-di-utilizzo-abbonamenti/",
+        "https://www.r-ev.it/termini-di-utilizzo-app/",
+        "https://www.r-ev.it/ti-serve-aiuto/"
+      ],
+      "positiveEvidence": [
+        "Current R-ev tariff page explicitly labels AC, DC and HPC as new R-ev network tariffs.",
+        "Current R-ev tariff-plan terms publish WALLET at 0.65 EUR/kWh AC, 0.85 EUR/kWh DC up to 150 kW and 0.89 EUR/kWh over 150 kW, taxes included.",
+        "Terms distinguish plans usable on R-ev infrastructure from roaming/interoperability; direct R-ev pricing is therefore not substituted with an eMSP roaming tariff.",
+        "R-ev help page separately distinguishes the R-ev network from third-party networks for wallet requirements."
+      ],
+      "negativeEvidence": [
+        "No third-party-network tariff is promoted to ENB physical EVSE.",
+        "Metro discount is retained as subscription metadata and not used as the default direct ranking price."
+      ],
+      "coverage": {"physicalEvse":87,"rankableDirectEvse":87,"uncoveredEvse":0,"coveragePct":100.0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run82: ENB/R-ev active->treated. First-party R-ev tariff and terms pages prove deterministic direct WALLET bands across R-ev infrastructure: AC 0.65, DC<=150 kW 0.85, HPC>150 kW 0.89 EUR/kWh; 87/87 EVSE rankable."
+    },
+    {
+      "partyId": "CGS",
+      "canonicalName": "COGESER ENERGIA SRL",
+      "aliases": ["COGESER ENERGIA SRL", "Cogeser Energia", "CGS"],
+      "status": "partial",
+      "priority": "class-wide",
+      "evse": 60,
+      "stations": 27,
+      "tariffModel": "network-wide AC tariff with customer/eligibility split; anonymous QR price not explicitly stated",
+      "tariffChannel": "Cogeser Energia E-move app/RFID/customer tariff; QR spot kept separate until its exact price is proven",
+      "prices": [
+        {"class":"Quick Cogeser Energia AC","energyEurPerKwh":0.67,"unit":"EUR/kWh","eligibility":"published under costs applied to Cogeser customers"},
+        {"class":"Cogeser network AC with bill debit","energyEurPerKwh":0.49,"unit":"EUR/kWh","eligibility":"Cogeser customers enrolled in bill debit"}
+      ],
+      "validFrom": "2025-10-01",
+      "officialUrls": ["https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico"],
+      "coveredSubpopulations": [
+        {"scope":"Cogeser customers on Quick Cogeser Energia AC stations","rule":"0.67 EUR/kWh VAT included","rankableCondition":"customer tariff selected"},
+        {"scope":"Cogeser customers with charging debited on electricity bill","rule":"0.49 EUR/kWh VAT included on Cogeser network","rankableCondition":"eligible bill-debit customer"}
+      ],
+      "uncoveredSubpopulations": [
+        {"scope":"anonymous/non-customer QR spot sessions","reason":"official page confirms QR spot access without app/registration but the numeric cost table is explicitly introduced as prices applied to Cogeser customers","resumeCondition":"first-party QR checkout, terms, or backend proving the exact anonymous spot tariff"}
+      ],
+      "positiveEvidence": [
+        "Cogeser states its charging points are available to customers and non-customers 24/7.",
+        "Cogeser states QR spot charging is available without app or registration.",
+        "Current official cost table publishes Quick Cogeser Energia AC at 0.67 EUR/kWh and eligible bill-debit charging on the Cogeser network at 0.49 EUR/kWh, effective 2025-10-01."
+      ],
+      "negativeEvidence": [
+        "The 0.67 EUR/kWh table is explicitly described as pricing applied to Cogeser customers, so it is not extrapolated to anonymous QR sessions.",
+        "Roaming prices for non-Cogeser networks are eMSP prices and are not used for CGS physical EVSE ranking."
+      ],
+      "blockage": "Exact anonymous QR/ad-hoc price is not explicitly published in crawlable first-party text.",
+      "resumeCondition": "Capture Cogeser QR spot checkout or first-party backend/terms exposing the anonymous price; then decide whether all CGS EVSE can be default-rankable.",
+      "confidence": "high for conditional customer tariffs; medium for default ad-hoc coverage",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run82: CGS active->partial. Current first-party page proves network AC customer tariffs (0.67 EUR/kWh standard customer; 0.49 EUR/kWh eligible bill-debit) and confirms anonymous QR access, but does not explicitly state the QR spot price, so anonymous/default ranking remains fail-closed."
+    }
+  ],
+  "countsBefore": {"treated":45,"partial":15,"setAside":1,"active":25,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":46,"partial":16,"setAside":1,"active":23,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 23,
+    "newlyTreatedCpos": ["ENB"],
+    "newlyPartialCpos": ["CGS"],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 87,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "46+16+1+23=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "result": "pass",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-09 run82: ENB/R-ev active->treated with 87/87 EVSE covered by official direct WALLET AC/DC/HPC tariff bands.",
+    "2026-09-09 run82: CGS active->partial; customer tariff grid is proven, anonymous QR spot price remains fail-closed."
+  ]
+}
