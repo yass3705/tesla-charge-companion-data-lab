@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 103,
+  "generatedAt": "2026-09-09T23:55:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run101-delta.json", "data/reports/italy_emobitaly_pun_candidate_queue_20260909_run102.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "partial",
+      "priority": "station-level",
+      "evse": 849,
+      "stations": 296,
+      "coverage": {"rankableDirectEvse": 433, "uncoveredEvse": 416, "coveragePct": 51.00},
+      "correction": {
+        "scope": "run102 candidate queue dedup reconciliation",
+        "candidateEvse": 21,
+        "novelEvse": 0,
+        "duplicateEvse": 21,
+        "reason": "all Gallarate, Catanzaro, San Vito dei Normanni, Santa Teresa Gallura and Milano Piazza Piemonte mappings in run102 were already recorded in run54",
+        "source": "docs/italy-cpo-progress-2026-09-run54-delta.json"
+      },
+      "negativePaths": [
+        "run102 queue is exhausted for promotion: all 21 EVSE are historical duplicates",
+        "Edison Next PUN sample at Via delle Calabrie 22, Salerno still reports tariffs not communicated to PUN; no EVSE credit",
+        "fresh PUN index discovery can be used only to queue station pages; no coverage credit until exact EVSE IDs and ordered-ledger set-difference are proven"
+      ],
+      "resumeCondition": "continue genuinely new PUN station pages such as Taggia, Terracina, Cantu, Lomazzo, Seregno, Vertemate, Caltanissetta, Davoli and Padova; for every EVSE require exact current tariff mapping and ordered-ledger dedup before promotion",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run103: reconciled run102 EMOBITALY candidate queue; all 21 EVSE were already present in run54, therefore coverage remains 433/849 and no duplicate credit is applied."
+    },
+    {
+      "partyId": "EDN",
+      "canonicalName": "Edison Next S.P.A.",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 826,
+      "stations": 377,
+      "negativeEvidence": ["Current PUN/Pienotto sample Via delle Calabrie 22, Salerno: ITEDNE0131*01*1/*2, Type 2 22 kW, tariffs not yet communicated to PUN."],
+      "blockage": "no deterministic current direct tariff mapping from first-party/PUN sample",
+      "resumeCondition": "exact current Edison Next station/EVSE tariff from PUN, QR/ad-hoc page or native app/backend",
+      "lastInvestigated": "2026-09-09"
+    }
+  ],
+  "countsBefore": {"treated":48,"partial":22,"setAside":1,"active":15,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":48,"partial":22,"setAside":1,"active":15,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {"networkOrClassWideRemaining":0,"stationLevelActiveRemaining":15,"newlyTreatedCpos":[],"newlyPartialCpos":[],"rankableEvseAdded":0,"atlanteLast":true},
+  "consistency": {
+    "statusSumCanonical":86,
+    "equation":"48+22+1+15=86",
+    "aliasesOutsideCanonical":2,
+    "physicalPartyIds":88,
+    "physicalEquation":"86+2=88",
+    "duplicateCanonicalPartyIds":0,
+    "emoCoverageEquation":"433+416=849",
+    "result":"pass_run102_queue_fully_deduplicated_no_false_credit",
+    "canonicalPhysicalSnapshotStillStale":true
+  },
+  "historyAppend": [
+    "2026-09-09 run103: run102 EMOBITALY queue corrected from 2 known duplicates + 19 pending to 21/21 historical duplicates; coverage unchanged at 433/849.",
+    "2026-09-09 run103: Edison Next current PUN sample at Salerno still has no tariff; continue exact station-level discovery without repeating exhausted network-wide research."
+  ]
+}
