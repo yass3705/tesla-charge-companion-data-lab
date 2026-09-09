@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 95,
+  "checkedAt": "2026-09-09T14:53:00+01:00",
+  "effectiveCanonicalBefore": {"treated":48,"partial":17,"setAside":1,"active":20,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88,"source":"ordered overlay through run94"},
+  "effectiveCanonicalAfter": {"treated":48,"partial":20,"setAside":1,"active":17,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88,"source":"ordered overlay through run95"},
+  "progress": [
+    {"partyId":"VFS","from":"active","to":"partial","reason":"current first-party owned-network tariff safely covers AC<=22 and DC 60/90-180 kW; current first-party network description reaches 300 kW, so >180 kW stays fail-closed"},
+    {"partyId":"A22","from":"active","to":"partial","reason":"current first-party passenger-car station tariffs are deterministic by station type; 80 canonical EVSE still need exact reconciliation to 75 stated passenger-car stalls and separate truck infrastructure"},
+    {"partyId":"ASS","from":"active","to":"partial","reason":"current Magis first-party subscriptions provide deterministic AC/DC direct tariffs; standard pay-per-use remains app-resolved"}
+  ],
+  "tariffEvidence": {
+    "VFS": {
+      "officialUrls":["https://www.viafast.net/viafast-tariffe/","https://www.viafast.net/viafast-webapp-termini-e-condizioni/","https://www.viafast.net/utenti/"],
+      "directClasses":["AC <=22 kW: 0.60 EUR/kWh","DC 60 kW and 90-180 kW: 0.85 EUR/kWh","post-charge: first 5 min free then 0.25 EUR/min 24/7"],
+      "failClosed":"first-party site says VIAFAST charging reaches 300 kW, while published grid stops at 180 kW; third-party roaming is explicitly excluded"
+    },
+    "A22": {
+      "officialUrls":["https://www.autobrennero.it/it/sostenibilita/elettrico/"],
+      "directClasses":["standard passenger-car charging: from 0.33 EUR/kWh where explicitly listed","multi-standard 50 kW / Type2 up to 43 kW: 0.38 EUR/kWh where listed","ultra-rapid CCS up to 180 kW: 0.43 EUR/kWh where listed"],
+      "failClosed":"separate truck station has CCS2 up to 600 kW and MCS 1 MW, card-only, no public tariff found; 80 canonical EVSE versus 75 stated passenger-car stalls requires exact ID reconciliation"
+    },
+    "ASS": {
+      "officialUrls":["https://www.aimmobilita.it/it/web/magis-smart/agsmaim_e-mobility/abbonamenti","https://www.aimmobilita.it/it/web/magis-smart/mobilita-sostenibile"],
+      "directClasses":["AC Small 5 EUR/month + 0.60 EUR/kWh","AC Medium 10 EUR/month + 0.58 EUR/kWh","AC Large 20 EUR/month + 0.50 EUR/kWh","DC Flat 10 EUR/month + 0.74 EUR/kWh","combined AC+DC plans retain the corresponding class prices"],
+      "failClosed":"pay-per-use standard price is shown in app at time of use; roaming is explicitly separate"
+    }
+  },
+  "priorityCheck": {"networkOrClassWideActiveRemaining":0,"stationLevelActiveRemaining":17,"atlanteLast":true,"result":"pass after run95 classifications"},
+  "consistency": {
+    "canonicalEquation":"48+20+1+17=86",
+    "physicalEquation":"86+2=88",
+    "duplicateCanonicalPartyIds":0,
+    "newAliasesIntroducedAsCanonical":0,
+    "unsafeTariffTransposition":0,
+    "numericEvseCreditThisRun":0,
+    "result":"pass_nominal"
+  },
+  "physicalCanonical": {
+    "path":"docs/italy-cpo-progress-2026-09.json",
+    "knownState":"stale legacy seed",
+    "safeDecision":"not overwritten from a partial reconstruction; lossless replay remains required",
+    "repairScript":"scripts/italy_cpo_progress_consolidate.py",
+    "requiredPostcondition":"48 treated / 20 partial / 1 setAside / 17 active, canonicalTotal 86, supersededAlias 2, physicalPartyIds 88, lastAppliedDeltaRun 95, with prior delta evidence retained"
+  },
+  "nextQueue":["EMO exact EVSE set-difference","EDN station-level","ELC station-level","UFC station-level","Uattzy family exact connector mapping","remaining station-level operators","ATE/Atlante last"],
+  "result":"significant nominative progress: three active CPOs safely reclassified partial with deterministic current first-party tariff subpopulations and explicit fail-closed tails"
+}
