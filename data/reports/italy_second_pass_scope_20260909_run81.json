@@ -1,0 +1,68 @@
+{
+  "country": "IT",
+  "run": 81,
+  "generatedAt": "2026-09-09T02:52:00+01:00",
+  "summary": {
+    "treated": 45,
+    "partial": 15,
+    "setAside": 1,
+    "active": 25,
+    "canonicalTotal": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88,
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 25
+  },
+  "progress": [
+    {
+      "partyId": "ELC",
+      "name": "Electra Italia s.r.l.",
+      "result": "active_to_partial",
+      "model": "Italy standard tariff with motorway exception",
+      "directTariffs": {
+        "appAutochargeEurPerKwh": 0.69,
+        "bankCardTerminalEurPerKwh": 0.79
+      },
+      "rankableEvseAdded": 0,
+      "reason": "first-party tariff is deterministic for non-motorway Italian stations, but motorway stations are explicitly excluded and the 514-EVSE inventory is not yet fully classified by motorway status",
+      "knownMotorwayExamples": [
+        "A4 Casello - Bergamo - Via Autostrada",
+        "A4 Casello - Palazzolo-sull'Oglio",
+        "A4 Casello - Cambiago"
+      ]
+    },
+    {
+      "partyId": "IOY",
+      "name": "IONITY GMBH",
+      "result": "remain_active_station_level",
+      "observedOfficialItalyPrices": {
+        "Direct": 0.85,
+        "Go": 0.80,
+        "MotionMonthly": 0.60,
+        "MotionAnnual": 0.63,
+        "PowerMonthly": 0.48,
+        "PowerAnnual": 0.50
+      },
+      "rankableEvseAdded": 0,
+      "reason": "official IONITY page describes country prices as minimum current prices and warns charger prices may be higher"
+    },
+    {
+      "partyId": "GMT",
+      "name": "G.M.T. S.P.A.",
+      "result": "remain_active_station_level",
+      "rankableEvseAdded": 0,
+      "reason": "ZapGrid/MP NEXT exposes an old 0.35 EUR/kWh page, but no current 2026 first-party tariff applicability proof; current MP Next site does not publish a public network charging tariff"
+    }
+  ],
+  "next": [
+    "Map ELC EVSE to Electra station slugs and isolate motorway/rest-area exceptions, then credit verified non-motorway EVSE under 0.69 app / 0.79 bank-card direct pricing.",
+    "Continue large station-level CPOs (HER, EDN, EMO) with exact EVSE mappings and station prices.",
+    "Keep Atlante last unless a directly exploitable native tariff backend appears."
+  ],
+  "consistency": {
+    "equation": "45+15+1+25=86",
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "result": "pass"
+  }
+}
