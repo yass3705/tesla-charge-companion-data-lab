@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 84,
+  "generatedAt": "2026-09-09T05:51:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run83-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "aliases": ["EMOBITALY S.r.l.", "EMO"],
+      "status": "partial",
+      "priority": "station-level",
+      "evse": 849,
+      "stations": 296,
+      "inventorySource": "PUN inventory snapshot from canonical Italy reconstruction",
+      "inventoryTimestamp": "2026-08-30T11:14:39.750794Z",
+      "tariffModel": "station_specific_owner_pricing",
+      "tariffChannel": "direct CPO tariff published through Piattaforma Unica Nazionale, surfaced by Pienotto; roaming eMSP excluded",
+      "coveredSubpopulationsAdded": [
+        {
+          "station": "Isola Nova del Tronchetto, 33/m, Venezia (VE)",
+          "scope": "40 AC Type 2 EVSE at 22 kW",
+          "evseIds": [
+            "IT*EMO*E726*17","IT*EMO*E726*18","IT*EMO*E726*19","IT*EMO*E726*20","IT*EMO*E726*21","IT*EMO*E726*22","IT*EMO*E726*23","IT*EMO*E726*24","IT*EMO*E726*25","IT*EMO*E726*26","IT*EMO*E726*27","IT*EMO*E726*28","IT*EMO*E726*29","IT*EMO*E726*30","IT*EMO*E726*31","IT*EMO*E726*32","IT*EMO*E726*33","IT*EMO*E726*34","IT*EMO*E726*35","IT*EMO*E726*36","IT*EMO*E726*37","IT*EMO*E726*38","IT*EMO*E726*39","IT*EMO*E726*40",
+            "IT*EMOE1013","IT*EMOE1014","IT*EMOE1015","IT*EMOE1016","IT*EMOE1017","IT*EMOE1018","IT*EMOE1019","IT*EMOE1020","IT*EMOE1021","IT*EMOE1022","IT*EMOE1023","IT*EMOE1024","IT*EMOE1025","IT*EMOE1026","IT*EMOE1027","IT*EMOE1028"
+          ],
+          "connector": "Type 2",
+          "powerKw": 22,
+          "energyEurPerKwh": 0.48,
+          "activationFeeEur": 1.14,
+          "unit": "EUR/kWh",
+          "rankableDirectEvse": 40,
+          "source": "https://pienotto.it/stazioni/259698-emobitaly-s-r-l-venezia-ve",
+          "sourceBasis": "PUN data mirrored by Pienotto; live page checked 2026-09-09"
+        },
+        {
+          "station": "Piazzale della Stazione, 23, Venezia (VE)",
+          "scope": "8 AC Type 2 EVSE at 22 kW",
+          "evseIds": [
+            "IT*EMO*E952*5","IT*EMO*E952*6","IT*EMO*E952*7","IT*EMO*E952*8",
+            "IT*EMOE1415","IT*EMOE1416","IT*EMOE1417","IT*EMOE1418"
+          ],
+          "connector": "Type 2",
+          "powerKw": 22,
+          "energyEurPerKwh": 0.48,
+          "activationFeeEur": 1.14,
+          "unit": "EUR/kWh",
+          "rankableDirectEvse": 8,
+          "source": "https://pienotto.it/stazioni/259537-emobitaly-s-r-l-venezia-ve",
+          "sourceBasis": "PUN data mirrored by Pienotto; live page checked 2026-09-09"
+        }
+      ],
+      "coverageBefore": {"physicalEvse": 849, "rankableDirectEvse": 296, "uncoveredEvse": 553, "coveragePct": 34.86, "basis": "run72 deduplicated correction"},
+      "coverageAfter": {"physicalEvse": 849, "rankableDirectEvse": 344, "uncoveredEvse": 505, "coveragePct": 40.52},
+      "positiveEvidence": [
+        "Both current PUN-derived station pages identify Gestore EMOBITALY S.r.l., exact IT*EMO/IT*EMOE identifiers, Type 2 22 kW connectors and 0.480 EUR/kWh plus 1.14 EUR activation.",
+        "The Tronchetto page exposes exactly 40 EVSE: E726*17..40 plus EMOE1013..1028.",
+        "The Piazzale della Stazione page exposes exactly 8 EVSE: E952*5..8 plus EMOE1415..1418.",
+        "These Venezia identifier blocks do not occur in the pre-run72 exact mappings reviewed in runs54-58,63-67,70-71; run72 corrected unique EMO baseline is used rather than the inflated run71 counter."
+      ],
+      "negativeEvidence": [
+        "No 0.48 EUR/kWh tariff is propagated to other EMOBITALY stations, even where the same price is observed.",
+        "505 EMOBITALY EVSE remain fail-closed until an exact current station/EVSE mapping is available."
+      ],
+      "blockage": "505 EVSE remain without exact current station/EVSE tariff mapping after deduplicated Venezia additions.",
+      "resumeCondition": "continue deterministic PUN/Pienotto/native-backend enumeration and run branch-local EVSE dedup audit before each future promotion",
+      "confidence": "high for the 48 Venezia EVSE; fail-closed remainder",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run84: added 48 exact current EMOBITALY EVSE mappings at two Venezia locations, using run72 deduplicated 296/849 baseline; coverage becomes 344/849 (40.52%)."
+    }
+  ],
+  "countsBefore": {"treated":46,"partial":17,"setAside":1,"active":22,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":46,"partial":17,"setAside":1,"active":22,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 22,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 48,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "46+17+1+22=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "emoCoverageEquation": "296+48=344; 849-344=505",
+    "result": "pass_nominal; EMO uses corrected run72 deduplicated baseline",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-09 run84: EMOBITALY exact deduplicated coverage increased by 48 EVSE at Venezia Tronchetto and Piazzale della Stazione, from 296/849 to 344/849; no tariff transposition.",
+    "2026-09-09 run84: nominal consistency remains 46 treated + 17 partial + 1 setAside + 22 active = 86 canonical; +2 superseded aliases = 88 physical partyIds."
+  ]
+}
