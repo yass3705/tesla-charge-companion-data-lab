@@ -1,0 +1,36 @@
+{
+  "country": "IT",
+  "run": 97,
+  "date": "2026-09-09",
+  "canonicalEffectiveCounts": {"treated":48,"partial":21,"setAside":1,"active":16,"total":86,"supersededAlias":2,"physicalPartyIds":88},
+  "priorityQueue": {"networkOrClassWideActive":0,"stationLevelActive":16,"atlanteLast":true},
+  "progress": [
+    {
+      "partyId": "EMO",
+      "name": "EMOBITALY S.r.l.",
+      "type": "station-level exact EVSE mapping",
+      "rankableEvseBefore": 398,
+      "rankableEvseAdded": 48,
+      "rankableEvseAfter": 446,
+      "canonicalEvse": 849,
+      "failClosedEvseAfter": 403,
+      "stations": [
+        {"address":"Isola Nova del Tronchetto, 33/m, Venezia (VE)","evse":40,"tariff":"0.480 EUR/kWh + 1.14 EUR activation","connector":"Type 2 22 kW","source":"PUN-derived Pienotto 259698"},
+        {"address":"Piazzale della Stazione, 23, Venezia (VE)","evse":8,"tariff":"0.480 EUR/kWh + 1.14 EUR activation","connector":"Type 2 22 kW","source":"PUN-derived Pienotto 259537"}
+      ],
+      "guardrail":"Tariff applies only to the 48 EVSE explicitly enumerated in run97 delta. No network-wide inference."
+    }
+  ],
+  "investigations": [
+    {"partyId":"ED","name":"Edison Next S.P.A.","result":"no new deterministic public tariff found","evidence":"Current first-party mobility pages describe CPO service and ownership/management model but expose no current public direct charging tariff grid. Search-engine PUN discovery did not surface a priced ED station in this pass.","next":"Only resume this exact first-party path if new evidence appears; otherwise pursue exact PUN/app/QR station mapping."}
+  ],
+  "consistency": {
+    "equation":"48+21+1+16=86; 86+2=88 physical partyIds",
+    "result":"pass_nominal",
+    "duplicateAliasChange":0,
+    "canonicalPhysicalSnapshot":"still stale; effective state is seed plus ordered deltas through run97",
+    "repairScript":"scripts/italy_cpo_progress_consolidate.py",
+    "repairNote":"The consolidator is lossless for changes/classificationUpdates and retains raw deltaEvidence, but full branch replay was not materialized in this run because the working runtime cannot clone the authenticated repository; do not overwrite the canonical file with a partial reconstruction."
+  },
+  "nextOrder":["EMOBITALY exact set-difference while high-yield mappings remain","Edison Next exact PUN/app/QR mapping","Electra motorway/non-motorway exact split","E.ON Drive Infrastructure Italy app/session mapping","Uattzy/ESH/GAS/UTZ connector-level mapping","remaining station-level CPOs","Atlante last"]
+}
