@@ -1,0 +1,48 @@
+{
+  "country": "IT",
+  "run": 83,
+  "generatedAt": "2026-09-09T04:50:00+01:00",
+  "sourceOfTruth": "docs/italy-cpo-progress-2026-09.json + ordered deltas through run83",
+  "counts": {"treated":46,"partial":17,"setAside":1,"active":22,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "priorityQueue": {"networkOrClassWideActiveRemaining":0,"stationLevelActiveRemaining":22,"atlanteLast":true},
+  "progressThisRun": [
+    {
+      "partyId": "UFC",
+      "name": "E.ON Drive Infrastructure Italy",
+      "result": "partial",
+      "rankableDirectEvseAdded": 4,
+      "coverage": "4/48",
+      "tariff": "Mantova Strada Circonvallazione Sud 78A: 0.79 EUR/kWh on IT*UFC*E500012*1/*2 and IT*UFC*E500013*1/*2; raw time field 0.15 EUR retained with unresolved unit",
+      "failClosedRemainder": 44,
+      "reason": "same-CPO Via Cremona 36 station is PUN tariff n.d.; no network-wide extrapolation"
+    },
+    {
+      "partyId": "SAG",
+      "name": "Sagelio",
+      "result": "active-station-level-classified",
+      "rankableDirectEvseAdded": 0,
+      "reason": "first-party Sagelio material proves location owners configure pricing; network-wide search route exhausted and future work must be exact station/QR/PUN mapping"
+    }
+  ],
+  "nextTargets": [
+    {"partyId":"HER","reason":"1137 EVSE; large station-level scope; seek exact PUN/native station mappings rather than repeating network tariff search"},
+    {"partyId":"EDN","reason":"826 EVSE; extend exact direct mapping beyond already proven Agrate Brianza DC subset"},
+    {"partyId":"EMO","reason":"849 EVSE; station mappings productive, guarded by global delta EVSE dedup audit"},
+    {"partyId":"ELC","reason":"514 EVSE; continue station classification and isolate tariff exceptions"},
+    {"partyId":"UFC","reason":"44/48 E.ON EVSE remain; enumerate PUN stations and promote only exact priced mappings"}
+  ],
+  "classifiedNoRepeat": [
+    {"partyId":"SAG","reason":"first-party evidence shows owner-configurable per-location pricing; do not repeat network-wide tariff search without new evidence"},
+    {"partyId":"IOY","reason":"official Italy figures are minimum prices; station may be higher"},
+    {"partyId":"PWY","reason":"direct payment exists but exact station price requires valid station/QR code"},
+    {"partyId":"NRG","reason":"sample PUN stations expose EVSE but no current tariff"}
+  ],
+  "consistency": {"equation":"46+17+1+22=86","physicalEquation":"86+2=88","duplicateCanonicalPartyIds":0,"result":"pass","canonicalPhysicalSnapshotStillStale":true},
+  "mainEvidence": [
+    "https://pienotto.it/stazioni/271120-e-on-drive-infrastructure-italy-s-r-l-mantova-mn",
+    "https://pienotto.it/comuni/mantova/elettrico",
+    "https://sagelio.com/",
+    "https://sagelio.com/blog/monetizzare-la-ricarica-come-impostare-le-tariffe-per-i-tuoi-clienti/",
+    "https://sagelio.com/blog/ricaricare-auto-elettrica-con-carta-di-credito-da-oggi-si-puo/"
+  ]
+}
