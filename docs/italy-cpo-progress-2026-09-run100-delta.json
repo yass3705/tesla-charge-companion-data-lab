@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 100,
+  "generatedAt": "2026-09-09T19:50:20+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run99-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "aliases": ["EMOBITALY S.r.l.", "EMO"],
+      "status": "partial",
+      "priority": "station-level",
+      "evse": 849,
+      "stations": 296,
+      "tariffModel": "direct_PUN_station_EVSE_exact",
+      "tariffChannel": "Piattaforma Unica Nazionale tariff data surfaced by Pienotto; direct CPO/ad-hoc only; no eMSP roaming transposition",
+      "coveredSubpopulationsAdded": [
+        {
+          "station": "Via dell'Acquacalda 2481, Lucca (LU)",
+          "scope": "2 AC Type 2 22 kW",
+          "evseIds": ["IT*EMO*E2160*1", "IT*EMO*E2160*2"],
+          "energyEurPerKwh": 0.45,
+          "activationFeeEur": 0.74,
+          "rankableDirectEvse": 2,
+          "source": "https://pienotto.it/stazioni/259993-emobitaly-s-r-l-lucca-lu",
+          "sourceBasis": "PUN data mirrored by Pienotto; current page checked 2026-09-09"
+        },
+        {
+          "station": "Viale Carducci, Lucca (LU)",
+          "scope": "4 AC Type 2 11 kW",
+          "evseIds": ["IT*EMOE784", "IT*EMOE785", "IT*EMOE786", "IT*EMOE787"],
+          "energyEurPerKwh": 0.45,
+          "activationFeeEur": 0.74,
+          "rankableDirectEvse": 4,
+          "source": "https://pienotto.it/stazioni/273018-emobitaly-s-r-l-lucca-lu",
+          "sourceBasis": "PUN data mirrored by Pienotto; current page checked 2026-09-09"
+        }
+      ],
+      "coverage": {
+        "rankableDirectEvseBefore": 457,
+        "rankableDirectEvseAdded": 6,
+        "rankableDirectEvseAfter": 463,
+        "canonicalEvse": 849,
+        "failClosedEvseAfter": 386,
+        "coveragePctAfter": 54.53,
+        "coveredSubpopulationsAdded": [
+          {"station":"Via dell'Acquacalda 2481, Lucca (LU)","evseIds":["IT*EMO*E2160*1","IT*EMO*E2160*2"]},
+          {"station":"Viale Carducci, Lucca (LU)","evseIds":["IT*EMOE784","IT*EMOE785","IT*EMOE786","IT*EMOE787"]}
+        ],
+        "uncoveredSubpopulations": ["remaining 386 EMOBITALY canonical EVSE without a proven exact current station/EVSE -> direct tariff mapping"]
+      },
+      "positiveEvidence": [
+        "Current PUN-derived pages list the six exact Lucca EVSE IDs, connector powers and direct tariffs at 0.450 EUR/kWh plus 0.74 EUR activation.",
+        "Run88 credited only Lucca Via C. Gianni (E788-E791) and Via Don Giovanni Minzoni (E2158*1-*2); the E2160 and E784-E787 families are distinct and were not part of that earlier six-EVSE Lucca credit."
+      ],
+      "negativeEvidence": [
+        "No Lucca tariff is propagated to other EMOBITALY stations or EVSE.",
+        "Edison Next Via Sottomonte, Capannori sampled during the same traversal still reports tariffs not communicated to PUN, so no Edison tariff credit was made."
+      ],
+      "blockage": "386 canonical EMOBITALY EVSE still need exact current station/EVSE tariff evidence.",
+      "resumeCondition": "Continue exact PUN set-difference mapping; compare candidate IDs against ordered research-branch deltas before every credit.",
+      "confidence": "high for the six exact Lucca mappings; fail-closed elsewhere",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run100: +6 exact Lucca EMOBITALY EVSE at Via dell'Acquacalda and Viale Carducci; coverage 457/849 -> 463/849; 386 remain fail-closed."
+    }
+  ],
+  "countsBefore": {"treated":48,"partial":22,"setAside":1,"active":15,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":48,"partial":22,"setAside":1,"active":15,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {"networkOrClassWideActiveRemaining":0,"stationLevelActiveRemaining":15,"newlyTreatedCpos":[],"newlyPartialCpos":[],"aliasesResolved":[],"rankableDirectEvseAdded":6,"rankableCoverageAdded":"EMOBITALY +6 Lucca","atlanteLast":true},
+  "consistency": {"statusSumCanonical":86,"expectedCanonical":86,"equation":"48+22+1+15=86","aliasesCountedOutsideCanonical":2,"physicalPartyIds":88,"physicalEquation":"86+2=88","duplicateCanonicalPartyIds":0,"emoCoverageEquation":"457+6=463; 849-463=386","result":"pass_nominal_and_candidate_dedup","canonicalPhysicalSnapshotStillStale":true,"canonicalRepairScript":"scripts/italy_cpo_progress_consolidate.py","lastFullAudit":"data/reports/italy_canonical_consistency_audit_20260909_run99.json"},
+  "historyAppend": [
+    "2026-09-09 run100: EMOBITALY +6 exact Lucca EVSE; direct deduplicated coverage 457 -> 463/849 (54.53%); no tariff transposition.",
+    "2026-09-09 run100: Edison Next Capannori sample remained tariff n.d.; no repeat of exhausted first-party network-grid path.",
+    "2026-09-09 run100: nominal consistency remains 48 treated + 22 partial + 1 setAside + 15 active = 86 canonical; +2 superseded aliases = 88 physical partyIds."
+  ]
+}
