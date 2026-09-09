@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 85,
+  "generatedAt": "2026-09-09T06:54:49+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run84-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "aliases": ["EMOBITALY S.r.l.", "EMO"],
+      "status": "partial",
+      "priority": "station-level",
+      "evse": 849,
+      "stations": 296,
+      "inventorySource": "PUN inventory snapshot from canonical Italy reconstruction",
+      "inventoryTimestamp": "2026-08-30T11:14:39.750794Z",
+      "tariffModel": "station_specific_owner_pricing",
+      "tariffChannel": "direct CPO tariff published through Piattaforma Unica Nazionale, surfaced by Pienotto; roaming eMSP excluded",
+      "coveredSubpopulationsAdded": [
+        {
+          "station": "Via Antonio Locatelli, 4, Bariano (BG)",
+          "scope": "2 AC Type 2 EVSE at 22 kW",
+          "evseIds": ["IT*EMOE1216", "IT*EMOE1217"],
+          "connector": "Type 2",
+          "powerKw": 22,
+          "energyEurPerKwh": 0.49,
+          "activationFeeEur": 0.74,
+          "unit": "EUR/kWh",
+          "rankableDirectEvse": 2,
+          "source": "https://pienotto.it/stazioni/272513-emobitaly-s-r-l-bariano-bg",
+          "sourceBasis": "PUN data mirrored by Pienotto; live page checked 2026-09-09"
+        }
+      ],
+      "coverageBefore": {"physicalEvse": 849, "rankableDirectEvse": 344, "uncoveredEvse": 505, "coveragePct": 40.52, "basis": "run84 using run72 deduplicated baseline"},
+      "coverageAfter": {"physicalEvse": 849, "rankableDirectEvse": 346, "uncoveredEvse": 503, "coveragePct": 40.75},
+      "positiveEvidence": [
+        "Current PUN-derived Bariano page identifies Gestore EMOBITALY S.r.l., exact EVSE identifiers IT*EMOE1216 and IT*EMOE1217, Type 2 22 kW, 0.490 EUR/kWh and 0.74 EUR activation.",
+        "Ordered EMOBITALY mapping deltas reviewed for duplicate safety include runs54-58,63-66,70-72 and run84; IT*EMOE1216/1217 are absent from those credited mappings.",
+        "Current Pienotto national index independently lists Bariano Via Antonio Locatelli 4 at 0.490 EUR/kWh and states electric tariffs are sourced from PUN and refreshed every six hours."
+      ],
+      "negativeEvidence": [
+        "No 0.49 EUR/kWh tariff is propagated to any other EMOBITALY station.",
+        "503 EMOBITALY EVSE remain fail-closed until an exact current station/EVSE tariff mapping is available.",
+        "Current search results rediscovered Milano Via Olgettina, Bari Piazza Giulio Cesare, Bari Via Scipione Crisanzio and Bergamo Via Giacomo Manzu, but these were already credited in runs65-66 and were not counted again."
+      ],
+      "blockage": "503 EVSE remain without exact current station/EVSE tariff mapping after deduplicated Bariano addition.",
+      "resumeCondition": "continue deterministic PUN/Pienotto/native-backend enumeration and compare exact EVSE IDs against ordered research-branch deltas before every future promotion",
+      "confidence": "high for the 2 Bariano EVSE; fail-closed remainder",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run85: added two exact current EMOBITALY EVSE mappings at Bariano, 0.49 EUR/kWh plus 0.74 EUR activation; deduplicated coverage becomes 346/849 (40.75%)."
+    }
+  ],
+  "countsBefore": {"treated":46,"partial":17,"setAside":1,"active":22,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":46,"partial":17,"setAside":1,"active":22,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 22,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 2,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "46+17+1+22=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "emoCoverageEquation": "344+2=346; 849-346=503",
+    "result": "pass_nominal; EMO uses corrected run72 deduplicated baseline",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-09 run85: EMOBITALY exact deduplicated coverage increased by 2 EVSE at Bariano from 344/849 to 346/849; no tariff transposition.",
+    "2026-09-09 run85: duplicate guard rejected rediscovered Bergamo, Milano and Bari populations already represented in runs65-66.",
+    "2026-09-09 run85: nominal consistency remains 46 treated + 17 partial + 1 setAside + 22 active = 86 canonical; +2 superseded aliases = 88 physical partyIds."
+  ]
+}
