@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 89,
+  "generatedAt": "2026-09-09T09:51:28+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run88-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "aliases": ["EMOBITALY S.r.l.", "EMO"],
+      "status": "partial",
+      "priority": "station-level",
+      "evse": 849,
+      "stations": 296,
+      "tariffModel": "station_specific_owner_pricing",
+      "tariffChannel": "direct CPO tariff published through Piattaforma Unica Nazionale and surfaced by Pienotto; roaming eMSP excluded",
+      "coveredSubpopulationsAdded": [
+        {
+          "station": "Via Tiziano Vecellio 23, Capaccio Paestum (SA)",
+          "scope": "1 AC Type 2 22 kW",
+          "evseIds": ["IT*EMOE980"],
+          "energyEurPerKwh": 0.60,
+          "activationFeeEur": 0.74,
+          "timeFeeRawEur": 0.01,
+          "timeFeeUnit": "not expanded by PUN/Pienotto page; preserved raw and not interpreted",
+          "rankableDirectEvse": 1,
+          "source": "https://pienotto.it/stazioni/275316-emobitaly-s-r-l-capaccio-paestum-sa",
+          "sourceBasis": "PUN data mirrored by Pienotto; current page checked 2026-09-09"
+        }
+      ],
+      "coverageBefore": {"physicalEvse":849,"rankableDirectEvse":387,"uncoveredEvse":462,"coveragePct":45.58},
+      "coverageAfter": {"physicalEvse":849,"rankableDirectEvse":388,"uncoveredEvse":461,"coveragePct":45.70},
+      "positiveEvidence": [
+        "Current PUN/Pienotto station page identifies Gestore EMOBITALY S.r.l., exact EVSE IT*EMOE980, Type 2 22 kW and direct energy price 0.60 EUR/kWh plus 0.74 EUR activation.",
+        "The same page publishes an additional raw time component of 0.01 EUR; unit is not exposed in page text and is therefore not interpreted for ranking.",
+        "Cross-run anti-duplication check: IT*EMOE980 is absent from the verified run58 baseline constituents (runs53-56), the run63/run64/run65/run66 unique mappings, the run72 correction's unique post-baseline list, and the known run84-run88 additions."
+      ],
+      "negativeEvidence": [
+        "No tariff is propagated to the second Capaccio Paestum EMOBITALY station at Via Galileo Galilei 101 because its current public listing does not expose an exact tariff.",
+        "461 EMOBITALY EVSE remain fail-closed until exact current station/EVSE pricing is mapped."
+      ],
+      "blockage": "461 EVSE remain without exact current station/EVSE tariff mapping.",
+      "resumeCondition": "continue deterministic PUN/Pienotto/native-backend enumeration with ordered research-branch EVSE-ID anti-duplication",
+      "confidence": "high for IT*EMOE980; fail-closed remainder",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run89: added exact EMOBITALY IT*EMOE980 at Capaccio Paestum, 0.60 EUR/kWh + 0.74 EUR activation; raw 0.01 EUR time component preserved without unit inference; deduplicated direct coverage 387->388/849."
+    }
+  ],
+  "countsBefore": {"treated":46,"partial":17,"setAside":1,"active":22,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":46,"partial":17,"setAside":1,"active":22,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {"networkOrClassWideActiveRemaining":0,"stationLevelActiveRemaining":22,"newlyTreatedCpos":[],"newlyPartialCpos":[],"aliasesResolved":[],"rankableDirectEvseAdded":1,"atlanteLast":true},
+  "consistency": {"statusSumCanonical":86,"expectedCanonical":86,"equation":"46+17+1+22=86","aliasesCountedOutsideCanonical":2,"physicalPartyIds":88,"physicalEquation":"86+2=88","duplicateCanonicalPartyIds":0,"emoCoverageEquation":"387+1=388; 849-388=461","result":"pass_nominal_and_evse_set_difference","canonicalPhysicalSnapshotStillStale":true,"canonicalRepairScript":"scripts/italy_cpo_progress_consolidate.py"},
+  "historyAppend": ["2026-09-09 run89: EMOBITALY direct deduplicated coverage increased by 1 EVSE to 388/849 (45.70%); no tariff transposition.","2026-09-09 run89: nominal consistency remains 46 treated + 17 partial + 1 setAside + 22 active = 86 canonical; +2 superseded aliases = 88 physical partyIds."]
+}
