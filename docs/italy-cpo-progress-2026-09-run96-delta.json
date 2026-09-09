@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 96,
+  "generatedAt": "2026-09-09T15:52:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run95-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "ELC",
+      "canonicalName": "Electra Italia s.r.l.",
+      "aliases": ["Electra Italia s.r.l.", "Electra", "ELC"],
+      "status": "partial",
+      "priority": "class-wide",
+      "evse": 514,
+      "stations": 81,
+      "tariffModel": "direct_country_tariff_with_motorway_exception_and_optional_subscription_discount",
+      "tariffChannel": "direct Electra app / Autocharge / bank card terminal; RFID roaming separated",
+      "tariffs": [
+        {"scope":"Italy non-motorway Electra stations via app or Autocharge","energyEurPerKwh":0.69,"vatIncluded":true},
+        {"scope":"Italy non-motorway Electra stations via bank card terminal","energyEurPerKwh":0.79,"vatIncluded":true}
+      ],
+      "officialUrls": [
+        "https://intercom.help/go-electra/it/articles/7987274-le-nostre-tariffe-di-ricarica",
+        "https://intercom.help/go-electra/it/articles/15180231-abbonamenti-electra"
+      ],
+      "positiveEvidence": [
+        "Electra tariff help page dated 2026-07-01 publishes Italy prices of 0.69 EUR/kWh via app and 0.79 EUR/kWh via bank card terminal, VAT included, for slow and fast AC/DC charging.",
+        "The same first-party page states these prices apply to sessions started through the Electra app, Autocharge, or bank card terminal and separates possible third-party RFID costs.",
+        "Electra+ terms dated 2026-05-20 publish network discounts of -0.10 EUR/kWh (Essential) and -0.20 EUR/kWh (Smart) relative to the public app price, but note station/time variability for subscription pricing and partner-network scope for Smart."
+      ],
+      "negativeEvidence": [
+        "Electra explicitly states motorway service-area prices differ from the rest of the network and are shown on the terminal screen; therefore the 0.69/0.79 Italy grid is not promoted to motorway stations.",
+        "Electra+ subscription prices are not converted into fixed network-wide absolute prices because the first-party page says the price varies by station and charging time.",
+        "No RFID/eMSP tariff is promoted as direct CPO pricing."
+      ],
+      "coverage": {
+        "coveredSubpopulations": ["Electra-operated Italy stations outside motorway service/rest areas, app/Autocharge channel", "same covered stations using bank card terminal"],
+        "uncoveredSubpopulations": ["Electra motorway service/rest-area stations until exact terminal/app price is captured", "subscription sessions where exact station/time price is required", "RFID roaming"],
+        "rankableDirectEvse": "numeric EVSE credit deferred until exact inventory split between motorway and non-motorway ELC EVSE",
+        "failClosedReason": "first-party motorway exception prevents safe application of the national public grid to all 514 canonical EVSE"
+      },
+      "blockage": "Need deterministic ELC EVSE -> motorway/non-motorway mapping and exact current motorway terminal/app prices.",
+      "resumeCondition": "Reconcile ELC inventory to motorway service-area locations and capture exact direct tariff for those stations; then compute numeric rankable coverage.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run96: ELC active->partial. Current first-party Italy public tariff is 0.69 EUR/kWh app/Autocharge and 0.79 EUR/kWh bank card, but motorway stations are explicitly excluded from that uniform grid and remain fail-closed pending exact mapping/prices."
+    },
+    {
+      "partyId": "UFC",
+      "canonicalName": "E.ON DRIVE INFRASTRUCTURE ITALY S.R.L.",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "direct_app_disclosed_per_session_country_specific",
+      "tariffChannel": "direct E.ON Drive Public app; roaming kept separate",
+      "officialUrls": ["https://edr-ops-wp-app-prod.azurewebsites.net/wp-content/uploads/20260209_E.ON-Drive-Public_TCs_V1.1-EN.pdf"],
+      "positiveEvidence": ["Current E.ON Drive Public terms v1.1 dated February 2026 explicitly include Italy among company-operated markets and state that country-specific kWh price and idle-fee rate are disclosed in-app before session and/or on the receipt."],
+      "negativeEvidence": ["No current first-party deterministic Italy-wide absolute tariff was found; terms explicitly defer tariff and idle-fee disclosure to the app/session context."],
+      "blockage": "Exact current station/connector direct price requires app/session-level capture.",
+      "resumeCondition": "Capture E.ON Drive Public app/session tariff for each UFC station/connector or discover an official deterministic Italy tariff grid.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run96: UFC investigated with current first-party E.ON Drive Public terms; remains station-level active because Italy tariffs are disclosed in app/session rather than as a fixed published grid."
+    }
+  ],
+  "countsBefore": {"treated":48,"partial":20,"setAside":1,"active":17,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":48,"partial":21,"setAside":1,"active":16,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 16,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": ["ELC"],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 0,
+    "rankableCoverageAdded": "Electra non-motorway Italy app/Autocharge and card-terminal tariff classes are now deterministic; numeric EVSE credit waits for motorway split",
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "48+21+1+16=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "result": "pass_nominal",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-09 run96: ELC active->partial using current first-party Electra Italy public tariff; motorway stations explicitly remain fail-closed.",
+    "2026-09-09 run96: UFC/E.ON current terms recrossed; remains station-level because Italy prices and idle fees are disclosed per app/session.",
+    "2026-09-09 run96: nominal consistency 48 treated + 21 partial + 1 setAside + 16 active = 86 canonical; +2 superseded aliases = 88 physical partyIds."
+  ]
+}
