@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 99,
+  "generatedAt": "2026-09-09T18:54:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run98-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "BPA",
+      "canonicalName": "ELECTRIEASE SRL",
+      "aliases": ["ELECTRIEASE SRL", "ElectriEASE", "BeaglePlug", "BPA", "Fortech group"],
+      "status": "active",
+      "priority": "station-level",
+      "evse": 124,
+      "stations": 78,
+      "tariffModel": "underlying_station_or_operator_specific_via_platform",
+      "tariffChannel": "ElectriEASE/BeaglePlug platform; direct CPO versus eMSP/managed-host tariff must be resolved per station",
+      "positiveEvidence": [
+        "EuroLink Systems announced on 2026-01-12 that ElectriEASE was sold to Fortech and continues as an e-mobility software platform within the Fortech group.",
+        "Current descriptions identify ElectriEASE as a platform for charging-infrastructure management serving CPOs/eMSPs rather than proving a uniform owned-network retail tariff."
+      ],
+      "negativeEvidence": [
+        "No current first-party deterministic network-wide direct tariff was found for the BPA PUN partyId.",
+        "Fortech acquisition is a corporate relationship only; it does not prove partyId BPA is superseded and therefore BPA is not deduplicated or merged.",
+        "Roaming/eMSP prices are not promoted as direct BPA CPO tariffs."
+      ],
+      "blockage": "Need exact BPA station/EVSE -> current direct tariff mapping and proof of the retail tariff owner/channel.",
+      "resumeCondition": "PUN tariff publication, BeaglePlug/ElectriEASE guest backend, QR flow or direct host-CPO evidence mapping exact BPA EVSE to price.",
+      "confidence": "high for corporate/platform classification; fail-closed for tariff",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run99: ElectriEASE acquisition by Fortech reconciled as corporate continuity only; BPA remains an independent physical partyId and station-level until exact direct tariff ownership/mapping is proven."
+    },
+    {
+      "partyId": "SAG",
+      "canonicalName": "Sagelio srl società benefit",
+      "aliases": ["Sagelio srl società benefit", "Sagelio", "SAG"],
+      "status": "active",
+      "priority": "station-level",
+      "evse": 405,
+      "stations": 316,
+      "tariffModel": "location_owner_configurable_station_specific",
+      "tariffChannel": "direct QR/card and roaming separated",
+      "positiveEvidence": [
+        "Current Sagelio first-party site states its partner locations have pricing control in the management platform, which precludes a safe uniform network tariff.",
+        "Sagelio first-party documentation confirms direct card payment by QR is supported across the network."
+      ],
+      "negativeEvidence": [
+        "The historical Sagelio card-payment article says direct card charging followed the Electromaps cost plus Stripe commission; this is not a current deterministic direct CPO station tariff suitable for network-wide ranking.",
+        "Current sampled PUN Sagelio station pages expose EVSE identifiers but no tariff."
+      ],
+      "blockage": "Exact retail price is location/station controlled and sampled PUN records are tariff n.d.",
+      "resumeCondition": "Capture exact current Sagelio QR/direct-payment price or PUN/app station tariff per EVSE.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run99: SAG explicitly classified station-level from first-party evidence that partner locations control pricing; no Electromaps/eMSP value is transposed."
+    },
+    {
+      "partyId": "DRW",
+      "canonicalName": "UnoEnergy DriWe spa",
+      "aliases": ["UnoEnergy DriWe spa", "Unoenergy DriWe", "DriWe", "DRW"],
+      "status": "active",
+      "priority": "station-level",
+      "evse": 287,
+      "stations": 103,
+      "tariffModel": "station_or_channel_specific",
+      "tariffChannel": "Unoenergy/DriWe app/direct versus third-party apps kept separate",
+      "positiveEvidence": [
+        "Current Unoenergy material confirms DriWe charging is digitally/app managed and supports AC/DC infrastructure.",
+        "Current location material confirms DriWe stations may be started through multiple apps/channels, requiring channel separation."
+      ],
+      "negativeEvidence": [
+        "No current first-party uniform direct retail tariff grid was found.",
+        "Sample PUN station at Gallarate lists exact charging points but reports tariffs not communicated to PUN.",
+        "NextCharge/BeaglePlug or other eMSP prices are not promoted as DriWe direct CPO tariffs."
+      ],
+      "blockage": "No deterministic direct station tariff mapping is publicly exposed for sampled DRW stations.",
+      "resumeCondition": "Exact current PUN, QR, Unoenergy/DriWe app or guest-backend mapping for DRW EVSE.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run99: DRW classified station-level; public/current sources do not support a uniform direct grid and sampled PUN tariff remains n.d."
+    }
+  ],
+  "countsBefore": {"treated":48,"partial":22,"setAside":1,"active":15,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":48,"partial":22,"setAside":1,"active":15,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 15,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "corporateRelationshipsReconciled": ["BPA ElectriEASE -> Fortech group; partyId retained distinct"],
+    "rankableDirectEvseAdded": 0,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "48+22+1+15=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "result": "pass_nominal",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-09 run99: BPA corporate acquisition by Fortech reconciled without unsafe partyId merge; exact tariff remains station/channel-level.",
+    "2026-09-09 run99: SAG and DRW classified explicitly station-level from current first-party/PUN evidence; no roaming/eMSP price transposition.",
+    "2026-09-09 run99: no nominal status change or rankable EVSE credit; 48 treated + 22 partial + 1 setAside + 15 active = 86 canonical, +2 superseded aliases = 88 physical partyIds."
+  ]
+}
