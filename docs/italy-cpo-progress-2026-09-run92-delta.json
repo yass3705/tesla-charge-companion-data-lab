@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 92,
+  "generatedAt": "2026-09-09T12:53:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run91-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "CVG",
+      "canonicalName": "CONVERGENZE S.p.A. Società Benefit",
+      "aliases": ["CONVERGENZE S.p.A. Società Benefit", "CVG", "EVO"],
+      "status": "treated",
+      "priority": "network-wide",
+      "evse": 90,
+      "stations": 44,
+      "inventorySource": "Italy V9 canonical inventory; partyId CVG",
+      "tariffModel": "network_wide_flat_energy",
+      "tariffChannel": "direct CPO EVO network; Card or smartphone web portal; credit card or PayPal",
+      "tariffs": [
+        {
+          "scope": "EVO network",
+          "connectorClass": "Type 2 IEC62196 22 kW",
+          "energyEurPerKwh": 0.60,
+          "vatIncluded": true
+        }
+      ],
+      "paymentMethods": ["EVO Card", "smartphone portal", "credit card", "PayPal"],
+      "eligibility": "public EVO network; no exclusive contract required",
+      "officialUrls": ["https://convergenze.it/it/servizi/energia/evo"],
+      "positiveEvidence": [
+        "Current first-party EVO page explicitly states a cost of 60 euro cents/kWh VAT included for the EVO charging network.",
+        "The same first-party page defines EVO as Convergenze's own network and states its chargers use two Type 2 IEC62196 22 kW sockets and can be used via Card or Smartphone.",
+        "Current PUN/Pienotto samples for partyId CVG expose IT*CVG EVSE identifiers at exactly 0.600 EUR/kWh, including Salerno and Capaccio Paestum, corroborating party-scope applicability."
+      ],
+      "negativeEvidence": [
+        "No roaming eMSP tariff was used or transposed.",
+        "No station-specific exception was found in the current first-party EVO tariff statement."
+      ],
+      "coverage": {
+        "physicalEvse": 90,
+        "rankableDirectEvse": 90,
+        "uncoveredEvse": 0,
+        "coveragePct": 100.0
+      },
+      "exampleEvseIds": ["IT*CVG*ECP036*1", "IT*CVG*ECP036*2", "IT*CVG*ECP031*1", "IT*CVG*ECP035*1", "IT*CVG*ECP039*1"],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run92: CVG/Convergenze EVO promoted active->treated after current first-party network-wide 0.60 EUR/kWh VAT-included tariff was verified and corroborated against current IT*CVG PUN station records; 90/90 EVSE rankable direct."
+    }
+  ],
+  "countsBefore": {"treated":46,"partial":17,"setAside":1,"active":22,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":47,"partial":17,"setAside":1,"active":21,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 21,
+    "newlyTreatedCpos": ["CVG"],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 90,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "47+17+1+21=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "result": "pass_nominal",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-09 run92: CONVERGENZE/CVG EVO verified as current deterministic network-wide direct tariff at 0.60 EUR/kWh VAT included; active->treated; 90/90 EVSE rankable.",
+    "2026-09-09 run92: nominal consistency now 47 treated + 17 partial + 1 setAside + 21 active = 86 canonical; +2 superseded aliases = 88 physical partyIds."
+  ]
+}
