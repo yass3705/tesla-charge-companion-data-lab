@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 81,
+  "generatedAt": "2026-09-09T02:52:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run80-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "ELC",
+      "canonicalName": "Electra Italia s.r.l.",
+      "aliases": ["Electra Italia s.r.l.", "Electra", "ELC"],
+      "status": "partial",
+      "priority": "station-level",
+      "evse": 514,
+      "stations": 81,
+      "inventorySource": "PUN inventory snapshot from canonical Italy reconstruction",
+      "inventoryTimestamp": "2026-08-30T11:14:39.750794Z",
+      "tariffModel": "country-wide standard tariff with explicit motorway-station exception",
+      "tariffChannel": "direct CPO; Electra app/Autocharge and bank-card terminal kept separate from roaming RFID",
+      "prices": {
+        "standardItalyAppAutochargeEurPerKwh": 0.69,
+        "standardItalyBankCardTerminalEurPerKwh": 0.79,
+        "unit": "EUR/kWh"
+      },
+      "conditions": [
+        "Electra's current official tariff page dated 2026-07-01 states Italy AC/DC charging is EUR 0.69/kWh when started with the Electra app and EUR 0.79/kWh when paid by bank card at the terminal.",
+        "The same first-party page explicitly states that motorway/rest-area stations have different prices and that the applicable tariff is the one shown on the station terminal; therefore the standard Italy grid must not be applied to motorway stations.",
+        "RFID/interoperable charging may incur third-party costs and is not substituted for the direct CPO tariff."
+      ],
+      "officialUrls": [
+        "https://intercom.help/go-electra/it/articles/7987274-le-nostre-tariffe-di-ricarica",
+        "https://stations.go-electra.com/it/a4-casello-bergamo-via-autostrada",
+        "https://stations.go-electra.com/it/a4-casello-palazzolo-sull-oglio"
+      ],
+      "coveredSubpopulations": [
+        {
+          "scope": "ELC stations in Italy that are not motorway/rest-area stations",
+          "rule": "direct app/Autocharge EUR 0.69/kWh; direct bank-card terminal EUR 0.79/kWh",
+          "rankableCondition": "station must be deterministically classified as non-motorway in the station/EVSE inventory before promotion",
+          "rankableEvseCreditedThisRun": 0,
+          "reason": "tariff rule is first-party and deterministic, but the canonical ELC inventory still lacks a lossless motorway/non-motorway flag for all 514 EVSE"
+        }
+      ],
+      "uncoveredSubpopulations": [
+        {
+          "scope": "ELC motorway/rest-area stations",
+          "reason": "first-party Electra tariff page explicitly excludes motorway stations from the standard Italy tariff and requires station-terminal pricing",
+          "knownOfficialExamples": [
+            {"station":"A4 Casello - Bergamo - Via Autostrada","connectors":6,"maxPowerKw":400},
+            {"station":"A4 Casello - Palazzolo-sull'Oglio","connectors":6,"maxPowerKw":400},
+            {"station":"A4 Casello - Cambiago","connectors":6,"maxPowerKw":300}
+          ],
+          "resumeCondition": "exact station/EVSE mapping plus current terminal/app tariff for every motorway exception, or a first-party machine-readable station price endpoint"
+        }
+      ],
+      "positiveEvidence": [
+        "Current Electra help-center tariff page publishes a fixed Italy standard price of EUR 0.69/kWh in-app and EUR 0.79/kWh by bank card, for AC and DC.",
+        "Electra's official station pages currently expose motorway-labelled Italian sites such as A4 Casello Bergamo, Palazzolo-sull'Oglio and Cambiago, confirming that the motorway exception is materially present in the Italian ELC network.",
+        "Official station pages expose connector count and power, but not the exact current numeric motorway price in crawlable text."
+      ],
+      "negativeEvidence": [
+        "No safe network-wide promotion: Electra explicitly says motorway prices differ from the rest of the network.",
+        "No exact full motorway EVSE list could be derived from the stale canonical snapshot alone in this run.",
+        "No roaming/eMSP tariff was used as a substitute for Electra direct pricing."
+      ],
+      "blockage": "Need deterministic ELC station/EVSE motorway classification and exact current motorway prices before 514/514 can be made rankable.",
+      "resumeCondition": "Map all ELC EVSE to Electra station slugs/locations, isolate motorway/rest-area subset, apply standard tariff only to verified non-motorway EVSE, then resolve motorway price per station/terminal/backend.",
+      "confidence": "high",
+      "coverage": {
+        "physicalEvse": 514,
+        "rankableDirectEvseCredited": 0,
+        "ruleCoveredButAwaitingInventoryClassification": "all verified non-motorway ELC EVSE",
+        "failClosed": "all ELC EVSE until motorway/non-motorway classification is deterministic in the candidate generation path"
+      },
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run81: ELC active->partial. First-party Electra 2026-07-01 tariff page proves Italy standard direct pricing (app/Autocharge EUR 0.69/kWh; bank-card terminal EUR 0.79/kWh) but explicitly excludes motorway/rest-area stations, so zero EVSE were credited until motorway/non-motorway inventory classification is deterministic."
+    },
+    {
+      "partyId": "IOY",
+      "canonicalName": "IONITY GMBH",
+      "status": "active",
+      "priority": "station-level",
+      "investigationUpdate": {
+        "currentOfficialItalyPricesObserved": {
+          "directEurPerKwh": 0.85,
+          "goEurPerKwh": 0.80,
+          "motionMonthlyEurPerKwh": 0.60,
+          "motionAnnualEurPerKwh": 0.63,
+          "powerMonthlyEurPerKwh": 0.48,
+          "powerAnnualEurPerKwh": 0.50
+        },
+        "reasonNotPromoted": "IONITY's current official subscription page states displayed prices are minimum current prices and the charger price can be higher; therefore the Italy figures are not a deterministic station-independent tariff for ranking all IOY EVSE.",
+        "resumeCondition": "machine-readable station-specific IONITY price mapping or first-party confirmation that a selected Italy tariff is fixed for every IOY station",
+        "lastInvestigated": "2026-09-09"
+      },
+      "historyAppend": "2026-09-09 run81: IOY current official Italy prices recrossed; kept station-level/fail-closed because IONITY labels them minimum prices and warns station price can be higher."
+    }
+  ],
+  "countsBefore": {"treated":45,"partial":14,"setAside":1,"active":26,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":45,"partial":15,"setAside":1,"active":25,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 25,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": ["ELC"],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 0,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "45+15+1+25=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "result": "pass_with_elc_partial_classification",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-09 run81: ELC moved active->partial after first-party standard Italy tariffs were proven with an explicit motorway exception; no EVSE credit until deterministic station classification.",
+    "2026-09-09 run81: IOY current Italy tariff table recrossed but not promoted because IONITY states charger prices can exceed the displayed country minimums."
+  ]
+}
