@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 95,
+  "generatedAt": "2026-09-09T14:53:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run94-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "VFS",
+      "canonicalName": "VIAFAST SRL",
+      "aliases": ["VIAFAST SRL", "VIAFAST", "VFS"],
+      "status": "partial",
+      "priority": "class-wide",
+      "evse": 167,
+      "stations": 84,
+      "tariffModel": "direct_network_tariff_by_connector_power_class_with_uncovered_high_power_tail",
+      "tariffChannel": "direct VIAFAST webapp/card; third-party roaming explicitly separated",
+      "tariffs": [
+        {"scope":"VIAFAST-owned AC connectors up to 22 kW","energyEurPerKwh":0.60},
+        {"scope":"VIAFAST-owned DC 60 kW and 90-180 kW connectors","energyEurPerKwh":0.85},
+        {"scope":"post-charge occupation after 5 free minutes","timeEurPerMinute":0.25,"applies":"24/7"}
+      ],
+      "officialUrls": [
+        "https://www.viafast.net/viafast-tariffe/",
+        "https://www.viafast.net/viafast-webapp-termini-e-condizioni/",
+        "https://www.viafast.net/utenti/"
+      ],
+      "positiveEvidence": [
+        "Current first-party tariff page publishes AC 22 kW at 0.60 EUR/kWh and DC Fast 60 kW / Ultrafast 90-180 kW at 0.85 EUR/kWh.",
+        "Current terms explicitly distinguish VIAFAST-owned charging stations from third-party stations and state that third-party station tariffs are those set by the third-party operator.",
+        "Current first-party user page states the VIAFAST network can provide charging from 60 to 300 kW, proving a possible >180 kW subpopulation outside the published 0.85 EUR/kWh band.",
+        "Current tariff page publishes a 5-minute free post-charge grace period followed by 0.25 EUR/min occupation fee 24/7."
+      ],
+      "negativeEvidence": [
+        "No current first-party deterministic tariff was found for VIAFAST-owned connectors above 180 kW despite first-party evidence that the network can reach 300 kW.",
+        "No tariff from VIAFAST-accessible third-party stations is promoted as direct VIAFAST CPO pricing."
+      ],
+      "coverage": {
+        "coveredSubpopulations": ["VIAFAST-owned AC <=22 kW", "VIAFAST-owned DC 60 kW", "VIAFAST-owned DC 90-180 kW"],
+        "uncoveredSubpopulations": ["VIAFAST-owned DC >180 kW up to 300 kW unless an exact connector tariff is exposed"],
+        "rankableDirectEvse": "requires inventory power-class reconciliation before numeric credit",
+        "failClosedReason": "published direct tariff grid stops at 180 kW while current first-party network description reaches 300 kW"
+      },
+      "blockage": "Need deterministic inventory mapping for VFS connectors above 180 kW and exact current tariff for those connectors.",
+      "resumeCondition": "VFS inventory power-class reconciliation plus first-party/webapp/PUN exact tariff for >180 kW connectors.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run95: VFS active->partial. First-party direct grid safely covers owned AC<=22 at 0.60 and DC 60/90-180 at 0.85 EUR/kWh; >180-300 kW remains fail-closed; third-party roaming explicitly excluded."
+    },
+    {
+      "partyId": "A22",
+      "canonicalName": "Autostrada del Brennero S.p.A.",
+      "aliases": ["Autostrada del Brennero S.p.A.", "Autobrennero", "A22"],
+      "status": "partial",
+      "priority": "class-wide",
+      "evse": 80,
+      "stations": 17,
+      "tariffModel": "direct_station_type_tariff_with_separate_heavy_vehicle_infrastructure",
+      "tariffChannel": "direct A22 universal passenger-car charging; heavy-vehicle card-only infrastructure separated",
+      "tariffs": [
+        {"scope":"standard passenger-car charging where explicitly listed by A22","energyEurPerKwh":0.33},
+        {"scope":"multi-standard passenger-car charger (CCS/CHAdeMO 50 kW, Type2 up to 43 kW) where listed","energyEurPerKwh":0.38},
+        {"scope":"ultra-rapid passenger-car CCS up to 180 kW where listed","energyEurPerKwh":0.43}
+      ],
+      "officialUrls": ["https://www.autobrennero.it/it/sostenibilita/elettrico/"],
+      "positiveEvidence": [
+        "Current A22 first-party page states Autostrada del Brennero is a CPO with 15 passenger-car charging stations and 75 public charging stalls, excluding Tesla.",
+        "Current first-party station listings expose multi-standard chargers at 0.38 EUR/kWh and ultra-rapid CCS up to 180 kW at 0.43 EUR/kWh; A22 also states the passenger-car range starts at 0.33 EUR/kWh for standard charging.",
+        "The same current first-party page separately identifies a heavy-vehicle station at Bolzano Sud with three CCS2 up to 600 kW plus one MCS up to 1 MW, accessible for now only with a card issued directly by A22."
+      ],
+      "negativeEvidence": [
+        "No current public tariff was found for the separate heavy-vehicle 600 kW/MCS infrastructure.",
+        "The canonical partyId contains 80 EVSE while A22 currently reports 75 universal passenger-car stalls; exact EVSE-ID reconciliation is therefore required before claiming 100% rankable coverage."
+      ],
+      "coverage": {
+        "coveredSubpopulations": ["officially listed universal passenger-car stations with explicit station-type tariff"],
+        "uncoveredSubpopulations": ["heavy-vehicle CCS2/MCS infrastructure and any canonical EVSE not deterministically reconciled to the 75 passenger-car stalls"],
+        "rankableDirectEvse": "numeric credit deferred pending canonical EVSE-ID/station-list reconciliation",
+        "failClosedReason": "80 canonical EVSE versus 75 first-party passenger-car stalls plus separate truck infrastructure"
+      },
+      "blockage": "Need exact canonical A22 EVSE -> official passenger-car station-type mapping; truck tariffs remain unpublished.",
+      "resumeCondition": "Reconcile the 80 canonical EVSE to A22 official station list/PUN IDs and obtain direct truck tariff if those EVSE are in scope.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run95: A22 active->partial. Current first-party passenger-car station tariffs are deterministic by station type (0.33/0.38/0.43 EUR/kWh), but 80 canonical EVSE do not yet reconcile losslessly to A22's 75 stated passenger-car stalls and separate card-only truck chargers."
+    },
+    {
+      "partyId": "ASS",
+      "canonicalName": "AGSM AIM SMART SOLUTIONS S.R.L.",
+      "aliases": ["AGSM AIM SMART SOLUTIONS S.R.L.", "Magis Smart S.r.l.", "Magis E-Mobility", "ASS"],
+      "status": "partial",
+      "priority": "class-wide",
+      "evse": 258,
+      "stations": 135,
+      "tariffModel": "subscription_class_wide_plus_station/app_pay_per_use",
+      "tariffChannel": "direct Magis E-Mobility; subscription and pay-per-use kept separate; roaming excluded",
+      "tariffs": [
+        {"channel":"Small subscription","class":"AC","monthlyFeeEur":5.00,"energyEurPerKwh":0.60},
+        {"channel":"Medium subscription","class":"AC","monthlyFeeEur":10.00,"energyEurPerKwh":0.58},
+        {"channel":"Large subscription","class":"AC","monthlyFeeEur":20.00,"energyEurPerKwh":0.50},
+        {"channel":"Flat DC subscription","class":"DC","monthlyFeeEur":10.00,"energyEurPerKwh":0.74},
+        {"channel":"Small + Flat DC","class":"AC/DC","monthlyFeeEur":15.00,"acEnergyEurPerKwh":0.60,"dcEnergyEurPerKwh":0.74},
+        {"channel":"Medium + Flat DC","class":"AC/DC","monthlyFeeEur":20.00,"acEnergyEurPerKwh":0.58,"dcEnergyEurPerKwh":0.74},
+        {"channel":"Large + Flat DC","class":"AC/DC","monthlyFeeEur":30.00,"acEnergyEurPerKwh":0.50,"dcEnergyEurPerKwh":0.74}
+      ],
+      "eligibility": "registered Magis E-Mobility user with the selected subscription; validity dates chosen during subscription activation",
+      "officialUrls": [
+        "https://www.aimmobilita.it/it/web/magis-smart/agsmaim_e-mobility/abbonamenti",
+        "https://www.aimmobilita.it/it/web/magis-smart/mobilita-sostenibile"
+      ],
+      "positiveEvidence": [
+        "Current first-party Magis page publishes exact AC subscription tiers and a DC subscription tariff for public Magis charging stations.",
+        "Current FAQ confirms Magis supports both pay-per-use and subscription modes and says pay-per-use prices are shown in the app at the time of use.",
+        "Current first-party mobility page explicitly distinguishes own public charging infrastructure from roaming on third-party infrastructure."
+      ],
+      "negativeEvidence": [
+        "Current standard pay-per-use direct price is not published as a network-wide fixed value; it is shown in-app at point of use.",
+        "Roaming operator prices are not promoted as AGSM/Magis direct tariffs."
+      ],
+      "coverage": {
+        "coveredSubpopulations": ["eligible direct Magis subscription sessions under the published AC/DC plans"],
+        "uncoveredSubpopulations": ["standard pay-per-use sessions until exact current station/connector app price is captured"],
+        "rankableDirectEvse": "subscription coverage eligible across Magis public stations; numeric EVSE credit deferred until inventory/applicability reconciliation",
+        "failClosedReason": "pay-per-use direct price is station/app-time resolved rather than published network-wide"
+      },
+      "blockage": "Exact current pay-per-use price remains app/station-level; inventory reconciliation needed before assigning numeric subscription EVSE coverage.",
+      "resumeCondition": "Capture Magis app pay-per-use connector tariffs or reconcile full ASS inventory to subscription-eligible own Magis stations.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-09",
+      "lastChanged": "2026-09-09",
+      "historyAppend": "2026-09-09 run95: ASS active->partial. Current first-party subscription tariffs are deterministic by AC/DC class and eligibility; pay-per-use remains app-resolved and roaming is excluded."
+    }
+  ],
+  "countsBefore": {"treated":48,"partial":17,"setAside":1,"active":20,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":48,"partial":20,"setAside":1,"active":17,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 17,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": ["VFS","A22","ASS"],
+    "aliasesResolved": ["Magis Smart s.r.l. -> ASS/AGSM AIM Smart Solutions naming continuity"],
+    "rankableDirectEvseAdded": 0,
+    "rankableCoverageAdded": "deterministic class/channel coverage recorded for VFS, A22 and ASS; numeric EVSE credit intentionally deferred until exact inventory reconciliation",
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "48+20+1+17=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "result": "pass_nominal",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-09 run95: VFS active->partial using current first-party direct tariff classes; >180-300 kW remains fail-closed and third-party roaming excluded.",
+    "2026-09-09 run95: A22 active->partial; passenger-car station types have current direct prices but 80 canonical EVSE require reconciliation to 75 stated public car stalls and separate truck infrastructure.",
+    "2026-09-09 run95: ASS active->partial; current Magis subscription tariffs are deterministic by AC/DC class, while pay-per-use remains app/station-level.",
+    "2026-09-09 run95: nominal consistency 48 treated + 20 partial + 1 setAside + 17 active = 86 canonical; +2 superseded aliases = 88 physical partyIds."
+  ]
+}
