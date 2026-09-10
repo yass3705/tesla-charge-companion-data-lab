@@ -2,10 +2,15 @@
 """Losslessly consolidate Italy CPO progress deltas into the canonical JSON.
 
 The canonical file is the inventory seed. Ordered run deltas are then replayed.
-Both historical `changes` arrays and modern `classificationUpdates` arrays are
-supported. Every raw party-scoped update is retained in `deltaEvidence`, so
-newer summary fields can supersede older values without discarding the evidence
-that produced them. Non-CPO relationship records are retained at top level.
+Historical `changes`, modern `classificationUpdates`, and the legacy
+`safeStatusTransitions` / `classificationUpdatesWithoutStatusTransition`
+shapes are supported. Every raw party-scoped update is retained in
+`deltaEvidence`, so newer summary fields can supersede older values without
+discarding the evidence that produced them. Non-CPO relationship records are
+retained at top level.
+
+Run labels may contain a suffix (for example run4b and run7b). They are ordered
+as 4, 4b, 5 ... 7, 7b, 8 so no historical delta is silently skipped.
 
 The script recomputes named status counts and fails closed on duplicate partyIds
 or physical-inventory mismatch. It does not use GitHub code search for EVSE
@@ -19,7 +24,7 @@ import json
 import re
 from pathlib import Path
 
-RUN_RE = re.compile(r"italy-cpo-progress-2026-09-run(\d+)-delta\.json$")
+RUN_RE = re.compile(r"italy-cpo-progress-2026-09-run(\d+)([a-z]*)-delta\.json$", re.IGNORECASE)
 STATUSES = {"treated", "partial", "setAside", "active", "supersededAlias"}
 
 
@@ -43,23 +48,37 @@ def deep_merge(dst, src):
 
 
 def iter_updates(delta):
-    # Historical files used `changes`; newer files use `classificationUpdates`.
+    # Historical files used several shapes; all party-scoped forms must replay.
     for upd in delta.get("changes") or []:
         yield "changes", upd
+    for upd in delta.get("safeStatusTransitions") or []:
+        yield "safeStatusTransitions", upd
+    for upd in delta.get("classificationUpdatesWithoutStatusTransition") or []:
+        yield "classificationUpdatesWithoutStatusTransition", upd
     for upd in delta.get("classificationUpdates") or []:
         yield "classificationUpdates", upd
 
 
 def normalize_party_update(update):
     upd = copy.deepcopy(update)
-    if not upd.get("status") and upd.get("statusTo"):
-        upd["status"] = upd["statusTo"]
+    if not upd.get("status"):
+        if upd.get("statusTo"):
+            upd["status"] = upd["statusTo"]
+        elif upd.get("to") in STATUSES:
+            upd["status"] = upd["to"]
+    # `from`/`to` describe transition evidence, not canonical summary fields.
+    upd.pop("from", None)
+    upd.pop("to", None)
     return upd
 
 
 def append_unique(seq, item):
     if item not in seq:
         seq.append(item)
+
+
+def run_label(number: int, suffix: str) -> str:
+    return f"{number}{suffix}" if suffix else str(number)
 
 
 def main():
@@ -85,21 +104,24 @@ def main():
     for p in Path(args.docs_dir).glob("italy-cpo-progress-2026-09-run*-delta.json"):
         m = RUN_RE.search(p.name)
         if m:
-            delta_paths.append((int(m.group(1)), p))
-    delta_paths.sort()
+            number = int(m.group(1))
+            suffix = m.group(2).lower()
+            delta_paths.append((number, suffix, p))
+    delta_paths.sort(key=lambda item: (item[0], item[1]))
 
     top_history = list(canonical.get("history") or [])
     non_cpo_evidence = list(canonical.get("nonCpoDeltaEvidence") or [])
-    last_run = None
+    applied_run_labels = []
 
-    for run, path in delta_paths:
+    for number, suffix, path in delta_paths:
+        label = run_label(number, suffix)
+        applied_run_labels.append(label)
         delta = load_json(path)
-        last_run = run
         for shape, raw_update in iter_updates(delta):
             pid = raw_update.get("partyId")
             if not pid:
                 append_unique(non_cpo_evidence, {
-                    "run": run,
+                    "run": label,
                     "path": str(path),
                     "shape": shape,
                     "update": copy.deepcopy(raw_update),
@@ -116,7 +138,7 @@ def main():
             prior_evidence = list(by_id[pid].get("deltaEvidence") or [])
             merged = deep_merge(by_id[pid], upd)
             evidence_entry = {
-                "run": run,
+                "run": label,
                 "path": str(path),
                 "shape": shape,
                 "update": copy.deepcopy(raw_update),
@@ -181,9 +203,15 @@ def main():
         "statusSumCanonical": canonical_total,
         "matchesInventory": physical_total == inventory_party_ids,
         "duplicatePartyIds": len(out_cpos) - len(seen),
-        "lastAppliedDeltaRun": last_run,
+        "lastAppliedDeltaRun": applied_run_labels[-1] if applied_run_labels else None,
+        "appliedDeltaRuns": applied_run_labels,
         "result": "pass",
-        "deltaShapesReplayed": ["changes", "classificationUpdates"],
+        "deltaShapesReplayed": [
+            "changes",
+            "safeStatusTransitions",
+            "classificationUpdatesWithoutStatusTransition",
+            "classificationUpdates",
+        ],
         "rawDeltaEvidenceRetained": True,
         "evseDedupGuard": "scripts/italy_cpo_delta_evse_dedup_audit.py",
     }
