@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 114,
+  "generatedAt": "2026-09-10T18:52:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run113-delta.json"],
+  "reason": "Continue largest remaining station-level CPO investigations without repeating exhausted generic tariff searches; add exact current PUN evidence for HERA and current first-party tariff semantics for Powy/TheF.",
+  "changes": [
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "status": "active",
+      "priority": "station-level",
+      "inventoryEvse": 1137,
+      "inventoryStations": 523,
+      "tariffModel": "station_specific_fail_closed_until_exact_direct_price",
+      "tariffChannel": "direct CPO / PUN when communicated; roaming eMSP separated",
+      "exactMappings": [
+        {
+          "location": "Viale Jelenia Gora, 6, Cervia (RA)",
+          "evseIds": ["IT*HRA*E19XP22T3KK1AL00009*1", "IT*HRA*E19XP22T3KK1AL00009*2"],
+          "connector": "Type 2",
+          "powerKw": 12,
+          "punTariffState": "not_communicated",
+          "rankable": false,
+          "source": "Piattaforma Unica Nazionale surfaced by Pienotto",
+          "url": "https://pienotto.it/stazioni/284457-hera-comm-spa-cervia-ra",
+          "checkedAt": "2026-09-10"
+        }
+      ],
+      "positiveEvidence": [
+        "Current PUN/Pienotto exposes two exact HERA-managed EVSE at Cervia with stable IT*HRA identifiers and connector/power metadata.",
+        "The same current station record explicitly says tariffs have not yet been communicated to the PUN, so this station cannot be ranked from PUN data."
+      ],
+      "negativeEvidence": [
+        "Generic Hera electricity-supply retail prices are unrelated to public EV charging and remain excluded.",
+        "Historical roaming/eMSP prices must not be promoted as direct HERA CPO tariffs.",
+        "The HRA EVSE prefix is retained as an EVSE identifier prefix only; it is not treated as proof of a separate canonical CPO or alias migration without explicit inventory evidence."
+      ],
+      "blockage": "No exact current direct/ad-hoc tariff was communicated for the sampled HERA PUN station; broader HERA coverage still requires station/EVSE-level direct tariff evidence from PUN, QR, app or backend.",
+      "resumeCondition": "Continue HERA only on new stations/endpoints with exact current direct price evidence; do not repeat generic Hera retail-energy pages or the Cervia station unless its PUN tariff state changes.",
+      "confidence": "high for exact station/EVSE mapping and fail-closed decision",
+      "lastInvestigated": "2026-09-10",
+      "lastChanged": "2026-09-10",
+      "historyAppend": "2026-09-10 run114: HERA Cervia mapped exactly to two IT*HRA Type 2 12 kW EVSE; PUN explicitly reports tariff not communicated, so +0 rankable and station remains fail-closed."
+    },
+    {
+      "partyId": "PWY",
+      "canonicalName": "TheF Charging S.r.l. / Powy",
+      "status": "active",
+      "priority": "station-level",
+      "inventoryEvse": 1080,
+      "inventoryStations": 387,
+      "tariffModel": "station_or_offer_specific",
+      "tariffChannel": "Powy Charge app / RFID; direct offers separated from roaming",
+      "positiveEvidence": [
+        "Current first-party Powy Charge page confirms the app displays charging costs and supports app/RFID charging and payment.",
+        "Current first-party page explicitly advertises promotional offers on selected stations, reinforcing that an unconditional party-wide price cannot be inferred from a single public headline tariff."
+      ],
+      "negativeEvidence": [
+        "Third-party 0.67 EUR/kWh values are retained only as corroboration/discovery and are not promoted as a current direct network-wide rule.",
+        "Do not mix roaming prices from Repower, E.ON, Electroverse or other eMSPs into Powy direct pricing."
+      ],
+      "blockage": "Exact current connector/station direct tariff still requires station-level app/backend or PUN mapping.",
+      "resumeCondition": "Inspect Powy Charge public/guest backend or exact station records and map station/EVSE -> displayed direct tariff; selected-station promotions must be scoped explicitly.",
+      "confidence": "high that station/offer-specific treatment remains required",
+      "lastInvestigated": "2026-09-10",
+      "lastChanged": "2026-09-10",
+      "historyAppend": "2026-09-10 run114: fresh first-party Powy Charge semantics reconfirm selected-station promotions and app-displayed costs; retained station-level fail-closed discipline, +0 rankable."
+    }
+  ],
+  "effectiveCountsAfterReplay": {
+    "treated": 47,
+    "partial": 23,
+    "setAside": 1,
+    "active": 15,
+    "totalCanonical": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88
+  },
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 15,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 0,
+    "exactFailClosedEvseMapped": 2,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusEquation": "47 + 23 + 1 + 15 = 86; 86 + 2 = 88",
+    "inventoryCardinalityChanged": false,
+    "duplicateCanonicalPartyIdsIntroduced": 0,
+    "networkWideExtrapolationApplied": false,
+    "physicalCanonicalSnapshotStillStale": true,
+    "canonicalMaterializationPendingLosslessReplay": true,
+    "result": "pass; no nominal status or coverage credit change"
+  },
+  "historyAppend": [
+    "2026-09-10 run114: advanced HERA with exact current PUN station/EVSE evidence and explicit tariff-not-communicated fail-closed result; exact Cervia path is now exhausted until new evidence.",
+    "2026-09-10 run114: refreshed Powy first-party tariff semantics; selected-station promotional wording confirms station/offer-specific handling and prevents unsafe network-wide propagation.",
+    "2026-09-10 run114: canonical nominal equation remains 47 treated + 23 partial + 1 setAside + 15 active = 86, plus 2 superseded aliases; Atlante remains last."
+  ]
+}
