@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 117,
+  "generatedAt": "2026-09-10T21:50:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run116-delta.json"],
+  "reason": "Continue exhaustive station-level Italy processing without repeating exhausted network-wide paths. Add only fresh exact ACEA PUN mappings absent from runs 111/112; no network-wide extrapolation and no rankable credit until channel semantics and full historical dedupe are proven.",
+  "changes": [
+    {
+      "partyId": "ACE",
+      "canonicalName": "ACEA ENERGIA",
+      "status": "partial",
+      "priority": "station-level",
+      "inventoryEvse": 1649,
+      "inventoryStations": 652,
+      "tariffModel": "station_or_evse_specific_current_PUN",
+      "tariffChannel": "PUN current tariff; direct/ad-hoc payment semantics still require independent confirmation",
+      "coveredSubpopulationsAdded": [
+        {
+          "location": "Via Giacomo Peroni 479, Roma (RM)",
+          "evseIds": ["IT*ACE*E*ST*C*AIRSFCCT220800265*1", "IT*ACE*E*ST*C*AIRSFCCT220800265*2", "IT*ACE*E*ST*C*AIRSFCCT220800265*3"],
+          "connectors": "CCS 50 kW; CHAdeMO 50 kW; Type 2 22 kW",
+          "energyEurPerKwh": 0.67,
+          "rawParkingFees": {"ac": 0.08, "dc": 0.15, "unit": null},
+          "source": "https://pienotto.it/stazioni/266148-acea-energia-roma-rm",
+          "checkedAt": "2026-09-10",
+          "rankableCandidate": true,
+          "credited": false
+        },
+        {
+          "location": "Via dei Castani 47, Roma (RM)",
+          "evseIds": ["IT*ACE*E*ST*C*AIRSFCCT230900297*1", "IT*ACE*E*ST*C*AIRSFCCT230900297*2", "IT*ACE*E*ST*C*AIRSFCCT230900297*3"],
+          "connectors": "CCS 50 kW; CHAdeMO 50 kW; Type 2 22 kW",
+          "energyEurPerKwh": 0.67,
+          "rawParkingFees": {"ac": 0.08, "dc": 0.15, "unit": null},
+          "source": "https://pienotto.it/stazioni/271074-acea-energia-roma-rm",
+          "checkedAt": "2026-09-10",
+          "rankableCandidate": true,
+          "credited": false
+        },
+        {
+          "location": "Via dei Traghetti 133, Roma (RM)",
+          "evseIds": ["IT*ACE*E*ST*C*AIRSFCCT220700225*1", "IT*ACE*E*ST*C*AIRSFCCT220700225*2", "IT*ACE*E*ST*C*AIRSFCCT220700225*3"],
+          "connectors": "CCS 50 kW; CHAdeMO 50 kW; Type 2 22 kW",
+          "energyEurPerKwh": 0.67,
+          "rawParkingFees": {"ac": 0.08, "dc": 0.15, "unit": null},
+          "source": "https://pienotto.it/stazioni/268347-acea-energia-roma-rm",
+          "checkedAt": "2026-09-10",
+          "rankableCandidate": true,
+          "credited": false
+        },
+        {
+          "location": "Via Umberto Quintavalle, Roma (RM)",
+          "evseIds": ["IT*ACE*E*ST*C*QUINTAVALLE90*1", "IT*ACE*E*ST*C*QUINTAVALLE90*2", "IT*ACE*E*ST*C*QUINTAVALLE90*3"],
+          "connectors": "CCS 50 kW; CHAdeMO 50 kW; Type 2 22 kW",
+          "energyEurPerKwh": 0.67,
+          "rawParkingFees": {"ac": 0.08, "dc": 0.15, "unit": null},
+          "source": "https://pienotto.it/stazioni/281950-acea-energia-roma-rm",
+          "checkedAt": "2026-09-10",
+          "rankableCandidate": true,
+          "credited": false
+        }
+      ],
+      "coverageDelta": {
+        "newExactMappedCandidateEvse": 12,
+        "newCandidateStations": 4,
+        "energyEurPerKwh": 0.67,
+        "networkWideApplicability": false,
+        "rankablePromotionApplied": false,
+        "reasonNotPromoted": "Exact current PUN mapping is established, but full branch-ledger set-difference and direct/ad-hoc channel semantics are still required before rankable credit."
+      },
+      "deduplication": {
+        "againstRun111": "pass",
+        "againstRun112": "pass",
+        "duplicateIdsVsRuns111And112": [],
+        "withinRun117DuplicateIds": 0,
+        "fullHistoricalLedger": "pending"
+      },
+      "positiveEvidence": [
+        "Fresh PUN/Pienotto records on 2026-09-10 expose 12 exact ACE EVSE across four additional Rome stations at 0.670 EUR/kWh.",
+        "All 12 IDs are distinct from the 53 exact ACE IDs recorded in runs 111 and 112."
+      ],
+      "negativeEvidence": [
+        "Do not extrapolate 0.670 EUR/kWh to the remaining ACE inventory; no official network-wide rule has been proven.",
+        "Raw parking values 0.08/0.15 EUR remain unit-ambiguous and are not interpreted for ranking.",
+        "Do not credit these 12 candidates until full historical branch-ledger dedupe is complete."
+      ],
+      "blockage": "Full historical EVSE set-difference and independent direct/ad-hoc payment semantics remain required before rankable credit; the remaining ACE inventory still requires station-by-station enumeration.",
+      "resumeCondition": "Continue only with new ACE PUN stations/IDs, dedupe exact IDs against the complete ledger, and inspect ACEA/QR/app/backend sources for payment-channel semantics.",
+      "confidence": "high for exact EVSE-to-energy-price mapping; medium for payment/channel semantics",
+      "lastInvestigated": "2026-09-10",
+      "lastChanged": "2026-09-10",
+      "historyAppend": "2026-09-10 run117: added 12 fresh exact ACEA candidate EVSE across Via Giacomo Peroni, Via dei Castani, Via dei Traghetti and Via Umberto Quintavalle, all at 0.670 EUR/kWh in current PUN data; no network-wide extrapolation or rankable-credit increase."
+    }
+  ],
+  "effectiveCountsAfterReplay": {
+    "treated": 47,
+    "partial": 23,
+    "setAside": 1,
+    "active": 15,
+    "totalCanonical": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88
+  },
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 15,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 0,
+    "exactMappedEvseCandidatesAdded": 12,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusEquation": "47 + 23 + 1 + 15 = 86; 86 + 2 = 88",
+    "inventoryCardinalityChanged": false,
+    "duplicateNewEvseIdsWithinRun": 0,
+    "duplicateIdsVsRuns111And112": 0,
+    "networkWideExtrapolationApplied": false,
+    "physicalCanonicalSnapshotStillStale": true,
+    "canonicalMaterializationPendingLosslessReplay": true,
+    "result": "pass; 12 new exact ACEA candidate EVSE recorded, no nominal count or rankable credit change"
+  }
+}
