@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 107,
+  "generatedAt": "2026-09-10T08:54:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run106-delta.json"],
+  "changes": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "partial",
+      "priority": "station-level",
+      "stationCandidate": {
+        "address": "Via Luigi Russo, 6, Caltanissetta (CL)",
+        "source": "Piattaforma Unica Nazionale via Pienotto",
+        "observedAt": "2026-09-10",
+        "tariffChannel": "direct CPO / PUN published",
+        "tariff": {"energyEurPerKwh": 0.48, "activationEur": 1.14, "class": "AC Type2 22kW"},
+        "evseIds": [
+          "IT*EMO*E2373*1",
+          "IT*EMO*E2374*1",
+          "IT*EMO*E2375*1",
+          "IT*EMO*E2376*1",
+          "IT*EMO*E2377*1",
+          "IT*EMO*E2378*1",
+          "IT*EMO*E2379*1",
+          "IT*EMO*E2380*1"
+        ],
+        "evseCount": 8,
+        "rankableCandidate": true,
+        "creditedThisRun": false,
+        "reasonNotCredited": "Exact mapping and current tariff are proven, but ordered research-branch ledger set-difference has not yet been demonstrated for these eight IDs. Fail-closed against duplicate coverage until ledger check is complete.",
+        "sourceUrl": "https://pienotto.it/stazioni/260208-emobitaly-s-r-l-caltanissetta-cl"
+      },
+      "positiveEvidence": [
+        "Current PUN-derived station page exposes exactly 8 EMOBITALY EVSE IDs at Via Luigi Russo 6.",
+        "All 8 are Type 2 22 kW and the current published tariff is EUR 0.480/kWh plus EUR 1.14 activation."
+      ],
+      "resumeCondition": "Run the ordered branch-ledger anti-duplicate check against all prior EMO evseIds/evsePattern entries; if all or a subset are novel, credit only the novel IDs.",
+      "lastInvestigated": "2026-09-10",
+      "lastChanged": "2026-09-10"
+    },
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "status": "active",
+      "priority": "station-level",
+      "negativePaths": [
+        "Fresh first-party Hera/Hera Comm web search on 2026-09-10 did not expose a current deterministic public charging tariff grid applicable to the HER PUN inventory.",
+        "Retail electricity offers in EUR/kWh are household/energy-supply products and must not be confused with public EV charging prices."
+      ],
+      "blockage": "No current first-party network-wide direct charging tariff or deterministic station/EVSE mapping found in the public Hera pages inspected.",
+      "resumeCondition": "Use exact PUN station pages, Hera charging app/QR/public backend, or a first-party charging tariff document; do not repeat generic Hera retail-energy tariff search without new evidence.",
+      "lastInvestigated": "2026-09-10"
+    }
+  ],
+  "countsBefore": {"treated":48,"partial":22,"setAside":1,"active":15,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":48,"partial":22,"setAside":1,"active":15,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 15,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "rankableEvsePendingLedgerCheck": 8,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "equation": "48+22+1+15=86",
+    "aliasesOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "emoCoverageEquation": "433+416=849",
+    "result": "pass_no_counter_change_new_exact_candidate_fail_closed_pending_ledger",
+    "canonicalPhysicalSnapshotStillStale": true
+  },
+  "historyAppend": [
+    "2026-09-10 run107: mapped 8 exact EMOBITALY EVSE at Via Luigi Russo 6 Caltanissetta to current PUN tariff EUR 0.480/kWh + EUR 1.14 activation; kept uncredited pending ordered-ledger duplicate check.",
+    "2026-09-10 run107: Hera generic first-party tariff search classified exhausted for now; retained station-level and prohibited confusion with household electricity offers."
+  ]
+}
