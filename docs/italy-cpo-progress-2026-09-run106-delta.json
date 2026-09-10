@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 106,
+  "generatedAt": "2026-09-10T06:55:00+01:00",
+  "dependsOn": [
+    "docs/italy-cpo-progress-2026-09-run105-delta.json"
+  ],
+  "familyReconciliations": [
+    {
+      "family": "UAU / Uattzy",
+      "brand": "Uattzy",
+      "corporateEntity": "UAU srl",
+      "memberPartyIdsObservedInInventory": ["ESH", "GAS", "UTZ"],
+      "legacyOrContributingBrands": ["E-Shore", "GASGAS", "EnerMia"],
+      "officialEvidence": [
+        "Current Uattzy first-party site states Uattzy is the public-charging brand of UAU, an Italian company born from the union of E-Shore, GASGAS and EnerMia.",
+        "Current Uattzy first-party site states Uattzy acts as both CPO and eMSP and manages more than 3,000 charging points in Italy.",
+        "Current Uattzy FAQ states the direct Uattzy app/account shows the tariff at each connector before charging and that prices can vary according to delivered power, session duration and bay occupation time.",
+        "Current Uattzy FAQ supports app/RFID and, where enabled, QR/POS; roaming apps/cards can have separate operator pricing."
+      ],
+      "officialUrls": [
+        "https://www.uattzy.com/",
+        "https://www.uattzy.com/faq/"
+      ],
+      "dedupDecision": {
+        "action": "do_not_merge_party_ids_yet",
+        "reason": "Corporate/brand succession is proven, but no deterministic evidence yet proves that all ESH/GAS EVSE identifiers have migrated to UTZ or that PUN/OCPI inventory should collapse the three partyIds into one canonical partyId. Merging now could hide live legacy identifiers or double-subtract physical EVSEs.",
+        "safeHandling": "Treat ESH/GAS/UTZ as one investigation family to avoid duplicated research, but preserve each observed partyId until EVSE-level migration/overlap is demonstrated."
+      },
+      "tariffClassification": {
+        "priority": "station-level",
+        "tariffModel": "connector-specific / variable",
+        "tariffChannel": "direct Uattzy app/account; QR/POS where enabled; roaming eMSP separate",
+        "networkWideTariffProven": false,
+        "rankableRequirement": "deterministic EVSE/connector -> current Uattzy direct tariff mapping",
+        "failClosed": true
+      },
+      "negativePaths": [
+        "No current first-party fixed network-wide EUR/kWh grid was found on the public Uattzy site or FAQ.",
+        "Third-party tariff observatories may be used only as discovery/corroboration and are not sufficient for direct-CPO rankable promotion.",
+        "Corporate union alone is not sufficient evidence to mark ESH or GAS as supersededAlias of UTZ."
+      ],
+      "resumeCondition": "Inspect Uattzy app/public or guest backend, QR/POS endpoints and PUN/OCPI EVSE identifiers to establish whether ESH/GAS/UTZ overlap or have migrated and to obtain exact connector-level direct tariffs.",
+      "confidence": "high corporate-family and station-level tariff model; unresolved partyId migration",
+      "lastInvestigated": "2026-09-10",
+      "lastChanged": "2026-09-10"
+    }
+  ],
+  "countsBefore": {"treated":48,"partial":22,"setAside":1,"active":15,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "countsAfter": {"treated":48,"partial":22,"setAside":1,"active":15,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 15,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "unsafeAliasMergePrevented": ["ESH", "GAS", "UTZ"],
+    "rankableEvseAdded": 0,
+    "researchDeduplication": "ESH/GAS/UTZ now share one UAU/Uattzy investigation track",
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "equation": "48+22+1+15=86",
+    "aliasesOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "emoCoverageEquation": "433+416=849",
+    "result": "pass_no_counter_change_family_relationship_recorded",
+    "canonicalPhysicalSnapshotStillStale": true
+  },
+  "historyAppend": [
+    "2026-09-10 run106: reconciled ESH/GAS/UTZ as the UAU/Uattzy corporate family. Preserved partyIds separately pending EVSE-level migration proof; classified current Uattzy direct pricing as station/connector-level from first-party FAQ and prevented an unsafe alias merge."
+  ]
+}
