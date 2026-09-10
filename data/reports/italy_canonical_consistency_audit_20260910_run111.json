@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 111,
+  "checkedAt": "2026-09-10T16:08:00+01:00",
+  "scope": [
+    "docs/italy-cpo-progress-2026-09.json",
+    "docs/italy-cpo-progress-2026-09-run*-delta.json",
+    "recent Italy delta state through run111",
+    "nominal status equations and alias accounting"
+  ],
+  "physicalCanonical": {
+    "generatedAt": "2026-09-05T23:54:48+01:00",
+    "counts": {"treated": 4, "partial": 5, "setAside": 1, "active": 78, "total": 88},
+    "state": "stale_seed_not_materialized",
+    "note": "The physical canonical file is still the original inventory seed. It must not be used as the effective current status without replaying deltas."
+  },
+  "effectiveReplayStateAfterRun111": {
+    "treated": 47,
+    "partial": 23,
+    "setAside": 1,
+    "active": 15,
+    "totalCanonical": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88,
+    "statusEquation": "47 + 23 + 1 + 15 = 86; 86 + 2 = 88"
+  },
+  "run111Transition": {
+    "partyId": "ACE",
+    "from": "treated",
+    "to": "partial",
+    "reason": "fresh September 2026 PUN station/EVSE tariffs invalidate the prior all-legacy fail-closed disposition",
+    "inventoryExpansion": false,
+    "aliasChange": false,
+    "networkWidePromotion": false
+  },
+  "checks": {
+    "effectiveStatusSumMatchesCanonicalInventory": true,
+    "effectivePhysicalPartyIdsMatchInventory": true,
+    "run111IntroducesDuplicatePartyId": false,
+    "run111ChangesInventoryCardinality": false,
+    "atlanteStillSetAsideAndLast": true,
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 15,
+    "physicalCanonicalMatchesEffectiveReplay": false
+  },
+  "result": "effective_replay_consistent_but_physical_canonical_stale",
+  "requiredCorrection": {
+    "safe": true,
+    "action": "Run scripts/italy_cpo_progress_consolidate.py on the complete branch checkout and replace docs/italy-cpo-progress-2026-09.json only if the script exits cleanly with physicalPartyIds=88 and duplicatePartyIds=0.",
+    "reasonNotHandPatched": "Hand-patching the seed would discard or mis-order historical delta evidence; lossless replay is mandatory."
+  },
+  "history": [
+    "run109 fixed support for suffixed run labels and legacy delta shapes in the consolidator.",
+    "run111 full audit confirms the effective nominal state remains cardinality-consistent after reopening ACE, while the physical canonical file is still stale and must be materialized through lossless replay."
+  ]
+}
