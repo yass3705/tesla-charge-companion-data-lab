@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 108,
+  "generatedAt": "2026-09-10T11:54:55+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run107-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "partial",
+      "priority": "station-level",
+      "evse": 849,
+      "stations": 296,
+      "tariffModel": "station_specific_owner_pricing",
+      "tariffChannel": "direct CPO tariff published through Piattaforma Unica Nazionale and surfaced by Pienotto; roaming eMSP excluded",
+      "coveredSubpopulationsAdded": [
+        {
+          "station": "Via Luigi Russo 6, Caltanissetta (CL)",
+          "scope": "8 AC Type 2 22 kW",
+          "evseIds": [
+            "IT*EMO*E2373*1",
+            "IT*EMO*E2374*1",
+            "IT*EMO*E2375*1",
+            "IT*EMO*E2376*1",
+            "IT*EMO*E2377*1",
+            "IT*EMO*E2378*1",
+            "IT*EMO*E2379*1",
+            "IT*EMO*E2380*1"
+          ],
+          "energyEurPerKwh": 0.48,
+          "activationFeeEur": 1.14,
+          "rankableDirectEvse": 8,
+          "source": "Piattaforma Unica Nazionale tariff data surfaced by Pienotto",
+          "sourceBasis": "run107 captured exact current station/EVSE mapping; run108 ordered-ledger reconciliation found no prior credit for E2373*1 through E2380*1"
+        }
+      ],
+      "coverageBefore": {"physicalEvse": 849, "rankableDirectEvse": 433, "uncoveredEvse": 416, "coveragePct": 51.00},
+      "coverageAfter": {"physicalEvse": 849, "rankableDirectEvse": 441, "uncoveredEvse": 408, "coveragePct": 51.94},
+      "positiveEvidence": [
+        "run107 recorded the eight exact Caltanissetta EVSE IDs with current direct price 0.480 EUR/kWh plus 1.14 EUR activation.",
+        "run54 ends the adjacent Milano Piazza Piemonte sequence at IT*EMO*E2372*1; the run58 corrected baseline and run72 post-baseline reconciliation do not include E2373*1 through E2380*1.",
+        "Post-run72 EMOBITALY additions/corrections reviewed through run107 do not contain these eight IDs; they first appear as pending candidates in run107.",
+        "Current Pienotto/PUN price index still lists EMOBITALY Via Luigi Russo 6, Caltanissetta at 0.480 EUR/kWh on 2026-09-10."
+      ],
+      "negativeEvidence": [
+        "No tariff is propagated to any EMOBITALY EVSE outside the eight explicitly enumerated Caltanissetta IDs.",
+        "408 EMOBITALY EVSE remain fail-closed pending exact current station/EVSE tariff mapping."
+      ],
+      "blockage": "408 canonical EMOBITALY EVSE still lack an exact current station/EVSE -> direct tariff mapping.",
+      "resumeCondition": "continue PUN/native exact-ID enumeration and run ordered-ledger set-difference before every promotion",
+      "confidence": "high for the eight explicitly mapped Caltanissetta EVSE; fail-closed elsewhere",
+      "lastInvestigated": "2026-09-10",
+      "lastChanged": "2026-09-10",
+      "historyAppend": "2026-09-10 run108: promoted eight exact EMOBITALY EVSE at Via Luigi Russo 6, Caltanissetta, after ordered-ledger dedup; direct coverage 433/849 -> 441/849."
+    }
+  ],
+  "countsBefore": {"treated": 48, "partial": 22, "setAside": 1, "active": 15, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88},
+  "countsAfter": {"treated": 48, "partial": 22, "setAside": 1, "active": 15, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 15,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 8,
+    "rankableCoverageAdded": "EMOBITALY Caltanissetta: 8 exact AC EVSE",
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "48+22+1+15=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "emoCoverageEquation": "433+8=441; 849-441=408",
+    "result": "pass_nominal_and_evse_ordered_ledger_set_difference",
+    "canonicalPhysicalSnapshotStillStale": true,
+    "canonicalRepairScript": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "historyAppend": [
+    "2026-09-10 run108: +8 exact EMOBITALY Caltanissetta EVSE rankable after ordered-ledger dedup; coverage 441/849 (51.94%), 408 fail-closed.",
+    "2026-09-10 run108: nominal consistency remains 48 treated + 22 partial + 1 setAside + 15 active = 86 canonical; +2 superseded aliases = 88 physical partyIds."
+  ]
+}
