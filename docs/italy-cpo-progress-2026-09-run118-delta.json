@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 118,
+  "generatedAt": "2026-09-10T23:05:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run117-delta.json"],
+  "reason": "Resolve a canonical double-counting issue in the E-Shore / GASGAS / UAU-Uattzy family using current legal-entity evidence. Preserve all historical PUN partyIds and their physical EVSE inventories as source subpopulations, but count the current legal operator only once. Also classify the current UAU/Uattzy tariff model from first-party terms as station/EVSE-level with direct UAU pricing kept separate from roaming.",
+  "changes": [
+    {
+      "partyId": "UTZ",
+      "canonicalName": "UAU S.R.L. / Uattzy",
+      "aliases": ["UAU S.R.L.", "Uattzy", "E-Shore", "E - SHORE S.R.L.", "E-SHORE S.R.L.", "GASGAS", "GASGAS S.R.L.", "EnerMia"],
+      "status": "active",
+      "priority": "station-level",
+      "sourcePartyIds": ["UTZ", "ESH", "GAS"],
+      "legalIdentity": {
+        "currentLegalName": "UAU S.R.L.",
+        "vatAndFiscalCode": "02382770507",
+        "previousLegalName": "E - SHORE S.R.L.",
+        "gasgasSuccessor": "E-SHORE S.R.L.",
+        "gasgasMergerEffective": "2025-07-16T22:00:00",
+        "eShoreToUauLegalNameChangeRecorded": "2025-10-16",
+        "currentEntityStatus": "ACTIVE"
+      },
+      "tariffModel": "station_or_EVSE_specific_dynamic_terms",
+      "tariffChannel": "UAU/Uattzy direct charging-service tariff must be mapped per EVSE; roaming partner economics are explicitly separate",
+      "officialReferences": [
+        "https://enermia.org/wp-content/uploads/2025/12/Condizioni-del-servizio-Informativa-Privacy-sito-dic25.pdf",
+        "https://lei.bloomberg.com/leis/view/9845006C83E8F64RAD22",
+        "https://lei.bloomberg.com/leis/view/815600E589DF143BB831"
+      ],
+      "positiveEvidence": [
+        "Current Uattzy terms identify Uattzy as owned by UAU Srl, VAT/fiscal code 02382770507.",
+        "UAU terms state charging-service fees are detailed in each EVSE view and can vary by location, availability and dynamic EVSE-owner instructions.",
+        "UAU terms explicitly separate UAU charging-service prices from roaming-partner economic agreements.",
+        "LEI data validated against Infocamere lists E - SHORE S.R.L. as UAU S.R.L.'s previous legal name under the same entity ID 02382770507.",
+        "GASGAS S.R.L. LEI is inactive and lists E-SHORE S.R.L. as successor following a completed merger effective 2025-07-16."
+      ],
+      "negativeEvidence": [
+        "Do not combine or sum ESH/GAS/UTZ inventories as if they were three independent current CPOs.",
+        "Do not collapse historical EVSE partyIds: ESH and GAS remain valid source/inventory identifiers and must be retained for station/EVSE matching.",
+        "Do not infer a network-wide Uattzy tariff; first-party terms explicitly allow EVSE/location/dynamic variation."
+      ],
+      "blockage": "Current direct tariff still requires deterministic station/EVSE mapping from Uattzy/app/PUN/ad-hoc surfaces; historical ESH and GAS partyId subpopulations must remain addressable during mapping.",
+      "resumeCondition": "Process UTZ+ESH+GAS as one canonical operator family while retaining source partyId on every EVSE; enumerate exact direct prices station by station and keep roaming separate.",
+      "confidence": "high for legal alias/successor relationship and station-level tariff classification",
+      "lastInvestigated": "2026-09-10",
+      "lastChanged": "2026-09-10",
+      "historyAppend": "2026-09-10 run118: UAU/Uattzy established as current legal identity; E-Shore is the previous legal name and GASGAS merged into E-Shore. UTZ remains the canonical active station-level operator; ESH and GAS are preserved as source partyIds but removed from independent canonical-CPO counting."
+    },
+    {
+      "partyId": "ESH",
+      "canonicalName": "E-Shore s.r.l. (former legal name of UAU S.R.L.)",
+      "status": "supersededAlias",
+      "priority": "station-level",
+      "supersededByPartyId": "UTZ",
+      "aliasReason": "Same legal entity as current UAU S.R.L.; E - SHORE S.R.L. is recorded as PREVIOUS_LEGAL_NAME under VAT/entity ID 02382770507.",
+      "preservePhysicalInventory": true,
+      "lastInvestigated": "2026-09-10",
+      "lastChanged": "2026-09-10",
+      "historyAppend": "2026-09-10 run118: ESH removed from independent canonical-CPO count and retained as a source partyId alias of UTZ/UAU-Uattzy."
+    },
+    {
+      "partyId": "GAS",
+      "canonicalName": "GASGAS S.R.L. (merged predecessor of UAU/E-Shore)",
+      "status": "supersededAlias",
+      "priority": "station-level",
+      "supersededByPartyId": "UTZ",
+      "aliasReason": "GASGAS S.R.L. is inactive; LEI records E-SHORE S.R.L. as successor after completed merger effective 2025-07-16; E-Shore subsequently became UAU S.R.L.",
+      "preservePhysicalInventory": true,
+      "lastInvestigated": "2026-09-10",
+      "lastChanged": "2026-09-10",
+      "historyAppend": "2026-09-10 run118: GAS removed from independent canonical-CPO count and retained as a merged-predecessor/source partyId alias within UTZ/UAU-Uattzy."
+    }
+  ],
+  "effectiveCountsBefore": {"treated":47,"partial":23,"setAside":1,"active":15,"totalCanonical":86,"supersededAlias":2,"physicalPartyIds":88},
+  "effectiveCountsAfterReplay": {"treated":47,"partial":23,"setAside":1,"active":13,"totalCanonical":84,"supersededAlias":4,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 13,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": ["ESH -> UTZ", "GAS -> UTZ"],
+    "canonicalDoubleCountsRemoved": 2,
+    "rankableDirectEvseAdded": 0,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusEquation": "47 + 23 + 1 + 13 = 84; 84 + 4 superseded aliases = 88 physical partyIds",
+    "physicalInventoryCardinalityChanged": false,
+    "canonicalIdentityCardinalityChanged": true,
+    "canonicalIdentityDelta": -2,
+    "duplicateCanonicalPartyIds": 0,
+    "aliasInventoriesPreserved": true,
+    "networkWideExtrapolationApplied": false,
+    "physicalCanonicalSnapshotStillStale": true,
+    "canonicalMaterializationPendingLosslessReplay": true,
+    "result": "pass: two legal predecessor/previous-name identities removed from independent CPO counting while all three PUN partyIds remain retained for EVSE mapping"
+  },
+  "historyAppend": [
+    "2026-09-10 run118: corrected canonical identity double counting in the UAU/Uattzy family: ESH and GAS are source aliases/predecessors of UTZ/UAU, not independent current CPOs.",
+    "2026-09-10 run118: nominal canonical count 86 -> 84 and active station-level queue 15 -> 13; physical source partyId inventory remains exactly 88.",
+    "2026-09-10 run118: first-party Uattzy terms prove station/EVSE-specific pricing and explicit separation of direct UAU tariffs from roaming economics."
+  ]
+}
