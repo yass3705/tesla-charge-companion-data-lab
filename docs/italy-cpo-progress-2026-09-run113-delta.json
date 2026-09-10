@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 113,
+  "generatedAt": "2026-09-10T17:50:00+01:00",
+  "reason": "Historical-ledger deduplication correction for EMOBITALY Lucca candidates from run112b; continue fail-closed accounting without double credit.",
+  "changes": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "partial",
+      "priority": "station-level",
+      "lastInvestigated": "2026-09-10",
+      "lastChanged": "2026-09-10",
+      "tariffModel": "station_specific_owner_pricing",
+      "tariffChannel": "direct CPO tariff published through Piattaforma Unica Nazionale (surfaced by Pienotto)",
+      "dedupCorrection": {
+        "sourceRun": "112b",
+        "candidateLocation": "Via C. Gianni, Lucca (LU)",
+        "candidateEvseIds": [
+          "IT*EMOE788",
+          "IT*EMOE789",
+          "IT*EMOE790",
+          "IT*EMOE791"
+        ],
+        "historicalMatchRun": 54,
+        "historicalMatchPath": "docs/italy-cpo-progress-2026-09-run54-delta.json",
+        "result": "all_4_already_credited_historical_duplicates",
+        "rankableCreditDelta": 0,
+        "coverageCorrectionRequired": false,
+        "note": "Run54 explicitly lists the same four exact EVSE IDs at Via C. Gianni, Lucca with the same 0.45 EUR/kWh + 0.74 EUR activation tariff. Run112b therefore added discovery evidence only and must not be interpreted as new coverage."
+      },
+      "coverage": {
+        "rankableDirectEvse": 441,
+        "uncoveredEvse": 408,
+        "physicalEvse": 849,
+        "coveragePct": 51.94
+      },
+      "positiveEvidence": [
+        "Run54 contains IT*EMOE788, IT*EMOE789, IT*EMOE790 and IT*EMOE791 at Via C. Gianni, Lucca, with Type 2 11 kW, 0.45 EUR/kWh and 0.74 EUR activation.",
+        "Run112b independently rediscovered the same exact four IDs and tariff, corroborating current mapping but not expanding coverage."
+      ],
+      "negativeEvidence": [
+        "GitHub default-branch code search absence is not a valid branch-ledger deduplication proof."
+      ],
+      "blockage": "408 EMOBITALY EVSE remain without exact current station/EVSE tariff mapping.",
+      "resumeCondition": "Continue only with candidates whose exact EVSE IDs are absent from all prior EMOBITALY credited ledgers/patterns; preserve exact set-difference before rankable promotion.",
+      "historyAppend": "2026-09-10 run113: corrected run112b dedup status; Lucca IT*EMOE788-791 were already explicitly credited in run54, so +0 rankable EVSE. EMOBITALY remains 441/849 rankable and 408 fail-closed."
+    }
+  ],
+  "effectiveCountsAfterReplay": {
+    "treated": 47,
+    "partial": 23,
+    "setAside": 1,
+    "active": 15,
+    "totalCanonical": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88
+  },
+  "coverageDelta": {
+    "EMO": {
+      "rankableBefore": 441,
+      "candidateReviewed": 4,
+      "newUniqueRankable": 0,
+      "historicalDuplicates": 4,
+      "rankableAfter": 441,
+      "failClosedAfter": 408
+    }
+  },
+  "consistency": {
+    "statusEquation": "47 + 23 + 1 + 15 = 86; 86 + 2 = 88",
+    "inventoryCardinalityChanged": false,
+    "duplicateCreditPrevented": 4,
+    "networkWideExtrapolationApplied": false,
+    "result": "pass_with_historical_dedup_correction"
+  }
+}
