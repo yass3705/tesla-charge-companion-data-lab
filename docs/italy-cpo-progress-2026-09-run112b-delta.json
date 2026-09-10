@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": "112b",
+  "generatedAt": "2026-09-10T16:58:00+01:00",
+  "reason": "Continue EMOBITALY station-level enumeration with fresh PUN data while preserving strict historical-ledger deduplication before rankable credit.",
+  "changes": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "partial",
+      "priority": "station-level",
+      "lastInvestigated": "2026-09-10",
+      "tariffModel": "station_specific",
+      "tariffChannel": "PUN current operator tariff",
+      "coverageDelta": {
+        "candidateEvse": 4,
+        "candidateStations": 1,
+        "rankableCreditApplied": false,
+        "reasonNotCredited": "Full historical branch-ledger set-difference has not yet been completed for these four IDs."
+      },
+      "candidateSubpopulation": {
+        "location": "Via C. Gianni, Lucca (LU)",
+        "evseIds": ["IT*EMOE788", "IT*EMOE789", "IT*EMOE790", "IT*EMOE791"],
+        "connectors": "4x Type 2 11 kW",
+        "energyEurPerKwh": 0.45,
+        "activationFeeEur": 0.74,
+        "source": "https://pienotto.it/stazioni/280641-emobitaly-s-r-l-lucca-lu"
+      },
+      "positiveEvidence": [
+        "Fresh PUN/Pienotto page exposes exact EMO EVSE IDs, connector powers, 0.450 EUR/kWh energy price and 0.74 EUR activation fee."
+      ],
+      "negativeEvidence": [
+        "No network-wide EMOBITALY tariff is inferred; pricing remains point-owner/station specific.",
+        "GitHub default-branch code search did not find EMOE788, but that is not sufficient to prove absence from the research-branch historical ledger."
+      ],
+      "blockage": "Exact historical-ledger set-difference still required before adding these four EVSE to EMOBITALY rankable coverage.",
+      "resumeCondition": "Compare EMOE788-791 against all prior EMOBITALY run ledgers/patterns on the research branch; credit only genuinely new IDs.",
+      "historyAppend": "2026-09-10 run112b: mapped four exact EMOBITALY EVSE in Lucca at 0.450 EUR/kWh + 0.74 EUR activation; held as candidates pending full branch-ledger deduplication."
+    }
+  ],
+  "effectiveCountsAfterReplay": {
+    "treated": 47,
+    "partial": 23,
+    "setAside": 1,
+    "active": 15,
+    "totalCanonical": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88
+  },
+  "consistency": {
+    "statusEquation": "47 + 23 + 1 + 15 = 86; 86 + 2 = 88",
+    "inventoryCardinalityChanged": false,
+    "rankableCreditDelta": 0,
+    "networkWideExtrapolationApplied": false,
+    "result": "pass_for_candidate_delta"
+  }
+}
