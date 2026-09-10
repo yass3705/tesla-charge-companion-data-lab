@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 120,
+  "generatedAt": "2026-09-11T00:54:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run119-delta.json"],
+  "reason": "Current September 2026 evidence conflicts with the July class-wide candidate tariff. Two independent current station records for Uattzy partyId UTZ at Palmanova, each with exact UTZ EVSE IDs and 22 kW Type 2 connectors, report direct ad-hoc charging at 0.62 EUR/kWh, whereas the July 2026 specialist report stated POS Quick at 0.61 EUR/kWh. The current first-party Uattzy FAQ also explicitly says connector tariffs and possible additional costs are shown per connector and may vary based on delivered power, session duration and bay occupancy. Without a current first-party backend/tariff document proving a complete deterministic class grid and exceptions, class-wide promotion is unsafe. Fail closed and return UTZ to station-level.",
+  "changes": [
+    {
+      "partyId": "UTZ",
+      "canonicalName": "UAU S.R.L. / Uattzy",
+      "status": "active",
+      "priority": "station-level",
+      "sourcePartyIds": ["UTZ", "ESH", "GAS"],
+      "tariffModel": "station_or_connector_specific_current_tariff_required",
+      "tariffChannel": "direct Uattzy app/RFID and direct ad-hoc/POS must remain distinct; roaming eMSP excluded",
+      "currentExactDiscoveryExamples": [
+        {
+          "station": "Contrada Contarini 16, 33057 Palmanova",
+          "sourcePartyId": "UTZ",
+          "evseIds": ["IT*UTZ*EC167", "IT*UTZ*EC168"],
+          "connectors": "Type 2, 22 kW",
+          "channel": "direct ad-hoc",
+          "energyEurPerKwh": 0.62,
+          "sourceObservedUpdated": "2026-09-08",
+          "reference": "https://www.goingelectric.de/stromtankstellen/Italien/Palmanova/Contrada-Contarini-Contrada-Contarini-16/110271/"
+        },
+        {
+          "station": "Contrada Savorgnan 14a, 33057 Palmanova",
+          "sourcePartyId": "UTZ",
+          "evseIds": ["IT*UTZ*EC169", "IT*UTZ*EC170"],
+          "connectors": "Type 2, 22 kW",
+          "channel": "direct ad-hoc",
+          "energyEurPerKwh": 0.62,
+          "sourceObservedUpdated": "2026-09-08",
+          "reference": "https://www.goingelectric.de/stromtankstellen/Italien/Palmanova/Contrada-Savorgnan-Contrada-Savorgnan-14a/110272/"
+        }
+      ],
+      "officialReferences": [
+        "https://www.uattzy.com/",
+        "https://www.uattzy.com/faq/"
+      ],
+      "corroboratingReferences": [
+        "https://e-ricarica.it/uattzy-cambia-le-tariffe-stop-ai-costi-al-minuto/page/249/",
+        "https://www.goingelectric.de/stromtankstellen/Italien/Palmanova/Contrada-Contarini-Contrada-Contarini-16/110271/",
+        "https://www.goingelectric.de/stromtankstellen/Italien/Palmanova/Contrada-Savorgnan-Contrada-Savorgnan-14a/110272/"
+      ],
+      "positiveEvidence": [
+        "First-party Uattzy site confirms UAU/Uattzy is CPO and eMSP and keeps direct Uattzy channels distinct from roaming.",
+        "Current Uattzy FAQ states tariff and possible additional costs are exposed at each connector before charging.",
+        "Two current September station records provide exact UTZ EVSE IDs EC167-EC170, connector power and a direct ad-hoc price of 0.62 EUR/kWh for 22 kW Type 2 connectors."
+      ],
+      "negativeEvidence": [
+        "The July candidate grid reported POS Quick at 0.61 EUR/kWh, which conflicts with the current 0.62 EUR/kWh direct ad-hoc observations on exact 22 kW UTZ EVSEs.",
+        "No current first-party document or public backend has been retrieved that defines complete Quick/Fast/Ultra Fast kW boundaries and all exceptions.",
+        "Current first-party FAQ explicitly permits connector-level tariff/additional-cost variation.",
+        "Therefore do not apply the July 0.57/0.67/0.61/0.72 grid network-wide or class-wide."
+      ],
+      "blockage": "No automatable current first-party station/connector tariff backend or complete deterministic tariff table with exact class boundaries and exceptions is available yet.",
+      "resumeCondition": "Retrieve Uattzy app/backend/QR/POS tariff metadata per EVSE or a current first-party tariff table that deterministically maps every UTZ/ESH/GAS EVSE and channel; otherwise resolve station-by-station.",
+      "confidence": "high for station-level classification; medium for the two 0.62 EUR/kWh third-party station observations pending first-party corroboration; insufficient for rankable promotion",
+      "lastInvestigated": "2026-09-11",
+      "lastChanged": "2026-09-11",
+      "historyAppend": "2026-09-11 run120: UTZ demoted class-wide -> station-level because current exact 22 kW UTZ station observations show 0.62 EUR/kWh ad-hoc versus the July candidate 0.61 EUR/kWh POS Quick grid, consistent with first-party FAQ warning that connector pricing can vary."
+    }
+  ],
+  "effectiveCountsBefore": {"treated":47,"partial":23,"setAside":1,"active":13,"totalCanonical":84,"supersededAlias":4,"physicalPartyIds":88},
+  "effectiveCountsAfterReplay": {"treated":47,"partial":23,"setAside":1,"active":13,"totalCanonical":84,"supersededAlias":4,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 13,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "priorityReclassified": ["UTZ: class-wide -> station-level"],
+    "rankableDirectEvseAdded": 0,
+    "exactEvseDiscoveryCandidatesAdded": 4,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusEquation": "47 + 23 + 1 + 13 = 84; 84 + 4 superseded aliases = 88 physical partyIds",
+    "physicalInventoryCardinalityChanged": false,
+    "canonicalIdentityCardinalityChanged": false,
+    "networkWideExtrapolationApplied": false,
+    "physicalCanonicalSnapshotStillStale": true,
+    "canonicalMaterializationPendingLosslessReplay": true,
+    "result": "pass: safe priority correction; no tariff or EVSE promoted"
+  },
+  "historyAppend": [
+    "2026-09-11 run120: current September 22 kW UTZ evidence conflicts with the July POS Quick candidate price; Uattzy class-wide hypothesis is closed unless new first-party deterministic evidence appears.",
+    "2026-09-11 run120: UTZ/ESH/GAS remains one canonical Uattzy family; source partyIds are preserved for physical EVSE mapping; Atlante remains last."
+  ]
+}
