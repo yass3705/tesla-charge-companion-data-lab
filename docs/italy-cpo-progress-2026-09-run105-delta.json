@@ -16,26 +16,54 @@
       "evse": 826,
       "stations": 377,
       "tariffModel": "station-specific / promotional-subpopulation",
-      "tariffChannel": "direct CPO / POS or Edison Plug&Go+ / evway where explicitly supported",
+      "tariffChannel": "direct CPO / POS or EVWAY where explicitly supported",
       "positiveEvidence": [
-        "First-party Edison Next press release dated 2026-04-30 identifies the Galbusera Tre Marie site at Via Guglielmo Marconi 20, Agrate Brianza (MB), with 12 charging points split between Quick AC and Fast DC.",
-        "The same first-party release states a launch promotional direct tariff of EUR 0.59/kWh VAT included specifically on the Fast DC infrastructure at that site."
+        "First-party Edison Next press release dated 2026-04-30 identifies the Galbusera Tre Marie site at Via Guglielmo Marconi 20, Agrate Brianza (MB), with exactly 12 charging points: 2 Quick AC columns at 22 kW and 4 Fast DC columns at 120 kW.",
+        "The same first-party release states a launch promotional direct tariff of EUR 0.59/kWh VAT included on all DC columns at that site, accessible via POS card payment and EVWAY.",
+        "Fresh public station data crawled 2026-09-09/10 at the exact same address exposes exactly 12 IT*EDN EVSEs: 8 CCS 120 kW and 4 Type 2 22 kW, matching the first-party physical configuration."
       ],
+      "mappedEvseExamples": {
+        "fastDc120kW": [
+          "IT*EDN*ED00702",
+          "IT*EDN*ED00701",
+          "IT*EDN*ED00722",
+          "IT*EDN*ED00712",
+          "IT*EDN*ED00692",
+          "IT*EDN*ED00691",
+          "IT*EDN*ED00711",
+          "IT*EDN*ED00721"
+        ],
+        "quickAc22kW": [
+          "IT*EDN*EA02012",
+          "IT*EDN*EA02001",
+          "IT*EDN*EA02002",
+          "IT*EDN*EA02011"
+        ]
+      },
       "officialUrls": [
         "https://www.edison.it/it/edison-next-e-galbusera-nuove-colonnine-di-ricarica-veicoli-elettrici",
         "https://www.edison.it/sites/default/files/documents/cs_edison_next-galbusera_1.pdf"
       ],
+      "discoveryUrls": [
+        "https://app.pumpapp.co/it/stazione-di-ricarica-route220-via-guglielmo-marconi-20-agrate-brianza/68cf0f24-273b-11f1-8003-97ef5f588a6c"
+      ],
       "negativePaths": [
         "No current official network-wide Edison Next tariff was established.",
         "The Agrate Brianza EUR 0.59/kWh figure is explicitly site/subpopulation specific and must not be propagated to other Edison Next EVSEs.",
-        "Current public search did not yield a deterministic PUN/EVSE identifier mapping for the 12 Agrate Brianza points, so no EVSE is rankable from this evidence alone."
+        "The first-party price evidence is dated 2026-04-30 and describes a launch promotion without an explicit validThrough date. Fresh station data proves the EVSE mapping still exists but does not prove that EUR 0.59/kWh is still the current tariff on 2026-09-10. Therefore the eight DC EVSEs remain fail-closed for price ranking until current-price validity is reconfirmed.",
+        "The four AC EVSEs have no first-party tariff value in the cited release and remain fail-closed."
       ],
-      "blockage": "Need exact EDN EVSE IDs and connector class mapping for the Agrate Brianza site, or another public station/QR/app/backend source that deterministically maps EDN EVSE -> current tariff.",
-      "resumeCondition": "Search PUN/QR/Edison Plug&Go+ or public/guest backend for Via Guglielmo Marconi 20 Agrate Brianza and other EDN sites; only credit exact EVSEs once IDs and tariff applicability are deterministic.",
-      "confidence": "high",
+      "coverage": {
+        "rankableDirectEvseAddedThisRun": 0,
+        "deterministicallyMappedButCurrentPriceUnconfirmed": 8,
+        "mappedWithoutDirectPrice": 4
+      },
+      "blockage": "Exact EDN EVSE mapping for Agrate Brianza is now known. Missing piece is current 2026-09-10 tariff validity for the eight DC EVSEs and a direct current price for the four AC EVSEs.",
+      "resumeCondition": "Reconfirm current Agrate Brianza price through PUN, POS/QR, EVWAY, Edison Plug&Go+ or a public/guest backend; if EUR 0.59/kWh is still current, the eight listed DC EVSEs can be promoted together. Search other EDN sites only with deterministic EVSE-to-price mapping.",
+      "confidence": "high mapping / medium tariff-currentness",
       "lastInvestigated": "2026-09-10",
       "lastChanged": "2026-09-10",
-      "historyAppend": "2026-09-10 run105: first-party Edison Next evidence narrowed a deterministic EUR 0.59/kWh Fast DC promotional subpopulation at Agrate Brianza, but no EVSE IDs were safely mappable; EDN remains active/station-level with zero new rankable EVSE."
+      "historyAppend": "2026-09-10 run105: resolved the exact 12-EVSE identity of Edison Next's Agrate Brianza Galbusera site (8 DC + 4 AC). Historical first-party EUR 0.59/kWh DC promo is scoped correctly but not promoted because current validity is not independently reconfirmed."
     }
   ],
   "countsBefore": {"treated":48,"partial":22,"setAside":1,"active":15,"canonicalTotal":86,"supersededAlias":2,"physicalPartyIds":88},
@@ -46,6 +74,7 @@
     "newlyTreatedCpos": [],
     "newlyPartialCpos": [],
     "rankableEvseAdded": 0,
+    "deterministicEvseMappingsAdded": 12,
     "atlanteLast": true
   },
   "consistency": {
@@ -56,10 +85,10 @@
     "physicalEquation": "86+2=88",
     "duplicateCanonicalPartyIds": 0,
     "emoCoverageEquation": "433+416=849",
-    "result": "pass_no_counter_change",
+    "result": "pass_no_counter_or_rankable_change",
     "canonicalPhysicalSnapshotStillStale": true
   },
   "historyAppend": [
-    "2026-09-10 run105: Edison Next investigation produced new first-party site-specific tariff evidence but no deterministic EVSE mapping; no coverage credit and no status change."
+    "2026-09-10 run105: Edison Next Agrate Brianza exact EVSE mapping resolved; no tariff credit until current promotional validity is reconfirmed."
   ]
 }
