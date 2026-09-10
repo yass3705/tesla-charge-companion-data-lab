@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 115,
+  "generatedAt": "2026-09-10T19:54:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run114-delta.json"],
+  "reason": "Continue remaining station-level CPOs without repeating exhausted network-wide hypotheses; classify Route220 from current first-party CPMS tariff semantics and refresh E.ON/UFC evidence.",
+  "changes": [
+    {
+      "partyId": "220",
+      "canonicalName": "Route220 Srl Sb",
+      "status": "active",
+      "priority": "station-level",
+      "inventoryEvse": 422,
+      "inventoryStations": 270,
+      "tariffModel": "operator_or_site_configurable",
+      "tariffChannel": "direct CPO/CPMS or app/POS; roaming eMSP separated",
+      "officialUrls": ["https://route220.it/attivita/", "https://route220.it/"],
+      "positiveEvidence": [
+        "Current Route220 first-party CPMS page explicitly states that customers/operators can set their own sale tariffs for service providers.",
+        "Current Route220 site positions the platform as infrastructure/CPMS plus evway services rather than publishing one deterministic Route220-wide direct charging tariff."
+      ],
+      "negativeEvidence": [
+        "Do not reuse Enel X Way roaming tariff tables as Route220 direct CPO pricing.",
+        "Do not infer one network-wide direct price from an individual Route220/evway station because tariff configuration is operator/site controlled."
+      ],
+      "blockage": "Exact current direct price requires station/EVSE-level mapping from Route220/evway public or guest backend, QR/POS, PUN or owner-specific tariff source.",
+      "resumeCondition": "Inspect only new station/backend/QR/PUN evidence that maps a specific station or EVSE to its current direct/ad-hoc tariff; do not repeat generic Route220 tariff searches.",
+      "confidence": "high for station-level classification",
+      "lastInvestigated": "2026-09-10",
+      "lastChanged": "2026-09-10",
+      "historyAppend": "2026-09-10 run115: Route220 first-party CPMS documentation proves sale tariffs are configurable by operator/site; party-wide direct tariff hypothesis closed, retained station-level fail-closed handling."
+    },
+    {
+      "partyId": "UFC",
+      "canonicalName": "E.ON DRIVE INFRASTRUCTURE ITALY S.R.L.",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "station_specific_direct_pun",
+      "tariffChannel": "direct CPO via PUN / card-payment where equipped",
+      "positiveEvidence": [
+        "Fresh PUN/Pienotto Mantova municipality data still reports Strada Circonvallazione Sud 78A at 0.790 EUR/kWh, updated 2026-09-07.",
+        "E.ON Drive Infrastructure announced 104 additional 400 kW charge points across 18 Italian motorway service areas planned by end-2026; these are future/rolling inventory and must not be credited until individually active and mapped."
+      ],
+      "negativeEvidence": [
+        "Do not propagate the Mantova 0.790 EUR/kWh tariff to other E.ON sites.",
+        "Do not pre-count the announced 104 motorway charge points as active/rankable inventory before PUN/EVSE activation evidence."
+      ],
+      "resumeCondition": "Complete historical set-difference for IT*UFC*E500012*1/*2 and IT*UFC*E500013*1/*2, then enumerate newly active E.ON motorway sites individually as they appear in PUN/backend.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-10",
+      "lastChanged": "2026-09-10",
+      "historyAppend": "2026-09-10 run115: Mantova priced site remains current at 0.790 EUR/kWh; 104-point motorway expansion recorded as future rolling inventory only, with zero premature coverage credit."
+    }
+  ],
+  "effectiveCountsAfterReplay": {
+    "treated": 47,
+    "partial": 23,
+    "setAside": 1,
+    "active": 15,
+    "totalCanonical": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88
+  },
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 15,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 0,
+    "newStationLevelClassifications": ["220"],
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusEquation": "47 + 23 + 1 + 15 = 86; 86 + 2 = 88",
+    "inventoryCardinalityChanged": false,
+    "duplicateCanonicalPartyIdsIntroduced": 0,
+    "networkWideExtrapolationApplied": false,
+    "futureAnnouncedEvseCredited": 0,
+    "physicalCanonicalSnapshotStillStale": true,
+    "canonicalMaterializationPendingLosslessReplay": true,
+    "result": "pass; one additional active CPO classified station-level, no nominal count change"
+  }
+}
