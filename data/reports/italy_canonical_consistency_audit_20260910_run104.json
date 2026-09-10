@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "auditRun": 104,
+  "auditedAt": "2026-09-10T00:55:00+01:00",
+  "scope": [
+    "docs/italy-cpo-progress-2026-09.json",
+    "ordered effective state through docs/italy-cpo-progress-2026-09-run103-delta.json",
+    "EMOBITALY candidate rediscovery set checked against historical exact mappings",
+    "canonical counters and superseded aliases"
+  ],
+  "effectiveState": {
+    "treated": 48,
+    "partial": 22,
+    "setAside": 1,
+    "active": 15,
+    "canonicalTotal": 86,
+    "supersededAlias": 2,
+    "physicalPartyIds": 88,
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 15
+  },
+  "checks": [
+    {"check":"canonical status sum","equation":"48+22+1+15=86","result":"pass"},
+    {"check":"physical inventory reconciliation","equation":"86+2 supersededAlias=88 physical partyIds","result":"pass"},
+    {"check":"duplicate canonical partyId","value":0,"result":"pass"},
+    {"check":"Atlante ordering","result":"pass","detail":"ATE remains setAside/station-level and last"},
+    {"check":"EMOBITALY current rediscovery","result":"no_new_credit","detail":"IT*EMOE553, IT*EMOE115, IT*EMOE756, IT*EMOE757, IT*EMOE574 and IT*EMOE575 are all already present in run55 exact mappings"},
+    {"check":"EMOBITALY corrected coverage","equation":"433+416=849","result":"pass"},
+    {"check":"physical canonical snapshot freshness","result":"known_stale","detail":"docs/italy-cpo-progress-2026-09.json remains the 2026-09-05 seed; effective state is still ordered replay and must not be replaced by a lossy manual rewrite"}
+  ],
+  "freshEvidence": [
+    {"location":"Via Municipio 2, Trasquera","evseIds":["IT*EMOE553"],"tariff":{"energyEurPerKwh":0.29,"activationFeeEur":0.74},"source":"PUN via Pienotto","result":"duplicate_run55"},
+    {"location":"Via Roma 70, Teglio","evseIds":["IT*EMOE115"],"tariff":{"energyEurPerKwh":0.30,"activationFeeEur":0.74},"source":"PUN via Pienotto","result":"duplicate_run55"},
+    {"location":"Viale Unita d'Italia 7, Ripalimosani","evseIds":["IT*EMOE756","IT*EMOE757"],"tariff":{"energyEurPerKwh":0.33,"activationFeeEur":0.74},"source":"PUN via Pienotto","result":"duplicate_run55"},
+    {"location":"Loc. Madonna delle Carceri snc, Camerino","evseIds":["IT*EMOE574","IT*EMOE575"],"tariff":{"energyEurPerKwh":0.39,"activationFeeEur":0.74},"source":"PUN via Pienotto","result":"duplicate_run55"}
+  ],
+  "automaticCorrections": [],
+  "result": "pass_no_new_nominative_or_evse_progress",
+  "nextAuditTrigger": "run108 at latest, or immediately after two executions without nominative progression",
+  "historyAppend": "2026-09-10 run104: mandatory four-run audit passed; six freshly rediscovered EMOBITALY EVSE were confirmed as run55 historical mappings and received no duplicate coverage credit."
+}
