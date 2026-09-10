@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 119,
+  "generatedAt": "2026-09-10T23:59:00+01:00",
+  "scope": "branch-and-effective-state consistency audit; this is not a substitute for executing the lossless consolidator over every historical delta",
+  "repository": "yass3705/tesla-charge-companion-data-lab",
+  "progressBranch": "research/italy-cpo-priority-20260905",
+  "progressBranchHeadBeforeAudit": "3183505b135f6173ed84a191eb8501dd6dc2c820",
+  "observations": [
+    "The current Italy work through run119 exists on research/italy-cpo-priority-20260905, not on the repository default branch.",
+    "The physical docs/italy-cpo-progress-2026-09.json on the research branch is still the older seed snapshot and is not yet the effective lossless state required by the project contract.",
+    "Run119 changes priority/evidence only and does not change canonical or physical cardinality.",
+    "The effective post-run119 status equation remains 47 treated + 23 partial + 1 setAside + 13 active = 84 canonical identities; plus 4 supersededAlias = 88 physical/source partyIds.",
+    "UTZ/UAU/Uattzy is now one of the 13 active identities but is reclassified from station-level to class-wide candidate; therefore the active-priority queue is 1 class-wide and 12 station-level.",
+    "No tariff or EVSE was promoted during run119 because exact current Quick/Fast/Ultra Fast class boundaries are not yet proven from first-party material.",
+    "Atlante remains setAside and last by project policy."
+  ],
+  "checks": {
+    "effectiveStatusEquation": {"result":"pass","equation":"47+23+1+13=84"},
+    "aliasCardinality": {"result":"pass","equation":"84+4=88"},
+    "run119CountMutation": {"result":"pass","changed":false},
+    "run119UnsafeExtrapolation": {"result":"pass","applied":false},
+    "defaultVsResearchBranch": {"result":"warning","detail":"Italy progress is not on the default branch; consumers reading default alone will miss the canonical/delta chain."},
+    "physicalCanonicalCurrentness": {"result":"fail-open-remediation-pending","detail":"The physical canonical snapshot is stale relative to the effective replay chain. Do not use it alone for current counters or tariff coverage until lossless materialization is completed."}
+  },
+  "safeCorrectionsApplied": [
+    "Recorded the actual progress branch and run119 head explicitly.",
+    "Corrected the active-priority breakdown to 1 class-wide / 12 station-level after Uattzy evidence review."
+  ],
+  "remediation": [
+    "Execute scripts/italy_cpo_progress_consolidate.py losslessly over the complete ordered delta chain, validate per-CPO retained evidence/history, then update docs/italy-cpo-progress-2026-09.json in one controlled replacement commit.",
+    "After materialization, compare the generated canonical counts and identities to the effective equation above and audit duplicate aliases before any merge to default.",
+    "Do not merge or overwrite default automatically until the reconstructed canonical has passed the lossless content checks."
+  ],
+  "result": "effective state internally consistent; structural branch/snapshot divergence documented; physical canonical remediation still required"
+}
