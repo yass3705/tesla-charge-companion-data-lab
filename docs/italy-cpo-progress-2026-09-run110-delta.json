@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 110,
+  "generatedAt": "2026-09-10T14:51:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run109-delta.json"],
+  "classificationUpdates": [
+    {
+      "partyId": "UFC",
+      "canonicalName": "E.ON DRIVE INFRASTRUCTURE ITALY S.R.L.",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "station_specific_direct_pun",
+      "tariffChannel": "direct CPO tariff published through Piattaforma Unica Nazionale (surfaced by Pienotto)",
+      "candidateExactMappings": [
+        {
+          "location": "Strada Circonvallazione Sud, 78A, Mantova (MN)",
+          "evseIds": [
+            "IT*UFC*E500012*1",
+            "IT*UFC*E500012*2",
+            "IT*UFC*E500013*1",
+            "IT*UFC*E500013*2"
+          ],
+          "connector": "CCS",
+          "powerKw": 400,
+          "energyEurPerKwh": 0.79,
+          "timeFeeRaw": "0.15 EUR; PUN/Pienotto renders 'tempo 0,15 €' without a reliable unit in page text",
+          "source": "PUN via Pienotto",
+          "url": "https://pienotto.it/stazioni/271120-e-on-drive-infrastructure-italy-s-r-l-mantova-mn",
+          "checkedAt": "2026-09-10",
+          "rankableCandidate": true,
+          "creditedThisRun": false,
+          "creditBlocker": "ordered research-branch ledger set-difference has not yet proven these four EVSE were never credited in earlier deltas"
+        }
+      ],
+      "positiveEvidence": [
+        "Fresh PUN/Pienotto station page maps one E.ON Drive Infrastructure Italy site deterministically to four IT*UFC EVSE, all CCS 400 kW, with 0.790 EUR/kWh and a raw time fee of 0.15 EUR.",
+        "The same Mantova municipality PUN/Pienotto view shows another E.ON site at Via Cremona 36 with tariff not communicated, confirming station-level heterogeneity and ruling out party-wide propagation from the priced site."
+      ],
+      "negativePaths": [
+        "Do not propagate Mantova Circonvallazione Sud 0.790 EUR/kWh to Via Cremona 36 or any other UFC station; PUN explicitly reports at least one same-city E.ON site without a published tariff.",
+        "Do not count the four Mantova EVSE as new coverage until an ordered-ledger set-difference confirms they are absent from all earlier research-branch deltas."
+      ],
+      "resumeCondition": "compare IT*UFC*E500012*1/*2 and IT*UFC*E500013*1/*2 against the complete ordered Italy delta ledger; if absent, credit exactly those four EVSE, preserving the raw time-fee field; then enumerate remaining UFC stations individually",
+      "confidence": "high for current station-to-EVSE-to-tariff mapping; coverage credit pending historical set-difference",
+      "lastInvestigated": "2026-09-10",
+      "lastChanged": "2026-09-10",
+      "historyAppend": "2026-09-10 run110: mapped Mantova Circonvallazione Sud exactly to four UFC CCS 400 kW EVSE at 0.790 EUR/kWh plus raw PUN time fee 0.15 EUR; held coverage credit pending ordered-ledger dedupe."
+    },
+    {
+      "canonicalName": "Electra",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "station_or_context_specific_direct",
+      "tariffChannel": "direct Electra app / bank card; subscription separated",
+      "positiveEvidence": [
+        "Current Electra Italy price page uses 'A partire da' (starting from) language for Italy rather than proving one unconditional network-wide price applicable to every station.",
+        "Current public pricing distinguishes app/direct, card/pass and subscription channels; subscription discounts must remain separate from direct ad-hoc baseline."
+      ],
+      "negativePaths": [
+        "Do not promote a single 0.69/0.79 EUR/kWh network-wide rule from prior evidence without exact applicability proof for every Italian Electra station.",
+        "Do not mix Electra+ subscription pricing into direct CPO/ad-hoc pricing."
+      ],
+      "resumeCondition": "resolve station class/location and exact displayed/app tariff per station, especially motorway/service-area versus ordinary sites, before rankable promotion",
+      "confidence": "high that network-wide extrapolation remains unsafe",
+      "lastInvestigated": "2026-09-10",
+      "historyAppend": "2026-09-10 run110: fresh Italy pricing page reconfirmed that Electra must remain fail-closed at station/context level unless exact applicability is proven; no network-wide tariff propagation."
+    }
+  ],
+  "countsBefore": {"treated": 48, "partial": 22, "setAside": 1, "active": 15, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88},
+  "countsAfter": {"treated": 48, "partial": 22, "setAside": 1, "active": 15, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 15,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 0,
+    "rankableDirectEvseCandidatesAwaitingDedupe": 4,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "48+22+1+15=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "physicalCanonicalSnapshotStillStale": true,
+    "canonicalMaterializationPending": true,
+    "result": "effective_counts_preserved; no unverified EVSE coverage credited"
+  },
+  "historyAppend": [
+    "2026-09-10 run110: E.ON/UFC Mantova exact four-EVSE direct tariff mapping found; coverage held pending complete ordered-ledger dedupe.",
+    "2026-09-10 run110: Electra current Italy pricing language does not justify unconditional network-wide propagation; retained station-level fail-closed discipline.",
+    "2026-09-10 run110: nominal consistency remains 48 treated + 22 partial + 1 setAside + 15 active = 86 canonical, plus 2 superseded aliases; physical canonical snapshot remains pending deterministic materialization."
+  ]
+}
