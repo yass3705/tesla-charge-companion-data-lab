@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 109,
+  "generatedAt": "2026-09-10T13:50:47+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run108-delta.json"],
+  "consistencyCorrection": {
+    "type": "canonical_replay_coverage_gap",
+    "severity": "major",
+    "affectedScript": "scripts/italy_cpo_progress_consolidate.py",
+    "problem": "The consolidator matched only numeric run labels and replayed only changes/classificationUpdates. It therefore silently skipped run4b and run7b, including ENH active->treated and AM1 station-level classification.",
+    "affectedDeltas": [
+      "docs/italy-cpo-progress-2026-09-run4b-delta.json",
+      "docs/italy-cpo-progress-2026-09-run7b-delta.json"
+    ],
+    "safeFix": "Consolidator now accepts suffixed run labels, orders base run before suffix runs, replays safeStatusTransitions and classificationUpdatesWithoutStatusTransition, normalizes legacy from/to transitions, and records applied delta labels.",
+    "repairCommit": "3628d891f1db5028a20ef2084d7944373b44b1e4",
+    "canonicalRewritePending": true,
+    "reasonRewritePending": "The repository connector cannot execute the filesystem consolidator; canonical rewrite must occur only after the corrected script is executed against the complete branch checkout so no historical evidence is lost. Continue to use run108 effective counts until that deterministic replay is materialized.",
+    "confidence": "high"
+  },
+  "preservedEvidence": {
+    "run4b": {
+      "partyId": "ENH",
+      "canonicalName": "Enerhub Srl",
+      "transition": "active -> treated",
+      "priority": "class-wide",
+      "reason": "official Enerhub page published exact native-app and guest AC/DC prices for Enerhub stations"
+    },
+    "run7b": {
+      "partyId": "AM1",
+      "canonicalName": "ALPHA MOBILITY SRL",
+      "status": "active",
+      "priority": "station-level",
+      "reason": "public Alpha Mobility backend showed differing direct station prices, disproving a single party-wide tariff"
+    }
+  },
+  "countsBefore": {"treated": 48, "partial": 22, "setAside": 1, "active": 15, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88},
+  "countsAfter": {"treated": 48, "partial": 22, "setAside": 1, "active": 15, "canonicalTotal": 86, "supersededAlias": 2, "physicalPartyIds": 88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 15,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 0,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusSumCanonical": 86,
+    "expectedCanonical": 86,
+    "equation": "48+22+1+15=86",
+    "aliasesCountedOutsideCanonical": 2,
+    "physicalPartyIds": 88,
+    "physicalEquation": "86+2=88",
+    "duplicateCanonicalPartyIds": 0,
+    "result": "effective_counts_preserved; replay_coverage_bug_fixed; canonical_materialization_pending"
+  },
+  "historyAppend": [
+    "2026-09-10 run109: detected that canonical consolidation silently skipped suffixed runs 4b and 7b and their legacy update shapes.",
+    "2026-09-10 run109: patched consolidator to replay suffixed/legacy deltas deterministically; effective nominal state remains 48 treated + 22 partial + 1 setAside + 15 active = 86 canonical, plus 2 superseded aliases."
+  ]
+}
