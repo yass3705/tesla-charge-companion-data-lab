@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "country": "ES",
-  "updatedAt": "2026-09-07T18:40:00Z",
+  "updatedAt": "2026-09-11T21:38:00Z",
   "status": "FIRST_PASS_IN_PROGRESS",
   "inventory": {
     "legacyWorkLabelCount": 618,
@@ -13,170 +13,71 @@
     "pagesCompleted": 146,
     "totalPages": 146,
     "fullPassValidated": true,
-    "note": "618 remains the historical work-label queue only. Current REVE observes 148 distinct CPO identities. Aliases/platform labels do not increment the physical-CPO count."
+    "note": "618 remains the historical work-label queue only. Current REVE observes 148 distinct CPO identities. Aliases/platform labels do not increment the physical-CPO count. The durable canonical chain is now advancing again from the proven 98-decision baseline; previously reported 373 remains unverified and is not used for counting."
   },
   "firstPass": {
-    "legacy618ReviewedMinimum": 98,
-    "legacy618RemainingMaximum": 520,
+    "legacy618ReviewedMinimum": 100,
+    "legacy618RemainingMaximum": 518,
     "countIsLowerBound": true,
-    "reason": "The historical nominative 618-label file is absent from current main, so exact carry-forward cannot be proven and is not invented."
+    "reason": "100 nominative decisions are now durably chained in Git. The historical nominative 618-label file remains unavailable, so exact carry-forward beyond durable decisions is not invented."
   },
   "countsFromDecisions": {
-    "sourceValidated": 12,
+    "sourceValidated": 13,
     "partial": 3,
-    "active": 23,
+    "active": 24,
     "setAside": 53,
     "excludedPlatform": 3,
     "supersededAlias": 4,
-    "decisionsTotal": 98
+    "decisionsTotal": 100
   },
   "canonicalChain": {
-    "baseBlobSha": "73a87403f39ad7a12ee03d47b829b664e1d8adce",
+    "baseBlobSha": "30adcf86a0c7a31dbefe111b870fdda8d71aeeae",
     "basePath": "docs/spain-cpo-progress-2026-09.json",
-    "baseDecisionCount": 88,
+    "baseDecisionCount": 98,
     "baseCounts": {
       "sourceValidated": 12,
       "partial": 3,
-      "active": 20,
-      "setAside": 46,
+      "active": 23,
+      "setAside": 53,
       "excludedPlatform": 3,
       "supersededAlias": 4
     },
-    "rule": "The immutable base blob preserves complete nominative detail for decisions 1-88. deltaDecisions below adds decisions 89-98. Resolve this chain before dedupe/counting; compact only losslessly."
+    "rule": "The immutable base blob preserves complete nominative detail for decisions 1-98. deltaDecisions below adds decisions 99-100. Resolve this chain before dedupe/counting; compact only losslessly."
   },
   "deltaDecisions": [
     {
-      "canonical": "FENIE ENERGIA, SA",
-      "partyId": "FEN",
+      "canonical": "IBERDROLA CLIENTES S.A.U",
+      "partyId": "IBD",
       "status": "active",
       "priority": "station-level",
-      "tariffModel": "official FENIE public portal with owner/station-specific tariffs",
-      "inventoryCoverage": "223 locations / 406 EVSE / 466 connectors in current REVE snapshot",
-      "coverage": "Official FENIE charging pages expose deterministic station prices and conditions, but values vary by point (examples observed on 2026-09-07 include 0.18, 0.25, 0.35, 0.40, 0.50 EUR/kWh and fixed start fees on some sites). No network-wide price is inferred.",
-      "blocker": "Requires station/EVSE-to-FENIE-page mapping for exhaustive TCC ranking.",
-      "resumeCondition": "post-first-pass station mapping or deterministic endpoint extraction",
-      "evidence": ["https://recarga.fenieenergia.es/punto-recarga/0518", "https://recarga.fenieenergia.es/punto-recarga/0313", "https://recarga.fenieenergia.es/punto-recarga/0502", "https://recarga.fenieenergia.es/punto-recarga/0121", "REVE coverage.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
+      "tariffModel": "official Iberdrola public charging with charger-specific price authority in app",
+      "inventoryCoverage": "2288 locations / 8475 EVSE / 9463 connectors in current REVE snapshot",
+      "coverage": "Official Iberdrola public charging page exposes the charging network and currently shows 0.35 EUR/kWh VAT included as an indicative public price, while explicitly stating that the applicable price for each charger is the price shown in the Iberdrola app. Therefore 0.35 EUR/kWh is not generalized to every REVE EVSE.",
+      "blocker": "Requires deterministic charger/EVSE-to-Iberdrola-app price mapping for exhaustive TCC ranking.",
+      "resumeCondition": "post-first-pass app/backend or deterministic charger checkout mapping",
+      "evidence": [
+        "https://www.iberdrola.es/movilidad-electrica/productos/puntos-de-recarga",
+        "data/spain_reve/coverage.json",
+        "data/spain_reve/raw_cpo_labels_snapshot.json"
+      ],
+      "lastInvestigated": "2026-09-11",
+      "lastChanged": "2026-09-11"
     },
     {
-      "canonical": "FERROVIAL CONSTRUCCIÓN S.A.",
-      "partyId": "FES",
-      "status": "setAside",
-      "priority": "station-level",
-      "tariffModel": "site/project charging",
-      "inventoryCoverage": "10 locations / 12 EVSE / 23 connectors in current REVE snapshot",
-      "blocker": "Official Ferrovial public surfaces reviewed in first pass do not expose a current deterministic public EV charging tariff for these REVE sites.",
-      "resumeCondition": "official site tariff, QR/ad-hoc checkout or post-first-pass review",
-      "evidence": ["https://www.ferrovial.com/es-es/contacto/", "REVE coverage.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "FERVI, SL.",
-      "partyId": "333",
-      "status": "setAside",
-      "priority": "station-level",
-      "tariffModel": "single-site charging",
-      "inventoryCoverage": "1 location / 1 EVSE / 1 connector in current REVE snapshot",
-      "blocker": "No current official/direct deterministic EV charging tariff or public checkout surfaced in first-pass search.",
-      "resumeCondition": "official site tariff, QR/ad-hoc checkout or post-first-pass review",
-      "evidence": ["REVE coverage.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "FUNDACIO BALEAR D'INNOVACIÓ I TECNOLOGIA",
-      "partyId": "FB1",
-      "status": "setAside",
-      "priority": "station-level",
-      "tariffModel": "ParcBit institutional charging",
-      "inventoryCoverage": "1 location / 1 EVSE / 1 connector in current REVE snapshot",
-      "blocker": "Official Fundació BIT/ParcBit public information does not expose a deterministic EV charging tariff for the REVE point in first pass.",
-      "resumeCondition": "official charging tariff or post-first-pass station verification",
-      "evidence": ["https://www.fundaciobit.org/parcbit/", "REVE coverage.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "FUNDACION PAIDEIA GALIZA",
-      "partyId": "910",
-      "status": "setAside",
-      "priority": "station-level",
-      "tariffModel": "institutional/site charging",
-      "inventoryCoverage": "1 location / 1 EVSE / 2 connectors in current REVE snapshot",
-      "blocker": "Official Paideia public site/contact surfaces do not publish a current deterministic EV charging tariff for the REVE location.",
-      "resumeCondition": "official site tariff, QR/ad-hoc checkout or post-first-pass review",
-      "evidence": ["https://www.paideia.es/contactar/", "REVE coverage.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "Gaia Green Tech S.L.",
-      "partyId": "GAI",
-      "status": "setAside",
-      "priority": "station-level",
-      "tariffModel": "Gai Charge-labelled site charging",
-      "inventoryCoverage": "4 locations / 4 EVSE / 12 connectors in current REVE snapshot",
-      "blocker": "Third-party listings suggest variable station pricing, but no current official/direct Gaia/Gai Charge tariff authority or deterministic public checkout was verified in first pass; third-party prices are not promoted.",
-      "resumeCondition": "official Gaia/Gai Charge tariff endpoint, QR/ad-hoc checkout or post-first-pass review",
-      "evidence": ["REVE coverage.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "Galp Energía España, S.A.U.",
-      "partyId": "DLP",
-      "status": "active",
-      "priority": "station-level",
-      "tariffModel": "official Mundo Galp station/app pricing",
-      "inventoryCoverage": "400 locations / 762 EVSE / 767 connectors in current REVE snapshot",
-      "coverage": "Official Galp Spain mobility page confirms a public charging map, real-time charger selection, kWh selection and card payment through Mundo Galp, and explicitly presents public charging points and their tariffs. The public web surface reviewed does not expose one deterministic network-wide numeric tariff, so no value is generalized.",
-      "blocker": "Requires per-station Mundo Galp price extraction/mapping.",
-      "resumeCondition": "post-first-pass app/backend or deterministic station checkout mapping",
-      "evidence": ["https://www.galp.com/es/movilidad-electrica-recarga-publica", "REVE coverage.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "GESTION INTELIGENTE DE CARGAS S.L.",
-      "partyId": "GIC",
-      "status": "active",
-      "priority": "station-level",
-      "tariffModel": "GiC app-managed public charging",
-      "inventoryCoverage": "21 locations / 63 EVSE / 65 connectors in current REVE snapshot",
-      "coverage": "Official GiC app supports locating public points, reservation, starting charge, balance funding and charge history. No current deterministic network-wide public tariff surfaced in first pass.",
-      "blocker": "Station-level price mapping requires app/backend inspection after first pass.",
-      "resumeCondition": "post-first-pass GiC app/backend tariff extraction or official station tariff",
-      "evidence": ["https://recargagic.com/contacto/", "https://apps.apple.com/es/app/gic-puntos-de-carga/id1335579752", "REVE coverage.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "Girona Motor SA",
-      "partyId": "918",
-      "status": "setAside",
-      "priority": "station-level",
-      "tariffModel": "dealer/site charging",
-      "inventoryCoverage": "2 locations / 2 EVSE / 2 connectors in current REVE snapshot",
-      "blocker": "No current official/direct deterministic public charging tariff or checkout surfaced in first-pass search.",
-      "resumeCondition": "official site tariff, QR/ad-hoc checkout or post-first-pass review",
-      "evidence": ["REVE coverage.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
-    },
-    {
-      "canonical": "GRUP SUPECO MAXOR SL",
-      "partyId": "GSM",
-      "status": "setAside",
-      "priority": "station-level",
-      "tariffModel": "retail-site charging",
-      "inventoryCoverage": "1 location / 1 EVSE / 2 connectors in current REVE snapshot",
-      "blocker": "No current official/direct deterministic EV charging tariff or public checkout surfaced in first pass. Corporate relationship to Carrefour is not used as tariff evidence and no alias is inferred without EVSE-level proof.",
-      "resumeCondition": "official site tariff, QR/ad-hoc checkout, proven operator alias or post-first-pass review",
-      "evidence": ["REVE coverage.json"],
-      "lastInvestigated": "2026-09-07",
-      "lastChanged": "2026-09-07"
+      "canonical": "IONITY GmbH Sucursal en España",
+      "partyId": "IOY",
+      "status": "sourceValidated",
+      "priority": "network-wide",
+      "tariffModel": "official IONITY Spain direct/app/subscription tariff table",
+      "inventoryCoverage": "43 locations / 172 EVSE / 172 connectors in current REVE snapshot",
+      "coverage": "Official IONITY country tariff table currently lists Spain at 0.66 EUR/kWh for IONITY Direct, 0.62 EUR/kWh for IONITY Go/app without subscription, 0.48 EUR/kWh Motion monthly, 0.47 EUR/kWh Motion annual, 0.38 EUR/kWh Power annual and 0.37 EUR/kWh Power monthly; direct/ad-hoc TCC ranking uses the 0.66 EUR/kWh IONITY Direct price unless the user explicitly selects another eligible IONITY plan.",
+      "evidence": [
+        "https://www.ionity.eu/hr/mreza/pristup-i-placanje",
+        "data/spain_reve/coverage.json",
+        "data/spain_reve/raw_cpo_labels_snapshot.json"
+      ],
+      "lastInvestigated": "2026-09-11",
+      "lastChanged": "2026-09-11"
     }
   ],
   "aliases": {
@@ -187,23 +88,22 @@
     "rule": "Aliases and platform labels never increment the physical-CPO denominator unless current REVE proves an independent party identity."
   },
   "coherence": {
-    "checkedAt": "2026-09-07T18:40:00Z",
+    "checkedAt": "2026-09-11T21:38:00Z",
     "result": "GREEN_WITH_DOCUMENTED_LEGACY_COUNTER_UNCERTAINTY",
     "checks": [
-      "REVE national pass remains complete 146/146 with 148 distinct CPO identities",
-      "618 retained only as legacy work-label queue",
-      "immutable base blob preserves full nominative detail for decisions 1-88",
-      "10 new labels received decisions 89-98",
-      "counts reconcile exactly: 12 sourceValidated + 3 partial + 23 active + 53 setAside + 3 excludedPlatform + 4 supersededAlias = 98",
-      "no set-aside case was re-audited",
-      "no identical investigation repeated more than twice without a new path",
-      "FENIE, Galp and GiC remain station-level active because official surfaces establish deterministic charging channels but not one safe network-wide price",
-      "no third-party Gaia price was promoted",
-      "no station-level tariff extrapolated to a network"
+      "REVE national locations pass remains complete with 148 distinct current CPO identities",
+      "618 retained only as historical work-label queue",
+      "immutable base blob 30adcf86a0c7a31dbefe111b870fdda8d71aeeae preserves complete nominative detail for decisions 1-98",
+      "two new durable decisions added: Iberdrola 99 and IONITY 100",
+      "counts reconcile exactly: 13 sourceValidated + 3 partial + 24 active + 53 setAside + 3 excludedPlatform + 4 supersededAlias = 100",
+      "previously reported 373 remains unverified and is not used for durable KPI counting",
+      "Iberdrola indicative 0.35 EUR/kWh was not extrapolated because Iberdrola states charger-specific app prices are authoritative",
+      "IONITY Spain direct 0.66 EUR/kWh is retained separately from app/subscription prices",
+      "no set-aside case was re-audited"
     ]
   },
   "history": [
-    {"date":"2026-09-07","change":"Lossless chain advanced from 88 to 98 decisions using immutable base blob 73a87403f39ad7a12ee03d47b829b664e1d8adce."},
-    {"date":"2026-09-07","change":"First-pass batch processed the ten REVE identities immediately after Fastned: FENIE, Ferrovial Construcción, Fervi, Fundació BIT, Fundación Paideia Galiza, Gaia Green Tech, Galp España, Gestión Inteligente de Cargas, Girona Motor and Grup Supeco Maxor. FENIE/Galp/GiC retained as active station-level paths; seven low-evidence cases set aside without blocking."}
+    {"date":"2026-09-11","change":"Durable first-pass chain resumed from the proven 98-decision canonical blob after persistence audit; Iberdrola and IONITY received decisions 99-100 without using the unverified historical 373 counter."},
+    {"date":"2026-09-11","change":"IONITY Spain source-validated from its official country tariff table; Iberdrola retained active station-level because its public 0.35 EUR/kWh figure is explicitly indicative and charger-specific app prices are authoritative."}
   ]
 }
