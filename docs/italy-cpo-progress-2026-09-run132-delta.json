@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 132,
+  "observedAt": "2026-09-11T11:51:35+01:00",
+  "purpose": "Promote Powy/TheF Charging from station-level active to treated using current first-party Italy direct-channel class-wide tariffs.",
+  "changes": {
+    "treated": [
+      {
+        "partyId": "PWY",
+        "canonicalName": "TheF Charging S.r.l. / Powy",
+        "aliases": ["TheF Charging S.r.l.", "Powy", "PWY"],
+        "status": "treated",
+        "priority": "class-wide",
+        "inventory": {
+          "evse": 1080,
+          "stations": 387,
+          "source": "Italy canonical inventory / PUN scope previously tracked on research/italy-cpo-priority-20260905"
+        },
+        "tariffModel": "direct_cpo_power_band_class_wide",
+        "tariffChannel": "direct Powy only: Powy Charge app / Direct Payment QR / POS; roaming eMSP explicitly excluded",
+        "tariffs": [
+          {"class": "AC", "powerRule": "<=22 kW", "energyEurPerKwh": 0.72, "occupancyEurPerMin": 0.09, "occupancyGraceMin": 60, "occupancyWindow": "not applied 23:00-07:00"},
+          {"class": "DC", "powerRule": "23-60 kW inclusive", "energyEurPerKwh": 0.88, "occupancyEurPerMin": 0.19, "occupancyGraceMin": 60},
+          {"class": "DC+", "powerRule": "61-149 kW inclusive", "energyEurPerKwh": 0.92, "occupancyEurPerMin": null, "note": "No DC+ penalty value shown in the current Italy tariff table; do not infer one."},
+          {"class": "HPC", "powerRule": ">=150 kW", "energyEurPerKwh": 0.97, "occupancyEurPerMin": 0.29, "occupancyGraceMin": 60}
+        ],
+        "fees": {
+          "activation": {"appPowyChargeEur": 0.0, "directPaymentQrEur": 0.40, "posEur": 0.40},
+          "preAuthorization": {"appPowyChargeEur": 80.0, "directPaymentQrEur": 75.0, "posEur": 75.0, "isFinalCharge": false}
+        },
+        "vat": "included",
+        "validity": {"pageStatesUpdated": "June 2026", "verifiedAccessibleOn": "2026-09-11"},
+        "eligibility": "Direct Powy channels only; app promotions may produce lower station-selected prices, so the published class grid is the deterministic standard direct tariff and promotional overrides must be treated only when explicitly mapped.",
+        "officialUrls": [
+          "https://powy.energy/ricarica-veicolo/costi-di-ricarica/",
+          "https://powy.energy/ricarica-veicolo/powy-charge-app/"
+        ],
+        "proofPositive": [
+          "Current Powy first-party cost page explicitly labels its displayed prices as updated and exclusively applicable to Powy Charge app, Direct Payment QR and POS.",
+          "Italy table defines exact exhaustive power bands: AC <=22 kW, DC 23-60 kW, DC+ 61-149 kW, HPC >=150 kW.",
+          "Powy first-party app page explicitly separates direct Powy tariffs from roaming eMSP tariffs and states roaming prices may differ."
+        ],
+        "negativePaths": [
+          "Generic Powy editorial articles with average market prices are not used as tariff evidence.",
+          "Third-party roaming prices are not promoted to direct CPO tariffs.",
+          "Station-by-station mapping is no longer required for the standard direct tariff because the first-party grid covers the full power domain deterministically; only explicit promotions are station-selected exceptions."
+        ],
+        "coverage": {
+          "rankableDirectEvse": 1080,
+          "rankableDirectStations": 387,
+          "failClosedEvse": 0,
+          "scope": "party-wide through deterministic power classification"
+        },
+        "confidence": "high",
+        "lastInvestigated": "2026-09-11",
+        "lastChanged": "2026-09-11",
+        "history": [
+          "Run130 kept PWY active/station-level because the generic public guidance then inspected did not establish an exact deterministic tariff.",
+          "Run132 located the dedicated first-party Powy Costi di ricarica page, which publishes the complete current Italy direct-channel grid and exact power thresholds; PWY promoted to treated/class-wide."
+        ]
+      }
+    ],
+    "partial": [],
+    "setAside": [],
+    "active": [],
+    "supersededAlias": []
+  },
+  "effectiveCountsAfter": {
+    "treated": 49,
+    "partial": 23,
+    "setAside": 1,
+    "active": 11,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueuesAfter": {
+    "networkOrClassWide": 0,
+    "stationLevel": 11
+  },
+  "coverageAddedThisRun": {
+    "rankableDirectEvse": 1080,
+    "rankableDirectStations": 387
+  },
+  "consistency": {
+    "canonicalStatusEquation": "49+23+1+11=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "duplicatePartyIdsIntroduced": 0,
+    "result": "PASS_DELTA; physical canonical materialization still pending full replay"
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "state": "STALE_SEED_NOT_OVERWRITTEN",
+    "reason": "Do not replace the stale seed until the corrected lossless replay is executed across all historical deltas and the 88-partyId invariant passes."
+  },
+  "historyAppend": [
+    "Run132: Powy/PWY promoted from active station-level to treated class-wide using the current first-party Italy direct tariff grid: AC <=22 kW 0.72 EUR/kWh; DC 23-60 kW 0.88; DC+ 61-149 kW 0.92; HPC >=150 kW 0.97. Direct Payment/POS activation fee 0.40 EUR; Powy app activation fee zero; roaming excluded. Added 1080 EVSE / 387 stations to deterministic direct coverage."
+  ]
+}
