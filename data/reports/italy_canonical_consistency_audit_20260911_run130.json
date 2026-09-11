@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 130,
+  "auditedAt": "2026-09-11T09:54:56+01:00",
+  "effectiveCanonical": {
+    "treated": 48,
+    "partial": 23,
+    "setAside": 1,
+    "active": 12,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "checks": {
+    "canonicalStatusEquation": {"expected":84,"actual":84,"equation":"48+23+1+12=84","result":"PASS"},
+    "physicalPartyIdEquation": {"expected":88,"actual":88,"equation":"84+4=88","result":"PASS"},
+    "networkClassWideActive": {"count":0,"result":"PASS"},
+    "stationLevelActive": {"count":12,"result":"PASS"},
+    "emobitalyCoverage": {"physicalEvse":849,"rankableExactEvse":305,"failClosedEvse":544,"pendingCandidatesWithinFailClosed":8,"equation":"305+544=849","result":"PASS"},
+    "run129CandidateDedup": {"candidateCount":15,"provenHistoricalDuplicates":7,"stillPending":8,"equation":"7+8=15","result":"PASS"},
+    "aliasDoubleCount": {"knownSupersededAliases":4,"result":"PASS"},
+    "physicalCanonicalMaterialization": {"path":"docs/italy-cpo-progress-2026-09.json","result":"FAIL_STALE_SEED","action":"Do not overwrite until scripts/italy_cpo_progress_consolidate.py can replay every historical delta form losslessly and validate all 88 physical partyIds."}
+  },
+  "evidence": [
+    "docs/italy-cpo-progress-2026-09-run54-delta.json",
+    "docs/italy-cpo-progress-2026-09-run72-delta.json",
+    "docs/italy-cpo-progress-2026-09-run129-delta.json",
+    "docs/italy-cpo-progress-2026-09-run130-delta.json"
+  ],
+  "corrections": [
+    "Excluded seven run129 candidates already present in run54 from future new-coverage credit.",
+    "Kept eight Roman candidates inside fail-closed coverage pending complete ordered-ledger uniqueness proof.",
+    "Rejected default-branch GitHub code-search absence as uniqueness evidence because run72 proved that method can miss research-branch deltas."
+  ],
+  "result": "COUNTERS_PASS_PHYSICAL_CANONICAL_STILL_STALE"
+}
