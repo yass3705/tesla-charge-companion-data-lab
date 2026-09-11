@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 142,
+  "generatedAt": "2026-09-11T22:54:49+01:00",
+  "effectiveCounts": {
+    "treated": 49,
+    "partial": 24,
+    "setAside": 1,
+    "active": 10,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueues": {
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 10
+  },
+  "changes": {
+    "active": [
+      {
+        "partyId": "UTZ",
+        "canonicalName": "UAU srl / Uattzy",
+        "status": "active",
+        "priority": "station-level",
+        "aliases": ["UAU srl", "Uattzy"],
+        "tariffModel": "connector-specific; price displayed before session in Uattzy app/account channel",
+        "tariffChannel": "direct Uattzy app/RFID; QR/POS on enabled stations; roaming eMSP explicitly separate",
+        "officialReferences": [
+          "https://www.uattzy.com/faq/",
+          "https://www.uattzy.com/"
+        ],
+        "positiveEvidence": [
+          "Uattzy FAQ states that direct Uattzy users see the applied tariff at each connector before starting and any activation/parking costs; prices may vary by delivered power, session duration and stall occupation.",
+          "Uattzy FAQ confirms direct start methods App, Uattzy RFID, QR during network rollout and POS on enabled stations, while third-party apps/cards have their own pricing policies.",
+          "Fresh discovery candidate cluster in Palmanova: IT*UTZ*EC167 and IT*UTZ*EC168 at Contrada Contarini, IT*UTZ*EC169 and IT*UTZ*EC170 at Contrada Savorgnan, each reported as direct ad-hoc 0.62 EUR/kWh AC 22 kW by GoingElectric, updated 2026-09-08.",
+          "Fresh discovery candidate at Via Scamozzi, Palmanova reports direct ad-hoc 0.72 EUR/kWh for two DC 47 kW connectors; exact EVSE IDs still need first-party/PUN/backend corroboration before any rankable credit."
+        ],
+        "candidateEvidence": [
+          {
+            "location": "Contrada Contarini 16, Palmanova",
+            "evseIds": ["IT*UTZ*EC167", "IT*UTZ*EC168"],
+            "powerKw": 22,
+            "connector": "Type 2 AC",
+            "reportedDirectAdHocEurPerKwh": 0.62,
+            "source": "https://www.goingelectric.de/stromtankstellen/Italien/Palmanova/Contrada-Contarini-Contrada-Contarini-16/110271/",
+            "sourceRole": "discovery/corroboration only; not sufficient alone for rankable promotion"
+          },
+          {
+            "location": "Contrada Savorgnan 14a, Palmanova",
+            "evseIds": ["IT*UTZ*EC169", "IT*UTZ*EC170"],
+            "powerKw": 22,
+            "connector": "Type 2 AC",
+            "reportedDirectAdHocEurPerKwh": 0.62,
+            "source": "https://www.goingelectric.de/stromtankstellen/Italien/Palmanova/Contrada-Savorgnan-Contrada-Savorgnan-14a/110272/",
+            "sourceRole": "discovery/corroboration only; not sufficient alone for rankable promotion"
+          }
+        ],
+        "negativeEvidence": [
+          "No official public Uattzy page found exposing the exact current tariff of the Palmanova EVSEs outside the app/connector flow.",
+          "The official FAQ proves connector-specific pricing rather than a safe network-wide AC/DC tariff grid, so 0.62/0.72 EUR/kWh must not be generalized to the UTZ, ESH or GAS inventories.",
+          "No rankable EVSE increment is applied from third-party-only price evidence."
+        ],
+        "blockage": "Need deterministic first-party/PUN/public-backend mapping EVSE -> current direct tariff for each station; public FAQ confirms the tariff exists per connector but does not expose the values.",
+        "resumeCondition": "Capture Uattzy app/QR/POS/public backend or PUN tariff fields for exact EVSE IDs; then run ordered historical dedup before promotion.",
+        "confidence": "high on station-level model and channel separation; medium on fresh Palmanova candidate prices pending first-party/PUN corroboration",
+        "lastInvestigated": "2026-09-11",
+        "lastChanged": "2026-09-11",
+        "history": [
+          "run142: refreshed Uattzy official pricing semantics and stored exact Palmanova EVSE discovery candidates without promotion; closed any temptation to infer a network-wide 0.62/0.72 EUR/kWh grid."
+        ]
+      }
+    ]
+  },
+  "consistency": {
+    "canonicalBucketEquation": "49+24+1+10=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "duplicatePartyIdsIntroduced": 0,
+    "aliasDoubleCountIntroduced": 0,
+    "rankableEvseAdded": 0,
+    "pass": true,
+    "fullAuditRequiredThisRun": false,
+    "lastFullAuditPath": "data/reports/italy_canonical_consistency_audit_20260911_run141.json"
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalFileState": "STALE_SEED",
+    "safePromotionCondition": "complete corrected lossless replay of all historical deltas; require physicalPartyIds=88, duplicatePartyIds=0, inspect diff, then replace seed"
+  },
+  "nextAction": "Continue next largest unresolved station-level CPO with directly verifiable station/EVSE tariff surfaces; for Uattzy, target app/QR/POS/backend or PUN exact connector tariff values rather than repeating global-grid research. Atlante remains last."
+}
