@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "country": "ES",
-  "updatedAt": "2026-09-11T21:38:00Z",
+  "updatedAt": "2026-09-11T21:44:00Z",
   "status": "FIRST_PASS_IN_PROGRESS",
   "inventory": {
     "legacyWorkLabelCount": 618,
@@ -13,50 +13,48 @@
     "pagesCompleted": 146,
     "totalPages": 146,
     "fullPassValidated": true,
-    "note": "618 remains the historical work-label queue only. Current REVE observes 148 distinct CPO identities. Aliases/platform labels do not increment the physical-CPO count. The durable canonical chain is now advancing again from the proven 98-decision baseline; previously reported 373 remains unverified and is not used for counting."
+    "note": "618 remains the historical work-label queue only. Current REVE observes 148 distinct CPO identities. The durable canonical chain is advancing from the proven baseline; previously reported 373 remains unverified and is not used for counting."
   },
   "firstPass": {
-    "legacy618ReviewedMinimum": 100,
-    "legacy618RemainingMaximum": 518,
+    "legacy618ReviewedMinimum": 103,
+    "legacy618RemainingMaximum": 515,
     "countIsLowerBound": true,
-    "reason": "100 nominative decisions are now durably chained in Git. The historical nominative 618-label file remains unavailable, so exact carry-forward beyond durable decisions is not invented."
+    "reason": "103 nominative decisions are now durably chained in Git. Missing historical 618 membership is not invented."
   },
   "countsFromDecisions": {
     "sourceValidated": 13,
     "partial": 3,
-    "active": 24,
-    "setAside": 53,
+    "active": 25,
+    "setAside": 55,
     "excludedPlatform": 3,
     "supersededAlias": 4,
-    "decisionsTotal": 100
+    "decisionsTotal": 103
   },
   "canonicalChain": {
-    "baseBlobSha": "30adcf86a0c7a31dbefe111b870fdda8d71aeeae",
+    "baseBlobSha": "6ffa99321f87d2005ff6f5a597215af5fd0de49b",
     "basePath": "docs/spain-cpo-progress-2026-09.json",
-    "baseDecisionCount": 98,
+    "baseDecisionCount": 100,
     "baseCounts": {
-      "sourceValidated": 12,
+      "sourceValidated": 13,
       "partial": 3,
-      "active": 23,
+      "active": 24,
       "setAside": 53,
       "excludedPlatform": 3,
       "supersededAlias": 4
     },
-    "rule": "The immutable base blob preserves complete nominative detail for decisions 1-98. deltaDecisions below adds decisions 99-100. Resolve this chain before dedupe/counting; compact only losslessly."
+    "rule": "The immutable base blob preserves complete nominative detail for decisions 1-100. deltaDecisions below adds decisions 101-103. Resolve this chain before dedupe/counting; compact only losslessly."
   },
   "deltaDecisions": [
     {
-      "canonical": "IBERDROLA CLIENTES S.A.U",
-      "partyId": "IBD",
-      "status": "active",
+      "canonical": "Motor Box Mallorca SL",
+      "partyId": "915",
+      "status": "setAside",
       "priority": "station-level",
-      "tariffModel": "official Iberdrola public charging with charger-specific price authority in app",
-      "inventoryCoverage": "2288 locations / 8475 EVSE / 9463 connectors in current REVE snapshot",
-      "coverage": "Official Iberdrola public charging page exposes the charging network and currently shows 0.35 EUR/kWh VAT included as an indicative public price, while explicitly stating that the applicable price for each charger is the price shown in the Iberdrola app. Therefore 0.35 EUR/kWh is not generalized to every REVE EVSE.",
-      "blocker": "Requires deterministic charger/EVSE-to-Iberdrola-app price mapping for exhaustive TCC ranking.",
-      "resumeCondition": "post-first-pass app/backend or deterministic charger checkout mapping",
+      "tariffModel": "dealer/site charging",
+      "inventoryCoverage": "2 locations / 2 EVSE / 2 connectors in current REVE snapshot",
+      "blocker": "Current first-pass search confirms the Motor Box Mallorca/Porsche Mallorca business identity but did not surface an official current public EV charging tariff or deterministic direct checkout for the two REVE EVSE.",
+      "resumeCondition": "official site charging tariff, QR/ad-hoc checkout or post-first-pass review",
       "evidence": [
-        "https://www.iberdrola.es/movilidad-electrica/productos/puntos-de-recarga",
         "data/spain_reve/coverage.json",
         "data/spain_reve/raw_cpo_labels_snapshot.json"
       ],
@@ -64,15 +62,34 @@
       "lastChanged": "2026-09-11"
     },
     {
-      "canonical": "IONITY GmbH Sucursal en España",
-      "partyId": "IOY",
-      "status": "sourceValidated",
-      "priority": "network-wide",
-      "tariffModel": "official IONITY Spain direct/app/subscription tariff table",
-      "inventoryCoverage": "43 locations / 172 EVSE / 172 connectors in current REVE snapshot",
-      "coverage": "Official IONITY country tariff table currently lists Spain at 0.66 EUR/kWh for IONITY Direct, 0.62 EUR/kWh for IONITY Go/app without subscription, 0.48 EUR/kWh Motion monthly, 0.47 EUR/kWh Motion annual, 0.38 EUR/kWh Power annual and 0.37 EUR/kWh Power monthly; direct/ad-hoc TCC ranking uses the 0.66 EUR/kWh IONITY Direct price unless the user explicitly selects another eligible IONITY plan.",
+      "canonical": "Moya Estaciones Electricas SL",
+      "partyId": "MOY",
+      "status": "setAside",
+      "priority": "station-level",
+      "tariffModel": "single-site charging hub",
+      "inventoryCoverage": "1 location / 12 EVSE / 12 connectors in current REVE snapshot",
+      "blocker": "Official registry evidence confirms Moya Estaciones Electricas SL was created to operate EV charging points, but no official/direct deterministic customer tariff surfaced in first pass. A third-party listing currently reports Type 2 and CCS prices, but third-party prices are not promoted as TCC tariff authority.",
+      "resumeCondition": "official Moya tariff, QR/ad-hoc checkout, operator app/backend or post-first-pass review",
       "evidence": [
-        "https://www.ionity.eu/hr/mreza/pristup-i-placanje",
+        "https://www.boe.es/borme/dias/2024/09/20/pdfs/BORME-A-2024-182-16.pdf",
+        "data/spain_reve/coverage.json",
+        "data/spain_reve/raw_cpo_labels_snapshot.json"
+      ],
+      "lastInvestigated": "2026-09-11",
+      "lastChanged": "2026-09-11"
+    },
+    {
+      "canonical": "Naturgy Nuevas Energías, SLU",
+      "partyId": "NTG",
+      "status": "active",
+      "priority": "station-level",
+      "tariffModel": "Naturgy Easy Recarga/app-managed direct charging",
+      "inventoryCoverage": "30 locations / 115 EVSE / 126 connectors in current REVE snapshot",
+      "coverage": "Official Naturgy privacy/service surfaces confirm Naturgy Nuevas Energías SLU as the responsible entity for electric-recharging contracts and the Easy Recarga/Naturgy Vehicular application, including charging-consumption and pricing analysis. No deterministic current public network-wide numeric tariff surfaced in this first pass.",
+      "blocker": "Requires station/app/backend or direct checkout price mapping before rankable station tariffs can be published.",
+      "resumeCondition": "post-first-pass Easy Recarga/app backend extraction or official station tariff",
+      "evidence": [
+        "https://www.naturgy.es/legal/es/politica_privacidad_nuevas_energias",
         "data/spain_reve/coverage.json",
         "data/spain_reve/raw_cpo_labels_snapshot.json"
       ],
@@ -88,22 +105,21 @@
     "rule": "Aliases and platform labels never increment the physical-CPO denominator unless current REVE proves an independent party identity."
   },
   "coherence": {
-    "checkedAt": "2026-09-11T21:38:00Z",
+    "checkedAt": "2026-09-11T21:44:00Z",
     "result": "GREEN_WITH_DOCUMENTED_LEGACY_COUNTER_UNCERTAINTY",
     "checks": [
-      "REVE national locations pass remains complete with 148 distinct current CPO identities",
-      "618 retained only as historical work-label queue",
-      "immutable base blob 30adcf86a0c7a31dbefe111b870fdda8d71aeeae preserves complete nominative detail for decisions 1-98",
-      "two new durable decisions added: Iberdrola 99 and IONITY 100",
-      "counts reconcile exactly: 13 sourceValidated + 3 partial + 24 active + 53 setAside + 3 excludedPlatform + 4 supersededAlias = 100",
-      "previously reported 373 remains unverified and is not used for durable KPI counting",
-      "Iberdrola indicative 0.35 EUR/kWh was not extrapolated because Iberdrola states charger-specific app prices are authoritative",
-      "IONITY Spain direct 0.66 EUR/kWh is retained separately from app/subscription prices",
-      "no set-aside case was re-audited"
+      "current REVE durable snapshot still contains 148 canonical identities",
+      "immutable base blob 6ffa99321f87d2005ff6f5a597215af5fd0de49b preserves complete nominative detail for decisions 1-100",
+      "three new durable decisions added: Motor Box Mallorca 101, Moya Estaciones Electricas 102, Naturgy Nuevas Energías 103",
+      "counts reconcile exactly: 13 sourceValidated + 3 partial + 25 active + 55 setAside + 3 excludedPlatform + 4 supersededAlias = 103",
+      "third-party Moya prices were not promoted",
+      "Naturgy remains active station-level because no safe network-wide numeric tariff was proven",
+      "no set-aside case was re-audited",
+      "previously reported 373 remains unverified and excluded from durable KPI counting"
     ]
   },
   "history": [
-    {"date":"2026-09-11","change":"Durable first-pass chain resumed from the proven 98-decision canonical blob after persistence audit; Iberdrola and IONITY received decisions 99-100 without using the unverified historical 373 counter."},
-    {"date":"2026-09-11","change":"IONITY Spain source-validated from its official country tariff table; Iberdrola retained active station-level because its public 0.35 EUR/kWh figure is explicitly indicative and charger-specific app prices are authoritative."}
+    {"date":"2026-09-11","change":"First pass advanced durably from 100 to 103 decisions: Motor Box Mallorca and Moya Estaciones Electricas set aside without blocking; Naturgy Nuevas Energías retained active for station-level app/backend mapping."},
+    {"date":"2026-09-11","change":"No third-party tariff was promoted; all three decisions are anchored to the durable REVE snapshot and official evidence where available."}
   ]
 }
