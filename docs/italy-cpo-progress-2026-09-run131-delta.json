@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 131,
+  "asOf": "2026-09-11T10:52:09+01:00",
+  "purpose": "Canonical replay hardening; no tariff/CPO promotion in this delta.",
+  "changes": {
+    "treated": [],
+    "partial": [],
+    "setAside": [],
+    "active": [],
+    "supersededAlias": []
+  },
+  "corrections": [
+    {
+      "type": "canonical-consolidator-parser",
+      "path": "scripts/italy_cpo_progress_consolidate.py",
+      "commit": "74f9130c456d88e55bae8dd353ea4bc42a3a1175",
+      "problem": "Recent Italy deltas such as run130 store `changes` as status buckets (treated/partial/setAside/active/supersededAlias), while the previous consolidator iterated `changes` as if it were always a flat list. This made a full lossless replay unsafe and prevented materialization of the physical canonical file.",
+      "fix": "Support both flat-list and status-bucketed `changes`, infer missing status from the bucket, preserve raw deltaEvidence, and fail closed on malformed or unknown party-scoped buckets.",
+      "impact": "No tariff, EVSE coverage, CPO status, alias decision, or inventory count changed by this correction."
+    }
+  ],
+  "effectiveCountsAfter": {
+    "treated": 48,
+    "partial": 23,
+    "setAside": 1,
+    "active": 12,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueuesAfter": {
+    "networkOrClassWide": 0,
+    "stationLevel": 12
+  },
+  "emobitaly": {
+    "inventoryEVSE": 849,
+    "rankableExactEVSE": 305,
+    "failClosedEVSE": 544,
+    "pendingCurrentCandidatesWithinFailClosed": 8,
+    "pendingEVSEIds": [
+      "IT*EMO*E477*1",
+      "IT*EMO*E478*1",
+      "IT*EMO*E479*1",
+      "IT*EMO*E480*1",
+      "IT*EMO*E481*1",
+      "IT*EMO*E482*1",
+      "IT*EMO*E483*1",
+      "IT*EMO*E484*1"
+    ],
+    "decision": "No new coverage credit until complete ordered replay proves these eight IDs were not credited in any older EMOBITALY delta."
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "state": "STALE_SEED_NOT_OVERWRITTEN",
+    "reason": "The parser defect is fixed, but the complete ordered replay has not yet been executed and validated against all 88 physical partyIds in this run.",
+    "safeResumeCondition": "Execute scripts/italy_cpo_progress_consolidate.py against the full branch history, require consistency.result=pass, physicalPartyIds=88, duplicatePartyIds=0, then inspect the canonical diff before replacing the stale seed."
+  },
+  "consistency": {
+    "canonicalStatusEquation": "48+23+1+12=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "networkClassWideActive": 0,
+    "stationLevelActive": 12,
+    "result": "COUNTERS_PASS_CANONICAL_REPLAY_CODE_FIXED_MATERIALIZATION_PENDING"
+  },
+  "historyAppend": [
+    "Run131: fixed the lossless consolidator so modern status-bucketed changes are replayable; no CPO/EVSE promotion was made. Physical canonical remains fail-closed until the complete replay is actually executed and the 88-partyId invariant passes."
+  ]
+}
