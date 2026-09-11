@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 139,
+  "generatedAt": "2026-09-11T18:52:42+01:00",
+  "effectiveCounts": {
+    "treated": 49,
+    "partial": 24,
+    "setAside": 1,
+    "active": 10,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueues": {
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 10
+  },
+  "changes": {
+    "active": [
+      {
+        "partyId": "EMO",
+        "canonicalName": "EMOBITALY S.r.l.",
+        "status": "active",
+        "priority": "station-level",
+        "run136CandidateDedupProgress": {
+          "candidateEvse": 50,
+          "historicallyCreditedConfirmed": 42,
+          "stillUnresolvedAgainstFullOrderedLedger": 8,
+          "creditedAsNewThisRun": 0,
+          "orderedReplayPreviouslyCheckedThroughRun": 73,
+          "orderedReplayNowCheckedThroughRun": 80,
+          "veneziaCandidates": [
+            "IT*EMO*E952*5",
+            "IT*EMO*E952*6",
+            "IT*EMO*E952*7",
+            "IT*EMO*E952*8",
+            "IT*EMOE1415",
+            "IT*EMOE1416",
+            "IT*EMOE1417",
+            "IT*EMOE1418"
+          ],
+          "newAbsenceEvidence": "Runs 74, 75, 76, 77, 78, 79 and 80 were replayed in order on research/italy-cpo-priority-20260905 and contain no credited mapping for the eight Venezia candidate IDs.",
+          "decision": "remain fail-closed until all pre-run136 ordered deltas after run80 are checked; no new coverage credited"
+        },
+        "resumeCondition": "Continue ordered replay from run81 through the last pre-run136 delta; promote exactly the Venezia IDs only if absent from every earlier credited mapping.",
+        "confidence": "high for absence through run80; pending for later pre-run136 deltas",
+        "lastInvestigated": "2026-09-11",
+        "lastChanged": "2026-09-11",
+        "history": [
+          "run139: extended deterministic ordered replay from run73 through run80; the eight Venezia run136 candidates are absent from all checked runs 74-80 and remain fail-closed pending completion through pre-run136 history."
+        ]
+      },
+      {
+        "partyIds": ["ESH", "GAS", "UTZ"],
+        "canonicalName": "Uattzy / UAU group (E-Shore, GASGAS, EnerMia)",
+        "status": "active",
+        "priority": "station-level",
+        "inventoryFreshness": {
+          "canonicalSnapshotPartyIdCounts": {
+            "ESH": 892,
+            "GAS": 290,
+            "UTZ": 16,
+            "sumKnownPartyIdEvse": 1198,
+            "snapshotTimestamp": "2026-08-30T11:14:39.750794Z"
+          },
+          "currentFirstPartyBrandStatement": "Uattzy states more than 3,000 charging points installed and managed in Italy and more than 2,000 additional points incoming.",
+          "comparabilityWarning": "Brand-level installed/managed points are not proven to map one-to-one to current public PUN ESH/GAS/UTZ partyId EVSE, so canonical partyId counts are not altered from this statement alone.",
+          "action": "mark historical PUN snapshot as potentially stale for Uattzy-group completeness; refresh partyId inventory before claiming exhaustive station-level completion"
+        },
+        "tariffEvidence": {
+          "officialCurrent": "Current Uattzy site confirms Uattzy is the UAU public-charging brand created from E-Shore, GASGAS and EnerMia, and that Uattzy defines tariffs in its joint-investment charging model.",
+          "networkWideTariffProven": false,
+          "reason": "No current first-party public tariff table with deterministic whole-network AC/DC/HPC applicability was found on the official site during this run; secondary 0.57/0.67 and 0.61/0.72 EUR/kWh figures remain corroborative only."
+        },
+        "officialUrls": [
+          "https://www.uattzy.com/"
+        ],
+        "resumeCondition": "Refresh ESH/GAS/UTZ/possible EnerMia public inventory from PUN/AFIR and continue exact station/EVSE tariff resolution; promote a class-wide rule only if first-party applicability is explicitly proven.",
+        "confidence": "high for group identity and brand-level network-size statement; no tariff promotion",
+        "lastInvestigated": "2026-09-11",
+        "lastChanged": "2026-09-11",
+        "history": [
+          "run139: current first-party Uattzy site confirms UAU brand consolidation and >3,000 installed/managed points; this triggers an inventory-freshness warning but no partyId count change and no tariff extrapolation."
+        ]
+      }
+    ]
+  },
+  "consistency": {
+    "canonicalBucketEquation": "49+24+1+10=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "duplicatePartyIdsIntroduced": 0,
+    "aliasDoubleCountIntroduced": 0,
+    "rankableEvseAdded": 0,
+    "pass": true
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalFileState": "STALE_SEED",
+    "safePromotionCondition": "complete corrected lossless replay of all historical deltas; require physicalPartyIds=88, duplicatePartyIds=0, inspect diff, then replace seed"
+  },
+  "nextAction": "Continue EMOBITALY ordered replay from run81 through pre-run136 history, then resolve/promote Venezia if unique; refresh Uattzy-group PUN/AFIR inventory before claiming exhaustive group coverage. Atlante remains last."
+}
