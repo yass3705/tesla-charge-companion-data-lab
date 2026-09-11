@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 128,
+  "observedAt": "2026-09-11T07:51:45+01:00",
+  "baseEffectiveState": {
+    "treated": 48,
+    "partial": 23,
+    "setAside": 1,
+    "active": 12,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88,
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 12
+  },
+  "changes": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "partial",
+      "priority": "station-level",
+      "changeType": "coverage_restore_after_freshness_recheck",
+      "tariffModel": "station_specific",
+      "tariffChannel": "PUN published station tariff; direct/ad-hoc semantics preserved from prior EMOBITALY ledger policy",
+      "restoredSubpopulations": [
+        {
+          "station": "Via Olgettina, 60, Milano (MI)",
+          "evseCount": 40,
+          "evseIdPattern": "IT*EMO*E2016*1..40",
+          "connector": "Type 2",
+          "powerKw": 22,
+          "energyEurPerKwh": 0.48,
+          "activationFeeEur": 1.14,
+          "source": "https://pienotto.it/stazioni/258489-emobitaly-s-r-l-milano-mi",
+          "sourceAttribution": "Dati della Piattaforma Unica Nazionale",
+          "freshnessAtObservation": "agg. 6 h fa"
+        },
+        {
+          "station": "Piazza Piemonte, 14, Milano (MI)",
+          "evseCount": 12,
+          "evseIds": [
+            "IT*EMO*E2361*1",
+            "IT*EMO*E2362*1",
+            "IT*EMO*E2363*1",
+            "IT*EMO*E2364*1",
+            "IT*EMO*E2365*1",
+            "IT*EMO*E2366*1",
+            "IT*EMO*E2367*1",
+            "IT*EMO*E2368*1",
+            "IT*EMO*E2369*1",
+            "IT*EMO*E2370*1",
+            "IT*EMO*E2371*1",
+            "IT*EMO*E2372*1"
+          ],
+          "connector": "Type 2",
+          "powerKw": 22,
+          "energyEurPerKwh": 0.48,
+          "activationFeeEur": 1.14,
+          "source": "https://pienotto.it/stazioni/260123-emobitaly-s-r-l-milano-mi",
+          "sourceAttribution": "Dati della Piattaforma Unica Nazionale",
+          "freshnessAtObservation": "agg. 6 h fa"
+        }
+      ],
+      "coverageBeforeRun128": {
+        "rankableExactEvse": 253,
+        "failClosedEvse": 596,
+        "physicalEvse": 849
+      },
+      "coverageAfterRun128": {
+        "rankableExactEvse": 305,
+        "failClosedEvse": 544,
+        "physicalEvse": 849,
+        "coveragePct": 35.9246
+      },
+      "proofPositive": "The exact same 52 EVSE removed at run126 because PUN tariff became n.d. again expose a current station tariff of EUR 0.480/kWh plus EUR 1.14 activation. Since these IDs were already deduplicated before removal, restoration does not require a new uniqueness credit.",
+      "negativePaths": [
+        "run126 n.d. observation is superseded for these exact EVSE by fresh current PUN-derived evidence"
+      ],
+      "blockage": "544/849 EMOBITALY EVSE remain without a current exact station/EVSE tariff mapping in the deduplicated ledger.",
+      "resumeCondition": "Enumerate only current PUN/Pienotto station records not already present in the ordered EMOBITALY ledger; credit new EVSE only after deterministic set-difference.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-11",
+      "lastChanged": "2026-09-11"
+    }
+  ],
+  "nominalCountsAfter": {
+    "treated": 48,
+    "partial": 23,
+    "setAside": 1,
+    "active": 12,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88,
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 12
+  },
+  "consistency": {
+    "statusEquation": "48 + 23 + 1 + 12 = 84; 84 + 4 supersededAlias = 88 physical partyIds",
+    "nominalStatusCountsChanged": false,
+    "aliasCountsChanged": false,
+    "emobitalyCoverageEquation": "253 + 52 restored = 305 rankable; 849 - 305 = 544 fail-closed",
+    "result": "PASS"
+  },
+  "canonicalMaterialization": {
+    "status": "still_required",
+    "reason": "docs/italy-cpo-progress-2026-09.json remains the 2026-09-05 seed; replacing it without running the existing lossless consolidator would risk dropping historical per-CPO evidence. Run128 is therefore recorded as an append-only delta until lossless materialization is available.",
+    "script": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "history": [
+    "2026-09-11 run128: restored 40 Via Olgettina EVSE after fresh PUN-derived tariff returned.",
+    "2026-09-11 run128: restored 12 Piazza Piemonte EVSE after fresh PUN-derived tariff returned.",
+    "2026-09-11 run128: EMOBITALY exact rankable coverage increased from 253/849 to 305/849; no nominal CPO status or alias count changed."
+  ]
+}
