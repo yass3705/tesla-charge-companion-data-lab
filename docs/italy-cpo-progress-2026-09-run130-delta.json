@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 130,
+  "observedAt": "2026-09-11T09:54:56+01:00",
+  "baseEffectiveState": {
+    "treated": 48,
+    "partial": 23,
+    "setAside": 1,
+    "active": 12,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88,
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 12
+  },
+  "changes": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "partial",
+      "priority": "station-level",
+      "changeType": "run129_candidate_ordered_ledger_dedup_partial_resolution",
+      "candidateExactEvseFromRun129": 15,
+      "provenHistoricalDuplicates": {
+        "count": 7,
+        "evseIds": [
+          "IT*EMO*E2079*1",
+          "IT*EMO*E2079*2",
+          "IT*EMO*E2079*3",
+          "IT*EMOE1206",
+          "IT*EMOE1207",
+          "IT*EMOE969",
+          "IT*EMOE970"
+        ],
+        "sources": [
+          "docs/italy-cpo-progress-2026-09-run54-delta.json",
+          "docs/italy-cpo-progress-2026-09-run72-delta.json"
+        ],
+        "reason": "Run54 already records Gallarate (3), Santa Teresa Gallura (2) and San Vito dei Normanni (2); run72 independently identifies Gallarate as an already-recorded historical mapping and mandates ordered research-branch set-difference before future EMO credit."
+      },
+      "pendingExactCandidates": {
+        "count": 8,
+        "evseIds": [
+          "IT*EMOE477",
+          "IT*EMOE478",
+          "IT*EMOE479",
+          "IT*EMOE480",
+          "IT*EMOE481",
+          "IT*EMOE482",
+          "IT*EMOE483",
+          "IT*EMOE484"
+        ],
+        "locations": [
+          "Via Pio Emanuelli 1, Roma",
+          "Viale Castello della Magliana 25, Roma"
+        ],
+        "reasonHeld": "Exact tariffs are fresh and station-mapped, but a complete branch-wide ordered-ledger replay has not yet proven these eight IDs absent from every historical delta. Default-branch code search is explicitly insufficient after the run72 defect."
+      },
+      "rankableCreditThisRun": 0,
+      "coverageBeforeRun130": {
+        "rankableExactEvse": 305,
+        "failClosedEvse": 544,
+        "physicalEvse": 849,
+        "pendingDedupCandidateEvse": 15
+      },
+      "coverageAfterRun130": {
+        "rankableExactEvse": 305,
+        "failClosedEvse": 544,
+        "physicalEvse": 849,
+        "pendingDedupCandidateEvse": 8,
+        "provenDuplicateCandidatesRemoved": 7
+      },
+      "proofPositive": [
+        "run54 explicitly contains IT*EMO*E2079*1/*2/*3, IT*EMOE1206/1207 and IT*EMOE969/970",
+        "run72 documents prior EMOBITALY cross-run duplicate over-credit and requires ordered research-branch delta set-difference"
+      ],
+      "negativePaths": [
+        "GitHub default-branch code search returned no Roman candidate matches but cannot establish uniqueness on the research branch; it is not used as promotion proof."
+      ],
+      "blockage": "Complete ordered branch-wide replay is still required before crediting the eight Roman candidates.",
+      "resumeCondition": "Replay every EMOBITALY exact-EVSE delta on research/italy-cpo-priority-20260905; credit only Roman IDs absent from the resulting unique set.",
+      "confidence": "high for the seven duplicate exclusions and tariff mapping; fail-closed for the eight pending uniqueness checks",
+      "lastInvestigated": "2026-09-11",
+      "lastChanged": "2026-09-11"
+    },
+    {
+      "partyId": "PWY",
+      "canonicalName": "TheF Charging S.r.l. / Powy",
+      "status": "active",
+      "priority": "station-level",
+      "changeType": "fresh_inventory_context_recheck_no_tariff_promotion",
+      "inventoryContext": [
+        "Powy announced 35 charging points across 18 Bolzano stations on 2026-07-30",
+        "Powy announced acquisition of RAW Charging Network Italy on 2026-06-11, adding 138 charging points across five outlet locations",
+        "Powy announced 52 active public charging points at 18 Milan locations on 2026-03-23"
+      ],
+      "tariffDecision": "No network-wide tariff promotion. Current Powy guidance states public charging cost varies by operator/location/plan and directs users to current app/site tariffs; exact IT*PWY/TheF station/EVSE mapping remains required.",
+      "rankableCreditThisRun": 0,
+      "blockage": "No deterministic current direct tariff for the whole 1080-EVSE / 387-station party scope.",
+      "resumeCondition": "Resolve exact IT*PWY EVSE through PUN/native Powy station page, QR/ad-hoc payload or public/guest backend and promote only mapped EVSEs.",
+      "lastInvestigated": "2026-09-11",
+      "lastChanged": "2026-09-11"
+    }
+  ],
+  "nominalCountsAfter": {
+    "treated": 48,
+    "partial": 23,
+    "setAside": 1,
+    "active": 12,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88,
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 12
+  },
+  "consistency": {
+    "statusEquation": "48 + 23 + 1 + 12 = 84; 84 + 4 supersededAlias = 88 physical partyIds",
+    "nominalStatusCountsChanged": false,
+    "aliasCountsChanged": false,
+    "emoCoverageEquation": "305 rankable + 544 failClosed = 849 physical EVSE; 8 pending candidates are a subset of failClosed until uniqueness is proven",
+    "result": "PASS_WITH_CANONICAL_MATERIALIZATION_DEFECT"
+  },
+  "canonicalMaterialization": {
+    "status": "still_required",
+    "reason": "docs/italy-cpo-progress-2026-09.json remains the older seed and must not be overwritten until the lossless replay is verified across all historical delta shapes.",
+    "script": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "history": [
+    "2026-09-11 run130: ordered-ledger evidence proved 7/15 run129 EMOBITALY candidates were historical duplicates; they were removed from the pending set without changing rankable coverage.",
+    "2026-09-11 run130: eight Roman EMOBITALY candidates remain fail-closed pending complete branch-wide uniqueness replay; default-branch code search was not accepted as proof.",
+    "2026-09-11 run130: refreshed Powy inventory context; no tariff promotion because current pricing remains location/operator dependent."
+  ]
+}
