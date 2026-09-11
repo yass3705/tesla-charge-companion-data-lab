@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 134,
+  "observedAt": "2026-09-11T13:55:12+01:00",
+  "purpose": "Record current first-party Uattzy umbrella/alias evidence for E-Shore, GASGAS and UAU/EnerMia without collapsing distinct physical PUN partyIds or extrapolating secondary-source tariff grids.",
+  "changes": {
+    "treated": [],
+    "partial": [],
+    "setAside": [],
+    "active": [],
+    "supersededAlias": []
+  },
+  "metadataEnrichment": [
+    {
+      "partyIds": ["ESH", "GAS", "UTZ"],
+      "umbrellaCanonicalName": "Uattzy by UAU srl",
+      "relationship": "Uattzy is the public charging brand of UAU, formed from E-Shore, GASGAS and EnerMia. Preserve the distinct PUN partyIds ESH/GAS/UTZ as physical inventory identities; do not count Uattzy as a fourth independent CPO and do not supersede the partyIds unless a future authoritative inventory migration proves they have disappeared.",
+      "priority": "station-level",
+      "tariffModel": "connector/station-specific as exposed in Uattzy app/account surfaces; no current first-party universal network price proven",
+      "tariffChannel": "Uattzy app/RFID/QR/POS direct CPO channels; third-party app/RFID prices are eMSP roaming and must remain separate",
+      "officialUrls": [
+        "https://www.uattzy.com/",
+        "https://www.uattzy.com/faq/"
+      ],
+      "proofPositive": [
+        "Current Uattzy first-party site identifies Uattzy as the public-charging brand of UAU and states that UAU was formed from E-Shore, GASGAS and EnerMia.",
+        "Current Uattzy FAQ states users of the Uattzy app/account can see the tariff applied to each connector before charging and any additional costs.",
+        "Current Uattzy FAQ states prices can vary with delivered power, session duration and stall-occupation time.",
+        "Current Uattzy FAQ distinguishes Uattzy direct channels from compatible third-party apps/cards, whose prices and conditions may differ."
+      ],
+      "negativePaths": [
+        "Do not promote press/observer values such as 0.57/0.67 EUR/kWh for app/RFID or 0.61/0.72 EUR/kWh for POS as a universal Uattzy network rule because the current first-party FAQ explicitly describes connector-level tariffs and variable additional costs.",
+        "Do not merge ESH, GAS and UTZ into one physical partyId for inventory counts solely because they share the Uattzy commercial umbrella.",
+        "Do not treat third-party eMSP prices as direct Uattzy CPO tariffs."
+      ],
+      "blockage": "No public first-party deterministic mapping from every ESH/GAS/UTZ EVSE or station to its current direct Uattzy price was found. The current FAQ points to connector-level pricing in the Uattzy app/account surfaces.",
+      "resumeCondition": "A public/guest Uattzy backend, QR/POS endpoint, app API or PUN payload that maps exact ESH/GAS/UTZ station/EVSE identifiers to current direct tariff components, or a new first-party tariff table with explicit universal applicability and exact power thresholds.",
+      "confidence": "high for corporate/alias relationship and fail-closed tariff classification; no rankable tariff added",
+      "lastInvestigated": "2026-09-11",
+      "lastChanged": "2026-09-11"
+    }
+  ],
+  "effectiveCountsAfter": {
+    "treated": 49,
+    "partial": 24,
+    "setAside": 1,
+    "active": 10,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueuesAfter": {
+    "networkOrClassWide": 0,
+    "activeStationLevel": 10
+  },
+  "coverageAddedThisRun": {
+    "rankableDirectEvse": 0,
+    "rankableDirectLocations": 0
+  },
+  "consistency": {
+    "canonicalStatusEquation": "49+24+1+10=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "duplicatePartyIdsIntroduced": 0,
+    "aliasDoubleCountIntroduced": 0,
+    "result": "PASS_METADATA_ONLY; three physical partyIds preserved under one commercial umbrella"
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "state": "STALE_SEED_NOT_OVERWRITTEN",
+    "reason": "Full corrected historical replay and 88-partyId invariant validation are still required before replacing the seed."
+  },
+  "historyAppend": [
+    "Run134: reconciled current Uattzy first-party identity evidence. Uattzy is UAU's public-charging brand formed from E-Shore, GASGAS and EnerMia, but ESH/GAS/UTZ remain distinct physical PUN partyIds for inventory. Current first-party FAQ says tariffs are shown per connector and can vary by power, session duration and stall occupancy, so secondary-source fixed Uattzy grids are not promoted network-wide. No EVSE coverage was credited."
+  ]
+}
