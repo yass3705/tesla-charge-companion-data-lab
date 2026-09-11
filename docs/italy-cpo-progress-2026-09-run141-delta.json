@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 141,
+  "generatedAt": "2026-09-11T20:51:26+01:00",
+  "effectiveCounts": {
+    "treated": 49,
+    "partial": 24,
+    "setAside": 1,
+    "active": 10,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueues": {
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 10
+  },
+  "changes": {
+    "active": [
+      {
+        "partyId": "EMO",
+        "canonicalName": "EMOBITALY S.r.l.",
+        "status": "active",
+        "priority": "station-level",
+        "run140CandidateDedup": {
+          "candidateEvse": 9,
+          "historicallyCreditedConfirmed": 9,
+          "newRankableEvse": 0,
+          "historicalProofRun": 55,
+          "exactIds": [
+            "IT*EMOE327",
+            "IT*EMOE1348",
+            "IT*EMOE151",
+            "IT*EMOE152",
+            "IT*EMOE175",
+            "IT*EMOE200",
+            "IT*EMOE735",
+            "IT*EMOE736",
+            "IT*EMOE553"
+          ],
+          "decision": "close all nine run140 candidates as historical duplicates; do not increment EMOBITALY rankable coverage"
+        },
+        "positiveEvidence": [
+          "run55 explicitly credited the same nine EVSE IDs with the same station-level prices and 0.74 EUR activation fee later rediscovered in run140",
+          "Fivizzano E327 was credited at 0.20 EUR/kWh; Accettura E1348 and Poggio Imperiale E151/E152 at 0.25 EUR/kWh; Belluno E175/E200, Brindisi Montagna E735, Campomaggiore E736 and Trasquera E553 at 0.29 EUR/kWh"
+        ],
+        "negativeEvidence": [
+          "No run140 candidate is eligible for a new rankable increment; re-crediting any of the nine IDs would double-count historical coverage"
+        ],
+        "resumeCondition": "Do not revisit the run140 nine-EVSE batch unless new evidence changes tariff validity. Continue EMOBITALY only with genuinely new exact station/EVSE mappings checked against the ordered credited ledger before promotion.",
+        "confidence": "high; 9/9 exact historical duplicate match",
+        "lastInvestigated": "2026-09-11",
+        "lastChanged": "2026-09-11",
+        "history": [
+          "run141: completed run140 EMOBITALY candidate dedup; all nine IDs were already credited in run55, therefore zero new rankable EVSE."
+        ]
+      }
+    ]
+  },
+  "consistency": {
+    "canonicalBucketEquation": "49+24+1+10=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "duplicatePartyIdsIntroduced": 0,
+    "aliasDoubleCountIntroduced": 0,
+    "rankableEvseAdded": 0,
+    "run140CandidateDuplicateEquation": "9 candidates = 9 prior historical credits in run55; 0 new",
+    "pass": true,
+    "fullAuditRequiredThisRun": true,
+    "fullAuditPath": "data/reports/italy_canonical_consistency_audit_20260911_run141.json"
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalFileState": "STALE_SEED",
+    "safePromotionCondition": "complete corrected lossless replay of all historical deltas; require physicalPartyIds=88, duplicatePartyIds=0, inspect diff, then replace seed"
+  },
+  "nextAction": "Move past the closed run140 EMOBITALY duplicate batch and continue the next largest unresolved station-level CPO; do not repeat exhausted global-tariff investigations. Atlante remains last."
+}
