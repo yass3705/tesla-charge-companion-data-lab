@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 144,
+  "generatedAt": "2026-09-12T00:58:00+01:00",
+  "effectiveCounts": {
+    "treated": 49,
+    "partial": 24,
+    "setAside": 1,
+    "active": 10,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueues": {
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 10
+  },
+  "changes": {
+    "active": [
+      {
+        "partyId": "EDN",
+        "canonicalName": "Edison Next S.P.A.",
+        "status": "active",
+        "priority": "station-level",
+        "inventorySnapshot": {
+          "canonicalEvse": 826,
+          "canonicalStations": 377,
+          "source": "docs/italy-cpo-progress-2026-09.json seed / historical Italy inventory",
+          "assessment": "inventory retained pending refreshed deterministic PUN/OCPI mapping"
+        },
+        "tariffModel": "site- and connector-class-specific; promotional/direct price may apply only to explicitly identified sites/classes",
+        "tariffChannel": "direct POS/card where enabled; EVWAY app on documented site; roaming eMSP separate",
+        "officialReferences": [
+          "https://www.edison.it/it/edison-next-e-galbusera-nuove-colonnine-di-ricarica-veicoli-elettrici",
+          "https://www.edison.it/sites/default/files/documents/cs_edison_next-galbusera_1.pdf"
+        ],
+        "positiveEvidence": [
+          "Edison Next official release dated 2026-04-30 documents the Galbusera Tre Marie Bistrot Caffetteria Store site at Via Guglielmo Marconi 20, Agrate Brianza (MB).",
+          "The site has 12 charge points implemented as 2 Quick AC columns at 22 kW and 4 Fast DC columns at 120 kW.",
+          "All DC columns at that specific site have a launch promotional direct tariff of EUR 0.59/kWh VAT included.",
+          "The EUR 0.59/kWh price is explicitly available via POS/card and EVWAY app at the documented site.",
+          "The wording is site-scoped and DC-scoped, which confirms that a current exact direct tariff can exist for an EDN subpopulation without supporting any nationwide EDN extrapolation."
+        ],
+        "coveredSubpopulations": [
+          {
+            "site": "Galbusera Tre Marie Bistrot Caffetteria Store, Via Guglielmo Marconi 20, Agrate Brianza (MB)",
+            "class": "Fast DC 120 kW",
+            "physicalPoints": 8,
+            "energyEurPerKwh": 0.59,
+            "vatIncluded": true,
+            "payment": ["POS/card", "EVWAY app"],
+            "validFrom": "2026-04-30",
+            "validThrough": null,
+            "rankable": false,
+            "rankableReason": "official site/class tariff is exact but individual EDN EVSE identifiers for the 8 DC points were not deterministically mapped in this run; fail-closed until EVSE IDs are matched"
+          }
+        ],
+        "uncoveredSubpopulations": [
+          {
+            "scope": "remaining EDN network and the AC points at the Agrate site",
+            "reason": "no current first-party deterministic tariff mapping found in this run"
+          }
+        ],
+        "negativeEvidence": [
+          "No current first-party universal Edison Next AC/DC/HPC tariff grid was found.",
+          "Public PUN-derived listings sampled for EDN commonly show tariff not communicated / ad-hoc unavailable, so roaming prices cannot substitute for direct CPO pricing.",
+          "Third-party station directories identify several IT*EDN EVSE but do not establish the direct Edison Next tariff and must not be used for promotion."
+        ],
+        "blockage": "Need deterministic mapping of the Agrate Brianza 8 DC charge-point EVSE IDs, or another official/PUN surface exposing current direct EDN station/EVSE tariff; the official EUR 0.59/kWh site/class price alone is not enough to rank without exact EVSE mapping.",
+        "resumeCondition": "Resolve the Galbusera Agrate site against PUN/OCPI or direct POS/EVWAY backend to obtain exact IT*EDN EVSE IDs, then apply EUR 0.59/kWh only to those confirmed DC EVSE after ordered historical dedup. Continue other EDN sites station-by-station; do not repeat nationwide-grid research absent new first-party evidence.",
+        "confidence": "high for site/class/channel tariff; medium for inventory freshness; no rankable EVSE increment",
+        "lastInvestigated": "2026-09-12",
+        "lastChanged": "2026-09-12",
+        "history": [
+          "run144: first-party Edison Next evidence establishes an exact site-specific DC promotional tariff of EUR 0.59/kWh at Galbusera Agrate Brianza via POS/card and EVWAY, covering 8 DC physical charge points, but exact IT*EDN EVSE identifiers remain unmapped so coverage stays fail-closed. Network-wide EDN tariff research is now considered exhausted unless new evidence appears."
+        ]
+      }
+    ]
+  },
+  "consistency": {
+    "canonicalBucketEquation": "49+24+1+10=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "duplicatePartyIdsIntroduced": 0,
+    "aliasDoubleCountIntroduced": 0,
+    "rankableEvseAdded": 0,
+    "pass": true,
+    "fullAuditRequiredThisRun": false,
+    "lastFullAuditPath": "data/reports/italy_canonical_consistency_audit_20260911_run141.json"
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalFileState": "STALE_SEED",
+    "safePromotionCondition": "complete corrected lossless replay of all historical deltas; require physicalPartyIds=88, duplicatePartyIds=0, inspect diff, then replace seed"
+  },
+  "nextAction": "Resolve exact IT*EDN EVSE IDs for the 8 Galbusera Agrate DC points through PUN/OCPI, EVWAY or POS/direct surfaces; if not immediately available, move to the next largest station-level CPO. Do not repeat Edison Next nationwide tariff research. Atlante remains last."
+}
