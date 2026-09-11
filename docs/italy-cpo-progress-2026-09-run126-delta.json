@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 126,
+  "generatedAt": "2026-09-11T05:53:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run125-delta.json"],
+  "reason": "Fresh PUN/Pienotto verification on 2026-09-11 found that two large EMOBITALY Milan subpopulations previously credited from 2026-09-08 no longer expose a current tariff, while four other Milan stations expose current exact station tariffs. Apply fail-closed freshness regression to stale mappings; record newly observed exact mappings conservatively without incrementing unique coverage until full ordered-delta set-difference is replayed.",
+  "changes": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "partial",
+      "priority": "station-level",
+      "inventoryEvse": 849,
+      "inventoryStations": 296,
+      "tariffModel": "station_specific_owner_pricing",
+      "tariffChannel": "direct CPO tariff published through Piattaforma Unica Nazionale (surfaced by Pienotto)",
+      "freshnessRegression": {
+        "checkedAt": "2026-09-11",
+        "failClosedEvse": 52,
+        "subpopulations": [
+          {
+            "location": "Via Olgettina, 60, Milano (MI)",
+            "evseCount": 40,
+            "evsePattern": "IT*EMO*E2016*1..40",
+            "previousEvidence": "run66: 0.48 EUR/kWh + 1.14 EUR activation, checked 2026-09-08",
+            "currentEvidence": "Pienotto/PUN Milano listing on 2026-09-11 shows this station as ELETTRICO n.d.",
+            "decision": "remove from current rankable coverage / fail-closed until a current tariff reappears or a first-party backend confirms the price"
+          },
+          {
+            "location": "Piazza Piemonte, 14, Milano (MI)",
+            "evseCount": 12,
+            "evsePattern": "IT*EMO*E2361*1..IT*EMO*E2372*1",
+            "previousEvidence": "run54/run67: 0.48 EUR/kWh + 1.14 EUR activation, checked 2026-09-08",
+            "currentEvidence": "Pienotto/PUN Milano listing on 2026-09-11 shows this station as ELETTRICO n.d.",
+            "decision": "remove from current rankable coverage / fail-closed until a current tariff reappears or a first-party backend confirms the price"
+          }
+        ]
+      },
+      "currentExactMilanObservations": [
+        {
+          "location": "Via Uberto Visconti di Modrone, 12, Milano (MI)",
+          "evseIds": ["IT*EMOE1330", "IT*EMOE1331", "IT*EMOE1332"],
+          "connector": "Type 2",
+          "powerKw": 22,
+          "energyEurPerKwh": 0.60,
+          "activationEur": 0.74,
+          "source": "PUN via Pienotto",
+          "url": "https://pienotto.it/stazioni/275472-emobitaly-s-r-l-milano-mi",
+          "checkedAt": "2026-09-11"
+        },
+        {
+          "location": "Via Rubattino ang. Via Pitteri, 84, Milano (MI)",
+          "evseIds": ["IT*EMOE32", "IT*EMOE332"],
+          "connector": "Type 2",
+          "powerKw": 22,
+          "energyEurPerKwh": 0.65,
+          "activationEur": 0.74,
+          "source": "PUN via Pienotto",
+          "url": "https://pienotto.it/stazioni/271644-emobitaly-s-r-l-milano-mi",
+          "checkedAt": "2026-09-11"
+        },
+        {
+          "location": "Viale Certosa, 29, Milano (MI)",
+          "evseIds": ["IT*EMOE28", "IT*EMOE532"],
+          "connector": "Type 2",
+          "powerKw": 22,
+          "energyEurPerKwh": 0.65,
+          "activationEur": 0.74,
+          "source": "PUN via Pienotto",
+          "url": "https://pienotto.it/stazioni/276790-emobitaly-s-r-l-milano-mi",
+          "checkedAt": "2026-09-11"
+        },
+        {
+          "location": "Viale Carlo Troya, 18, Milano (MI)",
+          "evseIds": ["IT*EMOE30", "IT*EMOE31"],
+          "connector": "Type 2",
+          "powerKw": 22,
+          "energyEurPerKwh": 0.65,
+          "activationEur": 0.74,
+          "source": "PUN via Pienotto",
+          "url": "https://pienotto.it/stazioni/285520-emobitaly-s-r-l-milano-mi",
+          "checkedAt": "2026-09-11"
+        }
+      ],
+      "coverage": {
+        "lastDeduplicatedBaselineRun72RankableEvse": 296,
+        "freshnessRegressionEvse": 52,
+        "currentSafeRankableUpperBoundBeforeNewSetDifference": 244,
+        "newExactObservedEvsePendingOrderedDeltaDedup": 9,
+        "uniqueCoverageCreditAddedThisRun": 0,
+        "reason": "run72 requires ordered research-branch delta set-difference before any new EMO credit; current Milan IDs are recorded as exact observations but not counted until replay confirms uniqueness"
+      },
+      "positiveEvidence": [
+        "On 2026-09-11 the current Pienotto/PUN Milano index reports exact current prices for four EMOBITALY stations: 0.60 EUR/kWh + 0.74 activation at Via Uberto Visconti di Modrone, and 0.65 EUR/kWh + 0.74 activation at Via Rubattino/Pitteri, Viale Certosa and Viale Carlo Troya.",
+        "Individual station pages expose nine exact IT*EMO/EMOE identifiers and Type 2 22 kW connector mappings for those four current priced stations."
+      ],
+      "negativeEvidence": [
+        "Via Olgettina 60 and Piazza Piemonte 14 are currently listed with no tariff (n.d.) despite run66/run54-run67 tariff evidence dated 2026-09-08; old values must not remain rankable as current without corroboration.",
+        "Do not credit the nine newly observed Milan EVSE as unique until the ordered research-branch EMO delta ledger is replayed, because run72 documented a prior 100-EVSE duplicate overcount caused by default-branch search false negatives."
+      ],
+      "blockage": "EMOBITALY remains partial and station-level. Current price availability is dynamic; 52 formerly priced Milan EVSE are fail-closed as of 2026-09-11, and nine current exact mappings require ordered-delta uniqueness replay before coverage credit.",
+      "resumeCondition": "First replay ordered EMO mapping deltas to test the nine current Milan IDs for uniqueness; then continue current PUN/native endpoint enumeration. Re-check n.d. subpopulations only when a new PUN/first-party price signal appears.",
+      "confidence": "high for current PUN observations and freshness regression; conservative for unique coverage count",
+      "lastInvestigated": "2026-09-11",
+      "lastChanged": "2026-09-11",
+      "historyAppend": "2026-09-11 run126: current PUN freshness check invalidated 52 previously rankable Milan EMOBITALY EVSE (Olgettina 40 + Piazza Piemonte 12) because tariffs are now n.d.; recorded nine exact currently priced Milan EVSE as pending-dedup observations without unsafe coverage credit."
+    }
+  ],
+  "effectiveCountsBefore": {"treated":48,"partial":23,"setAside":1,"active":12,"totalCanonical":84,"supersededAlias":4,"physicalPartyIds":88},
+  "effectiveCountsAfterReplay": {"treated":48,"partial":23,"setAside":1,"active":12,"totalCanonical":84,"supersededAlias":4,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 12,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 0,
+    "rankableDirectEvseFreshnessRemoved": 52,
+    "exactObservedEvsePendingDedup": 9,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusEquation": "48 + 23 + 1 + 12 = 84; 84 + 4 superseded aliases = 88 physical partyIds",
+    "physicalInventoryCardinalityChanged": false,
+    "canonicalIdentityCardinalityChanged": false,
+    "duplicateCanonicalPartyIdsIntroduced": 0,
+    "networkWideExtrapolationApplied": false,
+    "directVsEmspSeparated": true,
+    "freshnessPolicyApplied": true,
+    "physicalCanonicalSnapshotStillStale": true,
+    "canonicalMaterializationPendingLosslessReplay": true,
+    "result": "pass: EMOBITALY freshness regression applied fail-closed; nine exact current mappings recorded without duplicate-risk credit"
+  },
+  "historyAppend": [
+    "2026-09-11 run126: EMOBITALY Milan refresh detected tariff withdrawal/n.d. for Olgettina (40 EVSE) and Piazza Piemonte (12 EVSE); 52 old rankable mappings moved fail-closed pending new proof.",
+    "2026-09-11 run126: nine exact current Milan mappings observed at 0.60/0.65 EUR/kWh + 0.74 activation; uniqueness credit deferred until ordered-delta replay."
+  ]
+}
