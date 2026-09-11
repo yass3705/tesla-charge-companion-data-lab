@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 125,
+  "generatedAt": "2026-09-11T03:58:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run124-delta.json"],
+  "reason": "Refine the unresolved IONITY station-level model using fresh first-party 2026 pricing evidence without repeating the already-closed nationwide-flat-tariff investigation. IONITY's current Italy page publishes minimum prices, while its recent official European price-change explainer publishes an Italy direct/ad-hoc upper bound, proving a current location-dependent range rather than one deterministic national direct tariff.",
+  "changes": [
+    {
+      "partyId": "IOY",
+      "canonicalName": "IONITY GMBH",
+      "status": "active",
+      "priority": "station-level",
+      "inventoryEvse": 313,
+      "inventoryStations": 43,
+      "inventorySource": "Italy canonical inventory reconstructed from workflow run 33308407226; unchanged in run125",
+      "tariffModel": "station_specific_with_country_floor_and_ceiling",
+      "tariffChannel": "IONITY Direct / IONITY Go direct channels; subscriptions tracked separately; ChargeLeague/eMSP separated",
+      "tariffs": {
+        "countryPublishedMinimums": {
+          "IONITY Go": {"energyEurPerKwh": 0.80},
+          "IONITY Direct": {"energyEurPerKwh": 0.85}
+        },
+        "currentDirectAdHocUpperBound": {"energyEurPerKwh": 0.91},
+        "applicability": "minimum/maximum country bounds only; not safe EVSE prices"
+      },
+      "officialReferences": [
+        "https://www.ionity.eu/it",
+        "https://www.ionity.eu/hr/price/why-are-charging-prices-changing-across-europe"
+      ],
+      "positiveEvidence": [
+        "Current IONITY Italy pricing page publishes Italy IONITY Go at 0.80 EUR/kWh and IONITY Direct at 0.85 EUR/kWh as current minimum prices, explicitly warning that a station price can be higher.",
+        "IONITY's official 2026 European price-change explainer publishes Italy subscription prices from 0.48 EUR/kWh and direct/ad-hoc prices up to 0.91 EUR/kWh.",
+        "Together these first-party sources prove that current direct/ad-hoc pricing in Italy is not a single nationwide value and may vary by station/location."
+      ],
+      "negativeEvidence": [
+        "Do not promote 0.85 EUR/kWh to all IOY EVSE: IONITY explicitly labels it a minimum and publishes direct/ad-hoc prices up to 0.91 EUR/kWh in Italy.",
+        "Do not use subscription prices (Power/Motion) as ad-hoc/direct ranking values unless the product context explicitly calls for them.",
+        "Do not use ChargeLeague or third-party eMSP pricing as IONITY direct CPO pricing."
+      ],
+      "coverage": {
+        "rankableDirectEvseAdded": 0,
+        "unresolvedEvse": 313,
+        "unresolvedStations": 43,
+        "knownDirectPriceBoundsEurPerKwh": [0.85, 0.91],
+        "reason": "exact station/EVSE direct price still required before rankable promotion"
+      },
+      "blockage": "Need deterministic station/EVSE -> current IONITY Direct price mapping for each Italian site; country-level sources expose only a floor/minimum and an upper bound.",
+      "resumeCondition": "Do not repeat national tariff research. Resume only with station-specific IONITY app/QR price, public station endpoint, PUN/ad-hoc metadata, or another first-party station-level surface that deterministically maps a site/EVSE to its current direct price.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-11",
+      "lastChanged": "2026-09-11",
+      "historyAppend": "2026-09-11 run125: IONITY Italy direct price model tightened to station-specific with first-party 0.85 EUR/kWh minimum and 0.91 EUR/kWh direct/ad-hoc upper bound; all 313 EVSE remain fail-closed pending exact station mapping."
+    }
+  ],
+  "effectiveCountsBefore": {"treated":48,"partial":23,"setAside":1,"active":12,"totalCanonical":84,"supersededAlias":4,"physicalPartyIds":88},
+  "effectiveCountsAfterReplay": {"treated":48,"partial":23,"setAside":1,"active":12,"totalCanonical":84,"supersededAlias":4,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 12,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 0,
+    "failClosedEvseModelTightened": 313,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusEquation": "48 + 23 + 1 + 12 = 84; 84 + 4 superseded aliases = 88 physical partyIds",
+    "physicalInventoryCardinalityChanged": false,
+    "canonicalIdentityCardinalityChanged": false,
+    "duplicateCanonicalPartyIdsIntroduced": 0,
+    "networkWideExtrapolationApplied": false,
+    "directVsEmspSeparated": true,
+    "physicalCanonicalSnapshotStillStale": true,
+    "canonicalMaterializationPendingLosslessReplay": true,
+    "result": "pass: IOY national-flat interpretation closed with current first-party min/max evidence; exact station mapping remains fail-closed"
+  },
+  "historyAppend": [
+    "2026-09-11 run125: IONITY Italy proven variable at station level: current Direct minimum 0.85 EUR/kWh, official direct/ad-hoc upper bound 0.91 EUR/kWh.",
+    "2026-09-11 run125: no counters changed; 313 IOY EVSE remain fail-closed pending exact station mapping; national tariff research is now exhausted unless new first-party evidence appears."
+  ]
+}
