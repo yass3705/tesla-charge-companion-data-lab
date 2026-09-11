@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 121,
+  "generatedAt": "2026-09-11T01:52:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run120-delta.json"],
+  "reason": "Fresh first-party Electra Italy tariff documentation dated 2026-07-01 establishes a deterministic national direct tariff for Italy across slow and fast AC/DC charging, with explicit separation by direct payment channel. This supersedes the stale seed's unresolved ELC state and allows Electra Italia to be treated network-wide without station-level extrapolation.",
+  "changes": [
+    {
+      "partyId": "ELC",
+      "canonicalName": "Electra Italia s.r.l.",
+      "aliases": ["Electra Italia s.r.l.", "Electra", "ELC"],
+      "status": "treated",
+      "priority": "network-wide",
+      "inventoryEvse": 514,
+      "inventoryStations": 81,
+      "inventorySource": "Italy canonical seed reconstructed from workflow run 33308407226; 514 EVSE / 81 stations",
+      "inventoryTimestamp": "2026-09-05 canonical reconstruction",
+      "tariffModel": "country_network_wide_by_direct_payment_channel",
+      "tariffChannel": "direct Electra CPO; app/Autocharge and bank-card terminal are separate direct channels; third-party RFID/eMSP excluded",
+      "tariffs": [
+        {
+          "scope": "Italy, Electra-owned slow and fast charging, AC/DC",
+          "channel": "Electra app or Autocharge",
+          "energyEurPerKwh": 0.69,
+          "currency": "EUR",
+          "vatIncluded": true,
+          "vatRatePct": 22
+        },
+        {
+          "scope": "Italy, Electra-owned slow and fast charging, AC/DC",
+          "channel": "bank card at terminal / direct ad-hoc POS",
+          "energyEurPerKwh": 0.79,
+          "currency": "EUR",
+          "vatIncluded": true,
+          "vatRatePct": 22
+        }
+      ],
+      "fees": {
+        "fixedActivationFee": null,
+        "timeFee": null,
+        "parkingOrOccupancyFee": null,
+        "note": "No additional direct Electra fee is stated in the cited Italy tariff table; do not infer absence of site parking fees controlled by third parties."
+      },
+      "paymentMethods": ["Electra app", "Autocharge", "bank card at terminal"],
+      "eligibility": "public tariff; source notes prices shown do not include potential discounts",
+      "validFrom": "2026-07-01",
+      "validThrough": null,
+      "officialReferences": [
+        "https://intercom.help/go-electra/it/articles/7987274-le-nostre-tariffe-di-ricarica",
+        "https://intercom.help/go-electra/it/articles/10749707-tariffe-electra-e-prezzi-variabili"
+      ],
+      "positiveEvidence": [
+        "Electra's official tariff help page dated 2026-07-01 states that in Italy slow and fast AC/DC charging costs 0.69 EUR/kWh via the Electra app and 0.79 EUR/kWh by bank card at the terminal, VAT included.",
+        "The same page states these direct-price rules apply to sessions started through the Electra app, Autocharge, or bank-card terminal.",
+        "Electra's official variable-pricing page dated 2026-07-07 limits station/time-variable pricing to France, Belgium and Spain; Italy is not included in that variable-pricing exception.",
+        "The variable-pricing page separately describes Electra+ roaming/ChargeLeague economics, so those subscription/eMSP prices are not promoted as direct CPO tariffs."
+      ],
+      "negativeEvidence": [
+        "Do not use Electra+ ChargeLeague Italy 0.64 EUR/kWh as the direct CPO tariff; it is a subscription/eMSP commercial condition.",
+        "Do not map third-party RFID prices to Electra direct tariffs because the official page warns that additional charges outside Electra's control may apply to RFID payments.",
+        "Do not import France/Belgium/Spain demand-based station pricing into Italy; the current official variable-pricing page names those countries, not Italy."
+      ],
+      "coverage": {
+        "rankableDirectEvse": 514,
+        "uncoveredPhysicalEvse": 0,
+        "coveragePct": 100.0,
+        "directChannelsCovered": ["app", "Autocharge", "bank-card terminal/ad-hoc POS"],
+        "excludedCommercialChannels": ["third-party RFID", "Electra+ ChargeLeague roaming/eMSP"],
+        "rankable": true
+      },
+      "blockage": null,
+      "resumeCondition": "Reopen only if Electra changes the official Italy tariff table, introduces an Italy-specific station/time exception, or canonical inventory reveals non-Electra-owned ELC rows outside the stated direct-network scope.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-11",
+      "lastChanged": "2026-09-11",
+      "historyAppend": "2026-09-11 run121: ELC Electra Italia promoted active -> treated using current first-party national Italy tariffs: 0.69 EUR/kWh app/Autocharge and 0.79 EUR/kWh bank-card terminal, both AC/DC and VAT included; roaming/subscription and third-party RFID kept separate."
+    }
+  ],
+  "effectiveCountsBefore": {"treated":47,"partial":23,"setAside":1,"active":13,"totalCanonical":84,"supersededAlias":4,"physicalPartyIds":88},
+  "effectiveCountsAfterReplay": {"treated":48,"partial":23,"setAside":1,"active":12,"totalCanonical":84,"supersededAlias":4,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 12,
+    "newlyTreatedCpos": ["ELC"],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 514,
+    "rankableStationsAdded": 81,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusEquation": "48 + 23 + 1 + 12 = 84; 84 + 4 superseded aliases = 88 physical partyIds",
+    "physicalInventoryCardinalityChanged": false,
+    "canonicalIdentityCardinalityChanged": false,
+    "duplicateCanonicalPartyIds": 0,
+    "networkWideExtrapolationApplied": false,
+    "directVsEmspSeparated": true,
+    "physicalCanonicalSnapshotStillStale": true,
+    "canonicalMaterializationPendingLosslessReplay": true,
+    "result": "pass: one current first-party network-wide CPO resolved; 514 physical ELC EVSE become rankable on direct Electra channels"
+  },
+  "historyAppend": [
+    "2026-09-11 run121: Electra Italia (ELC) resolved network-wide from first-party Italy tariff documentation and moved active -> treated.",
+    "2026-09-11 run121: 514 ELC EVSE / 81 stations gain deterministic direct tariffs; Electra+ roaming and third-party RFID remain excluded from direct-CPO ranking.",
+    "2026-09-11 run121: effective canonical counts now 48 treated / 23 partial / 1 setAside / 12 active; Atlante remains last."
+  ]
+}
