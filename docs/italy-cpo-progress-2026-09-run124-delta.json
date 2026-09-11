@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 124,
+  "generatedAt": "2026-09-11T02:54:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run123-delta.json"],
+  "reason": "Continue the largest unresolved station-level CPO without repeating exhausted generic pricing searches. Fresh first-party Hera Ricarica tariff-portal evidence exposes deterministic post-charge occupancy penalties by connector class while the current energy-price fields remain non-extractable from the public page; preserve those fees exactly but keep energy pricing fail-closed.",
+  "changes": [
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "status": "active",
+      "priority": "station-level",
+      "inventoryEvse": 1137,
+      "inventoryStations": 523,
+      "inventorySource": "Italy canonical seed reconstructed from workflow run 33308407226; unchanged in run124",
+      "tariffModel": "station_specific_energy_price_with_deterministic_connector_class_post_charge_penalty",
+      "tariffChannel": "direct Hera CPO / Hera Ricarica portal; roaming eMSP kept separate",
+      "fees": {
+        "postChargeOccupancy": [
+          {
+            "connectorClasses": ["Type 2", "Type 3A"],
+            "gracePeriodMinutesAfterChargeCompletion": 60,
+            "feeEurPerMinute": 0.08,
+            "timeWindow": "07:00-23:00",
+            "days": "Monday-Sunday including holidays",
+            "vatTreatment": "stated exempt from VAT under art. 15 DPR 633/1972"
+          },
+          {
+            "connectorClasses": ["CHAdeMO", "Combo CCS2"],
+            "gracePeriodMinutesAfterChargeCompletion": 60,
+            "feeEurPerMinute": 0.15,
+            "timeWindow": "00:00-23:59",
+            "days": "Monday-Sunday including holidays",
+            "vatTreatment": "stated exempt from VAT under art. 15 DPR 633/1972"
+          }
+        ]
+      },
+      "officialReferences": [
+        "https://heraricarica.gruppohera.it/home/pages/tariffs"
+      ],
+      "positiveEvidence": [
+        "The currently reachable first-party Hera Ricarica tariff portal exposes separate 'Offerta flat' and 'Offerta a consumo' sections and a deterministic post-charge disconnection penalty policy.",
+        "After a 60-minute grace period from charge completion, Type 2/Type 3A connectors incur 0.08 EUR/min from 07:00 to 23:00 every day including holidays.",
+        "After the same 60-minute grace period, CHAdeMO/Combo CCS2 connectors incur 0.15 EUR/min from 00:00 to 23:59 every day including holidays.",
+        "These occupancy-fee rules are current first-party evidence and can be retained independently of unresolved station energy tariffs."
+      ],
+      "negativeEvidence": [
+        "The public portal crawl does not expose current numeric energy prices for the flat or consumption offers, so historical 0.72/0.85 contracted or 0.80/0.90 direct-payment values are not promoted as current 2026 energy tariffs.",
+        "Do not substitute Hera household electricity retail offers for EV charging prices.",
+        "Do not mix third-party roaming/eMSP tariffs into direct Hera CPO pricing."
+      ],
+      "coverage": {
+        "rankableDirectEvseAdded": 0,
+        "exactFailClosedEvseMappedThisRun": 0,
+        "feeRuleCoverage": "deterministic connector-class post-charge occupancy fee captured for Hera direct charging",
+        "energyTariffCoverage": "unchanged; station/EVSE energy price remains fail-closed unless exact current direct value is available"
+      },
+      "blockage": "Current first-party energy price values are not exposed in the crawlable Hera tariff portal; station/EVSE energy mapping still requires exact PUN, QR/POS, app/backend or other current direct evidence.",
+      "resumeCondition": "Do not repeat generic Hera tariff-page or household-energy searches. Continue only with new station/EVSE PUN/QR/POS/app/backend evidence or a first-party machine-readable tariff surface that exposes current energy prices.",
+      "confidence": "high for post-charge occupancy fees; insufficient for current energy-price promotion",
+      "lastInvestigated": "2026-09-11",
+      "lastChanged": "2026-09-11",
+      "historyAppend": "2026-09-11 run124: first-party Hera Ricarica portal yields exact connector-class post-charge occupancy fees (0.08 EUR/min Type2/Type3A 07:00-23:00; 0.15 EUR/min CHAdeMO/CCS2 all day, both after 60-minute grace). Energy price remains station-level fail-closed because current numeric energy values are not exposed."
+    }
+  ],
+  "effectiveCountsBefore": {"treated":48,"partial":23,"setAside":1,"active":12,"totalCanonical":84,"supersededAlias":4,"physicalPartyIds":88},
+  "effectiveCountsAfterReplay": {"treated":48,"partial":23,"setAside":1,"active":12,"totalCanonical":84,"supersededAlias":4,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 12,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "aliasesResolved": [],
+    "rankableDirectEvseAdded": 0,
+    "deterministicFeeModelsAdded": ["HER post-charge occupancy fee by connector class"],
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusEquation": "48 + 23 + 1 + 12 = 84; 84 + 4 superseded aliases = 88 physical partyIds",
+    "physicalInventoryCardinalityChanged": false,
+    "canonicalIdentityCardinalityChanged": false,
+    "duplicateCanonicalPartyIdsIntroduced": 0,
+    "networkWideEnergyPriceExtrapolationApplied": false,
+    "directVsEmspSeparated": true,
+    "physicalCanonicalSnapshotStillStale": true,
+    "canonicalMaterializationPendingLosslessReplay": true,
+    "result": "pass: HER direct fee model improved with current first-party evidence; energy ranking remains fail-closed"
+  },
+  "historyAppend": [
+    "2026-09-11 run124: added current first-party Hera post-charge occupancy fee rules without promoting stale energy prices.",
+    "2026-09-11 run124: effective counts unchanged at 48 treated / 23 partial / 1 setAside / 12 active; 0 network/class-wide active and 12 station-level active; Atlante remains last."
+  ]
+}
