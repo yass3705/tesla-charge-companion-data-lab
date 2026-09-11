@@ -3,100 +3,52 @@
   "country": "IT",
   "run": 137,
   "generatedAt": "2026-09-11T16:55:48+01:00",
-  "effectiveCounts": {
-    "treated": 49,
-    "partial": 24,
-    "setAside": 1,
-    "active": 10,
-    "canonicalTotal": 84,
-    "supersededAlias": 4,
-    "physicalPartyIds": 88
-  },
-  "priorityQueues": {
-    "networkOrClassWideActive": 0,
-    "stationLevelActive": 10
-  },
+  "effectiveCounts": {"treated":49,"partial":24,"setAside":1,"active":10,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+  "priorityQueues": {"networkOrClassWideActive":0,"stationLevelActive":10},
   "changes": {
-    "active": [
-      {
-        "partyId": "EMO",
-        "canonicalName": "EMOBITALY S.r.l.",
-        "status": "active",
-        "priority": "station-level",
-        "inventory": {
-          "evse": 849,
-          "stations": 296
-        },
-        "coverageBefore": {
-          "rankableDirectEvse": 305,
-          "failClosedEvse": 544
-        },
-        "run136CandidateAudit": {
-          "candidateEvse": 50,
-          "confirmedHistoricalDuplicatesMinimum": 9,
-          "confirmedDuplicateIds": [
-            "IT*EMO*E2011*1",
-            "IT*EMO*E2011*2",
-            "IT*EMO*E2011*3",
-            "IT*EMO*E2011*4",
-            "IT*EMO*E2011*5",
-            "IT*EMO*E2011*6",
-            "IT*EMO*E2095*1",
-            "IT*EMO*E2095*2",
-            "IT*EMOE1261"
-          ],
-          "proof": [
-            "run54 already records IT*EMO*E2011*1..6 and IT*EMO*E2095*1/*2 as rankable mappings",
-            "run72 explicitly records IT*EMOE1261 as already present in run56"
-          ],
-          "remainingCandidatesNeedingOrderedReplay": 41,
-          "creditThisRun": 0,
-          "decision": "Do not increment EMOBITALY coverage until the repaired audit is executed over the checked-out research branch with --candidate-before-run 136."
-        },
-        "blockage": "41 run136 candidate EVSE still require ordered historical set-difference; no absence claim may rely on default-branch code search.",
-        "resumeCondition": "Execute scripts/italy_cpo_delta_evse_dedup_audit.py on research/italy-cpo-priority-20260905 with --party-id EMO --candidate-before-run 136 and all run136 candidate IDs, then credit only candidateNovelIds.",
-        "lastInvestigated": "2026-09-11",
-        "lastChanged": "2026-09-11",
-        "historyAppend": "run137: repaired the EVSE dedup guard before any further EMOBITALY promotion; proved at least 9/50 run136 candidates are historical duplicates and left all 50 uncredited pending full ordered replay."
-      }
-    ]
+    "active": [{
+      "partyId":"EMO",
+      "canonicalName":"EMOBITALY S.r.l.",
+      "status":"active",
+      "priority":"station-level",
+      "inventory":{"evse":849,"stations":296},
+      "coverageBefore":{"rankableDirectEvse":305,"failClosedEvse":544},
+      "run136CandidateAudit": {
+        "candidateEvse":50,
+        "confirmedHistoricalDuplicatesMinimum":9,
+        "confirmedDuplicateIds":["IT*EMO*E2011*1","IT*EMO*E2011*2","IT*EMO*E2011*3","IT*EMO*E2011*4","IT*EMO*E2011*5","IT*EMO*E2011*6","IT*EMO*E2095*1","IT*EMO*E2095*2","IT*EMOE1261"],
+        "proof":["run54 already records IT*EMO*E2011*1..6 and IT*EMO*E2095*1/*2 as rankable mappings","run72 explicitly records IT*EMOE1261 as already present in run56"],
+        "remainingCandidatesNeedingOrderedReplay":41,
+        "creditThisRun":0,
+        "decision":"Do not increment EMOBITALY coverage until the repaired audit is executed over the checked-out research branch with --candidate-before-run 136."
+      },
+      "blockage":"41 run136 candidate EVSE still require ordered historical set-difference; no absence claim may rely on default-branch code search.",
+      "resumeCondition":"Execute scripts/italy_cpo_delta_evse_dedup_audit.py on research/italy-cpo-priority-20260905 with --party-id EMO --candidate-before-run 136 and all run136 candidate IDs, then credit only candidateNovelIds.",
+      "lastInvestigated":"2026-09-11",
+      "lastChanged":"2026-09-11",
+      "historyAppend":"run137: repaired the EVSE dedup guard before any further EMOBITALY promotion; proved at least 9/50 run136 candidates are historical duplicates and left all 50 uncredited pending full ordered replay."
+    }]
   },
   "toolingCorrection": {
-    "path": "scripts/italy_cpo_delta_evse_dedup_audit.py",
-    "commit": "884f4aea11fd732d0f979dcc8c5f477b26642447",
-    "defectsFixed": [
+    "path":"scripts/italy_cpo_delta_evse_dedup_audit.py",
+    "finalCommit":"04d504973dc8af815adbd0c4112e433883b80d65",
+    "defectsFixed":[
       "legacy audit iterated modern status-bucketed changes dictionaries as strings and could not safely process run136",
-      "legacy audit ignored newDeterministicCandidates, so run136 candidate IDs were outside the scan",
-      "legacy audit could not distinguish historical occurrence from the candidate run itself",
-      "legacy run filename parser ignored suffixed runs such as run4b/run7b"
+      "legacy audit ignored newDeterministicCandidates",
+      "legacy audit could not distinguish historical credited occurrence from the candidate run itself",
+      "legacy run filename parser ignored suffixed runs such as run4b/run7b",
+      "candidate-only evidence is now separated from the credited ledger so an uncredited candidate cannot create a false duplicate-credit violation"
     ],
-    "newGuards": [
-      "supports flat and status-bucketed changes plus all historical update containers",
-      "scans newExactMappings, newCoveredSubpopulations and newDeterministicCandidates",
-      "supports --candidate-before-run for ordered novelty checks",
+    "newGuards":[
+      "supports flat and status-bucketed changes plus historical update containers",
+      "scans credited newExactMappings/newCoveredSubpopulations separately from newDeterministicCandidates",
+      "supports --candidate-before-run for ordered novelty checks against credited history only",
       "fails closed on malformed or unsupported party-update containers",
       "supports suffixed run labels"
     ]
   },
-  "branchScopeCorrection": {
-    "defaultBranch": "main",
-    "italyWorkingBranch": "research/italy-cpo-priority-20260905",
-    "finding": "Current Italy canonical/deltas are intentionally on the research branch; their absence from main is not data loss. All Italy replay/dedup checks must target the research branch until promotion/merge."
-  },
-  "consistency": {
-    "canonicalBucketEquation": "49+24+1+10=84",
-    "physicalPartyIdEquation": "84+4=88",
-    "duplicatePartyIdsIntroduced": 0,
-    "aliasDoubleCountIntroduced": 0,
-    "networkOrClassWideActive": 0,
-    "stationLevelActive": 10,
-    "evseCoverageIncrement": 0,
-    "pass": true
-  },
-  "canonicalMaterialization": {
-    "path": "docs/italy-cpo-progress-2026-09.json",
-    "physicalFileState": "STALE_SEED",
-    "safePromotionCondition": "run corrected italy_cpo_progress_consolidate.py over the checked-out research branch, run repaired EVSE dedup audit, require physicalPartyIds=88 and duplicatePartyIds=0, inspect diff, then replace seed"
-  },
-  "nextAction": "Run repaired ordered EMOBITALY candidate audit and lossless canonical replay on the research branch; credit only novel EVSE; then continue the largest remaining station-level CPO. Atlante remains last."
+  "branchScopeCorrection": {"defaultBranch":"main","italyWorkingBranch":"research/italy-cpo-priority-20260905","finding":"Current Italy canonical/deltas are on the research branch; their absence from main is not data loss. Italy replay/dedup checks must target the research branch until promotion/merge."},
+  "consistency": {"canonicalBucketEquation":"49+24+1+10=84","physicalPartyIdEquation":"84+4=88","duplicatePartyIdsIntroduced":0,"aliasDoubleCountIntroduced":0,"networkOrClassWideActive":0,"stationLevelActive":10,"evseCoverageIncrement":0,"pass":true},
+  "canonicalMaterialization": {"path":"docs/italy-cpo-progress-2026-09.json","physicalFileState":"STALE_SEED","safePromotionCondition":"run corrected italy_cpo_progress_consolidate.py over the checked-out research branch, run repaired EVSE dedup audit, require physicalPartyIds=88 and duplicatePartyIds=0, inspect diff, then replace seed"},
+  "nextAction":"Run repaired ordered EMOBITALY candidate audit and lossless canonical replay on the research branch; credit only novel EVSE; then continue the largest remaining station-level CPO. Atlante remains last."
 }
