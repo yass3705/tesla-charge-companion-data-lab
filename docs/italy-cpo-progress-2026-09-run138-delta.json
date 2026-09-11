@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 138,
+  "generatedAt": "2026-09-11T17:52:11+01:00",
+  "effectiveCounts": {
+    "treated": 49,
+    "partial": 24,
+    "setAside": 1,
+    "active": 10,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueues": {
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 10
+  },
+  "changes": {
+    "active": [
+      {
+        "partyId": "EMO",
+        "canonicalName": "EMOBITALY S.r.l.",
+        "status": "active",
+        "priority": "station-level",
+        "inventory": {"evse": 849, "stations": 296, "source": "Italy canonical inventory"},
+        "tariffModel": "station_specific_owner_pricing",
+        "tariffChannel": "direct/ad-hoc PUN-derived station tariff",
+        "run136CandidateDedupProgress": {
+          "candidateEvse": 50,
+          "historicallyCreditedConfirmed": 42,
+          "stillUnresolvedAgainstFullOrderedLedger": 8,
+          "creditedAsNewThisRun": 0,
+          "confirmedDuplicateGroups": [
+            {
+              "location": "Via Giacomo Manzu 33, Bergamo",
+              "evseCount": 21,
+              "evsePattern": "IT*EMO*E2015*1..21",
+              "historicalProof": "run65",
+              "historicalCoverageTransition": "222 -> 243/849"
+            },
+            {
+              "location": "Piazza Giulio Cesare, Bari",
+              "evseCount": 12,
+              "evsePattern": "IT*EMO*E2290*1 .. IT*EMO*E2301*1",
+              "historicalProof": "run66",
+              "historicalCoverageTransition": "243 -> 307/849 together with other run66 mappings"
+            },
+            {
+              "location": "Via Togliatti 39, San Martino Siccomario",
+              "evseCount": 6,
+              "evsePattern": "IT*EMO*E2011*1..6",
+              "historicalProof": "run54 (also redundantly re-credited in run67 before run72 correction)"
+            },
+            {
+              "location": "Via Emilia 92/B, Catanzaro",
+              "evseCount": 2,
+              "evseIds": ["IT*EMO*E2095*1", "IT*EMO*E2095*2"],
+              "historicalProof": "run54 (also redundantly re-credited in run67 before run72 correction)"
+            },
+            {
+              "location": "Via Fossa Lupara 12, Salerno",
+              "evseCount": 1,
+              "evseIds": ["IT*EMOE1261"],
+              "historicalProof": "run56; run72 explicitly resolves stale duplicate-safety note"
+            }
+          ],
+          "remainingCandidates": [
+            {
+              "location": "Piazzale della Stazione 23, Venezia",
+              "evseCount": 8,
+              "evseIds": ["IT*EMO*E952*5", "IT*EMO*E952*6", "IT*EMO*E952*7", "IT*EMO*E952*8", "IT*EMOE1415", "IT*EMOE1416", "IT*EMOE1417", "IT*EMOE1418"],
+              "energyEurPerKwh": 0.48,
+              "activationEur": 1.14,
+              "sourceUrl": "https://pienotto.it/stazioni/259537-emobitaly-s-r-l-venezia-ve",
+              "decision": "fail-closed pending absence proof across all ordered pre-run136 credited mappings"
+            }
+          ]
+        },
+        "positiveEvidence": [
+          "Ordered research-branch replay through run73 confirms 42/50 run136 candidates were already credited historically.",
+          "run72 documents why default-branch GitHub code search was unsafe for duplicate detection and requires ordered research-branch set-difference before any future EMO promotion."
+        ],
+        "negativeEvidence": [
+          "No new rankable coverage claimed until the eight Venezia EVSE are checked against the remaining ordered historical deltas after run73.",
+          "The physical canonical seed is still not replaced until lossless full replay validates 88 physical partyIds and zero duplicate canonical partyIds."
+        ],
+        "resumeCondition": "Continue ordered replay after run73 specifically for the eight Venezia IDs; if absent from all prior credited mappings, promote exactly those IDs, otherwise record their historical source. Then continue largest remaining station-level CPO.",
+        "confidence": "high for 42 confirmed duplicates; pending for eight Venezia candidates",
+        "lastInvestigated": "2026-09-11",
+        "lastChanged": "2026-09-11",
+        "history": [
+          "run138: extended run137 EMOBITALY dedup from 9 to 42 confirmed historical candidates by replaying runs54-73; Bergamo E2015 and Bari E2290-E2301 were found explicitly in runs65/66. Eight Venezia IDs remain fail-closed pending completion of ordered replay."
+        ]
+      }
+    ]
+  },
+  "consistency": {
+    "canonicalBucketEquation": "49+24+1+10=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "duplicatePartyIdsIntroduced": 0,
+    "aliasDoubleCountIntroduced": 0,
+    "rankableEvseAdded": 0,
+    "pass": true
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalFileState": "STALE_SEED",
+    "safePromotionCondition": "complete corrected lossless replay of all historical deltas; require physicalPartyIds=88, duplicatePartyIds=0, inspect diff, then replace seed"
+  },
+  "nextAction": "Finish ordered pre-run136 ledger check for Venezia E952*5..8 and E1415..E1418; then continue largest remaining station-level CPO. Atlante remains last."
+}
