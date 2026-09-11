@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "country": "ES",
-  "updatedAt": "2026-09-11T22:47:00Z",
+  "updatedAt": "2026-09-11T23:41:00Z",
   "status": "FIRST_PASS_IN_PROGRESS",
   "inventory": {
     "legacyWorkLabelCount": 618,
@@ -16,143 +16,131 @@
     "note": "618 remains the historical work-label queue only. Current REVE observes 148 distinct CPO identities. The durable canonical chain is advancing from the proven baseline; previously reported 373 remains unverified and is not used for counting."
   },
   "firstPass": {
-    "legacy618ReviewedMinimum": 108,
-    "legacy618RemainingMaximum": 510,
+    "legacy618ReviewedMinimum": 112,
+    "legacy618RemainingMaximum": 506,
     "countIsLowerBound": true,
-    "reason": "108 nominative decisions are now durably chained in Git. Missing historical 618 membership is not invented."
+    "reason": "112 nominative decisions are now durably chained in Git. Missing historical 618 membership is not invented."
   },
   "countsFromDecisions": {
     "sourceValidated": 13,
     "partial": 3,
-    "active": 27,
-    "setAside": 58,
+    "active": 28,
+    "setAside": 60,
     "excludedPlatform": 3,
-    "supersededAlias": 4,
-    "decisionsTotal": 108
+    "supersededAlias": 5,
+    "decisionsTotal": 112
   },
   "canonicalChain": {
-    "baseBlobSha": "017739aeefff1fe3027292fe1d44ef44d5ba60b6",
+    "baseBlobSha": "2646b1c9f388b599f5ab2b28652e6484607343a3",
     "basePath": "docs/spain-cpo-progress-2026-09.json",
-    "baseDecisionCount": 103,
+    "baseDecisionCount": 108,
     "baseCounts": {
       "sourceValidated": 13,
       "partial": 3,
-      "active": 25,
-      "setAside": 55,
+      "active": 27,
+      "setAside": 58,
       "excludedPlatform": 3,
       "supersededAlias": 4
     },
-    "rule": "The immutable base blob preserves complete nominative detail for decisions 1-103. deltaDecisions below adds decisions 104-108. Resolve this chain before dedupe/counting; compact only losslessly."
+    "rule": "The immutable base blob preserves complete nominative detail for decisions 1-108. deltaDecisions below adds decisions 109-112. Resolve this chain before dedupe/counting; compact only losslessly."
   },
   "deltaDecisions": [
     {
-      "canonical": "OESTE SOLUCIONES ENERGETICAS, S.L.",
-      "partyId": "OSE",
+      "canonical": "Porsatecnic S.L.",
+      "partyId": "926",
+      "status": "setAside",
+      "priority": "station-level",
+      "tariffModel": "dealer/site charging",
+      "inventoryCoverage": "2 locations / 2 EVSE / 2 connectors in current REVE snapshot",
+      "blocker": "Current REVE proves two Porsatecnic-operated EVSE, but first-pass public research did not surface an official current public charging tariff or deterministic direct checkout. Porsche home-charging product prices are not evidence for these public REVE points.",
+      "resumeCondition": "official site charging tariff, QR/ad-hoc checkout or post-first-pass review",
+      "evidence": [
+        "data/spain_reve/coverage.json",
+        "data/spain_reve/raw_cpo_labels_snapshot.json"
+      ],
+      "lastInvestigated": "2026-09-12",
+      "lastChanged": "2026-09-12"
+    },
+    {
+      "canonical": "Punto Recargas SL",
+      "partyId": "PWH",
+      "status": "supersededAlias",
+      "canonicalTarget": "Powerdot",
+      "priority": "alias-resolution",
+      "tariffModel": "Powerdot direct/QR station charging",
+      "inventoryCoverage": "137 locations / 1181 EVSE / 1191 connectors in current REVE snapshot",
+      "coverage": "Powerdot's official Spain station pages identify PUNTO RECARGAS, S.L. as the Spanish operating entity and expose Powerdot branding, support and QR/RFID payment methods. The REVE legal-entity label is therefore treated as a deterministic alias of Powerdot rather than an independent additional network.",
+      "blocker": null,
+      "resumeCondition": "none for alias identity; station-level tariff work remains attached to Powerdot canonical network",
+      "evidence": [
+        "https://powerdot.eu/es/blog/marker/centro-comercial-imaginalia-albacete",
+        "data/spain_reve/coverage.json",
+        "data/spain_reve/raw_cpo_labels_snapshot.json"
+      ],
+      "lastInvestigated": "2026-09-12",
+      "lastChanged": "2026-09-12"
+    },
+    {
+      "canonical": "P‑APP & WEB SERVICIOS DIGITALES S.L.U.",
+      "partyId": "IPK",
+      "status": "setAside",
+      "priority": "station-level",
+      "tariffModel": "platform-managed public charging",
+      "inventoryCoverage": "59 locations / 597 EVSE / 597 connectors in current REVE snapshot",
+      "blocker": "A large current REVE footprint is proven, but first-pass public research did not surface an authoritative operator tariff page or deterministic direct checkout attributable to this legal entity. Third-party station aggregators are not promoted as tariff authority.",
+      "resumeCondition": "official operator/app identity, QR/ad-hoc checkout, public backend mapping or post-first-pass review",
+      "evidence": [
+        "data/spain_reve/coverage.json",
+        "data/spain_reve/raw_cpo_labels_snapshot.json"
+      ],
+      "lastInvestigated": "2026-09-12",
+      "lastChanged": "2026-09-12"
+    },
+    {
+      "canonical": "QWELLO España SL",
+      "partyId": "AEQ",
       "status": "active",
       "priority": "station-level",
-      "tariffModel": "energy-services managed charging",
-      "inventoryCoverage": "28 locations / 59 EVSE / 59 connectors in current REVE snapshot",
-      "coverage": "Current REVE proves a material OESTE-operated footprint. Public evidence identifies OESTE as an energy-services company active in electric mobility, but no deterministic current public network-wide charging tariff surfaced in first pass.",
-      "blocker": "Requires station/app/QR or direct checkout tariff mapping before rankable prices can be published.",
-      "resumeCondition": "post-first-pass station tariff mapping or official deterministic tariff publication",
+      "tariffModel": "Qwello direct app/contactless charging with energy plus infrastructure-time component",
+      "inventoryCoverage": "117 locations / 188 EVSE / 234 connectors in current REVE snapshot",
+      "coverage": "Qwello Spain officially confirms direct public charging, app and contactless-card payment, real-time cost display and a pricing model combining energy with an infrastructure/time component. The user manual also confirms ad-hoc card/Apple Pay/Google Pay authorization and that the station screen shows the current tariff. No single Spain-wide numeric tariff is generalized because Qwello presents the applicable tariff at station/session level.",
+      "blocker": "Requires deterministic station/app/screen tariff extraction before rankable prices can be attached exhaustively to the 117 REVE locations.",
+      "resumeCondition": "post-first-pass Qwello station/app/backend tariff mapping or official deterministic station tariff feed",
       "evidence": [
-        "https://www.anese.es/socios/oeste-soluciones-energeticas/",
+        "https://qwello.es/",
+        "https://qwello.es/es/experience",
+        "https://qwello.es/manual_qwello-SPAIN.pdf",
         "data/spain_reve/coverage.json",
         "data/spain_reve/raw_cpo_labels_snapshot.json"
       ],
-      "lastInvestigated": "2026-09-11",
-      "lastChanged": "2026-09-11"
-    },
-    {
-      "canonical": "PARKING MOGAN SA",
-      "partyId": "PMO",
-      "status": "active",
-      "priority": "station-level",
-      "tariffModel": "Eco Carga Islas managed destination charging",
-      "inventoryCoverage": "1 location / 10 EVSE / 10 connectors in current REVE snapshot",
-      "coverage": "Official Eco Carga Islas material confirms Parking Mogán has 10 destination chargers at 7.4 kW. A third-party listing reports a numeric price, but that value is not promoted because no official/current direct tariff authority was verified in first pass.",
-      "blocker": "Requires official Eco Carga/Parking Mogán tariff or deterministic direct checkout mapping.",
-      "resumeCondition": "official tariff, QR/app checkout or post-first-pass backend mapping",
-      "evidence": [
-        "https://ecocargaislas.com/",
-        "data/spain_reve/coverage.json",
-        "data/spain_reve/raw_cpo_labels_snapshot.json"
-      ],
-      "lastInvestigated": "2026-09-11",
-      "lastChanged": "2026-09-11"
-    },
-    {
-      "canonical": "PETREM DISTRIBUCIO SA",
-      "partyId": "PTM",
-      "status": "setAside",
-      "priority": "station-level",
-      "tariffModel": "single-site service-station charging",
-      "inventoryCoverage": "1 location / 1 EVSE / 2 connectors in current REVE snapshot",
-      "blocker": "Official Petrem public company/service surfaces confirm the operator identity but no current deterministic public EV charging tariff or direct checkout surfaced in first pass. Third-party price listings are not promoted.",
-      "resumeCondition": "official station tariff, QR/ad-hoc checkout or post-first-pass review",
-      "evidence": [
-        "https://www.petrem.com/fr/qui-sommes-nous/",
-        "data/spain_reve/coverage.json",
-        "data/spain_reve/raw_cpo_labels_snapshot.json"
-      ],
-      "lastInvestigated": "2026-09-11",
-      "lastChanged": "2026-09-11"
-    },
-    {
-      "canonical": "PETRO PALOL, S.L.",
-      "partyId": "843",
-      "status": "setAside",
-      "priority": "station-level",
-      "tariffModel": "single-site charging",
-      "inventoryCoverage": "1 location / 2 EVSE / 6 connectors in current REVE snapshot",
-      "blocker": "No current official/direct deterministic EV charging tariff or public checkout surfaced in first-pass search.",
-      "resumeCondition": "official site tariff, QR/ad-hoc checkout or post-first-pass review",
-      "evidence": [
-        "data/spain_reve/coverage.json",
-        "data/spain_reve/raw_cpo_labels_snapshot.json"
-      ],
-      "lastInvestigated": "2026-09-11",
-      "lastChanged": "2026-09-11"
-    },
-    {
-      "canonical": "PORSAMADRID, S.L.",
-      "partyId": "920",
-      "status": "setAside",
-      "priority": "station-level",
-      "tariffModel": "Porsche/dealer-site charging",
-      "inventoryCoverage": "8 locations / 8 EVSE / 8 connectors in current REVE snapshot",
-      "blocker": "Corporate evidence confirms Porsamadrid now operates EV charging points, but no current public deterministic customer charging tariff or direct checkout surfaced in first pass.",
-      "resumeCondition": "official public charging tariff, QR/ad-hoc checkout or post-first-pass review",
-      "evidence": [
-        "data/spain_reve/coverage.json",
-        "data/spain_reve/raw_cpo_labels_snapshot.json"
-      ],
-      "lastInvestigated": "2026-09-11",
-      "lastChanged": "2026-09-11"
+      "lastInvestigated": "2026-09-12",
+      "lastChanged": "2026-09-12"
     }
   ],
   "aliases": {
     "source": "yass3705/tesla-charge-companion-stable@spain-reve-preintegration:data/spain_reve/operator_aliases_es.json",
     "canonicalGroups": 16,
-    "runtimeResolvedInCanonical": 4,
+    "runtimeResolvedInCanonical": 5,
     "status": "matching_candidates_reconciled_against_live_REVE_before_counting",
     "rule": "Aliases and platform labels never increment the physical-CPO denominator unless current REVE proves an independent party identity."
   },
   "coherence": {
-    "checkedAt": "2026-09-11T22:47:00Z",
+    "checkedAt": "2026-09-11T23:41:00Z",
     "result": "GREEN_WITH_DOCUMENTED_LEGACY_COUNTER_UNCERTAINTY",
     "checks": [
       "current REVE durable snapshot still contains 148 canonical identities",
-      "immutable base blob 017739aeefff1fe3027292fe1d44ef44d5ba60b6 preserves complete nominative detail for decisions 1-103",
-      "five new durable decisions added: OESTE 104, Parking Mogán 105, Petrem 106, Petro Palol 107, Porsamadrid 108",
-      "counts reconcile exactly: 13 sourceValidated + 3 partial + 27 active + 58 setAside + 3 excludedPlatform + 4 supersededAlias = 108",
-      "third-party numeric prices for Parking Mogán/Petrem were not promoted",
-      "no set-aside case was re-audited",
+      "immutable base blob 2646b1c9f388b599f5ab2b28652e6484607343a3 preserves complete nominative detail for decisions 1-108",
+      "four new durable decisions added: Porsatecnic 109, Punto Recargas/Powerdot alias 110, P-APP 111, Qwello 112",
+      "counts reconcile exactly: 13 sourceValidated + 3 partial + 28 active + 60 setAside + 3 excludedPlatform + 5 supersededAlias = 112",
+      "Punto Recargas is not double-counted as an independent physical network because Powerdot official Spain pages identify that legal entity as the operator behind the Powerdot brand",
+      "Qwello remains active station-level because official surfaces prove direct payment and dynamic/current tariff display but not one safe Spain-wide numeric tariff",
+      "Porsatecnic and P-APP were set aside after one reasonable first pass and will not be re-audited without new evidence",
+      "no third-party numeric tariff was promoted",
       "previously reported 373 remains unverified and excluded from durable KPI counting"
     ]
   },
   "history": [
-    {"date":"2026-09-11","change":"First pass advanced durably from 103 to 108 decisions: OESTE and Parking Mogán kept active for deterministic station-level mapping; Petrem, Petro Palol and Porsamadrid set aside without blocking the queue."},
-    {"date":"2026-09-11","change":"Numeric third-party prices were deliberately not promoted where no official/direct authority was verified."}
+    {"date":"2026-09-12","change":"First pass advanced durably from 108 to 112 decisions: Porsatecnic and P-APP set aside, Punto Recargas resolved as the Powerdot operating-entity alias, and Qwello retained active for deterministic station-level tariff mapping."},
+    {"date":"2026-09-12","change":"No network-wide numeric tariff was inferred for Qwello; official Spain material confirms direct/app/contactless charging and station/session-level current tariff display."}
   ]
 }
