@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 123,
+  "generatedAt": "2026-09-11T02:10:00+01:00",
+  "dependsOn": ["docs/italy-cpo-progress-2026-09-run122-delta.json"],
+  "reason": "Classify Sagelio from current first-party commercial and direct-payment documentation. Sagelio's current site explicitly advertises pricing control as part of its managed charging platform, while its direct-payment documentation confirms QR/card activation. This makes a single network-wide direct tariff unsafe: pricing must be resolved per station/connector or per deterministic owner tariff group.",
+  "changes": [
+    {
+      "partyId": "SAG",
+      "canonicalName": "Sagelio srl società benefit",
+      "aliases": ["Sagelio srl società benefit", "Sagelio", "SAG"],
+      "status": "active",
+      "priority": "station-level",
+      "inventoryEvse": 405,
+      "inventoryStations": 316,
+      "inventorySource": "Italy canonical seed reconstructed from workflow run 33308407226",
+      "tariffModel": "station_or_owner_specific_managed_pricing",
+      "tariffChannel": "direct QR/card supported; Electromaps/eMSP and other roaming channels remain separate",
+      "officialReferences": [
+        "https://sagelio.com/",
+        "https://sagelio.com/blog/ricaricare-auto-elettrica-con-carta-di-credito-da-oggi-si-puo/"
+      ],
+      "positiveEvidence": [
+        "Current Sagelio site describes its platform as providing pricing, monitoring and reporting control and offers tailored business models to host locations.",
+        "Sagelio states its network exceeds 400 charging points across hospitality, retail and service locations, consistent with a heterogeneous managed estate rather than a single uniform public tariff.",
+        "First-party direct-payment documentation confirms Sagelio stations can be started by scanning the station QR code and selecting direct card payment."
+      ],
+      "negativeEvidence": [
+        "No current first-party national Sagelio tariff table was found that deterministically applies one energy price to all SAG EVSE.",
+        "The direct-card article says card charging historically had the same cost as Electromaps plus Stripe commission, but it is from 2023 and is not sufficient as a current 2026 tariff value.",
+        "Do not use third-party eMSP prices as direct Sagelio CPO tariffs."
+      ],
+      "coverage": {
+        "rankableDirectEvseAdded": 0,
+        "unresolvedEvse": 405,
+        "reason": "owner/location-controlled pricing requires exact station/connector mapping"
+      },
+      "blockage": "Need deterministic current station/connector direct price from Sagelio QR/card surface, platform backend, PUN/ad-hoc metadata, or an owner-level tariff rule with exact EVSE membership.",
+      "resumeCondition": "Skip repeated network-wide tariff research. Enumerate SAG stations from largest owner/location groups and map QR/direct/PUN prices per station or proven deterministic owner class.",
+      "confidence": "high for station-level classification; insufficient for any current tariff promotion",
+      "lastInvestigated": "2026-09-11",
+      "lastChanged": "2026-09-11",
+      "historyAppend": "2026-09-11 run123: SAG classified station-level because Sagelio's first-party platform gives pricing control at managed-location level; direct QR/card exists but no current nationwide price is proven."
+    }
+  ],
+  "effectiveCountsBefore": {"treated":48,"partial":23,"setAside":1,"active":12,"totalCanonical":84,"supersededAlias":4,"physicalPartyIds":88},
+  "effectiveCountsAfterReplay": {"treated":48,"partial":23,"setAside":1,"active":12,"totalCanonical":84,"supersededAlias":4,"physicalPartyIds":88},
+  "queueImpact": {
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 12,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": [],
+    "priorityClassified": ["SAG -> station-level"],
+    "rankableDirectEvseAdded": 0,
+    "atlanteLast": true
+  },
+  "consistency": {
+    "statusEquation": "48 + 23 + 1 + 12 = 84; 84 + 4 superseded aliases = 88 physical partyIds",
+    "physicalInventoryCardinalityChanged": false,
+    "canonicalIdentityCardinalityChanged": false,
+    "networkWideExtrapolationApplied": false,
+    "directVsEmspSeparated": true,
+    "physicalCanonicalSnapshotStillStale": true,
+    "canonicalMaterializationPendingLosslessReplay": true,
+    "result": "pass: SAG locked to station-level; no tariff extrapolated"
+  },
+  "historyAppend": [
+    "2026-09-11 run123: Sagelio network-wide pricing path closed absent new first-party evidence; future work goes directly to station/QR/PUN mapping.",
+    "2026-09-11 run123: effective counts unchanged after classification; Atlante remains last."
+  ]
+}
