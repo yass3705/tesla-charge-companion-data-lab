@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 135,
+  "generatedAt": "2026-09-11T14:49:55+01:00",
+  "effectiveCounts": {
+    "treated": 49,
+    "partial": 24,
+    "setAside": 1,
+    "active": 10,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueues": {
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 10
+  },
+  "changes": {
+    "active": [
+      {
+        "partyId": "HER",
+        "canonicalName": "HERA COMM SPA",
+        "status": "active",
+        "priority": "station-level",
+        "inventory": {
+          "evse": 1137,
+          "stations": 523,
+          "source": "Italy canonical seed inventory; effective status preserved by ordered deltas"
+        },
+        "tariffModel": "station_or_channel_specific_until_proven_otherwise",
+        "tariffChannel": "direct Hera Ricarica must remain separated from roaming eMSP",
+        "positiveEvidence": [
+          {
+            "type": "official_app_store",
+            "url": "https://apps.apple.com/it/app/hera-ricarica/id1464904258",
+            "observation": "Hera Ricarica remains the Gruppo Hera first-party application; App Store listing exposes operation/start of chargers but no current deterministic tariff grid. Latest listed app version is 6.2.14 dated 2025-05-26."
+          },
+          {
+            "type": "current_market_observatory_discovery_only",
+            "url": "https://adiconsum.it/wp-content/uploads/2026/06/Maggio-2026-OSSERVATORIO-PREZZI-TARIFFE-RICARICA.pdf",
+            "observation": "May 2026 market survey reports a Hera proprietary-app price of 0.69 EUR/kWh, but this is secondary evidence and cannot establish direct CPO applicability to all HER EVSE."
+          },
+          {
+            "type": "legacy_product_material_discovery_only",
+            "url": "https://gestionale.obiettivocaf.it/wp-content/uploads/2025/04/Prodotti-Hera-Mobilita.pdf",
+            "observation": "Legacy Hera mobility material mirrored outside the official domain shows AC 0.720 EUR/kWh and DC+ 0.850 EUR/kWh with 2 EUR/month; freshness and present network-wide applicability are not established."
+          }
+        ],
+        "negativeEvidence": [
+          "Targeted searches on current official heracomm.gruppohera.it / gruppohera.it surfaces did not expose a current public direct charging tariff table.",
+          "Current 2026 secondary observations differ from legacy mirrored product material, so no historical price may be promoted.",
+          "No deterministic public station/EVSE-to-tariff mapping was found in this investigation round."
+        ],
+        "blockage": "No current first-party deterministic direct tariff rule or station/EVSE mapping found; available secondary/legacy prices conflict or lack applicability proof.",
+        "resumeCondition": "New first-party Hera tariff document/page, public/guest Hera Ricarica backend or QR/POS surface exposing exact current tariff, or PUN/AFIR station records with deterministic HER EVSE-to-direct-price mapping.",
+        "coverage": {
+          "rankableAddedThisRun": 0,
+          "failClosedEvse": 1137,
+          "reason": "No safe mapping from HER EVSE to an exact current direct price."
+        },
+        "confidence": "high",
+        "lastInvestigated": "2026-09-11",
+        "lastChanged": "2026-09-11",
+        "investigationControl": {
+          "networkTariffPath": "exhausted_without_new_first_party_proof",
+          "repeatGuard": "Do not repeat the same network-wide tariff search unless a new source appears; move to station/EVSE or next CPO."
+        },
+        "history": [
+          "run135: recrossed current official web/app surfaces and recent secondary market observations; no safe universal direct tariff promoted; repeated network-wide path closed to prevent stagnation."
+        ]
+      }
+    ]
+  },
+  "consistency": {
+    "canonicalBucketEquation": "49+24+1+10=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "duplicatePartyIdsIntroduced": 0,
+    "aliasDoubleCountIntroduced": 0,
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 10,
+    "pass": true
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalFileState": "STALE_SEED",
+    "effectiveStateSource": "stale seed plus ordered lossless run deltas through run135",
+    "safePromotionCondition": "execute corrected scripts/italy_cpo_progress_consolidate.py over all historical deltas, require physicalPartyIds=88 and duplicatePartyIds=0, inspect diff, then replace seed"
+  },
+  "nextAction": "Skip repeated HERA network-wide research; continue the largest remaining station-level CPO with a fresh direct station/EVSE surface. Atlante remains last."
+}
