@@ -3,6 +3,7 @@
   "country": "IT",
   "run": 143,
   "generatedAt": "2026-09-11T23:53:25+01:00",
+  "correctedAt": "2026-09-12T01:04:00+01:00",
   "effectiveCounts": {
     "treated": 49,
     "partial": 24,
@@ -16,58 +17,51 @@
     "networkOrClassWideActive": 0,
     "stationLevelActive": 10
   },
-  "changes": {
-    "active": [
-      {
-        "partyId": "PWY",
-        "canonicalName": "Powy / TheF Charging S.r.l.",
-        "status": "active",
-        "priority": "station-level",
-        "aliases": ["TheF Charging S.r.l.", "Powy", "Powy Energy"],
-        "inventorySnapshot": {
-          "canonicalEvse": 1080,
-          "canonicalStations": 387,
-          "officialCurrentMarketingCount": "1400 charging points installed, 500+ strategic locations, 1000+ additional points in installation",
-          "source": "https://powy.energy/ricarica-veicolo/",
-          "assessment": "canonical PUN inventory is potentially stale/incomplete versus current official network size; do not rewrite partyId counts from marketing totals without deterministic PUN/OCPI mapping"
-        },
-        "tariffModel": "station/connector-specific and activation-channel-dependent",
-        "tariffChannel": "direct Powy Charge app; direct QR payment; POS on enabled stations; roaming eMSP separate",
-        "officialReferences": [
-          "https://powy.energy/",
-          "https://powy.energy/ricarica-veicolo/",
-          "https://powy.energy/ricarica-veicolo/powy-charge-app/",
-          "https://powy.energy/faq/"
-        ],
-        "positiveEvidence": [
-          "Current official Powy pages identify Powy as a brand of TheF Charging S.r.l.; preserve PWY alias relationship rather than counting TheF and Powy separately.",
-          "Official charging page states tariffs depend on charge-point power, charge duration and activation method, and advertises selected promotional tariffs rather than a universal network price.",
-          "Official Powy Charge page states prices/offers are visible before session and can differ by station; current app supports payment and live station data.",
-          "Official charging page confirms direct payment without registration via QR code and card/POS on supported stations, giving a first-party ad-hoc surface to target for exact station/EVSE pricing.",
-          "Official current network page reports 1400 installed charging points across 500+ locations; this is larger than the canonical snapshot of 1080 EVSE / 387 stations and therefore flags the current canonical inventory as potentially stale for PWY."
-        ],
-        "negativeEvidence": [
-          "No current first-party universal AC/DC/HPC tariff grid was found on the public Powy website.",
-          "A third-party network-average/current-price table cannot be promoted because Powy explicitly states prices vary by operator/location/channel and current app/QR values are station-specific.",
-          "The official 1400-point marketing total cannot be converted into additional PWY PUN EVSE without exact partyId/EVSE mapping; no inventory counter is changed from marketing totals alone."
-        ],
-        "blockage": "Need deterministic public/app/QR/POS/PUN mapping from PWY station or EVSE identifier to current direct tariff; current public website proves the station-level model and direct-payment surfaces but does not expose connector prices generically.",
-        "resumeCondition": "Probe Powy Direct Payment QR flow or Powy Charge public/guest backend with known PWY EVSE/station IDs, or refresh PUN/OCPI PWY inventory and tariff fields; promote only exact EVSE->tariff mappings after ordered historical dedup.",
-        "confidence": "high on alias, station-level model, channel separation and stale-inventory warning; no rankable tariff increment",
-        "lastInvestigated": "2026-09-11",
-        "lastChanged": "2026-09-11",
-        "history": [
-          "run143: refreshed TheF Charging -> Powy identity, locked PWY as station-level, identified official QR/POS/app direct-payment surfaces and flagged canonical 1080-EVSE snapshot as potentially stale versus current official 1400 installed points; no tariff or inventory extrapolation."
-        ]
-      }
-    ]
-  },
+  "observations": [
+    {
+      "partyId": "PWY",
+      "canonicalName": "Powy / TheF Charging S.r.l.",
+      "status": "treated",
+      "priority": "class-wide",
+      "aliases": ["TheF Charging S.r.l.", "Powy", "Powy Energy"],
+      "authoritativeTariffDelta": "docs/italy-cpo-progress-2026-09-run132-delta.json",
+      "tariffModel": "direct CPO power-band class-wide",
+      "tariffChannel": "direct Powy Charge app / Direct Payment QR / POS; roaming eMSP separate",
+      "tariffs": [
+        {"class":"AC","powerRule":"<=22 kW","energyEurPerKwh":0.72,"occupancyEurPerMin":0.09,"occupancyGraceMin":60,"occupancyWindow":"not applied 23:00-07:00"},
+        {"class":"DC","powerRule":"23-60 kW inclusive","energyEurPerKwh":0.88,"occupancyEurPerMin":0.19,"occupancyGraceMin":60},
+        {"class":"DC+","powerRule":"61-149 kW inclusive","energyEurPerKwh":0.92},
+        {"class":"HPC","powerRule":">=150 kW","energyEurPerKwh":0.97,"occupancyEurPerMin":0.29,"occupancyGraceMin":60}
+      ],
+      "fees": {
+        "activationAppEur": 0.0,
+        "activationDirectPaymentOrPosEur": 0.40,
+        "preAuthorizationAppEur": 80.0,
+        "preAuthorizationDirectPaymentOrPosEur": 75.0
+      },
+      "officialReferences": [
+        "https://powy.energy/ricarica-veicolo/costi-di-ricarica/",
+        "https://powy.energy/ricarica-veicolo/",
+        "https://powy.energy/ricarica-veicolo/powy-charge-app/"
+      ],
+      "inventorySnapshot": {
+        "canonicalEvse": 1080,
+        "canonicalStations": 387,
+        "officialCurrentMarketingCount": "1400 charging points installed, 500+ strategic locations, 1000+ additional points in installation",
+        "assessment": "canonical PUN inventory may be stale/incomplete; do not rewrite partyId inventory from marketing totals without deterministic PUN/OCPI mapping"
+      },
+      "correction": "The original run143 text incorrectly regressed PWY to active/station-level by overlooking the dedicated first-party Costi di ricarica page already captured in run132. Fresh verification on 2026-09-12 confirms that page still publishes the deterministic Italy direct tariff grid. PWY therefore remains treated/class-wide; run143 only contributes the stale-inventory warning and alias/channel observations, not a status transition.",
+      "lastInvestigated": "2026-09-12",
+      "lastChanged": "2026-09-12"
+    }
+  ],
   "consistency": {
     "canonicalBucketEquation": "49+24+1+10=84",
     "physicalPartyIdEquation": "84+4=88",
     "duplicatePartyIdsIntroduced": 0,
     "aliasDoubleCountIntroduced": 0,
     "rankableEvseAdded": 0,
+    "statusRegressionCorrected": "PWY treated/class-wide preserved from run132",
     "pass": true,
     "fullAuditRequiredThisRun": false,
     "lastFullAuditPath": "data/reports/italy_canonical_consistency_audit_20260911_run141.json"
@@ -77,5 +71,5 @@
     "physicalFileState": "STALE_SEED",
     "safePromotionCondition": "complete corrected lossless replay of all historical deltas; require physicalPartyIds=88, duplicatePartyIds=0, inspect diff, then replace seed"
   },
-  "nextAction": "Continue PWY only through exact station/EVSE surfaces (Powy Direct Payment QR/POS/app backend or PUN), while moving to the next largest unresolved station-level CPO if no directly exploitable PWY identifier surface is available. Do not repeat network-wide tariff research. Atlante remains last."
+  "nextAction": "Keep PWY treated/class-wide using run132. Refresh PWY inventory only through deterministic PUN/OCPI mapping; do not re-open station-level tariff research unless the official class grid changes. Continue genuinely unresolved station-level CPOs. Atlante remains last."
 }
