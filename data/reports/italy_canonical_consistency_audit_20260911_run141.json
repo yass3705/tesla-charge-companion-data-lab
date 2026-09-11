@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 141,
+  "generatedAt": "2026-09-11T20:51:26+01:00",
+  "branch": "research/italy-cpo-priority-20260905",
+  "auditType": "full_canonical_consistency",
+  "effectiveState": {
+    "treated": 49,
+    "partial": 24,
+    "setAside": 1,
+    "active": 10,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88,
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 10
+  },
+  "checks": {
+    "statusBucketsCoverCanonical": {
+      "equation": "49+24+1+10=84",
+      "pass": true
+    },
+    "physicalInventoryCovered": {
+      "equation": "84+4=88",
+      "pass": true
+    },
+    "duplicateCanonicalPartyIdsIntroducedSinceRun140": {
+      "count": 0,
+      "pass": true
+    },
+    "aliasDoubleCountIntroducedSinceRun140": {
+      "count": 0,
+      "pass": true
+    },
+    "priorityQueuePartition": {
+      "networkOrClassWideActive": 0,
+      "stationLevelActive": 10,
+      "pass": true
+    },
+    "run140EmobitalyCandidateDedup": {
+      "candidateEvse": 9,
+      "historicallyCredited": 9,
+      "newRankable": 0,
+      "proof": "docs/italy-cpo-progress-2026-09-run55-delta.json",
+      "pass": true
+    },
+    "physicalCanonicalFileFreshness": {
+      "path": "docs/italy-cpo-progress-2026-09.json",
+      "seedGeneratedAt": "2026-09-05T23:54:48+01:00",
+      "seedCounts": {
+        "treated": 4,
+        "partial": 5,
+        "setAside": 1,
+        "active": 78,
+        "total": 88
+      },
+      "state": "STALE_SEED_NOT_SAFE_TO_PROMOTE",
+      "pass": false,
+      "reason": "the physical seed predates later classifications and alias supersessions; replacing it without a complete corrected lossless replay could lose nominative history or double-count aliases"
+    }
+  },
+  "correctionsOrDecisions": [
+    "Closed the run140 nine-EVSE EMOBITALY batch as 100% historical duplicates from run55; zero coverage increment.",
+    "Kept effective nominal counters unchanged because no CPO status transition or alias transition occurred in run141.",
+    "Did not overwrite docs/italy-cpo-progress-2026-09.json because the complete lossless historical replay has not yet been demonstrated in this run."
+  ],
+  "consistencyResult": "PASS_EFFECTIVE_STATE_WITH_KNOWN_STALE_PHYSICAL_SEED",
+  "safeCanonicalPromotionGate": {
+    "required": [
+      "replay all historical Italy deltas in order using corrected consolidator",
+      "materialize exactly 88 physical partyIds with 84 canonical entities plus 4 superseded aliases",
+      "verify zero duplicate canonical partyIds and zero alias double counts",
+      "inspect nominative diff before replacing the stale seed"
+    ]
+  },
+  "antiStagnation": {
+    "repeatedInvestigationClosed": "EMOBITALY run140 candidate batch",
+    "doNotRepeatWithoutNewEvidence": true,
+    "next": "continue next largest unresolved station-level CPO; Atlante last"
+  }
+}
