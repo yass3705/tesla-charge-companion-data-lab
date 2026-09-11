@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "auditRun": 127,
+  "checkedAt": "2026-09-11T06:53:00+01:00",
+  "branch": "research/italy-cpo-priority-20260905",
+  "effectiveState": {
+    "treated": 48,
+    "partial": 23,
+    "setAside": 1,
+    "active": 12,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88,
+    "networkOrClassWideActiveRemaining": 0,
+    "stationLevelActiveRemaining": 12
+  },
+  "checks": {
+    "statusEquation": "48 + 23 + 1 + 12 = 84",
+    "physicalEquation": "84 + 4 supersededAlias = 88",
+    "statusEquationPass": true,
+    "physicalInventoryCardinalityPass": true,
+    "duplicateCanonicalPartyIdsIntroducedByRun127": 0,
+    "atlanteLastPolicyPreserved": true,
+    "directVsEmspSeparationPreserved": true,
+    "networkWideExtrapolationApplied": false,
+    "emoOrderedLedgerDedup": {
+      "run72UniqueBaseline": 296,
+      "run126FreshnessRemoved": 52,
+      "run127UniqueAdded": 9,
+      "currentSafeRankable": 253,
+      "inventory": 849,
+      "failClosed": 596,
+      "equation": "296 - 52 + 9 = 253; 849 - 253 = 596",
+      "pass": true
+    }
+  },
+  "physicalCanonical": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "generatedAtObserved": "2026-09-05T23:54:48+01:00",
+    "observedSeedCounts": {"treated":4,"partial":5,"setAside":1,"active":78,"physicalTotal":88},
+    "isCurrentEffectiveTruth": false,
+    "defect": "The physical file is still the inventory seed and has not yet been materialized through the ordered delta chain. Its embedded counts/statuses are stale even though the effective overlay is coherent.",
+    "safeRepairPath": "scripts/italy_cpo_progress_consolidate.py now describes lossless replay of historical changes, safeStatusTransitions, classificationUpdatesWithoutStatusTransition and classificationUpdates, retains raw deltaEvidence, and fails closed on duplicate/missing partyIds or physical inventory mismatch.",
+    "repairDecisionThisRun": "Do not replace the canonical blindly from a truncated remote read. The consolidator must be executed against a complete branch checkout or equivalent complete file set; repository network materialization was unavailable in the current execution environment. Preserve run127 delta and this audit rather than risking destructive canonical loss.",
+    "resumeCondition": "Run the lossless consolidator on the full branch, verify resulting counts 48/23/1/12 + 4 aliases = 88 and diff the full 88-party inventory before replacing docs/italy-cpo-progress-2026-09.json."
+  },
+  "result": "effective_overlay_pass; physical_canonical_stale_requires_lossless_materialization",
+  "history": [
+    "2026-09-11 run127 full consistency audit: effective nominal counts and physical cardinality pass.",
+    "2026-09-11 run127: EMOBITALY nine-ID ordered-ledger dedup passes and current safe coverage becomes 253/849.",
+    "2026-09-11 run127: physical canonical remains a stale 2026-09-05 seed; destructive replacement was intentionally avoided until complete lossless replay can be executed and diffed."
+  ]
+}
