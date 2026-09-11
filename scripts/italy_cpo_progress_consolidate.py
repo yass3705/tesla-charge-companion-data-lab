@@ -4,17 +4,19 @@
 The canonical file is the inventory seed. Ordered run deltas are then replayed.
 Historical `changes`, modern `classificationUpdates`, and the legacy
 `safeStatusTransitions` / `classificationUpdatesWithoutStatusTransition`
-shapes are supported. Every raw party-scoped update is retained in
-`deltaEvidence`, so newer summary fields can supersede older values without
-discarding the evidence that produced them. Non-CPO relationship records are
-retained at top level.
+shapes are supported. `changes` may be either a flat list of party updates or
+modern status buckets such as {"treated": [...], "partial": [...]}.
+Every raw party-scoped update is retained in `deltaEvidence`, so newer summary
+fields can supersede older values without discarding the evidence that produced
+them. Non-CPO relationship records are retained at top level.
 
 Run labels may contain a suffix (for example run4b and run7b). They are ordered
 as 4, 4b, 5 ... 7, 7b, 8 so no historical delta is silently skipped.
 
-The script recomputes named status counts and fails closed on duplicate partyIds
-or physical-inventory mismatch. It does not use GitHub code search for EVSE
-deduplication; run `italy_cpo_delta_evse_dedup_audit.py` before promotion.
+The script recomputes named status counts and fails closed on duplicate partyIds,
+physical-inventory mismatch, or an ambiguous party-update container. It does not
+use GitHub code search for EVSE deduplication; run
+`italy_cpo_delta_evse_dedup_audit.py` before promotion.
 """
 from __future__ import annotations
 
@@ -47,16 +49,81 @@ def deep_merge(dst, src):
     return copy.deepcopy(src)
 
 
+def _iter_party_container(shape, container):
+    """Yield party-scoped updates from flat lists or status-bucketed mappings.
+
+    Recent Italy deltas use e.g. `changes: {"treated": [], "partial": [...]}`.
+    Older deltas use `changes: [...]`. Metadata dictionaries inside a bucketed
+    container are ignored only when they are clearly non-party metadata; any
+    party-looking but malformed value fails closed.
+    """
+    if container is None:
+        return
+
+    if isinstance(container, list):
+        for upd in container:
+            if not isinstance(upd, dict):
+                raise SystemExit(f"{shape}: expected object update, got {type(upd).__name__}")
+            yield shape, upd
+        return
+
+    if isinstance(container, dict):
+        # A single party update is accepted as a defensive compatibility form.
+        if container.get("partyId"):
+            yield shape, container
+            return
+
+        for bucket, value in container.items():
+            if bucket in STATUSES:
+                if value is None:
+                    continue
+                if not isinstance(value, list):
+                    raise SystemExit(f"{shape}.{bucket}: expected list, got {type(value).__name__}")
+                for raw in value:
+                    if not isinstance(raw, dict):
+                        raise SystemExit(
+                            f"{shape}.{bucket}: expected object update, got {type(raw).__name__}"
+                        )
+                    upd = copy.deepcopy(raw)
+                    upd.setdefault("status", bucket)
+                    yield shape, upd
+                continue
+
+            # Known summary/metadata buckets are deliberately not party updates.
+            if bucket in {
+                "consistency",
+                "counts",
+                "countsBefore",
+                "countsAfter",
+                "effectiveCountsAfter",
+                "priorityQueuesAfter",
+                "queueImpact",
+                "coverageAdded",
+                "history",
+                "historyAppend",
+                "notes",
+            }:
+                continue
+
+            # Unknown list/dict buckets containing partyIds must not be silently skipped.
+            if isinstance(value, list) and any(isinstance(x, dict) and x.get("partyId") for x in value):
+                raise SystemExit(f"{shape}: unsupported party-update bucket {bucket!r}")
+            if isinstance(value, dict) and value.get("partyId"):
+                raise SystemExit(f"{shape}: unsupported party-update bucket {bucket!r}")
+        return
+
+    raise SystemExit(f"{shape}: expected list/object container, got {type(container).__name__}")
+
+
 def iter_updates(delta):
     # Historical files used several shapes; all party-scoped forms must replay.
-    for upd in delta.get("changes") or []:
-        yield "changes", upd
-    for upd in delta.get("safeStatusTransitions") or []:
-        yield "safeStatusTransitions", upd
-    for upd in delta.get("classificationUpdatesWithoutStatusTransition") or []:
-        yield "classificationUpdatesWithoutStatusTransition", upd
-    for upd in delta.get("classificationUpdates") or []:
-        yield "classificationUpdates", upd
+    for shape in (
+        "changes",
+        "safeStatusTransitions",
+        "classificationUpdatesWithoutStatusTransition",
+        "classificationUpdates",
+    ):
+        yield from _iter_party_container(shape, delta.get(shape))
 
 
 def normalize_party_update(update):
@@ -212,6 +279,7 @@ def main():
             "classificationUpdatesWithoutStatusTransition",
             "classificationUpdates",
         ],
+        "changesContainersReplayed": ["flat-list", "status-bucketed-object"],
         "rawDeltaEvidenceRetained": True,
         "evseDedupGuard": "scripts/italy_cpo_delta_evse_dedup_audit.py",
     }
