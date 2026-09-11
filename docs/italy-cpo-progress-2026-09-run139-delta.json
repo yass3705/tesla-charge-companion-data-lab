@@ -25,30 +25,74 @@
         "priority": "station-level",
         "run136CandidateDedupProgress": {
           "candidateEvse": 50,
-          "historicallyCreditedConfirmed": 42,
-          "stillUnresolvedAgainstFullOrderedLedger": 8,
+          "historicallyCreditedConfirmed": 50,
+          "stillUnresolvedAgainstFullOrderedLedger": 0,
           "creditedAsNewThisRun": 0,
           "orderedReplayPreviouslyCheckedThroughRun": 73,
-          "orderedReplayNowCheckedThroughRun": 80,
-          "veneziaCandidates": [
-            "IT*EMO*E952*5",
-            "IT*EMO*E952*6",
-            "IT*EMO*E952*7",
-            "IT*EMO*E952*8",
-            "IT*EMOE1415",
-            "IT*EMOE1416",
-            "IT*EMOE1417",
-            "IT*EMOE1418"
+          "orderedReplayResolutionRun": 84,
+          "confirmedDuplicateGroups": [
+            {
+              "location": "Via Giacomo Manzu 33, Bergamo",
+              "evseCount": 21,
+              "historicalProof": "run65"
+            },
+            {
+              "location": "Piazza Giulio Cesare, Bari",
+              "evseCount": 12,
+              "historicalProof": "run66"
+            },
+            {
+              "location": "Via Togliatti 39, San Martino Siccomario",
+              "evseCount": 6,
+              "historicalProof": "run54"
+            },
+            {
+              "location": "Via Emilia 92/B, Catanzaro",
+              "evseCount": 2,
+              "historicalProof": "run54"
+            },
+            {
+              "location": "Via Fossa Lupara 12, Salerno",
+              "evseCount": 1,
+              "historicalProof": "run56 / run72 duplicate correction"
+            },
+            {
+              "location": "Piazzale della Stazione 23, Venezia",
+              "evseCount": 8,
+              "evseIds": [
+                "IT*EMO*E952*5",
+                "IT*EMO*E952*6",
+                "IT*EMO*E952*7",
+                "IT*EMO*E952*8",
+                "IT*EMOE1415",
+                "IT*EMOE1416",
+                "IT*EMOE1417",
+                "IT*EMOE1418"
+              ],
+              "historicalProof": "run84",
+              "historicalTariff": {
+                "energyEurPerKwh": 0.48,
+                "activationEur": 1.14,
+                "connector": "Type 2",
+                "powerKw": 22
+              }
+            }
           ],
-          "newAbsenceEvidence": "Runs 74, 75, 76, 77, 78, 79 and 80 were replayed in order on research/italy-cpo-priority-20260905 and contain no credited mapping for the eight Venezia candidate IDs.",
-          "decision": "remain fail-closed until all pre-run136 ordered deltas after run80 are checked; no new coverage credited"
+          "decision": "all 50 run136 candidates are confirmed historical duplicates; add zero EVSE and do not alter current EMOBITALY rankable/fail-closed totals from this candidate batch"
         },
-        "resumeCondition": "Continue ordered replay from run81 through the last pre-run136 delta; promote exactly the Venezia IDs only if absent from every earlier credited mapping.",
-        "confidence": "high for absence through run80; pending for later pre-run136 deltas",
+        "positiveEvidence": [
+          "run84 explicitly credits the same eight Venezia IDs E952*5..8 and EMOE1415..1418 at 0.48 EUR/kWh plus 1.14 EUR activation.",
+          "Combined with runs54/56/65/66 and the run72 duplicate correction, every one of the 50 run136 candidates now has a prior historical credit source."
+        ],
+        "negativeEvidence": [
+          "No run136 candidate is eligible for new rankable coverage; any re-credit would be a double count."
+        ],
+        "resumeCondition": "Close run136 candidate dedup as resolved. Continue EMOBITALY only with genuinely new exact station/EVSE mappings and always compare against the ordered credited ledger before promotion.",
+        "confidence": "high; 50/50 candidates resolved as historical duplicates",
         "lastInvestigated": "2026-09-11",
         "lastChanged": "2026-09-11",
         "history": [
-          "run139: extended deterministic ordered replay from run73 through run80; the eight Venezia run136 candidates are absent from all checked runs 74-80 and remain fail-closed pending completion through pre-run136 history."
+          "run139: completed run136 EMOBITALY candidate dedup. The final eight Venezia candidates were found already credited in run84, so the entire 50-EVSE run136 batch is duplicate and contributes zero new rankable EVSE."
         ]
       },
       {
@@ -92,6 +136,7 @@
     "duplicatePartyIdsIntroduced": 0,
     "aliasDoubleCountIntroduced": 0,
     "rankableEvseAdded": 0,
+    "run136CandidateDuplicateEquation": "50 candidates = 50 prior historical credits; 0 new",
     "pass": true
   },
   "canonicalMaterialization": {
@@ -99,5 +144,5 @@
     "physicalFileState": "STALE_SEED",
     "safePromotionCondition": "complete corrected lossless replay of all historical deltas; require physicalPartyIds=88, duplicatePartyIds=0, inspect diff, then replace seed"
   },
-  "nextAction": "Continue EMOBITALY ordered replay from run81 through pre-run136 history, then resolve/promote Venezia if unique; refresh Uattzy-group PUN/AFIR inventory before claiming exhaustive group coverage. Atlante remains last."
+  "nextAction": "Move past the resolved run136 EMOBITALY duplicate batch; continue the largest remaining station-level CPO and refresh Uattzy-group PUN/AFIR inventory before claiming exhaustive group coverage. Atlante remains last."
 }
