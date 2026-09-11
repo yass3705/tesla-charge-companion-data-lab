@@ -1,38 +1,79 @@
 #!/usr/bin/env python3
-"""Audit Italy progress deltas for EVSE IDs credited more than once.
+"""Audit Italy progress deltas for EVSE IDs credited or proposed more than once.
 
 Reads checked-out branch files directly instead of GitHub code search, because
-code search may index only the default branch. Supports legacy `changes` and
-modern `classificationUpdates`, explicit `evseIds`, and simple `evsePattern`
-ranges used by Italy progress deltas.
+code search may index only the default branch. Supports legacy and modern Italy
+delta containers, run suffixes, explicit EVSE IDs and simple EVSE ranges.
 
-The optional --candidate-id argument is a pre-promotion guard: every supplied
-EVSE ID is checked against the full ordered ledger and reported as already-seen
-or new. This avoids using repository search absence as proof of novelty.
+Candidate guards can be evaluated strictly against runs *before* a candidate
+run. This is required when a run such as run136 records deterministic candidates
+without crediting them yet: their presence in that candidate run must not make
+them look historically credited.
 """
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import re
 from collections import defaultdict
 from pathlib import Path
 
-RUN_RE = re.compile(r"italy-cpo-progress-2026-09-run(\d+)-delta\.json$")
+RUN_RE = re.compile(r"italy-cpo-progress-2026-09-run(\d+)([a-z]*)-delta\.json$", re.IGNORECASE)
+STATUSES = {"treated", "partial", "setAside", "active", "supersededAlias"}
 RANGE_RE = re.compile(r"^(.*?)(\d+)\.\.(?:(.*?))?(\d+)$")
+MAPPING_FIELDS = (
+    "newExactMappings",
+    "newCoveredSubpopulations",
+    "newDeterministicCandidates",
+)
+
+
+def _iter_party_container(shape: str, container):
+    if container is None:
+        return
+    if isinstance(container, list):
+        for upd in container:
+            if not isinstance(upd, dict):
+                raise SystemExit(f"{shape}: expected object update, got {type(upd).__name__}")
+            yield upd
+        return
+    if isinstance(container, dict):
+        if container.get("partyId"):
+            yield container
+            return
+        for bucket, value in container.items():
+            if bucket in STATUSES:
+                if value is None:
+                    continue
+                if not isinstance(value, list):
+                    raise SystemExit(f"{shape}.{bucket}: expected list, got {type(value).__name__}")
+                for raw in value:
+                    if not isinstance(raw, dict):
+                        raise SystemExit(f"{shape}.{bucket}: expected object update")
+                    upd = copy.deepcopy(raw)
+                    upd.setdefault("status", bucket)
+                    yield upd
+                continue
+            if isinstance(value, list) and any(isinstance(x, dict) and x.get("partyId") for x in value):
+                raise SystemExit(f"{shape}: unsupported party-update bucket {bucket!r}")
+            if isinstance(value, dict) and value.get("partyId"):
+                raise SystemExit(f"{shape}: unsupported party-update bucket {bucket!r}")
+        return
+    raise SystemExit(f"{shape}: expected list/object container, got {type(container).__name__}")
 
 
 def iter_updates(delta: dict):
-    yield from delta.get("changes") or []
-    yield from delta.get("classificationUpdates") or []
+    for shape in (
+        "changes",
+        "safeStatusTransitions",
+        "classificationUpdatesWithoutStatusTransition",
+        "classificationUpdates",
+    ):
+        yield from _iter_party_container(shape, delta.get(shape))
 
 
 def expand_evse_pattern(pattern: str):
-    """Expand simple numeric ranges such as IT*EMO*E2011*1..6.
-
-    If the right side repeats the prefix, e.g. A1..A6, it is also accepted.
-    Unknown pattern shapes are deliberately ignored rather than guessed.
-    """
     if not pattern:
         return []
     m = RANGE_RE.match(pattern)
@@ -48,8 +89,10 @@ def expand_evse_pattern(pattern: str):
 
 
 def iter_mapping_ids(update: dict):
-    for key in ("newExactMappings", "newCoveredSubpopulations"):
+    for key in MAPPING_FIELDS:
         for mapping in update.get(key) or []:
+            if not isinstance(mapping, dict):
+                raise SystemExit(f"{key}: expected mapping object")
             location = mapping.get("location")
             for evse_id in mapping.get("evseIds") or []:
                 yield evse_id, location, key
@@ -63,6 +106,12 @@ def main() -> int:
     ap.add_argument("--party-id", default=None)
     ap.add_argument("--allow-through-run", type=int, default=72)
     ap.add_argument("--candidate-id", action="append", default=[])
+    ap.add_argument(
+        "--candidate-before-run",
+        type=int,
+        default=None,
+        help="For candidate novelty, only count occurrences in runs strictly before this run.",
+    )
     ap.add_argument("--json-output", default=None)
     args = ap.parse_args()
 
@@ -71,10 +120,10 @@ def main() -> int:
     for path in Path(args.docs_dir).glob("italy-cpo-progress-2026-09-run*-delta.json"):
         m = RUN_RE.search(path.name)
         if m:
-            files.append((int(m.group(1)), path))
-    files.sort()
+            files.append((int(m.group(1)), m.group(2).lower(), path))
+    files.sort(key=lambda x: (x[0], x[1]))
 
-    for run, path in files:
+    for run, suffix, path in files:
         delta = json.loads(path.read_text(encoding="utf-8"))
         for update in iter_updates(delta):
             party_id = update.get("partyId")
@@ -83,6 +132,7 @@ def main() -> int:
             for evse_id, location, source_field in iter_mapping_ids(update):
                 occurrences[evse_id].append({
                     "run": run,
+                    "runSuffix": suffix or None,
                     "path": str(path),
                     "partyId": party_id,
                     "location": location,
@@ -94,27 +144,32 @@ def main() -> int:
         eid: occ for eid, occ in duplicates.items()
         if max(x["run"] for x in occ) > args.allow_through_run
     }
+
+    def candidate_occurrences(eid: str):
+        occ = occurrences.get(eid, [])
+        if args.candidate_before_run is not None:
+            occ = [x for x in occ if x["run"] < args.candidate_before_run]
+        return occ
+
     candidate_checks = {
         eid: {
-            "alreadySeen": eid in occurrences,
-            "occurrences": occurrences.get(eid, []),
+            "alreadySeen": bool(candidate_occurrences(eid)),
+            "occurrences": candidate_occurrences(eid),
         }
         for eid in args.candidate_id
     }
     report = {
         "partyIdFilter": args.party_id,
+        "mappingFieldsScanned": list(MAPPING_FIELDS),
         "uniqueEvseIdsObserved": len(occurrences),
         "duplicateEvseIds": len(duplicates),
         "historicalDuplicates": duplicates,
         "allowThroughRun": args.allow_through_run,
         "futureViolations": future_violations,
+        "candidateBeforeRun": args.candidate_before_run,
         "candidateChecks": candidate_checks,
-        "candidateNovelIds": [
-            eid for eid, check in candidate_checks.items() if not check["alreadySeen"]
-        ],
-        "candidateAlreadySeenIds": [
-            eid for eid, check in candidate_checks.items() if check["alreadySeen"]
-        ],
+        "candidateNovelIds": [eid for eid, check in candidate_checks.items() if not check["alreadySeen"]],
+        "candidateAlreadySeenIds": [eid for eid, check in candidate_checks.items() if check["alreadySeen"]],
         "result": "fail" if future_violations else "pass_with_historical_duplicates_recorded",
     }
 
