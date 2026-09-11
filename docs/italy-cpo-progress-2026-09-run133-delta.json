@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 133,
+  "observedAt": "2026-09-11T12:50:42+01:00",
+  "purpose": "Advance Edison Next station-level coverage with an exact current site/EVSE mapping for the Galbusera Agrate Brianza location, while keeping unmapped/unpriced EVSE fail-closed.",
+  "changes": {
+    "treated": [],
+    "partial": [
+      {
+        "partyId": "EDN",
+        "canonicalName": "Edison Next S.P.A.",
+        "aliases": ["Edison Next S.P.A.", "Edison Next", "EDN"],
+        "status": "partial",
+        "priority": "station-level",
+        "inventory": {
+          "evse": 826,
+          "stations": 377,
+          "source": "Italy canonical inventory / PUN scope tracked on research/italy-cpo-priority-20260905"
+        },
+        "tariffModel": "station_specific_with_site_promotion",
+        "tariffChannel": "direct CPO POS and EVWAY app for the proven Galbusera DC subpopulation; roaming eMSP prices excluded",
+        "subpopulations": {
+          "covered": [
+            {
+              "location": "Galbusera Tre Marie Bistrot Caffetteria Store, Via Guglielmo Marconi 20, Agrate Brianza (MB)",
+              "scope": "DC 120 kW only",
+              "energyEurPerKwh": 0.59,
+              "vat": "included",
+              "paymentMethods": ["POS bank card", "EVWAY app"],
+              "evseIds": [
+                "IT*EDN*ED00691",
+                "IT*EDN*ED00692",
+                "IT*EDN*ED00701",
+                "IT*EDN*ED00702",
+                "IT*EDN*ED00711",
+                "IT*EDN*ED00712",
+                "IT*EDN*ED00721",
+                "IT*EDN*ED00722"
+              ],
+              "connector": "CCS2",
+              "powerKw": 120,
+              "mappingEvidence": "Current PUMP station page enumerates these eight IT*EDN DC EVSE IDs at Via Guglielmo Marconi 20; the same page also enumerates four AC IT*EDN EVSE IDs, matching Edison Next's first-party total of 12 charge points at this location.",
+              "tariffEvidence": "Edison Next first-party page, published 2026-04-30 and still accessible/crawled in September 2026, states that all DC chargers at this Galbusera location have an active launch promotion at 0.59 EUR/kWh VAT included through POS and EVWAY. No expiry date is stated on the official page.",
+              "confidence": "medium-high",
+              "freshnessCaveat": "The first-party page continues to state the promotion is active but does not expose a validThrough date; recheck on any contrary station-level signal."
+            }
+          ],
+          "uncovered": [
+            {
+              "location": "Galbusera Agrate Brianza",
+              "evseIds": ["IT*EDN*EA02001", "IT*EDN*EA02002", "IT*EDN*EA02011", "IT*EDN*EA02012"],
+              "scope": "AC Type 2 22 kW",
+              "reason": "Exact EVSE mapping proven, but Edison Next's first-party announcement gives the 0.59 EUR/kWh promotion only for DC; no current direct AC tariff is proven."
+            },
+            {
+              "scope": "all other Edison Next Italy EVSE",
+              "evse": 814,
+              "reason": "No deterministic current station/EVSE -> direct tariff mapping proven in this run."
+            }
+          ]
+        },
+        "coverage": {
+          "physicalEvse": 826,
+          "rankableDirectEvse": 8,
+          "uncoveredEvse": 818,
+          "rankableDirectLocations": 1,
+          "scope": "only the eight mapped 120 kW CCS EVSE at Galbusera Agrate Brianza"
+        },
+        "officialUrls": [
+          "https://www.edison.it/it/edison-next-e-galbusera-nuove-colonnine-di-ricarica-veicoli-elettrici",
+          "https://www.edison.it/sites/default/files/documents/cs_edison_next-galbusera_1.pdf"
+        ],
+        "discoveryUrls": [
+          "https://app.pumpapp.co/it/stazione-di-ricarica-route220-via-guglielmo-marconi-20-agrate-brianza/68cf0f24-273b-11f1-8003-97ef5f588a6c"
+        ],
+        "proofPositive": [
+          "Edison Next states 12 charge points at the Galbusera location: two 22 kW AC columns and four 120 kW DC columns.",
+          "Edison Next states an active 0.59 EUR/kWh VAT-included launch tariff on all DC chargers at the location, usable by POS and EVWAY.",
+          "Current station data maps the location to exactly eight 120 kW CCS IT*EDN EVSE and four 22 kW Type 2 IT*EDN EVSE, matching the first-party 12-point topology."
+        ],
+        "negativePaths": [
+          "The 0.59 EUR/kWh DC site promotion is not extrapolated to the four AC EVSE.",
+          "The site promotion is not extrapolated to other Edison Next locations.",
+          "Roaming/eMSP prices are not promoted as direct Edison Next tariffs.",
+          "Earlier nationwide Edison Next promotions that expired in January 2026 are not reused."
+        ],
+        "blockage": "818 EVSE remain without a current deterministic direct CPO/ad-hoc station mapping; four of them are the known Galbusera AC EVSE whose direct AC tariff is not published in the first-party site announcement.",
+        "resumeCondition": "Current PUN/QR/POS/EVWAY/public-backend evidence linking additional IT*EDN station or EVSE identifiers to direct tariff values, or a current first-party deterministic grid.",
+        "confidence": "medium-high for the eight Galbusera DC EVSE; fail-closed elsewhere",
+        "lastInvestigated": "2026-09-11",
+        "lastChanged": "2026-09-11",
+        "history": [
+          "Seed canonical classified EDN active/station-level because only location-specific promotional pricing was known.",
+          "Run133 mapped the Galbusera site's exact eight 120 kW DC EVSE IDs and four 22 kW AC EVSE IDs. The first-party 0.59 EUR/kWh DC site promotion is applied only to the eight DC IDs; EDN moves active -> partial."
+        ]
+      }
+    ],
+    "setAside": [],
+    "active": [],
+    "supersededAlias": []
+  },
+  "effectiveCountsAfter": {
+    "treated": 49,
+    "partial": 24,
+    "setAside": 1,
+    "active": 10,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueuesAfter": {
+    "networkOrClassWide": 0,
+    "activeStationLevel": 10
+  },
+  "coverageAddedThisRun": {
+    "rankableDirectEvse": 8,
+    "rankableDirectLocations": 1
+  },
+  "consistency": {
+    "canonicalStatusEquation": "49+24+1+10=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "duplicatePartyIdsIntroduced": 0,
+    "result": "PASS_DELTA; physical canonical materialization still pending full replay"
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "state": "STALE_SEED_NOT_OVERWRITTEN",
+    "reason": "Do not replace the stale seed until the corrected lossless replay is executed across all historical deltas and the 88-partyId invariant passes."
+  },
+  "historyAppend": [
+    "Run133: Edison Next/EDN moved active -> partial. At Galbusera Agrate Brianza, eight exact IT*EDN 120 kW CCS EVSE were mapped to the first-party 0.59 EUR/kWh VAT-included DC promotion via POS/EVWAY. Four exact AC EVSE at the site and all other EDN EVSE remain fail-closed. Added 8 rankable direct EVSE / 1 location."
+  ]
+}
