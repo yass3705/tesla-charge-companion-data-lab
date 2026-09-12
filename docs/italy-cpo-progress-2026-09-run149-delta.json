@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 149,
+  "generatedAt": "2026-09-12T07:53:47+01:00",
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 24,
+    "setAside": 1,
+    "active": 9,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueues": {
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 9
+  },
+  "changes": {
+    "treated": [],
+    "partial": [],
+    "setAside": [],
+    "active": [
+      {
+        "partyId": "EMO",
+        "canonicalName": "EMOBITALY S.r.l.",
+        "status": "active",
+        "priority": "station-level",
+        "tariffModel": "station_specific_owner_pricing",
+        "tariffChannel": "direct CPO/ad-hoc tariff exposed through PUN-derived station records",
+        "run148CandidateReconciliation": {
+          "candidateEvse": 59,
+          "alreadyCreditedProven": 55,
+          "stillPendingOrderedLedgerCheck": 4,
+          "alreadyCreditedSubpopulations": [
+            {
+              "station": "Via Olgettina 60, Milano",
+              "evseCount": 40,
+              "evsePattern": "IT*EMO*E2016*1..40",
+              "originRun": 66,
+              "tariff": {"energyEurPerKwh": 0.48, "activationFeeEur": 1.14},
+              "decision": "duplicate candidate; do not credit again"
+            },
+            {
+              "station": "Via Scipione Crisanzio 1/B, Bari",
+              "evseCount": 12,
+              "evseIds": ["IT*EMO*E2267*1","IT*EMO*E2268*1","IT*EMO*E2269*1","IT*EMO*E2270*1","IT*EMO*E2271*1","IT*EMO*E2272*1","IT*EMO*E2273*1","IT*EMO*E2274*1","IT*EMO*E2275*1","IT*EMO*E2276*1","IT*EMO*E2277*1","IT*EMO*E2278*1"],
+              "originRun": 66,
+              "tariff": {"energyEurPerKwh": 0.48, "activationFeeEur": 1.14},
+              "decision": "duplicate candidate; do not credit again"
+            },
+            {
+              "station": "Via L. Riva 19, Gallarate",
+              "evseCount": 3,
+              "evseIds": ["IT*EMO*E2079*1","IT*EMO*E2079*2","IT*EMO*E2079*3"],
+              "originRun": 54,
+              "tariffs": [
+                {"scope": "AC Type 2 44 kW", "energyEurPerKwh": 0.45, "activationFeeEur": 0.74},
+                {"scope": "DC CCS/CHAdeMO 50 kW", "energyEurPerKwh": 0.60, "activationFeeEur": 0.74}
+              ],
+              "decision": "duplicate candidate; do not credit again"
+            }
+          ],
+          "pendingSubpopulation": {
+            "station": "Via Pio Emanuelli 1, Roma",
+            "evseCount": 4,
+            "evseIds": ["IT*EMOE477","IT*EMOE478","IT*EMOE479","IT*EMOE480"],
+            "tariffs": [
+              {"evseIds": ["IT*EMOE477","IT*EMOE478"], "connector": "Type 2", "powerKw": 22, "energyEurPerKwh": 0.55, "activationFeeEur": 0.74},
+              {"evseIds": ["IT*EMOE479"], "connector": "CCS", "powerKw": 24, "energyEurPerKwh": 0.60, "activationFeeEur": 0.74},
+              {"evseIds": ["IT*EMOE480"], "connector": "CHAdeMO", "powerKw": 24, "energyEurPerKwh": 0.60, "activationFeeEur": 0.74}
+            ],
+            "source": "https://pienotto.it/stazioni/260057-emobitaly-s-r-l-roma-rm",
+            "rankable": false,
+            "blockage": "full ordered branch-local ledger check still required before any credit"
+          }
+        },
+        "proofPositive": [
+          "run66 already credits all 40 Milano E2016 EVSE and all 12 Bari E2267..E2278 EVSE with the same direct prices as run148",
+          "run54 already credits the three Gallarate E2079 EVSE with the same AC/DC tariffs as run148",
+          "run72 independently records Gallarate E2079 as historical and documents the prior EMO cross-run overcount failure mode"
+        ],
+        "negativePaths": [
+          "Do not credit the 55 proven duplicates from run148",
+          "Do not infer novelty of Roma E477..E480 from default-branch code search; run72 proved that method can miss research-branch deltas"
+        ],
+        "resumeCondition": "resolve only Roma E477..E480 against the complete branch-local credited ledger, then close run148; continue other unresolved station-level CPOs in parallel",
+        "confidence": "high for the 55 duplicate decisions; fail-closed for the four Roma IDs until complete ledger replay",
+        "lastInvestigated": "2026-09-12",
+        "lastChanged": "2026-09-12"
+      }
+    ],
+    "supersededAlias": []
+  },
+  "toolingCorrection": {
+    "path": "scripts/italy_cpo_delta_evse_dedup_audit.py",
+    "commit": "62e42d7d6477fd2d891e2ab79ad38422ae868b4e",
+    "changes": [
+      "treat coveredSubpopulationsAdded as a credited-mapping field (needed for run84 and similar deltas)",
+      "treat newExactCandidateSubpopulations as candidate-only evidence (needed for run148)",
+      "accept station as the location label when location is absent"
+    ],
+    "safetyImpact": "prevents false novelty and false duplicate-credit conclusions across historical/current delta schema variants"
+  },
+  "coverageAdded": {
+    "rankableDirectEvseAdded": 0,
+    "run148CandidatesClosedAsHistoricalDuplicates": 55,
+    "run148CandidatesStillPending": 4
+  },
+  "consistency": {
+    "canonicalBucketEquation": "50+24+1+9=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "duplicatePartyIdsIntroduced": 0,
+    "aliasDoubleCountIntroduced": 0,
+    "rankableEvseAdded": 0,
+    "pass": true
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "state": "STALE_SEED_NOT_OVERWRITTEN",
+    "reason": "lossless full-delta replay remains required before replacing the physical canonical; this run reduces EMO ambiguity and fixes the dedup reader but does not claim a complete branch replay"
+  },
+  "antiStagnation": {
+    "doNotRepeatWithoutNewEvidence": [
+      "EMOBITALY run148 Milano E2016",
+      "EMOBITALY run148 Bari E2267..E2278",
+      "EMOBITALY run148 Gallarate E2079",
+      "EMOBITALY run136 batch",
+      "EMOBITALY run140 batch",
+      "HERA network-wide",
+      "PWY station-level",
+      "EDN Galbusera DC",
+      "UTZ national-grid search",
+      "CVG station-by-station"
+    ],
+    "nextAction": "run the corrected branch-local dedup audit for Roma E477..E480 and continue the next largest genuinely unresolved station-level CPO; Atlante remains last"
+  },
+  "history": [
+    "2026-09-12 run149: reconciled 55/59 run148 EMOBITALY candidates as already credited (52 in run66, 3 in run54); zero duplicate credit applied.",
+    "2026-09-12 run149: fixed the EVSE dedup audit to recognize coveredSubpopulationsAdded and newExactCandidateSubpopulations schema variants; Roma E477..E480 remain fail-closed pending complete branch-local ledger replay."
+  ]
+}
