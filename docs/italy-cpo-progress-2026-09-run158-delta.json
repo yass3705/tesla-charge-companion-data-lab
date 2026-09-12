@@ -31,15 +31,22 @@
       },
       "tariffModel": "variable by charger power and charging duration; exact price shown in Powy Charge before charging",
       "tariffChannel": "direct CPO app / QR / station payment; eMSP observations kept separate",
+      "paymentMethods": ["Powy Charge app", "RFID", "QR direct payment", "compatible eMSP apps/cards"],
       "officialUrls": [
         "https://powy.energy/",
-        "https://powy.energy/ricarica-veicolo/"
+        "https://powy.energy/ricarica-veicolo/",
+        "https://powy.energy/en/ricarica-veicolo-qr/"
       ],
       "positiveEvidence": [
         {
           "source": "Powy official website",
           "observed": "2026-09-12",
           "finding": "official FAQ states charging costs vary according to charger power and charging duration and tariffs are visible in Powy Charge before starting; official network page shows heterogeneous AC/DC sites"
+        },
+        {
+          "source": "Powy official direct-payment page",
+          "observed": "2026-09-12",
+          "finding": "Powy officially supports no-registration direct payment by scanning the QR code next to the selected outlet and entering payment details"
         }
       ],
       "corroborationOnly": [
@@ -55,7 +62,56 @@
       "coverageDecision": "remain fail-closed outside exact mappings; network-wide single-price path is closed",
       "lastInvestigated": "2026-09-12",
       "lastChanged": "2026-09-12",
-      "historyAppend": "2026-09-12 run158: first-party 2026 Powy evidence confirms variable pricing by charger power/duration and pre-session display in app. Third-party 0.67 EUR/kWh AC observation is corroboration only, not a network-wide rule. PWY remains station-level."
+      "historyAppend": "2026-09-12 run158: first-party 2026 Powy evidence confirms variable pricing by charger power/duration and pre-session display in app, plus QR direct payment without registration. Third-party 0.67 EUR/kWh AC observation is corroboration only, not a network-wide rule. PWY remains station-level."
+    },
+    {
+      "partyId": "EDN",
+      "canonicalName": "Edison Next S.P.A.",
+      "status": "active",
+      "priority": "station-level",
+      "inventoryBaseline": {
+        "evse": 826,
+        "stations": 377,
+        "source": "canonical inventory seed / PUN candidate inventory"
+      },
+      "candidateSubpopulation": {
+        "site": "Galbusera Tre Marie Bistrot Caffetteria Store, Via Guglielmo Marconi 20, Agrate Brianza (MB)",
+        "commissioned": "2026-04-30",
+        "totalChargePoints": 12,
+        "hardware": [
+          {"quantityStations": 2, "class": "Quick AC", "powerKw": 22, "estimatedConnectors": 4, "tariffKnown": false},
+          {"quantityStations": 4, "class": "Fast DC", "powerKw": 120, "estimatedConnectors": 8, "tariffKnown": true, "energyEurPerKwh": 0.59}
+        ],
+        "tariffScope": "all DC chargers at this site",
+        "price": {"energyEurPerKwh": 0.59, "vatIncluded": true},
+        "tariffChannel": ["direct POS card payment", "EVWAY app"],
+        "availability": "site publicly accessible 24/7",
+        "officialSource": "https://www.edison.it/it/edison-next-e-galbusera-nuove-colonnine-di-ricarica-veicoli-elettrici",
+        "sourceDate": "2026-04-30",
+        "mappingState": "site/class deterministic, EVSE IDs not yet resolved in current evidence",
+        "rankable": false,
+        "rankableReason": "user policy requires deterministic station/EVSE -> tariff mapping for station-level promotion; exact PUN/OCPI EVSE IDs for the eight DC connectors remain to be matched"
+      },
+      "positiveEvidence": [
+        {
+          "source": "Edison official press release",
+          "observed": "2026-09-12",
+          "finding": "12 charging points installed at Agrate Brianza: two AC 22 kW stations and four DC 120 kW stations; launch tariff on all DC chargers is 0.59 EUR/kWh VAT included, available via POS and EVWAY"
+        }
+      ],
+      "negativeEvidence": [
+        {
+          "query": "Galbusera Agrate Brianza Edison Next EVSE/PUN identifiers",
+          "finding": "fresh public web search did not expose authoritative PUN/OCPI EVSE identifiers for the site",
+          "decision": "do not credit the eight DC connectors yet"
+        }
+      ],
+      "blockage": "exact PUN/OCPI EVSE identifiers for the Galbusera DC connectors are not yet mapped to the official site/class tariff",
+      "resumeCondition": "PUN station result, Edison Plug&Go+/EVWAY backend, QR/POS payload, or other authoritative mapping exposing the Galbusera EVSE IDs",
+      "confidence": "high for site/class tariff, medium for inventory-to-EVSE linkage",
+      "lastInvestigated": "2026-09-12",
+      "lastChanged": "2026-09-12",
+      "historyAppend": "2026-09-12 run158: official Edison evidence adds an exact current Galbusera DC site/class tariff candidate (0.59 EUR/kWh VAT incl., POS/EVWAY) covering four 120 kW DC stations / eight connectors, held fail-closed pending exact EVSE-ID mapping."
     }
   ],
   "consistencyControl": {
@@ -78,12 +134,16 @@
       "EMO E477-E484 tariff provenance research; only ordered historical ledger set-difference remains",
       "UTZ EC167-EC170 generic web/Pienotto path until first-party/PUN corroboration",
       "F2X Novate Milanese seven-EVSE PUN tariff lookup until a source update",
+      "EDN Galbusera generic tariff search; tariff is already proven, only exact EVSE-ID mapping remains",
       "Atlante before all other accessible station-level work"
     ],
-    "nextAction": "continue exact station/EVSE mapping on the largest non-Atlante station-level CPOs, prioritizing PWY app/QR/backend and the EMO E477-E484 historical set-difference; keep Atlante last."
+    "nextAction": "resolve the EDN Galbusera PUN/OCPI EVSE identifiers and continue exact station/EVSE mapping on the largest non-Atlante station-level CPOs; in parallel perform only the ordered historical set-difference for EMO E477-E484."
   },
   "newlyTreated": [],
   "aliasesResolved": [],
   "rankableEvseAdded": 0,
-  "rankableStationsAdded": 0
+  "rankableStationsAdded": 0,
+  "exactSiteClassCandidatesAdded": {
+    "EDN": {"stations": 4, "connectors": 8, "rankable": false}
+  }
 }
