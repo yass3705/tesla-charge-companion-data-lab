@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 155,
+  "recordedAt": "2026-09-12T18:50:07+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 24,
+    "setAside": 1,
+    "active": 9,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "priorityQueue": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelRemaining": 9,
+    "atlanteLast": true
+  },
+  "changes": [
+    {
+      "partyId": "UTZ",
+      "canonicalName": "Uattzy / legacy UTZ",
+      "status": "active",
+      "priority": "station-level",
+      "lastInvestigated": "2026-09-12",
+      "newExactCandidateSubpopulations": [
+        {
+          "station": "Contrada Contarini 16, Palmanova (UD)",
+          "evseCount": 2,
+          "evseIds": ["IT*UTZ*EC167", "IT*UTZ*EC168"],
+          "tariffs": [
+            {
+              "evseIds": ["IT*UTZ*EC167", "IT*UTZ*EC168"],
+              "connector": "Type 2",
+              "powerKw": 22,
+              "energyEurPerKwh": 0.62,
+              "channel": "ad-hoc/direct reported by station directory"
+            }
+          ],
+          "source": "https://www.goingelectric.de/stromtankstellen/Italien/Palmanova/Contrada-Contarini-Contrada-Contarini-16/110271/",
+          "sourceObservedAt": "2026-09-12",
+          "sourceFreshness": "page updated 2026-09-08",
+          "rankable": false,
+          "blocker": "third-party source only; exact direct tariff must be corroborated by PUN/official Uattzy connector/backend/QR surface before rankable promotion",
+          "resumeCondition": "resolve these exact EVSE IDs against PUN or Uattzy app/backend/QR and verify direct CPO/ad-hoc tariff and any fixed/time/parking fees"
+        },
+        {
+          "station": "Contrada Savorgnan 14a, Palmanova (UD)",
+          "evseCount": 2,
+          "evseIds": ["IT*UTZ*EC169", "IT*UTZ*EC170"],
+          "tariffs": [
+            {
+              "evseIds": ["IT*UTZ*EC169", "IT*UTZ*EC170"],
+              "connector": "Type 2",
+              "powerKw": 22,
+              "energyEurPerKwh": 0.62,
+              "channel": "ad-hoc/direct reported by station directory"
+            }
+          ],
+          "source": "https://www.goingelectric.de/stromtankstellen/Italien/Palmanova/Contrada-Savorgnan-Contrada-Savorgnan-14a/110272/",
+          "sourceObservedAt": "2026-09-12",
+          "sourceFreshness": "page updated 2026-09-08",
+          "rankable": false,
+          "blocker": "third-party source only; exact direct tariff must be corroborated by PUN/official Uattzy connector/backend/QR surface before rankable promotion",
+          "resumeCondition": "resolve these exact EVSE IDs against PUN or Uattzy app/backend/QR and verify direct CPO/ad-hoc tariff and any fixed/time/parking fees"
+        }
+      ],
+      "evidence": {
+        "firstPartyTariffModel": "Uattzy FAQ states tariff is shown per connector and may vary by delivered power, session duration and stall occupation; therefore no network-wide inference is permitted",
+        "firstPartyUrl": "https://www.uattzy.com/faq/",
+        "externalCorroboration": "May 2026 Adiconsum/TariffEV observatory lists Uattzy (GASGAS/E-SHORE/ENERMIA) as a variable-price operator, supporting station/connector-level treatment but not exact EVSE pricing"
+      },
+      "coverage": {
+        "rankableEvseAdded": 0,
+        "exactCandidateEvsePendingOfficialCorroborationAdded": 4,
+        "rankableStationsAdded": 0
+      },
+      "confidence": "high for station/EVSE identity and current third-party ad-hoc display; insufficient for rankable direct tariff until first-party/PUN corroboration",
+      "historyAppend": "2026-09-12 run155: added exact UTZ Palmanova EC167-EC170 station-level candidates at displayed 0.62 EUR/kWh, fail-closed pending PUN/Uattzy backend corroboration."
+    },
+    {
+      "partyId": "HRA",
+      "canonicalName": "HERA",
+      "status": "active",
+      "priority": "station-level",
+      "lastInvestigated": "2026-09-12",
+      "negativeEvidence": [
+        {
+          "source": "https://vab.be/-/media/vab-online/files/actuele-documenten/algemene-voorwaarden/b2b/tariffs-vab-charing-network-01-05-2026.pdf",
+          "finding": "VAB roaming tariff table currently lists supplier IT-HRA/Hera Comm at 0.62 EUR/kWh with a VAB fair-use fee after 300 min (0.08 EUR/min during 07:00-23:00 window). This is an eMSP roaming tariff, not proof of Hera direct/ad-hoc pricing and must not be promoted as a CPO-direct tariff.",
+          "decision": "keep as corroboration/discovery only; direct ranking remains fail-closed"
+        }
+      ],
+      "resumeCondition": "inspect Hera EV Driver client bundles/network calls or a direct QR/ad-hoc flow for station/EVSE-specific direct pricing; do not use VAB/other eMSP tariff as Hera direct tariff",
+      "historyAppend": "2026-09-12 run155: explicitly separated fresh IT-HRA roaming price evidence from direct CPO pricing to prevent channel contamination."
+    }
+  ],
+  "consistencyControl": {
+    "operationalPartition": "50 + 24 + 1 + 9 = 84",
+    "physicalPartition": "84 + 4 = 88",
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroduced": false,
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "canonicalPhysicalFileStillStaleSeed": true,
+    "canonicalOverwritePerformed": false,
+    "reasonNotOverwritten": "complete lossless ordered replay remains pending; no safe nominative materialization performed in this run"
+  },
+  "antiStagnation": {
+    "doNotRepeatWithoutNewEvidence": [
+      "EMO Bergamo E2015*1..21",
+      "EMO Milano Piazza Piemonte E2361..E2372",
+      "EMO Venezia Tronchetto/Piazzale della Stazione 48 EVSE",
+      "EMO Milano Olgettina/Bari Crisanzio/Gallarate run148 historical duplicates",
+      "HERA Cervia no-price pair",
+      "HERA VAB roaming tariff as direct-price candidate",
+      "Powy network tariff",
+      "EDN Galbusera 8 EVSE"
+    ],
+    "nextAction": "corroborate UTZ EC167-EC170 on PUN/Uattzy backend/QR, continue ordered historical set-difference for EMO E477-E484, then continue largest remaining non-Atlante station-level CPO. Atlante remains last."
+  },
+  "newlyTreated": [],
+  "aliasesResolved": [],
+  "rankableEvseAdded": 0,
+  "rankableStationsAdded": 0
+}
