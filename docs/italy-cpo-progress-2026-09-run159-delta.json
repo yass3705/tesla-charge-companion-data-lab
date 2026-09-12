@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 159,
+  "recordedAt": "2026-09-12T22:50:51+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 24,
+    "setAside": 1,
+    "active": 9,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "priorityQueue": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelRemaining": 9,
+    "atlanteLast": true
+  },
+  "changes": [
+    {
+      "partyId": "EDN",
+      "canonicalName": "Edison Next S.P.A.",
+      "status": "active",
+      "priority": "station-level",
+      "inventoryBaseline": {
+        "evse": 826,
+        "stations": 377,
+        "source": "canonical inventory seed / PUN candidate inventory"
+      },
+      "candidateSubpopulation": {
+        "site": "Galbusera Tre Marie Bistrot Caffetteria Store, Via Guglielmo Marconi 20, Agrate Brianza (MB)",
+        "officialSiteEvidenceDate": "2026-04-30",
+        "officialObserved": "2026-09-12",
+        "officialHardware": {
+          "totalChargePoints": 12,
+          "ac": {"stations": 2, "connectors": 4, "powerKw": 22},
+          "dc": {"stations": 4, "connectors": 8, "powerKw": 120}
+        },
+        "officialDirectTariff": {
+          "scope": "all DC chargers at this site",
+          "energyEurPerKwh": 0.59,
+          "vatIncluded": true,
+          "paymentMethods": ["POS payment card", "EVWAY app"],
+          "source": "https://www.edison.it/it/edison-next-e-galbusera-nuove-colonnine-di-ricarica-veicoli-elettrici"
+        },
+        "discoveredEvseMapping": {
+          "source": "PUMP public station page discovered 2026-09-12; third-party discovery/corroboration only",
+          "sourceUrl": "https://app.pumpapp.co/it/stazione-di-ricarica-route220-via-guglielmo-marconi-20-agrate-brianza/68cf0f24-273b-11f1-8003-97ef5f588a6c",
+          "address": "Via Guglielmo Marconi 20, 20864 Agrate Brianza",
+          "dc120kwCcs": [
+            "IT*EDN*ED00691",
+            "IT*EDN*ED00692",
+            "IT*EDN*ED00701",
+            "IT*EDN*ED00702",
+            "IT*EDN*ED00711",
+            "IT*EDN*ED00712",
+            "IT*EDN*ED00721",
+            "IT*EDN*ED00722"
+          ],
+          "ac22kwType2": [
+            "IT*EDN*EA02001",
+            "IT*EDN*EA02002",
+            "IT*EDN*EA02011",
+            "IT*EDN*EA02012"
+          ],
+          "countMatchesOfficialTopology": true,
+          "powerClassesMatchOfficialTopology": true,
+          "partyIdMatchesEdisonNext": true,
+          "sourceLabelDiscrepancy": "PUMP page is labelled ROUTE220 HyperCharger despite all twelve EVSE IDs using EDN; therefore it cannot by itself be promoted as authoritative ownership/PUN mapping"
+        },
+        "mappingState": "exact twelve candidate EVSE IDs now discovered and topology-matched; authoritative first-party/PUN/OCPI confirmation of the ID-to-site mapping still missing",
+        "rankable": false,
+        "rankableReason": "user policy allows third-party sources only for discovery/corroboration; exact EVSE IDs are presently exposed only by PUMP, whose operator label conflicts with the EDN identifiers. Official Edison proves the site, 12-point topology, power classes and 0.59 EUR/kWh DC tariff, but does not publish the EVSE IDs."
+      },
+      "positiveEvidence": [
+        {
+          "source": "Edison official press release dated 2026-04-30",
+          "finding": "Via Guglielmo Marconi 20 Agrate Brianza has 12 Edison Next charge points: 4 AC 22 kW connectors and 8 DC 120 kW connectors; all DC chargers have a launch direct tariff of 0.59 EUR/kWh VAT included via POS or EVWAY."
+        },
+        {
+          "source": "PUMP public station page, observed 2026-09-12",
+          "finding": "same exact address exposes four EDN Type2 22 kW IDs and eight EDN CCS 120 kW IDs; quantity and power topology exactly match Edison first-party description."
+        }
+      ],
+      "negativeEvidence": [
+        {
+          "query": "exact EDN Galbusera EVSE IDs in PUN / Edison / EVWAY indexed public surfaces",
+          "finding": "no independently indexed authoritative first-party/PUN/OCPI page exposing these exact IDs was found in this run"
+        }
+      ],
+      "blockage": "authoritative confirmation that the eight discovered IT*EDN*ED00xxx CCS identifiers are the Galbusera Edison Next connectors is still absent; PUMP is discovery/corroboration only and carries a conflicting ROUTE220 page label",
+      "resumeCondition": "PUN result, Edison/EVWAY public or guest backend, QR/POS payload, OCPI/open-data publication, or another authoritative source exposing at least one deterministic Galbusera station/EVSE identifier mapping that confirms the full topology",
+      "confidence": "high for site/topology/tariff; medium-high for discovered EVSE mapping; insufficient under strict source policy for rankable promotion",
+      "coverageDecision": "keep all eight DC EVSE fail-closed despite exact candidate IDs; do not assign an AC tariff because Edison source does not publish one",
+      "lastInvestigated": "2026-09-12",
+      "lastChanged": "2026-09-12",
+      "historyAppend": "2026-09-12 run159: discovered exact 12-ID EDN candidate topology at Galbusera (8 CCS 120 kW + 4 Type2 22 kW), exactly matching Edison first-party hardware counts and classes. The eight DC IDs are not promoted yet because the identifier source is third-party PUMP and its page operator label conflicts (ROUTE220). Only authoritative ID corroboration remains; generic tariff research is closed."
+    }
+  ],
+  "consistencyControl": {
+    "operationalPartition": "50 + 24 + 1 + 9 = 84",
+    "physicalPartition": "84 + 4 = 88",
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroduced": false,
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "rankableStationsAdded": 0,
+    "canonicalPhysicalFileStillStaleSeed": true,
+    "canonicalOverwritePerformed": false,
+    "note": "run159 is one run after the full run158 audit; no new nominative status or alias mutation was made, so the effective partition remains unchanged"
+  },
+  "antiStagnation": {
+    "doNotRepeatWithoutNewEvidence": [
+      "EDN Galbusera generic tariff search; tariff/site/topology are proven",
+      "EDN Galbusera generic web search for identifiers unless a new authoritative PUN/first-party/OCPI surface appears; exact third-party candidate IDs are already stored",
+      "PWY generic network-wide tariff search",
+      "HERA network-wide direct tariff search",
+      "EMO E477-E484 tariff provenance research; only ordered historical ledger set-difference remains",
+      "UTZ EC167-EC170 generic web/Pienotto path until first-party/PUN corroboration",
+      "F2X Novate Milanese seven-EVSE PUN tariff lookup until a source update",
+      "Atlante before all other accessible station-level work"
+    ],
+    "nextAction": "seek authoritative PUN/OCPI/Edison/EVWAY confirmation of the already-discovered EDN Galbusera EVSE IDs without repeating generic discovery; if unavailable, move immediately to the next largest non-Atlante station-level CPO and reserve EMO E477-E484 strictly for historical set-difference."
+  },
+  "newlyTreated": [],
+  "aliasesResolved": [],
+  "rankableEvseAdded": 0,
+  "rankableStationsAdded": 0,
+  "exactCandidateEvseIdsAdded": {
+    "EDN": {"dc120kw": 8, "ac22kw": 4, "rankable": false}
+  }
+}
