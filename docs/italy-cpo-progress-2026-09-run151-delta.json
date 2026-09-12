@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 151,
+  "generatedAt": "2026-09-12T13:51:49+01:00",
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 24,
+    "setAside": 1,
+    "active": 9,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueues": {
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 9
+  },
+  "structuralCorrection": {
+    "type": "runtime_chain_anchor",
+    "recoveredBranch": "research/italy-cpo-runtime-20260912",
+    "anchoredFromCommit": "f8d628875acd45d3fbf1fe7e57f522c1c077351f",
+    "finding": "The Italy continuation through run150 exists in repository history but was no longer reachable from the current default branch; default-branch docs therefore cannot be used as the effective Italy ledger.",
+    "action": "Pinned the complete reachable run150 continuation onto a named research branch without modifying main or protected workflows.",
+    "safety": "reversible branch-only repair; no production data, workflow, tariff or status promotion changed"
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalStateOnRecoveredBranch": "STALE_SEED_NOT_OVERWRITTEN",
+    "seedCounts": {"treated": 4, "partial": 5, "setAside": 1, "active": 78, "physicalPartyIds": 88},
+    "effectiveCounts": {"treated": 50, "partial": 24, "setAside": 1, "active": 9, "supersededAlias": 4, "canonicalTotal": 84, "physicalPartyIds": 88},
+    "decision": "Do not hand-edit or partially overwrite the physical canonical. Materialize only after complete ordered replay of all branch-local deltas, exact 88-partyId invariant, zero duplicate canonical partyIds, zero alias double counting and nominative diff inspection.",
+    "replayScript": "scripts/italy_cpo_progress_consolidate.py",
+    "evseDedupGuard": "scripts/italy_cpo_delta_evse_dedup_audit.py"
+  },
+  "emobitaly": {
+    "partyId": "EMO",
+    "priority": "station-level",
+    "run148RomaPending": {
+      "station": "Via Pio Emanuelli 1, Roma",
+      "evseIds": ["IT*EMOE477", "IT*EMOE478", "IT*EMOE479", "IT*EMOE480"],
+      "currentMapping": [
+        {"evseIds": ["IT*EMOE477", "IT*EMOE478"], "connector": "Type 2", "powerKw": 22, "energyEurPerKwh": 0.55, "activationFeeEur": 0.74},
+        {"evseIds": ["IT*EMOE479"], "connector": "CCS", "powerKw": 24, "energyEurPerKwh": 0.60, "activationFeeEur": 0.74},
+        {"evseIds": ["IT*EMOE480"], "connector": "CHAdeMO", "powerKw": 24, "energyEurPerKwh": 0.60, "activationFeeEur": 0.74}
+      ],
+      "source": "https://pienotto.it/stazioni/260057-emobitaly-s-r-l-roma-rm",
+      "historicalChecksThisRun": [
+        "run54 exact credited mappings checked: E477-E480 absent",
+        "run55 exact credited mappings checked: E477-E480 absent",
+        "run66 exact credited mappings checked: E477-E480 absent",
+        "run72 dedup correction reviewed: no proof of E477-E480 credit",
+        "run84 coveredSubpopulationsAdded checked: E477-E480 absent",
+        "run140 candidate-only batch checked: E477-E480 absent",
+        "run148 records E477-E480 only as candidates",
+        "run149 deliberately keeps E477-E480 fail-closed"
+      ],
+      "rankableAddedThisRun": 0,
+      "decision": "Remain fail-closed until the complete branch-local credited ledger is replayed; sampled absence is not sufficient proof of novelty.",
+      "resumeCondition": "execute corrected branch-local dedup audit over every Italy run delta with candidate-before-run=148, then credit only IDs absent from the complete credited ledger"
+    }
+  },
+  "consistency": {
+    "canonicalBucketEquation": "50+24+1+9=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "duplicatePartyIdsIntroduced": 0,
+    "aliasDoubleCountIntroduced": 0,
+    "rankableEvseAdded": 0,
+    "statusTransitionIntroduced": false,
+    "result": "pass_effective_state; physical canonical remains intentionally stale pending lossless replay"
+  },
+  "antiStagnation": {
+    "doNotRepeatWithoutNewEvidence": [
+      "EMOBITALY run148 Milano E2016",
+      "EMOBITALY run148 Bari E2267..E2278",
+      "EMOBITALY run148 Gallarate E2079",
+      "EMOBITALY run136/run140 duplicate batches",
+      "HERA network-wide tariff search",
+      "PWY station-level tariff search",
+      "EDN Galbusera DC subpopulation",
+      "CVG station-by-station search",
+      "Uattzy national-grid search without a new first-party tariff table"
+    ],
+    "nextAction": "complete lossless branch-local ledger replay and EMO E477-E480 set-difference while continuing the largest genuinely unresolved non-Atlante station-level CPO"
+  },
+  "history": [
+    "2026-09-12 run151: rescued the Italy run-through-run150 continuation by anchoring commit f8d628875acd45d3fbf1fe7e57f522c1c077351f on research/italy-cpo-runtime-20260912; main remained untouched.",
+    "2026-09-12 run151: rechecked representative credited EMOBITALY schema variants including run84; Roma E477-E480 remain fail-closed pending complete ordered branch-local ledger replay.",
+    "2026-09-12 run151: effective counts remain 50 treated / 24 partial / 1 setAside / 9 active + 4 superseded aliases = 88 physical partyIds."
+  ]
+}
