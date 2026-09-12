@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 156,
+  "recordedAt": "2026-09-12T19:53:00+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 24,
+    "setAside": 1,
+    "active": 9,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "priorityQueue": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelRemaining": 9,
+    "atlanteLast": true
+  },
+  "changes": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY",
+      "status": "partial",
+      "priority": "station-level",
+      "lastInvestigated": "2026-09-12",
+      "positiveEvidence": [
+        {
+          "station": "Via Pio Emanuelli 1, Roma (RM)",
+          "evseIds": ["IT*EMOE477", "IT*EMOE478", "IT*EMOE479", "IT*EMOE480"],
+          "mapping": {
+            "IT*EMOE477": {"connector":"Type 2","powerKw":22,"energyEurPerKwh":0.55,"activationEur":0.74},
+            "IT*EMOE478": {"connector":"Type 2","powerKw":22,"energyEurPerKwh":0.55,"activationEur":0.74},
+            "IT*EMOE479": {"connector":"CCS","powerKw":24,"energyEurPerKwh":0.60,"activationEur":0.74},
+            "IT*EMOE480": {"connector":"CHAdeMO","powerKw":24,"energyEurPerKwh":0.60,"activationEur":0.74}
+          },
+          "source": "https://pienotto.it/stazioni/260057-emobitaly-s-r-l-roma-rm",
+          "sourceProvenance": "Pienotto page explicitly states Dati della Piattaforma Unica Nazionale",
+          "observedAt": "2026-09-12",
+          "rankableTariffMapping": true,
+          "ledgerCredit": false,
+          "blocker": "historical set-difference still required before adding EVSE coverage to avoid double credit"
+        },
+        {
+          "station": "Viale Castello della Magliana 25, Roma (RM)",
+          "evseIds": ["IT*EMOE481", "IT*EMOE482", "IT*EMOE483", "IT*EMOE484"],
+          "mapping": {
+            "IT*EMOE481": {"connector":"Type 2","powerKw":22,"energyEurPerKwh":0.55,"activationEur":0.74},
+            "IT*EMOE482": {"connector":"Type 2","powerKw":22,"energyEurPerKwh":0.55,"activationEur":0.74},
+            "IT*EMOE483": {"connector":"CCS","powerKw":24,"energyEurPerKwh":0.60,"activationEur":0.74},
+            "IT*EMOE484": {"connector":"CHAdeMO","powerKw":24,"energyEurPerKwh":0.60,"activationEur":0.74}
+          },
+          "source": "https://pienotto.it/stazioni/263983-emobitaly-s-r-l-roma-rm",
+          "sourceProvenance": "Pienotto page explicitly states Dati della Piattaforma Unica Nazionale",
+          "observedAt": "2026-09-12",
+          "rankableTariffMapping": true,
+          "ledgerCredit": false,
+          "blocker": "historical set-difference still required before adding EVSE coverage to avoid double credit"
+        }
+      ],
+      "decision": "pricing uncertainty for E477-E484 is closed: exact current PUN-backed station/EVSE tariff mappings are established. The only remaining blocker for these eight IDs is ledger novelty/deduplication, not tariff provenance.",
+      "resumeCondition": "perform ordered historical ledger set-difference for E477-E484 only; if absent from credited coverage, add exactly the missing IDs without re-investigating tariff",
+      "historyAppend": "2026-09-12 run156: upgraded E477-E484 evidence to explicit PUN-backed tariff provenance; tariff research closed for these IDs, historical credit dedup remains."
+    },
+    {
+      "partyId": "F2X",
+      "canonicalName": "Free To X",
+      "status": "partial",
+      "priority": "station-level",
+      "lastInvestigated": "2026-09-12",
+      "negativeEvidence": [
+        {
+          "station": "Torino-Trieste, Novate Milanese (MI)",
+          "evseIds": ["IT*F2X*EF2XITD0101*1","IT*F2X*EF2XITD0101*2","IT*F2X*EF2XITD0102*1","IT*F2X*EF2XITD0102*2","IT*F2X*EF2XITD0151*1","IT*F2X*EF2XITD0151*2","IT*F2X*EF2XITD0151*3"],
+          "connectors": ["CCS 300 kW x4","CCS 63 kW","CHAdeMO 63 kW","Type 2 22 kW"],
+          "source": "https://pienotto.it/stazioni/258899-free-to-x-s-p-a-novate-milanese-mi",
+          "sourceProvenance": "Piattaforma Unica Nazionale",
+          "finding": "PUN currently reports tariff not yet communicated for this exact mixed-power station",
+          "decision": "keep these seven EVSE fail-closed; do not infer DC/HPC price classes from other Free To X coverage"
+        }
+      ],
+      "resumeCondition": "use a direct Free To X station/QR/backend mapping or a later PUN tariff publication for these exact EVSE; do not extrapolate class pricing where DC/HPC separation is unproven",
+      "historyAppend": "2026-09-12 run156: added exact current PUN no-tariff mixed-site evidence for Novate Milanese, preserving fail-closed coverage for seven EVSE."
+    },
+    {
+      "partyId": "UTZ",
+      "canonicalName": "Uattzy / legacy UTZ",
+      "status": "active",
+      "priority": "station-level",
+      "lastInvestigated": "2026-09-12",
+      "evidenceUpdate": "fresh searches still only reproduce the exact EC167-EC170 0.62 EUR/kWh ad-hoc display through GoingElectric; no PUN/first-party connector-level corroboration surfaced in this run",
+      "decision": "retain run155 candidates as non-rankable and do not repeat the same search path again without new source evidence",
+      "resumeCondition": "Uattzy backend/app/QR or PUN exact connector publication"
+    }
+  ],
+  "consistencyControl": {
+    "operationalPartition": "50 + 24 + 1 + 9 = 84",
+    "physicalPartition": "84 + 4 = 88",
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroduced": false,
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "canonicalPhysicalFileStillStaleSeed": true,
+    "canonicalOverwritePerformed": false
+  },
+  "antiStagnation": {
+    "doNotRepeatWithoutNewEvidence": [
+      "EMO E477-E484 tariff-source investigation: tariff provenance now PUN-backed; only historical ledger set-difference remains",
+      "UTZ EC167-EC170 generic web/Pienotto search path until a first-party/PUN connector result appears",
+      "F2X Novate Milanese seven-EVSE PUN tariff lookup until PUN updates or direct backend/QR evidence appears",
+      "HERA Cervia no-price pair",
+      "HERA VAB roaming tariff as direct-price candidate",
+      "Powy network tariff",
+      "EDN Galbusera 8 EVSE",
+      "Atlante before all other accessible station-level work"
+    ],
+    "nextAction": "execute historical credit set-difference for EMO E477-E484 without further tariff research; continue largest remaining non-Atlante station-level CPO using exact PUN/QR/app/backend mappings. Atlante remains last."
+  },
+  "newlyTreated": [],
+  "aliasesResolved": [],
+  "rankableEvseAdded": 0,
+  "rankableStationsAdded": 0
+}
