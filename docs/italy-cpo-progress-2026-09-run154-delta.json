@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 154,
+  "recordedAt": "2026-09-12T17:52:31+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "effectiveCounts": {"treated":50,"partial":24,"setAside":1,"active":9,"supersededAlias":4,"operationalCanonicalTotal":84,"physicalPartyIds":88},
+  "priorityQueue": {"networkOrClassWideRemaining":0,"stationLevelRemaining":9,"atlanteLast":true},
+  "changes": [{
+    "partyId":"EMO",
+    "canonicalName":"EMOBITALY S.r.l.",
+    "status":"partial",
+    "priority":"station-level",
+    "lastInvestigated":"2026-09-12",
+    "newExactCandidateSubpopulations":[{
+      "station":"Viale Castello della Magliana 25, Roma (RM)",
+      "evseCount":4,
+      "evseIds":["IT*EMOE481","IT*EMOE482","IT*EMOE483","IT*EMOE484"],
+      "tariffs":[
+        {"evseIds":["IT*EMOE481","IT*EMOE482"],"connector":"Type 2","powerKw":22,"energyEurPerKwh":0.55,"activationFeeEur":0.74},
+        {"evseIds":["IT*EMOE483"],"connector":"CCS","powerKw":24,"energyEurPerKwh":0.60,"activationFeeEur":0.74},
+        {"evseIds":["IT*EMOE484"],"connector":"CHAdeMO","powerKw":24,"energyEurPerKwh":0.60,"activationFeeEur":0.74}
+      ],
+      "source":"https://pienotto.it/stazioni/263983-emobitaly-s-r-l-roma-rm",
+      "sourceBasis":"Pienotto station record sourced from Piattaforma Unica Nazionale",
+      "rankable":false,
+      "blocker":"ordered historical EMOBITALY credited-ledger set-difference required before counting as new rankable coverage",
+      "resumeCondition":"compare E481-E484 against all prior credited EMO EVSE across ordered research-branch deltas; credit only IDs absent from historical ledger"
+    }],
+    "dedupClosures":[
+      {"station":"Via Giacomo Manzu 33, Bergamo (BG)","evseCount":21,"evsePattern":"IT*EMO*E2015*1..21","historicalOrigin":"run65","decision":"historical duplicate; no credit/reinvestigation absent contradictory evidence"},
+      {"station":"Piazza Piemonte 14, Milano (MI)","evseCount":12,"evsePattern":"IT*EMO*E2361*1..IT*EMO*E2372*1","historicalOrigin":"run54; resurfaced in run67 before run72 correction","decision":"historical duplicate; no credit/reinvestigation absent contradictory evidence"},
+      {"station":"Venezia Tronchetto + Piazzale della Stazione","evseCount":48,"historicalOrigin":"run84","decision":"historical duplicate; no credit/reinvestigation absent contradictory evidence"}
+    ],
+    "coverage":{"rankableEvseAdded":0,"exactCandidateEvsePendingDedupAdded":4,"historicalDuplicateEvseClosed":81},
+    "confidence":"high for exact current E481-E484 station mapping; historical-newness fail-closed",
+    "historyAppend":"2026-09-12 run154: added exact current Roma Viale Castello della Magliana E481-E484 tariff candidates pending ordered-ledger dedup; closed 81 rediscovered EVSE as historical duplicates from runs54/65/84."
+  }],
+  "consistencyControl":{"operationalPartition":"50 + 24 + 1 + 9 = 84","physicalPartition":"84 + 4 = 88","operationalPartitionExact":true,"physicalPartitionExact":true,"duplicateCpoOrAliasIntroduced":false,"aliasesResolved":[],"rankableEvseAdded":0,"canonicalPhysicalFileStillStaleSeed":true,"canonicalOverwritePerformed":false,"reasonNotOverwritten":"complete lossless ordered replay not yet materialized; fail-closed handling prevents recurrence of run72 EMOBITALY overcount"},
+  "antiStagnation":{"doNotRepeatWithoutNewEvidence":["EMO Bergamo E2015*1..21","EMO Milano Piazza Piemonte E2361..E2372","EMO Venezia Tronchetto/Piazzale della Stazione 48 EVSE","EMO Milano Olgettina/Bari Crisanzio/Gallarate run148 historical duplicates","HERA Cervia no-price pair","Powy network tariff","EDN Galbusera 8 EVSE"],"nextAction":"compute ordered historical set-difference for EMO Roma E477-E484 as one batch; then continue largest remaining non-Atlante station-level CPO via exact PUN/QR/app/backend mappings. Atlante remains last."},
+  "newlyTreated":[],"aliasesResolved":[],"rankableEvseAdded":0,"rankableStationsAdded":0
+}
