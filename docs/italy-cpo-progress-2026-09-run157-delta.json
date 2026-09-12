@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 157,
+  "recordedAt": "2026-09-12T20:54:34+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 24,
+    "setAside": 1,
+    "active": 9,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "priorityQueue": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelRemaining": 9,
+    "atlanteLast": true
+  },
+  "changes": [
+    {
+      "partyIds": ["ESH", "GAS", "UTZ"],
+      "canonicalName": "Uattzy / UAU group (E-Shore, GASGAS, EnerMia)",
+      "status": "active",
+      "priority": "station-level",
+      "changeType": "canonical-replay-evidence-retention-fix",
+      "decision": "group relationship evidence must be retained on each referenced nominative CPO record without merging partyIds or changing statuses",
+      "script": "scripts/italy_cpo_progress_consolidate.py",
+      "scriptCommit": "dc863c6ecfbff7e0995de1dca7e3ca0220f39016",
+      "lastInvestigated": "2026-09-12",
+      "lastChanged": "2026-09-12",
+      "historyAppend": "2026-09-12 run157: fixed canonical replay so partyIds-group evidence such as ESH/GAS/UTZ is attached losslessly to each existing party record while remaining non-mutating for status/alias decisions."
+    },
+    {
+      "partyId": "HRA",
+      "canonicalName": "HERA",
+      "status": "partial",
+      "priority": "station-level",
+      "lastInvestigated": "2026-09-12",
+      "negativeEvidence": [
+        {
+          "query": "fresh first-party HERA direct/ad-hoc network tariff search",
+          "finding": "current official-domain search results did not surface a deterministic public EV charging tariff grid; returned pages were retail electricity/gas offers rather than public charging prices",
+          "decision": "no direct tariff promotion; continue only with exact station/QR/app/backend mappings and do not confuse household electricity prices with EV charging tariffs"
+        }
+      ],
+      "resumeCondition": "exact HERA EV Driver connector/station response, QR/ad-hoc payment flow, or PUN publication with a direct station tariff",
+      "historyAppend": "2026-09-12 run157: fresh official-domain search again produced no deterministic HERA public-charging tariff grid; network-wide path remains closed and station-level only."
+    }
+  ],
+  "consistencyControl": {
+    "operationalPartition": "50 + 24 + 1 + 9 = 84",
+    "physicalPartition": "84 + 4 = 88",
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroduced": false,
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "canonicalPhysicalFileStillStaleSeed": true,
+    "canonicalOverwritePerformed": false,
+    "replayFix": "partyIds group evidence now attaches to every referenced existing partyId and fails closed on unknown grouped partyIds"
+  },
+  "antiStagnation": {
+    "doNotRepeatWithoutNewEvidence": [
+      "HERA network-wide direct tariff search",
+      "EMO E477-E484 tariff provenance research; only ordered historical ledger set-difference remains",
+      "UTZ EC167-EC170 generic web/Pienotto path until first-party/PUN corroboration",
+      "F2X Novate Milanese seven-EVSE PUN tariff lookup until a source update",
+      "Atlante before all other accessible station-level work"
+    ],
+    "nextAction": "run the corrected lossless canonical replay and EVSE dedup guard on an execution surface; then resolve EMO E477-E484 novelty and continue the largest non-Atlante station-level CPO with exact station/EVSE mappings."
+  },
+  "newlyTreated": [],
+  "aliasesResolved": [],
+  "rankableEvseAdded": 0,
+  "rankableStationsAdded": 0
+}
