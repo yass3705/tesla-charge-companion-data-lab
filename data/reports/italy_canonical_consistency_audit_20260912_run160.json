@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 160,
+  "recordedAt": "2026-09-12T23:58:00+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 24,
+    "setAside": 1,
+    "active": 9,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "checks": {
+    "operationalPartition": "50 + 24 + 1 + 9 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroduced": false,
+    "aliasesDoubleCounted": false,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelRemaining": 9,
+    "canonicalPhysicalFileStillStaleSeed": true,
+    "canonicalOverwritePerformed": false,
+    "fullAuditTrigger": "two consecutive runs (159 and 160) without nominative status progression"
+  },
+  "canonicalObservation": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalSeedGeneratedAt": "2026-09-05T23:54:48+01:00",
+    "physicalSeedCounts": "4 treated / 5 partial / 1 setAside / 78 active / 88 total",
+    "effectiveLedgerCounts": "50 treated / 24 partial / 1 setAside / 9 active + 4 supersededAlias = 88 physical partyIds",
+    "decision": "do not overwrite until a corrected lossless replay materializes all 88 nominative partyId records, preserves accumulated delta evidence and validates status/alias uniqueness",
+    "replayStatus": "not completed in run160; no repository code-search result exposed an Italy canonical consolidator by the expected italy_canonical/consolidate terms, so reconstructing the file ad hoc would violate fail-closed/no-loss policy"
+  },
+  "freshInvestigation": [
+    {
+      "partyId": "EDN",
+      "canonicalName": "Edison Next S.P.A.",
+      "target": "authoritative confirmation of Galbusera EVSE identifiers already discovered in run159",
+      "queryExamples": [
+        "IT*EDN*ED00691 Edison",
+        "IT*EDN*ED00691 EVWAY",
+        "IT*EDN*ED00691 Agrate Brianza",
+        "IT*EDN*ED00691"
+      ],
+      "result": "fresh exact-ID searches again expose only the PUMP public station page; no independent Edison/EVWAY/PUN/OCPI authoritative indexed mapping surfaced",
+      "thirdPartyPage": "https://app.pumpapp.co/it/stazione-di-ricarica-route220-via-guglielmo-marconi-20-agrate-brianza/68cf0f24-273b-11f1-8003-97ef5f588a6c",
+      "decision": "keep the eight DC 120 kW Galbusera candidate EVSE fail-closed; close exact-ID generic web search until a new authoritative source appears",
+      "rankableEvseAdded": 0,
+      "resumeCondition": "PUN/OCPI record, Edison or EVWAY first-party/guest backend, QR/POS payload, or another authoritative identifier-to-site mapping"
+    }
+  ],
+  "antiStagnation": {
+    "doNotRepeatWithoutNewEvidence": [
+      "EDN Galbusera generic tariff/site/topology research; these are already first-party proven",
+      "EDN Galbusera generic exact-ID web search; run160 again yielded only PUMP",
+      "PWY generic network-wide tariff search",
+      "HERA network-wide direct tariff search",
+      "EMO E477-E484 tariff provenance research; only ordered historical ledger set-difference remains",
+      "UTZ EC167-EC170 generic web/Pienotto path until first-party/PUN corroboration",
+      "F2X Novate Milanese seven-EVSE PUN tariff lookup until a source update",
+      "Atlante before all other accessible station-level work"
+    ],
+    "nextAction": "move away from EDN and continue the largest remaining non-Atlante station-level CPO with a new evidence surface; preserve EMO E477-E484 strictly for historical set-difference"
+  }
+}
