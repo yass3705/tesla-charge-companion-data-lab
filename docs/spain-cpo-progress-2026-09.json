@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "country": "ES",
-  "updatedAt": "2026-09-12T01:24:00Z",
+  "updatedAt": "2026-09-12T09:47:00Z",
   "status": "FIRST_PASS_IN_PROGRESS",
   "inventory": {
     "legacyWorkLabelCount": 618,
@@ -52,7 +52,10 @@
       "tariffModel": "Plenergy exact station-page tariffs",
       "coverage": "Official Plenergy material confirms the Plenoil-to-Plenergy rebrand. Earlier immutable Git evidence validates 0.36 EUR/kWh only on specifically matched official station pages, never network-wide.",
       "resumeCondition": "continue station mapping under Plenergy canonical network",
-      "evidence": ["https://plenergy.es/plenoil-renueva-su-marca-y-pasa-a-denominarse-plenergy/", "git:c4bec836b5cf5b57bd042ad96d7896efca4965af"],
+      "evidence": [
+        "https://plenergy.es/plenoil-renueva-su-marca-y-pasa-a-denominarse-plenergy/",
+        "git:c4bec836b5cf5b57bd042ad96d7896efca4965af"
+      ],
       "lastInvestigated": "2026-09-12",
       "lastChanged": "2026-09-12"
     },
@@ -65,7 +68,10 @@
       "tariffModel": "Plenergy exact station-page tariffs",
       "coverage": "Official Plenergy material confirms Plenoil is the former brand. Exact station tariffs remain limited to matched official station pages.",
       "resumeCondition": "continue station mapping under Plenergy canonical network",
-      "evidence": ["https://plenergy.es/plenoil-renueva-su-marca-y-pasa-a-denominarse-plenergy/", "git:c4bec836b5cf5b57bd042ad96d7896efca4965af"],
+      "evidence": [
+        "https://plenergy.es/plenoil-renueva-su-marca-y-pasa-a-denominarse-plenergy/",
+        "git:c4bec836b5cf5b57bd042ad96d7896efca4965af"
+      ],
       "lastInvestigated": "2026-09-12",
       "lastChanged": "2026-09-12"
     },
@@ -78,7 +84,10 @@
       "coverage": "Official PowerGo Spain material confirms dynamic tariffs and current price display in the app; no static Spain-wide value is inferred.",
       "blocker": "live station/app price mapping required",
       "resumeCondition": "post-first-pass dynamic-price mapping",
-      "evidence": ["https://www.powergo.es/", "https://www.powergo.es/powergo-charge-app/"],
+      "evidence": [
+        "https://www.powergo.es/",
+        "https://www.powergo.es/powergo-charge-app/"
+      ],
       "lastInvestigated": "2026-09-12",
       "lastChanged": "2026-09-12"
     },
@@ -91,7 +100,9 @@
       "coverage": "Official PRIO Electric material publishes card/eMSP prices and states Spanish use includes PRIO Recharge-operated and third-party points. Those prices are therefore not transposed to every direct PRIO Recharge EVSE.",
       "blocker": "direct CPO/ad-hoc tariff mapping required",
       "resumeCondition": "post-first-pass direct station/QR/app mapping",
-      "evidence": ["https://www.prio.pt/es/tarjeta-prio-electric/membresia-de-la-tarjeta-prio-electric_471.html"],
+      "evidence": [
+        "https://www.prio.pt/es/tarjeta-prio-electric/membresia-de-la-tarjeta-prio-electric_471.html"
+      ],
       "lastInvestigated": "2026-09-12",
       "lastChanged": "2026-09-12"
     }
@@ -101,18 +112,29 @@
     "rule": "Aliases and platform labels never increment the physical-CPO denominator unless current REVE proves an independent identity."
   },
   "coherence": {
-    "checkedAt": "2026-09-12T01:24:00Z",
+    "checkedAt": "2026-09-12T09:47:00Z",
     "result": "GREEN_WITH_DOCUMENTED_LEGACY_COUNTER_UNCERTAINTY",
     "checks": [
       "148/148 current REVE identities have persisted nominative decisions",
       "counts reconcile: 14+4+35+84+3+8=148",
+      "current coverage.json still reports 148 distinct CPO identities",
+      "no blocked/setAside case was re-audited without new nominative evidence",
+      "no new identity was fabricated from tariff/status stream lifecycle rows",
       "Plenoil labels resolved under Plenergy without network-wide tariff extrapolation",
       "PowerGo dynamic pricing retained active",
       "PRIO eMSP prices not transposed onto direct CPO pricing",
-      "historical 618-label queue remains unrecovered and is not declared complete"
+      "historical 618-label queue remains unrecovered and is not declared complete",
+      "critical progress state and REVE cursors remain persisted in Git rather than Actions artifacts"
     ]
   },
   "history": [
-    {"date":"2026-09-12","change":"Closed final four current-snapshot persistence gaps. Replacement inventory now has 148/148 durable decisions; legacy 618 first pass remains incomplete."}
+    {
+      "date": "2026-09-12",
+      "change": "Closed final four current-snapshot persistence gaps. Replacement inventory now has 148/148 durable decisions; legacy 618 first pass remains incomplete."
+    },
+    {
+      "date": "2026-09-12",
+      "change": "Mandatory no-progress coherence check repeated after tariff/status advancement: counts remain 148/148 current-snapshot decisions, no new nominative identity proven, no setAside re-audit, and legacy 618 uncertainty remains explicitly preserved."
+    }
   ]
 }
