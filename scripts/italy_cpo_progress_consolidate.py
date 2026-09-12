@@ -8,15 +8,18 @@ shapes are supported. `changes` may be either a flat list of party updates or
 modern status buckets such as {"treated": [...], "partial": [...]}.
 Every raw party-scoped update is retained in `deltaEvidence`, so newer summary
 fields can supersede older values without discarding the evidence that produced
-them. Non-CPO relationship records are retained at top level.
+them. Group relationship records using `partyIds` are retained globally and are
+also attached as evidence to each referenced existing partyId without changing
+that party's status or summary fields. Non-CPO relationship records are retained
+at top level.
 
 Run labels may contain a suffix (for example run4b and run7b). They are ordered
 as 4, 4b, 5 ... 7, 7b, 8 so no historical delta is silently skipped.
 
 The script recomputes named status counts and fails closed on duplicate partyIds,
-physical-inventory mismatch, or an ambiguous party-update container. It does not
-use GitHub code search for EVSE deduplication; run
-`italy_cpo_delta_evse_dedup_audit.py` before promotion.
+physical-inventory mismatch, an unknown grouped partyId, or an ambiguous
+party-update container. It does not use GitHub code search for EVSE
+deduplication; run `italy_cpo_delta_evse_dedup_audit.py` before promotion.
 """
 from __future__ import annotations
 
@@ -69,7 +72,7 @@ def _iter_party_container(shape, container):
 
     if isinstance(container, dict):
         # A single party update is accepted as a defensive compatibility form.
-        if container.get("partyId"):
+        if container.get("partyId") or container.get("partyIds"):
             yield shape, container
             return
 
@@ -106,9 +109,11 @@ def _iter_party_container(shape, container):
                 continue
 
             # Unknown list/dict buckets containing partyIds must not be silently skipped.
-            if isinstance(value, list) and any(isinstance(x, dict) and x.get("partyId") for x in value):
+            if isinstance(value, list) and any(
+                isinstance(x, dict) and (x.get("partyId") or x.get("partyIds")) for x in value
+            ):
                 raise SystemExit(f"{shape}: unsupported party-update bucket {bucket!r}")
-            if isinstance(value, dict) and value.get("partyId"):
+            if isinstance(value, dict) and (value.get("partyId") or value.get("partyIds")):
                 raise SystemExit(f"{shape}: unsupported party-update bucket {bucket!r}")
         return
 
@@ -186,6 +191,31 @@ def main():
         delta = load_json(path)
         for shape, raw_update in iter_updates(delta):
             pid = raw_update.get("partyId")
+            group_pids = raw_update.get("partyIds")
+            if not pid and group_pids:
+                if not isinstance(group_pids, list) or not group_pids or not all(
+                    isinstance(x, str) and x for x in group_pids
+                ):
+                    raise SystemExit(f"{path}: malformed partyIds group {group_pids!r}")
+                missing = [group_pid for group_pid in group_pids if group_pid not in by_id]
+                if missing:
+                    raise SystemExit(
+                        f"{path}: unknown grouped partyIds {missing}; refusing implicit inventory expansion"
+                    )
+                evidence_entry = {
+                    "run": label,
+                    "path": str(path),
+                    "shape": shape,
+                    "groupPartyIds": copy.deepcopy(group_pids),
+                    "update": copy.deepcopy(raw_update),
+                }
+                append_unique(non_cpo_evidence, evidence_entry)
+                for group_pid in group_pids:
+                    prior_evidence = list(by_id[group_pid].get("deltaEvidence") or [])
+                    append_unique(prior_evidence, copy.deepcopy(evidence_entry))
+                    by_id[group_pid]["deltaEvidence"] = prior_evidence
+                continue
+
             if not pid:
                 append_unique(non_cpo_evidence, {
                     "run": label,
@@ -281,6 +311,7 @@ def main():
         ],
         "changesContainersReplayed": ["flat-list", "status-bucketed-object"],
         "rawDeltaEvidenceRetained": True,
+        "groupPartyIdsEvidenceAttached": True,
         "evseDedupGuard": "scripts/italy_cpo_delta_evse_dedup_audit.py",
     }
 
