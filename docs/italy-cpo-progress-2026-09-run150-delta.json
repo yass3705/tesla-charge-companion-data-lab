@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 150,
+  "generatedAt": "2026-09-12T09:53:56+01:00",
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 24,
+    "setAside": 1,
+    "active": 9,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueues": {
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 9
+  },
+  "changes": {
+    "treated": [],
+    "partial": [],
+    "setAside": [],
+    "active": [
+      {
+        "partyId": "EMO",
+        "canonicalName": "EMOBITALY S.r.l.",
+        "status": "active",
+        "priority": "station-level",
+        "tariffModel": "station_specific_owner_pricing",
+        "tariffChannel": "direct CPO/ad-hoc tariff exposed through PUN-derived station records",
+        "pendingSubpopulation": {
+          "station": "Via Pio Emanuelli 1, Roma",
+          "evseCount": 4,
+          "evseIds": ["IT*EMOE477", "IT*EMOE478", "IT*EMOE479", "IT*EMOE480"],
+          "tariffs": [
+            {"evseIds": ["IT*EMOE477", "IT*EMOE478"], "connector": "Type 2", "powerKw": 22, "energyEurPerKwh": 0.55, "activationFeeEur": 0.74},
+            {"evseIds": ["IT*EMOE479"], "connector": "CCS", "powerKw": 24, "energyEurPerKwh": 0.60, "activationFeeEur": 0.74},
+            {"evseIds": ["IT*EMOE480"], "connector": "CHAdeMO", "powerKw": 24, "energyEurPerKwh": 0.60, "activationFeeEur": 0.74}
+          ],
+          "source": "https://pienotto.it/stazioni/260057-emobitaly-s-r-l-roma-rm",
+          "sourceFreshness": "live PUN-derived page rechecked 2026-09-12",
+          "rankable": false,
+          "blockage": "complete ordered branch-local credited ledger still required to prove novelty"
+        },
+        "negativePaths": [
+          "Do not use default-branch code search as proof of novelty; run72 documented false negatives.",
+          "Do not recheck the 55 run148 candidates already proven historical duplicates in run149."
+        ],
+        "resumeCondition": "run the corrected branch-local EVSE dedup audit over every ordered Italy delta and promote only the E477-E480 set-difference, if any",
+        "confidence": "high for live price mapping; fail-closed for novelty",
+        "lastInvestigated": "2026-09-12",
+        "lastChanged": "2026-09-12"
+      },
+      {
+        "partyIds": ["ESH", "GAS", "UTZ"],
+        "canonicalName": "Uattzy / UAU group (E-Shore, GASGAS, EnerMia)",
+        "status": "active",
+        "priority": "station-level",
+        "newOperationalEvidence": [
+          "Current Apple App Store listing names Enermia srl as provider of the Uattzy charging app.",
+          "Current official EnerMia public-charging page states EnerMia public infrastructure can be used through the Uattzy app."
+        ],
+        "officialUrls": [
+          "https://apps.apple.com/it/app/uattzy-stazioni-di-ricarica/id1372832369",
+          "https://enermia.org/come-ricaricare/ricarica-pubblica/"
+        ],
+        "aliasDecision": "Operational group/app linkage is strengthened, but ESH/GAS/UTZ remain distinct physical partyIds because current PUN retirement/replacement equivalence is not proven.",
+        "tariffDecision": "No network-wide/class-wide tariff promotion; exact connector/station mapping still required.",
+        "resumeCondition": "refresh current PUN/AFIR partyId inventory and obtain direct connector tariffs from Uattzy app/guest backend or PUN before rankable promotion; merge aliases only on proven retirement/replacement mapping",
+        "confidence": "high for EnerMia-Uattzy operational relationship; insufficient for partyId supersession",
+        "lastInvestigated": "2026-09-12",
+        "lastChanged": "2026-09-12"
+      }
+    ],
+    "supersededAlias": []
+  },
+  "coverageAdded": {
+    "rankableDirectEvseAdded": 0,
+    "stationsAdded": 0,
+    "aliasesResolved": 0
+  },
+  "consistency": {
+    "fullAuditPath": "data/reports/italy_canonical_consistency_audit_20260912_run150.json",
+    "fullAuditCommit": "dc9c48f137a3268cee50c243e3b4464b68a413a4",
+    "canonicalBucketEquation": "50+24+1+9=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "duplicatePartyIdsIntroduced": 0,
+    "aliasDoubleCountIntroduced": 0,
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 9,
+    "pass": true
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "state": "STALE_SEED_NOT_OVERWRITTEN",
+    "seedCounts": {"treated": 4, "partial": 5, "setAside": 1, "active": 78, "total": 88},
+    "effectiveCounts": {"treated": 50, "partial": 24, "setAside": 1, "active": 9, "canonicalTotal": 84, "supersededAlias": 4, "physicalPartyIds": 88},
+    "reason": "full lossless replay must execute before replacing the physical canonical; partial manual rewrite would violate evidence retention and alias/EVSE dedup safeguards",
+    "script": "scripts/italy_cpo_progress_consolidate.py",
+    "dedupGuard": "scripts/italy_cpo_delta_evse_dedup_audit.py"
+  },
+  "antiStagnation": {
+    "closedWithoutNewEvidence": [
+      "EMOBITALY run148 Milano/Bari/Gallarate duplicate groups",
+      "EMOBITALY run136/run140 duplicate batches",
+      "HERA network-wide",
+      "PWY station-level",
+      "EDN Galbusera DC",
+      "CVG station-by-station",
+      "Uattzy network-wide tariff search"
+    ],
+    "nextAction": "Materialize the ordered branch-local ledger/canonical with the existing corrected scripts when an execution surface is available; in parallel continue the largest genuinely unresolved station-level CPO. Atlante remains last."
+  },
+  "history": [
+    "2026-09-12 run150: performed mandatory four-run full consistency audit after run145; effective state remains 50 treated / 24 partial / 1 setAside / 9 active + four superseded aliases.",
+    "2026-09-12 run150: revalidated exact Roma EMOBITALY E477-E480 direct prices but kept all four fail-closed pending full ordered-ledger novelty proof.",
+    "2026-09-12 run150: strengthened Uattzy/UAU group reconciliation with current Enermia-owned app and first-party EnerMia public-charging evidence; no unsafe partyId merge or tariff promotion."
+  ]
+}
