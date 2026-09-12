@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 147,
+  "generatedAt": "2026-09-12T04:51:59+01:00",
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 24,
+    "setAside": 1,
+    "active": 9,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueues": {
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 9
+  },
+  "changes": {
+    "treated": [
+      {
+        "partyId": "CVG",
+        "canonicalName": "CONVERGENZE S.p.A. Società Benefit",
+        "status": "treated",
+        "priority": "network-wide",
+        "aliases": ["CONVERGENZE S.p.A. Società Benefit", "CVG", "EVO", "Electric Vehicle Only"],
+        "evse": 90,
+        "stations": 44,
+        "inventorySource": "2026-08-30 Italy V9 consolidated candidate / partyId CVG",
+        "inventoryTimestamp": "2026-08-30T11:14:39.750794Z",
+        "tariffModel": "network_wide_flat_energy",
+        "tariffChannel": "direct CPO / EVO web-smartphone or operator card",
+        "tariffs": [
+          {
+            "class": "EVO public charging network",
+            "connector": "Type 2",
+            "powerKw": 22,
+            "energyEurPerKwh": 0.60,
+            "vatIncluded": true
+          }
+        ],
+        "paymentMethods": ["EVO Card", "smartphone / evo.convergenze.it"],
+        "eligibility": "public EVO charging network; registration portal creates personal area; smartphone flow authorizes a EUR 35 pre-authorization and charges actual session cost",
+        "officialUrls": [
+          "https://convergenze.it/it/servizi/energia/evo",
+          "https://evo.convergenze.it"
+        ],
+        "proofPositive": [
+          "Current official Convergenze EVO page states 'Costo per kWh 60 cent./€ IVA inclusa'.",
+          "The same official page defines EVO as Convergenze's EV charging network and states EVO columns have two Type 2 IEC62196 outlets at 22 kW each.",
+          "Run146 PUN-derived exact records independently corroborate 0.60 EUR/kWh on eight IT*CVG EVSE across four stations in Salerno and Capaccio Paestum."
+        ],
+        "negativePaths": [
+          "Do not confuse the electricity-market PUN energy-supply pages with EV charging tariffs.",
+          "Do not treat roaming eMSP pricing as the direct CVG/EVO tariff."
+        ],
+        "coverage": {
+          "rankableDirectEvse": 90,
+          "uncoveredEvse": 0,
+          "basis": "partyId CVG inventory is Convergenze public charging infrastructure; official EVO network price is flat and current, corroborated by fresh PUN-derived IT*CVG station records"
+        },
+        "confidence": "high",
+        "lastInvestigated": "2026-09-12",
+        "lastChanged": "2026-09-12",
+        "historyAppend": "2026-09-12 run147: promoted CVG from station-level candidate handling to treated/network-wide after current first-party EVO page explicitly published 0.60 EUR/kWh VAT included for the Convergenze EVO charging network; eight run146 IT*CVG EVSE independently corroborate the same price."
+      }
+    ],
+    "partial": [],
+    "setAside": [],
+    "active": [],
+    "supersededAlias": []
+  },
+  "coverageAdded": {
+    "partyId": "CVG",
+    "stations": 44,
+    "evse": 90,
+    "rankableDirectEvseAdded": 90,
+    "price": "0.60 EUR/kWh VAT included"
+  },
+  "consistency": {
+    "canonicalBucketEquation": "50+24+1+9=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "duplicatePartyIdsIntroduced": 0,
+    "aliasDoubleCountIntroduced": 0,
+    "rankableEvseAdded": 90,
+    "candidateExactEvsePendingFromRun146": 0,
+    "pass": true
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "state": "STALE_SEED_NOT_OVERWRITTEN",
+    "reason": "The physical canonical still requires full lossless replay before replacement. Run147 is structured for direct replay by scripts/italy_cpo_progress_consolidate.py; no manual partial rewrite of the stale seed is safe.",
+    "script": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "antiStagnation": {
+    "closedWithoutNewEvidence": ["CVG station-by-station search", "EMOBITALY run136/run140 batches", "HERA network-wide", "PWY station-level", "EDN Galbusera DC", "UTZ national-grid search"],
+    "nextAction": "Advance to the largest remaining genuinely unresolved station-level CPO. Do not reopen CVG unless the official EVO tariff changes or a party-scope contradiction appears. Atlante remains last."
+  },
+  "history": [
+    "2026-09-12 run147: CVG moved from active to treated on a current first-party network-wide EVO tariff of 0.60 EUR/kWh VAT included; 90/90 canonical CVG EVSE become rankable under the direct CPO rule.",
+    "2026-09-12 run147: effective counts become 50 treated / 24 partial / 1 setAside / 9 active plus four superseded aliases."
+  ]
+}
