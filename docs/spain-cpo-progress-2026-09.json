@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "country": "ES",
-  "updatedAt": "2026-09-12T01:10:00Z",
+  "updatedAt": "2026-09-12T01:17:00Z",
   "status": "FIRST_PASS_IN_PROGRESS",
   "inventory": {
     "legacyWorkLabelCount": 618,
@@ -16,99 +16,129 @@
     "note": "618 remains the historical work-label queue only. Current REVE observes 148 distinct CPO identities. The durable canonical chain is advancing from the proven baseline; previously reported 373 remains unverified and is not used for counting."
   },
   "firstPass": {
-    "legacy618ReviewedMinimum": 137,
-    "legacy618RemainingMaximum": 481,
+    "legacy618ReviewedMinimum": 144,
+    "legacy618RemainingMaximum": 474,
     "countIsLowerBound": true,
-    "reason": "137 nominative decisions are now durably chained in Git. Missing historical 618 membership is not invented."
+    "reason": "144 nominative decisions are now durably chained in Git. Missing historical 618 membership is not invented."
   },
   "countsFromDecisions": {
     "sourceValidated": 14,
     "partial": 4,
-    "active": 32,
-    "setAside": 79,
+    "active": 33,
+    "setAside": 84,
     "excludedPlatform": 3,
-    "supersededAlias": 5,
-    "decisionsTotal": 137
+    "supersededAlias": 6,
+    "decisionsTotal": 144
   },
   "canonicalChain": {
-    "baseBlobSha": "9cf41e6747198944d33b1143dc73aba796af9e81",
+    "baseBlobSha": "ed7b1852fba849ee3a307e793ec70721da9240e9",
     "basePath": "docs/spain-cpo-progress-2026-09.json",
-    "baseDecisionCount": 132,
+    "baseDecisionCount": 137,
     "baseCounts": {
       "sourceValidated": 14,
       "partial": 4,
       "active": 32,
-      "setAside": 74,
+      "setAside": 79,
       "excludedPlatform": 3,
       "supersededAlias": 5
     },
-    "rule": "The immutable base blob preserves complete nominative detail for decisions 1-132. deltaDecisions below adds decisions 133-137. Resolve this chain before dedupe/counting; compact only losslessly."
+    "rule": "The immutable base blob preserves complete nominative detail for decisions 1-137. deltaDecisions below adds decisions 138-144. Resolve this chain before dedupe/counting; compact only losslessly."
   },
   "deltaDecisions": [
     {
-      "canonical": "INVESMORAZO S.L",
-      "partyId": "IPM",
+      "canonical": "JARDINES LA TEJERA, S.A.U.",
+      "partyId": "TJR",
+      "status": "setAside",
+      "priority": "station-level",
+      "tariffModel": "hotel destination charging",
+      "inventoryCoverage": "1 location / 1 EVSE / 3 connectors in current REVE snapshot",
+      "coverage": "Public tourism evidence confirms EV charging at Hotel Jardines La Tejera, while the current REVE snapshot proves the operator identity. No authoritative current direct charging tariff or deterministic checkout surfaced in first pass.",
+      "blocker": "No authoritative current numeric EV charging tariff.",
+      "resumeCondition": "official hotel charging tariff, direct checkout or post-first-pass review",
+      "evidence": ["data/spain_reve/coverage.json", "data/spain_reve/raw_cpo_labels_snapshot.json"],
+      "lastInvestigated": "2026-09-12",
+      "lastChanged": "2026-09-12"
+    },
+    {
+      "canonical": "LAG OLEIROS SLU",
+      "partyId": "010",
+      "status": "setAside",
+      "priority": "station-level",
+      "tariffModel": "service-station charging",
+      "inventoryCoverage": "1 location / 1 EVSE / 1 connector in current REVE snapshot",
+      "coverage": "The official Los Angeles Gas page for LAG Oleiros explicitly lists an electrolinera among the station services, but publishes no current deterministic EV charging tariff on the reviewed surface.",
+      "blocker": "No authoritative current numeric EV charging tariff or direct checkout surfaced.",
+      "resumeCondition": "official station tariff, QR/ad-hoc checkout or post-first-pass review",
+      "evidence": ["https://losangelesgas.es/estaciones/lag-oleiros/", "data/spain_reve/coverage.json"],
+      "lastInvestigated": "2026-09-12",
+      "lastChanged": "2026-09-12"
+    },
+    {
+      "canonical": "LOGISTICA DE CARBURANTES PETROLIFEROS GROUP, S.L.",
+      "partyId": "LCG",
       "status": "setAside",
       "priority": "station-level",
       "tariffModel": "single-site charging",
       "inventoryCoverage": "1 location / 1 EVSE / 1 connector in current REVE snapshot",
-      "blocker": "Current REVE proves the identity, but a reasonable first-pass public search did not surface an authoritative current EV charging tariff or deterministic direct checkout attributable to Invesmorazo.",
-      "resumeCondition": "official tariff, QR/ad-hoc checkout or post-first-pass review",
+      "blocker": "Current REVE proves the charging identity. Public first-pass research identifies the company and its corporate site but did not surface an authoritative direct EV charging tariff or deterministic checkout.",
+      "resumeCondition": "official charging tariff, QR/ad-hoc checkout or post-first-pass review",
       "evidence": ["data/spain_reve/coverage.json", "data/spain_reve/raw_cpo_labels_snapshot.json"],
       "lastInvestigated": "2026-09-12",
       "lastChanged": "2026-09-12"
     },
     {
-      "canonical": "ION SMART ENERGY 2000 SL",
-      "partyId": "CRE",
-      "status": "setAside",
-      "priority": "station-level",
-      "tariffModel": "small multi-site charging",
-      "inventoryCoverage": "8 locations / 15 EVSE / 15 connectors in current REVE snapshot",
-      "blocker": "Current REVE proves eight locations. Public first-pass research surfaced third-party/open-data evidence of ION Smart Energy charging sites but no authoritative current direct tariff or deterministic checkout, so no third-party price is promoted.",
-      "resumeCondition": "official operator tariff, QR/ad-hoc checkout, public backend mapping or post-first-pass review",
-      "evidence": ["data/spain_reve/coverage.json", "data/spain_reve/raw_cpo_labels_snapshot.json"],
+      "canonical": "MAKSU ESPAÑA SL",
+      "partyId": "EPK",
+      "status": "active",
+      "priority": "station-level/platform-managed",
+      "tariffModel": "Telpark app-managed direct charging",
+      "inventoryCoverage": "109 locations / 861 EVSE / 861 connectors in current REVE snapshot",
+      "coverage": "Telpark's official legal page identifies Maksu España S.L. as the responsible entity, and Telpark's official EV-charging surface confirms app-activated charging in Spain across its parking network. No safe Spain-wide numeric tariff is generalized because applicable charging prices remain location/session-specific.",
+      "blocker": "Requires deterministic station/app tariff mapping for exhaustive rankable prices.",
+      "resumeCondition": "post-first-pass Telpark station/app mapping or official numeric tariff feed",
+      "evidence": ["https://www.telpark.com/es/centro-legal/maksu-politica-de-privacidad/", "https://www.telpark.com/es/carga-electrica/", "data/spain_reve/coverage.json"],
       "lastInvestigated": "2026-09-12",
       "lastChanged": "2026-09-12"
     },
     {
-      "canonical": "J. REDONDO, S.L.",
-      "partyId": "JR1",
-      "status": "setAside",
-      "priority": "station-level",
-      "tariffModel": "workshop/customer charging",
-      "inventoryCoverage": "1 location / 2 EVSE / 4 connectors in current REVE snapshot",
-      "coverage": "J. Redondo's official workshop site confirms four sockets specifically installed for EV charging, but no current public charging price or deterministic checkout is published.",
-      "blocker": "No authoritative numeric public charging tariff.",
-      "resumeCondition": "official charging tariff, direct checkout or post-first-pass review",
-      "evidence": ["https://www.talleresjredondo.com/coches-electricos/", "data/spain_reve/coverage.json"],
-      "lastInvestigated": "2026-09-12",
-      "lastChanged": "2026-09-12"
-    },
-    {
-      "canonical": "JANEIRO RANILLA SUMINISTROS ALTOLEON, S.L.",
-      "partyId": "ALT",
-      "status": "setAside",
-      "priority": "station-level",
-      "tariffModel": "single-service-station charging",
-      "inventoryCoverage": "1 location / 2 EVSE / 2 connectors in current REVE snapshot",
-      "blocker": "The entity is a service-station operator and current REVE proves the EVSE, but first-pass research did not surface an authoritative direct EV charging tariff or checkout. Third-party/open-data values are not promoted.",
-      "resumeCondition": "official station tariff, QR/ad-hoc checkout or post-first-pass review",
-      "evidence": ["data/spain_reve/coverage.json", "data/spain_reve/raw_cpo_labels_snapshot.json"],
-      "lastInvestigated": "2026-09-12",
-      "lastChanged": "2026-09-12"
-    },
-    {
-      "canonical": "Jarada Motor, S.L.",
-      "partyId": "919",
+      "canonical": "Marbella Premium SL",
+      "partyId": "922",
       "status": "setAside",
       "priority": "station-level",
       "tariffModel": "Porsche dealer/site charging",
       "inventoryCoverage": "2 locations / 2 EVSE / 2 connectors in current REVE snapshot",
-      "coverage": "Jarada Motor's public site identifies it as the official Porsche dealer in the Canary Islands, but no current public deterministic charging tariff or direct checkout for the two REVE EVSE surfaced in first pass.",
+      "coverage": "Public business evidence identifies Marbella Premium as the official Porsche Marbella dealer, while current REVE proves two EVSE. No authoritative current public charging tariff or deterministic direct checkout surfaced in first pass.",
       "blocker": "No authoritative public charging tariff for the dealer EVSE.",
       "resumeCondition": "official dealer charging tariff, QR/ad-hoc checkout or post-first-pass review",
-      "evidence": ["https://jaradamotor.com/index.html", "data/spain_reve/coverage.json"],
+      "evidence": ["data/spain_reve/coverage.json", "data/spain_reve/raw_cpo_labels_snapshot.json"],
+      "lastInvestigated": "2026-09-12",
+      "lastChanged": "2026-09-12"
+    },
+    {
+      "canonical": "MED PLAYA MANAGEMENT, SLU",
+      "partyId": "MPM",
+      "status": "setAside",
+      "priority": "station-level",
+      "tariffModel": "hotel destination charging",
+      "inventoryCoverage": "1 location / 1 EVSE / 4 connectors in current REVE snapshot",
+      "blocker": "Current REVE proves the charging identity. MedPlaya public hotel material confirms EV-charging infrastructure within the hotel group, but no authoritative direct numeric tariff attributable to this specific REVE-operated site surfaced in first pass.",
+      "resumeCondition": "official hotel/site charging tariff, direct checkout or post-first-pass review",
+      "evidence": ["https://www.medplaya.com/es/hoteles/hotel-bali-benalmadena", "data/spain_reve/coverage.json"],
+      "lastInvestigated": "2026-09-12",
+      "lastChanged": "2026-09-12"
+    },
+    {
+      "canonical": "MOEVE COMMERCIAL, SAU",
+      "partyId": "MOE",
+      "status": "supersededAlias",
+      "canonicalTarget": "Moeve",
+      "priority": "alias-resolution/network-wide",
+      "tariffModel": "Moeve direct ultrafast charging",
+      "inventoryCoverage": "120 locations / 252 EVSE / 252 connectors in current REVE snapshot",
+      "coverage": "Moeve's official legal notice explicitly states MOEVE COMMERCIAL, S.A.U. (MOEVE), establishing the REVE legal-entity label as the Moeve operating identity rather than a separate network. Moeve's current official EV tariff page and FAQ publish one ultrafast tariff of 0.60 EUR/kWh, with app/RFID/bank-card payment available on the direct network.",
+      "blocker": null,
+      "resumeCondition": "none for alias identity; future tariff revalidation follows the Moeve canonical network",
+      "evidence": ["https://www.moeve.es/es/aviso-legal", "https://www.moeve.es/es/particular/movilidad-electrica/recarga-electrica/tarifas-y-suscripciones", "https://www.moeve.es/es/particular/movilidad-electrica/FAQS", "data/spain_reve/coverage.json"],
       "lastInvestigated": "2026-09-12",
       "lastChanged": "2026-09-12"
     }
@@ -116,25 +146,27 @@
   "aliases": {
     "source": "yass3705/tesla-charge-companion-stable@spain-reve-preintegration:data/spain_reve/operator_aliases_es.json",
     "canonicalGroups": 16,
-    "runtimeResolvedInCanonical": 5,
+    "runtimeResolvedInCanonical": 6,
     "status": "matching_candidates_reconciled_against_live_REVE_before_counting",
     "rule": "Aliases and platform labels never increment the physical-CPO denominator unless current REVE proves an independent party identity."
   },
   "coherence": {
-    "checkedAt": "2026-09-12T01:10:00Z",
+    "checkedAt": "2026-09-12T01:17:00Z",
     "result": "GREEN_WITH_DOCUMENTED_LEGACY_COUNTER_UNCERTAINTY",
     "checks": [
       "current REVE durable snapshot still contains 148 canonical identities",
-      "immutable base blob 9cf41e6747198944d33b1143dc73aba796af9e81 preserves complete nominative detail for decisions 1-132",
-      "five additional skipped I/J identities now have durable first-pass decisions",
-      "counts reconcile exactly: 14 sourceValidated + 4 partial + 32 active + 79 setAside + 3 excludedPlatform + 5 supersededAlias = 137",
-      "no third-party/open-data numeric tariff was promoted",
+      "immutable base blob ed7b1852fba849ee3a307e793ec70721da9240e9 preserves complete nominative detail for decisions 1-137",
+      "seven additional skipped J-M identities now have durable first-pass decisions",
+      "counts reconcile exactly: 14 sourceValidated + 4 partial + 33 active + 84 setAside + 3 excludedPlatform + 6 supersededAlias = 144",
+      "Moeve Commercial is not double-counted because Moeve official legal material identifies MOEVE COMMERCIAL S.A.U. as MOEVE",
+      "Maksu remains active station-level because Telpark charging is proven but one safe network-wide numeric tariff is not generalized",
+      "no third-party numeric tariff was promoted",
       "no previously set-aside canonical decision was re-audited",
       "previously reported 373 remains unverified and excluded from durable KPI counting"
     ]
   },
   "history": [
-    {"date":"2026-09-12","change":"Durable first-pass chain advanced from 132 to 137 by repairing skipped I/J persistence gaps: Invesmorazo, ION Smart Energy, J. Redondo, Janeiro Ranilla Suministros Altoleon and Jarada Motor."},
-    {"date":"2026-09-12","change":"All five were classified without blocking; no third-party tariff was promoted."}
+    {"date":"2026-09-12","change":"Durable first-pass chain advanced from 137 to 144 by repairing skipped J-M persistence gaps: Jardines La Tejera, LAG Oleiros, LCG, Maksu Espana, Marbella Premium, Med Playa Management and Moeve Commercial."},
+    {"date":"2026-09-12","change":"Moeve Commercial was resolved losslessly as the Moeve operating-entity alias; Maksu retained active under Telpark station-level pricing; five low-evidence identities were set aside without blocking."}
   ]
 }
