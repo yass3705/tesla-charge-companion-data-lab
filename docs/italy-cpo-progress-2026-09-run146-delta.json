@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 146,
+  "generatedAt": "2026-09-12T03:54:27+01:00",
+  "effectiveCounts": {
+    "treated": 49,
+    "partial": 24,
+    "setAside": 1,
+    "active": 10,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88
+  },
+  "priorityQueues": {
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 10
+  },
+  "changes": {
+    "treated": [],
+    "partial": [],
+    "setAside": [],
+    "active": [],
+    "supersededAlias": []
+  },
+  "stationLevelDiscovery": [
+    {
+      "partyId": "CVG",
+      "canonicalName": "CONVERGENZE S.p.A. Società Benefit",
+      "statusDecision": "no_status_transition_this_run",
+      "reasonHeld": "Fresh PUN-derived exact EVSE tariffs are available, but the lossless effective canonical replay is still required to prove CVG's current nominative bucket and to avoid duplicate EVSE credit against older Italy deltas.",
+      "tariffModel": "station_level_exact_mapping_only_until_dedup",
+      "tariffChannel": "PUN-published station tariff; direct/ad-hoc semantics must be preserved from the underlying PUN record and must not be generalized network-wide from these samples",
+      "candidateSubpopulations": [
+        {
+          "station": "Viale Antonio Gramsci, 8, Salerno (SA)",
+          "evseIds": ["IT*CVG*ECP031*1", "IT*CVG*ECP031*2"],
+          "connector": "Type 2",
+          "powerKw": 22,
+          "energyEurPerKwh": 0.60,
+          "source": "https://pienotto.it/stazioni/264160-convergenze-s-p-a-societa-benefit-salerno-sa",
+          "sourceAttribution": "Dati della Piattaforma Unica Nazionale",
+          "freshness": "Pienotto record crawled in September 2026; tariff shown updated within hours"
+        },
+        {
+          "station": "Via Ligea, Salerno (SA)",
+          "evseIds": ["IT*CVG*ECP035*1", "IT*CVG*ECP035*2"],
+          "connector": "Type 2",
+          "powerKw": 22,
+          "energyEurPerKwh": 0.60,
+          "source": "https://pienotto.it/stazioni/283443-convergenze-s-p-a-societa-benefit-salerno-sa",
+          "sourceAttribution": "Dati della Piattaforma Unica Nazionale",
+          "freshness": "Pienotto record crawled in September 2026; tariff shown updated within hours"
+        },
+        {
+          "station": "Via Vincenzo Cuoco 202, Salerno (SA)",
+          "evseIds": ["IT*CVG*ECP036*1", "IT*CVG*ECP036*2"],
+          "connector": "Type 2",
+          "powerKw": 22,
+          "energyEurPerKwh": 0.60,
+          "source": "https://pienotto.it/stazioni/260563-convergenze-s-p-a-societa-benefit-salerno-sa",
+          "sourceAttribution": "Dati della Piattaforma Unica Nazionale",
+          "freshness": "Pienotto record crawled in September 2026; tariff shown updated within hours"
+        },
+        {
+          "station": "Via Tempe, Capaccio Paestum (SA)",
+          "evseIds": ["IT*CVG*ECP039*1", "IT*CVG*ECP039*2"],
+          "connector": "Type 2",
+          "powerKw": 22,
+          "energyEurPerKwh": 0.60,
+          "source": "https://pienotto.it/stazioni/275197-convergenze-s-p-a-societa-benefit-capaccio-paestum-sa",
+          "sourceAttribution": "Dati della Piattaforma Unica Nazionale",
+          "freshness": "Pienotto record crawled in August/September 2026; tariff shown updated within hours"
+        }
+      ],
+      "candidateExactEvse": 8,
+      "rankableCreditThisRun": 0,
+      "proofPositive": [
+        "Four current public PUN-derived records expose exact IT*CVG EVSE identifiers, connector power and a 0.60 EUR/kWh AC tariff.",
+        "The samples span Salerno and Capaccio Paestum and therefore provide multiple independent exact station mappings rather than one inferred network price."
+      ],
+      "negativePaths": [
+        "Do not infer a CVG network-wide 0.60 EUR/kWh tariff from these four stations.",
+        "Do not credit the eight EVSE until ordered branch replay proves whether they were already present in a previous CVG mapping delta and resolves CVG's current nominative status."
+      ],
+      "resumeCondition": "Replay the effective canonical and CVG EVSE ledger; if the eight IDs are absent from prior rankable mappings and CVG remains eligible for station-level expansion, credit exactly these mapped EVSE. Continue enumerating current PUN CVG records station-by-station without extrapolation.",
+      "confidence": "high for exact station/EVSE tariff observations; fail-closed for uniqueness and effective-status promotion"
+    }
+  ],
+  "consistency": {
+    "canonicalBucketEquation": "49+24+1+10=84",
+    "physicalPartyIdEquation": "84+4=88",
+    "duplicatePartyIdsIntroduced": 0,
+    "aliasDoubleCountIntroduced": 0,
+    "rankableEvseAdded": 0,
+    "candidateExactEvseAdded": 8,
+    "pass": true
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "state": "STALE_SEED_NOT_OVERWRITTEN",
+    "reason": "Run145 confirms counters are coherent but the physical file is still the 2026-09-05 seed. Promotion remains gated on complete lossless replay of historical deltas and nominative diff inspection.",
+    "script": "scripts/italy_cpo_progress_consolidate.py"
+  },
+  "antiStagnation": {
+    "closedWithoutNewEvidence": ["EMOBITALY run136/run140 batches", "HERA network-wide", "PWY station-level", "EDN Galbusera DC", "UTZ national-grid search"],
+    "nextAction": "Resolve CVG effective status and ordered EVSE set-difference during canonical replay; otherwise continue the next largest genuinely unresolved station-level CPO. Atlante remains last."
+  },
+  "history": [
+    "2026-09-12 run146: recorded eight fresh exact CVG/PUN station tariff candidates at 0.60 EUR/kWh AC across four stations; zero EVSE credited pending effective-state replay and historical dedup.",
+    "2026-09-12 run146: effective counts unchanged at 49 treated / 24 partial / 1 setAside / 10 active plus four superseded aliases."
+  ]
+}
