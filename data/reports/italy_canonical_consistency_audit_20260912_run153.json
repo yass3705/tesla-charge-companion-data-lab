@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 153,
+  "auditedAt": "2026-09-12T16:50:54+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "auditType": "full-required-after-two-static-nominative-runs",
+  "effectiveState": {
+    "operationalCanonicalTotal": 84,
+    "treated": 50,
+    "partial": 24,
+    "setAside": 1,
+    "active": 9,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88,
+    "remainingNetworkOrClassWide": 0,
+    "remainingStationLevel": 9
+  },
+  "invariants": {
+    "operationalPartition": "50 + 24 + 1 + 9 = 84",
+    "physicalPartition": "84 + 4 = 88",
+    "statusPartitionConsistent": true,
+    "networkClassWideQueueEmpty": true,
+    "atlanteLast": true
+  },
+  "canonicalPhysicalFile": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "finding": "still the historical seed and not yet a materialized replay of the delta chain",
+    "safeAction": "do not overwrite until the complete ordered replay resolves all 88 physical partyIds without ambiguous count-only expansion",
+    "severity": "structural-known"
+  },
+  "replayChain": {
+    "deltaSeriesPresentThrough": 152,
+    "branchChainPresent": true,
+    "consolidator": "scripts/italy_cpo_progress_consolidate.py",
+    "consolidatorBehavior": "ordered delta replay with fail-closed handling for ambiguous historical count-only transitions and per-party deltaEvidence preservation",
+    "materializationStatus": "pending-complete-lossless-replay"
+  },
+  "antiStagnation": {
+    "previousFullAuditRun": 150,
+    "nominativeProgressRunsSince": [151, 152],
+    "reasonForAuditNow": "two consecutive runs without nominative status-count progression",
+    "repeatLocks": [
+      "do not reopen Powy network tariff absent contradictory official evidence",
+      "do not re-credit EDN Galbusera 8 EVSE",
+      "do not re-credit EMO Milano/Bari/Gallarate 55 historical duplicates",
+      "do not repeat HERA Cervia E19XP22T3KK1AL00009*1/*2 no-price investigation",
+      "keep Atlante last unless directly exploitable backend/tariff evidence appears"
+    ]
+  },
+  "newEvidence": {
+    "HRA": {
+      "canonicalName": "HERA",
+      "status": "active",
+      "priority": "station-level",
+      "officialTariffSurface": "https://heraricarica.gruppohera.it/home/pages/tariffs",
+      "finding": "current official Hera EV Driver tariff portal exists but tariff values are client-rendered and were not recoverable from the static page in this run",
+      "resumeCondition": "inspect the portal application bundles/network calls or a station QR/ad-hoc flow to obtain an exact direct station/EVSE tariff mapping; do not infer a network-wide grid",
+      "rankableCoverageAdded": 0
+    },
+    "UAU": {
+      "canonicalName": "Uattzy / UAU",
+      "status": "active",
+      "priority": "station-level",
+      "officialNetworkSnapshot": "https://www.uattzy.com/",
+      "finding": "current first-party site states over 3,000 charge points installed and managed in Italy; this is inventory-scale evidence only and is not mapped deterministically to ESH/GAS/UTZ partyIds",
+      "resumeCondition": "use current PUN/OCPI or Uattzy connector-level backend inventory before changing canonical EVSE counts or aliasing legacy partyIds",
+      "rankableCoverageAdded": 0
+    }
+  },
+  "result": {
+    "safeCorrectionsApplied": [],
+    "statusChanges": [],
+    "aliasesResolved": [],
+    "evseRankableAdded": 0,
+    "stationsRankableAdded": 0,
+    "majorInconsistencyDetected": false,
+    "majorInconsistencyCorrected": false,
+    "nextAction": "continue highest-scope non-Atlante station-level CPOs using exact PUN/QR/app/backend mappings while keeping EMO E477-E480 fail-closed until exhaustive historical set-difference is proven"
+  }
+}
