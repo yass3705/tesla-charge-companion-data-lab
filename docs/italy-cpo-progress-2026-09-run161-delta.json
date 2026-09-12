@@ -1,0 +1,126 @@
+{
+  "run": "run161",
+  "date": "2026-09-13",
+  "type": "italy-cpo-runtime-delta",
+  "base": {
+    "previousRun": "run160",
+    "previousBranchHead": "c522fd20a88741586975a30b34fa93770c29fc6f"
+  },
+  "summary": {
+    "effectiveNominalCpos": 84,
+    "physicalPartyIdsIncludingAliases": 88,
+    "treatedCount": 50,
+    "partialCount": 25,
+    "setAsideCount": 1,
+    "activeCount": 8,
+    "supersededAliasCount": 4,
+    "networkOrClassWideRemaining": 1,
+    "stationLevelRemaining": 8,
+    "newlyTreatedCpos": [],
+    "newlyPartialCpos": ["PWY"],
+    "newlySetAsideCpos": [],
+    "newlyResolvedAliases": [],
+    "newRankableEvse": 0
+  },
+  "work": [
+    {
+      "partyId": "PWY",
+      "canonicalName": "TheF Charging / Powy",
+      "statusBefore": "active",
+      "statusAfter": "partial",
+      "priorityBefore": "station-level",
+      "priorityAfter": "class-wide",
+      "inventoryBaseline": {
+        "stationCount": 600,
+        "evseCount": 1080,
+        "source": "existing Italy canonical seed / run158 baseline",
+        "note": "Counts are retained from the existing project inventory and are not refreshed by this run."
+      },
+      "tariffModel": {
+        "model": "official direct CPO class-wide tariff grid by current type and maximum charging power",
+        "channel": ["Powy Charge app", "QR direct payment"],
+        "country": "IT",
+        "officialTariffLastUpdated": "2026-06",
+        "classes": [
+          {
+            "currentType": "AC",
+            "powerRule": "<=22 kW",
+            "price": 0.72,
+            "unit": "EUR/kWh"
+          },
+          {
+            "currentType": "DC",
+            "powerRule": "<=100 kW",
+            "price": 0.84,
+            "unit": "EUR/kWh"
+          },
+          {
+            "currentType": "DC",
+            "powerRule": ">100 kW",
+            "price": 0.87,
+            "unit": "EUR/kWh"
+          }
+        ],
+        "fixedFee": null,
+        "timeFee": null,
+        "parkingFee": null,
+        "occupancyFee": null,
+        "paymentMethods": ["Powy Charge app", "QR direct payment where available"],
+        "eligibility": "public Powy charging in Italy; exact app/session price remains authoritative where an offer or station-specific variation is shown",
+        "officialUrl": "https://powy.energy/domande-frequenti/quanto-costa-ricaricare-il-tuo-veicolo-elettrico-con-powycharge/",
+        "caveat": "Official Powy wording says prices can vary and offers can be available; therefore the published grid is the current official base class-wide model, while any station/session-specific app price overrides it."
+      },
+      "positiveEvidence": [
+        "Official Powy FAQ currently publishes an Italy tariff table with exact AC/DC power thresholds and EUR/kWh values.",
+        "The official page states that the charging tariffs were updated in June 2026.",
+        "This is newer and more specific primary evidence than the earlier run158 conclusion that PWY had to remain station-level only."
+      ],
+      "negativeOrSupersededEvidence": [
+        "run158 station-level-only classification is superseded by the newly found official class-wide tariff table.",
+        "May 2026 Adiconsum 0.67 EUR/kWh remains corroboration only and is not used as a direct CPO tariff."
+      ],
+      "coveredSubpopulations": [
+        {
+          "scope": "pricing-rule",
+          "coverage": "All Italy PWY EVSE for which AC/DC current type and maximum power deterministically place the EVSE into one of the three official classes.",
+          "rankable": false,
+          "reason": "Row-level inventory classification has not yet been audited across the retained 1080-EVSE baseline in this run."
+        }
+      ],
+      "uncoveredSubpopulations": [
+        {
+          "scope": "row-level inventory application",
+          "reason": "Need to verify that every baseline PWY EVSE has a trustworthy AC/DC type and maximum power sufficient to map to an official tariff class. Missing/ambiguous rows and any AC >22 kW must remain fail-closed."
+        }
+      ],
+      "blocker": "Row-level deterministic application of the newly proven class-wide grid over the current PWY inventory has not yet been audited.",
+      "resumeCondition": "Audit current PWY inventory fields for current type and max power; promote deterministically mapped rows, fail-close missing/ambiguous/out-of-band rows, then decide whether PWY can move partial->treated.",
+      "confidence": "high for tariff grid; pending for full EVSE coverage",
+      "lastInvestigated": "2026-09-13",
+      "lastChanged": "2026-09-13",
+      "history": [
+        "run158: classified station-level because then-known official FAQ said price was shown before charging and could vary.",
+        "run161: new official Powy tariff page found with deterministic Italy AC/DC power classes; priority changed to class-wide and status active->partial pending row-level application audit."
+      ]
+    }
+  ],
+  "antiStagnation": {
+    "EDN": "Do not repeat generic tariff/ID research without new primary evidence; run160 exhausted two consecutive targeted passes.",
+    "EMO": "Do not repeat tariff research for E477-E484; only historical ledger set-difference/dedup remains.",
+    "PWY": "Next PWY action must be inventory classification/application, not another generic tariff search.",
+    "ATL": "Keep last unless directly exploitable backend/tariff evidence appears."
+  },
+  "consistency": {
+    "nominalPartitionArithmetic": "50+25+1+8=84",
+    "physicalPartyIdArithmetic": "84+4=88",
+    "duplicateAliasCheck": "no alias change in run161",
+    "statusChange": "PWY active -> partial only; total nominal inventory unchanged",
+    "canonicalPhysicalFileStillStale": true,
+    "canonicalPhysicalFileNote": "docs/italy-cpo-progress-2026-09.json remains the old seed on the working branch. This delta must be replayed into a lossless reconstructed canonical before that file can safely be replaced; no partial overwrite was performed."
+  },
+  "next": {
+    "priority": "PWY row-level class application audit",
+    "after": "largest unresolved non-Atlante station-level CPO",
+    "atlante": "last"
+  }
+}
