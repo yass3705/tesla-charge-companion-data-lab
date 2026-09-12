@@ -3,9 +3,9 @@
 
 The audit replays checked-out branch files, not default-branch code search.
 It supports legacy/modern Italy delta containers, suffixed runs, explicit EVSE
-IDs and simple ranges. Candidate-only evidence (`newDeterministicCandidates`)
-is tracked separately from the credited rankable ledger so merely recording a
-candidate cannot create a false duplicate-credit failure.
+IDs and simple ranges. Candidate-only evidence is tracked separately from the
+credited rankable ledger so merely recording a candidate cannot create a false
+duplicate-credit failure.
 """
 from __future__ import annotations
 
@@ -19,8 +19,19 @@ from pathlib import Path
 RUN_RE = re.compile(r"italy-cpo-progress-2026-09-run(\d+)([a-z]*)-delta\.json$", re.IGNORECASE)
 STATUSES = {"treated", "partial", "setAside", "active", "supersededAlias"}
 RANGE_RE = re.compile(r"^(.*?)(\d+)\.\.(?:(.*?))?(\d+)$")
-CREDITED_MAPPING_FIELDS = ("newExactMappings", "newCoveredSubpopulations")
-CANDIDATE_MAPPING_FIELDS = ("newDeterministicCandidates",)
+# Keep every historical field that has represented *credited/rankable* EVSE
+# mappings. In particular run84 uses coveredSubpopulationsAdded.
+CREDITED_MAPPING_FIELDS = (
+    "newExactMappings",
+    "newCoveredSubpopulations",
+    "coveredSubpopulationsAdded",
+)
+# Candidate-only fields must never enter the credited ledger. Run148 uses
+# newExactCandidateSubpopulations.
+CANDIDATE_MAPPING_FIELDS = (
+    "newDeterministicCandidates",
+    "newExactCandidateSubpopulations",
+)
 
 
 def _iter_party_container(shape: str, container):
@@ -88,7 +99,9 @@ def iter_mapping_ids(update: dict):
         for mapping in update.get(key) or []:
             if not isinstance(mapping, dict):
                 raise SystemExit(f"{key}: expected mapping object")
-            location = mapping.get("location")
+            # Historical deltas use location; newer candidate/subpopulation
+            # records may use station. Preserve either in the audit report.
+            location = mapping.get("location") or mapping.get("station")
             for evse_id in mapping.get("evseIds") or []:
                 yield evse_id, location, key, kind
             for evse_id in expand_evse_pattern(mapping.get("evsePattern")):
