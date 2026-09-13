@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 173,
+  "recordedAt": "2026-09-13T14:52:00+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "headBeforeRun": "3d7df4ded87518d7bf644af7c9d384dcafb53757",
+  "run173DeltaCommit": "35fc9c71dafe97853969bf2e302692a900c1f814",
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "checks": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8,
+    "duplicateAliasOrCpoIntroducedThisRun": false,
+    "statusMutationThisRun": false,
+    "fullAuditTriggered": true,
+    "trigger": "two consecutive runs (171, 172) without nominative status/count progression since the prior full audit"
+  },
+  "branchHeadVerification": {
+    "observedBeforeRun": "3d7df4ded87518d7bf644af7c9d384dcafb53757",
+    "observedCommitMessage": "italy: record run172 Edison Next Galbusera exact-surface audit",
+    "parent": "09f91d3d5d7b08d94bdf5da1b45220bd45310b93",
+    "run173DeltaCommit": "35fc9c71dafe97853969bf2e302692a900c1f814",
+    "divergenceDetected": false
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalState": "stale seed",
+    "effectiveLedger": "ordered run deltas plus consistency audits",
+    "replayScript": "scripts/italy_cpo_progress_consolidate.py",
+    "attemptThisRun": "direct repository checkout attempted in isolated container to execute the existing consolidator losslessly",
+    "result": "blocked because the container runtime has no DNS/network access to github.com; prior GitHub Actions workflow creation was rejected by repository rules",
+    "canonicalOverwritePerformed": false,
+    "safetyDecision": "do not manually rewrite the canonical from incomplete connector slices; preserve lossless ordered deltas until the complete checkout can be replayed"
+  },
+  "freshEvidenceControl": {
+    "F2X": {
+      "newPrimaryEvidence": true,
+      "finding": "Current first-party direct-card grid is AC 0.50, DC 0.65, HPC 0.79 EUR/kWh VAT included. Current Charge&Save material explicitly describes high-power as over 64 kW and sets marked DC <=64 kW to 0.50 EUR/kWh through 2026-09-30.",
+      "coveragePromotion": 0,
+      "reason": "exact authoritative PUN/OCPI mapping for the seven Novate residual EVSE was not recovered; temporary promo also requires explicit orange-sign eligibility"
+    },
+    "PWY": {
+      "newPrimaryEvidence": false,
+      "remainingExactIds": ["IT*PWY*E7282", "IT*PWY*EA0198*01*01", "IT*PWY*EA0198*01*02"],
+      "decision": "no rerun until source data changes"
+    }
+  },
+  "antiStagnation": {
+    "F2X": "Generic price/class research is closed after run173; only exact Novate seven-EVSE mapping or material tariff change can reopen.",
+    "EDN": "Galbusera tariff known; only exact EVSE mapping or material new primary evidence can reopen.",
+    "EMO": "Interparking energy tariff known; only exact activation fee/mapping can reopen.",
+    "PWY": "Three exact anomalies remain; no further exact-ID search without changed source data.",
+    "HER": "Only signed binary/static inspection, live traffic/QR or refreshed exact PUN evidence.",
+    "ESH_GAS_UTZ": "Only exact Uattzy app/backend/QR/PUN mapping or authoritative partyId migration proof.",
+    "ATL": "last; only directly exploitable backend/tariff evidence."
+  },
+  "result": "effective ledger remains internally consistent; new first-party F2X class-boundary evidence materially improves the partial record without unsafe EVSE promotion; physical canonical materialization remains safely deferred"
+}
