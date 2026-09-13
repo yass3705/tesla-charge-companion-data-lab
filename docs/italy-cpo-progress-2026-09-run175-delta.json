@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 175,
+  "recordedAt": "2026-09-13T17:52:46+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 174,
+    "previousHead": "2c1b05b5afad83639944e283c645c495865b8fca"
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "priorityQueue": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8,
+    "atlanteLast": true
+  },
+  "changes": [
+    {
+      "partyId": "EDN",
+      "canonicalName": "Edison Next S.P.A.",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "identified the concrete ArcGIS REST FeatureServer endpoint used to extract PUN charging-point data, creating a new authoritative-mapping route for the 12 Galbusera candidate EVSE IDs",
+      "evidence": {
+        "punPortal": "https://www.piattaformaunicanazionale.it/eDriver",
+        "punArcgisFeatureServer": "https://services2.arcgis.com/pROHh69WvVijk4nR/ArcGIS/rest/services/IdR_latest_ready/FeatureServer/0/query",
+        "discoverySource": "onData extraction script; script explicitly targets the ArcGIS REST service that feeds the PUN and downloads all outFields",
+        "candidateGalbuseraDcEvse": [
+          "IT*EDN*ED00691",
+          "IT*EDN*ED00692",
+          "IT*EDN*ED00701",
+          "IT*EDN*ED00702",
+          "IT*EDN*ED00711",
+          "IT*EDN*ED00712",
+          "IT*EDN*ED00721",
+          "IT*EDN*ED00722"
+        ],
+        "officialSiteTariff": {
+          "energyEurPerKwh": 0.59,
+          "vatIncluded": true,
+          "scope": "all Fast DC units at Galbusera Agrate Brianza",
+          "source": "Edison Next, 2026-04-30"
+        }
+      },
+      "decision": "Do not promote yet. The new result materially narrows the remaining task to querying the identified PUN ArcGIS layer for the exact EDN IDs/address and verifying that the authoritative payload reproduces the Galbusera mapping. Generic EDN research stays closed.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "successful authoritative ArcGIS/PUN response binding the listed EDN EVSE IDs to Via Guglielmo Marconi 20, Agrate Brianza; if confirmed, promote the eight 120 kW CCS points at 0.59 EUR/kWh while keeping the four AC points fail-closed absent an AC tariff",
+      "confidence": "high that this is the PUN data extraction backend; exact Galbusera row verification still pending",
+      "lastInvestigated": "2026-09-13",
+      "lastChanged": "2026-09-13",
+      "historyAppend": "run175: recovered the explicit PUN ArcGIS REST FeatureServer endpoint used by the public-data extraction workflow, providing a new authoritative path to confirm the 12 Galbusera IDs."
+    },
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "same PUN ArcGIS backend route can now be used to reconcile the fresh Tronchetto 40-point inventory and tariff discrepancy without relying on the Pienotto rendering layer",
+      "decision": "Keep fail-closed until the ArcGIS/PUN payload is queried directly and its tariff/product fields are reconciled with current first-party Interparking pricing.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "direct PUN ArcGIS rows for Tronchetto explaining whether 0.48 EUR/kWh + 1.14 EUR activation is the current direct CPO tariff for a defined EVSE subset/product",
+      "lastInvestigated": "2026-09-13",
+      "lastChanged": "2026-09-13",
+      "historyAppend": "run175: PUN backend endpoint recovered; EMO may now be revisited specifically through direct ArcGIS/PUN rows rather than generic pricing searches."
+    }
+  ],
+  "consistencyControl": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroduced": false,
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "rankableStationsAdded": 0,
+    "fullAuditPerformed": false,
+    "canonicalPhysicalFileStillStaleSeed": true,
+    "canonicalOverwritePerformed": false
+  },
+  "antiStagnation": {
+    "EDN": "Only direct ArcGIS/PUN confirmation of the exact Galbusera IDs or materially new first-party evidence.",
+    "EMO": "Only direct ArcGIS/PUN reconciliation of Tronchetto or exact EMOBITALY app/QR tariff mapping.",
+    "F2X": "Only exact Novate seven-EVSE mapping or material tariff change.",
+    "PWY": "Only changed authoritative source data for the three exact anomalies.",
+    "HER": "Only signed binary/static inspection, live traffic/QR or refreshed exact PUN evidence.",
+    "ESH_GAS_UTZ": "Only exact Uattzy app/backend/QR/PUN mapping or authoritative partyId migration proof.",
+    "ATL": "Last; only directly exploitable backend/tariff evidence."
+  },
+  "newlyTreated": [],
+  "newlyPartial": [],
+  "aliasesResolved": [],
+  "rankableEvseAdded": 0,
+  "rankableStationsAdded": 0,
+  "next": {
+    "priority": "query the recovered PUN ArcGIS FeatureServer for EDN Galbusera first, then EMO Tronchetto; otherwise move to another non-Atlante station-level exact mapping surface",
+    "atlante": "last"
+  }
+}
