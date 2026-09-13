@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 174,
+  "recordedAt": "2026-09-13T16:53:57+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 173,
+    "previousHead": "2eba0975c3370d9789f9aff1f7235ccd9e0a9ea4"
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "priorityQueue": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8,
+    "atlanteLast": true
+  },
+  "changes": [
+    {
+      "partyId": "EDN",
+      "canonicalName": "Edison Next S.P.A.",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "fresh exact Galbusera Agrate Brianza EVSE identifiers discovered and cross-checked against current first-party site topology",
+      "tariffChannel": "direct CPO / POS and EVWAY access at site",
+      "tariffModel": {
+        "site": "Galbusera Tre Marie, Via Guglielmo Marconi 20, Agrate Brianza",
+        "officialDirectDcPriceEurPerKwh": 0.59,
+        "vatIncluded": true,
+        "officialScope": "Fast DC infrastructure at this site",
+        "officialTopology": "12 charging points total: 4 AC Type 2 points across 2 Quick AC units and 8 CCS points across 4 Fast DC 120 kW units"
+      },
+      "exactIdDiscovery": {
+        "source": "current PUMP station page, used as discovery/corroboration only",
+        "address": "Via Guglielmo Marconi 20, 20864 Agrate Brianza",
+        "ac22kw": ["IT*EDN*EA02001", "IT*EDN*EA02002", "IT*EDN*EA02011", "IT*EDN*EA02012"],
+        "dc120kw": ["IT*EDN*ED00691", "IT*EDN*ED00692", "IT*EDN*ED00701", "IT*EDN*ED00702", "IT*EDN*ED00711", "IT*EDN*ED00712", "IT*EDN*ED00721", "IT*EDN*ED00722"],
+        "topologyMatch": "exact 4 AC + 8 DC pattern matches the first-party Edison Next announcement for the same address",
+        "freshness": "PUMP crawl observed 2026-09-13 and live availability ages within hours/days"
+      },
+      "decision": "Material evidence upgrade only. Do not promote the eight DC EVSE to rankable yet because the exact EVSE IDs are currently supplied by a third-party surface; project policy permits this as discovery/corroboration, not sole authoritative mapping. Resume only if PUN/OCPI, Edison Next, EVWAY or another authoritative payload exposes these same identifiers at the site.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "authoritative exact mapping confirming the discovered EDN identifiers at Galbusera; then the eight listed 120 kW CCS EVSE can inherit the proven 0.59 EUR/kWh site DC tariff while the four AC EVSE remain separately fail-closed unless an AC tariff is proven",
+      "confidence": "high for site tariff and topology; medium-high for exact IDs due to fresh deterministic third-party mapping but insufficient for rankable promotion",
+      "lastInvestigated": "2026-09-13",
+      "lastChanged": "2026-09-13",
+      "historyAppend": "run174: exact candidate IDs for all 12 Galbusera points discovered (4 AC, 8 DC), matching official Edison topology exactly. No promotion because IDs still need authoritative PUN/OCPI/CPO confirmation."
+    },
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "fresh PUN-derived station inventory surfaced a material Tronchetto inventory/tariff discrepancy against the previously stored 16-point subset",
+      "tariffChannel": "direct CPO ad-hoc via EMOBITALY app/card; roaming separate",
+      "knownFirstPartyInterparkingTariff": {
+        "energyEurPerKwh": 0.58,
+        "vatIncluded": true,
+        "activationFee": {"minEur": 0.50, "maxEur": 1.40},
+        "scope": "Interparking charging service managed by EMOBITALY"
+      },
+      "freshPunDerivedDiscovery": {
+        "source": "Pienotto page explicitly sourced from Piattaforma Unica Nazionale",
+        "site": "Isola Nova del Tronchetto 33/m, Venezia",
+        "observedPoints": 40,
+        "examples": ["IT*EMO*E726*17", "IT*EMO*E726*18", "IT*EMO*E726*39", "IT*EMO*E726*40", "IT*EMOE1013", "IT*EMOE1014", "IT*EMOE1015", "IT*EMOE1016", "IT*EMOE1017", "IT*EMOE1018"],
+        "reportedPunTariff": {"energyEurPerKwh": 0.48, "activationFeeEur": 1.14},
+        "freshness": "page crawled 2026-09-09 with tariff shown as refreshed within hours"
+      },
+      "discrepancy": "The PUN-derived surface reports 40 points and 0.48 EUR/kWh + 1.14 EUR activation, while the current first-party Interparking/EMOBITALY page states 0.58 EUR/kWh plus a variable 0.50-1.40 EUR start fee. Do not overwrite first-party direct pricing or assume all 40 PUN points share one commercial product until the PUN tariff fields and site grouping are verified directly.",
+      "decision": "Keep fail-closed and mark inventory drift for reconciliation. This is a genuinely new source-data change, so EMO may be revisited specifically through authoritative PUN payload or EMOBITALY QR/app mapping; generic pricing research remains closed.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "retrieve authoritative PUN/OCPI payload for the Tronchetto site and determine whether 0.48 + 1.14 is current direct CPO pricing for a defined subset/product, or obtain exact EMOBITALY app/QR activation fee per EVSE",
+      "confidence": "high that a PUN-derived inventory/tariff discrepancy exists; insufficient to promote because it conflicts with current first-party Interparking pricing",
+      "lastInvestigated": "2026-09-13",
+      "lastChanged": "2026-09-13",
+      "historyAppend": "run174: PUN-derived Tronchetto surface now exposes 40 EMO points and 0.48 EUR/kWh + 1.14 activation, conflicting with first-party Interparking 0.58 EUR/kWh + variable start fee. Preserve both as scoped evidence and fail closed pending authoritative reconciliation."
+    }
+  ],
+  "consistencyControl": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroduced": false,
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "rankableStationsAdded": 0,
+    "fullAuditPerformed": false,
+    "fullAuditReason": "run173 already performed the mandatory full audit; run174 produced new evidence but no status/count mutation",
+    "canonicalPhysicalFileStillStaleSeed": true,
+    "canonicalOverwritePerformed": false
+  },
+  "antiStagnation": {
+    "EDN": "Galbusera generic research stays closed. Reopen only for authoritative confirmation of the 12 discovered IDs or materially new first-party tariff evidence.",
+    "EMO": "Generic pricing stays closed. Reopen specifically for authoritative PUN payload/QR/app reconciliation of the fresh Tronchetto discrepancy.",
+    "F2X": "Only exact Novate seven-EVSE mapping or material tariff change.",
+    "PWY": "Only changed authoritative source data for the three exact anomalies.",
+    "HER": "Only signed binary/static inspection, live traffic/QR or refreshed exact PUN evidence.",
+    "ESH_GAS_UTZ": "Only exact Uattzy app/backend/QR/PUN mapping or authoritative partyId migration proof.",
+    "ATL": "Last; only directly exploitable backend/tariff evidence."
+  },
+  "newlyTreated": [],
+  "newlyPartial": [],
+  "aliasesResolved": [],
+  "rankableEvseAdded": 0,
+  "rankableStationsAdded": 0,
+  "next": {
+    "priority": "seek authoritative confirmation of EDN Galbusera exact IDs or authoritative PUN reconciliation of EMO Tronchetto, otherwise move to another non-Atlante station-level exact mapping surface",
+    "atlante": "last"
+  }
+}
