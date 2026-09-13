@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 179,
+  "recordedAt": "2026-09-13T21:53:33+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 178,
+    "previousHead": "d5334a14802eabc74ec135d94bcb7cdb15a17455"
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8
+  },
+  "parties": {
+    "ESH_GAS_UTZ": {
+      "canonicalName": "Uattzy / UAU (legacy E-Shore, GASGAS, EnerMia partyIds)",
+      "status": "active",
+      "priority": "station-level pending deterministic connector tariff mapping",
+      "lastInvestigated": "2026-09-13T21:53:33+01:00",
+      "newEvidence": [
+        {
+          "type": "first_party_current_faq",
+          "source": "Uattzy FAQ",
+          "url": "https://www.uattzy.com/faq/",
+          "finding": "Uattzy states that in its own app/account the tariff is displayed for each connector before charging, including possible additional charges such as parking or activation; prices may vary with delivered power, session duration and bay occupancy.",
+          "positive": true,
+          "authorityClass": "first-party current operational policy"
+        },
+        {
+          "type": "first_party_corporate_alias_proof",
+          "source": "Uattzy homepage",
+          "url": "https://www.uattzy.com/",
+          "finding": "Uattzy explicitly identifies itself as the public-charging brand of UAU, created from the union of E-Shore, GASGAS and EnerMia, and states more than 3,000 charging points installed and managed in Italy.",
+          "positive": true,
+          "authorityClass": "first-party corporate identity statement"
+        }
+      ],
+      "correctionToRun178": {
+        "finding": "The July 1 unified-tariff announcement remains strong evidence for a simplified proprietary-network tariff reset, but the current first-party FAQ prevents treating the reported Quick/Fast/Ultra Fast grid as automatically sufficient for every connector without checking the connector-level Uattzy payload. The FAQ explicitly allows connector-specific extra costs and price variation by power/duration/occupancy.",
+        "decision": "Do not promote any ESH/GAS/UTZ EVSE from the press-reported grid alone. Require either first-party connector payload/app/backend fields or a first-party tariff document that defines both exact class thresholds and the absence/applicability of connector-level extras for the relevant population.",
+        "rankableEvseAdded": 0,
+        "rankableStationsAdded": 0
+      },
+      "blockage": "The public website confirms the corporate migration and current connector-level tariff presentation, but exposes neither the exact per-connector tariff payload nor a public numeric class-threshold table. Generic tariff searching is now exhausted.",
+      "resumeCondition": "Recover Uattzy app/guest/QR/backend connector payloads, or a first-party tariff PDF/image defining exact Quick/Fast/Ultra Fast thresholds and all additional fee applicability; then map each ESH/GAS/UTZ EVSE deterministically before ranking.",
+      "confidence": "high for UAU/Uattzy corporate relationship and need for connector-level verification; insufficient for EVSE promotion",
+      "historyAppend": "2026-09-13 run179: current Uattzy FAQ materially tightened the fail-closed rule by confirming per-connector tariff display and possible connector-specific extras/variation. Run178 network-grid candidate is retained as discovery evidence but cannot be applied blanket-wise without first-party connector/class mapping."
+    }
+  },
+  "consistency": {
+    "statusMutation": false,
+    "counterMutation": false,
+    "aliasesResolved": 0,
+    "rankableEvseAdded": 0,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false
+  },
+  "antiStagnation": {
+    "ESH_GAS_UTZ": "Do not repeat generic Uattzy tariff searches. Reopen only for app/guest/QR/backend connector payloads or first-party tariff material with exact class thresholds and fee applicability.",
+    "EDN": "Do not repeat generic Galbusera/identifier web search. Reopen only on authoritative exact-ID binding or material tariff/source change.",
+    "EMO": "Reopen only on direct PUN ArcGIS rows or exact QR/app mapping that reconciles Tronchetto product/tariff fields.",
+    "F2X": "Reopen only on exact authoritative mapping for the seven Novate residual EVSE or a material source change.",
+    "PWY": "Reopen only on changed authoritative data for the three exact unresolved IDs.",
+    "ATL": "Keep last; reopen only on directly exploitable backend/tariff evidence."
+  },
+  "nextPriority": "Use a genuinely new exact mapping surface: direct PUN ArcGIS rows for EDN/EMO if reachable, otherwise another non-Atlante station-level CPO. Uattzy generic web research is closed until connector payload or first-party class/fee data appears."
+}
