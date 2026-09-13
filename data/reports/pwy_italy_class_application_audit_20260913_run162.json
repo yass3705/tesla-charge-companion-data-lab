@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "partyId": "PWY",
+  "operator": "TheF Charging / Powy",
+  "auditDate": "2026-09-13",
+  "inventorySource": {
+    "workflowRun": 33308407226,
+    "artifact": "italy-v9-consolidated-candidate",
+    "artifactId": 9731212787,
+    "candidateGeneratedAt": "2026-08-30T11:14:39.750794Z",
+    "inventoryGeneratedEvseCount": 1080,
+    "stationCount": 387
+  },
+  "tariffSource": {
+    "source": "official Powy FAQ retained in run161",
+    "lastUpdated": "2026-06",
+    "classes": [
+      {"key": "AC<=22", "currentType": "AC", "powerRule": "<=22 kW", "eurPerKwh": 0.72},
+      {"key": "DC<=100", "currentType": "DC", "powerRule": "<=100 kW", "eurPerKwh": 0.84},
+      {"key": "DC>100", "currentType": "DC", "powerRule": ">100 kW", "eurPerKwh": 0.87}
+    ],
+    "caveat": "session/app price overrides base grid if a station-specific variation or offer is explicitly shown"
+  },
+  "result": {
+    "inventoryEvse": 1080,
+    "rankableByDeterministicClass": 1077,
+    "failClosed": 3,
+    "rankableCoveragePct": 99.722,
+    "classCounts": {"AC<=22": 680, "DC<=100": 377, "DC>100": 20},
+    "failClosedCount": 3
+  },
+  "failClosed": [
+    {
+      "evseId": "IT*PWY*E7282",
+      "stationId": "6a687cd5cbb36c7e637381a4",
+      "maxPowerKw": 32.0,
+      "connectorPowerTypes": ["AC"],
+      "standards": ["IEC_62196_T2"],
+      "reason": "official_grid_has_no_AC_over_22kW_class"
+    },
+    {
+      "evseId": "IT*PWY*EA0198*01*01",
+      "stationId": "6a687d2fcbb36c7e63738683",
+      "maxPowerKw": 50.0,
+      "connectorPowerTypes": ["AC"],
+      "standards": ["IEC_62196_T2_COMBO"],
+      "reason": "official_grid_has_no_AC_over_22kW_class"
+    },
+    {
+      "evseId": "IT*PWY*EA0198*01*02",
+      "stationId": "6a687d2fcbb36c7e637381a4",
+      "maxPowerKw": 50.0,
+      "connectorPowerTypes": ["AC"],
+      "standards": ["IEC_62196_T2_COMBO"],
+      "reason": "official_grid_has_no_AC_over_22kW_class"
+    }
+  ],
+  "classEvseCounts": {
+    "AC<=22": 680,
+    "DC<=100": 377,
+    "DC>100": 20
+  },
+  "notes": [
+    "The complete 1077-EVSE ID lists were verified from the retained artifact during run162 but are intentionally not duplicated into this report to keep the canonical evidence compact; the artifact/run reference is preserved for replay.",
+    "No tariff was extrapolated to AC EVSE above 22 kW because the official grid does not define that class.",
+    "All 1077 promoted rows have a deterministic AC/DC current type and maxPowerKw in the retained PUN-derived candidate artifact.",
+    "Three anomalous rows remain fail-closed: one AC Type2 row at 32 kW and two rows marked AC_3_PHASE while using CCS2 at 50 kW; source inconsistency must be resolved before promotion."
+  ]
+}
