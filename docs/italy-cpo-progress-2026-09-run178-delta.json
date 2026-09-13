@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 178,
+  "recordedAt": "2026-09-13T20:50:46+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "headBeforeRun": "cd7da5f9ec4ca82bcae5be1360a24d0a9e2582bd",
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8
+  },
+  "parties": {
+    "ESH_GAS_UTZ": {
+      "canonicalName": "Uattzy / UAU (legacy E-Shore, GASGAS, EnerMia partyIds)",
+      "status": "active",
+      "priority": "station-level pending deterministic class mapping",
+      "lastInvestigated": "2026-09-13T20:50:46+01:00",
+      "newEvidence": [
+        {
+          "type": "first_party_current_tariff_policy",
+          "source": "Uattzy company LinkedIn post surfaced through a public employee repost",
+          "effectiveFrom": "2026-07-01",
+          "finding": "Uattzy states that the proprietary network now has no activation fee, no per-minute charge, and unified tariffs across the proprietary network according to charging type; payment can be made by POS or Uattzy app.",
+          "positive": true,
+          "authorityClass": "first-party policy statement",
+          "url": "https://it.linkedin.com/posts/steven-scapin_scopri-la-nuova-tariffa-sulla-rete-proprietaria-activity-7478345472005558272-gHti"
+        },
+        {
+          "type": "fresh_industry_numeric_corroboration",
+          "source": "E-Ricarica",
+          "publishedAt": "2026-07-03",
+          "finding": "Reports the July 1 Uattzy grid as app/RFID: Quick 0.57 EUR/kWh, Fast and Ultra Fast 0.67 EUR/kWh; occasional POS: Quick 0.61 EUR/kWh, Fast and Ultra Fast 0.72 EUR/kWh; no activation or time charge.",
+          "positive": true,
+          "authorityClass": "specialist third-party corroboration; numeric values not yet independently recovered from the first-party PDF",
+          "url": "https://e-ricarica.it/uattzy-cambia-le-tariffe-stop-ai-costi-al-minuto/page/3/"
+        },
+        {
+          "type": "current_live_station_corroboration",
+          "source": "GoingElectric",
+          "observedAt": "2026-09-08",
+          "finding": "Uattzy Palmanova EVSE IT*UTZ*EC497 and IT*UTZ*EC498 are shown as 47 kW DC with 0.72 EUR/kWh ad-hoc, consistent with the reported Fast/Ultra Fast POS tariff.",
+          "positive": true,
+          "authorityClass": "third-party live corroboration only"
+        }
+      ],
+      "tariffCandidate": {
+        "scope": "Uattzy proprietary network from 2026-07-01",
+        "channel": "direct Uattzy app/RFID versus direct ad-hoc POS",
+        "appOrRfid": {
+          "QuickEurPerKwh": 0.57,
+          "FastOrUltraFastEurPerKwh": 0.67
+        },
+        "posAdHoc": {
+          "QuickEurPerKwh": 0.61,
+          "FastOrUltraFastEurPerKwh": 0.72
+        },
+        "activationFeeEur": 0,
+        "timeFeeEurPerMinute": 0,
+        "rankable": false
+      },
+      "coverage": {
+        "newRankableEvse": 0,
+        "coveredSubpopulation": "The tariff policy is explicitly network-wide for Uattzy proprietary infrastructure and is independently corroborated numerically, including a live 47 kW UTZ example at 0.72 EUR/kWh POS.",
+        "uncoveredOrUnpromoted": "No EVSE promotion until the exact Quick/Fast/Ultra Fast class thresholds or an authoritative EVSE-to-class field are recovered, and the numeric grid is recovered from Uattzy's own PDF/app/backend rather than only specialist press. Legacy ESH/GAS/UTZ partyId ownership/migration must also remain explicit."
+      },
+      "blockage": "First-party post proves the July 1 network-wide tariff model but the public text omits the numeric PDF contents and exact class thresholds needed for deterministic EVSE mapping.",
+      "resumeCondition": "Recover the Uattzy tariff PDF/image/app/backend with numeric values and class definitions, or a first-party/API mapping that assigns each proprietary EVSE to Quick/Fast/Ultra Fast deterministically; then apply the direct app/POS grid across the proven proprietary ESH/GAS/UTZ population.",
+      "confidence": "high for current tariff model and removal of activation/time fees; medium-high for numeric grid; insufficient for deterministic rankable EVSE mapping",
+      "historyAppend": "2026-09-13 run178: first-party Uattzy policy found for the 2026-07-01 network-wide tariff reset; specialist press supplies 0.57/0.67 app-RFID and 0.61/0.72 POS values, corroborated by a live 47 kW UTZ station at 0.72 POS. No promotion without first-party numeric/class mapping."
+    }
+  },
+  "consistency": {
+    "statusMutation": false,
+    "counterMutation": false,
+    "aliasesResolved": 0,
+    "rankableEvseAdded": 0,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false
+  },
+  "antiStagnation": {
+    "ESH_GAS_UTZ": "Do not repeat generic tariff searches. Reopen only for the Uattzy first-party tariff PDF/image/app/backend numeric grid plus exact Quick/Fast/Ultra Fast mapping thresholds or an authoritative EVSE-to-class assignment.",
+    "EDN": "Do not repeat generic Galbusera/identifier web search. Reopen only on authoritative exact-ID binding or material tariff/source change.",
+    "EMO": "Reopen only on direct PUN ArcGIS rows or exact QR/app mapping that reconciles Tronchetto product/tariff fields.",
+    "F2X": "Reopen only on exact authoritative mapping for the seven Novate residual EVSE or a material source change.",
+    "PWY": "Reopen only on changed authoritative data for the three exact unresolved IDs.",
+    "ATL": "Keep last; reopen only on directly exploitable backend/tariff evidence."
+  },
+  "nextPriority": "Attempt recovery of Uattzy's own tariff PDF/app payload because it could unlock a network-wide legacy ESH/GAS/UTZ population in one step; if unavailable, return to EMO direct PUN reconciliation or another station-level active CPO with genuinely new evidence. Atlante remains last."
+}
