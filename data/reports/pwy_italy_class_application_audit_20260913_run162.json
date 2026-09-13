@@ -9,7 +9,7 @@
     "artifact": "italy-v9-consolidated-candidate",
     "artifactId": 9731212787,
     "candidateGeneratedAt": "2026-08-30T11:14:39.750794Z",
-    "inventoryGeneratedEvseCount": 1080,
+    "inventoryEvseCount": 1080,
     "stationCount": 387
   },
   "tariffSource": {
@@ -27,44 +27,21 @@
     "rankableByDeterministicClass": 1077,
     "failClosed": 3,
     "rankableCoveragePct": 99.722,
-    "classCounts": {"AC<=22": 680, "DC<=100": 377, "DC>100": 20},
-    "failClosedCount": 3
+    "classCounts": {"AC<=22": 680, "DC<=100": 377, "DC>100": 20}
   },
   "failClosed": [
-    {
-      "evseId": "IT*PWY*E7282",
-      "stationId": "6a687cd5cbb36c7e637381a4",
-      "maxPowerKw": 32.0,
-      "connectorPowerTypes": ["AC"],
-      "standards": ["IEC_62196_T2"],
-      "reason": "official_grid_has_no_AC_over_22kW_class"
-    },
-    {
-      "evseId": "IT*PWY*EA0198*01*01",
-      "stationId": "6a687d2fcbb36c7e63738683",
-      "maxPowerKw": 50.0,
-      "connectorPowerTypes": ["AC"],
-      "standards": ["IEC_62196_T2_COMBO"],
-      "reason": "official_grid_has_no_AC_over_22kW_class"
-    },
-    {
-      "evseId": "IT*PWY*EA0198*01*02",
-      "stationId": "6a687d2fcbb36c7e637381a4",
-      "maxPowerKw": 50.0,
-      "connectorPowerTypes": ["AC"],
-      "standards": ["IEC_62196_T2_COMBO"],
-      "reason": "official_grid_has_no_AC_over_22kW_class"
-    }
+    {"evseId": "IT*PWY*E7282", "stationId": "6a687cd5cbb36c7e637381a4", "maxPowerKw": 32.0, "connectorPowerTypes": ["AC"], "standards": ["IEC_62196_T2"], "reason": "official_grid_has_no_AC_over_22kW_class"},
+    {"evseId": "IT*PWY*EA0198*01*01", "stationId": "6a687d2fcbb36c7e63738683", "maxPowerKw": 50.0, "connectorPowerTypes": ["AC"], "standards": ["IEC_62196_T2_COMBO"], "reason": "official_grid_has_no_AC_over_22kW_class_and_source_current_type_conflicts_with_CCS2_standard"},
+    {"evseId": "IT*PWY*EA0198*01*02", "stationId": "6a687d2fcbb36c7e63738683", "maxPowerKw": 50.0, "connectorPowerTypes": ["AC"], "standards": ["IEC_62196_T2_COMBO"], "reason": "official_grid_has_no_AC_over_22kW_class_and_source_current_type_conflicts_with_CCS2_standard"}
   ],
-  "classEvseCounts": {
-    "AC<=22": 680,
-    "DC<=100": 377,
-    "DC>100": 20
+  "replay": {
+    "classificationRule": "derive AC/DC from connector.powerType; derive class from connector.maxPowerKw; fail closed when no official class exists or fields conflict",
+    "sourceArtifactCanBeRegeneratedFromWorkflowRun": 33308407226,
+    "note": "The historical artifact was downloaded and audited before expiry in run162. Future replay should regenerate the candidate from the workflow/source data if row-level IDs are needed again."
   },
   "notes": [
-    "The complete 1077-EVSE ID lists were verified from the retained artifact during run162 but are intentionally not duplicated into this report to keep the canonical evidence compact; the artifact/run reference is preserved for replay.",
     "No tariff was extrapolated to AC EVSE above 22 kW because the official grid does not define that class.",
-    "All 1077 promoted rows have a deterministic AC/DC current type and maxPowerKw in the retained PUN-derived candidate artifact.",
-    "Three anomalous rows remain fail-closed: one AC Type2 row at 32 kW and two rows marked AC_3_PHASE while using CCS2 at 50 kW; source inconsistency must be resolved before promotion."
+    "All 1077 covered rows have deterministic AC/DC current type and maxPowerKw in the retained PUN-derived candidate artifact.",
+    "Three anomalous rows remain fail-closed: one AC Type2 row at 32 kW and two rows marked AC_3_PHASE while using CCS2 at 50 kW."
   ]
 }
