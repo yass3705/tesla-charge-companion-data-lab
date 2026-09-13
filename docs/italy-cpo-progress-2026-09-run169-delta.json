@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 169,
+  "recordedAt": "2026-09-13T08:54:00+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 168,
+    "previousHead": "36ed6ac91400a744ac82314781ef3e5ac954b6e3"
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "priorityQueue": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8,
+    "atlanteLast": true
+  },
+  "changes": [
+    {
+      "partyIds": ["ESH", "GAS", "UTZ"],
+      "canonicalName": "Uattzy / UAU group (E-Shore, GASGAS, EnerMia)",
+      "status": "active",
+      "priority": "station-level",
+      "newEvidence": [
+        {
+          "type": "first-party/E015 ecosystem",
+          "url": "https://www.e015.regione.lombardia.it/site/adherent-detail?id=1310",
+          "finding": "EnerMia Srl is currently listed by Regione Lombardia E015 with exactly one published API."
+        },
+        {
+          "type": "first-party/E015 usage policy",
+          "url": "https://www.e015.regione.lombardia.it/site/download-policy?id=257",
+          "finding": "The service is explicitly named 'Api EnerMia'; consuming applications must show the supplied data without modification and expose updates in real time. The public policy does not expose tariff fields, endpoint/schema or anonymous access credentials."
+        },
+        {
+          "type": "first-party EnerMia announcement",
+          "url": "https://enermia.org/nuova-api-per-le-stazioni-di-ricarica-enermia-sullecosistema-digitale-e015/",
+          "finding": "EnerMia states the API publishes the data flow for charging points it manages across Italy."
+        },
+        {
+          "type": "institutional E015 integration evidence",
+          "url": "https://www.e015.regione.lombardia.it/site/news-detail?id=179",
+          "finding": "Regione Lombardia confirms EnerMia charging-point data is among the E015 operator feeds re-exposed in the sustainable-mobility application; this corroborates a live/current infrastructure feed but not direct tariff exposure."
+        }
+      ],
+      "accessAssessment": {
+        "apiExists": true,
+        "currentProviderListing": true,
+        "realtimeRequirement": true,
+        "publicAnonymousTariffEndpointFound": false,
+        "publicSchemaFound": false,
+        "rankableTariffEvidenceFound": false,
+        "reason": "E015 documentation states API access is obtained by ecosystem adherents through an application/request workflow; the public catalogue/policy surfaces found in this run do not expose a callable anonymous endpoint or tariff schema."
+      },
+      "freshExactLeadsPreserved": [
+        {
+          "evseIds": ["IT*UTZ*EC167", "IT*UTZ*EC168", "IT*UTZ*EC169", "IT*UTZ*EC170"],
+          "observedDirectAdHocPriceEurPerKwh": 0.62,
+          "source": "GoingElectric",
+          "sourceObservedUpdated": "2026-09-08",
+          "rankable": false,
+          "reason": "third-party observation only; no first-party Uattzy/EnerMia deterministic confirmation obtained"
+        }
+      ],
+      "decision": "Close the E015 public-web path for tariff ranking: it proves a current realtime EnerMia infrastructure API exists but not that tariff data is publicly exposed. Do not repeat E015 catalogue/policy discovery unless the API schema/endpoint becomes directly available. Keep Uattzy station-level and fail-closed; next useful Uattzy evidence must come from exact app/backend/QR traffic or first-party connector-level tariff confirmation.",
+      "negativeOrBlockedEvidence": [
+        "No indexed Swagger/OpenAPI or anonymous EnerMia E015 endpoint was found.",
+        "The E015 public policy specifies ecosystem-adherent usage conditions rather than a public unauthenticated API contract.",
+        "Exact searches for UTZ EC167-EC170 still return only the already-known third-party direct-price observation, not a first-party Uattzy tariff page."
+      ],
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "new exact Uattzy app/backend/QR capture, a directly accessible EnerMia E015 API schema/endpoint including tariff data, or first-party confirmation for specific UTZ EVSE",
+      "confidence": "high for existence/currentness and realtime nature of EnerMia E015 feed; high that no public tariff contract was exposed in this pass; no rankable tariff promotion",
+      "lastInvestigated": "2026-09-13",
+      "lastChanged": "2026-09-13",
+      "historyAppend": "run169: confirmed current EnerMia E015 API and its realtime/no-modification usage policy plus national managed-charge-point scope. Public E015 surfaces expose neither callable anonymous tariff endpoint nor tariff schema, so the E015 web path is classified exhausted for ranking until new direct access appears. UTZ EC167-EC170 remain fail-closed at the previously observed third-party 0.62 EUR/kWh lead."
+    }
+  ],
+  "consistencyControl": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroduced": false,
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "rankableStationsAdded": 0,
+    "fullAuditPerformed": false,
+    "canonicalPhysicalFileStillStaleSeed": true,
+    "canonicalOverwritePerformed": false,
+    "auditResult": "effective ordered ledger remains internally consistent; no status/count mutation this run"
+  },
+  "antiStagnation": {
+    "HER": "Revisit only via signed binary/static inspection, live traffic/QR, or refreshed exact PUN evidence.",
+    "PWY": "Do not rerun generic pricing; only three fail-closed anomalies on new evidence.",
+    "EDN": "Do not repeat Galbusera generic/exact-ID web research absent new primary mapping.",
+    "EMO": "Do not redo E477-E484 pricing; historical ledger set-difference/dedup only.",
+    "ESH_GAS_UTZ": "E015 public catalogue/policy path exhausted for tariffs. Revisit only via directly accessible schema/endpoint with tariff fields, exact app/backend/QR capture, or first-party connector-level confirmation.",
+    "F2X": "Do not repeat Novate Milanese seven-EVSE PUN lookup until source data changes.",
+    "ATL": "Keep last unless directly exploitable backend/tariff evidence appears."
+  },
+  "newlyTreated": [],
+  "newlyPartial": [],
+  "aliasesResolved": [],
+  "rankableEvseAdded": 0,
+  "rankableStationsAdded": 0,
+  "next": {
+    "priority": "advance immediately to another non-Atlante station-level active CPO with a genuinely new exact tariff surface; do not repeat Uattzy E015 public-web discovery",
+    "atlante": "last"
+  }
+}
