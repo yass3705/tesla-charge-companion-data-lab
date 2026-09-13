@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 176,
+  "recordedAt": "2026-09-13T18:54:43+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "headBeforeAudit": "b380dcde93364b4b313f57081a6a4488850d056b",
+  "trigger": "mandatory full coherence audit after two consecutive runs (174, 175) without nominative status/count progression since run173 audit",
+  "baselineAudit": {
+    "path": "data/reports/italy_canonical_consistency_audit_20260913_run173.json",
+    "effectiveCounts": {
+      "treated": 50,
+      "partial": 25,
+      "setAside": 1,
+      "active": 8,
+      "supersededAlias": 4,
+      "operationalCanonicalTotal": 84,
+      "physicalPartyIds": 88
+    }
+  },
+  "replayedPostAuditDeltas": [
+    {
+      "run": 174,
+      "path": "docs/italy-cpo-progress-2026-09-run174-delta.json",
+      "partiesTouched": ["EDN", "EMO"],
+      "statusMutations": 0,
+      "aliasesResolved": 0,
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "counterMutation": false
+    },
+    {
+      "run": 175,
+      "path": "docs/italy-cpo-progress-2026-09-run175-delta.json",
+      "partiesTouched": ["EDN", "EMO"],
+      "statusMutations": 0,
+      "aliasesResolved": 0,
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "counterMutation": false
+    }
+  ],
+  "checks": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8,
+    "duplicateAliasOrCpoIntroducedByRuns174to175": false,
+    "statusMutationRuns174to175": false,
+    "counterMutationRuns174to175": false,
+    "rankableCoverageMutationRuns174to175": false,
+    "branchHeadMatchesRun175Commit": true,
+    "run175Head": "b380dcde93364b4b313f57081a6a4488850d056b",
+    "run175Parent": "2c1b05b5afad83639944e283c645c495865b8fca",
+    "run174PreviousHead": "2eba0975c3370d9789f9aff1f7235ccd9e0a9ea4",
+    "deltaChainContinuous": true
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalState": "stale seed",
+    "effectiveLedger": "ordered run deltas plus consistency audits",
+    "replayScript": "scripts/italy_cpo_progress_consolidate.py",
+    "replayScriptVerifiedPresent": true,
+    "replayScriptSafetyGuards": [
+      "fails closed on duplicate/missing partyId",
+      "fails closed on unknown non-superseded partyId",
+      "retains raw party-scoped deltaEvidence",
+      "recomputes named status counts",
+      "requires physical inventory total to match inventorySource.partyIds"
+    ],
+    "attemptThisRun": "direct isolated git checkout retried",
+    "attemptResult": "transient runtime DNS failure resolving github.com; GitHub connector remained available for authoritative repository reads",
+    "canonicalOverwritePerformed": false,
+    "safetyDecision": "do not manually reconstruct from truncated directory slices; retain ordered lossless deltas until all files can be replayed by the verified consolidator"
+  },
+  "stationLevelControl": {
+    "EDN": {
+      "state": "active",
+      "resumeOnlyOn": "authoritative PUN/OCPI/Edison/EVWAY binding of the 12 known Galbusera EVSE IDs to Via Guglielmo Marconi 20",
+      "genericResearchClosed": true
+    },
+    "EMO": {
+      "state": "active",
+      "resumeOnlyOn": "direct PUN ArcGIS rows or exact EMOBITALY QR/app mapping reconciling Tronchetto tariff/product fields",
+      "genericResearchClosed": true
+    },
+    "F2X": {
+      "resumeOnlyOn": "exact authoritative mapping for the seven Novate residual EVSE or material tariff/source change",
+      "genericResearchClosed": true
+    },
+    "PWY": {
+      "resumeOnlyOn": "changed authoritative data for IT*PWY*E7282, IT*PWY*EA0198*01*01, IT*PWY*EA0198*01*02",
+      "genericResearchClosed": true
+    },
+    "ATL": {
+      "state": "setAside/last",
+      "resumeOnlyOn": "directly exploitable backend/tariff evidence"
+    }
+  },
+  "freshSurfaceAttempt": {
+    "punArcgis": "https://services2.arcgis.com/pROHh69WvVijk4nR/ArcGIS/rest/services/IdR_latest_ready/FeatureServer/0/query",
+    "result": "direct endpoint retrieval unavailable from current execution environment; no tariff or EVSE promotion made from incomplete/cached evidence",
+    "classification": "transient access failure, not a substantive CPO blockage"
+  },
+  "result": "pass: the effective Italy ledger remains internally coherent after replaying runs174-175; no duplicate, alias, status, count or rankable-coverage drift detected. Physical canonical materialization remains the only structural debt and is deliberately not rewritten from partial slices."
+}
