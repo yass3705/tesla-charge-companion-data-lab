@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 173,
+  "recordedAt": "2026-09-13T14:52:00+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 172,
+    "previousHead": "3d7df4ded87518d7bf644af7c9d384dcafb53757"
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "priorityQueue": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8,
+    "atlanteLast": true
+  },
+  "changes": [
+    {
+      "partyId": "F2X",
+      "canonicalName": "Free To X / Free To X Mobilize S.p.A.",
+      "status": "partial",
+      "priority": "station-level residual coverage",
+      "investigation": "fresh first-party card-payment tariff grid and explicit DC/HPC threshold; Novate Nord seven-point residual topology rechecked without guessing EVSE IDs",
+      "tariffChannel": "direct CPO card payment; MSP/app roaming explicitly separate",
+      "tariffModel": {
+        "standardCard": [
+          {"class": "AC", "priceEurPerKwh": 0.50, "vatIncluded": true},
+          {"class": "DC", "priceEurPerKwh": 0.65, "vatIncluded": true},
+          {"class": "HPC", "priceEurPerKwh": 0.79, "vatIncluded": true}
+        ],
+        "classThresholdEvidence": "current first-party Charge&Save page explicitly describes high-power charging as over 64 kW and prices it at 0.79 EUR/kWh for direct credit/debit-card payment",
+        "temporaryPromotion": {
+          "scope": "DC up to and including 64 kW only on chargers carrying the orange promotional sign",
+          "priceEurPerKwh": 0.50,
+          "vatIncluded": true,
+          "validFrom": "2026-07-15",
+          "validThrough": "2026-09-30",
+          "payment": "credit/debit card at station POS",
+          "eligibilityCondition": "charger must carry the promotion sign; do not infer eligibility solely from <=64 kW power"
+        }
+      },
+      "positiveEvidence": [
+        {
+          "type": "first-party Free To X payment page",
+          "url": "https://freeto-x.it/metodi-di-pagamento/pagamento-con-carta-di-credito/",
+          "finding": "Current direct-card tariff grid: AC 0.50 EUR/kWh, DC 0.65 EUR/kWh, HPC 0.79 EUR/kWh, VAT included. The POS can select a specific charger and connector; MSP pricing is a separate channel."
+        },
+        {
+          "type": "first-party Free To X Charge&Save page",
+          "url": "https://freeto-x.it/promo/",
+          "finding": "Current promotion valid 2026-07-15 through 2026-09-30: marked DC chargers up to 64 kW cost 0.50 EUR/kWh by card; high-power charging over 64 kW costs 0.79 EUR/kWh. This supplies the previously missing explicit >64 kW high-power boundary for the direct-card channel."
+        },
+        {
+          "type": "first-party Free To X connector documentation",
+          "url": "https://freeto-x.it/articolo/come-funzionano-le-colonnine-di-ricarica-auto-elettriche/",
+          "finding": "Free To X describes its Fast Multi-Standard units as 64 kW and its HPC CCS2 units as the higher-power class."
+        }
+      ],
+      "residualNovateNord": {
+        "knownSite": "AdS Novate Nord, A4 Torino-Trieste km 3.5, Novate Milanese",
+        "knownPointCount": 7,
+        "freshCorroboratedTopology": "4 HPC CCS2 points up to 300 kW plus one multi-standard unit exposing CCS2 64 kW, CHAdeMO 64 kW and Type 2",
+        "rankablePromotionThisRun": 0,
+        "reason": "The new first-party tariff boundary resolves the class-rule ambiguity, but this runtime did not recover the exact seven PUN/OCPI EVSE identifiers together with connector/power mapping from an authoritative source. Per project rule, no station-level EVSE is promoted by positional inference or third-party topology alone."
+      },
+      "negativeOrBlockedEvidence": [
+        "Exact searches for the three remaining PWY anomalies produced no new authoritative PUN/OCPI mapping and were closed again without status mutation.",
+        "The current public Free To X site exposes Novate Nord operationally but did not surface exact PUN/OCPI EVSE IDs in indexed first-party text.",
+        "Charge&Save eligibility requires an orange promotional sign; <=64 kW alone is insufficient to apply the temporary 0.50 EUR/kWh rate."
+      ],
+      "decision": "Upgrade F2X evidence quality: the direct-card AC/DC/HPC tariff grid and >64 kW HPC boundary are now first-party current facts. Preserve F2X as partial and keep the seven-EVSE Novate residual fail-closed until exact authoritative EVSE-to-connector/power mapping is recovered. Do not use the temporary promotional price without explicit promo-sign eligibility.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "recover the seven exact Novate Nord PUN/OCPI EVSE IDs with connector/power mapping from refreshed PUN/OCPI, Free To X station payload/QR/POS flow, or another authoritative inventory; promo 0.50 additionally requires explicit promotion-sign eligibility",
+      "confidence": "high for current direct-card tariff grid, >64 kW HPC threshold and promotion terms; insufficient for exact residual EVSE mapping",
+      "lastInvestigated": "2026-09-13",
+      "lastChanged": "2026-09-13",
+      "historyAppend": "run173: current first-party Free To X pages resolve the direct-card class grid (AC 0.50, DC 0.65, HPC 0.79 EUR/kWh) and explicitly define high-power as >64 kW for the current Charge&Save context. Temporary marked-charger DC <=64 kW promo is 0.50 EUR/kWh through 2026-09-30. Novate seven-EVSE residual remains fail-closed only because exact authoritative EVSE mapping is still missing."
+    }
+  ],
+  "consistencyControl": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroduced": false,
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "rankableStationsAdded": 0,
+    "fullAuditPerformed": true,
+    "fullAuditReason": "runs171 and 172 produced no nominative status/count progression after run170; mandatory two-run anti-stagnation audit",
+    "canonicalPhysicalFileStillStaleSeed": true,
+    "canonicalOverwritePerformed": false
+  },
+  "antiStagnation": {
+    "F2X": "Class boundary and current direct-card tariff grid are now resolved. Do not repeat generic pricing research; resume only for exact Novate seven-EVSE mapping or materially changed first-party tariff/promo evidence.",
+    "EDN": "Resume only for exact Galbusera EVSE mapping or materially newer first-party evidence.",
+    "EMO": "Resume only for exact activation fee or authoritative exact mapping change.",
+    "PWY": "1077/1080 rankable; exact-ID checks yielded no new evidence this run, so close until source data changes.",
+    "HER": "Resume only via signed binary/static inspection, live traffic/QR, or refreshed exact PUN evidence.",
+    "ESH_GAS_UTZ": "Resume only via exact Uattzy app/backend/QR/PUN mapping or authoritative partyId migration proof.",
+    "ATL": "Keep last unless directly exploitable backend/tariff evidence appears."
+  },
+  "newlyTreated": [],
+  "newlyPartial": [],
+  "aliasesResolved": [],
+  "rankableEvseAdded": 0,
+  "rankableStationsAdded": 0,
+  "next": {
+    "priority": "continue a non-Atlante station-level active CPO only on a genuinely new exact mapping/backend/QR surface; F2X generic tariff research is now closed",
+    "atlante": "last"
+  }
+}
