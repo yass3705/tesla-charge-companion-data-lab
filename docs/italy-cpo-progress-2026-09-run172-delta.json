@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 172,
+  "recordedAt": "2026-09-13T13:55:00+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 171,
+    "previousHead": "09f91d3d5d7b08d94bdf5da1b45220bd45310b93"
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "priorityQueue": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8,
+    "atlanteLast": true
+  },
+  "changes": [
+    {
+      "partyId": "EDN",
+      "canonicalName": "Edison Next S.P.A.",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "fresh first-party site-specific direct tariff surface at Galbusera Agrate Brianza; exact EVSE/PUN mapping attempted",
+      "tariffModel": "site-specific promotional direct tariff for DC only",
+      "tariffChannel": "direct POS card payment and EVWAY app; roaming/eMSP remains separate",
+      "positiveEvidence": [
+        {
+          "type": "first-party Edison Next / Edison press release",
+          "url": "https://www.edison.it/it/edison-next-e-galbusera-nuove-colonnine-di-ricarica-veicoli-elettrici",
+          "published": "2026-04-30",
+          "finding": "Galbusera Tre Marie Bistrot Caffetteria Store, Via Guglielmo Marconi 20, Agrate Brianza has 12 charging points: two Quick AC columns at 22 kW and four Fast DC columns at 120 kW. All DC columns at this site have a launch promotional tariff of 0.59 EUR/kWh VAT included, accessible by direct POS card payment and EVWAY app. The page is still live/currently indexed on 2026-09-13 and states the promotion as active without an explicit valid-through date."
+        }
+      ],
+      "coveredSubpopulationCandidate": {
+        "site": "Galbusera Tre Marie Bistrot Caffetteria Store, Via Guglielmo Marconi 20, Agrate Brianza (MB)",
+        "infrastructure": {
+          "acColumns": 2,
+          "acPowerKw": 22,
+          "dcColumns": 4,
+          "dcPowerKw": 120,
+          "totalChargingPoints": 12
+        },
+        "scope": "all DC connectors/charging points at this site only",
+        "energyPriceEurPerKwh": 0.59,
+        "vatIncluded": true,
+        "paymentMethods": ["direct POS card", "EVWAY app"],
+        "validFrom": "2026-04-30 or earlier at inauguration",
+        "validThrough": null,
+        "rankable": false,
+        "reason": "First-party site/class tariff is exact, but no deterministic current PUN/OCPI EVSE identifier mapping for the Galbusera site was recovered from indexed sources in this run. The project requires station/EVSE -> tariff mapping before rankable promotion."
+      },
+      "negativeOrBlockedEvidence": [
+        "Fresh exact-address and IT*EDN identifier searches did not expose the Galbusera station on indexed PUN-derived pages.",
+        "No EVSE IDs were guessed from neighboring Edison Next sequences.",
+        "The official source gives no explicit promotion end date; continued page presence supports current evidence but does not justify extrapolation to other Edison Next sites or AC connectors."
+      ],
+      "decision": "Preserve 0.59 EUR/kWh as a high-confidence first-party exact candidate for Galbusera DC only; keep fail-closed until exact EDN EVSE/PUN mapping is recovered. Do not transpose to Edison Next network-wide, other sites, or the site's AC connectors.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "obtain exact Galbusera PUN/OCPI/EVSE IDs from refreshed PUN data, direct POS/QR flow, EVWAY station payload, Edison backend, or another authoritative station inventory",
+      "confidence": "high for site identity, DC power class, direct 0.59 EUR/kWh price and payment channels; insufficient for deterministic EVSE mapping",
+      "lastInvestigated": "2026-09-13",
+      "lastChanged": "2026-09-13",
+      "historyAppend": "run172: reconfirmed first-party Galbusera Agrate Brianza direct DC tariff 0.59 EUR/kWh and exact site topology (2x AC 22 kW columns, 4x DC 120 kW columns, 12 points total). Exact IT*EDN EVSE mapping remains unavailable, so no rankable promotion."
+    }
+  ],
+  "consistencyControl": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroduced": false,
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "rankableStationsAdded": 0,
+    "canonicalPhysicalFileStillStaleSeed": true,
+    "canonicalOverwritePerformed": false,
+    "auditResult": "effective ordered ledger unchanged and internally consistent; new EDN first-party site/class evidence preserved without count mutation"
+  },
+  "antiStagnation": {
+    "EDN": "Galbusera direct DC tariff is now first-party exact at 0.59 EUR/kWh. Do not repeat generic tariff research; resume only for exact site EVSE mapping, an authoritative refreshed inventory, or a materially newer official tariff/validity statement.",
+    "EMO": "Interparking direct energy surface known; resume only for exact activation fee or authoritative exact mapping change.",
+    "PWY": "1077/1080 rankable; do not repeat exact-ID checks until source data changes.",
+    "HER": "Resume only via signed binary/static inspection, live traffic/QR, or refreshed exact PUN evidence.",
+    "ESH_GAS_UTZ": "Resume only via exact Uattzy app/backend/QR/PUN mapping or authoritative partyId migration proof.",
+    "F2X": "Do not repeat Novate Milanese seven-EVSE PUN lookup until source data changes.",
+    "ATL": "Keep last unless directly exploitable backend/tariff evidence appears."
+  },
+  "newlyTreated": [],
+  "newlyPartial": [],
+  "aliasesResolved": [],
+  "rankableEvseAdded": 0,
+  "rankableStationsAdded": 0,
+  "next": {
+    "priority": "continue another non-Atlante station-level active CPO on a genuinely new exact surface; EDN only resumes for exact Galbusera EVSE mapping or materially newer first-party evidence",
+    "atlante": "last"
+  }
+}
