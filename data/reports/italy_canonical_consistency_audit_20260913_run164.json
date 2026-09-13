@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 164,
+  "recordedAt": "2026-09-13T03:53:52+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "checks": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroducedSinceRun163": false,
+    "aliasesDoubleCountedSinceRun163": false,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8,
+    "canonicalPhysicalFileStillStaleSeed": true,
+    "canonicalOverwritePerformed": false,
+    "fullAuditTrigger": "four-run cadence after run160 full audit / run163 marked full audit due next run at latest"
+  },
+  "canonicalObservation": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalSeedGeneratedAt": "2026-09-05T23:54:48+01:00",
+    "physicalSeedCounts": "4 treated / 5 partial / 1 setAside / 78 active / 88 total",
+    "effectiveLedgerCounts": "50 treated / 25 partial / 1 setAside / 8 active + 4 supersededAlias = 88 physical partyIds",
+    "replayScript": "scripts/italy_cpo_progress_consolidate.py",
+    "replayScriptLocated": true,
+    "replayStaticValidation": {
+      "orderedRunSuffixSupport": true,
+      "supportedDeltaShapes": [
+        "changes",
+        "safeStatusTransitions",
+        "classificationUpdatesWithoutStatusTransition",
+        "classificationUpdates"
+      ],
+      "supportsFlatAndStatusBucketedChanges": true,
+      "rawDeltaEvidenceRetained": true,
+      "groupPartyIdsEvidenceAttached": true,
+      "unknownPartyIdFailsClosedExceptSupersededAlias": true,
+      "duplicatePartyIdsFailClosed": true,
+      "physicalInventoryInvariant": 88,
+      "evseDedupGuard": "scripts/italy_cpo_delta_evse_dedup_audit.py"
+    },
+    "diagnosticCorrection": "run160 stated no consolidator was exposed by the then-used code-search terms. Run164 directly located and inspected scripts/italy_cpo_progress_consolidate.py; that earlier repository-discovery conclusion is superseded.",
+    "materializationStatus": "not executed in run164",
+    "materializationBlocker": "the current automation environment can read/write the private repository through the GitHub connector but has no authenticated repository checkout or connector action that executes repository scripts. Reconstructing 164 deltas ad hoc would violate the lossless/no-loss policy.",
+    "decision": "keep the physical canonical unchanged until the existing consolidator and EVSE dedup guard can actually be executed against the complete branch; do not hand-edit the stale seed"
+  },
+  "freshInvestigation": [
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "target": "new native-app/static-artifact route after generic tariff web search was closed",
+      "positiveEvidence": [
+        "current Apple App Store listing confirms Hera Ricarica remains a first-party Gruppo Hera charging application capable of starting charging sessions",
+        "Android package identifier discovered: com.siemens.hera.mobility",
+        "public APK catalog exposes signed historical/current Hera Ricarica APK/XAPK variants, making future static endpoint extraction a concrete route instead of repeating tariff searches"
+      ],
+      "negativeEvidence": [
+        "fresh indexed searches for Hera Ricarica API/endpoint strings did not expose a public guest API hostname or tariff endpoint",
+        "current public store metadata does not expose station-level numeric tariffs"
+      ],
+      "decision": "keep HER active and station-level; close indexed API-name search after this pass. Next HERA work should be APK/XAPK static inspection or live app traffic capture, QR/ad-hoc, or refreshed PUN evidence.",
+      "rankableEvseAdded": 0,
+      "resumeCondition": "extract a backend/API host and deterministic station/EVSE tariff mapping from the app artifact/traffic, QR/ad-hoc flow, or refreshed PUN"
+    }
+  ],
+  "antiStagnation": {
+    "doNotRepeatWithoutNewEvidence": [
+      "HERA generic national tariff web search",
+      "HERA generic indexed API-name search; package com.siemens.hera.mobility is now known",
+      "PWY generic tariff research; 1077/1080 already deterministically classified",
+      "EDN Galbusera generic tariff/site/topology and exact-ID web search",
+      "EMO E477-E484 tariff provenance research; only historical set-difference remains",
+      "UTZ EC167-EC170 generic web/Pienotto path until first-party/PUN/QR/backend corroboration",
+      "F2X Novate Milanese seven-EVSE PUN lookup until source data changes",
+      "Atlante before all other accessible station-level work"
+    ],
+    "nextAction": "use a genuinely new station-level surface on the largest non-Atlante active CPO; for HERA that means static APK/XAPK inspection or traffic/QR/PUN, not another generic web search"
+  },
+  "result": "pass_effective_state_with_known_physical_canonical_staleness"
+}
