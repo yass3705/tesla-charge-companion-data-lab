@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 163,
+  "recordedAt": "2026-09-13T02:53:00+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 162,
+    "previousState": {
+      "treated": 50,
+      "partial": 25,
+      "setAside": 1,
+      "active": 8,
+      "supersededAlias": 4,
+      "operationalCanonicalTotal": 84,
+      "physicalPartyIds": 88
+    }
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "priorityQueue": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8,
+    "atlanteLast": true
+  },
+  "changes": [
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "fresh channel and direct-vs-roaming separation pass",
+      "positiveEvidence": [
+        {
+          "source": "current Hera Ricarica first-party mobile application listing",
+          "finding": "Hera still exposes a native charging application capable of locating/controlling and starting charging sessions; this keeps the native app/backend path viable for station-level direct tariff capture."
+        }
+      ],
+      "negativeOrExcludedEvidence": [
+        {
+          "source": "fresh indexed first-party Hera public web surfaces",
+          "finding": "no exact current numeric direct/ad-hoc tariff grid suitable for deterministic network-wide promotion surfaced in this pass"
+        },
+        {
+          "source": "EVVai public tariff/network page",
+          "finding": "a flat Hera charging price is presented in an independent EMP/roaming context and therefore must not be used as a direct Hera CPO tariff"
+        }
+      ],
+      "coverageDecision": "no rankable promotion; retain HER as station-level",
+      "rankableEvseAdded": 0,
+      "blockage": "exact current direct Hera tariff still requires a deterministic station/EVSE mapping from Hera Ricarica, QR/ad-hoc, direct backend, or refreshed PUN data",
+      "resumeCondition": "inspect native Hera Ricarica/app-backend, QR/ad-hoc or refreshed PUN station evidence only; do not repeat generic national tariff web searches or promote roaming eMSP prices",
+      "confidence": "high on direct-vs-roaming separation; unresolved on station tariff coverage",
+      "lastInvestigated": "2026-09-13",
+      "lastChanged": "2026-09-13",
+      "historyAppend": "run163: fresh Hera channel pass confirms the native Hera Ricarica app remains a viable direct evidence surface; an independently advertised flat Hera roaming price is explicitly excluded from direct-CPO ranking. Generic national tariff web search is closed until new primary evidence appears."
+    }
+  ],
+  "canonicalControl": {
+    "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+    "physicalFileState": "STALE_SEED_NOT_OVERWRITTEN",
+    "seedCountsObserved": {
+      "treated": 4,
+      "partial": 5,
+      "setAside": 1,
+      "active": 78,
+      "physicalPartyIds": 88
+    },
+    "effectiveCountsFromOrderedDeltas": {
+      "treated": 50,
+      "partial": 25,
+      "setAside": 1,
+      "active": 8,
+      "supersededAlias": 4,
+      "operationalCanonicalTotal": 84,
+      "physicalPartyIds": 88
+    },
+    "replayScript": "scripts/italy_cpo_progress_consolidate.py",
+    "evseDedupGuard": "scripts/italy_cpo_delta_evse_dedup_audit.py",
+    "decision": "Do not partially hand-edit the stale seed. Materialize the nominative canonical only from a complete ordered replay with exact 88-partyId invariant and zero duplicate/alias double counting."
+  },
+  "consistencyControl": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroduced": false,
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "rankableStationsAdded": 0,
+    "fullAuditDueNextRunAtLatest": true,
+    "result": "pass_effective_state"
+  },
+  "antiStagnation": {
+    "HER": "Do not repeat generic Hera national tariff web search or reuse eMSP roaming prices. Revisit only via Hera Ricarica/app backend, QR/ad-hoc, or refreshed PUN exact station evidence.",
+    "PWY": "Do not rerun generic pricing research; 1077/1080 rows are already deterministically covered. Revisit only the three listed fail-closed anomalies on new evidence.",
+    "EDN": "Do not repeat generic Galbusera tariff or exact-ID search without new primary evidence.",
+    "EMO": "E477-E484 tariff research remains closed; only complete historical ledger set-difference/dedup is allowed.",
+    "UTZ": "Do not repeat generic EC167-EC170 web/Pienotto search until first-party/PUN/QR/backend corroboration appears.",
+    "F2X": "Do not repeat the Novate Milanese seven-EVSE PUN tariff lookup until source data changes.",
+    "ATL": "Keep last unless directly exploitable backend/tariff evidence appears."
+  },
+  "newlyTreated": [],
+  "newlyPartial": [],
+  "aliasesResolved": [],
+  "rankableEvseAdded": 0,
+  "rankableStationsAdded": 0,
+  "next": {
+    "priority": "largest remaining non-Atlante station-level active CPO using a genuinely new exact station/QR/backend/PUN surface; complete EMO historical set-difference when the full credited ledger can be replayed",
+    "avoid": [
+      "HERA generic national tariff search",
+      "PWY generic tariff search",
+      "EDN generic exact-ID search",
+      "EMO tariff research",
+      "Atlante before all other accessible station-level work"
+    ],
+    "atlante": "last"
+  }
+}
