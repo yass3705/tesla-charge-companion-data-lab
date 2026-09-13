@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 171,
+  "recordedAt": "2026-09-13T12:50:00+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 170,
+    "previousHead": "01935460ce01bb9b10883b7265ea414f781d9351"
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "priorityQueue": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8,
+    "atlanteLast": true
+  },
+  "changes": [
+    {
+      "partyId": "EMO",
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "new exact first-party Interparking tariff surface plus PUN-derived EVSE mapping",
+      "tariffModel": "station/operator-owner specific; Interparking subnetwork has a dedicated direct tariff surface",
+      "tariffChannel": "direct EMOBITALY app/RFID/ad-hoc card payment; roaming explicitly separate",
+      "positiveEvidence": [
+        {
+          "type": "first-party EMOBITALY/Interparking",
+          "url": "https://interparking.emobitaly.it/",
+          "finding": "The official Interparking EMOBITALY surface states direct/ad-hoc charging is managed by EMOBITALY, tariff is 0.58 EUR/kWh VAT included, and a fixed start fee applies with minimum 0.50 EUR and maximum 1.40 EUR VAT included. It also states each socket is Type 2 up to 22 kW and roaming-provider pricing is separate."
+        },
+        {
+          "type": "first-party EMOBITALY pricing architecture",
+          "url": "https://www.emobitaly.it/servizio-di-gestione/prezzi/",
+          "finding": "EMOBITALY confirms point owners can independently set initial, energy and time tariff components; therefore no network-wide EMO price may be inferred from one subnetwork."
+        },
+        {
+          "type": "PUN-derived exact station/EVSE mapping",
+          "url": "https://pienotto.it/stazioni/259698-emobitaly-s-r-l-venezia-ve",
+          "finding": "Current PUN-derived station data maps Isola Nova del Tronchetto 33/m, Venezia to EMOBITALY and exposes EVSE including IT*EMO*E1013 through IT*EMO*E1028 among the station inventory."
+        },
+        {
+          "type": "independent topology corroboration",
+          "url": "https://www.goingelectric.de/stromtankstellen/Italien/Venezia/Interparking-Tronchetto-Isola-Nova-del-Tronchetto-33-m/83442/",
+          "finding": "Interparking Tronchetto is independently mapped to sixteen Type-2 22 kW EVSE IT*EMO*E1013 through IT*EMO*E1028. This source is corroboration only and is not used as tariff authority."
+        }
+      ],
+      "coveredSubpopulationCandidate": {
+        "site": "Interparking Tronchetto, Isola Nova del Tronchetto 33/m, Venezia",
+        "evseIds": [
+          "IT*EMO*E1013", "IT*EMO*E1014", "IT*EMO*E1015", "IT*EMO*E1016",
+          "IT*EMO*E1017", "IT*EMO*E1018", "IT*EMO*E1019", "IT*EMO*E1020",
+          "IT*EMO*E1021", "IT*EMO*E1022", "IT*EMO*E1023", "IT*EMO*E1024",
+          "IT*EMO*E1025", "IT*EMO*E1026", "IT*EMO*E1027", "IT*EMO*E1028"
+        ],
+        "connector": "Type 2 AC",
+        "maxPowerKw": 22,
+        "energyPriceEurPerKwh": 0.58,
+        "fixedStartFeeEur": {"min": 0.50, "max": 1.40, "exactPerEvseKnown": false},
+        "rankable": false,
+        "reason": "Energy component is first-party and exact for the Interparking surface, but the official page exposes only a range for the fixed start fee. The project requires exact fixed-fee treatment for deterministic ranking; no fee value may be guessed or averaged."
+      },
+      "negativeOrBlockedEvidence": [
+        "No exact per-EVSE/per-site activation fee within the official 0.50-1.40 EUR range was exposed on indexed first-party surfaces.",
+        "Current generic EMOBITALY pages confirm owner-defined station pricing, so 0.58 EUR/kWh must not be transposed outside the proven Interparking scope.",
+        "Third-party/PUN-derived prices such as 0.48 EUR/kWh plus 1.14 EUR activation are retained only as discovery/corroboration until matched to a first-party direct tariff surface."
+      ],
+      "decision": "Preserve the Interparking 0.58 EUR/kWh direct energy tariff and exact Tronchetto EVSE candidate mapping, but keep all sixteen rows fail-closed because the fixed start fee is only given as a range. Do not promote an EMOBITALY network-wide tariff.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "obtain exact Interparking activation fee per station/EVSE/session from EMOBITALY app, direct-payment/QR flow, official backend, or another first-party exact tariff page; then map only the deterministic Interparking subpopulation",
+      "confidence": "high for direct energy price and station-specific pricing architecture; high for Tronchetto EVSE topology; insufficient for deterministic total direct tariff because exact activation fee is unresolved",
+      "lastInvestigated": "2026-09-13",
+      "lastChanged": "2026-09-13",
+      "historyAppend": "run171: found a first-party EMOBITALY Interparking tariff surface at 0.58 EUR/kWh and mapped Tronchetto IT*EMO*E1013-E1028 through current PUN-derived topology. Kept fail-closed because first-party start fee remains a 0.50-1.40 EUR range, not an exact value."
+    },
+    {
+      "partyId": "PWY",
+      "canonicalName": "TheF Charging / Powy",
+      "status": "partial",
+      "priority": "class-wide residual anomalies",
+      "investigation": "new exact-ID check only for the three run162 fail-closed EVSE",
+      "checkedEvseIds": ["IT*PWY*E7282", "IT*PWY*EA0198*01*01", "IT*PWY*EA0198*01*02"],
+      "finding": "Fresh exact-ID indexed search returned no new authoritative PUN/OCPI/Powy evidence resolving the anomalous AC/power fields.",
+      "decision": "retain exactly three fail-closed rows; preserve 1077/1080 rankable coverage from run162 and close this route until source data changes",
+      "rankableEvseAdded": 0,
+      "resumeCondition": "refreshed PUN/OCPI/Powy source that resolves current type/max-power inconsistency or a new official AC>22 kW class"
+    }
+  ],
+  "consistencyControl": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroduced": false,
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "rankableStationsAdded": 0,
+    "canonicalPhysicalFileStillStaleSeed": true,
+    "canonicalOverwritePerformed": false,
+    "auditResult": "effective ordered ledger remains consistent; no count mutation; new EMOBITALY exact-surface evidence preserved losslessly in this delta"
+  },
+  "antiStagnation": {
+    "EMO": "Interparking direct energy surface now known. Do not repeat generic EMOBITALY tariff research; next useful action is exact activation-fee extraction from first-party app/QR/backend or historical ledger set-difference.",
+    "PWY": "1077/1080 rankable; exact-ID web check for the three residual anomalies produced no new evidence. Do not repeat until source data changes.",
+    "HER": "Revisit only via signed binary/static inspection, live traffic/QR, or refreshed exact PUN evidence.",
+    "EDN": "Do not repeat Galbusera generic/exact-ID research absent new primary mapping.",
+    "ESH_GAS_UTZ": "Revisit only via exact Uattzy app/backend/QR/PUN mapping or authoritative partyId migration proof.",
+    "F2X": "Do not repeat Novate Milanese seven-EVSE PUN lookup until source data changes.",
+    "ATL": "Keep last unless directly exploitable backend/tariff evidence appears."
+  },
+  "newlyTreated": [],
+  "newlyPartial": [],
+  "aliasesResolved": [],
+  "rankableEvseAdded": 0,
+  "rankableStationsAdded": 0,
+  "next": {
+    "priority": "continue another non-Atlante station-level active CPO on a genuinely new exact surface; for EMO only inspect exact first-party activation fee or historical set-difference, not generic tariff pages",
+    "atlante": "last"
+  }
+}
