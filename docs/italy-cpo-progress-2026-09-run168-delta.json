@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 168,
+  "recordedAt": "2026-09-13T07:51:58+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 167,
+    "previousHead": "47e9f9ccc8601e77d36ba1df6ebdf0c4830c7ebd"
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "priorityQueue": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8,
+    "atlanteLast": true
+  },
+  "changes": [
+    {
+      "partyIds": ["ESH", "GAS", "UTZ"],
+      "canonicalName": "Uattzy / UAU group (E-Shore, GASGAS, EnerMia)",
+      "status": "active",
+      "priority": "station-level",
+      "newTechnicalSurface": {
+        "androidPackage": "com.fortum.enermia",
+        "observedCurrentVersion": "9.218.0",
+        "observedVersionDate": "2026-08-01",
+        "legacyApiHost": "https://api.enermia.org/",
+        "apiHostEvidence": "public web index currently resolves the host title as 'Enermia API'; direct fetch timed out and no indexed endpoint paths were found",
+        "e015Evidence": "Regione Lombardia E015 currently lists EnerMia Srl with 1 published API; EnerMia first-party material states this API shares managed charging-point data nationally. Exact API detail/schema was not retrievable in this pass."
+      },
+      "freshDiscoveryLeads": [
+        {
+          "station": "Contrada Contarini 16, Palmanova",
+          "evseIds": ["IT*UTZ*EC167", "IT*UTZ*EC168"],
+          "connectorClass": "AC Type 2 22 kW",
+          "observedDirectAdHocPriceEurPerKwh": 0.62,
+          "source": "GoingElectric",
+          "sourceObservedUpdated": "2026-09-08",
+          "rankable": false,
+          "reason": "third-party discovery/corroboration only; exact first-party Uattzy/QR/backend confirmation still required"
+        },
+        {
+          "station": "Contrada Savorgnan 14a, Palmanova",
+          "evseIds": ["IT*UTZ*EC169", "IT*UTZ*EC170"],
+          "connectorClass": "AC Type 2 22 kW",
+          "observedDirectAdHocPriceEurPerKwh": 0.62,
+          "source": "GoingElectric",
+          "sourceObservedUpdated": "2026-09-08",
+          "rankable": false,
+          "reason": "third-party discovery/corroboration only; exact first-party Uattzy/QR/backend confirmation still required"
+        }
+      ],
+      "decision": "Do not promote the four UTZ EVSE yet. Preserve the exact IDs and fresh observed ad-hoc price as high-value discovery leads and focus the next Uattzy attempt on first-party confirmation through the legacy API/E015 API detail, QR/ad-hoc page or app backend.",
+      "negativeOrBlockedEvidence": [
+        "api.enermia.org root timed out in the web fetch and was not resolvable from the isolated execution runtime.",
+        "Search indexing exposed no Swagger/OpenAPI/tariff endpoint paths for api.enermia.org.",
+        "E015 adherent page proves one API exists but did not expose its API detail/schema through the retrievable page text."
+      ],
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "retrieve the EnerMia E015 API detail/schema, recover a live api.enermia.org endpoint, inspect Uattzy app traffic/static strings, or resolve the QR/ad-hoc page for EC167-EC170 to first-party price evidence",
+      "confidence": "high for exact UTZ EVSE IDs and current third-party observed price; medium for continued relevance of legacy API host; no rankable first-party tariff proof yet",
+      "lastInvestigated": "2026-09-13",
+      "lastChanged": "2026-09-13",
+      "historyAppend": "run168: identified Uattzy Android package com.fortum.enermia, legacy api.enermia.org surface and current E015 evidence of one EnerMia-published API. Found four exact UTZ EVSE (EC167-EC170) at two Palmanova sites with a fresh 0.62 EUR/kWh direct ad-hoc observation; retained fail-closed because the price source is third-party and first-party deterministic confirmation is still missing."
+    }
+  ],
+  "consistencyControl": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroduced": false,
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "rankableStationsAdded": 0,
+    "fullAuditPerformed": false,
+    "canonicalPhysicalFileStillStaleSeed": true,
+    "canonicalOverwritePerformed": false,
+    "auditResult": "effective ordered ledger remains internally consistent; no status/count mutation this run"
+  },
+  "antiStagnation": {
+    "HER": "Revisit only via signed binary/static inspection, live traffic/QR, or refreshed exact PUN evidence.",
+    "PWY": "Do not rerun generic pricing; only three fail-closed anomalies on new evidence.",
+    "EDN": "Do not repeat Galbusera generic/exact-ID web research absent new primary mapping.",
+    "EMO": "Do not redo E477-E484 pricing; only ordered historical ledger set-difference/dedup.",
+    "ESH_GAS_UTZ": "Do not repeat corporate/network-wide tariff search. Next useful surface is EnerMia E015 API detail, live api.enermia.org endpoint, exact Uattzy app/backend/QR mapping, or first-party confirmation for EC167-EC170.",
+    "F2X": "Do not repeat Novate Milanese seven-EVSE PUN lookup until source data changes.",
+    "ATL": "Keep last unless directly exploitable backend/tariff evidence appears."
+  },
+  "newlyTreated": [],
+  "newlyPartial": [],
+  "aliasesResolved": [],
+  "rankableEvseAdded": 0,
+  "rankableStationsAdded": 0,
+  "next": {
+    "priority": "continue Uattzy only through the newly identified API/E015/QR surfaces; if they remain inaccessible, move immediately to another non-Atlante station-level active CPO with a genuinely new exact surface",
+    "atlante": "last"
+  }
+}
