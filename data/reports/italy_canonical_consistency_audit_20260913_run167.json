@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 167,
+  "recordedAt": "2026-09-13T06:50:00+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "baseHead": "5e2ab486cab9954592a2f4b6e1d9b36f0edcd3e6",
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "checks": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8,
+    "duplicateCpoOrAliasIntroducedSinceRun166": false,
+    "aliasesDoubleCountedSinceRun166": false,
+    "fullAuditTriggered": true,
+    "trigger": "two consecutive runs without nominative status progression after run164 full audit"
+  },
+  "canonicalObservation": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalFileState": "stale seed",
+    "physicalSeedCounts": "4 treated / 5 partial / 1 setAside / 78 active / 88 total",
+    "effectiveLedgerCounts": "50 treated / 25 partial / 1 setAside / 8 active + 4 supersededAlias = 88 physical partyIds",
+    "replayScript": "scripts/italy_cpo_progress_consolidate.py",
+    "dedupGuard": "scripts/italy_cpo_delta_evse_dedup_audit.py",
+    "materializationStatus": "not executed",
+    "reason": "GitHub connector can read/write the private branch but exposes no arbitrary repository-script execution surface; manual reconstruction of the ordered delta chain would violate the lossless evidence-retention requirement",
+    "decision": "do not overwrite the physical canonical with a hand-built partial reconstruction; preserve the effective ordered ledger and existing replay path until the script can execute against the complete branch"
+  },
+  "activeWork": {
+    "partyIds": ["ESH", "GAS", "UTZ"],
+    "group": "Uattzy / UAU",
+    "status": "active",
+    "priority": "station-level",
+    "freshPrimaryEvidence": [
+      {
+        "url": "https://www.uattzy.com/",
+        "finding": "Uattzy is explicitly the public-charging brand of UAU; UAU is explicitly described as born from the union of E-Shore, GASGAS and EnerMia. Uattzy states it is both CPO and eMSP, operates a proprietary management platform and manages more than 3,000 charging points in Italy."
+      },
+      {
+        "url": "https://www.uattzy.com/faq/",
+        "finding": "For Uattzy app/RFID users, the applied tariff and any activation/parking charges are displayed before charging for each connector. Prices may vary by delivered power, session duration and bay occupancy; third-party eMSP prices are explicitly separate."
+      }
+    ],
+    "dedupDecision": "Do not merge ESH/GAS/UTZ physical PUN partyIds solely from corporate/brand unification while legacy partyId retirement/replacement is not authoritatively proven.",
+    "tariffDecision": "No network-wide/class-wide tariff exists in the fresh first-party material. The direct model is connector/station-specific in the Uattzy app; retain station-level fail-closed until deterministic connector/EVSE mapping is captured.",
+    "resumeCondition": "obtain Uattzy app/guest backend, QR/ad-hoc or current PUN exact connector price mapping; merge partyIds only if PUN/OCPI or first-party migration evidence proves retirement/replacement",
+    "confidence": "high for current corporate/operational relationship and tariff-channel model; unresolved for exact EVSE prices and partyId supersession"
+  },
+  "antiStagnation": {
+    "closedWithoutNewEvidence": [
+      "HER generic tariff/API/app-identity search",
+      "PWY generic pricing research",
+      "EDN Galbusera generic tariff/site/topology and exact-ID web search",
+      "EMO E477-E484 tariff research; historical ledger set-difference only",
+      "UTZ/ESH/GAS generic network-wide tariff search",
+      "F2X Novate Milanese seven-EVSE PUN lookup until source update",
+      "ATL before all other accessible station-level work"
+    ],
+    "next": "for Uattzy/UAU inspect a genuinely new app/backend/QR/PUN exact-connector surface; otherwise advance to another non-Atlante station-level CPO"
+  },
+  "result": "pass_effective_state; no count mutation; fresh first-party Uattzy/UAU evidence persisted"
+}
