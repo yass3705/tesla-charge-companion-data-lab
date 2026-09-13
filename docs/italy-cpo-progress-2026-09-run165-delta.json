@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 165,
+  "recordedAt": "2026-09-13T04:50:58+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 164,
+    "previousState": {
+      "treated": 50,
+      "partial": 25,
+      "setAside": 1,
+      "active": 8,
+      "supersededAlias": 4,
+      "operationalCanonicalTotal": 84,
+      "physicalPartyIds": 88
+    }
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88
+  },
+  "priorityQueue": {
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8,
+    "atlanteLast": true
+  },
+  "changes": [
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "first-party EV Driver web portal tariff surface",
+      "officialUrls": [
+        "https://heraricarica.gruppohera.it/",
+        "https://heraricarica.gruppohera.it/home/pages/tariffs",
+        "https://heraricarica.gruppohera.it/assets/static/license-oss.htm"
+      ],
+      "positiveEvidence": [
+        {
+          "source": "Hera Ricarica EV Driver Web Portal /tariffs",
+          "finding": "A first-party Tariffe page exists and separates Offerta flat, Offerta a consumo and Penalita. The page confirms direct Hera tariff handling rather than requiring an eMSP surface."
+        },
+        {
+          "source": "Hera Ricarica EV Driver Web Portal /tariffs",
+          "finding": "The direct post-charge occupation penalty is explicit: after 60 minutes from completion, 0.08 EUR/min for Type 2 / Type 3A from 07:00-23:00 every day, and 0.15 EUR/min for CHAdeMO / Combo CCS2 from 00:00-23:59 every day."
+        },
+        {
+          "source": "Hera Ricarica EV Driver Web Portal root",
+          "finding": "The first-party map exposes power buckets 0-22 kW, 23-50 kW, 51-100 kW, 101-150 kW and >150 kW, plus plug and availability filters. This is a viable exact station discovery surface."
+        },
+        {
+          "source": "Hera Ricarica OSS manifest",
+          "finding": "The current portal stack exposes Angular 14-era front-end components and Tomcat-era server dependencies, confirming a client/server web application suitable for future static bundle or network endpoint inspection."
+        }
+      ],
+      "negativeOrExcludedEvidence": [
+        {
+          "source": "indexed first-party Tariffe page",
+          "finding": "The indexed page currently exposes the penalty values but not the numeric energy prices for Offerta a consumo / flat in retrievable text; no deterministic EVSE->energy-price mapping can yet be promoted."
+        },
+        {
+          "source": "fresh indexed site searches for /api/, connector/tariff JSON and runtime/main bundles",
+          "finding": "No public indexed API path, station tariff JSON endpoint, or bundle filename carrying tariff data surfaced in this run."
+        }
+      ],
+      "coverageDecision": "no rankable promotion; retain HER as station-level",
+      "rankableEvseAdded": 0,
+      "blockage": "first-party tariff portal is confirmed, but current indexed content does not expose numeric energy price rows or an EVSE-specific pricing endpoint",
+      "resumeCondition": "inspect portal JS/network calls or live browser/app traffic, or refreshed exact PUN/QR evidence; do not repeat generic nationwide tariff searches",
+      "confidence": "high for direct portal and penalty rules; unresolved for energy-price mapping",
+      "lastInvestigated": "2026-09-13",
+      "lastChanged": "2026-09-13",
+      "historyAppend": "run165: upgraded HERA evidence from app-only to a concrete first-party EV Driver web portal. The official /tariffs page proves direct tariff handling and exact occupation penalties, while the map exposes exact power buckets. Energy prices remain fail-closed because they are not present in indexed text and no public pricing endpoint surfaced."
+    }
+  ],
+  "consistencyControl": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "duplicateCpoOrAliasIntroduced": false,
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "rankableStationsAdded": 0,
+    "fullAuditPerformed": false,
+    "auditResult": "no count/status mutation; invariant preserved from run164 full audit"
+  },
+  "antiStagnation": {
+    "HER": "Do not repeat generic national tariff, indexed API-name, or app identity searches. Revisit only via first-party portal JS/network inspection, live Hera Ricarica traffic, QR/ad-hoc, or refreshed exact PUN evidence.",
+    "PWY": "Do not rerun generic pricing research; 1077/1080 rows are already deterministically covered. Revisit only the three fail-closed anomalies on new evidence.",
+    "EDN": "Do not repeat generic Galbusera tariff/site/topology or exact-ID web research without new primary evidence.",
+    "EMO": "E477-E484 tariff research remains closed; only complete historical ledger set-difference/dedup is allowed.",
+    "UTZ": "Do not repeat generic EC167-EC170 web/Pienotto search until first-party/PUN/QR/backend corroboration appears.",
+    "F2X": "Do not repeat the Novate Milanese seven-EVSE PUN tariff lookup until source data changes.",
+    "ATL": "Keep last unless directly exploitable backend/tariff evidence appears."
+  },
+  "newlyTreated": [],
+  "newlyPartial": [],
+  "aliasesResolved": [],
+  "rankableEvseAdded": 0,
+  "rankableStationsAdded": 0,
+  "next": {
+    "priority": "HERA first-party portal JS/network inspection if a new exploitable surface appears; otherwise advance to the next largest non-Atlante station-level CPO using a genuinely new exact station/QR/backend/PUN surface",
+    "atlante": "last"
+  }
+}
