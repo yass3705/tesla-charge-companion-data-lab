@@ -1,0 +1,54 @@
+{
+  "country": "IT",
+  "run": 192,
+  "recordedAt": "2026-09-14T17:54:58+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "trigger": "two consecutive runs (191-192) without nominative status progression",
+  "scope": [
+    "effective status partition through run192",
+    "active queue reconciliation",
+    "network/class-wide exhaustion check",
+    "Uattzy ESH/GAS/UTZ non-collapse guard",
+    "Atlante setAside-last guard",
+    "recent run191/run192 mutation check",
+    "physical seed versus ordered-delta authority boundary"
+  ],
+  "effectiveCounts": {
+    "treated": 51,
+    "partial": 27,
+    "setAside": 1,
+    "active": 5,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 5
+  },
+  "activeQueue": ["HER", "TSL", "ESH", "GAS", "UTZ"],
+  "checks": {
+    "treatedPlusPartialPlusSetAsidePlusActiveEquals84": true,
+    "physicalTotalIncludingSupersededAliasesEquals88": true,
+    "activeQueueCountEquals5": true,
+    "networkOrClassWideQueueEmpty": true,
+    "run191StatusMutation": false,
+    "run192StatusMutation": false,
+    "eshGasUtzKeptDistinct": true,
+    "atlanteStillSetAsideAndLast": true,
+    "duplicateAliasOrCpoIntroducedByRuns191Or192": false,
+    "antiStagnationRespected": true
+  },
+  "corrections": [],
+  "findings": [
+    "No effective counter or alias drift was introduced by runs191-192.",
+    "The Uattzy investigation gained a new first-party backend host (api.enermia.org) but no connector tariff payload, therefore no rankable coverage or status transition is justified yet.",
+    "The 2026-09-05 materialized docs/italy-cpo-progress-2026-09.json seed remains stale relative to the ordered delta ledger. Replacing it with a partial hand-edited snapshot would risk losing per-CPO evidence, so this audit does not overwrite it without a complete deterministic replay.",
+    "Until the full replay can be materialized, post-seed effective state is represented by the seed plus ordered deltas and consistency audits; this limitation is explicit and must not be mistaken for a current standalone canonical file."
+  ],
+  "canonicalPhysicalFile": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "status": "stale_seed_requires_full_replay",
+    "safeActionTaken": "no partial overwrite",
+    "requiredNextAction": "run the current consolidator across the complete ordered delta set when repository checkout/materialization is available, then atomically replace the canonical file and rerun the full audit"
+  },
+  "result": "pass_with_known_materialization_debt"
+}
