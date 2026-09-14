@@ -1,0 +1,55 @@
+{
+  "country": "IT",
+  "run": 191,
+  "recordedAt": "2026-09-14T16:49:57+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "scope": [
+    "effective status partition after runs 187-190",
+    "PWY active-to-treated transition applied exactly once",
+    "runs 188-190 no-status evidence updates",
+    "active queue reconciliation",
+    "partyId and superseded-alias totals",
+    "anti-stagnation guards"
+  ],
+  "effectiveCounts": {
+    "treated": 51,
+    "partial": 27,
+    "setAside": 1,
+    "active": 5,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 5
+  },
+  "activeQueue": [
+    "HER",
+    "TSL",
+    "ESH",
+    "GAS",
+    "UTZ"
+  ],
+  "checks": {
+    "treatedPlusPartialPlusSetAsidePlusActiveEqualsOperationalCanonicalTotal": true,
+    "physicalTotalIncludingSupersededAliasesEquals88": true,
+    "run187PwyTransitionAppliedOnce": true,
+    "runs188To190IntroducedNoCounterMutation": true,
+    "activeQueueCountEquals5": true,
+    "duplicateAliasOrCpoDetected": false,
+    "networkOrClassWideQueueEmpty": true,
+    "statusCoverageExact": true
+  },
+  "corrections": [],
+  "notes": [
+    "PWY remains treated after run187; its deterministic first-party power-band tariff grid must not be reopened without changed evidence.",
+    "HER, TSL and the three Uattzy/UAU technical partyIds remain station-level active and fail-closed.",
+    "ESH/GAS/UTZ remain distinct technical partyIds despite proven corporate/app lineage; no alias collapse is authorized without technical mapping.",
+    "Atlante remains setAside and last by explicit project rule.",
+    "No network-wide or class-wide unresolved CPO remains ahead of station-level work."
+  ],
+  "canonicalPhysicalFile": {
+    "status": "effective ordered delta ledger remains authoritative for post-seed changes",
+    "reason": "The materialized 2026-09-05 seed predates later transitions; this audit verifies the ordered effective partition and does not invent a partial overwrite."
+  },
+  "result": "pass"
+}
