@@ -1,0 +1,91 @@
+{
+  "country": "IT",
+  "run": 194,
+  "recordedAt": "2026-09-14T19:50:30+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "statusMutation": false,
+  "effectiveCounts": {
+    "treated": 51,
+    "partial": 27,
+    "setAside": 1,
+    "active": 5,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 5
+  },
+  "activeQueue": ["HER", "TSL", "ESH", "GAS", "UTZ"],
+  "investigations": [
+    {
+      "partyId": "TSL",
+      "canonicalName": "Tesla Italia Srl.",
+      "priority": "station-level",
+      "result": "no_promotion",
+      "positiveEvidence": [
+        "Current Tesla first-party location page confirms San Giovanni Teatino / Hotel Dragonara, 280 Via Pietro Nenni, 12 Superchargers up to 250 kW, open to Tesla and other CCS EVs.",
+        "Tesla first-party support confirms congestion fee framework for Italy up to EUR 0.50/min."
+      ],
+      "negativeEvidence": [
+        "Current first-party location surface does not expose a stable energy EUR/kWh value in the retrievable page.",
+        "An older/cross-locale indexed Tesla page exposed EUR 0.47/kWh, but the current same-site surface omits the value; freshness/applicability is therefore not strong enough for rankable promotion.",
+        "No deterministic PUN/EVSE-ID mapping for the 12 San Giovanni Teatino stalls was recovered in this run."
+      ],
+      "blockage": "Tesla energy price remains site/time/member-specific and current public page does not expose a stable price plus exact PUN EVSE mapping.",
+      "resumeCondition": "fresh Tesla first-party/app payload containing site price and deterministic mapping to current PUN/EVSE IDs, or a fresh official endpoint exposing both.",
+      "confidence": "high",
+      "antiRepeat": "Do not repeat generic Tesla web/location search without a new price-bearing first-party payload or exact PUN mapping."
+    },
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "priority": "station-level",
+      "result": "no_promotion",
+      "positiveEvidence": [
+        "First-party Hera Ricarica Pubblica contract documentation confirms the historical/direct RFID service and mobility.gruppohera.it network context.",
+        "A 2026 secondary tariff guide reports HeraRicarica Pubblica commercial terms, but it is not authoritative enough to promote a direct current CPO tariff."
+      ],
+      "negativeEvidence": [
+        "No fresh first-party energy EUR/kWh component was recovered for the current direct/ad-hoc Hera service.",
+        "Searches for the secondary-reported EUR 0.46/kWh and 40 kWh/20 EUR terms did not return a current first-party economic sheet establishing present applicability."
+      ],
+      "blockage": "current first-party energy price and exact applicability remain unavailable; historical/secondary prices must remain fail-closed.",
+      "resumeCondition": "fresh Hera first-party price sheet, app/backend payload, QR/ad-hoc payload, or deterministic station tariff API.",
+      "confidence": "high",
+      "antiRepeat": "Do not repeat generic HeraRicarica web/PDF search unless a new dated first-party economic document appears."
+    },
+    {
+      "partyIds": ["ESH", "GAS", "UTZ"],
+      "canonicalName": "Uattzy / UAU legacy technical parties",
+      "priority": "station-level",
+      "result": "no_new_endpoint",
+      "negativeEvidence": [
+        "No new publicly indexed api.enermia.org station/tariff route was recovered beyond the already-known Enermia API root.",
+        "Existing rule preserved: Uattzy app pricing can be eMSP retail on third-party EVSE and cannot be promoted as direct ESH/GAS/UTZ tariff without operator/channel proof."
+      ],
+      "resumeCondition": "APK/backend extraction or guest/API payload exposing EVSE operator, connector identifier, direct-vs-eMSP channel and current tariff together.",
+      "antiRepeat": "Generic web searches are exhausted; next useful step is exact backend/APK or PUN/OCPI mapping evidence."
+    }
+  ],
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalStatus": "stale_seed_2026-09-05",
+    "observedPhysicalCounts": {"treated": 4, "partial": 5, "setAside": 1, "active": 78, "total": 88},
+    "effectiveLedgerCounts": {"treated": 51, "partial": 27, "setAside": 1, "active": 5, "operationalCanonicalTotal": 84, "supersededAlias": 4},
+    "action": "no_partial_overwrite",
+    "reason": "An atomic standalone replacement requires complete deterministic replay of the ordered delta ledger. Local checkout is temporarily unavailable because github.com DNS resolution failed in the execution environment; hand-editing a partial snapshot would risk losing per-CPO evidence.",
+    "requiredNextAction": "materialize the complete delta replay atomically as soon as repository checkout/materialization is available, then rerun full consistency audit."
+  },
+  "atlanteLast": true,
+  "nextUsefulTargets": [
+    "Uattzy exact backend/APK endpoint extraction",
+    "Hera app/backend or new first-party economic sheet",
+    "Tesla fresh price-bearing site/app payload plus PUN EVSE mapping",
+    "Atlante only after the above or if a directly exploitable backend proof appears"
+  ],
+  "history": [
+    "run194: current Tesla public site verified but no fresh stable energy price/mapping; generic Tesla web path marked exhausted until new payload",
+    "run194: Hera generic web/PDF path marked exhausted without current first-party energy tariff",
+    "run194: stale physical canonical re-confirmed; unsafe partial overwrite avoided"
+  ]
+}
