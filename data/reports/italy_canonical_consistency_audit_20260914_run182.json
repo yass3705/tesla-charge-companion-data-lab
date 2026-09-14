@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 182,
+  "recordedAt": "2026-09-14T04:08:00+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "headBeforeAudit": "76553fcc92ac0a514dbb46dba158f1895cf185e0",
+  "trigger": "mandatory full coherence audit after two consecutive runs (181-182) without nominative status/count progression",
+  "baselineAudit": {
+    "path": "data/reports/italy_canonical_consistency_audit_20260914_run180.json",
+    "effectiveCounts": {
+      "treated": 50,
+      "partial": 25,
+      "setAside": 1,
+      "active": 8,
+      "supersededAlias": 4,
+      "operationalCanonicalTotal": 84,
+      "physicalPartyIds": 88
+    }
+  },
+  "replayedPostAuditDeltas": [
+    {
+      "run": 181,
+      "path": "docs/italy-cpo-progress-2026-09-run181-delta.json",
+      "partiesTouched": ["HER"],
+      "statusMutations": 0,
+      "aliasesResolved": 0,
+      "rankableEvseAdded": 0,
+      "counterMutation": false
+    },
+    {
+      "run": 182,
+      "path": "docs/italy-cpo-progress-2026-09-run182-delta.json",
+      "partiesTouched": ["ESH", "GAS", "UTZ"],
+      "statusMutations": 0,
+      "aliasesResolved": 0,
+      "rankableEvseAdded": 0,
+      "counterMutation": false
+    }
+  ],
+  "effectiveCountsAfterReplay": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8
+  },
+  "checks": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroducedByRuns181to182": false,
+    "statusMutationRuns181to182": false,
+    "counterMutationRuns181to182": false,
+    "rankableCoverageMutationRuns181to182": false,
+    "deltaChainContinuous": true,
+    "run181ParentMatchesRun180Head": true,
+    "run182BaseMatchesRun181Head": true
+  },
+  "uattzyScopeControl": {
+    "historicalSeedPartyIds": ["ESH", "GAS", "UTZ"],
+    "historicalSeedEvseTotal": 1198,
+    "currentFirstPartyCorporateRelationship": "UAU/Uattzy explicitly formed from E-Shore, GASGAS and EnerMia",
+    "currentFirstPartyManagedNetwork": ">3000 charging points installed and managed in Italy",
+    "feb2026FirstPartyManagedNetwork": ">2400 charging points installed and managed",
+    "decision": "Corporate alias relationship is proven, but the historical three technical partyIds cannot be treated as a complete current Uattzy inventory or collapsed into one technical identifier without refreshed PUN/OCPI/app/backend mapping.",
+    "doubleCountRisk": "controlled: no additional current managed-network points are added to the canonical and ESH/GAS/UTZ remain technical identities grouped only for investigation context"
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalState": "stale seed",
+    "effectiveLedger": "ordered run deltas plus consistency audits",
+    "preferredReplayScript": "scripts/italy_cpo_progress_consolidate.py",
+    "canonicalOverwritePerformed": false,
+    "safetyDecision": "continue fail-closed; do not hand-build or partially overwrite the canonical until complete lossless replay can execute"
+  },
+  "accessControl": {
+    "punArcgisEndpoint": "https://services2.arcgis.com/pROHh69WvVijk4nR/ArcGIS/rest/services/IdR_latest_ready/FeatureServer/0/query",
+    "latestDirectRuntimeAttempt": "DNS resolution still fails for services2.arcgis.com from the isolated execution container",
+    "classification": "transient environment access limitation; not an operator-level blocker",
+    "effect": "no EDN/EMO promotion from cached or third-party rows"
+  },
+  "antiStagnationDecision": "After run182, generic HERA/Uattzy/EDN/EMO/F2X/PWY searches remain closed. Reopen only on exact new authoritative mapping payloads. Atlante remains last.",
+  "result": "pass: effective Italy ledger remains coherent after runs181-182; no duplicate, alias, status, count or rankable-coverage drift. Uattzy corporate scope mismatch is now explicitly guarded against accidental technical-partyId collapse or network-wide extrapolation."
+}
