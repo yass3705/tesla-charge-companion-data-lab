@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 182,
+  "recordedAt": "2026-09-14T03:54:20+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 181,
+    "previousHead": "ad02f1e9ce09019b9cd9c6f96b03aa9dbae8a833"
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8
+  },
+  "parties": {
+    "ESH_GAS_UTZ": {
+      "canonicalName": "Uattzy / UAU (legacy E-Shore, GASGAS, EnerMia partyIds)",
+      "status": "active",
+      "priority": "station-level pending deterministic connector mapping",
+      "lastInvestigated": "2026-09-14T03:54:20+01:00",
+      "newEvidence": [
+        {
+          "type": "first_party_current_corporate_scope",
+          "source": "Uattzy official website",
+          "url": "https://www.uattzy.com/",
+          "finding": "Uattzy explicitly identifies itself as the public-charging brand of UAU, created from E-Shore, GASGAS and EnerMia. The current website reports more than 3,000 charging points installed and under management in Italy, materially above the 1,198 EVSE represented by the ESH+GAS+UTZ technical partyIds in the stale PUN-derived seed (892+290+16). Therefore those three partyIds are not a complete present-day inventory proxy for the entire Uattzy/UAU managed network.",
+          "positive": true,
+          "authorityClass": "first-party current corporate/network scope"
+        },
+        {
+          "type": "first_party_2026_network_snapshot",
+          "source": "UATTZY_2026 corporate PDF",
+          "url": "https://www.uattzy.com/wp-content/uploads/2026/02/UATTZY_2026.pdf",
+          "finding": "The February 2026 first-party PDF reported more than 2,400 charging points installed and managed and describes 2,400 quick and fast points for the Poste Italiane project, including more than 1,300 already installed at that time. This confirms that the current technical inventory must be reconciled against post-merger UAU/Uattzy identifiers rather than inferred only from historical ESH/GAS/UTZ counts.",
+          "positive": true,
+          "authorityClass": "first-party dated network snapshot"
+        },
+        {
+          "type": "first_party_current_tariff_behavior_reconfirmed",
+          "source": "Uattzy FAQ",
+          "url": "https://www.uattzy.com/faq/",
+          "finding": "The app exposes the tariff and any additional costs per connector before charging; the FAQ states that prices may vary by delivered power, session duration and stall-occupation time. This remains incompatible with blindly applying the July headline grid to every historical partyId without connector-level/class-level binding.",
+          "positive": true,
+          "authorityClass": "first-party current operational FAQ"
+        }
+      ],
+      "coverage": {
+        "rankableEvseAdded": 0,
+        "rankableStationsAdded": 0,
+        "historicalTechnicalEvseInSeed": 1198,
+        "currentFirstPartyManagedPoints": ">3000",
+        "decision": "Do not expand or merge technical partyId coverage from corporate branding alone. Preserve ESH/GAS/UTZ as a corporate alias group while retaining each technical partyId until PUN/OCPI/app/backend evidence identifies current UAU/Uattzy ownership and connector-level tariffs deterministically."
+      },
+      "aliasDecision": {
+        "corporateRelationshipProven": true,
+        "technicalPartyIdSupersessionProven": false,
+        "action": "group for investigation/dedup context only; do not collapse physical identifiers or count additional managed points without inventory evidence"
+      },
+      "blockage": "First-party corporate evidence proves the E-Shore/GASGAS/EnerMia merger into UAU/Uattzy, but current Uattzy managed-network size substantially exceeds the historical ESH/GAS/UTZ inventory and the FAQ remains connector-specific. Exact current technical ownership and tariff mapping are still missing.",
+      "resumeCondition": "Recover Uattzy app/guest/QR/backend or refreshed PUN/OCPI rows that expose current UAU/Uattzy partyIds, connector class/power and direct tariff; then reconcile historical ESH/GAS/UTZ identities without extrapolating the corporate network total.",
+      "confidence": "high for corporate relationship and current managed-network magnitude; insufficient for technical supersession or rankable connector mapping",
+      "historyAppend": "2026-09-14 run182: first-party Uattzy site/PDF establish that the post-merger managed network (>3,000 points currently; >2,400 in Feb 2026) is materially larger than the 1,198 EVSE represented by historical ESH+GAS+UTZ in the stale seed. Corporate alias relationship is proven, but technical partyId supersession/completeness is not; no EVSE promotion or partyId collapse performed."
+    }
+  },
+  "consistency": {
+    "statusMutation": false,
+    "counterMutation": false,
+    "aliasesResolved": 0,
+    "rankableEvseAdded": 0,
+    "rankableStationsAdded": 0,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false
+  },
+  "antiStagnation": {
+    "ESH_GAS_UTZ": "Do not repeat generic Uattzy tariff/corporate searches. Reopen only on Uattzy app/guest/QR/backend or refreshed PUN/OCPI evidence that identifies current technical partyIds plus connector-level/class-level tariff binding.",
+    "HER": "Do not repeat generic Hera tariff searches. Reopen only on signed/current bundle/live traffic/QR/session payload or refreshed exact PUN/OCPI evidence exposing the numeric energy component.",
+    "EDN": "Do not repeat generic Galbusera/identifier search. Reopen only on authoritative exact-ID binding or material tariff/source change.",
+    "EMO": "Reopen only on direct PUN ArcGIS rows or exact QR/app mapping that reconciles Tronchetto product/tariff fields.",
+    "F2X": "Reopen only on exact authoritative mapping for the seven Novate residual EVSE or a material source change.",
+    "PWY": "Reopen only on changed authoritative data for the three exact unresolved IDs.",
+    "ATL": "Keep last; reopen only on directly exploitable backend/tariff evidence."
+  },
+  "nextPriority": "Use a genuinely new exact mapping surface for EDN/EMO/Uattzy/Hera/PWY or Tesla. Direct PUN ArcGIS remains preferred for EDN/EMO when reachable. Atlante remains last."
+}
