@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 188,
+  "recordedAt": "2026-09-14T11:53:49+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 187,
+    "previousHead": "a501cc011aab7839d391ecc834dea148d7a34186"
+  },
+  "effectiveCounts": {
+    "treated": 51,
+    "partial": 27,
+    "setAside": 1,
+    "active": 5,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 5
+  },
+  "activeQueueReconciled": [
+    {"partyId": "HER", "canonicalName": "HERA COMM SPA", "priority": "station-level"},
+    {"partyId": "TSL", "canonicalName": "Tesla Italia Srl.", "priority": "station-level"},
+    {"partyId": "ESH", "canonicalName": "E-Shore s.r.l. / Uattzy legacy", "priority": "station-level"},
+    {"partyId": "GAS", "canonicalName": "GASGAS S.R.L. / Uattzy legacy", "priority": "station-level"},
+    {"partyId": "UTZ", "canonicalName": "UAU srl / Uattzy", "priority": "station-level"}
+  ],
+  "changes": [
+    {
+      "partyId": "TSL",
+      "canonicalName": "Tesla Italia Srl.",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "fresh current first-party Tesla Italy Supercharger tariff rules",
+      "tariffModel": "site-specific and time-of-use; price displayed per Supercharger site in Tesla vehicle navigation/app",
+      "tariffChannel": "direct Tesla account/app; selected sites also expose payment terminals; MSP access is separately supported",
+      "positiveEvidenceAppend": [
+        "Current Tesla Italy support states the specific charging price for each Supercharger site is displayed in the site popup on the vehicle touchscreen/app and prices may change over time.",
+        "Tesla states all European Supercharger sites use peak/off-peak pricing; exact tariff and peak hours are shown in the navigation/app.",
+        "Current Tesla Italy congestion fee table gives a typical Italy fee of 0.50 EUR/min, potentially up to 1.00 EUR/min depending on location, with a five-minute grace period after the triggering condition."
+      ],
+      "negativeEvidenceAppend": [
+        "No current first-party national Italy energy-price grid exists on the public support surface; therefore no network-wide energy tariff may be inferred.",
+        "Public web search did not yield deterministic current per-site Italy energy prices suitable for bulk ranking without app/site payloads."
+      ],
+      "officialUrls": [
+        "https://www.tesla.com/it_it/support/charging/supercharging",
+        "https://www.tesla.com/it_it/support/charging/supercharger/fees"
+      ],
+      "decision": "Keep TSL active and fail-closed for energy-price ranking. Do not extrapolate a national or static site tariff. Reopen only when an exact app/navigation/backend site-price payload is available for canonical Italy sites.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "deterministic Tesla app/navigation/backend payload mapping exact canonical Italy Supercharger site/EVSE to current energy price and applicable time window",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-14",
+      "lastChanged": "2026-09-14",
+      "historyAppend": "run188: current first-party Tesla Italy documentation reconfirmed site/time-specific energy pricing and provided current congestion-fee rules; generic national tariff search closed, no rankable energy coverage added."
+    },
+    {
+      "partyIdGroup": ["ESH", "GAS", "UTZ"],
+      "canonicalName": "Uattzy / UAU legacy partyIds",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "fresh first-party Uattzy public/FAQ/CRM-surface check for numeric current tariff grid or deterministic class thresholds",
+      "positiveEvidenceAppend": [
+        "Current Uattzy first-party site still identifies Uattzy as the UAU public-charging brand created from E-Shore, GASGAS and EnerMia and reports more than 3,000 charging points installed/managed in Italy.",
+        "Current FAQ still states the Uattzy app displays the applied tariff at each connector and any additional costs before charging."
+      ],
+      "negativeEvidenceAppend": [
+        "No current first-party public numeric energy tariff grid or exact Quick/Fast/Ultra Fast thresholds were exposed by the fresh public search.",
+        "The CRM surface remains authenticated and did not provide a public deterministic station/EVSE tariff payload."
+      ],
+      "officialUrls": [
+        "https://www.uattzy.com/",
+        "https://www.uattzy.com/faq/",
+        "https://crm.uattzy.com/login"
+      ],
+      "decision": "No status or coverage mutation. Keep ESH/GAS/UTZ separate and active until exact technical migration/mapping plus connector-level tariff payload or deterministic first-party class rule is available.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "exact Uattzy app/backend/QR/PUN connector mapping with current direct tariff, or first-party numerical class grid with exact thresholds and applicability plus technical partyId mapping",
+      "lastInvestigated": "2026-09-14",
+      "historyAppend": "run188: fresh first-party check found no new public numeric grid; generic web route remains exhausted and should not be repeated absent changed evidence."
+    }
+  ],
+  "consistency": {
+    "statusMutation": false,
+    "counterMutation": false,
+    "aliasesResolved": 0,
+    "treatedPlusPartialPlusSetAsidePlusActive": 84,
+    "physicalWithSupersededAliases": 88,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false,
+    "activeQueueCount": 5,
+    "activeQueueMatchesEffectiveCount": true,
+    "result": "pass"
+  },
+  "antiStagnation": {
+    "HER": "Reopen only on tariff-bearing exact first-party/PUN/app/QR evidence; generic public tariff search remains closed.",
+    "TSL": "Reopen only on exact Tesla app/navigation/backend site-price payload; do not repeat generic national tariff search.",
+    "ESH_GAS_UTZ": "Reopen only on exact Uattzy app/backend/QR/PUN mapping or first-party numerical class thresholds/applicability with technical partyId mapping.",
+    "ATL": "setAside and last; reopen only on directly exploitable backend/tariff evidence."
+  },
+  "nextPriority": "Seek a genuinely new exact backend/app/QR/PUN tariff surface for HER or Uattzy legacy partyIds; Tesla requires exact site/time payloads. Atlante remains last."
+}
