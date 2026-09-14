@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 196,
+  "recordedAt": "2026-09-15T00:51:31+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 195,
+    "consolidatorCompatibilityCommit": "9752427f63eb44d287e6495a77cfc93539385fc9"
+  },
+  "statusMutation": false,
+  "changes": [],
+  "effectiveCounts": {
+    "treated": 51,
+    "partial": 27,
+    "setAside": 1,
+    "active": 5,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 5
+  },
+  "activeQueue": ["HER", "TSL", "ESH", "GAS", "UTZ"],
+  "consistencyCorrection": {
+    "severity": "major",
+    "finding": "The current compatibility consolidator did not replay every delta shape used by the recent Italy ledger. In particular, top-level updates and investigations were silently outside the replay path, and partyIdGroup records inside changes were retained only as non-CPO evidence instead of being attached to each referenced party.",
+    "safeCorrection": "scripts/italy_cpo_progress_consolidate_current.py now supports updates, investigations, list/keyed parties, and normalizes partyIdGroup to partyIds while preserving research-only investigation records as nested evidence and keeping fail-closed inventory/status checks.",
+    "commit": "9752427f63eb44d287e6495a77cfc93539385fc9",
+    "proofExamples": [
+      "run193 changes uses partyIdGroup for ESH/GAS/UTZ",
+      "run194 investigations contains party-scoped and grouped research evidence",
+      "run195 updates contains the latest HER blocker/resume details"
+    ],
+    "impactBeforeFix": "An atomic replay with the old wrapper could have produced a superficially consistent status count while omitting recent per-CPO evidence, violating the canonical-resume requirement.",
+    "impactAfterFix": "The replay path is now compatible with these observed modern shapes. Canonical materialization must still be executed and checked before replacing the stale seed."
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalStatus": "stale_seed_2026-09-05",
+    "seedCounts": {"treated": 4, "partial": 5, "setAside": 1, "active": 78, "totalPhysicalPartyIds": 88},
+    "effectiveLedgerCounts": {"treated": 51, "partial": 27, "setAside": 1, "active": 5, "supersededAlias": 4, "operationalCanonicalTotal": 84, "physicalPartyIds": 88},
+    "actionThisRun": "replay compatibility fixed; no unsafe partial overwrite",
+    "requiredNextAction": "Execute the complete ordered replay with scripts/italy_cpo_progress_consolidate_current.py, require physicalPartyIds=88 and operational partition 51/27/1/5 plus 4 supersededAlias, run the full canonical consistency audit, then atomically replace the seed only if all checks pass."
+  },
+  "tariffResearch": {
+    "newlyTreated": [],
+    "rankableEvseAdded": 0,
+    "rankableStationsAdded": 0,
+    "targetedHeraCheck": "The live first-party /home/pages/tariffs surface remains reachable but exposes no retrievable static numeric energy payload in this run; no promotion made.",
+    "antiRepeat": "Do not repeat generic HERA/Tesla/Uattzy searches. Next useful research remains exact first-party backend/API/binary payloads only."
+  },
+  "atlanteLast": true,
+  "nextPriority": "Materialize and validate the corrected canonical replay; then exact HERA/Uattzy backend extraction, Tesla only on a fresh exact site/time tariff payload, Atlante last.",
+  "history": [
+    "run196: detected and fixed missing modern delta-shape replay coverage before canonical materialization",
+    "run196: preserved effective partition 51 treated / 27 partial / 1 setAside / 5 active + 4 superseded aliases; no tariff promoted without exact evidence"
+  ]
+}
