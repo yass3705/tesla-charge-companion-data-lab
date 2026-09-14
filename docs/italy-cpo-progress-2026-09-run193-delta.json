@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 193,
+  "recordedAt": "2026-09-14T18:54:24+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 192,
+    "previousHead": "39778ddc0d735cea0e7c62be79759bd1ba73ef31"
+  },
+  "effectiveCounts": {
+    "treated": 51,
+    "partial": 27,
+    "setAside": 1,
+    "active": 5,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 5
+  },
+  "changes": [
+    {
+      "partyIdGroup": ["ESH", "GAS", "UTZ"],
+      "canonicalName": "Uattzy / UAU legacy partyIds",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "current first-party service terms and direct-vs-eMSP tariff semantics",
+      "positiveEvidenceAppend": [
+        "Current Uattzy/UAU service terms dated December 2025 state that the app displays stations from a UAU-managed database containing both third-party EVSE data received under bilateral agreements and publicly scouted information.",
+        "The same current terms state that charging fees shown in the EVSE detail may use multiple metrics (activation, energy, charging time, parking/occupancy, reservation), may vary by location, availability and dynamic real-time instructions from the EVSE owner, and are therefore connector/session specific rather than a proven uniform network tariff.",
+        "The terms explicitly state that UAU tariff collection is economically independent from roaming partner agreements and that, for third-party EVSE, UAU acts as an EMS provider and calculates the retail charging tariff from EVSE-owner session data.",
+        "The live EnerMia first-party site confirms the corporate lineage: E-Shore Mobility merged with EnerMia, the footer is UAU srl, and the current app is Uattzy while legacy EnerMia/E-Shore branding is being migrated."
+      ],
+      "negativeEvidenceAppend": [
+        "Because Uattzy app prices can be UAU eMSP retail prices for third-party EVSE, a price observed in the app must not be promoted as the direct CPO/ad-hoc price of ESH/GAS/UTZ without proving that the EVSE is owned/operated by the corresponding UAU CPO scope and that the displayed tariff is the direct CPO tariff rather than UAU roaming retail.",
+        "No indexed public path under api.enermia.org exposes station, EVSE or tariff payloads; direct root access only identifies the service as 'Enermia API'.",
+        "No network-wide or class-wide direct tariff for ESH/GAS/UTZ is proven by the current terms."
+      ],
+      "officialReferencesAppend": [
+        "https://enermia.org/wp-content/uploads/2025/12/Condizioni-del-servizio-Informativa-Privacy-sito-dic25.pdf",
+        "https://enermia.org/",
+        "https://api.enermia.org/"
+      ],
+      "decision": "Keep ESH/GAS/UTZ active, distinct and fail-closed. Treat Uattzy app tariff data as eMSP/retail unless an EVSE is deterministically mapped to direct UAU-owned CPO operation and the tariff channel is proven direct/ad-hoc. Do not use generic Uattzy app prices to close these CPOs.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "public/guest api.enermia.org or current Uattzy binary yields exact station/connector payloads containing operator ownership plus tariff-channel semantics, enabling deterministic EVSE -> direct CPO tariff mapping",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-14",
+      "lastChanged": "2026-09-14",
+      "historyAppend": "run193: established from current first-party UAU terms that Uattzy app pricing may be independent eMSP retail for third-party EVSE, preventing false promotion of app prices as direct ESH/GAS/UTZ CPO tariffs."
+    }
+  ],
+  "consistency": {
+    "statusMutation": false,
+    "counterMutation": false,
+    "aliasesResolved": 0,
+    "treatedPlusPartialPlusSetAsidePlusActive": 84,
+    "physicalWithSupersededAliases": 88,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false,
+    "activeQueue": ["HER", "TSL", "ESH", "GAS", "UTZ"],
+    "activeQueueCount": 5,
+    "activeQueueMatchesEffectiveCount": true,
+    "result": "pass"
+  },
+  "antiStagnation": {
+    "HER": "Do not repeat generic public tariff searches. Resume on actual APK/XAPK endpoint extraction or a new first-party numerical energy-price endpoint.",
+    "TSL": "Reopen only on exact Tesla app/navigation/backend site-price payload; do not repeat generic national tariff search.",
+    "ESH_GAS_UTZ": "Do not treat Uattzy app prices as direct CPO prices by default. Resume only on api.enermia.org/current binary evidence that exposes exact EVSE ownership/operator plus direct-vs-eMSP tariff channel and numerical tariff.",
+    "ATL": "setAside and last; reopen only on directly exploitable backend/tariff evidence."
+  },
+  "nextPriority": "Extract or discover exact api.enermia.org/Uattzy station endpoints with operator ownership and tariff-channel fields; then Hera binary/backend. Tesla remains exact site/time payload only; Atlante remains last."
+}
