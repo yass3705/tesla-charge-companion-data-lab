@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 184,
+  "recordedAt": "2026-09-14T08:03:00+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 183,
+    "previousHead": "437dd348b413979f960b6f1a6bb1400aa55610af"
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 27,
+    "setAside": 1,
+    "active": 6,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 6
+  },
+  "transitions": [
+    {
+      "partyId": "EDN",
+      "from": "active",
+      "to": "partial",
+      "reason": "Galbusera now has a deterministic exact 12-EVSE topology reconciliation: Edison first-party defines the site as 4 AC points plus 8 DC points and prices every DC point at 0.59 EUR/kWh VAT included; a fresh live directory exposes exactly 12 IT*EDN IDs at the same address with exactly 4 Type2 22 kW and 8 CCS 120 kW. The tariff itself remains first-party; the third-party surface is used only to discover/corroborate exact IDs and topology."
+    }
+  ],
+  "parties": {
+    "EDN": {
+      "canonicalName": "Edison Next S.P.A.",
+      "status": "partial",
+      "priority": "station-level",
+      "lastInvestigated": "2026-09-14T08:03:00+01:00",
+      "inventory": {
+        "canonicalEvse": 826,
+        "canonicalStations": 377,
+        "source": "canonical PUN-derived inventory seed; Galbusera subset freshly reconciled"
+      },
+      "tariffModel": "station-specific / project-specific direct pricing",
+      "tariffChannel": "direct Edison Next POS / EVWAY for Galbusera; roaming kept separate",
+      "coveredSubpopulations": [
+        {
+          "site": "Galbusera Tre Marie Bistrot Caffetteria Store",
+          "address": "Via Guglielmo Marconi 20, 20864 Agrate Brianza (MB)",
+          "siteEvseCount": 12,
+          "ac22kwEvse": [
+            "IT*EDN*EA02001",
+            "IT*EDN*EA02002",
+            "IT*EDN*EA02011",
+            "IT*EDN*EA02012"
+          ],
+          "dc120kwEvse": [
+            "IT*EDN*ED00691",
+            "IT*EDN*ED00692",
+            "IT*EDN*ED00701",
+            "IT*EDN*ED00702",
+            "IT*EDN*ED00711",
+            "IT*EDN*ED00712",
+            "IT*EDN*ED00721",
+            "IT*EDN*ED00722"
+          ],
+          "rankableEvse": 8,
+          "rankableIds": [
+            "IT*EDN*ED00691",
+            "IT*EDN*ED00692",
+            "IT*EDN*ED00701",
+            "IT*EDN*ED00702",
+            "IT*EDN*ED00711",
+            "IT*EDN*ED00712",
+            "IT*EDN*ED00721",
+            "IT*EDN*ED00722"
+          ],
+          "directTariff": {
+            "energyEurPerKwh": 0.59,
+            "vatIncluded": true,
+            "scope": "all Fast DC infrastructure at this Galbusera site",
+            "payment": ["POS payment card", "EVWAY app"],
+            "validity": "launch promotion currently stated on Edison first-party page; no end date stated on page",
+            "source": "https://www.edison.it/it/edison-next-e-galbusera-nuove-colonnine-di-ricarica-veicoli-elettrici"
+          },
+          "idTopologyCorroboration": {
+            "source": "https://app.pumpapp.co/it/stazione-di-ricarica-route220-via-guglielmo-marconi-20-agrate-brianza/68cf0f24-273b-11f1-8003-97ef5f588a6c",
+            "authorityClass": "third-party discovery/corroboration only",
+            "finding": "Exactly 12 IT*EDN EVSE at the exact Edison site address, partitioned as exactly 4 Type2 22 kW and 8 CCS 120 kW, matching the first-party Edison site topology one-for-one."
+          },
+          "deterministicMappingRationale": "No station or power-class extrapolation is required: Edison first-party fixes the exact site, total point count, 4 AC/8 DC topology and tariff on every DC point; the live ID surface returns exactly the same finite topology at the same address. Therefore the eight CCS IDs are the complete first-party-priced DC subset for this site.",
+          "rankable": true,
+          "confidence": "high"
+        }
+      ],
+      "uncoveredSubpopulations": {
+        "evseCount": 818,
+        "reason": "No network-wide Edison Next tariff is proven; remaining sites require their own direct station/EVSE tariff evidence."
+      },
+      "positiveEvidence": [
+        "Edison first-party page dated 2026-04-30 states 12 charging points at Via Guglielmo Marconi 20: two Quick AC 22 kW columns and four Fast DC 120 kW columns, corresponding to 4 AC and 8 DC simultaneous charging points.",
+        "The same first-party page states a 0.59 EUR/kWh VAT-included launch tariff on all DC columns, payable by POS card and EVWAY app.",
+        "Fresh live directory exposes exactly 12 IT*EDN identifiers at the same address, exactly 4 Type2 22 kW and 8 CCS 120 kW, eliminating residual ambiguity about which exact IDs form the DC subset."
+      ],
+      "negativeEvidence": [
+        "Direct PUN ArcGIS access remains unavailable from the execution environment.",
+        "No general Edison Next network-wide tariff should be inferred from this project-specific Galbusera promotion."
+      ],
+      "blockage": "818 EDN EVSE remain station-level and fail-closed until site-specific direct tariff plus deterministic EVSE mapping is recovered.",
+      "resumeCondition": "New Edison/EVWAY/PUN/OCPI/QR/app evidence for another EDN site or a genuine network/class-wide tariff rule.",
+      "historyAppend": "2026-09-14 run184: EDN moved active -> partial; 8 exact Galbusera DC EVSE promoted rankable at 0.59 EUR/kWh from first-party site tariff after exact finite topology reconciliation."
+    }
+  },
+  "canonicalMaintenance": {
+    "issueDetected": "The reference consolidator only replayed historical changes/classification shapes and silently skipped recent runtime 'transitions' and 'parties' containers, leaving the physical canonical file stale.",
+    "safeCorrection": "Added scripts/italy_cpo_progress_consolidate_current.py, a compatibility wrapper that replays transitions and partyId-keyed parties updates before invoking the existing fail-closed inventory/count checks.",
+    "commit": "437dd348b413979f960b6f1a6bb1400aa55610af",
+    "remainingConstraint": "The execution sandbox cannot resolve github.com, so the full branch checkout cannot be materialized here to execute the consolidator in this run. The correction is committed and the stale canonical is explicitly not overwritten from an incomplete local reconstruction."
+  },
+  "consistency": {
+    "statusMutation": true,
+    "counterMutation": true,
+    "aliasesResolved": 0,
+    "rankableEvseAdded": 8,
+    "treatedPlusPartialPlusSetAsidePlusActive": 84,
+    "physicalWithSupersededAliases": 88,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false,
+    "result": "pass on effective ledger; physical canonical rebuild pending executable checkout"
+  },
+  "antiStagnation": {
+    "EDN": "Galbusera is closed and rankable for the eight DC IDs. Do not revisit it unless Edison changes the tariff or validity. Continue only on other EDN sites with new exact evidence.",
+    "EMO": "Reopen only on direct PUN/app/session evidence that resolves the Tronchetto monetary conflict or on another exact station subset.",
+    "F2X": "Reopen only on authoritative exact mapping for the seven residual Novate EVSE or material source change.",
+    "PWY": "Reopen only on changed authoritative data for the unresolved exact IDs.",
+    "UAU_legacy": "Reopen ESH/GAS/UTZ only on exact Uattzy app/backend/PUN mapping or first-party class thresholds and applicability.",
+    "ATL": "Keep last; reopen only on directly exploitable backend/tariff evidence."
+  },
+  "nextPriority": "Continue the remaining six station-level active CPOs, selecting the largest exact-evidence opportunity first. Atlante remains last."
+}
