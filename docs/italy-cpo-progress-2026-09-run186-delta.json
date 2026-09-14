@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 186,
+  "recordedAt": "2026-09-14T09:53:34+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 185,
+    "previousHead": "c9643d2da4526ca4c4754343a03daf527f065717"
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 27,
+    "setAside": 1,
+    "active": 6,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 6
+  },
+  "changes": [],
+  "parties": {
+    "F2X": {
+      "canonicalName": "Free To X / Mobilize S.p.A.",
+      "status": "partial",
+      "priority": "station-level",
+      "lastInvestigated": "2026-09-14T09:53:34+01:00",
+      "tariffModel": "direct ad-hoc card tariff with current power-band rule; MSP roaming kept separate",
+      "tariffChannel": "direct credit/debit card at Free To X station terminal",
+      "coveredSubpopulationsAppend": [
+        {
+          "site": "AdS Novate Nord / A4 Torino-Trieste, Novate Milanese",
+          "sourceInventory": "current PUN-derived exact EVSE listing",
+          "exactEvseCount": 7,
+          "newlyRankableEvse": [
+            "IT*F2X*EF2XITD0101*1",
+            "IT*F2X*EF2XITD0101*2",
+            "IT*F2X*EF2XITD0102*1",
+            "IT*F2X*EF2XITD0102*2"
+          ],
+          "connectorClass": "CCS 300 kW (>64 kW)",
+          "directTariff": {
+            "energyEurPerKwh": 0.79,
+            "vatIncluded": true,
+            "payment": "credit/debit card at station terminal",
+            "powerRule": ">64 kW",
+            "validity": "current Free To X Charge&Save page; promotion window 2026-07-15 through 2026-09-30 explicitly applies 0.50 EUR/kWh only to eligible DC <=64 kW, while the page separately states card charging at high-power stations over 64 kW costs 0.79 EUR/kWh",
+            "officialSource": "https://freeto-x.it/en/promo/"
+          },
+          "deterministicMappingRationale": "The exact PUN-derived Novate inventory binds four named F2X EVSEs to CCS 300 kW. The current first-party Free To X page states the direct card tariff at high-power charging stations over 64 kW is 0.79 EUR/kWh. Therefore these four exact IDs map deterministically to the >64 kW first-party rule without station-price extrapolation.",
+          "rankable": true,
+          "confidence": "high"
+        }
+      ],
+      "uncoveredSubpopulationsAppend": [
+        {
+          "site": "AdS Novate Nord / A4 Torino-Trieste, Novate Milanese",
+          "evse": [
+            "IT*F2X*EF2XITD0151*1",
+            "IT*F2X*EF2XITD0151*2",
+            "IT*F2X*EF2XITD0151*3"
+          ],
+          "details": [
+            "IT*F2X*EF2XITD0151*1 = CCS 63 kW",
+            "IT*F2X*EF2XITD0151*2 = CHAdeMO 63 kW",
+            "IT*F2X*EF2XITD0151*3 = Type2 22 kW"
+          ],
+          "reason": "The two 63 kW DC connectors fall inside the current <=64 kW Charge&Save band, but the first-party page conditions the 0.50 EUR/kWh promotional rate on charging at a pole carrying the promotional orange sign. No authoritative evidence yet proves that the Novate 63 kW unit carries that sign. The AC22 connector is outside the DC promotion and no current direct exact tariff is proven here."
+        }
+      ],
+      "positiveEvidenceAppend": [
+        "Free To X first-party Charge&Save page, freshly crawled 2026-09-14, states direct credit/debit-card charging at high-power stations over 64 kW costs 0.79 EUR/kWh.",
+        "The same first-party page states a 0.50 EUR/kWh VAT-included promotional direct-card tariff for DC charging up to 64 kW from 2026-07-15 through 2026-09-30, subject to the charging pole carrying the promotional sign.",
+        "Fresh PUN-derived Novate listing exposes exactly seven F2X EVSE IDs and connector powers: four CCS 300 kW, one CCS 63 kW, one CHAdeMO 63 kW and one Type2 22 kW."
+      ],
+      "negativeEvidenceAppend": [
+        "PUN-derived Novate rows still state tariffs were not communicated to PUN; PUN is used only for deterministic EVSE identity/power mapping, not monetary values.",
+        "No authoritative evidence found in this run that the Novate 63 kW charger carries the required Charge&Save promotional orange sign, so the two 63 kW DC EVSE remain fail-closed rather than receiving 0.50 EUR/kWh."
+      ],
+      "blockage": "At Novate, only the two 63 kW DC connectors and one 22 kW AC connector remain unresolved; other F2X unresolved subsets retain their existing guards.",
+      "resumeCondition": "For Novate 63 kW, require first-party station page/photo/app/backend/QR confirming Charge&Save eligibility/signage. For AC22, require current direct exact tariff. Reopen other residual F2X only on authoritative exact mapping or material tariff change.",
+      "historyAppend": "2026-09-14 run186: four exact Novate CCS 300 kW EVSE promoted rankable at current first-party direct-card tariff 0.79 EUR/kWh. Two 63 kW DC and one AC22 remain fail-closed; no 0.50 promo extrapolation without station eligibility proof."
+    }
+  },
+  "consistency": {
+    "statusMutation": false,
+    "counterMutation": false,
+    "aliasesResolved": 0,
+    "rankableEvseAdded": 4,
+    "treatedPlusPartialPlusSetAsidePlusActive": 84,
+    "physicalWithSupersededAliases": 88,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false,
+    "result": "pass on effective ledger; F2X remains partial with four additional exact rankable EVSE"
+  },
+  "antiStagnation": {
+    "F2X": "Do not revisit the four Novate 300 kW EVSE unless the first-party >64 kW card tariff changes. For the two 63 kW EVSE, reopen only on authoritative proof of Charge&Save sign/eligibility. For the AC22 EVSE, reopen only on an exact current direct tariff.",
+    "HER": "Do not repeat public/PUN sample searches until a tariff-bearing exact row or first-party numeric energy component appears.",
+    "PWY": "Do not repeat generic web tariff searches. Reopen only on exact app/backend/QR/PUN/OCPI evidence.",
+    "EDN": "Galbusera remains closed; investigate only newly evidenced exact sites.",
+    "EMO": "Reopen only on direct PUN/app/session evidence resolving the Tronchetto conflict or another exact station subset.",
+    "UAU_legacy": "Reopen ESH/GAS/UTZ only on exact Uattzy app/backend/PUN mapping or first-party class thresholds/applicability.",
+    "ATL": "Keep last; reopen only on directly exploitable backend/tariff evidence."
+  },
+  "nextPriority": "Seek authoritative eligibility evidence for the two Novate 63 kW F2X EVSE only if directly available; otherwise continue to a different active station-level CPO with genuinely new app/backend/QR/PUN/OCPI evidence. Atlante remains last."
+}
