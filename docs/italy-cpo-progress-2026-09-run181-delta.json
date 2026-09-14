@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 181,
+  "recordedAt": "2026-09-14T02:55:25+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 180,
+    "previousHead": "928c92b4dc778c73ebae519bd4da89dff4f1bb96"
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8
+  },
+  "parties": {
+    "HER": {
+      "canonicalName": "HERA COMM SPA",
+      "partyId": "HER",
+      "status": "active",
+      "priority": "station-level",
+      "knownInventory": {
+        "evse": 1137,
+        "stations": 523,
+        "source": "Italy canonical inventory seed / effective ledger"
+      },
+      "lastInvestigated": "2026-09-14T02:55:25+01:00",
+      "newEvidence": [
+        {
+          "type": "first_party_current_ev_driver_portal",
+          "source": "Hera EV Driver Web Portal",
+          "url": "https://heraricarica.gruppohera.it/",
+          "finding": "The current public Hera charging portal exposes deterministic power bands for its charging-point map: Default 0-22 kW, Rapido 23-50 kW, Veloce 51-100 kW, Powered 101-150 kW and Ultra above 150 kW. These bands are authoritative technical classification evidence but do not by themselves establish the energy price for each band.",
+          "positive": true,
+          "authorityClass": "first-party current operational portal"
+        },
+        {
+          "type": "first_party_current_tariff_page",
+          "source": "Hera EV Driver Web Portal - Tariffe",
+          "url": "https://heraricarica.gruppohera.it/home/pages/tariffs",
+          "finding": "The current tariff page exposes exact post-charge occupancy penalties: after 60 minutes from charge completion, 0.08 EUR/min for Type 2/Type 3A from 07:00 to 23:00 every day and 0.15 EUR/min for CHAdeMO/CCS2 all day. The page visibly contains sections for flat and consumption offers, but the energy-price numeric fields are not present in the crawlable static text and appear to require a dynamic/static-bundle or live-traffic surface.",
+          "positive": true,
+          "authorityClass": "first-party current tariff policy"
+        }
+      ],
+      "tariffModel": "station_or_connector tariff with first-party power-class taxonomy; energy component still not recoverable deterministically from public static text",
+      "tariffChannel": "direct CPO / Hera EV Driver portal",
+      "fees": {
+        "postChargeGraceMinutes": 60,
+        "occupancy": [
+          {
+            "connectorClasses": ["Type 2", "Type 3A"],
+            "eurPerMinute": 0.08,
+            "timeWindow": "07:00-23:00 daily"
+          },
+          {
+            "connectorClasses": ["CHAdeMO", "CCS2"],
+            "eurPerMinute": 0.15,
+            "timeWindow": "00:00-23:59 daily"
+          }
+        ]
+      },
+      "powerClasses": [
+        {"label": "Default", "minKwInclusive": 0, "maxKwInclusive": 22},
+        {"label": "Rapido", "minKwInclusive": 23, "maxKwInclusive": 50},
+        {"label": "Veloce", "minKwInclusive": 51, "maxKwInclusive": 100},
+        {"label": "Powered", "minKwInclusive": 101, "maxKwInclusive": 150},
+        {"label": "Ultra", "minKwExclusive": 150}
+      ],
+      "coverage": {
+        "rankableEvseAdded": 0,
+        "rankableStationsAdded": 0,
+        "reason": "No exact current energy-price payload was recovered, so power bands and occupancy fees cannot be used to infer the energy tariff."
+      },
+      "negativePaths": [
+        "Fresh first-party portal/static-text inspection does not expose numeric energy prices for the flat/consumption offer sections.",
+        "Direct runtime HTML/bundle retrieval could not be executed because the isolated container still has DNS resolution failure; do not substitute stale third-party tariff values."
+      ],
+      "blockage": "Current Hera portal proves the class taxonomy and occupancy fees, but the energy-price values remain dynamically hidden/unavailable in the accessible static surface. Exact station/EVSE -> current energy tariff mapping is therefore not yet deterministic.",
+      "resumeCondition": "Inspect signed/current Hera portal JS/static bundle, live browser/network traffic, QR/session payload, or refreshed exact PUN/OCPI rows that expose the numeric energy component and bind it deterministically to station/EVSE or to an officially defined class.",
+      "confidence": "high for current power classes and occupancy fees; insufficient for energy-price ranking",
+      "historyAppend": "2026-09-14 run181: current first-party Hera EV Driver portal recovered exact five-band power taxonomy and post-charge occupancy fees. Energy-price fields remain absent from crawlable static text, so HER remains fail-closed and no EVSE is promoted. Generic Hera tariff search is closed; reopen only on bundle/live-traffic/QR or refreshed authoritative station mapping."
+    }
+  },
+  "consistency": {
+    "statusMutation": false,
+    "counterMutation": false,
+    "aliasesResolved": 0,
+    "rankableEvseAdded": 0,
+    "rankableStationsAdded": 0,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false
+  },
+  "antiStagnation": {
+    "HER": "Do not repeat generic Hera tariff searches. Reopen only for signed/current bundle/static inspection, live traffic/QR/session payload, or refreshed exact PUN/OCPI evidence exposing the numeric energy component.",
+    "EDN": "Do not repeat generic Galbusera/identifier web search. Reopen only on authoritative exact-ID binding or material tariff/source change.",
+    "EMO": "Reopen only on direct PUN ArcGIS rows or exact QR/app mapping that reconciles Tronchetto product/tariff fields.",
+    "ESH_GAS_UTZ": "Reopen only on Uattzy app/guest/QR/backend connector payloads or first-party tariff material with exact class thresholds and fee applicability.",
+    "F2X": "Reopen only on exact authoritative mapping for the seven Novate residual EVSE or a material source change.",
+    "PWY": "Reopen only on changed authoritative data for the three exact unresolved IDs.",
+    "ATL": "Keep last; reopen only on directly exploitable backend/tariff evidence."
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalState": "stale seed",
+    "effectiveLedger": "ordered run deltas plus consistency audits",
+    "preferredReplayScript": "scripts/italy_cpo_progress_consolidate.py",
+    "overwritePerformed": false,
+    "reason": "Complete lossless replay still cannot be executed through the isolated runtime because external DNS access is unavailable; do not hand-build the canonical from partial connector slices."
+  },
+  "nextPriority": "Continue with another non-Atlante station-level CPO only on a genuinely new exact mapping surface; if none is available, retry direct PUN ArcGIS access on a later run rather than repeating closed generic searches. Atlante remains last."
+}
