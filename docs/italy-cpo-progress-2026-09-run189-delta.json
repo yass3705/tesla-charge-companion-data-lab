@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 189,
+  "recordedAt": "2026-09-14T12:50:50+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 188,
+    "previousHead": "56378947cf453b5b2ab34a03707b50fd7b7d34e5"
+  },
+  "effectiveCounts": {
+    "treated": 51,
+    "partial": 27,
+    "setAside": 1,
+    "active": 5,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 5
+  },
+  "changes": [
+    {
+      "partyIdGroup": ["ESH", "GAS", "UTZ"],
+      "canonicalName": "Uattzy / UAU legacy partyIds",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "current public app-distribution identity / technical migration target",
+      "positiveEvidenceAppend": [
+        "The current iOS application serving Uattzy is App Store id 1372832369, titled 'Uattzy – Stazioni di ricarica'.",
+        "The current store listing names Enermia srl as the application provider/developer while copyright is UAU srl, materially linking the legacy Enermia application lineage to the current Uattzy/UAU service without collapsing technical PUN/OCPI partyIds.",
+        "Current app listing states the app exposes real-time station availability, can include/exclude roaming networks, and lets users consult prices/tariffs and start/stop charging, making this exact app identity the preferred target for future backend/network capture.",
+        "Observed current release line is 9.211.0 dated 2026-07-13 on App Store surfaces."
+      ],
+      "negativeEvidenceAppend": [
+        "The public App Store metadata does not expose numerical connector tariffs, backend endpoints, or a deterministic mapping from ESH/GAS/UTZ partyIds to current Uattzy connectors.",
+        "Do not infer that all legacy Enermia/E-Shore/GASGAS PUN partyIds have migrated merely because the app lineage and corporate branding are linked."
+      ],
+      "technicalTargetsAppend": [
+        {
+          "surface": "iOS App Store",
+          "appStoreId": "1372832369",
+          "currentTitle": "Uattzy – Stazioni di ricarica",
+          "provider": "Enermia srl",
+          "copyright": "UAU srl",
+          "observedVersion": "9.211.0",
+          "observedVersionDate": "2026-07-13",
+          "purpose": "future exact app/backend traffic capture for connector-level tariff and partyId mapping"
+        }
+      ],
+      "decision": "No status or coverage mutation. Preserve ESH/GAS/UTZ as separate technical partyIds. Future Uattzy backend work should target the known current app identity instead of repeating generic web research.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "capture or discover traffic/backend from App Store id 1372832369 (current Uattzy app), or obtain an equivalent exact PUN/QR payload mapping connector -> current direct tariff and technical partyId",
+      "confidence": "high for app lineage; insufficient for tariff mapping",
+      "lastInvestigated": "2026-09-14",
+      "historyAppend": "run189: resolved the current Uattzy iOS application identity to the legacy Enermia lineage (App Store id 1372832369, provider Enermia srl, copyright UAU srl). This narrows the next technical capture target but does not justify partyId merge or tariff promotion."
+    },
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "current Hera Ricarica app-distribution/public tariff surface check",
+      "positiveEvidenceAppend": [
+        "The current iOS Hera Ricarica application remains App Store id 1464904258, developer Gruppo Hera, version 6.2.14, and is explicitly capable of controlling/starting charging sessions.",
+        "The application identity provides a concrete target for a future exact app/backend capture instead of further generic public tariff searches."
+      ],
+      "negativeEvidenceAppend": [
+        "Current public store metadata exposes no numerical direct tariff payload or station/EVSE price mapping.",
+        "Fresh official-domain searches for historical public-tariff phrases did not surface an authoritative current numeric energy component; third-party tariff tables remain discovery-only and are not promotable."
+      ],
+      "technicalTargetsAppend": [
+        {
+          "surface": "iOS App Store",
+          "appStoreId": "1464904258",
+          "currentTitle": "Hera Ricarica",
+          "developer": "Gruppo Hera",
+          "observedVersion": "6.2.14",
+          "observedVersionDate": "2025-05-26",
+          "purpose": "future exact app/backend capture of current station/connector tariff payload"
+        }
+      ],
+      "decision": "Keep HER active and fail-closed. Close static App Store and generic historical-price search paths; reopen only on exact app/backend/QR/PUN tariff-bearing evidence.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "exact Hera Ricarica app/backend, QR or PUN payload mapping canonical HER station/EVSE to a current direct tariff",
+      "confidence": "high for app identity; insufficient for tariff mapping",
+      "lastInvestigated": "2026-09-14",
+      "historyAppend": "run189: confirmed current Hera Ricarica application identity and exhausted static public store / historical-price discovery route without promotable current tariff evidence."
+    }
+  ],
+  "consistency": {
+    "statusMutation": false,
+    "counterMutation": false,
+    "aliasesResolved": 0,
+    "treatedPlusPartialPlusSetAsidePlusActive": 84,
+    "physicalWithSupersededAliases": 88,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false,
+    "activeQueueCount": 5,
+    "activeQueueMatchesEffectiveCount": true,
+    "result": "pass"
+  },
+  "antiStagnation": {
+    "HER": "Static App Store and generic historical-price routes are now exhausted. Reopen only on exact Hera app/backend/QR/PUN tariff-bearing evidence.",
+    "TSL": "Reopen only on exact Tesla app/navigation/backend site-price payload; do not repeat generic national tariff search.",
+    "ESH_GAS_UTZ": "Use current Uattzy App Store id 1372832369 as the next backend-capture target. Do not repeat generic web/app-store research; reopen on app/backend/QR/PUN payload or authoritative numeric class rules plus technical mapping.",
+    "ATL": "setAside and last; reopen only on directly exploitable backend/tariff evidence."
+  },
+  "nextPriority": "Technical capture/discovery of exact tariff-bearing app/backend payload for Uattzy app id 1372832369 or Hera Ricarica app id 1464904258; Tesla remains exact site/time payload only; Atlante remains last."
+}
