@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 183,
+  "recordedAt": "2026-09-14T04:50:48+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 182,
+    "previousHead": "1eb8c469f4ea47a674d935eb4ee5f680525d25ec"
+  },
+  "effectiveCounts": {
+    "treated": 50,
+    "partial": 26,
+    "setAside": 1,
+    "active": 7,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 7
+  },
+  "transitions": [
+    {
+      "partyId": "EMO",
+      "from": "active",
+      "to": "partial",
+      "reason": "A deterministic 40-EVSE Tronchetto subpopulation is now mapped to one first-party site tariff surface, but first-party and PUN-derived monetary components disagree; preserve fail-closed for ranking until the current direct/ad-hoc fee tuple is reconciled."
+    }
+  ],
+  "parties": {
+    "EMO": {
+      "canonicalName": "EMOBITALY S.r.l.",
+      "status": "partial",
+      "priority": "station-level",
+      "lastInvestigated": "2026-09-14T04:50:48+01:00",
+      "inventory": {
+        "canonicalEvse": 849,
+        "canonicalStations": 296,
+        "source": "stale PUN-derived seed; site subset refreshed separately"
+      },
+      "tariffModel": "owner-defined station-level tariff plus EMOBITALY service-plan transaction component",
+      "tariffChannel": "direct EMOBITALY app/RFID/ad-hoc; roaming kept separate",
+      "coveredSubpopulations": [
+        {
+          "site": "Venezia Tronchetto Parking / Interparking",
+          "address": "Isola Nuova del Tronchetto 33/M, 30135 Venezia",
+          "evseCount": 40,
+          "connector": "Type 2",
+          "maxPowerKw": 22,
+          "evseIds": [
+            "IT*EMO*E726*17","IT*EMO*E726*18","IT*EMO*E726*19","IT*EMO*E726*20","IT*EMO*E726*21","IT*EMO*E726*22","IT*EMO*E726*23","IT*EMO*E726*24","IT*EMO*E726*25","IT*EMO*E726*26","IT*EMO*E726*27","IT*EMO*E726*28","IT*EMO*E726*29","IT*EMO*E726*30","IT*EMO*E726*31","IT*EMO*E726*32","IT*EMO*E726*33","IT*EMO*E726*34","IT*EMO*E726*35","IT*EMO*E726*36","IT*EMO*E726*37","IT*EMO*E726*38","IT*EMO*E726*39","IT*EMO*E726*40","IT*EMOE1013","IT*EMOE1014","IT*EMOE1015","IT*EMOE1016","IT*EMOE1017","IT*EMOE1018","IT*EMOE1019","IT*EMOE1020","IT*EMOE1021","IT*EMOE1022","IT*EMOE1023","IT*EMOE1024","IT*EMOE1025","IT*EMOE1026","IT*EMOE1027","IT*EMOE1028"
+          ],
+          "firstPartyTariffEvidence": {
+            "energyEurPerKwh": 0.58,
+            "vatIncluded": true,
+            "startupFee": {
+              "minEur": 0.50,
+              "maxEur": 1.40,
+              "exactPerSessionBinding": false
+            },
+            "payment": ["EMOBITALY app", "EMOBITALY RFID/prepaid", "ad-hoc credit card via app"],
+            "source": "https://interparking.emobitaly.it/"
+          },
+          "generalEmobitalyPlanEvidence": {
+            "adHocTransactionFeeEur": 0.90,
+            "startTransactionFeeEur": 0.50,
+            "proTransactionFeeEur": 0.0,
+            "proMonthlyFeeEur": 5.0,
+            "firstActivationEurStartAndPro": 20.0,
+            "source": "https://www.emobitaly.it/come-ricaricare/",
+            "note": "Generic EMOBITALY service-plan transaction components are exact on the current public page, but must not be blindly substituted for the dedicated Tronchetto startup-fee range without proving which component the dedicated page represents."
+          },
+          "punDerivedConflict": {
+            "energyEurPerKwh": 0.48,
+            "activationEur": 1.14,
+            "source": "https://pienotto.it/stazioni/259698-emobitaly-s-r-l-venezia-ve",
+            "sourceAttribution": "page states data come from Piattaforma Unica Nazionale",
+            "freshnessObserved": "2026-09-14; page reported tariff update minutes before crawl",
+            "decision": "Do not override current first-party Interparking/EMOBITALY price with the PUN-derived tuple until the direct PUN row or app/session payload explains the discrepancy."
+          },
+          "rankable": false,
+          "rankableReason": "Station/EVSE mapping is deterministic and the first-party energy component is explicit, but the exact startup/transaction component conflicts with a fresh PUN-derived tuple and is not deterministically bound per payment mode at this site."
+        }
+      ],
+      "uncoveredSubpopulations": {
+        "evseCountApprox": 809,
+        "reason": "EMOBITALY allows the owner of each charging point to define station-specific initial/energy/time tariffs; no network-wide transposition is safe."
+      },
+      "officialUrls": [
+        "https://interparking.emobitaly.it/",
+        "https://www.interparking.it/it/parcheggi/venezia/venezia-tronchetto-parking/",
+        "https://www.emobitaly.it/come-ricaricare/",
+        "https://www.emobitaly.it/servizio-di-gestione/prezzi/"
+      ],
+      "positiveEvidence": [
+        "Current Interparking page confirms 40 EV parking/charging places at Tronchetto and charging up to 22 kW.",
+        "Dedicated Interparking/EMOBITALY charging page states 0.58 EUR/kWh VAT included and startup fee 0.50-1.40 EUR.",
+        "Fresh PUN-derived page enumerates exactly 40 EMO EVSE identifiers at the same address, all Type 2 22 kW.",
+        "EMOBITALY public plan page states generic transaction components: Ad Hoc 0.90 EUR, START 0.50 EUR, PRO 0 EUR plus operator price."
+      ],
+      "negativeEvidence": [
+        "Fresh PUN-derived tariff tuple is 0.48 EUR/kWh + 1.14 EUR activation, conflicting with the dedicated current first-party page.",
+        "No direct PUN ArcGIS row or EMOBITALY app/session payload was recovered in this run to reconcile that conflict."
+      ],
+      "blockage": "Tronchetto exact EVSE scope is solved, but monetary components disagree between first-party dedicated pricing and fresh PUN-derived pricing; remaining EMO network is owner-priced station by station.",
+      "resumeCondition": "Recover direct PUN ArcGIS rows or the EMOBITALY app/guest/session payload for one of the exact Tronchetto EVSE IDs, identifying current energy and startup/transaction components by direct payment mode; for other EMO sites, repeat only with exact station/EVSE mapping.",
+      "confidence": "high for 40-EVSE site mapping and first-party 0.58 EUR/kWh statement; insufficient for exact total session cost/rankability",
+      "historyAppend": "2026-09-14 run183: EMO moved active->partial. Tronchetto now has deterministic 40-EVSE mapping and current first-party site tariff surface (0.58 EUR/kWh plus startup fee range), but fresh PUN-derived data reports 0.48 EUR/kWh + 1.14 EUR activation. Fail-closed retained; no EVSE promoted rankable."
+    }
+  },
+  "consistency": {
+    "statusMutation": true,
+    "counterMutation": true,
+    "aliasesResolved": 0,
+    "rankableEvseAdded": 0,
+    "rankableStationsAdded": 0,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false,
+    "check": "50 treated + 26 partial + 1 setAside + 7 active = 84 operational canonical CPOs; plus 4 supersededAlias = 88 physical partyIds."
+  },
+  "antiStagnation": {
+    "EMO": "Do not repeat generic Tronchetto searches. Reopen Tronchetto only on direct PUN ArcGIS or EMOBITALY app/session/QR evidence that reconciles 0.58+startup-range versus 0.48+1.14; investigate other EMO sites only with exact station/EVSE surfaces.",
+    "ESH_GAS_UTZ": "Do not repeat generic Uattzy tariff/corporate searches. Reopen only on Uattzy app/guest/QR/backend or refreshed PUN/OCPI evidence that identifies current technical partyIds plus connector-level/class-level tariff binding.",
+    "HER": "Do not repeat generic Hera tariff searches. Reopen only on signed/current bundle/live traffic/QR/session payload or refreshed exact PUN/OCPI evidence exposing the numeric energy component.",
+    "EDN": "Do not repeat generic Galbusera/identifier search. Reopen only on authoritative exact-ID binding or material tariff/source change.",
+    "F2X": "Reopen only on exact authoritative mapping for the seven Novate residual EVSE or a material source change.",
+    "PWY": "Reopen only on changed authoritative data for the three exact unresolved IDs.",
+    "ATL": "Keep last; reopen only on directly exploitable backend/tariff evidence."
+  },
+  "nextPriority": "EDN if an authoritative exact-ID surface appears; otherwise Uattzy/Hera/PWY exact app/QR/PUN evidence, then Tesla station-level; Atlante remains last."
+}
