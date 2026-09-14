@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 191,
+  "recordedAt": "2026-09-14T16:49:57+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 190,
+    "previousHead": "7cacfc7230f61cbcc306360b08459e03dddc926f",
+    "supportCommits": [
+      "7271cee1659da8eeab778a2f921447eaf26432f6",
+      "767a830306209ac6b773a1dd0d38408b8fd581d7"
+    ]
+  },
+  "effectiveCounts": {
+    "treated": 51,
+    "partial": 27,
+    "setAside": 1,
+    "active": 5,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 5
+  },
+  "changes": [
+    {
+      "partyIdGroup": ["ESH", "GAS", "UTZ"],
+      "canonicalName": "Uattzy / UAU legacy partyIds",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "current Android binary-distribution route for endpoint extraction",
+      "positiveEvidenceAppend": [
+        "A fresh APKCombo surface for package com.fortum.enermia exposes Uattzy Android version 9.218.0 dated 2026-08-01, newer than the run190-observed 9.160.1 build.",
+        "The same distribution surface exposes an APK/XAPK download route and describes the current application as displaying live station state plus prices/tariffs, making static binary string/resource extraction a concrete next backend-discovery route rather than another generic web search."
+      ],
+      "negativeEvidenceAppend": [
+        "The distribution page itself contains no connector tariff payload, backend hostname or deterministic ESH/GAS/UTZ mapping.",
+        "The automation execution container cannot currently resolve external APK distribution hosts directly, so the binary could not be materialized in this run; third-party metadata remains discovery-only."
+      ],
+      "technicalTargetsAppend": [
+        {
+          "surface": "Android XAPK distribution / static binary extraction",
+          "packageId": "com.fortum.enermia",
+          "observedVersion": "9.218.0",
+          "observedVersionDate": "2026-08-01",
+          "observedSizeMb": 98,
+          "purpose": "extract hard-coded URLs/hosts/resources, then test only tariff-bearing public/guest endpoints"
+        }
+      ],
+      "decision": "Keep ESH/GAS/UTZ active and distinct. Replace generic web/app-store research with binary endpoint extraction as the next exact technical step.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "materialize Uattzy 9.218.0 APK/XAPK (or newer), scan with scripts/italy_android_endpoint_scan.py, then validate any discovered public/guest backend against exact connector tariff and technical partyId mapping",
+      "confidence": "high for current binary identity/version; insufficient for tariff mapping",
+      "lastInvestigated": "2026-09-14",
+      "historyAppend": "run191: upgraded Uattzy backend route from package identity only to a current downloadable 9.218.0 binary target and added a reusable fail-closed APK/XAPK URL/hostname scanner."
+    },
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "Android binary-distribution route for endpoint extraction",
+      "positiveEvidenceAppend": [
+        "APKFab/APKPure distribution surfaces expose Hera Ricarica package com.siemens.hera.mobility as an XAPK/APK bundle with a concrete base APK name and variant hashes, enabling future static endpoint extraction.",
+        "The latest Android lineage surfaced as 6.2.15; distribution metadata exposes base APK com.siemens.hera.mobility.apk and multiple signed variant SHA1 values."
+      ],
+      "negativeEvidenceAppend": [
+        "Binary-distribution metadata does not itself expose a current numerical direct tariff or station/EVSE mapping.",
+        "Direct artifact materialization was blocked by transient DNS resolution in the execution container, so no endpoint strings were extracted in this run."
+      ],
+      "technicalTargetsAppend": [
+        {
+          "surface": "Android XAPK/APK static extraction",
+          "packageId": "com.siemens.hera.mobility",
+          "observedVersion": "6.2.15",
+          "baseApk": "com.siemens.hera.mobility.apk",
+          "purpose": "extract backend URLs/hosts and identify tariff-bearing station endpoints without repeating historical-price searches"
+        }
+      ],
+      "decision": "Keep HER active and fail-closed; future work should materialize the current Android artifact and scan it, not reopen generic public tariff tables.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "materialize Hera Ricarica APK/XAPK, scan with scripts/italy_android_endpoint_scan.py and validate any discovered public/guest station tariff endpoint",
+      "confidence": "high for binary/package target; insufficient for tariff mapping",
+      "lastInvestigated": "2026-09-14",
+      "historyAppend": "run191: identified concrete Hera XAPK/APK artifact surfaces and persisted a static endpoint-scanning helper for the next exact backend pass."
+    }
+  ],
+  "tooling": {
+    "added": "scripts/italy_android_endpoint_scan.py",
+    "commit": "7271cee1659da8eeab778a2f921447eaf26432f6",
+    "purpose": "fail-closed extraction of URL/hostname candidates from APK/XAPK/APKS/ZIP artifacts; does not infer or promote tariffs"
+  },
+  "consistencyAudit": {
+    "path": "data/reports/italy_canonical_consistency_audit_20260914_run191.json",
+    "commit": "767a830306209ac6b773a1dd0d38408b8fd581d7",
+    "result": "pass"
+  },
+  "consistency": {
+    "statusMutation": false,
+    "counterMutation": false,
+    "aliasesResolved": 0,
+    "treatedPlusPartialPlusSetAsidePlusActive": 84,
+    "physicalWithSupersededAliases": 88,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false,
+    "activeQueueCount": 5,
+    "activeQueueMatchesEffectiveCount": true,
+    "result": "pass"
+  },
+  "antiStagnation": {
+    "HER": "Do not repeat generic public tariff or app-store metadata searches. Next route is actual APK/XAPK endpoint extraction, then exact guest/public backend validation.",
+    "TSL": "Reopen only on exact Tesla app/navigation/backend site-price payload; do not repeat generic national tariff search.",
+    "ESH_GAS_UTZ": "Do not repeat generic public/app-store research. Next route is actual Uattzy 9.218.0-or-newer APK/XAPK endpoint extraction, then exact connector tariff/partyId validation.",
+    "ATL": "setAside and last; reopen only on directly exploitable backend/tariff evidence."
+  },
+  "nextPriority": "Materialize and scan Uattzy 9.218.0-or-newer Android artifact first; then Hera Ricarica Android artifact. Tesla remains exact site/time payload only; Atlante remains last."
+}
