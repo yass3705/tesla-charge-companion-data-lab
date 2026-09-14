@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 192,
+  "recordedAt": "2026-09-14T17:54:58+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 191,
+    "previousHead": "5187bde788b9f45076079caf0624154c66440d30"
+  },
+  "effectiveCounts": {
+    "treated": 51,
+    "partial": 27,
+    "setAside": 1,
+    "active": 5,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 5
+  },
+  "changes": [
+    {
+      "partyIdGroup": ["ESH", "GAS", "UTZ"],
+      "canonicalName": "Uattzy / UAU legacy partyIds",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "first-party backend hostname discovery and exact next probe target",
+      "positiveEvidenceAppend": [
+        "A live indexed first-party host https://api.enermia.org/ identifies itself as 'Enermia API'. This is a materially stronger backend lead than the generic APK distribution surfaces because Enermia is one of the entities merged into UAU/Uattzy and the current Uattzy Android package remains com.fortum.enermia.",
+        "Current Uattzy first-party FAQ explicitly states that the Uattzy app displays the tariff applied to each connector before charging and may also display activation/parking fees, confirming that a connector-level tariff payload exists somewhere in the current application/backend path.",
+        "Current Uattzy first-party site states that Uattzy is the public-charging brand of UAU created from E-Shore, GASGAS and EnerMia; this keeps api.enermia.org relevant to the ESH/GAS/UTZ technical lineage without proving that every current connector is served by that host."
+      ],
+      "negativeEvidenceAppend": [
+        "No indexed path below api.enermia.org currently exposes connector IDs or tariff payloads through the web search surface.",
+        "Direct execution-container probing of api.enermia.org (root, /swagger, /swagger/index.html, /openapi.json and /robots.txt) is blocked by transient DNS resolution failure, so no endpoint schema or payload was inferred.",
+        "No tariff or ESH/GAS/UTZ mapping is promoted from the backend hostname alone."
+      ],
+      "technicalTargetsAppend": [
+        {
+          "surface": "first-party backend host",
+          "url": "https://api.enermia.org/",
+          "observedTitle": "Enermia API",
+          "purpose": "when network resolution is available, inspect documented/public/guest paths and compare exact station/connector payloads with Uattzy app identities and PUN EVSE IDs"
+        },
+        {
+          "surface": "current Android application",
+          "packageId": "com.fortum.enermia",
+          "observedVersion": "9.218.0",
+          "purpose": "static extraction remains the fallback route to recover concrete api.enermia.org paths, auth scheme names or successor backend hosts"
+        }
+      ],
+      "decision": "Keep ESH/GAS/UTZ active, distinct and fail-closed. The next investigation must target api.enermia.org directly or extract exact paths from the current Uattzy binary; do not repeat generic tariff/app-store searches.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "successful public/guest probe of api.enermia.org or static Uattzy binary extraction yielding a station/connector endpoint, followed by deterministic EVSE->tariff validation",
+      "confidence": "high for first-party backend-host relevance; insufficient for endpoint or tariff mapping",
+      "lastInvestigated": "2026-09-14",
+      "lastChanged": "2026-09-14",
+      "historyAppend": "run192: discovered and persisted the first-party api.enermia.org backend surface, replacing blind APK-only discovery with a concrete server target while retaining fail-closed tariff semantics."
+    },
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "binary materialization and current public portal cross-check",
+      "positiveEvidenceAppend": [
+        "The current public Hera Ricarica tariff portal remains reachable/indexed and continues to expose connector-type occupancy penalties but not the numerical energy-price fields for the flat/consumption offers in its static surface.",
+        "Current Android artifact metadata still identifies package com.siemens.hera.mobility version 6.2.15 and concrete XAPK variants/base APK names for later endpoint extraction."
+      ],
+      "negativeEvidenceAppend": [
+        "Direct binary/page retrieval from the execution container remains blocked by transient DNS resolution, so no new Hera backend hostname or energy tariff was extracted.",
+        "No historical Hera energy price is promoted because the current first-party portal does not expose the required energy component in the retrievable static payload."
+      ],
+      "decision": "Keep HER active and fail-closed. Resume only with successful APK/XAPK materialization or a newly exposed first-party station tariff endpoint; generic tariff-page searching is exhausted.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "lastInvestigated": "2026-09-14",
+      "historyAppend": "run192: reconfirmed the live first-party portal boundary and kept the binary/backend extraction route as the only useful next step."
+    }
+  ],
+  "consistency": {
+    "statusMutation": false,
+    "counterMutation": false,
+    "aliasesResolved": 0,
+    "treatedPlusPartialPlusSetAsidePlusActive": 84,
+    "physicalWithSupersededAliases": 88,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false,
+    "activeQueue": ["HER", "TSL", "ESH", "GAS", "UTZ"],
+    "activeQueueCount": 5,
+    "activeQueueMatchesEffectiveCount": true,
+    "result": "pass"
+  },
+  "antiStagnation": {
+    "HER": "Do not repeat generic public tariff searches. Resume on actual APK/XAPK endpoint extraction or a new first-party numerical energy-price endpoint.",
+    "TSL": "Reopen only on exact Tesla app/navigation/backend site-price payload; do not repeat generic national tariff search.",
+    "ESH_GAS_UTZ": "Do not repeat generic public/app-store research. Probe api.enermia.org when reachable or extract exact paths from current Uattzy Android artifact.",
+    "ATL": "setAside and last; reopen only on directly exploitable backend/tariff evidence."
+  },
+  "nextPriority": "Probe the newly identified first-party api.enermia.org surface for public/guest station and connector tariff endpoints as soon as DNS/network access permits; otherwise materialize Uattzy 9.218.0 and extract its endpoint paths. Then Hera binary/backend. Tesla remains exact site/time payload only; Atlante remains last."
+}
