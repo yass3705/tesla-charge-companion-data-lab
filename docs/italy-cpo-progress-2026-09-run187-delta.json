@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 187,
+  "recordedAt": "2026-09-14T10:51:25+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 186,
+    "previousHead": "edee116978cc3d190ae03cbe8083b540819e2616"
+  },
+  "effectiveCounts": {
+    "treated": 51,
+    "partial": 27,
+    "setAside": 1,
+    "active": 5,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 5
+  },
+  "changes": [
+    {
+      "partyId": "PWY",
+      "canonicalName": "TheF Charging S.r.l. / Powy",
+      "from": "active",
+      "to": "treated",
+      "reason": "Current first-party Powy tariff page now exposes a complete deterministic Italy direct tariff grid covering AC, DC, DC+ and HPC power classes for Powy Charge, Direct Payment QR and POS. The same first-party surface identifies Powy as a brand of TheF Charging S.r.l., matching partyId PWY scope."
+    }
+  ],
+  "parties": {
+    "PWY": {
+      "canonicalName": "TheF Charging S.r.l. / Powy",
+      "aliases": ["TheF Charging S.r.l.", "Powy", "Powy Energy"],
+      "status": "treated",
+      "priority": "class-wide",
+      "knownInventory": {
+        "evse": 1080,
+        "stations": 387,
+        "source": "PUN-derived Italy canonical inventory seed / partyId PWY",
+        "inventoryTimestamp": "2026-08-30T11:14:39.750794Z"
+      },
+      "tariffModel": "direct network-wide power-band grid",
+      "tariffChannel": "Powy Charge app / Direct Payment QR / POS; roaming eMSP explicitly separate",
+      "directTariffsItaly": [
+        {"class": "AC", "powerRule": "<=22 kW", "energyEurPerKwh": 0.72, "occupancyEurPerMin": 0.09},
+        {"class": "DC", "powerRule": "23-60 kW", "energyEurPerKwh": 0.88, "occupancyEurPerMin": 0.19},
+        {"class": "DC+", "powerRule": "61-149 kW", "energyEurPerKwh": 0.92, "occupancyEurPerMin": null},
+        {"class": "HPC", "powerRule": ">=150 kW", "energyEurPerKwh": 0.97, "occupancyEurPerMin": 0.29}
+      ],
+      "feesAndConditions": {
+        "directPaymentOrPosActivationFeeEur": 0.40,
+        "powyChargeActivationFeeEur": 0.0,
+        "preauthorisationPowyChargeEur": 80,
+        "preauthorisationDirectPaymentOrPosEur": 75,
+        "occupancyGraceMinutesAfterChargeEnd": 60,
+        "acOccupancyWaivedLocalTime": "23:00-07:00",
+        "vatIncluded": true,
+        "appPromotionCaveat": "Powy Charge app tariffs may differ when an active promotion applies; use the published direct base grid unless a station-specific promotion is explicitly proven.",
+        "roaming": "Third-party eMSP tariffs are not covered and remain separate."
+      },
+      "officialUrls": [
+        "https://powy.energy/ricarica-veicolo/costi-di-ricarica/",
+        "https://powy.energy/ricarica-veicolo/",
+        "https://direct.powy.energy/"
+      ],
+      "positiveEvidenceAppend": [
+        "Fresh first-party Powy Costi di ricarica page crawled 2026-09-14 states prices are updated and apply exclusively to Powy Charge, Direct Payment QR and POS.",
+        "The same page publishes the complete Italy power grid: AC <=22 kW 0.72 EUR/kWh; DC 23-60 kW 0.88; DC+ 61-149 kW 0.92; HPC >=150 kW 0.97, VAT included.",
+        "Direct Payment/POS carry a 0.40 EUR activation commission while Powy Charge does not; occupancy penalties start 60 minutes after charge end, with AC waived 23:00-07:00.",
+        "Powy first-party charging page links the live guest Direct Payment surface https://direct.powy.energy/ and states QR/code selection of the exact outlet before payment.",
+        "First-party footer identifies Powy as a brand by TheF Charging S.r.l., matching the PWY canonical legal operator."
+      ],
+      "negativeEvidenceAppend": [
+        "Roaming/eMSP prices can differ and are explicitly excluded from the direct tariff mapping.",
+        "Powy Charge may expose station-specific promotional prices; such promotions must not be extrapolated beyond explicitly eligible stations.",
+        "The current HTML table does not expose a DC+ occupancy value in the extracted row; do not invent one. Energy price remains deterministic."
+      ],
+      "mappingRule": "Map each PWY EVSE by connector current type and rated power to the exact official Italy class: AC <=22; DC 23-60; DC+ 61-149; HPC >=150. Apply direct energy price and channel-specific activation fee. Preserve any explicit station promotion as an override only when directly evidenced.",
+      "coverage": {
+        "rankable": "all canonical PWY EVSE with known connector type/power under the current PUN-derived inventory",
+        "failClosed": "only EVSE lacking a usable power/current classification or carrying a separately evidenced promotion not yet modeled"
+      },
+      "confidence": "high",
+      "lastInvestigated": "2026-09-14T10:51:25+01:00",
+      "lastChanged": "2026-09-14T10:51:25+01:00",
+      "resumeCondition": "Reopen only on first-party tariff change, explicit station-specific promotion, or an inventory EVSE whose connector/power cannot map to the four official classes.",
+      "historyAppend": "2026-09-14 run187: PWY reclassified active -> treated after fresh first-party Powy tariff page exposed complete deterministic Italy direct power bands and direct-channel fee rules. Generic station-by-station tariff research is closed."
+    }
+  },
+  "consistency": {
+    "statusMutation": true,
+    "counterMutation": true,
+    "aliasesResolved": 0,
+    "treatedPlusPartialPlusSetAsidePlusActive": 84,
+    "physicalWithSupersededAliases": 88,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false,
+    "result": "pass on effective ledger; PWY active -> treated"
+  },
+  "antiStagnation": {
+    "PWY": "Treated. Do not repeat station-level tariff research. Reopen only for a tariff change, explicit promotion, or unmappable EVSE power/current metadata.",
+    "HER": "Do not repeat public/PUN sample searches until a tariff-bearing exact row or first-party numeric energy component appears.",
+    "F2X": "Do not revisit the four Novate 300 kW EVSE unless the first-party >64 kW card tariff changes; reopen 63 kW only on authoritative Charge&Save eligibility proof.",
+    "EDN": "Galbusera remains closed; investigate only newly evidenced exact sites.",
+    "EMO": "Reopen only on direct PUN/app/session evidence resolving the Tronchetto conflict or another exact station subset.",
+    "UAU_legacy": "Reopen ESH/GAS/UTZ only on exact Uattzy app/backend/PUN mapping or first-party class thresholds/applicability.",
+    "ATL": "Keep last; reopen only on directly exploitable backend/tariff evidence."
+  },
+  "nextPriority": "Continue the five remaining active station-level CPOs, preferring any genuinely new first-party/app/backend/QR/PUN evidence. Atlante remains last."
+}
