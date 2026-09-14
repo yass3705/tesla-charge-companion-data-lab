@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 180,
+  "recordedAt": "2026-09-14T01:51:06+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "headBeforeAudit": "be6c7792ed532e92079e384d52683f0a289baa3f",
+  "trigger": "mandatory full coherence audit after runs177-179 without nominative status/count progression and before further station-level investigation",
+  "baselineAudit": {
+    "path": "data/reports/italy_canonical_consistency_audit_20260913_run176.json",
+    "effectiveCounts": {
+      "treated": 50,
+      "partial": 25,
+      "setAside": 1,
+      "active": 8,
+      "supersededAlias": 4,
+      "operationalCanonicalTotal": 84,
+      "physicalPartyIds": 88
+    }
+  },
+  "replayedPostAuditDeltas": [
+    {
+      "run": 177,
+      "path": "docs/italy-cpo-progress-2026-09-run177-delta.json",
+      "partiesTouched": ["EDN"],
+      "statusMutations": 0,
+      "aliasesResolved": 0,
+      "rankableEvseAdded": 0,
+      "counterMutation": false
+    },
+    {
+      "run": 178,
+      "path": "docs/italy-cpo-progress-2026-09-run178-delta.json",
+      "partiesTouched": ["ESH", "GAS", "UTZ"],
+      "statusMutations": 0,
+      "aliasesResolved": 0,
+      "rankableEvseAdded": 0,
+      "counterMutation": false
+    },
+    {
+      "run": 179,
+      "path": "docs/italy-cpo-progress-2026-09-run179-delta.json",
+      "partiesTouched": ["ESH", "GAS", "UTZ"],
+      "statusMutations": 0,
+      "aliasesResolved": 0,
+      "rankableEvseAdded": 0,
+      "counterMutation": false
+    }
+  ],
+  "effectiveCountsAfterReplay": {
+    "treated": 50,
+    "partial": 25,
+    "setAside": 1,
+    "active": 8,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 8
+  },
+  "checks": {
+    "operationalPartition": "50 + 25 + 1 + 8 = 84",
+    "operationalPartitionExact": true,
+    "physicalPartition": "84 + 4 = 88",
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroducedByRuns177to179": false,
+    "statusMutationRuns177to179": false,
+    "counterMutationRuns177to179": false,
+    "rankableCoverageMutationRuns177to179": false,
+    "branchHeadMatchesRun179Commit": true,
+    "run179Head": "be6c7792ed532e92079e384d52683f0a289baa3f",
+    "run179Parent": "d5334a14802eabc74ec135d94bcb7cdb15a17455",
+    "deltaChainContinuous": true
+  },
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalState": "stale seed",
+    "effectiveLedger": "ordered run deltas plus consistency audits",
+    "preferredReplayScript": "scripts/italy_cpo_progress_consolidate.py",
+    "legacyReplayScript": "scripts/consolidate_italy_cpo_progress.py",
+    "preferredReplayScriptVerifiedPresent": true,
+    "preferredReplayScriptReason": "supports historical and modern delta shapes including changes flat lists, changes status buckets, safeStatusTransitions and classificationUpdates; retains raw deltaEvidence; preserves grouped partyId evidence; recomputes named counts; fails closed on duplicate/unknown partyIds and physical inventory mismatch",
+    "importantCorrection": "Use scripts/italy_cpo_progress_consolidate.py as the authoritative lossless replay implementation for materialization. The older consolidate_italy_cpo_progress.py supports fewer historical delta container shapes and must not be preferred for a full replay.",
+    "attemptThisRun": "direct isolated git checkout plus PUN direct endpoint retrieval retried",
+    "attemptResult": "execution container still cannot resolve github.com; direct ArcGIS PUN endpoint remains unreachable through the current web/runtime path; GitHub connector remains available for authoritative repository reads/writes",
+    "canonicalOverwritePerformed": false,
+    "safetyDecision": "do not hand-build or partially overwrite the canonical. Materialize only by replaying the complete ordered delta set with the preferred fail-closed consolidator."
+  },
+  "stationLevelControl": {
+    "EDN": {
+      "state": "active",
+      "resumeOnlyOn": "authoritative PUN/OCPI/Edison/EVWAY binding of the 12 known Galbusera EVSE IDs to Via Guglielmo Marconi 20",
+      "genericResearchClosed": true
+    },
+    "EMO": {
+      "state": "active",
+      "resumeOnlyOn": "direct PUN ArcGIS rows or exact EMOBITALY QR/app mapping reconciling Tronchetto tariff/product fields",
+      "genericResearchClosed": true
+    },
+    "ESH_GAS_UTZ": {
+      "state": "active group",
+      "resumeOnlyOn": "Uattzy app/guest/QR/backend connector payloads or first-party tariff material with exact class thresholds and fee applicability",
+      "genericResearchClosed": true
+    },
+    "F2X": {
+      "resumeOnlyOn": "exact authoritative mapping for the seven Novate residual EVSE or material tariff/source change",
+      "genericResearchClosed": true
+    },
+    "PWY": {
+      "resumeOnlyOn": "changed authoritative data for IT*PWY*E7282, IT*PWY*EA0198*01*01 and IT*PWY*EA0198*01*02",
+      "genericResearchClosed": true
+    },
+    "ATL": {
+      "state": "setAside/last",
+      "resumeOnlyOn": "directly exploitable backend/tariff evidence"
+    }
+  },
+  "freshSurfaceAttempt": {
+    "punArcgis": "https://services2.arcgis.com/pROHh69WvVijk4nR/ArcGIS/rest/services/IdR_latest_ready/FeatureServer/0/query",
+    "result": "direct endpoint retrieval unavailable from current execution environment; no EDN or EMO tariff/EVSE promotion made from incomplete or cached evidence",
+    "classification": "transient access failure; not a substantive operator blockage"
+  },
+  "antiStagnationDecision": "No generic EDN, EMO, Uattzy, F2X or PWY research is repeated after this audit. Continue only on a genuinely new authoritative mapping surface; Atlante remains last.",
+  "result": "pass: the effective Italy ledger remains internally coherent after runs177-179. No duplicate, alias, status, count or rankable-coverage drift detected. Physical canonical materialization remains structural debt; the preferred lossless consolidator is now explicitly identified to prevent replaying with the older narrower implementation."
+}
