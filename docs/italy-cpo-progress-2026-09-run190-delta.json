@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 190,
+  "recordedAt": "2026-09-14T15:55:14+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 189,
+    "previousHead": "7c0a51949de4764e872858e3cc886178c8be3e0c"
+  },
+  "effectiveCounts": {
+    "treated": 51,
+    "partial": 27,
+    "setAside": 1,
+    "active": 5,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 5
+  },
+  "changes": [
+    {
+      "partyIdGroup": ["ESH", "GAS", "UTZ"],
+      "canonicalName": "Uattzy / UAU legacy partyIds",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "Android application identity / backend capture target",
+      "positiveEvidenceAppend": [
+        "The current Android application lineage for Uattzy resolves to Google Play package com.fortum.enermia, still associated with the legacy Enermia/E-Shore app lineage.",
+        "A current Android distribution index exposes Uattzy version 9.160.1 dated 2026-03-31 for package com.fortum.enermia, while the iOS lineage is already tracked separately. This gives a second concrete binary/application target for backend discovery without collapsing technical partyIds."
+      ],
+      "negativeEvidenceAppend": [
+        "Public Android metadata exposes no connector tariff payload, backend hostname, or deterministic ESH/GAS/UTZ mapping by itself.",
+        "Third-party app-distribution metadata is discovery-only and must not be used as tariff evidence."
+      ],
+      "technicalTargetsAppend": [
+        {
+          "surface": "Android / Google Play lineage",
+          "packageId": "com.fortum.enermia",
+          "observedTitle": "Uattzy – Stazioni di ricarica",
+          "observedVersion": "9.160.1",
+          "observedVersionDate": "2026-03-31",
+          "purpose": "exact Android binary/network capture for backend hostname, connector tariff payload and technical partyId mapping"
+        }
+      ],
+      "decision": "No status or coverage mutation. Add com.fortum.enermia as the preferred Android capture target alongside iOS App Store id 1372832369. Do not repeat generic public tariff searches.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "extract or capture network/backend traffic from com.fortum.enermia or iOS id 1372832369, or obtain equivalent exact PUN/QR tariff-bearing connector mapping",
+      "confidence": "high for Android package identity; insufficient for tariff mapping",
+      "lastInvestigated": "2026-09-14",
+      "historyAppend": "run190: resolved Uattzy Android application target to package com.fortum.enermia; future technical capture can target both Android and iOS lineages instead of repeating generic web research."
+    },
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "status": "active",
+      "priority": "station-level",
+      "investigation": "Android application identity / backend capture target",
+      "positiveEvidenceAppend": [
+        "The Hera Ricarica Android application resolves to package com.siemens.hera.mobility.",
+        "Current public Android app indexes still expose the Hera Ricarica package lineage and provide a concrete second binary/application target for exact backend capture, complementing iOS App Store id 1464904258."
+      ],
+      "negativeEvidenceAppend": [
+        "Public Android metadata does not expose a current numerical direct tariff or station/EVSE tariff payload.",
+        "Third-party package/version metadata is discovery-only and is not sufficient for tariff promotion."
+      ],
+      "technicalTargetsAppend": [
+        {
+          "surface": "Android / Google Play lineage",
+          "packageId": "com.siemens.hera.mobility",
+          "observedTitle": "Hera Ricarica",
+          "purpose": "exact Android binary/network capture of current station/connector tariff payload"
+        }
+      ],
+      "decision": "Keep HER active and fail-closed. Add com.siemens.hera.mobility as the Android backend-capture target; do not reopen generic public/historical tariff searches.",
+      "rankableEvseAdded": 0,
+      "rankableStationsAdded": 0,
+      "resumeCondition": "capture tariff-bearing traffic from com.siemens.hera.mobility or iOS id 1464904258, or obtain an exact first-party QR/PUN payload",
+      "confidence": "high for Android package identity; insufficient for tariff mapping",
+      "lastInvestigated": "2026-09-14",
+      "historyAppend": "run190: resolved Hera Ricarica Android package to com.siemens.hera.mobility and narrowed the next technical route to application traffic capture."
+    }
+  ],
+  "consistency": {
+    "statusMutation": false,
+    "counterMutation": false,
+    "aliasesResolved": 0,
+    "treatedPlusPartialPlusSetAsidePlusActive": 84,
+    "physicalWithSupersededAliases": 88,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false,
+    "activeQueueCount": 5,
+    "activeQueueMatchesEffectiveCount": true,
+    "result": "pass"
+  },
+  "antiStagnation": {
+    "HER": "Do not repeat generic public tariff research. Next exact route is Android com.siemens.hera.mobility / iOS 1464904258 backend capture or tariff-bearing QR/PUN evidence.",
+    "TSL": "Reopen only on exact Tesla app/navigation/backend site-price payload; do not repeat generic national tariff search.",
+    "ESH_GAS_UTZ": "Do not repeat generic web/app-store research. Next exact route is Android com.fortum.enermia / iOS 1372832369 backend capture or tariff-bearing QR/PUN evidence.",
+    "ATL": "setAside and last; reopen only on directly exploitable backend/tariff evidence."
+  },
+  "nextPriority": "Attempt exact backend/network discovery from Uattzy Android package com.fortum.enermia first, then Hera Ricarica com.siemens.hera.mobility; Tesla remains exact site/time payload only; Atlante remains last."
+}
