@@ -1,0 +1,84 @@
+{
+  "country": "IT",
+  "run": 195,
+  "recordedAt": "2026-09-14T21:53:48+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "base": {
+    "previousRun": 194,
+    "previousHead": "30dc46c75f6f40331dcbe188be1a517dd2dfe515"
+  },
+  "statusMutation": false,
+  "effectiveCounts": {
+    "treated": 51,
+    "partial": 27,
+    "setAside": 1,
+    "active": 5,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 5
+  },
+  "activeQueue": ["HER", "TSL", "ESH", "GAS", "UTZ"],
+  "investigations": [
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "priority": "station-level",
+      "result": "new_live_surface_no_tariff_payload_yet",
+      "positiveEvidence": [
+        "The live first-party EV Driver Web Portal at https://heraricarica.gruppohera.it/ is currently reachable and exposes a sitemap entry named Tariffe, plus live station filters and Hera Comm ownership metadata.",
+        "This makes the live Hera EV Driver portal a more promising current source than the exhausted generic Hera PDF/web searches."
+      ],
+      "negativeEvidence": [
+        "No numerical current energy tariff was exposed in the retrievable indexed page content during this run.",
+        "Search indexing did not expose a standalone /tariffe page or a numerical first-party Hera Ricarica energy price, so no tariff can be promoted."
+      ],
+      "officialReferences": [
+        "https://heraricarica.gruppohera.it/"
+      ],
+      "blockage": "The live portal exposes a Tariffe surface but the tariff payload/route is not yet retrievable through current indexed/browser surfaces.",
+      "resumeCondition": "Recover the live portal's tariff route, JavaScript/API call, or app/backend payload with numerical energy price and deterministic station/EVSE applicability.",
+      "antiRepeat": "Do not return to generic Hera web/PDF searches. Continue only from the live EV Driver portal Tariffe surface or app/backend traffic.",
+      "confidence": "high"
+    },
+    {
+      "partyIds": ["ESH", "GAS", "UTZ"],
+      "canonicalName": "Uattzy / UAU legacy technical parties",
+      "priority": "station-level",
+      "result": "binary_surface_confirmed_download_not_materialized",
+      "positiveEvidence": [
+        "APKCombo currently exposes Uattzy package com.fortum.enermia version 9.218.0 dated 2026-08-01, size about 98 MB, and confirms that the app displays live charger availability plus prices/tariffs.",
+        "The exact current binary version and package are therefore confirmed for endpoint extraction when the APK/XAPK can be materialized."
+      ],
+      "negativeEvidence": [
+        "The public APK download page returned an error during this run and did not expose a downloadable binary URL to the execution environment.",
+        "No new api.enermia.org station/tariff endpoint was indexed publicly."
+      ],
+      "references": [
+        "https://apkcombo.com/tw/uattzy-stazioni-di-ricarica/com.fortum.enermia/",
+        "https://api.enermia.org/"
+      ],
+      "resumeCondition": "Materialize Uattzy 9.218.0 APK/XAPK or obtain a public/guest api.enermia.org route exposing station/connector/operator/tariff-channel fields.",
+      "antiRepeat": "Do not repeat generic Uattzy web tariff searches; retry only binary materialization or exact backend endpoint discovery.",
+      "confidence": "high"
+    }
+  ],
+  "canonicalMaterialization": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "physicalStatus": "stale_seed_2026-09-05",
+    "action": "no_partial_overwrite",
+    "note": "The GitHub connector can read the Italy runtime branch, but local git materialization still fails because github.com DNS resolution is unavailable in the execution container. Atomic full replay remains required before replacing the standalone snapshot."
+  },
+  "consistency": {
+    "treatedPlusPartialPlusSetAsidePlusActive": 84,
+    "physicalWithSupersededAliases": 88,
+    "operationalPartitionExact": true,
+    "physicalPartitionExact": true,
+    "duplicateAliasOrCpoIntroduced": false,
+    "activeQueueCount": 5,
+    "activeQueueMatchesEffectiveCount": true,
+    "result": "pass"
+  },
+  "nextPriority": "Exploit Hera live EV Driver portal Tariffe route/API first; then materialize Uattzy 9.218.0 and scan endpoints. Tesla only on new exact site/time price payload; Atlante remains last."
+}
