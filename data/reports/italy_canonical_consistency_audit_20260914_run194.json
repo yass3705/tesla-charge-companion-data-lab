@@ -1,0 +1,59 @@
+{
+  "country": "IT",
+  "run": 194,
+  "recordedAt": "2026-09-14T19:50:30+01:00",
+  "branch": "research/italy-cpo-runtime-20260912",
+  "trigger": "mandatory full audit after continuing runs without nominative status progression and re-check of physical canonical materialization debt",
+  "scope": [
+    "effective status partition through run194",
+    "active queue reconciliation",
+    "network/class-wide exhaustion check",
+    "Uattzy ESH/GAS/UTZ non-collapse guard",
+    "Atlante setAside-last guard",
+    "TSL/HER no-promotion verification",
+    "physical seed versus ordered-delta authority boundary"
+  ],
+  "effectiveCounts": {
+    "treated": 51,
+    "partial": 27,
+    "setAside": 1,
+    "active": 5,
+    "supersededAlias": 4,
+    "operationalCanonicalTotal": 84,
+    "physicalPartyIds": 88,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelActiveRemaining": 5
+  },
+  "activeQueue": ["HER", "TSL", "ESH", "GAS", "UTZ"],
+  "checks": {
+    "treatedPlusPartialPlusSetAsidePlusActiveEquals84": true,
+    "physicalTotalIncludingSupersededAliasesEquals88": true,
+    "activeQueueCountEquals5": true,
+    "networkOrClassWideQueueEmpty": true,
+    "run194StatusMutation": false,
+    "eshGasUtzKeptDistinct": true,
+    "atlanteStillSetAsideAndLast": true,
+    "duplicateAliasOrCpoIntroducedByRun194": false,
+    "teslaStaleOrCrossLocalePriceNotPromoted": true,
+    "heraSecondaryOrHistoricalPriceNotPromoted": true,
+    "antiStagnationRespected": true
+  },
+  "corrections": [
+    "Run194 explicitly marks generic Tesla public-location price search exhausted until a fresh price-bearing first-party payload plus exact PUN/EVSE mapping exists.",
+    "Run194 explicitly marks generic Hera web/PDF tariff search exhausted until a fresh dated first-party economic sheet or backend payload exists."
+  ],
+  "findings": [
+    "No safe nominative status transition or rankable EVSE addition is justified by run194 evidence.",
+    "Current Tesla first-party station pages confirm physical site/stall metadata but do not consistently expose the current energy price in the retrievable surface; an older/cross-locale indexed value is insufficient for promotion.",
+    "Current Hera first-party tariff applicability remains unresolved; secondary or historical values remain fail-closed.",
+    "The physical docs/italy-cpo-progress-2026-09.json remains the stale 2026-09-05 seed (4 treated / 5 partial / 1 setAside / 78 active), while the effective ordered ledger is 51 treated / 27 partial / 1 setAside / 5 active plus 4 superseded aliases.",
+    "Atomic canonical materialization was attempted conceptually but not performed because the execution environment still cannot resolve github.com for a complete local checkout/replay. Partial hand-editing remains unsafe because it could discard per-CPO evidence."
+  ],
+  "canonicalPhysicalFile": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "status": "stale_seed_requires_full_replay",
+    "safeActionTaken": "no_partial_overwrite",
+    "requiredNextAction": "run scripts/italy_cpo_progress_consolidate_current.py over the complete ordered delta set when checkout/materialization is available; atomically replace the canonical and rerun this audit"
+  },
+  "result": "pass_effective_ledger_with_known_materialization_debt"
+}
