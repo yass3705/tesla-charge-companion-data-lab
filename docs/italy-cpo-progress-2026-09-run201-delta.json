@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 201,
+  "generatedAt": "2026-09-15T14:54:00+01:00",
+  "updates": [
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA COMM SPA",
+      "status": "active",
+      "priority": "station-level",
+      "lastInvestigated": "2026-09-15",
+      "positiveEvidence": [
+        {
+          "kind": "official_live_portal",
+          "title": "HeraRicarica EV Driver Web Portal - Tariffe",
+          "observed": "2026-09-15",
+          "details": "Current first-party tariff page is live. Public server-rendered/indexable surface exposes headings 'Offerta flat' and 'Offerta a consumo' but no energy EUR/kWh values. It does expose current post-charge penalties: EUR 0.08/min after 60 minutes for Type 2/3A from 07:00-23:00, and EUR 0.15/min after 60 minutes for CHAdeMO/CCS2 00:00-23:59.",
+          "officialUrl": "https://heraricarica.gruppohera.it/home/pages/tariffs"
+        },
+        {
+          "kind": "official_live_portal_power_taxonomy",
+          "observed": "2026-09-15",
+          "details": "Current portal defines power filters Default 0-22 kW, Rapido 23-50 kW, Veloce 51-100 kW, Powered 101-150 kW, Ultra >150 kW. These are discovery/mapping classes only; no energy price may be inferred from them.",
+          "officialUrl": "https://heraricarica.gruppohera.it/"
+        }
+      ],
+      "negativeEvidence": [
+        "Current first-party tariff page does not expose the energy EUR/kWh component in its public server-rendered/indexable response; generic web/PDF search remains exhausted without a current first-party energy value."
+      ],
+      "decision": "Keep HER fail-closed for ranking. Preserve current first-party penalty and power taxonomy, but do not combine them with mirrored/historical energy values. Next useful route is client-side bundle/API/app payload inspection with deterministic physical-operator/station/EVSE mapping.",
+      "resumeCondition": "Obtain current first-party energy tariff payload plus deterministic operator/station/EVSE mapping and effective dates.",
+      "confidence": "high for live penalty/power taxonomy; insufficient for complete current rankable tariff"
+    }
+  ],
+  "history": [
+    "2026-09-15 run201: rechecked the live first-party HeraRicarica tariff surface; confirmed current penalties and power taxonomy, confirmed energy values remain absent from the public server-rendered/indexable response, and closed generic web/PDF search against repetition."
+  ]
+}
