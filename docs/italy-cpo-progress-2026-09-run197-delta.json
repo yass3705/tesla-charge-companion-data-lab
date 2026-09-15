@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 197,
+  "generatedAt": "2026-09-15T05:54:36+01:00",
+  "type": "investigationDelta",
+  "partyIdGroup": ["ESH", "GAS", "UTZ"],
+  "canonicalNetwork": "Uattzy / UAU srl",
+  "status": "active",
+  "priority": "station-level",
+  "investigations": [
+    {
+      "source": "https://www.uattzy.com/",
+      "sourceType": "first-party",
+      "finding": "Uattzy states that UAU is the Italian entity created from E-Shore, GASGAS and EnerMia and that Uattzy operates both as CPO and eMSP; network exceeds 3,000 installed/managed charging points.",
+      "positiveEvidence": true
+    },
+    {
+      "source": "https://www.uattzy.com/faq/",
+      "sourceType": "first-party",
+      "finding": "Current FAQ states tariff is displayed per connector in Uattzy; prices can vary with delivered power, session duration and bay occupation time, with possible additional parking/activation fees. Other apps/cards can apply their own pricing. This prevents unconditional network-wide promotion without exact connector/class applicability.",
+      "positiveEvidence": true
+    },
+    {
+      "source": "https://e-ricarica.it/uattzy-cambia-le-tariffe-stop-ai-costi-al-minuto/",
+      "sourceType": "third-party-discovery",
+      "finding": "Recent report gives a potentially deterministic Uattzy tariff grid: app/RFID Quick 0.57 EUR/kWh; app/RFID Fast+Ultra Fast 0.67 EUR/kWh; POS Quick 0.61 EUR/kWh; POS Fast+Ultra Fast 0.72 EUR/kWh, with minute-based charging reportedly removed. Treat as discovery/corroboration only until first-party source or backend payload proves exact applicability and thresholds.",
+      "positiveEvidence": false
+    }
+  ],
+  "candidateTariffGrid": {
+    "promotionStatus": "fail-closed-until-first-party-proof",
+    "reportedClasses": [
+      {"channel":"Uattzy app/RFID","class":"Quick","energyEurPerKwh":0.57},
+      {"channel":"Uattzy app/RFID","class":"Fast/Ultra Fast","energyEurPerKwh":0.67},
+      {"channel":"POS ad-hoc","class":"Quick","energyEurPerKwh":0.61},
+      {"channel":"POS ad-hoc","class":"Fast/Ultra Fast","energyEurPerKwh":0.72}
+    ],
+    "missingProof": [
+      "first-party numeric tariff publication or backend response",
+      "exact Quick/Fast/Ultra Fast power thresholds",
+      "proof grid applies to all ESH/GAS/UTZ physical EVSE rather than only selected Uattzy-operated connectors",
+      "exact additional occupancy/activation fee rules where applicable"
+    ]
+  },
+  "blockage": "A recent deterministic class-wide tariff candidate now exists, but first-party Uattzy FAQ explicitly allows connector/power/time/occupation variation and does not publish numeric prices. No safe direct-CPO promotion yet.",
+  "resumeCondition": "Obtain current first-party Uattzy tariff notice, app/backend payload or ad-hoc/POS page proving numeric grid, exact class thresholds and ESH/GAS/UTZ applicability.",
+  "confidence": "medium",
+  "coverage": {"rankableAdded": 0, "failClosed": true},
+  "antiStagnation": "Do not repeat generic web tariff searches. Next useful path is first-party app/backend/ad-hoc payload or an official tariff document containing the numeric class grid.",
+  "canonicalMutation": "No status/count promotion; evidence-only delta pending canonical replay.",
+  "atlante": "unchanged-setAside-last"
+}
