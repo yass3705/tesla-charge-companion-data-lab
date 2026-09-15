@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 207,
+  "generatedAt": "2026-09-15T23:58:00+01:00",
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "baseDelta": "docs/italy-cpo-progress-2026-09-run206-delta.json",
+  "reason": "Fresh first-party Sagelio evidence proves that charging-site owners set customer tariffs according to their own site economics; no deterministic Sagelio-wide tariff can safely be assigned to partyId SAG.",
+  "changes": [
+    {
+      "partyId": "SAG",
+      "canonicalName": "Sagelio srl società benefit",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 405,
+      "stations": 316,
+      "tariffModel": "site-owner configurable tariff",
+      "tariffChannel": "Sagelio managed payment/roaming platform; exact direct/ad-hoc price is site-specific",
+      "officialUrls": [
+        "https://sagelio.com/",
+        "https://sagelio.com/blog/monetizzare-la-ricarica-come-impostare-le-tariffe-per-i-tuoi-clienti/"
+      ],
+      "positiveEvidence": "Sagelio's current official site advertises pricing control to the host location and visibility on 50+ charging apps. Its 2026 official pricing article explicitly explains how each customer/site should choose the tariff charged to drivers from its own energy cost and desired return, stating that there is no tariff valid for everyone. The 0.59 EUR/kWh shown there is explicitly an illustrative example, not a network tariff.",
+      "negativeTests": [
+        "No current first-party evidence of one Sagelio-wide direct/ad-hoc tariff for all SAG EVSE",
+        "0.59 EUR/kWh example rejected as non-authoritative network price because Sagelio labels it as an example derived from site economics"
+      ],
+      "blockage": "partyId SAG identifies Sagelio-managed infrastructure but does not determine the site owner's exact customer tariff.",
+      "resumeCondition": "Map each SAG station/EVSE to the exact current tariff exposed by Sagelio payment/roaming/backend surface before ranking.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-15",
+      "lastChanged": "2026-09-15"
+    }
+  ],
+  "counterDelta": {"treated": 0, "partial": 0, "setAside": 0, "active": 0},
+  "expectedCountsAfterApply": {"treated": 7, "partial": 5, "setAside": 1, "active": 75, "total": 88},
+  "classificationProgress": {"movedOutOfNetworkWideCandidateQueue": 1, "evseClassifiedStationLevel": 405, "stationsClassifiedStationLevel": 316},
+  "consistency": {"expectedStatusSum": 88, "duplicatePartyIdsIntroduced": 0, "inventoryTotalUnchanged": true, "inventoryEvseUnchanged": 75025, "check": "7 + 5 + 1 + 75 = 88"},
+  "next": "Continue unresolved network-wide/class-wide candidates by EVSE scope; SAG joins the deferred station-level queue. Atlante remains last."
+}
