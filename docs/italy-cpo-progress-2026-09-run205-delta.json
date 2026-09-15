@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 205,
+  "generatedAt": "2026-09-15T21:50:28+01:00",
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "baseBranchHead": "b49d3daa21b64abaa20144da5dd424631d8d66b9",
+  "reason": "Fresh first-party verification confirms three already-candidate-ready network-wide/class-wide CPOs. Promote them before any station-level work, preserving fail-closed semantics.",
+  "changes": [
+    {
+      "partyId": "ONS",
+      "canonicalName": "On Electric Charge Mobility / On Charge",
+      "fromStatus": "active",
+      "toStatus": "treated",
+      "priority": "network-wide",
+      "evse": 716,
+      "stations": 342,
+      "tariffModel": "power_band_network_wide",
+      "tariffChannel": "direct CPO",
+      "tariffs": [
+        {"class": "AC<=22kW", "energyEurPerKwh": 0.65},
+        {"class": "DC<=50kW", "energyEurPerKwh": 0.85},
+        {"class": "DC ultrafast<=350kW", "energyEurPerKwh": 0.95}
+      ],
+      "officialUrls": ["https://onmobility.oncharge.it/ricarica", "https://onmobility.oncharge.it/termini-e-condizioni"],
+      "coverage": {"rankableDirectEvse": 716, "uncoveredEvse": 0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-15",
+      "lastChanged": "2026-09-15",
+      "positiveEvidence": "Official live On Charge pages state the three consumption tariffs and explicitly scope the tariff terms to public On Charge stations accessed by app/RFID.",
+      "negativeTests": [],
+      "blockage": null,
+      "resumeCondition": "Recheck only on tariff/source change."
+    },
+    {
+      "partyId": "IPE",
+      "canonicalName": "IPlanet",
+      "fromStatus": "active",
+      "toStatus": "treated",
+      "priority": "network-wide",
+      "evse": 547,
+      "stations": 189,
+      "tariffModel": "power_band_network_wide",
+      "tariffChannel": "direct CPO / ad-hoc POS",
+      "tariffs": [
+        {"class": "APP/RFID AC<=22kW", "energyEurPerKwh": 0.60},
+        {"class": "APP/RFID DC 50-150kW and 150+kW", "energyEurPerKwh": 0.74},
+        {"class": "POS DC any power", "energyEurPerKwh": 0.79}
+      ],
+      "occupancyFees": [
+        {"class": "AC", "graceMinutesAfterCharge": 60, "eurPerMinute": 0.10},
+        {"class": "DC", "graceMinutesAfterCharge": 60, "eurPerMinute": 0.20},
+        {"class": "HPC>150kW", "graceMinutesAfterCharge": 60, "eurPerMinute": 0.30}
+      ],
+      "officialUrls": ["https://iplanet.eu/tariffe/", "https://iplanet.eu/wp-content/uploads/2025/11/IPlanet-Catalogo-Tariffe_ITA.pdf"],
+      "coverage": {"rankableDirectEvse": 547, "uncoveredEvse": 0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-15",
+      "lastChanged": "2026-09-15",
+      "positiveEvidence": "Official live tariff page explicitly says prices are valid on IPlanet stations; current first-party catalogue confirms power bands and post-charge penalties.",
+      "negativeTests": [],
+      "blockage": null,
+      "resumeCondition": "Recheck only on tariff/source change."
+    },
+    {
+      "partyId": "FWY",
+      "canonicalName": "FastWay",
+      "fromStatus": "active",
+      "toStatus": "treated",
+      "priority": "network-wide",
+      "evse": 421,
+      "stations": 213,
+      "tariffModel": "connector_type_network_wide",
+      "tariffChannel": "direct CPO app/RFID/POS",
+      "tariffs": [
+        {"class": "AC Type2", "energyEurPerKwh": 0.68},
+        {"class": "DC CCS Combo 2", "energyEurPerKwh": 0.88}
+      ],
+      "officialUrls": ["https://www.fastway.energy/guida-alla-ricarica/"],
+      "coverage": {"rankableDirectEvse": 421, "uncoveredEvse": 0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-15",
+      "lastChanged": "2026-09-15",
+      "positiveEvidence": "Official live FastWay charging guide publishes App/POS connector tariffs and separately states roaming tariffs are set by partner eMSPs, allowing direct-vs-roaming separation.",
+      "notes": "FastWay's 50% Chargeback remains active after summer 2026, but it is a subsequent coupon/benefit and is not substituted for the gross direct tariff in TCC ranking.",
+      "negativeTests": [],
+      "blockage": null,
+      "resumeCondition": "Recheck only on tariff/source change."
+    }
+  ],
+  "counterDelta": {"treated": 3, "active": -3, "partial": 0, "setAside": 0},
+  "expectedCountsAfterApply": {"treated": 7, "partial": 5, "setAside": 1, "active": 75, "total": 88},
+  "coverageAdded": {"rankableDirectEvse": 1684, "stations": 744},
+  "consistency": {
+    "expectedStatusSum": 88,
+    "duplicatePartyIdsIntroduced": 0,
+    "inventoryTotalUnchanged": true,
+    "inventoryEvseUnchanged": 75025,
+    "aliasesChanged": 0,
+    "check": "7 + 5 + 1 + 75 = 88"
+  },
+  "next": "Continue remaining network-wide/class-wide candidates by EVSE scope before station-level CPOs. Atlante remains last."
+}
