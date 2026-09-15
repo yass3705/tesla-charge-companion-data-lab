@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 204,
+  "investigatedAt": "2026-09-15T20:54:21+01:00",
+  "partyIdGroup": ["ESH", "GAS", "UTZ"],
+  "canonicalNetwork": "Uattzy / UAU",
+  "status": "active",
+  "priority": "station-level",
+  "positiveEvidence": [
+    {
+      "source": "https://www.uattzy.com/",
+      "firstParty": true,
+      "observed": "2026-09-15",
+      "finding": "Current official Uattzy homepage now states over 3,000 charging points installed/in management in Italy and over 2,000 additional points incoming. It also confirms Uattzy is the UAU public-charging brand created from E-Shore, GASGAS and EnerMia, and that Uattzy operates as both CPO and eMSP. This supersedes the older 2,400-point corporate scope figure as a live corporate network-size statement, but it is not a PUN/OCPI inventory count and must not alter the canonical 2026-08-30 partyId/EVSE inventory without a fresh deterministic inventory reconciliation."
+    },
+    {
+      "source": "https://www.uattzy.com/faq/",
+      "firstParty": true,
+      "observed": "2026-09-15",
+      "finding": "Current FAQ still requires connector-level tariff inspection before charging and states prices may vary with power, session duration and bay occupation. QR rollout is in progress network-wide; POS is available only on enabled chargers."
+    }
+  ],
+  "decision": "No tariff promotion. Preserve ESH/GAS/UTZ fail-closed. Record the live first-party scope increase as evidence of network growth only; do not mutate the canonical PUN/OCPI EVSE counts from this marketing total. The only useful tariff route remains first-party app/guest/QR/POS connector payload or an official deterministic tariff publication.",
+  "blockage": "No first-party deterministic EVSE/connector-to-current-direct-tariff mapping or exact Quick/Fast/Ultra Fast thresholds. Live corporate scope has also grown beyond the older brochure figure, so a future inventory refresh must reconcile new physical EVSE separately from tariff resolution.",
+  "resumeCondition": "Obtain Uattzy app/guest/QR/POS payload mapping EVSE/connector to current direct tariff and power class; independently refresh PUN/OCPI inventory when a newer deterministic inventory artifact is available.",
+  "negativePaths": [
+    "Generic first-party website/PDF tariff discovery remains exhausted; current public pages expose tariff behavior but not deterministic connector prices or exact class thresholds.",
+    "Search-engine/API keyword discovery did not expose a public Uattzy tariff endpoint in this run."
+  ],
+  "confidence": "high for current corporate scope/alias/CPO-eMSP facts; insufficient for rankable direct EVSE tariff coverage",
+  "coverage": {
+    "rankableAddedThisRun": 0,
+    "failClosed": true
+  },
+  "consistencyAudit": {
+    "trigger": "four-run cadence since run200",
+    "result": "no safe canonical count mutation from this evidence",
+    "checks": [
+      "runtime seed remains 88 unique partyIds / 75025 EVSE from workflow run 33308407226",
+      "ESH, GAS and UTZ remain separate physical partyIds but grouped under canonical Uattzy/UAU research evidence; no alias is promoted to an additional CPO count",
+      "Atlante remains setAside and last",
+      "live Uattzy >3000 corporate point count is intentionally not substituted for PUN/OCPI EVSE inventory"
+    ],
+    "note": "A full replay of all Italy deltas with scripts/italy_cpo_progress_consolidate_current.py remains the authoritative way to materialize post-seed status counters; this run introduces no status transition."
+  }
+}
