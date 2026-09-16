@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 214,
+  "date": "2026-09-16",
+  "canonicalBase": "docs/italy-cpo-progress-2026-09.json",
+  "inventory": {"partyIds": 88, "observedEvse": 75025},
+  "strategy": "anti-stagnation first pass; network/class-wide before station-level",
+  "changes": [
+    {
+      "partyId": "CVG",
+      "canonicalName": "CONVERGENZE S.p.A. Società Benefit",
+      "status": "treated",
+      "priority": "network-wide",
+      "evse": 90,
+      "stations": 44,
+      "tariffModel": "EVO network-wide AC Type 2 22kW",
+      "tariffChannel": "direct CPO smartphone / EVO Card",
+      "tariffs": [{"class":"EVO Type 2 IEC62196 22kW","energyEurPerKwh":0.60,"vatIncluded":true}],
+      "paymentMethods": ["credit card", "PayPal", "EVO Card"],
+      "officialUrls": ["https://convergenze.it/it/servizi/energia/evo", "https://evo.convergenze.it/"],
+      "positiveEvidence": [
+        "Current official Convergenze EVO page explicitly identifies EVO as the Convergenze charging network, states every EVO charge point has two IEC62196 Type 2 connectors at 22 kW each, and publishes Cost per kWh = 60 cent/EUR VAT included.",
+        "The same first-party page documents direct smartphone charging with credit-card or PayPal payment and EVO Card charging; therefore this is direct CPO pricing, not an eMSP roaming tariff.",
+        "Current EVO portal exposes station charging-cost fields, corroborating the direct network surface."
+      ],
+      "negativeEvidence": ["English mirror displays 60 cent/EUR + VAT while the current Italian page explicitly states IVA inclusa; Italian domestic first-party page is retained as authoritative for Italy."],
+      "blockage": null,
+      "resumeCondition": "recheck only if Convergenze changes the EVO tariff or inventory contains a non-EVO CVG subpopulation",
+      "coverage": {"rankableEvse":90,"uncoveredEvse":0,"coveragePct":100},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-16",
+      "lastChanged": "2026-09-16",
+      "history": ["run213 class-wide candidate at 0.600 EUR/kWh; run214 promoted after current first-party network tariff declaration proved direct EVO applicability"]
+    }
+  ],
+  "consistency": {
+    "preDeltaCounts": {"treated":9,"partial":5,"setAside":1,"active":73,"total":88},
+    "postDeltaCounts": {"treated":10,"partial":5,"setAside":1,"active":72,"total":88},
+    "statusSum":88,
+    "duplicatePartyIdsIntroduced":0,
+    "inventoryEvseChanged":false,
+    "rankableEvseAdded":90,
+    "note":"CVG promoted from active class-wide candidate to treated from current first-party direct network evidence. No eMSP tariff used."
+  },
+  "history": ["2026-09-16 CVG/Convergenze EVO promoted treated: direct network tariff 0.60 EUR/kWh VAT included, Type 2 22 kW, 90 EVSE / 44 stations rankable."]
+}
