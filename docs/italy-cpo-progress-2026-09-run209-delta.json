@@ -1,0 +1,49 @@
+{
+  "country": "IT",
+  "run": 209,
+  "date": "2026-09-16",
+  "canonicalBase": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalBaseCommit": "3185ad152fb1cb4704a278ea153e48af2a1109d6",
+  "changes": [
+    {
+      "partyId": "VFS",
+      "canonicalName": "VIAFAST SRL",
+      "status": "treated",
+      "priority": "network-wide",
+      "evse": 167,
+      "stations": 84,
+      "tariffModel": "connector/power-class network-wide",
+      "tariffChannel": "direct CPO",
+      "tariffs": [
+        {"class": "AC <=22 kW", "energyEurPerKwh": 0.60},
+        {"class": "DC FAST 60 kW / ULTRAFAST 90-180 kW", "energyEurPerKwh": 0.85}
+      ],
+      "parkingOccupation": {"graceMinutesAfterCharge": 5, "eurPerMinuteAfterGrace": 0.25, "applies": "24/7"},
+      "officialUrls": ["https://www.viafast.net/viafast-tariffe/"],
+      "positiveEvidence": ["Official VIAFAST live tariff page states AC 22 kW = 0.60 EUR/kWh and DC FAST 60 kW / ULTRAFAST 90-180 kW flat = 0.85 EUR/kWh; occupation after 5-minute grace = 0.25 EUR/min 24/7."],
+      "coverage": {"rankableEvse": 167, "uncoveredEvse": 0, "reason": "official network-wide class tariff covers canonical VIAFAST inventory classes"},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-16",
+      "lastChanged": "2026-09-16"
+    },
+    {
+      "partyId": "ASS",
+      "canonicalName": "AGSM AIM SMART SOLUTIONS S.R.L.",
+      "status": "active",
+      "priority": "network-wide",
+      "note": "First-party Magis page confirms discounted subscription tariffs (AC 0.60/0.58/0.50 depending plan; DC 0.74) but states pay-per-use price is the tariff shown in app at time of use. Do not promote subscription pricing as direct ad-hoc baseline without eligibility selection; continue search for current standard pay-per-use tariff or deterministic app payload.",
+      "lastInvestigated": "2026-09-16"
+    },
+    {
+      "partyId": "DRW",
+      "canonicalName": "UnoEnergy DriWe spa",
+      "status": "active",
+      "priority": "station-level",
+      "note": "No current first-party national direct tariff found in this pass. Historical/location evidence is station-specific and insufficient for network-wide promotion; resume with DriWe/UnoEnergy station or guest backend mapping.",
+      "lastInvestigated": "2026-09-16"
+    }
+  ],
+  "countsAfterDelta": {"treated": 8, "partial": 5, "setAside": 1, "active": 74, "total": 88},
+  "consistency": {"statusSum": 88, "matchesCanonicalInventory": true, "duplicatePartyIdsIntroduced": 0, "observedEvse": 75025},
+  "history": ["Run209 promoted VIAFAST from active to treated using current official network-wide class tariff; 167 EVSE / 84 stations become rankable.", "AGSM AIM retained active pending standard pay-per-use baseline; subscription tariffs kept separate.", "DriWe classified station-level for next phase; no stale local tariff promoted."]
+}
