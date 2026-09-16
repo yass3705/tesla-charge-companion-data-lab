@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 210,
+  "generatedAt": "2026-09-16T07:53:00+01:00",
+  "baseCanonical": "docs/italy-cpo-progress-2026-09.json",
+  "appliedPriorDeltas": [205,206,207,208,209],
+  "reason": "Runtime branch canonical was recovered and prior deltas 205-209 verified. Fresh first-party Enel evidence establishes a deterministic Enel On Your Way tariff on Enel X/Ewiva infrastructure, but the published offer is an eMSP tariff and must remain separated from a direct CPO/ad-hoc ENX baseline.",
+  "changes": [
+    {
+      "partyId": "ENX",
+      "canonicalName": "ENEL X WAY ITALIA SRL",
+      "status": "active",
+      "priority": "network-wide",
+      "evse": 22798,
+      "stations": 11123,
+      "tariffModel": "deterministic technology/time-band tariff on own-network infrastructure via Enel On Your Way",
+      "tariffChannel": "eMSP Enel On Your Way on Enel X/Ewiva infrastructure; direct CPO/ad-hoc baseline not yet separately proven",
+      "observedTariffs": [
+        {"plan":"Pay Per Use Basic","class":"AC <=43 kW","day":"07:00-20:59","energyEurPerKwh":0.67},
+        {"plan":"Pay Per Use Basic","class":"AC <=43 kW","night":"21:00-06:59","energyEurPerKwh":0.58},
+        {"plan":"Pay Per Use Basic","class":"DC 43-99 kW","day":"07:00-20:59","energyEurPerKwh":0.75},
+        {"plan":"Pay Per Use Basic","class":"DC 43-99 kW","night":"21:00-06:59","energyEurPerKwh":0.64},
+        {"plan":"Pay Per Use Basic","class":"HPC >99 kW","energyEurPerKwh":0.86,"note":"current page also contains expired May-July promotional fragments; use only currently applicable surface after date validation"}
+      ],
+      "officialUrls": ["https://www.enel.it/it-it/mobilita-elettrica/tariffe-abbonamenti"],
+      "positiveEvidence": "Current official Enel tariff page explicitly states consumption prices on Enel X and Ewiva stations and that the tariff is selected by charging start time. AC/DC Pay Per Use Basic day/night values are exposed on the live page.",
+      "negativeTests": [
+        "Do not transpose Enel On Your Way tariffs shown for other operators to their direct CPO prices.",
+        "Do not treat expired May-July promotional Ewiva fragments embedded on the page as current ENX direct pricing.",
+        "Current evidence is an Enel eMSP offer on Enel X/Ewiva infrastructure; a separate direct/ad-hoc CPO price surface is still required before ENX can be promoted as direct-CPO treated."
+      ],
+      "blockage": "Direct/ad-hoc ENX tariff channel has not yet been separated from Enel On Your Way eMSP pricing with first-party evidence.",
+      "resumeCondition": "Find ENX QR/ad-hoc/POS/direct-CPO tariff terms or prove that Enel On Your Way Pay Per Use is the authoritative direct CPO channel for partyId ENX.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-16",
+      "lastChanged": "2026-09-16"
+    }
+  ],
+  "reconciledCountsAfterPriorDeltas": {"treated":8,"partial":5,"setAside":1,"active":74,"total":88},
+  "consistency": {"statusSum":88,"matchesCanonicalInventory":true,"duplicatePartyIdsIntroduced":0,"observedEvse":75025,"note":"Prior deltas 205-209 are present on the runtime branch; run210 does not change status counters."},
+  "next": "Continue network-wide/class-wide candidates. ENX remains in that queue only for direct-vs-eMSP channel resolution; do not start station-level ENX mapping yet. Atlante remains last."
+}
