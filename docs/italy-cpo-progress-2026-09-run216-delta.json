@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 216,
+  "generatedAt": "2026-09-16T13:54:00+01:00",
+  "baseCommit": "d8201c8c7c6c097d489505490c0f6a41bba4ebff",
+  "policy": {
+    "priority": ["network-wide", "class-wide", "station-level"],
+    "atlanteLast": true,
+    "failClosed": true,
+    "directVsEmspSeparated": true,
+    "antiStagnationFirstPass": true
+  },
+  "changes": [
+    {
+      "partyId": "WRM",
+      "canonicalName": "WROOM SRL SB a socio unico",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 242,
+      "stations": 242,
+      "tariffModel": "station_specific",
+      "tariffChannel": "WROOM app/eMSP; direct CPO tariff not proven network-wide",
+      "positiveEvidence": ["WROOM current terms state tariffs are shown per charging station before activation and may vary by charger make/model, geography, power and CPO"],
+      "officialUrls": ["https://www.wroom.tech/terms-app-wroom-business/"],
+      "negativeLeads": ["historical WROOM app price tables are eMSP tariffs and cannot be transposed to WRM CPO EVSE"],
+      "blockage": "No deterministic WRM-wide direct/ad-hoc tariff; current terms explicitly allow station/CPO/power-dependent pricing",
+      "resumeCondition": "obtain current station/EVSE tariff payload from WROOM app/backend or direct CPO QR/ad-hoc mapping",
+      "confidence": "high",
+      "rankableCoverage": 0,
+      "failClosedEvse": 242
+    },
+    {
+      "partyId": "DRW",
+      "canonicalName": "UnoEnergy DriWe spa",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 287,
+      "stations": 103,
+      "tariffModel": "station_specific_unresolved",
+      "tariffChannel": "Unoenergy DriWe map/app; direct numeric tariff not exposed in public official page",
+      "positiveEvidence": ["Unoenergy official Ricarica START page confirms map, booking and payment for Unoenergy DriWe chargers"],
+      "officialUrls": ["https://www.unoenergy.it/casa/colonnine-ricarica/ricarica-start/"],
+      "negativeLeads": ["PUN/Pienotto sample IT*GES EVSE reports tariff not communicated; no safe network-wide numeric tariff found"],
+      "blockage": "No current deterministic network/class-wide retail tariff published",
+      "resumeCondition": "extract current Unoenergy DriWe map/app backend station tariffs or direct ad-hoc payload",
+      "confidence": "medium-high",
+      "rankableCoverage": 0,
+      "failClosedEvse": 287
+    },
+    {
+      "partyId": "NRG",
+      "canonicalName": "NRG4YOU SRL",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 136,
+      "stations": 76,
+      "tariffModel": "unresolved_operator_or_host_specific",
+      "tariffChannel": "direct CPO not proven",
+      "positiveEvidence": ["NRG4YOU is confirmed as charging-station manufacturer/operator label in Italian infrastructure records"],
+      "negativeLeads": ["public official/product surfaces describe hardware and RFID capabilities but expose no current retail network tariff", "historical Community Charger pricing is project-specific and must not be generalized"],
+      "blockage": "No deterministic current NRG4YOU-wide direct/ad-hoc tariff found",
+      "resumeCondition": "obtain station-level PUN tariff, QR/ad-hoc surface, or NRG4YOU backend mapping",
+      "confidence": "medium",
+      "rankableCoverage": 0,
+      "failClosedEvse": 136
+    },
+    {
+      "partyId": "TCA",
+      "canonicalName": "T-CARICA S.R.L.",
+      "status": "active",
+      "priority": "station-level",
+      "evse": 123,
+      "stations": 64,
+      "tariffModel": "direct_unresolved_roaming_prices_known",
+      "tariffChannel": "roaming/eMSP evidence separated from direct CPO",
+      "positiveEvidence": ["T-Carica is confirmed as an independent CPO network with AC and DC infrastructure"],
+      "negativeLeads": ["published 0.55 AC / 0.65 DC Fast / 0.70 DC Ultrafast figures are explicitly associated with Electriease-BeaglePlug roaming and are not promoted as T-Carica direct/ad-hoc prices"],
+      "blockage": "Current direct/ad-hoc T-Carica price and deterministic station mapping not proven",
+      "resumeCondition": "obtain official T-Carica direct tariff/QR/app backend or PUN station tariff mapping",
+      "confidence": "high",
+      "rankableCoverage": 0,
+      "failClosedEvse": 123
+    }
+  ],
+  "consistency": {
+    "statusCountsUnchanged": {"treated": 10, "partial": 5, "setAside": 1, "active": 72, "total": 88},
+    "statusSum": 88,
+    "matchesCanonicalInventory": true,
+    "observedEvse": 75025,
+    "duplicatePartyIdsIntroduced": 0,
+    "note": "This delta classifies active CPOs for first-pass priority only; no status promotion and no tariff extrapolation."
+  },
+  "history": [
+    "2026-09-16 WRM classified station-level from current WROOM terms explicitly allowing station/CPO/power-dependent tariffs.",
+    "2026-09-16 DRW classified station-level/fail-closed pending Unoenergy DriWe map/app tariff extraction.",
+    "2026-09-16 NRG classified station-level/fail-closed; hardware/project evidence does not establish a national retail tariff.",
+    "2026-09-16 TCA classified station-level; Electriease-BeaglePlug prices retained only as roaming evidence, not direct CPO tariff."
+  ]
+}
