@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 159,
+  "observedAt": "2026-09-17T09:52:00+01:00",
+  "purpose": "Advance Alpha Mobility/AM1 using current first-party platform evidence and an exact public direct-payment station tariff; classify the CPO correctly as station-level rather than infer a network tariff.",
+  "changes": {"treated": [], "partial": [], "setAside": [], "active": []},
+  "partyAudit": {
+    "partyId": "AM1",
+    "canonicalName": "Alpha Mobility S.r.l. Societa Benefit",
+    "status": "active",
+    "priority": "station-level",
+    "inventory": {"evse": 50, "source": "Adiconsum May 2026 PUN operator inventory: ALPHA MOBILITY SRL 50/50 active"},
+    "tariffModel": "host-configurable station-specific direct tariff",
+    "tariffChannel": "Alpha Mobility-owned ricaricaveicolo.it web app / QR / card-payment direct; roaming eMSP excluded",
+    "firstPartyPlatformEvidence": {
+      "url": "https://www.alphamobility.it/ricaricaveicolo-it/",
+      "finding": "Alpha Mobility states its proprietary ricaricaveicolo.it web app lets station operators manage recharge price autonomously, including different prices by time band, discounts, virtual cards and charging packages. Therefore no single network-wide AM1 tariff may be inferred."
+    },
+    "exactDirectStationEvidence": [
+      {
+        "platformStationId": "IT0721090094",
+        "location": "Centro Commerciale Le Mura, Via Copparo 132, Ferrara",
+        "connectors": "2 x Type 2 22 kW",
+        "energyEurPerKwh": 0.65,
+        "minimumChargeEur": 2.5,
+        "preAuthorizationEur": 100,
+        "managedBy": "ALPHA MOBILITY SRL",
+        "url": "https://ricaricaveicolo.it/chargestation/IT0721090094",
+        "mappingState": "direct station tariff proven; PUN/OCPI AM1 EVSE-id equivalence not yet proven in this run, so no canonical EVSE rankable credit is claimed"
+      }
+    ],
+    "discoveryEvidence": [
+      "A second ricaricaveicolo.it station IT0721090213 exposes 0.61 EUR/kWh and discounted 0.49 EUR/kWh, demonstrating price variation, but is managed by AUTOFAC SNC and is not promoted to AM1 inventory.",
+      "Alpha Mobility hardware pages state compatibility with ricaricaveicolo.it and OCPP/API-capable management, providing a concrete backend surface for the next mapping step."
+    ],
+    "negativePaths": [
+      "Do not extrapolate Ferrara 0.65 EUR/kWh to all AM1 EVSE.",
+      "Do not treat ricaricaveicolo.it stations managed by third-party hosts as AM1 physical inventory without exact PUN/OCPI mapping.",
+      "Generic Alpha Mobility corporate pages do not publish a network-wide current tariff grid."
+    ],
+    "blocker": "Need deterministic AM1 PUN/OCPI EVSE -> ricaricaveicolo.it station mapping before station prices can receive rankable EVSE coverage.",
+    "resumeCondition": "Enumerate current AM1 EVSE/station identifiers from PUN/Pienotto/open data and match by coordinates/address/platform IDs to ricaricaveicolo.it direct station pages; then persist each exact station/EVSE tariff independently.",
+    "confidence": "high for station-level model and Ferrara direct tariff; no EVSE coverage credit until identifier mapping",
+    "lastInvestigated": "2026-09-17",
+    "lastChanged": "2026-09-17"
+  },
+  "effectiveCountsAfter": {"treated":52,"partial":23,"setAside":1,"active":8,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+  "priorityQueuesAfter": {"networkOrClassWide":0,"stationLevel":8},
+  "coverageAddedThisRun": {"rankableEvse":0,"directStationTariffsProven":1},
+  "consistency": {"canonicalEquation":"52+23+1+8=84","physicalEquation":"84+4=88","result":"PASS_NO_STATUS_MUTATION"},
+  "next": "AM1 exact PUN/OCPI-to-ricaricaveicolo mapping; continue other station-level CPOs only on new station/payment/backend evidence; Atlante last."
+}
