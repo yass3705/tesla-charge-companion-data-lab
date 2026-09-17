@@ -4,13 +4,18 @@
   "generatedAt": "2026-09-17T01:00:00+01:00",
   "baseCheckpoint": {
     "historicalRun": 150,
-    "treated": 52,
-    "partial": 22,
+    "treated": 51,
+    "partial": 23,
     "setAside": 1,
     "active": 9,
     "canonicalTotal": 84,
     "supersededAlias": 4,
     "physicalPartyIds": 88
+  },
+  "correction": {
+    "reason": "The initial run151 draft used an incorrect 52/22 split and duplicated the already documented HER run124 investigation. Historical run150 is authoritative: 51 treated, 23 partial, 1 setAside, 9 active.",
+    "historicalDuplicate": "HER run124 already established that the first-party tariff page exposes the penalty model but not crawlable numeric energy prices.",
+    "action": "No HER status or coverage promotion is counted in run151; the current portal recheck is retained only as freshness confirmation."
   },
   "investigated": [
     {
@@ -19,24 +24,14 @@
       "statusBefore": "active",
       "statusAfter": "active",
       "priority": "station-level",
-      "positiveEvidence": [
-        "Current first-party EV Driver portal is reachable at https://heraricarica.gruppohera.it/ and exposes the live charging-network UI plus a dedicated tariff page.",
-        "Current first-party tariff page https://heraricarica.gruppohera.it/home/pages/tariffs explicitly exposes both 'Offerta flat' and 'Offerta a consumo' sections and a deterministic post-charge penalty model.",
-        "Penalty after 60 minutes from charge completion: 0.08 EUR/min for Type 2 / Type 3A from 07:00 to 23:00 every day; 0.15 EUR/min for CHAdeMO / Combo CCS2 all day."
-      ],
-      "negativeEvidence": [
-        "The currently crawlable first-party tariff page does not expose the numeric energy-price values for the flat/consumption cards in its text payload.",
-        "Historical/third-party numeric Hera prices are not promoted because they are not sufficient authority for current direct CPO pricing."
-      ],
-      "decision": "Remain active station-level fail-closed for energy ranking. Preserve the newly recovered first-party tariff portal and exact post-charge penalty rules; do not repeat the exhausted generic network-wide search.",
-      "resumeCondition": "Inspect the current first-party portal frontend/API payload used to populate the flat/consumption tariff cards, or obtain a deterministic current station/EVSE -> direct energy-price mapping from the same first-party system.",
-      "rankableEvseAdded": 0,
-      "confidence": "high for penalty component; fail-closed for energy component"
+      "result": "no new nominative progress; historical run124 finding confirmed",
+      "decision": "Do not repeat generic HER tariff search without a new first-party portal/API payload or exact station/EVSE mapping.",
+      "rankableEvseAdded": 0
     }
   ],
   "countsAfter": {
-    "treated": 52,
-    "partial": 22,
+    "treated": 51,
+    "partial": 23,
     "setAside": 1,
     "active": 9,
     "canonicalTotal": 84,
@@ -44,13 +39,12 @@
     "physicalPartyIds": 88
   },
   "consistency": {
-    "canonicalEquation": "52+22+1+9=84",
+    "canonicalEquation": "51+23+1+9=84",
     "physicalEquation": "84+4=88",
     "result": "pass"
   },
   "next": [
-    "Inspect Hera first-party portal tariff-card payload/API before any further HER network-wide search.",
-    "Continue the next genuinely unresolved station-level CPO if the portal payload does not expose deterministic energy pricing.",
+    "Skip exhausted HER generic search and continue other active station-level CPOs.",
     "Keep Atlante last."
   ]
 }
