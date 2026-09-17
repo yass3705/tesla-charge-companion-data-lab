@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 157,
+  "observedAt": "2026-09-17T05:50:00+01:00",
+  "purpose": "Fresh HERA station-level tariff audit after IOY promotion; preserve fail-closed unless direct CPO/ad-hoc deterministic evidence exists.",
+  "effectiveCountsAfter": {"treated":52,"partial":23,"setAside":1,"active":8,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+  "priorityQueuesAfter": {"networkOrClassWide":0,"stationLevel":8},
+  "reviewed": [{
+    "partyId":"HER",
+    "canonicalName":"HERA",
+    "status":"active",
+    "priority":"station-level",
+    "freshEvidence":[
+      "Adiconsum May-2026 observatory reports a HERA proprietary-app AC price of 0.69 EUR/kWh and a 50 kWh/30 EUR monthly offer, but this is secondary evidence and does not prove that the same direct tariff applies deterministically to every current HER EVSE/power class.",
+      "Current eMSP surfaces expose HERA station pricing, but those are roaming/eMSP tariffs and must not be promoted as HERA direct CPO/ad-hoc tariffs.",
+      "Older HERA public-charging offers found in generic web results are stale and therefore excluded."
+    ],
+    "negativePaths":[
+      "Generic HERA network-wide tariff search exhausted again without current first-party numeric grid.",
+      "Enel X Way HERA roaming tariff is explicitly eMSP-side and excluded.",
+      "Historic HeraRicarica Pubblica 2 EUR/month and legacy per-kWh offers are stale and excluded."
+    ],
+    "blocker":"No current first-party deterministic HER station/EVSE -> direct/ad-hoc tariff payload or exhaustive power-class grid recovered.",
+    "resumeCondition":"HERA tariff-card frontend/API payload, QR/ad-hoc payment payload, or current first-party tariff PDF/terms that deterministically maps current HER EVSE/power classes.",
+    "confidence":"high fail-closed",
+    "lastInvestigated":"2026-09-17"
+  }],
+  "consistency":{"canonicalEquation":"52+23+1+8=84","physicalEquation":"84+4=88","activeListCount":8,"duplicateCanonicalPartyIds":0,"aliasDoubleCount":0,"result":"PASS_NO_NOMINATIVE_CHANGE"},
+  "antiStagnation":{"HER":"Do not repeat generic HERA tariff search next run; resume only with new frontend/API/QR/PDF evidence."},
+  "next":"SAG then UFC/DRW/AM1 using station/EVSE endpoints; UTZ/NRG/TCA only on new app/payment/backend evidence; Atlante last."
+}
