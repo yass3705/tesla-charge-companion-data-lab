@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 160,
+  "observedAt": "2026-09-17T10:52:52+01:00",
+  "purpose": "Advance remaining station-level CPOs using only new evidence surfaces; no repeated exhausted generic tariff searches.",
+  "effectiveCountsBefore": {"treated":52,"partial":23,"setAside":1,"active":8,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+  "investigated": [
+    {
+      "partyId": "NRG",
+      "canonicalName": "NRG4YOU SRL",
+      "status": "active",
+      "priority": "station-level",
+      "inventoryEvidence": {"evseActive":134,"evseObserved":136,"source":"Adiconsum May 2026 / PUN-derived observatory"},
+      "newEvidence": [
+        "Current discovery still links the NRG4YOU public charging network to customer.restation.eu/stations.",
+        "Vietri sul Mare municipal/tourism material independently links the NRG4YOU Corso Umberto I station to customer.restation.eu/stations and shows a paid public station card with two Type 2 22 kW sockets.",
+        "PUN/Pienotto discovery confirms NRG4YOU as the nearby CPO at Corso Umberto I, Vietri sul Mare, but does not expose a current direct tariff value in the inspected result."
+      ],
+      "tariffModel": "station/payment-platform specific until proven otherwise",
+      "tariffChannel": "NRG4YOU public charging via Restation customer surface; exact current direct tariff payload not recovered",
+      "negativePaths": [
+        "NRG4YOU corporate site remains focused on hardware/energy services and does not expose a deterministic current public-charging tariff grid.",
+        "Do not use generic AC/DC market averages or eMSP roaming prices as NRG4YOU direct tariff.",
+        "Historical Restation station-card evidence proves a paid activation surface, not the current numeric tariff."
+      ],
+      "blocker": "Need current Restation station/payment payload or equivalent direct station page containing numeric price and deterministic station/EVSE identity.",
+      "resumeCondition": "Recover customer.restation.eu station detail/payment API, QR target, or current app/backend response and map station/EVSE to tariff.",
+      "confidence": "high on direct platform identity; no rankable tariff yet",
+      "lastInvestigated": "2026-09-17"
+    },
+    {
+      "partyId": "TCA",
+      "canonicalName": "T-CARICA S.R.L.",
+      "status": "active",
+      "priority": "station-level",
+      "inventoryEvidence": {"activeChargePointsOfficialSite":106,"comingSoonOfficialSite":216,"punObservedMay2026":"76/76"},
+      "newEvidence": [
+        "Current first-party T-Carica site exposes a live station locator and explicitly states 106 active charging points plus 216 coming soon.",
+        "No current numeric direct/ad-hoc tariff grid is exposed in the crawlable first-party station-locator content.",
+        "A current third-party station record for T-Carica Sappada Borgata Cima identifies a paid publicly accessible site with two Type 2 22 kW connectors, but exposes no direct numeric T-Carica price."
+      ],
+      "tariffModel": "station-level pending direct payment/tariff payload",
+      "negativePaths": [
+        "Do not infer a network tariff from paid-public-access labels.",
+        "Do not promote Electromaps/eMSP values as T-Carica direct pricing.",
+        "Generic official-domain tariff search was already exhausted; future work must target locator frontend/API/payment payload."
+      ],
+      "blocker": "Current first-party locator proves inventory but not connector->direct-price mapping.",
+      "resumeCondition": "Inspect T-Carica locator frontend/API, QR/ad-hoc or payment backend for station identifiers and current numeric tariffs.",
+      "confidence": "high on inventory/model; no rankable tariff yet",
+      "lastInvestigated": "2026-09-17"
+    }
+  ],
+  "changes": {"treated":[],"partial":[],"setAside":[],"active":[]},
+  "coverageAddedThisRun": {"rankableDirectEvse":0,"rankableDirectStations":0},
+  "effectiveCountsAfter": {"treated":52,"partial":23,"setAside":1,"active":8,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+  "priorityQueuesAfter": {"networkOrClassWide":0,"stationLevel":8},
+  "consistency": {"canonicalEquation":"52+23+1+8=84","physicalEquation":"84+4=88","activeListExpected":["HER","SAG","UTZ","UFC","DRW","NRG","TCA","AM1"],"duplicateCanonicalPartyIdsIntroduced":0,"result":"PASS_NO_STATUS_MUTATION"},
+  "antiStagnation": {"doNotRepeatWithoutNewEvidence":["NRG4YOU corporate-site generic tariff search","T-Carica generic official-domain tariff search"]},
+  "next": ["NRG4YOU Restation station/payment API or QR target","T-Carica station-locator frontend/API/payment payload","AM1 PUN/OCPI to ricaricaveicolo.it deterministic crosswalk","Atlante last"]
+}

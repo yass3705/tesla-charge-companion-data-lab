@@ -1,0 +1,20 @@
+{
+  "schemaVersion":1,
+  "run":153,
+  "generatedAt":"2026-09-17T02:05:00+01:00",
+  "baseCheckpoint":{"historicalRun":150,"treated":51,"partial":23,"setAside":1,"active":9,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+  "purpose":"Fresh evidence audit for historical station-level active candidates; no status promotion unless deterministic current direct pricing is proven.",
+  "investigated":[
+    {"partyId":"UFC","name":"E.ON Drive Infrastructure Italy","result":"fail-closed","freshEvidence":"Current E.ON Drive public-charging app material exposes price per charging point; 2026 Italian motorway rollout states prices are displayed before charging. No deterministic Italy-wide exact direct grid recovered.","decision":"Require exact station/connector mapping; do not use generic/from pricing as exact tariff."},
+    {"partyId":"DRW","name":"Unoenergy DriWe","result":"fail-closed","freshEvidence":"Current Unoenergy DriWe first-party pages confirm public-network/app charging but expose no deterministic current public tariff grid.","decision":"Keep station-level; require exact app/backend or EVSE mapping."},
+    {"partyId":"NRG","name":"NRG4YOU","result":"fail-closed","freshEvidence":"Current NRG4YOU customer portal exposes recharge/login flow but no crawlable deterministic network-wide numeric tariff.","decision":"Keep station-level; require portal/session or EVSE tariff payload."},
+    {"partyId":"TCA","name":"T-Carica","result":"fail-closed","freshEvidence":"Current first-party T-Carica map confirms active public points but no crawlable direct numeric tariff grid; current station evidence is insufficient to infer a party-wide price.","decision":"Keep station-level; require direct station/QR/backend pricing."},
+    {"partyId":"AM1","name":"Alpha Mobility","result":"fail-closed","freshEvidence":"Current first-party Alpha Mobility web-app description explicitly says station owners can manage charging price, set different time-band prices, discounts and packages.","decision":"Pricing is host-configurable; no network-wide tariff promotion. Exact station mapping required."}
+  ],
+  "statusMutation":[],
+  "rankableEvseAdded":0,
+  "countsAfter":{"treated":51,"partial":23,"setAside":1,"active":9,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+  "consistency":{"canonicalEquation":"51+23+1+9=84","physicalEquation":"84+4=88","result":"pass"},
+  "antiStagnation":["Do not repeat generic network-wide searches for UFC, DRW, NRG, TCA or AM1 without new first-party numeric evidence.","Resume only through exact station/connector/app/QR/backend mapping."],
+  "next":"Reconstruct the exact nominative nine-active queue from ordered canonical replay and reconcile these candidate checks against it before any status mutation; Atlante remains last."
+}

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 154,
+  "observedAt": "2026-09-17T02:52:35+01:00",
+  "purpose": "Correct recovered run150 counters and continue the nine station-level active CPOs without repeating exhausted investigations.",
+  "authoritativeRecoveredState": {
+    "treated": 51,
+    "partial": 23,
+    "setAside": 1,
+    "active": 9,
+    "canonicalTotal": 84,
+    "supersededAlias": 4,
+    "physicalPartyIds": 88,
+    "networkOrClassWideActive": 0,
+    "stationLevelActive": 9
+  },
+  "activePartyIds": ["HER","IOY","SAG","UTZ","UFC","DRW","NRG","TCA","AM1"],
+  "freshEvidence": {
+    "UTZ": {
+      "officialSite": "https://www.uattzy.com/",
+      "officialFaq": "https://www.uattzy.com/faq/",
+      "positive": [
+        "Current first-party Uattzy site states Uattzy is the public-charging brand of UAU, created from E-Shore, GASGAS and EnerMia.",
+        "Current first-party FAQ supports Uattzy app/RFID, QR rollout and POS on enabled stations.",
+        "Current first-party FAQ says the direct Uattzy tariff is displayed per connector before charging and may vary with delivered power, session duration and stall occupancy."
+      ],
+      "decision": "Remain active station-level/fail-closed. The current first-party evidence contradicts promotion of an unqualified network-wide numeric grid: connector-level deterministic mapping is still required.",
+      "resumeCondition": "Obtain current Uattzy app/QR/POS/backend payload mapping each UTZ connector/EVSE to its direct tariff components; numeric July-2026 secondary-source candidates may be used only for discovery/corroboration until first-party mapping is recovered."
+    }
+  },
+  "corrections": [
+    {
+      "type": "counter-reconciliation",
+      "problem": "Recovery canonical summary still stated run150 as 50 treated / 24 partial / 1 setAside / 9 active, while the later verified historical transition replay establishes 51 treated / 23 partial / 1 setAside / 9 active.",
+      "fix": "Use 51/23/1/9 as the authoritative effective run150 counters. No physical partyId count changes; 84 canonical + 4 superseded aliases remains 88.",
+      "evidence": "data/reports/italy_active_queue_recovery_20260917_run153.json"
+    }
+  ],
+  "consistency": {
+    "canonicalEquation": "51+23+1+9=84",
+    "physicalEquation": "84+4=88",
+    "activeListCount": 9,
+    "duplicateActivePartyIds": 0,
+    "result": "PASS"
+  },
+  "progress": {
+    "newlyTreated": [],
+    "newlyPartial": [],
+    "aliasesResolved": [],
+    "rankableEvseAdded": 0,
+    "nominalProgress": false,
+    "reason": "Fresh Uattzy first-party evidence improves the blocker definition but does not establish a safe numeric station/EVSE tariff mapping."
+  },
+  "next": [
+    "Continue active station-level queue without repeating Uattzy generic web search: target UTZ app/QR/POS/backend payload next.",
+    "In parallel inspect IOY, SAG, UFC, DRW, NRG, TCA and AM1 for newly exposed first-party station/EVSE tariff endpoints, prioritizing larger inventories.",
+    "Keep Atlante last."
+  ]
+}
