@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "run": 152,
+  "generatedAt": "2026-09-17T01:35:00+01:00",
+  "baseCheckpoint": {"historicalRun":150,"treated":51,"partial":23,"setAside":1,"active":9,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+  "investigated": [
+    {
+      "partyId":"IOY",
+      "name":"IONITY Italy",
+      "statusBefore":"active",
+      "statusAfter":"active",
+      "priority":"station-level",
+      "freshEvidence":"Current official IONITY Italy pricing still presents Direct as starting from 0.91 EUR/kWh and states that the exact applicable price is shown in the app/website before charging.",
+      "decision":"No national 0.91 promotion. Exact station/session price mapping remains required.",
+      "antiStagnation":"Historical run125 already reached the same conclusion; do not repeat country-minimum research without exact station-level evidence.",
+      "rankableEvseAdded":0
+    },
+    {
+      "partyId":"SAG",
+      "name":"Sagelio",
+      "statusBefore":"active",
+      "statusAfter":"active",
+      "priority":"station-level",
+      "freshEvidence":"Current first-party Sagelio material confirms location owners can set charging tariffs; direct QR/card payment exists, but no deterministic current network-wide numeric tariff is published.",
+      "decision":"Remain station-level fail-closed; require exact QR/direct-payment or connector mapping.",
+      "antiStagnation":"Consistent with historical run121; no generic network-wide retry until new first-party numeric evidence appears.",
+      "rankableEvseAdded":0
+    },
+    {
+      "partyId":"UTZ",
+      "name":"Uattzy / UAU",
+      "statusBefore":"active",
+      "statusAfter":"active",
+      "priority":"station-level with network-wide candidate evidence",
+      "freshEvidence":[
+        "Current first-party Uattzy FAQ states that the exact tariff and any extra fees are displayed for each connector before charging and that prices may vary with power, duration and bay-occupancy time.",
+        "A July 2026 specialist publication reports a new proprietary-network grid effective 2026-07-01: app/RFID Quick 0.57 EUR/kWh; app/RFID Fast/Ultra Fast 0.67; POS Quick 0.61; POS Fast/Ultra Fast 0.72; no activation or per-minute charging fee.",
+        "A Uattzy corporate social post corroborates that from 2026-07-01 the proprietary network uses unified tariffs by charging type and removes activation/per-minute charging costs, but the numeric PDF values were not recovered from a first-party crawlable source."
+      ],
+      "decision":"Do not promote the third-party numeric grid yet because the current first-party FAQ still requires connector-level display and allows variable components. Preserve the July grid as a high-value candidate for direct verification in the app/PDF/backend.",
+      "resumeCondition":"Recover the Uattzy first-party tariff PDF/app payload or deterministic connector API confirming the four July numeric values and applicability to UTZ/ESH/GAS inventory.",
+      "rankableEvseAdded":0
+    }
+  ],
+  "countsAfter":{"treated":51,"partial":23,"setAside":1,"active":9,"canonicalTotal":84,"supersededAlias":4,"physicalPartyIds":88},
+  "consistency":{"canonicalEquation":"51+23+1+9=84","physicalEquation":"84+4=88","result":"pass"},
+  "progress":{"activeCposReviewedThisRun":["IOY","SAG","UTZ"],"newlyTreated":[],"newlyPartial":[],"rankableEvseAdded":0},
+  "next":[
+    "Treat IOY/SAG generic network-wide paths as exhausted until new exact station evidence appears.",
+    "Prioritize recovery of the first-party Uattzy July tariff PDF/app payload because it could unlock deterministic class-wide coverage.",
+    "Continue the remaining active station-level queue; keep Atlante last."
+  ]
+}
