@@ -1,0 +1,43 @@
+{
+  "country": "IT",
+  "run": 173,
+  "date": "2026-09-18",
+  "scope": "station-level remaining CPOs",
+  "canonicalState": {
+    "requiredPath": "docs/italy-cpo-progress-2026-09.json",
+    "presentOnDefaultBranch": false,
+    "warning": "Working counters are historical continuity only and are not certified as the required nominative canonical state."
+  },
+  "workingCounters": {"treated":52,"partial":23,"setAside":1,"active":8,"total":84,"networkOrClassWideRemaining":0,"stationLevelRemaining":8},
+  "cpo": {
+    "queueLabel": "DRW",
+    "canonicalNameCandidate": "UNOENERGY DRIWE S.P.A.",
+    "partyIdEvidence": ["IT*DRW"],
+    "status": "active",
+    "priority": "station-level",
+    "inventoryEvidence": {
+      "adiconsumMay2026": {"operator":"UNOENERGY DRIWE S.P.A.","covered":267,"total":284},
+      "currentCorporateClaim": {"chargingPoints":2500,"cities":243,"note":"corporate claim is not an IT*DRW EVSE denominator"}
+    },
+    "positiveEvidence": [
+      {"station":"Schio, Viale Tito Livio / Via Luzio snc","operator":"UNOENERGY DRIWE S.P.A.","evses":["IT*DRW*EDWITCB240695*1","IT*DRW*EDWITCB240695*2","IT*DRW*EDWITCB240695*3"],"powerKw":[60,22,50]},
+      {"station":"Grosseto, Via Aurelia Antica 46","displayedOperator":"Fortech srl","evses":["IT*DRW*EDWITCB250701*1","IT*DRW*EDWITCB250701*2"],"powerKw":[80,80],"deduplicationWarning":"IT*DRW partyId appears on a station displayed under Fortech; do not equate station brand/owner with CPO without crosswalk."},
+      {"station":"Grand'Affi Shopping Center, Affi","historicalTariff":{"energyEurPerKwh":0.48,"timeEurPerMinute":0.01},"warning":"station-specific/historical evidence only; not promoted network-wide"}
+    ],
+    "negativeEvidence": [
+      "Current Unoenergy public home-charging page does not establish a public-network tariff.",
+      "PUN-derived example for UnoEnergy DriWe at Gallarate exposes IT*GES rather than IT*DRW and reports tariffs not communicated; this proves operator labels cannot be mapped to a single partyId blindly.",
+      "Generic web tariff search does not establish a current deterministic DRW-wide or class-wide tariff."
+    ],
+    "decision": "Keep DRW fail-closed and station-level. Do not promote 0.48 EUR/kWh + 0.01 EUR/min beyond the Affi station. Require deterministic IT*DRW EVSE -> first-party/ad-hoc/PUN tariff mapping. Treat IT*GES UnoEnergy-labelled EVSE as a separate identity/crosswalk question, not an alias by assumption.",
+    "resumeCondition": "Obtain a current first-party/ad-hoc payment payload, PUN tariff, or equivalent deterministic tariff for concrete IT*DRW EVSE IDs; separately reconcile DRW versus GES only with authoritative evidence.",
+    "lastInvestigated":"2026-09-18",
+    "genericSearchExhausted":true
+  },
+  "consistency": {
+    "arithmetic":"52+23+1+8=84",
+    "nominativeCertified":false,
+    "reason":"required canonical file is absent from default branch"
+  },
+  "next":"NRG or TCA/AM1 according to remaining queue evidence; do not repeat generic DRW search without new evidence"
+}
