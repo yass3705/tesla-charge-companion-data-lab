@@ -1,0 +1,61 @@
+{
+  "country": "IT",
+  "date": "2026-09-18",
+  "run": 170,
+  "scope": "remaining station-level CPOs",
+  "cpo": {
+    "canonicalLabel": "SAG",
+    "name": "Sagelio SRL Societa Benefit",
+    "partyId": "IT*SAG",
+    "status": "active",
+    "priority": "station-level",
+    "tariffModel": "location-controlled / station-level until proven otherwise",
+    "inventoryEvidence": {
+      "officialNetworkStatement": "Sagelio states over 400 charging points active across Italy.",
+      "inventoryTimestamp": "2026-09-18",
+      "examples": [
+        "IT*SAG*EDC001504*1 / *2 CCS 90 kW, Ceccano",
+        "IT*SAG*EDC001504*3 Type 2 22 kW, Ceccano",
+        "IT*SAG*EDC002032*1 / *2 CCS 120 kW, Grantorto",
+        "IT*SAG*EC6E12BCC25... 90 kW, Gioia del Colle",
+        "IT*SAG*EBPA770*1 Type 2 22 kW, Vico Equense"
+      ]
+    },
+    "positiveEvidence": [
+      "Sagelio official site describes pricing as a control available to each host/location ('Controllo totale sui guadagni — Pricing, monitoraggio e reporting'), which is evidence against assuming one deterministic network-wide retail tariff.",
+      "Official site states network exceeds 400 charging points and includes both AC and Fast DC deployments.",
+      "Fresh PUN-derived Pienotto pages for multiple IT*SAG EVSE state tariffs have not been communicated to PUN.",
+      "Fresh station discovery shows heterogeneous IT*SAG power classes including 8/11/22 kW AC and 90/120 kW DC."
+    ],
+    "negativeEvidence": [
+      "No current official network-wide Sagelio driver tariff found in this pass.",
+      "PUN-derived records inspected expose no tariff for sampled IT*SAG EVSE.",
+      "No deterministic mapping from power class alone to direct/ad-hoc retail price established."
+    ],
+    "decision": "Keep fail-closed and station-level. Do not infer a network-wide or class-wide price. Sagelio's own host proposition explicitly exposes pricing control, so station/location-specific pricing is plausible and must be resolved through a station payment surface or tariff-bearing backend.",
+    "resumeCondition": "Obtain a deterministic IT*SAG EVSE -> direct payment/QR/app/backend tariff mapping, or discover an official rule constraining host-set pricing to deterministic classes.",
+    "confidence": "high for station-level classification; no confidence assigned to an energy price",
+    "rankableCoverageAdded": 0,
+    "sources": [
+      "https://sagelio.com/",
+      "https://pienotto.it/stazioni/284493-sagelio-srl-societa-benefit-gragnano-na",
+      "https://pienotto.it/stazioni/272737-sagelio-srl-societa-benefit-giugliano-in-campania-na",
+      "https://app.pumpapp.co/it/stazione-di-ricarica-sagelio-srl-societa-benefit-via-g-di-vittorio-31-ceccano/8fc45a5c-ccf1-11f0-a659-377b8893f521",
+      "https://app.pumpapp.co/it/stazione-di-ricarica-sagelio-srl-societa-benefit-via-dellartigianato-6-grantorto/e9e726b9-3882-11f1-bdab-3f479c8bc631"
+    ],
+    "lastInvestigated": "2026-09-18",
+    "lastChanged": "2026-09-18"
+  },
+  "globalStateCarriedForward": {
+    "treated": 52,
+    "total": 84,
+    "partial": 23,
+    "setAside": 1,
+    "active": 8,
+    "activeStationLevelLabels": ["HER", "SAG", "UTZ", "UFC", "DRW", "NRG", "TCA", "AM1"],
+    "networkOrClassWideRemaining": 0,
+    "stationLevelRemaining": 8,
+    "arithmeticCheck": "52+23+1+8=84"
+  },
+  "canonicalWarning": "docs/italy-cpo-progress-2026-09.json is still absent from main; counters are carried forward only and are not a substitute for the required nominative canonical reconstruction."
+}
