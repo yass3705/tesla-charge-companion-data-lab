@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "runDate": "2026-09-18",
+  "focus": "EMO / EMOBITALY station-level evidence refresh during canonical reconstruction",
+  "canonicalStatus": "reconstruction_required",
+  "operator": {
+    "partyId": "EMO",
+    "name": "EMOBITALY S.r.l.",
+    "status": "station-level",
+    "networkWidePromotion": false,
+    "reason": "fresh PUN-derived station evidence shows different direct tariff/fixed-fee combinations across IT*EMO locations, confirming that a single network-wide tariff is unsafe"
+  },
+  "freshEvidence": [
+    {
+      "location": "Bari, Via Scipione Crisanzio 1/B",
+      "evseExamples": ["IT*EMO*E2267*1", "IT*EMO*E2278*1"],
+      "power": "22 kW AC",
+      "directTariff": {"energyEurPerKwh": 0.48, "activationEur": 1.14},
+      "source": "https://pienotto.it/stazioni/265687-emobitaly-s-r-l-bari-ba",
+      "sourceType": "PUN-derived",
+      "observed": "2026-09-18"
+    },
+    {
+      "location": "Bergamo, Via Giacomo Manzu 33",
+      "evseExamples": ["IT*EMO*E2015*1", "IT*EMO*E2015*21"],
+      "power": "22 kW AC",
+      "directTariff": {"energyEurPerKwh": 0.48, "activationEur": 1.14},
+      "source": "https://pienotto.it/stazioni/259081-emobitaly-s-r-l-bergamo-bg",
+      "sourceType": "PUN-derived",
+      "observed": "2026-09-18"
+    },
+    {
+      "location": "Milano, Via Olgettina 60",
+      "evseExamples": ["IT*EMO*E2016*1", "IT*EMO*E2016*40"],
+      "power": "22 kW AC",
+      "directTariff": {"energyEurPerKwh": 0.48, "activationEur": 1.14},
+      "source": "https://pienotto.it/stazioni/258489-emobitaly-s-r-l-milano-mi",
+      "sourceType": "PUN-derived",
+      "observed": "2026-09-18"
+    },
+    {
+      "location": "Gallarate, Via L. Riva 19",
+      "evseExamples": ["IT*EMO*E2079*1", "IT*EMO*E2079*2", "IT*EMO*E2079*3"],
+      "powerClasses": ["44 kW AC", "50 kW DC CCS", "50 kW DC CHAdeMO"],
+      "directTariff": {
+        "AC": {"energyEurPerKwh": 0.45, "activationEur": 0.74},
+        "DC": {"energyEurPerKwh": 0.60, "activationEur": 0.74}
+      },
+      "source": "https://pienotto.it/stazioni/270548-emobitaly-s-r-l-gallarate-va",
+      "sourceType": "PUN-derived",
+      "observed": "2026-09-18"
+    }
+  ],
+  "decision": {
+    "classification": "station-level",
+    "rankableRule": "only EVSE/stations with deterministic station-to-tariff mapping may be promoted",
+    "negativeFinding": "power class alone is insufficient: observed AC tariffs differ between locations",
+    "nextCondition": "enumerate current IT*EMO inventory and map each station/EVSE to PUN/ad-hoc tariff; use first-party backend if a deterministic station tariff endpoint becomes available",
+    "doNotRepeat": "do not search for or assume a uniform EMOBITALY national tariff without new first-party evidence"
+  },
+  "coherence": {
+    "atlante": "setAside-last and excluded from active count",
+    "workingCountersFrozen": true,
+    "reason": "nominative canonical docs/italy-cpo-progress-2026-09.json is still absent; counters must not be promoted until reconstruction is complete"
+  },
+  "history": [
+    {"date":"2026-09-18","change":"Fresh PUN-derived evidence proved EMO station-level tariff heterogeneity: 0.48 EUR/kWh + 1.14 activation at multiple 22 kW sites versus Gallarate 0.45 AC / 0.60 DC + 0.74 activation. Preserved fail-closed station mapping requirement."}
+  ]
+}
