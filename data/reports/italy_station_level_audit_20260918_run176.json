@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "runDate": "2026-09-18",
+  "purpose": "full coherence audit after the station-level first-pass sequence",
+  "canonical": {
+    "requiredPath": "docs/italy-cpo-progress-2026-09.json",
+    "presentOnMain": false,
+    "status": "reconstruction_required",
+    "doNotTreatWorkingCountersAsCanonical": true
+  },
+  "reconstructionEvidence": {
+    "prioritySnapshotCommit": "eba11ed71ab5d8aedbbc32a8cab9b7ef1d5bd1b9",
+    "prioritySnapshotPath": "data/reports/italy_cpo_priority_snapshot_20260905.json",
+    "prioritySnapshotDate": "2026-09-05",
+    "prioritySnapshotSourceRun": 33308407226,
+    "sourceRunArtifact": {
+      "name": "italy-v9-consolidated-candidate",
+      "artifactId": 9731212787,
+      "createdAt": "2026-08-30T11:14:47Z",
+      "expiredAt": "2026-09-13T11:14:46Z",
+      "expired": true,
+      "digest": "sha256:8a9016fef75ea7e4884c9a324c43256acab0482de659f2e8fb456f9922d6eca1"
+    },
+    "importantConclusion": "The old consolidated artifact used to derive the September priority snapshot has expired. The 84-CPO working total must not be represented as a fully audited nominative canonical until a fresh consolidated inventory or equivalent committed inventory is regenerated and reconciled with all later Italy commits."
+  },
+  "verifiedHistoricalSnapshot": {
+    "networkWideCandidatesAt20260905": ["ONS", "IPE", "FWY"],
+    "stationSpecificOrUnprovenAt20260905": ["TSL", "PWY", "EMO", "EDN", "HER"],
+    "alreadyHandledAt20260905": ["A2M", "BEC", "DUF", "EWI", "ASM", "REP", "F2X", "ACE"]
+  },
+  "currentWorkingActiveQueue": [
+    {"partyId":"HRA","legacyLabel":"HER","operator":"HERA Comm","status":"active","priority":"station-level","nextCondition":"new first-party direct tariff evidence or deterministic connector-level backend payload","genericWebResearch":"exhausted"},
+    {"partyId":"SAG","operator":"Sagelio","status":"active","priority":"station-level","nextCondition":"IT*SAG EVSE to QR/payment/backend tariff mapping","genericWebResearch":"exhausted"},
+    {"partyId":"UTZ","operator":"Uattzy","status":"active","priority":"station-level","nextCondition":"IT*UTZ EVSE to Uattzy backend/app/POS tariff payload","genericWebResearch":"exhausted"},
+    {"partyId":"UFC","operator":"E.ON Drive Infrastructure Italy","status":"active","priority":"station-level","nextCondition":"IT*UFC EVSE to PUN/ad-hoc/payment surface tariff mapping","genericWebResearch":"exhausted"},
+    {"partyId":"DRW","operator":"UNOENERGY DRIWE","status":"active","priority":"station-level","nextCondition":"IT*DRW EVSE to direct payment/backend tariff mapping","genericWebResearch":"exhausted"},
+    {"partyId":"NRG","operator":"NRG4YOU","status":"active","priority":"station-level","nextCondition":"Restation guest/API/QR/payment flow yielding deterministic station/EVSE tariff","genericWebResearch":"exhausted"},
+    {"partyId":"TCA","operator":"T-Carica / Electriease relationship under reconciliation","status":"active","priority":"station-level","nextCondition":"IT*TCA EVSE to app/QR/POS/backend guest tariff mapping","genericWebResearch":"exhausted"},
+    {"partyId":"ATL","operator":"Atlante","status":"setAside-last","priority":"station-level","nextCondition":"automatable backend or exact station tariff surface becomes exploitable","genericWebResearch":"do-not-repeat"}
+  ],
+  "aliasDecisions": [
+    "HER and HRA must not be counted as two CPOs; HRA is the documented operational EVSE partyId and HER is a historical queue label pending canonical reconciliation.",
+    "Electriease must not be counted as an additional CPO solely because it is shown as operator on IT*TCA stations.",
+    "Fortech must not be merged into or counted separately from DRW solely from host/operator display on IT*DRW stations.",
+    "GES must not be merged with DRW without authoritative identity evidence."
+  ],
+  "workingCounters": {
+    "treated": 52,
+    "partial": 23,
+    "setAside": 1,
+    "active": 8,
+    "reportedTotal": 84,
+    "arithmeticCheck": false,
+    "note": "52+23+1+8 = 84 only if Atlante is represented by the setAside bucket and is NOT also included among the 8 active station-level items. The previous prose sequence mixed an eight-item queue containing Atlante with counters that already counted one setAside, creating a latent double-counting ambiguity. Until the nominative canonical is rebuilt, use buckets, not an overlapping 'active queue'."
+  },
+  "coherenceResult": {
+    "status": "major_inconsistency_detected_and_documented",
+    "safeCorrection": "Atlante is setAside and must be excluded from active count/list. Therefore the currently evidenced unresolved station-level queue is 7 active + 1 setAside, not 8 active plus Atlante.",
+    "canonicalTotalCertification": "blocked_until_fresh_inventory_rebuild",
+    "nextSafeAction": "regenerate a fresh Italy consolidated inventory from current committed inputs, then reconstruct docs/italy-cpo-progress-2026-09.json nominatively and reconcile all post-20260905 operator commits before changing treated/partial totals."
+  },
+  "history": [
+    {"date":"2026-09-18","change":"Performed full coherence audit after multiple station-level runs; located the committed 2026-09-05 priority snapshot and its source run; confirmed the source artifact is expired; detected Atlante overlap between active queue prose and setAside counter; froze counter promotion pending nominative rebuild."}
+  ]
+}
