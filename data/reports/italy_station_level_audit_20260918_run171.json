@@ -1,0 +1,85 @@
+{
+  "run": 171,
+  "date": "2026-09-18",
+  "scope": "Italy remaining CPO station-level investigation",
+  "canonical": {
+    "requiredPath": "docs/italy-cpo-progress-2026-09.json",
+    "presentOnMain": false,
+    "action": "Do not fabricate nominal canonical entries or change counters from aggregate-only state. Reconstruction remains required from historical audits/commits."
+  },
+  "cpo": {
+    "queueLabel": "UTZ",
+    "canonicalNameCandidate": "Uattzy",
+    "partyId": "UTZ",
+    "status": "active",
+    "priority": "station-level",
+    "aliasDecision": {
+      "decision": "Treat UTZ as the operational EVSE partyId associated with Uattzy for investigation; do not create Uattzy as a second independent CPO without contradictory PUN/OCPI evidence.",
+      "confidence": "medium-high",
+      "evidence": [
+        "Current station records expose IT*UTZ EVSE IDs and identify the operator as Uattzy.",
+        "Uattzy first-party site states that Uattzy is the public-charging brand of UAU, created from E-Shore, GASGAS and EnerMia, and operates as both CPO and eMSP."
+      ]
+    },
+    "tariffModel": {
+      "classification": "station/connector-level",
+      "firstPartyRule": "Uattzy FAQ states the applicable tariff and any extra costs are displayed per connector before charging; prices may vary by power, session duration and stall occupation.",
+      "directVsRoaming": "Keep Uattzy app/card and direct occasional payment distinct from third-party roaming tariffs.",
+      "networkWidePromotion": false
+    },
+    "currentAnchors": [
+      {
+        "site": "Contrada Contarini 16, Palmanova",
+        "evseIds": ["IT*UTZ*EC167", "IT*UTZ*EC168"],
+        "power": "22 kW AC",
+        "observedAdHocPrice": "0.62 EUR/kWh",
+        "sourceType": "current third-party station record",
+        "rankable": false,
+        "reason": "Useful discovery/corroboration only; requires deterministic first-party Uattzy connector/app/POS payload before promotion."
+      },
+      {
+        "site": "Contrada Savorgnan 14a, Palmanova",
+        "evseIds": ["IT*UTZ*EC169", "IT*UTZ*EC170"],
+        "power": "22 kW AC",
+        "observedAdHocPrice": "0.62 EUR/kWh",
+        "sourceType": "current third-party station record",
+        "rankable": false,
+        "reason": "Useful discovery/corroboration only; requires deterministic first-party Uattzy connector/app/POS payload before promotion."
+      },
+      {
+        "site": "Via Vincenzo Scamozzi 5, Palmanova",
+        "evseIds": ["IT*UTZ*EC497", "IT*UTZ*EC498"],
+        "power": "47 kW DC",
+        "observedAdHocPrice": "0.72 EUR/kWh",
+        "sourceType": "current third-party station record",
+        "rankable": false,
+        "reason": "Useful discovery/corroboration only; requires deterministic first-party Uattzy connector/app/POS payload before promotion."
+      }
+    ],
+    "corroboration": {
+      "adiconsumMay2026": "UATTZY (GASGAS - E-SHORE - ENERMIA), 913 columns; proprietary-app price reported as 0.56 EUR/kWh in AC table, showing historical/current pricing evidence but not a deterministic per-EVSE direct rule.",
+      "july2026IndustryReport": "Reports Uattzy app/card 0.57 EUR/kWh Quick and 0.67 EUR/kWh Fast/Ultra Fast; occasional POS 0.61 EUR/kWh Quick and 0.72 EUR/kWh Fast/Ultra Fast. This is not promoted because the first-party FAQ explicitly allows connector/session-specific variation and the report is not the authoritative connector payload."
+    },
+    "negativePaths": [
+      "Generic web tariff search is now exhausted for promotion purposes.",
+      "Do not transpose the July 2026 class prices across all IT*UTZ EVSEs without first-party applicability evidence.",
+      "Do not use eMSP roaming prices as direct Uattzy prices."
+    ],
+    "blocker": "Need first-party Uattzy app/card/POS or guest backend payload mapping IT*UTZ EVSE/connector to the tariff shown before charge, including extras where present.",
+    "resumeCondition": "Obtain a deterministic connector payload for one or more anchor EVSE IDs, then test whether the same backend exposes the full UTZ inventory and tariff fields.",
+    "confidence": "high on station-level classification; medium-high on UTZ/Uattzy alias; insufficient for rankable price promotion",
+    "lastInvestigated": "2026-09-18",
+    "history": [
+      "Resolved UTZ investigation label to Uattzy operational context without double-counting.",
+      "Added six concrete IT*UTZ EVSE anchors with current observed ad-hoc prices as non-rankable discovery evidence.",
+      "Marked generic tariff search exhausted; next path is first-party connector/backend extraction only."
+    ]
+  },
+  "consistency": {
+    "workingAggregatePreserved": {"treated": 52, "total": 84, "partial": 23, "setAside": 1, "active": 8},
+    "sumCheck": "52+23+1+8=84",
+    "networkOrClassWideRemaining": 0,
+    "stationLevelWorkingQueue": ["HER", "SAG", "UTZ", "UFC", "DRW", "NRG", "TCA", "AM1"],
+    "warning": "Aggregate consistency passes, but a true nominal consistency audit cannot be certified until docs/italy-cpo-progress-2026-09.json is reconstructed."
+  }
+}
