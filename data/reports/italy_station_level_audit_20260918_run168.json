@@ -1,0 +1,43 @@
+{
+  "run": 168,
+  "date": "2026-09-18",
+  "scope": "Italy remaining CPO station-level follow-up",
+  "cpo": "HERA",
+  "partyId": "HER/HRA identity requires reconciliation",
+  "status": "active",
+  "priority": "station-level pending exact current tariff applicability and partyId reconciliation",
+  "positiveEvidence": [
+    {
+      "source": "https://www.lacronacadiravenna.it/articolo/19010/Mobilita-elettrica-attivate-21-nuove-colonnine-Hera-per-la-ricarica-veloce",
+      "observed": "2026-09-18",
+      "finding": "Fresh 27 Aug 2026 report states Hera Comm activated 21 new 90 kW public fast chargers in Ravenna province (Ravenna, Castel Bolognese, Cervia, Faenza, Lugo, Massa Lombarda and Russi), within more than 50 PNRR infrastructures installed in Romagna. This materially expands/refreshes the physical inventory to reconcile against the older canonical snapshot."
+    },
+    {
+      "source": "https://app.pumpapp.co/it/stazione-di-ricarica-gruppo-hera-via-antonio-donati-snc-castel-bolognese/10fca5aa-4881-11f1-8d86-f7bddad570d4",
+      "observed": "2026-09-18",
+      "finding": "Public station index exposes a current Gruppo Hera FastCharger at Via Antonio Donati, Castel Bolognese, with two CCS 90 kW EVSE identifiers IT*HRA*EWBX1265400*1 and IT*HRA*EWBX1265400*2."
+    },
+    {
+      "source": "https://app.pumpapp.co/it/stazione-di-ricarica-gruppo-hera-largo-sirolli-snc-gambettola/10fca5b4-4881-11f1-8d86-f7bddad570d4",
+      "observed": "2026-09-18",
+      "finding": "Public station index exposes a Gruppo Hera FastCharger at Largo Sirolli, Gambettola, with two CCS 90 kW EVSE identifiers IT*HRA*EWBX1265136*1 and IT*HRA*EWBX1265136*2."
+    }
+  ],
+  "importantReconciliationFinding": "Current public Hera FastCharger EVSE anchors use partyId HRA, while the working remaining-CPO queue has historically used HER. Do not assume HER and HRA are separate CPOs or aliases without reconciling PUN/OCPI inventory and historical canonical decisions. This is an alias/deduplication risk and must be resolved before changing the canonical denominator.",
+  "tariffEvidenceCarriedForward": {
+    "candidate": "EUR 0.85/kWh for Hera proprietary/direct DC Fast 50-150 kW plus EUR 2/month, May 2026 Adiconsum corroboration",
+    "rankable": false,
+    "reason": "Still lacks first-party current energy-price payload or deterministic proof that the candidate applies to these HRA 90 kW EVSEs."
+  },
+  "negativeEvidence": [
+    "No first-party current energy-price payload was found in this run.",
+    "The new HRA EVSE identifiers are not sufficient by themselves to promote the 0.85 EUR/kWh candidate.",
+    "Generic Hera tariff web search is now considered exhausted for two consecutive runs absent a new official tariff payload."
+  ],
+  "blockingCondition": "Need first-party current Hera tariff payload/API/app backend or exact ad-hoc/direct price for an HRA 90 kW anchor, plus reconciliation of HER vs HRA in PUN/OCPI/canonical inventory.",
+  "resumeCondition": "Official Hera API/app payload, station-level direct payment surface, PUN/OCPI inventory showing HER/HRA ownership relationship, or another new deterministic source.",
+  "confidence": "high for physical HRA 90 kW Hera anchors and inventory drift; fail-closed for tariff promotion and HER/HRA alias decision",
+  "rankableCoverageAdded": 0,
+  "canonicalImpact": "No counter/status change. Flag HER/HRA reconciliation as mandatory before denominator or alias changes.",
+  "next": "Stop repeating generic Hera tariff search. Reconcile HRA vs HER from PUN/OCPI/inventory; if unavailable, move to another active station-level CPO and revisit Hera only on new evidence."
+}
