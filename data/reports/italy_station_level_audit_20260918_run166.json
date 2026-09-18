@@ -1,0 +1,41 @@
+{
+  "run": 166,
+  "date": "2026-09-18",
+  "scope": "Italy remaining CPO station-level follow-up",
+  "cpo": "T-CARICA S.R.L.",
+  "partyId": "TCA",
+  "status": "active",
+  "priority": "station-level",
+  "positiveEvidence": [
+    {
+      "source": "https://www.tcarica.com/",
+      "observed": "2026-09-18",
+      "finding": "Official live site currently exposes 106 active charging points and 216 coming soon. This supersedes older PUN/Adiconsum snapshots showing 47/47 and means inventory must be refreshed before deterministic EVSE-to-tariff mapping."
+    },
+    {
+      "source": "https://www.tcarica.com/drivers/",
+      "observed": "2026-09-18",
+      "finding": "Official driver page confirms direct credit/debit-card payment at integrated POS on T-Carica chargers, while apps and RFID are separate access channels. Direct CPO/ad-hoc tariff must therefore be resolved from the station/POS surface rather than inferred from eMSP pricing."
+    },
+    {
+      "source": "https://primasettimo.it/attualita/mobilita-sostenibile-a-settimo-due-nuove-stazioni-di-ricarica/",
+      "finding": "Settimo Torinese anchors: Via Giuseppe Verdi AC 22 kW and Via Cascina Nuova DC Fast 50 kW."
+    }
+  ],
+  "negativeEvidence": [
+    "Generic web searches did not expose a current first-party per-kWh tariff or a deterministic QR/POS tariff payload for the Settimo anchors.",
+    "Historical Electriease/BeaglePlug AC/DC/HPC prices remain eMSP/roaming evidence and are not promoted as direct T-Carica prices."
+  ],
+  "inventory": {
+    "officialLiveActivePoints": 106,
+    "officialLiveComingSoonPoints": 216,
+    "olderPunSnapshotActiveTotal": "47/47",
+    "decision": "Do not use the older 47-point snapshot as current coverage denominator; refresh TCA inventory from the official map/PUN before rankable coverage accounting."
+  },
+  "blockingCondition": "Need deterministic current EVSE/station identifier -> direct POS/QR/ad-hoc tariff mapping. If the payment surface reveals a network-wide or class-wide deterministic grid, reclassify priority accordingly; otherwise resolve station by station.",
+  "resumeCondition": "New station QR/POS URL, public/guest payment endpoint, official tariff payload, or refreshed PUN EVSE inventory enabling crosswalk.",
+  "confidence": "high for inventory/payment-channel classification; fail-closed for tariff",
+  "rankableCoverageAdded": 0,
+  "canonicalImpact": "No status promotion. Record inventory drift and avoid stale denominator. Canonical counters must not be changed from this evidence alone.",
+  "next": "Continue with another active station-level CPO while TCA QR/POS endpoint remains unavailable; do not repeat generic T-Carica tariff search without new evidence."
+}
