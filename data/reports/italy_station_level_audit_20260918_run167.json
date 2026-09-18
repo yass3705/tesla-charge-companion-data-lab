@@ -1,0 +1,50 @@
+{
+  "run": 167,
+  "date": "2026-09-18",
+  "scope": "Italy remaining CPO station-level follow-up",
+  "cpo": "HERA",
+  "partyId": "HER",
+  "status": "active",
+  "priority": "station-level pending exact class applicability proof",
+  "positiveEvidence": [
+    {
+      "source": "https://heraricarica.gruppohera.it/home/pages/tariffs",
+      "observed": "2026-09-18",
+      "finding": "Official Hera EV Driver portal remains live and exposes Tariffe sections for flat, pay-per-use and post-charge penalties. The public indexed content confirms an occupancy penalty after 60 minutes from charge completion: EUR 0.08/min for Type 2/Type 3A from 07:00-23:00 and EUR 0.15/min for CHAdeMO/CCS2 24h. Indexed page did not expose the current energy price values, so no direct tariff is promoted from this source alone."
+    },
+    {
+      "source": "https://adiconsum.it/wp-content/uploads/2026/06/Maggio-2026-OSSERVATORIO-PREZZI-TARIFFE-RICARICA.pdf",
+      "observed": "2026-09-18",
+      "finding": "Adiconsum May 2026 tariff observatory reports HERA direct/proprietary-app DC Fast (50-150 kW) at EUR 0.85/kWh, with EUR 2/month pay-per-use fee and a monthly 50 kWh / EUR 30 offer. This is recent corroborating evidence, but it is not first-party and does not by itself prove that every current IT*HER DC 50-150 kW EVSE uses the same tariff or that the same price applies to AC."
+    }
+  ],
+  "negativeEvidence": [
+    "Fresh first-party web indexing of the Hera tariff portal did not expose the energy-price values for the pay-per-use/flat sections.",
+    "Older 2021-2025 Hera prices were not promoted because they are stale relative to the May 2026 observation.",
+    "No current deterministic first-party mapping was found proving a single network-wide price across AC and DC classes."
+  ],
+  "tariffCandidate": {
+    "channel": "Hera proprietary/direct service",
+    "class": "DC Fast 50-150 kW",
+    "energyPrice": 0.85,
+    "currency": "EUR",
+    "unit": "kWh",
+    "monthlyFee": 2.0,
+    "evidenceDate": "2026-05",
+    "sourceQuality": "recent consumer-observatory corroboration; not sufficient alone for rankable promotion"
+  },
+  "occupancyPenalty": {
+    "sourceQuality": "first-party current portal",
+    "graceAfterChargeCompletionMinutes": 60,
+    "type2_type3a_eurPerMinute": 0.08,
+    "type2_type3a_hours": "07:00-23:00 daily",
+    "chademo_ccs2_eurPerMinute": 0.15,
+    "chademo_ccs2_hours": "00:00-23:59 daily"
+  },
+  "blockingCondition": "Need first-party current energy-price payload/document or deterministic station/EVSE -> direct tariff mapping. If the official portal/API proves stable AC/DC class-wide prices, HER can be reclassified from station-level to class-wide and mapped by exact connector/power rules.",
+  "resumeCondition": "Official Hera tariff payload/PDF/API response, guest endpoint, app backend capture, or exact EVSE-level direct-price evidence.",
+  "confidence": "high for current direct-service existence and occupancy penalties; medium-high for May 2026 DC candidate; fail-closed for rankable energy tariff",
+  "rankableCoverageAdded": 0,
+  "canonicalImpact": "No status promotion and no counter change. Preserve HER as active until first-party class applicability is deterministic.",
+  "next": "Do not repeat generic Hera tariff searches without new evidence; target the official EV Driver portal/app API or move to another active station-level CPO."
+}
