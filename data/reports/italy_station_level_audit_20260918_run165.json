@@ -1,0 +1,55 @@
+{
+  "country": "IT",
+  "run": 165,
+  "date": "2026-09-18",
+  "scope": "station-level remaining CPOs",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalStatus": "missing-on-main; do not reconstruct from counters alone",
+  "progress": {
+    "treated": 52,
+    "canonicalTotal": 84,
+    "partial": 23,
+    "setAside": 1,
+    "active": 8,
+    "remainingNetworkOrClassWide": 0,
+    "remainingStationLevel": 8,
+    "activePartyIds": ["HER","SAG","UTZ","UFC","DRW","NRG","TCA","AM1"]
+  },
+  "investigated": [
+    {
+      "partyId": "TCA",
+      "canonicalName": "T-Carica",
+      "status": "active",
+      "priority": "station-level",
+      "newEvidence": [
+        {
+          "site": "Settimo Torinese - via Giuseppe Verdi",
+          "power": "AC 22 kW",
+          "commissioned": "2025-07-02",
+          "evidenceType": "municipality/local-news corroboration",
+          "url": "https://primasettimo.it/attualita/mobilita-sostenibile-a-settimo-due-nuove-stazioni-di-ricarica/"
+        },
+        {
+          "site": "Settimo Torinese - via Cascina Nuova",
+          "power": "DC Fast 50 kW",
+          "evidenceType": "municipality/local-news corroboration",
+          "url": "https://primasettimo.it/attualita/mobilita-sostenibile-a-settimo-due-nuove-stazioni-di-ricarica/"
+        }
+      ],
+      "decision": "No tariff promoted. These two concrete live-site leads are suitable anchors for the already identified T-Carica direct QR/POS route, but no deterministic current QR/payment payload or EVSE-to-tariff mapping was found in this run.",
+      "negativePaths": [
+        "generic web search for current T-Carica EUR/kWh returned no authoritative tariff",
+        "historical Electriease/BeaglePlug price grid remains rejected as proof of current direct T-Carica ad-hoc pricing"
+      ],
+      "resumeCondition": "Obtain a current T-Carica EVSE/station identifier for via Giuseppe Verdi or via Cascina Nuova, follow its physical/virtual QR or direct-payment URL, and capture the payment payload showing the tariff before session start. Then map EVSE -> tariff deterministically.",
+      "rankableCoverageAdded": 0,
+      "confidence": "high for site/power identity; none for tariff"
+    }
+  ],
+  "consistency": {
+    "counterEquation": "52 + 23 + 1 + 8 = 84",
+    "counterEquationPass": true,
+    "note": "Nominal full-canonical audit remains blocked by the canonical file being absent from main; counters are carried forward only as prior state, not used to invent nominal records."
+  },
+  "next": "Use the two Settimo Torinese T-Carica sites as concrete anchors to discover QR/ad-hoc payment URLs or EVSE IDs; if no new surface appears, move to another active station-level CPO rather than repeat generic TCA search. Atlante remains last."
+}
