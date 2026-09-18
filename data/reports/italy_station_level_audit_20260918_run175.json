@@ -1,0 +1,47 @@
+{
+  "run": 175,
+  "date": "2026-09-18",
+  "country": "IT",
+  "cpo": {
+    "queueLabel": "TCA",
+    "canonicalName": "T-Carica",
+    "status": "active",
+    "priority": "station-level",
+    "partyId": "TCA",
+    "identityFinding": "Fresh EVSE-level evidence shows IT*TCA identifiers under the T-Carica network while the operator field is Electriease. Treat T-Carica as the network/partyId identity in the queue and do not create Electriease as a second CPO solely from these listings.",
+    "inventoryEvidence": [
+      {"evse":"IT*TCA*ED0032*1","powerKw":120,"location":"Via della Roggia 1, Egna","operatorLabel":"Electriease","networkLabel":"T-Carica","observed":"2026-09-18"},
+      {"evse":"IT*TCA*ED0032*2","powerKw":120,"location":"Via della Roggia 1, Egna","operatorLabel":"Electriease","networkLabel":"T-Carica","observed":"2026-09-18"},
+      {"evse":"IT*TCA*EA0026*1","powerKw":22,"location":"Via Sebastiano Venier 5, Caorle","operatorLabel":"Electriease","networkLabel":"T-Carica","observed":"2026-09-18"},
+      {"evse":"IT*TCA*EA0026*2","powerKw":22,"location":"Via Sebastiano Venier 5, Caorle","operatorLabel":"Electriease","networkLabel":"T-Carica","observed":"2026-09-18"},
+      {"evse":"IT*TCA*EDE4040B1GPCC000932*1","powerKw":50,"location":"Via Sansonessa 39, Caorle","operatorLabel":"Electriease","networkLabel":"T-Carica","observed":"2026-09-18"},
+      {"evse":"IT*TCA*EDE4040B1GPCC000932*2","powerKw":50,"location":"Via Sansonessa 39, Caorle","operatorLabel":"Electriease","networkLabel":"T-Carica","observed":"2026-09-18"},
+      {"evse":"IT*TCA*ETCA0008*1","powerKw":47,"location":"Expert Kasanova, Misilmeri","operatorLabel":"Electriease","networkLabel":"T-Carica","observed":"2026-09-18"},
+      {"evse":"IT*TCA*ETCA0008*2","powerKw":47,"location":"Expert Kasanova, Misilmeri","operatorLabel":"Electriease","networkLabel":"T-Carica","observed":"2026-09-18"}
+    ],
+    "tariffFinding": "No deterministic direct/ad-hoc tariff was exposed for these anchors. The fresh listings explicitly report ad-hoc price unavailable and app/RFID activation, so no price is promoted.",
+    "negativePaths": [
+      "Generic T-Carica tariff search remains exhausted without a current deterministic first-party grid.",
+      "Third-party/operator labels such as Electriease are not sufficient to transpose an Electriease price onto IT*TCA EVSEs.",
+      "Absence of an ad-hoc price in a directory is not evidence that a direct payment surface cannot exist elsewhere."
+    ],
+    "decision": "Keep TCA active/station-level and fail-closed. Preserve Electriease as an operator/management alias relationship only, not a separately counted CPO, until authoritative OCPI/PUN evidence proves otherwise.",
+    "resumeCondition": "Resolve one of the anchored IT*TCA EVSEs through a T-Carica/Electriease app, QR, POS or guest backend and capture the pre-session tariff payload, or obtain a first-party deterministic network/class-wide tariff publication.",
+    "confidence": "high for IT*TCA identity and operator/network distinction; no tariff confidence because none is promoted",
+    "rankableCoverageAdded": 0,
+    "lastInvestigated": "2026-09-18",
+    "history": ["2026-09-18: expanded TCA anchors across AC 22 kW, DC 47/50 kW and HPC 120 kW; established recurring Electriease operator + T-Carica network labeling; no tariff promoted."]
+  },
+  "queue": {
+    "workingCountsUnchanged": {"treated":52,"partial":23,"setAside":1,"active":8,"total":84},
+    "networkOrClassWideRemaining": 0,
+    "stationLevelWorkingQueue": ["HER","SAG","UTZ","UFC","DRW","NRG","TCA","AM1"],
+    "next": "AM1/Atlante remains last; first exhaust any newly actionable backend/payment path for HER/SAG/UTZ/UFC/DRW/NRG/TCA before Atlante."
+  },
+  "consistency": {
+    "arithmetic": "PASS: 52+23+1+8=84",
+    "aliasCheck": "TCA/Electriease relationship documented without creating a duplicate CPO.",
+    "canonicalNominalAudit": "BLOCKED: docs/italy-cpo-progress-2026-09.json is absent from the repository default branch; working counters are not a certified nominal canonical inventory.",
+    "safeCorrection": "No counter mutation; new alias/operator distinction persisted to prevent future double counting."
+  }
+}
