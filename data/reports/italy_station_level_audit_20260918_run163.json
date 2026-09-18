@@ -1,0 +1,39 @@
+{
+  "run": 163,
+  "date": "2026-09-18",
+  "scope": "Italy remaining station-level CPOs",
+  "cpo": "NRG4YOU",
+  "partyId": "NRG",
+  "status": "active",
+  "priority": "station-level",
+  "newEvidence": [
+    {
+      "type": "recent-public-inventory",
+      "source": "Chast / OpenChargeMap-derived weekly inventory",
+      "observed": "2026-09-08",
+      "finding": "Argenta currently exposes one NRG4YOU location at Via Bruno Bolognesi with 2 Type-2 22 kW charge points; Consandolo exposes one NRG4YOU location at Viale Rimembranze with 2 Type-2 charge points; Anita exposes one NRG4YOU location at Piazza Liberta with 2 charge points."
+    },
+    {
+      "type": "consistency-warning",
+      "finding": "The recent public inventory does not cleanly match the four municipal locations previously documented for the Argenta 0.25 EUR/kWh programme. In Argenta proper, recent inventory also lists two Electrip locations. Therefore the municipal tariff must not be assigned to all current NRG/PUN EVSE by locality alone."
+    }
+  ],
+  "decision": "No tariff promotion and no rankable EVSE added. Preserve the official Argenta 0.25 EUR/kWh evidence as programme-level evidence only until deterministic PUN/OCPI EVSE IDs are crosswalked to the municipal Restation station IDs.",
+  "negativePaths": [
+    "Generic web search for IT*NRG*E identifiers did not expose deterministic EVSE IDs."
+  ],
+  "resumeCondition": "Obtain Restation station IDs/API payload or PUN/OCPI EVSE identifiers for the municipal Argenta/Consandolo/Anita/Santa Maria Codifiume sites and reconcile them against the recent inventory before ranking.",
+  "confidence": "high for fail-closed decision; medium for current third-party inventory",
+  "canonicalCounters": {
+    "treated": 52,
+    "totalCanonical": 84,
+    "partial": 23,
+    "setAside": 1,
+    "active": 8,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelRemaining": 8
+  },
+  "activeQueue": ["HER", "SAG", "UTZ", "UFC", "DRW", "NRG", "TCA", "AM1"],
+  "consistencyCheck": "52+23+1+8=84; no counter change in this run",
+  "nextAction": "Do not repeat generic NRG search without a new Restation/PUN surface; continue remaining station-level queue and keep Atlante last."
+}
