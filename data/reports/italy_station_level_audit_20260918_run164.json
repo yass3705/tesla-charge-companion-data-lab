@@ -1,0 +1,48 @@
+{
+  "run": 164,
+  "date": "2026-09-18",
+  "scope": "Italy remaining station-level CPOs",
+  "cpo": "T-Carica S.r.l.",
+  "partyId": "TCA",
+  "status": "active",
+  "priority": "station-level",
+  "newEvidence": [
+    {
+      "type": "official-direct-payment-surface",
+      "source": "https://www.tcarica.com/drivers/",
+      "finding": "T-Carica states that charging can be paid directly by scanning the QR code on the charger, without downloading an app, and also by credit/debit card on integrated POS readers. This is a direct CPO/ad-hoc surface suitable for station/EVSE tariff extraction."
+    },
+    {
+      "type": "official-network-access",
+      "source": "https://www.tcarica.com/drivers/",
+      "finding": "T-Carica separately states that its chargers are accessible through charging apps and RFID providers; those channels must remain separated from the direct QR/POS tariff because they may be roaming/eMSP prices."
+    },
+    {
+      "type": "inventory-corroboration",
+      "source": "Adiconsum October 2025 PUN observatory",
+      "finding": "Historical PUN inventory lists T-CARICA S.R.L. at 47/47 active charge points. This is inventory corroboration only and not a current tariff source."
+    }
+  ],
+  "rejectedTariffCandidates": [
+    {
+      "source": "Vaielettrico 2024 / Electriease-BeaglePlug",
+      "values": "AC 0.55 EUR/kWh; DC Fast 0.65 EUR/kWh; DC Ultrafast 0.70 EUR/kWh",
+      "reason": "Explicitly associated with the Electriease-BeaglePlug platform and therefore not promoted as T-Carica direct/ad-hoc pricing. It is also historical."
+    }
+  ],
+  "decision": "No tariff promotion yet. TCA remains active/station-level. The official QR/POS channel is now the preferred deterministic extraction route; do not infer a network-wide tariff from eMSP prices.",
+  "resumeCondition": "Resolve one or more current T-Carica charger QR/ad-hoc URLs or station/EVSE IDs, inspect the payment payload, and establish a deterministic station/EVSE-to-direct-tariff mapping. If the payload proves a global/class-wide grid with exact thresholds, reclassify accordingly.",
+  "confidence": "high for direct QR/POS channel and fail-closed tariff decision",
+  "canonicalCounters": {
+    "treated": 52,
+    "totalCanonical": 84,
+    "partial": 23,
+    "setAside": 1,
+    "active": 8,
+    "networkOrClassWideRemaining": 0,
+    "stationLevelRemaining": 8
+  },
+  "activeQueue": ["HER", "SAG", "UTZ", "UFC", "DRW", "NRG", "TCA", "AM1"],
+  "consistencyCheck": "52+23+1+8=84; no counter change; no alias change",
+  "nextAction": "Prioritize TCA QR/ad-hoc endpoint discovery from known current station/EVSE identifiers; do not repeat generic tariff search. Atlante remains last."
+}
