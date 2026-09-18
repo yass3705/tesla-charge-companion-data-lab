@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "runDate": "2026-09-18",
+  "focus": "PWY / Powy and EDN / Edison Next station-level direct tariff surface classification",
+  "canonicalStatus": "reconstruction_required",
+  "operators": [
+    {
+      "partyId": "PWY",
+      "name": "Powy Italy",
+      "status": "station-level",
+      "priority": "station-level",
+      "networkWidePromotion": false,
+      "evidence": {
+        "officialTariffRule": "Powy states charging costs vary by station power and charging duration; tariffs are displayed in Powy Charge before charging.",
+        "directPayment": "Official Powy instructions confirm QR-based direct payment without registration by scanning the QR beside the connector.",
+        "evseAnchors": [
+          "IT*PWY*EC0075*01*01",
+          "IT*PWY*EC0075*01*03",
+          "IT*PWY*EC0075*01*03X",
+          "IT*PWY*EC0075*02*01",
+          "IT*PWY*EC0075*02*02",
+          "IT*PWY*EC0075*03*01",
+          "IT*PWY*EC0075*03*02",
+          "IT*PWY*EC0003*02*01",
+          "IT*PWY*EC0003*02*02",
+          "IT*PWY*EC0003*03*01",
+          "IT*PWY*EC0003*03*02"
+        ],
+        "sources": [
+          "https://powy.energy/",
+          "https://powy.energy/ricarica-veicolo-qr/",
+          "https://app.pumpapp.co/it/stazione-di-ricarica-powy-italy-vle-filippo-turati-2-arezzo/50c20d07-0498-11f0-9fdc-4f514801b195",
+          "https://app.pumpapp.co/it/stazione-di-ricarica-powy-italy-corso-italia-6-inveruno/e9c1c704-9e01-11ed-877c-47eac9817186"
+        ]
+      },
+      "decision": {
+        "rankable": false,
+        "reason": "No current deterministic station/EVSE-to-price payload captured yet; power alone is insufficient because Powy explicitly says cost also varies with charging duration.",
+        "nextCondition": "Resolve a PWY connector through Powy Charge or the official QR direct-payment flow and capture the first-party tariff payload/endpoint; then test whether mapping is connector-, station-, power-class-, or time-dependent.",
+        "doNotRepeat": "Do not search for or infer a single national PWY tariff without new first-party evidence."
+      }
+    },
+    {
+      "partyId": "EDN",
+      "name": "Edison Next S.p.A.",
+      "status": "station-level",
+      "priority": "station-level",
+      "networkWidePromotion": false,
+      "aliasRisk": {
+        "labelsObserved": ["Edison Next S.P.A.", "ROUTE220"],
+        "decision": "Do not count ROUTE220-labelled IT*EDN stations as a separate CPO solely from the commercial/network label; retain EDN as the EVSE partyId until authoritative ownership/OCPI evidence proves otherwise."
+      },
+      "evseAnchors": [
+        "IT*EDN*ED00911",
+        "IT*EDN*ED00912",
+        "IT*EDN*ED00891",
+        "IT*EDN*ED00892",
+        "IT*EDN*ED00381",
+        "IT*EDN*ED00382",
+        "IT*EDN*ED00391",
+        "IT*EDN*ED00392",
+        "IT*EDN*EA00741",
+        "IT*EDN*EA00742"
+      ],
+      "evidence": {
+        "punTariffStatus": "Current PUN-derived Edison Next example at Cava Manara states tariffs not communicated to PUN.",
+        "route220CrossLabel": "Current charging directories label multiple IT*EDN EVSE as ROUTE220, including Bardolino and Sant'Elpidio a Mare.",
+        "sources": [
+          "https://pienotto.it/stazioni/270492-edison-next-s-p-a-cava-manara-pv",
+          "https://app.pumpapp.co/it/stazione-di-ricarica-route220-via-gardesana-dellacqua-25-bardolino/68cf0f0c-273b-11f1-8003-97ef5f588a6c",
+          "https://app.pumpapp.co/it/stazione-di-ricarica-route220-via-filippo-della-valle-santelpidio-a-mare/0cf25e90-40ee-11f0-bf0f-2946dde04f11"
+        ]
+      },
+      "decision": {
+        "rankable": false,
+        "reason": "No direct/ad-hoc first-party tariff mapped to these EDN EVSE; roaming card prices must not be promoted as CPO tariffs.",
+        "nextCondition": "Resolve IT*EDN station payment/app/backend surface and authoritative EDN/ROUTE220 operator relationship; require deterministic EVSE-to-direct-tariff mapping before ranking.",
+        "doNotRepeat": "Do not reuse eMSP roaming tariffs or infer Route220 pricing from the label alone."
+      }
+    }
+  ],
+  "coherence": {
+    "newAliasDecision": "EDN/ROUTE220 cross-label explicitly guarded against double counting",
+    "atlante": "setAside-last and excluded from active count",
+    "workingCountersFrozen": true,
+    "reason": "docs/italy-cpo-progress-2026-09.json remains absent; aggregate counters must not be certified before nominative reconstruction"
+  },
+  "history": [
+    {"date":"2026-09-18","change":"PWY classified definitively station-level from first-party Powy rule: tariff displayed before charge and cost varies with power and duration; official QR direct-payment surface identified as next extraction target."},
+    {"date":"2026-09-18","change":"EDN current EVSE anchors reconciled across Edison Next and ROUTE220 labels; added explicit anti-double-counting rule and kept all EDN pricing fail-closed pending direct tariff mapping."}
+  ]
+}
