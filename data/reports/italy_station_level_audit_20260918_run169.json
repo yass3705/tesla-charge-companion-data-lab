@@ -1,0 +1,50 @@
+{
+  "run": 169,
+  "date": "2026-09-18",
+  "scope": "Italy remaining CPO station-level follow-up",
+  "cpo": "HERA / Gruppo Hera / Hera Comm",
+  "workingQueueLabel": "HER",
+  "observedOperationalPartyId": "HRA",
+  "status": "active",
+  "priority": "station-level pending exact current direct tariff applicability",
+  "positiveEvidence": [
+    {
+      "source": "https://app.pumpapp.co/it/stazione-di-ricarica-gruppo-hera-piazzale-oreste-vancini-snc-cesena/95f4d87f-3eff-11f1-8d86-f7bddad570d4",
+      "observed": "2026-09-18",
+      "finding": "Current Gruppo Hera FastCharger in Cesena exposes 90 kW CCS EVSE IT*HRA*EWBX1265691*1 and *2."
+    },
+    {
+      "source": "https://app.pumpapp.co/en/charging-station-gruppo-hera-via-vecellio-snc-padua/1d3ea7b8-93c1-11ed-b8b5-cfb2c029d321",
+      "observed": "2026-09-18",
+      "finding": "Gruppo Hera FastCharger in Padua exposes mixed 22 kW AC / 50 kW DC EVSE under IT*HRA*EINGE6H05202C3710, proving HRA is not limited to the new 90 kW rollout."
+    },
+    {
+      "source": "https://pienotto.it/stazioni/284457-hera-comm-spa-cervia-ra",
+      "observed": "2026-09-18",
+      "finding": "Pienotto, explicitly sourced from Piattaforma Unica Nazionale, identifies HERA COMM SPA at Cervia with EVSE IT*HRA*E19XP22T3KK1AL00009*1/*2. PUN has no tariff communicated for this station."
+    },
+    {
+      "source": "https://www.goingelectric.de/stromtankstellen/Italien/Padua/Piazza-Insurrezione-Piazza-Insurrezione-/71520/",
+      "observed": "2026-09-18",
+      "finding": "Older Hera Comm AC station also uses IT*HRA* (IT*HRA*ESCAME100226220*1/*2), showing HRA predates the 2026 FastCharger rollout."
+    }
+  ],
+  "reconciliationDecision": "Treat HRA as the evidenced operational/PUN partyId for Hera Comm/Gruppo Hera. Preserve HER only as a historical working-queue/canonical label until the full nominal canonical file is reconstructed. Do not count HER and HRA as two independent CPOs. This resolves the immediate double-count risk without inventing an alias relationship beyond the same named operator evidence.",
+  "tariffEvidence": {
+    "directCurrentRankable": false,
+    "candidateCarriedForward": "EUR 0.85/kWh for proprietary/direct DC Fast 50-150 kW plus EUR 2/month from May 2026 Adiconsum corroboration",
+    "punTariffAvailability": "PUN-derived Pienotto explicitly reports tariffs not yet communicated for sampled HRA station",
+    "thirdPartyRoamingEvidenceExcluded": "VAB May 2026 lists IT-HRA Hera Comm at 0.62 EUR/kWh plus blocking fee; this is a VAB/eMSP roaming tariff and is not a Hera direct/ad-hoc tariff."
+  },
+  "negativeEvidence": [
+    "No first-party current Hera energy-price payload/API was found in this run.",
+    "PUN-derived station data does not provide a direct tariff for sampled HRA EVSE.",
+    "Generic web tariff search remains exhausted; future Hera work must target Hera app/backend/direct payment payload or newly published first-party tariff material."
+  ],
+  "blockingCondition": "Need first-party current Hera direct tariff payload or deterministic station/class mapping. HRA identity itself is no longer the main blocker.",
+  "resumeCondition": "Official Hera API/app payload, station-level direct payment surface, or newly published first-party tariff document with exact applicability.",
+  "confidence": "high for HRA as operational Hera partyId and no-double-count decision; fail-closed for tariff promotion",
+  "rankableCoverageAdded": 0,
+  "canonicalImpact": "No denominator/status counter change. On canonical reconstruction, record HRA as partyId and HER as historical alias/queue label rather than separate CPO.",
+  "next": "Move to another active station-level CPO; revisit Hera only on new first-party tariff evidence."
+}
