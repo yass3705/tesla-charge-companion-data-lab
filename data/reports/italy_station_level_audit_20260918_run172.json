@@ -1,0 +1,42 @@
+{
+  "run": 172,
+  "date": "2026-09-18",
+  "scope": "Italy remaining CPO station-level review",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalPresentOnMain": false,
+  "workingCounters": {"treated":52,"partial":23,"setAside":1,"active":8,"total":84},
+  "activeQueue": ["HER","SAG","UTZ","UFC","DRW","NRG","TCA","AM1"],
+  "priorityRemaining": {"networkOrClassWide":0,"stationLevel":8},
+  "cpo": {
+    "partyId": "UFC",
+    "canonicalNameCandidate": "E.ON Drive Infrastructure Italy S.r.l.",
+    "status": "active",
+    "priority": "station-level",
+    "aliasDecision": "UFC is operational EVSE partyId for E.ON Drive Infrastructure Italy; do not create a separate CPO alias entry.",
+    "inventoryEvidence": {
+      "historicalPUN": "18/18 active/total in May 2026 Adiconsum PUN inventory",
+      "currentExamples": [
+        {"location":"Montano Lucino (CO), Via dell'Industria 2","evses":["IT*UFC*E500001*1","IT*UFC*E500001*2","IT*UFC*E500002*1","IT*UFC*E500002*2"],"powerKw":50},
+        {"location":"Voghera (PV), V.le Martiri della Liberta","evses":["IT*UFC*E500019*1","IT*UFC*E500019*2","IT*UFC*E500020*1","IT*UFC*E500020*2"],"powerKw":50}
+      ],
+      "expansion": "EDRI announced 104 ultra-fast charge points across 18 Italian motorway service areas, up to 400 kW, planned operational by end-2026; therefore 18/18 is not a safe future denominator."
+    },
+    "tariffEvidence": {
+      "currentPUNExample": {"location":"Mantova, Strada Circonvallazione Sud 78A","priceEurPerKwh":0.79,"source":"Pienotto mirror of PUN","sourceUpdated":"2026-09-07"},
+      "classification":"station-level candidate only",
+      "rankable":false,
+      "reason":"One current PUN-backed station price does not establish a deterministic network-wide/class-wide rule for all UFC EVSEs, especially during active network expansion."
+    },
+    "negativeFindings": [
+      "No current first-party EDRI Italy network-wide tariff grid located in this pass.",
+      "Do not transpose Mantova 0.79 EUR/kWh to other UFC EVSEs without deterministic mapping/rule.",
+      "Generic UFC web search is polluted by the hardware acronym Ultra Fast Charger and is now considered exhausted unless constrained by EDRI/E.ON identity or exact EVSE IDs."
+    ],
+    "resumeCondition": "Use exact IT*UFC EVSE IDs against PUN/ad-hoc/payment surfaces or obtain a first-party EDRI Italy tariff rule. Promote only EVSEs with deterministic EVSE-to-price mapping, or a class/network rule with proven scope.",
+    "confidence": "high for UFC->EDRI identity; medium-high for Mantova station tariff candidate; insufficient for network-wide promotion",
+    "lastInvestigated":"2026-09-18",
+    "history":["Resolved UFC operational identity to E.ON Drive Infrastructure Italy using exact current EVSE examples.","Recorded 0.790 EUR/kWh Mantova PUN-backed station candidate without extrapolation.","Recorded 2026 EDRI expansion so historical 18/18 denominator is flagged stale for future inventory refresh."]
+  },
+  "coherence": {"arithmetic":"52+23+1+8=84 OK","nominative":"NOT CERTIFIABLE: canonical file absent from main; no counter mutation performed."},
+  "nextCpo":"DRW"
+}
