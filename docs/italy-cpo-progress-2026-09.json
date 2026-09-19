@@ -4,33 +4,21 @@
   "asOf": "2026-09-19",
   "inventoryStatus": "reconstructed_committed_evidence_incomplete",
   "inventoryComplete": false,
-  "policy": {
-    "failClosed": true,
-    "priorityOrder": ["network-wide", "class-wide", "station-level"],
-    "atlante": "setAside-last",
-    "noExtrapolation": true
-  },
+  "policy": {"failClosed":true,"priorityOrder":["network-wide","class-wide","station-level"],"atlante":"setAside-last","noExtrapolation":true},
   "sources": [
-    {"path":"data/reports/italy_cpo_priority_snapshot_20260905.json","commit":"eba11ed71ab5d8aedbbc32a8cab9b7ef1d5bd1b9","note":"historical committed priority snapshot; source artifact expired, therefore not sufficient alone to certify the historical 84-CPO total"},
+    {"path":"data/reports/italy_cpo_priority_snapshot_20260905.json","commit":"eba11ed71ab5d8aedbbc32a8cab9b7ef1d5bd1b9","note":"historical committed priority snapshot; source artifact expired; its reported 84 must not be interpreted as the complete PUN operator inventory"},
+    {"workflowRun":33211431798,"jobId":98985317121,"sourceCommit":"4f1b6d1ef3034a66ea203d369736eeb5f751140f","generatedAt":"2026-08-28T21:16:12Z","note":"retained Actions log for normalized national PUN build: 75,025 unique EVSE, 29,696 stations, 112 operators, zero failed detail batches"},
+    {"workflowRun":33308407226,"jobId":99248944826,"sourceCommit":"fe1367f089693de9f73c6b3994ead7160751063c","generatedAt":"2026-08-30T11:14:43Z","note":"retained Italy V9 consolidation log; confirms same 75,025-EVSE PUN backbone and direct coverage evidence for A2A, Plenitude and Duferco"},
     {"path":"data/reports/italy_station_level_audit_20260918_run176.json","commit":"62a6faa875ec0d6c62764888d110476a32ccb37f","note":"coherence audit and unresolved queue"},
     {"path":"data/reports/italy_station_level_audit_20260919_run190.json","commit":"590a38b553712bb2a38645e5211feaaa971295e6","note":"latest station-level closure state"}
   ],
-  "counters": {
-    "canonicalNamedEntries": 23,
-    "treated": 8,
-    "partial": 14,
-    "setAside": 1,
-    "active": 0,
-    "supersededAlias": 0,
-    "historicalReportedTotal": 84,
-    "historicalTotalCertified": false,
-    "arithmeticCheckNamedSubset": true
-  },
-  "remainingByPriority": {"network-wide":0,"class-wide":0,"station-level":0,"setAsideStationLevel":1},
+  "inventoryBaselines": {"pun2026-08-28":{"uniqueEvse":75025,"stations":29696,"operators":112,"failedDetailBatches":0,"sourceWorkflowRun":33211431798},"legacyPrioritySnapshot":{"reportedCpoCount":84,"completeNationalInventory":false}},
+  "counters": {"canonicalNamedEntries":23,"treated":8,"partial":14,"setAside":1,"active":0,"supersededAlias":0,"legacyHistoricalReportedTotal":84,"legacyHistoricalTotalCertifiedAsComplete":false,"latestRecoverablePunOperatorCount":112,"namedGapToPunOperatorBaseline":89,"arithmeticCheckNamedSubset":true},
+  "remainingByPriority": {"network-wide":0,"class-wide":0,"station-level":0,"setAsideStationLevel":1,"unreconciledNamedOperators":89},
   "operators": [
-    {"partyId":"A2M","canonicalName":"A2A E-Mobility","aliases":[],"status":"treated","priority":"network-wide","evidenceState":"alreadyHandled in 2026-09-05 committed snapshot","confidence":"medium","lastChanged":"2026-09-05"},
-    {"partyId":"BEC","canonicalName":"Be Charge / Plenitude On The Road","aliases":[],"status":"treated","priority":"network-wide","evidenceState":"alreadyHandled in 2026-09-05 committed snapshot","confidence":"medium","lastChanged":"2026-09-05"},
-    {"partyId":"DUF","canonicalName":"Duferco Energia","aliases":[],"status":"treated","priority":"network-wide","evidenceState":"alreadyHandled in 2026-09-05 committed snapshot","confidence":"medium","lastChanged":"2026-09-05"},
+    {"partyId":"A2M","canonicalName":"A2A E-Mobility","aliases":[],"status":"treated","priority":"network-wide","evidenceState":"alreadyHandled in 2026-09-05 committed snapshot; Aug-30 consolidation log confirms 5,618 rankable direct EVSE of 5,741 PUN A2M EVSE (97.86%)","confidence":"high","lastChanged":"2026-09-19"},
+    {"partyId":"BEC","canonicalName":"Be Charge / Plenitude On The Road","aliases":[],"status":"treated","priority":"network-wide","evidenceState":"Aug-30 consolidation log: 19,722 PUN BEC EVSE, 18,360 rankable direct after 1,362 official summer-offer exclusions (93.09%)","confidence":"high","lastChanged":"2026-09-19"},
+    {"partyId":"DUF","canonicalName":"Duferco Energia","aliases":[],"status":"treated","priority":"network-wide","evidenceState":"Aug-30 consolidation log: 1,648 PUN EVSE / 698 stations, 1,648 rankable direct, 100% power coverage","confidence":"high","lastChanged":"2026-09-19"},
     {"partyId":"EWI","canonicalName":"Ewiva","aliases":[],"status":"treated","priority":"network-wide","evidenceState":"alreadyHandled; direct candidate previously published","confidence":"high","lastChanged":"2026-09-05"},
     {"partyId":"ASM","canonicalName":"Neogy / Alperia","aliases":["Neogy","Alperia"],"status":"treated","priority":"network-wide","evidenceState":"alreadyHandled; direct candidate previously published","confidence":"high","lastChanged":"2026-09-05"},
     {"partyId":"REP","canonicalName":"Repower","aliases":[],"status":"treated","priority":"network-wide","evidenceState":"alreadyHandled; direct candidate previously published","confidence":"high","lastChanged":"2026-09-05"},
@@ -52,16 +40,9 @@
     {"partyId":"TCA","canonicalName":"T-Carica","aliases":["Electriease display relationship"],"status":"partial","priority":"station-level","inventory":{"activePoints":106,"comingSoon":216,"timestamp":"2026-09-19"},"tariffChannel":"direct POS/card or QR without app; app/RFID/eMSP separated","tariffModel":"current direct station-level price unresolved; historical Electriease grid not promoted","deduplication":"Electriease is not counted as an additional CPO solely because shown on IT*TCA stations","blockingCondition":"IT*TCA EVSE to QR/POS direct-payment tariff payload or new first-party deterministic grid","confidence":"high","lastInvestigated":"2026-09-19"},
     {"partyId":"ATL","canonicalName":"Atlante","aliases":[],"status":"setAside","priority":"station-level","tariffModel":"exact station tariff/backend not currently automatable from committed evidence","blockingCondition":"automatable backend or exact station tariff surface becomes exploitable","confidence":"high","lastInvestigated":"2026-09-18"}
   ],
-  "coherence": {
-    "namedSubsetNoDuplicatePartyIds": true,
-    "aliasDoubleCountChecks": ["HER->HRA","Route220-on-IT*EDN->EDN","Electriease-on-IT*TCA->TCA","Fortech-on-IT*DRW-not-separate"],
-    "bucketCoverageNamedSubset":"8 treated + 14 partial + 1 setAside + 0 active = 23 named entries",
-    "historical84Gap":61,
-    "gapMeaning":"61 historical CPO identities are not recoverable nominatively from the currently inspected committed snapshot/audits alone; they are intentionally not invented. A fresh consolidated inventory or additional committed historical reports must be reconciled before inventoryComplete can become true.",
-    "genericActiveQueue":[],
-    "lastAudit":"2026-09-19"
-  },
+  "coherence": {"namedSubsetNoDuplicatePartyIds":true,"aliasDoubleCountChecks":["HER->HRA","Route220-on-IT*EDN->EDN","Electriease-on-IT*TCA->TCA","Fortech-on-IT*DRW-not-separate"],"bucketCoverageNamedSubset":"8 treated + 14 partial + 1 setAside + 0 active = 23 named entries","legacy84Gap":61,"pun112Gap":89,"gapMeaning":"The retained normalized PUN national run proves 112 operators, so the old 84 figure was not the complete national operator inventory. 23 identities are currently reconstructed nominatively; 89 operator identities remain to reconcile from a fresh/retained PUN inventory or additional historical evidence. They are not invented or assigned to status buckets until named.","genericActiveQueue":[],"lastAudit":"2026-09-19"},
   "history": [
-    {"date":"2026-09-19","change":"Created the required nominative canonical for the first time from committed evidence. Preserved 23 verifiable CPO identities, resolved known aliases, eliminated Atlante active/setAside overlap, and explicitly marked the historical 84-total gap instead of inventing 61 missing identities."}
+    {"date":"2026-09-19","change":"Created required nominative canonical from committed evidence: 23 verifiable identities, known aliases resolved, Atlante overlap eliminated."},
+    {"date":"2026-09-19","change":"Recovered retained GitHub Actions logs for normalized PUN run 33211431798 and Italy consolidation run 33308407226. Corrected the inventory interpretation: PUN contained 112 operators / 75,025 EVSE / 29,696 stations on 2026-08-28, therefore legacy 84 was a priority/review subset rather than complete national inventory. Added 112-operator baseline and 89-name reconciliation gap; upgraded A2M/BEC/DUF evidence with exact logged coverage counts."}
   ]
 }
