@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "runDate": "2026-09-19",
+  "focus": "station-level queue progression: UFC / E.ON Drive Infrastructure Italy",
+  "canonicalStatus": "reconstruction_required",
+  "operators": [
+    {
+      "name": "E.ON Drive Infrastructure Italy S.r.l.",
+      "partyId": "UFC",
+      "status": "active",
+      "priority": "station-level",
+      "networkWidePromotion": false,
+      "tariffChannel": "first-party ad-hoc/contactless/QR-weblink; roaming eMSP explicitly separate",
+      "currentFirstPartyTariffSurface": {
+        "source": "https://www.edri.com/it-it/tariffs",
+        "observedAt": "2026-09-19",
+        "classes": [
+          {"class":"AC","threshold":"<45 kW","price":"from 0.695 EUR/kWh","blockingFee":"0.10 EUR","blockingDuration":"240 min","nightBlockingFee":"none"},
+          {"class":"DC fast","threshold":"<100 kW","price":"from 0.79 EUR/kWh","blockingFee":"0.15 EUR","blockingDuration":"120 min"},
+          {"class":"HPC","threshold":"100-400 kW","price":"from 0.79 EUR/kWh","blockingFee":"0.10 EUR","blockingDuration":"240 min"}
+        ],
+        "promotionRule":"NOT rankable network-wide because EDRI labels prices as 'From' and its FAQ states charging prices vary by location, charger type and payment method."
+      },
+      "positiveEvidence": [
+        "EDRI Italy publishes current first-party ad-hoc tariff classes and exact power thresholds on its Italian tariffs page.",
+        "EDRI FAQ states current ad-hoc price is shown on the charger screen or online and varies by location, charger type AC/DC and payment method.",
+        "EDRI explicitly separates direct-payment pricing from roaming: roaming/card providers set their own final price.",
+        "Direct payment is available without registration via contactless bank card or QR/weblink; Visa/Mastercard, Google Pay and Apple Pay are documented."
+      ],
+      "negativePaths": [
+        "The published class prices are minima ('From'), not a deterministic national grid applicable to every IT*UFC EVSE.",
+        "Therefore 0.695/0.79 EUR/kWh cannot be transposed to an individual Italian station solely from connector power.",
+        "Roaming prices from E.ON Drive or third-party apps cannot be substituted for the direct CPO/ad-hoc price."
+      ],
+      "decision": "Keep UFC station-level/fail-closed until each IT*UFC EVSE can be mapped to the current first-party charger-screen or QR/weblink tariff. Preserve the official class minima only as discovery/corroboration metadata, not rankable prices.",
+      "blockingCondition": "deterministic IT*UFC station/EVSE -> EDRI direct-payment portal/screen tariff mapping",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-19",
+      "lastChanged": "2026-09-19"
+    }
+  ],
+  "coherence": {
+    "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+    "canonicalPresentOnMain": false,
+    "workingCountersFrozen": true,
+    "aliasesResolvedThisRun": 0,
+    "rankableAddedEvse": 0,
+    "atlante": "setAside-last and excluded from active count",
+    "queueAfterThisRun": ["DRW","NRG","TCA"],
+    "doNotRepeat": "Generic UFC network-wide tariff research is exhausted. Resume UFC only with a concrete IT*UFC EVSE and its first-party QR/weblink/payment-screen tariff payload, or a newly published deterministic Italy-wide rule."
+  },
+  "history": [
+    {
+      "date": "2026-09-19",
+      "change": "UFC first-party tariff model formally classified: official AC/DC/HPC thresholds and minimum prices captured, but EDRI FAQ proves location/payment variation; no network-wide price promoted."
+    }
+  ]
+}
