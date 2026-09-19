@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-19",
+  "inventoryStatus": "reconstructed_committed_evidence_incomplete",
+  "inventoryComplete": false,
+  "policy": {
+    "failClosed": true,
+    "priorityOrder": ["network-wide", "class-wide", "station-level"],
+    "atlante": "setAside-last",
+    "noExtrapolation": true
+  },
+  "sources": [
+    {"path":"data/reports/italy_cpo_priority_snapshot_20260905.json","commit":"eba11ed71ab5d8aedbbc32a8cab9b7ef1d5bd1b9","note":"historical committed priority snapshot; source artifact expired, therefore not sufficient alone to certify the historical 84-CPO total"},
+    {"path":"data/reports/italy_station_level_audit_20260918_run176.json","commit":"62a6faa875ec0d6c62764888d110476a32ccb37f","note":"coherence audit and unresolved queue"},
+    {"path":"data/reports/italy_station_level_audit_20260919_run190.json","commit":"590a38b553712bb2a38645e5211feaaa971295e6","note":"latest station-level closure state"}
+  ],
+  "counters": {
+    "canonicalNamedEntries": 23,
+    "treated": 8,
+    "partial": 14,
+    "setAside": 1,
+    "active": 0,
+    "supersededAlias": 0,
+    "historicalReportedTotal": 84,
+    "historicalTotalCertified": false,
+    "arithmeticCheckNamedSubset": true
+  },
+  "remainingByPriority": {"network-wide":0,"class-wide":0,"station-level":0,"setAsideStationLevel":1},
+  "operators": [
+    {"partyId":"A2M","canonicalName":"A2A E-Mobility","aliases":[],"status":"treated","priority":"network-wide","evidenceState":"alreadyHandled in 2026-09-05 committed snapshot","confidence":"medium","lastChanged":"2026-09-05"},
+    {"partyId":"BEC","canonicalName":"Be Charge / Plenitude On The Road","aliases":[],"status":"treated","priority":"network-wide","evidenceState":"alreadyHandled in 2026-09-05 committed snapshot","confidence":"medium","lastChanged":"2026-09-05"},
+    {"partyId":"DUF","canonicalName":"Duferco Energia","aliases":[],"status":"treated","priority":"network-wide","evidenceState":"alreadyHandled in 2026-09-05 committed snapshot","confidence":"medium","lastChanged":"2026-09-05"},
+    {"partyId":"EWI","canonicalName":"Ewiva","aliases":[],"status":"treated","priority":"network-wide","evidenceState":"alreadyHandled; direct candidate previously published","confidence":"high","lastChanged":"2026-09-05"},
+    {"partyId":"ASM","canonicalName":"Neogy / Alperia","aliases":["Neogy","Alperia"],"status":"treated","priority":"network-wide","evidenceState":"alreadyHandled; direct candidate previously published","confidence":"high","lastChanged":"2026-09-05"},
+    {"partyId":"REP","canonicalName":"Repower","aliases":[],"status":"treated","priority":"network-wide","evidenceState":"alreadyHandled; direct candidate previously published","confidence":"high","lastChanged":"2026-09-05"},
+    {"partyId":"F2X","canonicalName":"Free To X","aliases":[],"status":"treated","priority":"class-wide","tariffModel":"direct coverage exists; unresolved EVSE remain fail-closed where DC/HPC separation is not proven","coverage":{"covered":"previous direct candidate coverage","uncovered":"EVSE lacking deterministic DC/HPC separation remain fail-closed"},"confidence":"high","lastChanged":"2026-09-05"},
+    {"partyId":"ACE","canonicalName":"ACEA / Acea Innovation","aliases":["Acea e-mobility"],"status":"treated","priority":"station-level","tariffModel":"legacy direct service stopped; legacy prices must not be promoted without current evidence","confidence":"high","lastChanged":"2026-09-05"},
+    {"partyId":"ONS","canonicalName":"On Electric Charge Mobility / On Charge","aliases":[],"status":"partial","priority":"network-wide","inventory":{"evse":716,"stations":342,"timestamp":"2026-09-05"},"tariffModel":"power-band network-wide","tariffs":[{"class":"AC <=22 kW","eurPerKwh":0.65},{"class":"DC <=50 kW","eurPerKwh":0.85},{"class":"DC ultrafast <=350 kW","eurPerKwh":0.95}],"officialReference":"https://onmobility.oncharge.it/ricarica","blockingCondition":"confirm exact current party scope/builder publication before treated promotion","confidence":"high","lastInvestigated":"2026-09-05"},
+    {"partyId":"IPE","canonicalName":"IPlanet","aliases":[],"status":"partial","priority":"network-wide","inventory":{"evse":547,"stations":189,"timestamp":"2026-09-05"},"tariffModel":"network-wide by channel/class","tariffs":[{"class":"APP AC <=22 kW","eurPerKwh":0.60},{"class":"APP DC any power","eurPerKwh":0.74},{"class":"POS DC any power","eurPerKwh":0.79}],"officialReference":"https://iplanet.eu/tariffe/","blockingCondition":"confirm exact current party scope/builder publication before treated promotion","confidence":"high","lastInvestigated":"2026-09-05"},
+    {"partyId":"FWY","canonicalName":"FastWay","aliases":[],"status":"partial","priority":"network-wide","inventory":{"evse":421,"stations":213,"timestamp":"2026-09-05"},"tariffModel":"connector-type network-wide","tariffs":[{"class":"AC Type2","eurPerKwh":0.68},{"class":"DC CCS2","eurPerKwh":0.88}],"officialReference":"https://www.fastway.energy/guida-alla-ricarica/","blockingCondition":"confirm exact current party scope/builder publication before treated promotion","confidence":"high","lastInvestigated":"2026-09-05"},
+    {"partyId":"TSL","canonicalName":"Tesla Italia destination/public non-Supercharger scope","aliases":[],"status":"partial","priority":"station-level","tariffModel":"site/time-specific","coverage":{"uncovered":"destination/public scope without deterministic current station tariff"},"blockingCondition":"station-specific current direct tariff surface","confidence":"high","lastInvestigated":"2026-09-18"},
+    {"partyId":"PWY","canonicalName":"Powy / TheF Charging","aliases":["TheF Charging"],"status":"partial","priority":"station-level","tariffModel":"prices vary by operator/location/other factors","blockingCondition":"deterministic EVSE-to-direct-tariff mapping","confidence":"high","lastInvestigated":"2026-09-18"},
+    {"partyId":"EMO","canonicalName":"EMOBITALY","aliases":[],"status":"partial","priority":"station-level","tariffModel":"point-owner-specific pricing; activation/energy/time components possible","coverage":{"covered":"deterministic station anchors including Rome EVSE E477-E484","uncovered":"remaining EMO EVSE without exact direct tariff mapping"},"blockingCondition":"per-EVSE current direct tariff mapping","confidence":"high","lastInvestigated":"2026-09-19"},
+    {"partyId":"EDN","canonicalName":"Edison Next","aliases":["Route220 where displayed on IT*EDN"],"status":"partial","priority":"station-level","tariffModel":"location-specific/direct tariff evidence; no safe national grid","coverage":{"uncovered":"including Cava Manara ED00911/ED00912 where PUN tariff not communicated"},"deduplication":"Route220 is not a separate CPO when the EVSE partyId is IT*EDN","blockingCondition":"deterministic current station/EVSE tariff","confidence":"high","lastInvestigated":"2026-09-19"},
+    {"partyId":"HRA","canonicalName":"HERA Comm","aliases":["HER"],"status":"partial","priority":"station-level","tariffModel":"no current deterministic public direct grid found","deduplication":"HER is a historical queue label; HRA is operational EVSE partyId and must not be double-counted","blockingCondition":"new first-party direct tariff evidence or connector-level backend payload","confidence":"high","lastInvestigated":"2026-09-19"},
+    {"partyId":"SAG","canonicalName":"Sagelio","aliases":[],"status":"partial","priority":"station-level","tariffChannel":"direct card via station QR; Electromaps is separate reference channel","tariffModel":"station-level; direct card cost relates to Electromaps plus Stripe commissions but no safe EVSE tariff mapping","blockingCondition":"IT*SAG EVSE to QR/payment/backend tariff mapping","confidence":"high","lastInvestigated":"2026-09-19"},
+    {"partyId":"UTZ","canonicalName":"Uattzy","aliases":[],"status":"partial","priority":"station-level","tariffModel":"connector-level price shown before charging; may depend on power/session/occupation; eMSP distinct","blockingCondition":"IT*UTZ EVSE to Uattzy backend/app/POS tariff payload","confidence":"high","lastInvestigated":"2026-09-19"},
+    {"partyId":"UFC","canonicalName":"E.ON Drive Infrastructure Italy","aliases":["EDRI Italy"],"status":"partial","priority":"station-level","tariffModel":"direct prices vary by location/type/payment; published values are from-prices only","blockingCondition":"IT*UFC EVSE to QR/weblink/display direct tariff mapping","confidence":"high","lastInvestigated":"2026-09-19"},
+    {"partyId":"DRW","canonicalName":"Unoenergy Driwe","aliases":["DriWe","DriWeNet"],"status":"partial","priority":"station-level","inventory":{"activePoints":267,"totalPoints":284,"timestamp":"2026-05"},"tariffModel":"station-level; energy/time and payment-dependent components observed","deduplication":"Fortech host/operator display is not a separate CPO solely on IT*DRW; GES not merged without authority","blockingCondition":"IT*DRW EVSE to direct payment/backend tariff mapping","confidence":"high","lastInvestigated":"2026-09-19"},
+    {"partyId":"NRG","canonicalName":"NRG4YOU SRL","aliases":[],"status":"partial","priority":"station-level","tariffChannel":"direct CPO through NRG4YOU-branded ReStation tenant; authenticated station/payment flow","tariffModel":"station-specific; public path exhausted after two passes","blockingCondition":"NRG4YOU-specific authenticated ReStation station/payment payload, concrete QR/deeplink, or current deterministic first-party/PUN tariff","confidence":"high","lastInvestigated":"2026-09-19"},
+    {"partyId":"TCA","canonicalName":"T-Carica","aliases":["Electriease display relationship"],"status":"partial","priority":"station-level","inventory":{"activePoints":106,"comingSoon":216,"timestamp":"2026-09-19"},"tariffChannel":"direct POS/card or QR without app; app/RFID/eMSP separated","tariffModel":"current direct station-level price unresolved; historical Electriease grid not promoted","deduplication":"Electriease is not counted as an additional CPO solely because shown on IT*TCA stations","blockingCondition":"IT*TCA EVSE to QR/POS direct-payment tariff payload or new first-party deterministic grid","confidence":"high","lastInvestigated":"2026-09-19"},
+    {"partyId":"ATL","canonicalName":"Atlante","aliases":[],"status":"setAside","priority":"station-level","tariffModel":"exact station tariff/backend not currently automatable from committed evidence","blockingCondition":"automatable backend or exact station tariff surface becomes exploitable","confidence":"high","lastInvestigated":"2026-09-18"}
+  ],
+  "coherence": {
+    "namedSubsetNoDuplicatePartyIds": true,
+    "aliasDoubleCountChecks": ["HER->HRA","Route220-on-IT*EDN->EDN","Electriease-on-IT*TCA->TCA","Fortech-on-IT*DRW-not-separate"],
+    "bucketCoverageNamedSubset":"8 treated + 14 partial + 1 setAside + 0 active = 23 named entries",
+    "historical84Gap":61,
+    "gapMeaning":"61 historical CPO identities are not recoverable nominatively from the currently inspected committed snapshot/audits alone; they are intentionally not invented. A fresh consolidated inventory or additional committed historical reports must be reconciled before inventoryComplete can become true.",
+    "genericActiveQueue":[],
+    "lastAudit":"2026-09-19"
+  },
+  "history": [
+    {"date":"2026-09-19","change":"Created the required nominative canonical for the first time from committed evidence. Preserved 23 verifiable CPO identities, resolved known aliases, eliminated Atlante active/setAside overlap, and explicitly marked the historical 84-total gap instead of inventing 61 missing identities."}
+  ]
+}
