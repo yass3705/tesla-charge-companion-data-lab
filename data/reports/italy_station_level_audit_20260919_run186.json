@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "runDate": "2026-09-19",
+  "focus": "station-level queue progression: SAG + UTZ",
+  "canonicalStatus": "reconstruction_required",
+  "operators": [
+    {
+      "name": "Sagelio",
+      "partyId": "SAG",
+      "status": "active",
+      "priority": "station-level",
+      "networkWidePromotion": false,
+      "tariffChannel": "direct card payment through station QR / Electromaps surface",
+      "positiveEvidence": [
+        "Sagelio states that all network stations accept direct credit-card payment without app registration via station QR -> connector -> Activate with direct payment.",
+        "Sagelio states direct-card charging has the same charging cost as Electromaps plus Stripe commissions.",
+        "Current PUN-derived record for IT*SAG*ETACW2242822S7243*1 at Gragnano shows Type 2 22 kW and no tariff communicated to PUN."
+      ],
+      "negativePaths": [
+        "No deterministic network-wide SAG price was found in current public first-party material.",
+        "PUN cannot currently supply the tariff for the Gragnano anchor."
+      ],
+      "decision": "Keep SAG station-level/fail-closed. Do not infer an Electromaps/eMSP price as a direct CPO price. Resume only with QR/payment payload or an explicit current first-party station tariff.",
+      "blockingCondition": "deterministic IT*SAG EVSE -> first-party/direct-payment tariff mapping",
+      "confidence": "high"
+    },
+    {
+      "name": "Uattzy",
+      "partyId": "UTZ",
+      "status": "active",
+      "priority": "station-level",
+      "networkWidePromotion": false,
+      "tariffChannel": "Uattzy app/RFID direct service; third-party roaming separated",
+      "positiveEvidence": [
+        "Uattzy first-party FAQ states the applied tariff is displayed for every connector before charging when using Uattzy app or associated RFID.",
+        "The FAQ states additional costs such as parking penalties or activation costs can be connector-specific and prices may vary with delivered power, session duration and stall occupancy time.",
+        "Uattzy explicitly distinguishes its own tariff from third-party app/RFID operator pricing."
+      ],
+      "negativePaths": [
+        "A national price or simple power-class grid is not established by the first-party FAQ.",
+        "No public deterministic IT*UTZ EVSE tariff payload was exposed in this pass."
+      ],
+      "decision": "Keep UTZ station-level/fail-closed. The first-party tariff model itself proves connector-level/app resolution is required; do not extrapolate by power.",
+      "blockingCondition": "IT*UTZ EVSE -> Uattzy app/backend connector tariff payload",
+      "confidence": "high"
+    }
+  ],
+  "coherence": {
+    "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+    "canonicalPresentOnMain": false,
+    "workingCountersFrozen": true,
+    "aliasesResolvedThisRun": 0,
+    "rankableAddedEvse": 0,
+    "atlante": "setAside-last and excluded from active count",
+    "queueNote": "SAG and UTZ now have first-party evidence proving station/connector-level tariff resolution; generic network-wide tariff research should not be repeated without new evidence."
+  },
+  "history": [
+    {
+      "date": "2026-09-19",
+      "change": "Advanced SAG and UTZ without price extrapolation: Sagelio direct QR/card path documented and Uattzy first-party FAQ establishes connector-specific tariffs/additional fees and strict separation from roaming pricing."
+    }
+  ]
+}
