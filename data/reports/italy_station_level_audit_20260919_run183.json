@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "runDate": "2026-09-19",
+  "focus": "NRG4YOU / ReStation station-level tariff-path recheck",
+  "canonicalStatus": "reconstruction_required",
+  "operators": [
+    {
+      "name": "NRG4YOU",
+      "status": "active",
+      "priority": "station-level",
+      "networkWidePromotion": false,
+      "tariffChannel": "direct CPO / ReStation web charging flow",
+      "positiveEvidence": [
+        "Vietri sul Mare public/tourism documentation identifies NRG4YOU at Corso Umberto I / Piazza Matteotti and directs users to https://customer.restation.eu/stations.",
+        "The documented station card exposes PRENOTA and RICARICA actions and describes 2 Type 2 22 kW sockets with 'Accesso a Pagamento', proving a paid direct-use flow exists even though the exact price is not exposed in the indexed public evidence.",
+        "Open Charge Map currently associates NRG4YOU in Italy with https://customer.restation.eu/stations, corroborating ReStation as the customer-facing surface.",
+        "Centro Per le Comunita Solari independently uses the same customer.restation.eu platform for its Community Charger web charging flow, proving ReStation is a shared platform and therefore a ReStation tariff observed for another network must never be transposed to NRG4YOU."
+      ],
+      "inventoryAnchors": [
+        {
+          "location": "Vietri sul Mare (SA), Corso Umberto I / Piazza Matteotti",
+          "connectors": "2 x Type 2",
+          "powerKw": 22,
+          "access": "paid",
+          "customerSurface": "https://customer.restation.eu/stations"
+        }
+      ],
+      "tariffEvidence": {
+        "rankableAdded": 0,
+        "result": "No current deterministic NRG4YOU station/EVSE price was exposed by the public/indexed ReStation evidence inspected in this pass.",
+        "decision": "Keep fail-closed. Do not use generic third-party AC averages and do not infer a network-wide tariff from other ReStation tenants."
+      },
+      "negativePaths": [
+        "Fresh NRG4YOU €/kWh web search: no first-party deterministic tariff found.",
+        "Public ReStation-linked station evidence proves paid access but does not expose the exact price in indexed content.",
+        "Third-party geographic average tariffs are explicitly non-deterministic and rejected."
+      ],
+      "blockingCondition": "Resume NRG4YOU pricing only from a current ReStation station detail/booking/charging payload, QR/deeplink, guest API, or first-party NRG4YOU/PUN record that deterministically maps station/EVSE to direct tariff.",
+      "nextTechnicalTarget": "Inspect ReStation guest station-detail / PRENOTA / RICARICA request flow and derive stable station identifiers before attempting tariff extraction.",
+      "confidence": "high for ReStation channel and fail-closed decision; no network-wide price claim"
+    }
+  ],
+  "coherence": {
+    "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+    "canonicalPresentOnMain": false,
+    "workingCountersFrozen": true,
+    "aliasCheck": "No new alias/CPO split introduced. ReStation is a shared platform, not a CPO identity.",
+    "atlante": "setAside-last and excluded from active count"
+  },
+  "history": [
+    {
+      "date": "2026-09-19",
+      "change": "NRG4YOU investigation advanced from generic Restation lead to a documented paid station flow (PRENOTA/RICARICA, 2x22 kW) while proving ReStation is multi-network; exact tariff remains fail-closed and future work is narrowed to guest station-detail/payment payload extraction."
+    }
+  ]
+}
