@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "runDate": "2026-09-19",
+  "focus": "NRG4YOU / ReStation inventory expansion and tariff-flow boundary",
+  "canonicalStatus": "reconstruction_required",
+  "operators": [
+    {
+      "name": "NRG4YOU",
+      "status": "active",
+      "priority": "station-level",
+      "networkWidePromotion": false,
+      "tariffChannel": "direct CPO / ReStation account + card-payment flow",
+      "positiveEvidence": [
+        "ReStation usage documentation from another tenant establishes the platform flow: register/login, search city/CAP, select station, press RICARICA, enter card details and pay. This proves tariff/payment data is downstream of station selection and an authenticated customer flow, not a safe public network-wide tariff surface.",
+        "A second NRG4YOU inventory anchor is now identified at Zona Industriale ASI, 80023 Agglomerato ASI Pascarola (NA), with 2 Type 2 22 kW, 2 CCS 90 kW and 1 CHAdeMO 50 kW connector according to a current indexed station listing; customer surface is customer.restation.eu.",
+        "Vietri sul Mare remains the first anchor: 2 Type 2 22 kW, paid access, PRENOTA/RICARICA via ReStation."
+      ],
+      "inventoryAnchors": [
+        {
+          "location": "Vietri sul Mare (SA), Corso Umberto I / Piazza Matteotti",
+          "connectors": "2 x Type 2",
+          "powerKw": 22,
+          "access": "paid",
+          "customerSurface": "https://customer.restation.eu/stations"
+        },
+        {
+          "location": "Zona Industriale ASI, 80023 Agglomerato ASI Pascarola (NA)",
+          "connectors": "2 x Type 2 22 kW; 2 x CCS 90 kW; 1 x CHAdeMO 50 kW",
+          "access": "ReStation customer surface; exact tariff not exposed in indexed evidence",
+          "customerSurface": "https://customer.restation.eu/stations"
+        }
+      ],
+      "tariffEvidence": {
+        "rankableAdded": 0,
+        "result": "No deterministic current NRG4YOU price was exposed. ReStation documentation shows price/payment is reached only after account login and station selection.",
+        "decision": "Keep NRG4YOU fail-closed; do not infer a tariff from another ReStation tenant or from connector power."
+      },
+      "negativePaths": [
+        "Public/indexed ReStation searches still expose no NRG4YOU station tariff payload or stable station identifier.",
+        "Generic ReStation tenant tariffs are network-specific and rejected for NRG4YOU.",
+        "No evidence supports a network-wide NRG4YOU tariff across AC/DC classes."
+      ],
+      "blockingCondition": "Resume tariff extraction only with a current NRG4YOU-specific ReStation station-detail/payment payload, authenticated capture, QR/deeplink, or first-party/PUN deterministic tariff record.",
+      "nextTechnicalTarget": "Capture the authenticated ReStation request sequence after station selection (preferably using an NRG4YOU anchor) and identify station/connector IDs plus the tariff/payment payload without initiating a charge.",
+      "confidence": "high for station-level classification, platform auth boundary and inventory anchors; no price claim"
+    }
+  ],
+  "coherence": {
+    "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+    "canonicalPresentOnMain": false,
+    "workingCountersFrozen": true,
+    "aliasCheck": "No new alias/CPO split. ReStation remains a shared platform, not a CPO.",
+    "atlante": "setAside-last and excluded from active count"
+  },
+  "history": [
+    {
+      "date": "2026-09-19",
+      "change": "Expanded NRG4YOU with a mixed AC/DC Pascarola anchor and established from ReStation usage documentation that tariff/payment data is downstream of authenticated station selection; public search is now exhausted until an authenticated NRG4YOU-specific payload or new first-party evidence appears."
+    }
+  ]
+}
