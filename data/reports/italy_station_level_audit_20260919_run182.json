@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "runDate": "2026-09-19",
+  "focus": "EDN / Edison Next station-level tariff recheck",
+  "canonicalStatus": "reconstruction_required",
+  "operators": [
+    {
+      "partyId": "EDN",
+      "name": "Edison Next S.p.A.",
+      "aliasesAndLabels": ["Edison Next", "ROUTE220 on some IT*EDN stations"],
+      "status": "active",
+      "priority": "station-level",
+      "networkWidePromotion": false,
+      "inventoryAnchors": {
+        "freshPunStation": "Cava Manara (PV), Via Olivelli",
+        "evse": ["IT*EDN*ED00911", "IT*EDN*ED00912"],
+        "connector": "CCS",
+        "powerKw": 100,
+        "inventorySource": "PUN via Pienotto",
+        "checkedAt": "2026-09-19"
+      },
+      "tariffEvidence": {
+        "result": "PUN/Pienotto explicitly reports tariffs not yet communicated for both current Cava Manara IT*EDN EVSE.",
+        "rankableAdded": 0,
+        "failClosedAdded": 2,
+        "reason": "No deterministic direct/ad-hoc tariff mapping is exposed for these EVSE; historical or promotional location-specific prices must not be transposed."
+      },
+      "identityDecision": "Preserve prior decision: ROUTE220 is a displayed network/commercial label on some IT*EDN EVSE and must not be counted as an additional CPO solely from that label.",
+      "negativePaths": [
+        "Fresh PUN tariff lookup for IT*EDN*ED00911/ED00912: tariff absent",
+        "Network-wide extrapolation remains prohibited because prior official evidence includes location-specific promotional pricing"
+      ],
+      "blockingCondition": "Resume only with a current first-party Edison Next/Route220 direct-payment, app/API/QR payload or PUN record mapping a station/EVSE deterministically to its direct tariff.",
+      "confidence": "high for fail-closed decision on the two Cava Manara EVSE; no claim of network-wide coverage"
+    }
+  ],
+  "coherence": {
+    "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+    "canonicalPresentOnMain": false,
+    "workingCountersFrozen": true,
+    "aliasCheck": "EDN/ROUTE220 remains one evidenced partyId scope where EVSE IDs are IT*EDN; no duplicate CPO created.",
+    "atlante": "setAside-last and excluded from active count"
+  },
+  "history": [
+    {
+      "date": "2026-09-19",
+      "change": "Fresh PUN/Pienotto check added two current IT*EDN 100 kW EVSE at Cava Manara as explicit fail-closed anchors because direct tariffs are not communicated."
+    }
+  ]
+}
