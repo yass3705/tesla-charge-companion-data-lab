@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 191,
+  "date": "2026-09-19",
+  "purpose": "Reconcile the required nominative canonical against retained evidence for the 112-operator national PUN baseline without inventing operator identities.",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalBefore": {
+    "namedEntries": 23,
+    "treated": 8,
+    "partial": 14,
+    "setAside": 1,
+    "active": 0,
+    "punOperatorBaseline": 112,
+    "unreconciledNamedOperators": 89
+  },
+  "retainedPunRun": {
+    "workflowRun": 33211431798,
+    "jobId": 98985317121,
+    "sourceCommit": "4f1b6d1ef3034a66ea203d369736eeb5f751140f",
+    "branch": "research/pun-italy-normalized",
+    "generatedAt": "2026-08-28T21:16:12Z",
+    "enumeratedIds": 75110,
+    "uniqueEnumeratedIds": 75027,
+    "duplicateEnumerationCount": 83,
+    "uniqueEvse": 75025,
+    "stations": 29696,
+    "operators": 112,
+    "failedDetailBatches": 0,
+    "realTimeEvse": 68554,
+    "realTimeCoveragePct": 91.37,
+    "punTariffBlockEvse": 17838,
+    "punTariffBlockCoveragePct": 23.78,
+    "numericPunTariffEvse": 2580,
+    "numericPunTariffCoveragePct": 3.44,
+    "rankablePunDirectTariffEvse": 0,
+    "quality": {
+      "coordinateCoveragePct": 100.0,
+      "italyCoordinateCoveragePct": 99.99,
+      "tariffsFailClosedUntilSemanticsValidated": true
+    }
+  },
+  "artifactRecovery": {
+    "artifactId": 9701872295,
+    "name": "pun-italy-normalized",
+    "sizeBytes": 6298514,
+    "sha256": "dec9721dab1e00742432b529ca7950ef55d473126d830867dc7a5e5e1adb38f4",
+    "expired": true,
+    "expiredAt": "2026-09-11T21:16:15Z",
+    "datasetCommittedAtSourceCommit": false,
+    "conclusion": "The retained Actions log proves counts and quality but cannot recover the 89 missing operator identities. The uploaded national dataset artifact has expired and the generated gzip was not committed at the source commit. Do not fabricate names from the count."
+  },
+  "prioritySnapshotRecovery": {
+    "commit": "eba11ed71ab5d8aedbbc32a8cab9b7ef1d5bd1b9",
+    "path": "data/reports/italy_cpo_priority_snapshot_20260905.json",
+    "nominativePartyIds": ["ONS","IPE","FWY","TSL","PWY","EMO","EDN","HER","A2M","BEC","DUF","EWI","ASM","REP","F2X","ACE"],
+    "nominativeCount": 16,
+    "conclusion": "This historical snapshot is a priority/treatment subset, not a complete operator inventory; all recoverable identities in it are already represented in the current canonical, with HER deduplicated to HRA."
+  },
+  "consistency": {
+    "canonicalArithmetic": "8 treated + 14 partial + 1 setAside + 0 active = 23",
+    "duplicatePartyIdDetected": false,
+    "knownAliasRulesPreserved": ["HER->HRA","Route220-on-IT*EDN->EDN","Electriease-on-IT*TCA->TCA","Fortech-on-IT*DRW-not-separate"],
+    "newNominativeProgress": 0,
+    "reason": "No additional operator identity is recoverable from the retained normalized-run log or the historical priority snapshot beyond identities already canonicalized."
+  },
+  "nextSafeAction": "Recover or regenerate a fresh national PUN inventory to obtain the actual 112 operator names/partyIds, diff it against the 23 canonical entries, then process newly named operators network/class-wide first. Do not reopen already exhausted station-level generic investigations. Atlante remains last."
+}
