@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "runDate": "2026-09-19",
+  "focus": "EMOBITALY station-level deterministic coverage expansion",
+  "canonicalStatus": "reconstruction_required",
+  "operators": [
+    {
+      "name": "EMOBITALY",
+      "partyId": "EMO",
+      "status": "partial",
+      "priority": "station-level",
+      "networkWidePromotion": false,
+      "tariffChannel": "direct CPO tariff represented in PUN/Pienotto station records",
+      "officialTariffModelEvidence": "EMOBITALY states that the owner of each individual charging point defines the charging-service price; components may include initial, energy and time tariffs. Therefore EMO cannot safely be priced network-wide or by power class alone.",
+      "newDeterministicCoverage": [
+        {
+          "location": "Roma (RM), Via Pio Emanuelli 1",
+          "evseIds": ["IT*EMOE477", "IT*EMOE478", "IT*EMOE479", "IT*EMOE480"],
+          "mapping": {
+            "IT*EMOE477": "AC Type 2 22 kW -> EUR 0.55/kWh + EUR 0.74 activation",
+            "IT*EMOE478": "AC Type 2 22 kW -> EUR 0.55/kWh + EUR 0.74 activation",
+            "IT*EMOE479": "DC CCS 24 kW -> EUR 0.60/kWh + EUR 0.74 activation",
+            "IT*EMOE480": "DC CHAdeMO 24 kW -> EUR 0.60/kWh + EUR 0.74 activation"
+          },
+          "source": "PUN-derived current Pienotto station record"
+        },
+        {
+          "location": "Roma (RM), Viale Castello della Magliana 25",
+          "evseIds": ["IT*EMOE481", "IT*EMOE482", "IT*EMOE483", "IT*EMOE484"],
+          "mapping": {
+            "IT*EMOE481": "AC Type 2 22 kW -> EUR 0.55/kWh + EUR 0.74 activation",
+            "IT*EMOE482": "AC Type 2 22 kW -> EUR 0.55/kWh + EUR 0.74 activation",
+            "IT*EMOE483": "DC CCS 24 kW -> EUR 0.60/kWh + EUR 0.74 activation",
+            "IT*EMOE484": "DC CHAdeMO 24 kW -> EUR 0.60/kWh + EUR 0.74 activation"
+          },
+          "source": "PUN-derived current Pienotto station record"
+        }
+      ],
+      "tariffEvidence": {
+        "rankableAddedEvse": 8,
+        "result": "Eight additional EMO EVSE have explicit station/EVSE-to-price mappings. They are rankable individually only.",
+        "decision": "Keep EMOBITALY partial/station-level. Do not extrapolate Roma prices to other EMO stations or infer price from connector power."
+      },
+      "negativePaths": [
+        "A network-wide EMOBITALY tariff remains invalid: official EMOBITALY documentation says each charging-point owner defines the tariff.",
+        "Power-class inference remains invalid: existing EMO anchors already show different AC prices and activation fees between sites."
+      ],
+      "blockingCondition": "Remaining EMO EVSE require a current station-specific PUN/my.emobitaly/app record or equivalent deterministic first-party mapping.",
+      "confidence": "high for the eight new EVSE mappings and station-level classification"
+    }
+  ],
+  "coherence": {
+    "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+    "canonicalPresentOnMain": false,
+    "workingCountersFrozen": true,
+    "aliasCheck": "No new EMO alias split detected.",
+    "atlante": "setAside-last and excluded from active count"
+  },
+  "history": [
+    {
+      "date": "2026-09-19",
+      "change": "Added eight deterministic EMOBITALY EVSE tariff mappings across two Roma sites and strengthened the station-level rule using EMOBITALY first-party documentation stating that each point owner sets the charging tariff."
+    }
+  ]
+}
