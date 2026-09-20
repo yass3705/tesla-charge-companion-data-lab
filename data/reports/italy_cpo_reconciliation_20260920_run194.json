@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "generatedAt": "2026-09-20T07:55:00Z",
+  "sourceInventory": "data/reports/italy_pun_inventory_reconciliation_20260920_run192.json",
+  "investigated": [
+    {
+      "partyId": "GES",
+      "canonicalName": "Go Electric Stations SRLS",
+      "inventory": {"evse":2402,"stations":1135,"timestamp":"2026-09-20"},
+      "status": "partial",
+      "priority": "station-level",
+      "tariffModel": "heterogeneous station/host-level pricing; no deterministic GES-wide grid proven",
+      "positiveEvidence": [
+        "Current IT*GES identifiers appear under materially different displayed operators/hosts, including UnoEnergy DriWe and GASGAS/emotion-branded sites, proving that the partyId cannot safely be treated as one homogeneous retail tariff brand.",
+        "NextCharge is used as an activation/payment surface for documented IT*GES stations and exposes the selected connector price before charging.",
+        "Historical station evidence shows energy plus time/parking components can vary by site/channel."
+      ],
+      "negativeEvidence": ["No current first-party GES national AC/DC/HPC direct/ad-hoc tariff grid found."],
+      "coverage": {"rankableDirectAdHoc":0,"failClosedEvse":2402},
+      "blockingCondition": "deterministic IT*GES EVSE -> actual host/operator -> direct/NextCharge tariff payload mapping, or current first-party rule covering an explicitly defined GES EVSE class",
+      "resumeOnlyOnNewEvidence": true,
+      "confidence": "high",
+      "lastInvestigated": "2026-09-20"
+    },
+    {
+      "partyId": "ESH",
+      "canonicalName": "E-Shore s.r.l.",
+      "inventory": {"evse":1018,"stations":343,"timestamp":"2026-09-20"},
+      "status": "partial",
+      "priority": "class-wide",
+      "tariffChannel": "Uattzy / EnerMia-E-Shore app is the proprietary service surface; roaming eMSP prices remain separate",
+      "tariffModel": "candidate proprietary-app grid exists in May 2026 tariff observatory, but exact current first-party applicability to every IT*ESH EVSE is not yet proven",
+      "positiveEvidence": [
+        "Current Uattzy App Store listing is still published by Enermia and explicitly describes the EnerMia & E-Shore network, station selection, price inspection before charging, payment and session control.",
+        "May 2026 Adiconsum/TariffEV observatory groups Uattzy (GASGAS, E-SHORE, ENERMIA) and reports a proprietary-app tariff structure with energy, per-minute and start-fee components.",
+        "Independent corporate/network evidence confirms E-Shore operates as both CPO and eMSP and that EnerMia was integrated into the E-Shore network."
+      ],
+      "coverage": {"rankableDirectAdHoc":0,"failClosedEvse":1018},
+      "blockingCondition": "first-party Uattzy/E-Shore tariff payload or current official tariff document proving exact price components and scope for IT*ESH EVSE/classes; third-party observatory values are corroboration only and are not promoted",
+      "resumeOnlyOnNewEvidence": false,
+      "confidence": "medium-high",
+      "lastInvestigated": "2026-09-20"
+    }
+  ],
+  "nextPriorityCandidates": [
+    {"partyId":"ELC","evse":522,"stations":82},
+    {"partyId":"220","evse":421,"stations":270},
+    {"partyId":"GMT","evse":325,"stations":132},
+    {"partyId":"IOY","evse":322,"stations":44},
+    {"partyId":"GAS","evse":277,"stations":131}
+  ],
+  "coherence": {"noTariffExtrapolation":true,"atlanteLast":true,"gesNotTreatedAsHomogeneousRetailNetwork":true,"eshThirdPartyGridNotPromoted":true}
+}
