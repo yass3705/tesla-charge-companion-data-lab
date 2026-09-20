@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "generatedAt": "2026-09-20T11:51:39Z",
+  "run": 199,
+  "inventoryBaseline": {"uniquePartyIds":92,"uniqueEvse":75738,"stations":30675},
+  "changes": [
+    {
+      "partyId": "A22",
+      "canonicalName": "Autostrada del Brennero S.p.A.",
+      "status": "treated",
+      "priority": "class-wide",
+      "inventory": {"evse":79,"stations":17,"source":"PUN 2026-09-20"},
+      "tariffChannel": "direct CPO / official A22 charging service",
+      "tariffs": [
+        {"class":"AC charger 22 kW","eurPerKwh":0.33},
+        {"class":"multi-standard rapid 50 kW","eurPerKwh":0.38},
+        {"class":"ultra-rapid 150 kW (current station pages may expose up to 180 kW hardware)","eurPerKwh":0.43}
+      ],
+      "officialReferences": [
+        "https://www.autobrennero.it/it/in-viaggio/sosta-e-servizi/colonnine-elettriche-per-auto/",
+        "https://www.autobrennero.it/it/in-viaggio/revcharge/"
+      ],
+      "positiveEvidence": "Official A22 pages publish the charging costs by charger class and enumerate the corresponding A22 sites; rEVcharge is explicitly the official A22 charging app.",
+      "coverage": {"rankableEvse":79,"failClosedEvse":0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-20",
+      "lastChanged": "2026-09-20"
+    },
+    {
+      "partyId": "ENB",
+      "canonicalName": "ENERBROKER S.R.L. / R-ev",
+      "status": "partial",
+      "priority": "class-wide",
+      "inventory": {"evse":87,"stations":73,"source":"PUN 2026-09-20"},
+      "tariffModel": "R-ev WALLET publishes deterministic AC/DC/HPC bands; exact ENB partyId-to-R-ev-network scope still requires first-party identity/mapping proof before promotion.",
+      "candidateTariffs": [
+        {"class":"AC <=22 kW","eurPerKwh":0.65},
+        {"class":"DC <=150 kW","eurPerKwh":0.85},
+        {"class":"HPC >150 kW","eurPerKwh":0.89}
+      ],
+      "fees": {"extraStay":"0.25 EUR/min; AC exception 23:00-07:00 subject to published edge-case rules; DC/HPC 24h"},
+      "officialReferences": [
+        "https://www.r-ev.it/termini-di-utilizzo-abbonamenti/",
+        "https://www.r-ev.it/termini-di-utilizzo-app/",
+        "https://www.r-ev.it/scarica-la-app/"
+      ],
+      "blockingCondition": "first-party proof that current IT*ENB PUN EVSE are exactly the R-ev network to which the WALLET grid applies, or deterministic ENB EVSE mapping",
+      "coverage": {"rankableEvse":0,"failClosedEvse":87},
+      "confidence": "medium-high",
+      "lastInvestigated": "2026-09-20"
+    }
+  ],
+  "coherence": {
+    "note": "A22 is one of the 57 previously unreconciled current PUN partyIds and is now nominatively resolved; ENB is also nominatively resolved but remains partial pending party-scope proof.",
+    "expectedAfterCanonicalMerge": {"treated":11,"partialCurrent":25,"setAside":1,"unreconciledCurrentPunPartyIds":55,"currentPunPartyIds":92},
+    "arithmetic":"11 + 25 + 1 + 55 = 92"
+  },
+  "nextPriority": ["CVG","AXS","BPA","TDM","CGS","KOS"],
+  "atlante":"setAside-last"
+}
