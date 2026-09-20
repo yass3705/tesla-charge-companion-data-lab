@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 2,
+  "country": "IT",
+  "asOf": "2026-09-20",
+  "run": 207,
+  "canonicalBaseline": "docs/italy-cpo-progress-2026-09.json",
+  "policy": {"failClosed":true,"priorityOrder":["network-wide","class-wide","station-level"],"atlante":"setAside-last","noExtrapolation":true,"directVsRoamingStrict":true},
+  "changes": [
+    {
+      "partyId":"IPE",
+      "canonicalName":"IPlanet",
+      "previousStatus":"partial",
+      "status":"treated",
+      "priority":"class-wide",
+      "inventory":{"evse":547,"stations":189},
+      "tariffModel":"first-party own-network deterministic class/channel grid",
+      "tariffChannel":"direct IPlanet; APP/RFID and POS separated; non-IPlanet network prices explicitly excluded",
+      "tariffs":[
+        {"channel":"APP/RFID","class":"AC <=22 kW","eurPerKwh":0.60,"vatIncluded":true},
+        {"channel":"APP/RFID","class":"DC 50-150 kW and 150+ kW","eurPerKwh":0.74,"vatIncluded":true},
+        {"channel":"POS","class":"DC any power","eurPerKwh":0.79,"vatIncluded":true}
+      ],
+      "fees":{"postChargeGraceMinutes":60,"occupation":{"AC":"0.10 EUR/min","DC":"0.20 EUR/min","HPC":"0.30 EUR/min"},"occupationApplicability":"all charging stations if vehicle not disconnected within 60 minutes after charge end"},
+      "powerClasses":{"AC":"<=22 kW","DC":"50-150 kW","HPC":">150 kW"},
+      "officialReferences":["https://iplanet.eu/tariffe/","https://iplanet.eu/wp-content/uploads/2025/11/IPlanet-Catalogo-Tariffe_ITA.pdf"],
+      "positiveEvidence":["Current first-party tariff page explicitly states APP 0.74 EUR/kWh DC for both 50-150 kW and 150+ kW, APP 0.60 EUR/kWh AC up to 22 kW, and POS 0.79 EUR/kWh DC any power.","Same first-party page explicitly states prices are valid on IPlanet stations and directs users to the App for all other prices, proving own-network scope and separating roaming/other-operator pricing.","First-party tariff catalogue defines AC/DC/HPC thresholds and post-charge occupation fees."],
+      "coverage":{"rankableEvse":547,"failClosedEvse":0},
+      "confidence":"high",
+      "lastInvestigated":"2026-09-20","lastChanged":"2026-09-20",
+      "history":["Run207 resolved the prior party-scope blocker using explicit current first-party wording 'Prezzi validi sulle stazioni IPlanet'; promoted IPE from partial to treated without extrapolating prices to other operators visible in the IPlanet app."]
+    }
+  ],
+  "coherence": {
+    "canonicalFileObserved":{"treated":13,"partialCurrent":27,"setAside":1,"unreconciled":51,"note":"headline canonical remains behind reports 203-206"},
+    "knownPendingBeforeThisRun":{"expectedAfterRuns203to205":{"treated":17,"partialCurrent":27,"setAside":1,"unreconciled":47},"run206":"IOY enrichment only; no nominal counter change"},
+    "thisRun":{"promotePartialToTreated":["IPE"],"treatedDelta":1,"partialCurrentDelta":-1,"unreconciledDelta":0},
+    "expectedAfterAllKnownDeltas":{"treated":18,"partialCurrent":26,"setAside":1,"unreconciled":47,"arithmetic":"18+26+1+47=92"},
+    "aliasDoubleCountDetected":false,
+    "canonicalWriteStatus":"delta persisted; canonical full rewrite deferred because connector fetch is truncated and destructive replacement would risk loss of nominative detail"
+  },
+  "next":{"action":"Continue unreconciled network/class-wide candidates before station-level; do not revisit IPE absent contradictory/new evidence.","atlante":"remain last"}
+}
