@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-20",
+  "run": 202,
+  "inventoryBaseline": {"uniquePartyIds":92,"uniqueEvse":75738,"stations":30675},
+  "changes": [
+    {
+      "partyId":"ELC",
+      "canonicalName":"Electra",
+      "previousStatus":"partial",
+      "status":"treated",
+      "priority":"network-wide",
+      "inventory":{"evse":522,"stations":82,"source":"fresh PUN inventory 2026-09-20"},
+      "tariffChannel":"direct Electra; app/Autocharge and bank-card terminal explicitly separated",
+      "tariffs":[
+        {"country":"IT","channel":"Electra app / Autocharge","class":"AC-DC","eurPerKwh":0.69,"vatIncluded":true,"validEvidenceDate":"2026-07-01"},
+        {"country":"IT","channel":"bank card at terminal","class":"AC-DC","eurPerKwh":0.79,"vatIncluded":true,"validEvidenceDate":"2026-07-01"}
+      ],
+      "officialReferences":["https://intercom.help/go-electra/it/articles/7987274-le-nostre-tariffe-di-ricarica"],
+      "positiveEvidence":["Electra official help centre, updated 1 July 2026, publishes a specific Italy table for slow/fast AC-DC charging.","It explicitly states these prices apply to sessions started in the Electra app, Autocharge, or bank-card terminal, removing the previous station-price ambiguity for Italy."],
+      "coverage":{"rankableEvse":522,"failClosedEvse":0},
+      "confidence":"high",
+      "lastInvestigated":"2026-09-20",
+      "lastChanged":"2026-09-20",
+      "resumeCondition":"Revalidate only on a newer Electra Italy tariff publication or contradictory station-specific first-party evidence."
+    },
+    {
+      "partyId":"CGS",
+      "canonicalName":"Cogeser Energia",
+      "status":"partial",
+      "priority":"class-wide",
+      "inventory":{"evse":60,"source":"fresh PUN inventory 2026-09-20"},
+      "tariffs":[{"scope":"Quick Cogeser Energia AC","eurPerKwh":0.67,"vatIncluded":true,"validFrom":"2025-10-01"},{"scope":"Cogeser network with bill debit","eurPerKwh":0.49,"vatIncluded":true,"eligibility":"bill-debit customers"}],
+      "blockingCondition":"prove all current IT*CGS EVSE are Quick AC; any DC/non-Quick subset remains fail-closed",
+      "officialReferences":["https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico"]
+    },
+    {"partyId":"BPA","canonicalName":"ElectriEase","status":"partial","priority":"station-level","inventory":{"evse":124},"blockingCondition":"first-party BeaglePlug/ElectriEase payload or deterministic EVSE-to-direct-price mapping"},
+    {"partyId":"TDM","canonicalName":"T.D.M. S.R.L.","status":"partial","priority":"station-level","inventory":{"evse":60},"blockingCondition":"direct tariff publication, QR/payment payload, or deterministic EVSE tariff mapping"}
+  ],
+  "canonicalMergeBacklogApplied":["A22 treated from run199","ENB partial from run199","CVG treated from run200","CGS partial from run201","BPA partial from run201","TDM partial from run201","ELC promoted treated in run202"],
+  "coherence":{"expectedCurrentNamed":41,"treated":13,"partialCurrent":27,"setAside":1,"unreconciledCurrentPunPartyIds":51,"arithmetic":"13 + 27 + 1 + 51 = 92","historicalNonCurrentPartial":1,"historicalPartyId":"UTZ","doubleCount":false},
+  "nextPriority":["AXS","KOS","remaining unreconciled network/class-wide candidates"],
+  "atlante":"setAside-last"
+}
