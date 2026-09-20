@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "generatedAt": "2026-09-20T15:54:47Z",
+  "canonicalBaseline": "docs/italy-cpo-progress-2026-09.json",
+  "inventoryBaseline": {"currentPunPartyIds":92,"uniqueEvse":75738,"stations":30675},
+  "progress": {
+    "newlyReconciledCurrentPunPartyIds": 2,
+    "partyIds": ["FLY","FAS"],
+    "expectedCountersAfterCanonicalMerge": {"treated":15,"partialCurrent":29,"setAside":1,"unreconciledCurrentPunPartyIds":47,"arithmetic":"15+29+1+47=92"}
+  },
+  "operators": [
+    {
+      "partyId":"FLY",
+      "canonicalName":"FlyElectric srl",
+      "status":"treated",
+      "priority":"network-wide",
+      "inventory":{"evse":50,"stations":29,"source":"PUN artifact 10597588294","asOf":"2026-09-20"},
+      "tariffModel":"single direct network price independent of 22/50 kW connector; roaming explicitly separated",
+      "tariffChannel":"direct FlyElectric app/CPO",
+      "tariffs":[{"scope":"FlyElectric own charging points, 22 kW or 50 kW","eurPerKwh":0.69}],
+      "roamingSeparated":{"eurPerKwh":0.74,"rankableAsDirect":false},
+      "officialReferences":["https://flyelectric.it/home"],
+      "positiveEvidence":["Official page states 'Un unico prezzo per tutto', explicitly asks 22 kW or 50 kW and says same price, 0.69 EUR/kWh; roaming tariff separately shown as 0.74 EUR/kWh."],
+      "coverage":{"rankableEvse":50,"failClosedEvse":0},
+      "confidence":"high",
+      "lastInvestigated":"2026-09-20","lastChanged":"2026-09-20"
+    },
+    {
+      "partyId":"FAS",
+      "canonicalName":"Fastned Italia S.r.l.",
+      "status":"treated",
+      "priority":"network-wide",
+      "inventory":{"evse":14,"stations":3,"source":"PUN artifact 10597588294","asOf":"2026-09-20"},
+      "tariffModel":"country-wide Fastned standard price; direct app discount and Gold subscription are separate direct commercial variants; third-party charge-card roaming explicitly excluded",
+      "tariffChannel":"direct Fastned",
+      "tariffs":[{"channel":"standard/direct","country":"Italy","eurPerKwh":0.83,"taxIncluded":true},{"channel":"Fastned app direct payment","discountPercent":10},{"channel":"Gold Member","eurPerKwh":0.58,"monthlyFeeEur":5.99,"promoMonthlyFeeValidThrough":"2026-09-30"}],
+      "officialReferences":["https://www.fastnedcharging.com/it/ricarica/tariffe"],
+      "positiveEvidence":["Official Fastned tariff page lists Italy standard price 0.83 EUR/kWh, 10% app discount with direct payment, and Gold 0.58 EUR/kWh; page states prices include taxes and third-party charge cards are billed by their provider."],
+      "coverage":{"rankableEvse":14,"failClosedEvse":0},
+      "confidence":"high",
+      "lastInvestigated":"2026-09-20","lastChanged":"2026-09-20"
+    }
+  ],
+  "coherence": {
+    "baselineCanonicalBeforeRun":{"treated":13,"partialCurrent":27,"setAside":1,"unreconciled":51},
+    "knownRun203PendingCanonicalMerge":{"partialAdd":["AXS","KOS"],"deltaUnreconciled":-2},
+    "thisRun":{"treatedAdd":["FLY","FAS"],"deltaUnreconciled":-2},
+    "expectedCurrentPunArithmeticAfterMergingRun203AndRun204":"15 treated + 29 partial + 1 setAside + 47 unreconciled = 92",
+    "aliasDoubleCountDetected":false,
+    "notes":"Run204 does not extrapolate roaming/eMSP prices. FLY own-network and roaming prices are explicitly separated. FAS direct Fastned and third-party charge-card channels are explicitly separated."
+  },
+  "nextPriority":"Continue unreconciled network/class-wide candidates before station-level; Atlante remains last."
+}
