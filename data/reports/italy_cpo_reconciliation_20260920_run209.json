@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-20",
+  "run": 209,
+  "policy": {
+    "priorityOrder": ["network-wide", "class-wide", "station-level"],
+    "failClosed": true,
+    "noExtrapolation": true,
+    "atlanteLast": true,
+    "reuseFranceV8OnlyForCrossCountryCpos": true
+  },
+  "changes": [
+    {
+      "partyId": "ESH",
+      "canonicalName": "E-Shore / Uattzy lineage",
+      "previousPriority": "class-wide",
+      "newPriority": "station-level",
+      "status": "partial",
+      "inventory": {"evse": 1018, "stations": 343},
+      "evidence": {
+        "officialNetworkIdentity": "Uattzy is the public-charging brand of UAU, created from E-Shore, GASGAS and EnerMia.",
+        "officialPricingRule": "Uattzy FAQ states that the tariff is shown for each connector before charging and prices can vary by delivered power, session duration and occupation time; other apps may apply different conditions.",
+        "officialBusinessRule": "Uattzy describes joint-investment projects where Uattzy defines tariffs, reinforcing that the current surface does not establish one deterministic network-wide/class-wide amount for every legacy E-Shore EVSE.",
+        "references": [
+          "https://www.uattzy.com/",
+          "https://www.uattzy.com/faq/"
+        ]
+      },
+      "coverage": {"rankableEvse": 0, "failClosedEvse": 1018},
+      "blockingCondition": "deterministic IT*ESH EVSE/connector -> current Uattzy direct tariff mapping via app/backend/QR or a first-party publication proving a globally applicable tariff class",
+      "negativePaths": ["network-wide/class-wide public tariff hypothesis rejected by current first-party FAQ"],
+      "confidence": "high",
+      "lastInvestigated": "2026-09-20",
+      "lastChanged": "2026-09-20"
+    },
+    {
+      "partyId": "ASS",
+      "canonicalName": "AGSM AIM / Magis",
+      "status": "partial",
+      "priority": "class-wide",
+      "inventoryCanonical": {"evse": 257, "stations": 135},
+      "evidence": {
+        "officialCurrentPlatform": "Magis announced the new Magis e-mobility app on 2026-05-04, connected to 275 charging points across Verona, Vicenza, Brescia, Treviso and Gorizia.",
+        "officialPayPerUseModel": "Current pay-per-use remains consumption-based and varies by AC/DC charger type; exact current pay-per-use amounts are displayed in the app at use time.",
+        "officialSubscriptionTariffs": [
+          {"name":"Small","class":"AC","eurPerKwh":0.60,"monthlyEur":5},
+          {"name":"Medium","class":"AC","eurPerKwh":0.58,"monthlyEur":10},
+          {"name":"Large","class":"AC","eurPerKwh":0.50,"monthlyEur":20},
+          {"name":"Flat DC","class":"DC","eurPerKwh":0.74,"monthlyEur":10}
+        ],
+        "officialTerms": "The station detail in the app is authoritative for the current per-use unit price; it may differ by connector type. Occupation penalty is EUR 0.12/min after the one-hour post-charge release window, with AC charged 07:00-23:00 and DC/HPC 24h under the published terms.",
+        "references": [
+          "https://www.magissmart.it/nuova-app-magis-e-mobility",
+          "https://www.magissmart.it/agsmaim_e-mobility/abbonamenti",
+          "https://www.magissmart.it/e-mobility/app/termini.php"
+        ]
+      },
+      "coverage": {"rankableEvse": 0, "failClosedEvse": 257},
+      "blockingCondition": "extract current first-party Magis app/backend Pay Per Use AC/DC values and prove deterministic applicability to current IT*ASS inventory; reconcile 257 PUN EVSE vs 275 points stated by Magis before promotion",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-20"
+    }
+  ],
+  "coherence": {
+    "canonicalObserved": "13 treated + 27 current partial + 1 setAside + 51 unreconciled = 92; canonical is behind later reconciliation reports and must not be blindly overwritten from a truncated fetch",
+    "counterDeltaThisRun": 0,
+    "priorityDelta": {"classWideCandidates": -1, "stationLevelDeferred": 1},
+    "doubleCountIntroduced": false,
+    "notes": [
+      "ESH and GAS remain independent current PUN partyIds even though both belong to the Uattzy lineage; do not collapse partyIds without deterministic inventory alias evidence.",
+      "No tariff amount from a third-party eMSP was promoted as a direct CPO tariff."
+    ]
+  },
+  "next": [
+    "Continue unreconciled network-wide/class-wide CPOs before station-level work.",
+    "For ASS, inspect the Magis app/backend only after remaining simpler deterministic public grids are exhausted.",
+    "Keep Atlante last."
+  ]
+}
