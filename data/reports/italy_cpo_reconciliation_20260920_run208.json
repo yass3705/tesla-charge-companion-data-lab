@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 2,
+  "country": "IT",
+  "asOf": "2026-09-20",
+  "run": 208,
+  "canonicalBaseline": "docs/italy-cpo-progress-2026-09.json",
+  "policy": {"failClosed":true,"priorityOrder":["network-wide","class-wide","station-level"],"atlante":"setAside-last","noExtrapolation":true,"directVsRoamingStrict":true,"reuseFranceV8OnlyForCrossCountryCpos":true},
+  "changes": [{
+    "partyId":"IOY","canonicalName":"IONITY","status":"partial","priority":"network-wide","inventory":{"evse":322,"stations":44},
+    "currentFirstPartyEvidence":{"directEurPerKwh":0.85,"appGoEurPerKwh":0.80,"powerAnnualEurPerKwh":0.50,"powerMonthlyEurPerKwh":0.48,"motionAnnualEurPerKwh":0.63,"motionMonthlyEurPerKwh":0.60,"officialUrl":"https://www.ionity.eu/it","observedDate":"2026-09-20"},
+    "pricingChangeEvidence":{"validFrom":"2026-07-01","officialUrl":"https://www.ionity.eu/fr/stories/pourquoi-les-prix-de-recharge-evoluent-ils-en-europe","italyDirectAdHocUpperBoundEurPerKwh":0.91,"note":"IONITY states applicable station price is displayed before session; current country table is not sufficient to prove one uniform Direct price for every station."},
+    "franceV8Reuse":{"applicable":true,"reason":"IONITY is present in France and Italy","repositorySearch":"No indexed IONITY France/V8 tariff extractor or mapping found in data-lab, stations-updater-test or stable during this run.","nextAction":"Locate/reuse France V8 IONITY station-price mechanism against IT*IOY identifiers before any from-scratch backend investigation."},
+    "coverage":{"rankableEvse":0,"failClosedEvse":322},"blockingCondition":"deterministic station/EVSE to current Direct/ad-hoc tariff mapping, preferably reused France V8 mechanism; alternatively first-party proof of a single exact Direct price for all IT*IOY stations","confidence":"high","lastInvestigated":"2026-09-20",
+    "history":["Run208 applied the France-V8 reuse rule only because IOY exists in both countries. No unsafe promotion: current first-party national figures coexist with explicit station-price variability."]
+  }],
+  "coherence":{"knownAfterRun207":{"treated":18,"partialCurrent":26,"setAside":1,"unreconciled":47,"arithmetic":"18+26+1+47=92"},"thisRun":{"nominalCounterChange":false},"expected":{"treated":18,"partialCurrent":26,"setAside":1,"unreconciled":47,"arithmetic":"18+26+1+47=92"},"aliasDoubleCountDetected":false},
+  "next":{"action":"Continue unreconciled network/class-wide CPOs; for CPOs common to France and Italy, inspect/reuse V8 France assets first; otherwise use normal Italy method.","atlante":"remain last"}
+}
