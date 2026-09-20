@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 2,
+  "country": "IT",
+  "asOf": "2026-09-20",
+  "run": 206,
+  "policy": {
+    "priorityOrder": ["network-wide", "class-wide", "station-level"],
+    "failClosed": true,
+    "noExtrapolation": true,
+    "directVsRoamingStrict": true,
+    "atlante": "setAside-last"
+  },
+  "changes": [
+    {
+      "partyId": "IOY",
+      "canonicalName": "IONITY",
+      "status": "partial",
+      "priority": "network-wide",
+      "inventory": {"evse": 322, "stations": 44},
+      "tariffChannel": "IONITY Direct / ad-hoc",
+      "currentPublishedItalyTariff": {
+        "eurPerKwh": 0.85,
+        "vatIncluded": true,
+        "effectiveContext": "current Italy direct-kwh-price published by IONITY; July 2026 pricing regime",
+        "payment": ["QR / web direct", "IONITY direct payment surface"]
+      },
+      "otherPublishedItalyProducts": {
+        "IONITY Go": {"eurPerKwh": 0.80},
+        "IONITY Power": {"eurPerKwh": 0.50},
+        "IONITY Motion": {"eurPerKwh": 0.63}
+      },
+      "officialReferences": [
+        "https://www.ionity.eu/subscriptions",
+        "https://www.ionity.eu/it/abbonamenti",
+        "https://www.ionity.eu/fr/stories/pourquoi-les-prix-de-recharge-evoluent-ils-en-europe"
+      ],
+      "positiveEvidence": [
+        "IONITY's current subscriptions data exposes Italy direct-kwh-price=0.85 EUR/kWh and go-kwh-price=0.80 EUR/kWh.",
+        "IONITY states Direct/ad-hoc is available without registration and is distinct from subscription/app products.",
+        "IONITY's July 2026 pricing communication states new direct/ad-hoc prices apply from 2026-07-01."
+      ],
+      "negativeEvidence": [
+        "IONITY explicitly states published prices are current minimum prices and the price at a charging station may be higher."
+      ],
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 322,
+        "reason": "0.85 EUR/kWh is a proven current Italy Direct baseline but IONITY explicitly permits higher station prices; no deterministic station/EVSE mapping proving which IT*IOY EVSE equal the baseline was established in this run."
+      },
+      "blockingCondition": "Obtain deterministic station/EVSE -> current IONITY Direct price mapping (charger/QR/app/backend/ChargeLeague where applicable), or first-party proof that every current IT*IOY station is exactly 0.85 EUR/kWh.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-20",
+      "lastChanged": "2026-09-20",
+      "history": [
+        "Run 206 pinned the exact current Italy Direct baseline at 0.85 EUR/kWh but deliberately retained fail-closed coverage because IONITY's own disclaimer allows station prices above the published minimum."
+      ]
+    }
+  ],
+  "coherence": {
+    "canonicalBaselineObserved": "13 treated + 27 current partial + 1 setAside + 51 unreconciled = 92",
+    "run206NominalStatusChange": false,
+    "doubleCountIntroduced": false,
+    "note": "This run enriches the existing IOY partial entry without changing nominal partyId counters. Prior run deltas must be merged into the canonical before relying on its headline counters."
+  },
+  "next": {
+    "action": "Continue remaining unreconciled network/class-wide candidates; defer IOY station-level mapping until the global/class-wide first pass is exhausted.",
+    "atlante": "remain last"
+  }
+}
