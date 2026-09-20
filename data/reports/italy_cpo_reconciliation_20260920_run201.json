@@ -1,0 +1,46 @@
+{
+  "schemaVersion":1,
+  "country":"IT",
+  "asOf":"2026-09-20",
+  "run":201,
+  "operators":[
+    {
+      "partyId":"CGS",
+      "canonicalName":"Cogeser Energia",
+      "status":"partial",
+      "priority":"class-wide",
+      "inventory":{"evse":60,"source":"fresh PUN inventory 2026-09-20"},
+      "tariffChannel":"Cogeser customer/direct QR spot separated from roaming",
+      "tariffs":[
+        {"scope":"Quick Cogeser Energia","current":"AC","eurPerKwh":0.67,"vatIncluded":true,"validFrom":"2025-10-01"},
+        {"scope":"Cogeser Energia network with bill debit","eurPerKwh":0.49,"vatIncluded":true,"validFrom":"2025-10-01","eligibility":"customers enrolled in bill debit"}
+      ],
+      "officialReferences":["https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico"],
+      "positiveEvidence":["Official Cogeser page explicitly separates Cogeser-network price from non-Cogeser roaming prices.","Official page states QR-code spot charging is available without app/registration.","Current public table gives Quick Cogeser Energia AC at EUR 0.67/kWh VAT included from 1 Oct 2025."],
+      "blockingCondition":"Confirm from fresh PUN EVSE detail that every current IT*CGS EVSE belongs to the documented Quick Cogeser AC class; any DC/non-Quick CGS EVSE must remain fail-closed unless a direct current Cogeser tariff is found.",
+      "confidence":"high for tariff; medium-high for full partyId coverage"
+    },
+    {
+      "partyId":"BPA",
+      "canonicalName":"ElectriEase",
+      "status":"partial",
+      "priority":"station-level",
+      "inventory":{"evse":124,"source":"fresh PUN inventory 2026-09-20"},
+      "evidenceState":"Independent PUN partyId retained. Current discovery found repeated third-party station prices but no first-party network-wide direct grid; ElectriEase is a platform serving CPO/eMSP/hosts, so third-party EUR 0.73/kWh observations are not promoted.",
+      "negativeEvidence":["No current first-party ElectriEase tariff grid found in this pass.","Third-party station examples at EUR 0.73/kWh are discovery/corroboration only and cannot establish network-wide direct pricing."],
+      "blockingCondition":"First-party BeaglePlug/ElectriEase tariff payload or deterministic IT*BPA EVSE-to-direct-price mapping.",
+      "confidence":"high for fail-closed classification"
+    },
+    {
+      "partyId":"TDM",
+      "canonicalName":"T.D.M. S.R.L.",
+      "status":"partial",
+      "priority":"station-level",
+      "inventory":{"evse":60,"source":"fresh PUN inventory 2026-09-20"},
+      "evidenceState":"PUN-derived station surface explicitly reports tariffs not communicated for a current T.D.M. example; no first-party global tariff found in this pass.",
+      "blockingCondition":"Direct T.D.M. tariff publication, QR/payment payload, or deterministic station/EVSE tariff mapping.",
+      "confidence":"medium-high"
+    }
+  ],
+  "coherence":{"doubleCount":false,"note":"BPA remains independent from TCA. These classifications must be merged into the nominative canonical; CGS remains partial until party-wide class coverage is proved."}
+}
