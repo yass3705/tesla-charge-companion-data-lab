@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 210,
+  "asOf": "2026-09-20",
+  "policy": {
+    "priorityOrder": ["network-wide", "class-wide", "station-level"],
+    "failClosed": true,
+    "noExtrapolation": true,
+    "atlante": "setAside-last",
+    "franceV8Reuse": "only for CPOs present in both France and Italy"
+  },
+  "canonicalBaseline": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "currentPunPartyIds": 92,
+    "canonicalNamedCurrent": 41,
+    "unreconciledCurrentPunPartyIds": 51,
+    "note": "Canonical remains behind reconciliation reports 203-209; do not overwrite from a truncated read."
+  },
+  "reconciled": [
+    {
+      "canonicalName": "Leitner Energy GmbH",
+      "knownHistoricalInventory": {"activeEvse": 78, "totalEvse": 78, "sourceDate": "2025-07-31"},
+      "status": "partial",
+      "priority": "station-level",
+      "tariffModel": "Host/station owner defines the EUR/kWh selling tariff; driver price also depends on EMSP conditions. No deterministic Leitner-wide direct tariff grid is established.",
+      "tariffChannel": "CPO wholesale/settlement and EMSP driver pricing must remain separated; ad-hoc may exist at individual stations but requires station/EVSE mapping.",
+      "positiveEvidence": [
+        "Leitner Energy first-party Green Mobility page states that the station owner defines the EUR/kWh tariff.",
+        "The same first-party page states the tariff paid by the e-driver depends on the conditions agreed with the EMSP.",
+        "A current station listing for Kronplatz shows ad-hoc direct payment is possible but its ad-hoc price is unknown, reinforcing station-specific resolution rather than a network grid."
+      ],
+      "officialReferences": [
+        "https://www.leitnerenergy.it/green-mobility-cars"
+      ],
+      "corroboratingReferences": [
+        "https://www.goingelectric.de/stromtankstellen/Italien/Bruneck/Leitner-Energy-Kronplatz-Seilbahnstrasse-20/87185/"
+      ],
+      "coverage": {"rankableEvse": 0, "failClosedEvse": 78},
+      "blockingCondition": "Obtain deterministic IT*LEE station/EVSE -> direct/ad-hoc tariff mapping (QR/payment page/backend) for current stations.",
+      "resumeCondition": "New first-party network/class-wide tariff publication, or an automatable station/EVSE tariff surface.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-20",
+      "lastChanged": "2026-09-20",
+      "history": ["Run210: network-wide/class-wide hypothesis rejected from first-party evidence; moved to station-level fail-closed queue so it cannot block the global-tariff first pass."]
+    }
+  ],
+  "screenedWithoutPromotion": [
+    {
+      "canonicalName": "GEWISS / JOINON",
+      "finding": "First-party JOINON Charge&Go surface confirms connector/station prices are displayed in the app and QR activation exists, but no deterministic network-wide tariff grid was found in this pass.",
+      "nextAction": "Resolve current PUN partyId/inventory then inspect JOINON app/guest backend for station/EVSE price mapping.",
+      "reference": "https://www.gewiss.com/it/it/servizi/piattaforme-app-joinon/joinon-charge-and-go"
+    }
+  ],
+  "coherence": {
+    "canonicalArithmeticAtRead": "13 treated + 27 current partial + 1 setAside + 51 unreconciled = 92",
+    "noAliasDoubleCountIntroduced": true,
+    "counterMutation": false,
+    "reason": "Leitner is not yet a named canonical entry in the baseline; report records the nominative reconciliation delta without replacing the incomplete canonical from a truncated connector response."
+  }
+}
