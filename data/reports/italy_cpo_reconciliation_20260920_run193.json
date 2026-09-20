@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "generatedAt": "2026-09-20T06:51:00Z",
+  "sourceInventory": "data/reports/italy_pun_inventory_reconciliation_20260920_run192.json",
+  "inventory": {"uniqueEvse":75738,"stations":30675,"operatorLabels":115,"uniquePartyIds":92},
+  "canonicalCorrections": [
+    {"from":"ATL","to":"ATE","name":"Atlante S.r.l","action":"partyId correction; preserve history; no double count"},
+    {"from":"HRA","to":"HER","name":"HERA COMM SPA","action":"partyId correction; preserve history; no double count"},
+    {"partyId":"220","name":"Route220 Srl Sb","action":"independent current PUN CPO; do not globally collapse into EDN","evse":421,"stations":270},
+    {"partyId":"BPA","name":"ELECTRIEASE SRL","action":"independent current PUN CPO; do not globally collapse into TCA","evse":124,"stations":78},
+    {"partyId":"UTZ","name":"Uattzy","action":"historical-only until independently reconfirmed; absent from current PUN"}
+  ],
+  "investigated": [
+    {
+      "partyId":"ENX",
+      "canonicalName":"Enel X Way Italia S.r.l.",
+      "inventory":{"evse":23007,"stations":11224,"source":"PUN artifact 10597588294","timestamp":"2026-09-20"},
+      "status":"partial",
+      "priority":"station-level",
+      "tariffChannel":"direct CPO ad-hoc must be separated from Enel On Your Way eMSP Pay Per Use",
+      "positiveEvidence":[
+        "Official CPO page identifies Enel X Way Italia S.r.l. as CPO, >20,000 public points, and explicitly says the interactive map indicates whether a station is enabled for ad-hoc charging.",
+        "Official Enel On Your Way support/service terms allow guest charging without registration using card/prepaid card/PayPal and Pay Per Use; QR scan can start charging.",
+        "Official Enel On Your Way tariff page publishes deterministic AC/DC/HPC and time-band Pay Per Use prices for Enel/Ewiva service, but this is a service tariff offered by Enel X/Enel Energia and therefore must not automatically be equated with the CPO ad-hoc tariff for every IT*ENX EVSE."
+      ],
+      "networkWideConclusion":"No safe current proof found that the published Enel On Your Way Pay Per Use grid is identical to the direct CPO ad-hoc price for every IT*ENX EVSE. Global/class-wide promotion is therefore rejected fail-closed.",
+      "blockingCondition":"deterministic IT*ENX EVSE -> ad-hoc-enabled flag -> direct ad-hoc tariff mapping from the CPO map/QR/payment surface, or first-party statement explicitly equating direct ad-hoc tariff with the published Pay Per Use grid for the applicable ENX scope",
+      "coverage":{"rankableDirectAdHoc":0,"failClosedEvse":23007},
+      "confidence":"high",
+      "lastInvestigated":"2026-09-20",
+      "resumeOnlyOnNewEvidence":true,
+      "references":[
+        "https://www.enel.it/en-us/imprese/mobilita-elettrica/charging-point-operator",
+        "https://www.enel.it/it-it/assistenza/mobilita-elettrica",
+        "https://www.enel.it/it-it/mobilita-elettrica/tariffe-abbonamenti",
+        "https://www.company.enelxway.com/en/app/terms-and-conditions/service-contract"
+      ]
+    }
+  ],
+  "nextPriorityCandidates":[
+    {"partyId":"GES","evse":2402,"stations":1135},
+    {"partyId":"ESH","evse":1018,"stations":343},
+    {"partyId":"ELC","evse":522,"stations":82},
+    {"partyId":"220","evse":421,"stations":270},
+    {"partyId":"GMT","evse":325,"stations":132},
+    {"partyId":"IOY","evse":322,"stations":44}
+  ],
+  "coherence":{"operatorLabelCountNotCpoCount":true,"currentPunPartyIds":92,"atlanteLast":true,"noTariffExtrapolation":true}
+}
