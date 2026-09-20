@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "generatedAt": "2026-09-20T08:50:00Z",
+  "sourceInventory": "data/reports/italy_pun_inventory_reconciliation_20260920_run192.json",
+  "investigated": [
+    {
+      "partyId": "ELC",
+      "canonicalName": "Electra Italia s.r.l.",
+      "inventory": {"evse":522,"stations":82,"timestamp":"2026-09-20"},
+      "status": "partial",
+      "priority": "station-level",
+      "tariffChannel": "direct Electra app/card/terminal; roaming separated",
+      "tariffModel": "dynamic/location/session price shown in app or charger before connection; Electra+ discounts are deterministic relative discounts, not a deterministic base tariff",
+      "positiveEvidence": [
+        "Current Electra Italy station surface states the user pays the energy price shown in the app or charger before plugging in.",
+        "Electra+ Essential and Smart apply -0.10 and -0.20 EUR/kWh respectively to each Electra charge.",
+        "Current 2026 Electra guidance says non-subscription app price varies and card/contactless has a different starting price; therefore no single network-wide direct base price can safely be assigned.",
+        "Current Electra overstay policy is 0.40 EUR/min after the applicable trigger plus 5-minute grace, capped at 50 EUR/session; roaming may follow the eMSP policy instead."
+      ],
+      "coverage": {"rankableDirectAdHoc":0,"failClosedEvse":522},
+      "blockingCondition": "deterministic IT*ELC EVSE -> current direct app/terminal tariff payload mapping, or first-party rule fixing an exact base tariff for an explicitly defined class",
+      "resumeOnlyOnNewEvidence": true,
+      "confidence": "high",
+      "lastInvestigated": "2026-09-20"
+    },
+    {
+      "partyId": "220",
+      "canonicalName": "Route220 Srl Sb",
+      "inventory": {"evse":421,"stations":270,"timestamp":"2026-09-20"},
+      "status": "partial",
+      "priority": "station-level",
+      "tariffChannel": "Route220 CPMS / POS / customized app; eMSP roaming separate",
+      "tariffModel": "host/service-provider configurable; no homogeneous Route220 retail grid",
+      "positiveEvidence": [
+        "Current PUN inventory proves IT*220 is an independent partyId and must not be globally collapsed into Edison Next IT*EDN.",
+        "Route220 first-party CPMS documentation explicitly lets customers set their own sale tariffs for Service Providers and manage payments through POS or customized apps, proving tariff configurability rather than a deterministic Route220-wide retail grid."
+      ],
+      "coverage": {"rankableDirectAdHoc":0,"failClosedEvse":421},
+      "blockingCondition": "deterministic IT*220 EVSE -> host tariff / POS / app payload mapping",
+      "resumeOnlyOnNewEvidence": true,
+      "confidence": "high",
+      "lastInvestigated": "2026-09-20"
+    },
+    {
+      "partyId": "IOY",
+      "canonicalName": "IONITY GmbH",
+      "inventory": {"evse":322,"stations":44,"timestamp":"2026-09-20"},
+      "status": "partial",
+      "priority": "network-wide",
+      "tariffChannel": "IONITY Direct/ad-hoc is explicitly separate from app Go/subscriptions and roaming eMSPs",
+      "tariffModel": "country/direct tariff exists, but current public surface describes prices as minimum/up-to and states the station price can be higher; exact Italy value was not safely extracted in this pass",
+      "positiveEvidence": [
+        "IONITY confirms Direct/ad-hoc is available without registration via QR/app/card and has a standard per-kWh tariff with no subscription fee.",
+        "IONITY's July 2026 pricing change applies to direct payment, app users without active subscription and newer monthly subscriptions, while stating the applicable price is displayed before each session.",
+        "IONITY's current public access/payment page warns displayed country prices are current minimum prices and the charger price may be higher."
+      ],
+      "coverage": {"rankableDirectAdHoc":0,"failClosedEvse":322},
+      "blockingCondition": "extract the exact current Italy IONITY Direct value and prove whether it deterministically covers all IT*IOY EVSE, or map station-level exceptions",
+      "resumeOnlyOnNewEvidence": false,
+      "confidence": "high",
+      "lastInvestigated": "2026-09-20"
+    }
+  ],
+  "nextPriorityCandidates": [
+    {"partyId":"GMT","evse":325,"stations":132},
+    {"partyId":"GAS","evse":277,"stations":131},
+    {"partyId":"ASS","evse":257,"stations":135},
+    {"partyId":"WRM","evse":242,"stations":242},
+    {"partyId":"VFS","evse":167,"stations":84}
+  ],
+  "coherence": {
+    "noTariffExtrapolation": true,
+    "atlanteLast": true,
+    "route220IndependentPartyId": true,
+    "electraDynamicPriceNotPromoted": true,
+    "ionityItalyExactDirectPriceStillFailClosed": true
+  }
+}
