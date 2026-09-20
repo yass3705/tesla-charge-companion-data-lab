@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "date": "2026-09-20",
+  "run": 198,
+  "inventoryBaseline": {"partyIds":92,"evse":75738,"stations":30675},
+  "newlyResolved": [
+    {
+      "partyId": "ENH",
+      "canonicalName": "Enerhub",
+      "status": "treated",
+      "priority": "class-wide",
+      "inventory": {"evse":139,"source":"fresh PUN inventory 2026-09-20"},
+      "tariffChannel": "direct CPO; registered EnerApp and guest/ad-hoc separated",
+      "tariffModel": "network-wide by AC/DC class and channel",
+      "tariffs": [
+        {"channel":"EnerApp on Enerhub Network","class":"AC <=22 kW","eurPerKwh":0.60},
+        {"channel":"EnerApp on Enerhub Network","class":"DC <=400 kW","eurPerKwh":0.79},
+        {"channel":"Guest without registration","class":"AC <=22 kW","eurPerKwh":0.65},
+        {"channel":"Guest without registration","class":"DC <=400 kW","eurPerKwh":0.95}
+      ],
+      "officialReferences": ["https://enerhub.it/ricarica/","https://enerhub.it/"],
+      "positiveEvidence": ["Enerhub official tariff page explicitly states tariffs are valid on Enerhub charging stations and distinguishes EnerApp from guest without registration.","Official Enerhub site states its proprietary public network is accessible through EnerApp or major European operators."],
+      "roamingSeparation": "Partner networks accessible in EnerApp are separate and must not inherit Enerhub-network prices.",
+      "coverage": {"rankableEvse":139,"failClosedEvse":0,"scope":"IT*ENH current PUN scope, subject to deterministic AC/DC power-class mapping"},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-20",
+      "lastChanged": "2026-09-20"
+    }
+  ],
+  "negativeOrDeferred": [
+    {"partyId":"WRM","canonicalName":"WROOM","reason":"public evidence confirms host/station-specific pricing historically and no current first-party deterministic network grid was established in this pass; keep station-level fail-closed"},
+    {"partyId":"CPO","canonicalName":"Nucleo / Special Concepts","reason":"current deterministic network-wide direct tariff not established; Coop Power evidence is a host-specific subset and must not be extrapolated"},
+    {"partyId":"GAS","canonicalName":"GASGAS / Uattzy lineage","reason":"Uattzy now states it unifies E-Shore, GASGAS and EnerMia, but also describes tariff-setting arrangements by site/investment model; no safe GAS-wide price promoted"}
+  ],
+  "coherence": {"failClosed":true,"noRoamingAsDirect":true,"noHostSubsetExtrapolation":true,"atlanteStillLast":true},
+  "nextPriority": ["remaining network/class-wide candidates before WRM/CPO/GAS station-level work"]
+}
