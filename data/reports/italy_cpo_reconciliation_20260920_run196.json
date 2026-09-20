@@ -1,0 +1,48 @@
+{
+  "schemaVersion":1,
+  "country":"IT",
+  "generatedAt":"2026-09-20T08:57:00Z",
+  "sourceInventory":"data/reports/italy_pun_inventory_reconciliation_20260920_run192.json",
+  "investigated":[
+    {
+      "partyId":"GMT",
+      "canonicalName":"G.M.T. S.P.A.",
+      "inventory":{"evse":325,"stations":132,"timestamp":"2026-09-20"},
+      "status":"partial",
+      "priority":"station-level",
+      "tariffChannel":"ZapGrid / managed-infrastructure app/payment; roaming separate",
+      "tariffModel":"managed third-party infrastructure with owner/site-specific tariffs; no deterministic GMT-wide grid proven",
+      "positiveEvidence":[
+        "GMT first-party site describes the company as both ZapGrid app developer and charging-infrastructure manager/consultant for third parties.",
+        "ZapGrid operator pages expose different historical owner tariffs under GMT's platform, which is incompatible with assuming one GMT retail grid.",
+        "Current PUN-derived station evidence includes GMT stations whose tariff is not communicated."
+      ],
+      "coverage":{"rankableDirectAdHoc":0,"failClosedEvse":325},
+      "blockingCondition":"deterministic IT*GMT EVSE -> owner/site -> ZapGrid/direct tariff mapping or first-party class rule",
+      "resumeOnlyOnNewEvidence":true,
+      "confidence":"high",
+      "lastInvestigated":"2026-09-20"
+    },
+    {
+      "partyId":"ASS",
+      "canonicalName":"AGSM AIM Smart Solutions / Magis Smart",
+      "inventory":{"evse":257,"stations":135,"timestamp":"2026-09-20"},
+      "status":"partial",
+      "priority":"class-wide",
+      "tariffChannel":"Magis e-mobility proprietary app; roaming separate",
+      "tariffModel":"current pay-per-use varies by AC/DC class; exact pay-per-use values are shown in app at use time; current subscription discounts are published",
+      "positiveEvidence":[
+        "Magis announced a new e-mobility app on 2026-05-04 covering 275 charging points and explicitly revised its tariff model.",
+        "Current first-party page says pay-per-use cost varies by consumed kWh and charger type AC/DC and the applicable price is indicated in the app at use time.",
+        "Current published subscription rates include AC 0.60/0.58/0.50 EUR/kWh depending on plan and DC 0.74 EUR/kWh, but these subscription prices must not be promoted as direct/ad-hoc pay-per-use prices."
+      ],
+      "coverage":{"rankableDirectAdHoc":0,"failClosedEvse":257},
+      "blockingCondition":"current first-party Magis pay-per-use AC and DC values, or app/backend payload proving exact current class-wide direct prices and any fees",
+      "resumeOnlyOnNewEvidence":false,
+      "confidence":"high",
+      "lastInvestigated":"2026-09-20"
+    }
+  ],
+  "nextPriorityCandidates":[{"partyId":"GAS","evse":277,"stations":131},{"partyId":"WRM","evse":242,"stations":242},{"partyId":"VFS","evse":167,"stations":84},{"partyId":"CPO","evse":160,"stations":41},{"partyId":"ENH","evse":139,"stations":69}],
+  "coherence":{"noTariffExtrapolation":true,"atlanteLast":true,"gmtPlatformTariffsNotCollapsed":true,"agsmSubscriptionNotConfusedWithPayPerUse":true}
+}
