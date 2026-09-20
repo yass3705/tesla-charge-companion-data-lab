@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-20",
+  "run": 211,
+  "policy": {
+    "priority": ["network-wide", "class-wide", "station-level"],
+    "atlante": "last",
+    "failClosed": true,
+    "noExtrapolation": true,
+    "franceV8Reuse": "only for CPOs present in both France and Italy"
+  },
+  "canonicalAudit": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "publishedCounters": {"currentPunPartyIds":92,"treated":13,"partialCurrent":27,"setAside":1,"unreconciledCurrentPunPartyIds":51},
+    "publishedArithmeticValid": true,
+    "knownLag": "canonical has not yet absorbed all evidence reports after run202; do not rewrite from partial/truncated reads",
+    "correctionsNeededFromRecentReports": [
+      "ONS run205 promotion to treated/class-wide",
+      "FWY run205 promotion to treated/class-wide",
+      "IPE run207 promotion to treated/class-wide",
+      "ESH run209 priority correction class-wide -> station-level",
+      "Leitner Energy run210 station-level classification"
+    ]
+  },
+  "investigations": [
+    {
+      "canonicalName": "Enercom",
+      "historicalPunEvidence": "14/14 active at 2025-07-31 in Adiconsum PUN observatory",
+      "statusDecision": "station-level candidate / fail-closed pending current partyId reconciliation",
+      "positiveEvidence": [
+        "Enercom still deployed public charging infrastructure in Cremosano in June 2026",
+        "current official Enercom e-mobility surface found is wallbox/business management, not a public network-wide tariff grid"
+      ],
+      "negativePaths": [
+        "current official website tariff search did not expose a deterministic public charging network price",
+        "no exact direct/ad-hoc global tariff found"
+      ],
+      "blockingCondition": "reconcile current PUN partyId/inventory then obtain station/EVSE direct tariff or a current official global tariff publication",
+      "priority": "station-level",
+      "rankableEvse": 0,
+      "confidence": "medium-high"
+    },
+    {
+      "canonicalName": "Valle Camonica Servizi",
+      "statusDecision": "do not promote historical operator label to independent direct-tariff CPO without current partyId proof",
+      "positiveEvidence": [
+        "current provincial mobility documentation says seven local charging stations are managed in concession by Be Charge and directs users to the Be Charge app"
+      ],
+      "deduplicationRisk": "possible infrastructure/territorial label versus Be Charge-operated charging service",
+      "blockingCondition": "current PUN partyId/EVSE identity proving an independent Valle Camonica Servizi CPO scope; otherwise map/deduplicate to the actual CPO",
+      "priority": "station-level-or-alias",
+      "rankableEvse": 0,
+      "confidence": "medium-high"
+    }
+  ],
+  "next": {
+    "action": "continue unreconciled partyIds that may still have deterministic network/class-wide direct tariffs; defer station-level mappings until that sweep is exhausted",
+    "atlante": "remain last"
+  }
+}
