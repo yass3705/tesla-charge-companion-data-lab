@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-21",
+  "run": 230,
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "changes": [
+    {
+      "partyId": "ESH",
+      "canonicalName": "E-Shore / Uattzy lineage",
+      "status": "partial",
+      "previousPriority": "class-wide",
+      "priority": "station-level",
+      "inventory": {"evse": 1018, "stations": 343},
+      "tariffModel": "station/connector-specific direct pricing; Uattzy states the tariff is displayed per connector before charging and may vary with delivered power, session duration and occupancy time",
+      "tariffChannel": "Uattzy app/account direct; third-party eMSP pricing strictly separate",
+      "coverage": {"rankableEvse": 0, "failClosedEvse": 1018},
+      "officialReferences": [
+        "https://www.uattzy.com/",
+        "https://www.uattzy.com/faq/"
+      ],
+      "positiveEvidence": [
+        "Uattzy states it is the public-charging brand of UAU, created from E-Shore, GASGAS and EnerMia.",
+        "Uattzy states it is both CPO and eMSP and manages more than 3,000 charging points in Italy.",
+        "Official FAQ says Uattzy app/RFID users see the applicable tariff at each connector before starting a charge.",
+        "Official FAQ says prices may vary according to delivered power, session duration and bay occupancy time.",
+        "Official FAQ explicitly separates conditions charged by other compatible apps/operators."
+      ],
+      "negativePaths": [
+        "No current first-party national/class-wide EUR/kWh grid was found on the public Uattzy site/FAQ.",
+        "Do not infer a common tariff from historical E-Shore/GASGAS/EnerMia branding or from third-party eMSP prices.",
+        "Do not repeat generic public-web search for a national Uattzy tariff unless new first-party evidence appears."
+      ],
+      "blockingCondition": "obtain deterministic IT*ESH EVSE/connector -> current direct Uattzy tariff mapping from Uattzy app/backend, QR/deeplink or another first-party station tariff payload",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-21",
+      "lastChanged": "2026-09-21",
+      "history": [
+        "2026-09-21 run230: official Uattzy FAQ disproves the class-wide assumption; ESH moved from class-wide candidate to station-level partial/fail-closed."
+      ]
+    }
+  ],
+  "coherence": {
+    "nominalStatusDelta": "none",
+    "treated": 17,
+    "partialCurrent": 23,
+    "setAside": 1,
+    "unreconciledCurrentPunPartyIds": 51,
+    "currentPunPartyIds": 92,
+    "arithmeticCheck": true,
+    "note": "Logical counters include previously validated but not yet atomically merged promotions ENB/IPE/FWY/ONS. This run only changes ESH priority/model, not nominal status."
+  },
+  "nextAction": "continue remaining genuine network-wide/class-wide candidates before station-level queue; Atlante remains last"
+}
