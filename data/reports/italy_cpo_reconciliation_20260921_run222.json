@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-21",
+  "run": 222,
+  "canonicalTarget": "docs/italy-cpo-progress-2026-09.json",
+  "operator": {
+    "partyId": "ENB",
+    "canonicalName": "ENERBROKER S.R.L. / R-ev",
+    "previousStatus": "partial",
+    "statusDecision": "treated",
+    "priority": "class-wide",
+    "inventory": {"evse": 87, "stations": 73},
+    "identityEvidence": [
+      "PUN/Adiconsum operator label explicitly identifies ENERBROKER S.R.L. (R-ev)",
+      "Current live EVSE examples IT*ENB*E*22BZ0591A*001/002/003 are displayed as R-ev FastCharger",
+      "R-ev App Store publisher/developer is Enerbroker SRL",
+      "R-Gruppo first-party company profile states EnerBroker operates e-mobility under R-ev and builds charging infrastructure"
+    ],
+    "tariffChannel": "direct R-ev app/WALLET on R-ev infrastructure; third-party roaming explicitly separated",
+    "tariffs": [
+      {"class":"AC <=22 kW","eurPerKwh":0.65,"vatIncluded":true},
+      {"class":"DC <=150 kW","eurPerKwh":0.85,"vatIncluded":true},
+      {"class":"HPC >150 kW","eurPerKwh":0.89,"vatIncluded":true}
+    ],
+    "fees": {"extraStay":"0.25 EUR/min; AC not applied 23:00-07:00 under published rules; DC/HPC 24h"},
+    "coverage": {"rankableEvse":87,"failClosedEvse":0},
+    "confidence":"high",
+    "negativeEvidence": [
+      "R-ev roaming prices for third-party CPOs must not be mapped to IT*ENB",
+      "Metro subscription discount and City bundle are eMSP/account plans and are not substituted for the base WALLET direct tariff"
+    ],
+    "resumeCondition":"Reopen only if fresh PUN breaks ENB/R-ev identity, first-party R-ev changes class thresholds/prices, or current IT*ENB inventory contains a demonstrably non-R-ev subset.",
+    "references": [
+      "https://www.r-ev.it/termini-di-utilizzo-abbonamenti/",
+      "https://www.r-ev.it/termini-di-utilizzo-app/",
+      "https://www.r-ev.it/scarica-la-app/",
+      "https://apps.apple.com/cl/app/r-ev/id1635101362",
+      "https://www.r-gruppo.com/wp-content/uploads/2023/06/Presentazione-Company-Profile_13.06.2023-compresso.pdf",
+      "https://app.pumpapp.co/it/stazione-di-ricarica-r-ev-ip-baronissi-ovest-galdieri-energy-baronissi/7e81cdd2-71e9-11f0-94e7-cd47a6d95389"
+    ]
+  },
+  "canonicalDelta": {
+    "treated": "+1 (13 -> 14)",
+    "partialCurrent": "-1 (27 -> 26)",
+    "currentPunNamedInCanonical": "unchanged 41",
+    "unreconciledCurrentPunPartyIds": "unchanged 51",
+    "currentPunArithmetic": "14 treated + 26 current partial + 1 setAside + 51 unreconciled = 92",
+    "knownClassWideCandidatesRemove": ["ENB"]
+  },
+  "coherence": {
+    "noAliasDoubleCountIntroduced": true,
+    "currentPunArithmeticAfterDecision": true,
+    "note": "Canonical file still needs the ENB status/counters/list delta applied atomically; this report is the durable evidence payload for that safe update."
+  }
+}
