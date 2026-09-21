@@ -1,0 +1,40 @@
+{
+  "run": 228,
+  "date": "2026-09-21",
+  "country": "IT",
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "operator": {
+    "partyId": "IOY",
+    "canonicalName": "IONITY",
+    "previousStatus": "partial",
+    "status": "partial",
+    "previousPriority": "network-wide",
+    "priority": "station-level",
+    "inventory": {"evse": 322, "stations": 44},
+    "tariffChannel": "direct IONITY app / QR payment / contactless; MSP roaming separated",
+    "finding": "IONITY first-party support explicitly states that direct charging price can vary by specific station even within the same country. Country/site headline prices are current minimum prices and station price may be higher. Therefore no Italy-wide Direct value may be deterministically applied to all IT*IOY EVSE.",
+    "positiveEvidence": [
+      "IONITY Italian support: direct price depends on tariff, subscription, country and specific station; prices can vary between locations in the same country.",
+      "Exact station price is exposed in IONITY app, QR/payment site, or contactless terminal display.",
+      "IONITY Direct is ad-hoc with QR/payment site/contactless and is distinct from MSP roaming."
+    ],
+    "negativePathsExhausted": [
+      "Treating the country headline/minimum Direct price as an Italy-wide deterministic tariff.",
+      "Using IONITY subscription or MSP roaming values as direct CPO tariff."
+    ],
+    "coverage": {"rankableEvseAddedThisRun": 0, "failClosedEvse": 322},
+    "blockingCondition": "deterministic IT*IOY station/EVSE -> current direct price mapping from IONITY app, QR/payment endpoint or terminal payload",
+    "confidence": "high",
+    "lastInvestigated": "2026-09-21",
+    "lastChanged": "2026-09-21"
+  },
+  "coherence": {
+    "logicalCountersAfterPreviouslyValidatedDeltas": {"treated": 17, "partialCurrent": 23, "setAside": 1, "unreconciledCurrentPunPartyIds": 51, "total": 92},
+    "arithmeticCheck": true,
+    "nominalCountChanged": false,
+    "priorityOnlyChanged": true,
+    "noDoubleCount": true,
+    "note": "IOY remains one current PUN partyId; only priority changes from network-wide to station-level. Canonical main file remains stale relative to validated deltas and must be merged non-destructively when complete content is safely writable."
+  },
+  "next": "Continue remaining genuine network-wide/class-wide candidates before station-level queue; Atlante remains last."
+}
