@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "country": "IT",
+  "asOf": "2026-09-21",
+  "run": 217,
+  "canonicalBaseline": "docs/italy-cpo-progress-2026-09.json",
+  "policy": {"failClosed":true,"priorityOrder":["network-wide","class-wide","station-level"],"atlante":"setAside-last","noExtrapolation":true,"directVsRoamingStrict":true},
+  "changes": [
+    {
+      "partyId":"IOY",
+      "canonicalName":"IONITY",
+      "previousStatus":"partial",
+      "status":"partial",
+      "previousPriority":"network-wide",
+      "priority":"station-level",
+      "inventory":{"evse":322,"stations":44},
+      "tariffModel":"location-dependent first-party Direct/ad-hoc pricing; no deterministic Italy-wide amount",
+      "tariffChannel":"IONITY Direct/ad-hoc only; subscriptions and third-party eMSP tariffs excluded",
+      "candidateBounds":{"directAdHocItaly":"up to 0.91 EUR/kWh from 2026-07-01"},
+      "officialReferences":["https://www.ionity.eu/it/abbonamenti","https://www.ionity.eu/fr/stories/pourquoi-les-prix-de-recharge-evoluent-ils-en-europe","https://support.ionity.eu/it/faqs/i-prezzi-del-tuo-abbonamento-ionity-sono-validi-in-tutti-i-paesi-dellue"],
+      "positiveEvidence":["IONITY first-party July 2026 pricing communication states Italy Direct/ad-hoc prices are up to 0.91 EUR/kWh, not a single national price.","IONITY current tariff surface explicitly states displayed prices are minimum prices and the charging price at the station may be higher.","IONITY support states per-kWh prices depend on charging-station location and the applicable price is shown before session start."],
+      "negativeEvidence":["0.91 EUR/kWh cannot be propagated to all IT*IOY EVSE because first-party wording is 'up to' and location-dependent.","The generic/current 'from' value cannot be propagated because IONITY explicitly warns station price may be higher."],
+      "coverage":{"rankableEvse":0,"failClosedEvse":322},
+      "blockingCondition":"deterministic IT*IOY station/EVSE -> current IONITY Direct/ad-hoc price mapping from station QR/web/app/backend or equivalent first-party station price surface",
+      "resumeCondition":"new automatable first-party station-price endpoint/payload or an official deterministic rule covering all Italian stations/classes",
+      "confidence":"high",
+      "lastInvestigated":"2026-09-21",
+      "lastChanged":"2026-09-21",
+      "history":["Run217 closes the network-wide hypothesis: current first-party evidence proves Italian Direct/ad-hoc pricing is location-dependent ('up to 0.91 EUR/kWh') and station price may be higher. IOY is therefore deferred to station-level without promoting any amount."]
+    }
+  ],
+  "coherence": {
+    "canonicalFileObserved":{"currentPunPartyIds":92,"currentPunNamedInCanonical":41,"treated":13,"partialCurrent":27,"setAside":1,"unreconciled":51,"inventoryComplete":false},
+    "thisRun":{"nominalStatusDelta":0,"priorityReclassification":["IOY: network-wide -> station-level"],"rankableEvseDelta":0,"failClosedEvseExplicit":322},
+    "aliasDoubleCountDetected":false,
+    "canonicalWriteStatus":"delta persisted; destructive full canonical rewrite still avoided because connector response is truncated and the canonical itself declares incomplete nominative inventory"
+  },
+  "next":{"action":"Continue unreconciled network/class-wide candidates first. Do not revisit IOY national-price hypothesis absent new evidence; later resolve IT*IOY station-level prices deterministically.","atlante":"remain last"}
+}
