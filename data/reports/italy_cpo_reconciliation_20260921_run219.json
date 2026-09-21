@@ -1,0 +1,49 @@
+{
+  "country": "IT",
+  "run": 219,
+  "asOf": "2026-09-21",
+  "scope": "Italy V9 CPO tariff reconciliation",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "changes": [
+    {
+      "partyId": "ESH",
+      "canonicalName": "E-Shore / Uattzy lineage",
+      "previousPriority": "class-wide",
+      "newPriority": "station-level",
+      "status": "partial",
+      "inventory": {"evse": 1018, "stations": 343},
+      "decision": "No deterministic network/class-wide direct tariff may be applied. Uattzy is the current public-charging brand formed from E-Shore, GASGAS and EnerMia; its first-party site states Uattzy defines tariffs in at least one deployment model, while current observed direct/ad-hoc prices vary by station/power context. Require deterministic EVSE/station -> Uattzy direct/ad-hoc tariff mapping before rankable promotion.",
+      "positiveEvidence": [
+        "https://www.uattzy.com/ : Uattzy states it is the public-charging brand of UAU formed from E-Shore, GASGAS and EnerMia and operates as CPO/eMSP.",
+        "https://enermia.org/ : EnerMia/E-Shore states the app has become Uattzy and legacy-branded stations are progressively being rebranded.",
+        "Adiconsum May 2026 observatory groups UATTZY (GASGAS - E-SHORE - ENERMIA) and reports an average proprietary-app price, not a deterministic universal tariff."
+      ],
+      "corroborationOnly": [
+        "GoingElectric Palmanova Contrada Contarini: IT*UTZ*EC167/EC168, 22 kW AC, direct ad-hoc 0.62 EUR/kWh, updated 2026-09-08.",
+        "GoingElectric Palmanova Via Scamozzi: Uattzy 47 kW DC, direct ad-hoc 0.72 EUR/kWh."
+      ],
+      "negativePaths": [
+        "Do not promote Adiconsum/TariffEV average proprietary-app value as a direct universal tariff.",
+        "Do not infer a universal ESH tariff from isolated UTZ/GAS/Uattzy station observations.",
+        "Do not collapse current ESH and GAS PUN partyIds into one counted partyId solely because they share the Uattzy commercial lineage."
+      ],
+      "blockingCondition": "deterministic current IT*ESH EVSE/station -> Uattzy direct/ad-hoc tariff mapping or first-party publication proving exact universal/class-wide scope",
+      "coverage": {"rankableEvseAdded": 0, "failClosedEvse": 1018},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-21",
+      "lastChanged": "2026-09-21"
+    }
+  ],
+  "coherence": {
+    "baselineCurrentPunPartyIds": 92,
+    "treated": 13,
+    "partialCurrent": 27,
+    "setAside": 1,
+    "unreconciledCurrentPunPartyIds": 51,
+    "arithmetic": "13 + 27 + 1 + 51 = 92",
+    "noCounterChange": true,
+    "reason": "ESH was already a named current partial; only priority changed from class-wide to station-level.",
+    "aliasPolicy": "Uattzy commercial lineage is recorded without merging distinct current PUN partyIds ESH/GAS."
+  },
+  "next": "Continue remaining genuine network-wide/class-wide candidates before station-level; Atlante remains last."
+}
