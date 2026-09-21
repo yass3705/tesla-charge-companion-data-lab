@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "date": "2026-09-21",
+  "run": 214,
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalAudit": {
+    "currentPunPartyIds": 92,
+    "currentPunNamedInCanonical": 41,
+    "treated": 13,
+    "partialCurrent": 27,
+    "setAside": 1,
+    "unreconciledCurrentPunPartyIds": 51,
+    "arithmeticCheck": true,
+    "inventoryComplete": false,
+    "finding": "Canonical remains nominatively incomplete; do not decrement unreconciled counters without a proven current PUN partyId mapping. Recent investigation deltas must be folded into a later full reconstruction rather than guessed into the 92-party inventory."
+  },
+  "investigation": [
+    {
+      "subject": "generic/eMSP tariff discovery for unresolved Italian CPOs",
+      "result": "negative_for_direct_cpo_promotion",
+      "evidence": [
+        "Current public EVVai surface exposes per-station prices across many Italian partner networks but identifies itself as eMobility Service Provider IT-EVV; these are eMSP prices and cannot substitute for direct CPO/ad-hoc tariffs.",
+        "Current comparison surfaces for Enel X Way list operator-specific roaming prices; these likewise cannot be promoted as direct tariffs for unresolved CPOs."
+      ],
+      "decision": "Do not use EVVai, Enel X Way roaming tables, or analogous eMSP price surfaces as direct CPO tariff evidence. They remain discovery/corroboration only.",
+      "antiRepeat": "Do not repeat generic roaming-price searches for unresolved CPOs unless a result exposes a first-party CPO endpoint, QR/ad-hoc surface, or deterministic direct-price mapping."
+    }
+  ],
+  "priorityDecision": {
+    "networkClassWideFirst": true,
+    "stationLevelDeferred": true,
+    "atlanteLast": true,
+    "next": "Continue reconciliation of current PUN partyIds not yet named in canonical; only investigate a candidate as network/class-wide when identity and first-party direct tariff scope can both be established."
+  }
+}
