@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-21",
+  "run": 225,
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "purpose": "Atomic reconciliation delta; preserve existing canonical until full safe merge is available.",
+  "changes": [
+    {
+      "partyId": "ONS",
+      "canonicalName": "On Electric Charge Mobility / On Charge",
+      "previousStatus": "partial",
+      "newStatus": "treated",
+      "previousPriority": "network-wide",
+      "newPriority": "class-wide",
+      "inventory": {"evse": 716, "stations": 342},
+      "tariffChannel": "direct On Charge consumption tariff via On Mobility/RFID on On Charge stations; roaming MSP separated",
+      "tariffs": [
+        {"class": "Quick AC <=22 kW", "eurPerKwh": 0.65},
+        {"class": "Fast DC <=50 kW", "eurPerKwh": 0.85},
+        {"class": "Ultra Fast DC <=350 kW", "eurPerKwh": 0.95}
+      ],
+      "fees": {
+        "freeStayAfterChargingMinutes": 60,
+        "occupation": [
+          {"class": "Quick AC <=22 kW", "eurPerMinute": 0.10, "nightException": "23:00-07:00"},
+          {"class": "Fast DC <=150 kW", "eurPerMinute": 0.20},
+          {"class": "Ultrafast DC >150 kW", "eurPerMinute": 0.30}
+        ]
+      },
+      "subscriptionOptions": [
+        {"name": "On Basic", "eurPer30Days": 4.90, "discountPercent": 10},
+        {"name": "On Premium", "eurPer30Days": 9.90, "discountPercent": 20},
+        {"name": "On Gold", "eurPer30Days": 14.90, "discountPercent": 30, "rfidIncluded": true}
+      ],
+      "officialReferences": [
+        "https://onmobility.oncharge.it/privati",
+        "https://onmobility.oncharge.it/ricarica",
+        "https://onmobility.oncharge.it/termini-e-condizioni"
+      ],
+      "positiveEvidence": [
+        "Current first-party consumer pages publish 0.65/0.85/0.95 EUR/kWh for Quick/Fast/Ultra Fast on the On Charge network.",
+        "Current first-party terms explicitly scope the tariffs and subscription discounts to On Charge public charging stations accessed by On Mobility or associated RFID.",
+        "Terms distinguish occupation fees by power class and provide a 60-minute free-stay period after charging, with the AC night exception."
+      ],
+      "negativePathsClosed": [
+        "Do not use roaming MSP prices as direct CPO prices.",
+        "Do not infer host/white-label tariffs for third-party-operated infrastructure from On Charge consumer tariff grid."
+      ],
+      "coverage": {"rankableEvse": 716, "failClosedEvse": 0},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-21",
+      "lastChanged": "2026-09-21"
+    }
+  ],
+  "logicalCountersAfterKnownUnmergedDeltas": {
+    "currentPunPartyIds": 92,
+    "treated": 17,
+    "partialCurrent": 23,
+    "setAside": 1,
+    "unreconciledCurrentPunPartyIds": 51,
+    "arithmeticCheck": true,
+    "note": "Includes prior unmerged ENB, IPE and FWY promotions from runs 222/224 plus this ONS promotion; 17+23+1+51=92. Historical UTZ remains outside current-PUN arithmetic."
+  },
+  "coherence": {
+    "noDoubleCount": true,
+    "canonicalFileStillStale": true,
+    "safeMergeRequired": "Apply runs 222, 224 and 225 atomically to the full canonical content before changing the canonical counters."
+  }
+}
