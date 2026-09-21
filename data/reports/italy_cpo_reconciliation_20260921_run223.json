@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-21",
+  "run": 223,
+  "canonicalTarget": "docs/italy-cpo-progress-2026-09.json",
+  "operator": {
+    "partyId": "CGS",
+    "canonicalName": "Cogeser Energia",
+    "previousStatus": "partial",
+    "status": "partial",
+    "previousPriority": "class-wide",
+    "priority": "station-level",
+    "inventory": {"punEvseKnown": 60},
+    "directTariffEvidence": {
+      "officialTariffPage": "https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico",
+      "validFrom": "2025-10-01",
+      "quickCogeserAC": {"eurPerKwh": 0.67, "vatIncluded": true},
+      "billDebitCogeserNetwork": {"eurPerKwh": 0.49, "vatIncluded": true, "eligibility": "Cogeser customers with charging debit on electricity bill"},
+      "spotChannel": "QR code with electronic payment is officially supported; exact spot price must be taken from the direct surface when it differs from registered/app pricing",
+      "roamingExcluded": [{"class":"non-Cogeser AC","eurPerKwh":0.73},{"class":"non-Cogeser DC","eurPerKwh":0.89}]
+    },
+    "newPositiveEvidence": {
+      "officialArticle": "https://www.cogeserenergia.it/it/inzago-inaugurata-nuova-stazione-ricarica-auto-elettriche",
+      "date": "2025-11-25",
+      "finding": "Cogeser inaugurated its first company DC charger: Circontrol Rapid 25 kW DC, alongside a Circontrol eVolve 22 kW AC. This proves the current Cogeser network is no longer AC-only."
+    },
+    "decision": "Do not promote all IT*CGS EVSE under the published Quick Cogeser AC 0.67 EUR/kWh rule. The network now contains at least one DC subset for which the public tariff page does not publish a direct Cogeser DC retail amount. Preserve 0.67 EUR/kWh only as a deterministic candidate for EVSE proven to be Quick Cogeser AC; keep DC and any unclassified EVSE fail-closed.",
+    "coverage": {
+      "rankableEvse": "pending deterministic classification of current IT*CGS EVSE as Quick Cogeser AC",
+      "failClosedEvse": "all DC and unclassified IT*CGS EVSE until direct current tariff mapping exists"
+    },
+    "blockingCondition": "Map each current IT*CGS EVSE to connector/current type and Cogeser tariff class. AC EVSE proven to be Quick Cogeser may use 0.67 EUR/kWh for the applicable direct/app tariff; DC requires a current first-party direct/QR/app price. Do not use 0.89 EUR/kWh because the official page labels it non-Cogeser roaming DC.",
+    "negativePaths": [
+      "Treating the whole CGS partyId as AC-only is disproven by Cogeser's 2025-11-25 first company DC installation.",
+      "0.89 EUR/kWh is explicitly a non-Cogeser roaming DC price and must not be promoted as Cogeser CPO direct DC tariff."
+    ],
+    "confidence": "high",
+    "lastInvestigated": "2026-09-21",
+    "lastChanged": "2026-09-21"
+  },
+  "coherence": {
+    "counterDelta": {"treated":0,"partial":0,"setAside":0,"unreconciled":0},
+    "reason": "CGS was already a named current partial; only its priority/evidence model changes.",
+    "canonicalWriteDeferred": "The canonical file returned through the connector is truncated; full-file replacement was not attempted because that could discard existing operator detail. This report is the atomic durable delta to merge when a complete canonical payload is available."
+  }
+}
