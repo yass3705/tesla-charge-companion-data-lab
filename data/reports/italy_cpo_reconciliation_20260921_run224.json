@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-21",
+  "run": 224,
+  "canonicalTarget": "docs/italy-cpo-progress-2026-09.json",
+  "policy": {"failClosed": true, "directVsRoamingStrict": true, "noExtrapolation": true},
+  "operators": [
+    {
+      "partyId": "IPE",
+      "canonicalName": "IPlanet",
+      "previousStatus": "partial",
+      "status": "treated",
+      "priority": "network-wide",
+      "inventory": {"evse": 547, "stations": 189},
+      "partyScopeEvidence": {
+        "finding": "Current PUN-derived station surfaces identify operator IPLANET SPA and EVSE identifiers under IT*IPE; examples include IT*IPE*E4002921560*1/*2 and IT*IPE*E4002921562*1/*2 at Pianezza.",
+        "references": ["https://pienotto.it/stazioni/283388-iplanet-spa-pianezza-to"]
+      },
+      "tariffChannel": "direct IPlanet network; App and POS separated; third-party roaming excluded",
+      "tariffs": [
+        {"channel":"APP","class":"AC <=22 kW","eurPerKwh":0.60,"vatIncluded":true},
+        {"channel":"APP","class":"DC 50-150 kW and >150 kW","eurPerKwh":0.74,"vatIncluded":true},
+        {"channel":"POS","class":"DC any power","eurPerKwh":0.79,"vatIncluded":true}
+      ],
+      "officialReferences": ["https://iplanet.eu/tariffe/"],
+      "coverage": {"rankableEvse":547,"failClosedEvse":0,"scope":"current IT*IPE inventory; select tariff by connector/current type and direct channel"},
+      "negativePaths": ["Do not apply IPlanet app roaming prices for third-party CPOs to IT*IPE.","Expired station-specific promotions are not promoted as current standard tariffs."],
+      "confidence":"high",
+      "lastInvestigated":"2026-09-21",
+      "lastChanged":"2026-09-21"
+    },
+    {
+      "partyId": "FWY",
+      "canonicalName": "FastWay",
+      "previousStatus": "partial",
+      "status": "treated",
+      "priority": "class-wide",
+      "inventory": {"evse":421,"stations":213},
+      "partyScopeEvidence": {
+        "finding":"FastWay official charging guide publishes direct App/POS tariffs and explicitly separates roaming tariffs, while current interoperability/operator registries expose FastWay as IT*FWY.",
+        "references":["https://www.fastway.energy/guida-alla-ricarica/","https://enerhub.it/energycard/"]
+      },
+      "tariffChannel":"direct FastWay App/POS; roaming eMSP prices explicitly excluded",
+      "tariffs":[
+        {"class":"AC Type 2","eurPerKwh":0.68},
+        {"class":"DC CCS Combo 2","eurPerKwh":0.88}
+      ],
+      "fees":{"postChargeParking":"60 minutes free after charge end; subsequent per-minute amount depends on charger type and must be resolved from current FastWay surface before ranking any occupation-cost component"},
+      "officialReferences":["https://www.fastway.energy/guida-alla-ricarica/"],
+      "coverage":{"rankableEvse":421,"failClosedEvse":0,"scope":"current IT*FWY inventory; energy tariff selected deterministically by connector class"},
+      "negativePaths":["Roaming partner prices are explicitly not set by FastWay and must not replace the direct FastWay tariff.","Expired regional promotions must not override the current standard network tariff."],
+      "confidence":"high",
+      "lastInvestigated":"2026-09-21",
+      "lastChanged":"2026-09-21"
+    }
+  ],
+  "coherence": {
+    "baselineCanonicalPublished":"13 treated + 27 current partial + 1 setAside + 51 unreconciled = 92",
+    "priorDurableDelta":"run222 promoted ENB from partial to treated",
+    "thisRunDelta":{"treated":2,"partialCurrent":-2,"setAside":0,"unreconciled":0},
+    "logicalCurrentAfterRun224":{"treated":16,"partialCurrent":24,"setAside":1,"unreconciledCurrentPunPartyIds":51,"total":92,"arithmeticCheck":true},
+    "aliasDoubleCountCheck":"no new alias; IPE and FWY are existing named current partyIds",
+    "canonicalWriteDeferred":"Full canonical payload is still truncated by the connector. Destructive full-file replacement was not attempted. This report is an atomic durable delta and must be merged into the canonical once a complete payload can be fetched safely."
+  },
+  "nextPriority":"Continue remaining genuine network/class-wide candidates before station-level; Atlante remains last. Reconcile stale canonical priority entries from runs 217-223 when safe full canonical access is available."
+}
