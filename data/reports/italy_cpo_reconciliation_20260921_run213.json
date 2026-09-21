@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "runId": "20260921_run213",
+  "asOf": "2026-09-21",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "policy": {
+    "failClosed": true,
+    "priorityOrder": ["network-wide", "class-wide", "station-level"],
+    "atlanteLast": true,
+    "noExtrapolation": true,
+    "v8FranceReuseOnlyForCposPresentInBothFranceAndItaly": true
+  },
+  "changes": [
+    {
+      "canonicalName": "EUM Genossenschaft",
+      "partyId": "EUM",
+      "status": "partial",
+      "priority": "station-level",
+      "inventoryEvidence": {
+        "historicalPunActiveEvse": 12,
+        "historicalPunTotalEvse": 12,
+        "historicalAsOf": "2025-07-31",
+        "sampleEvse": ["IT*EUM*E00011", "IT*EUM*E00012", "IT*EUM*E00021", "IT*EUM*E00022", "IT*EUM*E00041", "IT*EUM*E00042", "IT*EUM*E00051", "IT*EUM*E00052"]
+      },
+      "tariffModel": "No current deterministic direct/ad-hoc charging tariff found. EUM first-party public tariff page located during this run concerns cooperative household electricity supply, not EV charging, and MUST NOT be reused as an EV charging price.",
+      "tariffChannel": "direct EV tariff unresolved; roaming/eMSP prices excluded",
+      "officialReferences": [
+        "https://www.eum.bz/de/strom/strom-detail/tarife-mitglieder",
+        "https://www.merano-suedtirol.it/de/passeiertal/info-service/informationen/elektro-ladestationen/rid-30452E5A6E610C10EC628A2CADC961FE-p-e-ladestation-fuer-autos-in-moos.html",
+        "https://www.merano-suedtirol.it/de/passeiertal/info-service/informationen/elektro-ladestationen/rid-D73153A631F60E376E228DD7A43AA631-p-stazione-di-ricarica-per-auto-elettriche-a-plan.html"
+      ],
+      "positiveEvidence": [
+        "Current tourism/territorial first-party-adjacent pages identify EUM Genossenschaft as contact/operator for public charging locations in Moos/Passeier and Pfelders and describe AC 22 kW plus a Moos 175 kW fast charger.",
+        "Current station evidence identifies EUM EVSE IDs and confirms public/roaming activation surfaces."
+      ],
+      "negativePaths": [
+        "EUM member electricity tariff page: 0.07/0.09 EUR/kWh is household electricity supply and not EV charging; rejected.",
+        "Third-party roaming offers observed for EUM stations are eMSP prices and are not direct CPO/ad-hoc tariffs; rejected.",
+        "No network-wide EV charging tariff publication found on current EUM public pages in this run."
+      ],
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvseHistorical": 12,
+        "coveredSubpopulations": [],
+        "uncoveredSubpopulations": [
+          {"scope": "all known IT*EUM EVSE", "reason": "direct/ad-hoc tariff not deterministically mapped"}
+        ]
+      },
+      "blockingCondition": "Obtain a current EUM direct/ad-hoc charging tariff publication or deterministic IT*EUM EVSE/QR/backend-to-price mapping. Do not reopen the household-electricity or generic roaming-price paths without new evidence.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-21",
+      "lastChanged": "2026-09-21"
+    }
+  ],
+  "coherence": {
+    "canonicalBaseline": {"currentPunPartyIds": 92, "treated": 13, "partialCurrent": 27, "setAside": 1, "unreconciledCurrentPunPartyIds": 51},
+    "canonicalArithmeticBefore": "13 + 27 + 1 + 51 = 92",
+    "safeDelta": "EUM is a historical review entry not yet nominatively present in the canonical snapshot; this report records classification evidence without changing canonical counters until current PUN partyId reconciliation confirms EUM remains among the current 92.",
+    "noDoubleCountIntroduced": true
+  },
+  "nextAction": "Continue unreconciled CPOs that may still have deterministic network-wide/class-wide direct tariffs; defer EUM to station-level; keep Atlante last."
+}
