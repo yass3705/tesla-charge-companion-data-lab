@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 2,
+  "country": "IT",
+  "asOf": "2026-09-21",
+  "run": 216,
+  "canonicalBaseline": "docs/italy-cpo-progress-2026-09.json",
+  "policy": {"failClosed":true,"priorityOrder":["network-wide","class-wide","station-level"],"atlante":"setAside-last","noExtrapolation":true,"directVsRoamingStrict":true},
+  "changes": [
+    {
+      "historicalCpoLabel":"Smartbit",
+      "canonicalName":"Smartbit / THOR platform scope",
+      "status":"partial",
+      "priority":"station-level",
+      "tariffModel":"No deterministic Smartbit-wide tariff. Smartbit supplies charging hardware and the THOR management/payment platform to independent station managers; THOR explicitly supports manager-specific payment/configuration and Smartbit hardware can also be FREE or RFID-only.",
+      "officialEvidence":[
+        {"source":"https://smartbit.io/","finding":"Smartbit describes THOR as a cloud platform for management of charging stations and identifies its business as charging hardware plus management software."},
+        {"source":"https://smartbit.io/prodotti-per-la-ricarica-veicoli-elettrici/wallbox-serie-anthea/","finding":"ANTHEA stations can be FREE, RFID or OCPP/THOR; THOR gives station managers payment management and configuration customization."},
+        {"source":"https://smartbit.io/prodotti-per-la-ricarica-veicoli-elettrici/pillar-serie-small/","finding":"SMALL stations likewise support FREE/RFID/OCPP modes and THOR manager-specific payment/configuration controls."},
+        {"source":"https://thor.tools/","finding":"THOR is presented as a management system for charging-station fleets, including user/payment administration, not as a single retail CPO tariff network."}
+      ],
+      "negativeEvidence":[
+        "No current first-party Smartbit/THOR national network-wide or class-wide EV charging tariff was found.",
+        "Smartbit branding or THOR backend presence is insufficient to infer a common direct tariff because the station manager controls payment/configuration and some hardware can operate free or RFID-only."
+      ],
+      "coverage":{"rankableEvse":0,"failClosedScope":"all current EVSE attributed to Smartbit/THOR until current PUN partyId and station-specific direct tariff are deterministically mapped"},
+      "blockingCondition":"reconcile Smartbit historical label to current 2026-09 PUN partyId/EVSE inventory, then map each paid station/EVSE through THOR QR/WebApp/backend or host-specific first-party publication; distinguish FREE/RFID-only installations from paid OCPP stations",
+      "confidence":"high",
+      "lastInvestigated":"2026-09-21",
+      "lastChanged":"2026-09-21",
+      "history":["Run216 closed the network/class-wide hypothesis for Smartbit. Future runs must not search for a universal Smartbit tariff again without new first-party evidence; resume at current partyId reconciliation and station-level THOR/host mapping."]
+    }
+  ],
+  "coherence": {
+    "canonicalFileObserved":{"currentPunPartyIds":92,"currentPunNamedInCanonical":41,"treated":13,"partialCurrent":27,"setAside":1,"unreconciled":51,"inventoryComplete":false},
+    "knownReportDeltas":"Runs after the canonical snapshot remain authoritative deltas until safely merged into the complete nominative canonical.",
+    "thisRun":{"nominalCounterChange":0,"reason":"Smartbit is a historical review label whose current 2026-09 PUN partyId has not yet been deterministically recovered; do not subtract it from the 92-party current inventory by assumption."},
+    "aliasDoubleCountDetected":false,
+    "canonicalWriteStatus":"not destructively rewritten because current canonical is incomplete and the full 92-party nominative inventory is not yet available in the canonical"
+  },
+  "next":{"action":"Continue unreconciled network/class-wide candidates first. Smartbit resumes only in station-level phase after current partyId recovery.","atlante":"remain last"}
+}
