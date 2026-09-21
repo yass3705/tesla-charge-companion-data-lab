@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-21",
+  "run": 226,
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "purpose": "Continue class-wide-first reconciliation; preserve canonical until full safe merge of pending deltas.",
+  "changes": [
+    {
+      "partyId": "ASS",
+      "canonicalName": "AGSM AIM / Magis Smart",
+      "status": "partial",
+      "previousPriority": "class-wide",
+      "newPriority": "class-wide",
+      "inventory": {"evse": 257, "stations": 135, "officialNetworkPointsMay2026": 275},
+      "tariffChannel": "Magis E-mobility direct Pay Per Use on Magis public stations; roaming CPO prices explicitly separate",
+      "tariffModel": "Pay Per Use amount is selected per station/connector in the app and may differ by connector type; first-party public web does not expose the current standard Pay Per Use numeric AC/DC amounts",
+      "subscriptionTariffs": [
+        {"name":"Small","class":"AC","eurPerKwh":0.60,"eurPerMonth":5},
+        {"name":"Medium","class":"AC","eurPerKwh":0.58,"eurPerMonth":10},
+        {"name":"Large","class":"AC","eurPerKwh":0.50,"eurPerMonth":20},
+        {"name":"Flat DC","class":"DC","eurPerKwh":0.74,"eurPerMonth":10}
+      ],
+      "fees": {"postChargeGraceMinutes":60,"occupationEurPerMinute":0.12,"acChargedHours":"07:00-23:00","dcHpcChargedHours":"00:00-24:00"},
+      "officialReferences": [
+        "https://www.magissmart.it/nuova-app-magis-e-mobility",
+        "https://www.magissmart.it/agsmaim_e-mobility/abbonamenti",
+        "https://www.magissmart.it/e-mobility/app/termini.php"
+      ],
+      "positiveEvidence": [
+        "Magis announced 2026-05-04 that the new Magis E-mobility platform serves 275 charging points and revised the tariff model; Pay Per Use varies by consumption and AC/DC charger type.",
+        "Current first-party subscription page publishes AC subscription rates 0.60/0.58/0.50 EUR/kWh and DC 0.74 EUR/kWh, proving explicit AC/DC tariff classes but these discounted subscription values are not the standard Pay Per Use baseline.",
+        "Current first-party terms state the applicable Pay Per Use unit amount is shown in the app in the selected public-station detail, can differ by connector type, and roaming on third-party CPO infrastructure is separately priced.",
+        "Current terms publish a 0.12 EUR/min post-charge penalty after a 60-minute grace period; AC applies 07:00-23:00, DC/HPC 24h."
+      ],
+      "negativePathsClosed": [
+        "Do not use Enel X Way roaming prices for AGSM AIM as direct Magis CPO prices.",
+        "Do not promote discounted subscription prices as the default Pay Per Use tariff.",
+        "Do not infer the standard Pay Per Use AC/DC values from subscription discounts."
+      ],
+      "blockingCondition": "Extract current standard Pay Per Use AC/DC numeric values from Magis E-mobility app/backend or a first-party station-detail/QR payload, then prove deterministic applicability to IT*ASS EVSE classes.",
+      "coverage": {"rankableEvse":0,"failClosedEvse":257},
+      "confidence":"high",
+      "lastInvestigated":"2026-09-21",
+      "lastChanged":"2026-09-21"
+    }
+  ],
+  "logicalCountersAfterKnownUnmergedDeltas": {
+    "currentPunPartyIds":92,
+    "treated":17,
+    "partialCurrent":23,
+    "setAside":1,
+    "unreconciledCurrentPunPartyIds":51,
+    "arithmeticCheck":true,
+    "note":"No status-count change in run226. Includes pending promotions ENB, IPE, FWY and ONS from runs 222/224/225; historical UTZ remains outside current-PUN arithmetic."
+  },
+  "coherence": {
+    "noDoubleCount":true,
+    "canonicalFileStillStale":true,
+    "safeMergeRequired":"Apply runs 222, 224, 225 and 226 atomically to full canonical content before changing canonical counters.",
+    "antiStagnation":"ASS public-web Pay Per Use numeric search is now exhausted; do not repeat without new app/backend/station-detail evidence."
+  }
+}
