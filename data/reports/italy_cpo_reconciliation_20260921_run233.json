@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 233,
+  "date": "2026-09-21",
+  "type": "cpo-reconciliation-delta",
+  "canonicalBase": "docs/italy-cpo-progress-2026-09.json",
+  "policy": {"failClosed": true, "noExtrapolation": true, "priorityOrder": ["network-wide","class-wide","station-level"], "atlanteLast": true},
+  "investigations": [
+    {
+      "historicalLabel": "GEWISS",
+      "canonicalName": "GEWISS JOINON",
+      "status": "partial",
+      "priority": "station-level",
+      "partyId": null,
+      "partyIdDisposition": "Do not create a new current PUN partyId until deterministic reconciliation with one of the 51 unreconciled current partyIds.",
+      "tariffModel": "station/service-specific prices exposed in JOINON Charge&Go; no current first-party national/class-wide tariff grid found",
+      "tariffChannel": "JOINON Charge&Go direct service; compatible third-party eMSP must remain separate",
+      "positiveEvidence": [
+        "GEWISS official JOINON Charge&Go page states the app geolocates JOINON stations and displays prices for access to the charging service.",
+        "GEWISS official LARGE NET page confirms JOINON Charge&Go is the public-charging e-driver app.",
+        "GEWISS official product documentation states JOINON stations can support JOINON Charge&Go/LARGE NET or other OCPP-compatible eMSPs, so third-party eMSP prices cannot be treated as direct GEWISS prices."
+      ],
+      "officialReferences": [
+        "https://www.gewiss.com/it/it/servizi/software/mobile-apps/joinon-charge-and-go",
+        "https://www.gewiss.com/it/it/servizi/piattaforme-app-joinon/large-net",
+        "https://www.gewiss.com/it/it/servizi/piattaforme-app-joinon"
+      ],
+      "negativePaths": [
+        "No official current national AC/DC/HPC price grid found on GEWISS JOINON public web surfaces.",
+        "Hardware/product pricing and third-party OCPP/eMSP pricing are not charging tariffs and must not be promoted."
+      ],
+      "coverage": {"rankableEvse": 0, "uncovered": "all current GEWISS/JOINON EVSE until partyId and station-price mapping are deterministic"},
+      "blockingCondition": "reconcile current PUN partyId -> GEWISS/JOINON station/EVSE, then extract JOINON Charge&Go station price payload or equivalent first-party station tariff surface",
+      "resumeCondition": "new PUN/OCPI identity evidence or automatable JOINON Charge&Go/backend/QR price payload",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-21",
+      "lastChanged": "2026-09-21"
+    }
+  ],
+  "coherence": {
+    "currentPunPartyIds": 92,
+    "counterMutation": false,
+    "reason": "GEWISS is a historical review label without a deterministically reconciled current partyId; adding it as a 93rd CPO would double-count or invent inventory.",
+    "atlanteStillLast": true
+  }
+}
