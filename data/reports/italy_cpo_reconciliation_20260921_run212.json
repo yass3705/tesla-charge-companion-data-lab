@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-21",
+  "run": 212,
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "policy": {"failClosed": true, "priorityOrder": ["network-wide","class-wide","station-level"], "atlante": "setAside-last", "noExtrapolation": true},
+  "investigations": [
+    {
+      "canonicalName": "Axpo Energy Solutions Italia",
+      "status": "partial",
+      "priority": "station-level",
+      "evidence": [
+        "Current PUN-derived/Pienotto surfaces expose Axpo stations but no current deterministic network-wide tariff was established.",
+        "A legacy third-party/OpenChargeMap-derived Axpo Tecnopolo Olivetti value of 0.45 EUR/kWh is explicitly old (last verified 2021) and is prohibited from promotion."
+      ],
+      "negativePaths": ["network-wide/current official tariff not found in this pass"],
+      "blockingCondition": "current first-party direct/ad-hoc tariff publication or deterministic IT*Axpo EVSE/station -> direct tariff mapping",
+      "coverage": {"rankableEvseAdded": 0},
+      "confidence": "medium-high",
+      "lastInvestigated": "2026-09-21"
+    },
+    {
+      "canonicalName": "Beyfin",
+      "status": "partial",
+      "priority": "station-level",
+      "evidence": [
+        "Beyfin first-party material confirms at least one public-facing 22 kW charging installation at Marina di Pisa, but does not publish a deterministic current EV charging price.",
+        "No network-wide/class-wide direct EV tariff was established in this pass."
+      ],
+      "negativePaths": ["Beyfin fuel/gift-card pricing is unrelated to EV charging and must not be reused"],
+      "blockingCondition": "current EVSE identity plus first-party QR/payment/app/direct tariff payload or deterministic station mapping",
+      "coverage": {"rankableEvseAdded": 0},
+      "confidence": "medium",
+      "lastInvestigated": "2026-09-21"
+    }
+  ],
+  "coherence": {
+    "canonicalObserved": {"currentPunPartyIds": 92, "currentPunNamedInCanonical": 41, "treated": 13, "partialCurrent": 27, "setAside": 1, "unreconciled": 51},
+    "arithmeticCheck": "13 + 27 + 1 + 51 = 92",
+    "knownCanonicalLag": true,
+    "safeCorrectionDeferred": "Do not overwrite the detailed canonical from a truncated connector response; preserve this delta for deterministic merge/rebuild.",
+    "aliasDoubleCountIntroduced": false
+  },
+  "next": "Continue unreconciled network/class-wide candidates; defer Axpo/Beyfin station-level; Atlante last."
+}
