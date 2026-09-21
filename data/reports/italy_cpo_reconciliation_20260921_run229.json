@@ -1,0 +1,40 @@
+{
+  "run": 229,
+  "country": "IT",
+  "date": "2026-09-21",
+  "policy": {"failClosed": true, "priority": "network/class-wide before station-level", "atlante": "last"},
+  "canonicalObserved": {"path": "docs/italy-cpo-progress-2026-09.json", "currentPunPartyIds": 92, "publishedCounters": {"treated": 13, "partialCurrent": 27, "setAside": 1, "unreconciled": 51}, "note": "published canonical is behind validated deltas; do not destructively overwrite from truncated connector response"},
+  "investigations": [
+    {
+      "partyId": "CPO",
+      "canonicalName": "Nucleo / Special Concepts",
+      "status": "partial",
+      "priority": "station-level",
+      "inventory": {"evse": 160},
+      "positiveEvidence": [
+        "Coop Liguria public charging project is operated in collaboration with Nucleo - Special Concepts under Coop Power branding.",
+        "Published Coop Power host tariffs are 0.39 EUR/kWh for lower-power/approximately 100 km charging and 0.49 EUR/kWh for higher-power/approximately 750 km charging; contemporary technical coverage identifies AC up to 22 kW and DC ultrafast up to 160 kW at these Coop sites."
+      ],
+      "decision": "Do not promote 0.39/0.49 EUR/kWh to all IT*CPO EVSE. The evidence establishes a deterministic Coop Power host subset, not a network-wide Nucleo tariff. Resolve IT*CPO EVSE to Coop Power locations/host and connector class before ranking.",
+      "coveredSubset": "Coop Power sites can become rankable after deterministic IT*CPO EVSE-to-Coop-site mapping and confirmation of current price at that site.",
+      "uncoveredSubset": "All other Nucleo/Special Concepts IT*CPO EVSE remain fail-closed.",
+      "blockingCondition": "deterministic IT*CPO EVSE -> host/site -> direct tariff mapping, preferably QR/backend/PUN/first-party",
+      "negativePaths": ["network-wide Nucleo tariff extrapolation", "treating Coop Power host tariff as universal Nucleo price"],
+      "confidence": "high"
+    },
+    {
+      "partyId": "BPA",
+      "canonicalName": "ElectriEase",
+      "status": "partial",
+      "priority": "station-level",
+      "inventory": {"evse": 124},
+      "positiveEvidence": ["PUN/Pienotto examples confirm active IT*BPA EVSE under ELECTRIEASE SRL."],
+      "decision": "No direct first-party universal tariff established. Third-party prices (for example Seety) are eMSP/payment offers and must not be promoted as ElectriEase direct CPO prices.",
+      "blockingCondition": "first-party BeaglePlug/ElectriEase tariff payload or deterministic IT*BPA EVSE-to-direct-price mapping",
+      "negativePaths": ["Seety 0.73 EUR/kWh as direct CPO tariff", "T-Carica partner prices as BPA network tariff"],
+      "confidence": "high"
+    }
+  ],
+  "coherence": {"noAliasPromotion": true, "noNewPartyId": true, "noCounterChange": true, "currentArithmeticStill": "92 = logical treated/partial/setAside/unreconciled totals after prior deltas; this run only refines station-level evidence"},
+  "next": "Continue remaining network/class-wide candidates if any remain after validated deltas; otherwise prioritize largest station-level scopes. Atlante remains last."
+}
