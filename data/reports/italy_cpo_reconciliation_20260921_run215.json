@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 2,
+  "country": "IT",
+  "asOf": "2026-09-21",
+  "run": 215,
+  "canonicalBaseline": "docs/italy-cpo-progress-2026-09.json",
+  "policy": {"failClosed":true,"priorityOrder":["network-wide","class-wide","station-level"],"atlante":"setAside-last","noExtrapolation":true,"directVsRoamingStrict":true},
+  "changes": [
+    {
+      "family":"Eurospin Italia operating companies",
+      "historicalCpoLabels":["Spesa Intelligente Spa","EUROSPIN TIRRENICA S.P.A.","EUROSPIN LAZIO SPA","Eurospin Sicilia S.p.a. a Socio Unico","Eurospin Puglia S.p.A."],
+      "status":"partial",
+      "priority":"station-level",
+      "tariffModel":"no current deterministic Eurospin network-wide/class-wide EV charging tariff found; do not merge the five legal operating companies into one tariff CPO solely because they share the Eurospin retail brand",
+      "officialCorporateEvidence":{"source":"https://www.eurospin.it/gruppo-eurospin/","finding":"Eurospin Italia identifies five distinct Italian operating companies: Spesa Intelligente, Eurospin Tirrenica, Eurospin Lazio, Eurospin Puglia and Eurospin Sicilia."},
+      "historicalPunEvidence":{"source":"Adiconsum May 2026 observatory / PUN list dated 2026-01-13","counts":{"Spesa Intelligente Spa":"26/26","EUROSPIN TIRRENICA S.P.A.":"22/22","EUROSPIN LAZIO SPA":"14/14","Eurospin Sicilia S.p.a. a Socio Unico":"8/10","Eurospin Puglia S.p.A.":"3/8"}},
+      "negativeEvidence":["Current Eurospin public store pages and corporate pages do not expose a deterministic EV charging tariff grid applicable to all five operating companies.","Shared Eurospin branding is insufficient evidence for tariff identity or a common CPO backend."],
+      "coverage":{"rankableEvse":0,"failClosedScope":"all current EVSE belonging to these legal CPO identities until current partyIds and direct tariff mappings are reconciled"},
+      "blockingCondition":"reconcile each legal company to current 2026-09 PUN partyId/EVSE inventory, then obtain direct station/EVSE tariff through QR/payment/backend or a first-party tariff publication; do not infer across subsidiaries",
+      "confidence":"high",
+      "lastInvestigated":"2026-09-21",
+      "lastChanged":"2026-09-21",
+      "history":["Run215 closed the network/class-wide hypothesis for the Eurospin family and deferred the five legal CPO identities to station-level. No price was inferred and no legal entity was deduplicated into another without partyId evidence."]
+    }
+  ],
+  "coherence": {
+    "canonicalFileObserved":{"currentPunPartyIds":92,"treated":13,"partialCurrent":27,"setAside":1,"unreconciled":51,"inventoryComplete":false},
+    "knownReportDeltas":"Runs 203-214 remain authoritative deltas where not yet merged into the canonical; run207 alone establishes expected 18 treated + 26 partial + 1 setAside + 47 unreconciled after known deltas through run207.",
+    "thisRun":{"nominalCounterChange":0,"reason":"current 2026-09 partyIds for the five Eurospin legal entities are not yet deterministically recovered; historical labels must not be subtracted from the 92-party current inventory by assumption"},
+    "aliasDoubleCountDetected":false,
+    "canonicalWriteStatus":"not destructively rewritten because current canonical is incomplete and connector fetch is truncated; delta persisted separately"
+  },
+  "next":{"action":"Continue unreconciled network/class-wide candidates first; for Eurospin family resume only after current partyId/EVSE identity is recovered.","atlante":"remain last"}
+}
