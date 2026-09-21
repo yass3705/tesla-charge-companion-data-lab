@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-21",
+  "run": 232,
+  "purpose": "Persist a non-destructive Italy CPO reconciliation delta while the canonical file remains incomplete/truncated through the connector.",
+  "canonicalTarget": "docs/italy-cpo-progress-2026-09.json",
+  "changes": [
+    {
+      "canonicalName": "Y&F / YourFill",
+      "historicalLabel": "Y&F Srl",
+      "status": "partial",
+      "priority": "station-level",
+      "tariffChannel": "direct CPO via proprietary YourFill/YF app; roaming inventory must remain separated",
+      "positiveEvidence": [
+        "Y&F first-party site identifies Y&F as a registered CPO and YOUR FILL as its charging brand.",
+        "First-party YourFill documentation states its proprietary app exposes charging points and supports payment.",
+        "Current App Store description states users can consult the tariff applied for the selected charging point before/while starting a charge."
+      ],
+      "negativeEvidence": [
+        "No current first-party public national/network-wide EUR/kWh grid was found on the public Y&F/YourFill tariff/FAQ surfaces inspected.",
+        "The app advertises access to more than 10,000 charging points, so app-visible prices cannot be assumed to belong to Y&F-owned CPO EVSE without deterministic identity mapping.",
+        "Business-page revenue examples are host economics and are not end-user charging tariffs."
+      ],
+      "tariffModel": "station/point-specific tariff exposed in app; no deterministic network-wide/class-wide direct price proven",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedScope": "all current Y&F-owned PUN EVSE until partyId/EVSE -> YourFill point -> direct tariff payload is deterministic"
+      },
+      "blockingCondition": "Recover current PUN partyId/EVSE identities for Y&F and a first-party YourFill app/backend/QR payload mapping each owned EVSE/connector to its direct tariff; do not promote roaming/eMSP prices.",
+      "confidence": "high",
+      "officialReferences": [
+        "https://www.y-f.it/yf-e-un-operatore-di-punti-di-ricarica-cpo/",
+        "https://www.yourfill.it/",
+        "https://www.yourfill.it/faq/",
+        "https://apps.apple.com/it/app/yourfill/id6446286777"
+      ],
+      "lastInvestigated": "2026-09-21",
+      "lastChanged": "2026-09-21",
+      "history": [
+        "2026-09-21: classified as station-level after first-party review; public national/class-wide tariff hypothesis exhausted; app tariff surface identified as deterministic next path."
+      ]
+    }
+  ],
+  "coherence": {
+    "counterMutation": false,
+    "reason": "Y&F is a historical review label not yet deterministically reconciled to one of the 51 unnamed current PUN partyIds in the canonical; this delta must not create a 93rd current partyId.",
+    "aliasDoubleCountIntroduced": false
+  },
+  "next": {
+    "action": "Continue remaining unreconciled network/class-wide candidates first; when Y&F is reconciled to a current partyId, use YourFill app/backend point tariff mapping.",
+    "atlante": "remain setAside and last"
+  }
+}
