@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-21",
+  "run": 227,
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "purpose": "Historical-label reconciliation evidence; do not add a current PUN partyId without deterministic identity proof.",
+  "changes": [
+    {
+      "historicalLabel": "EUM Genossenschaft",
+      "canonicalName": "EUM Genossenschaft / Energie- und Umweltbetriebe Moos",
+      "partyId": null,
+      "status": "partial",
+      "priority": "station-level",
+      "tariffChannel": "direct/ad-hoc not publicly priced; roaming/eMSP offers must remain separate",
+      "positiveEvidence": [
+        "Current first-party EUM pages establish EUM as the local electricity distributor/seller in Moos in Passeier but do not publish a public EV charging tariff grid.",
+        "Current station-directory evidence identifies multiple EUM-branded charging sites, including AC 22 kW sites and a mixed site with AC 22 kW, DC 62 kW and HPC 175 kW.",
+        "At least one EUM site is reported as ad-hoc capable, but its direct ad-hoc price is unknown; displayed alternative prices are roaming/eMSP offers and cannot be promoted as EUM direct tariffs."
+      ],
+      "negativePathsClosed": [
+        "Do not reuse EUM household/member electricity supply prices (0.07/0.09 EUR/kWh plus VAT) as EV charging prices.",
+        "Do not infer a network-wide EV tariff from third-party roaming offers.",
+        "Do not create or merge a current PUN partyId until an EVSE/partyId identity is deterministically recovered from fresh PUN/OCPI/QR/backend evidence."
+      ],
+      "blockingCondition": "Recover current PUN/OCPI partyId and deterministic EVSE -> EUM direct QR/app/backend tariff payload; otherwise keep each EVSE fail-closed.",
+      "officialReferences": [
+        "https://www.eum.bz/de/",
+        "https://www.eum.bz/de/strom",
+        "https://www.eum.bz/de/strom/strom-detail/tarife-mitglieder"
+      ],
+      "coverage": {"rankableEvse": 0, "failClosedEvse": "unknown until current partyId reconciliation"},
+      "confidence": "medium-high",
+      "lastInvestigated": "2026-09-21",
+      "lastChanged": "2026-09-21"
+    }
+  ],
+  "logicalCountersAfterKnownUnmergedDeltas": {
+    "currentPunPartyIds": 92,
+    "treated": 17,
+    "partialCurrent": 23,
+    "setAside": 1,
+    "unreconciledCurrentPunPartyIds": 51,
+    "arithmeticCheck": true,
+    "note": "EUM is retained as a historical review lead only and is not inserted into current-PUN arithmetic without deterministic partyId evidence. Known unmerged promotions ENB/IPE/FWY/ONS remain represented by runs 222/224/225."
+  },
+  "coherence": {
+    "noDoubleCount": true,
+    "canonicalFileStillStale": true,
+    "historicalLabelNotCountedAsIndependentCurrentCpo": true
+  }
+}
