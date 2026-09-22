@@ -1,0 +1,44 @@
+{
+  "country": "IT",
+  "run": 254,
+  "date": "2026-09-22",
+  "type": "cpo-reconciliation-and-tariff-classification",
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "changes": [
+    {
+      "partyIds": ["ESH", "GAS"],
+      "canonicalLineage": "Uattzy / UAU (E-Shore + GASGAS + EnerMia)",
+      "status": "partial",
+      "priority": "station-level",
+      "reason": "Current first-party Uattzy FAQ explicitly states the tariff is shown for each connector before charging and may vary by power, session duration and stall occupation time. Therefore no network-wide/class-wide tariff can safely be assigned to all IT*ESH or IT*GAS EVSE.",
+      "directChannel": "Uattzy app/account/RFID; connector-specific tariff displayed before start",
+      "roamingPolicy": "Third-party app/RFID prices are separate eMSP conditions and must not be promoted as direct CPO tariff.",
+      "coverage": {
+        "ESH": {"punEvse": 1018, "punStations": 343, "rankableEvse": 0, "failClosedEvse": 1018},
+        "GAS": {"punEvse": 277, "rankableEvse": 0, "failClosedEvse": 277}
+      },
+      "positiveEvidence": [
+        "https://www.uattzy.com/ — Uattzy is UAU public-charging brand; UAU was created from E-Shore, GASGAS and EnerMia; Uattzy is CPO/eMSP.",
+        "https://www.uattzy.com/faq/ — direct Uattzy tariff is displayed at each connector before charging; additional costs may apply; price can vary with power, duration and stall occupation.",
+        "Adiconsum May 2026 observatory corroborates Uattzy (GASGAS/E-Shore/EnerMia) as one current CPO lineage, but its reported app figures are not used as a deterministic EVSE tariff because first-party FAQ establishes connector-level variability."
+      ],
+      "negativePaths": [
+        "Do not apply Adiconsum aggregate/app average 0.56 EUR/kWh as a network tariff.",
+        "Do not reuse historical E-Shore/Enermia prices.",
+        "Do not merge ESH and GAS partyIds in PUN arithmetic until deterministic partyId migration/alias evidence exists."
+      ],
+      "resumeCondition": "Obtain automatable Uattzy connector/station payload (app/backend/QR/deeplink) mapping each IT*ESH and IT*GAS EVSE to the current direct connector tariff and any activation/parking/time fees.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-22"
+    }
+  ],
+  "coherence": {
+    "currentPunPartyIds": 92,
+    "nominalCountChange": 0,
+    "classificationChange": "ESH class-wide -> station-level; GAS remains station-level",
+    "aliasDecision": "UAU/Uattzy lineage proven, but ESH and GAS remain independent current PUN partyIds until migration evidence exists",
+    "canonicalDebtPreserved": ["LEE", "EUM", "ENB status/tariff updates from prior reports"],
+    "noDoubleCountIntroduced": true
+  },
+  "next": "Continue remaining genuine network/class-wide candidates before station-level work; CGS coverage proof is a priority. Atlante remains last."
+}
