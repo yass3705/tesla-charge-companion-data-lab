@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 249,
+  "date": "2026-09-22",
+  "type": "cpo-reconciliation",
+  "canonicalTarget": "docs/italy-cpo-progress-2026-09.json",
+  "progress": {
+    "newEvidence": [
+      {
+        "historicalLabel": "Enercom",
+        "identityState": "current CPO activity independently confirmed; current PUN partyId still unresolved",
+        "priority": "station-level-pending-partyid",
+        "positiveEvidence": [
+          "Comune di Casale Cremasco-Vidolasco, 2026-06-12/13: Enercom installed two new public charging stations, one already operational, each with two charging points.",
+          "Comune di Cremosano, 2026-06-16: Enercom completed two public stations, each with two charging points up to 22 kW; network described as twelve installed stations and expanding.",
+          "Comune di Crema current charging page identifies Enercom as an operator managing four Quick public stations."
+        ],
+        "accessEvidence": "Cremosano states stations are accessible through major charging platforms; this is not proof of a direct CPO tariff.",
+        "negativePaths": [
+          "Do not use Enercom electricity-supply retail tariffs as EV charging tariffs.",
+          "Do not use Portugal Enercom/Mobi.e tariff surfaces: unrelated market/entity context.",
+          "Do not reuse the 2020 EVWAY launch/free-promotion as a current direct price."
+        ],
+        "tariffModel": "no current deterministic direct/ad-hoc network price proven; station/EVSE mapping required unless a first-party current grid is found",
+        "blockingCondition": "Resolve the current IT*<partyId> EVSE prefix for Enercom from PUN/current station records, then inspect direct/ad-hoc payment surface per EVSE; roaming platform prices remain separated.",
+        "confidence": "high for CPO identity; unresolved for current partyId and direct tariff",
+        "lastInvestigated": "2026-09-22"
+      }
+    ],
+    "canonicalMergeBacklog": [
+      {"partyId":"LEE","canonicalName":"Leitner Energy","status":"partial","priority":"station-level","sourceReport":"data/reports/italy_cpo_reconciliation_20260922_run247.json"},
+      {"partyId":"EUM","canonicalName":"EUM Genossenschaft","status":"partial","priority":"station-level","sourceReport":"data/reports/italy_cpo_reconciliation_20260922_run248.json"}
+    ],
+    "expectedCountersAfterSafeMerge": {"currentPunPartyIds":92,"currentPunNamedInCanonical":43,"treated":13,"partialCurrent":29,"setAside":1,"unreconciledCurrentPunPartyIds":49,"arithmetic":"13 + 29 + 1 + 49 = 92"}
+  },
+  "coherence": {
+    "auditType":"full canonical/report/commit reconciliation checkpoint",
+    "canonicalObservedBeforeMerge":{"currentPunNamedInCanonical":41,"partialCurrent":27,"unreconciledCurrentPunPartyIds":51},
+    "issue":"The canonical has not yet absorbed deterministic LEE and EUM reconciliations committed in runs 247 and 248. Treating the reports as additive while leaving canonical counters unchanged would violate the source-of-truth rule.",
+    "safeDecision":"Do not count Enercom as an additional current partyId until its PUN prefix is proven. LEE and EUM must replace two unreconciled slots, not increase the 92-party inventory.",
+    "noDoubleCount":true,
+    "atlante":"unchanged setAside-last"
+  },
+  "next":"Merge LEE and EUM into the canonical atomically, reducing unreconciled from 51 to 49; then continue current PUN partyId resolution by EVSE footprint. Enercom resumes only on partyId/EVSE evidence; do not repeat generic tariff search."
+}
