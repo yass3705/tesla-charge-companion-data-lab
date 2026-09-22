@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 252,
+  "asOf": "2026-09-22",
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "changes": [
+    {
+      "partyId": "ENB",
+      "canonicalName": "ENERBROKER S.R.L. / R-ev",
+      "previousStatus": "partial",
+      "proposedStatus": "treated",
+      "priority": "class-wide",
+      "inventory": {"evse": 87, "stations": 73, "source": "current PUN canonical inventory"},
+      "identityEvidence": [
+        "PUN-derived operator listings identify ENERBROKER S.R.L. (R-ev) as the CPO; historical active inventory 84/84 at 2025-07-31.",
+        "R-Gruppo company profile states EnerBroker operates in electric mobility with its R-ev brand and builds charging infrastructure.",
+        "R-ev app publisher is Enerbroker SRL; the app distinguishes 'our R-ev stations' from interoperable third-party stations."
+      ],
+      "tariffModel": "current direct R-ev class-wide tariff by connector/power class; roaming third-party prices excluded",
+      "tariffs": [
+        {"class":"AC <=22 kW","eurPerKwh":0.55,"vatIncluded":true},
+        {"class":"DC <=150 kW","eurPerKwh":0.75,"vatIncluded":true},
+        {"class":"HPC >150 kW","eurPerKwh":0.85,"vatIncluded":true}
+      ],
+      "classThresholdEvidence": "R-ev current terms define AC as Type2 <=22 kW, DC CCS2 <=150 kW and HPC CCS2 >150 kW. A current R-ev company publication announces new direct prices AC 0.55, DC 0.75 and HPC 0.85 EUR/kWh.",
+      "fees": {
+        "extraStay": "Current terms publish 0.25 EUR/min; AC has a 23:00-07:00 exception with edge-case rules; DC/HPC applies 24h. Keep exact terms semantics when exporting."
+      },
+      "coverage": {"rankableEvse":87,"failClosedEvse":0},
+      "confidence":"high",
+      "negativeEvidence": [
+        "Do not use Enel X/eMSP roaming prices for R-ev.",
+        "Do not use prices displayed for third-party stations in the R-ev app.",
+        "Older R-ev Wallet values 0.65/0.85/0.89 are superseded by the current announced AC/DC/HPC prices; retain them only as historical evidence."
+      ],
+      "officialReferences": [
+        "https://www.r-ev.it/tariffe/",
+        "https://www.r-ev.it/termini-di-utilizzo-app/",
+        "https://www.r-ev.it/termini-di-utilizzo-abbonamenti/"
+      ],
+      "lastInvestigated":"2026-09-22",
+      "lastChanged":"2026-09-22"
+    }
+  ],
+  "coherence": {
+    "canonicalBefore": "13 treated + 27 current partial + 1 setAside + 51 unreconciled = 92; canonical still has previously recorded LEE/EUM consolidation debt",
+    "effectOfThisRunOnly": "ENB moves partial -> treated; total named-party arithmetic unchanged",
+    "canonicalWriteDeferred": "Full canonical content returned through connector is truncated; unsafe to replace it from a partial payload. This report is the atomic source for the next lossless canonical consolidation.",
+    "noDoubleCount": true
+  },
+  "next": [
+    "Losslessly consolidate ENB plus previously proven LEE/EUM into the canonical when full canonical bytes are available.",
+    "Continue remaining class-wide candidates before station-level work; Atlante remains last."
+  ]
+}
