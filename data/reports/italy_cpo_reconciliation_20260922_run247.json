@@ -1,0 +1,46 @@
+{
+  "country": "IT",
+  "run": 247,
+  "asOf": "2026-09-22",
+  "focus": "reconcile current PUN partyIds with historically validated CPO identities before station-level deep dives",
+  "progress": {
+    "resolvedPartyId": "LEE",
+    "canonicalName": "Leitner Energy",
+    "status": "partial",
+    "priority": "station-level",
+    "identityEvidence": {
+      "firstParty": "Leitner Energy explicitly states that it acts as CPO and manages charging infrastructure/billing; station owners can define their own EUR/kWh tariff and differentiated tariffs.",
+      "evseAnchor": "IT*LEE*E2200081 and IT*LEE*E2200082 observed at Leitner Energy Kronplatz, Bruneck, with public ad-hoc charging reported.",
+      "identityConfidence": "high"
+    },
+    "tariffModel": "heterogeneous owner-defined station tariffs; no deterministic network-wide/class-wide retail price",
+    "tariffChannel": "Leitner CPO settlement/roaming and public payment; retail driver price can depend on eMSP, while station owner defines CPO-side tariff",
+    "blockingCondition": "deterministic IT*LEE EVSE/station -> direct/ad-hoc payment surface -> current retail tariff mapping",
+    "negativeFindings": [
+      "Do not infer a national Leitner EUR/kWh tariff: first-party documentation explicitly says station owners control/modify tariffs.",
+      "Do not use eMSP roaming retail prices as Leitner direct CPO prices."
+    ],
+    "officialReferences": [
+      "https://www.leitnerenergy.it/green-mobility-cars",
+      "https://www.leitnerenergy.it/green-mobility-cars/settore-alberghiero",
+      "https://www.leitnerenergy.it/green-mobility-cars/mobilita-elettrica-per-le-aziende"
+    ],
+    "exampleEvseIds": ["IT*LEE*E2200081", "IT*LEE*E2200082"],
+    "coverage": {"rankableEvse": 0, "failClosedScope": "all IT*LEE EVSE until deterministic direct-price mapping"},
+    "resumeCondition": "inspect ad-hoc webpage/QR/payment endpoint for IT*LEE examples and generalize only where an explicit deterministic rule is proven",
+    "lastInvestigated": "2026-09-22"
+  },
+  "canonicalDelta": {
+    "before": {"currentPunPartyIds": 92, "currentPunNamedInCanonical": 41, "partialCurrent": 27, "setAside": 1, "unreconciledCurrentPunPartyIds": 51},
+    "afterExpected": {"currentPunPartyIds": 92, "currentPunNamedInCanonical": 42, "partialCurrent": 28, "setAside": 1, "unreconciledCurrentPunPartyIds": 50},
+    "arithmetic": "13 treated + 28 current partial + 1 setAside + 50 unreconciled = 92",
+    "noDoubleCount": true,
+    "note": "This additive reconciliation report is authoritative evidence for the next safe canonical rebuild/update; no synthetic partyId was created. LEE is anchored by observed IT*LEE EVSE identifiers."
+  },
+  "antiRegression": [
+    "Leitner Energy is a real CPO identity, not merely an installer/host label.",
+    "LEE is the resolved partyId anchor for Leitner Energy.",
+    "Leitner must remain station-level unless first-party evidence establishes a deterministic global/class-wide tariff.",
+    "Do not repeat generic national-tariff research without new evidence; next investigation is the IT*LEE ad-hoc/QR/payment surface."
+  ]
+}
