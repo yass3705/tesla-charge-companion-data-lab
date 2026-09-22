@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 253,
+  "asOf": "2026-09-22",
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "changes": [
+    {
+      "partyId": "ASS",
+      "canonicalName": "AGSM AIM Smart Solutions / Magis Smart",
+      "previousStatus": "partial",
+      "proposedStatus": "partial",
+      "priorityBefore": "class-wide",
+      "priorityAfter": "station-level",
+      "inventory": {"evse":257,"stations":135,"source":"current PUN canonical inventory"},
+      "identityAndScopeEvidence": [
+        "Magis Smart announced on 2026-05-04 that the new Magis e-mobility platform is connected to 275 charging points in Verona, Vicenza, Brescia, Treviso and Gorizia.",
+        "Current first-party FAQ states Pay-per-Use is available, but its cost is calculated from tariffs shown in the app at the time of use after selecting the station/socket."
+      ],
+      "tariffModel": "current direct Pay-per-Use price exposed in Magis e-mobility app at station/socket selection; do not infer a network-wide AC/DC amount",
+      "subscriptionEvidence": [
+        {"plan":"Small","scope":"AC","eurPerKwh":0.60,"monthlyFeeEur":5},
+        {"plan":"Medium","scope":"AC","eurPerKwh":0.58,"monthlyFeeEur":10},
+        {"plan":"Large","scope":"AC","eurPerKwh":0.50,"monthlyFeeEur":20},
+        {"plan":"Flat DC","scope":"DC","eurPerKwh":0.74,"monthlyFeeEur":10}
+      ],
+      "fees": {"occupation":"0.12 EUR/min under current Magis terms; AC up to 22 kW 07:00-23:00; DC up to 50 kW and HPC up to 350 kW 24h, subject to the terms' grace/end-of-session provisions"},
+      "coverage": {"rankableEvse":0,"failClosedEvse":257},
+      "blockingCondition":"deterministic IT*ASS EVSE/station -> Magis app direct Pay-per-Use tariff payload, or a current first-party publication giving standard Pay-per-Use values with exact scope",
+      "negativeEvidence": [
+        "Do not promote subscription prices as standard direct/ad-hoc Pay-per-Use prices.",
+        "Do not reuse 2023/2024 AGSM AIM tariff values as current Pay-per-Use prices.",
+        "Do not infer standard AC/DC Pay-per-Use amounts from the existence of AC/DC subscription discounts."
+      ],
+      "officialReferences": [
+        "https://www.aimmobilita.it/it/web/magis-smart/agsmaim_e-mobility/abbonamenti",
+        "https://www.magissmart.it/nuova-app-magis-e-mobility",
+        "https://www.magissmart.it/e-mobility/app/termini.php"
+      ],
+      "confidence":"high",
+      "lastInvestigated":"2026-09-22",
+      "lastChanged":"2026-09-22"
+    },
+    {
+      "partyIds": ["ESH","GAS"],
+      "canonicalName": "Uattzy / UAU lineage (E-Shore, GASGAS, EnerMia)",
+      "status":"partial",
+      "evidenceState":"first-party Uattzy confirms UAU was formed from E-Shore, GASGAS and EnerMia and Uattzy is both CPO and eMSP; September 2026 reporting states >3000 points installed/managed. This proves lineage but not a deterministic current tariff for each legacy PUN partyId.",
+      "decision":"retain ESH/GAS as current PUN partyIds until deterministic alias/EVSE migration evidence exists; do not merge merely from corporate lineage",
+      "blockingCondition":"current Uattzy first-party tariff payload plus deterministic ESH/GAS EVSE mapping or explicit partyId migration/alias evidence",
+      "references":["https://www.uattzy.com/"],
+      "lastInvestigated":"2026-09-22"
+    }
+  ],
+  "coherence": {
+    "canonicalObserved":"13 treated + 27 current partial + 1 setAside + 51 unreconciled = 92; historical UTZ excluded from current arithmetic",
+    "knownConsolidationDebt":"LEE and EUM deterministic reconciliations plus ENB partial->treated are recorded in prior atomic reports but not yet losslessly merged into canonical",
+    "effectOfThisRunOnly":"ASS remains partial but moves class-wide -> station-level; no party count change. ESH/GAS lineage is documented without unsafe alias merge.",
+    "noDoubleCount":true,
+    "canonicalWriteDeferred":"Connector fetch returns canonical content truncated; full replacement remains unsafe. Atomic report preserves this run losslessly."
+  },
+  "next":[
+    "Continue remaining network/class-wide candidates before station-level work.",
+    "For ASS, skip generic tariff research next time and go directly to Magis app/backend station tariff extraction when station-level phase starts.",
+    "For ESH/GAS, do not merge aliases until explicit current partyId/EVSE migration evidence is obtained.",
+    "Atlante remains last."
+  ]
+}
