@@ -1,0 +1,42 @@
+{
+  "run": 236,
+  "country": "IT",
+  "asOf": "2026-09-22",
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "partyId": "CGS",
+  "canonicalName": "Cogeser Energia",
+  "status": "partial",
+  "priorityBefore": "class-wide",
+  "priorityAfter": "station-level",
+  "inventory": {"evse": 60},
+  "decision": "Do not promote the published Quick Cogeser Energia AC tariff to all IT*CGS EVSE. Cogeser first-party material now proves that the operator's own public network is no longer AC-only: a Cogeser station inaugurated in Inzago on 2025-11-25 contains one DC 25 kW charger plus AC 22 kW connectors. The current tariff page publishes 0.67 EUR/kWh specifically for 'Quick Cogeser Energia' in AC and separately publishes non-Cogeser roaming AC/DC prices; it does not publish a direct/spot DC price for Cogeser-owned DC. Therefore current IT*CGS inventory requires EVSE/station-level classification before rankability.",
+  "publishedDirectEvidence": [
+    {"scope":"Quick Cogeser Energia AC","eurPerKwh":0.67,"vatIncluded":true,"validFrom":"2025-10-01"},
+    {"scope":"Cogeser network with bill debit for eligible customers","eurPerKwh":0.49,"vatIncluded":true,"validFrom":"2025-10-01","eligibility":"customers with charging debit on Cogeser electricity bill"}
+  ],
+  "excludedRoamingEvidence": [
+    {"scope":"non-Cogeser roaming AC","eurPerKwh":0.73},
+    {"scope":"non-Cogeser roaming DC","eurPerKwh":0.89}
+  ],
+  "positiveEvidence": [
+    "Current Cogeser public-charging tariff page states Quick Cogeser Energia AC = 0.67 EUR/kWh VAT included from 2025-10-01.",
+    "Same page states 0.49 EUR/kWh on the Cogeser network for eligible customers using electricity-bill debit; this is conditional and must not be used as anonymous spot/ad-hoc price.",
+    "Cogeser first-party news dated 2025-11-25 documents an owned/realized Inzago station with a Circontrol Rapid 25 kW DC charger and a Circontrol eVolve 22 kW AC charger, proving the present network contains DC as well as AC.",
+    "Cogeser documents QR-code spot charging, so a station-level direct/ad-hoc surface exists in principle."
+  ],
+  "negativePaths": [
+    "Do not infer Cogeser-owned DC direct price from the published 0.89 EUR/kWh non-Cogeser roaming DC tariff.",
+    "Do not apply 0.67 EUR/kWh to DC EVSE; official wording scopes it to Quick Cogeser Energia AC.",
+    "Do not apply conditional 0.49 EUR/kWh bill-debit price to anonymous/direct users without eligibility."
+  ],
+  "coverage": {"rankableEvse":0,"failClosedEvse":60,"note":"Conservative until the current 60 IT*CGS EVSE are deterministically split by AC/DC and direct channel. AC subset can then be promoted at 0.67 EUR/kWh where Quick Cogeser identity is proven; DC subset remains fail-closed until its direct price is recovered."},
+  "blockingCondition": "Map current IT*CGS EVSE to Cogeser station/connectors and split AC Quick versus DC. Promote only deterministically identified Quick Cogeser AC at 0.67 EUR/kWh. For Cogeser-owned DC, obtain QR/direct-payment/backend or first-party station tariff before rankability.",
+  "officialReferences": [
+    "https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico",
+    "https://www.cogeserenergia.it/it/inzago-inaugurata-nuova-stazione-ricarica-auto-elettriche"
+  ],
+  "confidence": "high",
+  "coherence": {"partyCountDelta":0,"aliasDelta":0,"doubleCountIntroduced":false,"canonicalTotalExpected":92},
+  "canonicalPatchRequired": {"partyId":"CGS","set":{"priority":"station-level","coverage":{"rankableEvse":0,"failClosedEvse":60},"blockingCondition":"split current IT*CGS EVSE AC/DC; 0.67 EUR/kWh applies only to proven Quick Cogeser AC; recover direct Cogeser DC tariff separately"}},
+  "history": ["2026-09-22: first-party 2025-11-25 Inzago evidence proves current Cogeser network includes DC; class-wide AC assumption invalidated and CGS moved to station-level fail-closed pending deterministic EVSE split."]
+}
