@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 255,
+  "asOf": "2026-09-22",
+  "focus": ["CGS"],
+  "canonicalSource": "docs/italy-cpo-progress-2026-09.json",
+  "findings": [
+    {
+      "partyId": "CGS",
+      "canonicalName": "Cogeser Energia",
+      "status": "partial",
+      "priority": "class-wide",
+      "inventory": {"punEvse": 60, "officialStationsDec2025": 29},
+      "model": "mixed Cogeser-owned AC Quick plus at least one Cogeser-owned DC Rapid; direct tariff cannot be promoted network-wide",
+      "coveredPopulation": {
+        "rule": "IT*CGS EVSE deterministically identified as Cogeser Quick AC are rankable at 0.67 EUR/kWh VAT included",
+        "priceEurPerKwh": 0.67,
+        "validFrom": "2025-10-01",
+        "channel": "direct Cogeser / spot QR; customer tariff page"
+      },
+      "uncoveredPopulation": {
+        "rule": "Cogeser-owned DC EVSE remain fail-closed until an exact current direct Cogeser DC tariff is published or exposed by QR/app/backend",
+        "knownExample": "Inzago Via Leonardo Sciascia: Circontrol Rapid 25 kW DC, first Cogeser-owned DC installation, inaugurated 2025-11-25",
+        "reason": "Current official tariff page lists 0.67 EUR/kWh only for 'Quick Cogeser Energia' AC. Its 0.89 EUR/kWh DC row explicitly applies to non-Cogeser roaming stations, so it cannot be transposed to Cogeser's own DC charger."
+      },
+      "officialReferences": [
+        "https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico",
+        "https://www.cogeserenergia.it/it/inzago-inaugurata-nuova-stazione-ricarica-auto-elettriche"
+      ],
+      "negativePaths": [
+        "Do not assume all 60 IT*CGS EVSE are Quick AC: official Cogeser evidence proves a Cogeser-owned 25 kW DC charger exists.",
+        "Do not use 0.89 EUR/kWh as Cogeser direct DC price: official tariff table scopes it to non-Cogeser roaming DC.",
+        "Do not reuse older Neogy/Cogeser 0.55/0.67/0.73 tariff PDF as current direct pricing without current applicability proof."
+      ],
+      "resumeCondition": "Use PUN connector/current/power data to split IT*CGS AC vs DC deterministically. Promote AC Quick subset at 0.67 EUR/kWh. For DC, inspect Cogeser QR/app/backend for current direct tariff; otherwise retain fail-closed.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-22",
+      "lastChanged": "2026-09-22"
+    }
+  ],
+  "coherence": {
+    "canonicalCurrentPunPartyIds": 92,
+    "nominalCounterChangeThisRun": 0,
+    "aliasChangeThisRun": 0,
+    "classificationChange": "CGS remains partial/class-wide, but all-Quick hypothesis is disproved and covered/uncovered populations are now explicit.",
+    "knownCanonicalDebtPreserved": ["LEE reconciliation", "EUM reconciliation", "ENB treated update", "ESH station-level reclassification", "IOY station-level reclassification", "ASS station-level reclassification"],
+    "noDoubleCountIntroduced": true
+  }
+}
