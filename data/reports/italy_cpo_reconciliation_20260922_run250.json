@@ -1,0 +1,53 @@
+{
+  "country": "IT",
+  "run": 250,
+  "date": "2026-09-22",
+  "scope": "remaining CPO reconciliation; network/class-wide before station-level",
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalSnapshot": {
+    "currentPunPartyIds": 92,
+    "treated": 13,
+    "partialCurrent": 27,
+    "setAside": 1,
+    "unreconciledCurrentPunPartyIds": 51,
+    "note": "Canonical still has known merge debt for LEE/EUM evidence from prior runs; do not change arithmetic without reconciling those partyIds against the current PUN inventory."
+  },
+  "changes": [
+    {
+      "partyId": "IOY",
+      "canonicalName": "IONITY",
+      "status": "partial",
+      "previousPriority": "network-wide",
+      "priority": "station-level",
+      "inventoryFromCanonical": {"evse": 322, "stations": 44},
+      "tariffChannel": "direct CPO/ad-hoc; IONITY App without subscription, QR/payment website, or on-site contactless terminal; MSP pricing excluded",
+      "tariffModel": "location-specific direct price; no Italy-wide deterministic amount may be promoted",
+      "positiveEvidence": [
+        "IONITY Support states that direct-customer kWh pricing depends on country and the specific station location and may vary between locations even within one country.",
+        "Exact price is displayed in IONITY App for the station, in the QR/payment website, or on the contactless terminal before charging.",
+        "IONITY's July 2026 pricing communication gives Italy direct/ad-hoc only as an upper bound (up to 0.91 EUR/kWh), not a universal station price."
+      ],
+      "negativePaths": [
+        "Do not promote 0.79 EUR/kWh observed at Affi to all IT*IOY EVSE.",
+        "Do not promote 0.91 EUR/kWh as a universal Italy tariff; official wording is 'up to'.",
+        "Do not use subscription/eMSP prices as direct CPO price."
+      ],
+      "coverage": {"rankableEvse": 0, "failClosedEvse": 322},
+      "blockingCondition": "deterministic IT*IOY EVSE/station -> IONITY station page/app/QR/payment/terminal direct-price mapping",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-22",
+      "officialReferences": [
+        "https://support.ionity.eu/faqs/how-much-does-it-cost-to-charge-at-ionity",
+        "https://www.ionity.eu/no/stories/why-are-charging-prices-changing-across-europe"
+      ]
+    }
+  ],
+  "coherence": {
+    "arithmeticChanged": false,
+    "aliasChanged": false,
+    "priorityCorrection": "IOY removed from network-wide/class-wide candidate queue and moved to station-level deferred queue",
+    "noTariffExtrapolation": true,
+    "atlanteStillLast": true
+  },
+  "next": "Continue unresolved current PUN identities by descending EVSE footprint; for known candidates ESH/ASS/ENB/CGS test deterministic network/class-wide proof before station-level. Do not repeat generic IONITY tariff research; resume IOY only with deterministic station mapping."
+}
