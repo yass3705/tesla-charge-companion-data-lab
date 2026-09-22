@@ -1,0 +1,36 @@
+{
+  "run": 235,
+  "country": "IT",
+  "asOf": "2026-09-22",
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "partyId": "ENB",
+  "canonicalName": "ENERBROKER S.R.L. / R-ev",
+  "status": "partial",
+  "priorityBefore": "class-wide",
+  "priorityAfter": "station-level",
+  "inventory": {"evse": 87, "stations": 73},
+  "decision": "Do not promote the published R-ev WALLET AC/DC/HPC grid as direct CPO/ad-hoc pricing for IT*ENB. R-ev is both an eMSP/interoperability service and an ENB-linked charging brand; the published app terms explicitly cover public charging points compatible with the app, including interoperable non-R-ev stations. Therefore the WALLET grid is an eMSP/app tariff unless a deterministic first-party proof ties it to direct/ad-hoc charging on IT*ENB EVSE.",
+  "publishedR_evWalletGrid": [
+    {"class":"AC","eurPerKwh":0.65},
+    {"class":"DC <=150 kW","eurPerKwh":0.85},
+    {"class":"HPC >150 kW","eurPerKwh":0.89}
+  ],
+  "feesObservedInR_evAppTerms": {"extraStayEurPerMin":0.25,"ACNightException":"23:00-07:00 subject to published conditions","DC_HPC":"24h"},
+  "positiveEvidence": [
+    "Current R-ev terms publish WALLET 0.65/0.85/0.89 EUR/kWh by AC/DC/HPC class.",
+    "R-ev app terms state the service covers public charging stations compatible with the app, directly or via third parties.",
+    "R-ev App Store description explicitly says charging is possible at non-R-ev stations participating in interoperability.",
+    "R-Gruppo company profile links EnerBroker to the R-ev brand and charging-infrastructure activity.",
+    "Roaming-network documentation maps R-ev to IT-ENB, corroborating the identity linkage but not proving direct CPO tariff equivalence."
+  ],
+  "negativePaths": [
+    "Published WALLET grid cannot by itself be treated as direct CPO/ad-hoc IT*ENB pricing because it is an app/eMSP tariff surface with roaming scope.",
+    "Third-party eMSP tariffs for R-ev/ENB are corroboration only and must not be promoted."
+  ],
+  "coverage": {"rankableEvse":0,"failClosedEvse":87},
+  "blockingCondition": "Obtain deterministic IT*ENB EVSE -> direct/ad-hoc price evidence from QR/payment surface, direct station backend, PUN tariff payload, or first-party statement explicitly applying a tariff to ENB-operated/R-ev-owned stations independently of roaming/eMSP pricing.",
+  "confidence": "high",
+  "coherence": {"partyCountDelta":0,"aliasDelta":0,"doubleCountIntroduced":false,"canonicalTotalExpected":92},
+  "canonicalPatchRequired": {"partyId":"ENB","set":{"priority":"station-level","coverage":{"rankableEvse":0,"failClosedEvse":87},"blockingCondition":"deterministic direct/ad-hoc IT*ENB tariff evidence; R-ev WALLET grid is eMSP/app scope and must remain separate"}},
+  "history": ["2026-09-22: corrected channel classification after recrossing first-party R-ev app terms and interoperability scope; no tariff extrapolation." ]
+}
