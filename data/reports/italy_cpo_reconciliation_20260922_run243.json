@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 243,
+  "asOf": "2026-09-22",
+  "purpose": "Reconcile historical Eurospin legal-entity labels before assigning any of the 51 unreconciled current PUN partyIds.",
+  "canonical": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "currentPunPartyIds": 92,
+    "treated": 13,
+    "partialCurrent": 27,
+    "setAside": 1,
+    "unreconciledCurrentPunPartyIds": 51,
+    "arithmeticCheck": true
+  },
+  "investigated": [
+    {
+      "labels": ["Spesa Intelligente", "Eurospin Tirrenica", "Eurospin Lazio", "Eurospin Sicilia", "Eurospin Puglia"],
+      "classification": "host/legal-entity labels; not promotable to independent CPO without partyId/EVSE operator proof",
+      "priority": "identity-reconciliation-before-tariff",
+      "positiveEvidence": [
+        "Eurospin sustainability material confirms EV charging infrastructure is installed at stores.",
+        "Current public evidence shows Eurospin-hosted charging can be operated by third-party CPOs: Electrip at Eurospin Valmontone; Ozzano municipality explicitly states the Eurospin site is among charging locations managed by different operators."
+      ],
+      "negativeEvidence": [
+        "No current official Eurospin/Spesa Intelligente direct/ad-hoc national tariff grid found.",
+        "No deterministic evidence that the historical regional Eurospin legal entities correspond one-to-one to current PUN CPO partyIds.",
+        "Store ownership/host identity must not be treated as CPO identity."
+      ],
+      "deduplicationDecision": "Do not create five independent CPO records from the historical labels. Resolve each current PUN partyId from EVSE/operator evidence first; where a Eurospin location is operated by an already-known CPO, retain the CPO and store Eurospin only as host/location metadata.",
+      "tariffDecision": "No Eurospin tariff is rankable from these labels. Use the actual CPO direct/ad-hoc tariff only after deterministic EVSE-to-CPO mapping.",
+      "resumeCondition": "Fresh PUN EVSE samples or first-party operator evidence tying a current IT*<partyId> to one of these legal entities as CPO, not merely site host.",
+      "confidence": "high"
+    }
+  ],
+  "sources": [
+    "https://www.eurospin.it/wp-content/uploads/Bilancio-Sostenibilita-2024.pdf",
+    "https://comune.ozzano.bo.it/de-de/servizi/mobilita-e-trasporti/stazione-di-ricarica-elettrica-929-51129-1-6f6fca70fba825ac6a281250e9343a21",
+    "https://www.guidautoelettrica.it/mappa-colonnine/electrip-valmontone-462367"
+  ],
+  "coherence": {
+    "counterChange": false,
+    "aliasAdded": false,
+    "newCpoAdded": false,
+    "doubleCountIntroduced": false,
+    "networkClassWideRemainingFromTheseLabels": 0
+  },
+  "next": "Continue resolving the 51 unreconciled current PUN partyIds by EVSE count descending. For each resolved identity, test current direct network/class-wide tariff before station-level investigation. Atlante remains last."
+}
