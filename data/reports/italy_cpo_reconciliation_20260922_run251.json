@@ -1,0 +1,59 @@
+{
+  "run": 251,
+  "date": "2026-09-22",
+  "scope": "Italy CPO V9 reconciliation and tariff-priority pass",
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "findings": [
+    {
+      "partyId": "ENB",
+      "canonicalName": "ENERBROKER S.R.L. / R-ev",
+      "status": "partial",
+      "priority": "class-wide",
+      "finding": "Current first-party R-ev terms independently reconfirm the deterministic WALLET tariff classes: AC <=22 kW 0.65 EUR/kWh; DC <=150 kW 0.85 EUR/kWh; HPC >150 kW 0.89 EUR/kWh, VAT/taxes included. The same first-party terms explicitly distinguish R-ev network from third-party CPO roaming and define direct network charging via app/QR/RFID.",
+      "tariffs": [
+        {"class":"AC <=22 kW","eurPerKwh":0.65,"vatIncluded":true},
+        {"class":"DC <=150 kW","eurPerKwh":0.85,"vatIncluded":true},
+        {"class":"HPC >150 kW","eurPerKwh":0.89,"vatIncluded":true}
+      ],
+      "fees": {"extraStay":"0.25 EUR/min in published R-ev terms; AC has overnight exception/rules; DC/HPC 24h"},
+      "officialReferences": [
+        "https://www.r-ev.it/termini-di-utilizzo-abbonamenti/",
+        "https://www.r-ev.it/termini-di-utilizzo-app/",
+        "https://www.r-ev.it/ti-serve-aiuto/"
+      ],
+      "blockingCondition": "Do not promote IT*ENB to rankable until a deterministic first-party/PUN/EVSE proof establishes that current ENB partyId EVSE are R-ev-operated network EVSE rather than merely app-visible roaming. Once scope mapping is proven, the class-wide tariff grid is ready and no generic tariff research should be repeated.",
+      "confidence": "high for R-ev tariff grid; medium-high for ENB-to-R-ev scope mapping"
+    },
+    {
+      "partyId": "CGS",
+      "canonicalName": "Cogeser Energia",
+      "status": "partial",
+      "priority": "class-wide",
+      "finding": "Fresh first-party corroboration: Cogeser states 30 active charging stations in its 2025 sustainability report (published 2026-06-26). Its public-charging page still publishes Quick Cogeser Energia AC at 0.67 EUR/kWh VAT included from 2025-10-01 and supports QR spot charging. This strengthens the current direct tariff evidence but does not prove that every IT*CGS EVSE is Quick AC.",
+      "officialReferences": [
+        "https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico",
+        "https://www.cogeserenergia.it/it/report-di-sostenibilita-2025"
+      ],
+      "blockingCondition": "Map the current 60 IT*CGS EVSE by connector/power and prove which belong to Quick Cogeser AC. Keep any DC/non-Quick/unmapped subset fail-closed.",
+      "confidence": "high"
+    },
+    {
+      "partyId": "IOY",
+      "canonicalName": "IONITY",
+      "status": "partial",
+      "priority": "station-level",
+      "finding": "Carry forward run250 correction: direct price varies by station; do not use a country-wide value. Remove IOY from class/network-wide queue when canonical is next safely rewritten.",
+      "blockingCondition": "Deterministic IT*IOY station/EVSE -> IONITY direct payment surface -> current station price mapping.",
+      "confidence": "high"
+    }
+  ],
+  "coherence": {
+    "canonicalRead": true,
+    "canonicalStillShows": {"treated":13,"partialCurrent":27,"setAside":1,"unreconciledCurrentPunPartyIds":51,"currentPunPartyIds":92},
+    "knownPendingCanonicalDebt": ["Integrate deterministic LEE/Leitner reconciliation", "Integrate deterministic EUM/EUM Genossenschaft reconciliation", "Change IOY priority from network-wide to station-level"],
+    "arithmeticAfterLEEAndEUMIntegration": "13 treated + 29 current partial + 1 setAside + 49 unreconciled = 92",
+    "noNewPartyIdInvented": true,
+    "noTariffExtrapolation": true
+  },
+  "next": "Continue remaining current PUN partyId reconciliation by EVSE size, prioritizing network/class-wide deterministic tariff candidates. For ENB, investigate only ENB<->R-ev scope identity; do not repeat generic tariff discovery. For CGS, investigate IT*CGS connector/power coverage. Atlante remains last."
+}
