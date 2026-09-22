@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 248,
+  "date": "2026-09-22",
+  "type": "cpo-reconciliation",
+  "canonicalTarget": "docs/italy-cpo-progress-2026-09.json",
+  "progress": {
+    "newlyReconciled": [
+      {
+        "partyId": "EUM",
+        "canonicalName": "EUM Genossenschaft",
+        "status": "partial",
+        "priority": "station-level",
+        "identityConfidence": "high",
+        "evseAnchors": ["IT*EUM*E00011", "IT*EUM*E00012", "IT*EUM*E00021", "IT*EUM*E00022", "IT*EUM*E00041", "IT*EUM*E00042", "IT*EUM*E00051", "IT*EUM*E00052", "IT*EUM*E00061", "IT*EUM*E00062"],
+        "powerClassesObserved": ["AC 22 kW", "DC CHAdeMO 62 kW", "HPC CCS 175 kW"],
+        "tariffModel": "station/access-method dependent; no deterministic network-wide direct price proven",
+        "tariffChannel": "direct/ad-hoc eligibility varies by station; RFID/app roaming offers must remain separated",
+        "coverage": {"rankableEvse": 0, "failClosedReason": "no deterministic EVSE-to-current-direct-price mapping yet"},
+        "positiveEvidence": [
+          "Current/public station records expose IT*EUM EVSE identifiers and identify EUM Genossenschaft as operator.",
+          "Frazione Plan (IT*EUM*E00041/E00042) reports ad-hoc charging available but direct price unknown.",
+          "Via Corvara and Stulles EUM stations report no ad-hoc direct payment, demonstrating access heterogeneity.",
+          "Grundschule Moso exposes both AC and DC/HPC under IT*EUM, disproving any AC-only assumption."
+        ],
+        "negativePaths": [
+          "Do not promote eMSP roaming prices shown by third-party directories as EUM direct CPO prices.",
+          "Do not infer one tariff from a single EUM station or power class."
+        ],
+        "blockingCondition": "Resolve each IT*EUM station/EVSE to its current direct/ad-hoc payment surface (QR/app/backend) and exact price; stations without deterministic mapping remain fail-closed.",
+        "lastInvestigated": "2026-09-22",
+        "lastChanged": "2026-09-22"
+      }
+    ],
+    "expectedCanonicalCountersAfterMerge": {
+      "currentPunPartyIds": 92,
+      "currentPunNamedInCanonical": 42,
+      "treated": 13,
+      "partialCurrent": 28,
+      "setAside": 1,
+      "unreconciledCurrentPunPartyIds": 50,
+      "arithmetic": "13 + 28 + 1 + 50 = 92"
+    }
+  },
+  "coherence": {
+    "noDoubleCount": true,
+    "aliasDecision": "EUM is a current PUN/EVSE partyId, not an alias of Route220; Route220 may be a roaming/platform relationship and must not absorb EUM.",
+    "canonicalLagDetected": "Canonical still reports 41 named / 51 unreconciled before this merge; this report records the deterministic correction.",
+    "atlante": "unchanged setAside-last"
+  },
+  "next": "Continue resolving remaining current PUN partyIds by EVSE/station footprint, testing network/class-wide determinism immediately after identity resolution before station-level work."
+}
