@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 239,
+  "asOf": "2026-09-22",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "operator": {
+    "partyId": "IOY",
+    "canonicalName": "IONITY",
+    "previousStatus": "partial",
+    "status": "partial",
+    "previousPriority": "network-wide",
+    "priority": "station-level",
+    "inventory": {"evse": 322, "stations": 44},
+    "tariffChannel": "direct CPO / ad-hoc; IONITY App without subscription tracked separately; subscriptions excluded from default direct tariff",
+    "currentPublishedCountryValues": {
+      "italy": {
+        "ionityDirectEurPerKwh": 0.85,
+        "ionityGoAppEurPerKwh": 0.80,
+        "source": "IONITY country pricing table current on 2026-09-22",
+        "warning": "IONITY explicitly states these are current minimum prices and the charging price at a station may be higher; therefore 0.85 cannot be deterministically applied to all IT*IOY EVSE."
+      }
+    },
+    "positiveEvidence": [
+      "IONITY current country pricing table exposes Italy Direct=0.85 EUR/kWh and Go=0.80 EUR/kWh.",
+      "IONITY states all displayed country prices are current minimum prices and the price at the charging station may be higher.",
+      "IONITY June 15 2026 pricing notice, effective July 1 2026, explicitly says station-specific pricing exists and Italy IONITY Direct/ad-hoc is up to 0.91 EUR/kWh; applicable price is shown in app or charger before session."
+    ],
+    "negativePaths": [
+      "Do not promote 0.85 EUR/kWh to all IT*IOY EVSE: official first-party caveat disproves universal applicability.",
+      "Do not use subscription Power/Motion prices as direct/ad-hoc tariff.",
+      "Do not use country minima as station-level values without exact EVSE/station mapping."
+    ],
+    "coverage": {"rankableEvse": 0, "failClosedEvse": 322},
+    "blockingCondition": "deterministic IT*IOY EVSE/station -> current IONITY Direct price mapping from app, charger/QR, station endpoint or equivalent first-party payload",
+    "resumeCondition": "new exploitable first-party station-price endpoint/payload, QR surface, or proof that a single Italy Direct price again applies universally",
+    "confidence": "high",
+    "lastInvestigated": "2026-09-22",
+    "lastChanged": "2026-09-22",
+    "canonicalUpdateRequired": {
+      "partyId": "IOY",
+      "setPriority": "station-level",
+      "setBlockingCondition": "deterministic IT*IOY EVSE/station -> current IONITY Direct price mapping; country table is a minimum and station price may be higher",
+      "setCoverage": {"rankableEvse": 0, "failClosedEvse": 322}
+    }
+  },
+  "coherence": {
+    "partyIdAdded": false,
+    "aliasAdded": false,
+    "inventoryTotalChanged": false,
+    "currentPunPartyIds": 92,
+    "doubleCountIntroduced": false,
+    "note": "Classification correction only; canonical arithmetic unchanged."
+  }
+}
