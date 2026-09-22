@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-22",
+  "run": 244,
+  "type": "historical-label-reconciliation",
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "baseline": {
+    "currentPunPartyIds": 92,
+    "treated": 13,
+    "partialCurrent": 27,
+    "setAside": 1,
+    "unreconciledCurrentPunPartyIds": 51
+  },
+  "investigated": [
+    {
+      "historicalLabel": "Valle Camonica Servizi",
+      "decision": "do-not-create-independent-cpo-without-current-PUN-partyId-or-EVSE-proof",
+      "classification": "historical/legal-entity-or-host-label-pending-PUN-proof",
+      "priorityIfResolved": "station-level-unless-current-first-party-global-tariff-is-proven",
+      "positiveEvidence": [
+        "Current Valle Camonica Servizi corporate surface confirms territorial utility activity but does not expose a public EV charging tariff/network surface.",
+        "Provincia di Brescia Move In Green documentation states the project's seven charging stations are operated under concession by Be Charge, demonstrating that Valle Camonica project/territorial association does not itself establish CPO identity."
+      ],
+      "negativeEvidence": [
+        "Current Valle Camonica Servizi Vendite pages expose retail electricity/gas offers; these commodity €/kWh values are not EV charging tariffs and must never be promoted.",
+        "No current deterministic direct/ad-hoc EV charging tariff attributable to Valle Camonica Servizi was found in this pass."
+      ],
+      "deduplicationRule": "If a Valle Camonica location maps to an EVSE/partyId of Be Charge or another known CPO, retain that CPO and Valle Camonica only as host/project/legal-entity metadata; do not count a separate CPO.",
+      "resumeCondition": "A current PUN/OCPI partyId or EVSE prefix explicitly identifies Valle Camonica Servizi as CPO, followed by first-party/QR/backend evidence of the direct/ad-hoc tariff.",
+      "confidence": "high for non-promotion; medium for historical-label role",
+      "lastInvestigated": "2026-09-22"
+    }
+  ],
+  "coherence": {
+    "counterChange": false,
+    "aliasAdded": false,
+    "partyIdAdded": false,
+    "noDoubleCount": true,
+    "arithmetic": "13 treated + 27 current partial + 1 setAside + 51 unreconciled = 92"
+  },
+  "nextAction": "Continue reconciliation of the 51 unreconciled current PUN partyIds by descending EVSE/station footprint; test network/class-wide immediately after each identity is proven. Do not repeat generic Valle Camonica tariff research without new PUN/EVSE evidence. Atlante remains last."
+}
