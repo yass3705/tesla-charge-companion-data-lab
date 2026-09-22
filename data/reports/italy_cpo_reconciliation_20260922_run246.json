@@ -1,0 +1,46 @@
+{
+  "run": 246,
+  "date": "2026-09-22",
+  "scope": "Italy CPO V9 canonical reconciliation",
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "finding": "Y&F Srl / YOUR FILL is independently confirmed by current first-party material as a CPO, not merely a historical PUN legal label. Y&F states CPO registration number 1223445 and public charging infrastructure operation. The current YourFill application exposes the tariff applicable to each selected charging point and supports station discovery by QR code or station ID. This is positive evidence for a deterministic station-level resolution path, but not evidence for a single network-wide tariff. Therefore Y&F must remain a valid unresolved current-PUN identity candidate and, once its current partyId is mapped, should be classified station-level unless a first-party global tariff grid is subsequently proven.",
+  "identity": {
+    "canonicalName": "Y&F Srl / YOUR FILL",
+    "historicalPunEvidence": "21 active / 24 total charging points in PUN-derived 2025 list",
+    "firstPartyCpoProof": "Y&F / YOUR FILL states it is a Charging Point Operator, registration 1223445",
+    "currentPartyId": null,
+    "status": "unreconciledCurrentPunCandidate",
+    "priorityAfterMapping": "station-level",
+    "aliases": ["Y&F", "YOUR FILL", "YourFill"]
+  },
+  "tariffModel": {
+    "channel": "YourFill app / station-specific",
+    "evidence": "Current app description says users can view nearby charging points and consult the tariff applied before starting charging; app history added station lookup by QR code or ID.",
+    "networkWideTariffProven": false,
+    "rankableEvse": 0,
+    "failClosedUntilMapping": true,
+    "blockingCondition": "Resolve current PUN partyId/EVSE identity for Y&F, then map each IT*<partyId> EVSE or station ID/QR to the YourFill tariff payload. Promote only EVSE with deterministic station-to-price mapping."
+  },
+  "negativePaths": [
+    "Do not infer a network-wide tariff from YourFill Business revenue examples.",
+    "Do not treat the app's >10,000 visible charging points as Y&F-owned CPO inventory because the app may expose roaming/other operators.",
+    "Do not use eMSP/roaming prices as Y&F direct CPO prices."
+  ],
+  "canonicalArithmetic": {
+    "currentPunPartyIds": 92,
+    "treated": 13,
+    "partialCurrent": 27,
+    "setAside": 1,
+    "unreconciledCurrentPunPartyIds": 51,
+    "sum": 92,
+    "changedThisRun": false
+  },
+  "coherence": "No new partyId was invented and no alias was double-counted. Y&F remains inside the unresolved-current-PUN pool until exact current partyId evidence is obtained.",
+  "next": "Continue mapping unresolved current PUN partyIds by EVSE population. For Y&F specifically, prioritize discovery of an IT* partyId or station ID/QR anchor, then inspect the YourFill station tariff surface rather than repeating generic tariff searches. Atlante remains last.",
+  "sources": [
+    "https://www.y-f.it/yf-e-un-operatore-di-punti-di-ricarica-cpo/",
+    "https://www.yourfill.it/chi-siamo/",
+    "https://apps.apple.com/it/app/yourfill/id6446286777",
+    "Adiconsum October 2025 PUN-derived CPO list"
+  ]
+}
