@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 240,
+  "asOf": "2026-09-22",
+  "type": "full-coherence-audit",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalSnapshot": {
+    "inventoryComplete": false,
+    "currentPunPartyIds": 92,
+    "currentPunNamedInCanonical": 41,
+    "treated": 13,
+    "partialCurrent": 27,
+    "setAside": 1,
+    "unreconciledCurrentPunPartyIds": 51,
+    "arithmetic": "13 + 27 + 1 + 51 = 92",
+    "arithmeticOk": true,
+    "historicalNonCurrent": ["UTZ"],
+    "knownAliasCorrections": ["ATL->ATE", "HRA->HER"]
+  },
+  "auditFindings": [
+    {
+      "severity": "major",
+      "finding": "The canonical file is arithmetically coherent but structurally stale relative to additive Italy reconciliation reports/commits created after its 2026-09-20 snapshot. Its priority queues still list ESH, IOY, ASS, ENB and CGS as class/network-wide candidates even though later evidence reclassified them to station-level/fail-closed or otherwise removed universal applicability."
+    },
+    {
+      "severity": "major",
+      "finding": "Do not use previously reported 17-treated/23-partial narrative counters as canonical truth. The repository canonical snapshot currently records 13 treated + 27 current partial + 1 setAside + 51 unreconciled = 92. Until the incomplete 51-party nominal inventory is reconstructed and additive deltas are merged, these repository counters remain the only safe arithmetic baseline."
+    },
+    {
+      "severity": "policy",
+      "finding": "All five named candidates remaining in canonical knownClassWideCandidates have now exhausted the universal/class-wide shortcut under fail-closed rules. Known named work can therefore move to station-level after reconciliation, while unreconciled partyIds must still be checked for possible network/class-wide tariffs before station-level deep dives."
+    }
+  ],
+  "postCanonicalDeltasToMerge": [
+    {"partyId":"ESH","targetPriority":"station-level","reason":"Uattzy first-party surface exposes connector-specific pricing; no universal tariff proved"},
+    {"partyId":"IOY","targetPriority":"station-level","reason":"IONITY Italy country Direct value is a minimum; station price may be higher"},
+    {"partyId":"ASS","targetPriority":"station-level","reason":"Magis pay-per-use exact price is displayed at use/station; subscription tariffs excluded"},
+    {"partyId":"ENB","targetPriority":"station-level","reason":"R-ev published grid is app/eMSP surface; direct IT*ENB equivalence not proved"},
+    {"partyId":"CGS","targetPriority":"station-level","reason":"Cogeser own network now includes AC and DC; 0.67 EUR/kWh is proved only for Quick AC"},
+    {"partyId":"HER","targetPriority":"station-level","reason":"no current universal direct grid proved; station/backend mapping required"},
+    {"partyId":"TDM","targetPriority":"station-level","reason":"PUN station evidence exists but direct tariffs not communicated"}
+  ],
+  "priorityStateAfterAudit": {
+    "knownNamedNetworkOrClassWideCandidatesRemaining": 0,
+    "knownNamedStationLevelQueue": ["ENX","GES","ESH","220","IOY","GMT","ASS","GAS","WRM","CPO","ENB","CGS","BPA","TDM","HER","TSL","PWY","EMO","EDN","SAG","UFC","DRW","NRG","TCA"],
+    "unreconciledCurrentPunPartyIdsStillNeedNetworkWideFirstPass": 51,
+    "setAsideLast": ["ATE"]
+  },
+  "freshStationLevelCheck": {
+    "partyId":"GES",
+    "canonicalName":"Go Electric Stations",
+    "inventoryCanonical":{"evse":2402,"stations":1135},
+    "evidence":"Fresh PUN-derived station pages continue to identify IT*GES EVSE but explicitly report that tariffs have not been communicated to PUN; recent motorway service-area pages confirm GES as CPO and mixed AC/DC connectors without a direct tariff grid.",
+    "result":"remain partial / station-level / fail-closed; do not reuse historical roaming prices",
+    "resumeCondition":"first-party GES/QR/backend/direct-payment tariff payload or deterministic EVSE-to-direct-price mapping"
+  },
+  "negativePathPolicy": {
+    "doNotRepeatWithoutNewEvidence": [
+      "generic national tariff search for ESH/Uattzy",
+      "universal IONITY Italy Direct price assumption",
+      "Magis subscription tariffs as pay-per-use direct tariff",
+      "R-ev app/eMSP grid as IT*ENB direct CPO tariff",
+      "Cogeser 0.67 EUR/kWh across DC/non-Quick EVSE",
+      "generic HERA national tariff search",
+      "historical GES roaming prices as direct CPO tariff"
+    ]
+  },
+  "coherence": {
+    "duplicatePartyIdDetected": false,
+    "aliasDoubleCountDetected": false,
+    "currentPunArithmeticOk": true,
+    "canonicalNominalCompletenessOk": false,
+    "canonicalPriorityQueuesCurrent": false,
+    "safeAutomaticCorrectionApplied":"audit delta persisted; full canonical replacement deferred because canonical nominal inventory is explicitly incomplete and must not be fabricated",
+    "nextSafeAction":"reconcile the 51 current PUN partyIds not yet named, checking network/class-wide evidence first and largest EVSE scopes first; merge deterministic identity/status deltas into canonical once nominal identities are available"
+  }
+}
