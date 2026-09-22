@@ -1,0 +1,37 @@
+{
+  "run": 245,
+  "date": "2026-09-22",
+  "scope": "Italy CPO V9 canonical reconciliation",
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "finding": "Important correction to runs 241-244: historical legal-entity labels must not be demoted to host-only merely because individual sites are operated by another CPO. A 2025 Adiconsum observatory explicitly derived from the official PUN CPO list names several of these entities as CPOs, including Leitner Energy GmbH (78/78 active/total), Spesa Intelligente Spa (26/26), Eurospin Tirrenica S.p.A. (22/22), Eurospin Lazio Spa (14/14), Enercom S.r.l. (14/14), EUM Genossenschaft (12/12), T.D.M. S.r.l. (12/12), Clean Energy srl (11/11), Y&F Srl (21/24), E.ON Drive Infrastructure Italy S.r.l. (18/18), and ENERBROKER/R-ev (84/84). Therefore these names are valid historical PUN CPO identities even when some retail locations are operated by third parties. Current 2026 partyId reconciliation remains required before counting them in the current 92-party inventory.",
+  "corrections": [
+    {"label":"Spesa Intelligente Spa","previous":"host/legal-entity-only pending PUN proof","corrected":"historical PUN-listed CPO; current partyId unresolved"},
+    {"label":"Eurospin Tirrenica S.p.A.","previous":"host/legal-entity-only pending PUN proof","corrected":"historical PUN-listed CPO; current partyId unresolved"},
+    {"label":"Eurospin Lazio Spa","previous":"host/legal-entity-only pending PUN proof","corrected":"historical PUN-listed CPO; current partyId unresolved"},
+    {"label":"Leitner Energy GmbH","previous":"role as CPO unproven","corrected":"historical PUN-listed CPO; current partyId unresolved"},
+    {"label":"Enercom S.r.l.","corrected":"historical PUN-listed CPO; current partyId unresolved; retail electricity tariffs excluded from EV charging"},
+    {"label":"EUM Genossenschaft","corrected":"historical PUN-listed CPO; current partyId unresolved; station evidence shows AC and DC/HPC, so no class/global tariff assumed"},
+    {"label":"Clean Energy srl","corrected":"historical PUN-listed CPO; current partyId unresolved"},
+    {"label":"Y&F Srl","corrected":"historical PUN-listed CPO; current partyId unresolved"}
+  ],
+  "tariffSafety": {
+    "Enercom":"Current first-party Enercom website surfaced in search is retail electricity/wallbox material; household €/kWh must not enter IRVE ranking.",
+    "EUM":"Third-party station evidence shows heterogeneous AC 22 kW plus DC 62 kW/HPC 175 kW and no known direct ad-hoc price; fail-closed until direct mapping.",
+    "Eurospin":"Presence of third-party-operated chargers at Eurospin stores does not negate Eurospin legal entities being independently listed as CPOs in PUN. Resolve by partyId/EVSE, not host-name inference."
+  },
+  "canonicalArithmetic": {
+    "currentPunPartyIds": 92,
+    "treated": 13,
+    "partialCurrent": 27,
+    "setAside": 1,
+    "unreconciledCurrentPunPartyIds": 51,
+    "sum": 92,
+    "changedThisRun": false
+  },
+  "next": "Reconcile the current 51 unresolved PUN partyIds to the now-validated historical PUN CPO legal names, prioritizing largest EVSE populations; immediately test each resolved identity for network/class-wide direct tariffs before station-level work. Do not repeat host-vs-CPO generic searches for the corrected labels. Atlante remains last.",
+  "sources": [
+    "Adiconsum Agosto 2025 Osservatorio Prezzi Tariffe Ricarica PDF, section 'ELENCO CPO', explicitly described as CPO list present on PUN ordered by active charging points as of 2025-07-31",
+    "Enercom official website (2026-09 crawl): retail electricity/wallbox scope only for current surfaced material",
+    "EUM official imprint and current third-party station observations used only for identity/capability corroboration, not tariff promotion"
+  ]
+}
