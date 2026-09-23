@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 268,
+  "date": "2026-09-23",
+  "canonicalTarget": "docs/italy-cpo-progress-2026-09.json",
+  "focus": ["GES"],
+  "operator": {
+    "partyId": "GES",
+    "canonicalName": "Go Electric Stations SRLS",
+    "status": "partial",
+    "priority": "station-level",
+    "inventory": {"evse":2402,"stations":1135,"source":"canonical PUN baseline 2026-09-20"},
+    "identityAndChannelEvidence": {
+      "firstPartyApp": "NextCharge",
+      "developer": "Go Electric Stations SRLS",
+      "finding": "Current NextCharge first-party surface states that users consult tariffs in the app and that the service is an interoperable network spanning multiple European operators. Go Electric Stations therefore has both CPO and eMSP/service roles; NextCharge prices cannot be assumed to be a universal direct CPO tariff for IT*GES.",
+      "officialReferences": ["https://nextcharge.app/it", "https://apps.apple.com/it/app/nextcharge/id614946715"]
+    },
+    "punEvidence": {
+      "finding": "Multiple current PUN/Pienotto IT*GES station examples explicitly report tariffs not communicated to the Piattaforma Unica Nazionale, across heterogeneous AC/DC powers.",
+      "examples": [
+        {"location":"Misterbianco (CT)","evse":["ITGESE830664120","ITGESE830664121","ITGESE830664122"],"powerKw":[22,60,60]},
+        {"location":"Gravina di Catania (CT)","evse":["ITGESE875973677","ITGESE875973678","ITGESE875973699","ITGESE875973700"],"powerKw":[11,11,11,11]},
+        {"location":"Salerno, Via Molo Manfredi","evse":["ITGESE860276921","ITGESE860276922"],"powerKw":[60,60]}
+      ],
+      "references": [
+        "https://pienotto.it/stazioni/262295-go-electric-stations-srls-misterbianco-ct",
+        "https://pienotto.it/stazioni/277834-go-electric-stations-srls-gravina-di-catania-ct",
+        "https://pienotto.it/stazioni/268344-go-electric-stations-srls-salerno-sa"
+      ]
+    },
+    "decision": "Reject a network-wide/class-wide direct tariff hypothesis. Preserve IT*GES as station-level/fail-closed until a deterministic IT*GES EVSE -> direct/ad-hoc tariff payload is obtained. NextCharge eMSP prices, including prices shown for third-party operators, must remain separate from direct GES CPO pricing.",
+    "coverage": {"rankableDirectAdHocEvseAddedThisRun":0,"failClosedDirectAdHocEvse":2402},
+    "blockingCondition": "Extract a current NextCharge/Go Electric Stations station or connector tariff payload and prove channel identity for IT*GES, or obtain a first-party direct CPO tariff rule with exact applicability. Mapping must be EVSE/connector-specific unless a global rule is explicitly proven.",
+    "antiRepeat": [
+      "Do not repeat generic searches for a GES-wide AC/DC tariff absent new first-party evidence.",
+      "Do not promote NextCharge roaming/eMSP prices as direct GES CPO prices.",
+      "Resume from IT*GES station detail/connector payload, QR/direct-payment surface, app/backend, or a new first-party tariff publication."
+    ],
+    "confidence":"high",
+    "lastInvestigated":"2026-09-23",
+    "lastChanged":"2026-09-23"
+  },
+  "coherence": {
+    "partyIdInventoryTotal":92,
+    "counterDelta":0,
+    "aliasesAdded":0,
+    "doubleCountIntroduced":false,
+    "canonicalLagPreserved":true,
+    "note":"GES is retained as one current PUN partyId. No eMSP tariff was relabelled as direct CPO pricing. Existing lossless-canonical consolidation backlog is unchanged."
+  },
+  "next":"Continue station-level queue by EVSE footprint after GES; Atlante remains last."
+}
