@@ -45,7 +45,9 @@ jobs:
           p=json.load(gzip.open(f"data/shards/waat_monta_shard_{os.environ['SHARD']}.json.gz",'rt',encoding='utf-8'))
           assert p['dataset']=='waat-monta-direct-tariffs-shard'
           assert p['shardCount']==4
-          assert len(p['stations']) in (142,143), len(p['stations'])
+          n=int(p['sourceInventoryStations']); i=int(p['shardIndex']); k=int(p['shardCount'])
+          expected=max(0,(n-1-i)//k+1) if n>i else 0
+          assert len(p['stations'])==expected, (len(p['stations']),expected,n,i,k)
           assert not [s for s in p['stations'] if s.get('mapError')], [(s.get('stationIdNormalized'),s.get('mapError')) for s in p['stations'] if s.get('mapError')][:10]
           assert all(s.get('mapHttpStatus')==200 for s in p['stations'])
           for s in p['stations']:
@@ -53,7 +55,7 @@ jobs:
               if c.get('rankable'):
                 assert c.get('directEurPerKwh',0)>0
                 assert not c.get('blockingReason')
-          print({'shard':p['shardIndex'],'stations':len(p['stations']),'rankable':sum(bool(s.get('rankableDirect')) for s in p['stations'])})
+          print({'shard':p['shardIndex'],'sourceInventoryStations':n,'expectedStations':expected,'stations':len(p['stations']),'rankable':sum(bool(s.get('rankableDirect')) for s in p['stations'])})
           PY
       - uses: actions/upload-artifact@v4
         with:
@@ -82,10 +84,17 @@ jobs:
           assert len(files)==4, files
           shards=[json.load(gzip.open(f,'rt',encoding='utf-8')) for f in files]
           assert sorted(p['shardIndex'] for p in shards)==[0,1,2,3]
+          source_counts={int(p['sourceInventoryStations']) for p in shards}
+          assert len(source_counts)==1, source_counts
+          inventory_stations=source_counts.pop()
+          for p in shards:
+            i=int(p['shardIndex']); k=int(p['shardCount'])
+            expected=max(0,(inventory_stations-1-i)//k+1) if inventory_stations>i else 0
+            assert len(p['stations'])==expected, (i,len(p['stations']),expected,inventory_stations)
           stations=[s for p in shards for s in p['stations']]
           ids=[s['stationIdNormalized'] for s in stations]
-          assert len(stations)==571, len(stations)
-          assert len(set(ids))==571, 'duplicate station ids'
+          assert len(stations)==inventory_stations, (len(stations),inventory_stations)
+          assert len(set(ids))==inventory_stations, 'duplicate station ids'
           errors=[s for s in stations if s.get('mapError') or s.get('mapHttpStatus')!=200]
           assert not errors, [(s.get('stationIdNormalized'),s.get('mapHttpStatus'),s.get('mapError')) for s in errors[:20]]
 
@@ -100,7 +109,7 @@ jobs:
           safe_configs=[c for s in stations for c in s.get('integrationConfigs',[]) if c.get('rankable')]
           unresolved_configs=[c for s in stations for c in s.get('integrationConfigs',[]) if not c.get('rankable')]
           counts={
-            'inventoryStations':571,
+            'inventoryStations':inventory_stations,
             'queriedStations':len(stations),
             'mapHttp200':sum(s.get('mapHttpStatus')==200 for s in stations),
             'mapErrors':len(errors),
@@ -132,7 +141,7 @@ jobs:
             if len(examples)>=20: break
           report={'generatedAt':payload['generatedAt'],'counts':counts,'tariffDistribution':payload['tariffDistribution'],'examples':examples}
           with open('data/reports/waat_monta_national_tariffs_report.json','w',encoding='utf-8') as f: json.dump(report,f,ensure_ascii=False,indent=2)
-          assert counts['queriedStations']==571 and counts['mapHttp200']==571 and counts['mapErrors']==0
+          assert counts['queriedStations']==inventory_stations and counts['mapHttp200']==inventory_stations and counts['mapErrors']==0
           assert counts['rankablePhysicalConfigs']>0
           for s in payload['stations']:
             for g in s.get('rankableGroups',[]):
