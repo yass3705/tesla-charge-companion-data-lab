@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-23",
+  "run": 257,
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalObserved": {"currentPunPartyIds":92,"currentPunNamedInCanonical":41,"treated":13,"partialCurrent":27,"setAside":1,"unreconciledCurrentPunPartyIds":51},
+  "pendingCanonicalMerge": ["LEE","EUM","AXP","ENB treated promotion","ESH station-level","IOY station-level","ASS station-level","CGS mixed AC/DC"],
+  "investigations": [
+    {
+      "historicalLabel": "Smartbit",
+      "classification": "station-level / host-configured",
+      "status": "not-promoted-until-current-PUN-partyId-reconciled",
+      "tariffModel": "THOR platform supports station-manager configured payments; no deterministic network-wide Smartbit tariff proven",
+      "positiveEvidence": [
+        "Smartbit first-party states THOR is a management/payment platform for charging stations",
+        "Smartbit first-party product documentation states public/private AC Mode 3 stations may use THOR and payment by credit card, smartphone app or browser",
+        "Adiconsum October 2025 inventory listed Smartbit srl as 1/1, corroborating a small public footprint but not a current direct tariff"
+      ],
+      "negativeEvidence": [
+        "No current first-party network-wide €/kWh grid found",
+        "Do not infer a tariff from THOR platform capability or host pricing"
+      ],
+      "blockingCondition": "reconcile current PUN partyId/EVSE for Smartbit then resolve station/host configured direct price from THOR/payment surface",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-23"
+    },
+    {
+      "historicalLabel": "Beyfin",
+      "status": "identity/tariff unresolved",
+      "evidenceState": "current first-party site remains fuel/GPL focused; no deterministic EV charging tariff publication found in this pass",
+      "blockingCondition": "current PUN partyId/EVSE identity plus direct charging/payment surface",
+      "lastInvestigated": "2026-09-23"
+    }
+  ],
+  "coherence": {
+    "currentCanonicalArithmetic": "13 + 27 + 1 + 51 = 92",
+    "noNewPartyIdPromotedThisRun": true,
+    "reason": "Smartbit and Beyfin historical labels were not assigned to an unknown PUN partyId without deterministic identity evidence"
+  },
+  "next": "continue unreconciled PUN partyIds by EVSE footprint, testing network/class-wide first; station-level Smartbit deferred; Atlante remains last"
+}
