@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 265,
+  "asOf": "2026-09-23",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalBaseline": {
+    "currentPunPartyIds": 92,
+    "treated": 13,
+    "partialCurrent": 27,
+    "setAside": 1,
+    "unreconciledCurrentPunPartyIds": 51,
+    "note": "Canonical is still incomplete nominatively; this run does not invent aliases or change current-party arithmetic."
+  },
+  "investigations": [
+    {
+      "partyId": "ASS",
+      "canonicalName": "AGSM AIM / Magis",
+      "previousPriority": "class-wide",
+      "status": "partial",
+      "priority": "station-level",
+      "inventory": {"evse": 257, "stations": 135},
+      "tariffModel": "Current first-party Magis pages confirm Pay-per-Use exists but explicitly state that the cost is calculated from the tariff shown in the app at the time of use; no public current uniform Pay-per-Use AC/DC amount was found. Subscription prices are deterministic but eligibility/subscription-dependent and must not be promoted as ad-hoc/direct walk-up prices.",
+      "subscriptionTariffs": [
+        {"name":"Small","scope":"AC","eurPerKwh":0.60,"monthlyFeeEur":5,"vatIncluded":true},
+        {"name":"Medium","scope":"AC","eurPerKwh":0.58,"monthlyFeeEur":10,"vatIncluded":true},
+        {"name":"Large","scope":"AC","eurPerKwh":0.50,"monthlyFeeEur":20,"vatIncluded":true},
+        {"name":"Flat DC","scope":"DC","eurPerKwh":0.74,"monthlyFeeEur":10,"vatIncluded":true}
+      ],
+      "fees": {"occupation":"0.12 EUR/min according to current Magis terms: AC up to 22 kW 07:00-23:00; DC up to 50 kW and HPC up to 350 kW 24h, subject to the release/grace condition defined in terms"},
+      "tariffChannel": "Magis E-mobility app; Pay-per-Use distinct from subscriptions; roaming eMSP excluded",
+      "officialReferences": [
+        "https://www.aimmobilita.it/it/web/magis-smart/agsmaim_e-mobility/abbonamenti",
+        "https://www.aimmobilita.it/it/web/magis-smart/mobilita-sostenibile",
+        "https://www.magissmart.it/e-mobility/app/termini.php"
+      ],
+      "positiveEvidence": [
+        "First-party FAQ says Pay-per-Use price is the tariff indicated in the app at the moment of use.",
+        "First-party subscription page publishes current AC and DC discounted subscription tariffs.",
+        "First-party terms publish an occupation penalty of 0.12 EUR/min with AC/DC/HPC time applicability."
+      ],
+      "negativePaths": [
+        "Do not infer current Pay-per-Use from subscription prices.",
+        "Do not use V-Reti public-charging supply/distribution tariff tables as retail charging prices.",
+        "Do not use third-party Enel/eMSP roaming prices as direct CPO prices."
+      ],
+      "blockingCondition": "Extract current Magis app station/connector Pay-per-Use payload or another first-party surface proving a uniform current direct tariff and its exact scope; otherwise map EVSE/connector to app-displayed price station by station.",
+      "coverage": {"rankableDirectAdHocEvse":0,"failClosedDirectAdHocEvse":257,"subscriptionModelDocumented":true},
+      "confidence": "high",
+      "lastInvestigated": "2026-09-23",
+      "lastChanged": "2026-09-23"
+    },
+    {
+      "partyId": "ESH",
+      "canonicalName": "E-Shore / Uattzy lineage",
+      "status": "partial",
+      "priority": "class-wide",
+      "inventory": {"evse":1018,"stations":343},
+      "tariffModel": "Fresh July 2026 secondary evidence reports Uattzy class-wide prices: app/card Quick 0.57 EUR/kWh, Fast/Ultra Fast 0.67; occasional POS Quick 0.61, Fast/Ultra Fast 0.72. Current first-party Uattzy site confirms Uattzy defines tariffs for at least its co-investment infrastructure and operates its own app/platform, but the exact amounts and the equivalence of all IT*ESH EVSE to that tariff scope are not first-party proven.",
+      "candidateTariffs": [
+        {"channel":"Uattzy app/card","class":"Quick","eurPerKwh":0.57},
+        {"channel":"Uattzy app/card","class":"Fast/Ultra Fast","eurPerKwh":0.67},
+        {"channel":"occasional POS","class":"Quick","eurPerKwh":0.61},
+        {"channel":"occasional POS","class":"Fast/Ultra Fast","eurPerKwh":0.72}
+      ],
+      "officialReferences": ["https://www.uattzy.com/"],
+      "corroborationReferences": ["https://e-ricarica.it/uattzy-cambia-le-tariffe-stop-ai-costi-al-minuto/page/249/"],
+      "positiveEvidence": [
+        "Uattzy first-party site confirms own app, proprietary management platform and tariff-setting role for co-investment sites.",
+        "Recent July 2026 industry publication reports explicit Quick/Fast/Ultra Fast prices differentiated by app/card versus occasional POS."
+      ],
+      "negativePaths": [
+        "Do not promote secondary-source tariff amounts to rankable production without first-party payload/current app proof.",
+        "Do not assume every IT*ESH EVSE belongs to the Uattzy tariff-setting scope; host-owned/sold infrastructure may differ."
+      ],
+      "blockingCondition": "Obtain first-party current Uattzy app/API/POS tariff payload and prove deterministic IT*ESH EVSE scope/classes; then apply only to the proven subset.",
+      "confidence": "medium-high",
+      "lastInvestigated": "2026-09-23",
+      "lastChanged": "2026-09-23"
+    }
+  ],
+  "coherence": {
+    "partyArithmeticUnchanged": true,
+    "noNewAliases": true,
+    "noDoubleCountIntroduced": true,
+    "priorityCorrection": "ASS class-wide -> station-level for direct/ad-hoc Pay-per-Use until app payload proves uniformity",
+    "atlanteStillLast": true
+  },
+  "next": [
+    "Continue remaining class/network-wide candidates before station-level work.",
+    "For ESH, target first-party Uattzy app/API/POS payload because fresh candidate amounts now exist.",
+    "For ASS, target Magis app connector payload; generic web tariff search is exhausted."
+  ]
+}
