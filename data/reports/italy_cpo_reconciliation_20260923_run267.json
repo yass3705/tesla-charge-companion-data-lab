@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 267,
+  "date": "2026-09-23",
+  "canonicalTarget": "docs/italy-cpo-progress-2026-09.json",
+  "focus": ["ENX"],
+  "operator": {
+    "partyId": "ENX",
+    "canonicalName": "Enel X Way Italia",
+    "status": "partial",
+    "priority": "station-level",
+    "inventory": {"evse":23007,"stations":11224,"source":"canonical PUN baseline 2026-09-20"},
+    "newEvidence": {
+      "channel": "Enel X Way App / Pay Per Use Basic (eMSP/service channel; NOT promoted as direct ad-hoc CPO tariff)",
+      "tariffs": [
+        {"class":"AC","eurPerKwh":0.69,"vatIncluded":true},
+        {"class":"DC <=150 kW","eurPerKwh":0.89,"vatIncluded":true},
+        {"class":"HPC >150 kW","eurPerKwh":0.99,"vatIncluded":true}
+      ],
+      "fees": [
+        {"class":"AC","eurPerMinute":0.10,"condition":"only stations explicitly flagged in app; after 60 min post-charge"},
+        {"class":"DC <=150 kW","eurPerMinute":0.20,"condition":"only stations explicitly flagged in app; after 60 min post-charge"},
+        {"class":"HPC >150 kW","eurPerMinute":0.30,"condition":"only stations explicitly flagged in app; after 60 min post-charge"}
+      ],
+      "officialReferences": [
+        "https://www.company.enelxway.com/en/app/terms-and-conditions/pay-per-use-basic-tariff-poland-new",
+        "https://www.enelxway.com/content/dam/enelxmobility/italia/documenti/tariffe-abbonamenti/piani-di-ricarica-enel-x-way.pdf"
+      ]
+    },
+    "decision": "Preserve fail-closed direct/ad-hoc boundary. The current first-party Pay Per Use grid is deterministic for the Enel X Way app/service channel, but it must not be silently relabelled as the direct CPO/ad-hoc tariff for every IT*ENX EVSE. The same service historically covers interoperable third-party CPOs and official tariff material explicitly includes Enel X and Ewiva, so channel identity matters.",
+    "coverage": {"rankableDirectAdHocEvseAddedThisRun":0,"failClosedDirectAdHocEvse":23007,"deterministicAppTariffRecorded":true},
+    "blockingCondition": "Obtain deterministic IT*ENX EVSE -> direct/ad-hoc QR/card/payment tariff surface, or first-party proof that the current Pay Per Use Basic grid is the direct CPO tariff for all IT*ENX EVSE rather than an eMSP/app service tariff.",
+    "antiRepeat": [
+      "Do not repeat generic Enel X Way Pay Per Use tariff searches: current app grid is now pinned.",
+      "Do not use Enel X Way roaming/operator tables as direct CPO tariffs.",
+      "Resume ENX from live IT*ENX EVSE direct-payment/QR surfaces or new first-party direct/ad-hoc terms."
+    ],
+    "confidence":"high",
+    "lastInvestigated":"2026-09-23",
+    "lastChanged":"2026-09-23"
+  },
+  "coherence": {
+    "partyIdInventoryTotal":92,
+    "counterDelta":0,
+    "aliasesAdded":0,
+    "doubleCountIntroduced":false,
+    "canonicalLagPreserved":true,
+    "note":"Known network/class-wide queue corrections from prior reports remain pending lossless canonical consolidation; no unsafe full-file replacement performed from truncated connector content."
+  },
+  "next":"With known global/class-wide hypotheses exhausted or already resolved in durable reports, continue station-level queue by EVSE footprint; GES is next after ENX. Atlante remains last."
+}
