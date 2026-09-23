@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 261,
+  "asOf": "2026-09-23",
+  "scope": "remaining CPO reconciliation; network/class-wide first",
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "changes": [
+    {
+      "historicalLabel": "Clean Energy srl",
+      "decision": "confirmed current first-party CPO activity; classify station-level pending exact EVSE/partyId and energy-price mapping",
+      "status": "unreconciled-current-partyId",
+      "priorityWhenMapped": "station-level",
+      "historicalInventory": {"activeEvse": 11, "totalEvse": 11, "asOf": "2025-07-31"},
+      "positiveEvidence": [
+        "Current first-party Clean Energy site explicitly operates e-charge stations and identifies Sommacampagna plus new fast-charging stations in Tolmezzo.",
+        "First-party site identifies AC Type 2 22 kW and DC CCS 150 kW capability at the network/site scope.",
+        "First-party site publishes a deterministic post-charge occupation fee: first 15 minutes free, then EUR 0.50/min.",
+        "First-party site states Tolmezzo fast stations are usable without an app."
+      ],
+      "negativeEvidence": [
+        "No current first-party per-kWh charging price was exposed on the public pages found in this pass.",
+        "No deterministic mapping from historical Clean Energy label to a current PUN partyId/EVSE prefix was established in this pass."
+      ],
+      "prohibitedInference": [
+        "Do not infer an energy tariff from the published occupation fee.",
+        "Do not attach an anonymous current PUN partyId to Clean Energy by name similarity alone.",
+        "Do not treat roaming/eMSP prices as Clean Energy direct prices."
+      ],
+      "resumeCondition": "Map a current Clean Energy station/address to its PUN EVSE/partyId, then inspect the no-app direct payment/QR/POS surface for the exact station/connector energy price. Preserve EUR 0.50/min after 15-minute post-charge grace as first-party deterministic fee where scope is confirmed.",
+      "confidence": "high for current CPO identity and occupation fee; unresolved for partyId and energy tariff"
+    }
+  ],
+  "coherence": {
+    "currentPunPartyIds": 92,
+    "partyIdsAdded": 0,
+    "aliasesAdded": 0,
+    "counterImpact": "none",
+    "reason": "No speculative current-party mapping introduced. Canonical arithmetic remains unchanged until deterministic PUN identity is proven."
+  },
+  "next": "Continue unreconciled current PUN partyIds by EVSE count, testing network/class-wide tariff evidence first. For Clean Energy, skip generic tariff search and resume only from station/EVSE identity into direct no-app payment surface. Keep Atlante last."
+}
