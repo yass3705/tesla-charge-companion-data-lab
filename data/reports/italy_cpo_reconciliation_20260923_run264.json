@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-23",
+  "run": 264,
+  "subject": "IOY / IONITY",
+  "canonicalPartyId": "IOY",
+  "decision": {
+    "status": "partial",
+    "priority": "station-level",
+    "reason": "IONITY first-party pricing effective 2026-07-01 explicitly uses station-adapted pricing. Italy Direct/ad-hoc is published as up to 0.91 EUR/kWh, while the subscription page exposes a lower country value/minimum and explicitly warns that station price can be higher. Therefore no single Italy-wide Direct value is deterministically applicable to all IT*IOY EVSE.",
+    "rankableRule": "Only rank an IOY EVSE when its applicable pre-session IONITY app/charger/direct surface price is deterministically mapped to that station/EVSE.",
+    "failClosedRule": "Do not promote 0.85 EUR/kWh, 0.91 EUR/kWh, or any advertised from/minimum value as a uniform network tariff. 0.91 EUR/kWh is a country maximum from 2026-07-01, not proof of each station price.",
+    "directVsRoaming": "IONITY Direct/ad-hoc is direct CPO pricing; eMSP roaming remains separate."
+  },
+  "inventory": {"evse": 322, "stations": 44, "source": "existing canonical PUN baseline"},
+  "officialEvidence": [
+    {"url":"https://www.ionity.eu/fr/stories/pourquoi-les-prix-de-recharge-evoluent-ils-en-europe","published":"2026-06-15","effectiveFrom":"2026-07-01","facts":["Italy Direct/ad-hoc up to 0.91 EUR/kWh","IONITY applies station-adapted pricing","app/charger displays applicable price before session"]},
+    {"url":"https://www.ionity.eu/it/abbonamenti","observed":"2026-09-23","facts":["Italy structured country data exposes Direct 0.85 EUR/kWh on subscription surface","page states displayed prices are current minimum prices and station price may be higher"]},
+    {"url":"https://support.ionity.eu/it/faqs/centro-supporto-clienti-webflow-io-faq-ionity-abbonamenti-tariffe-motion-e-power","observed":"2026-09-23","facts":["IONITY Direct available without subscription","current Direct prices are referenced through IONITY pricing surfaces"]}
+  ],
+  "negativePaths": [
+    "Treating 0.85 EUR/kWh from country structured data as uniform Italy Direct tariff",
+    "Treating 0.91 EUR/kWh country maximum as every-station tariff",
+    "Using subscription/App prices as direct/ad-hoc prices"
+  ],
+  "blockingCondition": "Need deterministic IT*IOY station/EVSE -> current pre-session IONITY Direct price mapping, ideally from IONITY station page/app/charger backend.",
+  "resumeCondition": "A first-party station endpoint, map payload, QR/direct surface or equivalent automatable source exposes the applicable station price.",
+  "confidence": "high",
+  "canonicalPatchRequired": {"partyId":"IOY","fromPriority":"network-wide","toPriority":"station-level","status":"partial","note":"Canonical should absorb this classification on next safe full-file update."}
+}
