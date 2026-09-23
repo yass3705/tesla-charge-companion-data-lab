@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the France IONITY Direct station/connector tariff map.
+"""Build a country IONITY Direct station/connector tariff map.
 
 The source is the read-only backend used by the public IONITY app.  The build is
 fail-closed: only locations whose CPO identifier is exactly ``IONITY_CPO`` and
@@ -29,6 +29,11 @@ DETAIL_URL = f"{BASE_URL}/v3/location/{{uuid}}"
 CANONICAL_CPO = "IONITY_CPO"
 APP_FEATURE_VERSION = "v2.428.0"
 DEFAULT_OUT = Path("data/national/ionity_direct_stations_france.json.gz")
+TARGET_COUNTRY = "FR"
+COUNTRY_BOUNDS = {
+    "FR": (41.0, -6.0, 52.0, 10.0),
+    "IT": (35.0, 6.0, 48.0, 19.0),
+}
 HEADERS = {
     "User-Agent": "IONITY/2.428.0 (Android; TeslaChargeCompanion data validation)",
     "Accept": "application/json",
@@ -75,6 +80,7 @@ def parse_direct_connector(raw: dict[str, Any]) -> dict[str, Any] | None:
     price = raw.get("adhocPrice") or {}
     amount = finite_number(price.get("amount"))
     watts = finite_number(raw.get("maxPower"))
+    source_evse_id = str(raw.get("sourceEvseId") or "").strip()
     if (
         str(price.get("name") or "").strip().upper() != "IONITY DIRECT"
         or str(price.get("unit") or "").strip().lower() != "kwh"
@@ -90,6 +96,7 @@ def parse_direct_connector(raw: dict[str, Any]) -> dict[str, Any] | None:
         "uuid": str(raw.get("uuid") or "").strip(),
         "number": raw.get("number"),
         "physicalReference": str(raw.get("physicalReference") or "").strip(),
+        "sourceEvseId": source_evse_id,
         "type": connector_type,
         "kind": connector_kind(connector_type),
         "powerKw": round(watts / 1000.0, 3),
@@ -100,7 +107,7 @@ def parse_direct_connector(raw: dict[str, Any]) -> dict[str, Any] | None:
 def normalize_location(static: dict[str, Any], detail: dict[str, Any]) -> dict[str, Any] | None:
     if static.get("cpoIdentifier") != CANONICAL_CPO or detail.get("cpoIdentifier") != CANONICAL_CPO:
         return None
-    if str(detail.get("country") or "").strip().upper() != "FR":
+    if str(detail.get("country") or "").strip().upper() != TARGET_COUNTRY:
         return None
     if str(static.get("uuid") or "") != str(detail.get("uuid") or ""):
         raise ValueError(f"IONITY location UUID mismatch: {static.get('uuid')} / {detail.get('uuid')}")
@@ -108,12 +115,12 @@ def normalize_location(static: dict[str, Any], detail: dict[str, Any]) -> dict[s
     latitude = finite_number(detail.get("latitude"))
     longitude = finite_number(detail.get("longitude"))
     if latitude is None or longitude is None:
-        raise ValueError(f"IONITY France location has invalid coordinates: {detail.get('uuid')}")
+        raise ValueError(f"IONITY {TARGET_COUNTRY} location has invalid coordinates: {detail.get('uuid')}")
 
     raw_connectors = detail.get("connectors") or []
     connectors = [parsed for item in raw_connectors if (parsed := parse_direct_connector(item))]
     if not connectors:
-        raise ValueError(f"IONITY France location has no usable Direct price: {detail.get('uuid')}")
+        raise ValueError(f"IONITY {TARGET_COUNTRY} location has no usable Direct price: {detail.get('uuid')}")
 
     missing = len(raw_connectors) - len(connectors)
     return {
@@ -124,7 +131,7 @@ def normalize_location(static: dict[str, Any], detail: dict[str, Any]) -> dict[s
         "address": str(detail.get("address") or "").strip(),
         "postalCode": str(detail.get("postalCode") or "").strip(),
         "city": str(detail.get("city") or "").strip(),
-        "country": "FR",
+        "country": TARGET_COUNTRY,
         "latitude": latitude,
         "longitude": longitude,
         "connectors": sorted(connectors, key=lambda x: (x["kind"], x["powerKw"], x["number"] or 0, x["uuid"])),
@@ -162,15 +169,31 @@ def make_payload(static_locations: list[dict[str, Any]], operated: list[dict[str
     price_counts = Counter(f"{c['pricePerKwhEur']:.2f}" for c in connectors)
     power_counts = Counter(f"{c['powerKw']:g}" for c in connectors)
     if not locations:
-        raise ValueError("IONITY France operated-station result is empty")
+        raise ValueError(f"IONITY {TARGET_COUNTRY} operated-station result is empty")
     if any(location["cpoIdentifier"] != CANONICAL_CPO for location in locations):
-        raise ValueError("non-IONITY CPO leaked into France map")
+        raise ValueError(f"non-IONITY CPO leaked into {TARGET_COUNTRY} map")
+    counts = {
+        "staticLocationCount": len(static_locations),
+        "operatedStaticLocationCount": len(operated),
+        "countryLocationCount": len(locations),
+        "countryConnectorCount": len(connectors),
+        "countryUnpricedConnectorCount": sum(x["unpricedConnectorCount"] for x in locations),
+        "priceCounts": dict(sorted(price_counts.items())),
+        "powerCounts": dict(sorted(power_counts.items(), key=lambda x: float(x[0]))),
+    }
+    # Preserve the established France output contract for existing consumers.
+    if TARGET_COUNTRY == "FR":
+        counts.update({
+            "franceLocationCount": counts["countryLocationCount"],
+            "franceConnectorCount": counts["countryConnectorCount"],
+            "franceUnpricedConnectorCount": counts["countryUnpricedConnectorCount"],
+        })
     return {
         "schemaVersion": "1.0.0",
-        "dataset": "ionity-direct-operated-stations-france",
+        "dataset": f"ionity-direct-operated-stations-{TARGET_COUNTRY.lower()}",
         "generatedAt": now_iso(),
         "operator": "IONITY",
-        "country": "FR",
+        "country": TARGET_COUNTRY,
         "scope": {
             "requiredCpoIdentifier": CANONICAL_CPO,
             "onlyOperatedLocations": True,
@@ -185,15 +208,7 @@ def make_payload(static_locations: list[dict[str, Any]], operated: list[dict[str
             "platform": HEADERS["x-adhoc-platform"],
             "appFeatureVersion": APP_FEATURE_VERSION,
         },
-        "counts": {
-            "staticLocationCount": len(static_locations),
-            "operatedStaticLocationCount": len(operated),
-            "franceLocationCount": len(locations),
-            "franceConnectorCount": len(connectors),
-            "franceUnpricedConnectorCount": sum(x["unpricedConnectorCount"] for x in locations),
-            "priceCounts": dict(sorted(price_counts.items())),
-            "powerCounts": dict(sorted(power_counts.items(), key=lambda x: float(x[0]))),
-        },
+        "counts": counts,
         "matchPolicy": {
             "exactLocationUuidFirst": True,
             "operatorMatchRequiredForFallback": True,
@@ -213,21 +228,40 @@ def live_build(workers: int) -> dict[str, Any]:
     if len(operated) < 500:
         raise RuntimeError(f"IONITY operated inventory unexpectedly small: {len(operated)}")
 
+    south, west, north, east = COUNTRY_BOUNDS[TARGET_COUNTRY]
+    candidates = []
+    for item in operated:
+        latitude = finite_number(item.get("latitude"))
+        longitude = finite_number(item.get("longitude"))
+        if latitude is not None and longitude is not None and south <= latitude <= north and west <= longitude <= east:
+            candidates.append(item)
+    if len(candidates) < 20:
+        raise RuntimeError(f"IONITY {TARGET_COUNTRY} geographic candidate inventory unexpectedly small: {len(candidates)}")
+
     locations: list[dict[str, Any]] = []
     with ThreadPoolExecutor(max_workers=max(1, min(workers, 24))) as pool:
-        futures = {pool.submit(hydrate_location, item): item for item in operated}
+        futures = {pool.submit(hydrate_location, item): item for item in candidates}
         for future in as_completed(futures):
             normalized = future.result()
             if normalized:
                 locations.append(normalized)
-    return make_payload(static_locations, operated, locations)
+    payload = make_payload(static_locations, operated, locations)
+    payload["counts"]["geographicCandidateLocationCount"] = len(candidates)
+    return payload
 
 
 def main() -> None:
+    global TARGET_COUNTRY
     parser = argparse.ArgumentParser()
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    parser.add_argument("--country", choices=("FR", "IT"), default="FR")
+    parser.add_argument("--out", type=Path)
     parser.add_argument("--workers", type=int, default=16)
     args = parser.parse_args()
+    TARGET_COUNTRY = args.country
+    HEADERS["x-adhoc-device-country"] = TARGET_COUNTRY
+    HEADERS["x-adhoc-device-language"] = TARGET_COUNTRY.lower()
+    if args.out is None:
+        args.out = DEFAULT_OUT if TARGET_COUNTRY == "FR" else Path("data/national/ionity_direct_stations_italy.json.gz")
     payload = live_build(args.workers)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     rendered = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
@@ -238,8 +272,8 @@ def main() -> None:
     digest = hashlib.sha256(rendered.encode("utf-8")).hexdigest()
     counts = payload["counts"]
     print(
-        f"IONITY Direct France: {counts['franceLocationCount']} locations / "
-        f"{counts['franceConnectorCount']} priced connectors / sha256={digest}"
+        f"IONITY Direct {TARGET_COUNTRY}: {counts['countryLocationCount']} locations / "
+        f"{counts['countryConnectorCount']} priced connectors / sha256={digest}"
     )
 
 

@@ -589,19 +589,46 @@
       "priority": "station-level",
       "inventory": {
         "evse": 322,
-        "stations": 44
+        "stations": 44,
+        "recoverableStaticEvse": 313,
+        "recoverableStaticLocations": 41,
+        "staticInventoryAsOf": "2026-08-30T11:14:39.750794Z",
+        "liveIonityLocations": 42,
+        "liveIonityConnectors": 325,
+        "liveSnapshotAt": "2026-09-23"
       },
-      "blockingCondition": "Run the validated France IONITY station/connector extractor pattern on the current IT*IOY inventory and reconcile all 322 EVSE / 44 stations; fail-close only residuals without deterministic Italy Direct price.",
+      "tariffModel": "current IONITY DIRECT price resolved per live connector; exact prices vary by station/connector",
+      "tariffChannel": "IONITY DIRECT public ad-hoc backend; subscriptions and eMSP roaming excluded",
+      "tariffs": [
+        {"eurPerKwh": 0.55, "rankableEvse": 3},
+        {"eurPerKwh": 0.61, "rankableEvse": 15},
+        {"eurPerKwh": 0.85, "rankableEvse": 241},
+        {"eurPerKwh": 0.91, "rankableEvse": 41}
+      ],
+      "coverage": {
+        "rankableEvse": 300,
+        "failClosedEvse": 22,
+        "matchedStaticLocations": 40,
+        "unresolvedRecoverableStaticEvse": 13,
+        "canonicalEvseAbsentFromRecoverableStaticInventory": 9,
+        "liveApiOnlyConnectorsNotAssignedToCanonicalEvse": 25,
+        "liveUnpricedConnectors": 0
+      },
+      "blockingCondition": "Obtain a fresh nominative 322-EVSE PUN inventory and reconcile the remaining 22 canonical EVSE against current IONITY UUID/connector numbers; do not infer identity for API-only connectors.",
       "confidence": "high",
+      "lastInvestigated": "2026-09-23",
       "lastChanged": "2026-09-23",
       "crossCountryReuse": {
         "country": "FR",
-        "state": "reusable_now",
+        "state": "reused_successfully_partial",
         "evidence": [
           "data/operator_direct/ionity_exact_france.json",
-          "scripts/ionity_station_tariffs.py"
+          "scripts/ionity_station_tariffs.py",
+          "data/national/ionity_direct_stations_italy_20260923.json.gz",
+          "data/reports/ionity_italy_exact_reconciliation_20260923.json",
+          "data/reports/italy_cpo_reconciliation_20260923_run271.json"
         ],
-        "method": "station UUID -> IONITY ad-hoc location payload -> connector adhocPrice; strict IONITY_CPO filter"
+        "method": "PUN/TCC coordinates -> IONITY location UUID -> connector number -> adhocPrice; strict IONITY_CPO filter"
       }
     },
     {
@@ -1059,6 +1086,10 @@
     {
       "date": "2026-09-23",
       "change": "Run270 cross-country audit checked all 29 current partial CPOs against France/Germany prior work. ATE already reused; IOY France exact station method reusable now; TSL France Supercharger method is out of scope. No exact Germany overlap proven. Counters unchanged."
+    },
+    {
+      "date": "2026-09-23",
+      "change": "Run271 reused the France IONITY Direct backend for Italy: 300/322 canonical IOY EVSE now rankable with exact connector prices (0.55/0.61/0.85/0.91 EUR/kWh); 22 remain fail-closed. IOY remains partial and counters are unchanged."
     }
   ],
   "evidenceReports": [
@@ -1075,7 +1106,9 @@
     "data/reports/italy_cpo_reconciliation_20260922_run248.json",
     "data/reports/italy_cpo_reconciliation_20260922_run252.json",
     "data/reports/italy_cpo_reconciliation_20260922_run256.json",
-    "data/reports/italy_cpo_reconciliation_20260923_run269.json"
+    "data/reports/italy_cpo_reconciliation_20260923_run269.json",
+    "data/reports/italy_cpo_reconciliation_20260923_run270.json",
+    "data/reports/italy_cpo_reconciliation_20260923_run271.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
@@ -1086,7 +1119,8 @@
       "IOY",
       "TSL"
     ],
-    "franceImmediatelyActionable": [
+    "franceImmediatelyActionable": [],
+    "franceReuseCompleted": [
       "IOY"
     ],
     "franceAlreadyReused": [
@@ -1097,6 +1131,6 @@
     ],
     "germanyProvenRelevant": [],
     "noStatusPromotionFromAudit": true,
-    "nextAction": "Reuse validated France IONITY exact station/connector method for Italy before any new IOY tariff research."
+    "nextAction": "IONITY reuse completed in run271 with 300/322 canonical EVSE rankable. Continue Route220; resume IOY only from a fresher nominative PUN inventory for the 22 residual EVSE."
   }
 }

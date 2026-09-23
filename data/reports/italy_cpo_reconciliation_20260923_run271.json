@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 271,
+  "asOf": "2026-09-23",
+  "subject": "IOY / IONITY Direct exact station and connector tariff reuse",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "decision": {
+    "partyId": "IOY",
+    "canonicalName": "IONITY",
+    "statusBefore": "partial",
+    "statusAfter": "partial",
+    "priority": "station-level",
+    "reason": "The France IONITY Direct method was successfully reused on Italy. Exact live prices are available for the published IONITY-operated connector flow, but the current canonical PUN baseline has 322 EVSE while the recoverable 2026-08-30 Italy static inventory has 313 EVSE and only 300 of those map deterministically to current connector numbers. IOY therefore remains partial/fail-closed for the residual canonical perimeter.",
+    "tariffChannel": "IONITY DIRECT ad-hoc from public IONITY backend; subscriptions and eMSP roaming excluded",
+    "mapping": "PUN/TCC station coordinates -> live IONITY location UUID within 150 m, then final two digits of IT*IOY EVSE -> exact live connector number",
+    "livePricesEurPerKwh": [0.55, 0.61, 0.85, 0.91],
+    "coverage": {
+      "canonicalPunBaselineEvse": 322,
+      "recoverableStaticInventoryDate": "2026-08-30T11:14:39.750794Z",
+      "recoverableStaticStationRows": 43,
+      "recoverableStaticLocationsAfterCoordinateDeduplication": 41,
+      "recoverableStaticEvse": 313,
+      "liveIonityLocations": 42,
+      "liveIonityConnectors": 325,
+      "matchedStaticLocations": 40,
+      "rankableCanonicalEvse": 300,
+      "failClosedCanonicalEvse": 22,
+      "unresolvedRecoverableStaticEvse": 13,
+      "canonicalEvseAbsentFromRecoverableStaticInventory": 9,
+      "liveApiOnlyConnectors": 25,
+      "liveApiOnlyLocations": 2,
+      "liveUnpricedConnectors": 0
+    },
+    "rankablePriceCounts": {
+      "0.55": 3,
+      "0.61": 15,
+      "0.85": 241,
+      "0.91": 41
+    },
+    "residual": {
+      "unmatchedStaticLocation": "Piacenza, Via Emilia Parmense 151: 6 EVSE absent from the current IONITY location feed",
+      "matchedLocationOldConnectorIds": "7 EVSE absent by connector number at Valmontone and Les Iles de Brissogne Sud",
+      "canonicalVsStaticDelta": "9 additional EVSE in the 2026-09-20 canonical count are not present in the recoverable 2026-08-30 static inventory and cannot be mapped without a fresher nominative PUN extract",
+      "conditionToComplete": "Obtain a fresh nominative 322-EVSE PUN inventory and reconcile the 22 residual EVSE against current IONITY UUID/connector numbers; do not infer identity for the 25 API-only connectors without EVSE evidence."
+    }
+  },
+  "sources": {
+    "directSnapshot": "data/national/ionity_direct_stations_italy_20260923.json.gz",
+    "staticInventory": "data/national/ionity_pun_inventory_italy_20260830.json.gz",
+    "exactReconciliation": "data/reports/ionity_italy_exact_reconciliation_20260923.json",
+    "extractor": "scripts/ionity_station_tariffs.py",
+    "reconciler": "scripts/ionity_reconcile_inventory.py",
+    "endpoints": [
+      "https://adhoc-bff.ionity.cloud/api/v1/location/static",
+      "https://adhoc-bff.ionity.cloud/api/v3/location/{uuid}"
+    ]
+  },
+  "canonicalDelta": {
+    "treated": 0,
+    "partialCurrent": 0,
+    "setAside": 0,
+    "active": 0,
+    "unreconciled": 0,
+    "rankableEvseAdded": 300,
+    "failClosedEvseNowExplicit": 22,
+    "cpoPromotedToTreated": 0
+  },
+  "coherence": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "setAside": 0,
+    "active": 0,
+    "unreconciled": 44,
+    "arithmetic": "19 + 29 + 0 + 0 + 44 = 92",
+    "ioyCountedOnce": true,
+    "noAliasAdded": true
+  },
+  "next": "Continue the known station-level queue without repeating IOY generic tariff research. Route220 (220, 421 EVSE / 270 stations) is the next known large partial not already resolved by a reusable exact backend."
+}
