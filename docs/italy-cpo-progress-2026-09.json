@@ -419,7 +419,15 @@
       "status": "partial",
       "priority": "station-level",
       "blockingCondition": "station-specific current direct tariff surface",
-      "confidence": "high"
+      "confidence": "high",
+      "crossCountryReuse": {
+        "country": "FR",
+        "state": "scope_mismatch",
+        "evidence": [
+          "data/operator_direct/tesla_findus_exact_france.json"
+        ],
+        "reason": "France method resolves Superchargers; current Italy TSL partial is destination/public non-Supercharger scope."
+      }
     },
     {
       "partyId": "PWY",
@@ -583,9 +591,18 @@
         "evse": 322,
         "stations": 44
       },
-      "blockingCondition": "prove current Italy Direct/ad-hoc value covers all IT*IOY stations; published values may be minima",
+      "blockingCondition": "Run the validated France IONITY station/connector extractor pattern on the current IT*IOY inventory and reconcile all 322 EVSE / 44 stations; fail-close only residuals without deterministic Italy Direct price.",
       "confidence": "high",
-      "lastChanged": "2026-09-23"
+      "lastChanged": "2026-09-23",
+      "crossCountryReuse": {
+        "country": "FR",
+        "state": "reusable_now",
+        "evidence": [
+          "data/operator_direct/ionity_exact_france.json",
+          "scripts/ionity_station_tariffs.py"
+        ],
+        "method": "station UUID -> IONITY ad-hoc location payload -> connector adhocPrice; strict IONITY_CPO filter"
+      }
     },
     {
       "partyId": "GMT",
@@ -841,7 +858,15 @@
         "data/reports/italy_cpo_reconciliation_20260923_run269.json"
       ],
       "lastInvestigated": "2026-09-23",
-      "lastChanged": "2026-09-23"
+      "lastChanged": "2026-09-23",
+      "crossCountryReuse": {
+        "country": "FR",
+        "state": "already_reused_and_integrated",
+        "evidence": [
+          "France V8 Atlante direct connector precedent",
+          "Italy run269"
+        ]
+      }
     },
     {
       "partyId": "UTZ",
@@ -1030,6 +1055,10 @@
     {
       "date": "2026-09-23",
       "change": "Integrated Atlante ITATE national snapshot: 472 stations, 1,842 unique EVSE/connectors, 1,842 matched ENERGY tariffs; ATE setAside->partial because 116 PUN-baseline EVSE remain outside the published-flow snapshot."
+    },
+    {
+      "date": "2026-09-23",
+      "change": "Run270 cross-country audit checked all 29 current partial CPOs against France/Germany prior work. ATE already reused; IOY France exact station method reusable now; TSL France Supercharger method is out of scope. No exact Germany overlap proven. Counters unchanged."
     }
   ],
   "evidenceReports": [
@@ -1047,5 +1076,27 @@
     "data/reports/italy_cpo_reconciliation_20260922_run252.json",
     "data/reports/italy_cpo_reconciliation_20260922_run256.json",
     "data/reports/italy_cpo_reconciliation_20260923_run269.json"
-  ]
+  ],
+  "crossCountryReuseAudit": {
+    "auditedAt": "2026-09-23",
+    "scope": "all 29 current partial CPOs vs France and Germany prior work",
+    "report": "data/reports/italy_cpo_reconciliation_20260923_run270.json",
+    "franceProvenRelevant": [
+      "ATE",
+      "IOY",
+      "TSL"
+    ],
+    "franceImmediatelyActionable": [
+      "IOY"
+    ],
+    "franceAlreadyReused": [
+      "ATE"
+    ],
+    "franceScopeMismatch": [
+      "TSL"
+    ],
+    "germanyProvenRelevant": [],
+    "noStatusPromotionFromAudit": true,
+    "nextAction": "Reuse validated France IONITY exact station/connector method for Italy before any new IOY tariff research."
+  }
 }
