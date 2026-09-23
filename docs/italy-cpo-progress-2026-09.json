@@ -469,7 +469,9 @@
       "status": "partial",
       "priority": "station-level",
       "deduplication": "fresh PUN establishes HER as current partyId",
-      "confidence": "high"
+      "confidence": "high",
+      "lastInvestigated": "2026-09-23",
+      "blockingCondition": "Current first-party charging tariff surface or deterministic EVSE/QR/ad-hoc mapping for IT*HER."
     },
     {
       "partyId": "SAG",
@@ -508,8 +510,9 @@
       "canonicalName": "NRG4YOU SRL",
       "status": "partial",
       "priority": "station-level",
-      "blockingCondition": "authenticated ReStation payload, QR/deeplink or deterministic first-party/PUN tariff",
-      "confidence": "high"
+      "blockingCondition": "Current NRG4YOU direct tariff source or exact station/EVSE payment surface.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-23"
     },
     {
       "partyId": "TCA",
@@ -517,8 +520,9 @@
       "status": "partial",
       "priority": "station-level",
       "deduplication": "Electriease display relationship does not absorb independent BPA partyId",
-      "blockingCondition": "EVSE to QR/POS direct-payment tariff payload",
-      "confidence": "high"
+      "blockingCondition": "Current T-Carica first-party direct/ad-hoc price grid with exact applicability, or deterministic station/EVSE mapping.",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-23"
     },
     {
       "partyId": "ENX",
@@ -580,7 +584,9 @@
       },
       "deduplication": "independent PUN partyId; do not merge into EDN",
       "tariffModel": "platform lets site operators define selling prices",
-      "confidence": "high"
+      "confidence": "high",
+      "lastInvestigated": "2026-09-23",
+      "blockingCondition": "Obtain a deterministic station/EVSE -> direct CPO price surface (QR/POS/guest/backend) for IT*220, or an official current rule proving a network/class-wide tariff for the exact IT*220 perimeter."
     },
     {
       "partyId": "IOY",
@@ -600,10 +606,22 @@
       "tariffModel": "current IONITY DIRECT price resolved per live connector; exact prices vary by station/connector",
       "tariffChannel": "IONITY DIRECT public ad-hoc backend; subscriptions and eMSP roaming excluded",
       "tariffs": [
-        {"eurPerKwh": 0.55, "rankableEvse": 3},
-        {"eurPerKwh": 0.61, "rankableEvse": 15},
-        {"eurPerKwh": 0.85, "rankableEvse": 241},
-        {"eurPerKwh": 0.91, "rankableEvse": 41}
+        {
+          "eurPerKwh": 0.55,
+          "rankableEvse": 3
+        },
+        {
+          "eurPerKwh": 0.61,
+          "rankableEvse": 15
+        },
+        {
+          "eurPerKwh": 0.85,
+          "rankableEvse": 241
+        },
+        {
+          "eurPerKwh": 0.91,
+          "rankableEvse": 41
+        }
       ],
       "coverage": {
         "rankableEvse": 300,
@@ -1010,9 +1028,10 @@
       "coverage": {
         "rankableEvse": 0
       },
-      "blockingCondition": "IT*EUM EVSE -> direct/ad-hoc surface -> exact price",
+      "blockingCondition": "Charging-specific EUM direct tariff or deterministic station/EVSE payment surface.",
       "confidence": "high",
-      "lastChanged": "2026-09-22"
+      "lastChanged": "2026-09-22",
+      "lastInvestigated": "2026-09-23"
     },
     {
       "partyId": "AXP",
@@ -1090,6 +1109,14 @@
     {
       "date": "2026-09-23",
       "change": "Run271 reused the France IONITY Direct backend for Italy: 300/322 canonical IOY EVSE now rankable with exact connector prices (0.55/0.61/0.85/0.91 EUR/kWh); 22 remain fail-closed. IOY remains partial and counters are unchanged."
+    },
+    {
+      "date": "2026-09-23",
+      "change": "Run272 classified Route220 generic first-party path as exhausted: CPMS/POS capability proves configurable tariffs, not a uniform IT*220 direct price; status remains partial."
+    },
+    {
+      "date": "2026-09-23",
+      "change": "Run273 swept HER/NRG/TCA/EUM direct-tariff surfaces; no safe promotion. Persisted charging-specific blocking conditions and anti-repeat rules."
     }
   ],
   "evidenceReports": [
@@ -1108,7 +1135,9 @@
     "data/reports/italy_cpo_reconciliation_20260922_run256.json",
     "data/reports/italy_cpo_reconciliation_20260923_run269.json",
     "data/reports/italy_cpo_reconciliation_20260923_run270.json",
-    "data/reports/italy_cpo_reconciliation_20260923_run271.json"
+    "data/reports/italy_cpo_reconciliation_20260923_run271.json",
+    "data/reports/italy_cpo_reconciliation_20260923_run272.json",
+    "data/reports/italy_cpo_reconciliation_20260923_run273.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
