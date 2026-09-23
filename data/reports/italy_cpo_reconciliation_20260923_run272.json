@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 272,
+  "asOf": "2026-09-23",
+  "subject": "Route220 (IT*220) first-party direct-tariff investigation after Atlante/IONITY integrations",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "startingCanonical": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "setAside": 0,
+    "active": 0,
+    "unreconciled": 44,
+    "arithmetic": "19 + 29 + 0 + 0 + 44 = 92"
+  },
+  "decision": {
+    "partyId": "220",
+    "canonicalName": "Route220",
+    "statusBefore": "partial",
+    "statusAfter": "partial",
+    "priority": "station-level",
+    "reason": "Current first-party Route220 surfaces confirm CPMS-managed networks can use independently configured tariffs and integrated POS/app payment, but no current deterministic IT*220 network-wide or class-wide direct price was found. A generic Route220/evway price must therefore not be transposed to the IT*220 canonical perimeter.",
+    "blockingCondition": "Obtain a deterministic station/EVSE -> direct CPO price surface (QR/POS/guest/backend) for IT*220, or an official current rule proving a network/class-wide tariff for the exact IT*220 perimeter.",
+    "confidence": "high that no network-wide tariff can be inferred from the inspected first-party material; unresolved station-level tariff mapping remains fail-closed"
+  },
+  "positiveEvidence": [
+    {
+      "url": "https://route220.it/attivita/",
+      "finding": "Route220 states its CPMS lets independent CPOs manage their own network and tariffs, with payment through POS or customized app; this proves tariff configurability rather than a single Route220-wide price."
+    },
+    {
+      "url": "https://route220.it/evwaypay-pagamento-via-pos/",
+      "finding": "Route220 documents evwaypay as registration-free POS payment infrastructure for CPOs, but the page publishes no deterministic IT*220 station price."
+    },
+    {
+      "url": "https://route220.it/",
+      "finding": "Route220 identifies evway as its driver charging app and Route220 as CPMS/consulting provider; this is insufficient to equate evway roaming prices with CPO-direct IT*220 tariffs."
+    }
+  ],
+  "negativePaths": [
+    "Current Route220 tariff/site searches did not expose an official network-wide IT*220 EUR/kWh grid.",
+    "evway/eMSP pricing is not accepted as Route220 CPO-direct pricing without exact channel equivalence.",
+    "CPMS tariff-management capability is not evidence that all IT*220 stations share one tariff."
+  ],
+  "canonicalDelta": {
+    "treated": 0,
+    "partialCurrent": 0,
+    "setAside": 0,
+    "active": 0,
+    "unreconciled": 0,
+    "cpoPromotedToTreated": 0,
+    "rankableEvseAdded": 0
+  },
+  "coherence": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "setAside": 0,
+    "active": 0,
+    "unreconciled": 44,
+    "arithmetic": "19 + 29 + 0 + 0 + 44 = 92",
+    "route220CountedOnce": true,
+    "atlanteCountedOnce": true,
+    "noStatusChange": true
+  },
+  "antiStagnation": {
+    "genericFirstPartySearchNowClassified": true,
+    "repeatOnlyWithNewEvidence": true,
+    "nextAction": "Move to the next large station-level partial or reconcile unreconciled PUN partyIds; do not repeat generic Route220 tariff search without a concrete QR/EVSE/backend lead."
+  }
+}
