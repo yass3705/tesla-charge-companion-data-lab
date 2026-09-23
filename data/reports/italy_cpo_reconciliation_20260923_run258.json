@@ -1,0 +1,51 @@
+{
+  "run": 258,
+  "date": "2026-09-23",
+  "scope": "Italy CPO exhaustive reconciliation; network/class-wide first",
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "baseline": {"currentPunPartyIds":92,"canonicalNamed":41,"treated":13,"partialCurrent":27,"setAside":1,"unreconciled":51},
+  "findings": [
+    {
+      "name": "GEWISS S.p.A.",
+      "historicalPunInventory": {"active":10,"total":14,"source":"Adiconsum May 2026 observatory / PUN snapshot"},
+      "classification": "station-level",
+      "status": "unreconciled-partyId",
+      "tariffModel": "JOINON Charge&Go exposes price at selected station/connector; no official uniform GEWISS network tariff established",
+      "positiveEvidence": [
+        "GEWISS first-party JOINON Charge&Go states station information includes prices for access to charging service",
+        "JOINON platform manages heterogeneous charging infrastructure, so a manufacturer/platform identity alone is insufficient to infer a network-wide direct price"
+      ],
+      "negativePaths": ["do not infer one tariff from JOINON platform branding", "do not assign an anonymous PUN partyId without EVSE/party evidence"],
+      "resumeCondition": "identify current PUN partyId/EVSE anchors for GEWISS, then map each EVSE/connector to JOINON direct displayed price",
+      "confidence": "high"
+    },
+    {
+      "name": "Eurospin / Spesa Intelligente corporate CPO entries",
+      "historicalPunInventory": {"Spesa Intelligente":26,"Eurospin Tirrenica":22,"Eurospin Lazio":14,"Eurospin Sicilia":10,"Eurospin Puglia":8,"source":"Adiconsum May 2026 observatory / PUN snapshot"},
+      "classification": "unresolved; do not assume retail host equals current charging operator",
+      "status": "unreconciled-partyId",
+      "positiveEvidence": ["current public examples show Eurospin-hosted charging can be operated by a separate CPO (e.g. Electrip), reinforcing need for exact PUN EVSE identity"],
+      "negativePaths": ["do not merge regional Eurospin legal entities", "do not apply Electrip or another operator tariff to historical Eurospin party entries without deterministic EVSE migration evidence"],
+      "resumeCondition": "obtain current PUN partyId/EVSE anchors for each legal entity and inspect direct payment/operator surface",
+      "confidence": "medium-high"
+    },
+    {
+      "name": "Valle Camonica Servizi Vendite",
+      "historicalPunInventory": {"active":7,"total":7,"source":"Adiconsum May 2026 observatory / PUN snapshot"},
+      "classification": "identity requires exact EVSE reconciliation",
+      "status": "unreconciled-partyId",
+      "positiveEvidence": ["Province of Brescia describes seven Move in Green charging stations as managed in concession by Be Charge; this is useful dedup/migration evidence but not proof that all historical VCSV PUN EVSE are the same assets"],
+      "negativePaths": ["do not promote Be Charge tariff onto VCSV party entry without exact EVSE match"],
+      "resumeCondition": "cross current/historical EVSE IDs and locations against Be Charge concession assets; supersede only on deterministic match",
+      "confidence": "medium-high"
+    }
+  ],
+  "coherence": {
+    "arithmeticUnchanged": true,
+    "currentPunPartyIds": 92,
+    "noAliasMergedWithoutProof": true,
+    "canonicalDebtPreserved": ["LEE", "EUM", "AXP", "ENB status promotion", "ESH/IOY/ASS priority corrections", "CGS AC/DC split"],
+    "note": "Canonical file remains stale relative to run reports; no destructive rewrite performed from truncated connector payload."
+  },
+  "next": "Continue unreconciled PUN partyIds by EVSE footprint, first testing network/class-wide tariff possibility; GEWISS and retail-host cases now bypass global-tariff research and move to identity/station mapping. Atlante remains last."
+}
