@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 274,
+  "asOf": "2026-09-24",
+  "subject": "Post-Atlante continuation: GEWISS, Enercom, Axpo Energy Solutions Italia and Eurospin tariff surfaces",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "startingCanonical": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "setAside": 0,
+    "active": 0,
+    "unreconciled": 44,
+    "arithmetic": "19 + 29 + 0 + 0 + 44 = 92"
+  },
+  "atlanteContinuity": {
+    "state": "already integrated; not re-imported",
+    "integrationCommit": "864fd7f7c527e7570cf2f804fd9bc3547fb93823",
+    "partyId": "ATE",
+    "cpo": "ITATE",
+    "publishedFlow": {"stations":472,"connectors":1842,"tariffs":1842,"unmatched":0},
+    "canonicalStatus": "partial",
+    "reason": "Published myAtlante flow is fully mapped but canonical PUN perimeter has a documented residual; no artificial treated promotion."
+  },
+  "decisions": [
+    {
+      "candidate": "GEWISS / JOINON",
+      "canonicalRelation": "historical review candidate; reconcile exact current PUN partyId before adding/promoting",
+      "statusAfter": "unreconciled/no promotion",
+      "priority": "station-level",
+      "positiveEvidence": "Current GEWISS first-party JOINON Charge&Go explicitly states that the public app shows station availability and the prices for access to the charging service.",
+      "gap": "No indexed network-wide/class-wide numeric tariff grid and no exact current PUN partyId/EVSE-to-JOINON-price mapping established in this pass.",
+      "nextCondition": "Resolve exact PUN partyId and inspect a concrete JOINON station/app/backend price surface; do not infer a common tariff."
+    },
+    {
+      "candidate": "Enercom",
+      "canonicalRelation": "historical review candidate; reconcile exact current PUN partyId before adding/promoting",
+      "statusAfter": "unreconciled/no promotion",
+      "priority": "station-level",
+      "gap": "Current first-party indexed Enercom surfaces expose household electricity/gas supply offers and customer app functions, not a deterministic public EV charging tariff.",
+      "negativeEvidence": "Retail electricity prices such as 0.149/0.159 EUR/kWh are explicitly out of scope and must not be reused as charging prices.",
+      "nextCondition": "Charging-specific first-party page, QR/guest payment surface or exact EVSE/backend lead."
+    },
+    {
+      "candidate": "Axpo Energy Solutions Italia",
+      "canonicalRelation": "historical review candidate; reconcile exact current PUN partyId (AXP/AXS ambiguity) before status change",
+      "statusAfter": "no promotion",
+      "priority": "station-level",
+      "gap": "Current Axpo first-party indexed material confirms the Italian entities/contact surface but did not expose a deterministic public-charging direct/ad-hoc tariff for the exact CPO perimeter.",
+      "nextCondition": "Resolve AXP versus AXS identity from PUN EVSE examples and obtain charging-specific first-party/guest tariff evidence."
+    },
+    {
+      "candidate": "Eurospin regional entities",
+      "canonicalRelation": "historical review candidate; possible multiple regional legal/operator identities",
+      "statusAfter": "unreconciled/no promotion",
+      "priority": "station-level",
+      "gap": "Current Eurospin first-party store pages identify sites/services but do not expose a national or regional deterministic EV charging tariff in the inspected indexed surfaces.",
+      "nextCondition": "Map a concrete PUN EVSE to the owning Eurospin regional entity and inspect its QR/guest/CPO backend; do not merge Tirrenica/Lazio/Sicilia/Puglia without identity proof."
+    }
+  ],
+  "canonicalDelta": {"treated":0,"partialCurrent":0,"setAside":0,"active":0,"unreconciled":0,"cpoPromotedToTreated":0,"rankableEvseAdded":0},
+  "coherence": {"currentPunPartyIds":92,"treated":19,"partialCurrent":29,"setAside":0,"active":0,"unreconciled":44,"arithmetic":"19 + 29 + 0 + 0 + 44 = 92","atlanteCountedOnce":true,"noAliasDoubleCountIntroduced":true,"noStatusChange":true},
+  "antiStagnation": {"newEvidencePersisted":true,"repeatOnlyWithNewEvidence":true,"nextAction":"Continue station-level partials/unreconciled partyIds using concrete PUN EVSE identifiers, QR/guest/app/backend surfaces; prioritize JOINON because first-party confirms station-specific prices are exposed in Charge&Go."}
+}
