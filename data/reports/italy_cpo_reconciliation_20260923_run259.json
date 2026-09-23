@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 259,
+  "asOf": "2026-09-23",
+  "purpose": "Continue first-pass reconciliation without repeating exhausted network-wide tariff searches",
+  "canonicalSource": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalMutation": false,
+  "canonicalMutationReason": "No deterministic current PUN partyId mapping was proven for these historical labels in this pass; fail-closed prevents speculative insertion.",
+  "findings": [
+    {
+      "historicalLabel": "AECOS SRL",
+      "historicalInventoryEvidence": {"evse": 6, "source": "Adiconsum tariff observatory August 2025 / PUN-derived inventory"},
+      "classification": "station-level",
+      "status": "unreconciled",
+      "positiveEvidence": ["AECOS S.r.l. (Nuoro) is an electrical/renewables installer and offers EV charging solutions"],
+      "negativeEvidence": ["No current first-party public network-wide/ad-hoc tariff grid found", "No deterministic current PUN partyId mapping proven in this pass"],
+      "decision": "Do not spend further network-wide tariff passes; resolve current EVSE/partyId first, then inspect station payment surface.",
+      "resumeCondition": "Current PUN EVSE/partyId match or first-party public charging/payment endpoint",
+      "confidence": "medium"
+    },
+    {
+      "historicalLabel": "R.C.Project S.r.l.",
+      "historicalInventoryEvidence": {"evse": 1, "source": "Adiconsum tariff observatory August 2025 / PUN-derived inventory"},
+      "classification": "station-level",
+      "status": "unreconciled",
+      "positiveEvidence": ["R.C. Project publicly documents e-mobility activity/helpdesk and service-station software"],
+      "negativeEvidence": ["No first-party public CPO-wide tariff grid found", "Only one historical public point in the cited inventory", "No deterministic current PUN partyId mapping proven"],
+      "decision": "Treat as station/host-specific until a current EVSE and direct payment surface are identified.",
+      "resumeCondition": "Current PUN EVSE/partyId or direct QR/payment/backend surface",
+      "confidence": "medium-high"
+    },
+    {
+      "historicalLabel": "Itiservicesrl.it",
+      "historicalInventoryEvidence": {"evse": 2, "source": "Adiconsum tariff observatory August 2025 / PUN-derived inventory"},
+      "classification": "identity-first",
+      "status": "unreconciled",
+      "positiveEvidence": ["The historical label is domain-shaped rather than a stable legal/CPO identity"],
+      "negativeEvidence": ["Web results expose multiple ITI Service legal entities; name-only matching is unsafe", "No deterministic current partyId or direct tariff surface proven"],
+      "decision": "Do not alias by company name. Resolve the historical EVSE coordinates/IDs against current PUN before tariff work.",
+      "resumeCondition": "Historical EVSE identifier/address matched to current PUN partyId",
+      "confidence": "high"
+    },
+    {
+      "historicalLabel": "COOL ENERGY SERVICE SRL",
+      "historicalInventoryEvidence": {"evse": 2, "source": "Adiconsum tariff observatory August 2025 / PUN-derived inventory"},
+      "classification": "station-level",
+      "status": "unreconciled",
+      "positiveEvidence": ["Current PUN-derived discovery still exposes Cool Energy Service as a charging-site operator label in San Vincenzo"],
+      "negativeEvidence": ["No public network-wide tariff grid found", "No deterministic current partyId mapping proven in this pass"],
+      "decision": "Skip further generic tariff search; next useful action is EVSE/partyId extraction and station payment-surface inspection.",
+      "resumeCondition": "Current EVSE/partyId mapping or QR/payment endpoint",
+      "confidence": "medium-high"
+    }
+  ],
+  "coherence": {
+    "canonicalCurrentPunPartyIds": 92,
+    "counterMutation": false,
+    "aliasesCreated": 0,
+    "doubleCountIntroduced": false,
+    "reason": "All four findings remain outside current nominative arithmetic until deterministic partyId reconciliation."
+  },
+  "antiRepetition": [
+    "Do not repeat generic network-wide tariff searches for AECOS, R.C.Project or Cool Energy Service without new evidence.",
+    "Do not map Itiservicesrl.it by legal-name similarity; identity must come from EVSE/address/current PUN evidence.",
+    "Keep Atlante last."
+  ],
+  "next": [
+    "Continue unresolved current PUN partyIds by descending EVSE count, testing network/class-wide tariff eligibility first.",
+    "For these four small historical labels, perform identity/EVSE reconciliation only after larger unresolved scopes or when a deterministic mapping source appears."
+  ]
+}
