@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 275,
+  "date": "2026-09-24",
+  "scope": "JOINON / PUN partyId GES station-level direct tariff investigation",
+  "canonicalBaseline": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "unreconciledCurrentPunPartyIds": 44,
+    "coherence": "19 + 29 + 44 = 92"
+  },
+  "atlante": {
+    "action": "no-op",
+    "reason": "23/09 national snapshot already integrated; do not reimport or downgrade newer canonical state"
+  },
+  "partyId": "GES",
+  "statusBefore": "partial",
+  "statusAfter": "partial",
+  "priority": "station-level",
+  "newEvidence": [
+    {
+      "type": "first-party-platform",
+      "url": "https://www.gewiss.com/it/it/servizi/software/mobile-apps/joinon-charge-and-go",
+      "finding": "GEWISS states JOINON Charge&Go displays prices for the selected charging station and supports wallet/session management; this confirms a station-specific first-party tariff surface, not a uniform network tariff."
+    },
+    {
+      "type": "first-party-platform",
+      "url": "https://www.gewiss.com/it/it/servizi/piattaforme-app-joinon/joinon-charge-and-go",
+      "finding": "GEWISS again documents station information including prices, availability and charging-session controls."
+    },
+    {
+      "type": "official-site-anchor",
+      "url": "https://www.comune.osiosotto.bg.it/it/news/servizio-di-ricarica-auto-elettriche",
+      "effectiveDate": "2025-04-01",
+      "finding": "Comune di Osio Sotto publishes a JOINON-app price of 0.50 EUR/kWh for its charging service, while other apps use their own pricing. This proves site/operator-specific pricing and must not be generalized to all IT*GES."
+    },
+    {
+      "type": "official-site-anchor",
+      "url": "https://choruslife.com/it/services/parcheggio/",
+      "finding": "ChorusLife identifies JOINON charging stations and publishes local charging prices AC 0.45 EUR/kWh and DC 0.60 EUR/kWh, alongside market-reference prices AC 0.60 and DC 0.85 EUR/kWh. These are local ChorusLife tariffs and must not be generalized."
+    },
+    {
+      "type": "pun-corroboration",
+      "url": "https://pienotto.it/stazioni/273093-unoenergy-driwe-spa-gallarate-va",
+      "finding": "PUN-derived view exposes concrete IT*GES EVSE IDs IT*GES*E69R6D and IT*GES*EOA45U at Gallarate but reports tariffs not communicated to PUN. This provides concrete EVSE anchors for the next direct/app mapping step."
+    }
+  ],
+  "decision": {
+    "promotion": false,
+    "reason": "First-party evidence proves station-specific prices exist, and official anchors demonstrate materially different local prices. No deterministic mapping from the complete IT*GES EVSE perimeter to JOINON direct prices has yet been recovered.",
+    "rankableAdded": 0,
+    "failClosed": true
+  },
+  "nextAction": "Use concrete IT*GES EVSE anchors (starting IT*GES*E69R6D / IT*GES*EOA45U) against the JOINON Charge&Go public/guest/app backend or QR/deeplink surface. Persist exact EVSE->direct-price mappings. Do not repeat broad JOINON tariff web search unless new first-party evidence appears.",
+  "antiRepeat": {
+    "genericWebTariffSearch": "exhausted for promotion purposes",
+    "resumeCondition": "concrete JOINON backend/QR/deeplink payload or official EVSE-scoped price evidence"
+  }
+}
