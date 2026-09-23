@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 269,
+  "asOf": "2026-09-23",
+  "subject": "Atlante ITATE snapshot integration and lossless canonical consolidation",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "before": {
+    "counters": {
+      "currentPunPartyIds": 92,
+      "currentPunNamedInCanonical": 41,
+      "historicalNonCurrentNamed": 1,
+      "canonicalNamedEntries": 42,
+      "treated": 13,
+      "partialCurrent": 27,
+      "partialHistoricalNonCurrent": 1,
+      "partial": 28,
+      "setAside": 1,
+      "active": 0,
+      "supersededAlias": 0,
+      "unreconciledCurrentPunPartyIds": 51,
+      "arithmeticCheckCurrentPun": true
+    },
+    "atlante": {
+      "partyId": "ATE",
+      "canonicalName": "Atlante",
+      "aliases": [
+        "ATL historical canonical partyId"
+      ],
+      "status": "setAside",
+      "priority": "station-level",
+      "inventory": {
+        "evse": 1958
+      },
+      "blockingCondition": "automatable backend or exact station tariff surface becomes exploitable",
+      "confidence": "high"
+    }
+  },
+  "after": {
+    "counters": {
+      "currentPunPartyIds": 92,
+      "currentPunNamedInCanonical": 48,
+      "historicalNonCurrentNamed": 1,
+      "canonicalNamedEntries": 49,
+      "treated": 19,
+      "partialCurrent": 29,
+      "partialHistoricalNonCurrent": 1,
+      "partial": 30,
+      "setAside": 0,
+      "active": 0,
+      "supersededAlias": 0,
+      "unreconciledCurrentPunPartyIds": 44,
+      "arithmeticCheckCurrentPun": true
+    },
+    "atlante": {
+      "partyId": "ATE",
+      "canonicalName": "Atlante",
+      "aliases": [
+        "ATL historical canonical partyId",
+        "myAtlante",
+        "ITATE"
+      ],
+      "status": "partial",
+      "priority": "station-level",
+      "inventory": {
+        "punEvseBaseline": 1958,
+        "punAsOf": "2026-09-20",
+        "myAtlantePublishedStations": 472,
+        "myAtlantePublishedConnectors": 1842,
+        "myAtlanteUniqueEvse": 1842,
+        "snapshotAt": "2026-09-23T12:47:09.741492+00:00"
+      },
+      "blockingCondition": "Reconcile the 116 PUN-baseline EVSE absent from the published myAtlante snapshot, or prove a newer authoritative inventory boundary; do not infer external fees from ENERGY-only payload",
+      "confidence": "high for published-flow extraction and connector tariffs; partial for full canonical PUN perimeter",
+      "inventorySource": "PUN canonical baseline plus myAtlante national API snapshot",
+      "tariffModel": "direct myAtlante no-subscription ENERGY price per connector",
+      "tariffChannel": "myAtlante direct without subscription; Atlante Go and roaming excluded",
+      "tariffs": [
+        {
+          "eurPerKwh": 0.45,
+          "connectors": 4
+        },
+        {
+          "eurPerKwh": 0.47,
+          "connectors": 4
+        },
+        {
+          "eurPerKwh": 0.55,
+          "connectors": 662
+        },
+        {
+          "eurPerKwh": 0.57,
+          "connectors": 2
+        },
+        {
+          "eurPerKwh": 0.61,
+          "connectors": 4
+        },
+        {
+          "eurPerKwh": 0.69,
+          "connectors": 760
+        },
+        {
+          "eurPerKwh": 0.75,
+          "connectors": 406
+        }
+      ],
+      "coverage": {
+        "publishedFlowStations": 472,
+        "publishedFlowConnectors": 1842,
+        "rankableConnectors": 1842,
+        "rankableUniqueEvse": 1842,
+        "unpricedConnectors": 0,
+        "unmatchedTariffs": 0,
+        "canonicalPunResidualEvse": 116,
+        "residualReason": "PUN baseline has 1,958 IT*ATE EVSE while the 2026-09-23 myAtlante published flow exposes 1,842 unique EVSE/connectors; absence from this snapshot is not proof of closure or of no tariff"
+      },
+      "sourceDetails": {
+        "endpointFamily": "myAtlante app-backend /map-locations, /locations/{id}, /locations/{id}/tariffs",
+        "countryCode": "IT",
+        "partyId": "ATE",
+        "cpoFilter": "ITATE",
+        "mapRequests": 13,
+        "nationalClusters": 12,
+        "operatorNameMissingStations": 5,
+        "operatorVerification": "countryCode+partyId, consistent between map and detail; source name kept blank",
+        "priceField": "price.incl_vat",
+        "powerField": "max_electric_power already kW",
+        "tariffJoinKey": [
+          "evseId",
+          "connectorId"
+        ],
+        "dimensions": {
+          "ENERGY": 1842
+        }
+      },
+      "evidencePaths": [
+        "docs/atlante-extraction.md",
+        "docs/atlante-report-20260923.md",
+        "data/reports/atlante_italy_20260923_report.json",
+        "data/national/atlante_direct_stations_italy_20260923.json.gz",
+        "data/national/atlante_myatlante_raw_20260923.zip",
+        "scripts/atlante/extract_atlante.py",
+        "data/reports/italy_cpo_reconciliation_20260923_run269.json"
+      ],
+      "lastInvestigated": "2026-09-23",
+      "lastChanged": "2026-09-23"
+    }
+  },
+  "atlanteDelta": {
+    "status": "setAside -> partial",
+    "cpoPromotedToTreated": 0,
+    "cpoPromotedToPartial": 1,
+    "publishedFlowStationsAdded": 472,
+    "publishedFlowConnectorsAdded": 1842,
+    "rankableConnectorsAdded": 1842,
+    "rankableUniqueEvseAdded": 1842,
+    "unpricedConnectors": 0,
+    "unmatchedTariffs": 0,
+    "canonicalPunResidualEvse": 116
+  },
+  "snapshot": {
+    "countryCode": "IT",
+    "partyId": "ATE",
+    "cpo": "ITATE",
+    "mapRequests": 13,
+    "nationalClusters": 12,
+    "stations": 472,
+    "connectors": 1842,
+    "uniqueEvse": 1842,
+    "tariffRecords": 1842,
+    "priceCounts": {
+      "0.45": 4,
+      "0.47": 4,
+      "0.55": 662,
+      "0.57": 2,
+      "0.61": 4,
+      "0.69": 760,
+      "0.75": 406
+    },
+    "operatorNameMissingStations": 5,
+    "errors": []
+  },
+  "limits": [
+    "Complete coverage of the myAtlante published flow is not proof of complete coverage of the 1,958-EVSE PUN canonical perimeter.",
+    "ENERGY-only payload does not prove absence of external parking, occupation, session or other fees.",
+    "myAtlante direct no-subscription channel is not automatically labelled anonymous ad-hoc/TPE; Atlante Go and roaming are excluded."
+  ],
+  "consolidatedPromotions": {
+    "partialToTreated": [
+      "ONS",
+      "FWY",
+      "IPE",
+      "ENB"
+    ],
+    "newlyNamedTreated": [
+      "FLY",
+      "FAS"
+    ],
+    "newlyNamedPartial": [
+      "KOS",
+      "AXS",
+      "LEE",
+      "EUM",
+      "AXP"
+    ],
+    "priorityCorrections": {
+      "IOY": "station-level",
+      "ASS": "station-level",
+      "ESH": "station-level",
+      "CGS": "station-level"
+    }
+  },
+  "coherence": {
+    "operatorEntries": 49,
+    "currentNamed": 48,
+    "historicalNonCurrent": 1,
+    "arithmetic": "19 treated + 29 current partial + 0 setAside + 0 active + 44 unreconciled = 92 current partyIds",
+    "noDoubleCount": true,
+    "atlanteCountedAsOneCpo": true
+  },
+  "evidencePaths": [
+    "docs/atlante-extraction.md",
+    "docs/atlante-report-20260923.md",
+    "data/reports/atlante_italy_20260923_report.json",
+    "data/national/atlante_direct_stations_italy_20260923.json.gz",
+    "data/national/atlante_myatlante_raw_20260923.zip",
+    "scripts/atlante/extract_atlante.py",
+    "data/reports/italy_cpo_reconciliation_20260923_run269.json"
+  ]
+}
