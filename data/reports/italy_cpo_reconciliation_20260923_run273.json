@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 273,
+  "asOf": "2026-09-23",
+  "subject": "Post-Atlante priority sweep: HERA, NRG4YOU, T-Carica and EUM direct-tariff surfaces",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "startingCanonical": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "setAside": 0,
+    "active": 0,
+    "unreconciled": 44,
+    "arithmetic": "19 + 29 + 0 + 0 + 44 = 92"
+  },
+  "decisions": [
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA Comm",
+      "statusBefore": "partial",
+      "statusAfter": "partial",
+      "priority": "station-level",
+      "reason": "Fresh first-party search confirms Hera's public charging infrastructure exists, but the current indexed first-party material does not expose a deterministic direct/ad-hoc charging price grid for the exact HER EVSE perimeter. Retail electricity offers must not be confused with public charging tariffs.",
+      "blockingCondition": "Current first-party charging tariff surface or deterministic EVSE/QR/ad-hoc mapping for IT*HER.",
+      "repeatPolicy": "Do not repeat generic Hera web search without a charging-specific endpoint, QR, tariff PDF or EVSE lead."
+    },
+    {
+      "partyId": "NRG",
+      "canonicalName": "NRG4YOU",
+      "statusBefore": "partial",
+      "statusAfter": "partial",
+      "priority": "station-level",
+      "reason": "Current first-party NRG4YOU pages describe charging-station installation/services but publish no current deterministic direct public-charging tariff. Historical Community Charger prices are not current network-wide evidence.",
+      "blockingCondition": "Current NRG4YOU direct tariff source or exact station/EVSE payment surface.",
+      "repeatPolicy": "Historical third-party Community Charger pricing is discovery-only and cannot promote NRG."
+    },
+    {
+      "partyId": "TCA",
+      "canonicalName": "T-Carica",
+      "statusBefore": "partial",
+      "statusAfter": "partial",
+      "priority": "station-level",
+      "reason": "A historical report exposes AC/DC/ultrafast prices through Electriease-BeaglePlug, but that is an eMSP/platform channel and is not proof of a current T-Carica CPO-direct/ad-hoc tariff. No safe promotion.",
+      "blockingCondition": "Current T-Carica first-party direct/ad-hoc price grid with exact applicability, or deterministic station/EVSE mapping.",
+      "repeatPolicy": "Do not transpose BeaglePlug/eMSP prices into CPO-direct TCA."
+    },
+    {
+      "partyId": "EUM",
+      "canonicalName": "EUM Genossenschaft",
+      "statusBefore": "partial",
+      "statusAfter": "partial",
+      "priority": "station-level",
+      "reason": "EUM first-party pages expose cooperative household electricity tariffs, not public EV charging tariffs. Public charging discovery indicates contract/app/RFID usage but does not establish an anonymous/direct EUM price. Household energy prices are out of scope.",
+      "blockingCondition": "Charging-specific EUM direct tariff or deterministic station/EVSE payment surface.",
+      "repeatPolicy": "Do not reuse cooperative household electricity tariff as EV charging price."
+    }
+  ],
+  "evidence": [
+    {"url":"https://www.gruppohera.it/","scope":"HER","finding":"Current first-party group material confirms e-mobility infrastructure but no deterministic HER public charging tariff was found in the inspected indexed surfaces."},
+    {"url":"https://www.nrg4you.it/","scope":"NRG","finding":"First-party site advertises charging-station solutions/installations; no current public charging tariff grid exposed."},
+    {"url":"https://www.eum.bz/de/strom/strom-detail/tarife-mitglieder","scope":"EUM","finding":"First-party prices are cooperative electricity-supply tariffs, not EV public-charging tariffs; explicitly excluded from TCC charging pricing."},
+    {"url":"https://www.ansa.it/canale_motori/notizie/mobilita_sostenibile/2024/12/05/t-carica-supera-le-100-colonnine-di-ricarica-in-italia_89b56c59-6776-4a5b-b18f-4c5a33498fe2.html","scope":"TCA","finding":"Confirms T-Carica network growth historically but does not provide a current first-party direct tariff."}
+  ],
+  "canonicalDelta": {
+    "treated": 0,
+    "partialCurrent": 0,
+    "setAside": 0,
+    "active": 0,
+    "unreconciled": 0,
+    "cpoPromotedToTreated": 0,
+    "rankableEvseAdded": 0
+  },
+  "coherence": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "setAside": 0,
+    "active": 0,
+    "unreconciled": 44,
+    "arithmetic": "19 + 29 + 0 + 0 + 44 = 92",
+    "atlanteCountedOnce": true,
+    "noAliasDoubleCountIntroduced": true,
+    "noStatusChange": true
+  },
+  "antiStagnation": {
+    "newNegativeEvidencePersisted": true,
+    "repeatOnlyWithNewEvidence": true,
+    "nextAction": "Continue the remaining station-level partials and unreconciled PUN partyIds; prioritize exact QR/guest/backend surfaces rather than repeating broad searches for HER/NRG/TCA/EUM."
+  }
+}
