@@ -1,0 +1,50 @@
+{
+  "country": "IT",
+  "date": "2026-09-24",
+  "canonical": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "observedBlobSha": "d04dd7d7bfde7450e9cfde4214448683e29868b9",
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "unreconciledCurrentPunPartyIds": 44,
+    "arithmeticCheck": true
+  },
+  "atlante": {
+    "action": "no-op",
+    "reason": "Canonical already records integrated-partial published-flow complete/canonical-perimeter residual; do not re-import older 2026-09-23 snapshot over newer state."
+  },
+  "investigations": [
+    {
+      "label": "Greendata.solutions",
+      "result": "identity/scope ambiguity; no tariff promotion",
+      "positiveEvidence": [
+        "Current greendata.solutions first-party site describes an OCPP-compliant EV Charging Platform project, payment UX and fleet-management dashboards."
+      ],
+      "negativeEvidence": [
+        "Current first-party surface does not establish that the company is the direct CPO for the PUN partyId/EVSE population under review.",
+        "No current direct/ad-hoc network-wide, class-wide or deterministic station tariff was found."
+      ],
+      "decision": "fail-closed; do not infer CPO tariff from platform/vendor role",
+      "resumeCondition": "Exact current PUN partyId/EVSE identity plus first-party/QR/backend direct tariff mapping."
+    },
+    {
+      "label": "Valle Camonica Servizi",
+      "result": "ownership/operator-name collision identified; no tariff promotion",
+      "positiveEvidence": [
+        "Provincia di Brescia Move In Green documentation states seven project charging stations are operated under concession by BeCharge."
+      ],
+      "negativeEvidence": [
+        "Valle Camonica Servizi Vendite current first-party surface is an energy-retail site and does not provide a direct public-EV charging tariff.",
+        "The project documentation is insufficient to alias every PUN EVSE carrying a Valle Camonica label to BeCharge without exact EVSE reconciliation."
+      ],
+      "decision": "Do not assign BeCharge tariff or alias globally; require EVSE-level reconciliation.",
+      "resumeCondition": "Match current PUN partyId/EVSE identifiers to the seven concession stations or obtain a current direct tariff surface."
+    }
+  ],
+  "delta": {
+    "promotedCpos": 0,
+    "rankableEvseAdded": 0,
+    "canonicalCounterChange": 0
+  }
+}
