@@ -1,0 +1,51 @@
+{
+  "run": 280,
+  "date": "2026-09-24",
+  "country": "IT",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalBefore": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "unreconciledCurrentPunPartyIds": 44
+  },
+  "atlante": {
+    "action": "no-op",
+    "reason": "23/09 snapshot already integrated; do not re-import or downgrade newer canonical state"
+  },
+  "investigation": {
+    "operator": "E.ON Drive Infrastructure Italy S.r.l.",
+    "state": "new station-level direct-tariff lead",
+    "evidence": [
+      {
+        "source": "Pienotto mirror of Piattaforma Unica Nazionale",
+        "url": "https://pienotto.it/comuni/mantova/elettrico",
+        "punDataUpdated": "2026-09-07",
+        "station": "Strada Circonvallazione Sud, 78A, Mantova (MN)",
+        "priceEurPerKwh": 0.79,
+        "channel": "PUN-published station tariff",
+        "confidence": "high for this station only"
+      },
+      {
+        "source": "same Mantova PUN-derived listing",
+        "station": "Via Cremona, 36, Mantova (MN)",
+        "price": null,
+        "observation": "same operator has another station with tariff n.d.; therefore no network-wide extrapolation"
+      }
+    ],
+    "decision": "Do not promote or extrapolate 0.79 EUR/kWh network-wide. Resolve current PUN partyId and exact EVSE IDs for Strada Circonvallazione Sud 78A, then map this station-specific tariff deterministically. Treat other E.ON stations fail-closed until station-level tariff evidence exists.",
+    "nextCondition": "PUN partyId/EVSE identity for the priced Mantova station or additional PUN station tariffs proving a deterministic class/network rule."
+  },
+  "canonicalAfter": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "unreconciledCurrentPunPartyIds": 44,
+    "changed": false,
+    "reason": "operator identity/partyId is not yet deterministically reconciled to a canonical entry"
+  },
+  "consistency": {
+    "arithmetic": "19 + 29 + 44 = 92",
+    "ok": true
+  }
+}
