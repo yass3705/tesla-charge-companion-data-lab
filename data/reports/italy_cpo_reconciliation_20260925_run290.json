@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 290,
+  "date": "2026-09-25",
+  "purpose": "First tariff replay after 92/92 identity repair; network/class-wide candidates first.",
+  "changes": [
+    {
+      "partyId": "PUT",
+      "canonicalName": "Port Utilities S.p.A.",
+      "before": "active",
+      "after": "treated",
+      "priority": "network-wide",
+      "inventory": {
+        "stations": 5,
+        "evse": 10
+      },
+      "rankableAddedEvse": 10,
+      "tariffs": [
+        {
+          "channel": "Direct Payment",
+          "eurPerMinute": 0.12,
+          "vatIncluded": true
+        },
+        {
+          "channel": "User Card",
+          "eurPerKwh": 0.6,
+          "vatIncluded": true
+        }
+      ],
+      "proof": [
+        "https://www.portutilities.it/servizi/servizio-ricarica"
+      ],
+      "mapping": "Fresh PUN exactly matches five own Port Utilities columns and their Type2/Type3A socket structure."
+    },
+    {
+      "partyId": "UOC",
+      "canonicalName": "UniOne / Unione Charging S.R.L.",
+      "before": "active",
+      "after": "partial",
+      "priority": "class-wide",
+      "inventory": {
+        "stations": 3,
+        "evse": 7
+      },
+      "rankableAddedEvse": 4,
+      "failClosedEvse": 3,
+      "tariffs": [
+        {
+          "class": "22 kW",
+          "eurPerKwh": 0.5,
+          "evse": 2
+        },
+        {
+          "class": "80 kW",
+          "eurPerKwh": 0.7,
+          "evse": 2
+        }
+      ],
+      "residual": "SITE-14 has 3 EVSE at 120 kW; no first-party 120 kW tariff published.",
+      "proof": [
+        "https://www.uni-one.eu/tariffe/",
+        "https://www.uni-one.eu/azienda/"
+      ]
+    }
+  ],
+  "canonicalAfter": {
+    "currentPunPartyIds": 92,
+    "currentPunNamedInCanonical": 92,
+    "historicalNonCurrentNamed": 2,
+    "canonicalNamedEntries": 94,
+    "treated": 20,
+    "partialCurrent": 28,
+    "partialHistoricalNonCurrent": 2,
+    "partial": 30,
+    "setAside": 0,
+    "active": 44,
+    "supersededAlias": 0,
+    "unreconciledCurrentPunPartyIds": 0,
+    "arithmeticCheckCurrentPun": true
+  },
+  "rankableEvseAdded": 14,
+  "next": [
+    "Build exact Allego Italy DXP probe for 28 ALL EVSE.",
+    "Exploit Alpha Mobility public RicaricaVeicolo station pages using exact PUN station/EVSE identifiers.",
+    "Continue remaining recovered active identities in descending EVSE order."
+  ]
+}
