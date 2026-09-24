@@ -1,0 +1,65 @@
+{
+  "runDate": "2026-09-24",
+  "country": "IT",
+  "canonical": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalBaseline": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "unreconciledCurrentPunPartyIds": 44,
+    "arithmeticCheck": true
+  },
+  "atlante": {
+    "action": "no-op",
+    "reason": "23/09 snapshot already integrated; do not re-import or degrade newer canonical state"
+  },
+  "investigations": [
+    {
+      "partyId": "LEE",
+      "canonicalName": "Leitner Energy",
+      "result": "remain partial / station-level",
+      "positiveEvidence": [
+        "First-party Leitner reference states tariff management and monthly billing are handled by Leitner Energy for public charging installations.",
+        "First-party current site confirms Leitner operates/builds charging infrastructure, including fast-charging parks."
+      ],
+      "negativeEvidence": [
+        "No current first-party network-wide or class-wide public charging tariff was found.",
+        "Public station directories expose concrete IT*LEE EVSE and ad-hoc capability but do not provide a deterministic direct price."
+      ],
+      "exampleEvse": ["IT*LEE*E2200081", "IT*LEE*E2200082"],
+      "decision": "Do not extrapolate a tariff. Resume only from a concrete Leitner QR/ad-hoc payment surface, guest backend, or first-party EVSE-scoped price.",
+      "sources": [
+        "https://www.leitnerenergy.it/referenze/alfen-hotel-zum-turm",
+        "https://www.leitnerenergy.it/",
+        "https://www.leitnerenergy.it/referenze/parco-di-ricarica-rasun-anterselva"
+      ]
+    },
+    {
+      "partyId": "EUM",
+      "canonicalName": "EUM Genossenschaft",
+      "result": "remain partial / station-level",
+      "positiveEvidence": [
+        "First-party EUM site confirms the cooperative identity and local operating area.",
+        "Regional tourism pages identify EUM public charging stations in Pfelders/Moos, including 2x22 kW AC and a 175 kW fast charger at Moos."
+      ],
+      "negativeEvidence": [
+        "No current first-party direct/ad-hoc charging tariff grid was found.",
+        "Regional pages confirm card interoperability but publish no deterministic CPO price."
+      ],
+      "decision": "Do not infer a tariff from roaming-card prices. Resume only with EUM QR/ad-hoc surface, backend, tariff publication, or station-scoped first-party evidence.",
+      "sources": [
+        "https://www.eum.bz/de/die-genossenschaft",
+        "https://www.merano-suedtirol.it/de/passeiertal/info-service/informationen/elektro-ladestationen/rid-D73153A631F60E376E228DD7A43AA631-p-stazione-di-ricarica-per-auto-elettriche-a-plan.html",
+        "https://www.merano-suedtirol.it/de/passeiertal/info-service/informationen/elektro-ladestationen/rid-30452E5A6E610C10EC628A2CADC961FE-p-e-ladestation-fuer-autos-in-moos.html"
+      ]
+    }
+  ],
+  "promotions": [],
+  "rankableEvseAdded": 0,
+  "canonicalCounterDelta": {
+    "treated": 0,
+    "partialCurrent": 0,
+    "unreconciledCurrentPunPartyIds": 0
+  },
+  "antiStagnation": "Generic tariff searches for LEE and EUM are now bounded; do not repeat without a new concrete EVSE/QR/backend/tariff lead."
+}
