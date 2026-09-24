@@ -1,0 +1,55 @@
+{
+  "country": "IT",
+  "date": "2026-09-24",
+  "run": 286,
+  "canonical": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "unreconciledCurrentPunPartyIds": 44,
+    "arithmeticCheck": true
+  },
+  "atlante": {
+    "action": "no-op",
+    "reason": "23/09 national snapshot already integrated-partial in canonical; do not reimport or downgrade newer state"
+  },
+  "investigations": [
+    {
+      "canonicalName": "Clean Energy",
+      "statusDecision": "fail-closed / station-level until exact canonical partyId and EVSE scope are reconciled",
+      "positiveEvidence": [
+        "First-party Clean Energy e-mobility page confirms public charging at Sommacampagna (AC Type 2 22 kW, DC CCS) and new fast stations at Tolmezzo.",
+        "First-party page states Tolmezzo fast stations are usable without an app.",
+        "First-party page publishes an exact post-charge occupation fee: first 15 minutes free, then EUR 0.50/min."
+      ],
+      "tariffDecision": "Occupation fee is deterministic first-party evidence but ENERGY price is not published on the accessible first-party surface; do not infer ENERGY price or mark EVSE rankable from the fee alone.",
+      "resumeCondition": "Exact PUN partyId/EVSE mapping plus direct ENERGY price from station QR/payment surface, official backend, or current first-party publication.",
+      "sources": [
+        "https://www.cleanenergysrl.net/"
+      ]
+    },
+    {
+      "canonicalName": "GEWISS / JOINON Charge&Go",
+      "statusDecision": "fail-closed / station-level pending canonical partyId and station tariff mapping",
+      "positiveEvidence": [
+        "First-party GEWISS JOINON Charge&Go page confirms public charging station geolocation, connector filtering and display of prices for access to charging service.",
+        "First-party page confirms wallet payments, invoices and session history.",
+        "The current JOINON Charge&Go app description also states station details expose connector power and prices and supports QR start."
+      ],
+      "tariffDecision": "Prices are station-visible, not a proven network-wide/class-wide tariff. No extrapolation from hardware model or roaming surfaces.",
+      "resumeCondition": "Obtain deterministic JOINON station/EVSE -> displayed direct tariff mapping for the canonical GEWISS PUN scope, via public/guest surface, QR or backend.",
+      "sources": [
+        "https://www.gewiss.com/it/it/servizi/piattaforme-app-joinon/joinon-charge-and-go",
+        "https://apps.apple.com/it/app/joinon-charge-go/id1468484233"
+      ]
+    }
+  ],
+  "delta": {
+    "promotedCpos": 0,
+    "rankableEvseAdded": 0,
+    "newDeterministicFeeEvidence": "Clean Energy: EUR 0.50/min post-charge occupation fee after 15-minute grace",
+    "aliasesResolved": 0
+  },
+  "next": "Continue unreconciled CPOs; prioritize any remaining network/class-wide candidates before further station-level deep dives. Do not repeat Clean Energy/GEWISS generic research without a concrete EVSE/QR/backend lead."
+}
