@@ -34,19 +34,21 @@
     "currentPunNamedInCanonical": 92,
     "historicalNonCurrentNamed": 2,
     "canonicalNamedEntries": 94,
-    "treated": 19,
-    "partialCurrent": 27,
+    "treated": 20,
+    "partialCurrent": 28,
     "partialHistoricalNonCurrent": 2,
-    "partial": 29,
+    "partial": 30,
     "setAside": 0,
-    "active": 46,
+    "active": 44,
     "supersededAlias": 0,
     "unreconciledCurrentPunPartyIds": 0,
     "arithmeticCheckCurrentPun": true
   },
   "remainingByPriority": {
     "unreconciledCurrentPunPartyIds": 0,
-    "knownNetworkOrClassWidePartial": [],
+    "knownNetworkOrClassWidePartial": [
+      "UOC"
+    ],
     "knownStationLevelPartial": [
       "220",
       "ASS",
@@ -111,7 +113,6 @@
       "P27",
       "PGC",
       "PIT",
-      "PUT",
       "SDI",
       "SEM",
       "SMT",
@@ -120,7 +121,6 @@
       "TAP",
       "TEX",
       "UCA",
-      "UOC",
       "UTX",
       "VCS",
       "YFL"
@@ -1572,8 +1572,8 @@
         "Port Utilities S.p.A.",
         "PUT"
       ],
-      "status": "active",
-      "priority": "station-level",
+      "status": "treated",
+      "priority": "network-wide",
       "inventory": {
         "evse": 10,
         "stations": 5,
@@ -1587,7 +1587,40 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high",
+      "tariffChannel": "Port Utilities direct payment vs contracted User Card; partner stations excluded",
+      "tariffModel": "five own Civitavecchia charging columns; deterministic channel tariff",
+      "tariffs": [
+        {
+          "channel": "Direct Payment credit card/PayPal",
+          "unit": "EUR/min",
+          "eurPerMinute": 0.12,
+          "vatIncluded": true,
+          "eligibility": "no contract; registration on payment page"
+        },
+        {
+          "channel": "User Card",
+          "unit": "EUR/kWh",
+          "eurPerKwh": 0.6,
+          "vatIncluded": true,
+          "eligibility": "Port Utilities RFID User Card contract"
+        }
+      ],
+      "coverage": {
+        "rankableEvse": 10,
+        "failClosedEvse": 0,
+        "stations": 5
+      },
+      "officialReferences": [
+        "https://www.portutilities.it/servizi/servizio-ricarica"
+      ],
+      "positiveEvidence": [
+        "Current first-party page states Port Utilities owns five charging columns, each with Type 2 and Type 3A sockets.",
+        "Fresh PUN artifact has exactly five PUT stations / ten EVSE at Porto di Civitavecchia, each station exposing one Type 2 and one Type 3A EVSE.",
+        "First-party tariff table publishes 0.60 EUR/kWh for User Card and 0.12 EUR/min for Direct Payment by card/PayPal."
+      ],
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "TAP",
@@ -1687,13 +1720,13 @@
     },
     {
       "partyId": "UOC",
-      "canonicalName": "UNIONE CHARGING S.R.L.",
+      "canonicalName": "UniOne / Unione Charging S.R.L.",
       "aliases": [
         "UNIONE CHARGING S.R.L.",
-        "UOC"
+        "UniOne"
       ],
-      "status": "active",
-      "priority": "station-level",
+      "status": "partial",
+      "priority": "class-wide",
       "inventory": {
         "evse": 7,
         "stations": 3,
@@ -1707,7 +1740,41 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high for 4/7 mapped EVSE; fail-closed for 120 kW subset",
+      "tariffChannel": "UniOne direct credit-card POS; app/eMSP paths kept separate unless equivalence proven",
+      "tariffModel": "published normal tariffs cover 22 kW and 80 kW; current PUN also contains 120 kW EVSE with no published matching class",
+      "tariffs": [
+        {
+          "class": "22 kW",
+          "eurPerKwh": 0.5,
+          "vatIncluded": null,
+          "rankableEvse": 2
+        },
+        {
+          "class": "80 kW",
+          "eurPerKwh": 0.7,
+          "vatIncluded": null,
+          "rankableEvse": 2
+        }
+      ],
+      "coverage": {
+        "rankableEvse": 4,
+        "failClosedEvse": 3,
+        "stations": 3,
+        "uncoveredClass": "120 kW (3 EVSE at SITE-14)"
+      },
+      "blockingCondition": "Obtain first-party UniOne tariff for 120 kW / SITE-14 or exact station price; do not extrapolate 80 kW price to 120 kW.",
+      "officialReferences": [
+        "https://www.uni-one.eu/tariffe/",
+        "https://www.uni-one.eu/azienda/"
+      ],
+      "positiveEvidence": [
+        "First-party UniOne tariff page publishes normal tariffs 22 kW = 0.50 EUR/kWh and 80 kW = 0.70 EUR/kWh and documents direct credit-card POS payment.",
+        "Fresh PUN artifact maps SITE-15 (2 EVSE) to 22 kW, SITE-11 (2 EVSE) to 80 kW, and SITE-14 (3 EVSE) to 120 kW.",
+        "First-party company page identifies UniOne as a CPO and states its stations range from 22 to 300 kW."
+      ],
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "VCS",
@@ -2406,7 +2473,7 @@
     }
   ],
   "coherence": {
-    "currentPunArithmetic": "19 treated + 27 partial + 0 setAside + 46 active + 0 supersededAlias = 92 current partyIds",
+    "currentPunArithmetic": "20 treated + 28 partial + 0 setAside + 44 active + 0 supersededAlias = 92 current partyIds",
     "aliasCorrections": [
       "ATL->ATE",
       "HRA->HER"
@@ -2486,6 +2553,10 @@
     {
       "date": "2026-09-25",
       "change": "Run289 repaired nominative identity materialization: current PUN intersection was 45/92, not 48/92. Recovered 46 missing current identities (42 from seed blob 6f14fe... and 4 new-since-seed IDs), merged P62/EUM and AXS/AXP identity layers, excluded LEE from current-PUN arithmetic. Identity ledger is now 92/92; no tariff promotion inferred."
+    },
+    {
+      "date": "2026-09-25",
+      "change": "Run290 replayed current first-party evidence onto recovered identities: PUT promoted active->treated with exact five-station direct/User-Card tariff model (+10 EVSE rankable); UOC promoted active->partial with deterministic 22/80 kW classes (+4/7 EVSE rankable), 120 kW subset fail-closed."
     }
   ],
   "evidenceReports": [
@@ -2522,7 +2593,8 @@
     "data/reports/italy_cpo_reconciliation_20260924_run286.json",
     "data/reports/italy_cpo_reconciliation_20260924_run287.json",
     "data/reports/italy_cpo_reconciliation_20260924_run288.json",
-    "data/reports/italy_cpo_reconciliation_20260925_run289.json"
+    "data/reports/italy_cpo_reconciliation_20260925_run289.json",
+    "data/reports/italy_cpo_reconciliation_20260925_run290.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
