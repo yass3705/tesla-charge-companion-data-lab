@@ -1,0 +1,52 @@
+{
+  "run": 284,
+  "date": "2026-09-24",
+  "country": "IT",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalObserved": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "unreconciledCurrentPunPartyIds": 44,
+    "arithmeticCheck": true
+  },
+  "atlante": {
+    "partyId": "ATE",
+    "action": "no-op",
+    "reason": "National 2026-09-23 myAtlante snapshot already integrated; do not repeat import or investigation.",
+    "snapshot": {"stations":472,"connectors":1842,"tariffsAttached":1842,"unattachedConnectors":0}
+  },
+  "investigations": [
+    {
+      "partyId": "TDM",
+      "canonicalName": "T.D.M. S.R.L.",
+      "statusDecision": "partial/fail-closed",
+      "priority": "station-level",
+      "positiveEvidence": [
+        "Pienotto/PUN station at 35 Via Padana Superiore, Vimodrone (MI): two Type 2 22 kW charge points, identifiers 6824145*1 and 6824145*2.",
+        "May 2026 Adiconsum PUN observatory lists T.D.M. S.R.L. at 44/44 active/total charge points as of 2026-01-13."
+      ],
+      "negativeEvidence": [
+        "PUN-derived station page explicitly says tariffs have not yet been communicated to the Piattaforma Unica Nazionale."
+      ],
+      "tariffModel": "No deterministic direct tariff established; do not infer network-wide/class-wide pricing.",
+      "rankableEvseAdded": 0,
+      "promotion": false,
+      "resumeCondition": "Current first-party tariff publication, QR/ad-hoc surface, public/guest backend, or PUN tariff declaration deterministically mappable to TDM EVSE."
+    },
+    {
+      "canonicalName": "Eurospin / Spesa Intelligente historical party scopes",
+      "statusDecision": "identity/operator caution",
+      "positiveEvidence": [
+        "May 2026 Adiconsum PUN observatory lists Spesa Intelligente S.p.A. 26/26, Eurospin Tirrenica S.p.A. 22/22, and Eurospin Lazio S.p.A. 14/14 active/total points as of 2026-01-13.",
+        "Public evidence shows some Eurospin-hosted charging sites are operated by third-party CPOs (e.g. Electrip at Valmontone; Ewiva at Mentana)."
+      ],
+      "decision": "Do not merge Eurospin legal entities with host-site CPOs or assign third-party tariffs without EVSE identity proof.",
+      "rankableEvseAdded": 0,
+      "promotion": false
+    }
+  ],
+  "delta": {"treated":0,"partialCurrent":0,"setAside":0,"active":0,"promotedCpos":[],"rankableEvseAdded":0},
+  "consistency": "19 + 29 + 44 = 92; no alias double-count introduced.",
+  "next": "Continue unreconciled/current Italian CPOs, network/class-wide first; do not repeat TDM generic tariff search without new evidence."
+}
