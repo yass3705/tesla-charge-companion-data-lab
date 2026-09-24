@@ -35,11 +35,11 @@
     "historicalNonCurrentNamed": 2,
     "canonicalNamedEntries": 94,
     "treated": 20,
-    "partialCurrent": 28,
+    "partialCurrent": 29,
     "partialHistoricalNonCurrent": 2,
-    "partial": 30,
+    "partial": 31,
     "setAside": 0,
-    "active": 44,
+    "active": 43,
     "supersededAlias": 0,
     "unreconciledCurrentPunPartyIds": 0,
     "arithmeticCheckCurrentPun": true
@@ -51,6 +51,7 @@
     ],
     "knownStationLevelPartial": [
       "220",
+      "AM1",
       "ASS",
       "ATE",
       "AXS",
@@ -85,7 +86,6 @@
       "844",
       "AFE",
       "ALL",
-      "AM1",
       "ARP",
       "B2B",
       "BEY",
@@ -1302,12 +1302,12 @@
     },
     {
       "partyId": "AM1",
-      "canonicalName": "ALPHA MOBILITY SRL",
+      "canonicalName": "Alpha Mobility SRL",
       "aliases": [
         "ALPHA MOBILITY SRL",
         "AM1"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 50,
@@ -1322,7 +1322,73 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high for 38/50 exact EVSE; fail-closed for 12 Rome EVSE",
+      "tariffChannel": "Alpha Mobility / RicaricaVeicolo public direct payment pages; virtual-card/package discounts separated",
+      "tariffModel": "station/device-specific public price; exact PUN EVSE base id maps directly to RicaricaVeicolo chargestation id where page exists",
+      "tariffs": [
+        {
+          "eurPerKwh": 0.45,
+          "rankableEvse": 1
+        },
+        {
+          "eurPerKwh": 0.61,
+          "rankableEvse": 6
+        },
+        {
+          "eurPerKwh": 0.65,
+          "rankableEvse": 31
+        }
+      ],
+      "fees": {
+        "minimumChargeEur": 2.5,
+        "preauthorizationEur": 100,
+        "preauthorizationNotSessionCost": true
+      },
+      "coverage": {
+        "rankableEvse": 38,
+        "failClosedEvse": 12,
+        "totalEvse": 50,
+        "successfulDeviceIds": 21,
+        "unresolvedDeviceIds": 6,
+        "unresolvedLocation": "Via Aristide Merloni 141, Roma"
+      },
+      "blockingCondition": "Six Rome device IDs in fresh PUN redirect to the RicaricaVeicolo homepage rather than a current station page. Obtain replacement/current station IDs or first-party backend mapping before ranking the remaining 12 EVSE.",
+      "sourceDetails": {
+        "baseUrl": "https://ricaricaveicolo.it/chargestation/<deviceId>?lang=it",
+        "successfulDevicePrices": {
+          "IT0721090032": 0.65,
+          "IT0721090061": 0.65,
+          "IT0721090067": 0.65,
+          "IT0721090075": 0.65,
+          "IT0721080092": 0.65,
+          "IT0721080090": 0.65,
+          "IT0721090029": 0.61,
+          "IT0721090010": 0.61,
+          "IT0721090041": 0.65,
+          "IT0721090056": 0.65,
+          "IT0721090094": 0.65,
+          "TEISON20070108": 0.45,
+          "IT0721090065": 0.61,
+          "IT0721090037": 0.65,
+          "IT0721090097": 0.65,
+          "IT0721090133": 0.65,
+          "IT0721090050": 0.65,
+          "IT0721090085": 0.65,
+          "IT0721090095": 0.65,
+          "IT0721090043": 0.65,
+          "IT0721090068": 0.65
+        },
+        "unresolvedDeviceIds": [
+          "IT0721090031",
+          "IT0721090084",
+          "IT0721090086",
+          "IT0721090054",
+          "IT0721090082",
+          "IT0721090060"
+        ]
+      },
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "YFL",
@@ -2473,7 +2539,7 @@
     }
   ],
   "coherence": {
-    "currentPunArithmetic": "20 treated + 28 partial + 0 setAside + 44 active + 0 supersededAlias = 92 current partyIds",
+    "currentPunArithmetic": "20 treated + 29 partial + 0 setAside + 43 active = 92 current partyIds",
     "aliasCorrections": [
       "ATL->ATE",
       "HRA->HER"
@@ -2557,6 +2623,10 @@
     {
       "date": "2026-09-25",
       "change": "Run290 replayed current first-party evidence onto recovered identities: PUT promoted active->treated with exact five-station direct/User-Card tariff model (+10 EVSE rankable); UOC promoted active->partial with deterministic 22/80 kW classes (+4/7 EVSE rankable), 120 kW subset fail-closed."
+    },
+    {
+      "date": "2026-09-25",
+      "change": "Run291 mapped Alpha Mobility AM1 via exact PUN device IDs to public RicaricaVeicolo direct-payment pages: 38/50 EVSE rankable at 0.45/0.61/0.65 EUR/kWh; 12 Rome EVSE fail-closed because six current PUN device IDs redirect to homepage."
     }
   ],
   "evidenceReports": [
@@ -2594,7 +2664,9 @@
     "data/reports/italy_cpo_reconciliation_20260924_run287.json",
     "data/reports/italy_cpo_reconciliation_20260924_run288.json",
     "data/reports/italy_cpo_reconciliation_20260925_run289.json",
-    "data/reports/italy_cpo_reconciliation_20260925_run290.json"
+    "data/reports/italy_cpo_reconciliation_20260925_run290.json",
+    "data/reports/italy_cpo_reconciliation_20260925_run291.json",
+    "data/reports/alpha_mobility_italy_exact_20260925.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
