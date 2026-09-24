@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 289,
+  "date": "2026-09-25",
+  "purpose": "Lossless repair of the current-PUN nominative identity ledger before further tariff work.",
+  "sources": {
+    "currentCanonical": "docs/italy-cpo-progress-2026-09.json",
+    "currentPun": "data/reports/italy_pun_inventory_reconciliation_20260920_run192.json",
+    "recoveredSeedBlob": "6f14fe04d0190fe3170d117a94e870b1089c8938",
+    "recoveredSeedDate": "2026-09-05",
+    "fullPunArtifactId": 10597588294,
+    "fullPunArtifact": "national/pun_italy_national.json.gz"
+  },
+  "finding": {
+    "publishedCounterClaimedNamedCurrent": 48,
+    "exactSetIntersectionBefore": 45,
+    "actualMissingBefore": 47,
+    "reasonForThreeSlotMismatch": [
+      "EUM absent from run192 as partyId; current PUN partyId is P62 and EVSE prefix is EUM",
+      "AXP absent from run192 as partyId; current PUN partyId is AXS and observed EVSE prefixes are AXS/AXE",
+      "LEE absent from run192 operator/partyId set and must not consume a current-PUN slot"
+    ],
+    "seedDelta": {
+      "oldPhysicalPartyIds": 88,
+      "currentPartyIds": 92,
+      "added": [
+        "FAS",
+        "ENR",
+        "LVR",
+        "SDI",
+        "TAA"
+      ],
+      "removed": [
+        "UTZ"
+      ],
+      "net": 4
+    },
+    "missingRecoveredFromSeed": [
+      "AM1",
+      "YFL",
+      "ALL",
+      "ES1",
+      "ERX",
+      "ES2",
+      "ECM",
+      "ES3",
+      "JOI",
+      "CLE",
+      "ES5",
+      "PUT",
+      "TAP",
+      "ES4",
+      "844",
+      "SEM",
+      "UOC",
+      "VCS",
+      "TEX",
+      "EMV",
+      "B2B",
+      "CAR",
+      "KIW",
+      "PGC",
+      "UCA",
+      "ARP",
+      "EM1",
+      "UTX",
+      "185",
+      "AFE",
+      "BEY",
+      "ISE",
+      "MWT",
+      "P27",
+      "T9K",
+      "666",
+      "CNR",
+      "DAE",
+      "ELS",
+      "MIA",
+      "PIT",
+      "SMT"
+    ],
+    "newSinceSeedRecoveredFromRun192": [
+      "ENR",
+      "LVR",
+      "SDI",
+      "TAA"
+    ],
+    "identityAfter": {
+      "currentPunPartyIds": 92,
+      "currentPunNamedInCanonical": 92,
+      "unreconciledCurrentPunPartyIds": 0,
+      "historicalNonCurrentNamed": 2
+    }
+  },
+  "corrections": [
+    {
+      "punPartyId": "P62",
+      "canonicalName": "EUM Genossenschaft",
+      "evsePrefix": "EUM",
+      "decision": "count once as P62"
+    },
+    {
+      "punPartyId": "AXS",
+      "canonicalName": "Axpo Energy Solutions Italia S.p.A.",
+      "evsePrefixesObserved": [
+        "AXS",
+        "AXE"
+      ],
+      "decision": "merge later AXP research lineage; count once as AXS"
+    },
+    {
+      "identity": "LEE / Leitner Energy",
+      "decision": "retain evidence but currentPunPresent=false until a fresher authoritative PUN inventory proves a current slot"
+    },
+    {
+      "identity": "UTZ / Uattzy historical",
+      "decision": "retain historical/non-current state; absent from run192"
+    }
+  ],
+  "tariffSafety": {
+    "promotionsThisRun": [],
+    "note": "This run repairs identity only. Recovered entries are active unless a current canonical status already existed. No old seed tariff/status is promoted automatically.",
+    "fullPunTariffObservation": "All 47 previously missing run192 partyIds have zero numeric PUN tariff records in the recovered full artifact; direct tariff work must use first-party/QR/app/backend evidence."
+  },
+  "canonicalDelta": {
+    "before": {
+      "currentPunNamedInCanonical": 48,
+      "claimedUnreconciled": 44,
+      "exactCurrentIntersection": 45,
+      "actualMissing": 47
+    },
+    "after": {
+      "currentPunPartyIds": 92,
+      "currentPunNamedInCanonical": 92,
+      "historicalNonCurrentNamed": 2,
+      "canonicalNamedEntries": 94,
+      "treated": 19,
+      "partialCurrent": 27,
+      "partialHistoricalNonCurrent": 2,
+      "partial": 29,
+      "setAside": 0,
+      "active": 46,
+      "supersededAlias": 0,
+      "unreconciledCurrentPunPartyIds": 0,
+      "arithmeticCheckCurrentPun": true
+    }
+  },
+  "next": [
+    "Replay durable tariff evidence for the recovered active identities, network/class-wide first.",
+    "Prioritize UOC/UniOne, PUT/Port Utilities, ALL/Allego, AM1/Alpha Mobility and other larger scopes with direct first-party surfaces.",
+    "Use full PUN EVSE IDs from artifact 10597588294 for exact mapping rather than operator-name inference."
+  ]
+}
