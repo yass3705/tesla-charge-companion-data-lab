@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "date": "2026-09-24",
+  "run": 283,
+  "canonicalSource": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalCountersObserved": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "unreconciledCurrentPunPartyIds": 44,
+    "arithmeticCheck": true
+  },
+  "atlante": {
+    "action": "no-op",
+    "reason": "23/09 national snapshot is already integrated in canonical state; do not re-import or downgrade newer evidence",
+    "integrationCommit": "864fd7f7c527e7570cf2f804fd9bc3547fb93823"
+  },
+  "investigations": [
+    {
+      "canonicalName": "Beyfin",
+      "priority": "station-level",
+      "result": "bounded-no-promotion",
+      "positiveEvidence": [
+        "Beyfin first-party page documents a 22 kW EV charging point at Marina di Pisa",
+        "Beyfin first-party page documents electric charging among services at Sant'Angelo in Vado",
+        "2025 Adiconsum tariff observatory lists beyfin.it with 2/2 PUN tariff declarations, useful as discovery/corroboration only"
+      ],
+      "negativeEvidence": [
+        "No current first-party network-wide/class-wide EV charging tariff grid found",
+        "Beyfin Energy retail electricity/gas offer is not a public EV charging tariff and must not be transposed"
+      ],
+      "decision": "Do not infer a network tariff. Resume only with exact PUN EVSE/QR/ad-hoc mapping or current first-party station tariff.",
+      "rankableEvseAdded": 0
+    },
+    {
+      "canonicalName": "Smartbit",
+      "priority": "station-level",
+      "result": "bounded-no-promotion",
+      "positiveEvidence": [
+        "Smartbit first-party site confirms THOR manages charging stations and online payments",
+        "Smartbit stations may be remotely managed or free; commercial/public deployments are configurable rather than evidence of one national tariff",
+        "2025 Adiconsum tariff observatory lists Smartbit srl with 1/1 PUN tariff declaration, useful as discovery/corroboration only"
+      ],
+      "negativeEvidence": [
+        "No current first-party deterministic network-wide/class-wide direct charging tariff found"
+      ],
+      "decision": "Treat as station-level configurable. Resume with exact IT* Smartbit EVSE, THOR public/guest surface, QR/deeplink or PUN tariff record; do not extrapolate.",
+      "rankableEvseAdded": 0
+    }
+  ],
+  "promotions": [],
+  "rankableEvseAdded": 0,
+  "consistency": {
+    "status": "pass",
+    "equation": "19 treated + 29 partialCurrent + 44 unreconciled = 92 current PUN partyIds",
+    "aliasesDoubleCounted": false
+  }
+}
