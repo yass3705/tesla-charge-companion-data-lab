@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "asOf": "2026-09-24",
+  "runLabel": "run282",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalObserved": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "unreconciledCurrentPunPartyIds": 44,
+    "arithmeticCheck": true
+  },
+  "atlante": {
+    "action": "no-op",
+    "reason": "23/09 snapshot already integrated; do not re-import or downgrade newer canonical state",
+    "partyId": "ATE"
+  },
+  "investigations": [
+    {
+      "canonicalName": "E.ON Drive Infrastructure Italy",
+      "statusDecision": "fail-closed / no promotion",
+      "priority": "station-level until Italy-specific deterministic tariff surface is found",
+      "positiveEvidence": [
+        "EDRI Italian payment support explicitly documents ad-hoc payment by contactless debit/credit card and QR/weblink.",
+        "EDRI Italian site confirms E.ON Drive Infrastructure operates public charging infrastructure in Italy.",
+        "EDRI country-specific tariff pages exist for other markets (e.g. Germany/Czechia), proving tariff pages are localized and therefore foreign prices must not be transposed to Italy."
+      ],
+      "negativeEvidence": [
+        "No Italy-specific public tariff page or deterministic Italy price grid was found in this pass.",
+        "German/Czech tariff values are country-scoped and are not valid evidence for Italian EVSE pricing."
+      ],
+      "officialReferences": [
+        "https://www.edri.com/it-it/support/payment",
+        "https://www.edri.com/it-it/faq",
+        "https://www.edri.com/it-it",
+        "https://www.edri.com/de-de/tariffs",
+        "https://www.edri.com/cs-cz/tariffs"
+      ],
+      "resumeCondition": "Italy-specific EDRI tariff page, QR/weblink payload from an Italian EDRI EVSE, or deterministic Italian station/EVSE -> direct price evidence."
+    },
+    {
+      "partyId": "TCA",
+      "canonicalName": "T-Carica",
+      "statusDecision": "keep partial / no promotion",
+      "priority": "station-level unless a current direct CPO class-wide tariff is proven",
+      "inventoryEvidence": {
+        "officialSiteActivePoints": 106,
+        "officialSiteComingSoonPoints": 216,
+        "punHistoricalActiveTotal2025_07_31": "47/47"
+      },
+      "positiveEvidence": [
+        "T-Carica official site states it develops, installs and manages its charging points.",
+        "T-Carica official driver page states charging can be paid directly by credit/debit card on integrated POS and also via charging apps/RFID.",
+        "A 2024 secondary report lists AC 0.55, DC Fast 0.65 and DC Ultrafast 0.70 EUR/kWh specifically through Electriease-BeaglePlug; this is an eMSP/platform channel and is not promoted as a direct T-Carica CPO tariff."
+      ],
+      "negativeEvidence": [
+        "No current first-party direct T-Carica price grid was found on the public site in this pass.",
+        "Electriease-BeaglePlug prices cannot be relabeled as direct CPO/ad-hoc prices."
+      ],
+      "officialReferences": [
+        "https://www.tcarica.com/",
+        "https://www.tcarica.com/drivers/"
+      ],
+      "resumeCondition": "Current first-party T-Carica direct/ad-hoc price grid, POS/QR station payload, or deterministic EVSE -> direct price mapping."
+    }
+  ],
+  "promotions": [],
+  "rankableEvseAdded": 0,
+  "coherence": {
+    "result": "pass",
+    "notes": "No canonical counter change justified; no aliases or stations counted as extra CPOs."
+  }
+}
