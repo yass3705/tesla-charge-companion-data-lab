@@ -1,0 +1,56 @@
+{
+  "country": "IT",
+  "date": "2026-09-24",
+  "runLabel": "run279",
+  "canonical": {
+    "path": "docs/italy-cpo-progress-2026-09.json",
+    "blobShaObserved": "d04dd7d7bfde7450e9cfde4214448683e29868b9",
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "unreconciledCurrentPunPartyIds": 44,
+    "arithmeticCheck": true
+  },
+  "atlante": {
+    "action": "no-op",
+    "reason": "23/09 snapshot already integrated; do not re-import or downgrade newer canonical state",
+    "status": "partial",
+    "publishedFlow": {"stations": 472, "connectors": 1842, "tariffsMapped": 1842, "unmappedConnectors": 0}
+  },
+  "investigations": [
+    {
+      "partyId": "HER",
+      "canonicalName": "HERA Comm",
+      "statusBefore": "partial",
+      "statusAfter": "partial",
+      "priority": "station-level",
+      "promotion": false,
+      "rankableEvseAdded": 0,
+      "findings": [
+        "Current first-party search surfaces found domestic electricity/gas offers, not a deterministic public-charging CPO tariff for IT*HER.",
+        "Hera Group sustainability material confirms continued deployment of public charging infrastructure, so physical-network existence is not the blocker.",
+        "A Hera Comm comparability document references the product/service name Hera Ricarica Pubblica, but does not establish a current direct CPO charging tariff or deterministic EVSE-to-tariff mapping.",
+        "Do not reuse household electricity EUR/kWh values as charging tariffs."
+      ],
+      "negativePaths": [
+        "generic Hera Comm tariff pages: retail electricity/gas only",
+        "generic Group Hera public-charging search: infrastructure evidence but no current deterministic direct tariff"
+      ],
+      "blockingCondition": "Current first-party charging tariff surface or deterministic IT*HER EVSE/QR/ad-hoc/backend mapping.",
+      "resumeOnlyWith": [
+        "concrete IT*HER EVSE/QR/deeplink",
+        "current first-party Hera Ricarica Pubblica tariff document",
+        "public/guest backend exposing station-scoped direct tariff",
+        "AFIR/PUN tariff payload explicitly attributable to direct CPO channel"
+      ],
+      "confidence": "high"
+    }
+  ],
+  "consistency": {
+    "canonicalModified": false,
+    "reason": "No status/count/coverage change justified; evidence only bounds an already-partial CPO.",
+    "duplicateAliasPromotion": false,
+    "atlanteReimported": false
+  },
+  "next": "Continue with another unresolved station-level CPO; do not repeat generic HER research without a new concrete lead."
+}
