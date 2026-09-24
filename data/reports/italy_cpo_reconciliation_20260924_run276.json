@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 276,
+  "date": "2026-09-24",
+  "scope": "JOINON / GES station-level backend follow-up and anti-stagnation bound",
+  "canonicalBaseline": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "unreconciledCurrentPunPartyIds": 44,
+    "coherence": "19 + 29 + 44 = 92"
+  },
+  "atlante": {
+    "action": "no-op",
+    "reason": "23/09 national snapshot already integrated; do not reimport or downgrade newer canonical state"
+  },
+  "partyId": "GES",
+  "statusBefore": "partial",
+  "statusAfter": "partial",
+  "priority": "station-level",
+  "newEvidence": [
+    {
+      "type": "first-party-platform",
+      "url": "https://www.gewiss.com/it/it/servizi/piattaforme-app-joinon/large-net",
+      "finding": "GEWISS LARGE NET explicitly exposes per-station management including power, prices and sockets, payments and external-platform interoperability. This strengthens the conclusion that JOINON prices are operator/site-configured and cannot be generalized as one GES network tariff."
+    },
+    {
+      "type": "first-party-app",
+      "url": "https://www.gewiss.com/it/it/servizi/software/mobile-apps/joinon-charge-and-go",
+      "finding": "JOINON Charge&Go exposes prices for the selected station, confirming that the useful tariff surface remains station-specific."
+    },
+    {
+      "type": "pun-anchor",
+      "url": "https://pienotto.it/stazioni/273093-unoenergy-driwe-spa-gallarate-va",
+      "finding": "Concrete GES anchors IT*GES*E69R6D and IT*GES*EOA45U remain available, while PUN has no tariff for them."
+    }
+  ],
+  "backendInvestigation": {
+    "result": "no public/guest JOINON Charge&Go station-tariff endpoint or deterministic QR/deeplink payload recovered in this pass",
+    "security": "no authentication bypass attempted; no private token used",
+    "interpretation": "absence of a discovered public endpoint is not evidence that no backend exists"
+  },
+  "decision": {
+    "promotion": false,
+    "rankableAdded": 0,
+    "failClosed": true,
+    "reason": "First-party evidence confirms prices are configurable at station/platform level, but no deterministic complete EVSE-to-direct-price mapping was recovered."
+  },
+  "antiRepeat": {
+    "genericWebTariffSearch": "exhausted",
+    "genericBackendSearch": "exhausted after this second bounded pass",
+    "resumeCondition": "new concrete QR/deeplink, public/guest backend payload, app network capture, or official EVSE-scoped tariff evidence"
+  },
+  "nextAction": "Do not spend another run on generic JOINON/GES discovery. Continue to the next largest unresolved CPO according to canonical priority. Return to GES only with a concrete QR/deeplink/backend lead or EVSE-scoped first-party tariff evidence."
+}
