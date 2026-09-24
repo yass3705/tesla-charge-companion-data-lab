@@ -1,0 +1,43 @@
+{
+  "country": "IT",
+  "date": "2026-09-24",
+  "scope": "E.ON Drive Infrastructure Italy / Mantova evidence correction",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "canonicalCountersObserved": {
+    "currentPunPartyIds": 92,
+    "treated": 19,
+    "partialCurrent": 29,
+    "unreconciledCurrentPunPartyIds": 44,
+    "arithmeticCheck": true
+  },
+  "atlante": {
+    "action": "no-op",
+    "reason": "23/09 myAtlante snapshot already integrated; do not re-import or downgrade newer canonical state"
+  },
+  "eonDriveInfrastructureItaly": {
+    "statusChange": "none",
+    "promotion": false,
+    "rankableEvseAdded": 0,
+    "correction": "Previous run evidence mentioning 0.790 EUR/kWh at Strada Circonvallazione Sud 78A, Mantova is not reproducible from the current PUN-derived Pienotto surface and must not be used as a rankable direct-tariff anchor.",
+    "currentEvidence": [
+      {
+        "url": "https://pienotto.it/comuni/mantova/elettrico",
+        "observed": "E.ON Drive Infrastructure Italy S.r.l., Via Cremona 36, Mantova: tariff n.d. on current PUN-derived page"
+      },
+      {
+        "url": "https://www.edri.com/en-se/tariffs",
+        "observed": "EDRI exposes a first-party ad-hoc tariff surface with power classes and payment channels, but the retrieved locale is Sweden (SEK); these values are not transferable to Italy."
+      },
+      {
+        "url": "https://www.edri.com/en-se",
+        "observed": "EDRI confirms operation as a pan-European CPO and Italian expansion, but this does not establish an Italy-wide tariff."
+      }
+    ],
+    "decision": "Keep fail-closed for Italy until an Italy-localized EDRI ad-hoc tariff surface or deterministic Italian station/EVSE -> direct tariff mapping is obtained. Do not reuse the unverified 0.790 EUR/kWh Mantova value.",
+    "resumeCondition": "Italy-localized edri.com tariff/payment page, pay.edri.com station payload, QR/deeplink, or PUN/AFIR evidence carrying a direct tariff and deterministic station/EVSE identity."
+  },
+  "coherence": {
+    "result": "pass",
+    "notes": "No counter change justified; 19 treated + 29 current partial + 44 unreconciled = 92 current PUN partyIds."
+  }
+}
