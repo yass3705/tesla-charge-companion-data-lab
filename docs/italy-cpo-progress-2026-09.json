@@ -34,12 +34,12 @@
     "currentPunNamedInCanonical": 92,
     "historicalNonCurrentNamed": 2,
     "canonicalNamedEntries": 94,
-    "treated": 20,
+    "treated": 21,
     "partialCurrent": 45,
     "partialHistoricalNonCurrent": 2,
     "partial": 47,
     "setAside": 0,
-    "active": 27,
+    "active": 26,
     "supersededAlias": 0,
     "unreconciledCurrentPunPartyIds": 0,
     "arithmeticCheckCurrentPun": true
@@ -101,7 +101,6 @@
       "666",
       "844",
       "AFE",
-      "ALL",
       "ARP",
       "B2B",
       "CNR",
@@ -1430,7 +1429,7 @@
         "Allego Italy S.r.l.",
         "ALL"
       ],
-      "status": "active",
+      "status": "treated",
       "priority": "station-level",
       "inventory": {
         "evse": 28,
@@ -1445,7 +1444,43 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high",
+      "tariffChannel": "Allego direct/pay-as-you-go DXP public web client; roaming excluded",
+      "tariffModel": "exact current direct station/chargepoint price from DXP; all current PUN ALL EVSE map to own-network DXP chargepoints",
+      "tariffs": [
+        {
+          "eurPerKwh": 0.805,
+          "vatIncluded": true,
+          "rankableEvse": 28
+        }
+      ],
+      "fees": {
+        "hpcOverstay": {
+          "eurPerMinute": 0.253,
+          "vatIncluded": true,
+          "notBeforeSessionMinute": 45,
+          "onlyAfterChargingStops": true,
+          "scope": "all Allego-owned HPC in Italy"
+        }
+      },
+      "coverage": {
+        "rankableEvse": 28,
+        "failClosedEvse": 0,
+        "totalEvse": 28,
+        "stations": 8
+      },
+      "sourceDetails": {
+        "inventory": "PUN run192 / artifact 10597588294",
+        "exactDataset": "data/national/allego_direct_stations_italy_20260925.json.gz",
+        "report": "data/reports/allego_italy_exact_20260925.json",
+        "method": "PUN EVSE -> Allego DXP group chargepoint id -> priceInfoDirectPayment; isOwnNetwork required"
+      },
+      "officialReferences": [
+        "https://www.allego.eu/pricing/",
+        "https://www.allego.eu/overstay-fee/"
+      ],
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "ES1",
@@ -2682,7 +2717,7 @@
     }
   ],
   "coherence": {
-    "currentPunArithmetic": "20 treated + 45 partial + 0 setAside + 27 active + 0 supersededAlias = 92 current partyIds",
+    "currentPunArithmetic": "21 treated + 45 partial + 0 setAside + 26 active = 92 current partyIds",
     "aliasCorrections": [
       "ATL->ATE",
       "HRA->HER"
@@ -2774,6 +2809,10 @@
     {
       "date": "2026-09-25",
       "change": "Run292 replayed durable pre-existing investigations after identity repair: 16 recovered current PUN identities moved active->partial without tariff promotion or rankable coverage inference."
+    },
+    {
+      "date": "2026-09-25",
+      "change": "Run293 resolved Allego Italy ALL: exact DXP mapping covers 28/28 PUN EVSE at 0.805 EUR/kWh; official Italy HPC overstay 0.253 EUR/min after 45 minutes and only while not charging; active->treated."
     }
   ],
   "evidenceReports": [
@@ -2814,7 +2853,9 @@
     "data/reports/italy_cpo_reconciliation_20260925_run290.json",
     "data/reports/italy_cpo_reconciliation_20260925_run291.json",
     "data/reports/alpha_mobility_italy_exact_20260925.json",
-    "data/reports/italy_cpo_reconciliation_20260925_run292.json"
+    "data/reports/italy_cpo_reconciliation_20260925_run292.json",
+    "data/reports/italy_cpo_reconciliation_20260925_run293.json",
+    "data/reports/allego_italy_exact_20260925.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
