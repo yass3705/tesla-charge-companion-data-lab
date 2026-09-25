@@ -35,11 +35,11 @@
     "historicalNonCurrentNamed": 2,
     "canonicalNamedEntries": 94,
     "treated": 21,
-    "partialCurrent": 48,
+    "partialCurrent": 56,
     "partialHistoricalNonCurrent": 2,
-    "partial": 50,
+    "partial": 58,
     "setAside": 0,
-    "active": 23,
+    "active": 15,
     "supersededAlias": 0,
     "unreconciledCurrentPunPartyIds": 0,
     "arithmeticCheckCurrentPun": true
@@ -52,10 +52,14 @@
     ],
     "knownStationLevelPartial": [
       "220",
+      "844",
+      "AFE",
       "AM1",
+      "ARP",
       "ASS",
       "ATE",
       "AXS",
+      "B2B",
       "BEY",
       "BPA",
       "CAR",
@@ -66,6 +70,7 @@
       "ECM",
       "EDN",
       "EMO",
+      "EMV",
       "ENX",
       "ERX",
       "ES1",
@@ -79,7 +84,9 @@
       "GMT",
       "HER",
       "IOY",
+      "ISE",
       "JOI",
+      "KIW",
       "KOS",
       "MIA",
       "MWT",
@@ -93,6 +100,7 @@
       "TDM",
       "TEX",
       "TSL",
+      "UCA",
       "UFC",
       "VCS",
       "WRM",
@@ -102,18 +110,11 @@
     "activeIdentityReconciled": [
       "185",
       "666",
-      "844",
-      "AFE",
-      "ARP",
-      "B2B",
       "CNR",
       "DAE",
       "ELS",
       "EM1",
-      "EMV",
       "ENR",
-      "ISE",
-      "KIW",
       "LVR",
       "P27",
       "PGC",
@@ -121,7 +122,6 @@
       "SDI",
       "T9K",
       "TAA",
-      "UCA",
       "UTX"
     ]
   },
@@ -1898,7 +1898,7 @@
         "L'AUTO SPA",
         "844"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 7,
@@ -1913,7 +1913,20 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high identity/platform model; tariff unresolved",
+      "tariffChannel": "ZapGrid-managed charging surface; manager/site-specific direct pricing; roaming/eMSP prices separate",
+      "tariffModel": "ZapGrid explicitly preserves the individuality of each station manager and supports manager-specific commercial models; no L'AUTO-wide tariff proven",
+      "blockingCondition": "Map each current IT*844 / IT*GCE EVSE to its exact ZapGrid station detail/direct tariff. Third-party 0.50 EUR/kWh observations at Lipomo are corroboration only.",
+      "officialReferences": [
+        "https://zapgrid.net/"
+      ],
+      "positiveEvidence": [
+        "Current ZapGrid first-party site lists L'Auto among its customers/managed networks and describes a platform spanning different station managers while preserving each manager's individuality.",
+        "Fresh PUN identifies 7 L'AUTO SPA EVSE across 7 current stations; EVSE identifiers use IT*GCE.",
+        "Public discovery shows the Lipomo L'Auto station under ZapGrid, but no first-party numeric L'AUTO tariff was recovered."
+      ],
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "SEM",
@@ -2100,7 +2113,7 @@
         "Prestige Building srl",
         "EMV"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 5,
@@ -2115,7 +2128,15 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high identity; tariff unresolved",
+      "tariffModel": "two-site heterogeneous charging scope; no deterministic current direct tariff or public payment backend recovered",
+      "blockingCondition": "Exact IT*EMV station QR/POS/app/backend price for Monteforte Irpino and Pietrelcina; do not infer from infrastructure grants or partner/vendor references.",
+      "positiveEvidence": [
+        "Fresh PUN identifies 5 IT*EMV EVSE across two sites with materially different power classes (22/40/75/120 kW).",
+        "Public records corroborate Prestige Building activity around EV charging infrastructure, but no current direct retail tariff surface was found."
+      ],
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "B2B",
@@ -2124,7 +2145,7 @@
         "Emotion s.r.l.",
         "B2B"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 4,
@@ -2139,7 +2160,20 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high",
+      "tariffChannel": "Emotion Spotlink / POS / coupons; roaming apps separated",
+      "tariffModel": "station-manager configurable; first-party states managers set and modify tariffs station by station",
+      "blockingCondition": "Extract current Spotlink/POS direct prices for the two exact IT*B2B PUN stations; no network-wide tariff can be inferred.",
+      "officialReferences": [
+        "https://emotion-team.com/it/ricarica/"
+      ],
+      "positiveEvidence": [
+        "Emotion first-party page explicitly says managers can set and modify charging tariffs station by station.",
+        "Emotion supports Spotlink, POS, coupons and other payment methods and exposes stations to many mobility apps.",
+        "Fresh PUN scope is 4 EVSE across two sites (22 kW and 60 kW classes)."
+      ],
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "CAR",
@@ -2178,7 +2212,7 @@
         "Kiwih srl",
         "KIW"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 4,
@@ -2193,7 +2227,21 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high",
+      "tariffChannel": "KiwihCharge own + eMSP/Hubject; third-party EMP tariffs explicitly separated",
+      "tariffModel": "own-station direct price not published on current public tariff page; published numeric tables are for partner EMP networks",
+      "blockingCondition": "Obtain exact KiwihCharge app/backend/QR direct price for the four current IT*KIW own EVSE at Offida and Spinetoli.",
+      "officialReferences": [
+        "https://www.kiwih.it/kiwih-charge/",
+        "https://www.kiwih.it/kiwihcharge-tariffe/"
+      ],
+      "positiveEvidence": [
+        "Kiwih first-party site distinguishes own charging stations from the broader KiwihCharge/Hubject roaming network.",
+        "Its public tariff page labels the numeric tables as EMP tariffs and lists EnelXWay, BeCharge, FreeToX, Duferco, Route220, A2A, Neogy and Ewiva, not a direct Kiwih own-network price.",
+        "Fresh PUN has 4 IT*KIW EVSE at two 22 kW sites."
+      ],
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "PGC",
@@ -2226,7 +2274,7 @@
         "UNION CARBURANTI SRL",
         "UCA"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 4,
@@ -2241,7 +2289,25 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high identity/direct channel; numeric tariff unresolved",
+      "tariffChannel": "direct credit-card terminal; no app required",
+      "tariffModel": "single current site with four 360 kW EVSE; exact direct price not published on first-party site",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 4,
+        "totalEvse": 4,
+        "stations": 1
+      },
+      "blockingCondition": "Capture the current on-terminal/QR/backend direct price for the Spirano 360 kW site.",
+      "officialReferences": [
+        "http://www.unioncarburanti.it/"
+      ],
+      "positiveEvidence": [
+        "Union Carburanti first-party site advertises four 360 kW Superfast charging columns with credit-card payment and explicitly no app.",
+        "Fresh PUN has exactly 4 IT*UCA Terra360 EVSE at the same Spirano address."
+      ],
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "ARP",
@@ -2250,7 +2316,7 @@
         "A.R. PETROLI S.R.L.",
         "ARP"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 3,
@@ -2265,7 +2331,14 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high identity; tariff unresolved",
+      "tariffModel": "three single-EVSE sites with mixed Type2/CCS/CHAdeMO connectors; no current deterministic direct tariff recovered",
+      "blockingCondition": "Exact QR/POS/app/backend price for each IT*ARP station at Palma Campania/Poggiomarino; no global tariff inference.",
+      "positiveEvidence": [
+        "Fresh PUN contains 3 IT*ARP EVSE at three current sites; targeted current direct-tariff searches produced no authoritative numeric retail price."
+      ],
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "EM1",
@@ -2370,7 +2443,7 @@
         "A.F. Energia S.r.l.",
         "AFE"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 2,
@@ -2385,7 +2458,14 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high identity; tariff unresolved",
+      "tariffModel": "single two-EVSE 180 kW site; no current public direct retail tariff recovered",
+      "blockingCondition": "Exact direct terminal/QR/backend price for the Occhiobello IT*AFE 180 kW site.",
+      "positiveEvidence": [
+        "Fresh PUN contains 2 IT*AFE EVSE at one 180 kW Occhiobello site; targeted current tariff search produced no authoritative charging price."
+      ],
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "BEY",
@@ -2421,11 +2501,12 @@
     },
     {
       "partyId": "ISE",
-      "canonicalName": "ISE",
+      "canonicalName": "ITI Service srl",
       "aliases": [
-        "ISE"
+        "ISE",
+        "Itiservicesrl.it"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 2,
@@ -2440,7 +2521,15 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high identity; tariff unresolved",
+      "tariffModel": "single current 50 kW PUN site; direct charging tariff/payment surface not recovered",
+      "blockingCondition": "Inspect the exact IT*ISE Molfetta station QR/POS/backend price; do not infer from the company's electricity/green-energy activity.",
+      "positiveEvidence": [
+        "Fresh PUN locates the 2 IT*ISE EVSE at Via dei Metalmeccanici 26, Molfetta.",
+        "ITI Service's current public contact/site information uses the same exact address, resolving the historical Itiservicesrl.it identity ambiguity."
+      ],
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "MWT",
@@ -2777,7 +2866,7 @@
     }
   ],
   "coherence": {
-    "currentPunArithmetic": "21 treated + 48 partial + 23 active = 92 current partyIds",
+    "currentPunArithmetic": "21 treated + 56 partial + 15 active = 92 current partyIds",
     "aliasCorrections": [
       "ATL->ATE",
       "HRA->HER"
@@ -2877,6 +2966,10 @@
     {
       "date": "2026-09-25",
       "change": "Run294 completed first-pass direct-tariff investigations for ERX, TAP and SEM: all active->partial; no unsafe tariff promotion. SEM retains official default grid as candidate only pending THOR station-detail exception checks."
+    },
+    {
+      "date": "2026-09-25",
+      "change": "Run295 completed first-pass classification for 844/EMV/B2B/KIW/UCA/ISE/ARP/AFE: all moved active->partial with exact identity/channel/blocker evidence; no unsafe numeric tariff promotion."
     }
   ],
   "evidenceReports": [
@@ -2920,7 +3013,8 @@
     "data/reports/italy_cpo_reconciliation_20260925_run292.json",
     "data/reports/italy_cpo_reconciliation_20260925_run293.json",
     "data/reports/allego_italy_exact_20260925.json",
-    "data/reports/italy_cpo_reconciliation_20260925_run294.json"
+    "data/reports/italy_cpo_reconciliation_20260925_run294.json",
+    "data/reports/italy_cpo_reconciliation_20260925_run295.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
