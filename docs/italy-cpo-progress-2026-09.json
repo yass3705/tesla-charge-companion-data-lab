@@ -550,15 +550,25 @@
         "TheF Charging"
       ],
       "status": "partial",
-      "priority": "station-level",
-      "blockingCondition": "deterministic EVSE-to-direct-tariff mapping",
+      "priority": "class-wide",
+      "blockingCondition": "DC+ 61-149 kW occupancy component is not explicit on the official tariff table; do not infer. AC, DC23-60 and HPC occupancy rules are explicit.",
       "confidence": "high",
       "inventory": {
         "evse": 1096,
         "stations": 394,
         "currentPunPresent": true,
         "punAsOf": "2026-09-20"
-      }
+      },
+      "tariffModel": "Official Powy June-2026 direct class grid: AC<=22 0.72; DC23-60 0.88; DC+61-149 0.92; HPC>=150 0.97 EUR/kWh.",
+      "coverage": {
+        "canonicalPunEvse": 1096,
+        "powerClassMappedEvse": 1096,
+        "fullySpecifiedDirectEvse": 822,
+        "dcPlusEnergyMappedEvse": 274,
+        "unmappedPowerEvse": 0
+      },
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "EMO",
@@ -3382,6 +3392,10 @@
     {
       "date": "2026-09-25",
       "change": "Run299 completed first-pass classification of the remaining 13 current PUN identities (185, 666, PGC, EM1, ENR, UTX, P27, T9K, CNR, DAE, ELS, LVR, SDI): all moved active->partial station-level after exact PUN/payment-capability review, exact-address/operator search and rejection of non-exact nearby/roaming matches. No numeric tariff promoted. Active queue is now 0."
+    },
+    {
+      "date": "2026-09-25",
+      "change": "Run300 upgraded PWY/Powy to class-wide direct pricing: all 1,096 PUN EVSE map deterministically by maxPowerKw to the official June-2026 Powy grid. 822 EVSE have explicit energy and occupancy rules; 274 DC+ EVSE have exact energy pricing but occupancy remains fail-closed. No roaming tariff used."
     }
   ],
   "evidenceReports": [
