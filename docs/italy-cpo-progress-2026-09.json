@@ -1044,7 +1044,7 @@
         "stations": 489,
         "currentPunPresent": true
       },
-      "blockingCondition": "Reconcile the 116 PUN-baseline EVSE absent from the published myAtlante snapshot, or prove a newer authoritative inventory boundary; do not infer external fees from ENERGY-only payload",
+      "blockingCondition": "Refresh the existing Italy myAtlante extraction and exact-diff the 128 PUN-only EVSE / 12 myAtlante-only EVSE, or obtain exact first-party payloads for the unmatched PUN IDs; do not infer tariffs or external fees for unmatched EVSE.",
       "confidence": "high for published-flow extraction and connector tariffs; partial for full canonical PUN perimeter",
       "inventorySource": "PUN canonical baseline plus myAtlante national API snapshot",
       "tariffModel": "direct myAtlante no-subscription ENERGY price per connector",
@@ -1086,8 +1086,14 @@
         "rankableUniqueEvse": 1842,
         "unpricedConnectors": 0,
         "unmatchedTariffs": 0,
-        "canonicalPunResidualEvse": 116,
-        "residualReason": "PUN baseline has 1,958 IT*ATE EVSE while the 2026-09-23 myAtlante published flow exposes 1,842 unique EVSE/connectors; absence from this snapshot is not proof of closure or of no tariff"
+        "canonicalPunResidualEvse": 128,
+        "residualReason": "Run301 exact set reconciliation supersedes the simplistic net delta: 1,830 exact EVSE matches, 128 PUN-only and 12 myAtlante-only; net count delta remains 116.",
+        "exactPunMyAtlanteEvse": 1830,
+        "punOnlyEvse": 128,
+        "myAtlanteOnlyEvse": 12,
+        "punResidualStations": 38,
+        "residualStationsWithSomeExactMatches": 24,
+        "fullyAbsentPunStationsFromMyAtlante": 14
       },
       "sourceDetails": {
         "endpointFamily": "myAtlante app-backend /map-locations, /locations/{id}, /locations/{id}/tariffs",
@@ -1115,10 +1121,11 @@
         "data/national/atlante_direct_stations_italy_20260923.json.gz",
         "data/national/atlante_myatlante_raw_20260923.zip",
         "scripts/atlante/extract_atlante.py",
-        "data/reports/italy_cpo_reconciliation_20260923_run269.json"
+        "data/reports/italy_cpo_reconciliation_20260923_run269.json",
+        "data/reports/italy_cpo_reconciliation_20260925_run301.json"
       ],
-      "lastInvestigated": "2026-09-23",
-      "lastChanged": "2026-09-23",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25",
       "crossCountryReuse": {
         "country": "FR",
         "state": "already_reused_and_integrated",
@@ -3396,6 +3403,10 @@
     {
       "date": "2026-09-25",
       "change": "Run300 upgraded PWY/Powy to class-wide direct pricing: all 1,096 PUN EVSE map deterministically by maxPowerKw to the official June-2026 Powy grid. 822 EVSE have explicit energy and occupancy rules; 274 DC+ EVSE have exact energy pricing but occupancy remains fail-closed. No roaming tariff used."
+    },
+    {
+      "date": "2026-09-25",
+      "change": "Run301 canonicalized Atlante exact set reconciliation: 1,830 exact PUN↔myAtlante EVSE, 128 PUN-only across 38 stations, 12 myAtlante-only; ATE remains partial and no unmatched tariff is inferred."
     }
   ],
   "evidenceReports": [
@@ -3446,7 +3457,8 @@
     "data/reports/italy_cpo_reconciliation_20260925_run297.json",
     "data/reports/taac_taa_italy_exact_20260925.json",
     "data/reports/italy_cpo_reconciliation_20260925_run298.json",
-    "data/reports/italy_cpo_reconciliation_20260925_run299.json"
+    "data/reports/italy_cpo_reconciliation_20260925_run299.json",
+    "data/reports/italy_cpo_reconciliation_20260925_run301.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
