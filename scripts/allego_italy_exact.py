@@ -69,7 +69,35 @@ def resolve(evse_id: str, key: str) -> dict:
     rates,fees=base.parse_price_text(info)
     own=obj.get("isOwnNetwork")
     direct=rates[0] if len(rates)==1 else None
-    rankable=bool(status==200 and own is not False and direct is not None and not fees)
+    max_power=base._float(obj.get("maxPowerKw"))
+    normalized_fee_rates=[]
+    for fee in fees:
+        try:
+            v=float(fee.get("value"))
+        except Exception:
+            continue
+        unit=str(fee.get("unit") or "").lower()
+        if unit in {"min","minute"}:
+            normalized_fee_rates.append(round(v,6))
+        elif unit in {"hour","heure"}:
+            normalized_fee_rates.append(round(v/60.0,6))
+    normalized_fee_rates=sorted(set(normalized_fee_rates))
+    fee_policy=None
+    fee_error=None
+    if normalized_fee_rates:
+        if max_power and max_power > 22.5 and normalized_fee_rates == [0.253]:
+            fee_policy={
+                "type":"idle_after_charging",
+                "ratePerMinuteEur":0.253,
+                "notBeforeSessionMinute":45,
+                "onlyAfterChargingStops":True,
+                "country":"IT",
+                "vatIncluded":True,
+                "source":"https://www.allego.eu/overstay-fee/",
+            }
+        else:
+            fee_error="unparsed_time_or_blocking_fee"
+    rankable=bool(status==200 and own is not False and direct is not None and fee_error is None)
     return {
         "evseId":evse_id,
         "dxpChargePointId":chosen,
@@ -77,15 +105,16 @@ def resolve(evse_id: str, key: str) -> dict:
         "status":status,
         "brand":obj.get("brand"),
         "isOwnNetwork":own,
-        "maxPowerKw":base._float(obj.get("maxPowerKw")),
+        "maxPowerKw":max_power,
         "directEurPerKwh":direct if rankable else None,
         "rateCandidatesEurPerKwh":rates,
         "feeCandidates":fees,
+        "feePolicy":fee_policy,
         "priceTextPresent":bool(info),
         "rankableDirect":rankable,
         "blockingReason":None if rankable else (
             "not_allego_own_network" if own is False else
-            "unparsed_time_or_blocking_fee" if fees else
+            "unparsed_time_or_blocking_fee" if fee_error else
             "ambiguous_or_missing_direct_kwh_rate" if status==200 else
             f"dxp_http_{status}"
         ),
