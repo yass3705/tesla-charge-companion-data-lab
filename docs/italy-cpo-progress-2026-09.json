@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "country": "IT",
   "asOf": "2026-09-25",
-  "inventoryStatus": "fresh_pun_92_of_92_nominatively_reconciled_tariff_replay_pending",
+  "inventoryStatus": "fresh_pun_92_of_92_nominatively_reconciled_first_pass_classified",
   "inventoryComplete": false,
   "policy": {
     "failClosed": true,
@@ -35,11 +35,11 @@
     "historicalNonCurrentNamed": 2,
     "canonicalNamedEntries": 94,
     "treated": 23,
-    "partialCurrent": 56,
+    "partialCurrent": 69,
     "partialHistoricalNonCurrent": 2,
-    "partial": 58,
+    "partial": 71,
     "setAside": 0,
-    "active": 13,
+    "active": 0,
     "supersededAlias": 0,
     "unreconciledCurrentPunPartyIds": 0,
     "arithmeticCheckCurrentPun": true
@@ -51,7 +51,9 @@
       "UOC"
     ],
     "knownStationLevelPartial": [
+      "185",
       "220",
+      "666",
       "844",
       "AFE",
       "AM1",
@@ -65,12 +67,17 @@
       "CAR",
       "CGS",
       "CLE",
+      "CNR",
       "CPO",
+      "DAE",
       "DRW",
       "ECM",
       "EDN",
+      "ELS",
+      "EM1",
       "EMO",
       "EMV",
+      "ENR",
       "ENX",
       "ES1",
       "ES2",
@@ -87,14 +94,19 @@
       "JOI",
       "KIW",
       "KOS",
+      "LVR",
       "MIA",
       "MWT",
       "NRG",
+      "P27",
       "P62",
+      "PGC",
       "PIT",
       "PWY",
       "SAG",
+      "SDI",
       "SMT",
+      "T9K",
       "TAP",
       "TCA",
       "TDM",
@@ -102,26 +114,13 @@
       "TSL",
       "UCA",
       "UFC",
+      "UTX",
       "VCS",
       "WRM",
       "YFL"
     ],
     "setAsideStationLevel": [],
-    "activeIdentityReconciled": [
-      "185",
-      "666",
-      "CNR",
-      "DAE",
-      "ELS",
-      "EM1",
-      "ENR",
-      "LVR",
-      "P27",
-      "PGC",
-      "SDI",
-      "T9K",
-      "UTX"
-    ]
+    "activeIdentityReconciled": []
   },
   "operators": [
     {
@@ -2284,7 +2283,7 @@
         "Piergiorgio Cacco",
         "PGC"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 4,
@@ -2299,7 +2298,30 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high first-pass classification / tariff unresolved",
+      "tariffModel": "station/EVSE-specific direct price unresolved after first-pass evidence sweep",
+      "tariffChannel": "direct card/QR/PED/app/backend where evidenced; eMSP roaming excluded",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 4,
+        "stations": 2
+      },
+      "positiveEvidence": [
+        "Fresh PUN: four 22 kW EVSE across Via Sant'Antonino 300 Treviso and Via Guaiane 146 Noventa di Piave; all expose direct card/PED capabilities but no numeric PUN tariff.",
+        "First-party Trattoria Le Guaiane page for the exact Via Guaiane 146 host confirms an EV charging point in its parking, but publishes no charging price.",
+        "Exact-coordinate ChargePoint discovery produced no deterministic match to these PGC EVSE."
+      ],
+      "officialReferences": [
+        "https://www.guaiane.com/ristorante/"
+      ],
+      "negativePaths": [
+        "Fresh PUN contains no numeric tariff for the current EVSE scope.",
+        "No tariff is inferred from connector power, nearby stations, host identity, or roaming eMSP prices."
+      ],
+      "blockingCondition": "Capture the numeric direct card/PED tariff from the exact IT*PGC*176*2* and IT*PGC*179*2* terminal/QR/backend surfaces; host presence alone is not a tariff.",
+      "resumeCondition": "Inspect onsite/QR/PED/backend for either exact PGC station; map price by EVSE/station only.",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "UCA",
@@ -2381,7 +2403,7 @@
         "Energine SRL",
         "EM1"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 3,
@@ -2396,7 +2418,31 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high first-pass classification / tariff unresolved",
+      "tariffModel": "station/EVSE-specific direct price unresolved after first-pass evidence sweep",
+      "tariffChannel": "direct card/QR/PED/app/backend where evidenced; eMSP roaming excluded",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 3,
+        "stations": 2
+      },
+      "positiveEvidence": [
+        "Fresh PUN: three EVSE at two exact sites (Roma Via Aurelia Antica 415; Modica Via Nazionale Modica Ispica 1/1), all card-payable and with no numeric PUN tariff.",
+        "Current first-party Energine Mobility documentation states partners can set tariffs and access rules themselves and can change them; hotel/host tariffs can differ between guests and passers-by.",
+        "The 0.70 EUR/kWh shown in Energine calculators is explicitly an indicative simulation value, not a production tariff."
+      ],
+      "officialReferences": [
+        "https://mobility.energine.it/",
+        "https://mobility.energine.it/hospitality"
+      ],
+      "negativePaths": [
+        "Fresh PUN contains no numeric tariff for the current EVSE scope.",
+        "No tariff is inferred from connector power, nearby stations, host identity, or roaming eMSP prices."
+      ],
+      "blockingCondition": "Obtain the exact current Energine app/POS/Manager tariff payload for the two current PUN stationIds; do not promote the 0.70 EUR/kWh simulator example.",
+      "resumeCondition": "Inspect Energine Mobility app/backend or a direct QR/POS surface for either station and determine the station/connector price schema.",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "ENR",
@@ -2405,7 +2451,7 @@
         "Energo di Gianluca Giudici",
         "ENR"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 3,
@@ -2420,7 +2466,28 @@
         "historicalSeedStatus": null,
         "note": "Identity is new in PUN run192 versus the 2026-09-05 88-party seed; no tariff conclusion inferred."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high first-pass classification / tariff unresolved",
+      "tariffModel": "station/EVSE-specific direct price unresolved after first-pass evidence sweep",
+      "tariffChannel": "direct card/QR/PED/app/backend where evidenced; eMSP roaming excluded",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 3,
+        "stations": 3
+      },
+      "positiveEvidence": [
+        "Fresh PUN: Albavilla, Arosio and Inverigo each expose card/contactless capabilities, 22 kW AC, but no numeric PUN tariff.",
+        "Exact operator/address web searches did not expose a current first-party charging tariff or deterministic backend.",
+        "Exact-coordinate ChargePoint discovery produced no deterministic match."
+      ],
+      "officialReferences": [],
+      "negativePaths": [
+        "Fresh PUN contains no numeric tariff for the current EVSE scope.",
+        "No tariff is inferred from connector power, nearby stations, host identity, or roaming eMSP prices."
+      ],
+      "blockingCondition": "Resolve a current direct card/QR/payment backend for ALBAVILLA001-1, AROSIO001 or INVERIGO001-1 and capture the numeric tariff.",
+      "resumeCondition": "Use a concrete station QR/PED/deeplink or a newly indexed first-party operator surface.",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "UTX",
@@ -2429,7 +2496,7 @@
         "Utexco di Sandiano Giovanni",
         "UTX"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 3,
@@ -2444,7 +2511,30 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high first-pass classification / tariff unresolved",
+      "tariffModel": "station/EVSE-specific direct price unresolved after first-pass evidence sweep",
+      "tariffChannel": "direct card/QR/PED/app/backend where evidenced; eMSP roaming excluded",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 3,
+        "stations": 1
+      },
+      "positiveEvidence": [
+        "Fresh PUN: one Piazza Castello Moncalvo site with three EVSE and card/contactless/RFID capabilities; no numeric PUN tariff.",
+        "Current Utexco first-party site describes energy-efficiency, renewables, utilities and sustainable mobility but exposes no public charging tariff/payment surface for the Moncalvo station.",
+        "Nearby ChargePoint/Enel results were rejected because they do not match the exact UTX EVSE identifiers."
+      ],
+      "officialReferences": [
+        "https://utexco.com/"
+      ],
+      "negativePaths": [
+        "Fresh PUN contains no numeric tariff for the current EVSE scope.",
+        "No tariff is inferred from connector power, nearby stations, host identity, or roaming eMSP prices."
+      ],
+      "blockingCondition": "Obtain the exact Piazza Castello Utexco card/RFID/QR price. PUN connector power-unit anomalies must not be used to infer tariff classes.",
+      "resumeCondition": "Inspect the onsite payment surface or a Utexco station/backend deeplink for UTXMNCLV1USRVE01_1/_2/_3.",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "185",
@@ -2453,7 +2543,7 @@
         "Speedy Power di Simone Palatresi",
         "185"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 2,
@@ -2468,7 +2558,28 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high first-pass classification / tariff unresolved",
+      "tariffModel": "station/EVSE-specific direct price unresolved after first-pass evidence sweep",
+      "tariffChannel": "direct card/QR/PED/app/backend where evidenced; eMSP roaming excluded",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 2,
+        "stations": 1
+      },
+      "positiveEvidence": [
+        "Fresh PUN: IT185E018 and IT185E019 at Via S. Biagio 2, Figline e Incisa Valdarno; card/contactless supported; no numeric PUN tariff.",
+        "A public professional project reference confirms a Speedy Power EV charging installation at Figline e Incisa Valdarno, but no retail charging price is published.",
+        "Exact-coordinate ChargePoint discovery produced no deterministic match."
+      ],
+      "officialReferences": [],
+      "negativePaths": [
+        "Fresh PUN contains no numeric tariff for the current EVSE scope.",
+        "No tariff is inferred from connector power, nearby stations, host identity, or roaming eMSP prices."
+      ],
+      "blockingCondition": "Capture the exact current payment-terminal/QR tariff for IT185E018/IT185E019.",
+      "resumeCondition": "Inspect the station's direct card/QR/PED surface or a first-party Speedy Power backend.",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "AFE",
@@ -2602,7 +2713,7 @@
         "Marco Piergrossi",
         "P27"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 2,
@@ -2617,7 +2728,28 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high first-pass classification / tariff unresolved",
+      "tariffModel": "station/EVSE-specific direct price unresolved after first-pass evidence sweep",
+      "tariffChannel": "direct card/QR/PED/app/backend where evidenced; eMSP roaming excluded",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 2,
+        "stations": 1
+      },
+      "positiveEvidence": [
+        "Fresh PUN: two 22 kW EVSE at Via Cesira Fiori 2, Roma with chip/contactless/credit/debit-card and remote-start capabilities; no numeric PUN tariff.",
+        "The exact address is publicly identifiable as a hospitality host, but no current charging price is exposed on its public surface.",
+        "Exact-coordinate ChargePoint discovery produced no deterministic EVSE match."
+      ],
+      "officialReferences": [],
+      "negativePaths": [
+        "Fresh PUN contains no numeric tariff for the current EVSE scope.",
+        "No tariff is inferred from connector power, nearby stations, host identity, or roaming eMSP prices."
+      ],
+      "blockingCondition": "Obtain the exact station POS/QR/backend tariff for IT*P27*E000001*1 and *2; do not infer a hotel/host charging price.",
+      "resumeCondition": "Inspect direct payment/deeplink/PED at the station or a first-party P27 backend.",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "T9K",
@@ -2626,7 +2758,7 @@
         "Roberto Di Palma",
         "T9K"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 2,
@@ -2641,7 +2773,28 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high first-pass classification / tariff unresolved",
+      "tariffModel": "station/EVSE-specific direct price unresolved after first-pass evidence sweep",
+      "tariffChannel": "direct card/QR/PED/app/backend where evidenced; eMSP roaming excluded",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 2,
+        "stations": 1
+      },
+      "positiveEvidence": [
+        "Fresh PUN: ITT9KE198*1 and *2 at Via Dante, Concorezzo, 11 kW AC with chip/contactless/credit/debit-card capabilities; no numeric PUN tariff.",
+        "Exact operator/EVSE/address searches did not expose a deterministic current tariff.",
+        "Exact-coordinate ChargePoint discovery produced no exact match."
+      ],
+      "officialReferences": [],
+      "negativePaths": [
+        "Fresh PUN contains no numeric tariff for the current EVSE scope.",
+        "No tariff is inferred from connector power, nearby stations, host identity, or roaming eMSP prices."
+      ],
+      "blockingCondition": "Capture the numeric direct card/QR/PED tariff for the Via Dante station.",
+      "resumeCondition": "Resume from a concrete station payment/deeplink/backend surface.",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "666",
@@ -2650,7 +2803,7 @@
         "Priftan Srl",
         "666"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 1,
@@ -2665,7 +2818,28 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high first-pass classification / tariff unresolved",
+      "tariffModel": "station/EVSE-specific direct price unresolved after first-pass evidence sweep",
+      "tariffChannel": "direct card/QR/PED/app/backend where evidenced; eMSP roaming excluded",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 1,
+        "stations": 1
+      },
+      "positiveEvidence": [
+        "Fresh PUN: one current EVSE IT*PFT*E00001 at Strada Cerca snc, Binasco under partyId 666 / operator Priftan Srl; credit-card payable; no numeric PUN tariff.",
+        "Generic exact EVSE/operator/address searches did not expose a first-party tariff.",
+        "Nearby IONITY is not the same EVSE and was explicitly rejected."
+      ],
+      "officialReferences": [],
+      "negativePaths": [
+        "Fresh PUN contains no numeric tariff for the current EVSE scope.",
+        "No tariff is inferred from connector power, nearby stations, host identity, or roaming eMSP prices."
+      ],
+      "blockingCondition": "Resolve the Priftan/PFT station's direct card/QR/payment surface and numeric tariff; retain partyId 666 and EVSE prefix PFT as separate identity layers.",
+      "resumeCondition": "Inspect station terminal/QR or authoritative Priftan charging backend.",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "CNR",
@@ -2674,7 +2848,7 @@
         "Stefano Cenere",
         "CNR"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 1,
@@ -2689,7 +2863,28 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high first-pass classification / tariff unresolved",
+      "tariffModel": "station/EVSE-specific direct price unresolved after first-pass evidence sweep",
+      "tariffChannel": "direct card/QR/PED/app/backend where evidenced; eMSP roaming excluded",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 1,
+        "stations": 1
+      },
+      "positiveEvidence": [
+        "Fresh PUN: ITCNRE191 at Viale delle Terme 169, Abano Terme with card/contactless capabilities; no numeric PUN tariff.",
+        "Exact-address discovery identifies the hospitality location, but neither the host nor operator search exposes a current charging tariff.",
+        "Nearby unrelated CPO records were rejected because EVSE identity does not match."
+      ],
+      "officialReferences": [],
+      "negativePaths": [
+        "Fresh PUN contains no numeric tariff for the current EVSE scope.",
+        "No tariff is inferred from connector power, nearby stations, host identity, or roaming eMSP prices."
+      ],
+      "blockingCondition": "Obtain the exact current card/QR/PED tariff for ITCNRE191 and authoritative charging-surface attribution.",
+      "resumeCondition": "Inspect the exact station payment surface; avoid generic personal-name search as an identity source.",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "DAE",
@@ -2698,7 +2893,7 @@
         "Daemon srl",
         "DAE"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 1,
@@ -2713,7 +2908,28 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high first-pass classification / tariff unresolved",
+      "tariffModel": "station/EVSE-specific direct price unresolved after first-pass evidence sweep",
+      "tariffChannel": "direct card/QR/PED/app/backend where evidenced; eMSP roaming excluded",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 1,
+        "stations": 1
+      },
+      "positiveEvidence": [
+        "Fresh PUN: EVSE MAR at Via Marecchiese 314c, Rimini, 22 kW, with PED/contactless/RFID/remote capabilities; no numeric PUN tariff.",
+        "Current business-registry evidence matches Daemon srl to the exact address but exposes no charging tariff.",
+        "Exact-coordinate ChargePoint discovery produced no deterministic match."
+      ],
+      "officialReferences": [],
+      "negativePaths": [
+        "Fresh PUN contains no numeric tariff for the current EVSE scope.",
+        "No tariff is inferred from connector power, nearby stations, host identity, or roaming eMSP prices."
+      ],
+      "blockingCondition": "Capture the station's numeric PED/QR/backend tariff and its direct-CPO attribution.",
+      "resumeCondition": "Inspect exact EVSE MAR payment surface or a Daemon-specific charging backend.",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "ELS",
@@ -2722,7 +2938,7 @@
         "Ecoloz s.r.l.s",
         "ELS"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 1,
@@ -2737,7 +2953,28 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high first-pass classification / tariff unresolved",
+      "tariffModel": "station/EVSE-specific direct price unresolved after first-pass evidence sweep",
+      "tariffChannel": "direct card/QR/PED/app/backend where evidenced; eMSP roaming excluded",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 1,
+        "stations": 1
+      },
+      "positiveEvidence": [
+        "Fresh PUN: EVSE ELS at Via dello Sport 1, Peschiera Borromeo, 11 kW, card/contactless capable; no numeric PUN tariff.",
+        "Exact-address discovery identifies the Malaspina sporting complex, but no current charging price is published on the public host surface.",
+        "Exact-coordinate ChargePoint discovery produced no deterministic match."
+      ],
+      "officialReferences": [],
+      "negativePaths": [
+        "Fresh PUN contains no numeric tariff for the current EVSE scope.",
+        "No tariff is inferred from connector power, nearby stations, host identity, or roaming eMSP prices."
+      ],
+      "blockingCondition": "Capture the direct card/QR/PED tariff for EVSE ELS; host identification alone is insufficient.",
+      "resumeCondition": "Inspect the station's payment surface or an Ecoloz-specific backend.",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "LVR",
@@ -2746,7 +2983,7 @@
         "Liverano Vito",
         "LVR"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 1,
@@ -2761,7 +2998,28 @@
         "historicalSeedStatus": null,
         "note": "Identity is new in PUN run192 versus the 2026-09-05 88-party seed; no tariff conclusion inferred."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high first-pass classification / tariff unresolved",
+      "tariffModel": "station/EVSE-specific direct price unresolved after first-pass evidence sweep",
+      "tariffChannel": "direct card/QR/PED/app/backend where evidenced; eMSP roaming excluded",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 1,
+        "stations": 1
+      },
+      "positiveEvidence": [
+        "Fresh PUN: ITLVRE000002 at Contrada Caselle Seri, Crispiano with card/contactless/PED capabilities and no numeric PUN tariff.",
+        "PUN publication status is WAITING_VALIDATION_DATA, so metadata quality is lower and the reported 0.022 kW value is clearly not safe for tariff classification.",
+        "Exact operator/address and ChargePoint discovery did not expose an exact numeric tariff."
+      ],
+      "officialReferences": [],
+      "negativePaths": [
+        "Fresh PUN contains no numeric tariff for the current EVSE scope.",
+        "No tariff is inferred from connector power, nearby stations, host identity, or roaming eMSP prices."
+      ],
+      "blockingCondition": "Obtain authoritative validated station metadata plus the exact direct card/PED tariff for ITLVRE000002.",
+      "resumeCondition": "Resume from a validated PUN refresh or concrete station payment/QR surface.",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "MIA",
@@ -2860,7 +3118,7 @@
         "SRLS",
         "SDI"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 1,
@@ -2875,7 +3133,28 @@
         "historicalSeedStatus": null,
         "note": "Identity is new in PUN run192 versus the 2026-09-05 88-party seed; no tariff conclusion inferred."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "medium identity / high fail-closed decision",
+      "tariffModel": "station/EVSE-specific direct price unresolved after first-pass evidence sweep",
+      "tariffChannel": "direct card/QR/PED/app/backend where evidenced; eMSP roaming excluded",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 1,
+        "stations": 1
+      },
+      "positiveEvidence": [
+        "Fresh PUN: ITSDIE19201 at Via Carlo Forti 14, L'Aquila, card/contactless capable, no numeric PUN tariff.",
+        "The PUN operator label is only 'SRLS', which is not a sufficiently specific legal/operator identity for a confident external tariff match.",
+        "Address searches and nearby CPO results did not provide a deterministic identity+tariff match."
+      ],
+      "officialReferences": [],
+      "negativePaths": [
+        "Fresh PUN contains no numeric tariff for the current EVSE scope.",
+        "No tariff is inferred from connector power, nearby stations, host identity, or roaming eMSP prices."
+      ],
+      "blockingCondition": "First resolve the full legal/CPO identity behind partyId SDI / EVSE ITSDIE19201, then obtain its exact card/QR tariff.",
+      "resumeCondition": "Use a station QR/PED/deeplink, a fresher authoritative PUN operator label, or a backend payload carrying the legal operator.",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "SMT",
@@ -2982,7 +3261,7 @@
     }
   ],
   "coherence": {
-    "currentPunArithmetic": "23 treated + 56 partial + 0 setAside + 13 active + 0 supersededAlias = 92 current partyIds",
+    "currentPunArithmetic": "23 treated + 69 partial + 0 setAside + 0 active + 0 supersededAlias = 92 current partyIds",
     "aliasCorrections": [
       "ATL->ATE",
       "HRA->HER"
@@ -3000,7 +3279,8 @@
       "AXS is the current PUN partyId for Axpo Energy Solutions Italia; AXP later-research evidence merged into AXS and AXE retained as observed EVSE prefix.",
       "LEE retained as historical/EVSE-prefix evidence but excluded from current PUN arithmetic.",
       "UTZ remains historical/non-current; absent from PUN run192."
-    ]
+    ],
+    "firstPassCurrentPunComplete": true
   },
   "history": [
     {
@@ -3098,6 +3378,10 @@
     {
       "date": "2026-09-25",
       "change": "Run298 resolved TAA exactly: current PUN IT*TAA*E00001*1 maps to Taac! Via Solferino - Alassio station 2 / connector solferino-1, 6 kW Type2, 0.69 EUR/kWh VAT included, idle 0.05 EUR/min from 60 min after charging ends except 23:00-07:00. TAA active->treated."
+    },
+    {
+      "date": "2026-09-25",
+      "change": "Run299 completed first-pass classification of the remaining 13 current PUN identities (185, 666, PGC, EM1, ENR, UTX, P27, T9K, CNR, DAE, ELS, LVR, SDI): all moved active->partial station-level after exact PUN/payment-capability review, exact-address/operator search and rejection of non-exact nearby/roaming matches. No numeric tariff promoted. Active queue is now 0."
     }
   ],
   "evidenceReports": [
@@ -3147,7 +3431,8 @@
     "data/reports/italy_cpo_reconciliation_20260925_run296.json",
     "data/reports/italy_cpo_reconciliation_20260925_run297.json",
     "data/reports/taac_taa_italy_exact_20260925.json",
-    "data/reports/italy_cpo_reconciliation_20260925_run298.json"
+    "data/reports/italy_cpo_reconciliation_20260925_run298.json",
+    "data/reports/italy_cpo_reconciliation_20260925_run299.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
