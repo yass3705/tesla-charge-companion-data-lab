@@ -34,10 +34,10 @@
     "currentPunNamedInCanonical": 92,
     "historicalNonCurrentNamed": 2,
     "canonicalNamedEntries": 94,
-    "treated": 21,
-    "partialCurrent": 56,
+    "treated": 22,
+    "partialCurrent": 55,
     "partialHistoricalNonCurrent": 2,
-    "partial": 58,
+    "partial": 57,
     "setAside": 0,
     "active": 15,
     "supersededAlias": 0,
@@ -72,7 +72,6 @@
       "EMO",
       "EMV",
       "ENX",
-      "ERX",
       "ES1",
       "ES2",
       "ES3",
@@ -1524,7 +1523,7 @@
         "ENERGETIX S.RL.",
         "ERX"
       ],
-      "status": "partial",
+      "status": "treated",
       "priority": "station-level",
       "inventory": {
         "evse": 23,
@@ -1536,24 +1535,60 @@
       "identityReconciliation": {
         "state": "recovered_from_20260905_nominative_seed",
         "seedBlob": "6f14fe04d0190fe3170d117a94e870b1089c8938",
-        "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity/channel; tariff unresolved",
-      "tariffChannel": "direct credit-card payment / ChargePoint app; roaming via other MSPs separated",
-      "tariffModel": "station-specific direct price expected on ChargePoint/payment surface; no deterministic network/class-wide price proven",
-      "blockingCondition": "Obtain official ChargePoint/Energetix station tariff payload for the five exact PUN sites/connectors; third-party price observations are discovery only.",
+      "confidence": "high",
+      "tariffChannel": "Energetix direct/guest charging surface hosted by ChargePoint; roaming eMSP excluded",
+      "tariffModel": "exact device/outlet stationPrice; heterogeneous by station/device",
+      "blockingCondition": null,
       "officialReferences": [
-        "https://www.energetix.it/",
-        "https://www.energetix.it/ricarica"
+        "https://www.energetix.it/ricarica",
+        "data/reports/energetix_italy_chargepoint_exact_20260925.json"
       ],
       "positiveEvidence": [
-        "Energetix first-party page says its stations accept credit card directly or the ChargePoint app and explicitly separates roaming via other MSPs.",
-        "Fresh PUN has 23 ERX EVSE across five named Energetix sites in Cassino, Piedimonte San Germano and Ceccano.",
-        "Public station indexes resolve exact Energetix sites to the ChargePoint network, but no first-party numeric tariff payload was recovered."
+        "Energetix first-party charging page instructs drivers to use a credit card or the ChargePoint app and separately describes roaming through other MSPs.",
+        "All 23 current PUN ERX EVSE encode a ChargePoint deviceId*outlet identity that is present in the public station-info backend.",
+        "All 12 matched device responses explicitly report hostName ENERGETIX SRL and companyId 47545, expose stationPrice in EUR with VAT included, guestFee 0, and anonymous charging.",
+        "Exact current device prices are heterogeneous (0.67/0.73/0.79/0.85 EUR/kWh), so no power-only or national-price inference is used."
       ],
       "lastInvestigated": "2026-09-25",
-      "lastChanged": "2026-09-25"
+      "lastChanged": "2026-09-25",
+      "tariffs": [
+        {
+          "eurPerKwh": 0.67,
+          "rankableEvse": 6,
+          "vatIncluded": true
+        },
+        {
+          "eurPerKwh": 0.73,
+          "rankableEvse": 4,
+          "vatIncluded": true
+        },
+        {
+          "eurPerKwh": 0.79,
+          "rankableEvse": 8,
+          "vatIncluded": true
+        },
+        {
+          "eurPerKwh": 0.85,
+          "rankableEvse": 5,
+          "vatIncluded": true
+        }
+      ],
+      "fees": {
+        "guestSessionEur": 0
+      },
+      "payment": [
+        "anonymous/direct card or station guest flow",
+        "ChargePoint app",
+        "tap-to-charge on supported AC devices"
+      ],
+      "coverage": {
+        "rankableEvse": 23,
+        "failClosedEvse": 0,
+        "stations": 5,
+        "devices": 12
+      }
     },
     {
       "partyId": "ES2",
@@ -2866,7 +2901,7 @@
     }
   ],
   "coherence": {
-    "currentPunArithmetic": "21 treated + 56 partial + 15 active = 92 current partyIds",
+    "currentPunArithmetic": "22 treated + 55 partial + 0 setAside + 15 active + 0 supersededAlias = 92 current partyIds",
     "aliasCorrections": [
       "ATL->ATE",
       "HRA->HER"
@@ -2970,6 +3005,10 @@
     {
       "date": "2026-09-25",
       "change": "Run295 completed first-pass classification for 844/EMV/B2B/KIW/UCA/ISE/ARP/AFE: all moved active->partial with exact identity/channel/blocker evidence; no unsafe numeric tariff promotion."
+    },
+    {
+      "date": "2026-09-25",
+      "change": "Run296 superseded ERX run294 blocker: ChargePoint public station-info now yields exact Energetix-hosted pricing for all 23/23 current PUN EVSE. ERX partial->treated; +23 rankable EVSE at 0.67/0.73/0.79/0.85 EUR/kWh, VAT included, guest fee 0. No power-based extrapolation."
     }
   ],
   "evidenceReports": [
@@ -3014,7 +3053,9 @@
     "data/reports/italy_cpo_reconciliation_20260925_run293.json",
     "data/reports/allego_italy_exact_20260925.json",
     "data/reports/italy_cpo_reconciliation_20260925_run294.json",
-    "data/reports/italy_cpo_reconciliation_20260925_run295.json"
+    "data/reports/italy_cpo_reconciliation_20260925_run295.json",
+    "data/reports/energetix_italy_chargepoint_exact_20260925.json",
+    "data/reports/italy_cpo_reconciliation_20260925_run296.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
