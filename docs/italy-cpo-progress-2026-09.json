@@ -34,12 +34,12 @@
     "currentPunNamedInCanonical": 92,
     "historicalNonCurrentNamed": 2,
     "canonicalNamedEntries": 94,
-    "treated": 22,
+    "treated": 23,
     "partialCurrent": 56,
     "partialHistoricalNonCurrent": 2,
     "partial": 58,
     "setAside": 0,
-    "active": 14,
+    "active": 13,
     "supersededAlias": 0,
     "unreconciledCurrentPunPartyIds": 0,
     "arithmeticCheckCurrentPun": true
@@ -120,7 +120,6 @@
       "PGC",
       "SDI",
       "T9K",
-      "TAA",
       "UTX"
     ]
   },
@@ -2913,12 +2912,14 @@
     },
     {
       "partyId": "TAA",
-      "canonicalName": "Braghin Marco",
+      "canonicalName": "Taac! / Marco Braghin",
       "aliases": [
         "Braghin Marco",
-        "TAA"
+        "TAA",
+        "Taac!",
+        "Marco Braghin — Ditta Individuale"
       ],
-      "status": "active",
+      "status": "treated",
       "priority": "station-level",
       "inventory": {
         "evse": 1,
@@ -2933,11 +2934,55 @@
         "historicalSeedStatus": null,
         "note": "Identity is new in PUN run192 versus the 2026-09-05 88-party seed; no tariff conclusion inferred."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high",
+      "tariffChannel": "Taac! direct CPO guest/app/card channel; roaming stations in Taac! kept separate",
+      "tariffModel": "exact public connector card in Taac! PWA; connector-level price",
+      "tariffs": [
+        {
+          "evseId": "IT*TAA*E00001*1",
+          "station": "Via Solferino - Alassio",
+          "connector": "solferino-1",
+          "powerKw": 6,
+          "connectorType": "Type 2 AC",
+          "eurPerKwh": 0.69,
+          "vatIncluded": true
+        }
+      ],
+      "fees": {
+        "idle": {
+          "eurPerMinute": 0.05,
+          "start": "60 minutes after charging ends",
+          "suspendedWindow": "23:00-07:00"
+        }
+      },
+      "payment": [
+        "Taac! guest/direct card flow",
+        "Taac! app"
+      ],
+      "coverage": {
+        "rankableEvse": 1,
+        "failClosedEvse": 0,
+        "stations": 1
+      },
+      "officialReferences": [
+        "https://taac.app/#/stations/2",
+        "https://info.taac.app/it/terms-and-conditions",
+        "https://info.taac.app/it/come-funziona"
+      ],
+      "positiveEvidence": [
+        "Current Taac! terms identify Marco Braghin — Ditta Individuale as the service provider and state that the provider is registered with PUN as both CPO and eMSP.",
+        "Searching exact PUN EVSE IT*TAA*E00001*1 in the public Taac! PWA resolves Via Solferino - Alassio, 1 Via Solferino, Alassio, matching the current PUN station.",
+        "The exact public connector card labels the connector as Taac! network and exposes 0.69 EUR/kWh, VAT included by Taac! pricing policy.",
+        "The connector card exposes an idle fee of 0.05 EUR/min beginning 60 minutes after charging ends, suspended from 23:00 to 07:00.",
+        "No charging session was initiated during evidence collection."
+      ],
+      "blockingCondition": null,
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     }
   ],
   "coherence": {
-    "currentPunArithmetic": "22 treated + 56 partial + 0 setAside + 14 active + 0 supersededAlias = 92 current partyIds",
+    "currentPunArithmetic": "23 treated + 56 partial + 0 setAside + 13 active + 0 supersededAlias = 92 current partyIds",
     "aliasCorrections": [
       "ATL->ATE",
       "HRA->HER"
@@ -3049,6 +3094,10 @@
     {
       "date": "2026-09-25",
       "change": "Run297 mapped PIT Piazza Meda exact official energy price 0.49 EUR/kWh for Parcheggi Italia-operated chargers; active->partial. Energy component is rankable for MPM1, but total cost remains fail-closed because onsite-current charging notice and parking tariff column applicability are unresolved."
+    },
+    {
+      "date": "2026-09-25",
+      "change": "Run298 resolved TAA exactly: current PUN IT*TAA*E00001*1 maps to Taac! Via Solferino - Alassio station 2 / connector solferino-1, 6 kW Type2, 0.69 EUR/kWh VAT included, idle 0.05 EUR/min from 60 min after charging ends except 23:00-07:00. TAA active->treated."
     }
   ],
   "evidenceReports": [
@@ -3096,7 +3145,9 @@
     "data/reports/italy_cpo_reconciliation_20260925_run295.json",
     "data/reports/energetix_italy_chargepoint_exact_20260925.json",
     "data/reports/italy_cpo_reconciliation_20260925_run296.json",
-    "data/reports/italy_cpo_reconciliation_20260925_run297.json"
+    "data/reports/italy_cpo_reconciliation_20260925_run297.json",
+    "data/reports/taac_taa_italy_exact_20260925.json",
+    "data/reports/italy_cpo_reconciliation_20260925_run298.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
