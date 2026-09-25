@@ -34,8 +34,13 @@ jobs:
           python -m py_compile scripts/allego_dxp_national.py scripts/allego_italy_exact.py
           python scripts/allego_italy_exact.py
       - name: Public safety scan
+        shell: bash
         run: |
-          python scripts/public_safety_check.py scripts/allego_italy_exact.py data/reports/allego_italy_exact_20260925.json
+          set -euo pipefail
+          rm -rf .allego-it-safety
+          mkdir -p .allego-it-safety
+          cp scripts/allego_italy_exact.py data/reports/allego_italy_exact_20260925.json .allego-it-safety/
+          python scripts/public_safety_check.py .allego-it-safety
       - name: Commit deterministic outputs
         shell: bash
         run: |
