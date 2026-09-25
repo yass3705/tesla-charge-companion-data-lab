@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 303,
+  "asOf": "2026-09-25",
+  "subject": "Tesla Italia TSL Destination Charging direct tariff surface",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "partyId": "TSL",
+  "inventory": {
+    "stations": 619,
+    "evse": 2421,
+    "punAsOf": "2026-09-20"
+  },
+  "statusBefore": "partial",
+  "statusAfter": "partial",
+  "priority": "station-level",
+  "evidence": [
+    {
+      "type": "first-party-support",
+      "url": "https://www.tesla.com/support/charging/destination-charging",
+      "finding": "Tesla states Destination Charging prices are shown on each site's pin in the vehicle touchscreen or Tesla app; billing is per kWh; final invoices are available in app; prices may change; some sites may apply idle fees."
+    },
+    {
+      "type": "first-party-italy-directory",
+      "url": "https://www.tesla.com/findus/list/chargers/Italy",
+      "finding": "Tesla publishes the Italy Destination Charging site directory, providing a first-party station discovery surface."
+    }
+  ],
+  "decision": {
+    "promotion": false,
+    "rankableAdded": 0,
+    "failClosed": true,
+    "reason": "Direct Tesla tariff is site-specific and dynamically exposed in Tesla app/touchscreen. No deterministic mapping from the 2,421 current PUN TSL EVSE to exact current site-pin prices was recovered in this pass."
+  },
+  "antiRepeat": {
+    "genericWebTariffSearch": "bounded",
+    "resumeCondition": "Tesla app/site-pin payload, public/guest backend exposing Destination Charging price, or exact station/EVSE-scoped first-party tariff evidence"
+  },
+  "nextAction": "Do not search for a national TSL tariff. Recover the Tesla Destination Charging site-pin/app payload and map exact PUN EVSE/stations to site prices; preserve idle-fee fields where exposed."
+}
