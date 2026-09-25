@@ -35,11 +35,11 @@
     "historicalNonCurrentNamed": 2,
     "canonicalNamedEntries": 94,
     "treated": 21,
-    "partialCurrent": 45,
+    "partialCurrent": 48,
     "partialHistoricalNonCurrent": 2,
-    "partial": 47,
+    "partial": 50,
     "setAside": 0,
-    "active": 26,
+    "active": 23,
     "supersededAlias": 0,
     "unreconciledCurrentPunPartyIds": 0,
     "arithmeticCheckCurrentPun": true
@@ -47,6 +47,7 @@
   "remainingByPriority": {
     "unreconciledCurrentPunPartyIds": 0,
     "knownNetworkOrClassWidePartial": [
+      "SEM",
       "UOC"
     ],
     "knownStationLevelPartial": [
@@ -66,6 +67,7 @@
       "EDN",
       "EMO",
       "ENX",
+      "ERX",
       "ES1",
       "ES2",
       "ES3",
@@ -86,6 +88,7 @@
       "PWY",
       "SAG",
       "SMT",
+      "TAP",
       "TCA",
       "TDM",
       "TEX",
@@ -109,7 +112,6 @@
       "EM1",
       "EMV",
       "ENR",
-      "ERX",
       "ISE",
       "KIW",
       "LVR",
@@ -117,10 +119,8 @@
       "PGC",
       "PIT",
       "SDI",
-      "SEM",
       "T9K",
       "TAA",
-      "TAP",
       "UCA",
       "UTX"
     ]
@@ -1524,7 +1524,7 @@
         "ENERGETIX S.RL.",
         "ERX"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 23,
@@ -1539,7 +1539,21 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high identity/channel; tariff unresolved",
+      "tariffChannel": "direct credit-card payment / ChargePoint app; roaming via other MSPs separated",
+      "tariffModel": "station-specific direct price expected on ChargePoint/payment surface; no deterministic network/class-wide price proven",
+      "blockingCondition": "Obtain official ChargePoint/Energetix station tariff payload for the five exact PUN sites/connectors; third-party price observations are discovery only.",
+      "officialReferences": [
+        "https://www.energetix.it/",
+        "https://www.energetix.it/ricarica"
+      ],
+      "positiveEvidence": [
+        "Energetix first-party page says its stations accept credit card directly or the ChargePoint app and explicitly separates roaming via other MSPs.",
+        "Fresh PUN has 23 ERX EVSE across five named Energetix sites in Cassino, Piedimonte San Germano and Ceccano.",
+        "Public station indexes resolve exact Energetix sites to the ChargePoint network, but no first-party numeric tariff payload was recovered."
+      ],
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "ES2",
@@ -1813,7 +1827,7 @@
         "TANZI AURELIO PETROLI SPA",
         "TAP"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 10,
@@ -1828,7 +1842,20 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high identity; tariff unresolved",
+      "tariffModel": "direct current EV tariff not published on first-party web surfaces",
+      "blockingCondition": "Exact TAP station QR/POS/backend or current first-party EV tariff. Do not reuse fuel-card/app pricing or infer from charger power.",
+      "officialReferences": [
+        "https://www.tanziaureliopetroli.it/colonnine-elettriche/",
+        "https://www.tanziaureliopetroli.it/tap-card/"
+      ],
+      "positiveEvidence": [
+        "First-party TAP page confirms current 50 kW Fast and 150 kW Ultrafast charging infrastructure.",
+        "Fresh PUN contains 10 TAP EVSE at four TAP sites with AC/DC powers 21/43/50/90 kW.",
+        "TAP app page documents fuel-card/fuel payment only and exposes no EV tariff."
+      ],
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "ES4",
@@ -1890,13 +1917,13 @@
     },
     {
       "partyId": "SEM",
-      "canonicalName": "ISCAT s.r.l.",
+      "canonicalName": "ISCAT s.r.l. / SEMM by ISCAT",
       "aliases": [
         "ISCAT s.r.l.",
         "SEM"
       ],
-      "status": "active",
-      "priority": "station-level",
+      "status": "partial",
+      "priority": "class-wide",
       "inventory": {
         "evse": 7,
         "stations": 7,
@@ -1910,7 +1937,40 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high identity/default grid; rankable coverage pending station-detail verification",
+      "tariffChannel": "SEMM direct via THOR credit-card payment or named RFID card",
+      "tariffModel": "published default grid exists but first-party explicitly allows station-specific promotional/custom tariffs shown in THOR; exact current PUN stations must be checked before rankable promotion",
+      "candidateTariffs": [
+        {
+          "class": "AC <=22 kW",
+          "eurPerKwh": 0.55
+        },
+        {
+          "class": "DC <=90 kW",
+          "eurPerKwh": 0.65
+        }
+      ],
+      "fees": {
+        "candidateOccupation": "2.00 EUR/hour beyond effective charging, prorated"
+      },
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 7,
+        "totalEvse": 7
+      },
+      "blockingCondition": "Verify THOR Details prices for Monzambano and Volta Mantovana1-6. All current PUN SEM EVSE are 7.4 kW AC, but default 0.55 EUR/kWh cannot be assumed because ISCAT explicitly permits station-specific tariffs.",
+      "officialReferences": [
+        "https://iscat.com/circuito-di-ricarica-semm-by-iscat/",
+        "https://my.thor.tools/"
+      ],
+      "positiveEvidence": [
+        "ISCAT publishes default AC <=22 kW 0.55 EUR/kWh, DC <=90 kW 0.65 EUR/kWh and occupation 2 EUR/hour.",
+        "ISCAT explicitly lists Volta Mantovana1-6 in its THOR tutorial.",
+        "Fresh PUN SEM scope is seven 7.4 kW AC EVSE: six at Volta Mantovana and one at Monzambano.",
+        "THOR public map requires JavaScript and was not indexable; interactive browser attempt did not start because the automation wallet was unavailable, so no station exception was inferred."
+      ],
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "UOC",
@@ -2717,7 +2777,7 @@
     }
   ],
   "coherence": {
-    "currentPunArithmetic": "21 treated + 45 partial + 0 setAside + 26 active = 92 current partyIds",
+    "currentPunArithmetic": "21 treated + 48 partial + 23 active = 92 current partyIds",
     "aliasCorrections": [
       "ATL->ATE",
       "HRA->HER"
@@ -2813,6 +2873,10 @@
     {
       "date": "2026-09-25",
       "change": "Run293 resolved Allego Italy ALL: exact DXP mapping covers 28/28 PUN EVSE at 0.805 EUR/kWh; official Italy HPC overstay 0.253 EUR/min after 45 minutes and only while not charging; active->treated."
+    },
+    {
+      "date": "2026-09-25",
+      "change": "Run294 completed first-pass direct-tariff investigations for ERX, TAP and SEM: all active->partial; no unsafe tariff promotion. SEM retains official default grid as candidate only pending THOR station-detail exception checks."
     }
   ],
   "evidenceReports": [
@@ -2855,7 +2919,8 @@
     "data/reports/alpha_mobility_italy_exact_20260925.json",
     "data/reports/italy_cpo_reconciliation_20260925_run292.json",
     "data/reports/italy_cpo_reconciliation_20260925_run293.json",
-    "data/reports/allego_italy_exact_20260925.json"
+    "data/reports/allego_italy_exact_20260925.json",
+    "data/reports/italy_cpo_reconciliation_20260925_run294.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
