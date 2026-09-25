@@ -35,11 +35,11 @@
     "historicalNonCurrentNamed": 2,
     "canonicalNamedEntries": 94,
     "treated": 22,
-    "partialCurrent": 55,
+    "partialCurrent": 56,
     "partialHistoricalNonCurrent": 2,
-    "partial": 57,
+    "partial": 58,
     "setAside": 0,
-    "active": 15,
+    "active": 14,
     "supersededAlias": 0,
     "unreconciledCurrentPunPartyIds": 0,
     "arithmeticCheckCurrentPun": true
@@ -91,6 +91,7 @@
       "MWT",
       "NRG",
       "P62",
+      "PIT",
       "PWY",
       "SAG",
       "SMT",
@@ -117,7 +118,6 @@
       "LVR",
       "P27",
       "PGC",
-      "PIT",
       "SDI",
       "T9K",
       "TAA",
@@ -2801,7 +2801,7 @@
         "PARCHEGGI ITALIA S.p.A.",
         "PIT"
       ],
-      "status": "active",
+      "status": "partial",
       "priority": "station-level",
       "inventory": {
         "evse": 1,
@@ -2816,7 +2816,43 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high identity / tariff pending"
+      "confidence": "high energy component / medium total-cost completeness",
+      "tariffChannel": "Parcheggi Italia-operated charging at Piazza Meda; third-party charging explicitly excluded",
+      "tariffModel": "exact site energy tariff published; total session cost remains fail-closed because parking applicability/current onsite charging notice is not machine-resolved",
+      "tariffs": [
+        {
+          "scope": "Parcheggi Italia-operated Standard Charger 11 kW AC at Piazza Meda",
+          "eurPerKwh": 0.49,
+          "vatIncluded": null,
+          "energyPriceRankable": true
+        }
+      ],
+      "fees": {
+        "parking": "separate parking fee applies; official page publishes short-stay/night/daily rates but two tariff columns are not semantically labelled enough for deterministic application",
+        "chargingNotice": "official page also states current charging tariffs are displayed onsite"
+      },
+      "coverage": {
+        "energyRateMappedEvse": 1,
+        "totalCostRankableEvse": 0,
+        "failClosedTotalCostEvse": 1,
+        "stations": 1
+      },
+      "officialReferences": [
+        "https://www.bestinparking.com/it/it/garage/parcheggio-piazza-meda-accesso-consentito-senza-permesso-ztl-quadrilatero"
+      ],
+      "positiveEvidence": [
+        "Fresh PUN current PIT inventory is one EVSE MPM1 at Piazza Meda 2/a, Milano.",
+        "Current official Best in Parking / Parcheggi Italia site for the exact address publishes 0.49 EUR/kWh for Standard Charger 11 kW AC and explicitly says that rate applies only to charging stations operated by Parcheggi Italia Spa.",
+        "The same official page identifies the charging operation as ENEL DISTRIBUZIONE SPA - PARCHEGGI ITALIA SPA."
+      ],
+      "negativePaths": [
+        "Do not assign nearby Enel/Uattzy/ChargePoint prices by proximity.",
+        "Do not infer which of the two parking-price columns applies; page semantics are insufficient.",
+        "Do not ignore the page statement that current charging tariffs are displayed onsite."
+      ],
+      "blockingCondition": "Resolve the exact current onsite charging notice and deterministic parking-tariff applicability for MPM1; until then only the 0.49 EUR/kWh energy component is rankable, not total session cost.",
+      "lastInvestigated": "2026-09-25",
+      "lastChanged": "2026-09-25"
     },
     {
       "partyId": "SDI",
@@ -2901,7 +2937,7 @@
     }
   ],
   "coherence": {
-    "currentPunArithmetic": "22 treated + 55 partial + 0 setAside + 15 active + 0 supersededAlias = 92 current partyIds",
+    "currentPunArithmetic": "22 treated + 56 partial + 0 setAside + 14 active + 0 supersededAlias = 92 current partyIds",
     "aliasCorrections": [
       "ATL->ATE",
       "HRA->HER"
@@ -3009,6 +3045,10 @@
     {
       "date": "2026-09-25",
       "change": "Run296 superseded ERX run294 blocker: ChargePoint public station-info now yields exact Energetix-hosted pricing for all 23/23 current PUN EVSE. ERX partial->treated; +23 rankable EVSE at 0.67/0.73/0.79/0.85 EUR/kWh, VAT included, guest fee 0. No power-based extrapolation."
+    },
+    {
+      "date": "2026-09-25",
+      "change": "Run297 mapped PIT Piazza Meda exact official energy price 0.49 EUR/kWh for Parcheggi Italia-operated chargers; active->partial. Energy component is rankable for MPM1, but total cost remains fail-closed because onsite-current charging notice and parking tariff column applicability are unresolved."
     }
   ],
   "evidenceReports": [
@@ -3055,7 +3095,8 @@
     "data/reports/italy_cpo_reconciliation_20260925_run294.json",
     "data/reports/italy_cpo_reconciliation_20260925_run295.json",
     "data/reports/energetix_italy_chargepoint_exact_20260925.json",
-    "data/reports/italy_cpo_reconciliation_20260925_run296.json"
+    "data/reports/italy_cpo_reconciliation_20260925_run296.json",
+    "data/reports/italy_cpo_reconciliation_20260925_run297.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
