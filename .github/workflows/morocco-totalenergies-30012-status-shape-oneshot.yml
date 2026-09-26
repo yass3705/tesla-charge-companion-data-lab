@@ -1,0 +1,115 @@
+name: Morocco TotalEnergies 3.00.12 status shape one-shot
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-totalenergies-30012-status-shape-oneshot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe exact connector-status request shape with dummy values
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import json, urllib.request, urllib.error
+          from datetime import datetime, timezone
+          from urllib.parse import urlencode
+
+          BASE='https://csmstotalenergiesma.numocity.com'
+          PATH='/status/api/get-connector-status'
+          OUT='reports/morocco/totalenergies/club-ev-charge-30012-status-request-shape-2026-09-26.json'
+
+          cases=[
+            ('get_empty','GET',None,None),
+            ('get_lower_query','GET',None,{'chargePointId':'0','connectorId':'0'}),
+            ('get_title_query','GET',None,{'ChargePointId':'0','ConnectorId':'0'}),
+            ('get_number_query','GET',None,{'ChargePointId':'0','ChargePointConnectorNumber':'0'}),
+            ('post_empty','POST',{},None),
+            ('post_lower_body','POST',{'chargePointId':0,'connectorId':0},None),
+            ('post_title_body','POST',{'ChargePointId':0,'ConnectorId':0},None),
+            ('post_number_body','POST',{'ChargePointId':0,'ChargePointConnectorNumber':0},None),
+          ]
+
+          def safe_call(method, body=None, query=None):
+              url=BASE+PATH
+              if query:
+                  url += '?' + urlencode(query)
+              data=None if body is None else json.dumps(body,separators=(',',':')).encode()
+              headers={'User-Agent':'TCC-Total-30012-Shape/1.0','Accept':'application/json'}
+              if data is not None:
+                  headers['Content-Type']='application/json'
+              req=urllib.request.Request(url,data=data,headers=headers,method=method)
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      raw=r.read(200000); status=r.status; ct=r.headers.get('content-type','')
+              except urllib.error.HTTPError as e:
+                  raw=e.read(200000); status=e.code; ct=e.headers.get('content-type','') if e.headers else ''
+              except Exception as e:
+                  return {'status':None,'error_type':type(e).__name__}
+              obj=None
+              try: obj=json.loads(raw.decode('utf-8','replace'))
+              except Exception: pass
+              safe={}
+              if isinstance(obj,dict):
+                  safe['top_level_keys']=sorted(str(k) for k in obj.keys())[:40]
+                  for key in ('message','error','detail','status'):
+                      v=obj.get(key)
+                      if isinstance(v,(str,int,float,bool)) and len(str(v))<160:
+                          safe[key]=v
+              return {
+                'status':status,
+                'content_type':ct,
+                'bytes':len(raw),
+                'json':isinstance(obj,(dict,list)),
+                'safe_response':safe
+              }
+
+          out={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA',
+            'network':'TotalEnergies / Club EV-Charge',
+            'package_version':'3.00.12',
+            'target':PATH,
+            'policy':{
+              'anonymous':True,
+              'dummy_values_only':True,
+              'no_real_station_or_connector_ids':True,
+              'no_credentials':True,
+              'no_tokens':True,
+              'no_login':True,
+              'no_account_or_charging_actions':True,
+              'bounded_eight_cases_only':True,
+              'raw_response_bodies_persisted':False
+            },
+            'cases':[]
+          }
+          for name,method,body,query in cases:
+              row={'case':name,'method':method,'body_field_names':sorted(body.keys()) if isinstance(body,dict) else [],'query_field_names':sorted(query.keys()) if isinstance(query,dict) else []}
+              row.update(safe_call(method,body,query))
+              out['cases'].append(row)
+
+          with open(OUT,'w',encoding='utf-8') as f:
+              json.dump(out,f,ensure_ascii=False,indent=2); f.write('\n')
+          PY
+
+      - name: Commit sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-30012-status-request-shape-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): probe Total 3.00.12 connector status shape [run $GITHUB_RUN_ID]"
+          git push
