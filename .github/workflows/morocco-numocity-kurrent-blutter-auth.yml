@@ -1,0 +1,135 @@
+name: Morocco Numocity Kurrent Blutter auth trace
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-numocity-kurrent-blutter-auth.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Blutter prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-pyelftools python3-requests git cmake ninja-build build-essential pkg-config libicu-dev libcapstone-dev
+
+      - name: Download public sibling app and run Blutter
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/kurrent/xapk /tmp/kurrent/lib/arm64-v8a /tmp/blutter-out reports/morocco/totalenergies
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/com.namp.kurrent?version=latest' \
+            -o /tmp/kurrent/current.xapk
+          unzip -q /tmp/kurrent/current.xapk -d /tmp/kurrent/xapk
+          ARM64_APK="$(find /tmp/kurrent/xapk -type f -name 'config.arm64_v8a.apk' | head -n1)"
+          test -n "$ARM64_APK"
+          unzip -p "$ARM64_APK" lib/arm64-v8a/libapp.so > /tmp/kurrent/lib/arm64-v8a/libapp.so
+          unzip -p "$ARM64_APK" lib/arm64-v8a/libflutter.so > /tmp/kurrent/lib/arm64-v8a/libflutter.so
+          git clone --depth 1 https://github.com/worawit/blutter.git /tmp/blutter
+          python3 /tmp/blutter/blutter.py /tmp/kurrent/lib/arm64-v8a /tmp/blutter-out
+
+      - name: Publish sanitized auth/control-flow evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, re
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          OUTDIR=Path('/tmp/blutter-out')
+          REPORT=Path('reports/morocco/totalenergies/numocity-kurrent-blutter-auth-trace-2026-09-26.json')
+          markers=[
+            'GlobalJwtToken','globalToken','getGlobalToken','setGlobalToken',
+            '/admin/v1/requesttoken','url_get_user_token',
+            'register-or-signin','verify-register-or-signin',
+            'generate-mobile-otp','verify-mobile-otp',
+            'signInWithCustomToken','asset/chargestation/getstationstate'
+          ]
+          safe_words=('global','token','requesttoken','register','signin','verify','otp','auth','firebase','login','kong','chargestation','stationstate','kurrent_charge','function','closure','code','pp','library','package:')
+          jwt=re.compile(r'eyJ[A-Za-z0-9_.-]{20,}')
+          api=re.compile(r'AIza[A-Za-z0-9_-]{20,}')
+          long_secret=re.compile(r'(?<![A-Za-z0-9_])[A-Za-z0-9_-]{32,}(?![A-Za-z0-9_])')
+
+          def sanitize(line):
+            line=jwt.sub('[REDACTED_JWT]',line)
+            line=api.sub('[REDACTED_API_KEY]',line)
+            # Preserve source/package paths and known identifiers, redact opaque long values.
+            parts=[]
+            for tok in line.split():
+              low=tok.lower()
+              if ('/' not in tok and ':' not in tok and '.' not in tok
+                  and not any(w in low for w in ('globaljwttoken','requesttoken','register','signin','verify','token','auth'))
+                  and long_secret.fullmatch(tok.strip('",()[]{}'))):
+                tok='[REDACTED_OPAQUE]'
+              parts.append(tok)
+            return ' '.join(parts)[:1000]
+
+          hits={}
+          all_files=[p for p in OUTDIR.rglob('*') if p.is_file() and p.stat().st_size < 100_000_000]
+          for marker in markers:
+            items=[]
+            for p in all_files:
+              try:
+                lines=p.read_text(errors='ignore').splitlines()
+              except Exception:
+                continue
+              for idx,line in enumerate(lines):
+                if marker not in line:
+                  continue
+                context=[]
+                for j in range(max(0,idx-12),min(len(lines),idx+13)):
+                  candidate=lines[j]
+                  low=candidate.lower()
+                  if any(w in low for w in safe_words):
+                    context.append({'line':j+1,'text':sanitize(candidate)})
+                items.append({'file':str(p.relative_to(OUTDIR)),'line':idx+1,'context':context[:40]})
+                if len(items)>=12: break
+              if len(items)>=12: break
+            if items: hits[marker]=items
+
+          files=[str(p.relative_to(OUTDIR)) for p in all_files]
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'subject':'Shared Numocity ARM64 Flutter authentication control-flow reconstruction using public Kurrent sibling app',
+            'policy':{
+              'public_sibling_package_only':True,'static_analysis_only':True,'no_backend_requests':True,
+              'no_login':True,'no_credentials':True,'no_tokens_persisted':True,
+              'raw_package_persisted':False,'raw_blutter_output_persisted':False,
+              'opaque_values_redacted':True,'sibling_data_not_reused_for_totalenergies':True
+            },
+            'blutter':{
+              'success':bool(files),
+              'output_files_count':len(files),
+              'has_pp_txt':'pp.txt' in files,
+              'has_objs_txt':'objs.txt' in files,
+              'asm_files_count':sum(1 for f in files if f.startswith('asm/'))
+            },
+            'marker_evidence':hits
+          }
+          REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/kurrent /tmp/blutter /tmp/blutter-out
+
+      - name: Commit sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/numocity-kurrent-blutter-auth-trace-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): trace shared Numocity auth with Blutter [run $GITHUB_RUN_ID]"
+          git push
