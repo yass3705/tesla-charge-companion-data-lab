@@ -1,0 +1,121 @@
+name: FastVolt 2.8.9 auth surface probe
+
+on:
+  push:
+    branches:
+      - diag-fastvolt-289-auth-surface
+    paths:
+      - '.github/workflows/fastvolt-289-auth-surface-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe anonymous FastVolt auth surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/fastvolt
+          python - <<'PY'
+          import json, re, ssl, socket, subprocess
+          from datetime import datetime, timezone
+          from urllib.parse import urlsplit
+
+          base='https://mobile.ev.fastvolt.ma'
+          out={'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+               'network':'FastVolt','client_version':'2.8.9',
+               'policy':{'anonymous_only':True,'no_credentials':True,'no_account_creation':True,
+                         'no_mutating_station_actions':True,'no_user_data':True,'bounded_requests':True},
+               'http':[],'websocket':{}}
+
+          def redact(s):
+              s=s[:1000]
+              s=re.sub(r'eyJ[A-Za-z0-9._-]{20,}', '<redacted-jwt>', s)
+              s=re.sub(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}', '<redacted-email>', s)
+              return s
+
+          def probe(method,path,body=None):
+              url=base+path
+              cmd=['curl','-sS','--max-time','20','-X',method,
+                   '-H','Accept: application/json',
+                   '-D','-','-o','/tmp/body']
+              if body is not None:
+                  cmd += ['-H','Content-Type: application/json','--data',body]
+              cmd += [url]
+              p=subprocess.run(cmd,capture_output=True,text=True)
+              headers=p.stdout
+              status=None
+              for line in headers.splitlines():
+                  if line.startswith('HTTP/'):
+                      try: status=int(line.split()[1])
+                      except: pass
+              h={}
+              for line in headers.splitlines():
+                  if ':' in line:
+                      k,v=line.split(':',1)
+                      lk=k.strip().lower()
+                      if lk in {'content-type','allow','www-authenticate','access-control-allow-methods','access-control-allow-headers'}:
+                          h[lk]=v.strip()
+              try: bodytxt=open('/tmp/body','rb').read().decode('utf-8','replace')
+              except: bodytxt=''
+              out['http'].append({'method':method,'path':path,'status':status,
+                                  'headers':h,'body_sample':redact(bodytxt),
+                                  'curl_exit':p.returncode})
+
+          for path in ['/','/auth/authorize','/auth/login','/app/charging_stations/']:
+              probe('GET',path)
+              probe('OPTIONS',path)
+
+          probe('POST','/auth/authorize','{}')
+          probe('POST','/auth/login','{}')
+
+          # Anonymous WebSocket upgrade only; close immediately after HTTP handshake.
+          host='mobile.ev.fastvolt.ma'
+          ctx=ssl.create_default_context()
+          try:
+              raw=socket.create_connection((host,443),timeout=15)
+              s=ctx.wrap_socket(raw,server_hostname=host)
+              req=(
+                  'GET / HTTP/1.1\r\n'
+                  f'Host: {host}\r\n'
+                  'Upgrade: websocket\r\n'
+                  'Connection: Upgrade\r\n'
+                  'Sec-WebSocket-Version: 13\r\n'
+                  'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n'
+                  'Origin: https://www.fastvolt.net\r\n\r\n'
+              )
+              s.sendall(req.encode())
+              data=s.recv(4096).decode('iso-8859-1','replace')
+              s.close()
+              lines=data.split('\r\n')
+              status_line=lines[0] if lines else ''
+              safe_headers={}
+              for line in lines[1:]:
+                  if ':' in line:
+                      k,v=line.split(':',1)
+                      if k.lower() in {'server','upgrade','connection','www-authenticate','content-type'}:
+                          safe_headers[k.lower()]=v.strip()
+              out['websocket']={'status_line':status_line,'headers':safe_headers}
+          except Exception as e:
+              out['websocket']={'error':type(e).__name__+': '+str(e)[:200]}
+
+          with open('reports/morocco/fastvolt/fastvolt-289-auth-surface.json','w') as f:
+              json.dump(out,f,indent=2,ensure_ascii=False)
+              f.write('\n')
+          PY
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/fastvolt/fastvolt-289-auth-surface.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "diag(morocco): FastVolt 2.8.9 anonymous auth surface [run $GITHUB_RUN_ID]"
+          git push
