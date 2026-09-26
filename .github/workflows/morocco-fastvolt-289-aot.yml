@@ -173,6 +173,65 @@ jobs:
           },ensure_ascii=False,indent=2))
           PY
 
+      - name: Extract targeted API call blocks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, re
+          from pathlib import Path
+          root=Path('/tmp/fastvolt-blutter')
+          targets={
+            'api_calls': root/'asm/evplug/backend/api_requests/api_calls.dart',
+            'websocket': root/'asm/evplug/providers/web_socket_provider.dart',
+          }
+          wanted=['GetChargingStationsCall::call','GetChargingStationDetailsCall::call','LoggedInAPICallsGroup','wss://mobile.ev.fastvolt.ma/','tenant_id','tenantId']
+          secretish=re.compile(r'(?i)(password|refresh.?token|access.?token|client.?secret|api.?key|cookie|set-cookie)')
+          literal=re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"')
+          ppref=re.compile(r'\[pp\+0x([0-9a-fA-F]+)\]')
+          ppoff=re.compile(r'^\[pp\+0x([0-9a-fA-F]+)\]\s+(.*)
+          path: artifacts/fastvolt-289-aot/
+          retention-days: 3
+)
+          pp={}
+          for line in (root/'pp.txt').read_text(errors='ignore').splitlines():
+              m=ppoff.match(line.strip())
+              if m: pp[int(m.group(1),16)]=m.group(2)
+          def safe_entry(entry):
+              if secretish.search(entry): return {'kind':'secret_bearing','sha256':hashlib.sha256(entry.encode()).hexdigest()}
+              vals=literal.findall(entry)
+              if vals:
+                  v=vals[0]
+                  if (v.startswith(('http://','https://','wss://','/app/','/user/','/auth/')) or
+                      v in {'Authorization','token ','tenant_id','tenantId','organization','organisation','business','GET','POST'} or
+                      len(v)<24):
+                      return {'kind':'literal','value':v}
+                  return {'kind':'opaque_literal','length':len(v),'sha256':hashlib.sha256(v.encode()).hexdigest()}
+              return {'kind':'entry','value':entry[:300]}
+          out={'schema_version':1,'blocks':{},'pp_references':{}}
+          for name,fp in targets.items():
+              text=fp.read_text(errors='ignore')
+              lines=text.splitlines()
+              chunks=[]
+              refs=set()
+              for i,line in enumerate(lines):
+                  if any(w.lower() in line.lower() for w in wanted):
+                      lo=max(0,i-80); hi=min(len(lines),i+220)
+                      chunk='\n'.join(lines[lo:hi])
+                      # keep assembly but redact quoted literals >=24 chars except URLs/routes
+                      def repl(m):
+                          v=m.group(1)
+                          if v.startswith(('http://','https://','wss://','/app/','/user/','/auth/')) or len(v)<24:
+                              return '"'+v+'"'
+                          return '"[OPAQUE_LITERAL_SHA256:'+hashlib.sha256(v.encode()).hexdigest()+']"'
+                      chunk=literal.sub(repl,chunk)
+                      for x in ppref.findall(chunk): refs.add(int(x,16))
+                      if chunk not in chunks: chunks.append(chunk)
+              out['blocks'][name]=chunks[:12]
+              out['pp_references'][name]={f'0x{x:x}':safe_entry(pp.get(x,'missing')) for x in sorted(refs)}
+          Path('artifacts/fastvolt-289-aot/deep.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          PY
+
       - uses: actions/upload-artifact@v4
         with:
           name: fastvolt-289-aot-sanitized
