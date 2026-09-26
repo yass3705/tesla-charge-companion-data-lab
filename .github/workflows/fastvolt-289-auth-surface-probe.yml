@@ -25,13 +25,18 @@ jobs:
             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
             'https://d.apkpure.net/b/XAPK/ma.fastgo?version=latest' \
             -o /tmp/fastvolt.xapk
-          mkdir -p /tmp/fv
+          mkdir -p /tmp/fv /tmp/fv-apks
           unzip -q /tmp/fastvolt.xapk -d /tmp/fv
+          for apk in /tmp/fv/*.apk; do
+            d="/tmp/fv-apks/$(basename "$apk" .apk)"
+            mkdir -p "$d"
+            unzip -q "$apk" -d "$d"
+          done
           python - <<'PY2'
           import hashlib, os, subprocess
           target='83c3b05b436c8e230c9cb813256aaaa38f68fe3f2e4a48042bb1406c2b0809cb'
           libs=[]
-          for dp,_,fs in os.walk('/tmp/fv'):
+          for dp,_,fs in os.walk('/tmp/fv-apks'):
               for f in fs:
                   if f=='libapp.so': libs.append(os.path.join(dp,f))
           if not libs: raise SystemExit('libapp.so not found')
