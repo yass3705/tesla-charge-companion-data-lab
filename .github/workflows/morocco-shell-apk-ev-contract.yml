@@ -1,0 +1,118 @@
+name: Morocco Shell APK EV contract
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-shell-apk-ev-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact Shell Maroc 3.2.7 and decompile
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/shell-ma /tmp/jadx
+          mkdir -p /tmp/shell-ma reports/morocco/shell
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/APK/com.shell.shell_loyalty_app.morocco?version=latest' \
+            -o /tmp/shell-ma/app.apk
+          echo '388caa4c883a285ad996859db1ae231ffd3e909bf396475969a61225bae0acf4  /tmp/shell-ma/app.apk' | sha256sum -c -
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            'https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip' \
+            -o /tmp/shell-ma/jadx.zip
+          unzip -q /tmp/shell-ma/jadx.zip -d /tmp/jadx
+          /tmp/jadx/bin/jadx --no-res --show-bad-code -d /tmp/shell-ma/jadx-out /tmp/shell-ma/app.apk >/tmp/shell-ma/jadx.log 2>&1 || true
+
+      - name: Build sanitized EV contract report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re,json,hashlib
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          root=Path('/tmp/shell-ma/jadx-out/sources')
+          files=list(root.rglob('*.java'))
+          target=[]
+          sig=re.compile(r'(?i)(evCharging|evOffering|chargingPoints|stationInfo|stationId|stationLocator|stationDetails|apiBaseURL|apiKey|ma-loyaltyapi|execute-api|retrofit|@GET|@POST|@Query|@Header|price|tarif|kwh|kw)')
+          package=re.compile(r'com\.shell\.shell_loyalty_app')
+          for p in files:
+              txt=p.read_text(errors='ignore')
+              if package.search(txt) and sig.search(txt):
+                  target.append((p,txt))
+
+          secret_like=re.compile(r'(?i)(api[_-]?key|authorization|token)\s*[=:]\s*"([^"]{8,})"')
+          url=re.compile(r'https?://[^"\s)]+')
+          methods=[]
+          models=[]
+          snippets=[]
+          for p,txt in target:
+              rel=str(p.relative_to(root))
+              # Retrofit-like annotations / paths.
+              anns=re.findall(r'@(GET|POST|PUT|DELETE|PATCH)\("([^"]+)"\)',txt)
+              if anns:
+                  methods.append({'file':rel,'annotations':[{'method':m,'path':path} for m,path in anns]})
+              # Extract field declarations around EV/station model terms.
+              for m in re.finditer(r'(?i)(evCharging|evOffering|chargingPoints|stationInfo|stationId|price|tarif|kwh|kw)',txt):
+                  a=max(0,m.start()-900); b=min(len(txt),m.end()+1600)
+                  block=txt[a:b]
+                  block=secret_like.sub(lambda x:x.group(1)+'="<redacted>"',block)
+                  block=url.sub(lambda x:x.group(0) if any(h in x.group(0) for h in ['ma-loyaltyapi.vivoenergy.com','execute-api.eu-west-1.amazonaws.com']) else '<url>',block)
+                  snippets.append({'file':rel,'marker':m.group(1),'text':block[:3000]})
+                  if len(snippets)>=160: break
+              # likely DTO fields
+              if re.search(r'(?i)(chargingPoints|evCharging|evOffering)',txt):
+                  fields=sorted(set(re.findall(r'(?m)^\s*(?:private|public|protected)\s+(?:final\s+)?[\w<>?,.\[\] ]+\s+(\w+)\s*;',txt)))
+                  models.append({'file':rel,'fields':fields[:120]})
+              if len(snippets)>=160: break
+
+          # URLs/endpoints from all target source, no credentials.
+          urls=sorted(set(u for _,txt in target for u in url.findall(txt)
+                          if any(h in u for h in ['ma-loyaltyapi.vivoenergy.com','execute-api.eu-west-1.amazonaws.com'])))
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Shell/Vivo Energy',
+            'client':{
+              'package':'com.shell.shell_loyalty_app.morocco',
+              'version':'3.2.7',
+              'apk_sha256':'388caa4c883a285ad996859db1ae231ffd3e909bf396475969a61225bae0acf4'
+            },
+            'policy':{
+              'static_analysis_only':True,'no_login':True,'no_backend_mutation':True,
+              'credentials_persisted':False
+            },
+            'finding_counts':{
+              'candidate_files':len(target),'retrofit_files':len(methods),'ev_models':len(models),'snippets':len(snippets)
+            },
+            'known_hosts':urls,
+            'retrofit_contracts':methods[:80],
+            'ev_models':models[:80],
+            'context':snippets[:160]
+          }
+          Path('reports/morocco/shell/apk-3.2.7-ev-contract-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/shell-ma /tmp/jadx
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/shell/apk-3.2.7-ev-contract-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): inspect Shell Maroc 3.2.7 EV contract [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
