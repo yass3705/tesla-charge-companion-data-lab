@@ -1,0 +1,154 @@
+name: Morocco Kilowatt native tariff extract
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-kilowatt-native-tariff-extract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract official connector tariffs for the 43 production stations
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/kwh-native
+          mkdir -p /tmp/kwh-native/xapk /tmp/kwh-native/apk reports/morocco/kilowatt
+
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0'             'https://d.apkpure.net/b/XAPK/ma.kilowatt.app?version=latest'             -o /tmp/kwh-native/app.xapk
+          unzip -q /tmp/kwh-native/app.xapk -d /tmp/kwh-native/xapk
+          unzip -q /tmp/kwh-native/xapk/ma.kilowatt.app.apk 'assets/index.android.bundle' -d /tmp/kwh-native/apk
+          echo 'e177f327dfa4a581e2b2257ac741fef0af639b4a0f8ec75f4b826944bced22a9  /tmp/kwh-native/apk/assets/index.android.bundle' | sha256sum -c -
+
+          python3 - <<'PY'
+          import re,json,base64,requests,time
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          bundle=Path('/tmp/kwh-native/apk/assets/index.android.bundle').read_bytes()
+          candidates=[]
+          for m in re.finditer(rb'eyJ[A-Za-z0-9._-]{80,}',bundle):
+              key=m.group(0).decode()
+              try:
+                  p=key.split('.')[1]; p += '='*((4-len(p)%4)%4)
+                  claims=json.loads(base64.urlsafe_b64decode(p))
+                  if claims.get('ref')=='jmrgknphxsviooizyilj' and claims.get('role')=='anon':
+                      candidates.append((key,claims))
+              except Exception: pass
+          if not candidates:
+              raise SystemExit('No matching public anon client key')
+          key,claims=candidates[0]
+
+          manifest=json.loads(Path('reports/morocco/kilowatt/latest-v9-tariff-overlay-manifest.json').read_text())
+          station_ids=list(dict.fromkeys((manifest.get('freeStationIds') or [])+(manifest.get('unresolvedStationIds') or [])))
+          if len(station_ids)!=43:
+              raise SystemExit(f'Expected 43 production IDs, got {len(station_ids)}')
+
+          S=requests.Session()
+          S.headers.update({
+            'apikey':key,
+            'Authorization':'Bearer '+key,
+            'x-application-name':'kilowatt-go',
+            'Accept':'application/json'
+          })
+          endpoint='https://jmrgknphxsviooizyilj.supabase.co/rest/v1/connectors'
+          select='id,chargestation_id,connector_id,type,format,power_type,power,status,active,rate_id,rate_price,rate_currency,rate_description'
+          station_rows=[]
+          connector_count=0
+          for sid in station_ids:
+              r=S.get(endpoint,params={'select':select,'chargestation_id':'eq.'+sid},timeout=30)
+              rec={'station_id':sid,'http_status':r.status_code,'connectors':[]}
+              if r.status_code==200:
+                  rows=r.json()
+                  clean=[]
+                  for x in rows if isinstance(rows,list) else []:
+                      clean.append({
+                        'id':x.get('id'),
+                        'connector_id':x.get('connector_id'),
+                        'type':x.get('type'),
+                        'format':x.get('format'),
+                        'power_type':x.get('power_type'),
+                        'power':x.get('power'),
+                        'status':x.get('status'),
+                        'active':x.get('active'),
+                        'rate_id':x.get('rate_id'),
+                        'rate_price':x.get('rate_price'),
+                        'rate_currency':x.get('rate_currency'),
+                        'rate_description':x.get('rate_description')
+                      })
+                  rec['connectors']=clean
+                  connector_count+=len(clean)
+              else:
+                  try:
+                      err=r.json()
+                      rec['safe_error']={k:err.get(k) for k in ('code','message','hint') if isinstance(err,dict) and err.get(k)}
+                  except Exception:pass
+              station_rows.append(rec)
+              time.sleep(0.08)
+
+          def tariff_key(c):
+              return (
+                c.get('rate_price'),
+                c.get('rate_currency'),
+                c.get('rate_description'),
+                c.get('rate_id')
+              )
+
+          stations_with_rows=sum(bool(x['connectors']) for x in station_rows)
+          rates={}
+          for st in station_rows:
+              for c in st['connectors']:
+                  k=str(tariff_key(c))
+                  rates[k]=rates.get(k,0)+1
+
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Kilowatt',
+            'source':{
+              'client_package':'ma.kilowatt.app','client_version':'1.0.1',
+              'table':'connectors','method':'GET',
+              'fields':['rate_id','rate_price','rate_currency','rate_description'],
+              'authentication':'public anon client key embedded in official app; key value not persisted'
+            },
+            'policy':{
+              'read_only':True,'known_production_station_ids_only':True,
+              'no_login':True,'no_user_data':True,'no_mutations':True,'raw_key_not_persisted':True
+            },
+            'summary':{
+              'expected_production_stations':43,
+              'stations_queried':len(station_rows),
+              'stations_http_200':sum(x['http_status']==200 for x in station_rows),
+              'stations_with_connector_rows':stations_with_rows,
+              'connector_rows':connector_count,
+              'distinct_tariff_tuples':len(rates)
+            },
+            'tariff_distribution':[{'tuple':k,'connector_count':v} for k,v in sorted(rates.items())],
+            'stations':station_rows
+          }
+          latest=Path('reports/morocco/kilowatt/latest-native-connector-tariffs.json')
+          dated=Path('reports/morocco/kilowatt/native-connector-tariffs-2026-09-27.json')
+          payload=json.dumps(report,ensure_ascii=False,indent=2)+'\n'
+          latest.write_text(payload); dated.write_text(payload)
+          PY
+          rm -rf /tmp/kwh-native
+
+      - name: Commit sanitized native tariff snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/kilowatt/latest-native-connector-tariffs.json                   reports/morocco/kilowatt/native-connector-tariffs-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(morocco): extract Kilowatt native connector tariffs [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
