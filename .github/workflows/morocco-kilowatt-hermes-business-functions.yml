@@ -1,0 +1,138 @@
+name: Morocco Kilowatt Hermes business functions
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-kilowatt-hermes-business-functions.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact Kilowatt 1.0.1 and disassemble Hermes
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/kilowatt-business /tmp/hermes-dec
+          mkdir -p /tmp/kilowatt-business/xapk /tmp/kilowatt-business/apk
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/ma.kilowatt.app?version=latest' \
+            -o /tmp/kilowatt-business/app.xapk
+          unzip -q /tmp/kilowatt-business/app.xapk -d /tmp/kilowatt-business/xapk
+          unzip -q /tmp/kilowatt-business/xapk/ma.kilowatt.app.apk 'assets/index.android.bundle' -d /tmp/kilowatt-business/apk
+          printf '%s  %s\n' 'e177f327dfa4a581e2b2257ac741fef0af639b4a0f8ec75f4b826944bced22a9' /tmp/kilowatt-business/apk/assets/index.android.bundle | sha256sum -c -
+          git clone --depth=1 https://github.com/P1sec/hermes-dec.git /tmp/hermes-dec
+          python3 /tmp/hermes-dec/hbc-disassembler /tmp/kilowatt-business/apk/assets/index.android.bundle /tmp/kilowatt-business/disasm.hasm
+
+      - name: Extract business functions
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/kilowatt
+          python3 - <<'PY'
+          import re,json
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          lines=Path('/tmp/kilowatt-business/disasm.hasm').read_text(errors='ignore').splitlines()
+          markers=[
+            'No price information available',
+            'Connectors Realtime status',
+            'Cleaning up Realtime subscriptions',
+            'No user ID, skipping subscription setup',
+            'cost_amount',
+            'energy_consumed',
+            'initiate-payment',
+            'Connector not available or station offline',
+            'Charge station is currently inactive.',
+            'Charge station is currently offline.'
+          ]
+          starts=[i for i,l in enumerate(lines) if l.startswith('=> [Function #')]
+          blocks=[]
+          for pos,s in enumerate(starts):
+              e=starts[pos+1] if pos+1<len(starts) else len(lines)
+              block=lines[s:e]
+              text='\n'.join(block)
+              hits=[m for m in markers if m in text]
+              if not hits: continue
+              header=block[0]
+              m=re.search(r'Function #(\d+)',header)
+              fid=int(m.group(1)) if m else None
+
+              string_literals=[]
+              seen=set()
+              for l in block:
+                  sm=re.search(r"# String: '([^']*)'",l)
+                  if sm:
+                      v=sm.group(1)
+                      if v not in seen:
+                          seen.add(v);string_literals.append(v)
+
+              keep=[]
+              sig=re.compile(r'(LoadConstString|GetById|PutById|PutNewOwnById|Call\d*|CallLong|CallDirect|CreateClosure|Ret|Jmp|Throw|NewObject|NewArray)')
+              for l in block:
+                  if sig.search(l) or any(m in l for m in hits):
+                      # redact obvious JWT/API-key-like string payloads
+                      l=re.sub(r'eyJ[A-Za-z0-9._-]{20,}','<redacted-jwt-like>',l)
+                      l=re.sub(r'AIZa[A-Za-z0-9_-]{20,}','<redacted-api-key-like>',l)
+                      keep.append(l[:1400])
+              blocks.append({
+                  'function_id':fid,
+                  'header':header,
+                  'marker_hits':hits,
+                  'string_literals':string_literals[:300],
+                  'selected_disassembly':keep[:700]
+              })
+
+          # Secondary lookup: find functions containing likely Supabase table/query literals,
+          # but only when they also contain app-specific charging markers.
+          table_candidates=[]
+          for pos,s in enumerate(starts):
+              e=starts[pos+1] if pos+1<len(starts) else len(lines)
+              block=lines[s:e]; text='\n'.join(block)
+              if not re.search(r'(?i)(charging|connector|transaction|wallet|station)',text): continue
+              if not re.search(r"(?i)# String: '(from|select|eq|in|single|maybeSingle|channel|on)'",text): continue
+              lits=[]
+              for l in block:
+                  sm=re.search(r"# String: '([^']*)'",l)
+                  if sm and sm.group(1) not in lits:lits.append(sm.group(1))
+              h=re.search(r'Function #(\d+)',block[0])
+              table_candidates.append({
+                  'function_id':int(h.group(1)) if h else None,
+                  'header':block[0],
+                  'string_literals':lits[:250]
+              })
+              if len(table_candidates)>=80:break
+
+          report={
+              'schema_version':1,
+              'generated_at':datetime.now(timezone.utc).isoformat(),
+              'country':'MA','network':'Kilowatt',
+              'client':{'package':'ma.kilowatt.app','version':'1.0.1','bundle_sha256':'e177f327dfa4a581e2b2257ac741fef0af639b4a0f8ec75f4b826944bced22a9'},
+              'policy':{'static_analysis_only':True,'no_login':True,'no_backend_requests':True,'no_secrets_persisted':True},
+              'business_functions':blocks,
+              'charging_query_candidates':table_candidates
+          }
+          Path('reports/morocco/kilowatt/hermes-business-functions-1.0.1-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/kilowatt-business /tmp/hermes-dec
+
+      - name: Commit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/kilowatt/hermes-business-functions-1.0.1-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): isolate Kilowatt Hermes business functions [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
