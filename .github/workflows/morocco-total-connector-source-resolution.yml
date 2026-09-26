@@ -1,0 +1,206 @@
+name: Morocco Total connector source resolution
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-connector-source-resolution.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inspect one legitimate guest station detail
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies /tmp/total-resolve
+          python - <<'PY'
+          import json,urllib.request,urllib.error,urllib.parse
+          from pathlib import Path
+
+          BASE='https://csmstotalenergiesma.numocity.com'
+          rc=json.loads(Path('reports/morocco/totalenergies/club-ev-charge-remote-config-keys-2026-09-26.json').read_text())
+          public_id=(rc.get('safe_values') or {}).get('userID')
+          if not isinstance(public_id,str) or not public_id: raise SystemExit('public id unavailable')
+
+          def req(path,method='GET',headers=None,payload=None,query=None):
+              h={'Accept':'application/json','User-Agent':'TCC-ClubEVCharge-PublicClient/1.0'}
+              if headers:h.update(headers)
+              url=BASE+path
+              if query:url+='?'+urllib.parse.urlencode(query)
+              data=None
+              if payload is not None:
+                  data=json.dumps(payload,separators=(',',':')).encode()
+                  h.setdefault('content-Type','application/json; charset=utf-8')
+              q=urllib.request.Request(url,data=data,headers=h,method=method)
+              try:
+                  with urllib.request.urlopen(q,timeout=25) as r: raw=r.read(2_000_000); status=r.status
+              except urllib.error.HTTPError as e: raw=e.read(500_000); status=e.code
+              obj=None
+              try:obj=json.loads(raw.decode('utf-8','replace'))
+              except Exception:pass
+              return status,obj,len(raw)
+
+          s,o,_=req('/token/admin/v1/requesttoken','POST',
+                    {'authorization':'','content-Type':'application/json; charset=utf-8','deviceType':'Mobile1','language':'fr'},
+                    {'id':public_id,'idTag':''})
+          token=((o or {}).get('Document') or {}).get('token') if isinstance(o,dict) else None
+          if s!=200 or not isinstance(token,str) or not token: raise SystemExit('guest bootstrap failed')
+          H={'authorization':'Bearer '+token,'content-Type':'application/json; charset=utf-8','deviceType':'Mobile1','language':'fr'}
+
+          # ID 8 is from the official guest inventory and corresponds to Relais Al Baida.
+          status,detail,nbytes=req('/asset/chargestation/getbyid','GET',H,query={'ChargeStationID':8})
+
+          ALLOW=('station','charge','connector','cpid','cp_id','cpId','point','power','status','type','standard',
+                 'cpo','roaming','rate','tariff','currency','soc','penalty','servicefee','tax','identifier','location')
+          BLOCK=('user','email','phone','mobile','account','wallet','payment','card','token','jwt','auth')
+          key_paths=[]
+          safe_values=[]
+          def walk(v,path='',depth=0):
+              if depth>8:return
+              if isinstance(v,dict):
+                  for k,vv in v.items():
+                      p=f'{path}.{k}' if path else str(k)
+                      lk=str(k).lower()
+                      if any(a.lower() in lk for a in ALLOW) and not any(b in lk for b in BLOCK):
+                          key_paths.append(p)
+                          if isinstance(vv,(str,int,float,bool,type(None))) and (not isinstance(vv,str) or len(vv)<=250):
+                              safe_values.append({'path':p,'value':vv})
+                      walk(vv,p,depth+1)
+              elif isinstance(v,list):
+                  for i,vv in enumerate(v[:20]): walk(vv,path+'[]',depth+1)
+          walk(detail)
+
+          # Known legitimate CPID from prior official-client observation: bounded probe of the nearby
+          # connector-info route, using only client-evidenced query key aCpId.
+          ci_status,ci_obj,ci_bytes=req('/mobileTariffTax/mobile/get-connector-info','GET',H,query={'aCpId':'T54-9'})
+          ci_paths=[];ci_values=[]
+          def walk2(v,path='',depth=0):
+              if depth>7:return
+              if isinstance(v,dict):
+                  for k,vv in v.items():
+                      p=f'{path}.{k}' if path else str(k); lk=str(k).lower()
+                      if any(a.lower() in lk for a in ALLOW) and not any(b in lk for b in BLOCK):
+                          ci_paths.append(p)
+                          if isinstance(vv,(str,int,float,bool,type(None))) and (not isinstance(vv,str) or len(vv)<=250):
+                              ci_values.append({'path':p,'value':vv})
+                      walk2(vv,p,depth+1)
+              elif isinstance(v,list):
+                  for vv in v[:20]:walk2(vv,path+'[]',depth+1)
+          walk2(ci_obj)
+
+          runtime={
+            'station_id':8,
+            'station_detail':{
+              'status':status,'bytes':nbytes,'json':isinstance(detail,(dict,list)),
+              'top_level_keys':sorted(detail.keys()) if isinstance(detail,dict) else None,
+              'safe_key_paths':sorted(set(key_paths))[:300],
+              'safe_values':safe_values[:180]
+            },
+            'connector_info_known_cpid':{
+              'cpid_source':'previous user-verified official-client observation',
+              'status':ci_status,'bytes':ci_bytes,'json':isinstance(ci_obj,(dict,list)),
+              'top_level_keys':sorted(ci_obj.keys()) if isinstance(ci_obj,dict) else None,
+              'safe_key_paths':sorted(set(ci_paths))[:300],
+              'safe_values':ci_values[:180]
+            }
+          }
+          Path('/tmp/total-resolve/runtime.json').write_text(json.dumps(runtime,ensure_ascii=False))
+          PY
+
+      - name: Resolve exact connectorList constant from Club EV-Charge 3.00.12 AOT
+        shell: bash
+        env:
+          URL: "https://download.pureapk.com/b/XAPK/Y29tLm5hbXAudG90YWxldl8xNF8zNTJhNjdlNQ?as2=db91def85bd2cc2cebea5e889e36b4866c92699d&k=6a2bd595361c47705231b076672895396c92699d&_p=Y29tLm5hbXAudG90YWxldg&c=1%7CBUSINESS%7Cb2lkPTkmZGV2PVRFTSUyME1hcm9jJnQ9eGFwayZzPTUwODMzMjYwJnZuPTMuMDAuMTImdmM9MTQ&_fn=Q2x1YitFVi1DaGFyZ2VfMy4wMC4xMl9hcGtjb21iby5jb20ueGFwaw%3D%3D"
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build pkg-config libicu-dev libcapstone-dev
+          python -m pip install --quiet pyelftools requests
+          mkdir -p /tmp/total-resolve/xapk /tmp/total-resolve/lib
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' "$URL" -o /tmp/total-resolve/app.xapk
+          unzip -q /tmp/total-resolve/app.xapk -d /tmp/total-resolve/xapk
+          python - <<'PY'
+          import os,zipfile
+          root='/tmp/total-resolve/xapk';out='/tmp/total-resolve/lib';found=set()
+          for fn in os.listdir(root):
+              if not fn.endswith('.apk'):continue
+              try:
+                  with zipfile.ZipFile(os.path.join(root,fn)) as z:
+                      for t in ('libapp.so','libflutter.so'):
+                          n='lib/arm64-v8a/'+t
+                          if n in z.namelist() and t not in found:
+                              open(os.path.join(out,t),'wb').write(z.read(n));found.add(t)
+              except Exception:pass
+          if found != {'libapp.so','libflutter.so'}:raise SystemExit('ARM64 pair missing')
+          PY
+          git clone --depth=1 https://github.com/worawit/blutter.git /tmp/blutter
+          timeout 600 python3 /tmp/blutter/blutter.py /tmp/total-resolve/lib /tmp/blutter-out >/tmp/total-resolve/blutter.log 2>&1
+
+          python - <<'PY'
+          import os,re,json
+          from pathlib import Path
+          runtime=json.loads(Path('/tmp/total-resolve/runtime.json').read_text())
+          root='/tmp/blutter-out'
+          records=[]
+          wanted=('connectorListAggregator','connectorList','fetchConnector','ChargeStationID',
+                  'mobile/get-connector-info','aggregator/mobile/location/connector','aCpId')
+          for rel in ('pp.txt','asm/kurrent_charge/Global/Constants.dart','asm/kurrent_charge/network/api_service.dart'):
+              p=os.path.join(root,rel)
+              if not os.path.isfile(p):continue
+              lines=open(p,encoding='utf-8',errors='ignore').read().splitlines()
+              centers=[i for i,l in enumerate(lines) if any(w.lower() in l.lower() for w in wanted)]
+              for c in centers[:120]:
+                  # Focus API-service function around the known connector list address and constant definitions.
+                  if rel.endswith('api_service.dart') and not (11170 <= c+1 <= 11440):continue
+                  ctx=[]
+                  for j in range(max(0,c-35),min(len(lines),c+80)):
+                      line=lines[j]
+                      if re.search(r'(?i)(connectorList|ChargeStationID|get-connector-info|aggregator/mobile/location/connector|aCpId|queryParameters|DioMixin::get|InitLateStaticField|SetupParameters|Future<List<ConnectorsModel|String:)',line):
+                          # Redact opaque long strings; retain route/key/symbol literals.
+                          for m in list(re.finditer(r'"([^"]{1,300})"',line)):
+                              v=m.group(1)
+                              if not re.search(r'(?i)(connector|station|charge|cpid|aCpId|api|mobile|status|query|soc|tariff)',v):
+                                  line=line.replace('"'+v+'"','"<redacted>"')
+                          ctx.append({'line':j+1,'text':line[:900]})
+                  if ctx:records.append({'file':rel,'center_line':c+1,'context':ctx[:100]})
+
+          seen=set();uniq=[]
+          for x in records:
+              k=(x['file'],x['center_line'])
+              if k not in seen:seen.add(k);uniq.append(x)
+          out={
+            'schema_version':1,
+            'country':'MA','network':'TotalEnergies / Club EV-Charge',
+            'source_client':{'package':'com.namp.totalev','version':'3.00.12'},
+            'policy':{
+              'public_guest_runtime_read_only':True,'single_legitimate_station_detail':True,
+              'single_previously_observed_cpid_probe':True,'no_identifier_enumeration':True,
+              'static_aot_analysis':True,'no_credentials':True,'no_user_account':True,
+              'no_token_values_persisted':True,'raw_response_bodies_persisted':False,
+              'raw_blutter_output_persisted':False
+            },
+            'runtime':runtime,
+            'aot_records':uniq[:220]
+          }
+          Path('reports/morocco/totalenergies/club-ev-charge-connector-source-resolution-2026-09-26.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/blutter /tmp/blutter-out /tmp/total-resolve
+
+      - name: Commit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-connector-source-resolution-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): resolve Total connector source [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
