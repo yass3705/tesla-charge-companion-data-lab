@@ -1,0 +1,130 @@
+name: Morocco Kilowatt public site contract
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-kilowatt-public-site-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public website assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/kws && mkdir -p /tmp/kws/assets reports/morocco/kilowatt
+          python3 - <<'PY'
+          import requests,re,json,hashlib,urllib.parse,os,base64
+          from pathlib import Path
+          from datetime import datetime,timezone
+          S=requests.Session(); S.headers['User-Agent']='Mozilla/5.0 TCC-Public-Research/1.0'
+          base='https://kilowatt.ma/'
+          r=S.get(base,timeout=30)
+          r.raise_for_status()
+          html=r.text
+          scripts=[]
+          for m in re.finditer(r'<script[^>]+src=["\']([^"\']+)',html,re.I):
+              u=urllib.parse.urljoin(base,m.group(1))
+              if u not in scripts:scripts.append(u)
+          links=[]
+          for m in re.finditer(r'<link[^>]+href=["\']([^"\']+)',html,re.I):
+              u=urllib.parse.urljoin(base,m.group(1))
+              if (u.endswith('.js') or '/assets/' in u or '/_next/' in u) and u not in links:links.append(u)
+          urls=scripts+links
+          assets=[]; findings=[]; current_keys=[]
+          safe_terms=re.compile(r'(?i)(/api/[a-zA-Z0-9_./?&=-]+|supabase\.co|charging[_-]?stations?|connectors?|tariff|price|rate_description|connectorRate|public-connectors-count|locations?)')
+          jwt=re.compile(r'eyJ[A-Za-z0-9._-]{80,}')
+          pub=re.compile(r'sb_publishable_[A-Za-z0-9._-]{20,}')
+          for u in urls[:80]:
+              try:
+                  a=S.get(u,timeout=30); body=a.content
+              except Exception as e:
+                  assets.append({'url_path':urllib.parse.urlsplit(u).path,'error':type(e).__name__}); continue
+              rec={'url_path':urllib.parse.urlsplit(u).path,'status':a.status_code,'bytes':len(body),'sha256':hashlib.sha256(body).hexdigest(),'content_type':a.headers.get('content-type')}
+              assets.append(rec)
+              if a.status_code!=200:continue
+              text=body.decode('utf-8','ignore')
+              for kval in jwt.findall(text)+pub.findall(text):
+                  if kval not in current_keys: current_keys.append(kval)
+              vals=[]
+              for m in safe_terms.finditer(text):
+                  v=m.group(0)
+                  if 'supabase.co' in v: v='<supabase-host-reference>'
+                  if v not in vals: vals.append(v)
+                  if len(vals)>=120:break
+              if vals:findings.append({'url_path':rec['url_path'],'safe_matches':vals})
+              for sm in re.findall(r'//# sourceMappingURL=([^\s]+)',text):
+                  smu=urllib.parse.urljoin(u,sm)
+                  try:
+                      mr=S.get(smu,timeout=20)
+                      if mr.status_code==200:
+                          mt=mr.text
+                          vals2=[]
+                          for mm in safe_terms.finditer(mt):
+                              v=mm.group(0)
+                              if 'supabase.co' in v:v='<supabase-host-reference>'
+                              if v not in vals2:vals2.append(v)
+                              if len(vals2)>=120:break
+                          findings.append({'url_path':urllib.parse.urlsplit(smu).path,'source_map':True,'bytes':len(mr.content),'sha256':hashlib.sha256(mr.content).hexdigest(),'safe_matches':vals2})
+                          for kval in jwt.findall(mt)+pub.findall(mt):
+                              if kval not in current_keys: current_keys.append(kval)
+                  except Exception: pass
+          route_candidates=['/api/charging-stations','/api/public-connectors-count','/api/connectors','/api/locations','/api/stations','/api/charging-stations/details','/api/tariffs','/api/prices']
+          route_results=[]
+          for p in route_candidates:
+              try:
+                  rr=S.get(urllib.parse.urljoin(base,p),timeout=20,allow_redirects=True)
+                  row={'route':p,'status':rr.status_code,'content_type':rr.headers.get('content-type'),'bytes':len(rr.content),'sha256':hashlib.sha256(rr.content).hexdigest()}
+                  if 'application/json' in (rr.headers.get('content-type') or ''):
+                      try:
+                          j=rr.json(); row['json_type']=type(j).__name__; row['count']=len(j) if isinstance(j,list) else None
+                          if isinstance(j,dict):row['keys']=sorted(j.keys())[:50]
+                          if isinstance(j,list) and j and isinstance(j[0],dict):row['item_keys']=sorted(j[0].keys())[:50]
+                      except Exception:pass
+                  route_results.append(row)
+              except Exception as e: route_results.append({'route':p,'error':type(e).__name__})
+          supa=[]
+          for key in current_keys[:3]:
+              allowed=False; kind='publishable' if key.startswith('sb_publishable_') else 'legacy_anon'
+              if kind=='publishable': allowed=True
+              else:
+                  try:
+                      payload=key.split('.')[1]+'==='; c=json.loads(base64.urlsafe_b64decode(payload)); allowed=(c.get('role')=='anon' and c.get('ref')=='jmrgknphxsviooizyilj')
+                  except Exception:allowed=False
+              if not allowed:continue
+              headers={'apikey':key,'Authorization':'Bearer '+key}
+              for path in ['/rest/v1/','/rest/v1/connectors?select=id,chargestation_id,rate_description&limit=1']:
+                  try:
+                      rr=S.get('https://jmrgknphxsviooizyilj.supabase.co'+path,headers=headers,timeout=20)
+                      row={'key_kind':kind,'path':path.split('?')[0],'status':rr.status_code,'content_type':rr.headers.get('content-type'),'bytes':len(rr.content)}
+                      if rr.status_code<300 and 'json' in (rr.headers.get('content-type') or ''):
+                          try:
+                              j=rr.json(); row['json_type']=type(j).__name__; row['count']=len(j) if isinstance(j,list) else None; row['item_keys']=sorted(j[0].keys()) if isinstance(j,list) and j and isinstance(j[0],dict) else None
+                          except Exception:pass
+                      else:
+                          try:
+                              e=rr.json(); row['safe_error']={k:e.get(k) for k in ('code','message','hint') if e.get(k)}
+                          except Exception:pass
+                      supa.append(row)
+                  except Exception as e:supa.append({'key_kind':kind,'path':path.split('?')[0],'error':type(e).__name__})
+          report={'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),'country':'MA','network':'Kilowatt','site':{'url':base,'status':r.status_code,'html_bytes':len(r.content),'script_count':len(scripts),'asset_candidate_count':len(urls)},'policy':{'public_get_only':True,'no_login':True,'no_mutations':True,'raw_keys_not_persisted':True,'raw_asset_bodies_not_persisted':True},'assets':assets,'findings':findings,'public_key_candidates':{'count':len(current_keys),'kinds':sorted(set('publishable' if x.startswith('sb_publishable_') else 'legacy_jwt' for x in current_keys))},'routes':route_results,'supabase_validation':supa}
+          Path('reports/morocco/kilowatt/public-site-contract-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Commit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/kilowatt/public-site-contract-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): inspect Kilowatt public site contract [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
