@@ -1,0 +1,105 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-26",
+  "country": "MA",
+  "network": "FastVolt",
+  "subject": "FastVolt Android 2.8.9 native backend static analysis",
+  "source": {
+    "package": "ma.fastgo",
+    "version_name": "2.8.9",
+    "version_code": 63,
+    "xapk_sha256": "af476c969bf7982b1561cd0769a26f322b90257b347aa858f2c438d4e73fcf97",
+    "supplied_by_user": true,
+    "raw_package_persisted": false
+  },
+  "runtime": {
+    "framework": "Flutter AOT",
+    "dart_version": "3.9.2",
+    "snapshot_hash": "97ff04a728735e6b6b098bdf983faaba",
+    "shorebird_present": true,
+    "shorebird_auto_update_default": true,
+    "shorebird_app_id_is_public_metadata": true
+  },
+  "static_evidence": {
+    "backend_authority_literals": [
+      "https://mobile.ev.fastvolt.ma",
+      "wss://mobile.ev.fastvolt.ma/"
+    ],
+    "billing_authority": "https://billing.ev.fastvolt.ma",
+    "station_routes": [
+      "/app/charging_stations/",
+      "/user/get_charging_station_details/",
+      "/user/v2/estimates/?charger_id="
+    ],
+    "api_symbols": [
+      "GetChargingStationsCall",
+      "GetChargingStationDetailsCall",
+      "LoggedInAPICallsGroup",
+      "AuthAPIcallsGroup"
+    ],
+    "connector_and_tariff_fields": [
+      "$.connector.status",
+      "$.connector.price",
+      "$.connector.max_output",
+      "$.connector.price_include_tax",
+      "$.connector.bill_by",
+      "$.connector.billing_type",
+      "fixed_starting_fee",
+      "$.fixed_starting_fee",
+      "idle_price",
+      "$.idle_price"
+    ],
+    "websocket_client_present": true,
+    "authorization_literals_present": [
+      "Authorization",
+      "Bearer"
+    ],
+    "context_literals_present": [
+      "tenant_id",
+      "tenantId",
+      "organization"
+    ]
+  },
+  "anonymous_read_only_validation": {
+    "requests": [
+      {
+        "url": "https://mobile.ev.fastvolt.ma/",
+        "status": 401
+      },
+      {
+        "url": "https://mobile.ev.fastvolt.ma/app/charging_stations/",
+        "status": 401
+      },
+      {
+        "url": "https://mobile.ev.fastvolt.ma/user/get_charging_station_details/",
+        "status": 401
+      }
+    ],
+    "station_route_safe_response": "Unautorized Business/Organisation",
+    "interpretation": "The 2.8.9 client resolves the former backend-authority blocker. The remaining blocker is the exact Business/Organisation request context expected by the native backend."
+  },
+  "comparison_with_existing_tcc": {
+    "prior_client_generation": "2.8.8",
+    "prior_blocker": "station routes were visible but no trustworthy backend authority literal was attributable to the current FastVolt client",
+    "blocker_resolved_by_2_8_9": true,
+    "current_v9_inventory_source": "FastVolt public web map",
+    "current_v9_status": "unknown",
+    "current_v9_direct_tariff_model": "generic AC/DC minute rules",
+    "potential_upgrade": [
+      "native station inventory reconciliation",
+      "native live connector status",
+      "native connector-specific price/billing metadata",
+      "native connector power"
+    ]
+  },
+  "policy": {
+    "read_only": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_mutations": true,
+    "no_raw_client_keys_persisted": true,
+    "no_secret_values_persisted": true
+  },
+  "production_decision": "no_change_yet",
+  "next_step": "Correlate LoggedInAPICallsGroup/GetChargingStationsCall in the Dart AOT object pool and assembly to identify the exact application Business/Organisation context before any production promotion."
+}
