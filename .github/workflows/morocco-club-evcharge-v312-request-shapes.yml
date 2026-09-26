@@ -1,0 +1,95 @@
+name: Morocco Club EV Charge 3.00.12 request-shape probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-club-evcharge-v312-request-shapes.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe bounded evidence-derived POST shapes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import json, urllib.request, urllib.error
+          from datetime import datetime, timezone
+
+          BASE='https://csmstotalenergiesma.numocity.com'
+          TARGETS=[
+            ('kong_direct','/api/aggregator/mobile/location/markers'),
+            ('kong_v1','/1/api/aggregator/mobile/location/markers'),
+            ('legacy_direct','/asset/chargestation/getstationstate'),
+            ('legacy_v22','/22/asset/chargestation/getstationstate'),
+          ]
+          SAFE=('required','missing','unauthorized','forbidden','latitude','longitude','location','filter','status','token','tenant','business','page','size','radius')
+
+          def probe(path):
+              req=urllib.request.Request(
+                BASE+path,data=b'{}',method='POST',
+                headers={'Content-Type':'application/json','Accept':'application/json','User-Agent':'TCC-ClubEVCharge-ReadOnly-Shape/1.0'}
+              )
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      raw=r.read(200000); status=r.status; h=dict(r.headers)
+              except urllib.error.HTTPError as e:
+                  raw=e.read(200000); status=e.code; h=dict(e.headers or {})
+              except Exception as e:
+                  return {'status':None,'error_type':type(e).__name__}
+              txt=raw.decode('utf-8','replace')
+              obj=None
+              try: obj=json.loads(txt)
+              except Exception: pass
+              keys=sorted(str(k) for k in obj.keys())[:80] if isinstance(obj,dict) else []
+              nested=[]
+              if isinstance(obj,dict):
+                  for k,v in obj.items():
+                      if isinstance(v,dict): nested += [f'{k}.{x}' for x in v.keys()]
+              return {
+                'status':status,'content_type':h.get('Content-Type'),'bytes':len(raw),
+                'json':isinstance(obj,(dict,list)),'top_level_keys':keys,
+                'nested_field_names':sorted(set(nested))[:80],
+                'safe_markers':sorted({x for x in SAFE if x in txt.lower()})
+              }
+
+          report={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Club EV-Charge / TotalEnergies',
+            'evidence':{
+              'package_version':'3.00.12',
+              'remote_config':{'apiVersion':'22','kongVersion':'1'},
+              'route_literals':[
+                '/api/aggregator/mobile/location/markers',
+                'asset/chargestation/getstationstate'
+              ]
+            },
+            'policy':{
+              'bounded_exact_candidates_only':True,'empty_json_only':True,'no_identifiers':True,
+              'no_credentials':True,'no_user_account':True,'no_charging_actions':True,
+              'read_only_semantics_only':True,'raw_response_bodies_persisted':False
+            },
+            'results':[]
+          }
+          for label,path in TARGETS:
+              report['results'].append({'label':label,'method':'POST','path':path,**probe(path)})
+          with open('reports/morocco/totalenergies/club-ev-charge-v312-request-shapes-2026-09-26.json','w') as f:
+              json.dump(report,f,ensure_ascii=False,indent=2); f.write('\n')
+          PY
+      - name: Commit sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-v312-request-shapes-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): probe Club EV-Charge 3.00.12 request shapes [run $GITHUB_RUN_ID]"
+          git push
