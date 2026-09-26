@@ -1,0 +1,96 @@
+name: Morocco FastVolt synthetic userid bridge probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-synthetic-userid-bridge.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe get_details_with_userid with synthetic non-user identifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/fastvolt
+          python3 - <<'PY'
+          import json, urllib.request, urllib.error
+          from datetime import datetime, timezone
+
+          base='https://mobile.ev.fastvolt.ma'
+          synthetic='tcc-synthetic-nonexistent-20260926'
+          tests=[
+            ('POST_json_no_auth','POST','/auth/get_details_with_userid/',{'user_id':synthetic},{}),
+            ('POST_json_token_synthetic','POST','/auth/get_details_with_userid/',{'user_id':synthetic},{'Authorization':'token '+synthetic}),
+            ('GET_query_no_auth','GET','/auth/get_details_with_userid/?user_id='+synthetic,None,{})
+          ]
+
+          safe_names={'detail','message','error','errors','code','status'}
+          rows=[]
+          for name,method,path,payload,headers in tests:
+              h={'Accept':'application/json','User-Agent':'TCC-FastVolt-ReadOnly-Probe/1.0'}
+              data=None
+              if payload is not None:
+                  data=json.dumps(payload).encode()
+                  h['Content-Type']='application/json'
+              h.update(headers)
+              req=urllib.request.Request(base+path,data=data,headers=h,method=method)
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      raw=r.read(100000); ct=r.headers.get('content-type','')
+                      obj=None
+                      try: obj=json.loads(raw.decode('utf-8','replace'))
+                      except: pass
+                      safe={}
+                      if isinstance(obj,dict):
+                          for k,v in obj.items():
+                              if str(k).lower() in safe_names:
+                                  safe[k]=str(v)[:200]
+                      rows.append({'name':name,'status':r.status,'content_type':ct,'json':isinstance(obj,(dict,list)),'safe_json':safe or None,'body_bytes':len(raw)})
+              except urllib.error.HTTPError as e:
+                  raw=e.read(100000); ct=e.headers.get('content-type','') if e.headers else ''
+                  obj=None
+                  try: obj=json.loads(raw.decode('utf-8','replace'))
+                  except: pass
+                  safe={}
+                  if isinstance(obj,dict):
+                      for k,v in obj.items():
+                          if str(k).lower() in safe_names:
+                              safe[k]=str(v)[:200]
+                  rows.append({'name':name,'status':e.code,'content_type':ct,'json':isinstance(obj,(dict,list)),'safe_json':safe or None,'body_bytes':len(raw)})
+              except Exception as e:
+                  rows.append({'name':name,'transport_error':type(e).__name__})
+
+          report={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'FastVolt',
+            'subject':'Synthetic non-user probe of auth/get_details_with_userid/',
+            'policy':{
+              'synthetic_nonexistent_identifier_only':True,
+              'no_real_user_id':True,'no_credentials':True,'no_otp':True,
+              'no_account_creation':True,'read_only':True,'no_response_body_persisted':True
+            },
+            'results':rows
+          }
+          json.dump(report,open('reports/morocco/fastvolt/synthetic-userid-bridge-probe-2026-09-26.json','w'),indent=2,ensure_ascii=False)
+          open('reports/morocco/fastvolt/synthetic-userid-bridge-probe-2026-09-26.json','a').write('\n')
+          PY
+
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/fastvolt/synthetic-userid-bridge-probe-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): probe FastVolt synthetic userid bridge [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push
