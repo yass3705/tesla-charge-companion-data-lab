@@ -1,0 +1,130 @@
+name: Morocco Kilowatt Expo OTA matrix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-kilowatt-expo-ota-matrix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe public EAS Update combinations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/kilowatt
+          python3 - <<'PY'
+          import requests,json,re,hashlib,email,base64
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          ids=[
+            ('embedded_update_url_id','8f737910-e59a-426f-87d4-755d87018ac4'),
+            ('eas_project_id','0e98d61a-9349-4429-95cb-7e79fc2bba60')
+          ]
+          channels=[None,'production','default','preview','main']
+          runtime='1.0.1'
+          out=[]
+          S=requests.Session()
+          for label,pid in ids:
+            for ch in channels:
+              headers={
+                'expo-platform':'android',
+                'expo-runtime-version':runtime,
+                'expo-protocol-version':'1',
+                'accept':'application/expo+json, application/json, multipart/mixed',
+                'user-agent':'ExpoUpdates/0.28 TCC-ReadOnly'
+              }
+              if ch:headers['expo-channel-name']=ch
+              url='https://u.expo.dev/'+pid
+              try:
+                r=S.get(url,headers=headers,timeout=30,allow_redirects=True)
+                rec={
+                  'project_id_source':label,'channel':ch,'status':r.status_code,
+                  'content_type':r.headers.get('content-type'),'bytes':len(r.content),
+                  'body_sha256':hashlib.sha256(r.content).hexdigest(),
+                  'response_headers':{
+                    k:v for k,v in r.headers.items()
+                    if k.lower() in ('expo-protocol-version','expo-sfv-version','expo-manifest-filters','expo-server-defined-headers','cache-control')
+                  }
+                }
+                txt=r.text
+                if r.status_code>=400 and len(txt)<=2000:
+                  safe=re.sub(r'https?://[^\s"\']+','<url>',txt)
+                  safe=re.sub(r'eyJ[A-Za-z0-9._-]{20,}','<redacted-jwt-like>',safe)
+                  safe=re.sub(r'sb_(?:publishable|secret)_[A-Za-z0-9._-]{20,}','<redacted-key-like>',safe)
+                  rec['safe_error_text']=safe[:1200]
+                if r.status_code==200:
+                  launch=None
+                  ctype=r.headers.get('content-type','')
+                  objs=[]
+                  if 'multipart/' in ctype:
+                    try:
+                      msg=email.message_from_bytes(b'Content-Type: '+ctype.encode()+b'\r\nMIME-Version: 1.0\r\n\r\n'+r.content)
+                      for part in msg.walk():
+                        if part.is_multipart():continue
+                        payload=part.get_payload(decode=True) or b''
+                        try:
+                          obj=json.loads(payload.decode())
+                          if isinstance(obj,dict):objs.append(obj)
+                        except Exception:pass
+                    except Exception:pass
+                  else:
+                    try:
+                      obj=r.json()
+                      if isinstance(obj,dict):objs.append(obj)
+                    except Exception:pass
+                  rec['manifest_object_count']=len(objs)
+                  safe_objs=[]
+                  for obj in objs:
+                    la=obj.get('launchAsset')
+                    if isinstance(la,dict) and isinstance(la.get('url'),str):launch=la['url']
+                    safe_objs.append({
+                      'keys':sorted(obj.keys())[:50],
+                      'id':obj.get('id'),'createdAt':obj.get('createdAt'),'runtimeVersion':obj.get('runtimeVersion'),
+                      'metadata':obj.get('metadata') if isinstance(obj.get('metadata'),dict) else None,
+                      'launchAsset':({'key':la.get('key'),'contentType':la.get('contentType'),'url_host':re.sub(r'^https?://([^/]+)/.*$',r'\1',la.get('url',''))} if isinstance(la,dict) else None)
+                    })
+                  rec['manifests']=safe_objs
+                  if launch:
+                    br=S.get(launch,timeout=60,headers={'User-Agent':'Mozilla/5.0 TCC-ReadOnly'})
+                    b=br.content; st=b.decode('utf-8','ignore')
+                    rec['launch_asset']={
+                      'status':br.status_code,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),
+                      'contains_project_host':'jmrgknphxsviooizyilj.supabase.co' in st,
+                      'contains_rate_price':'rate_price' in st,
+                      'contains_rate_description':'rate_description' in st,
+                      'legacy_anon_candidates':len(set(re.findall(r'eyJ[A-Za-z0-9._-]{80,}',st))),
+                      'publishable_key_candidates':len(set(re.findall(r'sb_publishable_[A-Za-z0-9._-]{20,}',st)))
+                    }
+                out.append(rec)
+              except Exception as e:
+                out.append({'project_id_source':label,'channel':ch,'error':type(e).__name__})
+          report={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Kilowatt',
+            'policy':{'public_read_only':True,'no_login':True,'no_mutations':True,'raw_manifests_not_persisted':True,'raw_bundles_not_persisted':True,'raw_keys_not_persisted':True},
+            'runtime_version':runtime,'results':out
+          }
+          Path('reports/morocco/kilowatt/expo-ota-matrix-1.0.1-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/kilowatt/expo-ota-matrix-1.0.1-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): probe Kilowatt Expo OTA matrix [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
