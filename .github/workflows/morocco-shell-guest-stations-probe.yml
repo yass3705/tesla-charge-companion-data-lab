@@ -82,37 +82,39 @@ jobs:
 
           # Build request from exact serialized fields. Nearby-stations use case constructor:
           # amenities='', <arg>, '25', <arg>, <arg>, '20', '1', <arg>.
-          serialized=[x[0] for x in fields]
+          # Gson uses field names directly when there is no @SerializedName.
+          serialized=[x[0] for x in fields] if fields else plain
           report={
             'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
             'country':'MA','network':'Shell/Vivo Energy',
             'client':{'package':'com.shell.shell_loyalty_app.morocco','version':'3.2.7'},
-            'request_contract':{'serialized_fields':serialized},
+            'request_contract':{
+              'serialized_fields':serialized,
+              'annotated_fields':fields,
+              'plain_fields':plain,
+              'constructor_assignments':assignments
+            },
             'policy':{'read_only':True,'no_login':True,'no_user_data':True,'no_mutation':True,'credentials_persisted':False},
             'attempts':[]
           }
 
-          # Use Casablanca center and several plausible field mappings derived from the exact constructor/toString.
+          # Exact constructor arguments used by HomeViewModel through StationsUseCaseImpl:
+          # ("", latitude, "25", longitude, "closest", "20", "1", "0")
+          positional=['','33.5731','25','-7.5898','closest','20','1','0']
           candidates=[]
-          names=set(serialized)
-          # canonical names expected from model
-          basevals={
-            'amenities':'','latitude':'33.5731','longitude':'-7.5898',
-            'radius':'25','limit':'20','page':'1','country_code':'ma','countryCode':'ma',
-            'language':'fr','locale':'fr','search':''
-          }
-          # construct using known fields, then supplement likely aliases
-          body={k:basevals.get(k,'') for k in serialized}
-          # positional clues from constructor + common API schema
-          for k in serialized:
-            kl=k.lower()
-            if 'lat' in kl: body[k]='33.5731'
-            elif 'lon' in kl or 'lng' in kl: body[k]='-7.5898'
-            elif 'radius' in kl: body[k]='25'
-            elif 'limit' in kl: body[k]='20'
-            elif 'page' in kl: body[k]='1'
-            elif 'country' in kl: body[k]='ma'
-          candidates.append(body)
+          if assignments and len(assignments)==8:
+              # map constructor parameter order to field names
+              param_order=[]
+              if constructor:
+                  param_order=[p.strip().split()[-1] for p in constructor.group(1).split(',') if p.strip()]
+              pval={p:positional[i] for i,p in enumerate(param_order[:8])}
+              body={field:pval.get(param,'') for field,param in assignments}
+              candidates.append(body)
+          if not candidates and len(serialized)==8:
+              candidates.append(dict(zip(serialized,positional)))
+          # Last safe fallback from model string labels observed in bytecode.
+          if not candidates:
+              candidates.append({'amenities':'','latitude':'33.5731','radius':'25','longitude':'-7.5898','sortBy':'closest','limit':'20','page':'1','offset':'0'})
 
           import urllib.request,urllib.error
           for idx,b in enumerate(candidates):
