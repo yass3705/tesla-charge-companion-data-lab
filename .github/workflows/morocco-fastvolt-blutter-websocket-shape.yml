@@ -143,6 +143,60 @@ jobs:
               seen.add(key)
               contexts.append({'file':path,'matched_literal':target,'selected_structural_lines':selected})
 
+          # Focused static reconstruction of WebSocketProvider::connectWS and _onMessage.
+          ws_asm=read(os.path.join(root,'asm/evplug/providers/web_socket_provider.dart'),20_000_000)
+
+          def addr_from_line(line):
+              m=re.search(r'0x([0-9a-fA-F]+):',line)
+              return int(m.group(1),16) if m else None
+
+          def address_slice(text,start,end,max_lines=260):
+              rows=[]
+              current=None
+              for raw in text.splitlines():
+                  a=addr_from_line(raw)
+                  if a is not None:
+                      current=a
+                  if current is not None and start <= current <= end:
+                      rows.append(sanitize(raw))
+                      if len(rows)>=max_lines: break
+              return rows
+
+          connect_slice=address_slice(ws_asm,0x75ed84,0x75ef40,320)
+
+          # _onMessage is large: persist only static string/key loads and named calls.
+          onmessage_signals=[]
+          current=None
+          for raw in ws_asm.splitlines():
+              a=addr_from_line(raw)
+              if a is not None:
+                  current=a
+              if current is None or not (0x760f20 <= current <= 0x767000):
+                  continue
+              low=raw.lower()
+              interesting=(
+                  ('"' in raw and ('r' in raw or '[pp+' in low)) or
+                  ' bl ' in (' '+low+' ') or
+                  'json' in low or 'status' in low or 'station' in low or
+                  'connector' in low or 'event' in low or 'charger' in low
+              )
+              if interesting:
+                  onmessage_signals.append(sanitize(raw))
+                  if len(onmessage_signals)>=500: break
+
+          connect_text='\n'.join(connect_slice)
+          payload_keys=sorted(set(re.findall(r'"([A-Za-z_][A-Za-z0-9_.-]{1,60})"',connect_text)))
+          payload_keys=[x for x in payload_keys if x.lower() in {
+              'user_id','ff_userid','userid','userId'.lower(),'authorization','token','event','type'
+          } or 'user' in x.lower()][:40]
+
+          onmsg_text='\n'.join(onmessage_signals)
+          event_literals=sorted(set(re.findall(r'"([^"\\]{1,100})"',onmsg_text)))
+          event_literals=[
+              x for x in event_literals
+              if re.search(r'(status|station|connector|charger|event|availability|available|occupied|fault|offline|session|price|tariff|power|user)',x,re.I)
+          ][:120]
+
           allsel='\n'.join(x for c in contexts for x in c['selected_structural_lines'])
           indicators={}
           for term in ['userId','user_id','userid','ff_userid','query','sink','send','json','Authorization','Bearer','WebSocket','channel']:
@@ -169,13 +223,24 @@ jobs:
               'sanitizedContextCount':len(contexts)
             },
             'contexts':contexts[:20],
+            'focusedReconstruction':{
+              'connectWSAddressRange':'0x75ed84-0x75ef40',
+              'connectWSSlice':connect_slice,
+              'connectWSPayloadKeyCandidates':payload_keys,
+              'onMessageAddressRange':'0x760f20-0x767000',
+              'onMessageSignals':onmessage_signals,
+              'onMessageRelevantStringLiterals':event_literals
+            },
             'structuralIndicators':indicators,
             'interpretation':{
               'blutterSucceeded':rc==0,
               'websocketLogicLocated':bool(contexts),
               'userIdEvidence':indicators.get('userId') or indicators.get('user_id') or indicators.get('userid') or indicators.get('ff_userid'),
               'applicationSendEvidence':indicators.get('sink') or indicators.get('send') or indicators.get('json'),
-              'queryEvidence':indicators.get('query')
+              'queryEvidence':indicators.get('query'),
+              'connectWSPayloadContainsUserIdKey': 'user_id' in connect_text,
+              'connectWSSendsJsonToSink': ('jsonEncode' in connect_text and ('StreamSink::add' in connect_text or 'DelegatingStreamSink::add' in connect_text)),
+              'onMessageRelevantLiteralCount':len(event_literals)
             }
           }
           with open(out,'w',encoding='utf-8') as f:
