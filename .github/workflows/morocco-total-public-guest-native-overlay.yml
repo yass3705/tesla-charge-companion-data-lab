@@ -6,6 +6,9 @@ on:
   push:
     paths:
       - '.github/workflows/morocco-total-public-guest-native-overlay.yml'
+  schedule:
+    - cron: '17 */2 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -30,6 +33,7 @@ jobs:
           BASE='https://csmstotalenergiesma.numocity.com'
           RC=Path('reports/morocco/totalenergies/club-ev-charge-remote-config-keys-2026-09-26.json')
           OUT=Path('reports/morocco/totalenergies/club-ev-charge-public-guest-native-overlay-2026-09-26.json')
+          LATEST=Path('reports/morocco/totalenergies/latest-native-overlay.json')
 
           rc=json.loads(RC.read_text())
           public_id=(rc.get('safe_values') or {}).get('userID')
@@ -219,14 +223,16 @@ jobs:
               'connectors_extracted':sum(len(x.get('connectors',[])) for x in results),
               'live_status_200':sum(1 for x in results for y in x.get('live_status',[]) if y.get('status_meta',{}).get('status')==200)
           }
-          OUT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          payload=json.dumps(report,ensure_ascii=False,indent=2)+'\n'
+          OUT.write_text(payload)
+          LATEST.write_text(payload)
           PY
 
       - name: Commit sanitized overlay
         shell: bash
         run: |
           set -euo pipefail
-          git add reports/morocco/totalenergies/club-ev-charge-public-guest-native-overlay-2026-09-26.json
+          git add reports/morocco/totalenergies/club-ev-charge-public-guest-native-overlay-2026-09-26.json reports/morocco/totalenergies/latest-native-overlay.json
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           if git diff --cached --quiet; then exit 0; fi
