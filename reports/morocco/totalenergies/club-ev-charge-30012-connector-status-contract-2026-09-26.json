@@ -1,41 +1,71 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "observed_at": "2026-09-26",
   "country": "MA",
   "network": "TotalEnergies / Club EV-Charge",
-  "subject": "Resolved connector-status request contract from Club EV-Charge 3.00.12 and shared Numocity Kurrent code",
+  "subject": "Exact connector-status request contract proven from Club EV-Charge 3.00.12 ARM64",
   "evidence": {
-    "club_ev_charge_version": "3.00.12",
-    "shared_package": "ncms_backend_flutter",
-    "comparison_client": "Kurrent Charge 3.00.11 ARM64",
-    "analysis_mode": "Blutter full analysis",
+    "package": "com.namp.totalev",
+    "version": "3.00.12",
+    "xapk_sha256": "cbb05b4d48dc3ea8f20f187bf55d5c9c10f422c747dcea21ce2b52d2c2332495",
+    "libapp_arm64_sha256": "948d6696787135a7ae249ad6d47d8da416f522e695a05ee241e063363637e137",
+    "analysis": "Blutter full ARM64 analysis",
     "function": "ApiServices::fetchCpConnectorsStatus",
-    "source_like_path": "ncms_backend_flutter/network/api_service.dart"
+    "source_like_path": "kurrent_charge/network/api_service.dart",
+    "source_report": "reports/morocco/totalenergies/club-ev-charge-30012-arm64-blutter-2026-09-26.json"
   },
   "contract": {
     "method": "GET",
-    "primary_path": "/status/api/get-connector-status",
-    "query_parameters": ["cpid", "connectorId"],
+    "url_selection": {
+      "legacy_symbol": "URLs.connectorStatus",
+      "legacy_path": "status/api/get-connector-status",
+      "aggregator_symbol": "URLs.connectorStatusAg",
+      "aggregator_path": "/api/aggregator/mobile/location/connector/status",
+      "selection_is_runtime_flag_dependent": true
+    },
+    "query_parameters": [
+      "connectorId",
+      "cpid",
+      "IsRoaming",
+      "CpoName"
+    ],
+    "query_argument_mapping": {
+      "connectorId": "function argument 1 after this",
+      "cpid": "function argument 2 after this",
+      "CpoName": "function argument 3 after this",
+      "IsRoaming": "function argument 4 after this"
+    },
+    "dio_method": "get",
+    "per_call_headers_constructed_inside_function": false,
     "response_model": "ConnectorStatus",
-    "alternate_url_symbol": "URLs.connectorStatusAg",
-    "primary_url_symbol": "URLs.connectorStatus"
-  },
-  "header_interpretation": {
-    "authorization_and_bearer_exist_in_shared_backend_package": true,
-    "x_appid_token_tied_to_connector_status": false,
-    "x_app_access_token_tied_to_connector_status": false,
-    "note": "x-appid-token and x-app-access-token were found in the shared package but specifically in a JioPay model context; they are not proven requirements of fetchCpConnectorsStatus."
+    "response_fields_seen": [
+      "ChargePointId",
+      "ChargePointConnectorNumber"
+    ]
   },
   "validation": {
-    "anonymous_route_exists": true,
-    "dummy_cpid_connectorid_returns": 400,
-    "safe_error": "Invalid input parameters",
-    "real_station_ids_enumerated": false
+    "legacy_route_anonymously_reachable": true,
+    "legacy_route_without_complete_valid_parameters": {
+      "status": 400,
+      "safe_error": "Invalid input parameters"
+    },
+    "aggregator_route_on_current_total_host_without_bootstrap": 404,
+    "mobile_inventory_routes": {
+      "asset/mobile/get-map-info": 401,
+      "asset/mobile/getbyfilter": 401
+    }
   },
-  "production_decision": "no_promotion",
-  "remaining_blocker": "Obtain legitimate public CPID and connectorId values from a public inventory/map source or a legitimate official-client session; do not guess or enumerate identifiers.",
-  "sources": [
-    "reports/morocco/totalenergies/club-ev-charge-apk-3.00.12-route-validation-2026-09-26.json",
-    "reports/morocco/totalenergies/numocity-kurrent-blutter-full-context-2026-09-26.json"
-  ]
+  "header_interpretation": {
+    "x_appid_token_literal_present_elsewhere_in_client": true,
+    "x_app_access_token_literal_present_elsewhere_in_client": true,
+    "fetchCpConnectorsStatus_builds_these_headers_per_call": false,
+    "note": "The status function uses the ApiServices Dio instance and does not construct x-appid-token or x-app-access-token locally. Global Dio/interceptor headers remain possible and are not inferred away."
+  },
+  "production_decision": "no_promotion_yet",
+  "remaining_blocker": "A legitimate public TotalEnergies/Numocity cpid + connectorId pair (with corresponding CpoName/IsRoaming values) is still required for one read-only validation. Do not guess or enumerate identifiers.",
+  "rejected_fallback": {
+    "source": "WATT.ma /api/live-status",
+    "reason": "negative-control nonexistent station still received synthetic connector states",
+    "report": "reports/morocco/roaming/watt-live-status-stub-validation-2026-09-26.json"
+  }
 }
