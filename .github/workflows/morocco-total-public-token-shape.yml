@@ -1,0 +1,70 @@
+name: Morocco Total public token response shape
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-public-token-shape.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public bootstrap response without persisting token
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import json,urllib.request,urllib.error
+          from datetime import datetime,timezone
+          url='https://csmstotalenergiesma.numocity.com/token/admin/v1/requesttoken'
+          req=urllib.request.Request(url,data=b'{}',method='POST',headers={'Content-Type':'application/json','Accept':'application/json','User-Agent':'TCC-Total-Public-Bootstrap/1.0'})
+          try:
+              with urllib.request.urlopen(req,timeout=20) as r:
+                  raw=r.read(100000);status=r.status;ct=r.headers.get('content-type','')
+          except urllib.error.HTTPError as e:
+              raw=e.read(100000);status=e.code;ct=e.headers.get('content-type','') if e.headers else ''
+          obj=None
+          try: obj=json.loads(raw.decode('utf-8','replace'))
+          except Exception: pass
+          shape={'status':status,'content_type':ct,'json':isinstance(obj,(dict,list)),'bytes':len(raw)}
+          if isinstance(obj,dict):
+              shape['top_level_keys']=sorted(str(k) for k in obj)
+              for k in ('Code','Status','Message'):
+                  v=obj.get(k)
+                  if isinstance(v,(str,int,bool)) and (not isinstance(v,str) or len(v)<200):shape[k]=v
+              doc=obj.get('Document')
+              shape['Document_type']=type(doc).__name__
+              if isinstance(doc,dict):
+                  shape['Document_keys']=sorted(str(k) for k in doc.keys())[:80]
+                  # Never persist token value, only structural evidence.
+                  for k,v in doc.items():
+                      if 'token' in str(k).lower() and isinstance(v,str):
+                          shape.setdefault('token_fields',[]).append({'key':str(k),'string_length':len(v),'nonempty':bool(v)})
+              elif isinstance(doc,str):
+                  shape['Document_string_length']=len(doc)
+                  shape['Document_nonempty']=bool(doc)
+          rep={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'TotalEnergies / Club EV-Charge',
+            'policy':{'anonymous':True,'empty_json_only':True,'no_identifiers':True,'no_credentials':True,'token_value_persisted':False,'no_mutations':True,'raw_response_persisted':False},
+            'response_shape':shape
+          }
+          with open('reports/morocco/totalenergies/club-ev-charge-public-token-response-shape-2026-09-26.json','w') as f:
+              json.dump(rep,f,ensure_ascii=False,indent=2);f.write('\n')
+          PY
+      - name: Commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-public-token-response-shape-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "diag(morocco): inspect Total public token response shape [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push
