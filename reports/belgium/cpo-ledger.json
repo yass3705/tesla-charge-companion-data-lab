@@ -1,0 +1,258 @@
+{
+  "schemaVersion": 1,
+  "country": "BE",
+  "timezone": "Europe/Brussels",
+  "updatedAt": "2026-09-27",
+  "phase": "first_pass",
+  "firstPassComplete": false,
+  "inventoryExhaustive": false,
+  "productionPublished": false,
+  "rules": [
+    "Terminer la première passe de tous les CPO du registre avant toute seconde investigation des cas difficiles.",
+    "Réutiliser les méthodes et preuves existantes; ne pas assimiler une validation dans un autre pays à une validation Belgique.",
+    "Conserver identifiant stable, noms source et alias; ne jamais supprimer une ligne lors d'un changement de statut.",
+    "Chaque tentative conserve date, source, résultat, blocage et prochaine action. Sauvegarder par commit après chaque lot.",
+    "Séparer CPO, marque du site, application et canal tarifaire. Conserver énergie, durée, session, occupation et conditions.",
+    "Un tarif absent reste inconnu, jamais gratuit par défaut. Station, EVSE et connecteur se comptent séparément.",
+    "Aucune promotion complete sans inventaire réconcilié, tarifs applicables prouvés et couverture mesurée.",
+    "Seconde passe verrouillée tant que inventoryExhaustive=false ou qu'une ligne reste pending.",
+    "Trier par nombre de stations vérifié lorsque disponible; les nombres inconnus restent null."
+  ],
+  "repositoryAudit": {
+    "checkedDefaultBranches": [
+      "yass3705/tesla-stations-updater-test",
+      "yass3705/tesla-charge-companion-data-lab"
+    ],
+    "existingTeslaFiles": [
+      "yass3705/tesla-stations-updater-test:inventory/belgium.json",
+      "yass3705/tesla-stations-updater-test:groups/belgium.json"
+    ],
+    "limitations": "Branches secondaires non encore auditées; absence de fichier Belgique multi-CPO dans les arbres main ne prouve pas absence de travaux ailleurs."
+  },
+  "sources": [
+    {
+      "id": "nap-static",
+      "url": "https://transportdata.be/en/dataset/afir-static-dataset-selected-cpos",
+      "result": "Ancienne fiche indexée; signalée deprecated. Accès 404 puis liens allemands 429; arrêter les relances dans ce lot.",
+      "replacement": "https://transportdata.be/de/dataset/public-charging-infrastructure-static-dataset-selected-cpos-datex-ii",
+      "next": "Lire la fiche actuelle après limitation et vérifier accès/licence; extraire la liste réelle des opérateurs sans supposer exhaustivité."
+    },
+    {
+      "id": "nap-dynamic",
+      "url": "https://transportdata.be/en/dataset/public-charging-infrastructure-dynamic-dataset-selected-cpos-datex-ii",
+      "result": "Fiche officielle lue: disponibilité et prix ad hoc DATEX II JSON par EVSE pour CPO sélectionnés.",
+      "accessObservation": "Lien template contenant {evse_id} renvoie 401 via outil web. Pas un test avec EVSE réel, ne prouve pas impossibilité globale.",
+      "next": "Vérifier documentation et accès officiel; aucune extraction nationale réalisée."
+    }
+  ],
+  "cpos": [
+    {
+      "id": "BE-CPO-0001",
+      "name": "Allego",
+      "aliases": [],
+      "stationCount": null,
+      "evseCount": null,
+      "status": "pending",
+      "pass": 1,
+      "discoverySource": "https://transportdata.be/en/dataset/afir-static-dataset-selected-cpos",
+      "scopeConfirmed": false,
+      "attempts": [],
+      "nextAction": "Première passe: confirmer inventaire BE et source tarif opérateur; réutiliser méthode existante si vérifiable."
+    },
+    {
+      "id": "BE-CPO-0002",
+      "name": "bp pulse",
+      "aliases": [],
+      "stationCount": null,
+      "evseCount": null,
+      "status": "pending",
+      "pass": 1,
+      "discoverySource": "https://transportdata.be/en/dataset/afir-static-dataset-selected-cpos",
+      "scopeConfirmed": false,
+      "attempts": [],
+      "nextAction": "Première passe: confirmer inventaire BE et source tarif opérateur; réutiliser méthode existante si vérifiable."
+    },
+    {
+      "id": "BE-CPO-0003",
+      "name": "Blink Charging",
+      "aliases": [],
+      "stationCount": null,
+      "evseCount": null,
+      "status": "pending",
+      "pass": 1,
+      "discoverySource": "https://transportdata.be/en/dataset/afir-static-dataset-selected-cpos",
+      "scopeConfirmed": false,
+      "attempts": [],
+      "nextAction": "Première passe: confirmer inventaire BE et source tarif opérateur; réutiliser méthode existante si vérifiable."
+    },
+    {
+      "id": "BE-CPO-0004",
+      "name": "ChargePoint",
+      "aliases": [],
+      "stationCount": null,
+      "evseCount": null,
+      "status": "pending",
+      "pass": 1,
+      "discoverySource": "https://transportdata.be/en/dataset/afir-static-dataset-selected-cpos",
+      "scopeConfirmed": false,
+      "attempts": [],
+      "nextAction": "Première passe: confirmer inventaire BE et source tarif opérateur; réutiliser méthode existante si vérifiable."
+    },
+    {
+      "id": "BE-CPO-0005",
+      "name": "Circle K",
+      "aliases": [],
+      "stationCount": null,
+      "evseCount": null,
+      "status": "pending",
+      "pass": 1,
+      "discoverySource": "https://transportdata.be/en/dataset/afir-static-dataset-selected-cpos",
+      "scopeConfirmed": false,
+      "attempts": [],
+      "nextAction": "Première passe: confirmer inventaire BE et source tarif opérateur; réutiliser méthode existante si vérifiable."
+    },
+    {
+      "id": "BE-CPO-0006",
+      "name": "DATS 24",
+      "aliases": [],
+      "stationCount": null,
+      "evseCount": null,
+      "status": "partial",
+      "pass": 1,
+      "discoverySource": "https://transportdata.be/en/dataset/afir-static-dataset-selected-cpos",
+      "scopeConfirmed": true,
+      "attempts": [
+        {
+          "date": "2026-09-27",
+          "url": "https://dats24.be/nl/particulier/laden/tarieven-laadpaal",
+          "result": "Tarifs officiels TTC EUR/kWh: recharge normale carte DATS24 0.40 / carte bancaire 0.53; rapide carte DATS24 0.60 / carte bancaire 0.73. Carte/app tierce: conditions du fournisseur tiers.",
+          "missing": "Inventaire stations, correspondance AC/DC, conditions de carte et éventuels frais à vérifier."
+        }
+      ],
+      "nextAction": "Compléter inventaire et conditions lors de seconde passe; ne pas publier les tarifs sans rattachement validé."
+    },
+    {
+      "id": "BE-CPO-0007",
+      "name": "Electra",
+      "aliases": [],
+      "stationCount": null,
+      "evseCount": null,
+      "status": "pending",
+      "pass": 1,
+      "discoverySource": "https://transportdata.be/en/dataset/afir-static-dataset-selected-cpos",
+      "scopeConfirmed": false,
+      "attempts": [],
+      "nextAction": "Première passe: confirmer inventaire BE et source tarif opérateur; réutiliser méthode existante si vérifiable."
+    },
+    {
+      "id": "BE-CPO-0008",
+      "name": "Fastned",
+      "aliases": [],
+      "stationCount": null,
+      "evseCount": null,
+      "status": "partial",
+      "pass": 1,
+      "discoverySource": "https://transportdata.be/en/dataset/afir-static-dataset-selected-cpos",
+      "scopeConfirmed": true,
+      "attempts": [
+        {
+          "date": "2026-09-27",
+          "url": "https://www.fastnedcharging.com/en/locations/verviers-sud",
+          "result": "Fiche officielle: standard 0.77 EUR/kWh; Gold 0.54; 6 places, CCS/CHAdeMO, maximum 400 kW."
+        },
+        {
+          "date": "2026-09-27",
+          "url": "https://www.fastnedcharging.com/en/locations/peutie-oost",
+          "result": "Fiche officielle: standard 0.77 EUR/kWh; Gold 0.54; 9 places, maximum 300 kW."
+        }
+      ],
+      "nextAction": "Réconcilier inventaire Belgique et conditions Gold en seconde passe; ne pas extrapoler deux stations à tout le pays."
+    },
+    {
+      "id": "BE-CPO-0009",
+      "name": "Gabriels",
+      "aliases": [],
+      "stationCount": null,
+      "evseCount": null,
+      "status": "pending",
+      "pass": 1,
+      "discoverySource": "https://transportdata.be/en/dataset/afir-static-dataset-selected-cpos",
+      "scopeConfirmed": false,
+      "attempts": [],
+      "nextAction": "Première passe: confirmer inventaire BE et source tarif opérateur; réutiliser méthode existante si vérifiable."
+    },
+    {
+      "id": "BE-CPO-0010",
+      "name": "Interparking",
+      "aliases": [],
+      "stationCount": null,
+      "evseCount": null,
+      "status": "pending",
+      "pass": 1,
+      "discoverySource": "https://transportdata.be/en/dataset/afir-static-dataset-selected-cpos",
+      "scopeConfirmed": false,
+      "attempts": [],
+      "nextAction": "Première passe: confirmer inventaire BE et source tarif opérateur; réutiliser méthode existante si vérifiable."
+    },
+    {
+      "id": "BE-CPO-0011",
+      "name": "IONITY",
+      "aliases": [],
+      "stationCount": null,
+      "evseCount": null,
+      "status": "pending",
+      "pass": 1,
+      "discoverySource": "https://transportdata.be/en/dataset/afir-static-dataset-selected-cpos",
+      "scopeConfirmed": false,
+      "attempts": [],
+      "nextAction": "Première passe: confirmer inventaire BE et source tarif opérateur; réutiliser méthode existante si vérifiable."
+    },
+    {
+      "id": "BE-CPO-0012",
+      "name": "Lidl",
+      "aliases": [],
+      "stationCount": null,
+      "evseCount": null,
+      "status": "pending",
+      "pass": 1,
+      "discoverySource": "https://transportdata.be/en/dataset/afir-static-dataset-selected-cpos",
+      "scopeConfirmed": false,
+      "attempts": [],
+      "nextAction": "Première passe: confirmer inventaire BE et source tarif opérateur; réutiliser méthode existante si vérifiable."
+    },
+    {
+      "id": "BE-CPO-0013",
+      "name": "EnergyVision",
+      "aliases": [],
+      "stationCount": null,
+      "evseCount": null,
+      "status": "blocked",
+      "pass": 1,
+      "discoverySource": "https://transportdata.be/dataset/energyvision-public-charging-network-locations-afir-ocpi-2-2-1",
+      "scopeConfirmed": true,
+      "attempts": [
+        {
+          "date": "2026-09-27",
+          "url": "https://transportdata.be/dataset/energyvision-public-charging-network-locations-afir-ocpi-2-2-1",
+          "result": "Fiche officielle lue: API DATEX II 3.7 XML statique/dynamique, tarifs ad hoc lorsque disponibles; clé gratuite sur demande à myevplatform@energyvision.be. Aucun courriel envoyé."
+        }
+      ],
+      "nextAction": "Reprendre accès officiel en seconde passe; clé non demandée."
+    }
+  ],
+  "journal": [
+    {
+      "date": "2026-09-27",
+      "batch": "BE-0001",
+      "result": "Amorçage du registre et premiers contrôles documentaires. Aucun inventaire national téléchargé, aucune station publiée.",
+      "next": "Compléter l'inventaire CPO via NAP et sources régionales; poursuivre première passe des pending. Ne pas relancer EnergyVision/les autres bloqués avant clôture de première passe."
+    }
+  ],
+  "counts": {
+    "candidateCpos": 13,
+    "pending": 10,
+    "partial": 2,
+    "blocked": 1,
+    "complete": 0
+  }
+}
