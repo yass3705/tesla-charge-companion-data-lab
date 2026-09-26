@@ -1,5 +1,5 @@
 name: Morocco Total connector source resolution
-# exact-fetchConnectorList-2026-09-26
+# exact-fetchConnectorList-query-constants-2026-09-26
 
 on:
   push:
@@ -199,6 +199,19 @@ jobs:
                           if not re.search(r'(?i)(connector|station|charge|cpid|aCpId|api|mobile|status|query|soc|tariff|power|true|false|^[0-9]+$)',v):
                               line=line.replace('"'+v+'"','"<redacted>"')
                       exact_connector_function.append({'line':j+1,'text':line[:1000]})
+          resolved_pp_constants=[]
+          pp=os.path.join(root,'pp.txt')
+          if os.path.isfile(pp):
+              wanted_offsets=('0x18690','0x18698','0x186a0','0x19cb8')
+              for line in open(pp,encoding='utf-8',errors='ignore'):
+                  if any(f'[pp+{off}]' in line for off in wanted_offsets):
+                      m=re.search(r'String: "([^"]{0,120})"',line)
+                      value=m.group(1) if m else None
+                      if value is not None and re.fullmatch(r'[A-Za-z0-9_.:/ -]{0,120}',value):
+                          resolved_pp_constants.append({'offset':next(off for off in wanted_offsets if f'[pp+{off}]' in line),'value':value})
+                      else:
+                          resolved_pp_constants.append({'offset':next(off for off in wanted_offsets if f'[pp+{off}]' in line),'value':'<redacted>'})
+
           out={
             'schema_version':1,
             'country':'MA','network':'TotalEnergies / Club EV-Charge',
@@ -212,7 +225,8 @@ jobs:
             },
             'runtime':runtime,
             'aot_records':uniq[:220],
-            'fetchConnectorList_exact_sanitized_slice':exact_connector_function
+            'fetchConnectorList_exact_sanitized_slice':exact_connector_function,
+            'resolved_pp_constants':resolved_pp_constants
           }
           Path('reports/morocco/totalenergies/club-ev-charge-connector-source-resolution-2026-09-26.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
           PY
