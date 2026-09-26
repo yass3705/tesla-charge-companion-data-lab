@@ -1,0 +1,180 @@
+name: Morocco FastVolt 2.8.9 AOT diagnostic
+
+on:
+  push:
+    branches: ["diag-fastvolt-289-aot"]
+    paths:
+      - ".github/workflows/morocco-fastvolt-289-aot.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install analysis dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config libicu-dev libcapstone-dev unzip
+          python3 -m pip install --user pyelftools requests
+
+      - name: Download current public FastVolt XAPK
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 2 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/ma.fastgo?version=latest' \
+            -o /tmp/fastvolt.xapk
+          mkdir -p /tmp/fastvolt-xapk /tmp/fastvolt-libs
+          unzip -q /tmp/fastvolt.xapk -d /tmp/fastvolt-xapk
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('/tmp/fastvolt-xapk/manifest.json')
+          if p.exists():
+              m=json.loads(p.read_text())
+              print('XAPK version:', m.get('version_name'), 'code:', m.get('version_code'))
+          PY
+          ARM_APK="$(find /tmp/fastvolt-xapk -type f -name '*arm64*v8a*.apk' | head -n1)"
+          test -n "$ARM_APK"
+          unzip -j "$ARM_APK" 'lib/arm64-v8a/libapp.so' 'lib/arm64-v8a/libflutter.so' -d /tmp/fastvolt-libs
+          test -s /tmp/fastvolt-libs/libapp.so
+          test -s /tmp/fastvolt-libs/libflutter.so
+
+      - name: Run Blutter AOT analysis
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/worawit/blutter.git /tmp/blutter
+          cd /tmp/blutter
+          python3 blutter.py /tmp/fastvolt-libs /tmp/fastvolt-blutter 2>&1 | tee /tmp/blutter.log
+          test -s /tmp/fastvolt-blutter/pp.txt
+          test -s /tmp/fastvolt-blutter/objs.txt
+          test -d /tmp/fastvolt-blutter/asm
+
+      - name: Build sanitized FastVolt request-shape report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/fastvolt-289-aot
+          python3 - <<'PY'
+          import hashlib, json, re
+          from pathlib import Path
+
+          root=Path('/tmp/fastvolt-blutter')
+          xroot=Path('/tmp/fastvolt-xapk')
+          out=Path('artifacts/fastvolt-289-aot/summary.json')
+          manifest={}
+          mp=xroot/'manifest.json'
+          if mp.exists():
+              manifest=json.loads(mp.read_text(errors='ignore'))
+
+          allow_terms=[
+            'GetChargingStationsCall','GetChargingStationDetailsCall',
+            'LoggedInAPICallsGroup','AuthAPIcallsGroup','makeApiCall',
+            'charging_stations','get_charging_station_details',
+            'mobile.ev.fastvolt.ma','tenant_id','tenantId',
+            'organization','organisation','business','Authorization','Bearer',
+            'connector.status','connector.price','price_include_tax','bill_by',
+            'billing_type','fixed_starting_fee','idle_price','max_output',
+            'baseUrl','headers'
+          ]
+          secretish=re.compile(r'(?i)(password|refresh.?token|access.?token|client.?secret|api.?key|cookie|set-cookie)')
+          long_blob=re.compile(r'(?<![A-Za-z0-9])[A-Za-z0-9_+/=-]{28,}(?![A-Za-z0-9])')
+          email=re.compile(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}')
+          def sanitize(s):
+              if secretish.search(s):
+                  return '[REDACTED_SECRET_BEARING_LINE]'
+              s=email.sub('[REDACTED_EMAIL]',s)
+              # Preserve known FastVolt URLs/routes, redact unrelated long token-like blobs.
+              parts=[]
+              for tok in s.split():
+                  if 'mobile.ev.fastvolt.ma' in tok or tok.startswith('/app/') or tok.startswith('/user/'):
+                      parts.append(tok)
+                  else:
+                      parts.append(long_blob.sub('[REDACTED_LONG_LITERAL]',tok))
+              return ' '.join(parts)[:1200]
+
+          files=[root/'pp.txt',root/'objs.txt']
+          marker_counts={}
+          pool_hits=[]
+          for fp in files:
+              text=fp.read_text(errors='ignore')
+              for term in allow_terms:
+                  marker_counts[f'{fp.name}:{term}']=text.lower().count(term.lower())
+              lines=text.splitlines()
+              for i,line in enumerate(lines):
+                  if any(t.lower() in line.lower() for t in allow_terms):
+                      win=lines[max(0,i-2):min(len(lines),i+3)]
+                      snippet='\n'.join(sanitize(x) for x in win)
+                      if snippet not in pool_hits:
+                          pool_hits.append(snippet)
+
+          asm_files=[]
+          asm_snippets=[]
+          for fp in (root/'asm').rglob('*'):
+              if not fp.is_file():
+                  continue
+              try: text=fp.read_text(errors='ignore')
+              except Exception: continue
+              low=text.lower()
+              if not any(t.lower() in low for t in ['getchargingstationscall','getchargingstationdetailscall','loggedinapicallsgroup','api_calls.dart']):
+                  continue
+              asm_files.append(str(fp.relative_to(root)))
+              lines=text.splitlines()
+              hit_idx=[i for i,l in enumerate(lines) if any(t.lower() in l.lower() for t in allow_terms)]
+              for i in hit_idx[:120]:
+                  win=lines[max(0,i-6):min(len(lines),i+7)]
+                  snippet='\n'.join(sanitize(x) for x in win)
+                  if snippet not in asm_snippets:
+                      asm_snippets.append(snippet)
+
+          log=Path('/tmp/blutter.log').read_text(errors='ignore')
+          dart_match=re.search(r'Dart version:\s*([^,\n]+)',log)
+          snap_match=re.search(r'Snapshot:\s*([0-9a-f]+)',log)
+
+          xapk=Path('/tmp/fastvolt.xapk').read_bytes()
+          report={
+            'schema_version':1,
+            'purpose':'FastVolt 2.8.9 native read-only request-shape correlation for TCC',
+            'policy':{
+              'static_aot_analysis_only':True,
+              'no_login':True,
+              'no_credentials':True,
+              'no_backend_mutations':True,
+              'no_raw_apk_persisted':True,
+              'raw_object_pool_not_persisted':True,
+              'secret_bearing_lines_redacted':True
+            },
+            'package':'ma.fastgo',
+            'version_name':manifest.get('version_name'),
+            'version_code':manifest.get('version_code'),
+            'xapk_sha256':hashlib.sha256(xapk).hexdigest(),
+            'dart_version':dart_match.group(1).strip() if dart_match else None,
+            'snapshot_hash':snap_match.group(1) if snap_match else None,
+            'marker_counts':marker_counts,
+            'api_asm_files':asm_files[:50],
+            'pool_context_snippets':pool_hits[:140],
+            'api_asm_snippets':asm_snippets[:180]
+          }
+          out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({
+            'version_name':report['version_name'],
+            'dart_version':report['dart_version'],
+            'api_asm_files':report['api_asm_files'][:10],
+            'pool_snippets':len(report['pool_context_snippets']),
+            'asm_snippets':len(report['api_asm_snippets'])
+          },ensure_ascii=False,indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fastvolt-289-aot-sanitized
+          path: artifacts/fastvolt-289-aot/summary.json
+          retention-days: 3
