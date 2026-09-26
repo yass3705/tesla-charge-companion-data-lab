@@ -1,0 +1,100 @@
+name: Morocco FastVolt auth shape one-shot
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-auth-shape-oneshot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe validation shapes without user data
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/fastvolt
+          python - <<'PY'
+          import json, urllib.request, urllib.error
+          from datetime import datetime, timezone
+
+          base='https://mobile.ev.fastvolt.ma'
+          targets=[
+            ('send_verification_otp','/auth/send_verification_otp/'),
+            ('verify_otp','/auth/verify_otp/'),
+            ('login','/auth/login'),
+            ('authorize','/auth/authorize'),
+            ('resend_otp','/auth/resend-otp'),
+          ]
+
+          def call(path):
+            req=urllib.request.Request(
+              base+path,
+              data=b'{}',
+              method='POST',
+              headers={
+                'Content-Type':'application/json',
+                'Accept':'application/json',
+                'User-Agent':'TCC-FastVolt-Auth-Shape/1.0'
+              }
+            )
+            try:
+              with urllib.request.urlopen(req,timeout=20) as r:
+                raw=r.read(200000); status=r.status; headers=dict(r.headers)
+            except urllib.error.HTTPError as e:
+              raw=e.read(200000); status=e.code; headers=dict(e.headers or {})
+            obj=None
+            try: obj=json.loads(raw.decode('utf-8','replace'))
+            except Exception: pass
+            safe={}
+            if isinstance(obj,dict):
+              safe['top_level_keys']=sorted(obj.keys())
+              # Preserve only field names / short non-sensitive error labels, never values resembling tokens or IDs.
+              fields=[]
+              for k,v in obj.items():
+                if isinstance(v,dict):
+                  fields += [f'{k}.{x}' for x in v.keys()]
+                elif isinstance(v,list) and len(v)<=10 and all(isinstance(x,str) and len(x)<100 for x in v):
+                  fields.append(k)
+                elif isinstance(v,str) and len(v)<120 and any(w in k.lower() for w in ('error','detail','message','field')):
+                  safe.setdefault('safe_labels',{})[k]=v
+              safe['nested_field_names']=sorted(set(fields))
+            return {
+              'status':status,
+              'content_type':headers.get('Content-Type'),
+              'www_authenticate':headers.get('WWW-Authenticate'),
+              'app_check_header_signal': any('appcheck' in k.lower() for k in headers),
+              'json':isinstance(obj,(dict,list)),
+              'safe_shape':safe
+            }
+
+          out={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'FastVolt',
+            'policy':{
+              'empty_json_only':True,'no_phone_number':True,'no_email':True,'no_otp':True,
+              'no_account_creation':True,'no_login':True,'no_credentials':True,'no_tokens':True,
+              'no_mutating_payload':True,'response_values_minimized':True
+            },
+            'results':{name:call(path) for name,path in targets}
+          }
+          with open('reports/morocco/fastvolt/auth-validation-shape-2026-09-26.json','w') as f:
+            json.dump(out,f,indent=2,ensure_ascii=False); f.write('\n')
+          PY
+
+      - name: Commit sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/fastvolt/auth-validation-shape-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): probe FastVolt auth validation shape [run $GITHUB_RUN_ID]"
+          git push
