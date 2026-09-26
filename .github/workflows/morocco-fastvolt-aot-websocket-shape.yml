@@ -32,51 +32,63 @@ jobs:
           unzip -q "$ARM_APK" 'lib/arm64-v8a/libapp.so' -d /tmp/fv-apk
           test -s /tmp/fv-apk/lib/arm64-v8a/libapp.so
 
-      - name: Decompile only FastVolt websocket/auth classes
-        shell: bash
-        run: |
-          set -euo pipefail
-          BIN=/tmp/fv-apk/lib/arm64-v8a/libapp.so
-          /tmp/dae info "$BIN" >/tmp/dae-info.txt 2>/tmp/dae-info.err || true
-          /tmp/dae classes "$BIN" WebSocketProvider >/tmp/ws-classes.txt 2>/tmp/ws-classes.err || true
-          /tmp/dae functions "$BIN" WebSocketProvider >/tmp/ws-functions.txt 2>/tmp/ws-functions.err || true
-          /tmp/dae getclass "$BIN" WebSocketProvider >/tmp/ws-class.dart 2>/tmp/ws-class.err || true
-          /tmp/dae classes "$BIN" AuthAPIcallsGroup >/tmp/auth-classes.txt 2>/tmp/auth-classes.err || true
-          /tmp/dae getclass "$BIN" AuthAPIcallsGroup >/tmp/auth-class.dart 2>/tmp/auth-class.err || true
-          /tmp/dae classes "$BIN" AuthValidationProvider >/tmp/authv-classes.txt 2>/tmp/authv-classes.err || true
-          /tmp/dae getclass "$BIN" AuthValidationProvider >/tmp/authv-class.dart 2>/tmp/authv-class.err || true
-
-      - name: Produce sanitized structural report
+      - name: Inspect Dart AOT snapshot and publish only sanitized structure
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
-          import json, os, re, hashlib
+          import json, os, re, subprocess
           from datetime import datetime, timezone
 
-          out='reports/morocco/fastvolt/latest-native-aot-websocket-shape.json'
-          os.makedirs(os.path.dirname(out), exist_ok=True)
+          DAE='/tmp/dae'
+          BIN='/tmp/fv-apk/lib/arm64-v8a/libapp.so'
+          OUT='reports/morocco/fastvolt/latest-native-aot-websocket-shape.json'
+          os.makedirs(os.path.dirname(OUT),exist_ok=True)
 
-          def read(path,limit=5_000_000):
+          def run(args,timeout=90):
               try:
-                  with open(path,'r',encoding='utf-8',errors='ignore') as f:
-                      return f.read(limit)
-              except Exception:
-                  return ''
+                  p=subprocess.run([DAE]+args,capture_output=True,text=True,errors='ignore',timeout=timeout)
+                  return {'rc':p.returncode,'stdout':p.stdout[:5_000_000],'stderr':p.stderr[:200_000]}
+              except Exception as e:
+                  return {'rc':None,'stdout':'','stderr':type(e).__name__}
 
-          ws=read('/tmp/ws-class.dart')
-          wsf=read('/tmp/ws-functions.txt')
-          auth=read('/tmp/auth-class.dart')
-          authv=read('/tmp/authv-class.dart')
-          alltxt='\n'.join((ws,wsf,auth,authv))
+          def safe_diag(s):
+              lines=[]
+              for line in (s or '').splitlines()[:12]:
+                  line=re.sub(r'https?://\S+','<url>',line)
+                  line=re.sub(r'(?<![A-Za-z0-9])[A-Za-z0-9_+\-/=]{40,}(?![A-Za-z0-9])','<redacted-long-token>',line)
+                  if len(line)>240: line=line[:240]+'…'
+                  lines.append(line)
+              return lines
 
-          # Persist only allowlisted infrastructure literals / structural indicators.
+          results={}
+          results['info']=run(['info',BIN])
+          results['classes_websocket']=run(['classes',BIN,'WebSocket','--fuzzy'])
+          results['functions_websocket']=run(['functions',BIN,'WebSocket'])
+          results['classes_auth']=run(['classes',BIN,'Auth','--fuzzy'])
+          results['libs_evplug']=run(['libs',BIN,'evplug'])
+          results['strings_userid']=run(['strings',BIN,'-f','User ID is empty'])
+          results['strings_wss']=run(['strings',BIN,'-f','wss://mobile.ev.fastvolt.ma/'])
+
+          # Try focused decompilation only when the snapshot/query layer is operational.
+          class_text=''
+          class_attempt=None
+          if results['info']['rc']==0:
+              for candidate in ('WebSocketProvider','WebsocketProvider'):
+                  r=run(['getclass',BIN,candidate,'--fuzzy'])
+                  class_attempt={'candidate':candidate,'rc':r['rc'],'stderr':safe_diag(r['stderr'])}
+                  if r['stdout'].strip():
+                      class_text=r['stdout']
+                      break
+
+          index_text='\n'.join(r['stdout'] for r in results.values())
+          alltxt=index_text+'\n'+class_text
+
           urls=sorted(set(re.findall(r'https?://[A-Za-z0-9.-]+(?::[0-9]+)?(?:/[A-Za-z0-9_./{}:=?-]*)?',alltxt)))
           wss=sorted(set(re.findall(r'wss://[A-Za-z0-9.-]+(?::[0-9]+)?(?:/[A-Za-z0-9_./{}:=?-]*)?',alltxt)))
           paths=sorted(set(re.findall(r'(?<![A-Za-z0-9])/(?:app|user|auth)/[A-Za-z0-9_./{}:=?-]+',alltxt)))
           safe_urls=[u for u in urls if any(h in u.lower() for h in ('fastvolt.ma','fastvolt.net'))][:50]
           safe_wss=[u for u in wss if 'fastvolt' in u.lower()][:20]
-          safe_paths=[p for p in paths if len(p)<=180][:80]
 
           terms=[
               'WebSocketChannel.connect','IOWebSocketChannel.connect','WebSocket.connect',
@@ -86,20 +98,18 @@ jobs:
           ]
           indicators={t:(t.lower() in alltxt.lower()) for t in terms}
 
-          # Safe quoted key names only: no values/tokens.
-          qstrings=re.findall(r'["\']([A-Za-z_][A-Za-z0-9_.-]{1,50})["\']',alltxt)
-          key_candidates=sorted(set(s for s in qstrings if re.search(r'(user.?id|uid|socket|event|message|channel|connect|status|station|connector)',s,re.I)))[:80]
+          qstrings=re.findall(r'["\']([A-Za-z_][A-Za-z0-9_.-]{1,50})["\']',class_text)
+          keys=sorted(set(s for s in qstrings if re.search(r'(user.?id|uid|socket|event|message|channel|connect|status|station|connector)',s,re.I)))[:80]
 
-          # DAE result presence / class recovery only, no raw code.
-          def shape(text):
+          def query_shape(name,r):
               return {
-                  'bytes':len(text.encode('utf-8')),
-                  'nonempty':bool(text.strip()),
-                  'function_like_count':len(re.findall(r'\b(?:dynamic|void|Future|Stream|bool|String|int)\s+[A-Za-z_][A-Za-z0-9_]*\s*\(',text))
+                  'return_code':r['rc'],
+                  'stdout_bytes':len(r['stdout'].encode('utf-8')),
+                  'stderr':safe_diag(r['stderr'])
               }
 
           report={
-              'schema_version':1,
+              'schema_version':2,
               'generated_at':datetime.now(timezone.utc).isoformat(),
               'country':'MA','network':'FastVolt',
               'target':{'package':'ma.fastgo','client_version_context':'current public XAPK; expected 2.8.9'},
@@ -109,27 +119,28 @@ jobs:
                   'raw_decompiled_code_persisted':False,'credentials_persisted':False,
                   'api_keys_persisted':False,'tokens_persisted':False
               },
-              'recovery':{
-                  'websocket_provider':shape(ws),
-                  'websocket_function_index':shape(wsf),
-                  'auth_api_calls_group':shape(auth),
-                  'auth_validation_provider':shape(authv)
-              },
+              'dae_queries':{k:query_shape(k,v) for k,v in results.items()},
+              'focused_class_attempt':class_attempt,
+              'focused_class_recovered':bool(class_text.strip()),
               'safe_literals':{
                   'fastvolt_http_urls':safe_urls,
                   'fastvolt_websocket_urls':safe_wss,
-                  'api_paths':safe_paths,
-                  'key_name_candidates':key_candidates
+                  'api_paths':[p for p in paths if len(p)<=180][:80],
+                  'key_name_candidates':keys
               },
               'structural_indicators':indicators,
               'interpretation':{
+                  'snapshot_query_operational':results['info']['rc']==0,
+                  'websocket_class_search_has_output':bool(results['classes_websocket']['stdout'].strip()),
+                  'websocket_function_search_has_output':bool(results['functions_websocket']['stdout'].strip()),
+                  'focused_websocket_class_recovered':bool(class_text.strip()),
                   'uri_query_construction_evidence': indicators['queryParameters'] or indicators['queryParametersAll'] or indicators['Uri.replace'],
                   'application_message_send_evidence': indicators['sink.add'] or indicators['channel.sink.add'],
                   'user_id_symbol_evidence': indicators['userId'] or indicators['user_id'] or indicators['userid'] or indicators['ff_userid'],
                   'authorization_symbol_evidence': indicators['Authorization'] or indicators['Bearer']
               }
           }
-          with open(out,'w',encoding='utf-8') as f:
+          with open(OUT,'w',encoding='utf-8') as f:
               json.dump(report,f,ensure_ascii=False,indent=2); f.write('\n')
           print(json.dumps(report['interpretation'],indent=2))
           PY
@@ -144,10 +155,10 @@ jobs:
           if git diff --cached --quiet; then
             echo 'No report change'
           else
-            git commit -m "diag(morocco): inspect FastVolt AOT websocket shape [run $GITHUB_RUN_ID]"
+            git commit -m "diag(morocco): refine FastVolt AOT websocket shape [run $GITHUB_RUN_ID]"
             git push
           fi
 
       - name: Cleanup
         if: always()
-        run: rm -rf /tmp/dae /tmp/fastvolt.xapk /tmp/fv-xapk /tmp/fv-apk /tmp/*.dart /tmp/*classes* /tmp/*functions* /tmp/dae-*
+        run: rm -rf /tmp/dae /tmp/fastvolt.xapk /tmp/fv-xapk /tmp/fv-apk
