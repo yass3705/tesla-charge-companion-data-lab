@@ -184,12 +184,12 @@ jobs:
           ap=os.path.join(root,'asm/kurrent_charge/network/api_service.dart')
           if os.path.isfile(ap):
               al=open(ap,encoding='utf-8',errors='ignore').read().splitlines()
-              centers=[i for i,l in enumerate(al) if re.search(r'^\\s*_\\s+fetchConnectorList\\(',l)]
+              centers=[i for i,l in enumerate(al) if re.search(r'^\s*_\s+fetchConnectorList\(',l)]
               if centers:
                   start=centers[0]
                   end=min(len(al),start+500)
                   for j in range(start+1,end):
-                      if re.match(r'^\\s*_\\s+[A-Za-z0-9_]+\\(/\\* No info \\*/\\) async \\{',al[j]):
+                      if re.match(r'^\s*_\s+[A-Za-z0-9_]+\(/\* No info \*/\) async \{',al[j]):
                           end=j;break
                   for j in range(max(0,start-3),end):
                       line=al[j]
