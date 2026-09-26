@@ -74,7 +74,7 @@ jobs:
           if not os.path.isfile(p):
               raise SystemExit('api_service.dart absent')
           lines=open(p,encoding='utf-8',errors='ignore').read().splitlines()
-          centers=[i for i,l in enumerate(lines) if re.search(r'\bfetchStatus\b',l)]
+          centers=[i for i,l in enumerate(lines) if re.search(r'\bfetchStatusList\b',l)]
           report['function']['declaration_lines']=[i+1 for i in centers[:10]]
           safe=re.compile(r'(fetchStatusList|statusListAg|statusList|get-status-info|stationLevel|ChargeStation|AvailableConnectorsCount|TotalConnectorCount|queryParameters|DioMixin::get|DioMixin::post|::get|::post|Map<String|IsRoaming|CpoName|stationID|stationId|cpid|connectorId|statusLevel)',re.I)
           opaque=re.compile(r'(?i)(eyJ[A-Za-z0-9_.-]{20,}|AIza[A-Za-z0-9_-]{20,}|Bearer\s+[A-Za-z0-9._~+/-]{12,})')
