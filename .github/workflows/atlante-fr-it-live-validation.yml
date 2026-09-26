@@ -24,19 +24,64 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Require live Atlante credential
-        shell: bash
+      - name: Probe France and Italy without subscription key
+        if: env.ATLANTE_API_SUBSCRIPTION_KEY == ''
         run: |
-          if [[ -z "${ATLANTE_API_SUBSCRIPTION_KEY:-}" ]]; then
-            echo "::error::ATLANTE_API_SUBSCRIPTION_KEY is not configured; live FR+IT refresh cannot run."
-            exit 1
-          fi
+          python - <<'PY'
+          import json
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          root = "https://pdefweushaapiam01.azure-api.net/app-backend/v1/tenants/390c3ff9-b41c-42dc-aa48-1dd51ad6ce39"
+          countries = {
+              "FR": ("FRATL", (41, -6, 52, 10)),
+              "IT": ("ITATE", (35, 6, 48, 19)),
+          }
+          failures = []
+          for country, (cpo, box) in countries.items():
+              a, b, c, d = box
+              query = urllib.parse.urlencode({
+                  "latLongBottomLeft": f"{a},{b}",
+                  "latLongTopRight": f"{c},{d}",
+                  "evseTypes": "AC,DC,HPC",
+                  "locationStatus": "ALL",
+                  "includeCpos": cpo,
+              })
+              request = urllib.request.Request(
+                  root + "/map-locations?" + query,
+                  headers={
+                      "Accept": "application/json",
+                      "Accept-Language": "fr",
+                      "X-App-Version": "2.1.0",
+                      "X-App-Platform": "android",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=45) as response:
+                      status = response.status
+                      payload = json.load(response)
+                      count = len(payload.get("locations") or [])
+                      print(f"{country}: HTTP {status}, locations={count}")
+                      if status != 200:
+                          failures.append((country, status))
+              except urllib.error.HTTPError as error:
+                  print(f"{country}: HTTP {error.code} without Ocp-Apim-Subscription-Key")
+                  failures.append((country, error.code))
+          if failures:
+              raise SystemExit(
+                  "Anonymous Atlante refresh unavailable: "
+                  + ", ".join(f"{country}=HTTP {status}" for country, status in failures)
+              )
+          PY
 
       - name: Extract France and Italy
+        if: env.ATLANTE_API_SUBSCRIPTION_KEY != ''
         run: |
-          python scripts/atlante/extract_atlante.py             --countries FR IT             --out results/atlante-live             --workers 8
+          python scripts/atlante/extract_atlante.py --countries FR IT --out results/atlante-live --workers 8
 
       - name: Validate both countries
+        if: env.ATLANTE_API_SUBSCRIPTION_KEY != ''
         run: |
           python - <<'PY'
           import json
@@ -65,6 +110,7 @@ jobs:
           PY
 
       - name: Upload validated snapshot
+        if: env.ATLANTE_API_SUBSCRIPTION_KEY != ''
         uses: actions/upload-artifact@v4
         with:
           name: atlante-fr-it-live-${{ github.run_id }}
