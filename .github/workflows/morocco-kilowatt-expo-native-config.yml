@@ -1,0 +1,94 @@
+name: Morocco Kilowatt Expo native config
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-kilowatt-expo-native-config.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact APK and decode manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq apktool
+          rm -rf /tmp/kwcfg
+          mkdir -p /tmp/kwcfg/xapk /tmp/kwcfg/decoded reports/morocco/kilowatt
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/ma.kilowatt.app?version=latest' \
+            -o /tmp/kwcfg/app.xapk
+          unzip -q /tmp/kwcfg/app.xapk -d /tmp/kwcfg/xapk
+          apktool d -f -s /tmp/kwcfg/xapk/ma.kilowatt.app.apk -o /tmp/kwcfg/decoded >/dev/null
+
+      - name: Extract safe Expo update metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re,json,xml.etree.ElementTree as ET
+          from pathlib import Path
+          from datetime import datetime,timezone
+          ns='{http://schemas.android.com/apk/res/android}'
+          root=ET.parse('/tmp/kwcfg/decoded/AndroidManifest.xml').getroot()
+          app=root.find('application')
+          rows=[]
+          for md in app.findall('meta-data'):
+              name=md.get(ns+'name')
+              value=md.get(ns+'value')
+              resource=md.get(ns+'resource')
+              if not name: continue
+              if re.search(r'(?i)(expo.*updates|updates.*expo|runtime|request.?headers|channel|update.?url|eas)',name):
+                  rows.append({'name':name,'value':value,'resource':resource})
+          # resolve @string resources where possible
+          strings={}
+          for p in Path('/tmp/kwcfg/decoded/res').glob('values*/strings.xml'):
+              try:r=ET.parse(p).getroot()
+              except Exception:continue
+              for e in r.findall('string'):
+                  n=e.get('name')
+                  if n and n not in strings: strings[n]=''.join(e.itertext())
+          for row in rows:
+              v=row.get('value') or row.get('resource')
+              if isinstance(v,str) and v.startswith('@string/'):
+                  row['resolved_value']=strings.get(v.split('/',1)[1])
+          # redact any secret-like long values while preserving normal URLs/channel names
+          def safe(v):
+              if not isinstance(v,str): return v
+              if re.match(r'(?i)^https://u\.expo\.dev/[0-9a-f-]+$',v): return v
+              if len(v)>80 and not v.startswith('http'): return '<redacted-long-value>'
+              return v
+          for row in rows:
+              for k in ('value','resource','resolved_value'):
+                  if k in row: row[k]=safe(row[k])
+          report={
+              'schema_version':1,
+              'generated_at':datetime.now(timezone.utc).isoformat(),
+              'country':'MA','network':'Kilowatt',
+              'client':{'package':'ma.kilowatt.app','version':'1.0.1'},
+              'expo_update_metadata':rows
+          }
+          Path('reports/morocco/kilowatt/expo-native-config-1.0.1-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+
+      - name: Commit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/kilowatt/expo-native-config-1.0.1-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): inspect Kilowatt Expo native config [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
