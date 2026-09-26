@@ -1,0 +1,102 @@
+name: Morocco Club EV Charge request-token shape
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-club-evcharge-requesttoken-shape.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe exact request-token route with empty payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import json, urllib.request, urllib.error
+          from datetime import datetime, timezone
+
+          url='https://csmstotalenergiesma.numocity.com/admin/v1/requesttoken'
+          req=urllib.request.Request(
+            url,
+            data=b'{}',
+            method='POST',
+            headers={
+              'Content-Type':'application/json',
+              'Accept':'application/json',
+              'User-Agent':'TCC-ClubEVCharge-ReadOnly-Shape/1.0'
+            }
+          )
+          try:
+            with urllib.request.urlopen(req,timeout=20) as r:
+              raw=r.read(200000); status=r.status; headers=dict(r.headers)
+          except urllib.error.HTTPError as e:
+            raw=e.read(200000); status=e.code; headers=dict(e.headers or {})
+          except Exception as e:
+            raw=str(type(e).__name__).encode(); status=None; headers={}
+
+          text=raw.decode('utf-8','replace')
+          obj=None
+          try: obj=json.loads(text)
+          except Exception: pass
+
+          allowed=('appid','app_id','appkey','api_key','apikey','secret','token','access','tenant','business','organization','organisation','client','version','required','missing','invalid')
+          markers=sorted({x for x in allowed if x in text.lower()})
+          keys=[]
+          nested=[]
+          if isinstance(obj,dict):
+            keys=sorted(str(k) for k in obj.keys())[:50]
+            for k,v in obj.items():
+              if isinstance(v,dict):
+                nested.extend(f'{k}.{x}' for x in v.keys())
+              elif isinstance(v,list) and v and all(isinstance(x,dict) for x in v[:5]):
+                for x in v[:5]:
+                  nested.extend(f'{k}[].{y}' for y in x.keys())
+          out={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA',
+            'network':'Club EV-Charge / TotalEnergies',
+            'policy':{
+              'exact_client_route_only':True,
+              'empty_json_only':True,
+              'anonymous':True,
+              'no_identifiers':True,
+              'no_credentials':True,
+              'no_tokens_supplied_or_persisted':True,
+              'raw_response_body_persisted':False,
+              'read_only_probe':True
+            },
+            'request':{'method':'POST','path':'/admin/v1/requesttoken'},
+            'response':{
+              'status':status,
+              'content_type':headers.get('Content-Type'),
+              'bytes':len(raw),
+              'json':isinstance(obj,(dict,list)),
+              'top_level_keys':keys,
+              'nested_field_names':sorted(set(nested))[:100],
+              'safe_markers':markers,
+              'www_authenticate':headers.get('WWW-Authenticate')
+            }
+          }
+          with open('reports/morocco/totalenergies/club-ev-charge-requesttoken-shape-2026-09-26.json','w') as f:
+            json.dump(out,f,ensure_ascii=False,indent=2); f.write('\n')
+          PY
+
+      - name: Commit sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-requesttoken-shape-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): probe Club EV-Charge request-token shape [run $GITHUB_RUN_ID]"
+          git push
