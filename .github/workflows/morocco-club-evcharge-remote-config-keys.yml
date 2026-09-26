@@ -1,0 +1,125 @@
+name: Morocco Club EV Charge Remote Config keys
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-club-evcharge-remote-config-keys.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch sanitized Remote Config keys
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/club/xapk reports/morocco/totalenergies
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/com.namp.totalev?version=latest' \
+            -o /tmp/club/current.xapk
+          unzip -q /tmp/club/current.xapk -d /tmp/club/xapk
+
+          python - <<'PY'
+          import json, os, struct, urllib.request, urllib.error, zipfile
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          # Minimal resources.arsc extraction for public Firebase client config.
+          arsc=None
+          for apk in Path('/tmp/club/xapk').glob('*.apk'):
+              try:
+                  with zipfile.ZipFile(apk) as z:
+                      if 'resources.arsc' in z.namelist():
+                          data=z.read('resources.arsc')
+                          if b'google_app_id' in data and b'google_api_key' in data and b'project_id' in data:
+                              arsc=data; break
+              except Exception: pass
+          if arsc is None: raise SystemExit('firebase resource apk missing')
+          b=arsc
+          def u16(o): return struct.unpack_from('<H',b,o)[0]
+          def u32(o): return struct.unpack_from('<I',b,o)[0]
+          def pool(off):
+              typ,hs,sz=struct.unpack_from('<HHI',b,off)
+              sc=u32(off+8); flags=u32(off+16); ss=u32(off+20); utf8=bool(flags&0x100)
+              inds=[u32(off+hs+4*i) for i in range(sc)]; bp=off+ss
+              def l8(p):
+                  x=b[p]; return ((((x&0x7f)<<8)|b[p+1],2) if x&0x80 else (x,1))
+              def l16(p):
+                  x=u16(p); return ((((x&0x7fff)<<16)|u16(p+2),4) if x&0x8000 else (x,2))
+              out=[]
+              for x in inds:
+                  p=bp+x
+                  if utf8:
+                      _,n=l8(p); p+=n; ln,n=l8(p); p+=n; out.append(b[p:p+ln].decode('utf8','replace'))
+                  else:
+                      ln,n=l16(p); p+=n; out.append(b[p:p+2*ln].decode('utf-16le','replace'))
+              return out,sz
+
+          vals={}; targets={'google_app_id','google_api_key','project_id'}
+          typ,hs,total=struct.unpack_from('<HHI',b,0); pos=hs; gs=None
+          while pos<total:
+              ct,ch,cs=struct.unpack_from('<HHI',b,pos)
+              if ct==1 and gs is None: gs,_=pool(pos)
+              elif ct==0x200:
+                  ts,_=pool(pos+u32(pos+268)); ks,_=pool(pos+u32(pos+276))
+                  sub=pos+ch; end=pos+cs
+                  while sub<end:
+                      st,sh,ss=struct.unpack_from('<HHI',b,sub)
+                      if st==0x201:
+                          ec=u32(sub+12); es=u32(sub+16); offs=sub+sh
+                          for idx in range(ec):
+                              eo=u32(offs+4*idx)
+                              if eo==0xffffffff: continue
+                              ep=sub+es+eo; size=u16(ep); flags=u16(ep+2); ki=u32(ep+4)
+                              if flags&1 or ki>=len(ks): continue
+                              key=ks[ki]
+                              if key not in targets: continue
+                              vp=ep+size
+                              if b[vp+3]==3:
+                                  di=u32(vp+4)
+                                  if gs and di<len(gs): vals[key]=gs[di]
+                      if ss<=0: break
+                      sub+=ss
+              if cs<=0: break
+              pos+=cs
+          if not all(vals.get(k) for k in targets): raise SystemExit('firebase config incomplete')
+
+          url=f"https://firebaseremoteconfig.googleapis.com/v1/projects/{vals['project_id']}/namespaces/firebase:fetch?key={vals['google_api_key']}"
+          payload={'appId':vals['google_app_id'],'appInstanceId':'tcc-readonly-probe','appVersion':'3.00.12','appBuild':'14','packageName':'com.namp.totalev','languageCode':'fr-FR','countryCode':'MA'}
+          req=urllib.request.Request(url,data=json.dumps(payload).encode(),method='POST',headers={'Content-Type':'application/json','Accept':'application/json','User-Agent':'TCC-ClubEVCharge-ReadOnly-RC/1.0'})
+          try:
+              with urllib.request.urlopen(req,timeout=25) as r: raw=r.read(1_000_000); status=r.status
+          except urllib.error.HTTPError as e: raw=e.read(200_000); status=e.code
+          obj=json.loads(raw.decode('utf8','replace')) if raw else {}
+          entries=obj.get('entries',{}) if isinstance(obj,dict) else {}
+          # Persist all key names. Values only for non-secret-looking routing/feature keys.
+          safe_values={}
+          for k,v in entries.items():
+              lk=k.lower()
+              if not any(x in lk for x in ('token','secret','password','credential','key','auth')):
+                  if isinstance(v,(str,int,float,bool)) and len(str(v))<=200:
+                      safe_values[k]=v
+          report={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Club EV-Charge / TotalEnergies',
+            'policy':{'read_only_remote_config_fetch_only':True,'firebase_installation_created':False,'no_user_account':True,'no_credentials':True,'raw_api_key_persisted':False,'secret_like_values_redacted':True},
+            'status':status,'entry_count':len(entries),'entry_keys':sorted(entries.keys()),'safe_values':safe_values
+          }
+          Path('reports/morocco/totalenergies/club-ev-charge-remote-config-keys-2026-09-26.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/club
+      - name: Commit result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-remote-config-keys-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "diag(morocco): publish Club EV-Charge Remote Config keys [run $GITHUB_RUN_ID]"
+          git push
