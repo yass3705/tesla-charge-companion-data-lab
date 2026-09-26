@@ -1,5 +1,5 @@
 name: Morocco Total public guest native overlay
-# native-connectors-live-status-every-2h-2026-09-26
+# native-connectors-live-status-tariff-every-2h-2026-09-26
 # unwrap-station-document-2026-09-26
 
 on:
@@ -108,9 +108,10 @@ jobs:
           SAFE_CONNECTOR_KEYS={
             'ChargePointConnectorID','ChargePointID','ChargePointConnectorNumber',
             'ChargePointConnectorStatusID','ChargePointName','ChargePointDisplayName',
+            'chargePointId','chargePointName','chargePointDisplayName',
             'ConnectorModelID','ConnectorModelIOType','ConnectorModelCurrentType',
             'ConnectorModelPower','MaxConnectorPower','ConnectorModelStandardName',
-            'ChargerModelID','ChargerModelName','OperatorDefinedMaxPower',
+            'connectorModelPower','ChargerModelID','ChargerModelName','chargerModelName','OperatorDefinedMaxPower',
             'cpId','CPID','connectorId','ConnectorId','connectorType','connectorChargingType',
             'connectorModelPower','connectorPower','connectorStatus','ComputedStatus',
             'CpLastReportedStatus','ComputedStatusForCpo','cpoName','CpoName','isRoaming','IsRoaming',
@@ -129,7 +130,8 @@ jobs:
                       keys=set(v.keys())
                       native_pair=(('ChargePointName' in keys or 'ChargePointDisplayName' in keys) and 'ChargePointConnectorNumber' in keys)
                       mobile_pair=(('cpId' in keys or 'CPID' in keys) and ('connectorId' in keys or 'ConnectorId' in keys))
-                      if native_pair or mobile_pair:
+                      tariff_pair=(('chargePointName' in keys or 'chargePointDisplayName' in keys) and 'connectorId' in keys)
+                      if native_pair or mobile_pair or tariff_pair:
                           out.append(filtered_dict(v,SAFE_CONNECTOR_KEYS))
                       for vv in v.values(): walk(vv)
                   elif isinstance(v,list):
@@ -166,15 +168,21 @@ jobs:
                               f=filtered_dict(v,SAFE_STATION_KEYS)
                               if f: rec['detail']=f; break
 
-              conn_meta,conn_obj=request('/asset/chargestation/connectors/get/v1','GET',business_headers,query={'ChargeStationID':sid})
+              conn_meta,conn_obj=request('/mobileTariffTax/mobile/get-connector-info','GET',business_headers,query={
+                  'ChargeStationID':sid,
+                  'IsRoaming':'false',
+                  'idTag':'',
+                  'numotype':'ocpp',
+                  'isSocRequired':'false'
+              })
               rec['connector_meta']=conn_meta
               connectors=find_connector_dicts(conn_obj)
               rec['connectors']=connectors
 
               live=[]
               for c in connectors:
-                  cpid=c.get('ChargePointName',c.get('ChargePointDisplayName',c.get('cpId',c.get('CPID'))))
-                  cid=c.get('ChargePointConnectorNumber',c.get('connectorId',c.get('ConnectorId')))
+                  cpid=c.get('chargePointName',c.get('chargePointDisplayName',c.get('ChargePointName',c.get('ChargePointDisplayName',c.get('cpId',c.get('CPID'))))))
+                  cid=c.get('connectorId',c.get('ConnectorId',c.get('ChargePointConnectorNumber')))
                   if cpid in (None,'') or cid in (None,''): continue
                   q={'cpid':cpid,'connectorId':cid,'IsRoaming':'false','CpoName':''}
                   smeta,sobj=request('/status/api/get-connector-status','GET',query=q,max_bytes=300_000)
@@ -221,7 +229,10 @@ jobs:
               'detail_200':sum(1 for x in results if x.get('detail_meta',{}).get('status')==200),
               'connector_200':sum(1 for x in results if x.get('connector_meta',{}).get('status')==200),
               'connectors_extracted':sum(len(x.get('connectors',[])) for x in results),
-              'live_status_200':sum(1 for x in results for y in x.get('live_status',[]) if y.get('status_meta',{}).get('status')==200)
+              'live_status_200':sum(1 for x in results for y in x.get('live_status',[]) if y.get('status_meta',{}).get('status')==200),
+              'priced_connectors':sum(1 for x in results for y in x.get('connectors',[]) if isinstance(y.get('rate'),(int,float)) and y.get('currencyType')),
+              'tariff_types':sorted({str(y.get('tariffType')) for x in results for y in x.get('connectors',[]) if y.get('tariffType')}),
+              'currencies':sorted({str(y.get('currencyType')) for x in results for y in x.get('connectors',[]) if y.get('currencyType')})
           }
           payload=json.dumps(report,ensure_ascii=False,indent=2)+'\n'
           OUT.write_text(payload)
