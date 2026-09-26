@@ -1,0 +1,111 @@
+name: Morocco FastVolt authorize shape probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-authorize-shape.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe authorize request shape safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/fastvolt
+          python - <<'PY'
+          import json, urllib.request, urllib.error
+          from datetime import datetime, timezone
+
+          BASE='https://mobile.ev.fastvolt.ma'
+          OUT='reports/morocco/fastvolt/authorize-request-shape-2026-09-26.json'
+
+          tests=[
+            ('GET_empty','GET','/auth/authorize',None,{}),
+            ('OPTIONS_empty','OPTIONS','/auth/authorize',None,{}),
+            ('POST_empty_json','POST','/auth/authorize',{},{}),
+            ('POST_id_token_invalid','POST','/auth/authorize',{'id_token':'invalid'},{}),
+            ('POST_token_invalid','POST','/auth/authorize',{'token':'invalid'},{}),
+            ('POST_code_id_token_invalid','POST','/auth/authorize',{'code':'invalid','id_token':'invalid'},{}),
+            ('GET_query_code_id_token_invalid','GET','/auth/authorize?code=invalid&id_token=invalid',None,{})
+          ]
+
+          safe_keys={'detail','message','error','errors','code','status','non_field_errors','id_token','token'}
+          def sanitize(obj):
+              if not isinstance(obj,dict): return None
+              out={}
+              for k,v in obj.items():
+                  if str(k).lower() in safe_keys:
+                      if isinstance(v,(str,int,float,bool)) or v is None: out[k]=v
+                      elif isinstance(v,list): out[k]=[str(x)[:160] for x in v[:10]]
+                      elif isinstance(v,dict):
+                          out[k]={str(a):str(b)[:160] for a,b in list(v.items())[:10]}
+              return out or None
+
+          rows=[]
+          for name,method,path,payload,extra in tests:
+              data=None
+              headers={'Accept':'application/json','User-Agent':'TCC-FastVolt-Shape-Probe/1.0'}
+              if payload is not None:
+                  data=json.dumps(payload).encode()
+                  headers['Content-Type']='application/json'
+              headers.update(extra)
+              req=urllib.request.Request(BASE+path,data=data,headers=headers,method=method)
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      raw=r.read(100000)
+                      ct=r.headers.get('content-type','')
+                      allow=r.headers.get('allow')
+                      www=r.headers.get('www-authenticate')
+                      obj=None
+                      try: obj=json.loads(raw.decode('utf-8','replace'))
+                      except Exception: pass
+                      rows.append({'name':name,'method':method,'status':r.status,'content_type':ct,'allow':allow,'www_authenticate':www,'safe_json':sanitize(obj),'body_bytes':len(raw)})
+              except urllib.error.HTTPError as e:
+                  raw=e.read(100000)
+                  ct=e.headers.get('content-type','') if e.headers else ''
+                  allow=e.headers.get('allow') if e.headers else None
+                  www=e.headers.get('www-authenticate') if e.headers else None
+                  obj=None
+                  try: obj=json.loads(raw.decode('utf-8','replace'))
+                  except Exception: pass
+                  rows.append({'name':name,'method':method,'status':e.code,'content_type':ct,'allow':allow,'www_authenticate':www,'safe_json':sanitize(obj),'body_bytes':len(raw)})
+              except Exception as e:
+                  rows.append({'name':name,'method':method,'transport_error':type(e).__name__})
+
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'FastVolt',
+            'subject':'Safe request-shape probe for /auth/authorize',
+            'policy':{
+              'read_only_or_invalid_auth_only':True,
+              'no_real_credentials':True,
+              'no_otp':True,
+              'no_account_creation':True,
+              'no_valid_tokens':True,
+              'no_response_bodies_persisted':True
+            },
+            'tests':rows
+          }
+          with open(OUT,'w') as f:
+              json.dump(report,f,indent=2,ensure_ascii=False); f.write('\n')
+          PY
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/fastvolt/authorize-request-shape-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): FastVolt authorize request shape [run $GITHUB_RUN_ID]"
+          git push
