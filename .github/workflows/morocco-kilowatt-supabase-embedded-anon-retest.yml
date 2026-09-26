@@ -1,0 +1,106 @@
+name: Morocco Kilowatt embedded Supabase anon retest
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-kilowatt-supabase-embedded-anon-retest.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact app and test embedded public Supabase key
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/kw-supa
+          mkdir -p /tmp/kw-supa/xapk /tmp/kw-supa/base reports/morocco/kilowatt
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/ma.kilowatt.app?version=latest' \
+            -o /tmp/kw-supa/app.xapk
+          unzip -q /tmp/kw-supa/app.xapk -d /tmp/kw-supa/xapk
+          unzip -q /tmp/kw-supa/xapk/ma.kilowatt.app.apk 'assets/index.android.bundle' -d /tmp/kw-supa/base
+
+          python3 - <<'PY'
+          import re,json,base64,subprocess,urllib.parse
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          bundle=Path('/tmp/kw-supa/base/assets/index.android.bundle').read_bytes()
+          txt=bundle.decode('latin1','ignore')
+          cands=set(re.findall(r'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}',txt))
+          anon=None; payload=None
+          for t in cands:
+              try:
+                  mid=t.split('.')[1]; mid += '='*((4-len(mid)%4)%4)
+                  p=json.loads(base64.urlsafe_b64decode(mid.encode()))
+              except Exception:
+                  continue
+              if str(p.get('role','')).lower()=='anon':
+                  anon=t; payload=p; break
+
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Kilowatt',
+            'client':{'package':'ma.kilowatt.app','version':'1.0.1'},
+            'embedded_anon_candidate_found':bool(anon),
+            'anon_payload_safe':({k:payload.get(k) for k in ('iss','role','iat','exp') if payload and k in payload} if anon else None),
+            'requests':[]
+          }
+          if anon:
+              base='https://jmrgknphxsviooizyilj.supabase.co'
+              tests=[
+                ('connectors_head','/rest/v1/connectors?select=*&limit=1'),
+                ('chargestations_head','/rest/v1/chargestations?select=id,location_id,online,active&limit=1'),
+                ('locations_head','/rest/v1/locations?select=id,street_and_number&limit=1')
+              ]
+              for name,path in tests:
+                  body=Path('/tmp/kw-supa/body.json'); hdr=Path('/tmp/kw-supa/headers.txt')
+                  cmd=['curl','--silent','--show-error','--location','--max-time','30',
+                       '--header',f'apikey: {anon}','--header',f'Authorization: Bearer {anon}',
+                       '--header','Accept: application/json',
+                       '--dump-header',str(hdr),'--output',str(body),
+                       '--write-out','%{http_code}|%{content_type}',base+path]
+                  p=subprocess.run(cmd,capture_output=True,text=True)
+                  status,ctype=(p.stdout.strip().split('|',1)+[''])[:2] if '|' in p.stdout else (p.stdout.strip(),'')
+                  rec={'name':name,'http_status':int(status) if str(status).isdigit() else None,'content_type':ctype or None,'bytes':body.stat().st_size if body.exists() else 0}
+                  if body.exists():
+                      raw=body.read_text(errors='ignore')
+                      try:
+                          data=json.loads(raw)
+                          if isinstance(data,list) and data and isinstance(data[0],dict):
+                              rec['row_count_returned']=len(data)
+                              rec['field_names']=sorted(data[0].keys())
+                              if name=='connectors_head':
+                                  safe_fields=['id','chargestation_id','type','power','status','active','online','rate','rate_description','price','price_per_kwh','price_per_minute','tariff','tariff_type','currency']
+                                  rec['safe_tariff_sample']={k:data[0].get(k) for k in safe_fields if k in data[0]}
+                          elif isinstance(data,dict):
+                              rec['error_safe']={k:data.get(k) for k in ('code','message','hint','details') if k in data}
+                      except Exception:
+                          rec['parse']='non-json'
+                  report['requests'].append(rec)
+
+          Path('reports/morocco/kilowatt/supabase-embedded-anon-retest-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/kw-supa
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/kilowatt/supabase-embedded-anon-retest-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): retest Kilowatt embedded Supabase anon read-only [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
