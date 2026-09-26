@@ -1,0 +1,139 @@
+name: Morocco Club EV Charge Firebase Auth config
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-club-evcharge-firebase-auth-config.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read public Firebase Auth project configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/club/xapk reports/morocco/totalenergies
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/com.namp.totalev?version=latest' \
+            -o /tmp/club/current.xapk
+          unzip -q /tmp/club/current.xapk -d /tmp/club/xapk
+
+          python3 - <<'PY'
+          import json, struct, urllib.request, urllib.error, zipfile
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          arsc=None
+          for apk in Path('/tmp/club/xapk').glob('*.apk'):
+              try:
+                  with zipfile.ZipFile(apk) as z:
+                      if 'resources.arsc' in z.namelist():
+                          data=z.read('resources.arsc')
+                          if b'google_api_key' in data and b'project_id' in data:
+                              arsc=data; break
+              except Exception: pass
+          if arsc is None: raise SystemExit('firebase resources missing')
+          b=arsc
+          def u16(o): return struct.unpack_from('<H',b,o)[0]
+          def u32(o): return struct.unpack_from('<I',b,o)[0]
+          def pool(off):
+              typ,hs,sz=struct.unpack_from('<HHI',b,off)
+              sc=u32(off+8); flags=u32(off+16); ss=u32(off+20); utf8=bool(flags&0x100)
+              inds=[u32(off+hs+4*i) for i in range(sc)]; bp=off+ss
+              def l8(p):
+                  x=b[p]; return ((((x&0x7f)<<8)|b[p+1],2) if x&0x80 else (x,1))
+              def l16(p):
+                  x=u16(p); return ((((x&0x7fff)<<16)|u16(p+2),4) if x&0x8000 else (x,2))
+              out=[]
+              for x in inds:
+                  p=bp+x
+                  if utf8:
+                      _,n=l8(p); p+=n; ln,n=l8(p); p+=n; out.append(b[p:p+ln].decode('utf8','replace'))
+                  else:
+                      ln,n=l16(p); p+=n; out.append(b[p:p+2*ln].decode('utf-16le','replace'))
+              return out,sz
+          vals={}; targets={'google_api_key','project_id'}
+          typ,hs,total=struct.unpack_from('<HHI',b,0); pos=hs; gs=None
+          while pos<total:
+              ct,ch,cs=struct.unpack_from('<HHI',b,pos)
+              if ct==1 and gs is None: gs,_=pool(pos)
+              elif ct==0x200:
+                  ts,_=pool(pos+u32(pos+268)); ks,_=pool(pos+u32(pos+276))
+                  sub=pos+ch; end=pos+cs
+                  while sub<end:
+                      st,sh,ss=struct.unpack_from('<HHI',b,sub)
+                      if st==0x201:
+                          ec=u32(sub+12); es=u32(sub+16); offs=sub+sh
+                          for idx in range(ec):
+                              eo=u32(offs+4*idx)
+                              if eo==0xffffffff: continue
+                              ep=sub+es+eo; size=u16(ep); flags=u16(ep+2); ki=u32(ep+4)
+                              if flags&1 or ki>=len(ks): continue
+                              key=ks[ki]
+                              if key not in targets: continue
+                              vp=ep+size
+                              if b[vp+3]==3:
+                                  di=u32(vp+4)
+                                  if gs and di<len(gs): vals[key]=gs[di]
+                      if ss<=0: break
+                      sub+=ss
+              if cs<=0: break
+              pos+=cs
+          if not all(vals.get(k) for k in targets): raise SystemExit('firebase config incomplete')
+
+          url='https://www.googleapis.com/identitytoolkit/v3/relyingparty/getProjectConfig?key='+vals['google_api_key']
+          req=urllib.request.Request(url,headers={'Accept':'application/json','User-Agent':'TCC-ClubEVCharge-ReadOnly-AuthConfig/1.0'})
+          try:
+              with urllib.request.urlopen(req,timeout=25) as r:
+                  raw=r.read(1_000_000); status=r.status; ct=r.headers.get('content-type','')
+          except urllib.error.HTTPError as e:
+              raw=e.read(200_000); status=e.code; ct=e.headers.get('content-type','') if e.headers else ''
+          obj=None
+          try: obj=json.loads(raw.decode('utf8','replace'))
+          except Exception: pass
+
+          safe={}
+          if isinstance(obj,dict):
+              for k in ('projectId','allowPasswordUser','enableAnonymousUser','emailPrivacyConfig','mfaConfig'):
+                  if k in obj: safe[k]=obj[k]
+              ids=[]
+              for item in obj.get('idpConfig',[]) if isinstance(obj.get('idpConfig'),list) else []:
+                  if isinstance(item,dict):
+                      provider=item.get('provider') or item.get('idpId') or item.get('name')
+                      if provider: ids.append(str(provider))
+              if ids: safe['idpProviders']=sorted(set(ids))
+              domains=obj.get('authorizedDomains')
+              if isinstance(domains,list):
+                  safe['authorizedDomainCount']=len(domains)
+
+          report={
+              'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+              'country':'MA','network':'Club EV-Charge / TotalEnergies',
+              'policy':{
+                  'public_project_config_read_only':True,'no_signin':True,'no_signup':True,
+                  'no_account_creation':True,'no_otp':True,'no_credentials':True,
+                  'firebase_api_key_persisted':False,'raw_response_body_persisted':False
+              },
+              'project_id':vals['project_id'],
+              'response':{'status':status,'content_type':ct,'safe_config':safe}
+          }
+          Path('reports/morocco/totalenergies/club-ev-charge-firebase-auth-config-2026-09-26.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/club
+      - name: Commit sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-firebase-auth-config-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): read Club EV-Charge Firebase Auth config [run $GITHUB_RUN_ID]"
+          git push
