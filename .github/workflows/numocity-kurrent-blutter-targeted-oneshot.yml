@@ -69,7 +69,7 @@ jobs:
           import json,os,re
           from datetime import datetime,timezone
 
-          OUT='reports/morocco/totalenergies/numocity-kurrent-blutter-targeted-2026-09-26.json'
+          OUT='reports/morocco/totalenergies/numocity-kurrent-blutter-function-context-2026-09-26.json'
           needles=[
             'status/api/get-connector-status',
             '_get_connector_status',
@@ -148,6 +148,42 @@ jobs:
                 if x in log.lower()
               ]
 
+          # Safe structural extraction from the one shared connector-status API function.
+          target=os.path.join(root,'asm/ncms_backend_flutter/network/api_service.dart')
+          function_context=[]
+          if os.path.isfile(target):
+              lines=open(target,encoding='utf-8',errors='ignore').read().splitlines()
+              centers=[i for i,line in enumerate(lines) if 'fetchCpConnectorsStatus' in line]
+              allow_terms=[
+                'fetchCpConnectorsStatus','get-connector-status','ChargePointId',
+                'ChargePointConnectorNumber','ConnectorId','connectorId','cpid','cpId',
+                'x-appid-token','x-app-access-token','authorization','Bearer ',
+                'queryParameters','Uri','Dio','RequestOptions','headers','ApiServices'
+              ]
+              symbol_allow=re.compile(r'(fetchCpConnectorsStatus|get[_A-Za-z]*connector|ChargePoint|Connector|cpid|cpId|query|Uri|Dio|RequestOptions|headers|ApiServices|status)',re.I)
+              for center in centers[:3]:
+                  lo=max(0,center-40); hi=min(len(lines),center+320)
+                  for idx in range(lo,hi):
+                      line=lines[idx]
+                      terms=[t for t in allow_terms if t in line]
+                      syms=[]
+                      for m in re.finditer(r'[A-Za-z_][A-Za-z0-9_.$@:/-]{2,180}',line):
+                          s=m.group(0)
+                          if symbol_allow.search(s):
+                              syms.append(s)
+                      if not terms and not syms:
+                          continue
+                      function_context.append({
+                        'line':idx+1,
+                        'markers':sorted(set(terms)),
+                        'safe_symbols':sorted(set(syms))[:30]
+                      })
+                      if len(function_context)>=240:
+                          break
+                  if len(function_context)>=240:
+                      break
+          report['fetch_cp_connectors_status_context']=function_context
+
           with open(OUT,'w',encoding='utf-8') as f:
               json.dump(report,f,ensure_ascii=False,indent=2); f.write('\n')
           PY
@@ -158,7 +194,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git add reports/morocco/totalenergies/numocity-kurrent-blutter-targeted-2026-09-26.json
+          git add reports/morocco/totalenergies/numocity-kurrent-blutter-function-context-2026-09-26.json
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           if git diff --cached --quiet; then exit 0; fi
