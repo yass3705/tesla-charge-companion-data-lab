@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 305,
+  "date": "2026-09-27",
+  "purpose": "Correct UniOne/UOC exact PUN topology and rankable coverage after deterministic station-level reconciliation.",
+  "changes": [
+    {
+      "partyId": "UOC",
+      "canonicalName": "UniOne / Unione Charging S.R.L.",
+      "before": "partial",
+      "after": "partial",
+      "inventory": {
+        "stations": 3,
+        "evse": 7
+      },
+      "coverageBefore": {
+        "rankableEvse": 4,
+        "failClosedEvse": 3
+      },
+      "coverageAfter": {
+        "rankableEvse": 6,
+        "failClosedEvse": 1
+      },
+      "rankableAddedEvse": 2,
+      "exactTopology": {
+        "SITE-11": [
+          "1x80 kW",
+          "1x22 kW"
+        ],
+        "SITE-14": [
+          "1x120 kW",
+          "2x22 kW"
+        ],
+        "SITE-15": [
+          "2x22 kW"
+        ]
+      },
+      "tariffs": [
+        {
+          "class": "22 kW",
+          "eurPerKwh": 0.5,
+          "rankableEvse": 5
+        },
+        {
+          "class": "80 kW",
+          "eurPerKwh": 0.7,
+          "rankableEvse": 1
+        }
+      ],
+      "residual": "SITE-14#1 is the sole 120 kW EVSE and remains fail-closed until an exact first-party 120 kW tariff is available.",
+      "policy": "No 80->120 kW extrapolation; direct CPO tariff only.",
+      "proof": [
+        "https://www.uni-one.eu/tariffe/",
+        "PUN artifact 10597588294 / national/pun_italy_national.json.gz"
+      ]
+    }
+  ],
+  "canonicalAfter": {
+    "currentPunPartyIds": 92,
+    "currentPunNamedInCanonical": 92,
+    "historicalNonCurrentNamed": 2,
+    "canonicalNamedEntries": 94,
+    "treated": 23,
+    "partialCurrent": 69,
+    "partialHistoricalNonCurrent": 2,
+    "partial": 71,
+    "setAside": 0,
+    "active": 0,
+    "supersededAlias": 0,
+    "unreconciledCurrentPunPartyIds": 0,
+    "arithmeticCheckCurrentPun": true
+  },
+  "rankableEvseAdded": 2,
+  "coherence": {
+    "currentPunPartyIds": 92,
+    "treated": 23,
+    "partialCurrent": 69,
+    "active": 0,
+    "setAside": 0,
+    "unreconciledCurrentPunPartyIds": 0,
+    "arithmeticCheckCurrentPun": true
+  }
+}
