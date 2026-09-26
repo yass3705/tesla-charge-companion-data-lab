@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-26",
+  "country": "MA",
+  "network": "FastVolt",
+  "client": {
+    "package": "ma.fastgo",
+    "version": "2.8.9",
+    "framework": "Flutter AOT"
+  },
+  "findings": {
+    "native_base_url": "https://mobile.ev.fastvolt.ma",
+    "websocket_url": "wss://mobile.ev.fastvolt.ma/",
+    "business_header_name": "tenant_id",
+    "business_header_validation": "Only tenant_id crossed the Business/Organisation gate; alternate header spellings remained HTTP 401.",
+    "business_identifier_raw_persisted": false,
+    "business_identifier_sha256": "83c3b05b436c8e230c9cb813256aaaa38f68fe3f2e4a48042bb1406c2b0809cb",
+    "station_call": {
+      "method": "GET",
+      "path": "/app/charging_stations/",
+      "query_parameters": [
+        "day",
+        "statuses",
+        "types",
+        "user_lat",
+        "user_lng"
+      ],
+      "authorization_header_shape": "Authorization: token <ff_token>",
+      "user_session_token_required_by_client": true
+    },
+    "station_detail_path": "/user/get_charging_station_details/",
+    "native_connector_fields": [
+      "connector.status",
+      "connector.price",
+      "price_include_tax",
+      "bill_by",
+      "billing_type",
+      "fixed_starting_fee",
+      "idle_price",
+      "max_output"
+    ],
+    "websocket_initial_payload_fields": [
+      "user_id",
+      "tenant_id"
+    ],
+    "anonymous_websocket_handshake": "HTTP 101 Switching Protocols",
+    "public_web_map": {
+      "source": "https://www.fastvolt.net/api/pages",
+      "supports": [
+        "inventory",
+        "coordinates",
+        "connector counts",
+        "station max_output"
+      ],
+      "live_status_supported": false,
+      "note": "The public field named state is geographic/administrative region, not connector availability."
+    }
+  },
+  "production_assessment": {
+    "native_dynamic_status_and_station_specific_tariff": "technically identified but user-session gated",
+    "safe_server_side_replay_without_account": false,
+    "current_public_inventory_should_remain_baseline": true,
+    "current_advertised_tariff_should_remain": {
+      "DC": "2.50 MAD/min",
+      "AC": "0.50 MAD/min"
+    },
+    "next_safe_target": "Look for an official/public tokenless FastVolt status/tariff surface; otherwise keep native enrichment out of unattended TCC production."
+  },
+  "policy": {
+    "read_only": true,
+    "no_account_creation": true,
+    "no_user_credentials": true,
+    "no_charging_actions": true,
+    "raw_user_token_persisted": false,
+    "raw_business_identifier_persisted": false
+  }
+}
