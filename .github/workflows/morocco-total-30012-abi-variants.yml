@@ -1,0 +1,106 @@
+name: Morocco Total 3.00.12 ABI variants probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-30012-abi-variants.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download alternate public APKCombo variants
+        shell: bash
+        env:
+          U1: "https://download.pureapk.com/b/XAPK/Y29tLm5hbXAudG90YWxldl8xNF8zNTJhNjdlNQ?as2=db91def85bd2cc2cebea5e889e36b4866c92699d&k=6a2bd595361c47705231b076672895396c92699d&_p=Y29tLm5hbXAudG90YWxldg&c=1%7CBUSINESS%7Cb2lkPTkmZGV2PVRFTSUyME1hcm9jJnQ9eGFwayZzPTUwODMzMjYwJnZuPTMuMDAuMTImdmM9MTQ&_fn=Q2x1YitFVi1DaGFyZ2VfMy4wMC4xMl9hcGtjb21iby5jb20ueGFwaw%3D%3D"
+          U2: "https://download.pureapk.com/b/XAPK/Y29tLm5hbXAudG90YWxldl8xNF82Njc5ODgxNA?as2=db91def85bd2cc2cebea5e889e36b4866c92699d&k=bb5f92de3fbeea14bc54f87247499a7c6c92699d&_p=Y29tLm5hbXAudG90YWxldg&c=1%7CBUSINESS%7Cb2lkPTkmZGV2PVRFTSUyME1hcm9jJnQ9eGFwayZzPTUwODQ5NzA1JnZuPTMuMDAuMTImdmM9MTQ&_fn=Q2x1YitFVi1DaGFyZ2VfMy4wMC4xMl9hcGtjb21iby5jb20ueGFwaw%3D%3D"
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/total-abi
+          for n in 1 2; do
+            if [ "$n" = "1" ]; then url="$U1"; else url="$U2"; fi
+            set +e
+            curl --fail --location --retry 2 --connect-timeout 15 --max-time 180               --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' "$url" -o "/tmp/total-abi/v$n.xapk"
+            rc=$?
+            set -e
+            echo "$rc" > "/tmp/total-abi/v$n.rc"
+          done
+
+      - name: Build sanitized ABI report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import os,zipfile,json,hashlib,io
+          from datetime import datetime,timezone
+
+          out={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA',
+            'network':'TotalEnergies / Club EV-Charge',
+            'package':'com.namp.totalev',
+            'version':'3.00.12',
+            'policy':{
+              'public_package_variants_only':True,
+              'static_analysis_only':True,
+              'no_backend_requests':True,
+              'raw_packages_persisted':False
+            },
+            'variants':[]
+          }
+          for n in (1,2):
+            p=f'/tmp/total-abi/v{n}.xapk'
+            row={'variant':n,'download_ok':os.path.isfile(p) and os.path.getsize(p)>0}
+            if row['download_ok']:
+              row['bytes']=os.path.getsize(p)
+              row['sha256']=hashlib.sha256(open(p,'rb').read()).hexdigest()
+              abis=set(); apk_names=[]; arm64_pair=False; v7a_pair=False
+              try:
+                with zipfile.ZipFile(p) as x:
+                  apk_names=sorted([os.path.basename(z) for z in x.namelist() if z.endswith('.apk')])
+                  for zname in x.namelist():
+                    if not zname.endswith('.apk'): continue
+                    try:
+                      blob=x.read(zname)
+                      with zipfile.ZipFile(io.BytesIO(blob)) as a:
+                        names=set(a.namelist())
+                        for abi in ('arm64-v8a','armeabi-v7a','x86_64','x86'):
+                          if any(s.startswith('lib/'+abi+'/') for s in names): abis.add(abi)
+                        if {'lib/arm64-v8a/libapp.so','lib/arm64-v8a/libflutter.so'} <= names: arm64_pair=True
+                        if {'lib/armeabi-v7a/libapp.so','lib/armeabi-v7a/libflutter.so'} <= names: v7a_pair=True
+                    except Exception: pass
+              except Exception as e:
+                row['zip_error_type']=type(e).__name__
+              row['apk_names']=apk_names
+              row['abis']=sorted(abis)
+              row['arm64_flutter_pair']=arm64_pair
+              row['armeabi_v7a_flutter_pair']=v7a_pair
+            else:
+              try: row['curl_rc']=int(open(f'/tmp/total-abi/v{n}.rc').read().strip())
+              except Exception: pass
+            out['variants'].append(row)
+
+          with open('reports/morocco/totalenergies/club-ev-charge-3.00.12-abi-variants-2026-09-26.json','w') as f:
+            json.dump(out,f,indent=2,ensure_ascii=False); f.write('\n')
+          PY
+          rm -rf /tmp/total-abi
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-3.00.12-abi-variants-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): probe Total 3.00.12 ABI variants [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
