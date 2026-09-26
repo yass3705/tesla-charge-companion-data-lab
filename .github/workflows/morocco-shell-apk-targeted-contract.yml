@@ -1,0 +1,83 @@
+name: Morocco Shell APK targeted contract
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-shell-apk-targeted-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decompile exact Shell Maroc 3.2.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/shell-target /tmp/jadx
+          mkdir -p /tmp/shell-target reports/morocco/shell
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/APK/com.shell.shell_loyalty_app.morocco?version=latest' \
+            -o /tmp/shell-target/app.apk
+          echo '388caa4c883a285ad996859db1ae231ffd3e909bf396475969a61225bae0acf4  /tmp/shell-target/app.apk' | sha256sum -c -
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            'https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip' \
+            -o /tmp/shell-target/jadx.zip
+          unzip -q /tmp/shell-target/jadx.zip -d /tmp/jadx
+          /tmp/jadx/bin/jadx --no-res --show-bad-code -d /tmp/shell-target/out /tmp/shell-target/app.apk >/dev/null 2>&1 || true
+
+      - name: Extract exact EV and station API contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re,json
+          from pathlib import Path
+          from datetime import datetime,timezone
+          root=Path('/tmp/shell-target/out/sources')
+          files=list(root.rglob('*.java'))
+          markers=['getStations/v1','getNearByStations','EvOffering','EvCharging','ConnectorData','ma-loyaltyapi.vivoenergy.com','getApiBaseURL','getApiKey']
+          hits=[]
+          for p in files:
+              txt=p.read_text(errors='ignore')
+              ms=[m for m in markers if m in txt]
+              if not ms: continue
+              # keep only Shell app sources or exact route/config holders
+              if 'com.shell.shell_loyalty_app' not in txt and not any(x in txt for x in ['getStations/v1','ma-loyaltyapi.vivoenergy.com']):
+                  continue
+              # redact likely secret literals
+              txt=re.sub(r'(?i)(apiKey\s*[=:]\s*")[^"]+(")',r'\1<redacted>\2',txt)
+              txt=re.sub(r'(?i)(Authorization\s*[=:]\s*")[^"]+(")',r'\1<redacted>\2',txt)
+              hits.append({'file':str(p.relative_to(root)),'markers':ms,'source':txt[:30000]})
+          # summarize SerializedName contracts
+          models={}
+          for h in hits:
+              if any(x in h['file'] for x in ['EvOffering.java','EvCharging.java','ConnectorData.java','StationInfo.java']):
+                  models[h['file']]=re.findall(r'@SerializedName\("([^"]+)"\)\s*\n\s*private\s+[^;]+\s+(\w+)\s*;',h['source'])
+          report={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Shell/Vivo Energy',
+            'client':{'package':'com.shell.shell_loyalty_app.morocco','version':'3.2.7'},
+            'model_fields':models,'target_files':hits
+          }
+          Path('reports/morocco/shell/apk-3.2.7-targeted-contract-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/shell-target /tmp/jadx
+
+      - name: Commit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/shell/apk-3.2.7-targeted-contract-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): isolate Shell 3.2.7 station EV contract [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
