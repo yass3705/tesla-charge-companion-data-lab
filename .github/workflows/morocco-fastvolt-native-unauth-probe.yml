@@ -1,0 +1,33 @@
+name: Morocco FastVolt native unauth surface
+
+on:
+  push:
+    paths:
+      - 'scripts/morocco/fastvolt_native_unauth_probe.py'
+      - '.github/workflows/morocco-fastvolt-native-unauth-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe FastVolt native unauthenticated surface
+        run: python scripts/morocco/fastvolt_native_unauth_probe.py
+      - name: Publish sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add reports/morocco/fastvolt/latest-native-unauth-surface.json
+          if git diff --cached --quiet; then
+            echo 'No report change'
+          else
+            git commit -m "diag(morocco): probe FastVolt native unauth surface [run $GITHUB_RUN_ID]"
+            git push
+          fi
