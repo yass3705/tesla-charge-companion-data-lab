@@ -1,0 +1,116 @@
+name: Numocity Kurrent public client context one-shot
+
+on:
+  push:
+    paths:
+      - '.github/workflows/numocity-kurrent-public-client-context-oneshot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and inspect public Kurrent Charge client
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/kurrent
+          mkdir -p /tmp/kurrent/xapk /tmp/kurrent/apk reports/morocco/totalenergies
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/com.namp.kurrent?version=latest' \
+            -o /tmp/kurrent/current.xapk
+          test "$(stat -c%s /tmp/kurrent/current.xapk)" -lt 150000000
+          unzip -q /tmp/kurrent/current.xapk -d /tmp/kurrent/xapk
+
+          python - <<'PY'
+          import json, os, re, hashlib, zipfile
+          from datetime import datetime, timezone
+
+          ROOT='/tmp/kurrent/xapk'
+          OUT='reports/morocco/totalenergies/numocity-kurrent-public-client-context-2026-09-26.json'
+          route_needles=[
+            'status/api/get-connector-status',
+            'asset/chargestation/getstationstate',
+            '/asset/chargestation/getbyid2',
+            'asset/chargestation/getstationbyfilter',
+            'mobileTariffTax/mobile/get-connector-info',
+            'mobileTariffTax/mobile/get-cp-connectorlevel-data',
+            'tariff/api/charging-estimate2'
+          ]
+          field_needles=[
+            'ChargePointConnectorNumber','ChargePointId','chargePointId','ConnectorId','connectorId',
+            'CPID','cpId','cpid','tenantId','appId','x-appid-token','x-app-access-token','Bearer '
+          ]
+          hosts=set(); routes=set(); fields=set(); arches=set(); libs=[]
+          manifest=None
+
+          mp=os.path.join(ROOT,'manifest.json')
+          if os.path.exists(mp):
+            try: manifest=json.load(open(mp,encoding='utf-8'))
+            except Exception: pass
+
+          for fn in os.listdir(ROOT):
+            if not fn.endswith('.apk'): continue
+            p=os.path.join(ROOT,fn)
+            try:
+              with zipfile.ZipFile(p) as z:
+                for n in z.namelist():
+                  m=re.match(r'lib/([^/]+)/libapp\.so$',n)
+                  if not m: continue
+                  arch=m.group(1); arches.add(arch)
+                  data=z.read(n)
+                  libs.append({'apk':fn,'arch':arch,'size':len(data),'sha256':hashlib.sha256(data).hexdigest()})
+                  # printable strings only; never persist arbitrary values
+                  txt='\n'.join(x.decode('utf-8','ignore') for x in re.findall(rb'[ -~]{4,}',data))
+                  for needle in route_needles:
+                    if needle in txt: routes.add(needle)
+                  for needle in field_needles:
+                    if needle in txt: fields.add(needle)
+                  for h in re.findall(r'https?://([A-Za-z0-9.-]+)',txt):
+                    if any(k in h.lower() for k in ('numocity','kurrent','charge')):
+                      hosts.add(h.lower())
+            except Exception:
+              pass
+
+          out={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'subject':'Public Numocity Kurrent Charge client comparison for Club EV-Charge request-shape analysis',
+            'policy':{
+              'public_package_only':True,'static_analysis_only':True,'no_backend_requests':True,
+              'no_login':True,'no_credentials':True,'no_tokens_persisted':True,'raw_package_persisted':False
+            },
+            'package':{
+              'package_name':(manifest or {}).get('package_name','com.namp.kurrent'),
+              'version_name':(manifest or {}).get('version_name'),
+              'version_code':(manifest or {}).get('version_code'),
+              'architectures':sorted(arches),
+              'libapp_files':libs
+            },
+            'sanitized':{
+              'numocity_or_kurrent_hosts':sorted(hosts),
+              'matching_routes':sorted(routes),
+              'matching_header_and_field_literals':sorted(fields)
+            }
+          }
+          with open(OUT,'w',encoding='utf-8') as f:
+            json.dump(out,f,indent=2,ensure_ascii=False); f.write('\n')
+          PY
+          rm -rf /tmp/kurrent
+
+      - name: Commit sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/numocity-kurrent-public-client-context-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(numocity): compare public Kurrent client [run $GITHUB_RUN_ID]"
+          git push
