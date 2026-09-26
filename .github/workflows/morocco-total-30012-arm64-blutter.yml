@@ -1,5 +1,5 @@
 name: Morocco Total 3.00.12 exact ARM64 Blutter
-# full-analysis-exact-function-2026-09-26
+# resolve-exact-query-keys-2026-09-26
 
 on:
   push:
@@ -183,6 +183,23 @@ jobs:
                   report['response_model_file']=rel
                   break
           report['response_model_context']=model_fields[:120]
+
+          # Resolve only the two additional query-key constants referenced by
+          # fetchCpConnectorsStatus. These are field names, never argument values.
+          query_key_offsets=['0x19cb8','0x19d08']
+          resolved_query_keys=[]
+          pp_path=os.path.join(root,'pp.txt')
+          if os.path.isfile(pp_path):
+              for line in open(pp_path,encoding='utf-8',errors='ignore'):
+                  for off in query_key_offsets:
+                      if f'[pp+{off}]' in line:
+                          m=re.search(r'String: "([^"]{1,100})"',line)
+                          val=m.group(1) if m else None
+                          if val and re.fullmatch(r'[A-Za-z][A-Za-z0-9_.-]{0,99}',val):
+                              resolved_query_keys.append({'offset':off,'key':val})
+                          else:
+                              resolved_query_keys.append({'offset':off,'key':'<non-identifier-redacted>'})
+          report['function']['resolved_additional_query_keys']=resolved_query_keys
 
           if rc not in (0,None):
               log=''
