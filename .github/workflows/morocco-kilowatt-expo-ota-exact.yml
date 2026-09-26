@@ -48,9 +48,17 @@ jobs:
               resource=node.get(ns+'resource')
               meta[name]={'value':value,'resource':resource}
 
+          arsc=a.get_android_resources()
+          def resolve_value(raw):
+              if isinstance(raw,str) and re.fullmatch(r'@[0-9A-Fa-f]{8}',raw):
+                  try:
+                      vals=arsc.get_resolved_res_configs(int(raw[1:],16))
+                      if vals:return vals[0][1]
+                  except Exception:pass
+              return raw
           def val(name):
               row=meta.get(name,{})
-              return row.get('value')
+              return resolve_value(row.get('value'))
 
           update_url=val('expo.modules.updates.EXPO_UPDATE_URL')
           runtime=val('expo.modules.updates.EXPO_RUNTIME_VERSION')
@@ -64,7 +72,7 @@ jobs:
               if k.endswith('CODE_SIGNING_CERTIFICATE') and vv:
                   safe_meta[k]={'present':True,'sha256':hashlib.sha256(vv.encode()).hexdigest()}
               else:
-                  safe_meta[k]=v
+                  safe_meta[k]={**v,'resolved_value':resolve_value(v.get('value'))}
 
           headers={
               'expo-platform':'android',
