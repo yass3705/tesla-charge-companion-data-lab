@@ -1,0 +1,123 @@
+name: Morocco FastVolt blutter auth analysis
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-blutter-auth-oneshot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Blutter dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-pyelftools python3-requests cmake ninja-build build-essential pkg-config libicu-dev libcapstone-dev
+
+      - name: Fetch Blutter and FastVolt 2.8.9
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/worawit/blutter.git /tmp/blutter
+          mkdir -p /tmp/fv/xapk /tmp/fv/lib/arm64-v8a
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/ma.fastgo?version=latest' \
+            -o /tmp/fv/current.xapk
+          echo "af476c969bf7982b1561cd0769a26f322b90257b347aa858f2c438d4e73fcf97  /tmp/fv/current.xapk" | sha256sum -c -
+          unzip -q /tmp/fv/current.xapk -d /tmp/fv/xapk
+          ARM_APK="$(find /tmp/fv/xapk -maxdepth 1 -name 'config.arm64_v8a.apk' -print -quit)"
+          test -n "$ARM_APK"
+          unzip -p "$ARM_APK" lib/arm64-v8a/libapp.so > /tmp/fv/lib/arm64-v8a/libapp.so
+          unzip -p "$ARM_APK" lib/arm64-v8a/libflutter.so > /tmp/fv/lib/arm64-v8a/libflutter.so
+
+      - name: Run Blutter
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/blutter
+          python3 blutter.py /tmp/fv/lib/arm64-v8a /tmp/fv/blutter-out
+
+      - name: Build sanitized auth findings
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/fastvolt
+          python3 - <<'PY'
+          import json, os, re
+          from datetime import datetime, timezone
+          root='/tmp/fv/blutter-out'
+          terms=[
+            'app/header_signin/','auth/send_verification_otp/','auth/verify_otp/',
+            '/auth/authorize','This is the header for the api call:',
+            'initializeFirebaseAppCheck','AndroidPlayIntegrityProvider',
+            'Authorization','Bearer','phone_number','"otp"','baseUrl'
+          ]
+          max_files=5000
+          files=[]
+          for dp,_,fs in os.walk(root):
+              for f in fs:
+                  p=os.path.join(dp,f)
+                  if os.path.getsize(p) <= 30_000_000:
+                      files.append(p)
+          files=files[:max_files]
+          findings={}
+          for term in terms:
+              matches=[]
+              lowterm=term.lower()
+              for p in files:
+                  try:
+                      lines=open(p,errors='ignore').read().splitlines()
+                  except Exception:
+                      continue
+                  for i,line in enumerate(lines):
+                      if lowterm in line.lower():
+                          context=lines[max(0,i-8):min(len(lines),i+9)]
+                          # Redact long token-like strings while preserving labels, call targets and structure.
+                          safe=[]
+                          for x in context:
+                              x=re.sub(r'(?<![A-Za-z0-9])[A-Za-z0-9_-]{80,}(?![A-Za-z0-9])','<redacted-long-token>',x)
+                              safe.append(x[:800])
+                          matches.append({
+                              'file':os.path.relpath(p,root),
+                              'line':i+1,
+                              'context':safe
+                          })
+                          if len(matches)>=12: break
+                  if len(matches)>=12: break
+              findings[term]=matches
+
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'FastVolt',
+            'source':{'package':'ma.fastgo','version':'2.8.9','dart_version':'3.9.2','tool':'Blutter'},
+            'policy':{
+              'static_analysis_only':True,'no_credentials':True,'no_login':True,
+              'no_runtime_tokens':True,'sanitized_context_only':True,'raw_blutter_output_not_persisted':True
+            },
+            'findings':findings
+          }
+          with open('reports/morocco/fastvolt/blutter-auth-analysis-2026-09-26.json','w') as f:
+              json.dump(report,f,indent=2,ensure_ascii=False); f.write('\n')
+          PY
+          rm -rf /tmp/fv/blutter-out /tmp/fv/xapk /tmp/fv/current.xapk
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/fastvolt/blutter-auth-analysis-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): decode FastVolt auth flow with Blutter [run $GITHUB_RUN_ID]"
+          git push
