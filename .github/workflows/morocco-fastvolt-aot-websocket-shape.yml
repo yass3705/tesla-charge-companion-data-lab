@@ -65,6 +65,24 @@ jobs:
           out='reports/morocco/fastvolt/latest-native-aot-websocket-shape.json'
           os.makedirs(os.path.dirname(out),exist_ok=True)
 
+          def safe_diag(path):
+              try:
+                  raw=open(path,'r',encoding='utf-8',errors='ignore').read()
+              except Exception:
+                  return []
+              out_lines=[]
+              for line in raw.splitlines()[:30]:
+                  line=re.sub(r'https?://\S+','<url>',line)
+                  line=re.sub(r'(?<![A-Za-z0-9])[A-Za-z0-9_+\-/=]{40,}(?![A-Za-z0-9])','<redacted-long-token>',line)
+                  out_lines.append(line[:300])
+              return out_lines
+
+          export_files=[]
+          for p in glob.glob(root+'/**/*',recursive=True):
+              if os.path.isfile(p):
+                  export_files.append({'path':os.path.relpath(p,root),'bytes':os.path.getsize(p)})
+          export_files=sorted(export_files,key=lambda x:x['path'])
+
           targets=[
               'wss://mobile.ev.fastvolt.ma/',
               'User ID is empty, skipping WebSocket connect.',
@@ -150,6 +168,12 @@ jobs:
                   'static_analysis_only':True,'raw_apk_persisted':False,'raw_libapp_persisted':False,
                   'raw_decompiled_tree_persisted':False,'credentials_persisted':False,
                   'api_keys_persisted':False,'tokens_persisted':False
+              },
+              'dae_diagnostics':{
+                  'stderr':safe_diag('/tmp/dae-full.err'),
+                  'stdout':safe_diag('/tmp/dae-full.out'),
+                  'export_files':export_files[:80],
+                  'export_file_count':len(export_files)
               },
               'summary':{
                   'dart_or_text_files_scanned':len(files),
