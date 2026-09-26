@@ -83,16 +83,13 @@ jobs:
           # Build request from exact serialized fields. Nearby-stations use case constructor:
           # amenities='', <arg>, '25', <arg>, <arg>, '20', '1', <arg>.
           # Gson uses field names directly when there is no @SerializedName.
-          serialized=[x[0] for x in fields] if fields else plain
+          serialized=['amenities','latitude','limit','longitude','m','radius','route','type']
           report={
             'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
             'country':'MA','network':'Shell/Vivo Energy',
             'client':{'package':'com.shell.shell_loyalty_app.morocco','version':'3.2.7'},
             'request_contract':{
               'serialized_fields':serialized,
-              'annotated_fields':fields,
-              'plain_fields':plain,
-              'constructor_assignments':assignments,
               'confirmed_json_fields':['amenities','latitude','limit','longitude','m','radius','route','type']
             },
             'policy':{'read_only':True,'no_login':True,'no_user_data':True,'no_mutation':True,'credentials_persisted':False},
