@@ -1,0 +1,219 @@
+name: Morocco Total public guest native overlay
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-public-guest-native-overlay.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap guest client and extract native station/connector overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import json, urllib.request, urllib.error, urllib.parse
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          BASE='https://csmstotalenergiesma.numocity.com'
+          RC=Path('reports/morocco/totalenergies/club-ev-charge-remote-config-keys-2026-09-26.json')
+          OUT=Path('reports/morocco/totalenergies/club-ev-charge-public-guest-native-overlay-2026-09-26.json')
+
+          rc=json.loads(RC.read_text())
+          public_id=(rc.get('safe_values') or {}).get('userID')
+          if not isinstance(public_id,str) or not public_id:
+              raise SystemExit('public Remote Config userID unavailable')
+
+          def request(path, method='GET', headers=None, payload=None, query=None, max_bytes=2_000_000):
+              h={'Accept':'application/json','User-Agent':'TCC-ClubEVCharge-PublicClient/1.0'}
+              if headers: h.update(headers)
+              url=BASE+path
+              if query:
+                  url += ('&' if '?' in url else '?') + urllib.parse.urlencode(query)
+              data=None
+              if payload is not None:
+                  data=json.dumps(payload,separators=(',',':')).encode()
+                  h.setdefault('content-Type','application/json; charset=utf-8')
+              req=urllib.request.Request(url,data=data,headers=h,method=method)
+              try:
+                  with urllib.request.urlopen(req,timeout=25) as r:
+                      raw=r.read(max_bytes); status=r.status; rh=dict(r.headers)
+              except urllib.error.HTTPError as e:
+                  raw=e.read(min(max_bytes,500_000)); status=e.code; rh=dict(e.headers or {})
+              except Exception as e:
+                  return {'status':None,'error_type':type(e).__name__},None
+              obj=None
+              try: obj=json.loads(raw.decode('utf-8','replace'))
+              except Exception: pass
+              meta={'status':status,'content_type':rh.get('Content-Type',''),'bytes':len(raw),'json':isinstance(obj,(dict,list))}
+              if isinstance(obj,dict):
+                  meta['top_level_keys']=sorted(str(k) for k in obj.keys())[:80]
+                  for k in ('Code','Status','Message','message'):
+                      v=obj.get(k)
+                      if isinstance(v,(str,int,float,bool)) and len(str(v))<220: meta[k]=v
+              elif isinstance(obj,list):
+                  meta['top_level_type']='list'; meta['item_count']=len(obj)
+              return meta,obj
+
+          token_headers={'authorization':'','content-Type':'application/json; charset=utf-8','deviceType':'Mobile1','language':'fr'}
+          boot_meta,boot_obj=request('/token/admin/v1/requesttoken','POST',token_headers,{'id':public_id,'idTag':''})
+          token=None
+          if isinstance(boot_obj,dict) and isinstance(boot_obj.get('Document'),dict):
+              v=boot_obj['Document'].get('token')
+              if isinstance(v,str) and v: token=v
+          if not token:
+              raise SystemExit('guest token bootstrap failed')
+
+          business_headers={'authorization':'Bearer '+token,'content-Type':'application/json; charset=utf-8','deviceType':'Mobile1','language':'fr'}
+
+          inv_meta,inv_obj=request('/asset/mobile/get-map-info','GET',business_headers)
+          if inv_meta.get('status')!=200 or not isinstance(inv_obj,list):
+              raise SystemExit('guest inventory unavailable')
+
+          stations=[]
+          for x in inv_obj:
+              if not isinstance(x,dict): continue
+              sid=x.get('ChargeStationID')
+              if not isinstance(sid,(int,str)): continue
+              stations.append({
+                  'station_id':sid,
+                  'name':x.get('ChargeStationName'),
+                  'lat':x.get('ChargeStationLat'),
+                  'lon':x.get('ChargeStationLong'),
+                  'access_type':x.get('AccessType')
+              })
+
+          SAFE_STATION_KEYS={
+            'ChargeStationID','ChargeStationName','ChargeStationLat','ChargeStationLong',
+            'ChargeStationAddress','ChargeStationCity','ChargeStationState','ChargeStationCountry',
+            'ChargeStationPIN','ChargeStationOwner','ChargeStationIsActive','ChargeStationMoreInfo',
+            'ChargeStationIsApproved','StatusName','AverageStationRating','AccessType'
+          }
+          SAFE_CONNECTOR_KEYS={
+            'cpId','CPID','connectorId','ConnectorId','connectorType','connectorChargingType',
+            'connectorModelPower','connectorPower','connectorStatus','ComputedStatus',
+            'CpLastReportedStatus','ComputedStatusForCpo','cpoName','CpoName','isRoaming','IsRoaming',
+            'rate','preDiscountRate','discountPercentage','tariffType','currencyType','taxRateMessage',
+            'taxInfo','serviceFeeApplyType','ServiceFee','penaltyFee','maxDuration','maxSoc',
+            'superfastAndFast','locationId','identifier','todTariff','target'
+          }
+
+          def filtered_dict(d,allowed):
+              return {k:v for k,v in d.items() if k in allowed and isinstance(v,(str,int,float,bool,type(None),list,dict))}
+
+          def find_connector_dicts(obj):
+              out=[]
+              def walk(v):
+                  if isinstance(v,dict):
+                      keys=set(v.keys())
+                      if (('cpId' in keys or 'CPID' in keys) and ('connectorId' in keys or 'ConnectorId' in keys)):
+                          out.append(filtered_dict(v,SAFE_CONNECTOR_KEYS))
+                      for vv in v.values(): walk(vv)
+                  elif isinstance(v,list):
+                      for vv in v: walk(vv)
+              walk(obj)
+              # stable dedup
+              seen=set(); uniq=[]
+              for d in out:
+                  key=json.dumps(d,sort_keys=True,ensure_ascii=False,default=str)
+                  if key not in seen: seen.add(key); uniq.append(d)
+              return uniq
+
+          results=[]
+          for s in stations:
+              sid=s['station_id']
+              rec={**s}
+              detail_meta,detail_obj=request('/asset/chargestation/getbyid','GET',business_headers,query={'ChargeStationID':sid})
+              rec['detail_meta']=detail_meta
+              if isinstance(detail_obj,dict):
+                  rec['detail']=filtered_dict(detail_obj,SAFE_STATION_KEYS)
+                  # Some responses wrap station data.
+                  if not rec['detail']:
+                      for v in detail_obj.values():
+                          if isinstance(v,dict):
+                              f=filtered_dict(v,SAFE_STATION_KEYS)
+                              if f: rec['detail']=f; break
+
+              conn_meta,conn_obj=request('/mobileTariffTax/mobile/get-connector-info','GET',business_headers,query={'ChargeStationID':sid})
+              rec['connector_meta']=conn_meta
+              connectors=find_connector_dicts(conn_obj)
+              rec['connectors']=connectors
+
+              live=[]
+              for c in connectors:
+                  cpid=c.get('cpId',c.get('CPID'))
+                  cid=c.get('connectorId',c.get('ConnectorId'))
+                  if cpid in (None,'') or cid in (None,''): continue
+                  cpo=c.get('cpoName',c.get('CpoName',''))
+                  roam=c.get('isRoaming',c.get('IsRoaming',False))
+                  q={'cpid':cpid,'connectorId':cid,'IsRoaming':str(roam).lower() if isinstance(roam,bool) else roam,'CpoName':cpo or ''}
+                  smeta,sobj=request('/status/api/get-connector-status','GET',query=q,max_bytes=300_000)
+                  safe={}
+                  if isinstance(sobj,dict):
+                      ALLOW={'ChargePointId','ChargePointConnectorNumber','CpLastReportedStatus','ComputedStatus','ComputedStatusForCpo','IsPublished','HasMaintenance','ErrorCode','Error','StatusName','status','message'}
+                      def walk_status(v):
+                          if isinstance(v,dict):
+                              fd={k:vv for k,vv in v.items() if k in ALLOW and isinstance(vv,(str,int,float,bool,type(None)))}
+                              if fd:return fd
+                              for vv in v.values():
+                                  z=walk_status(vv)
+                                  if z:return z
+                          if isinstance(v,list):
+                              for vv in v:
+                                  z=walk_status(vv)
+                                  if z:return z
+                          return {}
+                      safe=walk_status(sobj)
+                  live.append({'cpid':cpid,'connectorId':cid,'status_meta':smeta,'safe_status':safe})
+              rec['live_status']=live
+              results.append(rec)
+
+          report={
+              'schema_version':1,
+              'generated_at':datetime.now(timezone.utc).isoformat(),
+              'country':'MA',
+              'network':'TotalEnergies / Club EV-Charge',
+              'source_client':{'package':'com.namp.totalev','version':'3.00.12'},
+              'policy':{
+                  'intended_public_guest_client_flow_only':True,
+                  'no_user_account':True,'no_credentials':True,'no_otp':True,
+                  'token_value_persisted':False,'public_remote_config_id_value_persisted':False,
+                  'station_ids_from_official_guest_inventory_only':True,
+                  'no_identifier_enumeration':True,'read_only_only':True,
+                  'no_charging_payment_or_account_actions':True,'raw_response_bodies_persisted':False
+              },
+              'bootstrap':boot_meta,
+              'inventory':inv_meta,
+              'station_count':len(stations),
+              'results':results
+          }
+          report['summary']={
+              'detail_200':sum(1 for x in results if x.get('detail_meta',{}).get('status')==200),
+              'connector_200':sum(1 for x in results if x.get('connector_meta',{}).get('status')==200),
+              'connectors_extracted':sum(len(x.get('connectors',[])) for x in results),
+              'live_status_200':sum(1 for x in results for y in x.get('live_status',[]) if y.get('status_meta',{}).get('status')==200)
+          }
+          OUT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+
+      - name: Commit sanitized overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-public-guest-native-overlay-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): extract Total guest native overlay [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
