@@ -1,0 +1,111 @@
+name: Morocco TotalEnergies 3.00.12 connector-status shape
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-30012-connector-status-shape.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe exact APK-evidenced GET parameter shapes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import json, urllib.request, urllib.error, urllib.parse
+          from datetime import datetime, timezone
+
+          BASE='https://csmstotalenergiesma.numocity.com'
+          OUT='reports/morocco/totalenergies/club-ev-charge-3.00.12-connector-status-shape-2026-09-26.json'
+          CASES=[
+            ('no_query','/status/api/get-connector-status',{}),
+            ('connectorid','/status/api/get-connector-status',{'connectorid':'0'}),
+            ('connectorId','/status/api/get-connector-status',{'connectorId':'0'}),
+            ('chargePointId_connectorId','/status/api/get-connector-status',{'chargePointId':'0','connectorId':'0'}),
+            ('ChargePointId_ChargePointConnectorNumber','/status/api/get-connector-status',{'ChargePointId':'0','ChargePointConnectorNumber':'0'}),
+            ('aggregator_status_no_query','/api/aggregator/mobile/location/connector/status',{}),
+            ('aggregator_status_chargePointId_connectorId','/api/aggregator/mobile/location/connector/status',{'chargePointId':'0','connectorId':'0'})
+          ]
+          ALLOW=('message','detail','error','errors','status','title','type','field','fields','validation','required','missing','invalid','chargepoint','connector','station','appid','tenant')
+
+          def safe_shape(raw):
+              txt=raw.decode('utf-8','replace')
+              try: obj=json.loads(txt)
+              except Exception:
+                  low=txt.lower()
+                  return {'json':False,'body_length':len(raw),'safe_markers':sorted({x for x in ALLOW if x in low})}
+              out={'json':True}
+              if isinstance(obj,dict):
+                  out['top_level_keys']=sorted(str(k) for k in obj.keys())[:80]
+                  def walk(x,prefix='',depth=0):
+                      names=[]
+                      labels={}
+                      if depth>3:return names,labels
+                      if isinstance(x,dict):
+                          for k,v in x.items():
+                              key=str(k); lk=key.lower(); path=f'{prefix}.{key}' if prefix else key
+                              if any(a in lk for a in ALLOW):
+                                  names.append(path)
+                                  if isinstance(v,str) and len(v)<220 and not any(z in lk for z in ('token','authorization','cookie')):
+                                      labels[path]=v
+                              n,l=walk(v,path,depth+1); names+=n; labels.update(l)
+                      elif isinstance(x,list):
+                          for i,v in enumerate(x[:3]):
+                              n,l=walk(v,prefix+'[]',depth+1); names+=n; labels.update(l)
+                      return names,labels
+                  names,labels=walk(obj)
+                  out['safe_field_paths']=sorted(set(names))[:120]
+                  out['safe_labels']={k:v for k,v in list(labels.items())[:40]}
+              elif isinstance(obj,list):
+                  out['top_level_type']='list'; out['item_count']=len(obj)
+              return out
+
+          def probe(label,path,params):
+              url=BASE+path
+              if params:url+='?'+urllib.parse.urlencode(params)
+              req=urllib.request.Request(url,method='GET',headers={'User-Agent':'TCC-Total-30012-Shape/1.0','Accept':'application/json,text/plain,*/*'})
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      raw=r.read(150000); status=r.status; ct=r.headers.get('content-type','')
+              except urllib.error.HTTPError as e:
+                  status=e.code; ct=e.headers.get('content-type','') if e.headers else ''; raw=e.read(150000)
+              except Exception as e:
+                  return {'case':label,'path':path,'status':None,'error_type':type(e).__name__}
+              return {'case':label,'path':path,'status':status,'content_type':ct,'safe_response':safe_shape(raw)}
+
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'TotalEnergies / Club EV-Charge',
+            'source_client':{'package':'com.namp.totalev','version':'3.00.12'},
+            'policy':{
+              'read_only_get_only':True,'apk_evidenced_routes_and_field_names_only':True,
+              'dummy_zero_values_only':True,'no_real_station_or_connector_ids':True,
+              'no_login':True,'no_credentials':True,'no_tokens':True,'no_mutations':True,
+              'raw_response_bodies_persisted':False,'query_values_persisted':False
+            },
+            'probes':[probe(*c) for c in CASES]
+          }
+          with open(OUT,'w',encoding='utf-8') as f:
+              json.dump(report,f,indent=2,ensure_ascii=False);f.write('\n')
+          PY
+
+      - name: Commit sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-3.00.12-connector-status-shape-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): probe Total 3.00.12 connector status shape [run $GITHUB_RUN_ID]"
+          git push
