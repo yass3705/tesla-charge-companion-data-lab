@@ -1,4 +1,5 @@
 name: Morocco Total station-level fallbacks
+# chargepoint-qr-fallbacks-2026-09-26
 
 on:
   push:
@@ -85,7 +86,14 @@ jobs:
             ('station_status_stationID','/status/api/get-status-info',{'stationID':8},None),
             ('station_status_level_plus_Id','/status/api/get-status-info',{'stationLevel':'true','ChargeStationId':8},None),
             ('station_status_level_plus_ID','/status/api/get-status-info',{'stationLevel':'true','ChargeStationID':8},None),
-            ('guest_station_status_level_plus_Id','/status/api/get-status-info',{'stationLevel':'true','ChargeStationId':8},H)
+            ('guest_station_status_level_plus_Id','/status/api/get-status-info',{'stationLevel':'true','ChargeStationId':8},H),
+            ('chargepoint_by_station_v2_ChargeStationID','/asset/chargepoint/get/bystationid/v2',{'ChargeStationID':8},H),
+            ('chargepoint_by_station_v2_stationID','/asset/chargepoint/get/bystationid/v2',{'stationID':8},H),
+            ('chargepoint_by_station_v2_chargeStationId','/asset/chargepoint/get/bystationid/v2',{'chargeStationId':8},H),
+            ('chargestation_connectors_v1_ChargeStationID','/asset/chargestation/connectors/get/v1',{'ChargeStationID':8},H),
+            ('chargestation_connectors_v1_stationID','/asset/chargestation/connectors/get/v1',{'stationID':8},H),
+            ('mobile_gun_count_ChargeStationID','/asset/mobile/get-gun-count',{'ChargeStationID':8},H),
+            ('qr_connector_list_known_cpid','/mobileTariffTax/api/qr-connector-list',{'qrData':'T54-9'},H)
           ]
           out={'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
                'country':'MA','network':'TotalEnergies / Club EV-Charge',
