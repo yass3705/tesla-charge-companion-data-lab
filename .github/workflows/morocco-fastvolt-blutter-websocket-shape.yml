@@ -1,0 +1,200 @@
+name: Morocco FastVolt Blutter websocket shape
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-blutter-websocket-shape.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Blutter prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-pyelftools python3-requests git cmake ninja-build build-essential pkg-config libicu-dev libcapstone-dev
+
+      - name: Download exact FastVolt 2.8.9 and extract ARM64 Flutter libs
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 2 --connect-timeout 15 --max-time 180             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0'             'https://download.pureapk.com/b/XAPK/bWEuZmFzdGdvXzYzX2JlZjg5YmI?as2=396c32049d304796d2893422fb0bc6a16c926938&k=08186075138529da17448b9e453991876c926938&_p=bWEuZmFzdGdv&c=1%7CAUTO_AND_VEHICLES%7Cb2lkPTkmZGV2PUFmcmklMjBNb2JpbGl0eSZ0PXhhcGsmcz0zOTQ1MTY2MCZ2bj0yLjguOSZ2Yz02Mw&_fn=RmFzdHZvbHRfMi44LjlfYXBrY29tYm8uY29tLnhhcGs%3D'             -o /tmp/fastvolt.xapk
+          echo 'af476c969bf7982b1561cd0769a26f322b90257b347aa858f2c438d4e73fcf97  /tmp/fastvolt.xapk' | sha256sum -c -
+          rm -rf /tmp/fv-xapk /tmp/fvlib
+          mkdir -p /tmp/fv-xapk /tmp/fvlib
+          unzip -q /tmp/fastvolt.xapk -d /tmp/fv-xapk
+          python - <<'PY'
+          import json
+          m=json.load(open('/tmp/fv-xapk/manifest.json'))
+          assert m['package_name']=='ma.fastgo'
+          assert m['version_name']=='2.8.9'
+          assert str(m['version_code'])=='63'
+          PY
+          ARM_APK="$(find /tmp/fv-xapk -type f -name '*.apk' | while read -r f; do
+            if unzip -l "$f" 2>/dev/null | grep -q 'lib/arm64-v8a/libapp.so' && unzip -l "$f" 2>/dev/null | grep -q 'lib/arm64-v8a/libflutter.so'; then
+              echo "$f"; break
+            fi
+          done)"
+          test -n "$ARM_APK"
+          unzip -q "$ARM_APK" 'lib/arm64-v8a/libapp.so' 'lib/arm64-v8a/libflutter.so' -d /tmp/fvlib
+          test -s /tmp/fvlib/lib/arm64-v8a/libapp.so
+          test -s /tmp/fvlib/lib/arm64-v8a/libflutter.so
+
+      - name: Run Blutter against exact Flutter runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/blutter /tmp/blutter-out
+          git clone -q --depth=1 https://github.com/worawit/blutter.git /tmp/blutter
+          mkdir -p /tmp/blutter-out
+          set +e
+          python3 /tmp/blutter/blutter.py /tmp/fvlib/lib/arm64-v8a /tmp/blutter-out             >/tmp/blutter.stdout 2>/tmp/blutter.stderr
+          rc=$?
+          set -e
+          echo "$rc" >/tmp/blutter.rc
+          # Do not fail here; publish a sanitized diagnostic even if this tool hits a Shorebird/runtime blocker.
+
+      - name: Build sanitized Blutter report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os, re, json, glob
+          from datetime import datetime, timezone
+
+          root='/tmp/blutter-out'
+          out='reports/morocco/fastvolt/latest-blutter-websocket-shape.json'
+          os.makedirs(os.path.dirname(out),exist_ok=True)
+
+          def read(path,limit=20_000_000):
+              try:
+                  return open(path,'r',encoding='utf-8',errors='ignore').read(limit)
+              except Exception:
+                  return ''
+
+          def safe_lines(path,n=35):
+              raw=read(path,500_000)
+              rows=[]
+              for line in raw.splitlines()[:n]:
+                  line=re.sub(r'https?://\S+','<url>',line)
+                  line=re.sub(r'(?<![A-Za-z0-9])[A-Za-z0-9_+\-/=]{40,}(?![A-Za-z0-9])','<redacted-long-token>',line)
+                  rows.append(line[:320])
+              return rows
+
+          try: rc=int((read('/tmp/blutter.rc',100) or '-1').strip())
+          except: rc=-1
+
+          files=[]
+          if os.path.isdir(root):
+              for p in glob.glob(root+'/**/*',recursive=True):
+                  if os.path.isfile(p):
+                      files.append({'path':os.path.relpath(p,root),'bytes':os.path.getsize(p)})
+          files=sorted(files,key=lambda x:x['path'])
+
+          targets=[
+            'wss://mobile.ev.fastvolt.ma/',
+            'User ID is empty, skipping WebSocket connect.',
+            'WebSocket connected successfully',
+            'WebSocket closed. Marking as disconnected, then attempting reconnect.'
+          ]
+
+          hits=[]
+          searchable=[]
+          for item in files:
+              p=os.path.join(root,item['path'])
+              if item['bytes']>80_000_000: continue
+              try:
+                  txt=read(p,80_000_000)
+              except: continue
+              searchable.append((item['path'],txt))
+              for t in targets:
+                  pos=0
+                  while True:
+                      i=txt.find(t,pos)
+                      if i<0: break
+                      hits.append((item['path'],t,txt[max(0,i-7000):min(len(txt),i+7000)]))
+                      pos=i+len(t)
+
+          keywords=(
+            'wss://','WebSocket','userId','user_id','userid','ff_userid','Uri.',
+            'query','sink','send','json','connect','Authorization','Bearer','channel'
+          )
+          def sanitize(line):
+              line=re.sub(r'(?<![A-Za-z0-9])[A-Za-z0-9_+\-/=]{40,}(?![A-Za-z0-9])','<redacted-long-token>',line)
+              line=re.sub(r'https?://(?![A-Za-z0-9.-]*fastvolt(?:\.ma|\.net))\S+','<url>',line)
+              return line.strip()[:360]
+
+          contexts=[]
+          seen=set()
+          for path,target,chunk in hits:
+              selected=[sanitize(x) for x in chunk.splitlines() if any(k.lower() in x.lower() for k in keywords)]
+              selected=selected[:80]
+              key=(path,target,tuple(selected))
+              if key in seen: continue
+              seen.add(key)
+              contexts.append({'file':path,'matched_literal':target,'selected_structural_lines':selected})
+
+          allsel='\n'.join(x for c in contexts for x in c['selected_structural_lines'])
+          indicators={}
+          for term in ['userId','user_id','userid','ff_userid','query','sink','send','json','Authorization','Bearer','WebSocket','channel']:
+              indicators[term]=term.lower() in allsel.lower()
+
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'FastVolt',
+            'target':{'package':'ma.fastgo','version':'2.8.9','versionCode':63,'xapkSha256':'af476c969bf7982b1561cd0769a26f322b90257b347aa858f2c438d4e73fcf97'},
+            'tool':{'name':'Blutter','repository':'worawit/blutter','returnCode':rc},
+            'policy':{
+              'static_analysis_only':True,'raw_xapk_persisted':False,'raw_libs_persisted':False,
+              'raw_blutter_output_persisted':False,'credentials_persisted':False,'tokens_persisted':False
+            },
+            'diagnostics':{
+              'stdout':safe_lines('/tmp/blutter.stdout'),
+              'stderr':safe_lines('/tmp/blutter.stderr'),
+              'exportFileCount':len(files),
+              'exportFiles':files[:80]
+            },
+            'summary':{
+              'targetLiteralHitCount':len(hits),
+              'sanitizedContextCount':len(contexts)
+            },
+            'contexts':contexts[:20],
+            'structuralIndicators':indicators,
+            'interpretation':{
+              'blutterSucceeded':rc==0,
+              'websocketLogicLocated':bool(contexts),
+              'userIdEvidence':indicators.get('userId') or indicators.get('user_id') or indicators.get('userid') or indicators.get('ff_userid'),
+              'applicationSendEvidence':indicators.get('sink') or indicators.get('send') or indicators.get('json'),
+              'queryEvidence':indicators.get('query')
+            }
+          }
+          with open(out,'w',encoding='utf-8') as f:
+              json.dump(report,f,ensure_ascii=False,indent=2); f.write('\n')
+          print(json.dumps(report['interpretation'],indent=2))
+          PY
+
+      - name: Publish sanitized report safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add reports/morocco/fastvolt/latest-blutter-websocket-shape.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): inspect FastVolt 2.8.9 with Blutter [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf /tmp/blutter /tmp/blutter-out /tmp/fv-xapk /tmp/fvlib /tmp/fastvolt.xapk /tmp/blutter.stdout /tmp/blutter.stderr /tmp/blutter.rc
