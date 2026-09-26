@@ -1,0 +1,67 @@
+name: Morocco Kilowatt archived site contract
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-kilowatt-archived-site-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect archived public JS contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/kilowatt /tmp/kwa
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 90 \
+            'https://web.archive.org/web/20251128163527id_/https://kilowatt.ma/assets/index-B5d7W9Cg.js' \
+            -o /tmp/kwa/index.js
+          python3 - <<'PY'
+          import re,json,hashlib
+          from pathlib import Path
+          from datetime import datetime,timezone
+          p=Path('/tmp/kwa/index.js'); s=p.read_text(errors='ignore')
+          api=sorted(set(re.findall(r'["\'](/api/[A-Za-z0-9_./?&=:-]+)',s)))
+          fields=sorted(set(re.findall(r'\b(rate_(?:id|price|currency|description)|connectorRate|tariff|price_per_[a-z_]+)\b',s,re.I)))
+          host_refs=sorted(set(re.findall(r'https://([a-z0-9.-]+)',s,re.I)))
+          terms=['/api/charging-stations','/api/public-connectors-count','rate_price','rate_description','connectorRate','tariff']
+          contexts=[]
+          for term in terms:
+              start=0;n=0
+              while True:
+                  i=s.find(term,start)
+                  if i<0:break
+                  frag=s[max(0,i-1000):min(len(s),i+1800)]
+                  contexts.append({'term':term,'offset':i,'context':frag})
+                  n+=1
+                  if n>=6:break
+                  start=i+len(term)
+          report={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Kilowatt',
+            'archive':{'timestamp':'20251128163527','original_url':'https://kilowatt.ma/assets/index-B5d7W9Cg.js','bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()},
+            'policy':{'public_archive_only':True,'no_login':True,'no_mutations':True,'credentials_not_inspected':True,'raw_bundle_not_persisted':True},
+            'api_routes':api,'tariff_field_refs':fields,
+            'host_refs':[h for h in host_refs if h.endswith('kilowatt.ma') or h.endswith('supabase.co')],
+            'contexts':contexts
+          }
+          Path('reports/morocco/kilowatt/archived-site-contract-2025-11-28.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/kilowatt/archived-site-contract-2025-11-28.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): inspect archived Kilowatt site contract [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
