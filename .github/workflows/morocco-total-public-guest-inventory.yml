@@ -1,0 +1,218 @@
+name: Morocco Total public guest inventory validation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-public-guest-inventory.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap intended public client token and probe read-only inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import json, urllib.request, urllib.error, re
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          BASE='https://csmstotalenergiesma.numocity.com'
+          RC=Path('reports/morocco/totalenergies/club-ev-charge-remote-config-keys-2026-09-26.json')
+          OUT=Path('reports/morocco/totalenergies/club-ev-charge-public-guest-inventory-validation-2026-09-26.json')
+
+          rc=json.loads(RC.read_text())
+          sv=rc.get('safe_values',{})
+          public_id=sv.get('userID')
+          if not isinstance(public_id,str) or not public_id:
+              raise SystemExit('public Remote Config userID unavailable')
+
+          def request(path, method='GET', headers=None, payload=None):
+              h={'Accept':'application/json','User-Agent':'TCC-ClubEVCharge-PublicClient/1.0'}
+              if headers: h.update(headers)
+              data=None
+              if payload is not None:
+                  data=json.dumps(payload,separators=(',',':')).encode()
+                  if not any(k.lower()=='content-type' for k in h):
+                      h['content-Type']='application/json; charset=utf-8'
+              req=urllib.request.Request(BASE+path,data=data,headers=h,method=method)
+              try:
+                  with urllib.request.urlopen(req,timeout=25) as r:
+                      raw=r.read(5_000_000); status=r.status; rh=dict(r.headers)
+              except urllib.error.HTTPError as e:
+                  raw=e.read(500_000); status=e.code; rh=dict(e.headers or {})
+              except Exception as e:
+                  return {'status':None,'error_type':type(e).__name__},None
+              obj=None
+              try: obj=json.loads(raw.decode('utf-8','replace'))
+              except Exception: pass
+              meta={
+                  'status':status,
+                  'content_type':rh.get('Content-Type',''),
+                  'bytes':len(raw),
+                  'json':isinstance(obj,(dict,list))
+              }
+              if isinstance(obj,dict):
+                  meta['top_level_keys']=sorted(str(k) for k in obj.keys())[:80]
+                  for k in ('Code','Status','Message','message'):
+                      v=obj.get(k)
+                      if isinstance(v,(str,int,float,bool)) and len(str(v))<220:
+                          meta[k]=v
+              elif isinstance(obj,list):
+                  meta['top_level_type']='list'
+                  meta['item_count']=len(obj)
+              return meta,obj
+
+          # Exact client bootstrap shape recovered from Club EV-Charge 3.00.12:
+          # body keys id + idTag; guest/global branch explicitly sends idTag="".
+          token_headers={
+              'authorization':'',
+              'content-Type':'application/json; charset=utf-8',
+              'deviceType':'Mobile1',
+              'language':'fr'
+          }
+          token_meta,token_obj=request(
+              '/token/admin/v1/requesttoken',
+              'POST',
+              token_headers,
+              {'id':public_id,'idTag':''}
+          )
+
+          token=None; token_type=None; doc=None
+          if isinstance(token_obj,dict):
+              doc=token_obj.get('Document')
+              if isinstance(doc,dict):
+                  if isinstance(doc.get('token'),str) and doc.get('token'):
+                      token=doc['token']
+                  if isinstance(doc.get('tokenType'),str) and doc.get('tokenType'):
+                      token_type=doc['tokenType']
+
+          result={
+              'schema_version':1,
+              'generated_at':datetime.now(timezone.utc).isoformat(),
+              'country':'MA',
+              'network':'TotalEnergies / Club EV-Charge',
+              'source_client':{'package':'com.namp.totalev','version':'3.00.12'},
+              'policy':{
+                  'intended_public_client_bootstrap_only':True,
+                  'remote_config_public_id_used_in_memory_only':True,
+                  'guest_idTag_empty_as_proven_by_client':True,
+                  'no_user_account':True,
+                  'no_user_credentials':True,
+                  'no_otp':True,
+                  'token_value_persisted':False,
+                  'public_id_value_persisted_in_this_report':False,
+                  'read_only_inventory_routes_only':True,
+                  'no_station_or_connector_enumeration':True,
+                  'no_charging_or_payment_actions':True,
+                  'raw_response_bodies_persisted':False
+              },
+              'bootstrap':token_meta,
+              'bootstrap_token_nonempty':bool(token),
+              'bootstrap_token_type_present':bool(token_type),
+              'inventory_probes':[]
+          }
+
+          if token:
+              scheme=(token_type or 'Bearer').strip()
+              # Avoid duplicated "Bearer " if tokenType itself contains spacing.
+              auth=(scheme+' '+token).strip()
+              business_headers={
+                  'authorization':auth,
+                  'content-Type':'application/json; charset=utf-8',
+                  'deviceType':'Mobile1',
+                  'language':'fr'
+              }
+
+              cases=[
+                  ('map_info_get','/asset/mobile/get-map-info','GET',None),
+                  ('map_info_post','/asset/mobile/get-map-info','POST',{}),
+                  ('filter_get','/asset/mobile/getbyfilter','GET',None),
+                  ('filter_post','/asset/mobile/getbyfilter','POST',{})
+              ]
+
+              SAFE_KEYS=(
+                  'id','station','charge','point','connector','cpid','cp_id','name','address',
+                  'city','state','country','lat','long','lng','status','power','capacity',
+                  'type','standard','cpo','operator','owner','roaming','tariff','pin','location'
+              )
+              BLOCK_KEYS=('user','email','phone','mobile','account','wallet','payment','card','token','jwt','auth')
+
+              def safe_key(k):
+                  lk=str(k).lower()
+                  return any(x in lk for x in SAFE_KEYS) and not any(x in lk for x in BLOCK_KEYS)
+
+              def sample_infra(obj,depth=0):
+                  if depth>5:return None
+                  if isinstance(obj,dict):
+                      out={}
+                      for k,v in obj.items():
+                          if any(x in str(k).lower() for x in BLOCK_KEYS): continue
+                          if safe_key(k):
+                              if isinstance(v,(str,int,float,bool)) or v is None:
+                                  if isinstance(v,str) and len(v)>300: continue
+                                  out[str(k)]=v
+                              elif isinstance(v,(dict,list)):
+                                  sv=sample_infra(v,depth+1)
+                                  if sv not in (None,{},[]): out[str(k)]=sv
+                          elif isinstance(v,(dict,list)):
+                              sv=sample_infra(v,depth+1)
+                              if sv not in (None,{},[]):
+                                  out[str(k)]=sv
+                      return out
+                  if isinstance(obj,list):
+                      return [x for x in (sample_infra(v,depth+1) for v in obj[:5]) if x not in (None,{},[])]
+                  return None
+
+              def collection_counts(obj,depth=0,prefix=''):
+                  if depth>4:return {}
+                  out={}
+                  if isinstance(obj,dict):
+                      for k,v in obj.items():
+                          p=f'{prefix}.{k}' if prefix else str(k)
+                          if isinstance(v,list):
+                              out[p]=len(v)
+                              if v: out.update(collection_counts(v[0],depth+1,p+'[]'))
+                          elif isinstance(v,dict):
+                              out.update(collection_counts(v,depth+1,p))
+                  elif isinstance(obj,list) and obj:
+                      out.update(collection_counts(obj[0],depth+1,prefix+'[]'))
+                  return out
+
+              for label,path,method,payload in cases:
+                  meta,obj=request(path,method,business_headers,payload)
+                  rec={'label':label,'path':path,'method':method,**meta}
+                  if isinstance(obj,(dict,list)):
+                      rec['collection_counts']=collection_counts(obj)
+                      rec['safe_infrastructure_sample']=sample_infra(obj)
+                  result['inventory_probes'].append(rec)
+
+          ok=[x for x in result['inventory_probes'] if x.get('status')==200 and x.get('json')]
+          result['conclusion']=(
+              'public_guest_bootstrap_and_inventory_read_succeeded' if ok else
+              'public_guest_bootstrap_succeeded_inventory_contract_needs_refinement' if token else
+              'public_remote_config_id_not_accepted_for_guest_bootstrap'
+          )
+
+          OUT.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+          PY
+
+      - name: Commit sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-public-guest-inventory-validation-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): validate Total public guest inventory [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
