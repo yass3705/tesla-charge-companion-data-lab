@@ -1,0 +1,83 @@
+name: Morocco FastVolt anonymous auth probe
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-anonymous-auth-probe.yml'
+permissions:
+  contents: write
+concurrency:
+  group: morocco-fastvolt-anonymous-auth-probe
+  cancel-in-progress: true
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Bounded anonymous auth probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/fv-xapk /tmp/fv-apk reports/morocco/fastvolt
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180 --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' 'https://d.apkpure.net/b/XAPK/ma.fastgo?version=latest' -o /tmp/fastvolt.xapk
+          unzip -q /tmp/fastvolt.xapk -d /tmp/fv-xapk
+          for apk in /tmp/fv-xapk/*.apk; do d="/tmp/fv-apk/$(basename "$apk" .apk)"; mkdir -p "$d"; unzip -q -o "$apk" -d "$d" || true; done
+          mapfile -t KEYS < <(find /tmp/fv-apk -type f -size -8M -print0 | xargs -0 strings -a 2>/dev/null | grep -Eo 'AIza[0-9A-Za-z_-]{30,50}' | sort -u)
+          API_KEY=''; PROJECT_ID=''
+          for k in "${KEYS[@]}"; do
+            cfg=$(curl -sS --connect-timeout 10 --max-time 20 "https://www.googleapis.com/identitytoolkit/v3/relyingparty/getProjectConfig?key=${k}" || true)
+            if printf '%s' "$cfg" | grep -q 'fastvoltev'; then API_KEY="$k"; PROJECT_ID='fastvoltev'; break; fi
+          done
+          test -n "$API_KEY"
+          SIGNUP=/tmp/firebase-signup.json
+          SIGNUP_HTTP=$(curl -sS -o "$SIGNUP" -w '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{"returnSecureToken":true}' "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}")
+          python3 - <<'PY' > /tmp/signup.env
+          import json,shlex
+          d=json.load(open('/tmp/firebase-signup.json'))
+          print('SIGNUP_OK='+('1' if 'idToken' in d else '0'))
+          print('SIGNUP_ERROR='+shlex.quote((d.get('error') or {}).get('message','')))
+          print('ID_TOKEN='+shlex.quote(d.get('idToken','')))
+          PY
+          source /tmp/signup.env
+          STATION_FIREBASE_HTTP='not_attempted'; AUTHORIZE_GET_HTTP='not_attempted'; AUTHORIZE_ALLOW=''; STATION_AFTER_AUTHORIZE_HTTP='not_attempted'; STATION_SCHEMA=''
+          if [ "$SIGNUP_OK" = '1' ]; then
+            STATION_FIREBASE_HTTP=$(curl -sS -o /tmp/stations-before.json -w '%{http_code}' --connect-timeout 10 --max-time 30 -H "Authorization: Bearer ${ID_TOKEN}" -H 'Accept: application/json' 'https://mobile.ev.fastvolt.ma/app/charging_stations/' || true)
+            curl -sS -D /tmp/authorize.headers -o /tmp/authorize-get.json --connect-timeout 10 --max-time 30 -H "Authorization: Bearer ${ID_TOKEN}" -H 'Accept: application/json' 'https://mobile.ev.fastvolt.ma/auth/authorize' || true
+            AUTHORIZE_GET_HTTP=$(awk 'toupper($1) ~ /^HTTP\\// {code=$2} END{print code}' /tmp/authorize.headers)
+            AUTHORIZE_ALLOW=$(awk -F': *' 'tolower($1)=="allow" {gsub("\\r",""); print $2}' /tmp/authorize.headers | tail -1)
+            STATION_AFTER_AUTHORIZE_HTTP=$(curl -sS -o /tmp/stations-after.json -w '%{http_code}' --connect-timeout 10 --max-time 30 -H "Authorization: Bearer ${ID_TOKEN}" -H 'Accept: application/json' 'https://mobile.ev.fastvolt.ma/app/charging_stations/' || true)
+            if [ "$STATION_AFTER_AUTHORIZE_HTTP" = '200' ]; then
+              STATION_SCHEMA=$(python3 - <<'PY'
+          import json
+          try:
+              d=json.load(open('/tmp/stations-after.json'))
+              print(('list:'+str(len(d))) if isinstance(d,list) else ('object:'+','.join(sorted(d.keys())[:30])) if isinstance(d,dict) else type(d).__name__)
+          except Exception: print('non-json')
+          PY
+              )
+            fi
+            curl -sS -o /tmp/delete.json -X POST -H 'Content-Type: application/json' --data "{\"idToken\":\"${ID_TOKEN}\"}" "https://identitytoolkit.googleapis.com/v1/accounts:delete?key=${API_KEY}" >/dev/null || true
+          fi
+          export SIGNUP_HTTP SIGNUP_OK SIGNUP_ERROR PROJECT_ID STATION_FIREBASE_HTTP AUTHORIZE_GET_HTTP AUTHORIZE_ALLOW STATION_AFTER_AUTHORIZE_HTTP STATION_SCHEMA
+          python3 - <<'PY'
+          import json,os
+          from datetime import datetime,timezone
+          e=lambda k:os.environ.get(k,'')
+          report={'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),'country':'MA','network':'FastVolt','subject':'Bounded Firebase anonymous authentication probe against FastVolt public client','policy':{'public_package_only':True,'single_firebase_anonymous_account':True,'firebase_account_deleted_after_probe':True,'no_email_or_phone_identity':True,'no_fastvolt_post_requests':True,'read_only_fastvolt_gets_only':True,'no_wallet_or_charging_actions':True,'no_tokens_persisted':True,'no_raw_user_payloads_persisted':True},'firebase':{'project_id':e('PROJECT_ID') or None,'signup_http':int(e('SIGNUP_HTTP') or 0),'anonymous_signup_succeeded':e('SIGNUP_OK')=='1','safe_error':e('SIGNUP_ERROR') or None},'fastvolt':{'station_list_with_firebase_token_http':e('STATION_FIREBASE_HTTP'),'authorize_get_http':e('AUTHORIZE_GET_HTTP'),'authorize_allow_header':e('AUTHORIZE_ALLOW') or None,'station_list_after_authorize_get_http':e('STATION_AFTER_AUTHORIZE_HTTP'),'station_response_schema_if_200':e('STATION_SCHEMA') or None}}
+          report['result']='anonymous_firebase_enabled' if report['firebase']['anonymous_signup_succeeded'] else 'anonymous_firebase_not_available'
+          with open('reports/morocco/fastvolt/latest-anonymous-auth-probe.json','w') as f: json.dump(report,f,indent=2); f.write('\n')
+          PY
+          rm -rf /tmp/fastvolt.xapk /tmp/fv-xapk /tmp/fv-apk /tmp/firebase-signup.json /tmp/signup.env /tmp/stations-before.json /tmp/stations-after.json /tmp/authorize-get.json /tmp/authorize.headers /tmp/delete.json
+      - name: Publish sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/fastvolt/latest-anonymous-auth-probe.json
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "diag(morocco): probe FastVolt anonymous auth [run $GITHUB_RUN_ID]"
+          git push
