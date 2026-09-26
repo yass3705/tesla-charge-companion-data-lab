@@ -22,9 +22,21 @@ jobs:
           set -euo pipefail
           curl -fsSL --retry 2             https://github.com/ejfkdev/dae/releases/download/v0.1.3/dae-Linux-x64             -o /tmp/dae
           chmod +x /tmp/dae
-          curl -fsSL --retry 2 --connect-timeout 15 --max-time 180             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0'             'https://d.apkpure.net/b/XAPK/ma.fastgo?version=latest'             -o /tmp/fastvolt.xapk
+          curl -fsSL --retry 2 --connect-timeout 15 --max-time 180 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://download.pureapk.com/b/XAPK/bWEuZmFzdGdvXzYzX2JlZjg5YmI?as2=396c32049d304796d2893422fb0bc6a16c926938&k=08186075138529da17448b9e453991876c926938&_p=bWEuZmFzdGdv&c=1%7CAUTO_AND_VEHICLES%7Cb2lkPTkmZGV2PUFmcmklMjBNb2JpbGl0eSZ0PXhhcGsmcz0zOTQ1MTY2MCZ2bj0yLjguOSZ2Yz02Mw&_fn=RmFzdHZvbHRfMi44LjlfYXBrY29tYm8uY29tLnhhcGs%3D' \
+            -o /tmp/fastvolt.xapk
+          echo 'af476c969bf7982b1561cd0769a26f322b90257b347aa858f2c438d4e73fcf97  /tmp/fastvolt.xapk' | sha256sum -c -
           mkdir -p /tmp/fv-xapk /tmp/fv-apk
           unzip -q /tmp/fastvolt.xapk -d /tmp/fv-xapk
+          python - <<'PY'
+          import json
+          m=json.load(open('/tmp/fv-xapk/manifest.json'))
+          assert m.get('package_name')=='ma.fastgo'
+          assert m.get('version_name')=='2.8.9'
+          assert str(m.get('version_code'))=='63'
+          print('Verified FastVolt',m['version_name'],'versionCode',m['version_code'])
+          PY
           ARM_APK="$(find /tmp/fv-xapk -type f -name '*.apk' | while read -r f; do
             if unzip -l "$f" 2>/dev/null | grep -q 'lib/arm64-v8a/libapp.so'; then echo "$f"; break; fi
           done)"
@@ -132,7 +144,7 @@ jobs:
               'schema_version':3,
               'generated_at':datetime.now(timezone.utc).isoformat(),
               'country':'MA','network':'FastVolt',
-              'target':{'package':'ma.fastgo','client_version_context':'current public XAPK; expected 2.8.9'},
+              'target':{'package':'ma.fastgo','client_version_context':'2.8.9 versionCode 63; exact SHA256 match'},
               'tool':{'name':'dae','version':'v0.1.3','mode':'full-temporary-decompile'},
               'policy':{
                   'static_analysis_only':True,'raw_apk_persisted':False,'raw_libapp_persisted':False,
