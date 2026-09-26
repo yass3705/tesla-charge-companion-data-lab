@@ -1,0 +1,122 @@
+name: Morocco Total 3.00.12 station status contract
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-30012-station-status-contract.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Analyze exact public client
+        shell: bash
+        env:
+          URL: "https://download.pureapk.com/b/XAPK/Y29tLm5hbXAudG90YWxldl8xNF8zNTJhNjdlNQ?as2=db91def85bd2cc2cebea5e889e36b4866c92699d&k=6a2bd595361c47705231b076672895396c92699d&_p=Y29tLm5hbXAudG90YWxldg&c=1%7CBUSINESS%7Cb2lkPTkmZGV2PVRFTSUyME1hcm9jJnQ9eGFwayZzPTUwODMzMjYwJnZuPTMuMDAuMTImdmM9MTQ&_fn=Q2x1YitFVi1DaGFyZ2VfMy4wMC4xMl9hcGtjb21iby5jb20ueGFwaw%3D%3D"
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build pkg-config libicu-dev libcapstone-dev
+          python -m pip install --quiet pyelftools requests
+          rm -rf /tmp/total-status /tmp/blutter /tmp/blutter-out
+          mkdir -p /tmp/total-status/xapk /tmp/total-status/lib
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' "$URL"             -o /tmp/total-status/current.xapk
+          unzip -q /tmp/total-status/current.xapk -d /tmp/total-status/xapk
+          python - <<'PY'
+          import os,zipfile
+          root='/tmp/total-status/xapk'; out='/tmp/total-status/lib'; found=set()
+          for fn in os.listdir(root):
+              if not fn.endswith('.apk'): continue
+              try:
+                  with zipfile.ZipFile(os.path.join(root,fn)) as z:
+                      for t in ('libapp.so','libflutter.so'):
+                          n='lib/arm64-v8a/'+t
+                          if n in z.namelist() and t not in found:
+                              open(os.path.join(out,t),'wb').write(z.read(n)); found.add(t)
+              except Exception: pass
+          if found != {'libapp.so','libflutter.so'}:
+              raise SystemExit('ARM64 pair missing')
+          PY
+          git clone --depth=1 https://github.com/worawit/blutter.git /tmp/blutter
+          timeout 600 python3 /tmp/blutter/blutter.py /tmp/total-status/lib /tmp/blutter-out >/tmp/blutter-status.log 2>&1
+
+      - name: Extract exact station status function
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import os,re,json
+          from datetime import datetime,timezone
+
+          root='/tmp/blutter-out'
+          target='asm/kurrent_charge/controllers/backendController/stationController.dart'
+          p=os.path.join(root,target)
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'TotalEnergies / Club EV-Charge',
+            'source_client':{'package':'com.namp.totalev','version':'3.00.12'},
+            'policy':{
+              'public_package_only':True,'static_analysis_only':True,'no_backend_requests':True,
+              'no_login':True,'no_credentials':True,'no_tokens_persisted':True,
+              'raw_blutter_output_persisted':False,'network_contract_only':True
+            },
+            'function':{}
+          }
+          if not os.path.isfile(p):
+              raise SystemExit('stationController.dart absent')
+          lines=open(p,encoding='utf-8',errors='ignore').read().splitlines()
+          centers=[i for i,l in enumerate(lines) if re.search(r'\bfetchStatus\b',l)]
+          report['function']['declaration_lines']=[i+1 for i in centers[:10]]
+          safe=re.compile(r'(fetchStatus|statusListAg|statusList|get-status-info|stationLevel|ChargeStation|AvailableConnectorsCount|TotalConnectorCount|queryParameters|DioMixin::get|DioMixin::post|::get|::post|Map<String|IsRoaming|CpoName|stationID|stationId|cpid|connectorId)',re.I)
+          opaque=re.compile(r'(?i)(eyJ[A-Za-z0-9_.-]{20,}|AIza[A-Za-z0-9_-]{20,}|Bearer\s+[A-Za-z0-9._~+/-]{12,})')
+          slices=[]
+          for c in centers[:4]:
+              block=[]
+              for idx in range(max(0,c-12),min(len(lines),c+500)):
+                  line=opaque.sub('<redacted-secret-like>',lines[idx])
+                  if safe.search(line):
+                      # Redact unrelated quoted literals while retaining contract keys/routes.
+                      for m in list(re.finditer(r'"([^"]{1,300})"',line)):
+                          v=m.group(1)
+                          if not safe.search(v):
+                              line=line.replace('"'+v+'"','"<redacted>"')
+                      block.append({'line':idx+1,'text':line[:900]})
+              if block:slices.append(block[:320])
+          report['function']['safe_blocks']=slices
+
+          # Resolve relevant pp string constants near the status route.
+          pp=os.path.join(root,'pp.txt')
+          pp_hits=[]
+          if os.path.isfile(pp):
+              pl=open(pp,encoding='utf-8',errors='ignore').read().splitlines()
+              centers=[i for i,l in enumerate(pl) if 'status/api/get-status-info' in l]
+              for c in centers[:4]:
+                  for idx in range(max(0,c-80),min(len(pl),c+100)):
+                      line=pl[idx]
+                      if safe.search(line):
+                          pp_hits.append({'line':idx+1,'text':line[:700]})
+          report['pp_contract_context']=pp_hits[:220]
+          with open('reports/morocco/totalenergies/club-ev-charge-30012-station-status-contract-2026-09-26.json','w') as f:
+              json.dump(report,f,ensure_ascii=False,indent=2);f.write('\n')
+          PY
+          rm -rf /tmp/total-status /tmp/blutter /tmp/blutter-out /tmp/blutter-status.log
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-30012-station-status-contract-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): resolve Total station-level status contract [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
