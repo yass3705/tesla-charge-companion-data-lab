@@ -14,12 +14,15 @@
     "cityOnlyPaidRuleRejected": true,
     "cpoOperator": "Kilowatt",
     "tariffChannel": "Kilowatt direct/public access",
-    "currency": "MAD"
+    "currency": "MAD",
+    "stationSpecificTariffsOnly": true,
+    "publicAnonSupabaseReadOnly": true
   },
   "summary": {
     "productionStations": 43,
-    "free": 36,
-    "unresolved": 7
+    "free": 39,
+    "paid": 4,
+    "unresolved": 0
   },
   "freeStationIds": [
     "62e456306acf64278b07b497",
@@ -57,17 +60,12 @@
     "63334b59bdd2360294073910",
     "5ffbb0365e2197470cbb7f9f",
     "5f6d1cab31a6770a131db1bc",
-    "63db9bc90b98e91d06545ac3"
-  ],
-  "unresolvedStationIds": [
+    "63db9bc90b98e91d06545ac3",
     "62e6a87e8f557229001a3bf4",
     "664d1ea908e8c109a38ec3f7",
-    "663ac49676c6f9099786bc77",
-    "645677788932331fb0eb148c",
-    "64317d874a3f1b0be3af541e",
-    "6375dd857113430ece69225a",
-    "6314c2bea12c710f5ccbd47f"
+    "663ac49676c6f9099786bc77"
   ],
+  "unresolvedStationIds": [],
   "evidenceUpdate": {
     "observedOn": "2026-09-26",
     "publicFreeDirectory": "https://atlasrecharge.com/bornes/gratuites",
@@ -91,6 +89,72 @@
     ],
     "sources": [
       "https://www.lesinfos.ma/article/1485973-Berkane-Mise-en-service-dune-station-gratuite-de-recharge-des-vhicules-lectriques.html"
+    ]
+  },
+  "stationTariffs": {
+    "645677788932331fb0eb148c": {
+      "stationName": "Jnane Bouskoura",
+      "kind": "kwh",
+      "currency": "MAD",
+      "pricePerKwh": 2,
+      "postChargePerMinute": 3,
+      "rateDescription": "Promo: 2DH/kWh au lieu de 3DH. Inactivité après fin de session 3DH/min",
+      "evidence": "Kilowatt app 1.0.1 public anon Supabase connectors.rate_description"
+    },
+    "64317d874a3f1b0be3af541e": {
+      "stationName": "Carrefour Market Label' Gallery Meknes",
+      "kind": "session",
+      "currency": "MAD",
+      "sessionFee": 30,
+      "postChargePerMinute": 3,
+      "rateDescription": "30 DH/Session. Inactivité après recharge: 3 DH/min",
+      "evidence": "Kilowatt app 1.0.1 public anon Supabase connectors.rate_description"
+    },
+    "6375dd857113430ece69225a": {
+      "stationName": "Borj Fes",
+      "kind": "session",
+      "currency": "MAD",
+      "sessionFee": 30,
+      "postChargePerMinute": 3,
+      "rateDescription": "30 DH/Session. Inactivité après recharge: 3 DH/min",
+      "evidence": "Kilowatt app 1.0.1 public anon Supabase connectors.rate_description"
+    },
+    "6314c2bea12c710f5ccbd47f": {
+      "stationName": "Hotel SENATOR",
+      "kind": "session",
+      "currency": "MAD",
+      "sessionFee": 30,
+      "postChargePerMinute": 3,
+      "rateDescription": "30 DH/Session. Inactivité après recharge: 3 DH/min",
+      "evidence": "Kilowatt app 1.0.1 public anon Supabase connectors.rate_description"
+    }
+  },
+  "apkSupabaseEvidence": {
+    "observedOn": "2026-09-27",
+    "package": "ma.kilowatt.app",
+    "version": "1.0.1",
+    "supabaseProjectRef": "jmrgknphxsviooizyilj",
+    "access": "public anon role; read-only network tables",
+    "tables": [
+      "chargestations",
+      "connectors"
+    ],
+    "tariffField": "connectors.rate_description",
+    "resolvedFreeStationIds": [
+      "62e6a87e8f557229001a3bf4",
+      "664d1ea908e8c109a38ec3f7",
+      "663ac49676c6f9099786bc77"
+    ],
+    "resolvedPaidStationIds": [
+      "645677788932331fb0eb148c",
+      "64317d874a3f1b0be3af541e",
+      "6375dd857113430ece69225a",
+      "6314c2bea12c710f5ccbd47f"
+    ],
+    "notes": [
+      "The public anon key is embedded in the production APK and was not persisted in this manifest.",
+      "IKEA Cabo Negro has mixed connector tariffs, including a free CCS2 40 kW connector; TCC uses the least-cost available direct option for station ranking.",
+      "No user/account/payment tables were queried."
     ]
   }
 }
