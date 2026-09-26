@@ -1,0 +1,118 @@
+name: Morocco Total web runtime station context one-shot
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-web-runtime-station-context-oneshot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inspect public TotalEnergies web runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/total-web reports/morocco/totalenergies
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 120             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0'             'https://csmstotalenergiesma.numocity.com/main.dart.js'             -o /tmp/total-web/main.dart.js
+          test "$(stat -c%s /tmp/total-web/main.dart.js)" -lt 30000000
+
+          python - <<'PY'
+          import json,re,hashlib
+          from datetime import datetime,timezone
+
+          p='/tmp/total-web/main.dart.js'
+          raw=open(p,'rb').read()
+          text=raw.decode('utf-8','ignore')
+          markers=[
+            'getstationbyfilter','getstationstate','getbyid2',
+            'get-connector-status','ChargePointConnectorNumber',
+            'ChargePointId','chargePointId','connectorId','cpid','cpId',
+            'chargestation','charge-location','connector/status',
+            'x-appid-token','x-app-access-token'
+          ]
+          route_re=re.compile(r'["\']([^"\']{1,220}(?:api|asset|status|chargestation|charge-location|connector)[^"\']{0,220})["\']',re.I)
+          routes=set()
+          for m in route_re.finditer(text):
+              s=m.group(1)
+              if '/' in s and len(s)<=220 and not any(x in s.lower() for x in ('http://','https://','javascript:')):
+                  routes.add(s)
+
+          marker_counts={m:text.count(m) for m in markers}
+          relations=[]
+          relation_allow=['/api/','/asset/','/status/','chargestation','charge-location','connector','cpid','cpId','ChargePointId','connectorId','getstation','getbyid','filter','status']
+          for marker in markers:
+              start=0
+              seen=0
+              while seen<12:
+                  i=text.find(marker,start)
+                  if i<0: break
+                  lo=max(0,i-1200); hi=min(len(text),i+1200)
+                  win=text[lo:hi]
+                  quoted=[]
+                  for q in re.findall(r'["\']([^"\']{2,220})["\']',win):
+                      if any(a.lower() in q.lower() for a in relation_allow):
+                          # Keep only path/key-shaped evidence, no arbitrary values.
+                          if re.fullmatch(r'[A-Za-z0-9_./:{}?=&-]{2,220}',q):
+                              quoted.append(q)
+                  relations.append({
+                    'marker':marker,
+                    'offset':i,
+                    'nearby_allowlisted_literals':sorted(set(quoted))[:80]
+                  })
+                  seen+=1; start=i+len(marker)
+
+          # Candidate public endpoint paths only, strictly route-shaped.
+          safe_routes=sorted({
+              r for r in routes
+              if re.fullmatch(r'[A-Za-z0-9_./:{}?=&-]{2,220}',r)
+              and any(k in r.lower() for k in ('charge','station','connector','location','status','tariff'))
+          })
+
+          out={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA',
+            'network':'TotalEnergies / Club EV-Charge',
+            'subject':'Public main.dart.js station/status route context',
+            'policy':{
+              'public_runtime_only':True,
+              'static_analysis_only':True,
+              'no_api_requests_from_discovered_routes':True,
+              'no_login':True,
+              'no_credentials':True,
+              'no_tokens':True,
+              'arbitrary_runtime_strings_not_persisted':True,
+              'allowlisted_route_and_key_shapes_only':True
+            },
+            'runtime':{
+              'url':'https://csmstotalenergiesma.numocity.com/main.dart.js',
+              'bytes':len(raw),
+              'sha256':hashlib.sha256(raw).hexdigest()
+            },
+            'marker_counts':marker_counts,
+            'safe_route_candidates':safe_routes[:250],
+            'marker_relations':relations[:120]
+          }
+          with open('reports/morocco/totalenergies/club-ev-charge-web-runtime-station-context-2026-09-26.json','w',encoding='utf-8') as f:
+              json.dump(out,f,ensure_ascii=False,indent=2); f.write('\n')
+          PY
+          rm -rf /tmp/total-web
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-web-runtime-station-context-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): inspect Total public web station runtime [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push
