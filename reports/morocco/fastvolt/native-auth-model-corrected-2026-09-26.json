@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-26",
+  "country": "MA",
+  "network": "FastVolt",
+  "subject": "Corrected FastVolt 2.8.9 native authentication model",
+  "findings": {
+    "backend": "https://mobile.ev.fastvolt.ma/",
+    "fastvolt_authorization_header": "Authorization: token <FFAppState.userid>",
+    "persisted_state_key": "ff_userid",
+    "userid_source": {
+      "provider": "getUserDetailsWithFirebaseUserIdCall",
+      "route": "auth/get_details_with_userid/",
+      "response_json_path": "$.user_id",
+      "persistence": "FFAppState.userid -> FlutterSecureStorage ff_userid"
+    },
+    "startup_check": {
+      "route": "app/header_signin/",
+      "uses_persisted_ff_userid": true
+    },
+    "apple_oauth_correction": {
+      "path": "/auth/authorize",
+      "belongs_to": "appleid.apple.com / sign_in_with_apple package",
+      "is_fastvolt_backend_route": false
+    },
+    "firebase_anonymous_auth": {
+      "enabled": false,
+      "observed_error": "ADMIN_ONLY_OPERATION"
+    }
+  },
+  "interpretation": {
+    "current_blocker": "determine the exact credential/input supplied to auth/get_details_with_userid/ (Firebase UID vs authenticated Firebase token/other context)",
+    "play_integrity_not_yet_proven_required_for_fastvolt_native_api": true,
+    "production_change": false
+  },
+  "policy": {
+    "no_tokens_persisted": true,
+    "no_credentials": true,
+    "no_real_user_identifiers": true,
+    "read_only_analysis": true
+  }
+}
