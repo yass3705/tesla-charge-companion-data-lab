@@ -1,0 +1,73 @@
+name: Morocco Total public runtime exact read context
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-public-runtime-read-context.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect public runtime around exact read routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies /tmp/total-web-read
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 120             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0'             'https://csmstotalenergiesma.numocity.com/main.dart.js'             -o /tmp/total-web-read/main.dart.js
+          python - <<'PY'
+          import json,re
+          from pathlib import Path
+          from datetime import datetime,timezone
+          text=Path('/tmp/total-web-read/main.dart.js').read_text(errors='ignore')
+          markers=[
+            'mobileTariffTax/mobile/get-connector-info',
+            'status/api/get-status-info',
+            'asset/mobile/get-gun-count',
+            'asset/chargestation/getbyid',
+            'asset/mobile/get-map-info'
+          ]
+          ident=re.compile(r'[A-Za-z_$][A-Za-z0-9_$]{2,80}')
+          quoted=re.compile(r'["\']([^"\']{1,120})["\']')
+          allow=('station','charge','connector','cpid','cpId','status','level','cpo','roam','power','tariff','rate','currency','soc','query','api','mobile','id')
+          block=('token','auth','password','secret','email','phone','user','account','payment','wallet','card')
+          out=[]
+          for marker in markers:
+              start=0;seen=0
+              while seen<8:
+                  i=text.find(marker,start)
+                  if i<0:break
+                  win=text[max(0,i-3500):min(len(text),i+3500)]
+                  ids=sorted({x for x in ident.findall(win) if any(a.lower() in x.lower() for a in allow) and not any(b in x.lower() for b in block)})
+                  qs=[]
+                  for x in quoted.findall(win):
+                      if any(a.lower() in x.lower() for a in allow) and not any(b in x.lower() for b in block):
+                          if len(x)<=120:qs.append(x)
+                  out.append({'marker':marker,'offset':i,'identifier_candidates':ids[:160],'safe_quoted_literals':sorted(set(qs))[:160]})
+                  seen+=1;start=i+len(marker)
+          report={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'TotalEnergies / Club EV-Charge',
+            'policy':{'public_runtime_only':True,'static_analysis_only':True,'no_api_calls_from_discovered_routes':True,
+                      'no_login':True,'no_credentials':True,'no_tokens_persisted':True,'raw_runtime_not_persisted':True},
+            'matches':out
+          }
+          Path('reports/morocco/totalenergies/club-ev-charge-public-runtime-read-context-2026-09-26.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/total-web-read
+      - name: Commit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-public-runtime-read-context-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): inspect Total public runtime read context [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
