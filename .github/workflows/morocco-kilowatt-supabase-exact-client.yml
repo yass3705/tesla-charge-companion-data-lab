@@ -24,8 +24,7 @@ jobs:
           curl --fail --location --retry 3 --connect-timeout 20 --max-time 240             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0'             'https://d.apkpure.net/b/XAPK/ma.kilowatt.app?version=latest'             -o /tmp/kwh-exact/app.xapk
           unzip -q /tmp/kwh-exact/app.xapk -d /tmp/kwh-exact/xapk
           unzip -q /tmp/kwh-exact/xapk/ma.kilowatt.app.apk 'assets/index.android.bundle' -d /tmp/kwh-exact/apk
-          printf '%s  %s
-' 'e177f327dfa4a581e2b2257ac741fef0af639b4a0f8ec75f4b826944bced22a9' /tmp/kwh-exact/apk/assets/index.android.bundle | sha256sum -c -
+          echo 'e177f327dfa4a581e2b2257ac741fef0af639b4a0f8ec75f4b826944bced22a9  /tmp/kwh-exact/apk/assets/index.android.bundle' | sha256sum -c -
 
           git clone --depth=1 https://github.com/P1sec/hermes-dec.git /tmp/hermes-dec >/dev/null 2>&1
           python3 /tmp/hermes-dec/hbc-decompiler /tmp/kwh-exact/apk/assets/index.android.bundle /tmp/kwh-exact/decompiled.js >/dev/null
