@@ -1,5 +1,5 @@
 name: Morocco Total station-level fallbacks
-# chargepoint-qr-fallbacks-2026-09-26
+# exact-connector-info-tariff-2026-09-26
 
 on:
   push:
@@ -64,6 +64,20 @@ jobs:
                       if k in o and isinstance(o[k],(str,int,float,bool)):rec[k]=o[k]
               elif isinstance(o,list):
                   rec['item_count']=len(o)
+                  allow=('station','charge','connector','status','available','total','count','cpid','cp','power','type','cpo','roam','rate','tariff','currency','name','id','price','fee','tax','discount')
+                  block=('user','email','phone','account','wallet','payment','card','token','jwt','auth')
+                  vals=[]
+                  def walklist(v,p='',d=0):
+                      if d>6:return
+                      if isinstance(v,dict):
+                          for k,vv in v.items():
+                              pp=f'{p}.{k}' if p else str(k);lk=str(k).lower()
+                              if any(a in lk for a in allow) and not any(b in lk for b in block) and isinstance(vv,(str,int,float,bool,type(None))):
+                                  if not isinstance(vv,str) or len(vv)<200: vals.append({'path':pp,'value':vv})
+                              walklist(vv,pp,d+1)
+                      elif isinstance(v,list):
+                          for vv in v[:20]:walklist(vv,p+'[]',d+1)
+                  walklist(o);rec['safe_values']=vals[:300]
               return rec
 
           boot=rq('/token/admin/v1/requesttoken','POST',
@@ -93,7 +107,8 @@ jobs:
             ('chargestation_connectors_v1_ChargeStationID','/asset/chargestation/connectors/get/v1',{'ChargeStationID':8},H),
             ('chargestation_connectors_v1_stationID','/asset/chargestation/connectors/get/v1',{'stationID':8},H),
             ('mobile_gun_count_ChargeStationID','/asset/mobile/get-gun-count',{'ChargeStationID':8},H),
-            ('qr_connector_list_known_cpid','/mobileTariffTax/api/qr-connector-list',{'qrData':'T54-9'},H)
+            ('qr_connector_list_known_cpid','/mobileTariffTax/api/qr-connector-list',{'qrData':'T54-9'},H),
+            ('connector_info_exact_guest','/mobileTariffTax/mobile/get-connector-info',{'ChargeStationID':8,'IsRoaming':'false','idTag':'','numotype':'ocpp','isSocRequired':'false'},H)
           ]
           out={'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
                'country':'MA','network':'TotalEnergies / Club EV-Charge',
