@@ -1,0 +1,126 @@
+name: Morocco Club EV Charge app-token bootstrap
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-club-evcharge-app-token-bootstrap.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate evidence-derived app token bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import json, urllib.request, urllib.error
+          from datetime import datetime, timezone
+
+          BASE='https://csmstotalenergiesma.numocity.com'
+          APP_ID_TOKEN='2'  # exact literal "&appidtoken=2" recovered from Club EV-Charge 3.00.12
+          OUT='reports/morocco/totalenergies/club-ev-charge-app-token-bootstrap-2026-09-26.json'
+
+          def call(path,method='GET',headers=None,payload=None):
+              h={'Accept':'application/json','User-Agent':'TCC-ClubEVCharge-ReadOnly/1.0'}
+              if headers: h.update(headers)
+              data=None
+              if payload is not None:
+                  data=json.dumps(payload).encode()
+                  h['Content-Type']='application/json'
+              req=urllib.request.Request(BASE+path,data=data,headers=h,method=method)
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      raw=r.read(1_000_000); status=r.status; rh=dict(r.headers)
+              except urllib.error.HTTPError as e:
+                  raw=e.read(200_000); status=e.code; rh=dict(e.headers or {})
+              except Exception as e:
+                  return None,'',None,0,{}
+              obj=None
+              try: obj=json.loads(raw.decode('utf-8','replace'))
+              except Exception: pass
+              return status,rh.get('Content-Type',''),obj,len(raw),rh
+
+          def find_token(v):
+              if isinstance(v,dict):
+                  # Prefer explicitly token-shaped keys, recursively.
+                  for k,x in v.items():
+                      lk=str(k).lower()
+                      if isinstance(x,str) and len(x)>=20 and ('token' in lk or 'jwt' in lk or 'access' in lk):
+                          return x
+                  for x in v.values():
+                      t=find_token(x)
+                      if t: return t
+              elif isinstance(v,list):
+                  for x in v:
+                      t=find_token(x)
+                      if t: return t
+              return None
+
+          def shape(status,ct,obj,n):
+              keys=sorted(str(k) for k in obj.keys())[:50] if isinstance(obj,dict) else []
+              return {'status':status,'content_type':ct,'bytes':n,'json':isinstance(obj,(dict,list)),'top_level_keys':keys}
+
+          result={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Club EV-Charge / TotalEnergies',
+            'policy':{
+              'exact_static_evidence_only':True,'app_id_token_source_literal':'&appidtoken=2',
+              'no_user_account':True,'no_user_credentials':True,'no_station_or_connector_ids':True,
+              'read_only_business_requests_only':True,'raw_tokens_persisted':False,
+              'raw_response_bodies_persisted':False
+            },
+            'bootstrap':{},'business_reads':[]
+          }
+
+          st,ct,obj,n,rh=call('/admin/v1/requesttoken','POST',{'x-appid-token':APP_ID_TOKEN},{})
+          token=find_token(obj)
+          result['bootstrap']=shape(st,ct,obj,n)
+          result['bootstrap']['x_appid_token_used']=True
+          result['bootstrap']['access_token_recovered_in_memory']=bool(token)
+
+          if token:
+              hdr={'x-appid-token':APP_ID_TOKEN,'x-app-access-token':token}
+              for path in (
+                '/api/aggregator/mobile/location/markers',
+                '/api/aggregator/mobile/location/status',
+                '/api/aggregator/mobile/location/connector/count_by_status',
+              ):
+                  s,c,o,b,_=call(path,'GET',hdr)
+                  item={'path':path,**shape(s,c,o,b)}
+                  count=None
+                  if isinstance(o,list): count=len(o)
+                  elif isinstance(o,dict):
+                      for k in ('data','results','locations','markers','stations'):
+                          if isinstance(o.get(k),list): count=len(o[k]); break
+                  item['record_count']=count
+                  result['business_reads'].append(item)
+
+          result['conclusion']=(
+            'app_bootstrap_and_native_read_succeeded'
+            if any(x.get('status')==200 for x in result['business_reads'])
+            else 'app_bootstrap_succeeded_business_route_unresolved'
+            if token
+            else 'x_appid_token_2_not_sufficient_for_bootstrap'
+          )
+          with open(OUT,'w',encoding='utf-8') as f:
+              json.dump(result,f,ensure_ascii=False,indent=2); f.write('\n')
+          PY
+
+      - name: Commit sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-app-token-bootstrap-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): validate Club EV-Charge app token bootstrap [run $GITHUB_RUN_ID]"
+          git push
