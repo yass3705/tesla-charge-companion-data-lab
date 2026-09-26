@@ -1,0 +1,99 @@
+name: Morocco Total app-id header one-shot
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-appid-header-oneshot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe static app-id request variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import json, urllib.request, urllib.error
+          from datetime import datetime, timezone
+
+          BASE='https://csmstotalenergiesma.numocity.com'
+          PATH='/status/api/get-connector-status'
+          OUT='reports/morocco/totalenergies/club-ev-charge-appid-header-shape-2026-09-26.json'
+
+          cases=[
+            ('baseline',PATH,{}),
+            ('query_appidtoken_2',PATH+'?appidtoken=2',{}),
+            ('header_x_appid_token_2',PATH,{'x-appid-token':'2'}),
+            ('query_and_header',PATH+'?appidtoken=2',{'x-appid-token':'2'}),
+          ]
+          allow=('chargepoint','charge point','connector','appid','app id','token','required','missing','invalid','parameter','unauthorized','forbidden')
+
+          def run(path,extra):
+              headers={'User-Agent':'TCC-Total-ReadOnly-Probe/1.0','Accept':'application/json'}
+              headers.update(extra)
+              req=urllib.request.Request(BASE+path,headers=headers,method='GET')
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      raw=r.read(200000); st=r.status; ct=r.headers.get('content-type','')
+              except urllib.error.HTTPError as e:
+                  raw=e.read(200000); st=e.code; ct=e.headers.get('content-type','') if e.headers else ''
+              except Exception as e:
+                  return {'status':None,'error_type':type(e).__name__}
+              txt=raw.decode('utf-8','replace').lower()
+              obj=None
+              try: obj=json.loads(raw.decode('utf-8','replace'))
+              except Exception: pass
+              return {
+                  'status':st,
+                  'content_type':ct,
+                  'bytes':len(raw),
+                  'json':isinstance(obj,(dict,list)),
+                  'safe_markers':[x for x in allow if x in txt],
+                  'top_level_keys':sorted(obj.keys())[:30] if isinstance(obj,dict) else []
+              }
+
+          out={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA',
+            'network':'TotalEnergies / Club EV-Charge',
+            'policy':{
+              'anonymous_get_only':True,
+              'static_app_identifier_only':True,
+              'no_user_access_token':True,
+              'no_station_or_connector_ids':True,
+              'no_query_values_except_client_literal_appidtoken_2':True,
+              'no_request_body':True,
+              'raw_response_body_persisted':False
+            },
+            'source_evidence':{
+              'client_version':'3.00.12',
+              'client_literals':['x-appid-token','&appidtoken=2','x-app-access-token']
+            },
+            'results':{}
+          }
+          for name,path,h in cases:
+              out['results'][name]=run(path,h)
+
+          with open(OUT,'w',encoding='utf-8') as f:
+              json.dump(out,f,ensure_ascii=False,indent=2); f.write('\n')
+          PY
+
+      - name: Commit sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-appid-header-shape-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): probe Total app-id header shape [run $GITHUB_RUN_ID]"
+          git push
