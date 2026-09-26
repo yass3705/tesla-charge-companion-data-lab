@@ -1,0 +1,199 @@
+name: Morocco FastVolt anonymous auth one-shot
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-anon-auth-oneshot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stop if already executed
+        id: gate
+        shell: bash
+        run: |
+          if [ -f reports/morocco/fastvolt/anonymous-auth-runtime-2026-09-26.json ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download current public FastVolt package and run sanitized auth probe
+        if: steps.gate.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/fv/xapk /tmp/fv/apk reports/morocco/fastvolt
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/ma.fastgo?version=latest' \
+            -o /tmp/fv/current.xapk
+          unzip -q /tmp/fv/current.xapk -d /tmp/fv/xapk
+          for a in /tmp/fv/xapk/*.apk; do unzip -q -o "$a" -d /tmp/fv/apk || true; done
+
+          python - <<'PY'
+          import json, os, re, hashlib, urllib.request, urllib.error, http.cookiejar
+          from datetime import datetime, timezone
+
+          ROOT='/tmp/fv'
+          OUT='reports/morocco/fastvolt/anonymous-auth-runtime-2026-09-26.json'
+          BASE='https://mobile.ev.fastvolt.ma'
+
+          def http_json(url, method='GET', payload=None, headers=None, opener=None, timeout=25):
+              data=None if payload is None else json.dumps(payload).encode()
+              h={'User-Agent':'TCC-FastVolt-ReadOnly-Probe/1.0','Accept':'application/json'}
+              if payload is not None: h['Content-Type']='application/json'
+              if headers: h.update(headers)
+              req=urllib.request.Request(url,data=data,headers=h,method=method)
+              op=opener or urllib.request.build_opener()
+              try:
+                  with op.open(req,timeout=timeout) as r:
+                      raw=r.read(2_000_000)
+                      ct=r.headers.get('content-type','')
+                      obj=None
+                      if 'json' in ct.lower() or raw[:1] in (b'{',b'['):
+                          try: obj=json.loads(raw.decode('utf-8','replace'))
+                          except Exception: obj=None
+                      return r.status,ct,obj,len(raw)
+              except urllib.error.HTTPError as e:
+                  raw=e.read(200_000)
+                  ct=e.headers.get('content-type','') if e.headers else ''
+                  obj=None
+                  try: obj=json.loads(raw.decode('utf-8','replace'))
+                  except Exception: pass
+                  return e.code,ct,obj,len(raw)
+
+          # Recover public Firebase client key from the current public package only.
+          keys=set()
+          pat=re.compile(rb'AIza[0-9A-Za-z_-]{35}')
+          for dp,_,fs in os.walk('/tmp/fv/apk'):
+              for f in fs:
+                  p=os.path.join(dp,f)
+                  try:
+                      if os.path.getsize(p)>100_000_000: continue
+                      b=open(p,'rb').read()
+                      for m in pat.findall(b):
+                          keys.add(m.decode())
+                  except Exception:
+                      pass
+
+          selected=None
+          config_statuses=[]
+          for k in sorted(keys):
+              url='https://www.googleapis.com/identitytoolkit/v3/relyingparty/getProjectConfig?key='+k
+              st,ct,obj,n=http_json(url)
+              domains=(obj or {}).get('authorizedDomains') if isinstance(obj,dict) else None
+              hit=bool(domains and any('fastvoltev' in str(x) for x in domains))
+              config_statuses.append({'status':st,'fastvoltev_match':hit})
+              if hit and selected is None: selected=k
+
+          result={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'FastVolt',
+            'policy':{
+              'user_authorized_single_anonymous_account_creation':True,
+              'public_package_only':True,'read_only_after_auth':True,
+              'no_personal_credentials':True,'no_tokens_persisted':True,
+              'no_account_identifiers_persisted':True,'no_response_bodies_persisted':True
+            },
+            'package':{
+              'download_bytes':os.path.getsize('/tmp/fv/current.xapk'),
+              'sha256':hashlib.sha256(open('/tmp/fv/current.xapk','rb').read()).hexdigest(),
+              'firebase_key_candidates':len(keys),
+              'fastvoltev_public_key_selected':selected is not None,
+              'firebase_config_checks':config_statuses
+            },
+            'firebase_anonymous':{'attempted':False,'status':None,'enabled':False},
+            'fastvolt_authorize':{'attempted':False,'attempts':[],'success':False},
+            'station_read':{'attempted':False,'status':None,'json':False,'record_count':None},
+            'conclusion':None
+          }
+
+          if not selected:
+              result['conclusion']='no_fastvoltev_client_key_recovered_from_public_package'
+          else:
+              signup='https://identitytoolkit.googleapis.com/v1/accounts:signUp?key='+selected
+              st,ct,obj,n=http_json(signup,'POST',{'returnSecureToken':True})
+              result['firebase_anonymous']['attempted']=True
+              result['firebase_anonymous']['status']=st
+              token=(obj or {}).get('idToken') if isinstance(obj,dict) else None
+              result['firebase_anonymous']['enabled']=bool(st==200 and token)
+              if not token:
+                  code=None
+                  if isinstance(obj,dict):
+                      code=((obj.get('error') or {}).get('message') if isinstance(obj.get('error'),dict) else None)
+                  result['firebase_anonymous']['safe_error_code']=code
+                  result['conclusion']='firebase_anonymous_unavailable_or_failed'
+              else:
+                  jar=http.cookiejar.CookieJar()
+                  opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+                  attempts=[
+                    ('GET_BEARER','GET',None,{'Authorization':'Bearer '+token}),
+                    ('POST_ID_TOKEN','POST',{'id_token':token},None)
+                  ]
+                  backend_token=None
+                  for label,method,payload,headers in attempts:
+                      st2,ct2,obj2,n2=http_json(BASE+'/auth/authorize',method,payload,headers,opener)
+                      entry={'mode':label,'status':st2,'json':isinstance(obj2,(dict,list)),'bytes':n2}
+                      result['fastvolt_authorize']['attempted']=True
+                      result['fastvolt_authorize']['attempts'].append(entry)
+                      if st2 in (200,201,204):
+                          result['fastvolt_authorize']['success']=True
+                          # Find a token-like value without persisting it.
+                          def walk(x):
+                              vals=[]
+                              if isinstance(x,dict):
+                                  for k,v in x.items():
+                                      if isinstance(v,str) and ('token' in k.lower() or v.count('.')==2):
+                                          vals.append(v)
+                                      else: vals.extend(walk(v))
+                              elif isinstance(x,list):
+                                  for v in x: vals.extend(walk(v))
+                              return vals
+                          vals=walk(obj2)
+                          backend_token=next((v for v in vals if isinstance(v,str) and len(v)>30),None)
+                          break
+
+                  # Read-only station list only after successful authorize.
+                  if result['fastvolt_authorize']['success']:
+                      hdr={}
+                      if backend_token: hdr['Authorization']='Bearer '+backend_token
+                      elif token: hdr['Authorization']='Bearer '+token
+                      st3,ct3,obj3,n3=http_json(BASE+'/app/charging_stations/','GET',None,hdr,opener)
+                      result['station_read']['attempted']=True
+                      result['station_read']['status']=st3
+                      result['station_read']['json']=isinstance(obj3,(dict,list))
+                      count=None
+                      if isinstance(obj3,list): count=len(obj3)
+                      elif isinstance(obj3,dict):
+                          for k in ('results','data','stations','chargers'):
+                              if isinstance(obj3.get(k),list): count=len(obj3[k]); break
+                      result['station_read']['record_count']=count
+                      result['conclusion']='native_station_read_succeeded' if st3==200 else 'authorize_succeeded_station_read_failed'
+                  else:
+                      result['conclusion']='firebase_anonymous_succeeded_fastvolt_authorize_failed'
+
+          with open(OUT,'w') as f:
+              json.dump(result,f,indent=2,ensure_ascii=False); f.write('\n')
+          PY
+
+          rm -rf /tmp/fv
+
+      - name: Commit sanitized result
+        if: steps.gate.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/fastvolt/anonymous-auth-runtime-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "diag(morocco): FastVolt anonymous auth runtime result [run $GITHUB_RUN_ID]"
+          git push
