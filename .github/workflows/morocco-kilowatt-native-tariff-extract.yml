@@ -60,38 +60,48 @@ jobs:
             'x-application-name':'kilowatt-go',
             'Accept':'application/json'
           })
-          endpoint='https://jmrgknphxsviooizyilj.supabase.co/rest/v1/connectors'
-          select='id,chargestation_id,connector_id,type,format,power_type,power,status,active,rate_id,rate_price,rate_currency,rate_description'
+          base='https://jmrgknphxsviooizyilj.supabase.co/rest/v1'
+          connector_select='id,chargestation_id,connector_id,type,format,power_type,power,status,active,rate_id,rate_price,rate_currency,rate_description'
           station_rows=[]
           connector_count=0
-          for sid in station_ids:
-              r=S.get(endpoint,params={'select':select,'chargestation_id':'eq.'+sid},timeout=30)
-              rec={'station_id':sid,'http_status':r.status_code,'connectors':[]}
-              if r.status_code==200:
-                  rows=r.json()
-                  clean=[]
-                  for x in rows if isinstance(rows,list) else []:
-                      clean.append({
-                        'id':x.get('id'),
-                        'connector_id':x.get('connector_id'),
-                        'type':x.get('type'),
-                        'format':x.get('format'),
-                        'power_type':x.get('power_type'),
-                        'power':x.get('power'),
-                        'status':x.get('status'),
-                        'active':x.get('active'),
-                        'rate_id':x.get('rate_id'),
-                        'rate_price':x.get('rate_price'),
-                        'rate_currency':x.get('rate_currency'),
-                        'rate_description':x.get('rate_description')
-                      })
-                  rec['connectors']=clean
-                  connector_count+=len(clean)
-              else:
+          for location_id in station_ids:
+              sr=S.get(base+'/chargestations',params={'select':'id,location_id,online,active','location_id':'eq.'+location_id},timeout=30)
+              rec={'station_id':location_id,'chargestations_http_status':sr.status_code,'chargestation_ids':[],'connectors':[]}
+              if sr.status_code!=200:
                   try:
-                      err=r.json()
+                      err=sr.json()
                       rec['safe_error']={k:err.get(k) for k in ('code','message','hint') if isinstance(err,dict) and err.get(k)}
                   except Exception:pass
+                  station_rows.append(rec)
+                  continue
+              charge_rows=sr.json() if isinstance(sr.json(),list) else []
+              charge_ids=[str(x.get('id')) for x in charge_rows if x.get('id')]
+              rec['chargestation_ids']=charge_ids
+              rec['chargestations']=[{'id':x.get('id'),'online':x.get('online'),'active':x.get('active')} for x in charge_rows]
+              if charge_ids:
+                  cr=S.get(base+'/connectors',params={'select':connector_select,'chargestation_id':'in.('+','.join(charge_ids)+')'},timeout=30)
+                  rec['connectors_http_status']=cr.status_code
+                  if cr.status_code==200:
+                      rows=cr.json()
+                      clean=[]
+                      for x in rows if isinstance(rows,list) else []:
+                          clean.append({
+                            'id':x.get('id'),
+                            'chargestation_id':x.get('chargestation_id'),
+                            'connector_id':x.get('connector_id'),
+                            'type':x.get('type'),
+                            'format':x.get('format'),
+                            'power_type':x.get('power_type'),
+                            'power':x.get('power'),
+                            'status':x.get('status'),
+                            'active':x.get('active'),
+                            'rate_id':x.get('rate_id'),
+                            'rate_price':x.get('rate_price'),
+                            'rate_currency':x.get('rate_currency'),
+                            'rate_description':x.get('rate_description')
+                          })
+                      rec['connectors']=clean
+                      connector_count+=len(clean)
               station_rows.append(rec)
               time.sleep(0.08)
 
@@ -116,7 +126,7 @@ jobs:
             'country':'MA','network':'Kilowatt',
             'source':{
               'client_package':'ma.kilowatt.app','client_version':'1.0.1',
-              'table':'connectors','method':'GET',
+              'tables':['chargestations','connectors'],'join':'known location_id -> chargestations.id -> connectors.chargestation_id','method':'GET',
               'fields':['rate_id','rate_price','rate_currency','rate_description'],
               'authentication':'public anon client key embedded in official app; key value not persisted'
             },
@@ -127,7 +137,7 @@ jobs:
             'summary':{
               'expected_production_stations':43,
               'stations_queried':len(station_rows),
-              'stations_http_200':sum(x['http_status']==200 for x in station_rows),
+              'stations_http_200':sum(x.get('chargestations_http_status')==200 for x in station_rows),
               'stations_with_connector_rows':stations_with_rows,
               'connector_rows':connector_count,
               'distinct_tariff_tuples':len(rates)
