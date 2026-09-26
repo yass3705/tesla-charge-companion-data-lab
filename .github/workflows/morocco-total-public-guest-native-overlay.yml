@@ -1,14 +1,11 @@
 name: Morocco Total public guest native overlay
-# native-connectors-live-status-scheduled-2026-09-26
+# native-connectors-live-status-every-2h-2026-09-26
 # unwrap-station-document-2026-09-26
 
 on:
   push:
     paths:
       - '.github/workflows/morocco-total-public-guest-native-overlay.yml'
-  workflow_dispatch:
-  schedule:
-    - cron: '23 */6 * * *'
   schedule:
     - cron: '17 */2 * * *'
   workflow_dispatch:
@@ -36,7 +33,6 @@ jobs:
           BASE='https://csmstotalenergiesma.numocity.com'
           RC=Path('reports/morocco/totalenergies/club-ev-charge-remote-config-keys-2026-09-26.json')
           OUT=Path('reports/morocco/totalenergies/club-ev-charge-public-guest-native-overlay-2026-09-26.json')
-          LATEST=Path('reports/morocco/totalenergies/latest-public-guest-native-overlay.json')
           LATEST=Path('reports/morocco/totalenergies/latest-native-overlay.json')
 
           rc=json.loads(RC.read_text())
@@ -236,7 +232,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git add reports/morocco/totalenergies/club-ev-charge-public-guest-native-overlay-2026-09-26.json reports/morocco/totalenergies/latest-public-guest-native-overlay.json reports/morocco/totalenergies/latest-native-overlay.json
+          git add reports/morocco/totalenergies/club-ev-charge-public-guest-native-overlay-2026-09-26.json reports/morocco/totalenergies/latest-native-overlay.json
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           if git diff --cached --quiet; then exit 0; fi
