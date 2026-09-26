@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-26",
+  "country": "MA",
+  "network": "TotalEnergies / Club EV-Charge",
+  "subject": "Club EV-Charge Android 3.00.12 exact route validation",
+  "source": {
+    "package": "com.namp.totalev",
+    "version_name": "3.00.12",
+    "version_code": 14,
+    "target_sdk": 36,
+    "user_supplied_xapk": true,
+    "base_apk_sha256": "08f10c6946ded5a30bb50542a9e8172d0bace6072d9dea7860a398f1a0e7243d",
+    "armeabi_v7a_split_sha256": "f5f6e9053a41a3d3d882414ba81dc3439af15fa0c47bdf97e0da91a30496b293",
+    "flutter_aot": true,
+    "raw_package_persisted": false
+  },
+  "policy": {
+    "static_analysis_only_for_package": true,
+    "anonymous_read_only_get_validation_only": true,
+    "no_login": true,
+    "no_credentials": true,
+    "no_station_or_connector_ids": true,
+    "no_query_parameters": true,
+    "no_request_body": true,
+    "no_charging_or_account_actions": true,
+    "raw_response_bodies_persisted": false
+  },
+  "static_findings": {
+    "backend_authority": "https://csmstotalenergiesma.numocity.com/",
+    "header_literal": "x-appid-token",
+    "bearer_literal_present": true,
+    "station_routes": [
+      "asset/chargestation/getstationstate",
+      "/asset/chargestation/getbyid2",
+      "asset/chargestation/getstationbyfilter"
+    ],
+    "status_routes": [
+      "status/api/get-connector-status",
+      "/api/aggregator/mobile/location/connector/status"
+    ],
+    "tariff_routes": [
+      "tariff/api/charging-estimate2",
+      "mobileTariffTax/api/qr-connector-list",
+      "mobileTariffTax/api/transaction"
+    ],
+    "request_field_literals_seen": [
+      "chargeStationId",
+      "ChargeStationId",
+      "stationId",
+      "chargePointId",
+      "ChargePointId",
+      "connectorId",
+      "ChargePointConnectorNumber",
+      "tenantId",
+      "appId"
+    ]
+  },
+  "anonymous_route_validation": {
+    "/asset/chargestation/getstationstate": 401,
+    "/asset/chargestation/getbyid2": 401,
+    "/asset/chargestation/getstationbyfilter": 401,
+    "/status/api/get-connector-status": 400,
+    "/tariff/api/charging-estimate2": 401,
+    "/mobileTariffTax/api/qr-connector-list": 401,
+    "/mobileTariffTax/api/transaction": 401,
+    "/chargestation/getbyid": 404
+  },
+  "interpretation": {
+    "previous_direct_host_plus_v2_route_404_blocker": "superseded",
+    "exact_native_station_state_route_exists": true,
+    "exact_native_station_detail_route_exists": true,
+    "connector_status_controller_reached_without_authentication": true,
+    "connector_status_missing_request_shape": true,
+    "native_tariff_routes_exist_but_are_auth_bound": true,
+    "production_data_promoted": false,
+    "reason": "No station-specific authenticated payload has been validated yet."
+  },
+  "next_safe_action": "Reconstruct the exact request shape for status/api/get-connector-status and the app-id/auth header construction from the 3.00.12 Flutter AOT client before any station-specific request."
+}
