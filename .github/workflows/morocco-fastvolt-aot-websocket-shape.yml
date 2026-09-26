@@ -1,0 +1,153 @@
+name: Morocco FastVolt AOT websocket shape
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-aot-websocket-shape.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download DAE and current FastVolt XAPK temporarily
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 2             https://github.com/ejfkdev/dae/releases/download/v0.1.3/dae-Linux-x64             -o /tmp/dae
+          chmod +x /tmp/dae
+          curl -fsSL --retry 2 --connect-timeout 15 --max-time 180             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0'             'https://d.apkpure.net/b/XAPK/ma.fastgo?version=latest'             -o /tmp/fastvolt.xapk
+          mkdir -p /tmp/fv-xapk /tmp/fv-apk
+          unzip -q /tmp/fastvolt.xapk -d /tmp/fv-xapk
+          ARM_APK="$(find /tmp/fv-xapk -type f -name '*.apk' | while read -r f; do
+            if unzip -l "$f" 2>/dev/null | grep -q 'lib/arm64-v8a/libapp.so'; then echo "$f"; break; fi
+          done)"
+          test -n "$ARM_APK"
+          unzip -q "$ARM_APK" 'lib/arm64-v8a/libapp.so' -d /tmp/fv-apk
+          test -s /tmp/fv-apk/lib/arm64-v8a/libapp.so
+
+      - name: Decompile only FastVolt websocket/auth classes
+        shell: bash
+        run: |
+          set -euo pipefail
+          BIN=/tmp/fv-apk/lib/arm64-v8a/libapp.so
+          /tmp/dae info "$BIN" >/tmp/dae-info.txt 2>/tmp/dae-info.err || true
+          /tmp/dae classes "$BIN" WebSocketProvider >/tmp/ws-classes.txt 2>/tmp/ws-classes.err || true
+          /tmp/dae functions "$BIN" WebSocketProvider >/tmp/ws-functions.txt 2>/tmp/ws-functions.err || true
+          /tmp/dae getclass "$BIN" WebSocketProvider >/tmp/ws-class.dart 2>/tmp/ws-class.err || true
+          /tmp/dae classes "$BIN" AuthAPIcallsGroup >/tmp/auth-classes.txt 2>/tmp/auth-classes.err || true
+          /tmp/dae getclass "$BIN" AuthAPIcallsGroup >/tmp/auth-class.dart 2>/tmp/auth-class.err || true
+          /tmp/dae classes "$BIN" AuthValidationProvider >/tmp/authv-classes.txt 2>/tmp/authv-classes.err || true
+          /tmp/dae getclass "$BIN" AuthValidationProvider >/tmp/authv-class.dart 2>/tmp/authv-class.err || true
+
+      - name: Produce sanitized structural report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, re, hashlib
+          from datetime import datetime, timezone
+
+          out='reports/morocco/fastvolt/latest-native-aot-websocket-shape.json'
+          os.makedirs(os.path.dirname(out), exist_ok=True)
+
+          def read(path,limit=5_000_000):
+              try:
+                  with open(path,'r',encoding='utf-8',errors='ignore') as f:
+                      return f.read(limit)
+              except Exception:
+                  return ''
+
+          ws=read('/tmp/ws-class.dart')
+          wsf=read('/tmp/ws-functions.txt')
+          auth=read('/tmp/auth-class.dart')
+          authv=read('/tmp/authv-class.dart')
+          alltxt='\n'.join((ws,wsf,auth,authv))
+
+          # Persist only allowlisted infrastructure literals / structural indicators.
+          urls=sorted(set(re.findall(r'https?://[A-Za-z0-9.-]+(?::[0-9]+)?(?:/[A-Za-z0-9_./{}:=?-]*)?',alltxt)))
+          wss=sorted(set(re.findall(r'wss://[A-Za-z0-9.-]+(?::[0-9]+)?(?:/[A-Za-z0-9_./{}:=?-]*)?',alltxt)))
+          paths=sorted(set(re.findall(r'(?<![A-Za-z0-9])/(?:app|user|auth)/[A-Za-z0-9_./{}:=?-]+',alltxt)))
+          safe_urls=[u for u in urls if any(h in u.lower() for h in ('fastvolt.ma','fastvolt.net'))][:50]
+          safe_wss=[u for u in wss if 'fastvolt' in u.lower()][:20]
+          safe_paths=[p for p in paths if len(p)<=180][:80]
+
+          terms=[
+              'WebSocketChannel.connect','IOWebSocketChannel.connect','WebSocket.connect',
+              'queryParameters','queryParametersAll','Uri.parse','Uri.https','Uri.replace',
+              'sink.add','channel.sink.add','jsonEncode','json.encode','userId','user_id',
+              'userid','ff_userid','Authorization','Bearer','headers'
+          ]
+          indicators={t:(t.lower() in alltxt.lower()) for t in terms}
+
+          # Safe quoted key names only: no values/tokens.
+          qstrings=re.findall(r'["\']([A-Za-z_][A-Za-z0-9_.-]{1,50})["\']',alltxt)
+          key_candidates=sorted(set(s for s in qstrings if re.search(r'(user.?id|uid|socket|event|message|channel|connect|status|station|connector)',s,re.I)))[:80]
+
+          # DAE result presence / class recovery only, no raw code.
+          def shape(text):
+              return {
+                  'bytes':len(text.encode('utf-8')),
+                  'nonempty':bool(text.strip()),
+                  'function_like_count':len(re.findall(r'\b(?:dynamic|void|Future|Stream|bool|String|int)\s+[A-Za-z_][A-Za-z0-9_]*\s*\(',text))
+              }
+
+          report={
+              'schema_version':1,
+              'generated_at':datetime.now(timezone.utc).isoformat(),
+              'country':'MA','network':'FastVolt',
+              'target':{'package':'ma.fastgo','client_version_context':'current public XAPK; expected 2.8.9'},
+              'tool':{'name':'dae','version':'v0.1.3','target':'lib/arm64-v8a/libapp.so'},
+              'policy':{
+                  'static_analysis_only':True,'raw_apk_persisted':False,'raw_libapp_persisted':False,
+                  'raw_decompiled_code_persisted':False,'credentials_persisted':False,
+                  'api_keys_persisted':False,'tokens_persisted':False
+              },
+              'recovery':{
+                  'websocket_provider':shape(ws),
+                  'websocket_function_index':shape(wsf),
+                  'auth_api_calls_group':shape(auth),
+                  'auth_validation_provider':shape(authv)
+              },
+              'safe_literals':{
+                  'fastvolt_http_urls':safe_urls,
+                  'fastvolt_websocket_urls':safe_wss,
+                  'api_paths':safe_paths,
+                  'key_name_candidates':key_candidates
+              },
+              'structural_indicators':indicators,
+              'interpretation':{
+                  'uri_query_construction_evidence': indicators['queryParameters'] or indicators['queryParametersAll'] or indicators['Uri.replace'],
+                  'application_message_send_evidence': indicators['sink.add'] or indicators['channel.sink.add'],
+                  'user_id_symbol_evidence': indicators['userId'] or indicators['user_id'] or indicators['userid'] or indicators['ff_userid'],
+                  'authorization_symbol_evidence': indicators['Authorization'] or indicators['Bearer']
+              }
+          }
+          with open(out,'w',encoding='utf-8') as f:
+              json.dump(report,f,ensure_ascii=False,indent=2); f.write('\n')
+          print(json.dumps(report['interpretation'],indent=2))
+          PY
+
+      - name: Publish sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add reports/morocco/fastvolt/latest-native-aot-websocket-shape.json
+          if git diff --cached --quiet; then
+            echo 'No report change'
+          else
+            git commit -m "diag(morocco): inspect FastVolt AOT websocket shape [run $GITHUB_RUN_ID]"
+            git push
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: rm -rf /tmp/dae /tmp/fastvolt.xapk /tmp/fv-xapk /tmp/fv-apk /tmp/*.dart /tmp/*classes* /tmp/*functions* /tmp/dae-*
