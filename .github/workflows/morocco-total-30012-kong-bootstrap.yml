@@ -1,0 +1,157 @@
+name: Morocco Total 3.00.12 Kong bootstrap contract
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-30012-kong-bootstrap.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare Blutter
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build pkg-config libicu-dev libcapstone-dev
+          python -m pip install --quiet pyelftools requests
+          git clone --depth=1 https://github.com/worawit/blutter.git /tmp/blutter
+
+      - name: Download exact Club EV-Charge 3.00.12 ARM64 and analyze
+        shell: bash
+        env:
+          URL: "https://download.pureapk.com/b/XAPK/Y29tLm5hbXAudG90YWxldl8xNF8zNTJhNjdlNQ?as2=db91def85bd2cc2cebea5e889e36b4866c92699d&k=6a2bd595361c47705231b076672895396c92699d&_p=Y29tLm5hbXAudG90YWxldg&c=1%7CBUSINESS%7Cb2lkPTkmZGV2PVRFTSUyME1hcm9jJnQ9eGFwayZzPTUwODMzMjYwJnZuPTMuMDAuMTImdmM9MTQ&_fn=Q2x1YitFVi1DaGFyZ2VfMy4wMC4xMl9hcGtjb21iby5jb20ueGFwaw%3D%3D"
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/total-kong /tmp/blutter-out
+          mkdir -p /tmp/total-kong/xapk /tmp/total-kong/lib
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' "$URL"             -o /tmp/total-kong/current.xapk
+          unzip -q /tmp/total-kong/current.xapk -d /tmp/total-kong/xapk
+          python - <<'PY'
+          import os,zipfile
+          root='/tmp/total-kong/xapk'; out='/tmp/total-kong/lib'
+          found=set()
+          for fn in os.listdir(root):
+              if not fn.endswith('.apk'): continue
+              p=os.path.join(root,fn)
+              try:
+                  with zipfile.ZipFile(p) as z:
+                      for target in ('libapp.so','libflutter.so'):
+                          n='lib/arm64-v8a/'+target
+                          if n in z.namelist() and target not in found:
+                              open(os.path.join(out,target),'wb').write(z.read(n)); found.add(target)
+              except Exception: pass
+          if found != {'libapp.so','libflutter.so'}:
+              raise SystemExit('ARM64 Flutter libraries missing')
+          PY
+          timeout 600 python3 /tmp/blutter/blutter.py /tmp/total-kong/lib /tmp/blutter-out >/tmp/blutter-kong.log 2>&1
+
+      - name: Extract sanitized bootstrap contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import os,re,json
+          from datetime import datetime,timezone
+
+          root='/tmp/blutter-out'
+          markers=[
+            '/admin/v1/requesttoken','GlobalJwtToken','savedKongToken','saveKongToken',
+            'userIDTag','userID','idTag','RemoteConfigService','apiVersion','kongVersion',
+            'productionApiProvider','baseUrl','Authorization','Bearer '
+          ]
+          allow_string=re.compile(r'(?i)(requesttoken|GlobalJwtToken|savedKongToken|saveKongToken|userIDTag|userID|idTag|apiVersion|kongVersion|productionApiProvider|baseUrl|authorization|bearer|content-type|accept)')
+          sensitive_value=re.compile(r'(?i)(eyJ[A-Za-z0-9_.-]{20,}|AIza[A-Za-z0-9_-]{20,}|Bearer\s+[A-Za-z0-9._~+/-]{12,})')
+
+          def sanitize(line):
+              line=sensitive_value.sub('<redacted-secret-like>',line)
+              # Redact quoted opaque values unless the quoted text itself is an allowlisted symbol/key/path.
+              for m in list(re.finditer(r'"([^"]{1,300})"',line)):
+                  val=m.group(1)
+                  if not allow_string.search(val) and not val.startswith('/admin/v1/requesttoken'):
+                      line=line.replace('"'+val+'"','"<redacted>"')
+              return line[:900]
+
+          records=[]
+          for dp,_,fs in os.walk(root):
+              for fn in fs:
+                  p=os.path.join(dp,fn)
+                  try:
+                      if os.path.getsize(p)>60_000_000: continue
+                      lines=open(p,encoding='utf-8',errors='ignore').read().splitlines()
+                  except Exception: continue
+                  centers=[i for i,l in enumerate(lines) if any(m in l for m in markers)]
+                  for c in centers[:120]:
+                      marker=[m for m in markers if m in lines[c]]
+                      # Find nearest function declaration above, source-like Blutter file only.
+                      decl=None
+                      for j in range(c,max(-1,c-120),-1):
+                          if re.search(r'\b(?:async\s*\{|\)\s*\{)\s*$',lines[j]) and not lines[j].lstrip().startswith('//'):
+                              decl={'line':j+1,'text':sanitize(lines[j])}; break
+                      safe=[]
+                      for j in range(max(0,c-60),min(len(lines),c+120)):
+                          line=lines[j]
+                          if any(m in line for m in markers) or re.search(r'(?i)(queryParameters|data:|headers|DioMixin::(?:get|post)|Map<|StoreIndexed|LoadField|AppUtil|RemoteConfig|SharedPreferences|setString|getString)',line):
+                              safe.append({'line':j+1,'text':sanitize(line)})
+                      if safe:
+                          records.append({
+                            'file':os.path.relpath(p,root),
+                            'center_line':c+1,
+                            'markers':marker,
+                            'nearest_function':decl,
+                            'safe_context':safe[:180]
+                          })
+
+          # Keep most relevant unique records, prioritizing target app service/network files.
+          def score(r):
+              f=r['file'].lower(); ms=' '.join(r['markers']).lower()
+              s=0
+              if 'network/api_service.dart' in f: s+=100
+              if 'firebase_remote_config' in f or 'remote_config' in f: s+=80
+              if 'splash' in f or 'app_util' in f or 'constants' in f: s+=60
+              if 'requesttoken' in ms: s+=100
+              if 'useridtag' in ms or 'userid' in ms: s+=70
+              if 'globaljwttoken' in ms or 'savedkongtoken' in ms: s+=60
+              return -s
+          seen=set(); uniq=[]
+          for r in sorted(records,key=score):
+              key=(r['file'],r['center_line'],tuple(r['markers']))
+              if key in seen: continue
+              seen.add(key); uniq.append(r)
+
+          out={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'TotalEnergies / Club EV-Charge',
+            'source_client':{'package':'com.namp.totalev','version':'3.00.12'},
+            'policy':{
+              'public_package_only':True,'static_analysis_only':True,'no_backend_requests':True,
+              'no_login':True,'no_credentials':True,'no_token_values_persisted':True,
+              'raw_blutter_output_persisted':False,'opaque_values_redacted':True
+            },
+            'records':uniq[:120]
+          }
+          with open('reports/morocco/totalenergies/club-ev-charge-30012-kong-bootstrap-contract-2026-09-26.json','w') as f:
+              json.dump(out,f,ensure_ascii=False,indent=2); f.write('\n')
+          PY
+          rm -rf /tmp/total-kong /tmp/blutter /tmp/blutter-out /tmp/blutter-kong.log
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-30012-kong-bootstrap-contract-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): resolve Total 3.00.12 Kong bootstrap [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
