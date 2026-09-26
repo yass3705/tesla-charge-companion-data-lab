@@ -1,0 +1,141 @@
+name: Morocco Total 3.00.12 URL symbols
+# targeted-url-symbols-2026-09-26
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-30012-url-symbols.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare Blutter
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build pkg-config libicu-dev libcapstone-dev
+          python -m pip install --quiet pyelftools requests
+          git clone --depth=1 https://github.com/worawit/blutter.git /tmp/blutter
+
+      - name: Download exact Club EV-Charge 3.00.12 ARM64
+        shell: bash
+        env:
+          URL: "https://download.pureapk.com/b/XAPK/Y29tLm5hbXAudG90YWxldl8xNF8zNTJhNjdlNQ?as2=db91def85bd2cc2cebea5e889e36b4866c92699d&k=6a2bd595361c47705231b076672895396c92699d&_p=Y29tLm5hbXAudG90YWxldg&c=1%7CBUSINESS%7Cb2lkPTkmZGV2PVRFTSUyME1hcm9jJnQ9eGFwayZzPTUwODMzMjYwJnZuPTMuMDAuMTImdmM9MTQ&_fn=Q2x1YitFVi1DaGFyZ2VfMy4wMC4xMl9hcGtjb21iby5jb20ueGFwaw%3D%3D"
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/total-url /tmp/blutter-out
+          mkdir -p /tmp/total-url/xapk /tmp/total-url/lib
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' "$URL"             -o /tmp/total-url/current.xapk
+          unzip -q /tmp/total-url/current.xapk -d /tmp/total-url/xapk
+          python - <<'PY'
+          import os,zipfile
+          root='/tmp/total-url/xapk'; out='/tmp/total-url/lib'
+          found=set()
+          for fn in os.listdir(root):
+              if not fn.endswith('.apk'): continue
+              try:
+                  with zipfile.ZipFile(os.path.join(root,fn)) as z:
+                      for target in ('libapp.so','libflutter.so'):
+                          n='lib/arm64-v8a/'+target
+                          if n in z.namelist() and target not in found:
+                              open(os.path.join(out,target),'wb').write(z.read(n)); found.add(target)
+              except Exception: pass
+          if found != {'libapp.so','libflutter.so'}:
+              raise SystemExit('ARM64 Flutter libraries missing')
+          PY
+          timeout 600 python3 /tmp/blutter/blutter.py /tmp/total-url/lib /tmp/blutter-out >/tmp/blutter-url.log 2>&1
+
+      - name: Build sanitized URL-symbol report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import os,re,json
+          from datetime import datetime,timezone
+
+          root='/tmp/blutter-out'
+          wanted=[
+            'connectorStatusAg','connectorStatus','productionApiProvider','baseUrl',
+            'apiVersion','kongVersion','getstationbyfilter','getstationstate',
+            'getbyid2','aggregator/mobile/location','status/api/get-connector-status'
+          ]
+          sensitive=re.compile(r'(?i)(authorization|bearer|password|secret|access[_-]?token|refresh[_-]?token|jwt)')
+          host_re=re.compile(r'https?://[A-Za-z0-9._:-]+(?:/[A-Za-z0-9_./?=&:{}-]*)?')
+          path_re=re.compile(r'(?<![A-Za-z0-9])/?(?:api|asset|status|mobile|aggregator|chargestation|chargepoint|tariff)[A-Za-z0-9_./?=&:{}-]{2,220}',re.I)
+          symbol_re=re.compile(r'\b(?:connectorStatusAg|connectorStatus|productionApiProvider|baseUrl|apiVersion|kongVersion|getstationbyfilter|getstationstate|getbyid2)\b')
+          hits=[]
+          files_scanned=0
+          for dp,_,fs in os.walk(root):
+              for fn in fs:
+                  p=os.path.join(dp,fn)
+                  try:
+                      if os.path.getsize(p)>60_000_000: continue
+                      lines=open(p,encoding='utf-8',errors='ignore').read().splitlines()
+                  except Exception: continue
+                  files_scanned+=1
+                  centers=[i for i,l in enumerate(lines) if any(w in l for w in wanted)]
+                  for c in centers[:60]:
+                      lo=max(0,c-18); hi=min(len(lines),c+19)
+                      safe=[]
+                      for i in range(lo,hi):
+                          line=lines[i]
+                          if sensitive.search(line): continue
+                          vals=[]
+                          vals += host_re.findall(line)
+                          vals += path_re.findall(line)
+                          vals += symbol_re.findall(line)
+                          if vals:
+                              safe.append({'line':i+1,'values':sorted(set(vals))[:20]})
+                      if safe:
+                          hits.append({
+                            'file':os.path.relpath(p,root),
+                            'center_line':c+1,
+                            'marker':[w for w in wanted if w in lines[c]][:8],
+                            'safe_context':safe[:40]
+                          })
+          # Deduplicate structurally identical records.
+          seen=set(); uniq=[]
+          for h in hits:
+              key=json.dumps(h,sort_keys=True)
+              if key not in seen:
+                  seen.add(key); uniq.append(h)
+
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA',
+            'network':'TotalEnergies / Club EV-Charge',
+            'source_client':{'package':'com.namp.totalev','version':'3.00.12'},
+            'policy':{
+              'public_package_only':True,'static_analysis_only':True,'no_backend_requests':True,
+              'no_login':True,'no_credentials':True,'no_token_values_persisted':True,
+              'raw_blutter_output_persisted':False,'url_path_and_symbol_shapes_only':True
+            },
+            'files_scanned':files_scanned,
+            'matches':uniq[:250]
+          }
+          with open('reports/morocco/totalenergies/club-ev-charge-30012-url-symbols-2026-09-26.json','w') as f:
+              json.dump(report,f,ensure_ascii=False,indent=2); f.write('\n')
+          PY
+          rm -rf /tmp/total-url /tmp/blutter /tmp/blutter-out /tmp/blutter-url.log
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-30012-url-symbols-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): resolve Total 3.00.12 URL symbols [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
