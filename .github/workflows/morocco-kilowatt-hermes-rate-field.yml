@@ -1,0 +1,88 @@
+name: Morocco Kilowatt Hermes rate field
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-kilowatt-hermes-rate-field.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Disassemble exact Kilowatt bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/kwh-rate /tmp/hermes-dec
+          mkdir -p /tmp/kwh-rate/xapk /tmp/kwh-rate/apk reports/morocco/kilowatt
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/ma.kilowatt.app?version=latest' \
+            -o /tmp/kwh-rate/app.xapk
+          unzip -q /tmp/kwh-rate/app.xapk -d /tmp/kwh-rate/xapk
+          unzip -q /tmp/kwh-rate/xapk/ma.kilowatt.app.apk 'assets/index.android.bundle' -d /tmp/kwh-rate/apk
+          printf '%s  %s\n' 'e177f327dfa4a581e2b2257ac741fef0af639b4a0f8ec75f4b826944bced22a9' /tmp/kwh-rate/apk/assets/index.android.bundle | sha256sum -c -
+          git clone --depth=1 https://github.com/P1sec/hermes-dec.git /tmp/hermes-dec
+          python3 /tmp/hermes-dec/hbc-disassembler /tmp/kwh-rate/apk/assets/index.android.bundle /tmp/kwh-rate/disasm.hasm
+
+      - name: Extract rate field context
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re,json
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          lines=Path('/tmp/kwh-rate/disasm.hasm').read_text(errors='ignore').splitlines()
+          starts=[i for i,l in enumerate(lines) if l.startswith('=> [Function #')]
+          targets=[]
+          for pos,s in enumerate(starts):
+              e=starts[pos+1] if pos+1<len(starts) else len(lines)
+              block=lines[s:e]
+              text='\n'.join(block)
+              if 'rate_description' not in text and 'connectorRate' not in text: continue
+              fid=int(re.search(r'Function #(\d+)',block[0]).group(1))
+              occ=[]
+              for i,l in enumerate(block):
+                  if 'rate_description' in l or 'connectorRate' in l:
+                      occ.append({
+                        'relative_line':i+1,
+                        'window':block[max(0,i-35):min(len(block),i+55)]
+                      })
+              strings=[]
+              for l in block:
+                  m=re.search(r"# String: '([^']*)'",l)
+                  if m and m.group(1) not in strings: strings.append(m.group(1))
+              selected=[l for l in block if re.search(r'(GetById|PutById|PutNewOwnById|LoadConstString|Call\d*|CallLong|CreateClosure|Ret)',l)]
+              targets.append({'function_id':fid,'header':block[0],'occurrences':occ,'string_literals':strings[:300],'selected_disassembly':selected[:1000]})
+
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Kilowatt',
+            'client':{'package':'ma.kilowatt.app','version':'1.0.1','bundle_sha256':'e177f327dfa4a581e2b2257ac741fef0af639b4a0f8ec75f4b826944bced22a9'},
+            'policy':{'static_analysis_only':True,'no_login':True,'no_backend_requests':True,'no_secrets_persisted':True},
+            'functions':targets
+          }
+          Path('reports/morocco/kilowatt/hermes-rate-field-1.0.1-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/kwh-rate /tmp/hermes-dec
+
+      - name: Commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/kilowatt/hermes-rate-field-1.0.1-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): resolve Kilowatt connector rate field [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
