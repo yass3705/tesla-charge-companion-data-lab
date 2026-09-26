@@ -122,6 +122,46 @@ jobs:
             'functions':outfunc,
             'safe_constants':constants[:200]
           }
+
+          # Resolve only known-safe string-key offsets used by getUserToken.
+          safe_offsets=['0x8e48','0x1d170','0x1d178','0x1d180','0x1d188','0x1a790','0x1d168']
+          resolved_offsets=[]
+          if os.path.isfile(pp):
+              for line in open(pp,encoding='utf-8',errors='ignore'):
+                  for off in safe_offsets:
+                      if f'[pp+{off}]' in line:
+                          m=re.search(r'String: "([^"]{0,160})"',line)
+                          val=m.group(1) if m else None
+                          # These offsets are request key/header literals. Keep only short printable text;
+                          # redact secret-shaped values defensively.
+                          if val is not None and len(val)<=160 and not secret.search(val):
+                              resolved_offsets.append({'offset':off,'value':val})
+                          else:
+                              resolved_offsets.append({'offset':off,'value':'<redacted-or-nonstring>'})
+          report['get_user_token_safe_offsets']=resolved_offsets
+
+          # Find exact callsites and preserve only argument/source/control-flow lines.
+          callsites=[]
+          call_re=re.compile(r'(getUserToken|ApiServices::getUserToken)')
+          call_allow=re.compile(r'(?i)(getUserToken|getUserID|userIDTag|userID|idTag|RemoteConfig|getString|AppUtil|LoadStaticField|LoadField|StoreField|mov|ldur|stur|bl\\s|SetupParameters)')
+          for dp,_,fs in os.walk(root):
+              for fn in fs:
+                  p=os.path.join(dp,fn)
+                  try:
+                      if os.path.getsize(p)>30_000_000: continue
+                      lines=open(p,encoding='utf-8',errors='ignore').read().splitlines()
+                  except Exception: continue
+                  for i,line in enumerate(lines):
+                      if not call_re.search(line): continue
+                      ctx=[]
+                      for j in range(max(0,i-45),min(len(lines),i+25)):
+                          if call_allow.search(lines[j]):
+                              ctx.append({'line':j+1,'text':clean(lines[j])})
+                      callsites.append({'file':os.path.relpath(p,root),'line':i+1,'context':ctx[:90]})
+                      if len(callsites)>=30: break
+                  if len(callsites)>=30: break
+              if len(callsites)>=30: break
+          report['get_user_token_callsites']=callsites
           with open('reports/morocco/totalenergies/club-ev-charge-30012-guest-token-flow-2026-09-26.json','w') as f:
               json.dump(report,f,ensure_ascii=False,indent=2);f.write('\n')
           PY
