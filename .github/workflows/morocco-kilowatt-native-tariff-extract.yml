@@ -20,23 +20,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf /tmp/kwh-native
+          rm -rf /tmp/kwh-native /tmp/hermes-dec
           mkdir -p /tmp/kwh-native/xapk /tmp/kwh-native/apk reports/morocco/kilowatt
 
           curl --fail --location --retry 3 --connect-timeout 20 --max-time 240             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0'             'https://d.apkpure.net/b/XAPK/ma.kilowatt.app?version=latest'             -o /tmp/kwh-native/app.xapk
           unzip -q /tmp/kwh-native/app.xapk -d /tmp/kwh-native/xapk
           unzip -q /tmp/kwh-native/xapk/ma.kilowatt.app.apk 'assets/index.android.bundle' -d /tmp/kwh-native/apk
           echo 'e177f327dfa4a581e2b2257ac741fef0af639b4a0f8ec75f4b826944bced22a9  /tmp/kwh-native/apk/assets/index.android.bundle' | sha256sum -c -
+          git clone --depth=1 https://github.com/P1sec/hermes-dec.git /tmp/hermes-dec >/dev/null 2>&1
+          python3 /tmp/hermes-dec/hbc-decompiler /tmp/kwh-native/apk/assets/index.android.bundle /tmp/kwh-native/decompiled.js >/dev/null
 
           python3 - <<'PY'
           import re,json,base64,requests,time
           from pathlib import Path
           from datetime import datetime,timezone
 
-          bundle=Path('/tmp/kwh-native/apk/assets/index.android.bundle').read_bytes()
+          source=Path('/tmp/kwh-native/decompiled.js').read_text(errors='ignore')
           candidates=[]
-          for m in re.finditer(rb'eyJ[A-Za-z0-9._-]{80,}',bundle):
-              key=m.group(0).decode()
+          for key in re.findall(r'eyJ[A-Za-z0-9._-]{80,}',source):
               try:
                   p=key.split('.')[1]; p += '='*((4-len(p)%4)%4)
                   claims=json.loads(base64.urlsafe_b64decode(p))
