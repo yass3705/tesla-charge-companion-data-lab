@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 ROOT='https://pdefweushaapiam01.azure-api.net/app-backend/v1/tenants/390c3ff9-b41c-42dc-aa48-1dd51ad6ce39'
 COUNTRIES={'FR': ('ATL', (41,-6,52,10)), 'IT': ('ATE',(35,6,48,19))}
 OFFLINE=False
+RESUME=False
 def now(): return datetime.now(timezone.utc).isoformat()
 def write(p, data):
     p.parent.mkdir(parents=True,exist_ok=True)
@@ -39,8 +40,8 @@ def run(country,out,workers):
         a,b,c,d=box
         q=urllib.parse.urlencode({'latLongBottomLeft':f'{a},{b}','latLongTopRight':f'{c},{d}','evseTypes':'AC,DC,HPC','locationStatus':'ALL','includeCpos':country+party})
         raw=dest/'raw'/f'map-{label}.json'
-        data=json.loads(raw.read_text()) if OFFLINE else request('/map-locations?'+q)
-        if not OFFLINE: write(raw,data)
+        data=json.loads(raw.read_text()) if (OFFLINE or (RESUME and raw.exists())) else request('/map-locations?'+q)
+        if not OFFLINE and not raw.exists(): write(raw,data)
         return data
     national=map_area(bbox,'national')
     inventory={}; checks=[]
@@ -66,10 +67,10 @@ def run(country,out,workers):
     locations=[];errors=[];dimensions=Counter();tariff_count=0
     def hydrate(s):
         sid=s['id']; dp=dest/'raw'/'details'/(sid+'.json');tp=dest/'raw'/'tariffs'/(sid+'.json')
-        detail=json.loads(dp.read_text()) if OFFLINE else request('/locations/'+sid)
-        if not OFFLINE: write(dp,detail)
-        tariffs=json.loads(tp.read_text()) if OFFLINE else request('/locations/'+sid+'/tariffs')
-        if not OFFLINE: write(tp,tariffs)
+        detail=json.loads(dp.read_text()) if (OFFLINE or (RESUME and dp.exists())) else request('/locations/'+sid)
+        if not OFFLINE and not dp.exists(): write(dp,detail)
+        tariffs=json.loads(tp.read_text()) if (OFFLINE or (RESUME and tp.exists())) else request('/locations/'+sid+'/tariffs')
+        if not OFFLINE and not tp.exists(): write(tp,tariffs)
         op=str(detail.get('operatorName') or '').strip()
         if detail.get('id')!=sid or detail.get('countryCode')!=country or detail.get('partyId')!=party or (op and 'atlante' not in op.lower()): raise ValueError('Operator or identifier mismatch: '+sid)
         idx={}
@@ -105,7 +106,8 @@ def run(country,out,workers):
     write(dest/'report.json',report);write(dest/'stations.json',{'metadata':report,'locations':sorted(locations,key=lambda l:l['id'])})
     print(json.dumps(report,ensure_ascii=False),flush=True)
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--countries',nargs='+',choices=COUNTRIES,default=['FR','IT']);p.add_argument('--out',type=Path,default=Path('results'));p.add_argument('--workers',type=int,default=8);p.add_argument('--rebuild-from-raw',action='store_true');args=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--countries',nargs='+',choices=COUNTRIES,default=['FR','IT']);p.add_argument('--out',type=Path,default=Path('results'));p.add_argument('--workers',type=int,default=8);p.add_argument('--rebuild-from-raw',action='store_true');p.add_argument('--resume',action='store_true');args=p.parse_args()
     OFFLINE=args.rebuild_from_raw
+    RESUME=args.resume
     if not OFFLINE and not os.environ.get('ATLANTE_API_SUBSCRIPTION_KEY'): p.error('Set ATLANTE_API_SUBSCRIPTION_KEY')
     for country in args.countries: run(country,args.out,max(1,min(args.workers,12)))
