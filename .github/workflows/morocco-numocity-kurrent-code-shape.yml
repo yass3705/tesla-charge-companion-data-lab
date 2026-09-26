@@ -1,0 +1,124 @@
+name: Morocco Numocity Kurrent code-shape probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-numocity-kurrent-code-shape.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inspect public Kurrent package without persisting binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/kurrent/xapk /tmp/kurrent/apks reports/morocco/totalenergies
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/com.namp.kurrent?version=latest' \
+            -o /tmp/kurrent/current.xapk
+          unzip -q /tmp/kurrent/current.xapk -d /tmp/kurrent/xapk
+
+          python - <<'PY'
+          import json, os, hashlib, subprocess, zipfile
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          ROOT=Path('/tmp/kurrent/xapk')
+          XAPK=Path('/tmp/kurrent/current.xapk')
+          OUT=Path('reports/morocco/totalenergies/numocity-kurrent-code-shape-2026-09-26.json')
+
+          markers=[
+            'getGlobalToken','setGlobalToken','globalToken','GlobalJwtToken',
+            'url_get_user_token','/admin/v1/requesttoken',
+            'signInWithCustomToken','register-or-signin','verify-register-or-signin',
+            'generate-mobile-otp','verify-mobile-otp',
+            'asset/chargestation/getstationstate',
+            '/api/aggregator/mobile/location/markers',
+            'kongVersion','apiVersion'
+          ]
+
+          apks=sorted(ROOT.rglob('*.apk'))
+          arch_files=[]
+          marker_hits={m:[] for m in markers}
+          libs=[]
+          temp=Path('/tmp/kurrent/apks')
+          for idx,apk in enumerate(apks):
+            try:
+              with zipfile.ZipFile(apk) as z:
+                for name in z.namelist():
+                  low=name.lower()
+                  if '/libapp.so' in low or low.endswith('/libflutter.so'):
+                    arch=None
+                    for candidate in ('arm64-v8a','armeabi-v7a','x86_64','x86'):
+                      if '/'+candidate+'/' in '/'+low:
+                        arch=candidate
+                        break
+                    arch_files.append({'apk':apk.name,'path':name,'arch':arch})
+                  if low.endswith('libapp.so'):
+                    dest=temp/f'{idx}-{Path(name).name}'
+                    dest.parent.mkdir(parents=True,exist_ok=True)
+                    with z.open(name) as src, open(dest,'wb') as dst:
+                      dst.write(src.read())
+                    libs.append((apk.name,name,arch,dest))
+            except Exception:
+              pass
+
+          for apk_name,path,arch,lib in libs:
+            try:
+              p=subprocess.run(['strings','-a','-n','5',str(lib)],capture_output=True,text=True,errors='ignore',timeout=120)
+              txt=p.stdout
+            except Exception:
+              txt=''
+            for m in markers:
+              count=txt.count(m)
+              if count:
+                marker_hits[m].append({'apk':apk_name,'arch':arch,'count':count})
+
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'subject':'Numocity sibling Kurrent public package code-shape comparison for Club EV-Charge',
+            'policy':{
+              'public_package_only':True,
+              'static_analysis_only':True,
+              'no_backend_requests':True,
+              'no_login':True,
+              'no_credentials':True,
+              'no_tokens_persisted':True,
+              'raw_package_persisted':False,
+              'sibling_data_not_reused_for_totalenergies':True
+            },
+            'source':{
+              'package':'com.namp.kurrent',
+              'download_bytes':XAPK.stat().st_size,
+              'sha256':hashlib.sha256(XAPK.read_bytes()).hexdigest()
+            },
+            'native_libraries':arch_files,
+            'architectures':sorted({x.get('arch') for x in arch_files if x.get('arch')}),
+            'marker_hits':{k:v for k,v in marker_hits.items() if v},
+            'comparison_goal':'Code-shape only: determine whether shared Numocity mobile authentication/global-token logic is available in an ARM64 Flutter snapshot suitable for deeper control-flow reconstruction.'
+          }
+          report['arm64_flutter_aot_available']=any(x.get('arch')=='arm64-v8a' and x.get('path','').lower().endswith('libapp.so') for x in arch_files)
+          OUT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+
+          rm -rf /tmp/kurrent
+
+      - name: Commit sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/numocity-kurrent-code-shape-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): compare Numocity Kurrent code shape [run $GITHUB_RUN_ID]"
+          git push
