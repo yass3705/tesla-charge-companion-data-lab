@@ -54,7 +54,7 @@ jobs:
           set -euo pipefail
           git clone --depth=1 https://github.com/worawit/blutter.git /tmp/blutter
           set +e
-          timeout 540 python3 /tmp/blutter/blutter.py /tmp/kurrent/lib /tmp/blutter-out --no-analysis > /tmp/blutter-run.log 2>&1
+          timeout 540 python3 /tmp/blutter/blutter.py /tmp/kurrent/lib /tmp/blutter-out > /tmp/blutter-run.log 2>&1
           rc=$?
           set -e
           echo "$rc" > /tmp/blutter-rc
@@ -70,7 +70,7 @@ jobs:
           import json,os,re
           from datetime import datetime,timezone
 
-          OUT='reports/morocco/totalenergies/numocity-kurrent-blutter-function-context-2026-09-26.json'
+          OUT='reports/morocco/totalenergies/numocity-kurrent-blutter-full-context-2026-09-26.json'
           needles=[
             'status/api/get-connector-status',
             '_get_connector_status',
@@ -95,7 +95,7 @@ jobs:
               'no_login':True,'no_credentials':True,'no_tokens_persisted':True,
               'raw_blutter_output_persisted':False,'allowlisted_markers_only':True
             },
-            'runtime':{'dart_version':'3.3.2','architecture':'arm64','mode':'--no-analysis'},
+            'runtime':{'dart_version':'3.3.2','architecture':'arm64','mode':'full-analysis'},
             'execution':{},
             'matches':[]
           }
@@ -195,7 +195,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git add reports/morocco/totalenergies/numocity-kurrent-blutter-function-context-2026-09-26.json
+          git add reports/morocco/totalenergies/numocity-kurrent-blutter-full-context-2026-09-26.json
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           if git diff --cached --quiet; then exit 0; fi
