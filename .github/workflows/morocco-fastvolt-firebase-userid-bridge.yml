@@ -1,0 +1,56 @@
+name: Morocco FastVolt firebase userid bridge
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-firebase-userid-bridge.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract Firebase UID to FastVolt user_id bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re
+          from datetime import datetime,timezone
+          src='reports/morocco/fastvolt/userid-provenance-2026-09-26.json'
+          out='reports/morocco/fastvolt/firebase-userid-bridge-2026-09-26.json'
+          j=json.load(open(src))
+          rx=re.compile(r'getUserDetailsWithFirebaseUserIdCall|auth/get_details_with_userid|FirebaseUserId|firebase.*uid|currentUser|uid|\$\.user_id',re.I)
+          rows=[]
+          for h in j.get('auth_response_contexts',[]):
+              ctx=h.get('context') or []
+              if not any(rx.search(x) for x in ctx): continue
+              idx=[i for i,x in enumerate(ctx) if rx.search(x)]
+              blocks=[]
+              for i in idx:
+                  a=max(0,i-60); b=min(len(ctx),i+80)
+                  block=ctx[a:b]
+                  # only retain contexts relevant to API/provider/auth files
+                  blocks.append(block)
+              rows.append({'file':h.get('file'),'line':h.get('line'),'blocks':blocks[:4]})
+          result={'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+                  'country':'MA','network':'FastVolt','contexts':rows[:25]}
+          json.dump(result,open(out,'w'),indent=2,ensure_ascii=False); open(out,'a').write('\n')
+          PY
+
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/fastvolt/firebase-userid-bridge-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): trace Firebase UID to FastVolt user_id bridge [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push
