@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "country": "IT",
-  "asOf": "2026-09-25",
+  "asOf": "2026-09-27",
   "inventoryStatus": "fresh_pun_92_of_92_nominatively_reconciled_first_pass_classified",
   "inventoryComplete": false,
   "policy": {
@@ -2065,41 +2065,41 @@
         "historicalSeedStatus": "active",
         "note": "Identity existed in the 88-party nominative seed and was lost from later canonical materialization; tariff status intentionally reset to active pending evidence replay."
       },
-      "confidence": "high for 4/7 mapped EVSE; fail-closed for 120 kW subset",
+      "confidence": "high for 6/7 mapped EVSE; fail-closed for the single 120 kW EVSE",
       "tariffChannel": "UniOne direct credit-card POS; app/eMSP paths kept separate unless equivalence proven",
-      "tariffModel": "published normal tariffs cover 22 kW and 80 kW; current PUN also contains 120 kW EVSE with no published matching class",
+      "tariffModel": "published normal tariffs cover 22 kW and 80 kW; exact PUN topology has five 22 kW EVSE, one 80 kW EVSE, and one 120 kW EVSE with no published matching class",
       "tariffs": [
         {
           "class": "22 kW",
           "eurPerKwh": 0.5,
           "vatIncluded": null,
-          "rankableEvse": 2
+          "rankableEvse": 5
         },
         {
           "class": "80 kW",
           "eurPerKwh": 0.7,
           "vatIncluded": null,
-          "rankableEvse": 2
+          "rankableEvse": 1
         }
       ],
       "coverage": {
-        "rankableEvse": 4,
-        "failClosedEvse": 3,
+        "rankableEvse": 6,
+        "failClosedEvse": 1,
         "stations": 3,
-        "uncoveredClass": "120 kW (3 EVSE at SITE-14)"
+        "uncoveredClass": "120 kW (1 EVSE at SITE-14#1)"
       },
-      "blockingCondition": "Obtain first-party UniOne tariff for 120 kW / SITE-14 or exact station price; do not extrapolate 80 kW price to 120 kW.",
+      "blockingCondition": "Obtain first-party UniOne tariff for the single 120 kW EVSE SITE-14#1 or its exact station price; do not extrapolate 80 kW price to 120 kW.",
       "officialReferences": [
         "https://www.uni-one.eu/tariffe/",
         "https://www.uni-one.eu/azienda/"
       ],
       "positiveEvidence": [
         "First-party UniOne tariff page publishes normal tariffs 22 kW = 0.50 EUR/kWh and 80 kW = 0.70 EUR/kWh and documents direct credit-card POS payment.",
-        "Fresh PUN artifact maps SITE-15 (2 EVSE) to 22 kW, SITE-11 (2 EVSE) to 80 kW, and SITE-14 (3 EVSE) to 120 kW.",
-        "First-party company page identifies UniOne as a CPO and states its stations range from 22 to 300 kW."
+        "Exact PUN topology correction: SITE-11 = one 80 kW + one 22 kW EVSE; SITE-14 = one 120 kW + two 22 kW EVSE; SITE-15 = two 22 kW EVSE. Therefore five 22 kW and one 80 kW EVSE are rankable; only SITE-14#1 at 120 kW remains fail-closed.",
+        "First-party UniOne station configurations corroborate the three site power layouts; no first-party 120 kW tariff is published, so 80 kW is not extrapolated."
       ],
-      "lastInvestigated": "2026-09-25",
-      "lastChanged": "2026-09-25"
+      "lastInvestigated": "2026-09-27",
+      "lastChanged": "2026-09-27"
     },
     {
       "partyId": "VCS",
@@ -3415,6 +3415,10 @@
     {
       "date": "2026-09-25",
       "change": "Run301 canonicalized Atlante exact set reconciliation: 1,830 exact PUN↔myAtlante EVSE, 128 PUN-only across 38 stations, 12 myAtlante-only; ATE remains partial and no unmatched tariff is inferred."
+    },
+    {
+      "date": "2026-09-27",
+      "change": "Run305 corrected UOC topology without tariff extrapolation: exact PUN/site reconciliation is 5x22 kW + 1x80 kW + 1x120 kW, not 2x22 + 2x80 + 3x120. Rankable coverage increases 4/7 -> 6/7; only SITE-14#1 120 kW remains fail-closed. Status remains partial; counters unchanged."
     }
   ],
   "evidenceReports": [
@@ -3466,7 +3470,8 @@
     "data/reports/taac_taa_italy_exact_20260925.json",
     "data/reports/italy_cpo_reconciliation_20260925_run298.json",
     "data/reports/italy_cpo_reconciliation_20260925_run299.json",
-    "data/reports/italy_cpo_reconciliation_20260925_run301.json"
+    "data/reports/italy_cpo_reconciliation_20260925_run301.json",
+    "data/reports/italy_cpo_reconciliation_20260927_run305.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
