@@ -1,0 +1,111 @@
+name: Morocco Total station-level fallbacks
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-station-level-fallbacks.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe bounded station-level read paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import json,urllib.request,urllib.error,urllib.parse
+          from pathlib import Path
+          from datetime import datetime,timezone
+          BASE='https://csmstotalenergiesma.numocity.com'
+          rc=json.loads(Path('reports/morocco/totalenergies/club-ev-charge-remote-config-keys-2026-09-26.json').read_text())
+          public_id=(rc.get('safe_values') or {}).get('userID')
+          if not isinstance(public_id,str) or not public_id:raise SystemExit('public id unavailable')
+          def rq(path,method='GET',headers=None,payload=None,query=None):
+              h={'Accept':'application/json','User-Agent':'TCC-Total-StationFallback/1.0'}
+              if headers:h.update(headers)
+              url=BASE+path
+              if query:url+='?'+urllib.parse.urlencode(query)
+              data=None
+              if payload is not None:
+                  data=json.dumps(payload,separators=(',',':')).encode();h.setdefault('content-Type','application/json; charset=utf-8')
+              req=urllib.request.Request(url,data=data,headers=h,method=method)
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as r:raw=r.read(500000);st=r.status;ct=r.headers.get('content-type','')
+              except urllib.error.HTTPError as e:raw=e.read(500000);st=e.code;ct=e.headers.get('content-type','') if e.headers else ''
+              except Exception as e:return {'status':None,'error_type':type(e).__name__}
+              try:o=json.loads(raw.decode('utf-8','replace'))
+              except Exception:o=None
+              rec={'status':st,'content_type':ct,'bytes':len(raw),'json':isinstance(o,(dict,list))}
+              if isinstance(o,dict):
+                  rec['top_level_keys']=sorted(o.keys())[:100]
+                  allow=('station','charge','connector','status','available','total','count','cpid','cp','power','type','cpo','roam','rate','tariff','currency','name','id')
+                  block=('user','email','phone','account','wallet','payment','card','token','jwt','auth')
+                  vals=[]
+                  def walk(v,p='',d=0):
+                      if d>6:return
+                      if isinstance(v,dict):
+                          for k,vv in v.items():
+                              pp=f'{p}.{k}' if p else str(k);lk=str(k).lower()
+                              if any(a in lk for a in allow) and not any(b in lk for b in block) and isinstance(vv,(str,int,float,bool,type(None))):
+                                  if not isinstance(vv,str) or len(vv)<200: vals.append({'path':pp,'value':vv})
+                              walk(vv,pp,d+1)
+                      elif isinstance(v,list):
+                          for vv in v[:10]:walk(vv,p+'[]',d+1)
+                  walk(o);rec['safe_values']=vals[:200]
+                  for k in ('message','Message','Status','Code'):
+                      if k in o and isinstance(o[k],(str,int,float,bool)):rec[k]=o[k]
+              elif isinstance(o,list):
+                  rec['item_count']=len(o)
+              return rec
+
+          boot=rq('/token/admin/v1/requesttoken','POST',
+                  {'authorization':'','content-Type':'application/json; charset=utf-8','deviceType':'Mobile1','language':'fr'},
+                  {'id':public_id,'idTag':''})
+          # Re-request to obtain token in memory (not persisted).
+          h={'Accept':'application/json','User-Agent':'TCC-Total-StationFallback/1.0','authorization':'','content-Type':'application/json; charset=utf-8','deviceType':'Mobile1','language':'fr'}
+          q=urllib.request.Request(BASE+'/token/admin/v1/requesttoken',data=json.dumps({'id':public_id,'idTag':''}).encode(),headers=h,method='POST')
+          with urllib.request.urlopen(q,timeout=20) as rr:o=json.loads(rr.read().decode())
+          token=((o.get('Document') or {}).get('token'))
+          if not token:raise SystemExit('no guest token')
+          H={'authorization':'Bearer '+token,'content-Type':'application/json; charset=utf-8','deviceType':'Mobile1','language':'fr'}
+
+          cases=[
+            ('getbyid2','/asset/chargestation/getbyid2',{'ChargeStationID':8},H),
+            ('station_status_no_query','/status/api/get-status-info',None,None),
+            ('station_status_stationLevel','/status/api/get-status-info',{'stationLevel':'true'},None),
+            ('station_status_ChargeStationId','/status/api/get-status-info',{'ChargeStationId':8},None),
+            ('station_status_ChargeStationID','/status/api/get-status-info',{'ChargeStationID':8},None),
+            ('station_status_stationID','/status/api/get-status-info',{'stationID':8},None),
+            ('station_status_level_plus_Id','/status/api/get-status-info',{'stationLevel':'true','ChargeStationId':8},None),
+            ('station_status_level_plus_ID','/status/api/get-status-info',{'stationLevel':'true','ChargeStationID':8},None),
+            ('guest_station_status_level_plus_Id','/status/api/get-status-info',{'stationLevel':'true','ChargeStationId':8},H)
+          ]
+          out={'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+               'country':'MA','network':'TotalEnergies / Club EV-Charge',
+               'policy':{'single_legitimate_station_id_only':True,'station_id_source':'official guest inventory',
+                         'bounded_client_evidenced_parameter_names_only':True,'read_only_get_only':True,
+                         'no_identifier_enumeration':True,'no_user_account':True,'no_credentials':True,
+                         'token_value_persisted':False,'raw_bodies_persisted':False},
+               'bootstrap_safe':boot,'station_id':8,'probes':[]}
+          for label,path,query,headers in cases:
+              out['probes'].append({'label':label,'path':path,'query_keys':sorted(query.keys()) if query else [],**rq(path,'GET',headers,query=query)})
+          Path('reports/morocco/totalenergies/club-ev-charge-station-level-fallbacks-2026-09-26.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Commit result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-station-level-fallbacks-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): probe Total station-level fallbacks [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
