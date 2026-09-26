@@ -92,29 +92,24 @@ jobs:
               'serialized_fields':serialized,
               'annotated_fields':fields,
               'plain_fields':plain,
-              'constructor_assignments':assignments
+              'constructor_assignments':assignments,
+              'confirmed_json_fields':['amenities','latitude','limit','longitude','m','radius','route','type']
             },
             'policy':{'read_only':True,'no_login':True,'no_user_data':True,'no_mutation':True,'credentials_persisted':False},
             'attempts':[]
           }
 
-          # Exact constructor arguments used by HomeViewModel through StationsUseCaseImpl:
-          # ("", latitude, "25", longitude, "closest", "20", "1", "0")
-          positional=['','33.5731','25','-7.5898','closest','20','1','0']
-          candidates=[]
-          if assignments and len(assignments)==8:
-              # map constructor parameter order to field names
-              param_order=[]
-              if constructor:
-                  param_order=[p.strip().split()[-1] for p in constructor.group(1).split(',') if p.strip()]
-              pval={p:positional[i] for i,p in enumerate(param_order[:8])}
-              body={field:pval.get(param,'') for field,param in assignments}
-              candidates.append(body)
-          if not candidates and len(serialized)==8:
-              candidates.append(dict(zip(serialized,positional)))
-          # Last safe fallback from model string labels observed in bytecode.
-          if not candidates:
-              candidates.append({'amenities':'','latitude':'33.5731','radius':'25','longitude':'-7.5898','sortBy':'closest','limit':'20','page':'1','offset':'0'})
+          # Exact request used by HomeViewModel -> StationsUseCaseImpl.
+          candidates=[{
+            'amenities':'',
+            'latitude':'33.5731',
+            'limit':'25',
+            'longitude':'-7.5898',
+            'm':'closest',
+            'radius':'20',
+            'route':'1',
+            'type':'0'
+          }]
 
           import urllib.request,urllib.error
           for idx,b in enumerate(candidates):
