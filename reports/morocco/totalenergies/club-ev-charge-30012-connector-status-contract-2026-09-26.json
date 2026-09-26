@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "observed_at": "2026-09-26",
   "country": "MA",
   "network": "TotalEnergies / Club EV-Charge",
@@ -61,11 +61,44 @@
     "fetchCpConnectorsStatus_builds_these_headers_per_call": false,
     "note": "The status function uses the ApiServices Dio instance and does not construct x-appid-token or x-app-access-token locally. Global Dio/interceptor headers remain possible and are not inferred away."
   },
-  "production_decision": "no_promotion_yet",
-  "remaining_blocker": "A legitimate public TotalEnergies/Numocity cpid + connectorId pair (with corresponding CpoName/IsRoaming values) is still required for one read-only validation. Do not guess or enumerate identifiers.",
+  "production_decision": "status_and_native_connector_inventory_eligible_for_v9_overlay",
+  "remaining_blocker": "No remaining blocker for nationwide native connector inventory or live status. Exact native direct tariff extraction remains a separate refinement.",
   "rejected_fallback": {
     "source": "WATT.ma /api/live-status",
     "reason": "negative-control nonexistent station still received synthetic connector states",
     "report": "reports/morocco/roaming/watt-live-status-stub-validation-2026-09-26.json"
-  }
+  },
+  "discovery": {
+    "guest_bootstrap": "POST /token/admin/v1/requesttoken using public Remote Config userID and empty idTag",
+    "inventory": "GET /asset/mobile/get-map-info",
+    "connector_inventory": "GET /asset/chargestation/connectors/get/v1?ChargeStationID={nativeStationId}",
+    "station_live_summary": "GET /asset/mobile/get-gun-count?ChargeStationID={nativeStationId}",
+    "connector_live_status": "GET /status/api/get-connector-status?cpid={ChargePointName}&connectorId={ChargePointConnectorNumber}&IsRoaming=false&CpoName=",
+    "requires_user_account": false,
+    "identifier_enumeration": false
+  },
+  "nationwide_validation": {
+    "station_count": 18,
+    "connector_count": 38,
+    "connector_status_http_200": 38,
+    "status_states_seen": [
+      "Available",
+      "Charging",
+      "Preparing",
+      "Faulted",
+      "Unknown"
+    ],
+    "source_report": "reports/morocco/totalenergies/club-ev-charge-public-guest-native-overlay-2026-09-26.json",
+    "fallback_probe_report": "reports/morocco/totalenergies/club-ev-charge-station-level-fallbacks-2026-09-26.json"
+  },
+  "rejected_fallbacks": [
+    {
+      "source": "asset/chargestation/getbyid StatusName",
+      "reason": "All 18 station details reported Unavailable while connector-level native status showed Available/Charging/Preparing; unsuitable as live status."
+    },
+    {
+      "source": "WATT.ma live-status",
+      "reason": "Negative-control nonexistent station received synthetic states; unsuitable as live status."
+    }
+  ]
 }
