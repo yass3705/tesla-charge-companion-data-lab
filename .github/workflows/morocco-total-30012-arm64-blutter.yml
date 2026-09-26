@@ -1,4 +1,5 @@
 name: Morocco Total 3.00.12 exact ARM64 Blutter
+# exact-function-path-fix-2026-09-26
 
 on:
   push:
@@ -137,7 +138,7 @@ jobs:
           # Extract a safe structural skeleton of fetchCpConnectorsStatus.
           api=None
           for p,rel,data in target_files:
-              if rel.endswith('ncms_backend_flutter/network/api_service.dart'):
+              if rel.endswith('network/api_service.dart') and 'fetchCpConnectorsStatus' in data:
                   api=(p,rel,data); break
           if api:
               p,rel,data=api
@@ -170,7 +171,7 @@ jobs:
           # Extract response model fields around ConnectorStatus.fromJson.
           model_fields=[]
           for p,rel,data in target_files:
-              if rel.endswith('connector_status_model.dart'):
+              if rel.endswith('connector_status_model.dart') or ('ConnectorStatus.fromJson' in data and 'ChargePointConnectorNumber' in data):
                   lines=data.splitlines()
                   centers=[i for i,l in enumerate(lines) if 'ConnectorStatus.fromJson' in l]
                   for c in centers[:2]:
