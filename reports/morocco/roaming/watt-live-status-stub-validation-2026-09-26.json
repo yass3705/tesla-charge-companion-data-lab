@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-26",
+  "country": "MA",
+  "subject": "WATT.ma public live-status proxy production-suitability control",
+  "policy": {
+    "public_read_only_get_only": true,
+    "no_credentials": true,
+    "no_user_data": true,
+    "no_mutations": true
+  },
+  "documented_endpoint": "/api/live-status?stationId=X",
+  "totalenergies_checks": [
+    {"station_id":"ocm-134536","site":"TotalEnergies Al Baida","static_connector_count":3,"returned_connector_count":2,"returned_states":["AVAILABLE","AVAILABLE"]},
+    {"station_id":"ocm-134516","site":"TotalEnergies Tamesna","static_connector_count":1,"returned_connector_count":2,"returned_states":["AVAILABLE","AVAILABLE"]},
+    {"station_id":"ocm-134791","site":"TotalEnergies Relais de Tanger","static_connector_count":1,"returned_connector_count":2,"returned_states":["AVAILABLE","AVAILABLE"]},
+    {"station_id":"ocm-146592","site":"TotalEnergies Djebilet","static_connector_count":1,"returned_connector_count":2,"returned_states":["AVAILABLE","AVAILABLE"]}
+  ],
+  "negative_control": {
+    "station_id": "ocm-999999999",
+    "known_nonexistent": true,
+    "returned_connector_count": 2,
+    "returned_states": ["IN_USE","AVAILABLE"],
+    "finding": "The proxy synthesizes connector status even for a deliberately nonexistent station identifier."
+  },
+  "conclusion": {
+    "production_status_source": false,
+    "classification": "stub_or_simulated_response_surface",
+    "rule": "Do not use WATT.ma /api/live-status as a production live-status source until the endpoint validates station existence and returns connector topology consistent with the underlying station."
+  }
+}
