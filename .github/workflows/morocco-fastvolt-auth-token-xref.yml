@@ -1,0 +1,139 @@
+name: Morocco FastVolt auth token xref
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-auth-token-xref.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare and run Blutter
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-pyelftools python3-requests cmake ninja-build build-essential pkg-config libicu-dev libcapstone-dev
+          git clone --depth 1 https://github.com/worawit/blutter.git /tmp/blutter
+          mkdir -p /tmp/fv/xapk /tmp/fv/lib/arm64-v8a
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/ma.fastgo?version=latest' -o /tmp/fv/current.xapk
+          echo "af476c969bf7982b1561cd0769a26f322b90257b347aa858f2c438d4e73fcf97  /tmp/fv/current.xapk" | sha256sum -c -
+          unzip -q /tmp/fv/current.xapk -d /tmp/fv/xapk
+          ARM_APK="$(find /tmp/fv/xapk -maxdepth 1 -name 'config.arm64_v8a.apk' -print -quit)"
+          unzip -p "$ARM_APK" lib/arm64-v8a/libapp.so > /tmp/fv/lib/arm64-v8a/libapp.so
+          unzip -p "$ARM_APK" lib/arm64-v8a/libflutter.so > /tmp/fv/lib/arm64-v8a/libflutter.so
+          cd /tmp/blutter
+          python3 blutter.py /tmp/fv/lib/arm64-v8a /tmp/fv/blutter-out
+
+      - name: Trace callers of guest/auth header call
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/fastvolt
+          python3 - <<'PY'
+          import os,re,json
+          from datetime import datetime, timezone
+
+          root='/tmp/fv/blutter-out/asm'
+          api=os.path.join(root,'evplug/backend/api_requests/api_calls.dart')
+          alines=open(api,errors='ignore').read().splitlines()
+
+          def addr_for_route(route):
+              for i,l in enumerate(alines):
+                  if route in l:
+                      for j in range(i,-1,-1):
+                          m=re.search(r'\*\* addr: (0x[0-9a-f]+)',alines[j])
+                          if m:return m.group(1)
+              return None
+
+          targets={
+            'header_signin':addr_for_route('app/header_signin/'),
+            'send_verification_otp':addr_for_route('auth/send_verification_otp/'),
+            'verify_otp':addr_for_route('auth/verify_otp/')
+          }
+
+          def sanitize(x):
+              x=re.sub(r'(?<![A-Za-z0-9])[A-Za-z0-9_+/=.:-]{80,}(?![A-Za-z0-9])','<redacted-opaque>',x)
+              return x[:1400]
+
+          def func_start(lines,i):
+              j=i
+              while j>=0:
+                  if re.match(r'^  (?:static )?[_A-Za-z].*\{\s*$',lines[j]):
+                      return max(0,j-8)
+                  j-=1
+              return max(0,i-80)
+
+          refs={k:[] for k in targets}
+          for dp,_,fs in os.walk(root):
+              for f in fs:
+                  if not f.endswith('.dart'): continue
+                  p=os.path.join(dp,f)
+                  try: lines=open(p,errors='ignore').read().splitlines()
+                  except Exception: continue
+                  for key,addr in targets.items():
+                      if not addr: continue
+                      needle='#'+addr[2:]
+                      for i,l in enumerate(lines):
+                          if needle in l and ('bl ' in l or 'addr:' not in l):
+                              s=func_start(lines,i)
+                              e=min(len(lines),i+90)
+                              refs[key].append({
+                                'file':os.path.relpath(p,root),
+                                'match_line':i+1,
+                                'context':[sanitize(x) for x in lines[s:e]]
+                              })
+                              if len(refs[key])>=20: break
+
+          # Also find explicit call wrapper classes and app-state/current-user token clues.
+          clues=['loginCheck.call','LoginCheck','currentJwtToken','jwtToken','currentUser','authToken',
+                 'FFAppState','sendOTPToMobileNumber','verifyPhoneOTP']
+          clue_hits={}
+          for clue in clues:
+              arr=[]
+              for dp,_,fs in os.walk(root):
+                  for f in fs:
+                      if not f.endswith('.dart'): continue
+                      p=os.path.join(dp,f)
+                      try: lines=open(p,errors='ignore').read().splitlines()
+                      except Exception: continue
+                      for i,l in enumerate(lines):
+                          if clue.lower() in l.lower():
+                              s=func_start(lines,i)
+                              arr.append({'file':os.path.relpath(p,root),'match_line':i+1,'context':[sanitize(x) for x in lines[s:min(len(lines),i+70)]]})
+                              if len(arr)>=12: break
+                      if len(arr)>=12: break
+                  if len(arr)>=12: break
+              clue_hits[clue]=arr
+
+          out={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'FastVolt',
+            'source':{'package':'ma.fastgo','version':'2.8.9','tool':'Blutter'},
+            'policy':{'static_analysis_only':True,'opaque_values_redacted':True,'no_credentials':True},
+            'target_addresses':targets,'cross_references':refs,'clues':clue_hits
+          }
+          with open('reports/morocco/fastvolt/auth-token-xref-2026-09-26.json','w') as f:
+              json.dump(out,f,indent=2,ensure_ascii=False);f.write('\n')
+          PY
+          rm -rf /tmp/fv /tmp/blutter
+
+      - name: Publish report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/fastvolt/auth-token-xref-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): trace FastVolt auth token source [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push
