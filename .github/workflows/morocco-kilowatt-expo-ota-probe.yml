@@ -33,10 +33,17 @@ jobs:
               tag=ch or 'none'
               body=Path(f'/tmp/kilowatt-ota/{tag}.body')
               hdr=Path(f'/tmp/kilowatt-ota/{tag}.headers')
-              url=base+f'?runtime-version=1.0.1&platform=android'+(f'&channel-name={ch}' if ch else '')
+              url=base
               cmd=['curl','--silent','--show-error','--location','--max-time','30',
+                   '--header','expo-platform: android',
+                   '--header','expo-runtime-version: 1.0.1',
+                   '--header','expo-protocol-version: 1',
+                   '--header','accept: multipart/mixed,application/expo+json,application/json',
                    '--dump-header',str(hdr),'--output',str(body),
-                   '--write-out','%{http_code}|%{content_type}',url]
+                   '--write-out','%{http_code}|%{content_type}']
+              if ch:
+                  cmd += ['--header',f'expo-channel-name: {ch}']
+              cmd += [url]
               p=subprocess.run(cmd,capture_output=True,text=True)
               code,ctype=(p.stdout.strip().split('|',1)+[''])[:2] if '|' in p.stdout else (p.stdout.strip(),'')
               rec={'channel':ch or None,'http_status':int(code) if str(code).isdigit() else None,'content_type':ctype or None,'bytes':body.stat().st_size if body.exists() else 0}
