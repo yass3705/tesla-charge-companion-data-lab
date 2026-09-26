@@ -1,0 +1,133 @@
+name: Morocco FastVolt auth header initializer
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-auth-header-init.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare Blutter
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-pyelftools python3-requests cmake ninja-build build-essential pkg-config libicu-dev libcapstone-dev
+          git clone --depth 1 https://github.com/worawit/blutter.git /tmp/blutter
+          mkdir -p /tmp/fv/xapk /tmp/fv/lib/arm64-v8a
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/ma.fastgo?version=latest' -o /tmp/fv/current.xapk
+          echo "af476c969bf7982b1561cd0769a26f322b90257b347aa858f2c438d4e73fcf97  /tmp/fv/current.xapk" | sha256sum -c -
+          unzip -q /tmp/fv/current.xapk -d /tmp/fv/xapk
+          ARM_APK="$(find /tmp/fv/xapk -maxdepth 1 -name 'config.arm64_v8a.apk' -print -quit)"
+          unzip -p "$ARM_APK" lib/arm64-v8a/libapp.so > /tmp/fv/lib/arm64-v8a/libapp.so
+          unzip -p "$ARM_APK" lib/arm64-v8a/libflutter.so > /tmp/fv/lib/arm64-v8a/libflutter.so
+          cd /tmp/blutter
+          python3 blutter.py /tmp/fv/lib/arm64-v8a /tmp/fv/blutter-out
+
+      - name: Extract exact AuthAPIcallsGroup initialization evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/fastvolt
+          python3 - <<'PY'
+          import json,re,hashlib
+          from datetime import datetime, timezone
+          p='/tmp/fv/blutter-out/asm/evplug/backend/api_requests/api_calls.dart'
+          lines=open(p,errors='ignore').read().splitlines()
+
+          def sanitize(s):
+              # Hide credential-like or long opaque literals, but preserve key names and control flow.
+              def repl(m):
+                  v=m.group(1)
+                  if len(v)>=60 and re.fullmatch(r'[A-Za-z0-9_./+=:-]+',v or ''):
+                      return '"<redacted-opaque-literal>"'
+                  return '"'+v+'"'
+              s=re.sub(r'"([^"\\]*(?:\\.[^"\\]*)*)"', repl, s)
+              return s[:1200]
+
+          def function_start(i):
+              j=i
+              while j>0:
+                  if re.match(r'^  (?:static )?[_A-Za-z].*\{\s*$', lines[j]):
+                      return j
+                  j-=1
+              return max(0,i-120)
+
+          terms=[
+            'AuthAPIcallsGroup::headers',
+            'AuthAPIcallsGroup::baseUrl',
+            'AuthAPIcallsGroup::loginCheck',
+            'AuthAPIcallsGroup::amazonRequestOtp',
+            'app/header_signin/',
+            'auth/send_verification_otp/',
+            'auth/verify_otp/',
+            'jwtTokenStream',
+            '"Authorization"',
+            '"token "',
+            '"Bearer'
+          ]
+          hits={}
+          for term in terms:
+              idx=[i for i,x in enumerate(lines) if term in x]
+              blocks=[]
+              seen=set()
+              for i in idx:
+                  start=function_start(i)
+                  # Use a bounded function-context window.
+                  key=(start,i)
+                  if key in seen: continue
+                  seen.add(key)
+                  end=min(len(lines),max(i+45,start+130))
+                  blocks.append({
+                    'match_line':i+1,
+                    'function_start_line':start+1,
+                    'context':[sanitize(x) for x in lines[start:end]]
+                  })
+                  if len(blocks)>=10: break
+              hits[term]=blocks
+
+          # Summarize whether auth-group header construction references dynamic/runtime sources.
+          joined='\n'.join(lines)
+          summary={
+            'auth_headers_field_present':'AuthAPIcallsGroup::headers' in joined,
+            'auth_base_url_field_present':'AuthAPIcallsGroup::baseUrl' in joined,
+            'login_check_field_present':'AuthAPIcallsGroup::loginCheck' in joined,
+            'jwt_stream_present':'jwtTokenStream' in joined,
+            'authorization_literal_present':'"Authorization"' in joined,
+            'token_prefix_literal_present':'"token "' in joined,
+            'bearer_literal_present':'"Bearer' in joined,
+          }
+          out={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'FastVolt',
+            'source':{'package':'ma.fastgo','version':'2.8.9','tool':'Blutter','dart':'3.9.2'},
+            'policy':{'static_analysis_only':True,'opaque_literals_redacted':True,'no_tokens':True,'no_credentials':True},
+            'summary':summary,
+            'hits':hits
+          }
+          with open('reports/morocco/fastvolt/auth-header-initializer-2026-09-26.json','w') as f:
+              json.dump(out,f,indent=2,ensure_ascii=False); f.write('\n')
+          PY
+          rm -rf /tmp/fv /tmp/blutter
+
+      - name: Publish sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/fastvolt/auth-header-initializer-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): resolve FastVolt auth header initializer [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push
