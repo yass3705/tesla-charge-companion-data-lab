@@ -118,13 +118,14 @@ jobs:
               'bootstrap':token_meta,
               'bootstrap_token_nonempty':bool(token),
               'bootstrap_token_type_present':bool(token_type),
+              'bootstrap_token_type_value':token_type if isinstance(token_type,str) and len(token_type)<80 else None,
               'inventory_probes':[]
           }
 
           if token:
-              scheme=(token_type or 'Bearer').strip()
-              # Avoid duplicated "Bearer " if tokenType itself contains spacing.
-              auth=(scheme+' '+token).strip()
+              # Club EV-Charge 3.00.12 ApiServices contains the explicit app-side literal "Bearer ".
+              # tokenType is response metadata and is not used as the HTTP auth scheme here.
+              auth='Bearer '+token
               business_headers={
                   'authorization':auth,
                   'content-Type':'application/json; charset=utf-8',
