@@ -1,0 +1,96 @@
+name: Numocity Kurrent Dart runtime one-shot
+
+on:
+  push:
+    paths:
+      - '.github/workflows/numocity-kurrent-dart-runtime-oneshot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect public Kurrent Dart runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/kurrent /tmp/blutter
+          mkdir -p /tmp/kurrent/xapk /tmp/kurrent/lib reports/morocco/totalenergies
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0'             'https://d.apkpure.net/b/XAPK/com.namp.kurrent?version=latest'             -o /tmp/kurrent/current.xapk
+          unzip -q /tmp/kurrent/current.xapk -d /tmp/kurrent/xapk
+
+          python - <<'PY'
+          import os, zipfile
+          root='/tmp/kurrent/xapk'
+          out='/tmp/kurrent/lib'
+          found={'libapp.so':False,'libflutter.so':False}
+          for fn in os.listdir(root):
+              if not fn.endswith('.apk'): continue
+              p=os.path.join(root,fn)
+              try:
+                  with zipfile.ZipFile(p) as z:
+                      for target in list(found):
+                          name='lib/arm64-v8a/'+target
+                          if name in z.namelist() and not found[target]:
+                              open(os.path.join(out,target),'wb').write(z.read(name))
+                              found[target]=True
+              except Exception:
+                  pass
+          if not all(found.values()):
+              raise SystemExit('arm64 libapp/libflutter pair not found')
+          PY
+
+          git clone --depth=1 https://github.com/worawit/blutter.git /tmp/blutter
+          python -m pip install --quiet pyelftools requests
+
+          PYTHONPATH=/tmp/blutter python - <<'PY'
+          import json, sys
+          from datetime import datetime, timezone
+          sys.path.insert(0,'/tmp/blutter')
+          from extract_dart_info import extract_dart_info
+
+          app='/tmp/kurrent/lib/libapp.so'
+          flutter='/tmp/kurrent/lib/libflutter.so'
+          version,snapshot,flags,arch,os_name=extract_dart_info(app,flutter)
+          out={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'subject':'Kurrent Charge public ARM64 Dart runtime compatibility preflight',
+            'policy':{
+              'public_package_only':True,'static_analysis_only':True,'no_backend_requests':True,
+              'no_credentials':True,'no_tokens':True,'raw_package_persisted':False
+            },
+            'runtime':{
+              'dart_version':version,
+              'snapshot_hash':snapshot,
+              'flags':sorted(flags),
+              'architecture':arch,
+              'os':os_name
+            },
+            'blutter_preflight':{
+              'upstream':'worawit/blutter',
+              'arm64_input_supported':arch in ('arm64','arm64-v8a'),
+              'full_decompilation_executed':False
+            }
+          }
+          with open('reports/morocco/totalenergies/numocity-kurrent-dart-runtime-2026-09-26.json','w') as f:
+              json.dump(out,f,indent=2,ensure_ascii=False); f.write('\n')
+          PY
+
+          rm -rf /tmp/kurrent /tmp/blutter
+
+      - name: Commit sanitized runtime report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/numocity-kurrent-dart-runtime-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(numocity): detect Kurrent Dart runtime [run $GITHUB_RUN_ID]"
+          git push
