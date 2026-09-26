@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
-  "generated_at": "2026-09-26T15:14:37.641218+00:00",
+  "schema_version": 3,
+  "generated_at": "2026-09-26T15:38:06.575817+00:00",
   "country": "MA",
   "network": "FastVolt",
   "target": {
@@ -15,8 +15,10 @@
     "no_otp": true,
     "no_charging_or_account_mutations": true,
     "response_bodies_not_persisted": true,
-    "websocket_passive_receive_only": true,
-    "websocket_client_application_payload_sent": false
+    "websocket_passive_probe": true,
+    "synthetic_registration_only": true,
+    "synthetic_user_id_is_deliberately_nonexistent": true,
+    "no_real_user_identifier_sent": true
   },
   "http_probes": [
     {
@@ -116,6 +118,20 @@
     "client_application_payload_sent": false,
     "response_payload_values_persisted": false
   },
+  "websocket_synthetic_registration_probe": {
+    "status_line": "HTTP/1.1 101 Switching Protocols",
+    "registration_sent": true,
+    "registration_shape": {
+      "keys": [
+        "tenant_id",
+        "user_id"
+      ],
+      "user_id_kind": "synthetic_nonexistent",
+      "tenant_id_source": "FastVolt 2.8.9 static client"
+    },
+    "response_frames": [],
+    "response_payload_values_persisted": false
+  },
   "summary": {
     "http_statuses": [
       404,
@@ -128,6 +144,9 @@
     ],
     "websocket_upgrade_without_auth": true,
     "passive_websocket_frame_count": 0,
-    "passive_websocket_text_shapes": []
+    "passive_websocket_text_shapes": [],
+    "synthetic_registration_sent": true,
+    "synthetic_registration_response_frame_count": 0,
+    "synthetic_registration_response_shapes": []
   }
 }
