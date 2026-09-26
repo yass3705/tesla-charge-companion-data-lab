@@ -1,0 +1,63 @@
+name: Morocco FastVolt exact user-id source
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-exact-userid-source.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract only exact user_id source contexts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re
+          from datetime import datetime,timezone
+          src='reports/morocco/fastvolt/userid-provenance-2026-09-26.json'
+          out='reports/morocco/fastvolt/exact-userid-source-2026-09-26.json'
+          j=json.load(open(src))
+          exact=re.compile(r'\$\.user_id|auth/get_details_with_userid/|Get User Details With FirebaseUserId',re.I)
+          support=re.compile(r'getJsonField|jsonBody|ApiCallResponse|FFAppState|userid|user_id|token|call\(|statusCode|verify_otp|login|firebase',re.I)
+          rows=[]
+          for h in j.get('auth_response_contexts',[]):
+              ctx=h.get('context') or []
+              indices=[i for i,x in enumerate(ctx) if exact.search(x)]
+              if not indices: continue
+              excerpts=[]
+              for i in indices:
+                  a=max(0,i-20); b=min(len(ctx),i+45)
+                  lines=ctx[a:b]
+                  # retain full local context but cap
+                  excerpts.append(lines[:80])
+              rows.append({'file':h.get('file'),'line':h.get('line'),'excerpts':excerpts})
+          result={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'FastVolt',
+            'exact_context_count':len(rows),
+            'contexts':rows[:30]
+          }
+          json.dump(result,open(out,'w'),indent=2,ensure_ascii=False)
+          open(out,'a').write('\n')
+          PY
+
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/fastvolt/exact-userid-source-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): isolate exact FastVolt user_id source [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push
