@@ -1,0 +1,83 @@
+name: Morocco FastVolt userid provenance compact
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-userid-provenance-compact.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  compact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compact existing userid provenance report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re
+          from datetime import datetime,timezone
+          src='reports/morocco/fastvolt/userid-provenance-2026-09-26.json'
+          out='reports/morocco/fastvolt/userid-provenance-compact-2026-09-26.json'
+          j=json.load(open(src))
+
+          def useful(ctx):
+              text='\n'.join(ctx or [])
+              return bool(re.search(r'userid|user_id|ff_userid|set _ userid|getJsonField|jsonBody|verify_otp|auth/login|signup|firebase|uid|token',text,re.I))
+
+          def trim(ctx):
+              lines=ctx or []
+              keep=[]
+              for i,x in enumerate(lines):
+                  if re.search(r'userid|user_id|ff_userid|set _ userid|getJsonField|jsonBody|verify_otp|auth/login|signup|firebase|uid|token|call\(\)|ApiCallResponse|statusCode',x,re.I):
+                      a=max(0,i-6);b=min(len(lines),i+12)
+                      keep.extend(lines[a:b])
+              # de-dupe preserving order
+              seen=set();res=[]
+              for x in keep:
+                  if x not in seen:
+                      seen.add(x);res.append(x[:1200])
+              return res[:180]
+
+          xrefs=[]
+          for h in j.get('userid_setter_crossrefs',[]):
+              if useful(h.get('context')):
+                  xrefs.append({'file':h.get('file'),'line':h.get('line'),'context':trim(h.get('context'))})
+
+          auth=[]
+          for h in j.get('auth_response_contexts',[]):
+              if useful(h.get('context')):
+                  auth.append({'file':h.get('file'),'line':h.get('line'),'context':trim(h.get('context'))})
+
+          lits=[x for x in j.get('relevant_literals',[]) if re.search(r'userid|user_id|uid|token|login|otp|reference_id|firebase',str(x),re.I)]
+
+          compact={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'FastVolt',
+            'source_report':src,
+            'userid_setter_address':j.get('userid_setter_address'),
+            'setter_crossrefs':xrefs[:30],
+            'auth_response_contexts':auth[:40],
+            'relevant_literals':lits[:150]
+          }
+          json.dump(compact,open(out,'w'),indent=2,ensure_ascii=False)
+          open(out,'a').write('\n')
+          PY
+
+      - name: Publish compact report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/fastvolt/userid-provenance-compact-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): compact FastVolt userid provenance [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push
