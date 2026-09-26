@@ -1,5 +1,5 @@
 name: Morocco Total 3.00.12 exact ARM64 Blutter
-# exact-function-path-fix-2026-09-26
+# exact-function-body-fix-2026-09-26
 
 on:
   push:
@@ -147,26 +147,26 @@ jobs:
               report['function']['file']=rel
               report['function']['declaration_lines']=[i+1 for i in centers[:5]]
               skeleton=[]
+              exact_slice=[]
               safe_words=re.compile(r'(fetchCpConnectorsStatus|get-connector-status|ChargePoint|Connector|cpid|cpId|chargePointId|connectorId|query|headers|RequestOptions|Dio|dio_for_native|::get|::post|productionApiProvider|baseUrl|x-appid-token|x-app-access-token|GlobalJwtToken|savedKongToken)',re.I)
-              # Preserve only instruction class + safe symbol/comment refs; strip raw string values not in allowlist.
-              for center in centers[:2]:
-                  lo=max(0,center-25); hi=min(len(lines),center+420)
+              # Preserve the exact instruction slice for this single function while redacting
+              # unrelated string constants and secret-looking material.
+              for center in centers[:1]:
+                  lo=max(0,center-8); hi=min(len(lines),center+280)
                   for idx in range(lo,hi):
                       line=lines[idx]
-                      if not safe_words.search(line): continue
-                      # redact any long quoted literal unless it is an allowlisted network marker
                       clean=line
                       for m in list(re.finditer(r'"([^"]{1,300})"',clean)):
                           val=m.group(1)
                           if not safe_words.search(val):
                               clean=clean.replace('"'+val+'"','"<redacted>"')
-                      # remove likely bearer/JWT/API-key shaped values
-                      clean=re.sub(r'(?i)(bearer\s+)[A-Za-z0-9._~+/-]{12,}',r'\1<redacted>',clean)
-                      clean=re.sub(r'\b[A-Fa-f0-9]{32,}\b','<redacted-hex>',clean)
-                      skeleton.append({'line':idx+1,'text':clean[:700]})
-                      if len(skeleton)>=260: break
-                  if len(skeleton)>=260: break
-              report['function']['safe_skeleton']=skeleton
+                      clean=re.sub(r'(?i)(bearer\\s+)[A-Za-z0-9._~+/-]{12,}',r'\\1<redacted>',clean)
+                      clean=re.sub(r'\\b[A-Fa-f0-9]{32,}\\b','<redacted-hex>',clean)
+                      exact_slice.append({'line':idx+1,'text':clean[:700]})
+                      if safe_words.search(clean):
+                          skeleton.append({'line':idx+1,'text':clean[:700]})
+              report['function']['safe_skeleton']=skeleton[:260]
+              report['function']['exact_sanitized_slice']=exact_slice[:288]
 
           # Extract response model fields around ConnectorStatus.fromJson.
           model_fields=[]
