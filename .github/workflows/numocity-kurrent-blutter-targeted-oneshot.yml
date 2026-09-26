@@ -1,0 +1,166 @@
+name: Numocity Kurrent targeted Blutter one-shot
+
+on:
+  push:
+    paths:
+      - '.github/workflows/numocity-kurrent-blutter-targeted-oneshot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build pkg-config libicu-dev libcapstone-dev
+          python -m pip install --quiet pyelftools requests
+
+      - name: Download public Kurrent client
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/kurrent /tmp/blutter /tmp/blutter-out
+          mkdir -p /tmp/kurrent/xapk /tmp/kurrent/lib
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0'             'https://d.apkpure.net/b/XAPK/com.namp.kurrent?version=latest'             -o /tmp/kurrent/current.xapk
+          unzip -q /tmp/kurrent/current.xapk -d /tmp/kurrent/xapk
+          python - <<'PY'
+          import os,zipfile
+          root='/tmp/kurrent/xapk'; out='/tmp/kurrent/lib'
+          found={'libapp.so':False,'libflutter.so':False}
+          for fn in os.listdir(root):
+              if not fn.endswith('.apk'): continue
+              try:
+                  with zipfile.ZipFile(os.path.join(root,fn)) as z:
+                      for target in list(found):
+                          n='lib/arm64-v8a/'+target
+                          if n in z.namelist() and not found[target]:
+                              open(os.path.join(out,target),'wb').write(z.read(n)); found[target]=True
+              except Exception: pass
+          if not all(found.values()): raise SystemExit('arm64 library pair unavailable')
+          PY
+
+      - name: Run targeted no-analysis Blutter
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 https://github.com/worawit/blutter.git /tmp/blutter
+          set +e
+          timeout 540 python3 /tmp/blutter/blutter.py /tmp/kurrent/lib /tmp/blutter-out --no-analysis > /tmp/blutter-run.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > /tmp/blutter-rc
+          # Do not print or upload raw Blutter output.
+
+      - name: Build sanitized targeted report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import json,os,re
+          from datetime import datetime,timezone
+
+          OUT='reports/morocco/totalenergies/numocity-kurrent-blutter-targeted-2026-09-26.json'
+          needles=[
+            'status/api/get-connector-status',
+            '_get_connector_status',
+            'fetchCpConnectorsStatus',
+            'ConnectorStatus.fromJson',
+            'ChargePointConnectorNumber',
+            'ChargePointId','chargePointId',
+            'ConnectorId','connectorId',
+            'CPID','cpId','cpid',
+            'tenantId','appId',
+            'x-appid-token','x-app-access-token',
+            'authorization','Bearer ',
+            '_productionApiProvider','_baseUrl','_headers'
+          ]
+          safe_symbol_re=re.compile(r'(get_connector_status|fetchCpConnectorsStatus|ConnectorStatus|productionApiProvider|baseUrl|headers|status/api/get-connector-status)',re.I)
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'subject':'Sanitized targeted Blutter analysis of public Numocity Kurrent Charge ARM64 client',
+            'policy':{
+              'public_package_only':True,'static_analysis_only':True,'no_backend_requests':True,
+              'no_login':True,'no_credentials':True,'no_tokens_persisted':True,
+              'raw_blutter_output_persisted':False,'allowlisted_markers_only':True
+            },
+            'runtime':{'dart_version':'3.3.2','architecture':'arm64','mode':'--no-analysis'},
+            'execution':{},
+            'matches':[]
+          }
+          try: report['execution']['return_code']=int(open('/tmp/blutter-rc').read().strip())
+          except Exception: report['execution']['return_code']=None
+          report['execution']['output_directory_created']=os.path.isdir('/tmp/blutter-out')
+
+          root='/tmp/blutter-out'
+          if os.path.isdir(root):
+              files=[]
+              for dp,_,fs in os.walk(root):
+                  for fn in fs:
+                      p=os.path.join(dp,fn)
+                      try:
+                          if os.path.getsize(p)>80_000_000: continue
+                          files.append(p)
+                      except Exception: pass
+              report['execution']['scannable_output_files']=len(files)
+              hits=[]
+              for p in files:
+                  rel=os.path.relpath(p,root)
+                  try:
+                      with open(p,'r',encoding='utf-8',errors='ignore') as f:
+                          for no,line in enumerate(f,1):
+                              found=[n for n in needles if n in line]
+                              if not found: continue
+                              # Persist only allowlisted marker names plus safe symbol/function names.
+                              syms=[]
+                              for m in re.finditer(r'[A-Za-z_][A-Za-z0-9_.$@:/-]{2,160}',line):
+                                  s=m.group(0)
+                                  if any(n in s for n in found) or safe_symbol_re.search(s):
+                                      syms.append(s)
+                              hits.append({
+                                'file':rel,
+                                'line':no,
+                                'markers':sorted(set(found)),
+                                'safe_symbols':sorted(set(syms))[:20]
+                              })
+                              if len(hits)>=500: break
+                  except Exception: pass
+                  if len(hits)>=500: break
+              report['matches']=hits
+
+          # Only persist safe high-level build diagnostics if Blutter failed.
+          if report['execution']['return_code'] not in (0,None):
+              log=''
+              try: log=open('/tmp/blutter-run.log',encoding='utf-8',errors='ignore').read()
+              except Exception: pass
+              report['execution']['safe_failure_markers']=[
+                x for x in ['timeout','segmentation fault','unsupported','cannot find','error','failed']
+                if x in log.lower()
+              ]
+
+          with open(OUT,'w',encoding='utf-8') as f:
+              json.dump(report,f,ensure_ascii=False,indent=2); f.write('\n')
+          PY
+          rm -rf /tmp/kurrent /tmp/blutter /tmp/blutter-out /tmp/blutter-run.log /tmp/blutter-rc
+
+      - name: Commit sanitized report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/numocity-kurrent-blutter-targeted-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(numocity): targeted Kurrent Blutter analysis [run $GITHUB_RUN_ID]"
+          git push
