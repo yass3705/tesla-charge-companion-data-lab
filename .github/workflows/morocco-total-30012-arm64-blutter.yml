@@ -1,0 +1,208 @@
+name: Morocco Total 3.00.12 exact ARM64 Blutter
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-30012-arm64-blutter.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build pkg-config libicu-dev libcapstone-dev
+          python -m pip install --quiet pyelftools requests
+
+      - name: Download exact public Total 3.00.12 ARM64 variant
+        shell: bash
+        env:
+          URL: "https://download.pureapk.com/b/XAPK/Y29tLm5hbXAudG90YWxldl8xNF8zNTJhNjdlNQ?as2=db91def85bd2cc2cebea5e889e36b4866c92699d&k=6a2bd595361c47705231b076672895396c92699d&_p=Y29tLm5hbXAudG90YWxldg&c=1%7CBUSINESS%7Cb2lkPTkmZGV2PVRFTSUyME1hcm9jJnQ9eGFwayZzPTUwODMzMjYwJnZuPTMuMDAuMTImdmM9MTQ&_fn=Q2x1YitFVi1DaGFyZ2VfMy4wMC4xMl9hcGtjb21iby5jb20ueGFwaw%3D%3D"
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/total30012 /tmp/blutter /tmp/blutter-out
+          mkdir -p /tmp/total30012/xapk /tmp/total30012/lib
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' "$URL"             -o /tmp/total30012/current.xapk
+          unzip -q /tmp/total30012/current.xapk -d /tmp/total30012/xapk
+          python - <<'PY'
+          import os,zipfile,hashlib
+          root='/tmp/total30012/xapk'
+          out='/tmp/total30012/lib'
+          pair={}
+          for fn in os.listdir(root):
+              if not fn.endswith('.apk'): continue
+              p=os.path.join(root,fn)
+              try:
+                  with zipfile.ZipFile(p) as z:
+                      for target in ('libapp.so','libflutter.so'):
+                          n='lib/arm64-v8a/'+target
+                          if n in z.namelist() and target not in pair:
+                              b=z.read(n)
+                              open(os.path.join(out,target),'wb').write(b)
+                              pair[target]={'apk':fn,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}
+              except Exception: pass
+          if len(pair)!=2: raise SystemExit('exact Total ARM64 Flutter library pair unavailable')
+          import json
+          open('/tmp/total30012/pair.json','w').write(json.dumps(pair))
+          PY
+
+      - name: Run exact Total Blutter
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 https://github.com/worawit/blutter.git /tmp/blutter
+          set +e
+          timeout 600 python3 /tmp/blutter/blutter.py /tmp/total30012/lib /tmp/blutter-out --no-analysis > /tmp/blutter-run.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > /tmp/blutter-rc
+
+      - name: Build sanitized exact-function report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import os,re,json,hashlib
+          from datetime import datetime,timezone
+
+          root='/tmp/blutter-out'
+          pair={}
+          try: pair=json.load(open('/tmp/total30012/pair.json'))
+          except Exception: pass
+          try: rc=int(open('/tmp/blutter-rc').read().strip())
+          except Exception: rc=None
+
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA',
+            'network':'TotalEnergies / Club EV-Charge',
+            'package':'com.namp.totalev',
+            'version':'3.00.12',
+            'source_variant':{
+              'xapk_bytes':os.path.getsize('/tmp/total30012/current.xapk') if os.path.exists('/tmp/total30012/current.xapk') else None,
+              'xapk_sha256':hashlib.sha256(open('/tmp/total30012/current.xapk','rb').read()).hexdigest() if os.path.exists('/tmp/total30012/current.xapk') else None,
+              'arm64_libraries':pair
+            },
+            'policy':{
+              'public_package_only':True,'static_analysis_only':True,'no_backend_requests':True,
+              'no_login':True,'no_credentials':True,'no_token_values_persisted':True,
+              'raw_blutter_output_persisted':False,'network_structure_only':True
+            },
+            'blutter':{
+              'return_code':rc,
+              'output_created':os.path.isdir(root)
+            },
+            'function':{},
+            'network_markers':[]
+          }
+
+          # Search for the exact Total function and safe network/auth markers.
+          wanted=[
+            'fetchCpConnectorsStatus','status/api/get-connector-status',
+            'ChargePointId','ChargePointConnectorNumber','chargePointId','connectorId','cpId','cpid',
+            'x-appid-token','x-app-access-token','GlobalJwtToken','savedKongToken',
+            '/token/admin/v1/requesttoken','apiVersion','kongVersion',
+            'productionApiProvider','baseUrl'
+          ]
+          matches=[]
+          target_files=[]
+          if os.path.isdir(root):
+              for dp,_,fs in os.walk(root):
+                  for fn in fs:
+                      p=os.path.join(dp,fn)
+                      try:
+                          if os.path.getsize(p)>60_000_000: continue
+                          data=open(p,encoding='utf-8',errors='ignore').read()
+                      except Exception: continue
+                      found=[w for w in wanted if w in data]
+                      if found:
+                          rel=os.path.relpath(p,root)
+                          target_files.append((p,rel,data))
+                          for w in found:
+                              matches.append({'file':rel,'marker':w})
+          report['network_markers']=matches[:300]
+
+          # Extract a safe structural skeleton of fetchCpConnectorsStatus.
+          api=None
+          for p,rel,data in target_files:
+              if rel.endswith('ncms_backend_flutter/network/api_service.dart'):
+                  api=(p,rel,data); break
+          if api:
+              p,rel,data=api
+              lines=data.splitlines()
+              centers=[i for i,l in enumerate(lines) if 'fetchCpConnectorsStatus' in l]
+              report['function']['file']=rel
+              report['function']['declaration_lines']=[i+1 for i in centers[:5]]
+              skeleton=[]
+              safe_words=re.compile(r'(fetchCpConnectorsStatus|get-connector-status|ChargePoint|Connector|cpid|cpId|chargePointId|connectorId|query|headers|RequestOptions|Dio|dio_for_native|::get|::post|productionApiProvider|baseUrl|x-appid-token|x-app-access-token|GlobalJwtToken|savedKongToken)',re.I)
+              # Preserve only instruction class + safe symbol/comment refs; strip raw string values not in allowlist.
+              for center in centers[:2]:
+                  lo=max(0,center-25); hi=min(len(lines),center+420)
+                  for idx in range(lo,hi):
+                      line=lines[idx]
+                      if not safe_words.search(line): continue
+                      # redact any long quoted literal unless it is an allowlisted network marker
+                      clean=line
+                      for m in list(re.finditer(r'"([^"]{1,300})"',clean)):
+                          val=m.group(1)
+                          if not safe_words.search(val):
+                              clean=clean.replace('"'+val+'"','"<redacted>"')
+                      # remove likely bearer/JWT/API-key shaped values
+                      clean=re.sub(r'(?i)(bearer\s+)[A-Za-z0-9._~+/-]{12,}',r'\1<redacted>',clean)
+                      clean=re.sub(r'\b[A-Fa-f0-9]{32,}\b','<redacted-hex>',clean)
+                      skeleton.append({'line':idx+1,'text':clean[:700]})
+                      if len(skeleton)>=260: break
+                  if len(skeleton)>=260: break
+              report['function']['safe_skeleton']=skeleton
+
+          # Extract response model fields around ConnectorStatus.fromJson.
+          model_fields=[]
+          for p,rel,data in target_files:
+              if rel.endswith('connector_status_model.dart'):
+                  lines=data.splitlines()
+                  centers=[i for i,l in enumerate(lines) if 'ConnectorStatus.fromJson' in l]
+                  for c in centers[:2]:
+                      for idx in range(max(0,c-20),min(len(lines),c+180)):
+                          line=lines[idx]
+                          if any(k in line for k in ('ChargePointId','ChargePointConnectorNumber','cpid','status','ConnectorStatus')):
+                              clean=re.sub(r'\b[A-Fa-f0-9]{32,}\b','<redacted-hex>',line)
+                              model_fields.append({'line':idx+1,'text':clean[:700]})
+                  report['response_model_file']=rel
+                  break
+          report['response_model_context']=model_fields[:120]
+
+          if rc not in (0,None):
+              log=''
+              try: log=open('/tmp/blutter-run.log',encoding='utf-8',errors='ignore').read().lower()
+              except Exception: pass
+              report['blutter']['safe_failure_markers']=[x for x in ('timeout','unsupported','cannot find','error','failed') if x in log]
+
+          with open('reports/morocco/totalenergies/club-ev-charge-30012-arm64-blutter-2026-09-26.json','w') as f:
+              json.dump(report,f,ensure_ascii=False,indent=2); f.write('\n')
+          PY
+          rm -rf /tmp/total30012 /tmp/blutter /tmp/blutter-out /tmp/blutter-run.log /tmp/blutter-rc
+
+      - name: Commit sanitized report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-30012-arm64-blutter-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): exact Total 3.00.12 ARM64 Blutter [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
