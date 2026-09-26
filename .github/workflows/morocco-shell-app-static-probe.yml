@@ -1,0 +1,104 @@
+name: Morocco Shell app static probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-shell-app-static-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download current Shell Maroc APK and inspect
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/shellma
+          mkdir -p /tmp/shellma reports/morocco/shell
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/APK/com.shell.shell_loyalty_app.morocco?version=latest' \
+            -o /tmp/shellma/app.apk
+          file /tmp/shellma/app.apk
+          unzip -q /tmp/shellma/app.apk -d /tmp/shellma/unpacked
+
+          python3 - <<'PY'
+          import re,json,hashlib,os
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          root=Path('/tmp/shellma/unpacked')
+          interesting=re.compile(r'(?i)(electric|vehicle|ev\b|charger|charging|recharge|shell recharge|station|locator|service|mobility|connector|tariff|price|api|graphql|endpoint)')
+          urlre=re.compile(rb'https?://[^\x00\s"\'<>]{5,300}')
+          strings=[]
+          urls=set()
+          files_scanned=0
+          hits=[]
+
+          for p in root.rglob('*'):
+            if not p.is_file() or p.stat().st_size>60_000_000: continue
+            files_scanned+=1
+            try:b=p.read_bytes()
+            except Exception: continue
+            for u in urlre.findall(b):
+              try:s=u.decode('utf-8','ignore')
+              except:continue
+              if 'shell' in s.lower() or 'vivoenergy' in s.lower() or 'api' in s.lower():
+                urls.add(s[:500])
+            try:t=b.decode('utf-8','ignore')
+            except:continue
+            for line in re.split(r'[\x00\r\n]+',t):
+              if len(line)>1200: continue
+              if interesting.search(line):
+                clean=line.strip()
+                if clean and clean not in strings:
+                  strings.append(clean)
+                  if len(strings)>=600: break
+            if len(strings)>=600: break
+
+          # identify likely JS/assets and scan with broader context
+          for p in root.rglob('*'):
+            if not p.is_file(): continue
+            if p.suffix.lower() not in ('.js','.json','.txt','.xml','.html','.properties','.bundle'): continue
+            try:lines=p.read_text(errors='ignore').splitlines()
+            except:continue
+            for i,l in enumerate(lines):
+              if interesting.search(l):
+                ctx='\n'.join(lines[max(0,i-2):min(len(lines),i+3)])
+                hits.append({'file':str(p.relative_to(root)),'line':i+1,'context':ctx[:3000]})
+                if len(hits)>=250: break
+            if len(hits)>=250: break
+
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Shell/Vivo Energy',
+            'package':'com.shell.shell_loyalty_app.morocco',
+            'apk_sha256':hashlib.sha256(Path('/tmp/shellma/app.apk').read_bytes()).hexdigest(),
+            'apk_bytes':Path('/tmp/shellma/app.apk').stat().st_size,
+            'files_scanned':files_scanned,
+            'urls':sorted(urls),
+            'interesting_strings':strings,
+            'text_context_hits':hits
+          }
+          Path('reports/morocco/shell/shell-maroc-app-static-probe-latest.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/shell/shell-maroc-app-static-probe-latest.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): inspect current Shell Maroc app [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
