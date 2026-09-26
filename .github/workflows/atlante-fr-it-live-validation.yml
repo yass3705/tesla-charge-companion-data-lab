@@ -1,87 +1,47 @@
-name: Atlante FR + IT live validation
+name: Atlante FR + IT daily refresh
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "20 23 * * *"
   push:
     branches: ["main"]
     paths:
       - ".github/workflows/atlante-fr-it-live-validation.yml"
       - "scripts/atlante/extract_atlante.py"
+      - "scripts/atlante/bootstrap_subscription_key.sh"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: atlante-fr-it-live-validation
-  cancel-in-progress: true
+  group: atlante-fr-it-daily-refresh
+  cancel-in-progress: false
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       ATLANTE_API_SUBSCRIPTION_KEY: ${{ secrets.ATLANTE_API_SUBSCRIPTION_KEY }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Probe France and Italy without subscription key
-        if: env.ATLANTE_API_SUBSCRIPTION_KEY == ''
-        run: |
-          python - <<'PY'
-          import json
-          import urllib.error
-          import urllib.parse
-          import urllib.request
-
-          root = "https://pdefweushaapiam01.azure-api.net/app-backend/v1/tenants/390c3ff9-b41c-42dc-aa48-1dd51ad6ce39"
-          countries = {
-              "FR": ("FRATL", (41, -6, 52, 10)),
-              "IT": ("ITATE", (35, 6, 48, 19)),
-          }
-          failures = []
-          for country, (cpo, box) in countries.items():
-              a, b, c, d = box
-              query = urllib.parse.urlencode({
-                  "latLongBottomLeft": f"{a},{b}",
-                  "latLongTopRight": f"{c},{d}",
-                  "evseTypes": "AC,DC,HPC",
-                  "locationStatus": "ALL",
-                  "includeCpos": cpo,
-              })
-              request = urllib.request.Request(
-                  root + "/map-locations?" + query,
-                  headers={
-                      "Accept": "application/json",
-                      "Accept-Language": "fr",
-                      "X-App-Version": "2.1.0",
-                      "X-App-Platform": "android",
-                  },
-              )
-              try:
-                  with urllib.request.urlopen(request, timeout=45) as response:
-                      status = response.status
-                      payload = json.load(response)
-                      count = len(payload.get("locations") or [])
-                      print(f"{country}: HTTP {status}, locations={count}")
-                      if status != 200:
-                          failures.append((country, status))
-              except urllib.error.HTTPError as error:
-                  print(f"{country}: HTTP {error.code} without Ocp-Apim-Subscription-Key")
-                  failures.append((country, error.code))
-          if failures:
-              raise SystemExit(
-                  "Anonymous Atlante refresh unavailable: "
-                  + ", ".join(f"{country}=HTTP {status}" for country, status in failures)
-              )
-          PY
+      - name: Resolve technical app header
+        shell: bash
+        run: bash scripts/atlante/bootstrap_subscription_key.sh
 
       - name: Extract France and Italy
-        if: env.ATLANTE_API_SUBSCRIPTION_KEY != ''
         run: |
-          python scripts/atlante/extract_atlante.py --countries FR IT --out results/atlante-live --workers 8
+          python scripts/atlante/extract_atlante.py \
+            --countries FR IT \
+            --out results/atlante-live \
+            --workers 8 \
+            --resume
 
       - name: Validate both countries
-        if: env.ATLANTE_API_SUBSCRIPTION_KEY != ''
         run: |
           python - <<'PY'
           import json
@@ -100,20 +60,62 @@ jobs:
               assert report["extractedStations"] == report["inventoryStations"], report
               assert not report["errors"], report["errors"][:10]
               assert report["connectorCount"] > 0, report
+              assert report["pricedConnectors"] == report["connectorCount"], report
+              assert report["unpricedConnectors"] == 0, report
+              assert report["unmatchedTariffs"] == 0, report
               print(country, {
                   "stations": report["extractedStations"],
                   "connectors": report["connectorCount"],
                   "pricedConnectors": report["pricedConnectors"],
-                  "unpricedConnectors": report["unpricedConnectors"],
                   "tariffRecords": report["tariffRecords"],
               })
           PY
 
-      - name: Upload validated snapshot
-        if: env.ATLANTE_API_SUBSCRIPTION_KEY != ''
+      - name: Build stable current snapshots
+        run: |
+          python - <<'PY'
+          import gzip
+          from pathlib import Path
+
+          target = Path("data/national")
+          target.mkdir(parents=True, exist_ok=True)
+          names = {
+              "FR": "atlante_direct_stations_france_latest.json.gz",
+              "IT": "atlante_direct_stations_italy_latest.json.gz",
+          }
+          for country, name in names.items():
+              source = Path(f"results/atlante-live/{country}/stations.json")
+              target.joinpath(name).write_bytes(
+                  gzip.compress(source.read_bytes(), compresslevel=9, mtime=0)
+              )
+          PY
+
+      - name: Publish current snapshots
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            data/national/atlante_direct_stations_france_latest.json.gz \
+            data/national/atlante_direct_stations_italy_latest.json.gz
+          if git diff --cached --quiet; then
+            echo "Atlante snapshots unchanged."
+            exit 0
+          fi
+          git commit -m "data(atlante): refresh France and Italy direct tariffs [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+      - name: Upload audit evidence
         uses: actions/upload-artifact@v4
         with:
           name: atlante-fr-it-live-${{ github.run_id }}
-          path: results/atlante-live
-          retention-days: 14
+          path: |
+            results/atlante-live/FR/report.json
+            results/atlante-live/IT/report.json
+          retention-days: 30
           if-no-files-found: error
