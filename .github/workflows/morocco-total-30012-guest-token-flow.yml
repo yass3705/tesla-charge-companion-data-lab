@@ -1,0 +1,140 @@
+name: Morocco Total 3.00.12 exact guest-token flow
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-30012-guest-token-flow.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare and analyze public client
+        shell: bash
+        env:
+          URL: "https://download.pureapk.com/b/XAPK/Y29tLm5hbXAudG90YWxldl8xNF8zNTJhNjdlNQ?as2=db91def85bd2cc2cebea5e889e36b4866c92699d&k=6a2bd595361c47705231b076672895396c92699d&_p=Y29tLm5hbXAudG90YWxldg&c=1%7CBUSINESS%7Cb2lkPTkmZGV2PVRFTSUyME1hcm9jJnQ9eGFwayZzPTUwODMzMjYwJnZuPTMuMDAuMTImdmM9MTQ&_fn=Q2x1YitFVi1DaGFyZ2VfMy4wMC4xMl9hcGtjb21iby5jb20ueGFwaw%3D%3D"
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build pkg-config libicu-dev libcapstone-dev
+          python -m pip install --quiet pyelftools requests
+          rm -rf /tmp/total-guest /tmp/blutter /tmp/blutter-out
+          mkdir -p /tmp/total-guest/xapk /tmp/total-guest/lib
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' "$URL"             -o /tmp/total-guest/current.xapk
+          unzip -q /tmp/total-guest/current.xapk -d /tmp/total-guest/xapk
+          python - <<'PY'
+          import os,zipfile
+          root='/tmp/total-guest/xapk'; out='/tmp/total-guest/lib'
+          found=set()
+          for fn in os.listdir(root):
+              if not fn.endswith('.apk'): continue
+              try:
+                  with zipfile.ZipFile(os.path.join(root,fn)) as z:
+                      for target in ('libapp.so','libflutter.so'):
+                          n='lib/arm64-v8a/'+target
+                          if n in z.namelist() and target not in found:
+                              open(os.path.join(out,target),'wb').write(z.read(n));found.add(target)
+              except Exception: pass
+          if found != {'libapp.so','libflutter.so'}: raise SystemExit('ARM64 pair missing')
+          PY
+          git clone --depth=1 https://github.com/worawit/blutter.git /tmp/blutter
+          timeout 600 python3 /tmp/blutter/blutter.py /tmp/total-guest/lib /tmp/blutter-out >/tmp/blutter-guest.log 2>&1
+
+      - name: Extract exact sanitized flow
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import os,re,json
+          from datetime import datetime,timezone
+
+          root='/tmp/blutter-out'
+          targets=[
+            ('asm/kurrent_charge/network/api_service.dart','getUserToken'),
+            ('asm/kurrent_charge/services/firebase_remote_config.dart','getUserID'),
+            ('asm/kurrent_charge/functions/splashScreenFunctions.dart','updateUserLogin')
+          ]
+          allow=re.compile(r'(?i)(getUserToken|getUserID|updateUserLogin|requesttoken|idTag|userID|userIDTag|GlobalJwtToken|KongResponse|savedKongToken|saveKongToken|apiVersion|kongVersion|RemoteConfig|queryParameters|headers|data|DioMixin::post|DioMixin::get|AppUtil|Map<|setString|getString|SharedPreferences|authorization|bearer|baseUrl)')
+          secret=re.compile(r'(?i)(eyJ[A-Za-z0-9_.-]{20,}|AIza[A-Za-z0-9_-]{20,}|Bearer\s+[A-Za-z0-9._~+/-]{12,})')
+          q=re.compile(r'"([^"]{1,400})"')
+
+          def clean(line):
+              line=secret.sub('<redacted-secret-like>',line)
+              for m in list(q.finditer(line)):
+                  v=m.group(1)
+                  if not allow.search(v) and not v.startswith('/admin/v1/requesttoken'):
+                      line=line.replace('"'+v+'"','"<redacted>"')
+              return line[:1000]
+
+          outfunc={}
+          for rel,name in targets:
+              p=os.path.join(root,rel)
+              if not os.path.isfile(p): continue
+              lines=open(p,encoding='utf-8',errors='ignore').read().splitlines()
+              centers=[i for i,l in enumerate(lines) if re.search(r'\b_?'+re.escape(name)+r'\b',l) and not l.lstrip().startswith('//')]
+              if not centers:
+                  centers=[i for i,l in enumerate(lines) if name in l]
+              blocks=[]
+              for c in centers[:3]:
+                  # Function ends at next source-like declaration or after 700 lines.
+                  lo=max(0,c-8); hi=min(len(lines),c+700)
+                  for j in range(c+1,hi):
+                      if j>c+5 and re.match(r'^\s{2}_?[A-Za-z0-9]+\(/\* No info \*/\)',lines[j]):
+                          hi=j;break
+                  exact=[]
+                  relevant=[]
+                  for j in range(lo,hi):
+                      cl=clean(lines[j])
+                      exact.append({'line':j+1,'text':cl})
+                      if allow.search(cl): relevant.append({'line':j+1,'text':cl})
+                  blocks.append({
+                    'declaration_line':c+1,
+                    'exact_sanitized_slice':exact[:700],
+                    'relevant_lines':relevant[:300]
+                  })
+              outfunc[name]={'file':rel,'blocks':blocks}
+
+          # Resolve selected public/string constants directly from pp.txt, values only when structurally safe.
+          pp=os.path.join(root,'pp.txt')
+          constants=[]
+          if os.path.isfile(pp):
+              for line in open(pp,encoding='utf-8',errors='ignore'):
+                  if any(k in line for k in ('/admin/v1/requesttoken','GlobalJwtToken','savedKongToken','userIDTag','userID','idTag','apiVersion','kongVersion')):
+                      cl=clean(line)
+                      constants.append(cl)
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'TotalEnergies / Club EV-Charge',
+            'source_client':{'package':'com.namp.totalev','version':'3.00.12'},
+            'policy':{
+              'public_package_only':True,'static_analysis_only':True,'no_backend_requests':True,
+              'no_login':True,'no_credentials':True,'no_tokens_persisted':True,
+              'raw_blutter_output_persisted':False,'opaque_values_redacted':True
+            },
+            'functions':outfunc,
+            'safe_constants':constants[:200]
+          }
+          with open('reports/morocco/totalenergies/club-ev-charge-30012-guest-token-flow-2026-09-26.json','w') as f:
+              json.dump(report,f,ensure_ascii=False,indent=2);f.write('\n')
+          PY
+          rm -rf /tmp/total-guest /tmp/blutter /tmp/blutter-out /tmp/blutter-guest.log
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-30012-guest-token-flow-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): resolve Total guest-token flow [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
