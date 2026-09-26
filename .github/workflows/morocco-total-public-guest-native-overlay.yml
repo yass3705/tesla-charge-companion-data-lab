@@ -1,4 +1,5 @@
 name: Morocco Total public guest native overlay
+# native-connectors-live-status-2026-09-26
 # unwrap-station-document-2026-09-26
 
 on:
@@ -101,6 +102,11 @@ jobs:
             'ChargeStationIsApproved','StatusName','AverageStationRating','AccessType'
           }
           SAFE_CONNECTOR_KEYS={
+            'ChargePointConnectorID','ChargePointID','ChargePointConnectorNumber',
+            'ChargePointConnectorStatusID','ChargePointName','ChargePointDisplayName',
+            'ConnectorModelID','ConnectorModelIOType','ConnectorModelCurrentType',
+            'ConnectorModelPower','MaxConnectorPower','ConnectorModelStandardName',
+            'ChargerModelID','ChargerModelName','OperatorDefinedMaxPower',
             'cpId','CPID','connectorId','ConnectorId','connectorType','connectorChargingType',
             'connectorModelPower','connectorPower','connectorStatus','ComputedStatus',
             'CpLastReportedStatus','ComputedStatusForCpo','cpoName','CpoName','isRoaming','IsRoaming',
@@ -117,7 +123,9 @@ jobs:
               def walk(v):
                   if isinstance(v,dict):
                       keys=set(v.keys())
-                      if (('cpId' in keys or 'CPID' in keys) and ('connectorId' in keys or 'ConnectorId' in keys)):
+                      native_pair=(('ChargePointName' in keys or 'ChargePointDisplayName' in keys) and 'ChargePointConnectorNumber' in keys)
+                      mobile_pair=(('cpId' in keys or 'CPID' in keys) and ('connectorId' in keys or 'ConnectorId' in keys))
+                      if native_pair or mobile_pair:
                           out.append(filtered_dict(v,SAFE_CONNECTOR_KEYS))
                       for vv in v.values(): walk(vv)
                   elif isinstance(v,list):
@@ -154,19 +162,17 @@ jobs:
                               f=filtered_dict(v,SAFE_STATION_KEYS)
                               if f: rec['detail']=f; break
 
-              conn_meta,conn_obj=request('/mobileTariffTax/mobile/get-connector-info','GET',business_headers,query={'ChargeStationID':sid})
+              conn_meta,conn_obj=request('/asset/chargestation/connectors/get/v1','GET',business_headers,query={'ChargeStationID':sid})
               rec['connector_meta']=conn_meta
               connectors=find_connector_dicts(conn_obj)
               rec['connectors']=connectors
 
               live=[]
               for c in connectors:
-                  cpid=c.get('cpId',c.get('CPID'))
-                  cid=c.get('connectorId',c.get('ConnectorId'))
+                  cpid=c.get('ChargePointName',c.get('ChargePointDisplayName',c.get('cpId',c.get('CPID'))))
+                  cid=c.get('ChargePointConnectorNumber',c.get('connectorId',c.get('ConnectorId')))
                   if cpid in (None,'') or cid in (None,''): continue
-                  cpo=c.get('cpoName',c.get('CpoName',''))
-                  roam=c.get('isRoaming',c.get('IsRoaming',False))
-                  q={'cpid':cpid,'connectorId':cid,'IsRoaming':str(roam).lower() if isinstance(roam,bool) else roam,'CpoName':cpo or ''}
+                  q={'cpid':cpid,'connectorId':cid,'IsRoaming':'false','CpoName':''}
                   smeta,sobj=request('/status/api/get-connector-status','GET',query=q,max_bytes=300_000)
                   safe={}
                   if isinstance(sobj,dict):
