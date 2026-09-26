@@ -1,0 +1,190 @@
+name: Morocco Club EV Charge Remote Config probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-club-evcharge-remote-config.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch public package and query Remote Config read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/club/xapk /tmp/club/base reports/morocco/totalenergies
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0'             'https://d.apkpure.net/b/XAPK/com.namp.totalev?version=latest'             -o /tmp/club/current.xapk
+          unzip -q /tmp/club/current.xapk -d /tmp/club/xapk
+
+          python - <<'PY'
+          import json, hashlib, os, struct, urllib.request, urllib.error, zipfile
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          PACKAGE='com.namp.totalev'
+          XAPK=Path('/tmp/club/current.xapk')
+          OUT=Path('reports/morocco/totalenergies/club-ev-charge-remote-config-2026-09-26.json')
+
+          apks=list(Path('/tmp/club/xapk').glob('*.apk'))
+          base=None
+          for p in apks:
+              try:
+                  with zipfile.ZipFile(p) as z:
+                      if 'resources.arsc' in z.namelist() and 'AndroidManifest.xml' in z.namelist():
+                          # Prefer the package/base APK, which carries Firebase string resources.
+                          data=z.read('resources.arsc')
+                          if b'google_app_id' in data and b'project_id' in data:
+                              base=p; arsc=data; break
+              except Exception:
+                  pass
+          if base is None:
+              raise SystemExit('base APK with Firebase resources not found')
+
+          b=arsc
+          def u16(o): return struct.unpack_from('<H',b,o)[0]
+          def u32(o): return struct.unpack_from('<I',b,o)[0]
+          def pool(off):
+              typ,hs,sz=struct.unpack_from('<HHI',b,off)
+              if typ!=1: raise ValueError('not string pool')
+              sc=u32(off+8); flags=u32(off+16); ss=u32(off+20)
+              utf8=bool(flags & 0x100)
+              inds=[u32(off+hs+4*i) for i in range(sc)]
+              basep=off+ss
+              def l8(p):
+                  x=b[p]
+                  return ((((x&0x7f)<<8)|b[p+1],2) if x&0x80 else (x,1))
+              def l16(p):
+                  x=u16(p)
+                  return ((((x&0x7fff)<<16)|u16(p+2),4) if x&0x8000 else (x,2))
+              out=[]
+              for x in inds:
+                  p=basep+x
+                  if utf8:
+                      _,n=l8(p); p+=n
+                      ln,n=l8(p); p+=n
+                      out.append(b[p:p+ln].decode('utf-8','replace'))
+                  else:
+                      ln,n=l16(p); p+=n
+                      out.append(b[p:p+2*ln].decode('utf-16le','replace'))
+              return out,sz
+
+          typ,hs,total=struct.unpack_from('<HHI',b,0)
+          pos=hs; gs=None; values={}
+          targets={'google_app_id','google_api_key','project_id','gcm_defaultSenderId'}
+          while pos<total:
+              ct,ch,cs=struct.unpack_from('<HHI',b,pos)
+              if ct==1 and gs is None:
+                  gs,_=pool(pos)
+              elif ct==0x200:
+                  pkg=pos
+                  ts,_=pool(pkg+u32(pkg+268)); ks,_=pool(pkg+u32(pkg+276))
+                  sub=pkg+ch; end=pkg+cs
+                  while sub<end:
+                      st,sh,ss=struct.unpack_from('<HHI',b,sub)
+                      if st==0x201:
+                          tid=b[sub+8]; ec=u32(sub+12); es=u32(sub+16)
+                          offs=sub+sh
+                          for idx in range(ec):
+                              eo=u32(offs+4*idx)
+                              if eo==0xffffffff: continue
+                              ep=sub+es+eo
+                              size=u16(ep); flags=u16(ep+2); ki=u32(ep+4)
+                              if flags&1 or ki>=len(ks): continue
+                              key=ks[ki]
+                              if key not in targets: continue
+                              vp=ep+size; dtype=b[vp+3]; data=u32(vp+4)
+                              if dtype==3 and gs and data<len(gs): values[key]=gs[data]
+                      if ss<=0: break
+                      sub+=ss
+              if cs<=0: break
+              pos+=cs
+
+          required=('google_app_id','google_api_key','project_id')
+          if not all(values.get(k) for k in required):
+              raise SystemExit('Firebase config incomplete')
+
+          app_id=values['google_app_id']
+          api_key=values['google_api_key']
+          project_id=values['project_id']
+
+          # Legacy/client fetch endpoint: read-only. Do not create a Firebase installation.
+          url=f'https://firebaseremoteconfig.googleapis.com/v1/projects/{project_id}/namespaces/firebase:fetch?key={api_key}'
+          payload={
+              'appId':app_id,
+              'appInstanceId':'tcc-readonly-probe',
+              'appVersion':'3.00.12',
+              'appBuild':'14',
+              'packageName':PACKAGE,
+              'languageCode':'fr-FR',
+              'countryCode':'MA'
+          }
+          req=urllib.request.Request(url,data=json.dumps(payload).encode(),method='POST',headers={
+              'Content-Type':'application/json','Accept':'application/json',
+              'User-Agent':'TCC-ClubEVCharge-ReadOnly-RemoteConfig/1.0'
+          })
+          try:
+              with urllib.request.urlopen(req,timeout=25) as r:
+                  raw=r.read(1_000_000); status=r.status; ct=r.headers.get('content-type','')
+          except urllib.error.HTTPError as e:
+              raw=e.read(200_000); status=e.code; ct=e.headers.get('content-type','') if e.headers else ''
+          obj=None
+          try: obj=json.loads(raw.decode('utf-8','replace'))
+          except Exception: pass
+
+          entries={}
+          if isinstance(obj,dict):
+              src=obj.get('entries')
+              if isinstance(src,dict):
+                  for k,v in src.items():
+                      if k.lower() in ('kongversion','kongenabled','apiversion','baseurl','apiurl','kong_version','kong_enabled'):
+                          entries[k]=v
+
+          report={
+              'schema_version':1,
+              'generated_at':datetime.now(timezone.utc).isoformat(),
+              'country':'MA','network':'Club EV-Charge / TotalEnergies',
+              'source':{
+                  'package':PACKAGE,
+                  'download_bytes':XAPK.stat().st_size,
+                  'sha256':hashlib.sha256(XAPK.read_bytes()).hexdigest(),
+                  'project_id':project_id,
+                  'gmp_app_id':app_id,
+                  'firebase_api_key_persisted':False
+              },
+              'policy':{
+                  'public_package_only':True,'read_only_remote_config_fetch_only':True,
+                  'firebase_installation_created':False,'no_user_account':True,
+                  'no_credentials':True,'raw_api_key_persisted':False,
+                  'raw_response_body_persisted':False
+              },
+              'remote_config':{
+                  'status':status,'content_type':ct,
+                  'json':isinstance(obj,(dict,list)),
+                  'top_level_keys':sorted(obj.keys())[:50] if isinstance(obj,dict) else [],
+                  'selected_entries':entries,
+                  'entry_count':len(obj.get('entries',{})) if isinstance(obj,dict) and isinstance(obj.get('entries'),dict) else None
+              }
+          }
+          report['conclusion']='remote_config_read_succeeded' if status==200 and isinstance(obj,dict) else 'remote_config_requires_installation_or_other_context'
+          OUT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+
+          rm -rf /tmp/club
+
+      - name: Commit sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-remote-config-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): probe Club EV-Charge Remote Config [run $GITHUB_RUN_ID]"
+          git push
