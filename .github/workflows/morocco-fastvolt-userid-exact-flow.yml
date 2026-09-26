@@ -1,0 +1,91 @@
+name: Morocco FastVolt userid exact flow
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-fastvolt-userid-exact-flow.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract exact userid flow from existing provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re
+          from datetime import datetime,timezone
+
+          src='reports/morocco/fastvolt/userid-provenance-2026-09-26.json'
+          out='reports/morocco/fastvolt/userid-exact-flow-2026-09-26.json'
+          j=json.load(open(src))
+
+          needles=[
+            r'\$\.user_id', r'auth/get_details_with_userid', r'Get User Details With FirebaseUserId',
+            r'ff_userid', r'StoreField: .*field_2f', r'set _ userid',
+            r'auth/verify_otp', r'auth/login', r'jsonBody', r'getJsonField'
+          ]
+          rx=re.compile('|'.join(needles),re.I)
+
+          def excerpts(ctx):
+              lines=ctx or []
+              idx=[i for i,x in enumerate(lines) if rx.search(x)]
+              blocks=[]
+              for i in idx:
+                  a=max(0,i-10); b=min(len(lines),i+18)
+                  block=lines[a:b]
+                  if any(re.search(r'\$\.user_id|auth/get_details_with_userid|ff_userid|field_2f|set _ userid',x,re.I) for x in block):
+                      blocks.append(block)
+              # de-dupe blocks by joined text
+              seen=set(); out=[]
+              for b in blocks:
+                  s='\n'.join(b)
+                  if s in seen: continue
+                  seen.add(s)
+                  out.append(b)
+              return out
+
+          hits=[]
+          for h in j.get('auth_response_contexts',[]):
+              bs=excerpts(h.get('context'))
+              if bs:
+                  hits.append({'file':h.get('file'),'line':h.get('line'),'blocks':bs[:6]})
+
+          # Also inspect literals without exposing values beyond known field/path names.
+          literals=[x for x in j.get('relevant_literals',[]) if re.search(r'\$\.user_id|userid|user_id|ff_userid|get_details_with_userid|verify_otp|auth/login|token',str(x),re.I)]
+
+          result={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'FastVolt',
+            'source_report':src,
+            'known_header_contract':{
+              'scheme':'token',
+              'state_field':'FFAppState.userid',
+              'secure_storage_key':'ff_userid'
+            },
+            'targeted_contexts':hits[:50],
+            'relevant_literals':literals[:100]
+          }
+          json.dump(result,open(out,'w'),indent=2,ensure_ascii=False)
+          open(out,'a').write('\n')
+          PY
+
+      - name: Publish exact-flow report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/fastvolt/userid-exact-flow-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): isolate FastVolt userid auth flow [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push
