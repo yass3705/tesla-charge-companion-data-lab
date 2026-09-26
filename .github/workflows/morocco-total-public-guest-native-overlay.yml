@@ -1,4 +1,5 @@
 name: Morocco Total public guest native overlay
+# unwrap-station-document-2026-09-26
 
 on:
   push:
@@ -137,7 +138,16 @@ jobs:
               rec['detail_meta']=detail_meta
               if isinstance(detail_obj,dict):
                   rec['detail']=filtered_dict(detail_obj,SAFE_STATION_KEYS)
-                  # Some responses wrap station data.
+                  # Numocity commonly wraps station rows in Document[].
+                  if not rec['detail']:
+                      doc=detail_obj.get('Document')
+                      if isinstance(doc,list):
+                          for v in doc:
+                              if isinstance(v,dict):
+                                  f=filtered_dict(v,SAFE_STATION_KEYS)
+                                  if f: rec['detail']=f; break
+                      elif isinstance(doc,dict):
+                          rec['detail']=filtered_dict(doc,SAFE_STATION_KEYS)
                   if not rec['detail']:
                       for v in detail_obj.values():
                           if isinstance(v,dict):
