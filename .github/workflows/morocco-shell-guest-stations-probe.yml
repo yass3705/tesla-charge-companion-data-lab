@@ -1,0 +1,172 @@
+name: Morocco Shell guest stations probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-shell-guest-stations-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact Shell Maroc 3.2.7 and prepare contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/shell-probe /tmp/jadx
+          mkdir -p /tmp/shell-probe/apk /tmp/shell-probe/out reports/morocco/shell
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/APK/com.shell.shell_loyalty_app.morocco?version=latest' \
+            -o /tmp/shell-probe/app.apk
+          echo '388caa4c883a285ad996859db1ae231ffd3e909bf396475969a61225bae0acf4  /tmp/shell-probe/app.apk' | sha256sum -c -
+          unzip -q /tmp/shell-probe/app.apk 'lib/x86_64/libnative-lib.so' -d /tmp/shell-probe/apk
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            'https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip' \
+            -o /tmp/shell-probe/jadx.zip
+          unzip -q /tmp/shell-probe/jadx.zip -d /tmp/jadx
+          /tmp/jadx/bin/jadx --no-res --show-bad-code -d /tmp/shell-probe/out /tmp/shell-probe/app.apk >/dev/null 2>&1 || true
+
+      - name: Read-only guest station probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re,json,subprocess,struct
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          root=Path('/tmp/shell-probe/out/sources')
+          req_file=next(root.rglob('StationsDataRequest.java'))
+          req_src=req_file.read_text(errors='ignore')
+          fields=re.findall(r'@SerializedName\("([^"]+)"\)\s*\n\s*private\s+[^;]+\s+(\w+)\s*;',req_src)
+
+          # Recover the public production Morocco x-api-key string referenced by the official JNI getter.
+          so=Path('/tmp/shell-probe/apk/lib/x86_64/libnative-lib.so')
+          dis=subprocess.check_output(['objdump','-d',str(so)],text=True,errors='ignore')
+          pat=r'<Java_com_shell_shell_1loyalty_1app_utils_SecretAPIKeys_00024APIKeys_getXAPIKeyProdMorocco[^>]*>:(.*?)(?=\n\n[0-9a-f]+ <)'
+          m=re.search(pat,dis,re.S)
+          if not m: raise SystemExit('prod Morocco key getter not found')
+          lm=re.search(r'#\s*([0-9a-fA-F]+)\s*<',m.group(1))
+          if not lm: raise SystemExit('prod Morocco key target not resolved')
+          vaddr=int(lm.group(1),16)
+
+          sec=subprocess.check_output(['readelf','-SW',str(so)],text=True,errors='ignore')
+          sm=re.search(r'\s\.rodata\s+PROGBITS\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)',sec)
+          if not sm: raise SystemExit('rodata section not found')
+          ro_addr,ro_off,ro_size=(int(x,16) for x in sm.groups())
+          data=so.read_bytes()
+          pos=ro_off+(vaddr-ro_addr)
+          # target can land one byte before the actual printable string in this build
+          while pos < len(data) and (data[pos] < 33 or data[pos] > 126): pos += 1
+          end=data.find(b'\0',pos)
+          key=data[pos:end].decode('ascii','ignore')
+          if len(key)<20: raise SystemExit('public app key extraction failed')
+
+          # Extract x-platform-code the same way.
+          pm=re.search(r'<Java_com_shell_shell_1loyalty_1app_utils_SecretAPIKeys_00024APIKeys_getXPlatformCode[^>]*>:(.*?)(?=\n\n[0-9a-f]+ <)',dis,re.S)
+          platform=None
+          if pm:
+            tm=re.search(r'#\s*([0-9a-fA-F]+)\s*<',pm.group(1))
+            if tm:
+              va=int(tm.group(1),16); p=ro_off+(va-ro_addr)
+              while p<len(data) and (data[p]<33 or data[p]>126): p+=1
+              e=data.find(b'\0',p); platform=data[p:e].decode('ascii','ignore')
+
+          # Build request from exact serialized fields. Nearby-stations use case constructor:
+          # amenities='', <arg>, '25', <arg>, <arg>, '20', '1', <arg>.
+          serialized=[x[0] for x in fields]
+          report={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Shell/Vivo Energy',
+            'client':{'package':'com.shell.shell_loyalty_app.morocco','version':'3.2.7'},
+            'request_contract':{'serialized_fields':serialized},
+            'policy':{'read_only':True,'no_login':True,'no_user_data':True,'no_mutation':True,'credentials_persisted':False},
+            'attempts':[]
+          }
+
+          # Use Casablanca center and several plausible field mappings derived from the exact constructor/toString.
+          candidates=[]
+          names=set(serialized)
+          # canonical names expected from model
+          basevals={
+            'amenities':'','latitude':'33.5731','longitude':'-7.5898',
+            'radius':'25','limit':'20','page':'1','country_code':'ma','countryCode':'ma',
+            'language':'fr','locale':'fr','search':''
+          }
+          # construct using known fields, then supplement likely aliases
+          body={k:basevals.get(k,'') for k in serialized}
+          # positional clues from constructor + common API schema
+          for k in serialized:
+            kl=k.lower()
+            if 'lat' in kl: body[k]='33.5731'
+            elif 'lon' in kl or 'lng' in kl: body[k]='-7.5898'
+            elif 'radius' in kl: body[k]='25'
+            elif 'limit' in kl: body[k]='20'
+            elif 'page' in kl: body[k]='1'
+            elif 'country' in kl: body[k]='ma'
+          candidates.append(body)
+
+          import urllib.request,urllib.error
+          for idx,b in enumerate(candidates):
+            payload=json.dumps(b).encode()
+            headers={'Content-Type':'application/json','Accept':'application/json','x-api-key':key}
+            if platform: headers['x-platform-code']=platform
+            req=urllib.request.Request('https://ma-loyaltyapi.vivoenergy.com/getStations/v1',data=payload,headers=headers,method='POST')
+            rec={'attempt':idx+1,'request_field_names':sorted(b.keys())}
+            try:
+              with urllib.request.urlopen(req,timeout=30) as resp:
+                raw=resp.read(); rec['http_status']=resp.status
+            except urllib.error.HTTPError as e:
+              raw=e.read(); rec['http_status']=e.code
+            except Exception as e:
+              rec['error']=type(e).__name__; report['attempts'].append(rec); continue
+            try:
+              obj=json.loads(raw.decode('utf-8','ignore'))
+              # sanitize response: retain only station/EV fields and counts.
+              rows=obj
+              if isinstance(obj,dict):
+                for keyname in ('data','result','stations'):
+                  if isinstance(obj.get(keyname),list): rows=obj[keyname]; break
+              rec['top_level_type']=type(obj).__name__
+              if isinstance(obj,dict): rec['top_level_keys']=sorted(obj.keys())
+              if isinstance(rows,list):
+                rec['row_count']=len(rows)
+                sample=[]
+                for st in rows[:10]:
+                  if not isinstance(st,dict): continue
+                  evc=st.get('ev_charging'); evo=st.get('ev_offering')
+                  sample.append({
+                    'id':st.get('id'),'name':st.get('name'),'lat':st.get('lat'),'lon':st.get('lon'),
+                    'ev_charging':evc,'ev_offering':evo
+                  })
+                rec['ev_rows_in_sample']=sum(bool(x.get('ev_charging') or x.get('ev_offering')) for x in sample)
+                rec['sample']=sample
+              elif isinstance(obj,dict):
+                rec['safe_message']={k:obj.get(k) for k in ('status','message','error','code') if k in obj}
+            except Exception:
+              rec['response_json']=False
+            report['attempts'].append(rec)
+
+          Path('reports/morocco/shell/guest-stations-probe-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/shell-probe /tmp/jadx
+
+      - name: Commit sanitized probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/shell/guest-stations-probe-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): probe Shell guest EV stations [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
