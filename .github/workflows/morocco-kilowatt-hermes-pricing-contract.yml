@@ -1,0 +1,135 @@
+name: Morocco Kilowatt Hermes pricing contract
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-kilowatt-hermes-pricing-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Kilowatt 1.0.1 and decompile Hermes bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/kilowatt-hermes /tmp/hermes-dec
+          mkdir -p /tmp/kilowatt-hermes/xapk /tmp/kilowatt-hermes/apk
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/ma.kilowatt.app?version=latest' \
+            -o /tmp/kilowatt-hermes/app.xapk
+          unzip -q /tmp/kilowatt-hermes/app.xapk -d /tmp/kilowatt-hermes/xapk
+          BASE="$(find /tmp/kilowatt-hermes/xapk -maxdepth 1 -type f -name 'ma.kilowatt.app.apk' | head -1)"
+          test -n "$BASE"
+          unzip -q "$BASE" 'assets/index.android.bundle' -d /tmp/kilowatt-hermes/apk
+          file /tmp/kilowatt-hermes/apk/assets/index.android.bundle
+          git clone --depth=1 https://github.com/P1sec/hermes-dec.git /tmp/hermes-dec
+          python3 /tmp/hermes-dec/hbc-decompiler /tmp/kilowatt-hermes/apk/assets/index.android.bundle /tmp/kilowatt-hermes/decompiled.js
+          python3 /tmp/hermes-dec/hbc-disassembler /tmp/kilowatt-hermes/apk/assets/index.android.bundle /tmp/kilowatt-hermes/disasm.hasm
+
+      - name: Build sanitized pricing contract report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/kilowatt
+          python3 - <<'PY'
+          import re, json, hashlib
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          bundle=Path('/tmp/kilowatt-hermes/apk/assets/index.android.bundle')
+          dec=Path('/tmp/kilowatt-hermes/decompiled.js').read_text(errors='ignore').splitlines()
+          asm=Path('/tmp/kilowatt-hermes/disasm.hasm').read_text(errors='ignore').splitlines()
+
+          secret_like=re.compile(r'(?i)(eyJ[A-Za-z0-9._-]{20,}|AIza[A-Za-z0-9_-]{20,}|(?:apikey|authorization|access[_-]?token|refresh[_-]?token)\s*[:=]\s*["\']?[^"\'\s,}]{12,})')
+          relevant=re.compile(r'(?i)(supabase|\.from\b|\.select\b|\.eq\b|\.in\b|rpc\b|realtime|charging[_ -]?station|connector|transaction|price|tariff|cost_amount|energy_consumed|payment|initiate-payment)')
+          tableish=re.compile(r'["\']([a-zA-Z][a-zA-Z0-9_]{2,63})["\']')
+
+          def sanitize(line):
+              line=secret_like.sub('<redacted-secret-like>', line)
+              # redact long opaque quoted values but preserve route/table/field-like literals
+              def repl(m):
+                  v=m.group(1)
+                  if len(v)>48 and not relevant.search(v) and not re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_./:-]{1,80}',v):
+                      return '"<redacted-long-literal>"'
+                  return m.group(0)
+              return re.sub(r'"([^"]{1,300})"', repl, line)[:1200]
+
+          def windows(lines, radius=10):
+              centers=[i for i,l in enumerate(lines) if relevant.search(l)]
+              merged=[]
+              seen=set()
+              for c in centers:
+                  a=max(0,c-radius); b=min(len(lines),c+radius+1)
+                  # only preserve windows with a pricing/data-access signal
+                  block='\n'.join(lines[a:b])
+                  if not re.search(r'(?i)(price|cost_amount|connector|charging[_ -]?station|transaction|supabase|\.from\b|\.select\b)',block):
+                      continue
+                  key=(a,b)
+                  if key in seen: continue
+                  seen.add(key)
+                  merged.append({
+                      'start_line':a+1,
+                      'end_line':b,
+                      'lines':[{'line':i+1,'text':sanitize(lines[i])} for i in range(a,b)]
+                  })
+                  if len(merged)>=80: break
+              return merged
+
+          # Pull likely table/field literals from relevant decompiled windows.
+          candidate_literals={}
+          for i,l in enumerate(dec):
+              if relevant.search(l):
+                  for v in tableish.findall(l):
+                      if re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_]{2,63}',v):
+                          candidate_literals[v]=candidate_literals.get(v,0)+1
+
+          report={
+              'schema_version':1,
+              'generated_at':datetime.now(timezone.utc).isoformat(),
+              'country':'MA',
+              'network':'Kilowatt',
+              'client':{'package':'ma.kilowatt.app','version':'1.0.1','hermes_bytecode_version':96},
+              'source':{
+                  'download':'APKPure public latest endpoint for ma.kilowatt.app',
+                  'bundle_sha256':hashlib.sha256(bundle.read_bytes()).hexdigest(),
+                  'bundle_bytes':bundle.stat().st_size
+              },
+              'policy':{
+                  'static_analysis_only':True,
+                  'no_login':True,
+                  'no_backend_mutation':True,
+                  'no_tokens_persisted':True,
+                  'secret_like_values_redacted':True
+              },
+              'candidate_literals':sorted(
+                  [{'literal':k,'hits':v} for k,v in candidate_literals.items()],
+                  key=lambda x:(-x['hits'],x['literal'])
+              )[:250],
+              'decompiled_context':windows(dec,12),
+              'disassembly_context':windows(asm,8)
+          }
+          out=Path('reports/morocco/kilowatt/hermes-pricing-contract-1.0.1-2026-09-27.json')
+          out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/kilowatt-hermes /tmp/hermes-dec
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/kilowatt/hermes-pricing-contract-1.0.1-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): resolve Kilowatt Hermes pricing contract [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
