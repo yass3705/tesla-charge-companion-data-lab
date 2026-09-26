@@ -1,0 +1,73 @@
+name: Atlante FR + IT live validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/atlante-fr-it-live-validation.yml"
+      - "scripts/atlante/extract_atlante.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlante-fr-it-live-validation
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ATLANTE_API_SUBSCRIPTION_KEY: ${{ secrets.ATLANTE_API_SUBSCRIPTION_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require live Atlante credential
+        shell: bash
+        run: |
+          if [[ -z "${ATLANTE_API_SUBSCRIPTION_KEY:-}" ]]; then
+            echo "::error::ATLANTE_API_SUBSCRIPTION_KEY is not configured; live FR+IT refresh cannot run."
+            exit 1
+          fi
+
+      - name: Extract France and Italy
+        run: |
+          python scripts/atlante/extract_atlante.py             --countries FR IT             --out results/atlante-live             --workers 8
+
+      - name: Validate both countries
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          expected = {
+              "FR": {"cpo": "FRATL", "minimum": 100},
+              "IT": {"cpo": "ITATE", "minimum": 300},
+          }
+          for country, rule in expected.items():
+              report = json.loads(
+                  Path(f"results/atlante-live/{country}/report.json").read_text()
+              )
+              assert report["cpo"] == rule["cpo"], report
+              assert report["inventoryStations"] >= rule["minimum"], report
+              assert report["extractedStations"] == report["inventoryStations"], report
+              assert not report["errors"], report["errors"][:10]
+              assert report["connectorCount"] > 0, report
+              print(country, {
+                  "stations": report["extractedStations"],
+                  "connectors": report["connectorCount"],
+                  "pricedConnectors": report["pricedConnectors"],
+                  "unpricedConnectors": report["unpricedConnectors"],
+                  "tariffRecords": report["tariffRecords"],
+              })
+          PY
+
+      - name: Upload validated snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlante-fr-it-live-${{ github.run_id }}
+          path: results/atlante-live
+          retention-days: 14
+          if-no-files-found: error
