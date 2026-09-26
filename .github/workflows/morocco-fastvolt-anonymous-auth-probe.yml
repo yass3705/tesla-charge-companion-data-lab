@@ -1,6 +1,8 @@
 name: Morocco FastVolt anonymous auth probe
 on:
   workflow_dispatch:
+  issues:
+    types: [opened]
   push:
     paths:
       - '.github/workflows/morocco-fastvolt-anonymous-auth-probe.yml'
@@ -11,6 +13,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   probe:
+    if: github.event_name != 'issues' || github.event.issue.title == '[TCC] FastVolt anonymous auth probe'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
