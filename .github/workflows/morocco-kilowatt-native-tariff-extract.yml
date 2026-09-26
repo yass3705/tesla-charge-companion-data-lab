@@ -50,8 +50,9 @@ jobs:
               raise SystemExit('No matching public anon client key')
           key,claims=candidates[0]
 
-          manifest=json.loads(Path('reports/morocco/kilowatt/latest-v9-tariff-overlay-manifest.json').read_text())
-          station_ids=list(dict.fromkeys((manifest.get('freeStationIds') or [])+(manifest.get('unresolvedStationIds') or [])))
+          inventory=json.loads(Path('reports/morocco/kilowatt/latest-public-station-inventory.json').read_text())
+          station_ids=[str(x.get('id')) for x in inventory.get('stations',[]) if x.get('production_candidate') is True and x.get('id')]
+          station_ids=list(dict.fromkeys(station_ids))
           if len(station_ids)!=43:
               raise SystemExit(f'Expected 43 production IDs, got {len(station_ids)}')
 
