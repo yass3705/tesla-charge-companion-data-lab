@@ -1,0 +1,179 @@
+name: Morocco Kilowatt exact Expo OTA probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-kilowatt-expo-ota-exact.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exact APK and parse Expo configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --quiet androguard
+          rm -rf /tmp/kwh-ota-exact
+          mkdir -p /tmp/kwh-ota-exact/xapk reports/morocco/kilowatt
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/ma.kilowatt.app?version=latest' \
+            -o /tmp/kwh-ota-exact/app.xapk
+          unzip -q /tmp/kwh-ota-exact/app.xapk -d /tmp/kwh-ota-exact/xapk
+
+          python3 - <<'PY'
+          import json,re,hashlib,requests,email,base64
+          from pathlib import Path
+          from datetime import datetime,timezone
+          from androguard.core.apk import APK
+          from lxml import etree
+
+          apk_path='/tmp/kwh-ota-exact/xapk/ma.kilowatt.app.apk'
+          a=APK(apk_path)
+          root=a.get_android_manifest_xml()
+          ns='{http://schemas.android.com/apk/res/android}'
+          meta={}
+          for node in root.findall('.//meta-data'):
+              name=node.get(ns+'name')
+              if not name or not name.startswith('expo.modules.updates.'): continue
+              value=node.get(ns+'value')
+              resource=node.get(ns+'resource')
+              meta[name]={'value':value,'resource':resource}
+
+          def val(name):
+              row=meta.get(name,{})
+              return row.get('value')
+
+          update_url=val('expo.modules.updates.EXPO_UPDATE_URL')
+          runtime=val('expo.modules.updates.EXPO_RUNTIME_VERSION')
+          request_raw=val('expo.modules.updates.UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY')
+          try: request_headers=json.loads(request_raw) if request_raw else {}
+          except Exception: request_headers={}
+
+          safe_meta={}
+          for k,v in meta.items():
+              vv=v.get('value')
+              if k.endswith('CODE_SIGNING_CERTIFICATE') and vv:
+                  safe_meta[k]={'present':True,'sha256':hashlib.sha256(vv.encode()).hexdigest()}
+              else:
+                  safe_meta[k]=v
+
+          headers={
+              'expo-platform':'android',
+              'expo-runtime-version':runtime or '',
+              'expo-protocol-version':'1',
+              'accept':'multipart/mixed,application/expo+json,application/json',
+              'user-agent':'ExpoUpdates/1.0 TCC-ReadOnly'
+          }
+          for k,v in request_headers.items():
+              if isinstance(k,str) and isinstance(v,str):headers[k]=v
+
+          row={'request_headers_safe':{k:v for k,v in headers.items() if k.lower() not in ('authorization','apikey')}}
+          ota_body=b''
+          launch_url=None
+          if update_url and runtime:
+              rr=requests.get(update_url,headers=headers,timeout=40)
+              ota_body=rr.content
+              row.update({'http_status':rr.status_code,'content_type':rr.headers.get('content-type'),'bytes':len(rr.content),'sha256':hashlib.sha256(rr.content).hexdigest()})
+              ctype=rr.headers.get('content-type','')
+              # JSON manifest
+              if rr.status_code==200 and ('json' in ctype or rr.text.lstrip().startswith('{')):
+                  try:
+                      obj=rr.json()
+                      row['json_keys']=sorted(obj.keys()) if isinstance(obj,dict) else None
+                      if isinstance(obj,dict):
+                          row['id']=obj.get('id');row['createdAt']=obj.get('createdAt');row['runtimeVersion']=obj.get('runtimeVersion')
+                          la=obj.get('launchAsset')
+                          if isinstance(la,dict):launch_url=la.get('url')
+                  except Exception as e:row['parse_error']=type(e).__name__
+              # Multipart Expo manifest
+              elif rr.status_code==200 and 'multipart/' in ctype:
+                  try:
+                      msg=email.message_from_bytes(b'Content-Type: '+ctype.encode()+b'\r\nMIME-Version: 1.0\r\n\r\n'+rr.content)
+                      parts=[]
+                      for part in msg.walk():
+                          if part.is_multipart():continue
+                          payload=part.get_payload(decode=True) or b''
+                          ptype=part.get_content_type()
+                          rec={'content_type':ptype,'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest()}
+                          try:
+                              obj=json.loads(payload.decode())
+                              rec['json_keys']=sorted(obj.keys()) if isinstance(obj,dict) else None
+                              if isinstance(obj,dict):
+                                  la=obj.get('launchAsset')
+                                  if isinstance(la,dict) and la.get('url'):launch_url=la.get('url')
+                          except Exception:pass
+                          parts.append(rec)
+                      row['multipart_parts']=parts
+                  except Exception as e:row['parse_error']=type(e).__name__
+
+          # Download launch asset if returned; search only for public-client key candidates and safe business markers.
+          bundle_result=None; supa=[]
+          if launch_url:
+              br=requests.get(launch_url,timeout=60,headers={'User-Agent':'Mozilla/5.0 TCC-ReadOnly'})
+              b=br.content
+              text=b.decode('utf-8','ignore')
+              jwt=re.findall(r'eyJ[A-Za-z0-9._-]{80,}',text)
+              pub=re.findall(r'sb_publishable_[A-Za-z0-9._-]{20,}',text)
+              candidates=[]
+              for x in jwt+pub:
+                  if x not in candidates:candidates.append(x)
+              bundle_result={
+                'status':br.status_code,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest(),
+                'public_key_candidate_count':len(candidates),
+                'contains_project_host':'jmrgknphxsviooizyilj.supabase.co' in text,
+                'contains_rate_description':'rate_description' in text,
+                'contains_connectorRate':'connectorRate' in text
+              }
+              for key in candidates[:4]:
+                  kind='publishable' if key.startswith('sb_publishable_') else 'legacy_anon'
+                  allowed=(kind=='publishable')
+                  if kind=='legacy_anon':
+                      try:
+                          p=key.split('.')[1]+'==='; claims=json.loads(base64.urlsafe_b64decode(p))
+                          allowed=(claims.get('role')=='anon' and claims.get('ref')=='jmrgknphxsviooizyilj')
+                      except Exception:allowed=False
+                  if not allowed:continue
+                  hh={'apikey':key,'Authorization':'Bearer '+key}
+                  for pth in ['/rest/v1/','/rest/v1/connectors?select=id,chargestation_id,rate_description&limit=1']:
+                      x=requests.get('https://jmrgknphxsviooizyilj.supabase.co'+pth,headers=hh,timeout=25)
+                      z={'key_kind':kind,'path':pth.split('?')[0],'status':x.status_code,'content_type':x.headers.get('content-type'),'bytes':len(x.content)}
+                      try:
+                          jj=x.json()
+                          if x.status_code<300:
+                              z['json_type']=type(jj).__name__;z['count']=len(jj) if isinstance(jj,list) else None
+                              if isinstance(jj,list) and jj and isinstance(jj[0],dict):z['item_keys']=sorted(jj[0].keys())
+                          elif isinstance(jj,dict):z['safe_error']={k:jj.get(k) for k in ('code','message','hint') if jj.get(k)}
+                      except Exception:pass
+                      supa.append(z)
+
+          report={
+              'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+              'country':'MA','network':'Kilowatt',
+              'client':{'package':'ma.kilowatt.app','version':'1.0.1'},
+              'policy':{'public_read_only':True,'no_login':True,'no_mutations':True,'raw_keys_not_persisted':True,'raw_ota_body_not_persisted':True,'raw_bundle_not_persisted':True},
+              'expo_config':{'update_url':update_url,'runtime_version':runtime,'request_headers':request_headers,'metadata':safe_meta},
+              'ota':row,'launch_asset':bundle_result,'supabase_validation':supa
+          }
+          Path('reports/morocco/kilowatt/expo-ota-exact-1.0.1-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/kilowatt/expo-ota-exact-1.0.1-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): probe exact Kilowatt Expo OTA config [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
