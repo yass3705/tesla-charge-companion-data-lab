@@ -10,6 +10,8 @@ from __future__ import annotations
 import base64, datetime as dt, json, re, subprocess, tempfile, urllib.error, urllib.parse, urllib.request, zipfile
 from pathlib import Path
 
+
+# Re-run marker 2026-09-26: validate current Kilowatt 1.0.1 public client context.
 PACKAGE="ma.kilowatt.app"; PROJECT_REF="jmrgknphxsviooizyilj"; HOST=f"{PROJECT_REF}.supabase.co"
 OUT=Path("artifacts/morocco-kilowatt-supabase"); OUT.mkdir(parents=True,exist_ok=True)
 UA="Mozilla/5.0 (compatible; TeslaChargeCompanionPublicResearch/1.1)"
