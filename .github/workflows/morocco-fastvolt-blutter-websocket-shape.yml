@@ -197,6 +197,69 @@ jobs:
               if re.search(r'(status|station|connector|charger|event|availability|available|occupied|fault|offline|session|price|tariff|power|user)',x,re.I)
           ][:120]
 
+          # Reconstruct the native REST contracts that can improve TCC inventory/status/tariffs.
+          api_targets=[
+              '/auth/authorize',
+              '/app/charging_stations/',
+              '/user/get_charging_station_details/',
+              '/user/v2/estimates/',
+              'ff_token',
+              'idToken2'
+          ]
+          api_contexts=[]
+          for path,txt in searchable:
+              if not path.startswith('asm/evplug/'):
+                  continue
+              for target in api_targets:
+                  pos=0
+                  while True:
+                      i=txt.find(target,pos)
+                      if i<0: break
+                      chunk=txt[max(0,i-9000):min(len(txt),i+12000)]
+                      structural=[]
+                      for raw in chunk.splitlines():
+                          low=raw.lower()
+                          keep=(
+                              target.lower() in low or
+                              any(k in low for k in (
+                                  'authorization','bearer','header','apitoken','token','idtoken',
+                                  'user_id','userid','tenant_id','appcheck','app_check',
+                                  'apicalltype','api call','get','post','jsonbody','body:',
+                                  'queryparams','query parameters','charging_station','charging station',
+                                  'connector_status','price_include_tax','billing_type',
+                                  'fixed_starting_fee','idle_price','max_output','price',
+                                  'api_requests/api_calls.dart', '::call'
+                              ))
+                          )
+                          if keep:
+                              structural.append(sanitize(raw))
+                              if len(structural)>=160: break
+                      api_contexts.append({
+                          'file':path,
+                          'target':target,
+                          'selectedStructuralLines':structural
+                      })
+                      pos=i+len(target)
+
+          # Deduplicate structurally equivalent contexts.
+          dedup=[]
+          seen_api=set()
+          for item in api_contexts:
+              key=(item['file'],item['target'],tuple(item['selectedStructuralLines']))
+              if key in seen_api: continue
+              seen_api.add(key); dedup.append(item)
+          api_contexts=dedup[:40]
+
+          api_text='\n'.join(x for item in api_contexts for x in item['selectedStructuralLines'])
+          api_indicators={}
+          for term in [
+              '/auth/authorize','/app/charging_stations/','/user/get_charging_station_details/',
+              'Authorization','Bearer','ff_token','idToken2','AppCheck','app_check',
+              'connector_status','price_include_tax','billing_type','fixed_starting_fee',
+              'idle_price','max_output'
+          ]:
+              api_indicators[term]=term.lower() in api_text.lower()
+
           allsel='\n'.join(x for c in contexts for x in c['selected_structural_lines'])
           indicators={}
           for term in ['userId','user_id','userid','ff_userid','query','sink','send','json','Authorization','Bearer','WebSocket','channel']:
@@ -223,6 +286,11 @@ jobs:
               'sanitizedContextCount':len(contexts)
             },
             'contexts':contexts[:20],
+            'nativeApiContract':{
+              'targets':api_targets,
+              'contexts':api_contexts,
+              'indicators':api_indicators
+            },
             'focusedReconstruction':{
               'connectWSAddressRange':'0x75ed84-0x75ef40',
               'connectWSSlice':connect_slice,
@@ -240,7 +308,12 @@ jobs:
               'queryEvidence':indicators.get('query'),
               'connectWSPayloadContainsUserIdKey': 'user_id' in connect_text,
               'connectWSSendsJsonToSink': ('jsonEncode' in connect_text and ('StreamSink::add' in connect_text or 'DelegatingStreamSink::add' in connect_text)),
-              'onMessageRelevantLiteralCount':len(event_literals)
+              'onMessageRelevantLiteralCount':len(event_literals),
+              'nativeStationListRouteLocated':api_indicators.get('/app/charging_stations/',False),
+              'nativeStationDetailRouteLocated':api_indicators.get('/user/get_charging_station_details/',False),
+              'nativeAuthorizationHeaderEvidence':api_indicators.get('Authorization',False),
+              'nativeBearerEvidence':api_indicators.get('Bearer',False),
+              'nativeTariffFieldEvidence':any(api_indicators.get(k,False) for k in ['price_include_tax','billing_type','fixed_starting_fee','idle_price'])
             }
           }
           with open(out,'w',encoding='utf-8') as f:
