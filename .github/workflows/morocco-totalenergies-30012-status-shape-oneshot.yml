@@ -27,7 +27,7 @@ jobs:
 
           BASE='https://csmstotalenergiesma.numocity.com'
           PATH='/status/api/get-connector-status'
-          OUT='reports/morocco/totalenergies/club-ev-charge-30012-status-request-shape-2026-09-26.json'
+          OUT='reports/morocco/totalenergies/club-ev-charge-30012-status-query-matrix-2026-09-26.json'
 
           cases=[
             ('get_empty','GET',None,None),
@@ -38,6 +38,12 @@ jobs:
             ('post_lower_body','POST',{'chargePointId':0,'connectorId':0},None),
             ('post_title_body','POST',{'ChargePointId':0,'ConnectorId':0},None),
             ('post_number_body','POST',{'ChargePointId':0,'ChargePointConnectorNumber':0},None),
+            ('get_cpid_lower','GET',None,{'cpid':'0','connectorid':'0'}),
+            ('get_cpId_mixed','GET',None,{'cpId':'0','connectorId':'0'}),
+            ('get_CPID_title','GET',None,{'CPID':'0','ConnectorId':'0'}),
+            ('get_cpid_tenant','GET',None,{'cpid':'0','connectorid':'0','tenantId':'0'}),
+            ('get_chargepoint_tenant','GET',None,{'chargePointId':'0','connectorId':'0','tenantId':'0'}),
+            ('get_chargepoint_app_tenant','GET',None,{'chargePointId':'0','connectorId':'0','tenantId':'0','appId':'0'}),
           ]
 
           def safe_call(method, body=None, query=None):
@@ -89,7 +95,7 @@ jobs:
               'no_tokens':True,
               'no_login':True,
               'no_account_or_charging_actions':True,
-              'bounded_eight_cases_only':True,
+              'bounded_static_literal_matrix_only':True,
               'raw_response_bodies_persisted':False
             },
             'cases':[]
