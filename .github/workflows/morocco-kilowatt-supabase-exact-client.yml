@@ -1,0 +1,119 @@
+name: Morocco Kilowatt exact Supabase client probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-kilowatt-supabase-exact-client.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reproduce exact public app client headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/kwh-exact && mkdir -p /tmp/kwh-exact/xapk /tmp/kwh-exact/apk reports/morocco/kilowatt
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0'             'https://d.apkpure.net/b/XAPK/ma.kilowatt.app?version=latest'             -o /tmp/kwh-exact/app.xapk
+          unzip -q /tmp/kwh-exact/app.xapk -d /tmp/kwh-exact/xapk
+          unzip -q /tmp/kwh-exact/xapk/ma.kilowatt.app.apk 'assets/index.android.bundle' -d /tmp/kwh-exact/apk
+          printf '%s  %s
+' 'e177f327dfa4a581e2b2257ac741fef0af639b4a0f8ec75f4b826944bced22a9' /tmp/kwh-exact/apk/assets/index.android.bundle | sha256sum -c -
+
+          git clone --depth=1 https://github.com/P1sec/hermes-dec.git /tmp/hermes-dec >/dev/null 2>&1
+          python3 /tmp/hermes-dec/hbc-decompiler /tmp/kwh-exact/apk/assets/index.android.bundle /tmp/kwh-exact/decompiled.js >/dev/null
+
+          python3 - <<'PY'
+          import re,json,base64,requests,hashlib
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          s=Path('/tmp/kwh-exact/decompiled.js').read_text(errors='ignore')
+          host='https://jmrgknphxsviooizyilj.supabase.co'
+          # Find JWT-like candidates local to createClient context; accept only project anon JWT.
+          candidates=[]
+          for x in re.findall(r'eyJ[A-Za-z0-9._-]{80,}',s):
+              try:
+                  p=x.split('.')[1]; p += '='*((4-len(p)%4)%4)
+                  c=json.loads(base64.urlsafe_b64decode(p))
+                  if c.get('ref')=='jmrgknphxsviooizyilj' and c.get('role')=='anon':
+                      candidates.append((x,c))
+              except Exception: pass
+          if not candidates: raise SystemExit('No matching anon client key found')
+          key,claims=candidates[0]
+
+          S=requests.Session()
+          variants=[
+            ('apikey_only',{'apikey':key}),
+            ('apikey_bearer',{'apikey':key,'Authorization':'Bearer '+key}),
+            ('exact_app',{'apikey':key,'Authorization':'Bearer '+key,'x-application-name':'kilowatt-go','Accept':'application/json'})
+          ]
+          probes=[]
+          for name,h in variants:
+              for p in [
+                '/rest/v1/',
+                '/rest/v1/connectors?select=id,chargestation_id,rate_id,rate_price,rate_currency,rate_description&limit=1'
+              ]:
+                  try:
+                      r=S.get(host+p,headers=h,timeout=25)
+                      row={'variant':name,'path':p.split('?')[0],'status':r.status_code,'content_type':r.headers.get('content-type'),'bytes':len(r.content)}
+                      try:
+                          j=r.json()
+                          if isinstance(j,dict):
+                              row['safe_error']={k:j.get(k) for k in ('code','message','hint') if j.get(k)}
+                          elif isinstance(j,list):
+                              row['json_type']='list';row['count']=len(j)
+                              if j and isinstance(j[0],dict):row['item_keys']=sorted(j[0].keys())
+                      except Exception: pass
+                      probes.append(row)
+                  except Exception as e:
+                      probes.append({'variant':name,'path':p.split('?')[0],'error':type(e).__name__})
+
+          no_key=[]
+          for p in ['/auth/v1/health','/auth/v1/.well-known/jwks.json','/.well-known/jwks.json','/rest/v1/']:
+              try:
+                  r=S.get(host+p,timeout=25,headers={'Accept':'application/json','User-Agent':'TCC-ReadOnly'})
+                  row={'path':p,'status':r.status_code,'content_type':r.headers.get('content-type'),'bytes':len(r.content)}
+                  try:
+                      j=r.json()
+                      if isinstance(j,dict):
+                          # retain only non-secret structural keys / health values
+                          row['keys']=sorted(j.keys())[:50]
+                          for k in ('name','status','version','description','message','code'):
+                              if k in j and isinstance(j[k],(str,int,float,bool,type(None))):row[k]=j[k]
+                          if 'keys' in j and isinstance(j['keys'],list): row['jwks_key_count']=len(j['keys'])
+                  except Exception:pass
+                  no_key.append(row)
+              except Exception as e:no_key.append({'path':p,'error':type(e).__name__})
+
+          report={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Kilowatt',
+            'client':{'package':'ma.kilowatt.app','version':'1.0.1','bundle_sha256':'e177f327dfa4a581e2b2257ac741fef0af639b4a0f8ec75f4b826944bced22a9'},
+            'policy':{'public_read_only':True,'no_login':True,'no_mutations':True,'raw_key_not_persisted':True},
+            'embedded_key_claims':{k:claims.get(k) for k in ('role','ref','iat','exp')},
+            'exact_client_probes':probes,
+            'no_key_project_probes':no_key
+          }
+          Path('reports/morocco/kilowatt/supabase-exact-client-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/kwh-exact /tmp/hermes-dec
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/kilowatt/supabase-exact-client-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): validate exact Kilowatt Supabase client [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
