@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-26",
+  "country": "MA",
+  "network": "Kilowatt",
+  "subject": "Kilowatt Android 1.0.1 comparison against current V9 integration",
+  "source": {
+    "package": "ma.kilowatt.app",
+    "version": "1.0.1",
+    "version_code": 14,
+    "user_supplied_xapk": true,
+    "raw_package_persisted": false
+  },
+  "static_findings": {
+    "framework": "React Native / Hermes",
+    "bundle_present": "assets/index.android.bundle",
+    "supabase_project_ref": "jmrgknphxsviooizyilj",
+    "supabase_legacy_anon_jwt_present": true,
+    "supabase_anon_expired": false,
+    "supabase_runtime_validation": {
+      "status": 401,
+      "result": "Invalid API key",
+      "report": "reports/morocco/kilowatt/latest-supabase-public.json"
+    },
+    "realtime_connector_logic_present": true,
+    "observed_realtime_markers": [
+      "Connectors Realtime status",
+      "Cleaning up Realtime subscriptions",
+      "No user ID, skipping subscription setup"
+    ],
+    "station_state_markers": [
+      "Charge station is currently inactive.",
+      "Charge station is currently offline.",
+      "Connector not available or station offline."
+    ],
+    "pricing_markers_present": true,
+    "pricing_examples": [
+      "No price information available",
+      "price",
+      "transactions",
+      "cost_amount",
+      "energy_consumed"
+    ],
+    "payment_edge_function": "https://jmrgknphxsviooizyilj.supabase.co/functions/v1/initiate-payment",
+    "payment_redirect_host": "a.kilowatt.ma"
+  },
+  "comparison_to_v9": {
+    "current_public_inventory_source": "https://kilowatt.ma/api/charging-stations",
+    "current_public_connector_count_source": "https://kilowatt.ma/api/public-connectors-count",
+    "current_public_api_exposes_tariff_fields": false,
+    "current_public_api_statuses_are_all_available_in_last_snapshot": true,
+    "apk_proves_richer_authenticated_runtime_model": true,
+    "immediate_public_runtime_upgrade_available": false,
+    "reason": "The app embeds Realtime/status/price logic but its embedded Supabase anon key is rejected by the backend. A legitimate app session would be required to validate richer live data."
+  },
+  "pipeline_issue_found": {
+    "current_inventory_raw_records": 47,
+    "current_inventory_production_candidates": 43,
+    "test_record_count": 1,
+    "additional_records_excluded_by_old_geo_filter": 3,
+    "old_inventory_bounds": {
+      "latitude": [27.0, 36.5],
+      "longitude": [-13.5, -1.0]
+    },
+    "current_v9_adapter_bounds": {
+      "latitude": [20.0, 37.0],
+      "longitude": [-18.0, 0.0]
+    },
+    "interpretation": "The data-lab inventory classifier is older than the V9 Morocco GPS validator. Three non-test records are excluded by the older bounds and should be revalidated before expanding the production inventory from 43 to 46.",
+    "production_change_applied": false,
+    "tariff_overlay_dependency": "Current tariff manifest covers exactly 43 production stations (26 free, 17 unresolved); expanding inventory requires rebuilding and validating the tariff overlay."
+  },
+  "production_decision": {
+    "keep_current_kilowatt_runtime_source_for_now": true,
+    "do_not_promote_supabase_realtime_without_legitimate_session": true,
+    "next_safe_improvement": "Validate the three geo-filtered stations and, if confirmed, rebuild the Kilowatt inventory and tariff overlay for 46 production stations."
+  }
+}
