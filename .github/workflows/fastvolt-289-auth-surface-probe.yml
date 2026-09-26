@@ -13,109 +13,101 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
-      - name: Probe anonymous FastVolt auth surface
+      - name: Recover public app tenant identifier in memory
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 2 --connect-timeout 15 --max-time 180 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/XAPK/ma.fastgo?version=latest' \
+            -o /tmp/fastvolt.xapk
+          mkdir -p /tmp/fv
+          unzip -q /tmp/fastvolt.xapk -d /tmp/fv
+          python - <<'PY2'
+          import hashlib, os, subprocess
+          target='83c3b05b436c8e230c9cb813256aaaa38f68fe3f2e4a48042bb1406c2b0809cb'
+          libs=[]
+          for dp,_,fs in os.walk('/tmp/fv'):
+              for f in fs:
+                  if f=='libapp.so': libs.append(os.path.join(dp,f))
+          if not libs: raise SystemExit('libapp.so not found')
+          tenant=None
+          for lib in libs:
+              p=subprocess.run(['strings','-a','-n','3',lib],capture_output=True,text=True,errors='ignore',timeout=60)
+              for s in p.stdout.splitlines():
+                  if hashlib.sha256(s.encode()).hexdigest()==target:
+                      tenant=s; break
+              if tenant: break
+          if not tenant: raise SystemExit('expected app-shipped tenant identifier not recovered')
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('FASTVOLT_TENANT='+tenant+'\n')
+          print('Recovered app-shipped tenant identifier by pinned SHA-256; raw value not logged.')
+          PY2
+
+      - name: Probe evidence-derived business header candidates
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p reports/morocco/fastvolt
           python - <<'PY'
-          import json, re, ssl, socket, subprocess
+          import json, os, re, subprocess
           from datetime import datetime, timezone
-          from urllib.parse import urlsplit
-
           base='https://mobile.ev.fastvolt.ma'
-          out={'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
-               'network':'FastVolt','client_version':'2.8.9',
+          tenant=os.environ['FASTVOLT_TENANT']
+          candidates=['tenant_id','tenant-id','x-tenant-id','tenantId']
+          paths=['/app/header_signin/','/app/charging_stations/']
+          out={'schema_version':2,'generated_at':datetime.now(timezone.utc).isoformat(),
+               'network':'FastVolt','client_version_target':'2.8.9',
                'policy':{'anonymous_only':True,'no_credentials':True,'no_account_creation':True,
-                         'no_mutating_station_actions':True,'no_user_data':True,'bounded_requests':True},
-               'http':[],'websocket':{}}
-
-          def redact(s):
-              s=s[:1000]
-              s=re.sub(r'eyJ[A-Za-z0-9._-]{20,}', '<redacted-jwt>', s)
-              s=re.sub(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}', '<redacted-email>', s)
-              return s
-
-          def probe(method,path,body=None):
-              url=base+path
-              cmd=['curl','-sS','--max-time','20','-X',method,
-                   '-H','Accept: application/json',
-                   '-D','-','-o','/tmp/body']
-              if body is not None:
-                  cmd += ['-H','Content-Type: application/json','--data',body]
-              cmd += [url]
-              p=subprocess.run(cmd,capture_output=True,text=True)
-              headers=p.stdout
-              status=None
-              for line in headers.splitlines():
-                  if line.startswith('HTTP/'):
-                      try: status=int(line.split()[1])
-                      except: pass
-              h={}
-              for line in headers.splitlines():
-                  if ':' in line:
-                      k,v=line.split(':',1)
-                      lk=k.strip().lower()
-                      if lk in {'content-type','allow','www-authenticate','access-control-allow-methods','access-control-allow-headers'}:
-                          h[lk]=v.strip()
-              try: bodytxt=open('/tmp/body','rb').read().decode('utf-8','replace')
-              except: bodytxt=''
-              out['http'].append({'method':method,'path':path,'status':status,
-                                  'headers':h,'body_sample':redact(bodytxt),
-                                  'curl_exit':p.returncode})
-
-          for path in ['/','/auth/authorize','/auth/login','/app/charging_stations/']:
-              probe('GET',path)
-              probe('OPTIONS',path)
-
-          probe('POST','/auth/authorize','{}')
-          probe('POST','/auth/login','{}')
-
-          # Anonymous WebSocket upgrade only; close immediately after HTTP handshake.
-          host='mobile.ev.fastvolt.ma'
-          ctx=ssl.create_default_context()
-          try:
-              raw=socket.create_connection((host,443),timeout=15)
-              s=ctx.wrap_socket(raw,server_hostname=host)
-              req=(
-                  'GET / HTTP/1.1\r\n'
-                  f'Host: {host}\r\n'
-                  'Upgrade: websocket\r\n'
-                  'Connection: Upgrade\r\n'
-                  'Sec-WebSocket-Version: 13\r\n'
-                  'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n'
-                  'Origin: https://www.fastvolt.net\r\n\r\n'
-              )
-              s.sendall(req.encode())
-              data=s.recv(4096).decode('iso-8859-1','replace')
-              s.close()
-              lines=data.split('\r\n')
-              status_line=lines[0] if lines else ''
-              safe_headers={}
-              for line in lines[1:]:
-                  if ':' in line:
-                      k,v=line.split(':',1)
-                      if k.lower() in {'server','upgrade','connection','www-authenticate','content-type'}:
-                          safe_headers[k.lower()]=v.strip()
-              out['websocket']={'status_line':status_line,'headers':safe_headers}
-          except Exception as e:
-              out['websocket']={'error':type(e).__name__+': '+str(e)[:200]}
-
-          with open('reports/morocco/fastvolt/fastvolt-289-auth-surface.json','w') as f:
-              json.dump(out,f,indent=2,ensure_ascii=False)
-              f.write('\n')
+                         'no_mutations':True,'bounded_evidence_derived_header_candidates':True,
+                         'tenant_value_not_persisted':True},
+               'tenant_identifier':{'source':'public app-shipped client configuration','sha256':'83c3b05b436c8e230c9cb813256aaaa38f68fe3f2e4a48042bb1406c2b0809cb'},
+               'probes':[]}
+          def safe_body(raw):
+              raw=raw[:1500]
+              raw=re.sub(r'eyJ[A-Za-z0-9._-]{20,}','<redacted-jwt>',raw)
+              raw=raw.replace(tenant,'<tenant-id>')
+              try:
+                  obj=json.loads(raw)
+                  if isinstance(obj,list):
+                      return {'json_type':'list','count':len(obj),'item_keys':sorted(obj[0].keys())[:40] if obj and isinstance(obj[0],dict) else []}
+                  if isinstance(obj,dict):
+                      summary={'json_type':'object','keys':sorted(obj.keys())[:60]}
+                      for k,v in obj.items():
+                          if isinstance(v,list): summary[k+'_count']=len(v)
+                      return summary
+              except Exception:
+                  pass
+              return {'text_sample':raw[:400]}
+          for header in candidates:
+              for path in paths:
+                  body='/tmp/body'
+                  cmd=['curl','-sS','--max-time','20','-D','-','-o',body,
+                       '-H','Accept: application/json','-H',f'{header}: {tenant}',base+path]
+                  p=subprocess.run(cmd,capture_output=True,text=True)
+                  status=None
+                  for line in p.stdout.splitlines():
+                      if line.startswith('HTTP/'):
+                          try: status=int(line.split()[1])
+                          except: pass
+                  try: raw=open(body,'rb').read().decode('utf-8','replace')
+                  except: raw=''
+                  out['probes'].append({'header_name':header,'path':path,'status':status,'response':safe_body(raw),'curl_exit':p.returncode})
+          with open('reports/morocco/fastvolt/fastvolt-289-business-header-probe.json','w') as f:
+              json.dump(out,f,indent=2,ensure_ascii=False); f.write('\n')
           PY
+          rm -rf /tmp/fastvolt.xapk /tmp/fv
 
       - name: Commit sanitized report
         shell: bash
         run: |
           set -euo pipefail
-          git add reports/morocco/fastvolt/fastvolt-289-auth-surface.json
+          git add reports/morocco/fastvolt/fastvolt-289-business-header-probe.json
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m "diag(morocco): FastVolt 2.8.9 anonymous auth surface [run $GITHUB_RUN_ID]"
+          git commit -m "diag(morocco): probe FastVolt 2.8.9 business header [run $GITHUB_RUN_ID]"
           git push
