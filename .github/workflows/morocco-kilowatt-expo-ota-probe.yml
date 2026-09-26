@@ -1,0 +1,101 @@
+name: Morocco Kilowatt Expo OTA probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-kilowatt-expo-ota-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe public Expo update endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/kilowatt-ota reports/morocco/kilowatt
+          python3 - <<'PY'
+          import subprocess,json,hashlib,re
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          base='https://u.expo.dev/8f737910-e59a-426f-87d4-755d87018ac4'
+          channels=['production','preview','development','default','']
+          rows=[]
+          for ch in channels:
+              tag=ch or 'none'
+              body=Path(f'/tmp/kilowatt-ota/{tag}.body')
+              hdr=Path(f'/tmp/kilowatt-ota/{tag}.headers')
+              url=base+f'?runtime-version=1.0.1&platform=android'+(f'&channel-name={ch}' if ch else '')
+              cmd=['curl','--silent','--show-error','--location','--max-time','30',
+                   '--dump-header',str(hdr),'--output',str(body),
+                   '--write-out','%{http_code}|%{content_type}',url]
+              p=subprocess.run(cmd,capture_output=True,text=True)
+              code,ctype=(p.stdout.strip().split('|',1)+[''])[:2] if '|' in p.stdout else (p.stdout.strip(),'')
+              rec={'channel':ch or None,'http_status':int(code) if str(code).isdigit() else None,'content_type':ctype or None,'bytes':body.stat().st_size if body.exists() else 0}
+              if body.exists():
+                  b=body.read_bytes()
+                  rec['body_sha256']=hashlib.sha256(b).hexdigest()
+                  txt=b.decode('utf-8','ignore')
+                  # No raw body is persisted. Extract only non-secret manifest metadata.
+                  try:
+                      obj=json.loads(txt)
+                      rec['json_keys']=sorted(obj.keys())[:50] if isinstance(obj,dict) else None
+                      if isinstance(obj,dict):
+                          rec['id']=obj.get('id')
+                          rec['createdAt']=obj.get('createdAt')
+                          rec['runtimeVersion']=obj.get('runtimeVersion')
+                          rec['metadata']=obj.get('metadata') if isinstance(obj.get('metadata'),dict) else None
+                          la=obj.get('launchAsset')
+                          if isinstance(la,dict):
+                              u=la.get('url')
+                              rec['launchAsset']={
+                                'key':la.get('key'),'contentType':la.get('contentType'),
+                                'url_host':re.sub(r'^https?://([^/]+)/.*$',r'\\1',u) if isinstance(u,str) else None,
+                                'url_sha256':hashlib.sha256(u.encode()).hexdigest() if isinstance(u,str) else None
+                              }
+                  except Exception:
+                      rec['json_keys']=None
+                      # Multipart manifests: retain only safe header-ish strings.
+                      safe=[]
+                      for line in txt.splitlines():
+                          if re.search(r'(?i)^(content-type|expo-|eas-)|"id"|"createdAt"|"runtimeVersion"|"launchAsset"',line):
+                              line=re.sub(r'https?://[^"\\s]+','<redacted-url>',line)
+                              safe.append(line[:500])
+                              if len(safe)>=30:break
+                      rec['safe_manifest_lines']=safe
+              rows.append(rec)
+
+          report={
+            'schema_version':1,
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Kilowatt',
+            'client':{'package':'ma.kilowatt.app','version':'1.0.1','runtimeVersion':'1.0.1'},
+            'expo':{
+              'update_url':'https://u.expo.dev/8f737910-e59a-426f-87d4-755d87018ac4',
+              'embedded_project_id':'0e98d61a-9349-4429-95cb-7e79fc2bba60',
+              'note':'Public read-only Expo Updates endpoint; response bodies are not persisted.'
+            },
+            'results':rows
+          }
+          Path('reports/morocco/kilowatt/expo-ota-probe-1.0.1-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/kilowatt/expo-ota-probe-1.0.1-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): probe Kilowatt Expo OTA [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
