@@ -1,0 +1,66 @@
+name: Morocco Total requesttoken base-path check
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-total-requesttoken-basepath.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe sibling-evidenced token base path
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/totalenergies
+          python - <<'PY'
+          import json,urllib.request,urllib.error
+          from datetime import datetime,timezone
+          base='https://csmstotalenergiesma.numocity.com'
+          paths=['/admin/v1/requesttoken','/token/admin/v1/requesttoken']
+          out=[]
+          for path in paths:
+              req=urllib.request.Request(base+path,data=b'{}',method='POST',headers={'Content-Type':'application/json','Accept':'application/json','User-Agent':'TCC-Total-ReadOnly-Shape/1.0'})
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as r:
+                      raw=r.read(50000);status=r.status;ct=r.headers.get('content-type','')
+              except urllib.error.HTTPError as e:
+                  raw=e.read(50000);status=e.code;ct=e.headers.get('content-type','') if e.headers else ''
+              except Exception as e:
+                  out.append({'path':path,'status':None,'error_type':type(e).__name__});continue
+              shape={'path':path,'status':status,'content_type':ct,'bytes':len(raw)}
+              try:
+                  obj=json.loads(raw.decode('utf-8','replace'))
+                  shape['json']=True
+                  if isinstance(obj,dict):
+                      shape['top_level_keys']=sorted(str(k) for k in obj.keys())[:40]
+                      for k in ('message','detail','error'):
+                          if isinstance(obj.get(k),str) and len(obj[k])<200:shape['safe_'+k]=obj[k]
+              except Exception:shape['json']=False
+              out.append(shape)
+          rep={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'TotalEnergies / Club EV-Charge',
+            'policy':{'anonymous':True,'empty_json_only':True,'no_identifiers':True,'no_credentials':True,'no_tokens':True,'no_mutations':True,'raw_body_persisted':False},
+            'probes':out,
+            'evidence_for_second_path':'Exact /token/admin/v1/requesttoken literal from public Numocity sibling client; tested once only as a base-path hypothesis.'
+          }
+          with open('reports/morocco/totalenergies/club-ev-charge-requesttoken-basepath-2026-09-26.json','w') as f:
+              json.dump(rep,f,ensure_ascii=False,indent=2);f.write('\n')
+          PY
+      - name: Commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/totalenergies/club-ev-charge-requesttoken-basepath-2026-09-26.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "diag(morocco): check Total requesttoken base path [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push
