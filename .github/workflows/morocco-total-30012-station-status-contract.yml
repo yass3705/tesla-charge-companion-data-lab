@@ -1,4 +1,5 @@
-name: Morocco Total 3.00.12 station status contract
+name: Morocco Total 3.00.12 station status API contract
+# api-service-fetchStatusList-2026-09-26
 
 on:
   push:
@@ -56,7 +57,7 @@ jobs:
           from datetime import datetime,timezone
 
           root='/tmp/blutter-out'
-          target='asm/kurrent_charge/controllers/backendController/stationController.dart'
+          target='asm/kurrent_charge/network/api_service.dart'
           p=os.path.join(root,target)
           report={
             'schema_version':1,
@@ -71,11 +72,11 @@ jobs:
             'function':{}
           }
           if not os.path.isfile(p):
-              raise SystemExit('stationController.dart absent')
+              raise SystemExit('api_service.dart absent')
           lines=open(p,encoding='utf-8',errors='ignore').read().splitlines()
           centers=[i for i,l in enumerate(lines) if re.search(r'\bfetchStatus\b',l)]
           report['function']['declaration_lines']=[i+1 for i in centers[:10]]
-          safe=re.compile(r'(fetchStatus|statusListAg|statusList|get-status-info|stationLevel|ChargeStation|AvailableConnectorsCount|TotalConnectorCount|queryParameters|DioMixin::get|DioMixin::post|::get|::post|Map<String|IsRoaming|CpoName|stationID|stationId|cpid|connectorId)',re.I)
+          safe=re.compile(r'(fetchStatusList|statusListAg|statusList|get-status-info|stationLevel|ChargeStation|AvailableConnectorsCount|TotalConnectorCount|queryParameters|DioMixin::get|DioMixin::post|::get|::post|Map<String|IsRoaming|CpoName|stationID|stationId|cpid|connectorId|statusLevel)',re.I)
           opaque=re.compile(r'(?i)(eyJ[A-Za-z0-9_.-]{20,}|AIza[A-Za-z0-9_-]{20,}|Bearer\s+[A-Za-z0-9._~+/-]{12,})')
           slices=[]
           for c in centers[:4]:
