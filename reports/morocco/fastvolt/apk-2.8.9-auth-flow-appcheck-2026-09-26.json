@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-09-26",
+  "country": "MA",
+  "network": "FastVolt",
+  "subject": "FastVolt 2.8.9 authentication flow and Firebase App Check refinement",
+  "source": {
+    "package": "ma.fastgo",
+    "version": "2.8.9",
+    "xapk_sha256": "af476c969bf7982b1561cd0769a26f322b90257b347aa858f2c438d4e73fcf97",
+    "local_user_supplied_package": true,
+    "raw_package_persisted": false
+  },
+  "policy": {
+    "static_analysis_only_for_package": true,
+    "anonymous_empty_payload_network_validation_reused": true,
+    "no_credentials": true,
+    "no_personal_identifiers": true,
+    "no_otp_delivery": true,
+    "no_account_creation_in_this_step": true,
+    "no_tokens_persisted": true,
+    "no_mutating_station_or_charging_calls": true
+  },
+  "backend": {
+    "authority": "https://mobile.ev.fastvolt.ma/",
+    "websocket_authority": "wss://mobile.ev.fastvolt.ma/",
+    "auth_routes": [
+      "/auth/authorize",
+      "/auth/login",
+      "/auth/send_verification_otp/",
+      "/auth/verify_otp/",
+      "/auth/verify_email_otp",
+      "/auth/resend-otp"
+    ],
+    "station_routes": [
+      "/app/charging_stations/",
+      "/user/get_charging_station_details/",
+      "/user/v2/estimates/"
+    ]
+  },
+  "client_auth_evidence": {
+    "firebase_auth_sdk_present": true,
+    "firebase_project": "fastvoltev",
+    "firebase_project_number": "494814565810",
+    "sign_in_surfaces_seen": [
+      "email_password",
+      "phone_otp",
+      "google",
+      "apple"
+    ],
+    "request_or_state_field_literals_seen": [
+      "email",
+      "password",
+      "phone",
+      "phone_number",
+      "number_phone",
+      "otp",
+      "session_id",
+      "user_id",
+      "tenant_id",
+      "token",
+      "mobileFcmToken",
+      "os"
+    ],
+    "android_os_literal": "android",
+    "generic_anonymous_auth_manager_code_present": true,
+    "firebase_anonymous_runtime_result": {
+      "enabled": false,
+      "status": 400,
+      "safe_error_code": "ADMIN_ONLY_OPERATION",
+      "source_report": "reports/morocco/fastvolt/anonymous-auth-runtime-2026-09-26.json"
+    },
+    "interpretation": "The client contains several legitimate user authentication surfaces. Generic FlutterFlow anonymous-auth code is present, but the configured Firebase project rejects anonymous sign-up, so it is not a usable production path."
+  },
+  "app_check": {
+    "firebase_app_check_sdk_present": true,
+    "flutter_app_check_initializer_present": true,
+    "android_play_integrity_provider_literal_present": true,
+    "android_play_integrity_registrar_present": true,
+    "firebase_app_check_debug_registrar_present": true,
+    "x_firebase_appcheck_header_literal_present": false,
+    "empty_auth_probe_response_app_check_header_signal": false,
+    "interpretation": "App Check with Play Integrity is clearly part of the Android client/Firebase layer. Static evidence does not prove that the custom FastVolt backend at mobile.ev.fastvolt.ma requires an App Check token on its business API requests."
+  },
+  "auth_shape_validation": {
+    "source_report": "reports/morocco/fastvolt/auth-validation-shape-2026-09-26.json",
+    "empty_payload_routes_returning_401": [
+      "/auth/authorize",
+      "/auth/login",
+      "/auth/send_verification_otp/",
+      "/auth/verify_otp/",
+      "/auth/resend-otp"
+    ],
+    "payload_schema_disclosed_before_authentication": false
+  },
+  "conclusion": {
+    "backend_authority_discovery": "resolved",
+    "route_discovery": "resolved",
+    "firebase_anonymous_path": "closed",
+    "app_check_presence": "confirmed",
+    "custom_backend_app_check_enforcement": "not_proven",
+    "remaining_blocker": "Observe one legitimate official-client authenticated session to determine the exact /auth/authorize exchange and the request metadata used for /app/charging_stations/.",
+    "production_change": false
+  },
+  "next_safe_action": {
+    "preferred": "runtime observation of the official FastVolt client on a connected Android device/emulator, capturing only request host/path, header names and response schema while redacting credentials/tokens",
+    "alternative": "deeper Flutter AOT control-flow reconstruction around /auth/authorize and API-manager header construction",
+    "ansight_status_in_current_environment": "no connected Ansight host/session available"
+  }
+}
