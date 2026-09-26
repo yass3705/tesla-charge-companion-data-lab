@@ -162,6 +162,20 @@ jobs:
                   if len(callsites)>=30: break
               if len(callsites)>=30: break
           report['get_user_token_callsites']=callsites
+
+          # Preserve the exact sanitized Kong function containing the real ApiServices.getUserToken call.
+          kong_path=os.path.join(root,'asm/kurrent_charge/functions/kongFunctions/kong_functions.dart')
+          kong_blocks=[]
+          if os.path.isfile(kong_path):
+              klines=open(kong_path,encoding='utf-8',errors='ignore').read().splitlines()
+              centers=[i for i,l in enumerate(klines) if 'ApiServices::getUserToken' in l]
+              for center in centers[:3]:
+                  lo=max(0,center-180); hi=min(len(klines),center+100)
+                  block=[]
+                  for idx in range(lo,hi):
+                      block.append({'line':idx+1,'text':clean(klines[idx])})
+                  kong_blocks.append({'call_line':center+1,'exact_sanitized_slice':block})
+          report['kong_get_user_token_call_blocks']=kong_blocks
           with open('reports/morocco/totalenergies/club-ev-charge-30012-guest-token-flow-2026-09-26.json','w') as f:
               json.dump(report,f,ensure_ascii=False,indent=2);f.write('\n')
           PY
