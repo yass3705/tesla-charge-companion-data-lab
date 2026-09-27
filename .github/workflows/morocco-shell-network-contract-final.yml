@@ -1,0 +1,80 @@
+name: Morocco Shell network contract final
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-shell-network-contract-final.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decompile exact network constants
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/shellnet /tmp/jadx
+          mkdir -p /tmp/shellnet reports/morocco/shell
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/APK/com.shell.shell_loyalty_app.morocco?version=latest' \
+            -o /tmp/shellnet/app.apk
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            'https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip' \
+            -o /tmp/shellnet/jadx.zip
+          unzip -q /tmp/shellnet/jadx.zip -d /tmp/jadx
+          /tmp/jadx/bin/jadx --no-res --show-bad-code -d /tmp/shellnet/out /tmp/shellnet/app.apk >/dev/null 2>&1 || true
+          python3 - <<'PY'
+          import re,json,hashlib
+          from pathlib import Path
+          from datetime import datetime,timezone
+          root=Path('/tmp/shellnet/out/sources')
+          candidates=[]
+          for rel in ['i4/a.java','com/shell/shell_loyalty_app/config/network/NetworkServiceType.java','com/shell/shell_loyalty_app/config/network/c.java','com/shell/shell_loyalty_app/base/g.java']:
+              p=root/rel
+              if p.exists():
+                  t=p.read_text(errors='ignore')
+                  # redact long quoted literals that look secret-like; preserve URLs/enums/small config strings
+                  def sub(m):
+                      v=m.group(1)
+                      if len(v)>80 and not v.startswith('http'):return '"<redacted-long-literal>"'
+                      return m.group(0)
+                  t=re.sub(r'"([^"]*)"',sub,t)
+                  candidates.append({'file':rel,'source':t[:45000]})
+          # Extract safe facts directly.
+          app_value=None
+          p=root/'i4/a.java'
+          if p.exists():
+              t=p.read_text(errors='ignore')
+              m=re.search(r'f10894a\s*=\s*"([^"]*)"',t)
+              if m: app_value=m.group(1)
+          report={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'client':{'package':'com.shell.shell_loyalty_app.morocco','version':'3.2.7'},
+            'application_constant':{
+              'found':app_value is not None,
+              'value':app_value if app_value and len(app_value)<=64 else None,
+              'length':len(app_value) if app_value is not None else None,
+              'sha256':hashlib.sha256(app_value.encode()).hexdigest() if app_value is not None else None
+            },
+            'sources':candidates
+          }
+          Path('reports/morocco/shell/network-contract-final-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/shellnet /tmp/jadx
+      - name: Commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/shell/network-contract-final-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "diag(morocco): capture Shell network constants [run $GITHUB_RUN_ID]" || exit 0
+          git pull --rebase origin main
+          git push origin main
