@@ -15,7 +15,7 @@
     "Séparer CPO, marque du site, application et canal tarifaire. Conserver énergie, durée, session, occupation et conditions.",
     "Un tarif absent reste inconnu, jamais gratuit par défaut. Station, EVSE et connecteur se comptent séparément.",
     "Aucune promotion complete sans inventaire réconcilié, tarifs applicables prouvés et couverture mesurée.",
-    "Seconde passe verrouillée tant que inventoryExhaustive=false ou qu'une ligne reste pending.",
+    "Seconde passe des cas difficiles verrouillée tant que la première passe du socle importé n'est pas terminée. L'exhaustivité nationale n'est pas un prérequis: les absents font l'objet d'une passe complémentaire distincte.",
     "Trier par nombre de stations vérifié lorsque disponible; les nombres inconnus restent null."
   ],
   "repositoryAudit": {
@@ -246,6 +246,12 @@
       "batch": "BE-0001",
       "result": "Amorçage du registre et premiers contrôles documentaires. Aucun inventaire national téléchargé, aucune station publiée.",
       "next": "Compléter l'inventaire CPO via NAP et sources régionales; poursuivre première passe des pending. Ne pas relancer EnergyVision/les autres bloqués avant clôture de première passe."
+    },
+    {
+      "date": "2026-09-27",
+      "batch": "BE-0002",
+      "result": "Décision utilisateur enregistrée: socle national Eco-Movement prioritaire, couverture partielle acceptée pour démarrer. Documentation confirme snapshot national unique et tarifs ad hoc séparés avec authentification.",
+      "next": "Obtenir accès officiel au socle, importer et compter les CPO/stations/EVSE; compléter première passe avant cas difficiles."
     }
   ],
   "counts": {
@@ -254,5 +260,21 @@
     "partial": 2,
     "blocked": 1,
     "complete": 0
+  },
+  "strategy": {
+    "decidedAt": "2026-09-27",
+    "decision": "Prendre Eco-Movement Belgique comme socle initial même si seuls certains CPO sont couverts. Mesurer les manques après exploitation du socle; ne pas attendre un inventaire exhaustif national pour avancer.",
+    "stages": [
+      "Obtenir accès officiel et importer snapshot statique /datex2/v1/locations; archiver version et noms CPO.",
+      "Première passe de tous les CPO présents dans le snapshot, avec prix ad hoc par EVSE; consigner chaque manque sans s'acharner.",
+      "Passe complémentaire pour évaluer CPO absents et canaux tarifaires manquants (applications, abonnements).",
+      "Deuxième investigation des cas difficiles après première passe du périmètre concerné."
+    ],
+    "documentation": "https://developers.eco-movement.com/docs/belgium-datex-ii-api",
+    "access": "Jeton Bearer à demander selon documentation officielle. Aucun jeton obtenu et aucun email envoyé dans ce fil.",
+    "staticRefresh": "24 heures selon documentation",
+    "tariffMeaning": "Prix ad hoc; ne prouve pas couverture des abonnements ou tarifs application.",
+    "coverage": "Quantifier à partir du snapshot obtenu; aucune estimation de couverture affirmée.",
+    "rateLimits": "Documentation: 1 requête/10 secondes par IP, 30 appels locations/heure, 2 appels/minute/EVSE. Planifier collecte tarifaire selon taille réelle."
   }
 }
