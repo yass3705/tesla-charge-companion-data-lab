@@ -1,0 +1,168 @@
+name: Morocco Shell network contract
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-shell-network-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decompile Shell Maroc 3.2.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/shell-net /tmp/jadx
+          mkdir -p /tmp/shell-net reports/morocco/shell
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0'             'https://d.apkpure.net/b/APK/com.shell.shell_loyalty_app.morocco?version=latest'             -o /tmp/shell-net/app.apk
+          echo '388caa4c883a285ad996859db1ae231ffd3e909bf396475969a61225bae0acf4  /tmp/shell-net/app.apk' | sha256sum -c -
+          unzip -q /tmp/shell-net/app.apk 'lib/x86_64/libnative-lib.so' -d /tmp/shell-net/apk
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240             'https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip'             -o /tmp/shell-net/jadx.zip
+          unzip -q /tmp/shell-net/jadx.zip -d /tmp/jadx
+          /tmp/jadx/bin/jadx --no-res --show-bad-code -d /tmp/shell-net/out /tmp/shell-net/app.apk >/dev/null 2>&1 || true
+
+      - name: Reconstruct service routing and probe exact public paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re,json,subprocess,urllib.request,urllib.error
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          root=Path('/tmp/shell-net/out/sources')
+          def read(rel):
+              p=root/rel
+              return p.read_text(errors='ignore') if p.exists() else ''
+
+          enum_src=read('com/shell/shell_loyalty_app/config/network/NetworkServiceType.java')
+          map_src=read('com/shell/shell_loyalty_app/config/network/c.java')
+          base_src=read('com/shell/shell_loyalty_app/base/g.java')
+          api_src=read('com/shell/shell_loyalty_app/config/network/a.java')
+
+          # extract enum constants and static switch-map assignments
+          enum_consts=re.findall(r'\b(SERVICE_[A-Z0-9_]+)\b',enum_src)
+          enum_consts=list(dict.fromkeys(enum_consts))
+          switch_assign=[]
+          for m in re.finditer(r'NetworkServiceType\.([A-Z0-9_]+)\.ordinal\(\)\]\s*=\s*(\d+)',map_src):
+              switch_assign.append({'service':m.group(1),'case':int(m.group(2))})
+
+          # Capture all URL literals and nearby routing source.
+          urls=sorted(set(re.findall(r'https://[^"\s]+',base_src)))
+          route_snips=[]
+          for token in ['SERVICE_MULTI_COUNTRY_APP','ma-loyaltyapi.vivoenergy.com','execute-api.eu-west-1.amazonaws.com','appConfigProdApiKey','getXAPIKeyProdMorocco']:
+              i=base_src.find(token)
+              if i>=0:route_snips.append({'token':token,'snippet':base_src[max(0,i-3000):i+7000]})
+
+          # Exact Retrofit getStations annotation and request type.
+          station_route=None
+          m=re.search(r'@o\("([^"]*getStations[^"]*)"\)\s*\n\s*Object\s+B\(',api_src)
+          if m:station_route=m.group(1)
+
+          # Native public getters.
+          so=Path('/tmp/shell-net/apk/lib/x86_64/libnative-lib.so')
+          dis=subprocess.check_output(['objdump','-d',str(so)],text=True,errors='ignore')
+          sec=subprocess.check_output(['readelf','-SW',str(so)],text=True,errors='ignore')
+          sm=re.search(r'\s\.rodata\s+PROGBITS\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)',sec)
+          if not sm: raise SystemExit('rodata section not found')
+          ro_addr,ro_off,_=(int(x,16) for x in sm.groups()); data=so.read_bytes()
+          def getter_string(name):
+              pat=rf'<Java_com_shell_shell_1loyalty_1app_utils_SecretAPIKeys_00024APIKeys_{re.escape(name)}[^>]*>:(.*?)(?=\n\n[0-9a-f]+ <)'
+              mm=re.search(pat,dis,re.S)
+              if not mm:return None
+              lm=re.search(r'#\s*([0-9a-fA-F]+)\s*<',mm.group(1))
+              if not lm:return None
+              va=int(lm.group(1),16);p=ro_off+(va-ro_addr)
+              while p<len(data) and (data[p]<33 or data[p]>126):p+=1
+              e=data.find(b'\0',p)
+              return data[p:e].decode('ascii','ignore') if e>p else None
+          symbols=re.findall(r'<Java_com_shell_shell_1loyalty_1app_utils_SecretAPIKeys_00024APIKeys_([A-Za-z0-9_]+)[^>]*>:',dis)
+          symbols=list(dict.fromkeys(symbols))
+          vals={n:getter_string(n) for n in symbols}
+          # never persist values
+          found=[n for n,v in vals.items() if v]
+          platform=vals.get('getXPlatformCode')
+
+          # Derive candidate public keys by semantic getter name.
+          key_names=[n for n in found if re.search(r'(?i)(api.*key|xapi.*key)',n)]
+          # hosts known from decompiled routing
+          hosts=['https://ma-loyaltyapi.vivoenergy.com/','https://3ns044xjg3.execute-api.eu-west-1.amazonaws.com/prod/','https://6bpgiwixq1.execute-api.eu-west-1.amazonaws.com/']
+          body={'amenities':'','latitude':'33.5731','limit':'25','longitude':'-7.5898','m':'closest','radius':'20','route':'1','type':'0'}
+          payload=json.dumps(body).encode()
+          attempts=[]
+          for host in hosts:
+            for kn in key_names:
+              key=vals.get(kn)
+              if not key or len(key)<8: continue
+              headers={'Content-Type':'application/json','Accept':'application/json','Accept-Language':'fr','country':'ma','x-app-version':'3.2.7','x-api-key':key}
+              if platform:headers['x-platform-code']=platform
+              url=host.rstrip('/')+'/'+(station_route or 'getStations/v1').lstrip('/')
+              req=urllib.request.Request(url,data=payload,headers=headers,method='POST')
+              rec={'host':host,'public_key_getter':kn,'header_names':sorted(headers.keys()),'route':station_route or 'getStations/v1'}
+              try:
+                  with urllib.request.urlopen(req,timeout=20) as resp:
+                      raw=resp.read();rec['http_status']=resp.status
+              except urllib.error.HTTPError as e:
+                  raw=e.read();rec['http_status']=e.code
+              except Exception as e:
+                  rec['error']=type(e).__name__;attempts.append(rec);continue
+              try:
+                  obj=json.loads(raw.decode('utf-8','ignore'))
+                  rec['top_level_type']=type(obj).__name__
+                  if isinstance(obj,dict):rec['top_level_keys']=sorted(obj.keys())
+                  rows=obj
+                  if isinstance(obj,dict):
+                      for k in ('data','result','stations'):
+                          if isinstance(obj.get(k),list): rows=obj[k];break
+                  if isinstance(rows,list):
+                      rec['row_count']=len(rows)
+                      ev=[]
+                      for st in rows:
+                          if isinstance(st,dict) and (st.get('ev_charging') or st.get('ev_offering')):
+                              ev.append({'id':st.get('id'),'name':st.get('name'),'lat':st.get('lat'),'lon':st.get('lon'),'loc':st.get('loc'),'ev_charging':st.get('ev_charging'),'ev_offering':st.get('ev_offering')})
+                      rec['ev_row_count']=len(ev);rec['ev_rows']=ev[:100]
+                  elif isinstance(obj,dict):
+                      rec['safe_message']={k:obj.get(k) for k in ('message','error','code','status') if k in obj}
+              except Exception:
+                  rec['response_json']=False
+              attempts.append(rec)
+              if rec.get('http_status')==200:
+                  break
+            if any(a.get('host')==host and a.get('http_status')==200 for a in attempts):
+              break
+
+          report={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Shell/Vivo Energy',
+            'client':{'package':'com.shell.shell_loyalty_app.morocco','version':'3.2.7'},
+            'network_service_enum':enum_consts,
+            'switch_map':switch_assign,
+            'url_literals':urls,
+            'station_route':station_route,
+            'public_native_getters_found':found,
+            'routing_context':route_snips,
+            'attempts':attempts,
+            'policy':{'read_only':True,'public_client_material_only':True,'no_login':True,'no_user_data':True,'no_mutation':True,'credentials_persisted':False}
+          }
+          Path('reports/morocco/shell/network-contract-probe-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/shell-net /tmp/jadx
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/shell/network-contract-probe-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): reconstruct Shell multi-country network contract [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
