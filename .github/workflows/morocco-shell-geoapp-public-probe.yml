@@ -1,0 +1,94 @@
+name: Morocco Shell Geoapp public probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-shell-geoapp-public-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public Geo.me Shell locator endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/morocco/shell
+          python3 - <<'PY'
+          import urllib.request,urllib.error,json
+          from pathlib import Path
+          from datetime import datetime,timezone
+          hosts=[
+            'https://shelldirectoryapi.shell.geoapp.me',
+            'https://shellstationdirectoryapi2.geoapp.me',
+            'https://shelldirectoryapiuat.shell.geoapp.me'
+          ]
+          paths=[
+            '/api/v2/locations/nearest_to?lat=33.5731&lng=-7.5898&limit=50',
+            '/api/v2/locations/within_bounds?sw[]=20&sw[]=-18&ne[]=36&ne[]=-1'
+          ]
+          out=[]
+          for host in hosts:
+            for path in paths:
+              req=urllib.request.Request(host+path,headers={'Accept':'application/json','User-Agent':'Mozilla/5.0 TCC-Public-Research/1.0'})
+              rec={'host':host,'path':path}
+              try:
+                with urllib.request.urlopen(req,timeout=25) as resp:
+                  raw=resp.read();rec['status']=resp.status;rec['content_type']=resp.headers.get('content-type')
+              except urllib.error.HTTPError as e:
+                raw=e.read();rec['status']=e.code;rec['content_type']=e.headers.get('content-type')
+              except Exception as e:
+                rec['error']=type(e).__name__;out.append(rec);continue
+              try:
+                obj=json.loads(raw.decode('utf-8','ignore'))
+                rec['json_type']=type(obj).__name__
+                rows=obj
+                if isinstance(obj,dict):
+                  rec['keys']=sorted(obj.keys())[:80]
+                  for k in ('locations','data','results'):
+                    if isinstance(obj.get(k),list):rows=obj[k];break
+                if isinstance(rows,list):
+                  rec['row_count']=len(rows)
+                  ev=[]
+                  for st in rows:
+                    if not isinstance(st,dict):continue
+                    # only retain safe station and EV metadata
+                    evobj=st.get('ev_charging')
+                    fuels=st.get('fuels')
+                    desc=json.dumps(st,ensure_ascii=False).lower()
+                    if evobj or 'ev charging' in desc or 'ev_charging' in desc:
+                      ev.append({
+                        'id':st.get('id') or st.get('location_id'),
+                        'name':st.get('name'),
+                        'lat':st.get('lat') or (st.get('position') or {}).get('lat'),
+                        'lng':st.get('lng') or st.get('lon') or (st.get('position') or {}).get('lng'),
+                        'ev_charging':evobj,
+                        'fuels':fuels,
+                        'third_party_ev_location':st.get('third_party_ev_location')
+                      })
+                  rec['ev_row_count']=len(ev);rec['ev_rows']=ev[:100]
+                  if rows and isinstance(rows[0],dict):rec['row_keys']=sorted(rows[0].keys())[:100]
+                elif isinstance(obj,dict):
+                  rec['safe_message']={k:obj.get(k) for k in ('message','error','status','code') if k in obj}
+              except Exception:
+                rec['body_prefix']=raw[:200].decode('utf-8','ignore')
+              out.append(rec)
+          report={'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),'country':'MA','network':'Shell/Vivo Energy','policy':{'read_only':True,'no_auth':True},'attempts':out}
+          Path('reports/morocco/shell/geoapp-public-probe-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Commit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/shell/geoapp-public-probe-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "diag(morocco): probe Shell Geoapp public locator [run $GITHUB_RUN_ID]" || exit 0
+          git pull --rebase origin main
+          git push origin main
