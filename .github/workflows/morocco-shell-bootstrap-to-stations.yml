@@ -1,0 +1,241 @@
+name: Morocco Shell bootstrap to stations
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-shell-bootstrap-to-stations.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decompile exact Shell Maroc 3.2.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/shell-boot /tmp/jadx
+          mkdir -p /tmp/shell-boot reports/morocco/shell
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/APK/com.shell.shell_loyalty_app.morocco?version=latest' \
+            -o /tmp/shell-boot/app.apk
+          echo '388caa4c883a285ad996859db1ae231ffd3e909bf396475969a61225bae0acf4  /tmp/shell-boot/app.apk' | sha256sum -c -
+          unzip -q /tmp/shell-boot/app.apk 'lib/x86_64/libnative-lib.so' -d /tmp/shell-boot/apk
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            'https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip' \
+            -o /tmp/shell-boot/jadx.zip
+          unzip -q /tmp/shell-boot/jadx.zip -d /tmp/jadx
+          /tmp/jadx/bin/jadx --no-res --show-bad-code -d /tmp/shell-boot/out /tmp/shell-boot/app.apk >/dev/null 2>&1 || true
+
+      - name: Bootstrap country config and fetch stations read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re,json,subprocess,urllib.request,urllib.error,base64,hashlib
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          root=Path('/tmp/shell-boot/out/sources')
+          def rtxt(rel):
+              p=root/rel
+              return p.read_text(errors='ignore') if p.exists() else ''
+
+          const_src=rtxt('i4/a.java')
+          crypto_src=rtxt('j4/b.java')
+          # Extract application default constant.
+          app=None
+          for pat in [
+              r'f10894a\s*=\s*"([^"]+)"',
+              r'String\s+f10894a\s*=\s*"([^"]+)"',
+              r'return\s+"([^"]+)";'
+          ]:
+              m=re.search(pat,const_src)
+              if m:
+                  app=m.group(1);break
+
+          # Native public getters, values never persisted.
+          so=Path('/tmp/shell-boot/apk/lib/x86_64/libnative-lib.so')
+          dis=subprocess.check_output(['objdump','-d',str(so)],text=True,errors='ignore')
+          sec=subprocess.check_output(['readelf','-SW',str(so)],text=True,errors='ignore')
+          sm=re.search(r'\s\.rodata\s+PROGBITS\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)',sec)
+          if not sm: raise SystemExit('rodata not found')
+          ro_addr,ro_off,_=(int(x,16) for x in sm.groups()); data=so.read_bytes()
+          def getter_string(name):
+              pat=rf'<Java_com_shell_shell_1loyalty_1app_utils_SecretAPIKeys_00024APIKeys_{re.escape(name)}[^>]*>:(.*?)(?=\n\n[0-9a-f]+ <)'
+              mm=re.search(pat,dis,re.S)
+              if not mm:return None
+              lm=re.search(r'#\s*([0-9a-fA-F]+)\s*<',mm.group(1))
+              if not lm:return None
+              va=int(lm.group(1),16);p=ro_off+(va-ro_addr)
+              while p<len(data) and (data[p]<33 or data[p]>126):p+=1
+              e=data.find(b'\0',p)
+              return data[p:e].decode('ascii','ignore') if e>p else None
+          country_key=getter_string('countryConfigProdApiKey')
+          platform=getter_string('getXPlatformCode')
+          if not country_key: raise SystemExit('country config prod key missing')
+
+          body={
+            'application':app or 'Shell',
+            'view':'Country Configurations',
+            'segment':'Loyalty',
+            'parentKey':'countryList',
+            'imageKey':'countryFlag'
+          }
+          headers={'Content-Type':'application/json','Accept':'application/json','Accept-Language':'en','country':'all','x-api-key':country_key}
+          if platform:headers['x-platform-code']=platform
+          url='https://3ns044xjg3.execute-api.eu-west-1.amazonaws.com/prod/getCountries/v1'
+          req=urllib.request.Request(url,data=json.dumps(body).encode(),headers=headers,method='POST')
+          try:
+              with urllib.request.urlopen(req,timeout=30) as resp:
+                  raw=resp.read();country_status=resp.status
+          except urllib.error.HTTPError as e:
+              raw=e.read();country_status=e.code
+
+          report={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Shell/Vivo Energy',
+            'client':{'package':'com.shell.shell_loyalty_app.morocco','version':'3.2.7'},
+            'bootstrap':{'application_value_found':app is not None,'request_field_names':sorted(body.keys()),'http_status':country_status},
+            'crypto_contract':{'source_sha256':hashlib.sha256(crypto_src.encode()).hexdigest(),'source_excerpt':crypto_src[:12000]},
+            'stations_attempt':None,
+            'policy':{'read_only':True,'public_client_material_only':True,'no_login':True,'no_user_data':True,'no_mutation':True,'credentials_persisted':False}
+          }
+
+          try: obj=json.loads(raw.decode('utf-8','ignore'))
+          except Exception:
+              obj=None
+          rows=[]
+          if isinstance(obj,dict):
+              for k in ('data','result','countries'):
+                  if isinstance(obj.get(k),list):rows=obj[k];break
+          elif isinstance(obj,list):rows=obj
+          if not rows:
+              report['bootstrap']['safe_response']={k:obj.get(k) for k in ('message','code','status','error') if isinstance(obj,dict) and k in obj}
+              Path('reports/morocco/shell/bootstrap-to-stations-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+              raise SystemExit(0)
+
+          morocco=None
+          for row in rows:
+              if not isinstance(row,dict):continue
+              cc=str(row.get('countryCode') or row.get('country_code') or '').lower()
+              name=str(row.get('name') or '').lower()
+              if cc=='ma' or 'morocco' in name or 'maroc' in name:
+                  morocco=row;break
+          report['bootstrap']['row_count']=len(rows)
+          report['bootstrap']['morocco_found']=morocco is not None
+          if not morocco:
+              Path('reports/morocco/shell/bootstrap-to-stations-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+              raise SystemExit(0)
+
+          # Persist only safe non-secret metadata.
+          report['bootstrap']['morocco_safe']={
+            'name':morocco.get('name'),'countryCode':morocco.get('countryCode'),
+            'apiBaseURL':morocco.get('apiBaseURL'),'supportingLanguages':morocco.get('supportingLanguages'),
+            'defaultLanguage':morocco.get('defaultLanguage'),'apiKey_present':bool(morocco.get('apiKey'))
+          }
+
+          # Reproduce j4.b.a from observed source. Supported patterns:
+          # AES/CBC/PKCS5 with SHA-256 key material, or XOR-like simple routine.
+          enc=morocco.get('apiKey')
+          passphrase=str(morocco.get('name') or '')+str(morocco.get('countryCode') or '')
+          derived=None
+          crypto_method='unresolved'
+          if enc:
+              try:
+                  blob=base64.b64decode(enc)
+              except Exception:
+                  blob=b''
+              # Detect algorithm from decompiled source and implement.
+              if 'AES/CBC/PKCS5Padding' in crypto_src or 'AES/CBC/PKCS7Padding' in crypto_src:
+                  try:
+                      from Crypto.Cipher import AES
+                  except Exception:
+                      subprocess.run(['python3','-m','pip','install','-q','pycryptodome'],check=True)
+                      from Crypto.Cipher import AES
+                  # Common app pattern in source: SecretKeySpec(MessageDigest SHA-256(passphrase) first 16/32 bytes), zero or embedded IV.
+                  keyhash=hashlib.sha256(passphrase.encode()).digest()
+                  candidates=[]
+                  if len(blob)>=16:
+                      candidates.append(('prefix-iv-key16',keyhash[:16],blob[:16],blob[16:]))
+                      candidates.append(('prefix-iv-key32',keyhash[:32],blob[:16],blob[16:]))
+                  candidates.append(('zero-iv-key16',keyhash[:16],bytes(16),blob))
+                  candidates.append(('zero-iv-key32',keyhash[:32],bytes(16),blob))
+                  for label,key,iv,ct in candidates:
+                      if not ct or len(ct)%16:continue
+                      try:
+                          pt=AES.new(key,AES.MODE_CBC,iv).decrypt(ct)
+                          pad=pt[-1]
+                          if 1<=pad<=16 and pt.endswith(bytes([pad])*pad):pt=pt[:-pad]
+                          st=pt.decode('utf-8')
+                          if len(st)>=12 and all(31<ord(ch)<127 for ch in st):
+                              derived=st;crypto_method=label;break
+                      except Exception:pass
+              # Parse exact source constants if a simpler Base64/key xor routine is used.
+              if derived is None:
+                  # heuristic XOR with passphrase bytes
+                  try:
+                      blob=base64.b64decode(enc);pb=passphrase.encode()
+                      pt=bytes(b ^ pb[i%len(pb)] for i,b in enumerate(blob))
+                      st=pt.decode('utf-8')
+                      if len(st)>=12 and all(31<ord(ch)<127 for ch in st):
+                          derived=st;crypto_method='xor-passphrase'
+                  except Exception:pass
+
+          report['bootstrap']['api_key_decrypted']=derived is not None
+          report['bootstrap']['crypto_method']=crypto_method
+          if derived:
+              baseurl=str(morocco.get('apiBaseURL') or 'https://ma-loyaltyapi.vivoenergy.com/')
+              station_headers={
+                'Content-Type':'application/json','Accept':'application/json','Accept-Language':'fr',
+                'country':'ma','x-app-version':'3.2.7','x-api-key':derived
+              }
+              if platform:station_headers['x-platform-code']=platform
+              sb={'amenities':'','latitude':'33.5731','limit':'100','longitude':'-7.5898','m':'closest','radius':'1000','route':'1','type':'0'}
+              sreq=urllib.request.Request(baseurl.rstrip('/')+'/getStations/v1',data=json.dumps(sb).encode(),headers=station_headers,method='POST')
+              try:
+                  with urllib.request.urlopen(sreq,timeout=30) as resp:
+                      sraw=resp.read();sstatus=resp.status
+              except urllib.error.HTTPError as e:
+                  sraw=e.read();sstatus=e.code
+              rec={'http_status':sstatus,'base_url':baseurl,'request_field_names':sorted(sb.keys()),'header_names':sorted(station_headers.keys())}
+              try:sobj=json.loads(sraw.decode('utf-8','ignore'))
+              except Exception:sobj=None
+              srows=sobj
+              if isinstance(sobj,dict):
+                  rec['top_level_keys']=sorted(sobj.keys())
+                  for k in ('data','result','stations'):
+                      if isinstance(sobj.get(k),list):srows=sobj[k];break
+              if isinstance(srows,list):
+                  rec['row_count']=len(srows);ev=[]
+                  for st in srows:
+                      if not isinstance(st,dict):continue
+                      if st.get('ev_charging') or st.get('ev_offering'):
+                          ev.append({'id':st.get('id'),'name':st.get('name'),'lat':st.get('lat'),'lon':st.get('lon'),'loc':st.get('loc'),'ev_charging':st.get('ev_charging'),'ev_offering':st.get('ev_offering')})
+                  rec['ev_row_count']=len(ev);rec['ev_rows']=ev
+              elif isinstance(sobj,dict):
+                  rec['safe_message']={k:sobj.get(k) for k in ('message','code','status','error') if k in sobj}
+              report['stations_attempt']=rec
+
+          Path('reports/morocco/shell/bootstrap-to-stations-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/shell-boot /tmp/jadx
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/shell/bootstrap-to-stations-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): bootstrap Shell country config to stations [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
