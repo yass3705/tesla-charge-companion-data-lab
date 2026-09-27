@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 317,
+  "asOf": "2026-09-28",
+  "partyId": "EMO",
+  "canonicalName": "EMOBITALY",
+  "inventory": {
+    "evse": 853,
+    "stations": 297
+  },
+  "decision": "partial",
+  "promotion": false,
+  "newEvidence": [
+    {
+      "type": "first-party",
+      "url": "https://www.emobitaly.it/come-ricaricare/",
+      "finding": "All network points support app/RFID; occasional users can pay AD HOC by card; updated tariffs are in the app or my.emobitaly.it; each point operator sets its price."
+    },
+    {
+      "type": "current-app",
+      "url": "https://apps.apple.com/it/app/emobitaly/id1263922299",
+      "date": "2026-09-09",
+      "finding": "App version 26.5 adds pay-as-you-go users without an account; app exposes updated tariffs per charging point and ad-hoc card payment."
+    }
+  ],
+  "conclusion": "Current deterministic tariff surface exists in the EMOBITALY app/guest flow, but no connector payload was extracted. Do not promote historical observed prices network-wide.",
+  "blockingCondition": "Extract current unauthenticated/pay-as-you-go EMOBITALY app or guest backend connector payload and map exact IT*EMO EVSE IDs to tariff components; use existing deterministic anchors first.",
+  "antiStagnation": "Do not repeat generic web tariff search; next attempt must target app/guest backend, exact EVSE/QR, or connector payload."
+}
