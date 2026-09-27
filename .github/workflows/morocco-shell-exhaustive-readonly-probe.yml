@@ -1,0 +1,216 @@
+name: Morocco Shell exhaustive read-only probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-shell-exhaustive-readonly-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and decompile Shell Maroc 3.2.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/shellx /tmp/jadx
+          mkdir -p /tmp/shellx/apk /tmp/shellx/out reports/morocco/shell
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/APK/com.shell.shell_loyalty_app.morocco?version=latest' \
+            -o /tmp/shellx/app.apk
+          echo '388caa4c883a285ad996859db1ae231ffd3e909bf396475969a61225bae0acf4  /tmp/shellx/app.apk' | sha256sum -c -
+          unzip -q /tmp/shellx/app.apk 'lib/x86_64/libnative-lib.so' -d /tmp/shellx/apk
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            'https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip' \
+            -o /tmp/shellx/jadx.zip
+          unzip -q /tmp/shellx/jadx.zip -d /tmp/jadx
+          /tmp/jadx/bin/jadx --no-res --show-bad-code -d /tmp/shellx/out /tmp/shellx/app.apk >/dev/null 2>&1 || true
+
+      - name: Discover config routes and execute safe probes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re,json,subprocess,urllib.request,urllib.error,urllib.parse,base64
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          root=Path('/tmp/shellx/out/sources')
+          so=Path('/tmp/shellx/apk/lib/x86_64/libnative-lib.so')
+          data=so.read_bytes()
+          dis=subprocess.check_output(['objdump','-d',str(so)],text=True,errors='ignore')
+          sec=subprocess.check_output(['readelf','-SW',str(so)],text=True,errors='ignore')
+          sm=re.search(r'\s\.rodata\s+PROGBITS\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)',sec)
+          if not sm: raise SystemExit('rodata not found')
+          ro_addr,ro_off,_=(int(x,16) for x in sm.groups())
+
+          def getter(name):
+              pats=[
+                rf'<Java_com_shell_shell_1loyalty_1app_utils_SecretAPIKeys_00024APIKeys_{re.escape(name)}[^>]*>:(.*?)(?=\n\n[0-9a-f]+ <)',
+                rf'<Java_com_shell_shell_1loyalty_1app_utils_SecretAPIKeys_00024APIKeys_{re.escape(name)}[^>]*>:(.*)$'
+              ]
+              block=None
+              for pat in pats:
+                  m=re.search(pat,dis,re.S)
+                  if m: block=m.group(1); break
+              if not block:return None
+              lm=re.search(r'#\s*([0-9a-fA-F]+)\s*<',block)
+              if not lm:return None
+              va=int(lm.group(1),16);pos=ro_off+(va-ro_addr)
+              while pos<len(data) and (data[pos]<33 or data[pos]>126):pos+=1
+              end=data.find(b'\0',pos)
+              if end<0:return None
+              val=data[pos:end].decode('ascii','ignore')
+              return val if 1<=len(val)<=1000 else None
+
+          # Enumerate JNI getter symbols, then resolve only public client/config material.
+          sym_names=sorted(set(re.findall(r'Java_com_shell_shell_1loyalty_1app_utils_SecretAPIKeys_00024APIKeys_([A-Za-z0-9_]+)',dis)))
+          allow_name=re.compile(r'(?i)(api.?key|platform|country.?config|app.?config)')
+          vals={}
+          for n in sym_names:
+              if allow_name.search(n):
+                  v=getter(n)
+                  if v: vals[n]=v
+
+          # Retrofit annotations/routes and service enum.
+          routes=[]
+          route_re=re.compile(r'@(GET|POST|PUT|DELETE|PATCH)\("([^"]+)"\)')
+          for p in root.rglob('*.java'):
+              try:t=p.read_text(errors='ignore')
+              except:continue
+              if 'retrofit2.http' not in t and '@GET(' not in t and '@POST(' not in t:continue
+              for meth,path in route_re.findall(t):
+                  if re.search(r'(?i)(station|country|config|locator|location|app)',path):
+                      routes.append({'method':meth,'path':path,'file':str(p.relative_to(root))})
+          uniq=[];seen=set()
+          for x in routes:
+              k=(x['method'],x['path'])
+              if k not in seen:seen.add(k);uniq.append(x)
+          routes=uniq[:100]
+
+          enum_info=[]
+          for p in root.rglob('NetworkServiceType.java'):
+              try:t=p.read_text(errors='ignore')
+              except:continue
+              enum_info.append({'file':str(p.relative_to(root)),'source':t[:12000]})
+
+          safe_getters=sorted(vals)
+          hosts=[
+            'https://ma-loyaltyapi.vivoenergy.com/',
+            'https://6bpgiwixq1.execute-api.eu-west-1.amazonaws.com/',
+            'https://3ns044xjg3.execute-api.eu-west-1.amazonaws.com/prod/'
+          ]
+          platform=next((v for k,v in vals.items() if 'PlatformCode' in k),None)
+          # candidate keys grouped by intended purpose; values remain memory-only.
+          app_keys=[(k,v) for k,v in vals.items() if re.search(r'(?i)app.*config.*api.*key',k)]
+          country_keys=[(k,v) for k,v in vals.items() if re.search(r'(?i)country.*config.*api.*key',k)]
+          ma_keys=[(k,v) for k,v in vals.items() if re.search(r'(?i)xapi.*morocco',k)]
+          allkeys=[]
+          for kv in app_keys+country_keys+ma_keys:
+              if kv[1] not in [x[1] for x in allkeys]:allkeys.append(kv)
+
+          def request(url,method='GET',headers=None,body=None):
+              req=urllib.request.Request(url,data=body,headers=headers or {},method=method)
+              try:
+                  with urllib.request.urlopen(req,timeout=25) as resp:return resp.status,resp.read(),dict(resp.headers)
+              except urllib.error.HTTPError as e:return e.code,e.read(),dict(e.headers)
+              except Exception as e:return None,str(type(e).__name__).encode(),{}
+
+          results=[]
+          # Test discovered read-only GET config/country routes across official hosts.
+          safe_routes=[x for x in routes if x['method']=='GET' and re.search(r'(?i)(country|config|station|location|locator)',x['path'])]
+          for host in hosts:
+            for rt in safe_routes[:30]:
+              for key_name,key in (allkeys[:12] or [(None,None)]):
+                  headers={'Accept':'application/json','Accept-Language':'fr','country':'ma','x-app-version':'3.2.7'}
+                  if key:headers['x-api-key']=key
+                  if platform:headers['x-platform-code']=platform
+                  url=urllib.parse.urljoin(host,rt['path'])
+                  status,raw,rh=request(url,'GET',headers)
+                  rec={'host':host,'method':'GET','path':rt['path'],'key_getter':key_name,'status':status}
+                  try:
+                      obj=json.loads(raw.decode('utf-8','ignore'))
+                      rec['json_type']=type(obj).__name__
+                      if isinstance(obj,dict):
+                          rec['keys']=sorted(obj.keys())[:80]
+                          # retain only safe config metadata, never raw api keys/tokens.
+                          safe={}
+                          for k,v in obj.items():
+                              if re.search(r'(?i)(country|name|code|language|baseurl|api.?base|url|status|message)',str(k)):
+                                  if isinstance(v,(str,int,float,bool)) or v is None:
+                                      sv=v
+                                      if isinstance(sv,str) and len(sv)>200:sv=sv[:200]
+                                      safe[k]=sv
+                          rec['safe_fields']=safe
+                      elif isinstance(obj,list):
+                          rec['row_count']=len(obj)
+                          if obj and isinstance(obj[0],dict):rec['row_keys']=sorted(obj[0].keys())[:80]
+                  except Exception:
+                      rec['body_prefix']=raw[:120].decode('utf-8','ignore')
+                  results.append(rec)
+                  if status==200:break
+
+          # Exact station endpoint across all hosts + all public client key families.
+          station_body=json.dumps({
+            'amenities':'','latitude':'33.5731','limit':'100','longitude':'-7.5898',
+            'm':'closest','radius':'1000','route':'1','type':'0'
+          }).encode()
+          for host in hosts:
+            for key_name,key in allkeys:
+              headers={'Content-Type':'application/json','Accept':'application/json','Accept-Language':'fr','country':'ma','x-app-version':'3.2.7','x-api-key':key}
+              if platform:headers['x-platform-code']=platform
+              url=urllib.parse.urljoin(host,'getStations/v1')
+              status,raw,rh=request(url,'POST',headers,station_body)
+              rec={'host':host,'method':'POST','path':'getStations/v1','key_getter':key_name,'status':status}
+              try:
+                  obj=json.loads(raw.decode('utf-8','ignore'));rows=obj
+                  if isinstance(obj,dict):
+                      rec['keys']=sorted(obj.keys())[:50]
+                      for kn in ('data','result','stations'):
+                          if isinstance(obj.get(kn),list):rows=obj[kn];break
+                  if isinstance(rows,list):
+                      rec['row_count']=len(rows)
+                      ev=[]
+                      for st in rows:
+                          if isinstance(st,dict) and (st.get('ev_charging') or st.get('ev_offering')):
+                              ev.append({'id':st.get('id'),'name':st.get('name'),'lat':st.get('lat'),'lon':st.get('lon'),'loc':st.get('loc'),'ev_charging':st.get('ev_charging'),'ev_offering':st.get('ev_offering')})
+                      rec['ev_row_count']=len(ev);rec['ev_rows']=ev
+                  elif isinstance(obj,dict):
+                      rec['safe_message']={k:obj.get(k) for k in ('status','message','error','code') if k in obj}
+              except Exception:rec['body_prefix']=raw[:120].decode('utf-8','ignore')
+              results.append(rec)
+              if status==200:break
+
+          report={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Shell/Vivo Energy',
+            'client':{'package':'com.shell.shell_loyalty_app.morocco','version':'3.2.7'},
+            'policy':{'read_only':True,'no_login':True,'no_user_data':True,'no_mutations':True,'secret_values_persisted':False},
+            'public_secret_getters_found':safe_getters,
+            'retrofit_routes':routes,
+            'network_service_enum':enum_info,
+            'results':results
+          }
+          Path('reports/morocco/shell/exhaustive-readonly-probe-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/shellx /tmp/jadx
+
+      - name: Commit sanitized result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/shell/exhaustive-readonly-probe-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): exhaust Shell public read-only paths [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
