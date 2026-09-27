@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 313,
+  "asOf": "2026-09-27",
+  "partyId": "SAG",
+  "canonicalName": "Sagelio",
+  "decision": "remain_partial_fail_closed",
+  "inventory": {
+    "evse": 405,
+    "stations": 316,
+    "punAsOf": "2026-09-20"
+  },
+  "findings": {
+    "currentFirstPartyNetwork": "Sagelio states 400+ charging points and gives site owners pricing control in one platform.",
+    "directPayment": "First-party Sagelio documentation states network-wide QR direct card payment through Electromaps: scan QR, choose card, connector, Activate with direct payment; EUR100 preauthorisation; charged consumption only.",
+    "directPriceSemantics": "Sagelio explicitly states direct card payment costs the same as Electromaps plus Stripe commission. This is a direct-payment route but the current connector-level Electromaps base price and Stripe fee must be captured deterministically before ranking.",
+    "pricingVariability": "Current first-party Sagelio pricing guidance says there is no tariff valid for all sites; 0.59 EUR/kWh is an example, not a network tariff.",
+    "punEvidence": "Exact current IT*SAG examples inspected in PUN-derived pages report tariffs not communicated to PUN."
+  },
+  "coverage": {
+    "rankableEvse": 0,
+    "failClosedEvse": 405
+  },
+  "blockingCondition": "Exact IT*SAG QR/Electromaps direct-payment connector payload with current base tariff plus Stripe commission, mapped deterministically to PUN EVSE. Do not use 0.59 EUR/kWh example or generic Electromaps roaming price.",
+  "antiStagnation": "Generic web tariff search is bounded. Resume only from exact IT*SAG QR/payment URL, Electromaps guest/direct-payment backend, or new first-party connector tariff evidence."
+}
