@@ -80,10 +80,11 @@ jobs:
               return data[p:e].decode('ascii','ignore') if e>p else None
           country_key=getter_string('countryConfigProdApiKey')
           platform=getter_string('getXPlatformCode')
-          if not country_key: raise SystemExit('country config prod key missing')
+          app=getter_string('getApplicationKeyDataProdMorocco')
+          if not country_key or not app: raise SystemExit('country bootstrap material missing')
 
           body={
-            'application':app or 'Shell',
+            'application':app,
             'view':'Country Configurations',
             'segment':'Loyalty',
             'parentKey':'countryList',
@@ -142,55 +143,10 @@ jobs:
             'defaultLanguage':morocco.get('defaultLanguage'),'apiKey_present':bool(morocco.get('apiKey'))
           }
 
-          # Reproduce j4.b.a from observed source. Supported patterns:
-          # AES/CBC/PKCS5 with SHA-256 key material, or XOR-like simple routine.
-          enc=morocco.get('apiKey')
-          passphrase=str(morocco.get('name') or '')+str(morocco.get('countryCode') or '')
-          derived=None
-          crypto_method='unresolved'
-          if enc:
-              try:
-                  blob=base64.b64decode(enc)
-              except Exception:
-                  blob=b''
-              # Detect algorithm from decompiled source and implement.
-              if 'AES/CBC/PKCS5Padding' in crypto_src or 'AES/CBC/PKCS7Padding' in crypto_src:
-                  try:
-                      from Crypto.Cipher import AES
-                  except Exception:
-                      subprocess.run(['python3','-m','pip','install','-q','pycryptodome'],check=True)
-                      from Crypto.Cipher import AES
-                  # Common app pattern in source: SecretKeySpec(MessageDigest SHA-256(passphrase) first 16/32 bytes), zero or embedded IV.
-                  keyhash=hashlib.sha256(passphrase.encode()).digest()
-                  candidates=[]
-                  if len(blob)>=16:
-                      candidates.append(('prefix-iv-key16',keyhash[:16],blob[:16],blob[16:]))
-                      candidates.append(('prefix-iv-key32',keyhash[:32],blob[:16],blob[16:]))
-                  candidates.append(('zero-iv-key16',keyhash[:16],bytes(16),blob))
-                  candidates.append(('zero-iv-key32',keyhash[:32],bytes(16),blob))
-                  for label,key,iv,ct in candidates:
-                      if not ct or len(ct)%16:continue
-                      try:
-                          pt=AES.new(key,AES.MODE_CBC,iv).decrypt(ct)
-                          pad=pt[-1]
-                          if 1<=pad<=16 and pt.endswith(bytes([pad])*pad):pt=pt[:-pad]
-                          st=pt.decode('utf-8')
-                          if len(st)>=12 and all(31<ord(ch)<127 for ch in st):
-                              derived=st;crypto_method=label;break
-                      except Exception:pass
-              # Parse exact source constants if a simpler Base64/key xor routine is used.
-              if derived is None:
-                  # heuristic XOR with passphrase bytes
-                  try:
-                      blob=base64.b64decode(enc);pb=passphrase.encode()
-                      pt=bytes(b ^ pb[i%len(pb)] for i,b in enumerate(blob))
-                      st=pt.decode('utf-8')
-                      if len(st)>=12 and all(31<ord(ch)<127 for ch in st):
-                          derived=st;crypto_method='xor-passphrase'
-                  except Exception:pass
-
-          report['bootstrap']['api_key_decrypted']=derived is not None
-          report['bootstrap']['crypto_method']=crypto_method
+          # Country response supplies the public client key; app encrypts it only when storing it locally.
+          derived=morocco.get('apiKey')
+          report['bootstrap']['api_key_present']=bool(derived)
+          report['bootstrap']['crypto_method']='server-response-public-key-then-local-keystore-encryption'
           if derived:
               baseurl=str(morocco.get('apiBaseURL') or 'https://ma-loyaltyapi.vivoenergy.com/')
               station_headers={
