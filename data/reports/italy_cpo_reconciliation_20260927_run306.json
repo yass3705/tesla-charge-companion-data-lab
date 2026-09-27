@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "runDate": "2026-09-27",
+  "focus": "EMO / EMOBITALY evidence reconciliation",
+  "operator": {
+    "partyId": "EMO",
+    "name": "EMOBITALY S.r.l.",
+    "canonicalStatus": "partial"
+  },
+  "historicalEvidence": {
+    "report": "data/reports/italy_station_level_audit_20260918_run178.json",
+    "finding": "24 EVSE were marked rankable from PUN-derived 0.48 EUR/kWh + 1.14 EUR activation"
+  },
+  "currentDecision": {
+    "rankableEvseAdded": 0,
+    "correction": "Do not treat PUN-derived numeric tariff alone as authoritative current direct/ad-hoc CPO pricing.",
+    "reason": "Later first-party evidence establishes connector/station-specific pricing exposed by EMOBITALY/Optimile and Interparking current direct pricing differs from the historical PUN-derived values; therefore historical PUN-only promotions must not be generalized or counted as current first-party-confirmed rankable coverage.",
+    "safeRule": "Require deterministic EVSE/connector -> EMOBITALY/Optimile guest/ad-hoc tariff mapping. Keep unmatched EVSE fail-closed.",
+    "nextCondition": "Resume only from EMOBITALY/Optimile connector-level backend/guest/QR evidence or another current first-party station-level tariff surface."
+  },
+  "canonicalCounters": {
+    "treated": 23,
+    "partialCurrent": 69,
+    "active": 0,
+    "setAside": 0,
+    "currentPunPartyIds": 92,
+    "unreconciledCurrentPunPartyIds": 0,
+    "arithmeticCheckCurrentPun": true
+  },
+  "coherence": {
+    "identity": "92/92 current PUN partyIds remain reconciled",
+    "aliases": "P62/EUM and AXS/AXP/AXE rules unchanged"
+  },
+  "supersedesForPricingSafety": [
+    "data/reports/italy_station_level_audit_20260918_run178.json rankable=true interpretation when supported only by PUN-derived tariff"
+  ],
+  "history": [
+    {
+      "date": "2026-09-27",
+      "change": "Reconciled historical EMO run178 with newer first-party evidence: PUN-derived tariff alone is no longer sufficient for current direct/ad-hoc rankability; EMO remains partial and requires connector-level EMOBITALY/Optimile first-party mapping."
+    }
+  ]
+}
