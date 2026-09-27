@@ -1,0 +1,162 @@
+name: Morocco Shell JNI bootstrap candidates
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-shell-jni-bootstrap-candidates.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test exact JNI-referenced public application candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/shell-jni
+          mkdir -p /tmp/shell-jni/x reports/morocco/shell
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 180 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/APK/com.shell.shell_loyalty_app.morocco?version=latest' \
+            -o /tmp/shell-jni/app.apk
+          unzip -q /tmp/shell-jni/app.apk 'lib/x86_64/libnative-lib.so' -d /tmp/shell-jni/x
+          python3 - <<'PY'
+          import re,json,subprocess,urllib.request,urllib.error,hashlib
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          so=Path('/tmp/shell-jni/x/lib/x86_64/libnative-lib.so')
+          dis=subprocess.check_output(['objdump','-d',str(so)],text=True,errors='ignore')
+          sec=subprocess.check_output(['readelf','-SW',str(so)],text=True,errors='ignore')
+          sm=re.search(r'\s\.rodata\s+PROGBITS\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)',sec)
+          if not sm: raise SystemExit('rodata missing')
+          ro_addr,ro_off,ro_size=(int(x,16) for x in sm.groups()); data=so.read_bytes()
+
+          def function_block(name):
+              pat=rf'<Java_com_shell_shell_1loyalty_1app_utils_SecretAPIKeys_00024APIKeys_{re.escape(name)}[^>]*>:(.*?)(?=\n\n[0-9a-f]+ <)'
+              m=re.search(pat,dis,re.S)
+              return m.group(1) if m else ''
+
+          def strings_from_block(block):
+              out=[]
+              # Collect every absolute address objdump resolves in comments.
+              for h in re.findall(r'#\s*([0-9a-fA-F]+)\s*<',block):
+                  va=int(h,16)
+                  p=ro_off+(va-ro_addr)
+                  if not (ro_off<=p<ro_off+ro_size): continue
+                  # scan a few bytes forward to printable start, but not across far offsets
+                  for delta in range(0,5):
+                      q=p+delta
+                      if q>=len(data) or not (32<=data[q]<=126): continue
+                      e=data.find(b'\0',q,min(len(data),q+1000))
+                      if e<0: continue
+                      try:v=data[q:e].decode('utf-8')
+                      except:continue
+                      if 1<=len(v)<=500 and v not in out: out.append(v)
+                      break
+              return out
+
+          app_candidates=strings_from_block(function_block('getApplicationKeyDataProdMorocco'))
+          key_candidates=strings_from_block(function_block('countryConfigProdApiKey'))
+          platform_candidates=strings_from_block(function_block('getXPlatformCode'))
+          # Also keep previously observed first candidate if extraction yielded it.
+          report={
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'candidate_counts':{'application':len(app_candidates),'country_key':len(key_candidates),'platform':len(platform_candidates)},
+            'application_candidates_safe':[{'len':len(v),'sha256':hashlib.sha256(v.encode()).hexdigest()} for v in app_candidates],
+            'attempts':[],
+            'policy':{'read_only':True,'candidate_values_not_persisted':True,'no_login':True,'no_user_data':True}
+          }
+
+          url='https://3ns044xjg3.execute-api.eu-west-1.amazonaws.com/prod/getCountries/v1'
+          for ai,app in enumerate(app_candidates):
+            for ki,key in enumerate(key_candidates):
+              if len(key)<8: continue
+              plats=platform_candidates or [None]
+              for pi,platform in enumerate(plats[:5]):
+                body={'application':app,'view':'Country Configurations','segment':'Loyalty','parentKey':'countryList','imageKey':'countryFlag'}
+                headers={'Content-Type':'application/json','Accept':'application/json','Accept-Language':'en','country':'all','x-app-version':'3.2.7','x-api-key':key}
+                if platform: headers['x-platform-code']=platform
+                req=urllib.request.Request(url,data=json.dumps(body).encode(),headers=headers,method='POST')
+                rec={'application_index':ai,'key_index':ki,'platform_index':pi if platform else None}
+                try:
+                    with urllib.request.urlopen(req,timeout=20) as resp: raw=resp.read();rec['http_status']=resp.status
+                except urllib.error.HTTPError as e: raw=e.read();rec['http_status']=e.code
+                except Exception as e: rec['error']=type(e).__name__;report['attempts'].append(rec);continue
+                try:o=json.loads(raw.decode('utf-8','ignore'))
+                except:o=None
+                rec['top_level_type']=type(o).__name__
+                if isinstance(o,dict):
+                    rec['top_level_keys']=sorted(o.keys())
+                    rec['safe_message']={k:o.get(k) for k in ('message','code','status','error') if k in o}
+                # recursively detect country-shaped dicts
+                dicts=[]
+                def walk(x):
+                    if isinstance(x,dict):
+                        dicts.append(x)
+                        for v in x.values(): walk(v)
+                    elif isinstance(x,list):
+                        for v in x: walk(v)
+                walk(o)
+                countryish=[d for d in dicts if any(k in d for k in ('countryCode','apiBaseURL','apiKey','defaultLanguage'))]
+                rec['countryish_count']=len(countryish)
+                rec['morocco_found']=any(
+                    str(d.get('countryCode') or d.get('country_code') or '').lower()=='ma' or
+                    'morocco' in str(d.get('name') or d.get('country') or '').lower() or
+                    'maroc' in str(d.get('name') or d.get('country') or '').lower()
+                    for d in countryish
+                )
+                report['attempts'].append(rec)
+                if rec['countryish_count']>0:
+                    # Save safe Morocco metadata + response-derived public station client values only transiently.
+                    ma=next((d for d in countryish if str(d.get('countryCode') or d.get('country_code') or '').lower()=='ma' or 'morocco' in str(d.get('name') or '').lower() or 'maroc' in str(d.get('name') or '').lower()),None)
+                    report['winning_indices']={'application':ai,'key':ki,'platform':pi if platform else None}
+                    if ma:
+                        report['morocco_safe']={'name':ma.get('name'),'countryCode':ma.get('countryCode'),'apiBaseURL':ma.get('apiBaseURL'),'apiKey_present':bool(ma.get('apiKey')),'defaultLanguage':ma.get('defaultLanguage')}
+                        base=ma.get('apiBaseURL'); station_key=ma.get('apiKey')
+                        if base and station_key:
+                            sh={'Content-Type':'application/json','Accept':'application/json','Accept-Language':'fr','country':'ma','x-app-version':'3.2.7','x-api-key':station_key}
+                            if platform: sh['x-platform-code']=platform
+                            sb={'amenities':'','latitude':'31.7917','limit':'1000','longitude':'-7.0926','m':'closest','radius':'2000','route':'1','type':'0'}
+                            sreq=urllib.request.Request(base.rstrip('/')+'/getStations/v1',data=json.dumps(sb).encode(),headers=sh,method='POST')
+                            try:
+                                with urllib.request.urlopen(sreq,timeout=30) as resp:sraw=resp.read();ss=resp.status
+                            except urllib.error.HTTPError as e:sraw=e.read();ss=e.code
+                            sr={'http_status':ss,'base_url':base}
+                            try:soj=json.loads(sraw.decode('utf-8','ignore'))
+                            except:soj=None
+                            sdict=[]
+                            slist=[]
+                            if isinstance(soj,list):slist=soj
+                            elif isinstance(soj,dict):
+                                sr['top_level_keys']=sorted(soj.keys())
+                                for k in ('data','result','stations'):
+                                    if isinstance(soj.get(k),list):slist=soj[k];break
+                            sr['row_count']=len(slist)
+                            ev=[]
+                            for st in slist:
+                                if isinstance(st,dict) and (st.get('ev_charging') or st.get('ev_offering')):
+                                    ev.append({'id':st.get('id'),'name':st.get('name'),'lat':st.get('lat'),'lon':st.get('lon'),'loc':st.get('loc'),'ev_charging':st.get('ev_charging'),'ev_offering':st.get('ev_offering')})
+                            sr['ev_row_count']=len(ev);sr['ev_rows']=ev
+                            report['station_fetch']=sr
+                    Path('reports/morocco/shell/jni-bootstrap-candidates-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+                    raise SystemExit(0)
+          Path('reports/morocco/shell/jni-bootstrap-candidates-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/shell-jni
+      - name: Commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/shell/jni-bootstrap-candidates-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "diag(morocco): test Shell JNI bootstrap candidates [run $GITHUB_RUN_ID]" || exit 0
+          git pull --rebase origin main
+          git push origin main
