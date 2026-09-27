@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-27T00:10:47.503263+00:00",
+  "country": "MA",
+  "network": "Shell/Vivo Energy",
+  "client": {
+    "package": "com.shell.shell_loyalty_app.morocco",
+    "version": "3.2.7"
+  },
+  "bootstrap": {
+    "application_value_found": false,
+    "request_field_names": [
+      "application",
+      "imageKey",
+      "parentKey",
+      "segment",
+      "view"
+    ],
+    "http_status": 200,
+    "safe_response": {
+      "message": "Request param should not be empty.",
+      "code": 400,
+      "status": "BadRequest"
+    }
+  },
+  "crypto_contract": {
+    "source_sha256": "48313640479fd1d49a804f2f858d19f0b254f41a5a317e694013eb013ac34249",
+    "source_excerpt": "package j4;\n\nimport android.security.keystore.KeyPermanentlyInvalidatedException;\nimport java.security.Key;\nimport java.security.KeyStore;\nimport javax.crypto.Cipher;\nimport javax.crypto.SecretKey;\nimport javax.crypto.spec.GCMParameterSpec;\nimport kotlin.collections.k;\nimport kotlin.jvm.internal.h;\n\n/* JADX INFO: loaded from: classes.dex */\npublic abstract class b {\n\n    /* JADX INFO: renamed from: a, reason: collision with root package name */\n    public static final Object f11074a = new Object();\n\n    public static final String a(String str, byte[] bArr) throws Exception {\n        String str2;\n        h.f(\"alias\", str);\n        synchronized (f11074a) {\n            int i3 = 0;\n            Exception e4 = null;\n            while (i3 < 2) {\n                try {\n                    Cipher cipher = Cipher.getInstance(\"AES/GCM/NoPadding\");\n                    KeyStore keyStore = c.f11075a;\n                    Key key = c.f11075a.getKey(str, null);\n                    h.d(\"null cannot be cast to non-null type javax.crypto.SecretKey\", key);\n                    byte[] bArrE = k.E(bArr, 0, 12);\n                    byte[] bArrE2 = k.E(bArr, 12, bArr.length);\n                    cipher.init(2, (SecretKey) key, new GCMParameterSpec(128, bArrE));\n                    byte[] bArrDoFinal = cipher.doFinal(bArrE2);\n                    h.c(bArrDoFinal);\n                    str2 = new String(bArrDoFinal, kotlin.text.c.f13290a);\n                } catch (KeyPermanentlyInvalidatedException e5) {\n                    throw e5;\n                } catch (Exception e6) {\n                    e4 = e6;\n                    i3++;\n                    if (i3 < 2) {\n                        Thread.sleep(50L);\n                    }\n                }\n            }\n            if (e4 != null) {\n                throw e4;\n            }\n            throw new IllegalStateException(\"Decryption failed after 2 retries\");\n        }\n        return str2;\n    }\n\n    public static final byte[] b(String str, String str2) throws Exception {\n        byte[] bArrK;\n        h.f(\"plainText\", str);\n        h.f(\"alias\", str2);\n        synchronized (f11074a) {\n            int i3 = 0;\n            Exception e4 = null;\n            while (i3 < 2) {\n                try {\n                    Cipher cipher = Cipher.getInstance(\"AES/GCM/NoPadding\");\n                    KeyStore keyStore = c.f11075a;\n                    Key key = c.f11075a.getKey(str2, null);\n                    h.d(\"null cannot be cast to non-null type javax.crypto.SecretKey\", key);\n                    cipher.init(1, (SecretKey) key);\n                    byte[] iv = cipher.getIV();\n                    byte[] bytes = str.getBytes(kotlin.text.c.f13290a);\n                    h.e(\"getBytes(...)\", bytes);\n                    byte[] bArrDoFinal = cipher.doFinal(bytes);\n                    h.c(iv);\n                    h.c(bArrDoFinal);\n                    bArrK = k.K(iv, bArrDoFinal);\n                } catch (KeyPermanentlyInvalidatedException e5) {\n                    throw e5;\n                } catch (Exception e6) {\n                    e4 = e6;\n                    i3++;\n                    if (i3 < 2) {\n                        Thread.sleep(50L);\n                    }\n                }\n            }\n            if (e4 != null) {\n                throw e4;\n            }\n            throw new IllegalStateException(\"Encryption failed after 2 retries\");\n        }\n        return bArrK;\n    }\n}\n"
+  },
+  "stations_attempt": null,
+  "policy": {
+    "read_only": true,
+    "public_client_material_only": true,
+    "no_login": true,
+    "no_user_data": true,
+    "no_mutation": true,
+    "credentials_persisted": false
+  }
+}
