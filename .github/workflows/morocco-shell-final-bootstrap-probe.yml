@@ -1,0 +1,214 @@
+name: Morocco Shell final bootstrap probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-shell-final-bootstrap-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decompile exact app and test exact public bootstrap flows
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/shellfinal /tmp/jadx
+          mkdir -p /tmp/shellfinal reports/morocco/shell
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/APK/com.shell.shell_loyalty_app.morocco?version=latest' \
+            -o /tmp/shellfinal/app.apk
+          unzip -q /tmp/shellfinal/app.apk 'lib/x86_64/libnative-lib.so' -d /tmp/shellfinal/apk
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            'https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip' \
+            -o /tmp/shellfinal/jadx.zip
+          unzip -q /tmp/shellfinal/jadx.zip -d /tmp/jadx
+          /tmp/jadx/bin/jadx --no-res --show-bad-code -d /tmp/shellfinal/out /tmp/shellfinal/app.apk >/dev/null 2>&1 || true
+
+          python3 - <<'PY'
+          import re,json,subprocess,urllib.request,urllib.error,urllib.parse
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          root=Path('/tmp/shellfinal/out/sources')
+          const=(root/'i4/a.java').read_text(errors='ignore') if (root/'i4/a.java').exists() else ''
+          app_default=None
+          # Prefer exact static initializer assignment.
+          for pat in [
+            r'f10894a\s*=\s*"([^"]+)"',
+            r'public\s+static\s+final\s+String\s+f10894a\s*=\s*"([^"]+)"'
+          ]:
+            m=re.search(pat,const)
+            if m: app_default=m.group(1);break
+
+          enum_src=''
+          for p in root.rglob('NetworkServiceType.java'):
+            enum_src=p.read_text(errors='ignore');break
+          enum_values=re.findall(r'\b(SERVICE_[A-Z0-9_]+)\b',enum_src)
+          enum_values=list(dict.fromkeys(enum_values))
+
+          so=Path('/tmp/shellfinal/apk/lib/x86_64/libnative-lib.so')
+          dis=subprocess.check_output(['objdump','-d',str(so)],text=True,errors='ignore')
+          sec=subprocess.check_output(['readelf','-SW',str(so)],text=True,errors='ignore')
+          sm=re.search(r'\s\.rodata\s+PROGBITS\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)',sec)
+          if not sm:raise SystemExit('rodata missing')
+          ro_addr,ro_off,_=(int(x,16) for x in sm.groups());data=so.read_bytes()
+          def gs(name):
+            pat=rf'<Java_com_shell_shell_1loyalty_1app_utils_SecretAPIKeys_00024APIKeys_{re.escape(name)}[^>]*>:(.*?)(?=\n\n[0-9a-f]+ <)'
+            m=re.search(pat,dis,re.S)
+            if not m:return None
+            lm=re.search(r'#\s*([0-9a-fA-F]+)\s*<',m.group(1))
+            if not lm:return None
+            p=ro_off+(int(lm.group(1),16)-ro_addr)
+            while p<len(data) and (data[p]<33 or data[p]>126):p+=1
+            e=data.find(b'\0',p)
+            return data[p:e].decode('ascii','ignore') if e>p else None
+
+          names=sorted(set(re.findall(r'Java_com_shell_shell_1loyalty_1app_utils_SecretAPIKeys_00024APIKeys_([A-Za-z0-9_]+)',dis)))
+          public_names=[n for n in names if re.search(r'(?i)(api.?key|platform|country.?config|app.?config)',n)]
+          vals={n:gs(n) for n in public_names}
+          vals={k:v for k,v in vals.items() if v}
+          platform=next((v for k,v in vals.items() if 'PlatformCode' in k),None)
+
+          def call(url,method='GET',headers=None,obj=None):
+            body=json.dumps(obj).encode() if obj is not None else None
+            h=dict(headers or {})
+            if obj is not None:h.setdefault('Content-Type','application/json')
+            h.setdefault('Accept','application/json')
+            req=urllib.request.Request(url,data=body,headers=h,method=method)
+            try:
+              with urllib.request.urlopen(req,timeout=30) as resp:return resp.status,resp.read(),dict(resp.headers)
+            except urllib.error.HTTPError as e:return e.code,e.read(),dict(e.headers)
+            except Exception as e:return None,str(type(e).__name__).encode(),{}
+
+          def safe_parse(raw):
+            try:o=json.loads(raw.decode('utf-8','ignore'))
+            except:return {'parse':False,'prefix':raw[:150].decode('utf-8','ignore')}
+            rec={'parse':True,'type':type(o).__name__}
+            if isinstance(o,dict):
+              rec['keys']=sorted(o.keys())[:80]
+              rec['message']={k:o.get(k) for k in ('message','code','status','error') if k in o}
+            elif isinstance(o,list):
+              rec['row_count']=len(o)
+              if o and isinstance(o[0],dict):rec['row_keys']=sorted(o[0].keys())[:80]
+            return rec,o
+
+          report={
+            'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+            'country':'MA','network':'Shell/Vivo Energy',
+            'client':{'package':'com.shell.shell_loyalty_app.morocco','version':'3.2.7'},
+            'static_contract':{
+              'country_list_application_found':bool(app_default),
+              'country_list_application_length':len(app_default) if app_default else None,
+              'network_service_types':enum_values
+            },
+            'public_getters_found':sorted(vals.keys()),
+            'attempts':[],
+            'policy':{'read_only':True,'no_login':True,'no_user_data':True,'no_mutation':True,'secret_values_persisted':False}
+          }
+
+          prod_country=vals.get('countryConfigProdApiKey')
+          app_keys=[(k,v) for k,v in vals.items() if re.search(r'(?i)app.*config.*api.*key',k)]
+          ma_keys=[(k,v) for k,v in vals.items() if re.search(r'(?i)xapi.*morocco',k)]
+          country_keys=[(k,v) for k,v in vals.items() if re.search(r'(?i)country.*config.*api.*key',k)]
+
+          # 1) Exact CountryListRequest defaults.
+          if app_default and prod_country:
+            headers={'Accept-Language':'en','country':'all','x-app-version':'3.2.7','x-api-key':prod_country}
+            if platform:headers['x-platform-code']=platform
+            body={'application':app_default,'view':'Country Configurations','segment':'Loyalty','parentKey':'countryList','imageKey':'countryFlag'}
+            status,raw,_=call('https://3ns044xjg3.execute-api.eu-west-1.amazonaws.com/prod/getCountries/v1','POST',headers,body)
+            parsed=safe_parse(raw); meta=parsed[0] if isinstance(parsed,tuple) else parsed
+            obj=parsed[1] if isinstance(parsed,tuple) else None
+            rec={'flow':'country_list_exact','status':status,'safe':meta}
+            # recursively inspect only safe country metadata; apiKey kept transiently
+            dicts=[]
+            def walk(x):
+              if isinstance(x,dict):
+                dicts.append(x)
+                for v in x.values():walk(v)
+              elif isinstance(x,list):
+                for v in x:walk(v)
+            walk(obj)
+            countryish=[d for d in dicts if any(k in d for k in ('countryCode','apiBaseURL','apiKey','defaultLanguage'))]
+            rec['countryish_count']=len(countryish)
+            ma=next((d for d in countryish if str(d.get('countryCode') or '').lower()=='ma' or 'morocco' in str(d.get('name') or '').lower() or 'maroc' in str(d.get('name') or '').lower()),None)
+            rec['morocco_found']=bool(ma)
+            if ma:
+              rec['morocco_safe']={k:ma.get(k) for k in ('name','countryCode','apiBaseURL','supportingLanguages','defaultLanguage')}
+              rec['morocco_safe']['apiKey_present']=bool(ma.get('apiKey'))
+              if ma.get('apiBaseURL') and ma.get('apiKey'):
+                sh={'Accept-Language':'fr','country':'ma','x-app-version':'3.2.7','x-api-key':ma.get('apiKey')}
+                if platform:sh['x-platform-code']=platform
+                sb={'amenities':'','latitude':'31.7917','limit':'1000','longitude':'-7.0926','m':'closest','radius':'2000','route':'1','type':'0'}
+                ss,sraw,_=call(str(ma.get('apiBaseURL')).rstrip('/')+'/getStations/v1','POST',sh,sb)
+                try:sobj=json.loads(sraw.decode('utf-8','ignore'))
+                except:sobj=None
+                srows=sobj
+                if isinstance(sobj,dict):
+                  for kn in ('data','result','stations'):
+                    if isinstance(sobj.get(kn),list):srows=sobj[kn];break
+                sr={'status':ss}
+                if isinstance(srows,list):
+                  sr['row_count']=len(srows);ev=[]
+                  for st in srows:
+                    if isinstance(st,dict) and (st.get('ev_charging') or st.get('ev_offering')):
+                      ev.append({'id':st.get('id'),'name':st.get('name'),'lat':st.get('lat'),'lon':st.get('lon'),'loc':st.get('loc'),'ev_charging':st.get('ev_charging'),'ev_offering':st.get('ev_offering')})
+                  sr['ev_row_count']=len(ev);sr['ev_rows']=ev
+                else:sr['safe']=safe_parse(sraw)[0] if isinstance(safe_parse(sraw),tuple) else safe_parse(sraw)
+                rec['station_fetch']=sr
+            report['attempts'].append(rec)
+
+          # 2) App configuration v2, exact body, all relevant public keys + official hosts.
+          app_body={'version':'3.2.7','ostype':'android'}
+          hosts=['https://6bpgiwixq1.execute-api.eu-west-1.amazonaws.com/','https://ma-loyaltyapi.vivoenergy.com/','https://3ns044xjg3.execute-api.eu-west-1.amazonaws.com/prod/']
+          keypool=[]
+          for kv in app_keys+country_keys+ma_keys:
+            if kv[1] not in [x[1] for x in keypool]:keypool.append(kv)
+          for host in hosts:
+            for kn,key in keypool:
+              h={'Accept-Language':'fr','country':'ma','x-app-version':'3.2.7','x-api-key':key}
+              if platform:h['x-platform-code']=platform
+              st,raw,_=call(urllib.parse.urljoin(host,'getAppConfiguration/v2'),'POST',h,app_body)
+              sp=safe_parse(raw);meta=sp[0] if isinstance(sp,tuple) else sp
+              obj=sp[1] if isinstance(sp,tuple) else None
+              rec={'flow':'app_config_v2','host':host,'key_getter':kn,'status':st,'safe':meta}
+              if isinstance(obj,dict):
+                safe={}
+                for k,v in obj.items():
+                  if re.search(r'(?i)(version|country|url|base|status|message|minimum|force|maintenance)',k) and (isinstance(v,(str,int,float,bool)) or v is None):
+                    safe[k]=v
+                rec['safe_fields']=safe
+              report['attempts'].append(rec)
+              if st==200 and isinstance(obj,dict) and len(obj)>2:break
+
+          # 3) Country-by-IP GET used by Retrofit y0.
+          for host in hosts:
+            for kn,key in (country_keys+app_keys+ma_keys):
+              h={'Accept-Language':'en','country':'all','x-app-version':'3.2.7','x-api-key':key}
+              if platform:h['x-platform-code']=platform
+              st,raw,_=call(urllib.parse.urljoin(host,'v1/'),'GET',h,None)
+              rec={'flow':'country_by_ip','host':host,'key_getter':kn,'status':st,'safe':safe_parse(raw)[0] if isinstance(safe_parse(raw),tuple) else safe_parse(raw)}
+              report['attempts'].append(rec)
+              if st==200:break
+
+          Path('reports/morocco/shell/final-bootstrap-probe-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/shellfinal /tmp/jadx
+      - name: Commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/shell/final-bootstrap-probe-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "diag(morocco): run exact Shell bootstrap flows [run $GITHUB_RUN_ID]" || exit 0
+          git pull --rebase origin main
+          git push origin main
