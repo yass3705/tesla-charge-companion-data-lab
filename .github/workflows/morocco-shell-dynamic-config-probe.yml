@@ -1,0 +1,190 @@
+name: Morocco Shell dynamic config probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-shell-dynamic-config-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decompile exact Shell Maroc 3.2.7
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/shell-dyn /tmp/jadx
+          mkdir -p /tmp/shell-dyn reports/morocco/shell
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/APK/com.shell.shell_loyalty_app.morocco?version=latest' \
+            -o /tmp/shell-dyn/app.apk
+          echo '388caa4c883a285ad996859db1ae231ffd3e909bf396475969a61225bae0acf4  /tmp/shell-dyn/app.apk' | sha256sum -c -
+          unzip -q /tmp/shell-dyn/app.apk 'lib/x86_64/libnative-lib.so' -d /tmp/shell-dyn/apk
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            'https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip' \
+            -o /tmp/shell-dyn/jadx.zip
+          unzip -q /tmp/shell-dyn/jadx.zip -d /tmp/jadx
+          /tmp/jadx/bin/jadx --no-res --show-bad-code -d /tmp/shell-dyn/out /tmp/shell-dyn/app.apk >/dev/null 2>&1 || true
+
+      - name: Trace country bootstrap and replay public config
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re,json,subprocess,urllib.request,urllib.error,base64
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          root=Path('/tmp/shell-dyn/out/sources')
+
+          def all_java():
+              return root.rglob('*.java')
+
+          # Find exact model class backing the dynamic SERVICE_MULTI_COUNTRY_APP config.
+          dynamic_class=[]
+          for p in all_java():
+              txt=p.read_text(errors='ignore')
+              if 'class C1338i' in txt or ('f14484h' in txt and 'f14485i' in txt):
+                  dynamic_class.append({'file':str(p.relative_to(root)),'source':txt[:30000]})
+
+          # Extract CountryListRequest model and exact constructor/use sites.
+          country_req=[]
+          use_sites=[]
+          api_routes=[]
+          for p in all_java():
+              txt=p.read_text(errors='ignore')
+              rel=str(p.relative_to(root))
+              if 'class CountryListRequest' in txt:
+                  country_req.append({'file':rel,'source':txt[:20000]})
+              if 'new CountryListRequest' in txt:
+                  use_sites.append({'file':rel,'source':txt[:24000]})
+              if 'getCountries/v1' in txt or 'getAppConfig' in txt or 'getCountry' in txt and '@o(' in txt:
+                  routes=re.findall(r'@o\("([^"]+)"\)',txt)
+                  if routes:api_routes.append({'file':rel,'routes':routes,'source':txt[:30000]})
+
+          # Public native getters, never persisted.
+          so=Path('/tmp/shell-dyn/apk/lib/x86_64/libnative-lib.so')
+          dis=subprocess.check_output(['objdump','-d',str(so)],text=True,errors='ignore')
+          sec=subprocess.check_output(['readelf','-SW',str(so)],text=True,errors='ignore')
+          sm=re.search(r'\s\.rodata\s+PROGBITS\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)\s+([0-9a-fA-F]+)',sec)
+          if not sm: raise SystemExit('rodata not found')
+          ro_addr,ro_off,_=(int(x,16) for x in sm.groups()); data=so.read_bytes()
+          def getter_string(name):
+              pat=rf'<Java_com_shell_shell_1loyalty_1app_utils_SecretAPIKeys_00024APIKeys_{re.escape(name)}[^>]*>:(.*?)(?=\n\n[0-9a-f]+ <)'
+              mm=re.search(pat,dis,re.S)
+              if not mm:return None
+              lm=re.search(r'#\s*([0-9a-fA-F]+)\s*<',mm.group(1))
+              if not lm:return None
+              va=int(lm.group(1),16);p=ro_off+(va-ro_addr)
+              while p<len(data) and (data[p]<33 or data[p]>126):p+=1
+              e=data.find(b'\0',p)
+              return data[p:e].decode('ascii','ignore') if e>p else None
+          symbols=list(dict.fromkeys(re.findall(r'<Java_com_shell_shell_1loyalty_1app_utils_SecretAPIKeys_00024APIKeys_([A-Za-z0-9_]+)[^>]*>:',dis)))
+          vals={n:getter_string(n) for n in symbols}
+          platform=vals.get('getXPlatformCode')
+
+          # Determine request payload from CountryListRequest source/usage.
+          req_fields=[]
+          if country_req:
+              req_fields=re.findall(r'@SerializedName\("([^"]+)"\)',country_req[0]['source'])
+              if not req_fields:
+                  req_fields=re.findall(r'private\s+String\s+(\w+)\s*;',country_req[0]['source'])
+          # Conservative candidate bodies: exact field names only.
+          bodies=[{}]
+          if req_fields:
+              candidate={}
+              for f in req_fields:
+                  low=f.lower()
+                  if 'country' in low: candidate[f]='ma'
+                  elif 'language' in low or low in ('lang','locale'): candidate[f]='fr'
+                  elif 'version' in low: candidate[f]='3.2.7'
+                  elif 'platform' in low: candidate[f]='android'
+                  else: candidate[f]=''
+              bodies=[candidate]
+
+          # Country config service is case 3 -> 3ns.../prod according to switch mapping.
+          hosts=['https://3ns044xjg3.execute-api.eu-west-1.amazonaws.com/prod/','https://6bpgiwixq1.execute-api.eu-west-1.amazonaws.com/']
+          key_getters=[n for n in ('countryConfigProdApiKey','countryConfigUATApiKey') if vals.get(n)]
+          attempts=[]
+          routes=['getCountries/v1']
+          for host in hosts:
+              for kg in key_getters:
+                  for body in bodies:
+                      payload=json.dumps(body).encode()
+                      headers={'Content-Type':'application/json','Accept':'application/json','Accept-Language':'en','country':'all','x-api-key':vals[kg]}
+                      if platform:headers['x-platform-code']=platform
+                      for route in routes:
+                          url=host.rstrip('/')+'/'+route
+                          req=urllib.request.Request(url,data=payload,headers=headers,method='POST')
+                          rec={'host':host,'route':route,'public_key_getter':kg,'request_field_names':sorted(body.keys()),'header_names':sorted(headers.keys())}
+                          try:
+                              with urllib.request.urlopen(req,timeout=25) as resp:
+                                  raw=resp.read();rec['http_status']=resp.status
+                          except urllib.error.HTTPError as e:
+                              raw=e.read();rec['http_status']=e.code
+                          except Exception as e:
+                              rec['error']=type(e).__name__;attempts.append(rec);continue
+                          try:
+                              obj=json.loads(raw.decode('utf-8','ignore'))
+                              rec['top_level_type']=type(obj).__name__
+                              rows=obj
+                              if isinstance(obj,dict):
+                                  rec['top_level_keys']=sorted(obj.keys())
+                                  for k in ('data','result','countries'):
+                                      if isinstance(obj.get(k),list):rows=obj[k];break
+                              if isinstance(rows,list):
+                                  rec['row_count']=len(rows)
+                                  safe=[]
+                                  for row in rows:
+                                      if not isinstance(row,dict):continue
+                                      # Morocco row only, no API key values persisted.
+                                      cc=str(row.get('countryCode') or row.get('country_code') or row.get('code') or '').lower()
+                                      name=str(row.get('name') or row.get('country') or '').lower()
+                                      if cc=='ma' or 'morocco' in name or 'maroc' in name:
+                                          safe.append({
+                                              k:('<redacted-key-material>' if re.search(r'(?i)(key|secret|token)',k) else v)
+                                              for k,v in row.items()
+                                              if k in ('name','country','countryCode','country_code','code','apiBaseURL','api_base_url','supportingLanguages','defaultLanguage','apiKey','applicationKey','keyData','encryptedKey','salt','iv')
+                                          })
+                                  rec['morocco_rows_safe']=safe
+                              elif isinstance(obj,dict):
+                                  rec['safe_message']={k:obj.get(k) for k in ('message','error','code','status') if k in obj}
+                          except Exception:
+                              rec['response_json']=False
+                          attempts.append(rec)
+
+          report={
+              'schema_version':1,'generated_at':datetime.now(timezone.utc).isoformat(),
+              'country':'MA','network':'Shell/Vivo Energy',
+              'client':{'package':'com.shell.shell_loyalty_app.morocco','version':'3.2.7'},
+              'country_list_request_fields':req_fields,
+              'dynamic_config_classes':dynamic_class,
+              'country_request_use_sites':use_sites,
+              'api_route_sources':api_routes,
+              'public_getters_found':[n for n,v in vals.items() if v],
+              'attempts':attempts,
+              'policy':{'read_only':True,'public_client_material_only':True,'no_login':True,'no_user_data':True,'no_mutation':True,'credentials_persisted':False}
+          }
+          Path('reports/morocco/shell/dynamic-config-probe-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/shell-dyn /tmp/jadx
+
+      - name: Commit sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/shell/dynamic-config-probe-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(morocco): trace Shell dynamic country config [run $GITHUB_RUN_ID]"
+          git pull --rebase origin main
+          git push origin main
