@@ -1,0 +1,58 @@
+name: Morocco Shell application constant
+
+on:
+  push:
+    paths:
+      - '.github/workflows/morocco-shell-application-constant.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract exact CountryList application constant
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/shell-appconst /tmp/jadx
+          mkdir -p /tmp/shell-appconst reports/morocco/shell
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0' \
+            'https://d.apkpure.net/b/APK/com.shell.shell_loyalty_app.morocco?version=latest' \
+            -o /tmp/shell-appconst/app.apk
+          curl --fail --location --retry 3 --connect-timeout 20 --max-time 240 \
+            'https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip' \
+            -o /tmp/shell-appconst/jadx.zip
+          unzip -q /tmp/shell-appconst/jadx.zip -d /tmp/jadx
+          /tmp/jadx/bin/jadx --no-res --show-bad-code -d /tmp/shell-appconst/out /tmp/shell-appconst/app.apk >/dev/null 2>&1 || true
+          python3 - <<'PY'
+          import json,re
+          from pathlib import Path
+          from datetime import datetime,timezone
+          root=Path('/tmp/shell-appconst/out/sources')
+          p=root/'i4/a.java'
+          src=p.read_text(errors='ignore') if p.exists() else ''
+          consts=re.findall(r'(?:static\s+final\s+)?String\s+(\w+)\s*=\s*"([^"]*)"',src)
+          Path('reports/morocco/shell/application-constant-2026-09-27.json').write_text(json.dumps({
+            'generated_at':datetime.now(timezone.utc).isoformat(),
+            'source_file':'i4/a.java',
+            'string_constants':[{'name':k,'value':v} for k,v in consts],
+            'source':src[:12000]
+          },ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -rf /tmp/shell-appconst /tmp/jadx
+      - name: Commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add reports/morocco/shell/application-constant-2026-09-27.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "diag(morocco): extract Shell country application constant [run $GITHUB_RUN_ID]" || exit 0
+          git pull --rebase origin main
+          git push origin main
