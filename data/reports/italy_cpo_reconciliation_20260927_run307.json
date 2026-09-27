@@ -1,0 +1,38 @@
+{
+  "run": "307",
+  "date": "2026-09-27",
+  "partyId": "GES",
+  "canonicalName": "Go Electric Stations",
+  "decision": "remain_partial",
+  "statusBefore": "partial",
+  "statusAfter": "partial",
+  "inventory": {
+    "evse": 2402,
+    "stations": 1135,
+    "punAsOf": "2026-09-20"
+  },
+  "coverage": {
+    "rankableEvse": 0,
+    "failClosedEvse": 2402
+  },
+  "findings": [
+    "Current first-party NextCharge surface confirms connector/station tariffs are exposed in the app and charging/payment can be performed through NextCharge; NextCharge is also an interoperable eMSP, so app pricing cannot be assumed to equal direct GES-CPO pricing for every IT*GES EVSE.",
+    "Exact IT*GES connector IDs are used by the NextCharge flow/QR convention, providing a deterministic join key for a future backend/guest extraction.",
+    "Current evidence remains heterogeneous by host/operator; no safe network-wide or power-class tariff for the 2,402 current PUN GES EVSE is proven."
+  ],
+  "antiRepeat": "Do not repeat broad web tariff searches. Resume only from an exact NextCharge guest/app/backend payload keyed by IT*GES EVSE/connector, QR/payment surface, or new first-party CPO tariff evidence. Keep roaming/eMSP tariffs separate from direct GES CPO pricing.",
+  "blockingCondition": "Exact NextCharge guest/app/backend connector payload or QR/payment surface proving the direct CPO tariff for each IT*GES EVSE; do not substitute NextCharge roaming/eMSP pricing.",
+  "references": [
+    "https://nextcharge.app/fr",
+    "https://apps.apple.com/hu/app/nextcharge/id614946715"
+  ],
+  "arithmetic": {
+    "treated": 23,
+    "partialCurrent": 69,
+    "active": 0,
+    "setAside": 0,
+    "currentPunPartyIds": 92,
+    "unreconciledCurrentPunPartyIds": 0,
+    "ok": true
+  }
+}
