@@ -21,17 +21,33 @@ jobs:
       - name: Collect ScottishPower Recharge Fuuse open data
         run: |
           python - <<'PY'
-          import json,gzip,urllib.request
+          import json,gzip,urllib.request,urllib.error,time
           from pathlib import Path
           from datetime import datetime,timezone
 
           uuid="e11a667d-c56a-468f-b8d3-a50b41628292"
           base=f"https://api.fuuse.io/opendata/{uuid}"
-          def get(path):
-              req=urllib.request.Request(base+"/"+path,headers={"User-Agent":"TeslaChargeCompanion/9 ScottishPower-Fuuse","Accept":"application/json"})
-              with urllib.request.urlopen(req,timeout=75) as r:
-                  return json.loads(r.read().decode("utf-8"))
-          lp=get("location"); tp=get("tariff")
+          def get(path,retries=8):
+              url=base+"/"+path
+              last=None
+              for attempt in range(retries):
+                  req=urllib.request.Request(url,headers={"User-Agent":"TeslaChargeCompanion/9 ScottishPower-Fuuse","Accept":"application/json"})
+                  try:
+                      with urllib.request.urlopen(req,timeout=75) as r:
+                          return json.loads(r.read().decode("utf-8"))
+                  except urllib.error.HTTPError as e:
+                      last=e
+                      if e.code!=429: raise
+                      retry=e.headers.get("Retry-After")
+                      try: delay=max(30,float(retry)) if retry else min(180,30*(attempt+1))
+                      except Exception: delay=min(180,30*(attempt+1))
+                      print(f"Fuuse rate limit on {path}; retrying in {delay}s")
+                      time.sleep(delay)
+              raise RuntimeError(f"Fuuse {path} failed after retries: {last}")
+          lp=get("location")
+          # Fuuse rate-limits consecutive ODA module calls; avoid treating this as an access blocker.
+          time.sleep(75)
+          tp=get("tariff")
           def arr(p):
               if isinstance(p,list): return p
               if isinstance(p,dict):
