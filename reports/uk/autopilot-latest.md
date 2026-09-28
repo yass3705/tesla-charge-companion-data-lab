@@ -1,50 +1,9 @@
-# UK TCC zero-cost autopilot
+# UK TCC zero-cost autopilot snapshot
 
-- Generated: 2026-09-28T20:24:22Z
-- AI/API cost: **£0 / €0** (AI API calls: 0)
-- First pass complete: **True**
+- Generated: 2026-09-28T23:21:04Z
 - Canonical CPOs: **46**
 - Complete: **17**
 - Actionable partial: **9**
 - Set aside / external blocked: **20**
-- Other: **0**
-
-## Last deterministic run
-
-- Task: **fastned_direct**
-- Return code: **0**
-
-## Remaining actionable partials
-
-- PoGo Charge
-- Source EV
-- Shell Recharge
-- Believ
-- Monta
-- Lidl
-- ChargePoint
-- Shell Recharge ubitricity
-- Blink
-
-## Set aside
-
-- GRIDSERVE
-- InstaVolt
-- Pod
-- bp pulse
-- FOR EV
-- evyve
-- Allego
-- Smart Charge
-- Zest
-- Roam
-- RAW Charging
-- Forward EV
-- Connekt
-- Weev
-- EZ-Charge
-- GeniePoint
-- char.gy
-- TotalEnergies
-- Connected Kerb
-- Charge My Street
+- Worker state updated: **2026-09-28T20:24:22Z**
+- Global blocked: **False**
