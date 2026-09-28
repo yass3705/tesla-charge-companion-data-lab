@@ -1,0 +1,63 @@
+name: UK zero-cost TCC autopilot
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-zero-cost-tcc-autopilot
+  cancel-in-progress: false
+
+jobs:
+  autopilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run one deterministic UK step
+        id: autopilot
+        shell: bash
+        run: |
+          set +e
+          python scripts/uk_zero_cost_autopilot.py
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Persist state, report and validated datasets
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add             reports/uk/autopilot-state.json             reports/uk/autopilot-latest.json             reports/uk/autopilot-latest.md             reports/uk/validated-open-feeds-latest.json             reports/uk/fastned-direct-uk-latest.json             reports/uk/ionity-direct-uk-latest.json             data/national/uk_validated_open_feeds.json.gz             data/national/fastned_direct_stations_uk.json.gz             data/national/ionity_direct_stations_uk.json.gz             2>/dev/null || true
+
+          if git diff --cached --quiet; then
+            echo "No persisted change: idle run."
+            exit 0
+          fi
+
+          git commit -m "chore(uk): zero-cost autopilot checkpoint [run ${GITHUB_RUN_ID}]"
+
+          for attempt in 1 2 3 4; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((attempt * 3))
+          done
+          exit 1
+
+      - name: Surface deterministic failure
+        if: steps.autopilot.outputs.rc != '0'
+        run: |
+          echo "The UK deterministic worker recorded a failed task. State/report were preserved." >&2
+          exit 1
