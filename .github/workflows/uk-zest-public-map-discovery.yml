@@ -1,0 +1,79 @@
+name: UK Zest public map discovery
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-zest-public-map-discovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Inspect Zest public map
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import json,re,urllib.request,urllib.parse,urllib.error
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
+          def get(url,limit=7_000_000):
+              req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"text/html,application/javascript,application/json,*/*","Referer":"https://www.zest.uk.com/"})
+              try:
+                  with urllib.request.urlopen(req,timeout=60) as r:
+                      return {"status":r.status,"url":r.geturl(),"body":r.read(limit).decode("utf-8","replace"),"contentType":r.headers.get("Content-Type")}
+              except urllib.error.HTTPError as e:
+                  return {"status":e.code,"url":url,"body":e.read(3000).decode("utf-8","replace"),"contentType":e.headers.get("Content-Type")}
+
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"network":"Zest"}
+          page=get("https://map.zest.uk.com/")
+          out["page"]={k:v for k,v in page.items() if k!="body"}
+          body=page["body"]
+          scripts=[urllib.parse.urljoin(page.get("url") or "https://map.zest.uk.com/",s) for s in re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',body,re.I)]
+          out["scripts"]=scripts
+          urls=set(); contexts=[]
+          for source,b in [("html",body)]:
+              for u in re.findall(r'https?://[^"\'\s<>()\\]+',b):
+                  if any(k in u.lower() for k in ("api","zest","charge","location","tariff","station")): urls.add(u[:600])
+          for s in scripts[:80]:
+              rr=get(s)
+              b=rr["body"]
+              if rr.get("status")!=200: continue
+              for u in re.findall(r'https?://[^"\'\s<>()\\]+',b):
+                  if any(k in u.lower() for k in ("api","zest","charge","location","tariff","station")): urls.add(u[:600])
+              for m in re.finditer(r'(?i)(fetch\(|axios|graphql|api|location|tariff|price|charger|station)',b):
+                  ctx=b[max(0,m.start()-450):min(len(b),m.end()+900)]
+                  if re.search(r'https?://|/api/|fetch\(|axios|graphql',ctx,re.I):
+                      contexts.append({"source":s,"context":ctx})
+                      if len(contexts)>=250: break
+              if len(contexts)>=250: break
+          out["urlCandidates"]=sorted(urls)[:500]
+          out["contexts"]=contexts[:250]
+          Path("reports/uk/zest-public-map-discovery-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/zest-public-map-discovery-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): inspect Zest public map [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
