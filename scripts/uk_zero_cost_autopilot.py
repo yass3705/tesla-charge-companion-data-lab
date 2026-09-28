@@ -216,7 +216,13 @@ def main():
     state = load_json(STATE, {"schemaVersion": 1, "country": "GB", "tasks": {}, "history": []})
     now = now_utc()
     task = None if args.audit_only else due_task(state, now)
-    run_result = {"taskId": "audit_only", "returnCode": 0, "startedAt": iso(now), "finishedAt": iso(now)}
+    last_report = parse_time(state.get("lastReportAt"))
+    report_due = last_report is None or now - last_report >= timedelta(hours=3)
+    if task is None and not report_due and not args.audit_only:
+        print(json.dumps({"country": "GB", "status": "idle", "reason": "no deterministic task due and 3h report not due"}))
+        return
+
+    run_result = {"taskId": "report_only" if not args.audit_only else "audit_only", "returnCode": 0, "startedAt": iso(now), "finishedAt": iso(now)}
 
     if task:
         try:
