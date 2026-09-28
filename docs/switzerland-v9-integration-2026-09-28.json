@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataset": "tcc-v9-switzerland",
-  "generatedAt": "2026-09-28T23:02:15.886329+00:00",
+  "generatedAt": "2026-09-28T23:05:32.347287+00:00",
   "country": "CH",
   "nationalSource": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
   "policy": {
@@ -375,11 +375,11 @@
       "status": "blocked",
       "name": "AVIA",
       "evidence": "docs/switzerland-avia-first-pass-2026-09-28.json",
-      "note": "Charles runtime capture confirmed AVIA VOLT pricing can be accessed from a guest app session, not a personal account. The live Deftpower map, location-detail and POST simulate-pricing flow is therefore app-level/runtime rather than user-account dependent. Sample Garage Meili pricing is deterministic at CHF 0.69/kWh incl. VAT and exposes PARKING_TIME. Remaining automation dependency is supplying the app-level APIM runtime key securely (e.g. secret/env), never committing it to the public repo.",
+      "note": "Guest-session AVIA collector implemented in scripts/collect_avia_switzerland_guest.py with national map tiling, exact location/connector traversal and POST simulate-pricing. GitHub Actions workflow switzerland-avia-guest-pricing.yml is installed; it skips safely until AVIA_APIM_SUBSCRIPTION_KEY is configured as an Actions secret. Outputs are sanitized and fail closed; no auth/APIM material is committed.",
       "setAside": false,
       "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-avia-simulate-pricing-capture-2026-09-29.json",
-      "resumeCondition": "Implement the guest-session AVIA collector using map-locations -> location detail -> simulate-pricing, with the APIM runtime key injected securely as a secret/environment variable, then run a national sweep and publish sanitized exact tariffs."
+      "blockerEvidence": "scripts/collect_avia_switzerland_guest.py",
+      "resumeCondition": "Configure repository Actions secret AVIA_APIM_SUBSCRIPTION_KEY from the guest app runtime header, manually run 'Switzerland AVIA guest pricing', validate the first national snapshot, then wire the sanitized output into TCC V9."
     },
     "CH*SOC": {
       "operatorId": "CH*SOC",
@@ -675,5 +675,5 @@
     }
   },
   "output": "data/tcc_v9/switzerland.json",
-  "outputBytes": 49111461
+  "outputBytes": 49111333
 }
