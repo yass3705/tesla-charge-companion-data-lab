@@ -3,7 +3,7 @@ import json,urllib.request,urllib.parse,urllib.error
 from pathlib import Path
 from datetime import datetime,timezone
 
-HOST="https://pdefweushaapiam01.azure-api.net"
+HOSTS=["https://pdefweushaapiam01.azure-api.net","https://adefweuappbckfa01.azurewebsites.net/api"]
 TENANT="fdcb995a-8234-42ed-826f-3f2c7499d7f8"
 LAT,LON=46.818,8.2275
 paths=[
@@ -33,19 +33,20 @@ headersets=[
  {"User-Agent":"AVIA-VOLT-Suisse/2.3.0","Accept":"application/json","tenant-id":TENANT},
 ]
 results=[]
-for path in paths:
+for HOST in HOSTS:
+ for path in paths:
   for i,h in enumerate(headersets):
     req=urllib.request.Request(HOST+path,headers=h,method="GET")
     try:
       with urllib.request.urlopen(req,timeout=35) as r:
         raw=r.read(2500000)
-        results.append({"path":path,"headerVariant":i,"status":r.status,"contentType":r.headers.get("content-type"),"bytes":len(raw),"body":raw.decode("utf-8","replace")[:2000000]})
+        results.append({"host":HOST,"path":path,"headerVariant":i,"status":r.status,"contentType":r.headers.get("content-type"),"bytes":len(raw),"body":raw.decode("utf-8","replace")[:2000000]})
     except urllib.error.HTTPError as e:
       raw=e.read(500000)
       results.append({"path":path,"headerVariant":i,"status":e.code,"contentType":e.headers.get("content-type"),"bytes":len(raw),"body":raw.decode("utf-8","replace")[:500000]})
     except Exception as e:
       results.append({"path":path,"headerVariant":i,"error":type(e).__name__+": "+str(e)})
     if results[-1].get("status") in (200,201,204): break
-out={"generatedAt":datetime.now(timezone.utc).isoformat(),"host":HOST,"tenantId":TENANT,"results":results}
+out={"generatedAt":datetime.now(timezone.utc).isoformat(),"hosts":HOSTS,"tenantId":TENANT,"results":results}
 Path("docs/switzerland-avia-deftpower-guest-probe-v2-2026-09-28.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps([{k:v for k,v in r.items() if k!="body"}|{"bodyPreview":r.get("body","")[:1200]} for r in results if r.get("status") != 404],ensure_ascii=False,indent=2)[:120000])
