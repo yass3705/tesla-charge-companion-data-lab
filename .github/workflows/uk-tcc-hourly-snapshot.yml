@@ -1,0 +1,66 @@
+name: UK TCC hourly snapshot
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-tcc-hourly-snapshot.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-tcc-state-writer
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate audit-only snapshot
+        run: python scripts/uk_zero_cost_autopilot.py --audit-only
+
+      - name: Publish snapshot safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          tmpdir="$(mktemp -d)"
+          files=(
+            reports/uk/autopilot-state.json
+            reports/uk/autopilot-latest.json
+            reports/uk/autopilot-latest.md
+          )
+
+          for p in "${files[@]}"; do
+            test -f "$p"
+            mkdir -p "$tmpdir/$(dirname "$p")"
+            cp -p "$p" "$tmpdir/$p"
+          done
+
+          git fetch origin main
+          git reset --hard origin/main
+
+          for p in "${files[@]}"; do
+            mkdir -p "$(dirname "$p")"
+            cp -p "$tmpdir/$p" "$p"
+          done
+
+          git add "${files[@]}"
+          if git diff --cached --quiet; then
+            echo "Snapshot already present."
+            exit 0
+          fi
+
+          git commit -m "chore(uk): hourly autopilot snapshot [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:main
