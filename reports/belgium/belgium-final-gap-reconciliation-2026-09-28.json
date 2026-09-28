@@ -1,0 +1,84 @@
+{
+  "country": "BE",
+  "asOf": "2026-09-28",
+  "scope": "Belgium Eco-Movement selected-CPO feed tariff-gap reconciliation",
+  "inputMissingPriceEvses": 12858,
+  "decisions": {
+    "resolvedExactOfficial": 8,
+    "excludedNonProduction": 1,
+    "unresolvedSourceLimited": 12849
+  },
+  "cpos": {
+    "Shell Recharge": {
+      "rawMissing": 24,
+      "resolvedExactOfficial": 8,
+      "remainingUnresolved": 16,
+      "resolution": "8 DC 150 kW EVSEs receive Shell Belgium's official direct bank-card tariff; 7.36 kW AC EVSEs remain unresolved because Shell explicitly publishes Community pricing as variable.",
+      "source": "https://www.shell.be/fr_be/electric-charging/tarifs-de-shell-recharge.html"
+    },
+    "Gabriels": {
+      "rawMissing": 1,
+      "excludedNonProduction": 1,
+      "remainingUnresolved": 0,
+      "resolution": "Exclude from production pricing coverage: canonical brand is explicitly 'Gabriels EV Hubject test location', EVSE is inoperative and connector power is 0 W. Raw NAP record remains preserved."
+    },
+    "IONITY": {
+      "rawMissing": 2,
+      "resolvedExactOfficial": 0,
+      "remainingUnresolved": 2,
+      "resolution": "Drongen Gent is a newly opened public IONITY site. IONITY publishes Belgium Direct/ad-hoc as 'up to €0.78/kWh' and states the applicable price is shown before session; this does not prove the exact station tariff, so no value is invented.",
+      "source": "https://www.ionity.eu/fr/stories/pourquoi-les-prix-de-recharge-evoluent-ils-en-europe"
+    },
+    "Sowalwatt": {
+      "rawMissing": 60,
+      "resolvedExactOfficial": 0,
+      "remainingUnresolved": 60,
+      "resolution": "Official Pardis/Sowalwatt material confirms electricity resale/charging activity but no public station-level ad-hoc tariff was found.",
+      "source": "https://www.pardis.be/"
+    },
+    "VIR": {
+      "rawMissing": 12,
+      "resolvedExactOfficial": 0,
+      "remainingUnresolved": 12,
+      "resolution": "All residual EVSEs use BE*VIR identifiers. Virta pricing is owner/CPO-defined and station-specific; no exact public tariff was found for Hannut or Gîte Riezes, so no generic Virta price is applied.",
+      "source": "https://www.virta.global/knowledge-base/charging-prices"
+    },
+    "recticel": {
+      "rawMissing": 30,
+      "resolvedExactOfficial": 0,
+      "remainingUnresolved": 30,
+      "resolution": "Corporate-site EVSEs use BE*TCB identifiers, but no exact public ad-hoc tariff or defensible public/private exclusion flag is available. Keep source-limited rather than inheriting TotalEnergies families."
+    },
+    "TotalEnergies": {
+      "rawMissing": 12729,
+      "resolvedExactOfficial": 0,
+      "remainingUnresolved": 12729,
+      "resolution": "Official Belgium material does not provide a station-exact universal tariff; Charge+ is retained as a separate customer pricing layer and is not substituted for canonical CPO ad-hoc pricing. Charge Europe app-key/private-auth route is intentionally bounded.",
+      "source": "https://services.totalenergies.be/fr/faq/mobilite-electrique/quels-sont-les-tarifs-des-stations-de-recharge-de-totalenergies-et-de-ses"
+    }
+  },
+  "productionSummary": {
+    "rawCpoCounts": {
+      "complete": 64,
+      "partial": 7,
+      "total": 71
+    },
+    "productionCompleteAfterExclusion": [
+      "Gabriels"
+    ],
+    "productionPartialRemaining": [
+      "TotalEnergies",
+      "Shell Recharge",
+      "IONITY",
+      "Sowalwatt",
+      "recticel",
+      "VIR"
+    ],
+    "notes": [
+      "Raw NAP data and raw first-pass counts are not rewritten.",
+      "Exact overlays are additive and provenance-preserving.",
+      "Source-limited means all safe public/read-only routes explored in this pass did not yield an exact defensible CPO ad-hoc tariff.",
+      "The Eco-Movement Belgium dataset covers selected CPOs, not the entire Belgian market."
+    ]
+  }
+}
