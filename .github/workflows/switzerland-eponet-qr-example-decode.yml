@@ -13,8 +13,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with: {ref: main, fetch-depth: 0}
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq zbar-tools\n      - run: python3 scripts/decode_swiss_eponet_qr_example.py
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Install QR decoder
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq zbar-tools
+      - run: python3 scripts/decode_swiss_eponet_qr_example.py
       - name: Persist
         run: |
           set -euo pipefail
