@@ -1,0 +1,94 @@
+name: UK Osprey account frontend discovery
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-osprey-account-frontend-discovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Inspect Osprey account frontend
+        run: |
+          python - <<'PY'
+          import json,re,urllib.request,urllib.parse
+          from pathlib import Path
+          from datetime import datetime,timezone
+          start="https://account.ospreycharging.co.uk/"
+          ua="Mozilla/5.0 Chrome/140"
+          def get(u):
+              req=urllib.request.Request(u,headers={"User-Agent":ua,"Accept":"*/*"})
+              with urllib.request.urlopen(req,timeout=75) as r:
+                  return r.read(10000000).decode("utf-8","replace"),r.status,r.headers.get("Content-Type")
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"network":"Osprey Charging","start":start,"assets":[],"findings":[]}
+          html,st,ct=get(start)
+          out["status"]=st
+          out["contentType"]=ct
+          srcs=re.findall(r'(?:src|href)="([^"]+)"',html,re.I)
+          assets=[]
+          for s in srcs:
+              u=urllib.parse.urljoin(start,s)
+              if re.search(r'(?i)\.(?:js|mjs)(?:\?|$)',u) and u not in assets:
+                  assets.append(u)
+          texts=[(start,html)]
+          for u in assets[:100]:
+              row={"url":u}
+              try:
+                  txt,ast,act=get(u)
+                  row.update({"status":ast,"bytes":len(txt.encode()),"contentType":act})
+                  texts.append((u,txt))
+              except Exception as e:
+                  row["error"]=f"{type(e).__name__}: {e}"
+              out["assets"].append(row)
+          seen=set()
+          keys=("api","gateway","apigw","station","charger","location","map","graphql","ocpi","lambda","execute-api","cognito")
+          for source,txt in texts:
+              for raw in re.findall(r'https?://[^"\\s<>]+',txt,re.I):
+                  u=raw.replace("\\/","/")
+                  if any(k in u.lower() for k in keys):
+                      rec={"source":source,"url":u[:2000]}
+                      k=json.dumps(rec,sort_keys=True)
+                      if k not in seen:
+                          seen.add(k)
+                          out["findings"].append(rec)
+              low=txt.lower()
+              for kw in ("apigw","api_url","apiurl","apiendpoint","api_endpoint","baseurl","base_url","execute-api","cognito","chargers","stations","locations"):
+                  pos=0
+                  for _ in range(30):
+                      i=low.find(kw,pos)
+                      if i<0:
+                          break
+                      rec={"source":source,"keyword":kw,"context":txt[max(0,i-350):min(len(txt),i+1000)]}
+                      k=json.dumps(rec,sort_keys=True)
+                      if k not in seen:
+                          seen.add(k)
+                          out["findings"].append(rec)
+                      pos=i+len(kw)
+          Path("reports/uk").mkdir(parents=True,exist_ok=True)
+          Path("reports/uk/osprey-account-frontend-discovery-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({"status":out.get("status"),"assets":len(out["assets"]),"findings":len(out["findings"])},indent=2))
+          PY
+      - name: Publish
+        if: always()
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/osprey-account-frontend-discovery-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): inspect Osprey account frontend [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
