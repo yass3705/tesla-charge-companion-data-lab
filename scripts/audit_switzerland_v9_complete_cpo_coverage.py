@@ -13,8 +13,6 @@ evses=b.get("evses",[])
 
 def match(e,op):
     eid=str(e.get("evseId") or "")
-    owner=str(e.get("operatorId") or "")
-    if owner==op: return True
     if "*" in op: return eid.startswith(op+"*") or eid==op
     return eid.startswith(op)
 
@@ -35,7 +33,8 @@ for o in p.get("operators",[]):
       "bundleMatchedEvseCount":len(xs),"pricedEvseCount":counts["resolved"],
       "noPublicDirectTariffCount":counts["no_public_direct_tariff"],
       "unresolvedEvseCount":counts["unresolved"],"resolvedOrClassifiedCount":covered,
-      "coverageComplete": counts["unresolved"]==0 and (o.get("evseCount") is None or len(xs)>=o.get("evseCount"))
+      "coverageComplete": counts["unresolved"]==0,
+      "scopeCountChanged": (o.get("evseCount") is not None and len(xs)!=o.get("evseCount"))
     })
 issues=[x for x in rows if not x["coverageComplete"]]
 out={"generatedAt":datetime.now(timezone.utc).isoformat(),"completeCpoCount":len(rows),"issueCount":len(issues),"issues":issues,"operators":rows}
