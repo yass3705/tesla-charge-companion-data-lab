@@ -1,0 +1,98 @@
+name: UK Zest Firebase resource audit
+
+on:
+  push:
+    branches: ["main"]
+    paths: [".github/workflows/uk-zest-firebase-resource-audit.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Inspect Zest Android resources for Firebase config
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk /tmp/zest
+          curl -fL --retry 3 --retry-delay 3 -A "Mozilla/5.0"             "https://d.apkpure.net/b/XAPK/com.uk.zest.app?version=latest"             -o /tmp/zest/app.xapk
+          unzip -q /tmp/zest/app.xapk -d /tmp/zest/x
+          mkdir -p /tmp/zest/apks
+          for apk in /tmp/zest/x/*.apk; do
+            [ -f "$apk" ] || continue
+            d="/tmp/zest/apks/$(basename "$apk" .apk)"
+            mkdir -p "$d"; unzip -q "$apk" -d "$d" || true
+          done
+          python - <<'PY'
+          import json,re,glob,os
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          names=("google_api_key","google_app_id","firebase_database_url","gcm_defaultSenderId",
+                 "project_id","firebase_storage_bucket","default_web_client_id","api_key")
+          findings=[]
+          key_candidates=set()
+          project_candidates=set()
+
+          def strings_ascii(b):
+              return [x.decode("utf-8","ignore") for x in re.findall(rb'[ -~]{5,300}',b)]
+          def strings_utf16(b):
+              vals=[]
+              for m in re.findall(rb'(?:[ -~]\x00){5,300}',b):
+                  try: vals.append(m.decode("utf-16le","ignore"))
+                  except: pass
+              return vals
+
+          for fn in glob.glob("/tmp/zest/apks/**/*",recursive=True):
+              if not os.path.isfile(fn): continue
+              try:
+                  if os.path.getsize(fn)>70_000_000: continue
+                  b=open(fn,"rb").read()
+              except Exception: continue
+              vals=strings_ascii(b)+strings_utf16(b)
+              for s in vals:
+                  sl=s.lower()
+                  if any(n.lower() in sl for n in names) or "firebase" in sl or "googleapis.com" in sl:
+                      findings.append({"file":fn.replace("/tmp/zest/apks/",""),"text":s})
+                  for k in re.findall(r'AIza[0-9A-Za-z_-]{30,50}',s):
+                      key_candidates.add(k)
+                  for p in re.findall(r'[a-z][a-z0-9-]{3,40}(?:-[a-z0-9]{2,20})',s):
+                      if "zest" in p.lower(): project_candidates.add(p)
+
+          # Also inspect decompiled XML/resource names with Android SDK's aapt if present.
+          aapt_paths=[]
+          for p in ["/usr/local/lib/android/sdk/build-tools","/opt/android-sdk/build-tools","/usr/lib/android-sdk/build-tools"]:
+              if os.path.isdir(p):
+                  for x in glob.glob(p+"/*/aapt2")+glob.glob(p+"/*/aapt"):
+                      aapt_paths.append(x)
+
+          # dedupe findings
+          seen=set(); out_find=[]
+          for x in findings:
+              k=(x["file"],x["text"])
+              if k in seen: continue
+              seen.add(k); out_find.append(x)
+              if len(out_find)>=1000: break
+
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),
+               "apiKeyCandidates":sorted(key_candidates),
+               "projectCandidates":sorted(project_candidates),
+               "resourceFindings":out_find,
+               "aaptCandidates":aapt_paths}
+          Path("reports/uk/zest-firebase-resource-audit-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({"apiKeyCandidates":out["apiKeyCandidates"],"projectCandidates":out["projectCandidates"],"findings":out_find[:300],"aaptCandidates":aapt_paths},ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/zest-firebase-resource-audit-latest.json
+          git commit -m "diag(uk): audit Zest Firebase resources [run ${GITHUB_RUN_ID}]" || exit 0
+          for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
