@@ -1,0 +1,32 @@
+name: Switzerland TCC V9 bundle
+on:
+  push:
+    paths:
+      - 'scripts/build_swiss_tcc_v9_bundle.py'
+      - '.github/workflows/switzerland-tcc-v9-bundle.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - run: python3 scripts/build_swiss_tcc_v9_bundle.py
+      - name: Persist
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/tcc_v9/switzerland.json docs/switzerland-v9-integration-2026-09-28.json
+          git commit -m 'data(switzerland): build TCC V9 bundle' || exit 0
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
