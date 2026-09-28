@@ -57,6 +57,9 @@
     ],
     "official_api_key_request": [
       "GRIDSERVE"
+    ],
+    "bilateral_ocpi_credentials": [
+      "Pod"
     ]
   },
   "items": [
@@ -182,13 +185,13 @@
     },
     {
       "name": "Pod",
-      "status": "blocked_ocpi_token",
-      "group": "ocpi_bilateral_token",
-      "humanAction": "Request bilateral OCPI credentials/token from Pod; discovery endpoints already known.",
-      "cost": "unknown/free-request",
-      "priority": "P3",
-      "blocker": "OCPI versions endpoint is public but locations/tariffs modules require bilateral token authentication.",
-      "next": "obtain statutory public-data route or OCPI token."
+      "status": "blocked_external_ocpi_token",
+      "group": "bilateral_ocpi_credentials",
+      "humanAction": "Contact Pod/Pod Point for OCPI 2.2.1 credentials or their statutory PCPR open-data onboarding route.",
+      "cost": "unknown",
+      "priority": "P1",
+      "blocker": "The current Pod OCPI CPO service exposes version/module discovery anonymously but returns 401 Unauthorized for locations and tariffs without a bilaterally exchanged OCPI token. No public self-service token/onboarding page was found.",
+      "next": "Once credentials/onboarding details are available, persist them securely and ingest locations/tariffs; do not repeat legacy API/public-page discovery."
     },
     {
       "name": "Source EV UK",
