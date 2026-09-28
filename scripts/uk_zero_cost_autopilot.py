@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Zero-cost UK TCC autopilot.
+"""Zero-cost UK TCC autopilot.\n\n# scheduler-trigger-check: 2026-09-28
 
 Runs deterministic, already-validated UK collectors only. It never calls an AI API.
 Each invocation performs at most one due collection task, persists state, rebuilds
