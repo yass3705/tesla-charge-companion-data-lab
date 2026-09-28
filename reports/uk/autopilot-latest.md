@@ -1,6 +1,6 @@
 # UK TCC zero-cost autopilot
 
-- Generated: 2026-09-28T19:50:40Z
+- Generated: 2026-09-28T20:24:22Z
 - AI/API cost: **£0 / €0** (AI API calls: 0)
 - First pass complete: **True**
 - Canonical CPOs: **46**
@@ -11,8 +11,8 @@
 
 ## Last deterministic run
 
-- Task: **validated_open_feeds**
-- Return code: **2**
+- Task: **fastned_direct**
+- Return code: **0**
 
 ## Remaining actionable partials
 
