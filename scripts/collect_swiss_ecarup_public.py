@@ -5,8 +5,8 @@ from collections import Counter,defaultdict
 BASE="https://ecarup.com/api/stations"
 UA={"User-Agent":"eCarUp/2.6.0 Android TCC-readonly","Accept":"application/json"}
 # Dense grid over Switzerland; endpoint is proximity based. Overlap is intentional, dedupe by station ID.
-lats=[45.85+i*0.22 for i in range(10)]
-lons=[5.95+i*0.32 for i in range(15)]
+lats=[45.75+i*0.11 for i in range(22)]
+lons=[5.75+i*0.16 for i in range(33)]
 stations={}
 errors=[]
 request_count=0
@@ -29,7 +29,7 @@ for lat in lats:
           stations[sid]=s
     except Exception as e:
       errors.append({"url":url,"error":type(e).__name__+": "+str(e)})
-    time.sleep(0.08)
+    time.sleep(0.04)
 
 ops=Counter()
 opstations=defaultdict(list)
