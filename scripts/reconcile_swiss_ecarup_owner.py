@@ -88,3 +88,5 @@ final={"schemaVersion":1,"country":"CH","cpo":"eCarUp","operatorId":"CH*ECU","st
        "policy":payload["policy"],"productionSource":str(OUT)}
 FINAL.write_text(json.dumps(final,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps(final,ensure_ascii=False,indent=2))
+
+# refreshed inventory trigger
