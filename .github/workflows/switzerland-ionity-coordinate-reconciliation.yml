@@ -1,0 +1,32 @@
+name: Switzerland IONITY coordinate reconciliation
+on:
+  push:
+    paths:
+      - 'scripts/reconcile_swiss_ionity_coordinates.py'
+      - '.github/workflows/switzerland-ionity-coordinate-reconciliation.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - run: python3 scripts/reconcile_swiss_ionity_coordinates.py
+      - name: Persist
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/switzerland-ionity-coordinate-reconciliation-2026-09-28.json
+          git commit -m 'docs(switzerland): reconcile IONITY sites by coordinates' || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
