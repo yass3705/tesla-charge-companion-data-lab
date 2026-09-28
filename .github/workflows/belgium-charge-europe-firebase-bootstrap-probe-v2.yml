@@ -1,0 +1,34 @@
+name: Belgium Charge Europe Firebase bootstrap probe v2
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-charge-europe-firebase-bootstrap-probe-v2.txt"
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install aapt
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq aapt
+      - run: python scripts/belgium_charge_europe_firebase_bootstrap_probe_v2.py
+      - name: Persist sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium/totalenergies/charge-europe-firebase-bootstrap-probe-v2-2026-09-28.json
+          git commit -m "Retry Charge Europe Firebase bootstrap v2" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep 3
+          done
+          exit 1
