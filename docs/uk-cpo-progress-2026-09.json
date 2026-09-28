@@ -232,10 +232,10 @@
     },
     {
       "name": "Allego",
-      "status": "partial",
-      "access": "no_direct_endpoint_found_first_pass",
-      "evidence": "First-pass search did not surface a direct UK PCPR feed.",
-      "next": "second pass: inspect Allego OCPI/public data surfaces."
+      "status": "set_aside_external_request",
+      "access": "official_charge_point_data_request",
+      "evidence": "Allego's official UK Charge Point Data page requires submission of name, company, email and planned use; it states UK PCPR charge-point data is supplied electronically after request.",
+      "next": "Set aside until external request is made; do not repeat endpoint discovery."
     },
     {
       "name": "Arnold Clark Charge",
@@ -331,7 +331,7 @@
     },
     {
       "name": "Weev",
-      "status": "blocked_external_api_key",
+      "status": "set_aside_external_request",
       "access": "free_api_key_request",
       "evidence": "Final keyless audit of Weev first-party public map/app bundles and source maps found no anonymous station/tariff API. The first-party frontend explicitly contains the open-data request component and POST route /api/open-data-api/send. Official Open Data access therefore requires the free API key request.",
       "next": "User/API requester must submit the Weev Open Data API-key form. Once key is received, ingest directly; do not repeat keyless discovery.",
@@ -2580,7 +2580,9 @@
       "report": "reports/uk/roam-public-map-latest.json"
     },
     "setAside": [
-      "Smart Charge"
+      "Smart Charge",
+      "Weev",
+      "Allego"
     ],
     "rawChargingBounded": {
       "state": "public_client_routes_unresolved",
