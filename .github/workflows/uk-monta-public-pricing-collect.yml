@@ -46,8 +46,8 @@ jobs:
 
           base='https://app.monta.app/roaming/monta-as-a-cpo-pricing'
           all_rows=[]; header=None; pages=0
-          for page in range(1,100):
-              url=base+'?'+urllib.parse.urlencode({'country':'GB','page':page,'per_page':200})
+          for page in range(1,250):
+              url=base+'?'+urllib.parse.urlencode({'country':'all','page':page,'per_page':200})
               req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/9','Accept':'text/html,*/*'})
               with urllib.request.urlopen(req,timeout=90) as r: raw=r.read().decode('utf-8','replace')
               p=TableParser(); p.feed(raw)
