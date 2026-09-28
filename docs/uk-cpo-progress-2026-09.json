@@ -324,10 +324,11 @@
     },
     {
       "name": "Connekt",
-      "status": "partial",
-      "access": "no_direct_endpoint_found_first_pass",
-      "evidence": "First-pass search did not surface a direct public PCPR feed.",
-      "next": "second pass: inspect app/backend/operator website."
+      "status": "partial_backend_identified_access_required",
+      "access": "ampeco_white_label_authenticated_app",
+      "evidence": "Static inspection of official Get Connekted Android app identifies an AMPECO white-label backend at cp.connektcharging.com and AMPECO dynamic tariff/ad-hoc features. Targeted anonymous/mobile-profile probes show the tenant root requires authentication (401) and common read-only location/tariff routes are not publicly exposed.",
+      "next": "Backend identified and public-route discovery bounded. Revisit only with a legitimate app session/public PCPR endpoint; do not repeat generic endpoint guessing.",
+      "report": "reports/uk/connekt-ampeco-public-route-probe-latest.json"
     },
     {
       "name": "Weev",
@@ -2637,6 +2638,13 @@
       "liveLocationCountObserved": 706,
       "pricingPubliclyObserved": false,
       "report": "reports/uk/believ-server-action-probe-latest.json"
+    },
+    "connektBound": {
+      "state": "backend_identified_access_required",
+      "backend": "AMPECO",
+      "tenant": "https://cp.connektcharging.com",
+      "publicReadRouteFound": false,
+      "report": "reports/uk/connekt-ampeco-public-route-probe-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
