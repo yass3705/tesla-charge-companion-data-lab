@@ -1,0 +1,154 @@
+name: Belgium ChargePlus tariff contract deep
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-chargeplus-tariff-contract-deep.txt"
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download JADX
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/jadx-tool
+          curl -fLsS --retry 3 --connect-timeout 15 --max-time 180             https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip             -o /tmp/jadx.zip
+          unzip -q /tmp/jadx.zip -d /tmp/jadx-tool
+          /tmp/jadx-tool/bin/jadx --version
+
+      - name: Download ChargePlus arm64 package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/chargeplus/xapk
+          curl -fLsS --retry 3 --connect-timeout 15 --max-time 180             -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36'             -H 'Referer: https://apkpure.net/'             'https://d.apkpure.net/b/XAPK/com.totalenergies.chargeplus?nc=arm64-v8a&sv=26&versionCode=2026072815'             -o /tmp/chargeplus/chargeplus.xapk
+          unzip -q /tmp/chargeplus/chargeplus.xapk -d /tmp/chargeplus/xapk
+          BASE_APK="$(find /tmp/chargeplus/xapk -name 'com.totalenergies.chargeplus.apk' -print -quit)"
+          test -n "$BASE_APK"
+          cp "$BASE_APK" /tmp/chargeplus/base.apk
+
+      - name: Decompile only source code
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/chargeplus/jadx
+          /tmp/jadx-tool/bin/jadx --no-res --show-bad-code             -d /tmp/chargeplus/jadx /tmp/chargeplus/base.apk >/tmp/jadx.log 2>&1 || {
+              tail -100 /tmp/jadx.log
+              exit 1
+            }
+
+      - name: Extract sanitized tariff API contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/belgium/totalenergies
+          python - <<'PY'
+          import json, re
+          from pathlib import Path
+
+          root=Path('/tmp/chargeplus/jadx/sources')
+          targets=[]
+          needles=[
+              'AtlasPoiPricesApiClient',
+              'AtlasPoiApiClient',
+              'AtlasGuestTokenApiClient',
+              'AtlasClientFactory',
+              'v1/pois/tariff',
+              'v2/pois/tariff',
+          ]
+          for p in root.rglob('*.java'):
+              try:
+                  text=p.read_text(errors='replace')
+              except Exception:
+                  continue
+              if any(n in text for n in needles):
+                  targets.append((p,text))
+
+          secret_assignment=re.compile(
+              r'(?i)((?:api[_-]?key|client[_-]?secret|access[_-]?token|refresh[_-]?token|authorization)'
+              r'\s*[=:]\s*[\\"\'])([^\\"\']+)([\\"\'])'
+          )
+          bearer=re.compile(r'(?i)(Bearer\s+)[A-Za-z0-9._~+/=-]{12,}')
+          long_opaque=re.compile(r'(?<![A-Za-z0-9])([A-Za-z0-9_-]{48,})(?![A-Za-z0-9])')
+
+          def sanitize(s):
+              s=secret_assignment.sub(r'\1[REDACTED]\3',s)
+              s=bearer.sub(r'\1[REDACTED]',s)
+              # Keep class names/URLs, redact only opaque long literals without separators.
+              def repl(m):
+                  v=m.group(1)
+                  if any(x in v for x in ('Atlas','totalenergies','chargeplus','mycardprd')):
+                      return v
+                  return '[REDACTED_LONG_LITERAL]'
+              return long_opaque.sub(repl,s)
+
+          hits=[]
+          patterns=[
+              r'@(?:GET|POST|PUT|DELETE|PATCH)\([^\n]+',
+              r'@(Query|Path|Header|Body)\([^\n]+',
+              r'(?:PUBLIC|PRIVATE)_BASE_URL[^\n]*',
+              r'v[123]/pois/[^\s\\"\']+',
+              r'pois/tariff[^\s\\"\']*',
+              r'guest[^\s\\"\']*(?:token|session)[^\s\\"\']*',
+          ]
+          rx=[re.compile(x,re.I) for x in patterns]
+
+          for p,text in targets:
+              lines=text.splitlines()
+              for i,line in enumerate(lines):
+                  if any(r.search(line) for r in rx) or any(n in line for n in ['AtlasPoiPricesApiClient','AtlasPoiApiClient','AtlasGuestTokenApiClient']):
+                      lo=max(0,i-8); hi=min(len(lines),i+12)
+                      excerpt='\n'.join(f'{j+1}: {lines[j]}' for j in range(lo,hi))
+                      excerpt=sanitize(excerpt)
+                      key=(str(p.relative_to(root)),lo,hi)
+                      if not any(x['key']==key for x in hits):
+                          hits.append({'key':key,'file':str(p.relative_to(root)),'startLine':lo+1,'endLine':hi,'excerpt':excerpt})
+
+          files=[]
+          for p,text in targets:
+              files.append({
+                  'file':str(p.relative_to(root)),
+                  'mentions':{n:text.count(n) for n in needles if n in text},
+              })
+
+          report={
+              'package':'com.totalenergies.chargeplus',
+              'analyzedVersion':'2.17.0',
+              'jadxVersion':'1.5.6',
+              'purpose':'Resolve public/guest POI and tariff endpoint method, path and parameter contract without persisting APK or credentials.',
+              'matchingFiles':files,
+              'hits':hits,
+              'safety':{
+                  'apkPersisted':False,
+                  'credentialsPersisted':False,
+                  'readOnlyResearch':True,
+              },
+          }
+          out=Path('reports/belgium/totalenergies/chargeplus-tariff-contract-deep-2026-09-28.json')
+          out.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'matchingFileCount':len(files),'hitCount':len(hits),'files':[x['file'] for x in files]},ensure_ascii=False,indent=2))
+          PY
+
+      - name: Persist sanitized contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium/totalenergies/chargeplus-tariff-contract-deep-2026-09-28.json
+          git commit -m "Resolve ChargePlus tariff API contract" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep 3
+          done
+          exit 1
