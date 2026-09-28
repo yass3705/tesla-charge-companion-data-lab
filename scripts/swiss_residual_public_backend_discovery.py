@@ -71,3 +71,5 @@ for path in probe_paths:
 out={"generatedAt":datetime.now(timezone.utc).isoformat(),"pages":[{k:v for k,v in p.items() if k!="body"} for p in pages],"assets":[{k:v for k,v in a.items() if k!="body"} for a in assets],"hits":hits,"probes":probes}
 Path("docs/switzerland-residual-public-backend-discovery-2026-09-28.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps({"assets":out["assets"],"interesting":[h for h in hits if h["hits"]][:12],"probes":probes},ensure_ascii=False,indent=2)[:120000])
+
+# trigger residual discovery
