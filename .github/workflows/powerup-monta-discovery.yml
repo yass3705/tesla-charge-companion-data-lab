@@ -1,0 +1,133 @@
+name: PowerUp Monta direct-source discovery
+
+on:
+  push:
+    paths:
+      - '.github/workflows/powerup-monta-discovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Discover Monta public direct-payment data paths
+        shell: python
+        run: |
+          import json,re,urllib.request,urllib.parse,pathlib,html
+          UA={'User-Agent':'Mozilla/5.0','Accept':'*/*'}
+
+          def get(url,limit=15_000_000):
+              req=urllib.request.Request(url,headers=UA)
+              with urllib.request.urlopen(req,timeout=45) as r:
+                  return r.status,r.geturl(),r.headers.get('content-type',''),r.read(limit)
+
+          out={'samplePage':'https://management.charge.agrola.ch/d/cp5017670'}
+
+          st,final,ct,raw=get(out['samplePage'])
+          page=raw.decode('utf-8','replace')
+          out['sampleStatus']=st
+          out['sampleFinalUrl']=final
+          out['sampleContentType']=ct
+          out['sampleHtmlPreview']=page[:12000]
+
+          scripts=[]
+          for src in re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',page,re.I):
+              u=urllib.parse.urljoin(final,html.unescape(src))
+              if u not in scripts:scripts.append(u)
+          out['scripts']=scripts
+
+          js_hits=[]
+          patterns=[
+              r'https?://[^\s"\'<>]{5,400}',
+              r'["\']([^"\']*(?:/api/|graphql|charge.?point|connector|pricing|tariff|direct.?payment|payment|receipt|session)[^"\']*)["\']'
+          ]
+          for u in scripts[:30]:
+              try:
+                  s,fu,c,b=get(u,20_000_000)
+                  txt=b.decode('utf-8','replace')
+                  vals=[]
+                  for pat in patterns:
+                      for m in re.finditer(pat,txt,re.I):
+                          v=m.group(1) if m.lastindex else m.group(0)
+                          if 3 < len(v) < 1000 and v not in vals: vals.append(v)
+                          if len(vals)>=500: break
+                      if len(vals)>=500: break
+                  js_hits.append({'url':u,'status':s,'bytes':len(b),'hits':vals[:500]})
+              except Exception as e:
+                  js_hits.append({'url':u,'error':type(e).__name__+': '+str(e)})
+          out['scriptInspection']=js_hits
+
+          # Public Monta CPO pricing export: useful inventory/cross-check source.
+          candidates=[
+              'https://monta.imgix.net/roaming-data/monta-as-a-cpo-pricing.json',
+              'https://app.monta.app/roaming/monta-as-a-cpo-pricing/export/json'
+          ]
+          export=None
+          export_url=None
+          export_errors=[]
+          for u in candidates:
+              try:
+                  s,fu,c,b=get(u,60_000_000)
+                  if s==200:
+                      export=json.loads(b.decode('utf-8'))
+                      export_url=fu
+                      break
+              except Exception as e:
+                  export_errors.append({'url':u,'error':type(e).__name__+': '+str(e)})
+          out['exportUrl']=export_url
+          out['exportErrors']=export_errors
+
+          def rows_from(x):
+              if isinstance(x,list): return x
+              if isinstance(x,dict):
+                  for k in ('data','items','rows','chargePoints','charge_points','results'):
+                      if isinstance(x.get(k),list): return x[k]
+              return []
+
+          rows=rows_from(export) if export is not None else []
+          pow_rows=[]
+          for r in rows:
+              txt=json.dumps(r,ensure_ascii=False)
+              if 'CH*POW*E' in txt or 'PowerUp by AGROLA' in txt:
+                  pow_rows.append(r)
+          out['exportTopType']=type(export).__name__ if export is not None else None
+          out['exportKeys']=list(export.keys()) if isinstance(export,dict) else None
+          out['exportRowCount']=len(rows)
+          out['powerupRowCount']=len(pow_rows)
+          out['powerupSample']=pow_rows[:20]
+
+          pathlib.Path('docs').mkdir(exist_ok=True)
+          pathlib.Path('docs/switzerland-powerup-monta-discovery-2026-09-28.json').write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print(json.dumps({
+              'sampleStatus':out['sampleStatus'],
+              'scriptCount':len(scripts),
+              'exportUrl':out['exportUrl'],
+              'exportRowCount':out['exportRowCount'],
+              'powerupRowCount':out['powerupRowCount']
+          },ensure_ascii=False,indent=2))
+
+      - name: Persist discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-powerup-monta-discovery-2026-09-28.json
+          git commit -m "docs(switzerland): discover PowerUp Monta direct source"
+          for i in 1 2 3 4 5; do
+            git push origin main && exit 0
+            git pull --rebase origin main
+            sleep 2
+          done
+          exit 1
