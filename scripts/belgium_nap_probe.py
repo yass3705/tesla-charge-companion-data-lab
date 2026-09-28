@@ -224,6 +224,169 @@ def parse_locations(locations: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+
+def text_value(node: Any) -> str:
+    if isinstance(node, dict):
+        vals = node.get("values")
+        if isinstance(vals, list):
+            for v in vals:
+                if isinstance(v, dict) and isinstance(v.get("value"), str) and v["value"].strip():
+                    return v["value"].strip()
+        if isinstance(node.get("value"), str):
+            return node["value"].strip()
+    return ""
+
+
+def extract_address(loc: dict[str, Any]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    try:
+        area = loc.get("entrance", [])[0]["locAreaLocation"]
+        coords = area.get("coordinatesForDisplay", {})
+        result["latitude"] = coords.get("latitude")
+        result["longitude"] = coords.get("longitude")
+        fac = area.get("locLocationExtensionG", {}).get("FacilityLocation", {})
+        addr = fac.get("address", {})
+        result["postcode"] = addr.get("postcode")
+        result["city"] = text_value(addr.get("city", {}))
+        result["countryCode"] = addr.get("countryCode")
+        lines = []
+        for line in addr.get("addressLine", []) or []:
+            txt = text_value(line.get("text", {})) if isinstance(line, dict) else ""
+            if txt:
+                lines.append(txt)
+        result["addressLines"] = lines
+        result["timeZone"] = fac.get("timeZone")
+    except Exception:
+        pass
+    return result
+
+
+def build_status_index(payload: Any) -> dict[str, dict[str, Any]]:
+    """Map charging-point ids to status/rate-update info embedded in the same NAP payload."""
+    out: dict[str, dict[str, Any]] = {}
+    try:
+        pub = payload.get("aegiEnergyInfrastructureStatusPublication", {})
+        sites = pub.get("energyInfrastructureSiteStatus", []) or []
+    except Exception:
+        return out
+    for site in sites:
+        if not isinstance(site, dict):
+            continue
+        for station in site.get("energyInfrastructureStationStatus", []) or []:
+            if not isinstance(station, dict):
+                continue
+            for rp in station.get("refillPointStatus", []) or []:
+                if not isinstance(rp, dict):
+                    continue
+                cps = rp.get("aegiElectricChargingPointStatus")
+                if not isinstance(cps, dict):
+                    continue
+                ident = cps.get("idG") or rp.get("idG")
+                if isinstance(ident, str) and ident:
+                    out[ident] = cps
+    return out
+
+
+def build_canonical(payload: Any, locations: list[dict[str, Any]]) -> dict[str, Any]:
+    status_index = build_status_index(payload)
+    rows: list[dict[str, Any]] = []
+
+    for loc in locations:
+        location_id = loc.get("idG")
+        brand = text_value(loc.get("brand", {}))
+        operator = org_name(loc.get("energyDistributor", {}))
+        address = extract_address(loc)
+
+        stations_out = []
+        for st in loc.get("energyInfrastructureStation", []) or []:
+            if not isinstance(st, dict):
+                continue
+            st_operator = org_name(st.get("energyDistributor", {})) or operator
+            evses_out = []
+            for rp in st.get("refillPoint", []) or []:
+                if not isinstance(rp, dict):
+                    continue
+                cp = rp.get("aegiElectricChargingPoint")
+                if not isinstance(cp, dict):
+                    continue
+
+                external_ids = []
+                connectors_out = []
+                for conn in cp.get("connector", []) or []:
+                    if not isinstance(conn, dict):
+                        continue
+                    ids = []
+                    for ext in conn.get("externalIdentifier", []) or []:
+                        if isinstance(ext, dict) and isinstance(ext.get("identifier"), str):
+                            ids.append(ext["identifier"])
+                            external_ids.append(ext["identifier"])
+                    connectors_out.append({
+                        "externalIdentifiers": ids,
+                        "type": ((conn.get("connectorType") or {}).get("value")
+                                 if isinstance(conn.get("connectorType"), dict) else None),
+                        "format": ((conn.get("connectorFormat") or {}).get("value")
+                                   if isinstance(conn.get("connectorFormat"), dict) else None),
+                        "maxPowerW": conn.get("maxPowerAtSocket"),
+                        "voltageV": conn.get("voltage"),
+                        "maximumCurrentA": conn.get("maximumCurrent"),
+                    })
+
+                prices = price_rows(cp)
+                cp_id = cp.get("idG")
+                status = status_index.get(cp_id, {}) if isinstance(cp_id, str) else {}
+                status_value = None
+                for key in ("status", "chargingPointStatus", "operatingStatus", "availability"):
+                    val = status.get(key) if isinstance(status, dict) else None
+                    if isinstance(val, dict) and "value" in val:
+                        status_value = val.get("value")
+                        break
+                    if isinstance(val, str):
+                        status_value = val
+                        break
+
+                evses_out.append({
+                    "id": cp_id,
+                    "externalIdentifiers": sorted(set(external_ids)),
+                    "currentType": ((cp.get("currentType") or {}).get("value")
+                                    if isinstance(cp.get("currentType"), dict) else None),
+                    "availableVoltageV": cp.get("availableVoltage") or [],
+                    "availableChargingPowerW": cp.get("availableChargingPower") or [],
+                    "deliveryUnit": ((cp.get("deliveryUnit") or {}).get("value")
+                                     if isinstance(cp.get("deliveryUnit"), dict) else None),
+                    "numberOfConnectors": cp.get("numberOfConnectors"),
+                    "connectors": connectors_out,
+                    "prices": prices,
+                    "status": status_value,
+                    "statusRaw": status if status else None,
+                })
+
+            stations_out.append({
+                "id": st.get("idG"),
+                "operator": st_operator,
+                "totalMaximumPowerW": st.get("totalMaximumPower"),
+                "numberOfRefillPoints": st.get("numberOfRefillPoints"),
+                "authenticationMethods": [
+                    x.get("value") for x in (st.get("authenticationAndIdentificationMethods") or [])
+                    if isinstance(x, dict) and x.get("value")
+                ],
+                "evses": evses_out,
+            })
+
+        rows.append({
+            "id": location_id,
+            "brand": brand,
+            "operator": operator,
+            **address,
+            "stations": stations_out,
+        })
+
+    return {
+        "country": "BE",
+        "source": BASE_URL + LOCATIONS_PATH,
+        "locationCount": len(rows),
+        "locations": rows,
+    }
+
 def sanitize_sample(locations: list[dict[str, Any]], max_items: int = 3) -> list[dict[str, Any]]:
     forbidden = {"token", "authorization", "apikey", "api_key", "secret", "password"}
     def scrub(obj: Any) -> Any:
@@ -239,7 +402,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw-output", default="")
     ap.add_argument("--summary-output", default="reports/belgium-nap-probe-summary.json")
-    ap.add_argument("--sample-output", default="reports/belgium-nap-locations-sample.json")
+    ap.add_argument("--sample-output", default="reports/belgium-nap-locations-sample.json")\n    ap.add_argument("--canonical-output", default="")
     args = ap.parse_args()
 
     token = os.environ.get("BELGIUM_NAP_TOKEN", "").strip()
