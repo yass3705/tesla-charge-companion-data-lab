@@ -4,12 +4,15 @@ const MAPPING='data/electroverse/irve_location_mapping.json';
 const DIR='data/electroverse/tariff_cache';
 const MANIFEST=`${DIR}/manifest.json`;
 const OUT='reports/electroverse/incremental-selection.json';
+const CHECKED='data/electroverse/tariff_cache/checked-at.json';
 const TTL_HOURS=Number(process.env.TTL_HOURS||168);
 const LIMIT=Number(process.env.LIMIT||500);
 
 const mapping=JSON.parse(await fs.readFile(MAPPING,'utf8'));
 const manifest=JSON.parse(await fs.readFile(MANIFEST,'utf8'));
 const cached=new Map();
+let checked={};
+try{checked=JSON.parse(await fs.readFile(CHECKED,'utf8')).checkedAt||{};}catch{}
 
 for(const sh of manifest.shards||[]){
   if(!sh.count) continue;
@@ -23,7 +26,8 @@ const now=Date.now(),ttlMs=TTL_HOURS*3600_000;
 const rows=(mapping.mappings||[]).map(m=>{
   const pk=String(m.electroverseLocationPk);
   const c=cached.get(pk)||null;
-  const t=c?.fetchedAt?Date.parse(c.fetchedAt):NaN;
+  const effectiveCheckedAt=checked[pk]||c?.fetchedAt||null;
+  const t=effectiveCheckedAt?Date.parse(effectiveCheckedAt):NaN;
   const ageMs=Number.isFinite(t)?Math.max(0,now-t):Infinity;
   let reason='fresh';
   if(!c) reason='new';
