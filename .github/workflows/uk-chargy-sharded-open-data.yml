@@ -18,43 +18,61 @@ jobs:
   locations:
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 1
       matrix:
-        start: [0,1500,3000,4500]
+        start: [0, 2000, 4000]
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
-      - name: Fetch one locations shard
+      - name: Fetch locations segment
         shell: bash
         run: |
           python - <<'PY'
-          import json,urllib.request,time,os
-          offset=int("${{ matrix.offset }}")
-          url=f"https://char.gy/open-ocpi/locations?limit=500&offset={offset}"
-          last=None
-          for i in range(5):
-              try:
-                  req=urllib.request.Request(url,headers={"User-Agent":"TeslaChargeCompanion/9 char.gy shard","Accept":"application/json"})
-                  with urllib.request.urlopen(req,timeout=75) as r:
-                      p=json.loads(r.read().decode("utf-8"))
-                      h={k.lower():v for k,v in r.headers.items()}
+          import json,urllib.request,urllib.error,time
+          start=int("${{ matrix.start }}")
+          segment_end=start+2000
+          rows=[]; pages=[]; total=None
+          offset=start
+          while offset < segment_end:
+              if total is not None and offset>=total: break
+              limit=500 if total is None else min(500,total-offset)
+              url=f"https://char.gy/open-ocpi/locations?limit={limit}&offset={offset}"
+              last=None
+              for attempt in range(7):
+                  try:
+                      req=urllib.request.Request(url,headers={"User-Agent":"TeslaChargeCompanion/9 char.gy shard","Accept":"application/json"})
+                      with urllib.request.urlopen(req,timeout=75) as r:
+                          p=json.loads(r.read().decode("utf-8"))
+                          h={k.lower():v for k,v in r.headers.items()}
                       break
-              except Exception as e:
-                  last=e
-                  time.sleep(10*(i+1))
-          else:
-              raise SystemExit(f"failed {url}: {last}")
-          data=p.get("data") if isinstance(p,dict) else None
-          if not isinstance(data,list): raise SystemExit("unexpected payload")
-          out={"offset":offset,"advertisedTotal":int(h["x-total-count"]) if h.get("x-total-count") else None,"data":data}
-          fn=f"chargy-locations-{offset}.json"
+                  except urllib.error.HTTPError as e:
+                      last=e
+                      if e.code not in (403,429,500,502,503,504): raise
+                      try: ra=float(e.headers.get("Retry-After")) if e.headers.get("Retry-After") else None
+                      except Exception: ra=None
+                      time.sleep(ra if ra is not None else min(120,15*(attempt+1)))
+                  except Exception as e:
+                      last=e; time.sleep(min(60,8*(attempt+1)))
+              else:
+                  raise SystemExit(f"failed {url}: {last}")
+              data=p.get("data") if isinstance(p,dict) else None
+              if not isinstance(data,list): raise SystemExit("unexpected payload")
+              if total is None and h.get("x-total-count"):
+                  total=int(h["x-total-count"])
+              rows.extend(data); pages.append({"offset":offset,"limit":limit,"rows":len(data)})
+              if not data: break
+              offset += len(data)
+              if len(data)<limit: break
+              time.sleep(5)
+          out={"start":start,"advertisedTotal":total,"data":rows,"pages":pages}
+          fn=f"chargy-locations-{start}.json"
           open(fn,"w").write(json.dumps(out,separators=(",",":")))
-          print(json.dumps({"offset":offset,"rows":len(data),"total":out["advertisedTotal"]}))
+          print(json.dumps({"start":start,"rows":len(rows),"total":total,"pages":pages}))
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: chargy-locations-${{ matrix.offset }}
-          path: chargy-locations-${{ matrix.offset }}.json
+          name: chargy-locations-${{ matrix.start }}
+          path: chargy-locations-${{ matrix.start }}.json
           retention-days: 1
 
   tariffs:
@@ -65,11 +83,20 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import json,urllib.request
+          import json,urllib.request,urllib.error,time
           url="https://char.gy/open-ocpi/tariffs?limit=100&offset=0"
-          req=urllib.request.Request(url,headers={"User-Agent":"TeslaChargeCompanion/9 char.gy tariff shard","Accept":"application/json"})
-          with urllib.request.urlopen(req,timeout=75) as r:
-              p=json.loads(r.read().decode("utf-8"))
+          last=None
+          for attempt in range(6):
+              try:
+                  req=urllib.request.Request(url,headers={"User-Agent":"TeslaChargeCompanion/9 char.gy tariff shard","Accept":"application/json"})
+                  with urllib.request.urlopen(req,timeout=75) as r:
+                      p=json.loads(r.read().decode("utf-8"))
+                  break
+              except urllib.error.HTTPError as e:
+                  last=e
+                  if e.code not in (403,429,500,502,503,504): raise
+                  time.sleep(min(90,15*(attempt+1)))
+          else: raise SystemExit(f"failed tariffs: {last}")
           open("chargy-tariffs.json","w").write(json.dumps(p,separators=(",",":")))
           print("tariffs",len(p.get("data",[])))
           PY
@@ -114,7 +141,6 @@ jobs:
           tp=json.load(open("artifacts/chargy-tariffs.json"))
           tariffs=tp.get("data",[])
           advertised=max([x for x in totals if isinstance(x,int)],default=None)
-          # Segment pages are non-overlapping; advertised total is the authoritative coverage check.
           evses=connectors=0; refs=set(); parties=set(); statuses={}
           for loc in rows:
               if loc.get("party_id"): parties.add(str(loc["party_id"]))
@@ -146,6 +172,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/national/uk_chargy_open_data.json.gz reports/uk/chargy-sharded-latest.json
+          if git diff --cached --quiet; then exit 0; fi
           git commit -m "data(uk): collect char.gy via sharded open feed [run ${GITHUB_RUN_ID}]"
           for attempt in 1 2 3 4; do
             git pull --rebase origin main
