@@ -1,0 +1,158 @@
+name: UK Qwello public EVSE collect
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-qwello-public-evse-collect.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-qwello-public-evse-collect
+  cancel-in-progress: true
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+
+      - name: Collect all UK Qwello public EVSEs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/national reports/uk
+          python - <<'PY'
+          import json,gzip,urllib.request,urllib.error,urllib.parse,time
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          src=Path("data/national/uk_qwello_tariff_view.json.gz")
+          if not src.exists():
+              raise SystemExit("missing uk_qwello_tariff_view.json.gz")
+          with gzip.open(src,"rt",encoding="utf-8") as g:
+              base=json.load(g)
+          stations=base.get("stations") if isinstance(base,dict) else None
+          if not isinstance(stations,list) or not stations:
+              raise SystemExit("unexpected Qwello tariff-view structure")
+
+          evse_ids=[]
+          seen=set()
+          station_by_evse={}
+          for st in stations:
+              if not isinstance(st,dict): continue
+              ids=st.get("id") or []
+              if isinstance(ids,str): ids=[ids]
+              if not isinstance(ids,list): continue
+              for eid in ids:
+                  eid=str(eid)
+                  if not eid or eid in seen: continue
+                  seen.add(eid); evse_ids.append(eid); station_by_evse[eid]=st
+
+          if not evse_ids:
+              raise SystemExit("no UK EVSE ids found")
+
+          UA="Qwello/3.9.5 TeslaChargeCompanion/9"
+          def get_json(url,retries=6):
+              last=None
+              for attempt in range(retries):
+                  try:
+                      req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"application/json"})
+                      with urllib.request.urlopen(req,timeout=45) as r:
+                          return json.loads(r.read().decode("utf-8"))
+                  except urllib.error.HTTPError as e:
+                      last=e
+                      if e.code not in (403,429,500,502,503,504): raise
+                      if e.code==403 and attempt==0:
+                          # transient edge/WAF retry only; persistent 403 will still fail naturally
+                          delay=5
+                      else:
+                          try: delay=float(e.headers.get("Retry-After")) if e.headers.get("Retry-After") else min(60,5*(attempt+1))
+                          except Exception: delay=min(60,5*(attempt+1))
+                      time.sleep(delay)
+                  except Exception as e:
+                      last=e
+                      time.sleep(min(30,3*(attempt+1)))
+              raise last
+
+          records=[]; failures=[]
+          statuses={}; countries={}; connector_types={}; currencies={}
+          priced=0; geo=0; connectors=0
+          mismatch_ids=[]
+          for idx,eid in enumerate(evse_ids,1):
+              url="https://api.qwello.eu/springspinne/v1/pub/evses/"+urllib.parse.quote(eid,safe="")
+              try:
+                  p=get_json(url)
+                  if not isinstance(p,dict):
+                      raise ValueError("non-dict response")
+                  got=str(p.get("evseId") or "")
+                  if got and got != eid: mismatch_ids.append({"requested":eid,"returned":got})
+                  lat=p.get("latitude"); lon=p.get("longitude")
+                  if isinstance(lat,(int,float)) and isinstance(lon,(int,float)) and lat and lon:
+                      geo+=1
+                  address=p.get("address") or {}
+                  country=str(address.get("country") or "UNKNOWN")
+                  countries[country]=countries.get(country,0)+1
+                  st=str(p.get("status") or "UNKNOWN")
+                  statuses[st]=statuses.get(st,0)+1
+                  cs=p.get("connectors") or []
+                  if isinstance(cs,list):
+                      connectors+=len(cs)
+                      for c in cs:
+                          if isinstance(c,dict):
+                              typ=str(c.get("connectorStandard") or "UNKNOWN")
+                              connector_types[typ]=connector_types.get(typ,0)+1
+                  tariff=p.get("tariff")
+                  if isinstance(tariff,dict):
+                      priced+=1
+                      cur=str(tariff.get("currency") or "UNKNOWN")
+                      currencies[cur]=currencies.get(cur,0)+1
+                  records.append({"sourceTariffView":station_by_evse.get(eid),"publicEvse":p})
+              except Exception as e:
+                  failures.append({"evseId":eid,"error":f"{type(e).__name__}: {e}"})
+              if idx % 25 == 0:
+                  print(f"progress {idx}/{len(evse_ids)} ok={len(records)} fail={len(failures)}")
+              time.sleep(0.12)
+
+          now=datetime.now(timezone.utc).isoformat()
+          report={
+              "country":"GB","network":"Qwello","retrievedAt":now,
+              "source":"https://api.qwello.eu/springspinne/v1/pub/evses/{evse_id}",
+              "tariffViewStations":len(stations),"requestedEvseIds":len(evse_ids),
+              "recoveredEvseIds":len(records),"failures":failures,
+              "geocodedEvseIds":geo,"pricedEvseIds":priced,"connectors":connectors,
+              "statuses":statuses,"countries":countries,"currencies":currencies,
+              "connectorTypes":connector_types,"idMismatches":mismatch_ids,
+              "coverageComplete":len(records)==len(evse_ids) and not failures and geo==len(evse_ids) and priced==len(evse_ids),
+              "status":"complete" if len(records)==len(evse_ids) and not failures and geo==len(evse_ids) and priced==len(evse_ids) else "partial"
+          }
+          with gzip.open("data/national/uk_qwello_public_evses.json.gz","wt",encoding="utf-8") as g:
+              json.dump({"retrievedAt":now,"network":"Qwello","records":records},g,ensure_ascii=False,separators=(",",":"))
+          Path("reports/uk/qwello-public-evses-latest.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          if not report["coverageComplete"]:
+              raise SystemExit(2)
+          PY
+
+      - name: Publish Qwello dataset
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -f reports/uk/qwello-public-evses-latest.json ] || exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/uk_qwello_public_evses.json.gz reports/uk/qwello-public-evses-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(uk): collect Qwello public EVSE inventory [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
