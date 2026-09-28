@@ -1,0 +1,89 @@
+name: UK Lidl Plus EV backend inspect
+
+on:
+  push:
+    branches: ["main"]
+    paths: [".github/workflows/uk-lidl-plus-ev-backend-inspect.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Download and inspect Lidl Plus Android app
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk /tmp/lidl
+          curl -fL --retry 3 --retry-delay 3 -A "Mozilla/5.0"             "https://d.apkpure.net/b/XAPK/com.lidl.eci.lidlplus?version=latest"             -o /tmp/lidl/app.xapk
+          unzip -q /tmp/lidl/app.xapk -d /tmp/lidl/x
+          mkdir -p /tmp/lidl/apks
+          for apk in /tmp/lidl/x/*.apk; do
+            [ -f "$apk" ] || continue
+            d="/tmp/lidl/apks/$(basename "$apk" .apk)"
+            mkdir -p "$d"; unzip -q "$apk" -d "$d" || true
+          done
+          python - <<'PY'
+          import json,re,glob,os
+          from pathlib import Path
+          from datetime import datetime,timezone
+          needles=[
+            "ev charging","ev_charging","evcharging","e-mobility","emobility","charging station",
+            "charger","chargepoint","charge point","evse","ocpi","connector","tariff",
+            "station locator","electric vehicle","api","baseurl","base_url"
+          ]
+          urls=set(); hosts=set(); hits=[]
+          for fn in glob.glob("/tmp/lidl/apks/**/*",recursive=True):
+            if not os.path.isfile(fn): continue
+            try:
+              if os.path.getsize(fn)>80_000_000: continue
+              b=open(fn,"rb").read()
+            except Exception: continue
+            vals=[]
+            vals += [x.decode("utf-8","ignore") for x in re.findall(rb'[ -~]{14,1600}',b)]
+            vals += [x.decode("utf-16le","ignore") for x in re.findall(rb'(?:[ -~]\x00){10,800}',b)]
+            for s in vals:
+              sl=s.lower()
+              matched=[n for n in needles if n in sl]
+              if matched:
+                if "http" in sl or "/api" in sl or "/v1/" in sl or "charging" in sl or "emobility" in sl or "evse" in sl:
+                  hits.append({"file":fn.replace("/tmp/lidl/apks/",""),"matched":matched,"text":s})
+                for u in re.findall(r'https?://[^\s"\'<>]{5,600}',s):
+                  if any(k in u.lower() for k in ("lidl","charge","mobility","ev","api")): urls.add(u)
+            for h in re.findall(rb'(?i)([a-z0-9][a-z0-9.-]+\.(?:com|co\.uk|uk|io|app|net|eu|cloud|de))',b):
+              try:
+                hs=h.decode().lower()
+                if any(k in hs for k in ("lidl","charge","mobility","ev","api","firebase")): hosts.add(hs)
+              except: pass
+          def score(x):
+            return sum(10 if n in ("ev charging","ev_charging","evcharging","e-mobility","emobility","evse","ocpi") else 3 for n in x["matched"])
+          hits=sorted(hits,key=score,reverse=True)
+          seen=set(); sel=[]
+          for x in hits:
+            k=x["text"][:400]
+            if k in seen: continue
+            seen.add(k); sel.append(x)
+            if len(sel)>=900: break
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"package":"com.lidl.eci.lidlplus",
+               "urls":sorted(urls)[:1200],"hosts":sorted(hosts)[:600],"hits":sel}
+          Path("reports/uk/lidl-plus-ev-backend-inspect-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({"urls":out["urls"],"hosts":out["hosts"],"hits":sel[:280]},ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        if: always()
+        run: |
+          set -euo pipefail
+          [ -f reports/uk/lidl-plus-ev-backend-inspect-latest.json ] || exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/lidl-plus-ev-backend-inspect-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): inspect Lidl Plus EV backend [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
