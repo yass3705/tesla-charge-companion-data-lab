@@ -1,0 +1,82 @@
+name: UK char.gy missing tariff resolve
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-chargy-missing-tariff-resolve.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Resolve missing tariff IDs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import json,urllib.request,urllib.error,time
+          from pathlib import Path
+          from datetime import datetime,timezone
+          ids=[
+            "195d3ce5-50f7-45c6-bf77-d54c6914dc8f",
+            "4b854998-00de-4a9c-bbe4-2a7181d8e5ba",
+            "632f5e73-73c6-4186-9d6f-7bf317a63347",
+            "97b9ab3c-0d72-486e-82b3-b2815c90b3a1",
+            "def5aeef-3c68-4df1-a064-e9a831734a4b"
+          ]
+          bases=[
+            "https://char.gy/open-ocpi/tariffs/{id}",
+            "https://char.gy/open-ocpi/tariffs/GB/CGY/{id}",
+            "https://char.gy/open-ocpi/tariffs?id={id}",
+          ]
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"results":[]}
+          for tid in ids:
+              row={"id":tid,"attempts":[]}
+              for tmpl in bases:
+                  url=tmpl.format(id=tid)
+                  try:
+                      req=urllib.request.Request(url,headers={"User-Agent":"TeslaChargeCompanion/9 char.gy tariff audit","Accept":"application/json"})
+                      with urllib.request.urlopen(req,timeout=45) as r:
+                          body=r.read().decode("utf-8","replace")
+                          rec={"url":url,"status":r.status,"contentType":r.headers.get("Content-Type"),"bytes":len(body)}
+                          try:
+                              p=json.loads(body)
+                              rec["jsonType"]=type(p).__name__
+                              if isinstance(p,dict):
+                                  rec["keys"]=list(p)[:30]
+                                  d=p.get("data")
+                                  rec["dataCount"]=len(d) if isinstance(d,list) else (1 if isinstance(d,dict) else 0)
+                                  if isinstance(d,list) and d: rec["foundIds"]=[str(x.get("id")) for x in d if isinstance(x,dict) and x.get("id")][:20]
+                                  elif isinstance(d,dict) and d.get("id"): rec["foundIds"]=[str(d.get("id"))]
+                          except Exception: pass
+                          row["attempts"].append(rec)
+                  except urllib.error.HTTPError as e:
+                      row["attempts"].append({"url":url,"status":e.code})
+                  except Exception as e:
+                      row["attempts"].append({"url":url,"error":f"{type(e).__name__}: {e}"})
+                  time.sleep(1)
+              row["resolved"]=any(tid in (a.get("foundIds") or []) for a in row["attempts"])
+              out["results"].append(row)
+          out["resolvedCount"]=sum(1 for r in out["results"] if r["resolved"])
+          out["unresolvedIds"]=[r["id"] for r in out["results"] if not r["resolved"]]
+          Path("reports/uk/chargy-missing-tariff-resolve-latest.json").write_text(json.dumps(out,indent=2)+"\n")
+          print(json.dumps(out,indent=2))
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/chargy-missing-tariff-resolve-latest.json
+          git commit -m "diag(uk): resolve char.gy missing tariff IDs [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
