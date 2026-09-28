@@ -1,0 +1,8 @@
+import fs from 'node:fs/promises';import {performance} from 'node:perf_hooks';import {DirectElectroverseClient,aliasBatchQuery} from './lib/electroverse_direct_client.mjs';
+const key=process.env.ELECTROVERSE_API_KEY;if(!key)throw new Error('ELECTROVERSE_API_KEY required');
+const m=JSON.parse(await fs.readFile('data/electroverse/irve_location_mapping.json','utf8'));const all=(m.mappings||[]).map(x=>String(x.electroverseLocationPk)).sort();
+const groups=Number(process.env.GROUPS||20), size=5, c=new DirectElectroverseClient({apiKey:key,timeoutMs:60000}), results=[];
+for(let g=0;g<groups;g++){const start=Math.floor(g*(all.length-size)/(groups-1));const pks=all.slice(start,start+size);const t=performance.now();const r=await c.request(aliasBatchQuery(pks),{},{attempts:1});const data=r.json?.data||{};results.push({group:g,start,batchSize:size,status:r.status,returned:Object.values(data).filter(Boolean).length,errorCount:(r.json?.errors||[]).length,elapsedMs:Math.round(performance.now()-t),bytes:r.bytes||0});await new Promise(x=>setTimeout(x,1000));}
+const ok=results.filter(x=>x.status===200&&x.returned===size&&x.errorCount===0).length;const elapsed=results.reduce((a,x)=>a+x.elapsedMs,0);
+const report={generatedAt:new Date().toISOString(),groups,size,totalStations:groups*size,successfulGroups:ok,failedGroups:groups-ok,requestElapsedMs:elapsed,stationsPerMinute:Number(((groups*size)/(elapsed/60000)).toFixed(2)),results};
+await fs.writeFile('reports/electroverse/batch-robustness.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));if(ok!==groups)process.exitCode=2;
