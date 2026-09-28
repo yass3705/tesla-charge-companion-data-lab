@@ -410,6 +410,23 @@
       "access": "open_data_request",
       "evidence": "UK CPO dataset index points to Blink UK Open Data Request.",
       "next": "resolve endpoint/access mechanics after first pass."
+    },
+    {
+      "name": "JOLT",
+      "aliases": [
+        "JOLT UK"
+      ],
+      "status": "complete",
+      "access": "official_public_pcpr_api",
+      "partyIds": [
+        "JLT"
+      ],
+      "locationsEndpoint": "https://api.joltcharge.com/v1/uk/public/locations",
+      "tariffsEndpointTemplate": "https://api.joltcharge.com/v1/uk/public/tariffs/{tariffId}",
+      "evidence": "Official JOLT UK PCPR page publishes a public locations API and tariff-by-id API. Data Lab collection on 2026-09-28 recovered 71 locations, 157 EVSEs, 155 connectors and all 5 referenced tariffs with no tariff failures.",
+      "dataset": "data/national/uk_jolt_pcpr.json.gz",
+      "report": "reports/uk/jolt-pcpr-latest.json",
+      "next": "validated; include in TCC UK aggregation and scheduled refresh."
     }
   ],
   "sourceURLs": [
@@ -2138,7 +2155,8 @@
       "Clenergy EV",
       "PoGo Charge",
       "Arnold Clark Charge",
-      "Dragon Charging"
+      "Dragon Charging",
+      "JOLT"
     ],
     "externalAccessBlocked": [
       {
@@ -2361,6 +2379,17 @@
       "unresolvedTariffIds": [],
       "collectorCommit": "d4b50e88de3d174a7b03d5f278c6b507c89aea34",
       "note": "GitHub smoke run #9 did not start a runner (steps=null); source-level validation and collector persistence completed independently."
+    },
+    "joltFinalization": {
+      "state": "complete_source_validated",
+      "locations": 71,
+      "evses": 157,
+      "connectors": 155,
+      "tariffIdsReferenced": 5,
+      "tariffsRecovered": 5,
+      "partyId": "JLT",
+      "dataset": "data/national/uk_jolt_pcpr.json.gz",
+      "report": "reports/uk/jolt-pcpr-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
