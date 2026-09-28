@@ -1,0 +1,42 @@
+name: Switzerland Plenitude restricted residual closeout
+on:
+  push:
+    paths:
+      - 'scripts/close_swiss_plenitude_restricted_residuals.py'
+      - '.github/workflows/switzerland-plenitude-restricted-closeout.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  close:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - run: python3 scripts/close_swiss_plenitude_restricted_residuals.py
+      - name: Validate
+        run: |
+          python3 - <<'PY'
+          import json
+          f=json.load(open('docs/switzerland-plenitude-finalization-2026-09-28.json',encoding='utf-8'))
+          assert f['pricedEvseCount'] + f.get('classifiedNoPublicDirectTariffCount',0) + f['unresolvedEvseCount'] == f['nationalEvseCount']
+          assert f['unresolvedEvseCount']==0
+          assert f['status']=='complete'
+          print(json.dumps(f,indent=2))
+          PY
+      - name: Persist
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/switzerland/plenitude-official-direct-tariffs.json docs/switzerland-plenitude-finalization-2026-09-28.json
+          git commit -m 'data(switzerland): close restricted Plenitude residuals' || exit 0
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
