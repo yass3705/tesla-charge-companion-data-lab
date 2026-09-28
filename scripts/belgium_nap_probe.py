@@ -402,7 +402,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw-output", default="")
     ap.add_argument("--summary-output", default="reports/belgium-nap-probe-summary.json")
-    ap.add_argument("--sample-output", default="reports/belgium-nap-locations-sample.json")\n    ap.add_argument("--canonical-output", default="")
+    ap.add_argument("--sample-output", default="reports/belgium-nap-locations-sample.json")
+    ap.add_argument("--canonical-output", default="")
     args = ap.parse_args()
 
     token = os.environ.get("BELGIUM_NAP_TOKEN", "").strip()
@@ -429,6 +430,11 @@ def main() -> int:
     Path(args.summary_output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.summary_output).write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     Path(args.sample_output).write_text(json.dumps(sanitize_sample(locations), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    if args.canonical_output:
+        canonical = build_canonical(payload, locations)
+        Path(args.canonical_output).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.canonical_output).write_text(json.dumps(canonical, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     if args.raw_output:
         Path(args.raw_output).parent.mkdir(parents=True, exist_ok=True)
