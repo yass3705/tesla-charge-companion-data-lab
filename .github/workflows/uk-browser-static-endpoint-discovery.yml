@@ -1,0 +1,92 @@
+name: UK browser static endpoint discovery
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-browser-static-endpoint-discovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract public links and endpoint hints
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import json,re,html,urllib.request,urllib.parse
+          from datetime import datetime,timezone
+          from pathlib import Path
+
+          targets=[
+            ("Wenea WP JSON","https://wenea.com/uk/wp-json/wp/v2/pages/18003"),
+            ("Wenea thanks page","https://wenea.com/uk/thanks-page-open-data/"),
+            ("ParkRecharge open data","https://parkrecharge.com/public-charging/"),
+          ]
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"targets":[]}
+          for name,url in targets:
+            item={"name":name,"url":url}
+            try:
+              req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 TeslaChargeCompanion/9","Accept":"*/*"})
+              with urllib.request.urlopen(req,timeout=45) as r:
+                raw=r.read().decode("utf-8","replace")
+                item["status"]=r.status
+                item["contentType"]=r.headers.get("Content-Type")
+              texts=[raw]
+              try:
+                p=json.loads(raw)
+                item["json"]=True
+                if isinstance(p,dict):
+                  rendered=((p.get("content") or {}).get("rendered")) if isinstance(p.get("content"),dict) else None
+                  if isinstance(rendered,str): texts.append(html.unescape(rendered))
+              except Exception:
+                item["json"]=False
+              blob="\n".join(texts)
+              hrefs=re.findall(r'''(?:href|src)\s*=\s*["']([^"']+)["']''',blob,re.I)
+              urls=re.findall(r'''https?://[^\s"'<>\\]+''',blob,re.I)
+              candidates=[]
+              for x in hrefs+urls:
+                x=html.unescape(x).replace("\\/","/")
+                if x.startswith("/"): x=urllib.parse.urljoin(url,x)
+                low=x.lower()
+                if any(k in low for k in ("open","data","download","api","ocpi","json","csv","zip","tariff","location","charge")):
+                  candidates.append(x)
+              # context around Download/Open Data/API strings, useful if link extraction misses Elementor attrs
+              ctx=[]
+              for m in re.finditer(r'(?i)(download|open data|api|ocpi|tariff|location)',blob):
+                a=max(0,m.start()-300); b=min(len(blob),m.end()+500)
+                sn=re.sub(r'\s+',' ',blob[a:b])
+                if sn not in ctx: ctx.append(sn)
+                if len(ctx)>=20: break
+              item["candidates"]=list(dict.fromkeys(candidates))[:200]
+              item["contexts"]=ctx
+            except Exception as e:
+              item["error"]=f"{type(e).__name__}: {e}"
+            out["targets"].append(item)
+          Path("reports/uk/browser-static-endpoint-discovery-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/browser-static-endpoint-discovery-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): discover browser-visible static endpoints [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
