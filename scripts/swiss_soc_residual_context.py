@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, urllib.request
+import json, gzip, urllib.request
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -11,7 +11,10 @@ TARGET={
 }
 req=urllib.request.Request(URL,headers={"User-Agent":"TCC-V9-Switzerland/1.0","Accept":"application/json"})
 with urllib.request.urlopen(req,timeout=120) as r:
-    data=json.load(r)
+    raw=r.read()
+    if raw[:2] == b"\\x1f\\x8b":
+        raw=gzip.decompress(raw)
+    data=json.loads(raw.decode("utf-8"))
 
 rows=[]
 def walk(x, ancestors):
