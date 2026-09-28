@@ -1,0 +1,119 @@
+name: UK Applegreen public map probe
+
+on:
+  push:
+    branches: ["main"]
+    paths: [".github/workflows/uk-applegreen-public-map-probe.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Probe Applegreen public Driivz map
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import json,re,urllib.request,urllib.error,http.cookiejar
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          base="https://driver.applegreenelectric.com"
+          cj=http.cookiejar.CookieJar()
+          opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+          ua="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
+
+          req=urllib.request.Request(base+"/findCharger",headers={"User-Agent":ua,"Accept":"text/html,*/*"})
+          with opener.open(req,timeout=60) as r:
+              html=r.read(2_000_000).decode("utf-8","replace")
+              landing_status=r.status
+
+          # look for conventional CSRF metadata if exposed
+          csrf_header=None; csrf_token=None
+          patterns=[
+            (r'name=["\']_csrf_header["\'][^>]*content=["\']([^"\']+)',None),
+            (r'name=["\']_csrf["\'][^>]*content=["\']([^"\']+)',"X-CSRF-TOKEN"),
+            (r'csrfHeader\s*[:=]\s*["\']([^"\']+)',None),
+            (r'csrfToken\s*[:=]\s*["\']([^"\']+)',None)
+          ]
+          # Spring commonly exposes meta _csrf and _csrf_header
+          mh=re.search(r'<meta[^>]+name=["\']_csrf_header["\'][^>]+content=["\']([^"\']+)',html,re.I)
+          mt=re.search(r'<meta[^>]+name=["\']_csrf["\'][^>]+content=["\']([^"\']+)',html,re.I)
+          if mh: csrf_header=mh.group(1)
+          if mt: csrf_token=mt.group(1)
+
+          payload={
+            "filterByIsManaged": True,
+            "filterByBounds":{
+              "northEastLat":61.2,
+              "northEastLng":2.5,
+              "southWestLat":49.5,
+              "southWestLng":-8.8
+            }
+          }
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"landingStatus":landing_status,
+               "cookies":[c.name for c in cj],"csrfHeader":csrf_header,"csrfTokenPresent":bool(csrf_token),"results":[]}
+
+          for route in ["/stationFacade/findSitesInBounds","/stationFacade/findStationsInBounds"]:
+              headers={
+                "User-Agent":ua,
+                "Accept":"application/json,text/javascript,*/*;q=0.01",
+                "Content-Type":"application/json",
+                "X-JSON-TYPES":"None",
+                "X-APP-TYPE":"WEB",
+                "X-Requested-With":"XMLHttpRequest",
+                "Origin":base,
+                "Referer":base+"/findCharger",
+                "Accept-Language":"en-GB,en;q=0.9"
+              }
+              if csrf_header and csrf_token: headers[csrf_header]=csrf_token
+              item={"route":route}
+              try:
+                req=urllib.request.Request(base+route,data=json.dumps(payload).encode(),headers=headers,method="POST")
+                with opener.open(req,timeout=60) as r:
+                  raw=r.read(5_000_000)
+                  item.update({"status":r.status,"contentType":r.headers.get("Content-Type"),"bytes":len(raw)})
+                  try:
+                    p=json.loads(raw.decode("utf-8"))
+                    item["json"]=True;item["jsonType"]=type(p).__name__
+                    if isinstance(p,dict):
+                      item["keys"]=list(p)[:80]
+                      item["success"]=p.get("success")
+                      d=p.get("data")
+                      if isinstance(d,list):
+                        item["count"]=len(d)
+                        item["firstKeys"]=list(d[0])[:120] if d and isinstance(d[0],dict) else []
+                        item["sample"]=d[:2]
+                      else:
+                        item["dataType"]=type(d).__name__
+                        item["sample"]=d
+                    elif isinstance(p,list):
+                      item["count"]=len(p);item["sample"]=p[:2]
+                  except Exception:
+                    item["json"]=False;item["prefix"]=raw.decode("utf-8","replace")[:2000]
+              except urllib.error.HTTPError as e:
+                raw=e.read(100000)
+                item.update({"status":e.code,"error":str(e),"bodyPrefix":raw.decode("utf-8","replace")[:2000]})
+              except Exception as e:
+                item.update({"status":None,"error":f"{type(e).__name__}: {e}"})
+              out["results"].append(item)
+
+          Path("reports/uk/applegreen-public-map-probe-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/applegreen-public-map-probe-latest.json
+          git commit -m "diag(uk): probe Applegreen public Driivz map [run ${GITHUB_RUN_ID}]" || exit 0
+          for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
