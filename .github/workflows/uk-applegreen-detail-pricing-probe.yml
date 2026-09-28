@@ -22,7 +22,7 @@ jobs:
           set -euo pipefail
           mkdir -p reports/uk
           python - <<'PY'
-          import json,re,urllib.request,urllib.error,http.cookiejar
+          import json,re,urllib.request,urllib.error,urllib.parse,http.cookiejar
           from pathlib import Path
           from datetime import datetime,timezone
 
@@ -46,13 +46,11 @@ jobs:
               h=dict(common)
               body=None
               if method=="GET" and data:
-                  import urllib.parse
                   path += ("&" if "?" in path else "?")+urllib.parse.urlencode(data,doseq=True)
               elif data is not None:
                   if json_mode:
                       h["Content-Type"]="application/json"; body=json.dumps(data).encode()
                   else:
-                      import urllib.parse
                       h["Content-Type"]="application/x-www-form-urlencoded; charset=UTF-8"
                       body=urllib.parse.urlencode(data,doseq=True).encode()
               req=urllib.request.Request(base+path,data=body,headers=h,method=method)
