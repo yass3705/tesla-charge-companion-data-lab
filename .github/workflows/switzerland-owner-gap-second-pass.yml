@@ -1,0 +1,74 @@
+name: Switzerland owner-gap second pass
+on:
+  workflow_run:
+    workflows: ["Switzerland owner-gap first pass"]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  scan:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - operator: 'CH*REP'
+            slug: rep
+            name: 'CH*REP'
+            workers: 4
+          - operator: 'CH*911'
+            slug: 911
+            name: 'CH*911'
+            workers: 4
+          - operator: 'CH*CPI'
+            slug: cpi
+            name: 'CH*CPI'
+            workers: 4
+          - operator: 'CH*505'
+            slug: 505
+            name: 'CH*505'
+            workers: 4
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Second pass
+        run: |
+          python3 scripts/collect_swiss_atlas_cpo_parallel.py \
+            --operator '${{ matrix.operator }}' \
+            --name '${{ matrix.name }}' \
+            --output 'data/switzerland/${{ matrix.slug }}-direct-tariffs-second-pass.json' \
+            --workers }} matrix.workers }} \
+            --delay 0.05 \
+            --provider-customer-tariffs
+      - name: Write result
+        shell: python
+        run: |
+          import json,pathlib
+          slug='${{ matrix.slug }}'
+          p=pathlib.Path(f'data/switzerland/{slug}-direct-tariffs-second-pass.json')
+          x=json.loads(p.read_text(encoding='utf-8'))
+          s=x['summary']
+          doc={'schemaVersion':1,'country':'CH','cpo':x['cpo'],'operatorId':x['operatorId'],
+               'pass':'owner-gap-second','status':s['status'],'summary':s,'unresolved':x['unresolved'],
+               'method':'Swiss Ladepreisatlas public API parallel second pass; provider_customer_tariffs=true; direct-only',
+               'policy':'No tariff extrapolation. Feed-owner census is authoritative for scope discovery.'}
+          pathlib.Path(f'docs/switzerland-{slug}-owner-gap-second-pass-2026-09-28.json').write_text(
+            json.dumps(doc,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+      - name: Persist
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 'data/switzerland/${{ matrix.slug }}-direct-tariffs-second-pass.json' 'docs/switzerland-${{ matrix.slug }}-owner-gap-second-pass-2026-09-28.json'
+          git commit -m 'data(switzerland): owner-gap second pass }} matrix.operator }}' || exit 0
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
