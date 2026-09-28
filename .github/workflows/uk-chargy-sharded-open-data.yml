@@ -1,0 +1,155 @@
+name: UK char.gy sharded open data
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-chargy-sharded-open-data.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-chargy-sharded-open-data
+  cancel-in-progress: true
+
+jobs:
+  locations:
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        offset: [0,500,1000,1500,2000,2500,3000,3500,4000,4500,5000,5500]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Fetch one locations shard
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,urllib.request,time,os
+          offset=int("${{ matrix.offset }}")
+          url=f"https://char.gy/open-ocpi/locations?limit=500&offset={offset}"
+          last=None
+          for i in range(5):
+              try:
+                  req=urllib.request.Request(url,headers={"User-Agent":"TeslaChargeCompanion/9 char.gy shard","Accept":"application/json"})
+                  with urllib.request.urlopen(req,timeout=75) as r:
+                      p=json.loads(r.read().decode("utf-8"))
+                      h={k.lower():v for k,v in r.headers.items()}
+                      break
+              except Exception as e:
+                  last=e
+                  time.sleep(10*(i+1))
+          else:
+              raise SystemExit(f"failed {url}: {last}")
+          data=p.get("data") if isinstance(p,dict) else None
+          if not isinstance(data,list): raise SystemExit("unexpected payload")
+          out={"offset":offset,"advertisedTotal":int(h["x-total-count"]) if h.get("x-total-count") else None,"data":data}
+          fn=f"chargy-locations-{offset}.json"
+          open(fn,"w").write(json.dumps(out,separators=(",",":")))
+          print(json.dumps({"offset":offset,"rows":len(data),"total":out["advertisedTotal"]}))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chargy-locations-${{ matrix.offset }}
+          path: chargy-locations-${{ matrix.offset }}.json
+          retention-days: 1
+
+  tariffs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch tariffs
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,urllib.request
+          url="https://char.gy/open-ocpi/tariffs?limit=100&offset=0"
+          req=urllib.request.Request(url,headers={"User-Agent":"TeslaChargeCompanion/9 char.gy tariff shard","Accept":"application/json"})
+          with urllib.request.urlopen(req,timeout=75) as r:
+              p=json.loads(r.read().decode("utf-8"))
+          open("chargy-tariffs.json","w").write(json.dumps(p,separators=(",",":")))
+          print("tariffs",len(p.get("data",[])))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chargy-tariffs
+          path: chargy-tariffs.json
+          retention-days: 1
+
+  merge:
+    needs: [locations, tariffs]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: chargy-*
+          path: artifacts
+          merge-multiple: true
+      - name: Merge and validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/national reports/uk
+          python - <<'PY'
+          import json,gzip,glob
+          from pathlib import Path
+          from datetime import datetime,timezone
+          rows=[]; totals=[]; shard_meta=[]; seen=set()
+          for fn in sorted(glob.glob("artifacts/chargy-locations-*.json")):
+              p=json.load(open(fn))
+              totals.append(p.get("advertisedTotal"))
+              shard_meta.append({"offset":p["offset"],"rows":len(p["data"])})
+              for x in p["data"]:
+                  key=str(x.get("id"))
+                  if key not in seen:
+                      seen.add(key); rows.append(x)
+          tp=json.load(open("artifacts/chargy-tariffs.json"))
+          tariffs=tp.get("data",[])
+          advertised=max([x for x in totals if isinstance(x,int)],default=None)
+          # Only retain rows inside current upstream total in case the final 500-page extends past it.
+          if advertised is not None and len(rows)>advertised:
+              rows=rows[:advertised]
+          evses=connectors=0; refs=set(); parties=set(); statuses={}
+          for loc in rows:
+              if loc.get("party_id"): parties.add(str(loc["party_id"]))
+              for ev in loc.get("evses") or []:
+                  if not isinstance(ev,dict): continue
+                  evses+=1; st=str(ev.get("status") or "UNKNOWN"); statuses[st]=statuses.get(st,0)+1
+                  for con in ev.get("connectors") or []:
+                      if not isinstance(con,dict): continue
+                      connectors+=1
+                      for tid in con.get("tariff_ids") or []: refs.add(str(tid))
+          tids={str(t.get("id")) for t in tariffs if isinstance(t,dict) and t.get("id") is not None}
+          missing=sorted(refs-tids)
+          complete=bool(rows) and advertised is not None and len(rows)>=advertised and not missing
+          retrieved=datetime.now(timezone.utc).isoformat()
+          out={"country":"GB","network":"char.gy","retrievedAt":retrieved,"source":"official anonymous OCPI-shaped open data","locations":rows,"tariffs":tariffs}
+          report={"country":"GB","network":"char.gy","retrievedAt":retrieved,"locations":len(rows),"advertisedTotal":advertised,
+                  "evses":evses,"connectors":connectors,"tariffs":len(tariffs),"tariffIdsReferenced":len(refs),
+                  "missingTariffIds":missing,"partyIdsObserved":sorted(parties),"evseStatuses":statuses,
+                  "shards":shard_meta,"coverageComplete":complete,"status":"complete" if complete else "partial"}
+          with gzip.open("data/national/uk_chargy_open_data.json.gz","wt",encoding="utf-8") as g:
+              json.dump(out,g,ensure_ascii=False,separators=(",",":"))
+          Path("reports/uk/chargy-sharded-latest.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          if not complete: raise SystemExit(2)
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/uk_chargy_open_data.json.gz reports/uk/chargy-sharded-latest.json
+          git commit -m "data(uk): collect char.gy via sharded open feed [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
