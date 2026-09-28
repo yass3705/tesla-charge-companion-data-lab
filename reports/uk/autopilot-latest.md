@@ -1,6 +1,6 @@
 # UK TCC zero-cost autopilot
 
-- Generated: 2026-09-28T14:26:42Z
+- Generated: 2026-09-28T19:31:05Z
 - AI/API cost: **£0 / €0** (AI API calls: 0)
 - First pass complete: **True**
 - Canonical CPOs: **46**
