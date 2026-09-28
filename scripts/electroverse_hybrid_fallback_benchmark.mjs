@@ -3,7 +3,7 @@ import {DirectElectroverseClient,SINGLE_LOCATION_QUERY} from './lib/electroverse
 const client=new DirectElectroverseClient({timeoutMs:60000});
 const files=(await fs.readdir('data/electroverse/tariff_cache')).filter(x=>/^shard-.*\.json$/.test(x)).sort();
 const pks=[];
-for(const f of files){const j=JSON.parse(await fs.readFile('data/electroverse/tariff_cache/'+f,'utf8'));for(const s of Object.values(j.stations||{})){if(s.electroverseLocationPk){pks.push(String(s.electroverseLocationPk));if(pks.length>=500)break}}if(pks.length>=500)break}
+for(const f of files){const j=JSON.parse(await fs.readFile('data/electroverse/tariff_cache/'+f,'utf8'));for(const s of Object.values(j.stations||{})){if(s.electroverseLocationPk){pks.push(String(s.electroverseLocationPk));if(pks.length>=1000)break}}if(pks.length>=1000)break}
 const PC='__typename formattedValue';
 const F=`chargingLocationPk evses { edges { node { connectors { edges { node { isChargingFree priceComponents { ${PC} } complexPricingDetail { currency restrictions { restrictionTypes timeRestrictions { startTime endTime } durationRestrictions { minDurationSeconds maxDurationSeconds } dateRestrictions { startDate endDate } weekdayRestrictions { daysOfWeek } priceComponents { ${PC} } } } } } } } } }`;
 const batchQ=g=>`query Q{ ${g.map((pk,i)=>`s${i}:chargingLocation(pk:${JSON.stringify(pk)}){${F}}`).join('\n')} }`;
