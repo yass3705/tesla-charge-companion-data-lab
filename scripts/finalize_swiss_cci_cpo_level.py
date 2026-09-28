@@ -35,7 +35,7 @@ def walk(x,owner=None):
   if isinstance(x,dict):
     if isinstance(x.get("OperatorID"),str): owner=x["OperatorID"]
     eid=x.get("EvseID")
-    if owner=="CH*CCI" and isinstance(eid,str): current[eid]=x
+    if isinstance(eid,str) and eid.startswith("CH*CCI*"): current[eid]=x
     for v in x.values(): walk(v,owner)
   elif isinstance(x,list):
     for v in x: walk(v,owner)
@@ -68,7 +68,7 @@ payload={"schemaVersion":1,"country":"CH","cpo":"MOVE Mobility","operatorId":"CH
 OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 final={"schemaVersion":1,"country":"CH","cpo":"MOVE Mobility","operatorId":"CH*CCI","status":"complete" if not unresolved else "partial","updatedAt":now,
 "nationalEvseCount":len(current),"pricedEvseCount":len(rows),"unresolvedEvseCount":len(unresolved),
-"method":"Current national CH*CCI scope + explicit Move non-roaming CPO-level tariff schedules from current Swiss tariff source, exact AC/DC matching",
+"method":"Current national CH*CCI EVSE-prefix scope + explicit Move non-roaming CPO-level tariff schedules from current Swiss tariff source, exact AC/DC matching",
 "policy":payload["policy"],"productionSource":str(OUT)}
 DOC.write_text(json.dumps(final,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps(final,ensure_ascii=False,indent=2))
