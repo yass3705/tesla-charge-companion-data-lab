@@ -42,9 +42,9 @@ jobs:
 
           def sanitize(text):
               text=str(text)
-              text=re.sub(r'(?i)([?&](?:code|key|token|sig|signature|subscription[-_]?key|api[-_]?key)=)[^&#"\\'\\s]+', r'\\1[REDACTED]', text)
-              text=re.sub(r'(?i)((?:api[-_ ]?key|function[-_ ]?key|token|secret|client[-_ ]?secret|subscription[-_ ]?key)["\\']?\\s*[:=]\\s*["\\']?)[A-Za-z0-9._~+/-]{16,}', r'\\1[REDACTED]', text)
-              text=re.sub(r'(?i)(x-functions-key["\\']?\\s*[:=]\\s*["\\']?)[^"\\'\\s,}]+', r'\\1[REDACTED]', text)
+              text=re.sub(r"(?i)([?&](?:code|key|token|sig|signature|subscription[-_]?key|api[-_]?key)=)[^&#\\s]+", r"\\1[REDACTED]", text)
+              text=re.sub(r"(?i)((?:api[-_ ]?key|function[-_ ]?key|token|secret|client[-_ ]?secret|subscription[-_ ]?key)[^A-Za-z0-9]{0,8})[A-Za-z0-9._~+/-]{16,}", r"\\1[REDACTED]", text)
+              text=re.sub(r"(?i)(x-functions-key[^A-Za-z0-9]{0,8})[^\\s,}&]+", r"\\1[REDACTED]", text)
               return text
           out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"targets":[]}
           for name,url in targets:
@@ -90,8 +90,9 @@ jobs:
               except Exception as e:
                   item["error"]=f"{type(e).__name__}: {e}"
               out["targets"].append(item)
-          Path("reports/uk/public-portal-endpoint-discovery-batch-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-          print(json.dumps(out,ensure_ascii=False,indent=2)[:180000])
+          rendered=sanitize(json.dumps(out,ensure_ascii=False,indent=2))
+          Path("reports/uk/public-portal-endpoint-discovery-batch-latest.json").write_text(rendered+"\n",encoding="utf-8")
+          print(rendered[:180000])
           PY
       - name: Publish
         run: |
