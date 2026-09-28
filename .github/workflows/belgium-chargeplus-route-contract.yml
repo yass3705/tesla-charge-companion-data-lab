@@ -1,0 +1,31 @@
+name: Belgium ChargePlus route contract
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-chargeplus-route-contract.txt"
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/belgium_chargeplus_route_contract.py
+      - name: Persist sanitized route contract
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium/totalenergies/chargeplus-route-contract-2026-09-28.json
+          git commit -m "Extract Charge+ POI pricing route contract" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep 3
+          done
+          exit 1
