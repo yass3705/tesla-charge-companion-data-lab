@@ -12,6 +12,7 @@ SOURCES=[
 {'name':'Dragon Charging','party_ids':['DGN'],'locations':'https://api.dragoncharging.online/development/pcpr/locations','tariffs':'https://api.dragoncharging.online/development/pcpr/tariffs','mode':'single'},
 {'name':'PoGo Charge','party_ids':['POG'],'locations':'https://info.smartcharging.uk/public_feed/locations/4009','tariffs':'https://info.smartcharging.uk/public_feed/locations/4009/tariffs','mode':'pogo_hybrid'},
 {'name':'Arnold Clark Charge','party_ids':['ACC'],'locations':'https://api.fuuse.io/opendata/e6397b95-1624-49cd-824d-ab2f9dfe7294/location','tariffs':'https://api.fuuse.io/opendata/e6397b95-1624-49cd-824d-ab2f9dfe7294/tariff','mode':'single'},
+{'name':'ScottishPower Recharge','party_ids':[],'locations':'https://api.fuuse.io/opendata/e11a667d-c56a-468f-b8d3-a50b41628292/location','tariffs':'https://api.fuuse.io/opendata/e11a667d-c56a-468f-b8d3-a50b41628292/tariff','mode':'single'},
 {'name':'Urban Fox Networks','party_ids':['UFX'],'locations':'https://api.urbanfox.network/api/opendata/locations','tariffs':'https://api.urbanfox.network/api/opendata/tariffs','mode':'offset'},
 {'name':'ChargePlace Scotland','party_ids':['CPS'],'locations':'https://info.smartcharging.uk/public_feed/locations/2463','tariffs':'https://info.smartcharging.uk/public_feed/locations/2463/tariffs','mode':'offset'},
 {'name':'Evolt Network','party_ids':['SSM','PO2','CP2','SS2'],'locations':'https://info.smartcharging.uk/public_feed/locations/3666','tariffs':'https://info.smartcharging.uk/public_feed/locations/3666/tariffs','mode':'offset'}]
