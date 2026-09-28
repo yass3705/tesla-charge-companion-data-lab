@@ -1,0 +1,76 @@
+name: UK BeEV public map probe
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-beev-public-map-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-beev-public-map-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Probe Be.EV public website API
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import json,urllib.request
+          from datetime import datetime,timezone
+          from pathlib import Path
+          url="https://be-ev.co.uk/api/sites/GetMarkersWithFilters?Availability=o:0,a:0,&ChargerType=f:0,r:0,ur:0&ConnectorType=type2:0,ccs:0,chademo:0&Facilities=RESTAURANT:0,PARKING_LOT:0,SPORT:0,CAFE:0,HOTEL:0,MALL:0,SUPERMARKET:0,TRAIN_STATION:0,RECREATION_AREA:0,NATURE:0&source=fuuse"
+          req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 TeslaChargeCompanion/9","Accept":"application/json","Referer":"https://be-ev.co.uk/"})
+          with urllib.request.urlopen(req,timeout=60) as r:
+              p=json.loads(r.read().decode("utf-8"))
+          rows=p if isinstance(p,list) else []
+          status_counts={}
+          tariff_values={}
+          keys=set()
+          samples=[]
+          for x in rows:
+              if not isinstance(x,dict): continue
+              keys.update(x.keys())
+              st=str(x.get("status"))
+              status_counts[st]=status_counts.get(st,0)+1
+              t=x.get("tariff")
+              if isinstance(t,dict):
+                  key=f"{t.get('amount')} {t.get('currency')}"
+                  tariff_values[key]=tariff_values.get(key,0)+1
+              if len(samples)<5:
+                  samples.append(x)
+          out={
+            "country":"GB","network":"Be.EV","retrievedAt":datetime.now(timezone.utc).isoformat(),
+            "url":url,"count":len(rows),"keys":sorted(keys),"statusCounts":status_counts,
+            "tariffValues":tariff_values,"samples":samples,
+            "source":"Be.EV public website map API"
+          }
+          Path("reports/uk/beev-public-map-probe-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({k:v for k,v in out.items() if k!="samples"},ensure_ascii=False,indent=2))
+          PY
+      - name: Publish report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/beev-public-map-probe-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): probe Be.EV public map API [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
