@@ -1,0 +1,70 @@
+name: Switzerland AVIA guest pricing
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "20 23 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: switzerland-avia-guest-pricing
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    env:
+      AVIA_APIM_SUBSCRIPTION_KEY: ${{ secrets.AVIA_APIM_SUBSCRIPTION_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate collector syntax
+        run: python3 -m py_compile scripts/collect_avia_switzerland_guest.py
+
+      - name: Check AVIA runtime secret
+        id: secret
+        shell: bash
+        run: |
+          if [ -z "$AVIA_APIM_SUBSCRIPTION_KEY" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "AVIA_APIM_SUBSCRIPTION_KEY is not configured; skipping collection."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Collect AVIA Switzerland guest prices
+        if: steps.secret.outputs.configured == 'true'
+        run: python3 scripts/collect_avia_switzerland_guest.py
+
+      - name: Sanity check sanitized output
+        if: steps.secret.outputs.configured == 'true'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          p="data/switzerland/avia-guest-direct-tariffs.json"
+          d=json.load(open(p,encoding="utf-8"))
+          assert d["country"]=="CH"
+          assert d["operatorId"]=="CH*AVI"
+          assert d["counts"]["pricedConnectors"]>0
+          raw=open(p,encoding="utf-8").read().lower()
+          for forbidden in ("subscription-key","authorization","bearer ","ocp-apim"):
+              assert forbidden not in raw, forbidden
+          print(d["counts"])
+          PY
+
+      - name: Commit refreshed sanitized AVIA prices
+        if: steps.secret.outputs.configured == 'true'
+        shell: bash
+        run: |
+          if git diff --quiet -- data/switzerland/avia-guest-direct-tariffs.json; then
+            echo "No AVIA data changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/switzerland/avia-guest-direct-tariffs.json
+          git commit -m "data(ch): refresh AVIA guest exact prices"
+          git push
