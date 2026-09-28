@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 320,
+  "date": "2026-09-28",
+  "purpose": "Correct run314 CGS tariff interpretation while preserving exact KOS subset.",
+  "supersedes": [
+    {
+      "report": "data/reports/italy_cpo_reconciliation_20260928_run314.json",
+      "scope": "CGS tariff/rankability only"
+    }
+  ],
+  "decisions": [
+    {
+      "partyId": "KOS",
+      "status": "partial",
+      "inventory": {
+        "evse": 54,
+        "stations": 18
+      },
+      "rankableEvse": 6,
+      "failClosedEvse": 48,
+      "tariff": "0.67 EUR/kWh direct",
+      "scope": "Exact Vahrn/Varna HYC300 subset: 3 chargers / 6 CCS EVSE at 300 kW",
+      "conclusion": "preserved from run314"
+    },
+    {
+      "partyId": "CGS",
+      "status": "partial",
+      "inventory": {
+        "evse": 60,
+        "stations": 27
+      },
+      "rankableEvse": 0,
+      "failClosedEvse": 60,
+      "topology": {
+        "acType2": 59,
+        "dc25": 1
+      },
+      "withdrawn": "run314 59 AC at 0.67 EUR/kWh",
+      "reason": "First-party 0.67 EUR/kWh is worded for Cogeser customers; QR spot charging is described separately and no evidence proves tariff equivalence.",
+      "resumeCondition": "Obtain exact Cogeser Quick QR/ad-hoc price payload or first-party statement explicitly proving the customer tariff applies to unauthenticated QR spot charging. PUN topology alone (59 AC Type2 + 1 DC25) is insufficient."
+    }
+  ],
+  "coherence": {
+    "currentPunPartyIds": 92,
+    "treated": 24,
+    "partialCurrent": 68,
+    "active": 0,
+    "setAside": 0,
+    "unreconciled": 0,
+    "arithmeticOk": true
+  }
+}
