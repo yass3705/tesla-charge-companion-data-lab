@@ -84,6 +84,7 @@ sources=[
 ("Electra second pass","data/switzerland/electra-direct-tariffs-second-pass.json"),
 ("MOVE second pass","data/switzerland/move-direct-tariffs-second-pass.json"),
 ("IWB second pass","data/switzerland/iwb-direct-tariffs-second-pass.json"),
+("Energie360 final residual","docs/switzerland-energie360-finalization-2026-09-28.json"),
 ("GOFAST official","data/switzerland/gofast-official-direct-tariffs.json"),
 ]
 classifications=[
@@ -93,6 +94,9 @@ classifications=[
 ("BCK restricted","data/switzerland/bck-restricted-direct-classification.json"),
 ("IWB restricted","docs/switzerland-iwb-owner-reconciliation-2026-09-28.json"),
 ("Swisscharge restricted","docs/switzerland-swisscharge-prefix-closeout-2026-09-28.json"),
+("Plenitude restricted","data/switzerland/plenitude-official-direct-tariffs.json"),
+("Energie360 finalization","docs/switzerland-energie360-finalization-2026-09-28.json"),
+("ewz finalization","docs/switzerland-ewz-finalization-2026-09-28.json"),
 ]
 
 def ids_from(obj):
@@ -109,6 +113,14 @@ def ids_from(obj):
 
 def source_rows(obj):
     """Return only production-priced rows; never recurse through unresolved evidence when a source has explicit evses/stations."""
+    if isinstance(obj,dict) and isinstance((obj.get("resolution") or {}).get("classifications"),list):
+        rows=[]
+        for cl in obj["resolution"]["classifications"]:
+            if not isinstance(cl,dict) or not (cl.get("exactPortalTariffs") or []): continue
+            for eid in cl.get("evseIds") or []:
+                if isinstance(eid,str):
+                    rows.append((eid,{"evseId":eid,"classification":cl.get("classification"),"exactPortalTariffs":cl.get("exactPortalTariffs"),"stationId":cl.get("chargingStationId"),"stationName":cl.get("name")}))
+        if rows: return rows
     if isinstance(obj,dict) and isinstance(obj.get("evses"),list):
         rows=[]
         for x in obj["evses"]:
@@ -162,6 +174,8 @@ def node_has_real_tariff(node):
         return True
     if isinstance(node.get("priceTuple"),list) and any(v is not None for v in node["priceTuple"]):
         return True
+    if isinstance(node.get("exactPortalTariffs"),list) and node["exactPortalTariffs"]:
+        return True
     # Explicit free tariff is still a deterministic price.
     if node.get("tariff") == 0 or node.get("directPrice") == 0:
         return True
@@ -200,6 +214,15 @@ for label,fp in classifications:
         rows=((obj.get("classes") or {}).get("restricted_no_auth") or [])
     elif label=="Swisscharge restricted":
         rows=obj.get("classified") or []
+    elif label=="Plenitude restricted":
+        rows=obj.get("classifiedNoPublicDirectTariff") or []
+    elif label in ("Energie360 finalization","ewz finalization"):
+        allowed={"public_no_direct_tariff_published","restricted_no_public_direct_tariff","nonproduction_test_or_stock"}
+        rows=[]
+        for cl in ((obj.get("resolution") or {}).get("classifications") or []):
+            if isinstance(cl,dict) and cl.get("classification") in allowed:
+                for eid in cl.get("evseIds") or []:
+                    if isinstance(eid,str): rows.append({"evseId":eid,"classification":"no_public_direct_tariff","originalClassification":cl.get("classification")})
     else:
         rows=[node for _,node in ids_from(obj) if isinstance(node,dict) and node.get("classification")=="no_public_direct_tariff"]
     for node in rows:
