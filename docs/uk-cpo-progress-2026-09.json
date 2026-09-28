@@ -393,13 +393,14 @@
     },
     {
       "name": "Qwello",
-      "status": "partial_inventory_geolocation",
-      "access": "anonymous_public_tariff_json",
-      "evidence": "Qwello public tariff frontend resolves to a public JSON feed. Data Lab recovered 96 UK stations, 305 GB EVSE IDs and tariff objects for all 96 stations in GBP. Rows contain EVSE IDs, location/city and tariffs but no latitude/longitude.",
-      "next": "Pricing layer complete. Join the 305 GB EVSE IDs to a geolocated inventory/app feed; do not rediscover tariff source.",
+      "status": "complete",
+      "access": "anonymous_public_springspinne_evse_api_plus_public_tariff_view",
+      "evidence": "Validated Data Lab full UK collection: 96 tariff-view stations, 305/305 EVSEs recovered, 305 geocoded, 305 priced, 359 connectors, no failures or ID mismatches.",
+      "next": "validated; refresh public tariff-view and per-EVSE Springspinne endpoint on schedule.",
       "tariffsEndpoint": "https://tariff-locations-file-production.s3.eu-central-1.amazonaws.com/tariff-view.json",
-      "dataset": "data/national/uk_qwello_tariff_view.json.gz",
-      "report": "reports/uk/qwello-tariff-view-latest.json"
+      "dataset": "data/national/uk_qwello_public_evses.json.gz",
+      "report": "reports/uk/qwello-public-evses-latest.json",
+      "locationsEndpoint": "https://api.qwello.eu/springspinne/v1/pub/evses/{evse_id}"
     },
     {
       "name": "ChargePoint",
@@ -2220,7 +2221,8 @@
       "Fastned UK",
       "IONITY UK",
       "3ti Energy Hubs",
-      "Osprey Charging"
+      "Osprey Charging",
+      "Qwello"
     ],
     "externalAccessBlocked": [
       {
@@ -2645,6 +2647,16 @@
       "tenant": "https://cp.connektcharging.com",
       "publicReadRouteFound": false,
       "report": "reports/uk/connekt-ampeco-public-route-probe-latest.json"
+    },
+    "qwelloFinalization": {
+      "state": "complete",
+      "stations": 96,
+      "evses": 305,
+      "geocoded": 305,
+      "priced": 305,
+      "connectors": 359,
+      "failures": 0,
+      "report": "reports/uk/qwello-public-evses-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
