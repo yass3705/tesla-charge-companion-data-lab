@@ -16,7 +16,14 @@ with zipfile.ZipFile(xapk) as z:z.extractall(xr)
 
 apks=list(xr.rglob("*.apk"))
 if not apks: raise SystemExit("no APK in XAPK")
-base=max(apks,key=lambda p:p.stat().st_size)
+# Firebase resources live in the base APK, not necessarily the largest split.
+def is_base_apk(p):
+    name=p.name.lower()
+    return name in ("base.apk","com.total.europe.apk") or ("base" in name and "config." not in name)
+base=next((p for p in apks if is_base_apk(p)), None)
+if base is None:
+    # Probe every split and select the one that actually exposes google_app_id.
+    base=apks[0]
 wanted=("google_app_id","google_api_key","project_id","gcm_defaultSenderId","firebase_database_url")
 
 def aapt_values(apk):
@@ -60,6 +67,18 @@ def aapt_values(apk):
     return vals,debug
 
 vals,extract_debug=aapt_values(base)
+if not vals.get("google_app_id"):
+    merged_debug={}
+    for apk in apks:
+        v,d=aapt_values(apk)
+        merged_debug[apk.name]=d
+        if v.get("google_app_id"):
+            base=apk
+            vals=v
+            extract_debug=d
+            break
+    if merged_debug:
+        extract_debug={"selectedApk":base.name,"perApk":merged_debug,"selectedDebug":extract_debug}
 app_id=vals.get("google_app_id")
 api_key=vals.get("google_api_key")
 project_id=vals.get("project_id")
