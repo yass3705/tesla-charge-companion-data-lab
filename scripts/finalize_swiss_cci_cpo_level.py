@@ -5,6 +5,7 @@ from datetime import datetime,timezone
 
 NAT="https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json"
 SRC=Path("data/switzerland/cci-direct-tariffs-second-pass.json")
+SOCSRC=Path("data/switzerland/soc-direct-tariffs.json")
 OUT=Path("data/switzerland/cci-move-cpo-tariffs-national.json")
 DOC=Path("docs/switzerland-cci-finalization-2026-09-28.json")
 
@@ -13,10 +14,11 @@ with urllib.request.urlopen(req,timeout=120) as r: raw=r.read()
 if len(raw)>=2 and raw[0]==31 and raw[1]==139: raw=gzip.decompress(raw)
 nat=json.loads(raw.decode("utf-8"))
 src=json.loads(SRC.read_text(encoding="utf-8"))
+socsrc=json.loads(SOCSRC.read_text(encoding="utf-8"))
 
 # Collect only explicit non-roaming CPO-level Move tariff details whose source says prices are not station-specific.
 schedules={}
-for st in src.get("stations") or []:
+for st in (src.get("stations") or []) + (socsrc.get("stations") or []):
   for cp in st.get("chargePoints") or []:
     for t in cp.get("directTariffs") or []:
       a=t.get("attributes") or {}; ta=t.get("tariff",{}).get("attributes") or {}
@@ -82,7 +84,7 @@ for eid,rec in sorted(current.items()):
 
 now=datetime.now(timezone.utc).isoformat()
 payload={"schemaVersion":1,"country":"CH","cpo":"MOVE Mobility","operatorId":"CH*CCI","generatedAt":now,
-"source":"data/switzerland/cci-direct-tariffs-second-pass.json","nationalSource":NAT,
+"source":["data/switzerland/cci-direct-tariffs-second-pass.json","data/switzerland/soc-direct-tariffs.json"],"nationalSource":NAT,
 "tariffSchedules":list(schedules.values()),"nationalEvseCount":len(current),"resolvedEvseCount":len(rows),"unresolvedEvseCount":len(unresolved),
 "policy":"Apply only explicit non-roaming Move CPO-level tariffs where source metadata says prices_per_station_available=false, matched to each current national EVSE's own AC/DC type. This is CPO-level tariff application, not cross-station price extrapolation.",
 "evses":rows,"unresolved":unresolved}
