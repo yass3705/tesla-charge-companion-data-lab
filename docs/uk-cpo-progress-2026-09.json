@@ -195,10 +195,12 @@
     },
     {
       "name": "Wenea",
-      "status": "partial",
-      "access": "request_then_download",
-      "evidence": "Wenea UK has an Open Data access-request flow and a post-request download page.",
-      "next": "second pass: resolve downloadable artifact or endpoint without user credentials."
+      "status": "complete",
+      "access": "official_public_zip_plus_official_direct_pricing",
+      "evidence": "Official Wenea open-data ZIP contains 210 UK locations, 628 EVSEs and 631 connectors. The upstream UK connector tariff id is missing from tariffs.json, but all 210 UK locations are owned/operated by Wenea Mobile Energy and every connector power falls within Wenea's current published direct PAYG bands; zero unresolved connectors after exact power-band fallback.",
+      "next": "validated; retain upstream missing tariff-id audit and refresh official tariff page + ZIP.",
+      "dataset": "data/national/uk_wenea_open_data.json.gz",
+      "report": "reports/uk/wenea-open-data-latest.json"
     },
     {
       "name": "evyve",
@@ -2179,7 +2181,8 @@
       "ParkRecharge",
       "Mer UK",
       "IONITY",
-      "Fastned"
+      "Fastned",
+      "Wenea"
     ],
     "externalAccessBlocked": [
       {
@@ -2470,6 +2473,21 @@
       },
       "dataset": "data/national/fastned_direct_stations_uk.json.gz",
       "report": "reports/uk/fastned-direct-uk-latest.json"
+    },
+    "weneaFinalization": {
+      "state": "complete_with_official_direct_price_fallback",
+      "ukLocations": 210,
+      "evses": 628,
+      "connectors": 631,
+      "upstreamMissingTariffId": "849a30c3-81bf-4c62-b01b-ca9527289f75",
+      "unresolvedPowerConnectors": 0,
+      "directPricesGbpPerKwh": {
+        "AC": 0.55,
+        "DC": 0.75,
+        "HPC": 0.85
+      },
+      "dataset": "data/national/uk_wenea_open_data.json.gz",
+      "report": "reports/uk/wenea-open-data-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
