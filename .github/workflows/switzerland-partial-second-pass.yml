@@ -1,0 +1,104 @@
+name: Switzerland partial CPO second pass
+
+on:
+  workflow_run:
+    workflows: ["Switzerland untreated CPO first pass"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - id: build
+        shell: python
+        run: |
+          import glob,json,os,re
+          complete={'CH*CCC','CH*360','CH*POW','CH*GFT','CH*EWZ','CH*ELC','CH*AGR'}
+          skip={'CH*TSL','CH*SUI'}
+          rows=[]
+          for p in sorted(glob.glob('docs/switzerland-*-first-pass-2026-09-28.json')):
+              try:d=json.load(open(p,encoding='utf-8'))
+              except:continue
+              op=d.get('operatorId')
+              if not op or op in complete or op in skip or d.get('status')=='complete':
+                  continue
+              slug=re.sub(r'^switzerland-|\-first-pass-2026-09-28\.json$','',p.split('/')[-1])
+              rows.append({'operator':op,'slug':slug,'name':d.get('cpo') or op})
+          # National reconciliation can invalidate apparent first-pass completes (e.g. Lidl/IOY).
+          try:
+              r=json.load(open('docs/switzerland-first-pass-national-reconciliation-2026-09-28.json',encoding='utf-8'))
+              byop={x.get('operatorId'):x for x in r.get('operators',[])}
+              for op,x in byop.items():
+                  if op in complete or op in skip or x.get('status')=='complete':continue
+                  if not any(y['operator']==op for y in rows):
+                      f=x.get('file','').split('/')[-1]
+                      slug=f.replace('-direct-tariffs.json','')
+                      rows.append({'operator':op,'slug':slug,'name':op})
+          except Exception:pass
+          rows=sorted({x['operator']:x for x in rows}.values(),key=lambda x:x['operator'])
+          matrix=json.dumps({'include':rows},separators=(',',':'))
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write('matrix='+matrix+'\n')
+          print(json.dumps(rows,indent=2))
+
+  scan:
+    needs: discover
+    if: ${{ needs.discover.outputs.matrix != '{"include":[]}' }}
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Second-pass collect
+        run: |
+          set -euo pipefail
+          mkdir -p data/switzerland docs
+          python3 scripts/collect_swiss_atlas_cpo.py \
+            --operator '${{ matrix.operator }}' \
+            --name '${{ matrix.name }}' \
+            --output 'data/switzerland/${{ matrix.slug }}-direct-tariffs-second-pass.json' \
+            --delay 0.12 \
+            --provider-customer-tariffs
+      - name: Write second-pass summary
+        shell: python
+        run: |
+          import json,pathlib
+          slug='${{ matrix.slug }}'
+          p=pathlib.Path(f'data/switzerland/{slug}-direct-tariffs-second-pass.json')
+          x=json.loads(p.read_text(encoding='utf-8'));s=x['summary']
+          doc={'schemaVersion':1,'country':'CH','operatorId':'${{ matrix.operator }}','cpo':'${{ matrix.name }}',
+               'pass':'second','status':s['status'],'summary':s,
+               'method':'Swiss eMobility Ladepreisatlas second pass with provider_customer_tariffs=true; direct-only is_roaming=false and EMP=CPO',
+               'policy':'No cross-station extrapolation. Provider/customer-only offers are not promoted unless directly usable in TCC.',
+               'productionSource':str(p),'unresolved':x.get('unresolved',[])}
+          pathlib.Path(f'docs/switzerland-{slug}-second-pass-2026-09-28.json').write_text(json.dumps(doc,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+      - name: Persist second-pass result
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 'data/switzerland/${{ matrix.slug }}-direct-tariffs-second-pass.json' 'docs/switzerland-${{ matrix.slug }}-second-pass-2026-09-28.json'
+          git commit -m 'data(switzerland): second-pass ${{ matrix.operator }}' || exit 0
+          for attempt in 1 2 3 4 5 6 7 8; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
