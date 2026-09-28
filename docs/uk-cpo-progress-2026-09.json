@@ -318,8 +318,8 @@
       "name": "ParkRecharge",
       "status": "complete",
       "access": "official_public_webapp_api",
-      "evidence": "Validated Data Lab collection from ParkRecharge public webapp map API: 459 geocoded devices, 839 connectors, device status and Fees fields available per device. Public client configuration is read at runtime and not persisted.",
-      "next": "validated; include in scheduled UK aggregation.",
+      "evidence": "Official ParkRecharge public webapp exposes 459 geocoded devices and 839 connectors. Every device includes an explicit Fees object; 429 have a non-zero fee component and 30 explicitly publish zero fees.",
+      "next": "validated; refresh via public webapp config/API without persisting the public client key.",
       "dataset": "data/national/uk_parkrecharge_public_map.json.gz",
       "report": "reports/uk/parkrecharge-public-map-latest.json"
     },
@@ -2414,12 +2414,8 @@
       "devices": 459,
       "connectors": 839,
       "geocodedDevices": 459,
-      "deviceStatuses": {
-        "Available": 410,
-        "Offline": 48,
-        "Faulted": 1
-      },
-      "pricing": "Fees object captured per device; zero-valued fees preserved as valid source values",
+      "explicitNonZeroFeeDevices": 429,
+      "explicitZeroFeeDevices": 30,
       "dataset": "data/national/uk_parkrecharge_public_map.json.gz",
       "report": "reports/uk/parkrecharge-public-map-latest.json"
     },
