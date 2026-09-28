@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Data Lab migration verification: canonical UK collector now runs from tesla-charge-companion-data-lab.
 import argparse,json,time,urllib.parse,urllib.request,urllib.error
 from datetime import datetime,timezone
 from pathlib import Path
