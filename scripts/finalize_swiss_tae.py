@@ -23,11 +23,22 @@ def walk(o):
         for v in o: yield from walk(v)
 
 nat=getj(NATIONAL)
+owned={}
+def collect_owned(o,owner=None):
+    if isinstance(o,dict):
+        if isinstance(o.get("OperatorID"),str) and o["OperatorID"].strip():
+            owner=o["OperatorID"].strip()
+        eid=o.get("EvseID")
+        if owner==PREFIX and isinstance(eid,str) and eid.strip():
+            owned[eid.strip()]=o
+        for v in o.values():
+            collect_owned(v,owner)
+    elif isinstance(o,list):
+        for v in o:
+            collect_owned(v,owner)
+collect_owned(nat)
 rows=[]; unresolved=[]
-for d in walk(nat):
-    if not isinstance(d,dict) or d.get("OperatorID")!=PREFIX: continue
-    eid=d.get("EvseID")
-    if not isinstance(eid,str): continue
+for eid,d in sorted(owned.items()):
     powers=[]
     for cf in d.get("ChargingFacilities") or []:
         try:
