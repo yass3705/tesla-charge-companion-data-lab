@@ -497,7 +497,8 @@
     "First pass over all 44 Zapmap-seed non-Tesla networks completed on 2026-09-27. This does NOT mean UK country coverage is complete; next step is EV Roam registry reconciliation to add CPOs absent from the Zapmap major-network seed, then second-pass data extraction.",
     "EV Roam full register fetched 2026-09-27: 108 GB operator IDs / 99 distinct organisations. The previous 44/44 completion remains only the Zapmap major-network seed pass; country-level first pass is reopened until EV Roam candidates are classified and all public-network candidates receive a first-pass investigation.",
     "EV Roam identity classification completed conservatively. 'Classification complete' means every registry ID has a role/status label, not that every uncertain identity has been fully resolved. Only confirmed/strong public networks should enter the TCC public-CPO coverage denominator.",
-    "Country-level first pass over every EV Roam identity classified as confirmed/strong public-network or public-CPO candidate completed. Remaining work is second-pass resolution of partials and extraction/normalisation of source-identified networks; non-core/fleet/backend/legacy identities stay outside the public-CPO denominator unless new evidence emerges."
+    "Country-level first pass over every EV Roam identity classified as confirmed/strong public-network or public-CPO candidate completed. Remaining work is second-pass resolution of partials and extraction/normalisation of source-identified networks; non-core/fleet/backend/legacy identities stay outside the public-CPO denominator unless new evidence emerges.",
+    "UK canonical authority migrated to yass3705/tesla-charge-companion-data-lab on 2026-09-28; continue UK work here, not in tesla-stations-updater-test."
   ],
   "evRoamGbOperators": [
     {
@@ -1537,11 +1538,25 @@
         "operatorIds": [
           "GB*DGN"
         ],
-        "status": "bounded_dynamic_backend_required",
+        "status": "complete_source_validated",
         "evidence": "Current Zapmap profile reports 691 chargers / 171 locations in Aug 2026 and public access, but no authoritative machine-readable tariff endpoint surfaced.",
-        "next": "inspect dragoncharging.online PWA network calls.",
+        "next": "No further investigation required unless source behaviour changes. Add to daily UK TCC ingestion; derive power from voltage*amperage when max_electric_power is null.",
         "backend": "Dragon Charging web/PWA",
-        "blocker": "Official web-app exists and exposes charger use, but no indexed PCPR/open-data endpoint was found after official-domain and API searches."
+        "blocker": "Official web-app exists and exposes charger use, but no indexed PCPR/open-data endpoint was found after official-domain and API searches.",
+        "access": "anonymous operator PCPR API",
+        "locationsEndpoint": "https://api.dragoncharging.online/development/pcpr/locations",
+        "tariffsEndpoint": "https://api.dragoncharging.online/development/pcpr/tariffs",
+        "validation": "Resolved 2026-09-28 via Dragon Charging's Clenergy white-label PCPR endpoints. Live anonymous validation returned 351 location records, 706 EVSE/connectors, party_id DGN, live statuses and connector tariff_ids. Tariff feed returned 16 GBP tariffs; all 16 connector-linked tariff_ids resolve exactly, with zero missing and zero orphan tariff IDs. Connector max_electric_power is often null but voltage/amperage are present, so power can be derived where needed without tariff extrapolation.",
+        "metrics": {
+          "locations": 351,
+          "evses": 706,
+          "connectors": 706,
+          "tariffs": 16,
+          "linkedTariffIds": 16,
+          "resolvedTariffIds": 16,
+          "missingTariffIds": 0,
+          "orphanTariffIds": 0
+        }
       },
       {
         "name": "Zapgo",
@@ -1596,9 +1611,19 @@
         ],
         "status": "bounded_dynamic_backend_required",
         "evidence": "Public network confirmed with site/tariff information, but no direct open-data endpoint surfaced in first pass.",
-        "next": "inspect Elektra Charge app/site network calls.",
-        "backend": "Elektra Charge app/web",
-        "blocker": "Official app/site exposes charger location/status/payment but no indexed PCPR/open-data endpoint."
+        "next": "Recover Driivz tenant/API host from app/network inspection when available; pricing requires no further work.",
+        "backend": "Driivz",
+        "blocker": "Official app/site exposes charger location/status/payment but no indexed PCPR/open-data endpoint.",
+        "access": "official website/app; Driivz driver app package com.driivz.elektra",
+        "validation": " 2026-09-28: official Elektra/Duracell E-Charge website confirms a flat direct rate of GBP 0.80/kWh at every site, no subscription or connection fee, with 50kW and 300kW charger classes. Google Play confirms the official app package com.driivz.elektra, establishing Driivz as backend. Static web/package searches did not expose the tenant/API host, so station inventory remains dynamic.",
+        "directPricing": {
+          "currency": "GBP",
+          "unit": "kWh",
+          "energyPrice": 0.8,
+          "scope": "all Elektra/Duracell E-Charge sites",
+          "status": "complete",
+          "source": "https://www.elektracharge.com/"
+        }
       },
       {
         "name": "CitiCharge",
@@ -2112,7 +2137,8 @@
       "Swarco E.Connect / Evolt Network",
       "Clenergy EV",
       "PoGo Charge",
-      "Arnold Clark Charge"
+      "Arnold Clark Charge",
+      "Dragon Charging"
     ],
     "externalAccessBlocked": [
       {
@@ -2197,12 +2223,6 @@
       }
     ],
     "dynamicInspectionRequired": [
-      {
-        "name": "Dragon Charging",
-        "status": "bounded_dynamic_backend_required",
-        "backend": "Dragon Charging web/PWA",
-        "next": "inspect dragoncharging.online PWA network calls."
-      },
       {
         "name": "Zapgo",
         "status": "bounded_dynamic_backend_required",
