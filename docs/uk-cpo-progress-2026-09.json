@@ -246,10 +246,10 @@
     },
     {
       "name": "Smart Charge",
-      "status": "partial",
+      "status": "blocked_external_access",
       "access": "endpoint_details_via_support",
-      "evidence": "Smart Charge FAQ says its open-access data endpoint details are available from customer support.",
-      "next": "second pass: identify endpoint without manual contact if possible."
+      "evidence": "Official Smart Charge FAQ states the PCPR open-access data endpoint details are provided by customer support on 0800 014 2141. Targeted public-web search did not surface the endpoint.",
+      "next": "Manual call to Smart Charge support for open-access endpoint details; then ingest without repeating discovery."
     },
     {
       "name": "Believ",
@@ -276,10 +276,13 @@
     },
     {
       "name": "Roam",
-      "status": "partial",
-      "access": "no_direct_endpoint_found_first_pass",
-      "evidence": "First-pass search did not surface a direct machine-readable PCPR feed.",
-      "next": "second pass: disambiguate network/operator and inspect backend."
+      "status": "partial_pricing",
+      "access": "anonymous_public_map",
+      "evidence": "Official Roam charging-map page calls an anonymous Cloudflare Worker feed. Data Lab recovered 401 locations and 566 connectors with status. Feed contains no pricing fields; Roam states exact tariffs vary by site and should be checked in the app.",
+      "next": "Inventory/status bounded complete; recover station-specific pricing layer from app/backend. Do not apply network-wide tariff extrapolation.",
+      "locationsEndpoint": "https://roam-map.marketing-207.workers.dev/",
+      "dataset": "data/national/uk_roam_public_map.json.gz",
+      "report": "reports/uk/roam-public-map-latest.json"
     },
     {
       "name": "RAW Charging",
@@ -2561,6 +2564,12 @@
       "evses": 2819,
       "connectors": 2819,
       "report": "reports/uk/osprey-public-map-priced-latest.json"
+    },
+    "roamFinalization": {
+      "state": "locations_status_complete_pricing_pending",
+      "locations": 401,
+      "connectors": 566,
+      "report": "reports/uk/roam-public-map-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
