@@ -39,6 +39,15 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Inspect AVIA TLS certificate
+        if: steps.secret.outputs.configured == 'true'
+        shell: bash
+        run: |
+          set +e
+          echo | openssl s_client -connect 51.105.172.25:443 -servername pdefweushapiam01.azure-api.net 2>/dev/null \
+            | openssl x509 -noout -subject -issuer -ext subjectAltName || true
+          exit 0
+
       - name: Collect AVIA Switzerland guest prices
         if: steps.secret.outputs.configured == 'true'
         run: python3 scripts/collect_avia_switzerland_guest.py
