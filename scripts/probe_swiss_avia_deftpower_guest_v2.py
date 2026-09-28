@@ -7,6 +7,13 @@ HOST="https://pdefweushaapiam01.azure-api.net"
 TENANT="fdcb995a-8234-42ed-826f-3f2c7499d7f8"
 LAT,LON=46.818,8.2275
 paths=[
+ "/app-backend/v1/cpos",
+ f"/app-backend/v1/cpos?tenantId={TENANT}",
+ f"/app-backend/v1/map-locations?tenantId={TENANT}&latitude={LAT}&longitude={LON}&radius=500",
+ f"/app-backend/v1/nearby-locations?tenantId={TENANT}&latitude={LAT}&longitude={LON}&radius=500",
+ f"/app-backend/v1/tenants/{TENANT}/cpos",
+ f"/app-backend/v1/tenants/{TENANT}/map-locations?latitude={LAT}&longitude={LON}&radius=500",
+ f"/app-backend/v1/tenants/{TENANT}/nearby-locations?latitude={LAT}&longitude={LON}&radius=500",
  "/cpos",
  f"/cpos?tenantId={TENANT}",
  "/map-locations",
