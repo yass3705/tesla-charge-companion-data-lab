@@ -40,6 +40,12 @@ jobs:
               with urllib.request.urlopen(req,timeout=60) as r:
                   return r.status,r.geturl(),r.read(5_000_000).decode("utf-8","replace"),dict(r.headers.items())
 
+          def sanitize(text):
+              text=str(text)
+              text=re.sub(r'(?i)([?&](?:code|key|token|sig|signature|subscription[-_]?key|api[-_]?key)=)[^&#"\\'\\s]+', r'\\1[REDACTED]', text)
+              text=re.sub(r'(?i)((?:api[-_ ]?key|function[-_ ]?key|token|secret|client[-_ ]?secret|subscription[-_ ]?key)["\\']?\\s*[:=]\\s*["\\']?)[A-Za-z0-9._~+/-]{16,}', r'\\1[REDACTED]', text)
+              text=re.sub(r'(?i)(x-functions-key["\\']?\\s*[:=]\\s*["\\']?)[^"\\'\\s,}]+', r'\\1[REDACTED]', text)
+              return text
           out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"targets":[]}
           for name,url in targets:
               item={"name":name,"url":url,"assets":[],"candidates":[]}
@@ -63,13 +69,13 @@ jobs:
                           xl=x.lower()
                           if any(k in xl for k in ("api","graphql","ocpi","station","charger","chargepoint","location","tariff","price","map","evse","socket")):
                               if not xl.startswith("data:"):
-                                  cand.append({"source":source,"value":x[:500]})
+                                  cand.append({"source":source,"value":sanitize(x[:500])})
                   # contexts for call sites
                   contexts=[]
                   for source,body in bodies:
                       for needle in ("fetch(","axios","$.ajax","getJSON(","graphql","ocpi","tariff","chargepoint","locations","stations"):
                           for m in re.finditer(re.escape(needle),body,re.I):
-                              contexts.append({"source":source,"needle":needle,"context":body[max(0,m.start()-350):min(len(body),m.end()+700)]})
+                              contexts.append({"source":source,"needle":needle,"context":sanitize(body[max(0,m.start()-350):min(len(body),m.end()+700)])})
                               if len(contexts)>=250: break
                           if len(contexts)>=250: break
                       if len(contexts)>=250: break
