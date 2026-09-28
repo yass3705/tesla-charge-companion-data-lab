@@ -35,6 +35,18 @@ def walk(x,owner=None,owner_name=None):
         for v in x: walk(v,owner,owner_name)
 walk(nat)
 
+def norm_eid(v):
+    return ''.join(ch for ch in str(v or '').upper() if ch.isalnum())
+
+_norm_map={}
+for _eid in evses:
+    _norm_map.setdefault(norm_eid(_eid),[]).append(_eid)
+
+def resolve_eid(eid):
+    if eid in evses: return eid
+    hits=_norm_map.get(norm_eid(eid),[])
+    return hits[0] if len(hits)==1 else None
+
 # Curated production artifacts only. Generic atlas first/second-pass files are deliberately excluded.
 sources=[
 ("IONITY","data/switzerland/ionity-official-national-direct-tariffs.json"),
@@ -165,11 +177,13 @@ for label,fp in sources:
     seen=set()
     trusted_top_level_evses=isinstance(obj,dict) and isinstance(obj.get("evses"),list)
     for eid,node in source_rows(obj):
-        if not isinstance(eid,str) or eid not in evses: continue
+        if not isinstance(eid,str): continue
+        canonical_eid=resolve_eid(eid)
+        if canonical_eid is None: continue
         if not trusted_top_level_evses and not node_has_real_tariff(node): continue
-        evses[eid]["directTariffs"].append({"sourceLabel":label,"sourceFile":fp,"data":node})
-        evses[eid]["directTariffStatus"]="resolved"
-        seen.add(eid)
+        evses[canonical_eid]["directTariffs"].append({"sourceLabel":label,"sourceFile":fp,"sourceEvseId":eid,"data":node})
+        evses[canonical_eid]["directTariffStatus"]="resolved"
+        seen.add(canonical_eid)
     source_stats.append({"label":label,"file":fp,"status":"loaded","matchedEvseCount":len(seen)})
 
 classified=set()
@@ -190,10 +204,11 @@ for label,fp in classifications:
     for node in rows:
         eid=node.get("evseId") or node.get("EvseID")
         if not isinstance(eid,str): continue
-        if eid in evses and evses[eid]["directTariffStatus"]!="resolved":
-            evses[eid]["directTariffStatus"]="no_public_direct_tariff"
-            evses[eid]["directTariffClassification"]={"sourceLabel":label,"sourceFile":fp}
-            classified.add(eid)
+        canonical_eid=resolve_eid(eid)
+        if canonical_eid in evses and evses[canonical_eid]["directTariffStatus"]!="resolved":
+            evses[canonical_eid]["directTariffStatus"]="no_public_direct_tariff"
+            evses[canonical_eid]["directTariffClassification"]={"sourceLabel":label,"sourceFile":fp,"sourceEvseId":eid}
+            classified.add(canonical_eid)
 
 # Canonical CPO status is metadata only: never filter EVSE visibility based on it.
 progress={}
