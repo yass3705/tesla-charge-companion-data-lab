@@ -1,0 +1,32 @@
+name: Belgium AFIR additional source probe
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-afir-additional-source-probe.txt"
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/belgium_afir_additional_source_probe.py
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium/belgium-afir-additional-source-probe-2026-09-28.json data/belgium/additional || true
+          git commit -m "Probe additional Belgium AFIR charging sources" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep 3
+          done
+          exit 1
