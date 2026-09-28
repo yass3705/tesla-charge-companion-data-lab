@@ -36,7 +36,8 @@ jobs:
               if not op or op in complete or op in skip or d.get('status')=='complete':
                   continue
               slug=re.sub(r'^switzerland-|\-first-pass-2026-09-28\.json$','',p.split('/')[-1])
-              rows.append({'operator':op,'slug':slug,'name':d.get('cpo') or op})
+              unresolved=d.get('stationsWithoutDirectTariff') if isinstance(d.get('stationsWithoutDirectTariff'),int) else 999999
+              rows.append({'operator':op,'slug':slug,'name':d.get('cpo') or op,'priority':unresolved})
           # National reconciliation can invalidate apparent first-pass completes (e.g. Lidl/IOY).
           try:
               r=json.load(open('docs/switzerland-first-pass-national-reconciliation-2026-09-28.json',encoding='utf-8'))
@@ -46,9 +47,10 @@ jobs:
                   if not any(y['operator']==op for y in rows):
                       f=x.get('file','').split('/')[-1]
                       slug=f.replace('-direct-tariffs.json','')
-                      rows.append({'operator':op,'slug':slug,'name':op})
+                      rows.append({'operator':op,'slug':slug,'name':op,'priority':x.get('missingCurrentEvseCount',999999)})
           except Exception:pass
-          rows=sorted({x['operator']:x for x in rows}.values(),key=lambda x:x['operator'])
+          rows=sorted({x['operator']:x for x in rows}.values(),key=lambda x:(x.get('priority',999999),-int(next((d.get('stationCount',0) for p in glob.glob('docs/switzerland-*-first-pass-2026-09-28.json') for d in [json.load(open(p,encoding='utf-8'))] if d.get('operatorId')==x['operator']),0))))
+          for x in rows:x.pop('priority',None)
           matrix=json.dumps({'include':rows},separators=(',',':'))
           with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write('matrix='+matrix+'\n')
           print(json.dumps(rows,indent=2))
