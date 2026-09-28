@@ -196,13 +196,14 @@
     {
       "name": "Wenea",
       "status": "complete",
-      "access": "official_open_data_zip_plus_official_direct_power_bands",
-      "evidence": "Validated UK Wenea dataset: 210 UK locations, all owner/operator Wenea Mobile Energy; 631/631 connectors priced from the official Wenea-owned power bands (339 AC at GBP 0.55/kWh, 168 DC at GBP 0.75/kWh, 124 HPC at GBP 0.85/kWh), no unmatched connectors.",
-      "next": "validated; schedule Wenea ZIP + official tariff-band normalization.",
+      "access": "official_zip_plus_official_direct_tariff_fallback",
+      "evidence": "Official Wenea Open Data ZIP discovered via the post-request download page. Data Lab recovered 210 UK locations, 628 EVSEs and 631 connectors. Upstream references one missing tariff id, so TCC applies Wenea's current official direct PAYG prices by connector power: £0.55/kWh AC <=22kW, £0.75/kWh DC 30-60kW, £0.85/kWh HPC 61-400kW. No connector lacks a power-band tariff.",
+      "next": "validated; include ZIP refresh plus official tariff-page fallback in scheduled UK aggregation.",
       "dataset": "data/national/uk_wenea_direct_priced.json.gz",
       "report": "reports/uk/wenea-direct-priced-latest.json",
       "sourceUrl": "https://wenea.com/apilocation/data.zip",
-      "tariffUrl": "https://wenea.com/uk/charging-tariffs/"
+      "tariffUrl": "https://wenea.com/uk/charging-tariffs/",
+      "locationsEndpoint": "https://wenea.com/apilocation/data.zip"
     },
     {
       "name": "evyve",
@@ -2482,27 +2483,18 @@
       "report": "reports/uk/fastned-direct-uk-latest.json"
     },
     "weneaFinalization": {
-      "state": "complete_source_validated",
-      "retrievedAt": "2026-09-28T03:45:49.800013+00:00",
-      "locations": 210,
+      "state": "complete_with_official_direct_price_fallback",
+      "ukLocations": 210,
+      "evses": 628,
       "connectors": 631,
-      "unmatchedConnectors": 0,
-      "connectorPriceBands": {
-        "ac": {
-          "connectors": 339,
-          "gbpPerKwh": 0.55
-        },
-        "dc": {
-          "connectors": 168,
-          "gbpPerKwh": 0.75
-        },
-        "hpc": {
-          "connectors": 124,
-          "gbpPerKwh": 0.85
-        }
-      },
-      "dataset": "data/national/uk_wenea_direct_priced.json.gz",
-      "report": "reports/uk/wenea-direct-priced-latest.json"
+      "partyId": "WEN",
+      "source": "https://wenea.com/apilocation/data.zip",
+      "officialPricing": "https://wenea.com/uk/charging-tariffs/",
+      "pricesGbpPerKwh": {
+        "AC": 0.55,
+        "DC": 0.75,
+        "HPC": 0.85
+      }
     },
     "scottishPowerFinalization": {
       "state": "complete_source_validated",
