@@ -1,0 +1,61 @@
+name: Belgium NAP full country
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-nap-full-country.txt"
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BELGIUM_NAP_TOKEN: ${{ secrets.BELGIUM_NAP_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Extract every Belgium NAP page
+        run: python scripts/belgium_nap_full_country.py
+
+      - name: Upload raw paginated snapshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: belgium-nap-raw-pages
+          path: artifacts/belgium-nap-raw-pages/*.json.gz
+          retention-days: 7
+          compression-level: 0
+
+      - name: Persist canonical country pages and ledgers
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # The old file contained only offset=0 and is misleading once full pagination is enabled.
+          git rm -f data/belgium/nap-belgium-full.json 2>/dev/null || true
+
+          git add data/belgium/pages/*.json.gz                   data/belgium/nap-belgium-manifest.json                   reports/belgium-national-full-extraction-2026-09-28.json                   reports/belgium-missing-price-evses-2026-09-28.json                   docs/belgium-cpo-progress-2026-09.json
+
+          if git diff --cached --quiet; then
+            echo "No Belgium country changes"
+            exit 0
+          fi
+
+          git commit -m "Extract complete paginated Belgium NAP dataset"
+          for attempt in 1 2 3 4 5 6 7 8; do
+            git pull --rebase origin main
+            if git push; then
+              exit 0
+            fi
+            echo "Push race detected; retrying ($attempt/8)"
+            sleep 4
+          done
+          echo "::error::Could not persist full Belgium extraction"
+          exit 1
