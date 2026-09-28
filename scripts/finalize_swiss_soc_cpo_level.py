@@ -63,6 +63,6 @@ now=datetime.now(timezone.utc).isoformat()
 payload={"schemaVersion":1,"country":"CH","cpo":"SOCAR / Move charging backend","operatorId":"CH*SOC","generatedAt":now,"nationalEvseCount":len(current),"pricedEvseCount":len(rows),"unresolvedEvseCount":len(unresolved),"tariffSchedules":list(schedules.values()),"policy":"Apply only explicit non-roaming Move CPO-level tariffs with prices_per_station_available=false, matched to each current CH*SOC EVSE's AC/DC type. No station-specific price extrapolation.","evses":rows,"unresolved":unresolved}
 OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 final={k:payload[k] for k in ["schemaVersion","country","cpo","operatorId","nationalEvseCount","pricedEvseCount","unresolvedEvseCount","policy"]}
-final.update({"status":"complete" if not unresolved else "partial","updatedAt":now,"method":"Current national CH*SOC EVSE-prefix scope + explicit Move non-roaming CPO-level tariff schedules, exact AC/DC matching","productionSource":str(OUT)})
+final.update({"status":"complete" if not unresolved else "partial","updatedAt":now,"method":"Current national CH*SOC EVSE-prefix scope + explicit Move non-roaming CPO-level tariff schedules, exact AC/DC matching","unresolvedSample":unresolved[:20],"productionSource":str(OUT)})
 DOC.write_text(json.dumps(final,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps(final,ensure_ascii=False,indent=2))
