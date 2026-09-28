@@ -1,0 +1,57 @@
+name: Belgium NAP probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BELGIUM_NAP_TOKEN: ${{ secrets.BELGIUM_NAP_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate secret
+        shell: bash
+        run: |
+          if [ -z "$BELGIUM_NAP_TOKEN" ]; then
+            echo "::error::Missing repository secret BELGIUM_NAP_TOKEN"
+            exit 2
+          fi
+
+      - name: Probe Belgium NAP
+        run: |
+          python scripts/belgium_nap_probe.py \
+            --raw-output artifacts/belgium-nap-locations-raw.json
+
+      - name: Upload raw snapshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: belgium-nap-locations-raw
+          path: artifacts/belgium-nap-locations-raw.json
+          retention-days: 7
+          compression-level: 9
+
+      - name: Persist summary and sanitized sample
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium-nap-probe-summary.json reports/belgium-nap-locations-sample.json
+          if git diff --cached --quiet; then
+            echo "No report changes"
+          else
+            git commit -m "Update Belgium NAP probe report"
+            git push
+          fi
