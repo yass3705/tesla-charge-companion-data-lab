@@ -18,7 +18,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-API_BASE=os.environ.get("AVIA_API_BASE","https://podefweushapiam01.azure-api.net").rstrip("/")
+API_BASE=os.environ.get("AVIA_API_BASE","https://pdefweushapiam01.azure-api.net").rstrip("/")
 TENANT_ID=os.environ.get("AVIA_TENANT_ID","fdcb995a-8234-42ed-826f-3f2c7499d7f8")
 KEY=os.environ.get("AVIA_APIM_SUBSCRIPTION_KEY","").strip()
 OUT=Path(os.environ.get("AVIA_OUT","data/switzerland/avia-guest-direct-tariffs.json"))
@@ -76,7 +76,7 @@ def map_locations():
                 "evseTypes":"AC,DC,HPC",
                 "locationStatus":"AVAILABLE",
                 "connectorTypes":"TYPE2,CCS",
-                "partyId":"AVI",
+                "includeCpos":"CHAVI",
             }
             try:
                 payload=request_json("GET",f"/app-backend/v1/tenants/{TENANT_ID}/map-locations",q)
