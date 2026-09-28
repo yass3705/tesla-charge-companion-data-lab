@@ -1,0 +1,104 @@
+name: Belgium Charge Europe Blutter header callsite
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-charge-europe-blutter-header-callsite.txt"
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build pkg-config libicu-dev libcapstone-dev
+          python -m pip install --quiet pyelftools requests
+      - name: Download app and extract ARM64 Flutter libs
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/ce-callsite /tmp/blutter /tmp/blutter-out
+          mkdir -p /tmp/ce-callsite/xapk /tmp/ce-callsite/lib
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 180             -A 'Mozilla/5.0 TCC-Public-Research/1.0' -H 'Referer: https://apkpure.net/'             'https://d.apkpure.net/b/XAPK/com.total.europe?version=latest'             -o /tmp/ce-callsite/app.xapk
+          unzip -q /tmp/ce-callsite/app.xapk -d /tmp/ce-callsite/xapk
+          python - <<'PY'
+          import os,zipfile
+          root='/tmp/ce-callsite/xapk'; out='/tmp/ce-callsite/lib'
+          got=set()
+          for fn in os.listdir(root):
+              if not fn.endswith('.apk'): continue
+              p=os.path.join(root,fn)
+              try:
+                  with zipfile.ZipFile(p) as z:
+                      for target in ('libapp.so','libflutter.so'):
+                          n='lib/arm64-v8a/'+target
+                          if n in z.namelist() and target not in got:
+                              open(os.path.join(out,target),'wb').write(z.read(n)); got.add(target)
+              except Exception: pass
+          if got != {'libapp.so','libflutter.so'}: raise SystemExit(f'missing libs: {got}')
+          PY
+      - name: Run Blutter
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 https://github.com/worawit/blutter.git /tmp/blutter
+          timeout 720 python3 /tmp/blutter/blutter.py /tmp/ce-callsite/lib /tmp/blutter-out >/tmp/blutter.log 2>&1
+      - name: Extract exact callsite contexts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/belgium/totalenergies
+          python - <<'PY'
+          import json,re,hashlib
+          from pathlib import Path
+          root=Path('/tmp/blutter-out')
+          needles=['x-apif-apikey','marketplace-evp','/v3/infrastructure/locations','evdc-bff-europe']
+          hits=[]
+          for p in root.rglob('*'):
+              if not p.is_file(): continue
+              rel=str(p.relative_to(root))
+              if rel in ('pp.txt','objs.txt') or rel.startswith('ida_script/'): continue
+              try:
+                  if p.stat().st_size>80_000_000: continue
+                  txt=p.read_text(errors='ignore')
+              except Exception: continue
+              lines=txt.splitlines()
+              for i,line in enumerate(lines):
+                  if any(n in line for n in needles):
+                      lo=max(0,i-50); hi=min(len(lines),i+120)
+                      block=[]
+                      for j in range(lo,hi):
+                          s=lines[j]
+                          # redact long opaque literals and bearer values but keep symbols, routes, offsets and normal identifiers
+                          s=re.sub(r'(?i)(Bearer\s+)[A-Za-z0-9._~+/-]{12,}',r'\1<redacted>',s)
+                          s=re.sub(r'(?<![A-Za-z0-9])([A-Za-z0-9_-]{48,})(?![A-Za-z0-9])','<redacted-long>',s)
+                          block.append({'line':j+1,'text':s[:1000]})
+                      hits.append({'file':rel,'hitLine':i+1,'hit':line[:1000],'context':block})
+          out={'needles':needles,'hitCount':len(hits),'hits':hits[:300],
+               'policy':{'staticAnalysisOnly':True,'credentialValuesPersisted':False,'rawBlutterPersisted':False}}
+          Path('reports/belgium/totalenergies/charge-europe-blutter-header-callsite-2026-09-28.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'hitCount':len(hits),'files':sorted(set(h['file'] for h in hits))},indent=2))
+          PY
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium/totalenergies/charge-europe-blutter-header-callsite-2026-09-28.json
+          git commit -m "Resolve Charge Europe header callsite" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep 3
+          done
+          exit 1
