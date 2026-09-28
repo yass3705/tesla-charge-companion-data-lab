@@ -167,14 +167,14 @@
       "aliases": [
         "Pod Point"
       ],
-      "status": "partial",
-      "access": "token_required",
+      "status": "blocked_external_ocpi_token",
+      "access": "bilateral_ocpi_credentials",
       "versionsEndpoint": "https://ocpi.podenergy.com/ocpi/cpo/versions",
       "ocpiVersion": "2.2.1",
       "locationsEndpoint": "https://ocpi.podenergy.com/ocpi/cpo/2.2.1/locations",
       "tariffsEndpoint": "https://ocpi.podenergy.com/ocpi/cpo/2.2.1/tariffs",
-      "evidence": "Anonymous version discovery works; data modules return OCPI Unauthorized and require credentials exchange.",
-      "next": "seek separate statutory public feed or onboarding route; do not block first pass"
+      "evidence": "Current Pod/Pod Point OCPI 2.2.1 service is live at https://ocpi.podenergy.com/ocpi/cpo/. Version discovery is anonymous, but locations/tariffs/data modules return 401 without a bilaterally exchanged OCPI credentials token. Legacy api.pod-point.com v3/v5 surfaces are decommissioned, and legacy charge.pod-point.com public charger pages now redirect to go.podenergy.com.",
+      "next": "External OCPI onboarding/token exchange with Pod is required. Do not repeat anonymous route discovery unless Pod exposes a new PCPR endpoint."
     },
     {
       "name": "Applegreen Fast Charge",
@@ -268,11 +268,11 @@
     },
     {
       "name": "Monta",
-      "status": "partial",
+      "status": "partial_pricing_99_17",
       "access": "public_api_documented",
       "locationsEndpoint": "https://public-api.monta.com/api/v1/open-data/locations",
-      "evidence": "Monta documents a UK OCPI 2.2.1 open-data locations endpoint with party_id filtering and pagination.",
-      "next": "probe endpoint and identify UK party_ids/tariff linkage"
+      "evidence": "After fixing the hard 120-page pricing cap, the full Monta public pricing table ran to 224 pages / 40,959 rows. 1,438 of 1,450 active connectors now match public pricing (99.17%), with 12 unresolved connectors across a small set of underlying tariff IDs and no tariff ID mismatches or price conflicts.",
+      "next": "Keep 12 unresolved connectors as targeted residuals; do not rerun truncated pagination."
     },
     {
       "name": "Zest",
