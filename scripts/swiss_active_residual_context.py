@@ -48,7 +48,8 @@ for op,rs in rows.items():
       "restrictedNoAuthCount":len(restricted_no_auth),
       "publicDirectCapableCount":len(public_direct),
       "restrictedNoAuthEvseIds":[r["evseId"] for r in restricted_no_auth],
-      "publicDirectCapableSample":public_direct[:30]
+      "publicDirectCapableSample":public_direct[:30],
+      "rows":rs if op in {"CH*EBS","CH*EVT","CH*DIE","CH*HER","CH*PAR"} else []
     }
 Path("docs/switzerland-active-residual-context-2026-09-28.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps({op:{k:v for k,v in d.items() if k not in ("restrictedNoAuthEvseIds","publicDirectCapableSample")} for op,d in out["operators"].items()},ensure_ascii=False,indent=2))
