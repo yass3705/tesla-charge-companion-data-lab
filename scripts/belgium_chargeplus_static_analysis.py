@@ -3,18 +3,25 @@ from __future__ import annotations
 import json, re, subprocess, urllib.request, zipfile, shutil, os
 from pathlib import Path
 
-URL="https://download.pureapk.com/b/XAPK/Y29tLnRvdGFsZW5lcmdpZXMuY2hhcmdlcGx1c18yMDI2MDkwMTEzXzc0Y2M4MDc4?as2=cc78d5fcf5499f8c9e9167f075c12b946c953d25&k=aba31a210e2405ac3acb978d0dc3e56f6c953d25&_p=Y29tLnRvdGFsZW5lcmdpZXMuY2hhcmdlcGx1cw&c=1%7CTOOLS%7Cb2lkPTkmZGV2PVRvdGFsRW5lcmdpZXMlMjBNYXJrZXRpbmclMjAlMjYlMjBTZXJ2aWNlcyZ0PXhhcGsmcz0yMzA4MTI2MSZ2bj0yLjE3LjMmdmM9MjAyNjA5MDExMw&_fn=VG90YWxFbmVyZ2llcystK0NoYXJnZSUyQl8yLjE3LjNfYXBrY29tYm8uY29tLnhhcGs%3D"
+URL="https://d.apkpure.net/b/XAPK/com.totalenergies.chargeplus?nc=arm64-v8a&sv=26&versionCode=2026072815"
 TMP=Path("/tmp/chargeplus-static")
 OUT=Path("reports/belgium/totalenergies")
 TMP.mkdir(parents=True,exist_ok=True); OUT.mkdir(parents=True,exist_ok=True)
 XAPK=TMP/"chargeplus.xapk"
 
-req=urllib.request.Request(URL,headers={"User-Agent":"Mozilla/5.0","Referer":"https://apkcombo.com/"})
-with urllib.request.urlopen(req,timeout=120) as r:
-    data=r.read()
-XAPK.write_bytes(data)
+p=subprocess.run([
+    "curl","-LsS","--retry","3","--connect-timeout","15","--max-time","180",
+    "-A","Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36",
+    "-H","Referer: https://apkpure.net/",
+    "-o",str(XAPK),"-w","%{http_code} %{url_effective}",URL
+],capture_output=True,text=True)
+if not XAPK.exists():
+    raise RuntimeError("Charge+ XAPK download did not create a file: "+p.stderr[-1000:])
+data=XAPK.read_bytes()
+if len(data)<1000000:
+    raise RuntimeError("Charge+ XAPK download too small: "+str(len(data))+" bytes; "+p.stdout+"; "+p.stderr[-1000:])
 
-report={"package":"com.totalenergies.chargeplus","version":"2.17.3","downloadBytes":len(data),"isZip":zipfile.is_zipfile(XAPK)}
+report={"package":"com.totalenergies.chargeplus","version":"2.17.0","downloadBytes":len(data),"isZip":zipfile.is_zipfile(XAPK)}
 
 def redact(s:str)->str:
     s=re.sub(r'(?i)(client_secret|api[_-]?key|apikey|access_token|id_token|refresh_token|authorization)=([^&\s"\']+)',r'\1=[REDACTED]',s)
