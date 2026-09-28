@@ -2,33 +2,34 @@ name: UK TCC hourly snapshot
 
 on:
   schedule:
-    - cron: "17 * * * *"
+    - cron: "47 * * * *"
   workflow_dispatch:
   push:
     branches: ["main"]
     paths:
+      - "scripts/uk_generate_hourly_snapshot.py"
       - ".github/workflows/uk-tcc-hourly-snapshot.yml"
 
 permissions:
   contents: write
 
 concurrency:
-  group: uk-tcc-state-writer
-  cancel-in-progress: false
+  group: uk-tcc-hourly-snapshot
+  cancel-in-progress: true
 
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Generate audit-only snapshot
-        run: python scripts/uk_zero_cost_autopilot.py --audit-only
+      - name: Generate independent audit snapshot
+        run: python scripts/uk_generate_hourly_snapshot.py
 
-      - name: Publish snapshot safely
+      - name: Publish snapshot with race-safe retry
         shell: bash
         run: |
           set -euo pipefail
@@ -37,7 +38,6 @@ jobs:
 
           tmpdir="$(mktemp -d)"
           files=(
-            reports/uk/autopilot-state.json
             reports/uk/autopilot-latest.json
             reports/uk/autopilot-latest.md
           )
@@ -48,19 +48,28 @@ jobs:
             cp -p "$p" "$tmpdir/$p"
           done
 
-          git fetch origin main
-          git reset --hard origin/main
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git reset --hard origin/main
 
-          for p in "${files[@]}"; do
-            mkdir -p "$(dirname "$p")"
-            cp -p "$tmpdir/$p" "$p"
+            for p in "${files[@]}"; do
+              mkdir -p "$(dirname "$p")"
+              cp -p "$tmpdir/$p" "$p"
+            done
+
+            git add "${files[@]}"
+            if git diff --cached --quiet; then
+              echo "Snapshot already present."
+              exit 0
+            fi
+
+            git commit -m "chore(uk): independent hourly snapshot [run ${GITHUB_RUN_ID}]"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            sleep $((attempt * 2))
           done
 
-          git add "${files[@]}"
-          if git diff --cached --quiet; then
-            echo "Snapshot already present."
-            exit 0
-          fi
-
-          git commit -m "chore(uk): hourly autopilot snapshot [run ${GITHUB_RUN_ID}]"
-          git push origin HEAD:main
+          echo "Unable to publish snapshot after retries." >&2
+          exit 1
