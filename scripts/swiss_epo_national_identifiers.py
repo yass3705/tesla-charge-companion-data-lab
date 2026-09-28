@@ -4,7 +4,12 @@ from pathlib import Path
 from datetime import datetime,timezone
 URL="https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json"
 req=urllib.request.Request(URL,headers={"User-Agent":"TCC-V9-Switzerland/1.0","Accept":"application/json"})
-with urllib.request.urlopen(req,timeout=120) as r:data=json.load(r)
+with urllib.request.urlopen(req,timeout=120) as r:
+ raw=r.read()
+ if raw[:2]==b"\\x1f\\x8b":
+  import gzip
+  raw=gzip.decompress(raw)
+ data=json.loads(raw.decode("utf-8"))
 rows=[]
 def walk(x, owner=None):
  if isinstance(x,dict):
