@@ -64,7 +64,8 @@ jobs:
                       key=str(x.get("id")) if x.get("id") is not None else json.dumps(x,sort_keys=True)
                       if key not in seen: seen.add(key); rows.append(x)
                   pages+=1
-                  if not batch or (total is not None and len(rows)>=total) or len(batch)<500: break
+                  if not batch or (total is not None and len(rows)>=total): break
+                  if total is None and len(batch)<500: break
                   offset += len(batch)
                   if pages>100: raise RuntimeError("pagination guard")
                   time.sleep(0.35)
@@ -97,7 +98,8 @@ jobs:
             "tariffs":len(tariffs),"tariffIdsReferenced":len(refs),
             "missingTariffIds":missing,"partyIdsObserved":sorted(parties),
             "evseStatuses":statuses,"locationPagination":lmeta,"tariffPagination":tmeta,
-            "status":"complete" if locations and not missing else "partial"
+            "coverageComplete": bool(locations) and (lmeta.get("advertisedTotal") is None or len(locations)>=lmeta.get("advertisedTotal")),
+            "status":"complete" if locations and not missing and (lmeta.get("advertisedTotal") is None or len(locations)>=lmeta.get("advertisedTotal")) else "partial"
           }
           Path("data/national").mkdir(parents=True,exist_ok=True)
           Path("reports/uk").mkdir(parents=True,exist_ok=True)
