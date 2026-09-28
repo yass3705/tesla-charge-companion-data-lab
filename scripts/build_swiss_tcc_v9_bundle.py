@@ -67,6 +67,11 @@ sources=[
 ("MOVE","data/switzerland/move-direct-tariffs.json"),
 ("Energiedienst CH","data/switzerland/edh-direct-tariffs.json"),
 ("Energiedienst DE","data/switzerland/de-edh-direct-tariffs.json"),
+("ewz second pass","data/switzerland/ewz-direct-tariffs-second-pass.json"),
+("Energie 360 second pass","data/switzerland/energie360-direct-tariffs-second-pass.json"),
+("Electra second pass","data/switzerland/electra-direct-tariffs-second-pass.json"),
+("MOVE second pass","data/switzerland/move-direct-tariffs-second-pass.json"),
+("IWB second pass","data/switzerland/iwb-direct-tariffs-second-pass.json"),
 ]
 classifications=[
 ("Partino restricted","data/switzerland/par-partino-restricted-direct-classification.json"),
@@ -92,7 +97,15 @@ def ids_from(obj):
 def source_rows(obj):
     """Return only production-priced rows; never recurse through unresolved evidence when a source has explicit evses/stations."""
     if isinstance(obj,dict) and isinstance(obj.get("evses"),list):
-        return [(x.get("evseId") or x.get("EvseID"),x) for x in obj["evses"] if isinstance(x,dict) and isinstance(x.get("evseId") or x.get("EvseID"),str)]
+        rows=[]
+        for x in obj["evses"]:
+            if not isinstance(x,dict): continue
+            eid=x.get("evseId") or x.get("EvseID")
+            if not isinstance(eid,str) and isinstance(x.get("physicalReference"),(str,int)):
+                # Swisscharge production collector stores the physical reference separately.
+                eid="CH*SUI*E"+str(x.get("physicalReference"))
+            if isinstance(eid,str): rows.append((eid,x))
+        return rows
     if isinstance(obj,dict) and isinstance(obj.get("stations"),list):
         rows=[]
         for st in obj["stations"]:
@@ -165,7 +178,18 @@ for label,fp in classifications:
     if not p.exists() or p.stat().st_size==0: continue
     try: obj=json.loads(p.read_text(encoding="utf-8"))
     except Exception: continue
-    for eid,node in ids_from(obj):
+    rows=[]
+    if isinstance(obj,dict) and isinstance(obj.get("evses"),list):
+        rows=[x for x in obj["evses"] if isinstance(x,dict) and x.get("classification")=="no_public_direct_tariff"]
+    elif label=="IWB restricted":
+        rows=((obj.get("classes") or {}).get("restricted_no_auth") or [])
+    elif label=="Swisscharge restricted":
+        rows=obj.get("classified") or []
+    else:
+        rows=[node for _,node in ids_from(obj) if isinstance(node,dict) and node.get("classification")=="no_public_direct_tariff"]
+    for node in rows:
+        eid=node.get("evseId") or node.get("EvseID")
+        if not isinstance(eid,str): continue
         if eid in evses and evses[eid]["directTariffStatus"]!="resolved":
             evses[eid]["directTariffStatus"]="no_public_direct_tariff"
             evses[eid]["directTariffClassification"]={"sourceLabel":label,"sourceFile":fp}
