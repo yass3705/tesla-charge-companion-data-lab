@@ -15,7 +15,7 @@ def one_station(s,key,args):
             cp_results.append({"chargePoint":cp,"status":None,"directTariffs":[],"reason":"missing_power_or_plug"})
             continue
         body={"data":{"attributes":{"station":{"id":[s.get("id")],"charge_point":{"power":power,"plug":plug}},"filter":{
-            "brand_restricted_tariffs":False,"foreign_tariffs":False,"provider_customer_tariffs":False
+            "brand_restricted_tariffs":False,"foreign_tariffs":False,"provider_customer_tariffs":args.provider_customer_tariffs
         }},"relationships":{}}}
         st,p=base.api_call(base.ATLAS+"/v1/tariff_details",key,"POST",body,delay=args.delay)
         ds=base.direct_tariffs(p) if st==200 and isinstance(p,dict) else []
@@ -37,6 +37,7 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--operator",required=True); ap.add_argument("--name",required=True); ap.add_argument("--output",required=True)
     ap.add_argument("--workers",type=int,default=4); ap.add_argument("--delay",type=float,default=0.10)
+    ap.add_argument("--provider-customer-tariffs",action="store_true")
     args=ap.parse_args()
     key=base.extract_public_key(); stations=base.station_pages(args.operator,key)
     rows=[None]*len(stations); unresolved=[]; direct_detail_count=0; direct_payment_count=0
@@ -56,7 +57,7 @@ def main():
       "retrievedAt":datetime.now(timezone.utc).isoformat(),
       "source":{"stationApi":base.ATLAS+"/v1/charging_stations","tariffApi":base.ATLAS+"/v1/tariff_details",
         "frontend":base.FRONT,"authentication":"public frontend API key resolved dynamically",
-        "collectorMode":"parallel-first-pass-fallback"},
+        "collectorMode":"parallel-second-pass" if args.provider_customer_tariffs else "parallel-first-pass-fallback"},
       "summary":{"stationCount":len(stations),"stationsWithDirectTariff":resolved,
         "stationsWithoutDirectTariff":len(unresolved),
         "coveragePct":round(resolved*100/len(stations),3) if stations else 0,
