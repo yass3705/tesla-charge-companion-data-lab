@@ -5,7 +5,11 @@ from datetime import datetime, timezone
 URL="https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json"
 OPS={"CH*CCI","CH*SUI","CH*EPO","CH*IWB","CH*SOC","CH*MMN","CH*EBS","CH*EVT","CH*DIE","CH*HER","CH*PAR","CH*ECU"}
 req=urllib.request.Request(URL,headers={"User-Agent":"TCC-V9-Swiss-active-audit/1.0","Accept":"application/json"})
-with urllib.request.urlopen(req,timeout=120) as r: data=json.load(r)
+with urllib.request.urlopen(req,timeout=120) as r:
+    raw=r.read()
+if len(raw) >= 2 and raw[0] == 31 and raw[1] == 139:
+    raw=gzip.decompress(raw)
+data=json.loads(raw.decode("utf-8"))
 rows={op:[] for op in OPS}
 def walk(x, owner=None):
     if isinstance(x,dict):
