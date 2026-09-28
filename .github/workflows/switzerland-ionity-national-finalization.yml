@@ -1,0 +1,41 @@
+name: Switzerland IONITY national finalization
+on:
+  push:
+    paths:
+      - 'scripts/finalize_swiss_ionity_national.py'
+      - '.github/workflows/switzerland-ionity-national-finalization.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - run: python3 scripts/finalize_swiss_ionity_national.py
+      - name: Validate
+        run: |
+          python3 - <<'PY'
+          import json
+          f=json.load(open('docs/switzerland-ionity-national-finalization-2026-09-28.json',encoding='utf-8'))
+          assert f['nationalEvseCount'] > 0
+          assert f['pricedEvseCount'] + f['unresolvedEvseCount'] == f['nationalEvseCount']
+          print(json.dumps(f,indent=2))
+          PY
+      - name: Persist
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/switzerland/ionity-official-national-direct-tariffs.json docs/switzerland-ionity-national-finalization-2026-09-28.json
+          git commit -m 'data(switzerland): finalize IONITY national direct tariffs' || exit 0
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
