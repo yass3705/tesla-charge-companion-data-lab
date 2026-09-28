@@ -41,10 +41,13 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf /tmp/chargeplus/jadx
-          /tmp/jadx-tool/bin/jadx --no-res --show-bad-code             -d /tmp/chargeplus/jadx /tmp/chargeplus/base.apk >/tmp/jadx.log 2>&1 || {
-              tail -100 /tmp/jadx.log
-              exit 1
-            }
+          set +e
+          /tmp/jadx-tool/bin/jadx --no-res --show-bad-code             -d /tmp/chargeplus/jadx /tmp/chargeplus/base.apk >/tmp/jadx.log 2>&1
+          JADX_RC=$?
+          set -e
+          tail -100 /tmp/jadx.log || true
+          test -d /tmp/chargeplus/jadx/sources
+          echo "JADX exit code: $JADX_RC (partial output accepted because sources exist)"
 
       - name: Extract sanitized tariff API contract
         shell: bash
