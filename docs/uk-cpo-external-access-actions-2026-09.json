@@ -1,0 +1,222 @@
+{
+  "updatedAt": "2026-09-27",
+  "purpose": "Human/external-access queue for UK TCC CPOs after autonomous discovery. Use this instead of repeating web investigations.",
+  "regulatoryNote": "UK PCPR requires reference and availability data to be publicly available free of charge and machine-readable, without requiring agreement to terms for use. Some operators nevertheless expose access through account/request/onboarding flows; treat these as access-path facts, not as proof the flows satisfy the regulation.",
+  "ecoMovementConsolidationNote": "IONITY, evyve, Source EV, ubitricity and bp pulse routes all involve Eco-Movement. A single Eco-Movement technical identity may simplify integration, but operator grants may be scoped; verify scope before assuming one token covers all networks.",
+  "counts": {
+    "total": 17
+  },
+  "groups": {
+    "request_only": [
+      "EV Charger Points / Charge & Go",
+      "Zest Eco"
+    ],
+    "deferred_dynamic": [
+      "3ti Energy Hubs"
+    ],
+    "ocpi_access": [
+      "LEAP24 UK"
+    ],
+    "free_self_service_account": [
+      "Believ",
+      "Weev"
+    ],
+    "api_key_form": [
+      "GRIDSERVE"
+    ],
+    "api_credentials": [
+      "Fastned UK"
+    ],
+    "agreement_then_credentials": [
+      "InstaVolt"
+    ],
+    "eco_movement_request": [
+      "evyve",
+      "bp pulse / Chargemaster",
+      "IONITY UK",
+      "Source EV UK",
+      "ubitricity"
+    ],
+    "partner_onboarding": [
+      "ChargePoint CMS UK"
+    ],
+    "support_credentials": [
+      "Osprey Charging"
+    ],
+    "ocpi_bilateral_token": [
+      "Pod"
+    ]
+  },
+  "items": [
+    {
+      "name": "EV Charger Points / Charge & Go",
+      "status": "blocked_request_only",
+      "group": "request_only",
+      "humanAction": "Email support@evcps.uk with identity, organisation and intended use; operator promises data within 48h.",
+      "cost": "free-request",
+      "priority": "P3",
+      "blocker": "Operator requires an email request to support@evcps.uk with requester identity, organisation and intended use; operator says data is supplied within 48 hours.",
+      "next": "manual data request only if needed after all autonomous sources are exhausted."
+    },
+    {
+      "name": "3ti Energy Hubs",
+      "status": "blocked_dynamic_endpoint_recovery",
+      "group": "deferred_dynamic",
+      "humanAction": "No external request yet; recover Fuuse ODA UUID via browser-network inspection once tooling returns.",
+      "cost": "none",
+      "priority": "DEFERRED",
+      "blocker": "Official page demonstrably consumes Fuuse ODA data but the client-specific Fuuse UUID/endpoints are injected dynamically and not exposed in static HTML or WordPress REST content. Live browser/network inspection was attempted but could not start because TinyFish wallet balance is -$1.91.",
+      "next": "after browser automation funding is restored, inspect network requests once and persist Fuuse location/tariff URLs."
+    },
+    {
+      "name": "LEAP24 UK",
+      "status": "blocked_ocpi_data_access",
+      "group": "ocpi_access",
+      "humanAction": "Request Road/E-Flux OCPI data access using already-discovered 2.1.1 endpoints.",
+      "cost": "unknown",
+      "priority": "P3",
+      "blocker": "Official page currently lists 12 active sites + 5 in development, while external network counts indicate a larger estate. No complete machine-readable PCPR feed surfaced after targeted search.",
+      "next": "try authenticated Road/E-Flux OCPI access or inspect LEAP24 app/backend later; no need to rediscover endpoints."
+    },
+    {
+      "name": "Believ",
+      "status": "blocked_free_account_credentials",
+      "group": "free_self_service_account",
+      "humanAction": "Create a dedicated project account and generate API credentials.",
+      "cost": "free",
+      "priority": "P1",
+      "blocker": "Official EVSE API requires a free account to generate credentials.",
+      "next": "create dedicated project account/credentials."
+    },
+    {
+      "name": "GRIDSERVE",
+      "status": "blocked_api_key",
+      "group": "api_key_form",
+      "humanAction": "Submit GRIDSERVE Open Data API key form with project email and TCC purpose.",
+      "cost": "free",
+      "priority": "P1",
+      "blocker": "Official API requires ec-subscription-key issued after registration.",
+      "next": "obtain project API key."
+    },
+    {
+      "name": "Fastned UK",
+      "status": "blocked_api_credentials",
+      "group": "api_credentials",
+      "humanAction": "Request Fastned UK Open Data API credentials/onboarding.",
+      "cost": "unknown/free-request",
+      "priority": "P2",
+      "blocker": "Official Fair Use Policy confirms an Open Data API and states API keys/access credentials are used, but no anonymous endpoint or public self-service credential route is published.",
+      "next": "obtain Fastned UK Open Data API credentials/onboarding."
+    },
+    {
+      "name": "InstaVolt",
+      "status": "blocked_credentials_agreement",
+      "group": "agreement_then_credentials",
+      "humanAction": "Email opendata@instavolt.com, sign Open Data Agreement, receive credentials.",
+      "cost": "free-request",
+      "priority": "P2",
+      "blocker": "Official process requires Open Data Agreement and credentials before API access.",
+      "next": "manual onboarding required."
+    },
+    {
+      "name": "evyve",
+      "status": "blocked_eco_movement_token",
+      "group": "eco_movement_request",
+      "humanAction": "Request PCPR access/token through operator/Eco-Movement route; verify whether one Eco-Movement identity can consolidate multiple operator grants.",
+      "cost": "unknown/free-request",
+      "priority": "P1",
+      "blocker": "Official request route is serviced by Eco-Movement; Eco-Movement PCPR API returned HTTP 401 anonymously.",
+      "next": "obtain Eco-Movement/request credentials."
+    },
+    {
+      "name": "ChargePoint CMS UK",
+      "status": "blocked_partner_onboarding",
+      "group": "partner_onboarding",
+      "humanAction": "Submit ChargePoint CMS open-data API request to ChargePoint's external partner.",
+      "cost": "unknown/free-request",
+      "priority": "P2",
+      "blocker": "ChargePoint explicitly routes PCPR open-data API access through an external partner/request workflow rather than publishing anonymous endpoints.",
+      "next": "complete partner open-data request with Network=ChargePoint CMS."
+    },
+    {
+      "name": "bp pulse / Chargemaster",
+      "status": "blocked_eco_movement_operator_key",
+      "group": "eco_movement_request",
+      "humanAction": "Request PCPR access/token through operator/Eco-Movement route; verify whether one Eco-Movement identity can consolidate multiple operator grants.",
+      "cost": "unknown/free-request",
+      "priority": "P1",
+      "blocker": "bp pulse PCPR access uses an operator API key for the Eco-Movement API; anonymous Eco-Movement PCPR endpoints return HTTP 401.",
+      "next": "obtain bp pulse/Eco-Movement API key; treat BPC/BPP/BPT as one family."
+    },
+    {
+      "name": "IONITY UK",
+      "status": "blocked_eco_movement_token",
+      "group": "eco_movement_request",
+      "humanAction": "Request PCPR access/token through operator/Eco-Movement route; verify whether one Eco-Movement identity can consolidate multiple operator grants.",
+      "cost": "unknown/free-request",
+      "priority": "P1",
+      "blocker": "Eco-Movement PCPR endpoint requires Authorization; anonymous test of locations and tariffs returned HTTP 401.",
+      "next": "obtain Eco-Movement PCPR token/onboarding if project access is approved."
+    },
+    {
+      "name": "Osprey Charging",
+      "status": "blocked_support_credentials",
+      "group": "support_credentials",
+      "humanAction": "Request Osprey open-data URL and HTTP Basic credentials from support.",
+      "cost": "free-request",
+      "priority": "P2",
+      "blocker": "OCPI/open-data access is confirmed but endpoint/HTTP Basic credentials are supplied via support.",
+      "next": "request project credentials."
+    },
+    {
+      "name": "Pod",
+      "status": "blocked_ocpi_token",
+      "group": "ocpi_bilateral_token",
+      "humanAction": "Request bilateral OCPI credentials/token from Pod; discovery endpoints already known.",
+      "cost": "unknown/free-request",
+      "priority": "P3",
+      "blocker": "OCPI versions endpoint is public but locations/tariffs modules require bilateral token authentication.",
+      "next": "obtain statutory public-data route or OCPI token."
+    },
+    {
+      "name": "Source EV UK",
+      "status": "blocked_eco_movement_token",
+      "group": "eco_movement_request",
+      "humanAction": "Request PCPR access/token through operator/Eco-Movement route; verify whether one Eco-Movement identity can consolidate multiple operator grants.",
+      "cost": "unknown/free-request",
+      "priority": "P1",
+      "blocker": "Official compliance route goes via Eco-Movement/request agreement; Eco-Movement PCPR API returned HTTP 401 anonymously.",
+      "next": "obtain Eco-Movement/request credentials."
+    },
+    {
+      "name": "Weev",
+      "status": "blocked_free_account_credentials",
+      "group": "free_self_service_account",
+      "humanAction": "Create a dedicated project account and generate API credentials.",
+      "cost": "free",
+      "priority": "P1",
+      "blocker": "Official EVSE API requires a free account/API credentials.",
+      "next": "create dedicated project account/credentials."
+    },
+    {
+      "name": "Zest Eco",
+      "status": "blocked_request_only",
+      "group": "request_only",
+      "humanAction": "Submit Zest Charge Point Open Data request form; data licensed CC BY 4.0.",
+      "cost": "free-request",
+      "priority": "P3",
+      "blocker": "Official Charge Point Open Data page exposes a request form rather than a public endpoint; data is licensed CC BY 4.0.",
+      "next": "manual request if no hidden/public endpoint is discovered later."
+    },
+    {
+      "name": "ubitricity",
+      "status": "blocked_eco_movement_token",
+      "group": "eco_movement_request",
+      "humanAction": "Request PCPR access/token through operator/Eco-Movement route; verify whether one Eco-Movement identity can consolidate multiple operator grants.",
+      "cost": "unknown/free-request",
+      "priority": "P1",
+      "blocker": "Eco-Movement PCPR endpoint requires Authorization; anonymous locations/tariffs test returned HTTP 401.",
+      "next": "obtain Eco-Movement PCPR token/onboarding if project access is approved."
+    }
+  ]
+}
