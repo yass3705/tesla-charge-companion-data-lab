@@ -1,0 +1,70 @@
+name: Switzerland CCI parallel first-pass safety
+
+on:
+  push:
+    paths:
+      - '.github/workflows/switzerland-cci-parallel-first-pass.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Parallel CCI first pass
+        run: |
+          mkdir -p tmp
+          python3 scripts/collect_swiss_atlas_cpo_parallel.py \
+            --operator 'CH*CCI' --name 'MOVE Mobility (CH*CCI)' \
+            --output tmp/cci-parallel.json --workers 3 --delay 0.12
+      - name: Persist only if canonical is still missing
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase origin main
+          if [ -f docs/switzerland-cci-first-pass-2026-09-28.json ]; then
+            python3 - <<'PY'
+          import json,pathlib
+          x=json.load(open('tmp/cci-parallel.json',encoding='utf-8'))
+          pathlib.Path('docs/switzerland-cci-parallel-first-pass-audit-2026-09-28.json').write_text(
+              json.dumps({'operatorId':'CH*CCI','status':'audit-only','summary':x['summary'],
+              'note':'Canonical first-pass already existed when parallel safety run finished; no overwrite.'},
+              ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+            git add docs/switzerland-cci-parallel-first-pass-audit-2026-09-28.json
+            git commit -m 'docs(switzerland): record CCI parallel first-pass audit' || exit 0
+          else
+            mkdir -p data/switzerland docs
+            cp tmp/cci-parallel.json data/switzerland/cci-direct-tariffs.json
+            python3 - <<'PY'
+          import json,pathlib
+          x=json.load(open('tmp/cci-parallel.json',encoding='utf-8'));s=x['summary']
+          doc={'schemaVersion':1,'country':'CH','cpo':'MOVE Mobility (CH*CCI)','operatorId':'CH*CCI',
+               'pass':'first','status':s['status'],'stationCount':s['stationCount'],
+               'stationsWithDirectTariff':s['stationsWithDirectTariff'],
+               'stationsWithoutDirectTariff':s['stationsWithoutDirectTariff'],'coveragePct':s['coveragePct'],
+               'directTariffDetailCount':s['directTariffDetailCount'],
+               'directPaymentTariffDetailCount':s['directPaymentTariffDetailCount'],
+               'method':'Swiss eMobility Ladepreisatlas public frontend API; parallel first-pass safety; direct-only',
+               'policy':'No tariff extrapolation.','productionSource':'data/switzerland/cci-direct-tariffs.json'}
+          pathlib.Path('docs/switzerland-cci-first-pass-2026-09-28.json').write_text(
+              json.dumps(doc,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+            git add data/switzerland/cci-direct-tariffs.json docs/switzerland-cci-first-pass-2026-09-28.json
+            git commit -m 'data(switzerland): fallback first-pass CH*CCI'
+          fi
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
