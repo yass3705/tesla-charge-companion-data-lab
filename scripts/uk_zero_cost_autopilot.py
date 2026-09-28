@@ -77,9 +77,22 @@ def parse_time(value):
 def due_task(state, now):
     runs = state.get("tasks", {})
     for task in TASKS:
-        last = parse_time((runs.get(task["id"]) or {}).get("lastSuccessAt"))
-        if last is None or now - last >= timedelta(hours=task["interval_hours"]):
-            return task
+        task_state = runs.get(task["id"]) or {}
+        last_success = parse_time(task_state.get("lastSuccessAt"))
+        last_attempt = parse_time(task_state.get("lastAttemptAt"))
+
+        if last_success is None:
+            # First attempt is due immediately. After a failure, wait at least
+            # one hour before retrying so the 5-minute scheduler cannot build
+            # a queue of long duplicate runs.
+            if last_attempt is None or now - last_attempt >= timedelta(hours=1):
+                return task
+            continue
+
+        if now - last_success >= timedelta(hours=task["interval_hours"]):
+            # Also avoid rapid duplicate retries if a recent attempt failed.
+            if last_attempt is None or now - last_attempt >= timedelta(hours=1):
+                return task
     return None
 
 
@@ -217,7 +230,7 @@ def main():
     now = now_utc()
     task = None if args.audit_only else due_task(state, now)
     last_report = parse_time(state.get("lastReportAt"))
-    report_due = last_report is None or now - last_report >= timedelta(hours=3)
+    report_due = last_report is None or now - last_report >= timedelta(hours=1)
     if task is None and not report_due and not args.audit_only:
         print(json.dumps({"country": "GB", "status": "idle", "reason": "no deterministic task due and 3h report not due"}))
         return
