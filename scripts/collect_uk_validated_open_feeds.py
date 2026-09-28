@@ -6,6 +6,8 @@ from pathlib import Path
 UA='TeslaChargeCompanion/9 UK-open-data collector'
 # SmartCharging note: final page size must not exceed remaining rows advertised by meta.total.
 SOURCES=[
+{'name':'MFG EV Power','party_ids':['MFL'],'locations':'https://opendata.motorfuelgroup.net/locations','tariffs':'https://opendata.motorfuelgroup.net/tariffs','mode':'single'},
+{'name':'char.gy','party_ids':['CHG'],'locations':'https://char.gy/open-ocpi/locations','tariffs':'https://char.gy/open-ocpi/tariffs','mode':'offset'},
 {'name':'Clenergy EV','party_ids':['CEV'],'locations':'https://api.clenergy.online/development/pcpr/locations','tariffs':'https://api.clenergy.online/development/pcpr/tariffs','mode':'single'},
 {'name':'Dragon Charging','party_ids':['DGN'],'locations':'https://api.dragoncharging.online/development/pcpr/locations','tariffs':'https://api.dragoncharging.online/development/pcpr/tariffs','mode':'single'},
 {'name':'PoGo Charge','party_ids':['POG'],'locations':'https://info.smartcharging.uk/public_feed/locations/4009','tariffs':'https://info.smartcharging.uk/public_feed/locations/4009/tariffs','mode':'pogo_hybrid'},
