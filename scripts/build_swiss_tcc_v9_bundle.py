@@ -84,6 +84,7 @@ sources=[
 ("Electra second pass","data/switzerland/electra-direct-tariffs-second-pass.json"),
 ("MOVE second pass","data/switzerland/move-direct-tariffs-second-pass.json"),
 ("IWB second pass","data/switzerland/iwb-direct-tariffs-second-pass.json"),
+("GOFAST official","data/switzerland/gofast-official-direct-tariffs.json"),
 ]
 classifications=[
 ("Partino restricted","data/switzerland/par-partino-restricted-direct-classification.json"),
