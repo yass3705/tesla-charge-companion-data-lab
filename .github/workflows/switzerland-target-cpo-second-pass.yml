@@ -1,0 +1,75 @@
+name: Switzerland target CPO second pass
+
+on:
+  push:
+    paths:
+      - '.github/workflows/switzerland-target-cpo-second-pass.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - operator: 'CH*CCC'
+            slug: move
+            name: MOVE
+          - operator: 'CH*360'
+            slug: energie360
+            name: 'Energie 360'
+          - operator: 'CH*EWZ'
+            slug: ewz
+            name: ewz
+          - operator: 'CH*ELC'
+            slug: electra
+            name: Electra
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Second-pass collect
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/switzerland docs
+          python3 scripts/collect_swiss_atlas_cpo.py \
+            --operator '${{ matrix.operator }}' \
+            --name '${{ matrix.name }}' \
+            --output 'data/switzerland/${{ matrix.slug }}-direct-tariffs-second-pass.json' \
+            --delay 0.12 \
+            --provider-customer-tariffs
+      - name: Persist result
+        shell: python
+        run: |
+          import json,pathlib
+          slug='${{ matrix.slug }}'
+          p=pathlib.Path(f'data/switzerland/{slug}-direct-tariffs-second-pass.json')
+          x=json.loads(p.read_text())
+          doc={
+            'cpo':x['cpo'],'operatorId':x['operatorId'],'summary':x['summary'],
+            'unresolved':x['unresolved'],
+            'method':'Swiss price-atlas second pass with provider_customer_tariffs=true; direct-only filter is_roaming=false and EMP=CPO',
+            'promotionRule':'Do not promote brand/provider-restricted-only offers unless they are usable as a direct CPO tariff in TCC.'
+          }
+          pathlib.Path(f'docs/switzerland-{slug}-second-pass-2026-09-27.json').write_text(json.dumps(doc,ensure_ascii=False,indent=2)+'\n')
+      - name: Push result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 'data/switzerland/${{ matrix.slug }}-direct-tariffs-second-pass.json' 'docs/switzerland-${{ matrix.slug }}-second-pass-2026-09-27.json'
+          git commit -m 'data: second-pass ${{ matrix.name }} direct tariffs'
+          for attempt in 1 2 3 4 5; do
+            if git push origin main; then exit 0; fi
+            git pull --rebase origin main
+            sleep 2
+          done
+          exit 1

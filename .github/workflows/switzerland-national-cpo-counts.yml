@@ -1,0 +1,105 @@
+name: Switzerland national CPO counts
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/switzerland-national-cpo-counts.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Download and count national OICP feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docs
+          URL='https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json'
+          curl --compressed -fsSL --retry 3 --connect-timeout 15 --max-time 90 "$URL" -o /tmp/ch.json
+          python3 - <<'PY'
+          import json,collections,pathlib,re
+          x=json.load(open('/tmp/ch.json',encoding='utf-8'))
+          print('top keys',list(x)[:20])
+          root=x.get('EVSEData',x)
+          print('EVSEData type',type(root).__name__)
+          if isinstance(root,dict):
+              print('EVSEData keys',list(root)[:30])
+          records=[]
+          # recursively collect dicts containing a likely EVSE identifier
+          def walk(v,path=()):
+              if isinstance(v,dict):
+                  keys={str(k).lower():k for k in v}
+                  evk=next((keys[k] for k in keys if k in ('evseid','evse_id','evseidentifier','evse-id')),None)
+                  if evk is not None and isinstance(v.get(evk),str):
+                      records.append(v)
+                  for val in v.values(): walk(val,path)
+              elif isinstance(v,list):
+                  for val in v: walk(val,path)
+          walk(x)
+          print('record candidates',len(records))
+          if records:
+              print('sample keys',sorted(records[0].keys()))
+              print('sample',json.dumps(records[0],ensure_ascii=False)[:10000])
+
+          by_op=collections.defaultdict(lambda:{'evse':set(),'station':set(),'names':collections.Counter()})
+          for r in records:
+              lower={str(k).lower():k for k in r}
+              ev=None
+              for kk in ('evseid','evse_id','evseidentifier'):
+                  if kk in lower: ev=r.get(lower[kk]); break
+              op=None
+              for kk in ('operatorid','operator_id','operatoridentifier'):
+                  if kk in lower: op=r.get(lower[kk]); break
+              if not op and isinstance(ev,str):
+                  m=re.match(r'([A-Z]{2}\*[^*]+)\*E',ev,re.I)
+                  if m: op=m.group(1)
+              name=None
+              for kk in ('operatorname','operator_name','operator'):
+                  if kk in lower and isinstance(r.get(lower[kk]),str):
+                      name=r.get(lower[kk]); break
+              st=None
+              for kk in ('chargingstationid','charging_station_id','stationid','station_id','chargingstationidentifier'):
+                  if kk in lower:
+                      st=r.get(lower[kk]); break
+              if op:
+                  d=by_op[str(op)]
+                  if ev: d['evse'].add(str(ev))
+                  if st: d['station'].add(str(st))
+                  if name: d['names'][str(name)]+=1
+
+          rows=[]
+          for op,d in by_op.items():
+              rows.append({
+                'operatorId':op,
+                'evseCount':len(d['evse']),
+                'stationCount':len(d['station']),
+                'operatorNames':[n for n,_ in d['names'].most_common(5)]
+              })
+          rows.sort(key=lambda r:(r['stationCount'],r['evseCount']),reverse=True)
+          report={'source':'official Swiss national OICP feed','operatorCount':len(rows),'operators':rows}
+          pathlib.Path('docs/switzerland-national-cpo-counts-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(report,ensure_ascii=False,indent=2)[:50000])
+          PY
+
+      - name: Persist counts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-national-cpo-counts-2026-09-27.json
+          git commit -m "docs: count Swiss national CPO inventory"
+          for i in 1 2 3; do
+            if git push origin main; then exit 0; fi
+            git pull --rebase origin main
+          done
+          exit 1

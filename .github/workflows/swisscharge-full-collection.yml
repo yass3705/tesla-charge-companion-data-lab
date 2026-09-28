@@ -1,0 +1,202 @@
+name: Swisscharge full cloud collection
+
+on:
+  push:
+    paths:
+      - '.github/workflows/swisscharge-full-collection.yml'
+      - 'scripts/collect_swisscharge_cloud.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Run Swisscharge shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/swisscharge/shards
+          python3 scripts/collect_swisscharge_cloud.py \
+            --output data/swisscharge/shards/shard-${{ matrix.shard }}.json \
+            --shard-index ${{ matrix.shard }} \
+            --shard-count 4 \
+            --delay 0.72
+
+      - name: Persist shard on dedicated branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH="swisscharge-run-${{ github.run_id }}-${{ matrix.shard }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add "data/swisscharge/shards/shard-${{ matrix.shard }}.json"
+          git commit -m "data: persist Swisscharge shard ${{ matrix.shard }}"
+          git push origin "$BRANCH"
+
+  merge:
+    needs: collect
+    if: needs.collect.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Fetch persisted shard branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p shards
+          RUN="${{ github.run_id }}"
+          for i in 0 1 2 3; do
+            BRANCH="swisscharge-run-$RUN-$i"
+            git fetch origin "$BRANCH:refs/remotes/origin/$BRANCH"
+            git show "origin/$BRANCH:data/swisscharge/shards/shard-$i.json" > "shards/shard-$i.json"
+          done
+
+      - name: Merge, classify unresolved rows and create finalization record
+        shell: python
+        run: |
+          import glob,json,re
+          from datetime import datetime,timezone
+          from pathlib import Path
+
+          files=sorted(glob.glob('shards/shard-*.json'))
+          if len(files)!=4:
+              raise SystemExit(f'Expected 4 shards, got {len(files)}')
+          parts=[json.load(open(p,encoding='utf-8')) for p in files]
+          evses=[]; unresolved=[]; tariffs={}
+          for p in parts:
+              evses.extend(p.get('evses') or [])
+              unresolved.extend(p.get('unresolved') or [])
+              tariffs.update(p.get('tariffsById') or {})
+
+          classes={
+              'notFound':[],
+              'noTariff':[],
+              'other4xx':[],
+              'serverError':[],
+              'transport':[],
+              'other':[]
+          }
+          for row in unresolved:
+              status=row.get('httpStatus')
+              reason=row.get('reason')
+              body=(row.get('body') or '').lower()
+              if reason=='no_tariff':
+                  classes['noTariff'].append(row)
+              elif status==404 and ('not found' in body or 'no charge points found' in body):
+                  classes['notFound'].append(row)
+              elif isinstance(status,int) and 400 <= status < 500:
+                  classes['other4xx'].append(row)
+              elif isinstance(status,int) and status >= 500:
+                  classes['serverError'].append(row)
+              elif status in (0,None) and reason=='http_error':
+                  classes['transport'].append(row)
+              else:
+                  classes['other'].append(row)
+
+          national=max((p.get('scope',{}).get('nationalEvseCount',0) for p in parts),default=0)
+          resolved=len(evses)
+          unresolved_count=len(unresolved)
+          coverage=(resolved/national*100) if national else 0
+
+          out={
+              'schemaVersion':1,
+              'source':parts[0].get('source',{}),
+              'scope':{
+                  'selector':'unique EVSE identifiers matching CH*SUI*E* in the Swiss national OICP feed',
+                  'nationalEvseCount':national,
+                  'evseCount':sum(p.get('scope',{}).get('evseCount',0) for p in parts),
+                  'shardCount':len(parts)
+              },
+              'summary':{
+                  'resolvedTariffEvseCount':resolved,
+                  'unresolvedEvseCount':unresolved_count,
+                  'coveragePct':round(coverage,3),
+                  'uniqueTariffCount':len(tariffs),
+                  'http200':sum(p.get('summary',{}).get('http200',0) for p in parts),
+                  'http4xx':sum(p.get('summary',{}).get('http4xx',0) for p in parts),
+                  'http5xx':sum(p.get('summary',{}).get('http5xx',0) for p in parts),
+                  'transport':sum(p.get('summary',{}).get('transport',0) for p in parts),
+                  'noTariff':sum(p.get('summary',{}).get('noTariff',0) for p in parts),
+                  'unresolvedClassification':{k:len(v) for k,v in classes.items()}
+              },
+              'tariffsById':tariffs,
+              'evses':evses,
+              'unresolved':unresolved,
+              'unresolvedByClass':classes,
+              'mergedAt':datetime.now(timezone.utc).isoformat()
+          }
+
+          Path('data/swisscharge').mkdir(parents=True,exist_ok=True)
+          Path('docs').mkdir(exist_ok=True)
+          Path('data/swisscharge/swisscharge-tariffs.json').write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+
+          finalization={
+              'schemaVersion':1,
+              'country':'CH',
+              'cpo':'Swisscharge',
+              'status':'complete',
+              'updatedAt':datetime.now(timezone.utc).isoformat(),
+              'method':'Swiss national OICP feed CH*SUI*E scope + public Swisscharge ad-hoc tariff API',
+              'nationalEvseCount':national,
+              'resolvedTariffEvseCount':resolved,
+              'unresolvedEvseCount':unresolved_count,
+              'coveragePct':round(coverage,3),
+              'uniqueTariffCount':len(tariffs),
+              'unresolvedClassification':{k:len(v) for k,v in classes.items()},
+              'policy':'No extrapolation. Unresolved EVSEs remain explicit source gaps (not-found/no-tariff/other error) and are not assigned a guessed tariff.',
+              'productionSource':'data/swisscharge/swisscharge-tariffs.json',
+              'collector':'scripts/collect_swisscharge_cloud.py'
+          }
+          Path('docs/switzerland-swisscharge-finalization-2026-09-27.json').write_text(
+              json.dumps(finalization,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print(json.dumps(finalization,indent=2,ensure_ascii=False))
+
+      - name: Persist final Swisscharge dataset on main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/swisscharge/swisscharge-tariffs.json docs/switzerland-swisscharge-finalization-2026-09-27.json
+          git commit -m "data: finalize Swisscharge national tariff coverage"
+          for attempt in 1 2 3; do
+            if git push origin main; then
+              exit 0
+            fi
+            git pull --rebase origin main
+          done
+          exit 1
+
+      - name: Clean temporary shard branches
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          RUN="${{ github.run_id }}"
+          for i in 0 1 2 3; do
+            git push origin --delete "swisscharge-run-$RUN-$i"
+          done
+          exit 0

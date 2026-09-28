@@ -1,0 +1,100 @@
+name: GOFAST public feed audit
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gofast-audit.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Fetch and audit GOFAST public data
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/gofast docs
+          TS=$(date +%s)
+          curl --compressed -fsSL --retry 3 --connect-timeout 15 --max-time 60 \
+            -A 'Mozilla/5.0' \
+            "https://app.gofast.swiss/db/ev_charger_stations.json?_=$TS" \
+            -o data/gofast/ev_charger_stations.json
+          curl --compressed -fsSL --retry 3 --connect-timeout 15 --max-time 60 \
+            -A 'Mozilla/5.0' \
+            "https://app.gofast.swiss/db/emp_pricing.json?_=$TS" \
+            -o data/gofast/emp_pricing.json
+
+          python3 - <<'PY'
+          import json,collections,pathlib,re,hashlib
+
+          stations=json.load(open('data/gofast/ev_charger_stations.json',encoding='utf-8'))
+          emp=json.load(open('data/gofast/emp_pricing.json',encoding='utf-8'))
+          if not isinstance(stations,list):
+              raise SystemExit('Unexpected GOFAST station payload shape')
+
+          pricing=collections.Counter()
+          parking=collections.Counter()
+          plug_types=collections.Counter()
+          price_shapes=collections.Counter()
+          missing=[]
+          sample=[]
+          for s in stations:
+              pde=s.get('pricing_de')
+              pfr=s.get('pricing_fr')
+              pen=s.get('pricing_en')
+              detail=s.get('pricing_detail_de')
+              if pde not in (None,''):
+                  pricing['with_pricing']+=1
+              else:
+                  pricing['without_pricing']+=1
+                  missing.append(s.get('slug'))
+              shp=tuple(k for k in ('pricing_de','pricing_fr','pricing_it','pricing_en','pricing_detail_de','pricing_detail_fr','pricing_detail_it','pricing_detail_en') if s.get(k) not in (None,''))
+              price_shapes[shp]+=1
+              for p in s.get('plugs') or []:
+                  plug_types[str(p.get('type'))]+=1
+              parking[str(s.get('parking_spaces'))]+=1
+              if len(sample)<5:
+                  sample.append({k:s.get(k) for k in ('slug','title_de','pricing_de','pricing_fr','pricing_en','pricing_detail_de','parking_spaces','location','plugs')})
+
+          report={
+            'status':'complete' if pricing['without_pricing']==0 else 'partial',
+            'stationCount':len(stations),
+            'pricingCoverage':dict(pricing),
+            'pricingCoveragePct':round(pricing['with_pricing']/len(stations)*100,3) if stations else 0,
+            'pricingShapes':{','.join(k):v for k,v in price_shapes.items()},
+            'missingPricingSlugs':missing,
+            'plugTypes':dict(plug_types),
+            'sample':sample,
+            'empPricing':emp,
+            'source':{
+              'stations':'https://app.gofast.swiss/db/ev_charger_stations.json',
+              'empPricing':'https://app.gofast.swiss/db/emp_pricing.json'
+            },
+            'sha256':hashlib.sha256(pathlib.Path('data/gofast/ev_charger_stations.json').read_bytes()).hexdigest()
+          }
+          pathlib.Path('docs/switzerland-gofast-audit-2026-09-27.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(report,ensure_ascii=False,indent=2)[:40000])
+          PY
+
+      - name: Persist GOFAST data and audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/gofast/ev_charger_stations.json data/gofast/emp_pricing.json docs/switzerland-gofast-audit-2026-09-27.json
+          git commit -m "data: collect GOFAST public pricing feed"
+          for i in 1 2 3; do
+            if git push origin main; then exit 0; fi
+            git pull --rebase origin main
+          done
+          exit 1
