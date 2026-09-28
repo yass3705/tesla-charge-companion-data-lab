@@ -1,0 +1,72 @@
+name: UK three-feed endpoint probe
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-three-feed-endpoint-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Probe endpoint variants independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import json,urllib.request,urllib.error
+          from pathlib import Path
+          from datetime import datetime,timezone
+          urls=[
+            'https://api.fuuse.io/opendata/e11a667d-c56a-468f-b8d3-a50b41628292/location',
+            'https://api.fuuse.io/opendata/e11a667d-c56a-468f-b8d3-a50b41628292/locations',
+            'https://api.fuuse.io/opendata/e11a667d-c56a-468f-b8d3-a50b41628292/tariff',
+            'https://api.fuuse.io/opendata/e11a667d-c56a-468f-b8d3-a50b41628292/tariffs',
+            'https://cpo-api.gozerocharge.com/api/v1/ocpi/2.2.1/locations',
+            'https://cpo-api.gozerocharge.com/api/v1/ocpi/2.2.1/locations/',
+            'https://cpo-api.gozerocharge.com/api/v1/ocpi/2.2.1/tariffs',
+            'https://cpo-api.gozerocharge.com/api/v1/ocpi/2.2.1/tariffs/',
+            'https://uk.mer.eco/wp-json/ozev/v1/data',
+          ]
+          out={'retrievedAt':datetime.now(timezone.utc).isoformat(),'results':[]}
+          for url in urls:
+              item={'url':url}
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'TeslaChargeCompanion/9 endpoint-probe','Accept':'application/json'})
+                  with urllib.request.urlopen(req,timeout=60) as r:
+                      raw=r.read(1000000); item['status']=r.status; item['contentType']=r.headers.get('Content-Type'); item['bytesRead']=len(raw)
+                      try:
+                          p=json.loads(raw.decode('utf-8')); item['jsonType']=type(p).__name__; item['topKeys']=list(p)[:30] if isinstance(p,dict) else None
+                          if isinstance(p,dict):
+                              for k in ('data','locations','tariffs','items','results'):
+                                  if isinstance(p.get(k),list): item['arrayKey']=k; item['arrayLength']=len(p[k]); break
+                      except Exception as e: item['parseError']=str(e)
+              except urllib.error.HTTPError as e:
+                  item['status']=e.code; item['error']=str(e)
+                  try: item['bodyPrefix']=e.read(500).decode('utf-8','replace')
+                  except Exception: pass
+              except Exception as e: item['error']=f'{type(e).__name__}: {e}'
+              out['results'].append(item)
+          Path('reports/uk/three-feed-endpoint-probe-latest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/three-feed-endpoint-probe-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): probe three open-feed endpoints [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
