@@ -1,0 +1,28 @@
+name: TEST NON-TESLA — Electroverse batch-five robustness
+on:
+  push:
+    paths:
+      - tests/non-tesla/active/run-electroverse-batch-robustness.trigger
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+      GROUPS: '20'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/electroverse_batch_robustness.mjs
+      - if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/batch-robustness.json
+          git commit -m "test(electroverse): record batch robustness [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
