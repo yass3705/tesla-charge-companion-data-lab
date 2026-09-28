@@ -116,10 +116,14 @@
     },
     {
       "name": "IONITY",
-      "status": "partial",
-      "access": "request_via_eco_movement",
-      "evidence": "IONITY publishes a UK Open Data Request page; requests are fulfilled by Eco-Movement.",
-      "next": "second pass: test Eco-Movement PCPR API route / obtain access; reuse validated IONITY tariff method where applicable."
+      "status": "complete",
+      "access": "official_direct_app_api",
+      "evidence": "Validated UK IONITY Direct dataset generated 2026-09-28: 82 GB locations, 860 connectors, 0 unpriced connectors; every location is IONITY_CPO and every connector has a positive IONITY DIRECT GBP/kWh price.",
+      "next": "validated; include direct UK IONITY dataset in TCC aggregation.",
+      "locationsEndpoint": "https://adhoc-bff.ionity.cloud/api/v1/location/static",
+      "tariffEndpointTemplate": "https://adhoc-bff.ionity.cloud/api/v3/location/{uuid}",
+      "dataset": "data/national/ionity_direct_stations_uk.json.gz",
+      "report": "reports/uk/ionity-direct-uk-latest.json"
     },
     {
       "name": "InstaVolt",
@@ -2170,7 +2174,8 @@
       "Evolt Network",
       "Be.EV",
       "ParkRecharge",
-      "Mer UK"
+      "Mer UK",
+      "IONITY"
     ],
     "externalAccessBlocked": [
       {
@@ -2430,6 +2435,21 @@
       "missingTariffIds": 0,
       "dataset": "data/national/uk_mer_gozero.json.gz",
       "report": "reports/uk/mer-gozero-validation-latest.json"
+    },
+    "ionityFinalization": {
+      "state": "complete_source_validated",
+      "generatedAt": "2026-09-28T00:38:46.346703Z",
+      "locations": 82,
+      "connectors": 860,
+      "unpricedConnectors": 0,
+      "priceCountsGbpPerKwh": {
+        "0.620": 41,
+        "0.830": 679,
+        "0.890": 140
+      },
+      "requiredCpoIdentifier": "IONITY_CPO",
+      "dataset": "data/national/ionity_direct_stations_uk.json.gz",
+      "report": "reports/uk/ionity-direct-uk-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
