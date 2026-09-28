@@ -1,0 +1,32 @@
+name: Belgium INDIGO tariff integration
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-indigo-tariff-integration.txt"
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/belgium_integrate_indigo_tariff.py
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/indigo_belgium_official_2026-09-29.json reports/belgium/belgium-indigo-tariff-integration-2026-09-29.json
+          git commit -m "Integrate official INDIGO Belgium public tariff" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep 3
+          done
+          exit 1
