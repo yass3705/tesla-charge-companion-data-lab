@@ -1,0 +1,47 @@
+name: Switzerland Migrol official finalization
+
+on:
+  workflow_run:
+    workflows: ["Switzerland untreated CPO first pass"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Build current Migrol direct tariff dataset
+        run: python3 scripts/finalize_swiss_migrol_official.py
+      - name: Validate fail-closed output
+        run: |
+          python3 - <<'PY'
+          import json
+          f=json.load(open('docs/switzerland-migrol-finalization-2026-09-28.json',encoding='utf-8'))
+          assert f['nationalEvseCount'] > 0
+          assert f['pricedEvseCount'] <= f['nationalEvseCount']
+          assert f['unresolvedEvseCount'] == f['nationalEvseCount']-f['pricedEvseCount']
+          print(json.dumps(f,indent=2))
+          PY
+      - name: Persist
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/switzerland/migrol-official-direct-tariffs.json docs/switzerland-migrol-finalization-2026-09-28.json
+          git commit -m 'data(switzerland): finalize Migrol official current scope' || exit 0
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
