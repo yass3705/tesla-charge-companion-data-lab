@@ -1,0 +1,103 @@
+name: UK Applegreen detail pricing probe
+
+on:
+  push:
+    branches: ["main"]
+    paths: [".github/workflows/uk-applegreen-detail-pricing-probe.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Probe Applegreen site details and public pricing
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import json,re,urllib.request,urllib.error,http.cookiejar
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          base="https://driver.applegreenelectric.com"
+          ua="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
+          cj=http.cookiejar.CookieJar(); opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+          req=urllib.request.Request(base+"/findCharger",headers={"User-Agent":ua,"Accept":"text/html,*/*"})
+          with opener.open(req,timeout=60) as r: html=r.read(2_000_000).decode("utf-8","replace")
+          mh=re.search(r'<meta[^>]+name=["\']_csrf_header["\'][^>]+content=["\']([^"\']+)',html,re.I)
+          mt=re.search(r'<meta[^>]+name=["\']_csrf["\'][^>]+content=["\']([^"\']+)',html,re.I)
+          csrf_header=mh.group(1) if mh else None; csrf_token=mt.group(1) if mt else None
+
+          common={
+            "User-Agent":ua,"Accept":"application/json,text/javascript,*/*;q=0.01",
+            "X-JSON-TYPES":"None","X-APP-TYPE":"WEB","X-Requested-With":"XMLHttpRequest",
+            "Origin":base,"Referer":base+"/findCharger","Accept-Language":"en-GB,en;q=0.9"
+          }
+          if csrf_header and csrf_token: common[csrf_header]=csrf_token
+
+          def request(path,method="GET",data=None,json_mode=False):
+              h=dict(common)
+              body=None
+              if method=="GET" and data:
+                  import urllib.parse
+                  path += ("&" if "?" in path else "?")+urllib.parse.urlencode(data,doseq=True)
+              elif data is not None:
+                  if json_mode:
+                      h["Content-Type"]="application/json"; body=json.dumps(data).encode()
+                  else:
+                      import urllib.parse
+                      h["Content-Type"]="application/x-www-form-urlencoded; charset=UTF-8"
+                      body=urllib.parse.urlencode(data,doseq=True).encode()
+              req=urllib.request.Request(base+path,data=body,headers=h,method=method)
+              with opener.open(req,timeout=60) as r:
+                  return json.loads(r.read().decode("utf-8"))
+
+          bounds={"northEastLat":61.2,"northEastLng":2.5,"southWestLat":49.5,"southWestLng":-8.8}
+          sites=request("/stationFacade/findSitesInBounds","POST",{"filterByIsManaged":True,"filterByBounds":bounds},True).get("data",[])
+          site_ids=[x.get("siteId") for x in sites if isinstance(x,dict) and x.get("siteId") is not None]
+          details=request("/stationFacade/findSiteListDataBySiteIds","POST",{"filterByIsManaged":True,"filterBySiteIds":site_ids},True)
+          plans=request("/billingFacade/findBillingPlansByFilter","GET")
+          d=details.get("data") if isinstance(details,dict) else None
+          p=plans.get("data") if isinstance(plans,dict) else None
+
+          # sample one apparent GB station detail from bounds response
+          stations=request("/stationFacade/findStationsInBounds","POST",{"filterByIsManaged":True,"filterByBounds":bounds},True).get("data",[])
+          gb_sample=None
+          for st in stations:
+              if isinstance(st,dict) and st.get("caption") and any(k in str(st.get("caption")).lower() for k in ("south mimms","fleet","baldock","birchanger","thurrock")):
+                  gb_sample=st; break
+          station_detail=None
+          if gb_sample:
+              station_detail=request("/stationFacade/findStationById","GET",{"stationId":gb_sample.get("id")})
+
+          out={
+            "retrievedAt":datetime.now(timezone.utc).isoformat(),
+            "sitesCount":len(sites),"siteIds":site_ids,
+            "siteDetailsSuccess":details.get("success") if isinstance(details,dict) else None,
+            "siteDetailsCount":len(d) if isinstance(d,list) else None,
+            "siteDetailKeys":list(d[0])[:160] if isinstance(d,list) and d and isinstance(d[0],dict) else [],
+            "siteDetailsSample":d[:5] if isinstance(d,list) else d,
+            "billingPlansSuccess":plans.get("success") if isinstance(plans,dict) else None,
+            "billingPlansType":type(p).__name__,"billingPlans":p,
+            "stationsCount":len(stations),
+            "sampleStationSummary":gb_sample,
+            "sampleStationDetail":station_detail
+          }
+          Path("reports/uk/applegreen-detail-pricing-probe-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/applegreen-detail-pricing-probe-latest.json
+          git commit -m "diag(uk): probe Applegreen details and pricing [run ${GITHUB_RUN_ID}]" || exit 0
+          for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
