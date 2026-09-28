@@ -1,0 +1,221 @@
+{
+  "schemaVersion": 1,
+  "country": "CH",
+  "cpo": "Swisscharge",
+  "updatedAt": "2026-09-27",
+  "status": "cloud-validated",
+  "blocker": null,
+  "evidence": {
+    "apkVersion": "4.234.1",
+    "hermesBytecodeVersion": 98,
+    "hosts": [
+      "swisscharge.ch-sc.charge.ampeco.tech",
+      "cp.swisscharge.ch",
+      "echo.ch-sc.charge.ampeco.tech"
+    ],
+    "echoReachable": true,
+    "appEmbeddedOAuthCredentials": true,
+    "oauthEndpoint": "/api/v1/app/oauth/token",
+    "adHocGrant": {
+      "grant_type": "ad-hoc",
+      "unique_for_device": true,
+      "operatorCountry": "CH"
+    },
+    "deepLinkPattern": "icharging://[0-9]*([0-9]{6})",
+    "referenceIdentifier": "66730",
+    "mobileRoutes": [
+      "/app/locations/withEVSEIdentifier",
+      "/app/evses/search",
+      "/app/tariffs/standard-tod",
+      "/app/tariffs/tou",
+      "/app/tariffs/optimised"
+    ],
+    "functions": [
+      "acquireAdHocToken",
+      "loginAsAdHocCharging",
+      "AdHocLoginMutation",
+      "createOauthTokenInput",
+      "GetTariffByEvseId"
+    ],
+    "githubProbeRun": {
+      "runId": 36324389909,
+      "runNumber": 8,
+      "result": "failure",
+      "reason": "HTTP 403 from nginx on control GET and token POST for both public/private hosts"
+    },
+    "localProbeScript": "scripts/swisscharge_home_probe.py",
+    "localProbeSuccess": {
+      "evseIdentifier": "66730",
+      "oauthStatus": 200,
+      "tokenType": "Bearer",
+      "expiresInSeconds": 31536000,
+      "locationStatus": 200,
+      "resolvedInternalEvseId": "148976",
+      "resolvedEmi3Identifier": "CH*SUI*E66730",
+      "tariffId": "4796",
+      "tariff": {
+        "currency": "CHF",
+        "priceForEnergy": 0.65,
+        "priceForDuration": 0.15,
+        "pricingPeriodInMinutes": 30,
+        "connectionFee": null,
+        "priceType": "duration+energy",
+        "taxInclusive": true
+      },
+      "alternateTariffAtSameLocation": {
+        "tariffId": "3842",
+        "priceForEnergy": 0.65,
+        "priceForDuration": 0,
+        "pricingPeriodInMinutes": 1,
+        "connectionFee": 3,
+        "taxInclusive": true
+      },
+      "publicQrPattern": "https://cp.swisscharge.ch/public/cs/{evseIdentifier}",
+      "publicQrRedirectPattern": "https://adhoc.swisscharge.ch/tenant/Swisscharge_CH/session-start/{evseIdentifier}"
+    },
+    "cloudPortalValidation": {
+      "portalPattern": "https://adhoc.swisscharge.ch/tenant/Swisscharge_CH/session-start/{evseIdentifier}",
+      "browserExecution": "cloud browser, stealth profile, FR proxy",
+      "requiresLogin": false,
+      "requiresPaymentToViewTariff": false,
+      "samples": [
+        {
+          "evseIdentifier": "66730",
+          "location": "Flughafen Zürich Parkhaus Circle P4",
+          "connector": "Type 2",
+          "maxPowerKw": 11,
+          "priceForEnergyChfPerKwh": 0.65,
+          "durationFeeChf": 0.15,
+          "durationPeriodMinutes": 30,
+          "connectionFeeChf": 0,
+          "preAuthorizationChf": 45
+        },
+        {
+          "evseIdentifier": "66725",
+          "location": "Flughafen Zürich Parkhaus Circle P4",
+          "connector": "Type 2",
+          "maxPowerKw": 11,
+          "priceForEnergyChfPerKwh": 0.65,
+          "durationFeeChf": 0,
+          "connectionFeeChf": 3,
+          "preAuthorizationChf": 45
+        }
+      ],
+      "conclusion": "The public ad-hoc portal reproduces distinct EVSE-level tariff structures and is cloud-browser accessible."
+    },
+    "cloudCollection": {
+      "baseHost": "https://adhoc.swisscharge.ch",
+      "tenant": "Swisscharge_CH",
+      "bootstrapPagePattern": "/tenant/Swisscharge_CH/session-start/{physicalReference}",
+      "tariffEndpoint": "/api/v1/charge-points?evsePhysicalReference={physicalReference}",
+      "requiredHeaders": [
+        "Tenant",
+        "tenant-path",
+        "Referer"
+      ],
+      "credentialsRequired": false,
+      "cookies": "anonymous session cookies acquired by GET of bootstrap page",
+      "githubActionsValidationRunId": 36329470327,
+      "githubActionsMultiStationRunId": 36329665610,
+      "rateLimitObserved": "100 requests / 60 seconds",
+      "referenceEvse": {
+        "physicalReference": "66730",
+        "internalEvseId": 148976,
+        "station": "Flughafen Zürich Parkhaus Circle P4",
+        "tariffId": 48009,
+        "currency": "CHF",
+        "pricePerKwh": 0.65,
+        "pricePerPeriod": 0.15,
+        "pricePeriodInMinutes": 30,
+        "connectionFee": 0,
+        "adHocPreAuthorizeAmount": 45
+      },
+      "distributedSample": {
+        "attempted": 8,
+        "http200": 7,
+        "unresolved422": 1,
+        "examples": [
+          {
+            "physicalReference": "138005",
+            "city": "Signy-Avenex",
+            "pricePerKwh": 0.35,
+            "pricePerPeriod": 0,
+            "connectionFee": 0
+          },
+          {
+            "physicalReference": "34441*1",
+            "city": "8752 Näfels",
+            "pricePerKwh": 0.6,
+            "pricePerPeriod": 0.12,
+            "pricePeriodInMinutes": 1,
+            "connectionFee": 0
+          },
+          {
+            "physicalReference": "166145",
+            "city": "Aarau",
+            "pricePerKwh": 0.5,
+            "pricePerPeriod": 0.07,
+            "pricePeriodInMinutes": 1,
+            "durationFeeGracePeriod": 480
+          },
+          {
+            "physicalReference": "276022",
+            "city": "Conthey",
+            "pricePerKwh": 0.55,
+            "pricePerPeriod": 0,
+            "connectionFee": 0
+          },
+          {
+            "physicalReference": "92378",
+            "city": "Zürich",
+            "pricePerKwh": 0.35,
+            "pricePerPeriod": 0,
+            "connectionFee": 2
+          },
+          {
+            "physicalReference": "174659",
+            "city": "Arbon",
+            "pricePerKwh": 0.33,
+            "pricePerPeriod": 0,
+            "connectionFee": 0
+          },
+          {
+            "physicalReference": "5648",
+            "city": "Opfikon",
+            "pricePerKwh": 0.45,
+            "pricePerPeriod": 0.25,
+            "pricePeriodInMinutes": 1,
+            "durationFeeGracePeriod": 360
+          }
+        ]
+      },
+      "nationalFeed": {
+        "url": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
+        "uniqueChSuiEvseIdsObserved": 2445,
+        "note": "This count is EVSE identifiers with prefix CH*SUI*E in the current national feed and must be reconciled with the earlier TCC Swisscharge scope before bulk ingestion."
+      }
+    }
+  },
+  "nextStep": "Reconcile the 2445 CH*SUI EVSE identifiers in the current national feed with the TCC Swisscharge scope, then run the cloud collector only on the canonical TCC EVSE set. Keep 4xx/no-tariff rows unresolved rather than extrapolating.",
+  "promotionRule": "The cloud tariff method is validated across multiple geographically distinct EVSEs. Promote the method to complete after canonical TCC scope reconciliation and a full coverage run with explicit unresolved rows.",
+  "possibleProductionPaths": [
+    {
+      "priority": 1,
+      "method": "Public ad-hoc portal collector",
+      "description": "Generate one public session-start URL per Swisscharge EVSE and parse the rendered tariff in a browser. No account, app OAuth secret or payment is needed to view prices.",
+      "caveat": "Requires JavaScript-capable browser execution; plain HTTP extraction showed an application error."
+    },
+    {
+      "priority": 2,
+      "method": "Proxy-assisted mobile API collector",
+      "description": "Reuse the validated ad-hoc OAuth + withEVSEIdentifier API flow through an egress IP accepted by Swisscharge.",
+      "caveat": "Direct GitHub-hosted runner egress is currently blocked by nginx."
+    },
+    {
+      "priority": 3,
+      "method": "Residential/self-hosted runner",
+      "description": "Run the existing read-only probe from a residential machine or always-on low-power host and commit sanitized outputs to TCC.",
+      "caveat": "Operational dependency on a user-controlled device; not preferred for primary production."
+    }
+  ]
+}
