@@ -7,9 +7,9 @@ OUT=Path("reports/belgium/totalenergies")
 OUT.mkdir(parents=True,exist_ok=True)
 BASE="https://public.mycardprd.alzp.tgscloud.net/chargeplus-bff/v2/pois"
 samples=[
- {"name":"Braine-l'Alleud","lat":50.66876,"lon":4.384442,"radius":5000},
- {"name":"Boom","lat":51.099934,"lon":4.368176,"radius":5000},
- {"name":"Alken","lat":50.88475,"lon":5.299239,"radius":5000},
+ {"name":"Braine-l'Alleud","lat":50.66876,"lon":4.384442,"radius":5},
+ {"name":"Boom","lat":51.099934,"lon":4.368176,"radius":5},
+ {"name":"Alken","lat":50.88475,"lon":5.299239,"radius":5},
 ]
 
 def get(params):
