@@ -80,6 +80,58 @@ def ids_from(obj):
         for v in obj: out.extend(ids_from(v))
     return out
 
+def source_rows(obj):
+    """Return only production-priced rows; never recurse through unresolved evidence when a source has explicit evses/stations."""
+    if isinstance(obj,dict) and isinstance(obj.get("evses"),list):
+        return [(x.get("evseId") or x.get("EvseID"),x) for x in obj["evses"] if isinstance(x,dict) and isinstance(x.get("evseId") or x.get("EvseID"),str)]
+    if isinstance(obj,dict) and isinstance(obj.get("stations"),list):
+        rows=[]
+        for st in obj["stations"]:
+            if not isinstance(st,dict): continue
+            for cpwrap in st.get("chargePoints") or []:
+                if not isinstance(cpwrap,dict): continue
+                cp=cpwrap.get("chargePoint") or {}
+                tariffs=cpwrap.get("directTariffs") or []
+                if not tariffs: continue
+                for eid in cp.get("evse_ids") or []:
+                    if isinstance(eid,str):
+                        rows.append((eid,{
+                            "evseId":eid,
+                            "stationId":st.get("stationId"),
+                            "stationName":st.get("name"),
+                            "directTariffs":tariffs,
+                        }))
+        if rows: return rows
+    # Swisscharge and legacy normalized files: recurse only as fallback.
+    return ids_from(obj)
+
+def node_has_real_tariff(node):
+    """Reject unresolved rows that merely contain null/empty price fields or nested evidence."""
+    if not isinstance(node,dict): return False
+    if node.get("classification") in ("no_public_direct_tariff","no-public-direct-tariff"):
+        return False
+    numeric_keys=("pricePerKwh","chfPerKwh","energyPrice","EnergyPrice","EnergyPricePerKwh","pricePerMinute","startFee","sessionFee","ParkingPrice","parkingPrice")
+    for k in numeric_keys:
+        if isinstance(node.get(k),(int,float)):
+            return True
+    p=node.get("price")
+    if isinstance(p,dict):
+        for k in ("EnergyPrice","EnergyPricePerKwh","ParkingPrice","ParkingPricePerHour","Price"):
+            if isinstance(p.get(k),(int,float)):
+                return True
+    if isinstance(node.get("directTariffs"),list) and node["directTariffs"]:
+        return True
+    if isinstance(node.get("tariffs"),list) and node["tariffs"]:
+        return True
+    if isinstance(node.get("restricted_segments"),list) and node["restricted_segments"]:
+        return True
+    if isinstance(node.get("priceTuple"),list) and any(v is not None for v in node["priceTuple"]):
+        return True
+    # Explicit free tariff is still a deterministic price.
+    if node.get("tariff") == 0 or node.get("directPrice") == 0:
+        return True
+    return False
+
 source_stats=[]
 for label,fp in sources:
     p=Path(fp)
@@ -89,12 +141,9 @@ for label,fp in sources:
     except Exception:
         source_stats.append({"label":label,"file":fp,"status":"invalid_json","matchedEvseCount":0}); continue
     seen=set()
-    for eid,node in ids_from(obj):
-        if eid not in evses: continue
-        # Keep the source-native tariff node to avoid lossy schema guesses.
-        # Skip nodes that are clearly only unresolved/classification evidence.
-        low=json.dumps(node,ensure_ascii=False).lower()
-        if not any(tok in low for tok in ("price","tariff","cost","energy","currency","chf","free","fee")): continue
+    for eid,node in source_rows(obj):
+        if not isinstance(eid,str) or eid not in evses: continue
+        if not node_has_real_tariff(node): continue
         evses[eid]["directTariffs"].append({"sourceLabel":label,"sourceFile":fp,"data":node})
         evses[eid]["directTariffStatus"]="resolved"
         seen.add(eid)
