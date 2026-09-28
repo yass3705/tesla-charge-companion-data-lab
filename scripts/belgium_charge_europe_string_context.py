@@ -15,15 +15,20 @@ subprocess.run([
 
 xr=TMP/"x"; xr.mkdir(exist_ok=True)
 with zipfile.ZipFile(xapk) as z:z.extractall(xr)
-base=next((p for p in xr.rglob("com.total.europe.apk")),None)
-if not base: base=next(xr.rglob("*.apk"))
-ar=TMP/"a"; ar.mkdir(exist_ok=True)
-with zipfile.ZipFile(base) as z:z.extractall(ar)
+ars=[]
+for idx,apk in enumerate(xr.rglob("*.apk")):
+    ar=TMP/f"a{idx}"; ar.mkdir(exist_ok=True)
+    try:
+        with zipfile.ZipFile(apk) as z:z.extractall(ar)
+        ars.append(ar)
+    except Exception:
+        pass
 
 files=[]
-for p in ar.rglob("*"):
-    if p.is_file() and (p.name=="libapp.so" or p.suffix==".so" or p.suffix==".dex"):
-        files.append(p)
+for ar in ars:
+    for p in ar.rglob("*"):
+        if p.is_file() and (p.name=="libapp.so" or p.suffix==".so" or p.suffix==".dex"):
+            files.append(p)
 
 needles=[
  "evdc-bff-europe","EvsePriceGridViewModelBase","dynamicPriceDescriptions","priceDescriptions",
@@ -43,7 +48,7 @@ for fp in files:
         if any(n.lower() in low for n in needles):
             lo=max(0,i-14); hi=min(len(lines),i+20)
             block=lines[lo:hi]
-            contexts.append({"file":str(fp.relative_to(ar)),"hit":line,"before":block[:i-lo],"after":block[i-lo+1:]})
+            contexts.append({"file":str(fp),"hit":line,"before":block[:i-lo],"after":block[i-lo+1:]})
         s=line.strip()
         if len(s)<=300 and (
             s.startswith("/") or re.search(r'\b(?:v[0-9]+|api)/[A-Za-z0-9_?&=/{}/.-]+',s)
