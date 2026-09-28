@@ -208,14 +208,12 @@ for label,fp in classifications:
     try: obj=json.loads(p.read_text(encoding="utf-8"))
     except Exception: continue
     rows=[]
-    if isinstance(obj,dict) and isinstance(obj.get("evses"),list):
-        rows=[x for x in obj["evses"] if isinstance(x,dict) and x.get("classification")=="no_public_direct_tariff"]
+    if label=="Plenitude restricted":
+        rows=obj.get("classifiedNoPublicDirectTariff") or []
     elif label=="IWB restricted":
         rows=((obj.get("classes") or {}).get("restricted_no_auth") or [])
     elif label=="Swisscharge restricted":
         rows=obj.get("classified") or []
-    elif label=="Plenitude restricted":
-        rows=obj.get("classifiedNoPublicDirectTariff") or []
     elif label in ("Energie360 finalization","ewz finalization"):
         allowed={"public_no_direct_tariff_published","restricted_no_public_direct_tariff","nonproduction_test_or_stock"}
         rows=[]
@@ -223,8 +221,10 @@ for label,fp in classifications:
             if isinstance(cl,dict) and cl.get("classification") in allowed:
                 for eid in cl.get("evseIds") or []:
                     if isinstance(eid,str): rows.append({"evseId":eid,"classification":"no_public_direct_tariff","originalClassification":cl.get("classification")})
+    elif isinstance(obj,dict) and isinstance(obj.get("evses"),list):
+        rows=[x for x in obj["evses"] if isinstance(x,dict) and x.get("classification") in ("no_public_direct_tariff","restricted_no_public_direct_tariff")]
     else:
-        rows=[node for _,node in ids_from(obj) if isinstance(node,dict) and node.get("classification")=="no_public_direct_tariff"]
+        rows=[node for _,node in ids_from(obj) if isinstance(node,dict) and node.get("classification") in ("no_public_direct_tariff","restricted_no_public_direct_tariff")]
     for node in rows:
         eid=node.get("evseId") or node.get("EvseID")
         if not isinstance(eid,str): continue
