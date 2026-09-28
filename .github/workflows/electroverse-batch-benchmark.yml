@@ -1,0 +1,27 @@
+name: TEST NON-TESLA — Electroverse GraphQL batch benchmark
+on:
+  push:
+    paths:
+      - tests/non-tesla/active/run-electroverse-batch-benchmark.trigger
+permissions:
+  contents: write
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+      BATCH_SIZES: '2,5,10,20,40'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/electroverse_batch_benchmark.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/batch-benchmark.json
+          git commit -m "test(electroverse): record batch benchmark [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
