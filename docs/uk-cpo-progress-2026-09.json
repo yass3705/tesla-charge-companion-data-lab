@@ -287,10 +287,10 @@
     },
     {
       "name": "RAW Charging",
-      "status": "partial",
+      "status": "partial_public_client_routes_unresolved",
       "access": "no_direct_endpoint_found_first_pass",
-      "evidence": "First-pass search did not surface a direct machine-readable PCPR feed.",
-      "next": "second pass: inspect operator site, app/backend, Eco-Movement."
+      "evidence": "RAW public frontend exposes OCPI client routes /ocpi/locations and /ocpi/tariffs/GB/CPIE plus a public-client function key, but direct probes against rawcharging.com and the visible Azure Function host with/without /api and key/header/query all return 404. No secret is persisted.",
+      "next": "Keep bounded pending frontend/API host change or a newly exposed base URL; do not request user action yet."
     },
     {
       "name": "Evolt",
@@ -357,10 +357,11 @@
     },
     {
       "name": "EZ-Charge",
-      "status": "partial",
+      "status": "partial_public_site_index",
       "access": "no_direct_endpoint_found_first_pass",
-      "evidence": "First-pass search did not surface a direct public PCPR feed.",
-      "next": "second pass: inspect site/app/backend."
+      "evidence": "Official EZ-Charge driver page fetches a public Azure blob containing 28 site areas (id/name). Container listing is not enabled (404); blob has no coordinates, status or pricing fields. General pricing is public but site-specific pricing is explicitly map-dependent.",
+      "next": "Inventory seed retained; recover detailed map/app backend later. Do not extrapolate general tariff over site-specific exceptions.",
+      "locationsEndpoint": "https://ezchargesitedata.blob.core.windows.net/public/site-areas.json"
     },
     {
       "name": "GeniePoint",
@@ -402,12 +403,12 @@
     },
     {
       "name": "char.gy",
-      "status": "complete_source_identified",
+      "status": "partial_pricing_reference_integrity",
       "access": "anonymous",
       "locationsEndpoint": "https://char.gy/open-ocpi/locations",
       "tariffsEndpoint": "https://char.gy/open-ocpi/tariffs",
-      "evidence": "Public statutory OCPI-shaped feed; live probe indexed 2026-07-27 reported x-total-count 5409 locations and tariff_ids resolving to /tariffs.",
-      "next": "collect full paginated locations + tariffs and normalize to TCC"
+      "evidence": "Sharded official feed collection recovered full advertised inventory: 5862/5862 locations, 5864 EVSE/connectors. Current tariffs endpoint exposes 3 tariffs while connectors reference 7 IDs; 5 referenced IDs return 404 individually and are absent from the current tariff list.",
+      "next": "Inventory coverage complete. Keep pricing partial until 5 historical/secondary tariff references are reconciled; do not rerun full inventory unless upstream changes."
     },
     {
       "name": "TotalEnergies",
@@ -2574,7 +2575,26 @@
     },
     "setAside": [
       "Smart Charge"
-    ]
+    ],
+    "rawChargingBounded": {
+      "state": "public_client_routes_unresolved",
+      "report": "reports/uk/raw-ez-targeted-probe-latest.json"
+    },
+    "ezChargeBounded": {
+      "state": "site_index_complete_details_pending",
+      "siteAreas": 28,
+      "source": "https://ezchargesitedata.blob.core.windows.net/public/site-areas.json"
+    },
+    "chargyBounded": {
+      "state": "inventory_complete_pricing_reference_pending",
+      "locations": 5862,
+      "evses": 5864,
+      "connectors": 5864,
+      "currentTariffs": 3,
+      "referencedTariffIds": 7,
+      "missingTariffIds": 5,
+      "report": "reports/uk/chargy-missing-tariff-resolve-latest.json"
+    }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
   "migratedFrom": "yass3705/tesla-stations-updater-test",
