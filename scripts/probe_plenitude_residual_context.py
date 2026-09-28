@@ -11,13 +11,14 @@ with urllib.request.urlopen(req,timeout=90) as r:raw=r.read()
 if raw[:2]==b"\x1f\x8b":raw=gzip.decompress(raw)
 j=json.loads(raw.decode())
 hits={}
-def walk(x,anc=()):
+def walk(x):
  if isinstance(x,dict):
   eid=x.get("EvseID")
-  if eid in TARGETS:hits[eid]={"record":x,"ancestors":[a for a in anc[-4:] if isinstance(a,dict)]}
-  for v in x.values():walk(v,anc+(x,))
+  if eid in TARGETS:
+   hits[eid]=x
+  for v in x.values():walk(v)
  elif isinstance(x,list):
-  for v in x:walk(v,anc)
+  for v in x:walk(v)
 walk(j)
-Path("docs/switzerland-plenitude-residual-national-context-2026-09-28.json").write_text(json.dumps(hits,ensure_ascii=False,indent=2)+"\n")
-print(json.dumps(hits,ensure_ascii=False,indent=2)[:150000])
+Path("docs/switzerland-plenitude-residual-national-context-2026-09-28.json").write_text(json.dumps(hits,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+print(json.dumps(hits,ensure_ascii=False,indent=2))
