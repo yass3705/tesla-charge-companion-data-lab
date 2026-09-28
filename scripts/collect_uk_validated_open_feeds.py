@@ -13,6 +13,8 @@ SOURCES=[
 {'name':'PoGo Charge','party_ids':['POG'],'locations':'https://info.smartcharging.uk/public_feed/locations/4009','tariffs':'https://info.smartcharging.uk/public_feed/locations/4009/tariffs','mode':'pogo_hybrid'},
 {'name':'Arnold Clark Charge','party_ids':['ACC'],'locations':'https://api.fuuse.io/opendata/e6397b95-1624-49cd-824d-ab2f9dfe7294/location','tariffs':'https://api.fuuse.io/opendata/e6397b95-1624-49cd-824d-ab2f9dfe7294/tariff','mode':'single'},
 {'name':'ScottishPower Recharge','party_ids':[],'locations':'https://api.fuuse.io/opendata/e11a667d-c56a-468f-b8d3-a50b41628292/location','tariffs':'https://api.fuuse.io/opendata/e11a667d-c56a-468f-b8d3-a50b41628292/tariff','mode':'single'},
+{'name':'Mer UK','party_ids':[],'locations':'https://uk.mer.eco/wp-json/ozev/v1/data','tariffs':None,'mode':'mer_combined'},
+{'name':'Go Zero','party_ids':[],'locations':'https://cpo-api.gozerocharge.com/api/v1/ocpi/2.2.1/locations','tariffs':'https://cpo-api.gozerocharge.com/api/v1/ocpi/2.2.1/tariffs','mode':'single'},
 {'name':'Urban Fox Networks','party_ids':['UFX'],'locations':'https://api.urbanfox.network/api/opendata/locations','tariffs':'https://api.urbanfox.network/api/opendata/tariffs','mode':'offset'},
 {'name':'ChargePlace Scotland','party_ids':['CPS'],'locations':'https://info.smartcharging.uk/public_feed/locations/2463','tariffs':'https://info.smartcharging.uk/public_feed/locations/2463/tariffs','mode':'offset'},
 {'name':'Evolt Network','party_ids':['SSM','PO2','CP2','SS2'],'locations':'https://info.smartcharging.uk/public_feed/locations/3666','tariffs':'https://info.smartcharging.uk/public_feed/locations/3666/tariffs','mode':'offset'}]
@@ -135,7 +137,19 @@ def fetch_pogo_hybrid(src):
     }
     return smart,tariffs,audit
 
+def fetch_mer_combined(src):
+    payload,_=request_json(src['locations'])
+    data=payload.get('data') if isinstance(payload,dict) else {}
+    data=data if isinstance(data,dict) else {}
+    locs=data.get('locations') if isinstance(data.get('locations'),dict) else {}
+    tariffs=data.get('tariffs') if isinstance(data.get('tariffs'),dict) else {}
+    locations=array_from_payload(locs)
+    tariff_rows=array_from_payload(tariffs)
+    return locations,tariff_rows,None
+
 def fetch_source(src):
+    if src['mode']=='mer_combined':
+        return fetch_mer_combined(src)
     if src['mode']=='pogo_hybrid':
         locations,tariffs,audit=fetch_pogo_hybrid(src)
         return locations,tariffs,audit
