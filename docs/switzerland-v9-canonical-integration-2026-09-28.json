@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "dataset": "switzerland-public-charging-v9",
   "country": "CH",
-  "generatedAt": "2026-09-28T22:46:08.913940+00:00",
+  "generatedAt": "2026-09-28T23:02:16.825619+00:00",
   "sourceBundle": "data/tcc_v9/switzerland.json",
   "baseInventory": {
     "source": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
@@ -160,11 +160,11 @@
       "status": "blocked",
       "name": "AVIA",
       "evidence": "docs/switzerland-avia-first-pass-2026-09-28.json",
-      "note": "Charles runtime capture recovered the live Deftpower app-backend location route and station tariff IDs. Sample AVIA VOLT - Garage Meili exposes CH*AVI*E10450 (TYPE2 22 kW) and CH*AVI*E10449 (CCS 40 kW), both tariffId CHAVIT000082; app UI shows 0.69 CHF/kWh + 1.99 CHF/h plus one additional component. Full tariff-object response still required before production use. APIM secret is not stored.",
+      "note": "Charles runtime capture recovered AVIA VOLT map, location-detail and POST simulate-pricing endpoints. Sample Garage Meili connector pricing is deterministic at CHF 0.69/kWh incl. VAT; response also flags PARKING_TIME as an additional tariff dimension. The remaining step is to capture/replay the exact POST request payload/query so pricing can be swept nationally. APIM/auth secrets are not stored.",
       "setAside": false,
       "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-avia-charles-runtime-capture-2026-09-29.json",
-      "resumeCondition": "Capture the tariff/tariffs response for CHAVIT000082 (including all components) by opening 'Voir tous les prix'; then enumerate tariffIds nationally and map exact tariff objects to AVIA EVSEs."
+      "blockerEvidence": "docs/switzerland-avia-simulate-pricing-capture-2026-09-29.json",
+      "resumeCondition": "Capture the POST simulate-pricing request body/query parameters from Charles, then automate the AVIA national location->connector->simulate-pricing sweep and publish exact tariff components."
     },
     "CH*SOC": {
       "operatorId": "CH*SOC",
@@ -498,5 +498,5 @@
     "data/switzerland/ail-emoti-official-direct-tariffs.json": 21
   },
   "output": "data/national/switzerland_public_charging_v9.json",
-  "outputBytes": 49644589
+  "outputBytes": 49644593
 }
