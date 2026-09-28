@@ -1,0 +1,37 @@
+name: TEST NON-TESLA — Electroverse request-rate benchmark
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - tests/non-tesla/active/run-electroverse-rate-benchmark.trigger
+
+permissions:
+  contents: write
+
+concurrency:
+  group: electroverse-rate-benchmark
+  cancel-in-progress: false
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+      BENCH_SAMPLE: '40'
+      BENCH_INTERVALS: '1500,1000,750,500'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Benchmark read-only request rates
+        run: node scripts/electroverse_rate_benchmark.mjs
+      - name: Publish benchmark report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/rate-benchmark.json
+          git commit -m "test(electroverse): record request-rate benchmark [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
