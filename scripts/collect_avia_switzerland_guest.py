@@ -210,6 +210,10 @@ def main():
     OUT.parent.mkdir(parents=True,exist_ok=True)
     OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     print(json.dumps(payload["counts"],indent=2))
+    if map_errors:
+        print("First map errors:", json.dumps(map_errors[:3], ensure_ascii=False, indent=2))
+    if failures:
+        print("First connector failures:", json.dumps(failures[:3], ensure_ascii=False, indent=2))
     # Fail closed if the map itself is unusable or zero prices are returned.
     return 1 if not locations or not out else 0
 
