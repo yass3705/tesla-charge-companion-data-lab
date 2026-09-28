@@ -19,7 +19,7 @@ def curl(url):
     body=p.stdout
     status=0
     final=url
-    m=re.search(r"\\n__HTTP__(\\d+)\\n__URL__(.*)$",body,re.S)
+    m=re.search(r"\n__HTTP__(\d+)\n__URL__(.*)$",body,re.S)
     if m:
         status=int(m.group(1))
         final=m.group(2).strip()
