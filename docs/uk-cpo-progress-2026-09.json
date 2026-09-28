@@ -331,10 +331,11 @@
     },
     {
       "name": "Weev",
-      "status": "source_identified",
-      "access": "free_api_key",
-      "evidence": "Weev publishes an EVSE API and an Open Data page; free account/API key is required.",
-      "next": "second pass: determine whether keyless route exists or whether a project credential is needed."
+      "status": "blocked_external_api_key",
+      "access": "free_api_key_request",
+      "evidence": "Final keyless audit of Weev first-party public map/app bundles and source maps found no anonymous station/tariff API. The first-party frontend explicitly contains the open-data request component and POST route /api/open-data-api/send. Official Open Data access therefore requires the free API key request.",
+      "next": "User/API requester must submit the Weev Open Data API-key form. Once key is received, ingest directly; do not repeat keyless discovery.",
+      "report": "reports/uk/weev-final-keyless-audit-latest.json"
     },
     {
       "name": "ParkRecharge",
@@ -2617,6 +2618,12 @@
       "evseIds": 305,
       "pricedStations": 96,
       "report": "reports/uk/qwello-tariff-view-latest.json"
+    },
+    "weevBlocker": {
+      "state": "blocked_external_api_key",
+      "blocker": "free Weev Open Data API key required",
+      "evidenceReport": "reports/uk/weev-final-keyless-audit-latest.json",
+      "requestEndpoint": "https://weev.ie/open-data"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
