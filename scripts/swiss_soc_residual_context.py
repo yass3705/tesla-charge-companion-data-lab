@@ -12,7 +12,7 @@ TARGET={
 req=urllib.request.Request(URL,headers={"User-Agent":"TCC-V9-Switzerland/1.0","Accept":"application/json"})
 with urllib.request.urlopen(req,timeout=120) as r:
     raw=r.read()
-    if raw[:2] == b"\\x1f\\x8b":
+    if len(raw) >= 2 and raw[0] == 31 and raw[1] == 139:
         raw=gzip.decompress(raw)
     data=json.loads(raw.decode("utf-8"))
 
