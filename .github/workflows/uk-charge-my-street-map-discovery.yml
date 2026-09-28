@@ -1,0 +1,76 @@
+name: UK Charge My Street map discovery
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-charge-my-street-map-discovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Inspect public map HTML and scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import re,json,urllib.request,urllib.parse,html as htmlmod
+          from pathlib import Path
+          from datetime import datetime,timezone
+          pages=['https://chargemystreet.co.uk/map','https://chargemystreet.co.uk/']
+          out={'country':'GB','network':'Charge My Street','retrievedAt':datetime.now(timezone.utc).isoformat(),'pages':[]}
+          for page in pages:
+              item={'url':page}
+              try:
+                  req=urllib.request.Request(page,headers={'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/9','Accept':'text/html,*/*'})
+                  with urllib.request.urlopen(req,timeout=45) as r: raw=r.read().decode('utf-8','replace')
+                  item['bytes']=len(raw.encode())
+                  attrs=re.findall(r'(?:href|src|data-src|data-url|data-endpoint)=["\']([^"\']+)["\']',raw,re.I)
+                  full=[urllib.parse.urljoin(page,htmlmod.unescape(x)) for x in attrs]
+                  item['links']=list(dict.fromkeys([x for x in full if any(k in x.lower() for k in ('map','api','json','csv','fuuse','charge','location','station','iframe','embed','script'))]))[:300]
+                  scripts=[x for x in full if x.lower().split('?')[0].endswith('.js')]
+                  souts=[]
+                  for surl in scripts[:50]:
+                      so={'url':surl}
+                      try:
+                          req=urllib.request.Request(surl,headers={'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/9'})
+                          with urllib.request.urlopen(req,timeout=45) as r: txt=r.read().decode('utf-8','replace')
+                          cand=[]
+                          for x in re.findall(r'https?://[^\s"\'<>\\]+',txt)+re.findall(r'["\'](/[^"\']{2,180})["\']',txt):
+                              if any(k in x.lower() for k in ('api','fuuse','map','charge','location','station','json','ocpi','tariff')): cand.append(x)
+                          so['candidates']=list(dict.fromkeys(cand))[:200]
+                      except Exception as e: so['error']=f'{type(e).__name__}: {e}'
+                      souts.append(so)
+                  item['scripts']=souts
+                  # contexts around map/API/Fuuse terms in HTML
+                  ctx=[]
+                  for m in re.finditer(r'(?i)(fuuse|map|api|chargepoint|location|iframe|json)',raw):
+                      sn=re.sub(r'\s+',' ',raw[max(0,m.start()-250):min(len(raw),m.end()+450)])
+                      if sn not in ctx: ctx.append(sn)
+                      if len(ctx)>=40: break
+                  item['contexts']=ctx
+              except Exception as e: item['error']=f'{type(e).__name__}: {e}'
+              out['pages'].append(item)
+          Path('reports/uk/charge-my-street-map-discovery-latest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/charge-my-street-map-discovery-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): inspect Charge My Street map [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
