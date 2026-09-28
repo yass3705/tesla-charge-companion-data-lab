@@ -10,7 +10,7 @@ x=json.loads(raw.decode())
 hits=[]
 def walk(o,anc=()):
  if isinstance(o,dict):
-  if o.get("EvseID") in IDS:hits.append({"evseId":o.get("EvseID"),"record":o,"ancestors":list(anc[-2:])})
+  if o.get("EvseID") in IDS:hits.append({"evseId":o.get("EvseID"),"record":o})
   for v in o.values():walk(v,anc+(o,))
  elif isinstance(o,list):
   for v in o:walk(v,anc)
