@@ -1,0 +1,88 @@
+{
+  "country": "BE",
+  "asOf": "2026-09-29",
+  "scope": "public unauthenticated E-Flux map API diagnostics",
+  "config": {
+    "status": 200,
+    "shape": {
+      "data": {
+        "ipLongitude": "float",
+        "ipLatitude": "float",
+        "googleMapsApiKey": "str",
+        "operators": {
+          "type": "list",
+          "count": 2643,
+          "sampleShape": "str"
+        }
+      }
+    },
+    "interestingPaths": [
+      {
+        "path": "data.googleMapsApiKey",
+        "value": "AIzaSyDapK2Ot0xiUZ8BO9RqpIGC4wxEbElMgm4"
+      }
+    ]
+  },
+  "tests": [
+    {
+      "name": "locations-empty",
+      "status": 404,
+      "response": {
+        "error": {
+          "type": "error",
+          "message": "Not Found: GET /1/map/locations",
+          "status": 404
+        }
+      }
+    },
+    {
+      "name": "locations-viewport",
+      "status": 404,
+      "response": {
+        "error": {
+          "type": "error",
+          "message": "Not Found: GET /1/map/locations?north=51.6&south=49.4&east=6.5&west=2.5&zoom=8",
+          "status": 404
+        }
+      }
+    },
+    {
+      "name": "locations-bbox",
+      "status": 404,
+      "response": {
+        "error": {
+          "type": "error",
+          "message": "Not Found: GET /1/map/locations?bbox=2.5%2C49.4%2C6.5%2C51.6",
+          "status": 404
+        }
+      }
+    },
+    {
+      "name": "search-query",
+      "status": 404,
+      "response": {
+        "error": {
+          "type": "error",
+          "message": "Not Found: GET /2/locations/msp/search/fast?q=BE%2AEFL%2AEV%2A0080612%2AC1",
+          "status": 404
+        }
+      }
+    },
+    {
+      "name": "search-term",
+      "status": 404,
+      "response": {
+        "error": {
+          "type": "error",
+          "message": "Not Found: GET /2/locations/msp/search/fast?search=BE%2AEFL%2AEV%2A0080612%2AC1",
+          "status": 404
+        }
+      }
+    }
+  ],
+  "policy": {
+    "credentialsUsed": false,
+    "authenticationBypassAttempted": false,
+    "readOnly": true
+  }
+}
