@@ -1,0 +1,103 @@
+name: Switzerland small CPO first pass
+
+on:
+  push:
+    paths:
+      - '.github/workflows/switzerland-small-cpo-first-pass.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scan:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - operator: 'CH*AIL'
+            slug: ail
+            name: 'AIL'
+          - operator: 'CH*IOY'
+            slug: ioy
+            name: 'CH*IOY'
+          - operator: 'CH*AGR'
+            slug: agr
+            name: 'CH*AGR'
+          - operator: 'CH*EWD'
+            slug: ewd
+            name: 'EWD'
+          - operator: 'CH*EWO'
+            slug: ewo
+            name: 'EWO'
+          - operator: 'CH*MMN'
+            slug: mmn
+            name: 'CH*MMN'
+          - operator: 'CH*EBS'
+            slug: ebs
+            name: 'EBS'
+          - operator: 'CH*EDH'
+            slug: edh
+            name: 'CH*EDH'
+          - operator: 'CH*EVT'
+            slug: evt
+            name: 'CH*EVT'
+          - operator: 'CH*AMG'
+            slug: amg
+            name: 'CH*AMG'
+          - operator: 'DE*EDH'
+            slug: de-edh
+            name: 'DE*EDH'
+          - operator: 'CH*DIE'
+            slug: die
+            name: 'Stadt Dietikon'
+          - operator: 'CH*HER'
+            slug: her
+            name: 'Elektrizitaetswerk Herrliberg'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: First-pass collect ${{ matrix.name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/switzerland docs
+          python3 scripts/collect_swiss_atlas_cpo.py \
+            --operator '${{ matrix.operator }}' \
+            --name '${{ matrix.name }}' \
+            --output 'data/switzerland/${{ matrix.slug }}-direct-tariffs.json' \
+            --delay 0.10
+      - name: Write first-pass record
+        shell: python
+        run: |
+          import json,pathlib
+          slug='${{ matrix.slug }}'
+          p=pathlib.Path(f'data/switzerland/{slug}-direct-tariffs.json')
+          x=json.loads(p.read_text(encoding='utf-8')); s=x['summary']
+          doc={'schemaVersion':1,'country':'CH','cpo':'${{ matrix.name }}','operatorId':'${{ matrix.operator }}','pass':'first',
+               'status':s['status'],'stationCount':s['stationCount'],'stationsWithDirectTariff':s['stationsWithDirectTariff'],
+               'stationsWithoutDirectTariff':s['stationsWithoutDirectTariff'],'coveragePct':s['coveragePct'],
+               'directTariffDetailCount':s['directTariffDetailCount'],'directPaymentTariffDetailCount':s['directPaymentTariffDetailCount'],
+               'method':'Swiss eMobility Ladepreisatlas public frontend API; direct-only filter is_roaming=false and EMP=CPO',
+               'policy':'First pass only. No tariff extrapolation; unresolved stations stay unresolved for second pass.',
+               'productionSource':str(p)}
+          pathlib.Path(f'docs/switzerland-{slug}-first-pass-2026-09-28.json').write_text(json.dumps(doc,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(doc,ensure_ascii=False,indent=2))
+      - name: Persist first-pass result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 'data/switzerland/${{ matrix.slug }}-direct-tariffs.json' 'docs/switzerland-${{ matrix.slug }}-first-pass-2026-09-28.json'
+          git commit -m 'data(switzerland): first-pass ${{ matrix.name }}' || exit 0
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
