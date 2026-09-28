@@ -1,0 +1,79 @@
+name: Switzerland post first-pass easy closeouts
+
+on:
+  workflow_run:
+    workflows: ["Switzerland untreated CPO first pass"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  easy-closeouts:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Finalize AGR from exact Monta EVSE matches
+        run: python3 scripts/finalize_swiss_agr_monta.py
+
+      - name: Reconcile easy Atlas scopes against national EVSE IDs
+        run: |
+          set -euo pipefail
+          python3 scripts/reconcile_swiss_atlas_scope.py --operator 'CH*LDL' --slug lidl --name Lidl
+          python3 scripts/reconcile_swiss_atlas_scope.py --operator 'CH*IOY' --slug ioy --name IONITY
+          python3 scripts/reconcile_swiss_atlas_scope.py --operator 'CH*EDH' --slug edh --name 'Energiedienst CH'
+          python3 scripts/reconcile_swiss_atlas_scope.py --operator 'DE*EDH' --slug de-edh --name 'Energiedienst DE'
+
+      - name: Targeted SOC second pass
+        run: |
+          set -euo pipefail
+          python3 scripts/collect_swiss_atlas_cpo.py \
+            --operator 'CH*SOC' \
+            --name 'SOCAR / CH*SOC' \
+            --output 'data/switzerland/soc-direct-tariffs-second-pass.json' \
+            --delay 0.12 \
+            --provider-customer-tariffs
+          python3 - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('data/switzerland/soc-direct-tariffs-second-pass.json')
+          x=json.loads(p.read_text(encoding='utf-8')); s=x['summary']
+          doc={'schemaVersion':1,'country':'CH','cpo':'SOCAR / CH*SOC','operatorId':'CH*SOC',
+               'status':s['status'],'stationCount':s['stationCount'],
+               'stationsWithDirectTariff':s['stationsWithDirectTariff'],
+               'stationsWithoutDirectTariff':s['stationsWithoutDirectTariff'],
+               'coveragePct':s['coveragePct'],'unresolved':x.get('unresolved',[]),
+               'method':'Second pass with provider_customer_tariffs=true; direct-only is_roaming=false and EMP=CPO',
+               'policy':'No cross-station extrapolation. Provider-customer results remain evidence and require exact station applicability.',
+               'productionSource':str(p)}
+          pathlib.Path('docs/switzerland-soc-second-pass-2026-09-28.json').write_text(json.dumps(doc,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(doc,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Persist easy closeouts
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/switzerland/agr-monta-direct-tariffs.json \
+                  docs/switzerland-agr-finalization-2026-09-28.json \
+                  docs/switzerland-lidl-scope-reconciliation-2026-09-28.json \
+                  docs/switzerland-ioy-scope-reconciliation-2026-09-28.json \
+                  docs/switzerland-edh-scope-reconciliation-2026-09-28.json \
+                  docs/switzerland-de-edh-scope-reconciliation-2026-09-28.json \
+                  data/switzerland/soc-direct-tariffs-second-pass.json \
+                  docs/switzerland-soc-second-pass-2026-09-28.json
+          git commit -m 'data(switzerland): post first-pass easy closeouts' || exit 0
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
