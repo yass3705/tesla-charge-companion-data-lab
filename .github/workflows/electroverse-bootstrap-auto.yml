@@ -59,7 +59,7 @@ jobs:
             return 1
           }
 
-          echo "=== daily incremental refresh ==="
+          echo "=== pre-refresh integrity audit ==="\n          node scripts/electroverse_cache_audit.mjs\n\n          echo "=== daily incremental refresh ==="
 
           git pull --rebase origin main
           node scripts/electroverse_incremental_selector.mjs
@@ -78,7 +78,7 @@ jobs:
           rc=$?
           set -e
 
-          git add data/electroverse/tariff_cache reports/electroverse/incremental-selection.json
+          git add data/electroverse/tariff_cache reports/electroverse/incremental-selection.json reports/electroverse/cache-audit.json
           git commit -m "data(electroverse): daily incremental refresh [run ${GITHUB_RUN_ID}]" || true
           git pull --rebase origin main
           push_checkpoint
