@@ -93,10 +93,13 @@
   "cpos": [
     {
       "name": "Osprey Charging",
-      "status": "partial",
-      "access": "credentials_via_support",
-      "evidence": "First-party page confirms OCPI/open data compliance; independent UK CPO dataset index reports URL/basic-auth credentials are supplied via support.",
-      "next": "seek public surface or credentials route after first pass."
+      "status": "complete",
+      "access": "public_map_api_plus_official_network_pricing",
+      "evidence": "Public Osprey portal API validates 407 locations and 2819 EVSE/connectors with live statuses. Official network pricing profiles joined in Data Lab: contactless £0.87/kWh, app standard £0.82, weekend saver £0.79, overnight saver £0.69.",
+      "next": "validated; refresh public map plus official pricing profiles on schedule.",
+      "locationsEndpoint": "https://apigw.ospreycharging.co.uk/portal/location/map/all",
+      "dataset": "data/national/uk_osprey_public_map_priced.json.gz",
+      "report": "reports/uk/osprey-public-map-priced-latest.json"
     },
     {
       "name": "GRIDSERVE",
@@ -2204,7 +2207,8 @@
       "ScottishPower Recharge",
       "Fastned UK",
       "IONITY UK",
-      "3ti Energy Hubs"
+      "3ti Energy Hubs",
+      "Osprey Charging"
     ],
     "externalAccessBlocked": [
       {
@@ -2550,6 +2554,13 @@
       "tariffs": 6,
       "missingTariffIds": [],
       "report": "reports/uk/3ti-parkrecharge-latest.json"
+    },
+    "ospreyFinalization": {
+      "state": "complete",
+      "locations": 407,
+      "evses": 2819,
+      "connectors": 2819,
+      "report": "reports/uk/osprey-public-map-priced-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
