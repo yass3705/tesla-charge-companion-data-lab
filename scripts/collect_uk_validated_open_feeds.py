@@ -25,12 +25,17 @@ def request_json(url,timeout=90,retries=7):
                 return json.loads(r.read().decode('utf-8')),dict(r.headers.items())
         except (urllib.error.HTTPError,urllib.error.URLError,TimeoutError,json.JSONDecodeError) as e:
             last=f'{type(e).__name__}: {e}'
-            if isinstance(e,urllib.error.HTTPError) and e.code not in (429,500,502,503,504): break
+            transient_codes=(429,500,502,503,504)
+            is_chargy_403=isinstance(e,urllib.error.HTTPError) and e.code==403 and 'char.gy' in url
+            if isinstance(e,urllib.error.HTTPError) and e.code not in transient_codes and not is_chargy_403: break
             retry_after=None
             if isinstance(e,urllib.error.HTTPError):
                 try: retry_after=float(e.headers.get('Retry-After')) if e.headers.get('Retry-After') else None
                 except Exception: retry_after=None
-            time.sleep(retry_after if retry_after is not None else min(60,3*(2**attempt)))
+            if is_chargy_403:
+                time.sleep(min(120,15*(attempt+1)))
+            else:
+                time.sleep(retry_after if retry_after is not None else min(60,3*(2**attempt)))
     raise RuntimeError(f'GET failed for {url}: {last}')
 
 def array_from_payload(payload):
@@ -134,9 +139,10 @@ def fetch_source(src):
         locations,tariffs,audit=fetch_pogo_hybrid(src)
         return locations,tariffs,audit
     if src['mode']=='offset':
-        locations=fetch_offset(src['locations'],50)
-        time.sleep(1.0)
-        tariffs=fetch_offset(src['tariffs'],50)
+        page_size=20 if src['name']=='char.gy' else 50
+        locations=fetch_offset(src['locations'],page_size)
+        time.sleep(2.0 if src['name']=='char.gy' else 1.0)
+        tariffs=fetch_offset(src['tariffs'],page_size)
         return locations,tariffs,None
     locations=array_from_payload(request_json(src['locations'])[0])
     if src['name']=='Arnold Clark Charge':
