@@ -683,14 +683,22 @@
       ],
       "status": "partial",
       "priority": "station-level",
-      "blockingCondition": "EVSE to direct payment/backend tariff mapping",
+      "blockingCondition": "Exact Unoenergy Driwe / NextCharge station-or-connector payload mapped to current IT*DRW EVSE, proving the direct host-defined tariff and transaction fee. Do not reuse historical third-party DriWe prices or generic NextCharge roaming prices.",
       "confidence": "high",
       "inventory": {
         "evse": 288,
         "stations": 104,
         "currentPunPresent": true,
         "punAsOf": "2026-09-20"
-      }
+      },
+      "lastInvestigated": "2026-09-28",
+      "tariffModel": "host/site-specific commercial policy; DriWe first-party permits infrastructure manager-defined commercial policies; transaction fees depend on payment mode",
+      "tariffChannel": "DriWe infrastructure surfaced through NextCharge; VISA/PayPal/coupon/card capabilities",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 288
+      },
+      "notes": "run313: first-party DriWe confirms NextCharge integration and host-configurable commercial policy. Historical third-party 0.41 EUR/kWh + 0.01 EUR/min is not current first-party proof and is rejected."
     },
     {
       "partyId": "NRG",
@@ -879,8 +887,16 @@
         "currentPunPresent": true,
         "punAsOf": "2026-09-20"
       },
-      "tariffModel": "third-party infrastructure management and heterogeneous owner pricing",
-      "confidence": "high"
+      "tariffModel": "owner/connector-specific; displayed in ZapGrid app at selected socket",
+      "confidence": "high",
+      "lastInvestigated": "2026-09-28",
+      "blockingCondition": "Exact ZapGrid app/backend connector payload mapped to current IT*GMT EVSE. ZapGrid first-party states each infrastructure owner independently chooses the tariff; no network-wide GMT/ZapGrid tariff may be inferred.",
+      "tariffChannel": "direct ZapGrid app payment; connector-level",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 325
+      },
+      "notes": "run313: first-party ZapGrid FAQ/app proves heterogeneous owner-defined pricing and connector-level price display. Generic tariff search bounded."
     },
     {
       "partyId": "ASS",
@@ -3465,6 +3481,10 @@
     {
       "date": "2026-09-28",
       "change": "Run312 bounded ASS/AGSM AIM-Magis: current app is chargecloud-backed and first-party terms confirm station/connector-specific direct Pay Per Use with roaming separated. 0/257 promoted; resume only from exact Magis/chargecloud station payload mapped to IT*ASS."
+    },
+    {
+      "date": "2026-09-28",
+      "change": "Run313 bounded GMT/ZapGrid and DRW/Unoenergy Driwe without unsafe promotion. ZapGrid explicitly uses owner-defined connector tariffs; DriWe permits host-defined commercial policies and surfaces stations via NextCharge. Resume only from exact connector/backend payloads."
     }
   ],
   "evidenceReports": [
@@ -3520,7 +3540,8 @@
     "data/reports/italy_cpo_reconciliation_20260927_run305.json",
     "data/reports/italy_cpo_reconciliation_20260927_run307.json",
     "data/reports/italy_cpo_reconciliation_20260927_run308.json",
-    "data/reports/italy_cpo_reconciliation_20260928_run312.json"
+    "data/reports/italy_cpo_reconciliation_20260928_run312.json",
+    "data/reports/italy_cpo_reconciliation_20260928_run313.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
