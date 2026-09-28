@@ -1,0 +1,26 @@
+name: Belgium ChargePlus APKCombo contract
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-chargeplus-apkcombo-contract.txt"
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/belgium_chargeplus_apkcombo_contract.py
+      - name: Persist
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium/totalenergies/apkcombo-download-contract-2026-09-28.json
+          git commit -m "Inspect APKCombo Charge+ download contract" || exit 0
+          git pull --rebase origin main
+          git push
