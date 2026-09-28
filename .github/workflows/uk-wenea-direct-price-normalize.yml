@@ -1,0 +1,101 @@
+name: UK Wenea direct price normalization
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-wenea-direct-price-normalize.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Build Wenea UK owned-station direct pricing
+        run: |
+          python - <<'PY'
+          import io,json,gzip,zipfile,urllib.request
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          ZIP="https://wenea.com/apilocation/data.zip"
+          TARIFF_PAGE="https://wenea.com/uk/charging-tariffs/"
+          req=urllib.request.Request(ZIP,headers={"User-Agent":"TeslaChargeCompanion/9 Wenea-UK","Accept":"application/zip,*/*"})
+          with urllib.request.urlopen(req,timeout=90) as r: raw=r.read()
+          z=zipfile.ZipFile(io.BytesIO(raw))
+          locations=json.loads(z.read("locations.json").decode("utf-8-sig"))
+          uk=[x for x in locations if isinstance(x,dict) and str(x.get("country") or "").upper() in ("GB","GBR","UNITED KINGDOM")]
+          if not uk: raise SystemExit("no UK locations")
+
+          bands=[
+            {"id":"wenea-uk-ac","kind":"AC","minKw":3.5,"maxKw":22.0,"pricePerKwhGbp":0.55},
+            {"id":"wenea-uk-dc","kind":"DC","minKw":22.0,"maxKw":60.0,"pricePerKwhGbp":0.75},
+            {"id":"wenea-uk-hpc","kind":"DC","minKw":60.0,"maxKw":400.0,"pricePerKwhGbp":0.85},
+          ]
+          counts={"AC":0,"DC":0,"HPC":0}; statuses={}; unmatched=[]
+          normalized=[]
+          for loc in uk:
+            owner=((loc.get("owner") or {}).get("name") or "").strip()
+            operator=((loc.get("operator") or {}).get("name") or "").strip()
+            if owner!="Wenea Mobile Energy" or operator!="Wenea Mobile Energy":
+              raise SystemExit(f"non-Wenea-owned/operator UK location: {loc.get('id')} {owner}/{operator}")
+            nl=dict(loc); new_evses=[]
+            for ev in loc.get("evses") or []:
+              ne=dict(ev); st=str(ev.get("status") or "UNKNOWN"); statuses[st]=statuses.get(st,0)+1
+              cons=[]
+              for con in ev.get("connectors") or []:
+                nc=dict(con)
+                watts=con.get("max_electric_power")
+                try: kw=float(watts)/1000.0
+                except Exception: kw=None
+                standard=str(con.get("standard") or "")
+                price=None; pid=None; band=None
+                if kw is not None and "T2" in standard.upper() and "COMBO" not in standard.upper() and 3.5<=kw<=22:
+                  price=0.55; pid="wenea-uk-ac"; band="AC"; counts["AC"]+=1
+                elif kw is not None and 22<kw<=60:
+                  price=0.75; pid="wenea-uk-dc"; band="DC"; counts["DC"]+=1
+                elif kw is not None and 60<kw<=400:
+                  price=0.85; pid="wenea-uk-hpc"; band="HPC"; counts["HPC"]+=1
+                else:
+                  unmatched.append({"locationId":loc.get("id"),"evseId":ev.get("evse_id") or ev.get("uid"),"connectorId":con.get("id"),"standard":standard,"maxElectricPower":watts})
+                nc["tcc_direct_price"]={"currency":"GBP","unit":"kWh","amount":price,"profileId":pid,"powerBand":band,"source":TARIFF_PAGE} if price is not None else None
+                cons.append(nc)
+              ne["connectors"]=cons; new_evses.append(ne)
+            nl["evses"]=new_evses; normalized.append(nl)
+
+          retrieved=datetime.now(timezone.utc).isoformat()
+          out={"country":"GB","network":"Wenea","retrievedAt":retrieved,"sourceZip":ZIP,"officialTariffPage":TARIFF_PAGE,
+               "pricingMethod":"exact Wenea-owned national price band by connector power; no missing OCPI tariff id inference",
+               "pricingProfiles":bands,"locations":normalized}
+          summary={"country":"GB","network":"Wenea","retrievedAt":retrieved,"locations":len(normalized),
+                   "connectorsPriced":sum(counts.values()),"priceBandConnectorCounts":counts,
+                   "unmatchedConnectors":unmatched,"evseStatuses":statuses,
+                   "ownershipValidation":"all UK locations owner/operator Wenea Mobile Energy",
+                   "status":"complete" if normalized and not unmatched else "partial"}
+          Path("data/national").mkdir(parents=True,exist_ok=True);Path("reports/uk").mkdir(parents=True,exist_ok=True)
+          with gzip.open("data/national/uk_wenea_direct_priced.json.gz","wt",encoding="utf-8") as g: json.dump(out,g,ensure_ascii=False,separators=(",",":"))
+          Path("reports/uk/wenea-direct-priced-latest.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(summary,ensure_ascii=False,indent=2))
+          if unmatched: raise SystemExit(2)
+          PY
+      - name: Publish
+        if: always()
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/uk_wenea_direct_priced.json.gz reports/uk/wenea-direct-priced-latest.json 2>/dev/null || true
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(uk): normalize Wenea owned-station direct prices [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
