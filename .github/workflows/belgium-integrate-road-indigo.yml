@@ -1,0 +1,32 @@
+name: Belgium integrate Road and INDIGO inventory
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-integrate-road-indigo.txt"
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/belgium_integrate_road_indigo_inventory.py
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/belgium/additional/canonical reports/belgium/belgium-additional-inventory-integration-2026-09-29.json
+          git commit -m "Integrate Road and INDIGO Belgium inventories" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep 3
+          done
+          exit 1
