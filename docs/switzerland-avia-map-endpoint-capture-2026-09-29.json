@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-29",
+  "country": "CH",
+  "cpo": "AVIA VOLT",
+  "source": "User Charles capture from AVIA VOLT Suisse iOS app",
+  "finding": "AVIA map endpoint confirmed",
+  "backend": {
+    "routePattern": "/app-backend/v1/tenants/{tenantId}/map-locations",
+    "partyFilter": "AVI",
+    "responseShape": [
+      "locations",
+      "locationSummaries"
+    ]
+  },
+  "sampleLocations": [
+    {
+      "id": "9fcec4fc-0569-5490-ac0d-732da53459d5",
+      "coordinates": "47.39486,8.77694",
+      "ac_status": "AVAILABLE",
+      "dc_status": "NOT_AVAILABLE",
+      "hpc_status": "NOT_AVAILABLE"
+    },
+    {
+      "id": "876d0b0d-b3a2-5c35-892c-813f7dc10b05",
+      "coordinates": "47.40677,8.72443",
+      "ac_status": "AVAILABLE",
+      "dc_status": "AVAILABLE",
+      "hpc_status": "NOT_AVAILABLE"
+    },
+    {
+      "id": "770e9a41-58aa-5b9d-906d-f62216860d50",
+      "coordinates": "47.48591,8.70375",
+      "ac_status": "NOT_AVAILABLE",
+      "dc_status": "AVAILABLE",
+      "hpc_status": "AVAILABLE"
+    }
+  ],
+  "implication": "Map endpoint can enumerate AVIA locations by geographic window. Combined with the confirmed location-detail endpoint, this is sufficient to enumerate location UUIDs and tariffIds nationally once the runtime request can be replayed outside the app.",
+  "remainingGap": "Resolve tariffId objects/full price components. The map response itself does not contain tariff amounts.",
+  "security": "No APIM subscription key or authorization token stored."
+}
