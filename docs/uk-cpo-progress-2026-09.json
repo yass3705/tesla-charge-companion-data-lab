@@ -117,9 +117,9 @@
     {
       "name": "IONITY",
       "status": "complete",
-      "access": "official_direct_app_api",
-      "evidence": "Validated UK IONITY Direct dataset generated 2026-09-28: 82 GB locations, 860 connectors, 0 unpriced connectors; every location is IONITY_CPO and every connector has a positive IONITY DIRECT GBP/kWh price.",
-      "next": "validated; include direct UK IONITY dataset in TCC aggregation.",
+      "access": "official_direct_location_tariff_api",
+      "evidence": "Data Lab IONITY Direct UK validation: 82 UK operated locations, 860 connectors and 0 unpriced connectors. Connector prices recovered from IONITY DIRECT adhocPrice with GBP validation.",
+      "next": "validated; refresh using established IONITY direct method.",
       "locationsEndpoint": "https://adhoc-bff.ionity.cloud/api/v1/location/static",
       "tariffEndpointTemplate": "https://adhoc-bff.ionity.cloud/api/v3/location/{uuid}",
       "dataset": "data/national/ionity_direct_stations_uk.json.gz",
@@ -135,9 +135,9 @@
     {
       "name": "Fastned",
       "status": "complete",
-      "access": "official_public_station_pages_plus_tariff_page",
-      "evidence": "Validated Data Lab UK Fastned collector: 41 official UK stations / 259 charging points from 449 official location pages. Every retained station matches the national UK tariff: standard GBP 0.79/kWh, free-app direct GBP 0.711/kWh, Gold GBP 0.55/kWh.",
-      "next": "validated; schedule UK Fastned collector.",
+      "access": "official_public_direct_sources",
+      "evidence": "Data Lab direct UK validation: 41 UK locations and 259 charging points. Current direct pricing profiles are persisted: standard £0.79/kWh, app-direct £0.711/kWh, Gold £0.55/kWh with subscription metadata.",
+      "next": "validated; refresh direct UK inventory and pricing profiles on schedule.",
       "dataset": "data/national/fastned_direct_stations_uk.json.gz",
       "report": "reports/uk/fastned-direct-uk-latest.json",
       "tariffUrl": "https://www.fastnedcharging.com/en-gb/charging/tariffs"
@@ -2192,7 +2192,9 @@
       "IONITY",
       "Fastned",
       "Wenea",
-      "ScottishPower Recharge"
+      "ScottishPower Recharge",
+      "Fastned UK",
+      "IONITY UK"
     ],
     "externalAccessBlocked": [
       {
@@ -2516,6 +2518,19 @@
       "chargePointsWithoutTariff": 0,
       "dataset": "data/national/uk_beev_public_map.json.gz",
       "report": "reports/uk/beev-public-map-latest.json"
+    },
+    "fastnedUkFinalization": {
+      "state": "complete",
+      "locations": 41,
+      "chargingPoints": 259,
+      "report": "reports/uk/fastned-direct-uk-latest.json"
+    },
+    "ionityUkFinalization": {
+      "state": "complete",
+      "locations": 82,
+      "connectors": 860,
+      "unpricedConnectors": 0,
+      "report": "reports/uk/ionity-direct-uk-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
