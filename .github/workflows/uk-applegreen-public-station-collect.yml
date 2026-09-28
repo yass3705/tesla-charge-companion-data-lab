@@ -1,0 +1,179 @@
+name: UK Applegreen public station collect
+
+on:
+  push:
+    branches: ["main"]
+    paths: [".github/workflows/uk-applegreen-public-station-collect.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-applegreen-public-station-collect
+  cancel-in-progress: true
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+
+      - name: Collect Applegreen UK Driivz station details
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/national reports/uk
+          python - <<'PY'
+          import json,re,urllib.request,urllib.error,urllib.parse,http.cookiejar,time,gzip
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          base="https://driver.applegreenelectric.com"
+          ua="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
+          cj=http.cookiejar.CookieJar()
+          opener=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+
+          def bootstrap():
+              req=urllib.request.Request(base+"/findCharger",headers={"User-Agent":ua,"Accept":"text/html,*/*"})
+              with opener.open(req,timeout=60) as r:
+                  html=r.read(2_000_000).decode("utf-8","replace")
+              mh=re.search(r'<meta[^>]+name=["\']_csrf_header["\'][^>]+content=["\']([^"\']+)',html,re.I)
+              mt=re.search(r'<meta[^>]+name=["\']_csrf["\'][^>]+content=["\']([^"\']+)',html,re.I)
+              return (mh.group(1) if mh else None, mt.group(1) if mt else None)
+
+          csrf_header,csrf_token=bootstrap()
+
+          def headers():
+              h={
+                "User-Agent":ua,"Accept":"application/json,text/javascript,*/*;q=0.01",
+                "X-JSON-TYPES":"None","X-APP-TYPE":"WEB","X-Requested-With":"XMLHttpRequest",
+                "Origin":base,"Referer":base+"/findCharger","Accept-Language":"en-GB,en;q=0.9"
+              }
+              if csrf_header and csrf_token: h[csrf_header]=csrf_token
+              return h
+
+          def req_json(path,method="GET",data=None,json_mode=False,retries=6):
+              nonlocal_holder=[None]
+              last=None
+              for attempt in range(retries):
+                  try:
+                      h=headers(); body=None; url=base+path
+                      if method=="GET" and data:
+                          url += ("&" if "?" in url else "?")+urllib.parse.urlencode(data,doseq=True)
+                      elif data is not None:
+                          if json_mode:
+                              h["Content-Type"]="application/json"; body=json.dumps(data).encode()
+                          else:
+                              h["Content-Type"]="application/x-www-form-urlencoded; charset=UTF-8"
+                              body=urllib.parse.urlencode(data,doseq=True).encode()
+                      req=urllib.request.Request(url,data=body,headers=h,method=method)
+                      with opener.open(req,timeout=60) as r:
+                          return json.loads(r.read().decode("utf-8"))
+                  except urllib.error.HTTPError as e:
+                      last=e
+                      if e.code in (401,403) and attempt<2:
+                          # Refresh anonymous session/CSRF, then retry the same read request.
+                          globals()["csrf_header"],globals()["csrf_token"]=bootstrap()
+                          time.sleep(1.5)
+                          continue
+                      if e.code not in (429,500,502,503,504): raise
+                      try: delay=float(e.headers.get("Retry-After")) if e.headers.get("Retry-After") else min(45,4*(attempt+1))
+                      except Exception: delay=min(45,4*(attempt+1))
+                      time.sleep(delay)
+                  except Exception as e:
+                      last=e; time.sleep(min(20,2*(attempt+1)))
+              raise last
+
+          bounds={"northEastLat":61.2,"northEastLng":2.5,"southWestLat":49.5,"southWestLng":-8.8}
+          overview=req_json("/stationFacade/findStationsInBounds","POST",{"filterByIsManaged":True,"filterByBounds":bounds},True)
+          rows=overview.get("data") if isinstance(overview,dict) else None
+          if not isinstance(rows,list) or not rows:
+              raise SystemExit("empty Applegreen station bounds")
+
+          details=[]; failures=[]
+          for i,st in enumerate(rows,1):
+              sid=st.get("id") if isinstance(st,dict) else None
+              if sid is None: continue
+              try:
+                  p=req_json("/stationFacade/findStationById","GET",{"stationId":sid})
+                  d=p.get("data") if isinstance(p,dict) and p.get("success") else None
+                  if not isinstance(d,dict): raise ValueError("detail response not successful")
+                  details.append(d)
+              except Exception as e:
+                  failures.append({"stationId":sid,"error":f"{type(e).__name__}: {e}"})
+              if i%40==0: print(f"progress {i}/{len(rows)} details={len(details)} failures={len(failures)}")
+              time.sleep(0.08)
+
+          uk=[]
+          other={}
+          for d in details:
+              iso2=str(d.get("addressCountryIso2Code") or "").upper()
+              iso3=str(d.get("addressCountryIso3Code") or "").upper()
+              if iso2=="GB" or iso3=="GBR":
+                  uk.append(d)
+              else:
+                  key=iso3 or iso2 or str(d.get("addressCountryName") or "UNKNOWN")
+                  other[key]=other.get(key,0)+1
+
+          sockets=0; priced_sockets=0; statuses={}; speeds={}; prices={}; currencies={}; cities={}; site_ids=set()
+          missing_price=[]
+          for d in uk:
+              site_ids.add(str(d.get("siteId")))
+              city=str(d.get("addressCity") or "UNKNOWN"); cities[city]=cities.get(city,0)+1
+              speed=str(d.get("chargingSpeedId") or "UNKNOWN"); speeds[speed]=speeds.get(speed,0)+1
+              for s in d.get("stationSockets") or []:
+                  if not isinstance(s,dict): continue
+                  sockets+=1
+                  st=str(s.get("socketStatusId") or "UNKNOWN"); statuses[st]=statuses.get(st,0)+1
+                  ps=[x for x in (s.get("socketPrices") or []) if isinstance(x,dict)]
+                  if ps:
+                      priced_sockets+=1
+                      for p in ps:
+                          cur=str(p.get("currency") or p.get("billingSpCurrencyCurrency") or "UNKNOWN")
+                          currencies[cur]=currencies.get(cur,0)+1
+                          k=p.get("kwhPrice")
+                          if k is not None:
+                              key=str(k); prices[key]=prices.get(key,0)+1
+                  else:
+                      missing_price.append({"stationId":d.get("id"),"socketId":s.get("id"),"name":s.get("name")})
+
+          now=datetime.now(timezone.utc).isoformat()
+          report={
+            "country":"GB","network":"Applegreen Electric","retrievedAt":now,
+            "source":"https://driver.applegreenelectric.com stationFacade anonymous read API",
+            "boundsStationCount":len(rows),"detailRecovered":len(details),"detailFailures":failures,
+            "ukStations":len(uk),"ukSites":len(site_ids),"ukSockets":sockets,"pricedSockets":priced_sockets,
+            "missingPriceSockets":missing_price,"otherCountries":other,
+            "socketStatuses":statuses,"chargingSpeeds":speeds,"kwhPriceCounts":prices,
+            "currencies":currencies,"cities":cities,
+            "coverageComplete":not failures and sockets>0 and priced_sockets==sockets,
+            "status":"complete" if not failures and sockets>0 and priced_sockets==sockets else "partial"
+          }
+          with gzip.open("data/national/uk_applegreen_public_stations.json.gz","wt",encoding="utf-8") as g:
+              json.dump({"retrievedAt":now,"network":"Applegreen Electric","stations":uk},g,ensure_ascii=False,separators=(",",":"))
+          Path("reports/uk/applegreen-public-stations-latest.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          if failures:
+              raise SystemExit(2)
+          PY
+
+      - name: Publish
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -f reports/uk/applegreen-public-stations-latest.json ] || exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/uk_applegreen_public_stations.json.gz reports/uk/applegreen-public-stations-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(uk): collect Applegreen public station details [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
