@@ -1,0 +1,83 @@
+name: UK Qwello mobile API route extract
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-qwello-mobile-api-route-extract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Extract Qwello mobile REST routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk /tmp/qwello
+          curl -fL --retry 3 --retry-delay 3 -A "Mozilla/5.0"             "https://d.apkpure.net/b/XAPK/eu.qwello.app?version=latest"             -o /tmp/qwello/app.xapk
+          unzip -q /tmp/qwello/app.xapk -d /tmp/qwello/x
+          mkdir -p /tmp/qwello/apks
+          for apk in /tmp/qwello/x/*.apk; do
+            [ -f "$apk" ] || continue
+            d="/tmp/qwello/apks/$(basename "$apk" .apk)"
+            mkdir -p "$d"; unzip -q "$apk" -d "$d" || true
+          done
+          python - <<'PY'
+          import json,re,glob,os
+          from pathlib import Path
+          from datetime import datetime,timezone
+          routes=set(); hits=[]
+          needles=("springspinne","location","locations","map","station","evse","public")
+          for fn in glob.glob("/tmp/qwello/apks/**/*",recursive=True):
+            if not os.path.isfile(fn): continue
+            try:
+              if os.path.getsize(fn)>70_000_000: continue
+              b=open(fn,"rb").read()
+            except Exception: continue
+            for raw in re.findall(rb'[ -~]{4,500}',b):
+              try:s=raw.decode("utf-8","ignore")
+              except:continue
+              sl=s.lower()
+              if any(n in sl for n in needles):
+                if "/" in s or "retrofit" in sl or "http" in sl:
+                  hits.append({"file":fn.replace("/tmp/qwello/apks/",""),"text":s})
+                for r in re.findall(r'(?<![A-Za-z0-9])/[A-Za-z0-9_{}?&=./:+-]{2,220}',s):
+                  rl=r.lower()
+                  if any(n in rl for n in ("location","station","evse","map","public")):
+                    routes.add(r)
+                for r in re.findall(r'(?<![A-Za-z0-9])(?:1\.0|v1|v2)/[A-Za-z0-9_{}?&=./:+-]{2,220}',s):
+                  rl=r.lower()
+                  if any(n in rl for n in ("location","station","evse","map","public")):
+                    routes.add(r)
+          seen=set(); sel=[]
+          for x in hits:
+            k=x["text"][:300]
+            if k in seen: continue
+            seen.add(k); sel.append(x)
+            if len(sel)>=800: break
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"routes":sorted(routes),"hits":sel}
+          Path("reports/uk/qwello-mobile-api-route-extract-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({"routes":out["routes"],"hits":sel[:300]},ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/qwello-mobile-api-route-extract-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): extract Qwello mobile routes [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
