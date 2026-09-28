@@ -30,6 +30,19 @@ for st in src.get("stations") or []:
       key=(ta.get("name"),ta.get("total_monthly_fee"))
       schedules[key]={"tariffName":ta.get("name"),"monthlyFee":ta.get("total_monthly_fee"),"currency":ta.get("currency"),"segments":seg}
 
+atlas_types={}
+for st in src.get("stations") or []:
+  station_types=set()
+  for cp in st.get("chargePoints") or []:
+    cpt=cp.get("chargePoint") or {}
+    et=(cpt.get("energy_type") or "").lower()
+    if et in ("ac","dc"): station_types.add(et)
+    for aeid in cpt.get("evse_ids") or []:
+      if et in ("ac","dc"): atlas_types.setdefault(aeid,set()).add(et)
+  if len(station_types)==1:
+    et=next(iter(station_types))
+    for aeid in st.get("evseIds") or []: atlas_types.setdefault(aeid,set()).add(et)
+
 current={}
 def walk(x,owner=None):
   if isinstance(x,dict):
@@ -55,6 +68,8 @@ for eid,rec in sorted(current.items()):
       types.add("dc")
     if "type 2" in plugs and "dc tesla" not in plugs:
       types.add("ac")
+  if not types and len(atlas_types.get(eid,set()))==1:
+    types.update(atlas_types[eid])
   if not types:
     unresolved.append({"evseId":eid,"reason":"missing_power_type_and_unclassifiable_plug","nationalRecord":rec}); continue
   applicable=[]
