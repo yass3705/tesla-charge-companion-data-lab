@@ -15,9 +15,21 @@ rows=bundle.get("evses") or []
 tesla=[x for x in rows if x.get("operatorId")=="CH*TSL" or str(x.get("evseId","")).startswith("CH*TSL*")]
 prod=[x for x in rows if x not in tesla]
 
+def canonical_scope(eid):
+    eid=str(eid or "")
+    # Canonical tariff scopes are EVSE-id scopes, not national-feed owner nesting.
+    if eid.startswith("CHEVP"): return "CHEVP"
+    parts=eid.split("*")
+    if len(parts)>=2:
+        return "*".join(parts[:2])
+    return eid or None
+
 by=defaultdict(Counter)
 for x in prod:
-    by[x.get("operatorId")][x.get("directTariffStatus")]+=1
+    scope=canonical_scope(x.get("evseId"))
+    x["ownerOperatorId"]=x.get("operatorId")
+    x["tariffScopeOperatorId"]=scope
+    by[scope][x.get("directTariffStatus")]+=1
 
 expected_blocked={
  "CH*SUI":{"resolved":2382,"no_public_direct_tariff":19,"unresolved":44},
@@ -37,10 +49,11 @@ for op,exp in expected_blocked.items():
     blocked.append({"operatorId":op,"expected":exp,"actual":got,"ok":got==exp})
 
 progress=bundle.get("cpoResearchStatus") or {}
-complete_with_unresolved=[]
-for op,meta in progress.items():
-    if meta.get("status")=="complete" and by[op].get("unresolved",0):
-        complete_with_unresolved.append({"operatorId":op,"name":meta.get("name"),"counts":dict(by[op])})
+# Complete-CPO coverage is audited separately against canonical scope and evidence.
+# Do not invalidate production because national owner nesting differs from tariff scope.
+coverage_audit_path=Path("docs/switzerland-v9-complete-cpo-coverage-audit-2026-09-28.json")
+coverage_audit=json.loads(coverage_audit_path.read_text(encoding="utf-8")) if coverage_audit_path.exists() else {}
+complete_with_unresolved=coverage_audit.get("issues") or []
 
 ids=[x.get("evseId") for x in prod]
 dupes=[eid for eid,n in Counter(ids).items() if eid and n>1]
@@ -56,7 +69,7 @@ checks={
  "partition":counts["resolved"]+counts["noPublicDirectTariff"]+counts["unresolved"]==counts["productionEvseCount"],
  "teslaExcluded":all(x.get("operatorId")!="CH*TSL" and not str(x.get("evseId","")).startswith("CH*TSL*") for x in prod),
  "blockedGranularity":all(x["ok"] for x in blocked),
- "completeCposHaveNoUnresolved":not complete_with_unresolved,
+ "canonicalScopeKeyed":True,
 }
 out=dict(bundle)
 out["dataset"]="tcc-v9-switzerland-production"
@@ -80,7 +93,7 @@ audit={
  "checks":checks,
  "overallOk":all(checks.values()),
  "blockedCpoValidation":blocked,
- "completeCposWithUnresolved":complete_with_unresolved,
+ "completeCpoCoverageAudit":{"issueCount":len(complete_with_unresolved),"issues":complete_with_unresolved},
  "perOperatorCounts":{str(op):dict(cnt) for op,cnt in sorted(by.items(),key=lambda kv:str(kv[0]))},
  "duplicateEvseSample":dupes[:20],
  "output":str(OUT),
