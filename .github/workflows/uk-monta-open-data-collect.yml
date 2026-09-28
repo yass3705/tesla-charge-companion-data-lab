@@ -36,7 +36,7 @@ jobs:
           UA="TeslaChargeCompanion/9 UK-Monta-collector"
           rows=[]; after=None; pages=0; seen=set()
           while True:
-              q={"per_page":"100","party_id":"MON"}
+              q={"per_page":"100"}
               if after is not None: q["after"]=str(after)
               url=BASE+"?"+urllib.parse.urlencode(q)
               req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"application/json"})
@@ -59,9 +59,11 @@ jobs:
               if pages>1000: raise SystemExit("pagination guard")
               time.sleep(0.25)
 
-          # Keep only GB records defensively even though MON is a UK party id.
-          gb=[x for x in rows if str(x.get("country_code") or "").upper()=="GB" or str(x.get("country") or "").upper() in ("GB","GBR","UNITED KINGDOM")]
-          if gb: rows=gb
+          # Monta party_id query currently returns an empty set despite MON appearing in the unfiltered feed.
+          # Collect the public cursor feed, then filter locally and conservatively.
+          rows=[x for x in rows if str(x.get("party_id") or "").upper()=="MON"]
+          gb=[x for x in rows if str(x.get("country_code") or "").upper()=="GB" or str(x.get("country") or "").upper() in ("GB","GBR","UNITED KINGDOM","")]
+          rows=gb
 
           evses=connectors=0; statuses={}; tariff_ids=set(); parties=set()
           for loc in rows:
