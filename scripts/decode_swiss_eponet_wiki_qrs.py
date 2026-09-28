@@ -3,6 +3,7 @@ import urllib.request,subprocess,json,re
 from pathlib import Path
 from datetime import datetime,timezone
 URLS=[
+"https://wiki.eponet.ch/uploads/images/gallery/2025-12/abziehlasche-4-1.jpg",
 "https://wiki.eponet.ch/uploads/images/gallery/2025-07/YWggrafik.png",
 "https://wiki.eponet.ch/uploads/images/gallery/2025-07/5H5grafik.png",
 "https://wiki.eponet.ch/uploads/images/gallery/2025-07/img-4818.jpeg",
