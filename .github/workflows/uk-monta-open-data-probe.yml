@@ -21,7 +21,7 @@ jobs:
       - name: Probe Monta UK open-data endpoint
         run: |
           python - <<'PY'
-          import json, urllib.request, urllib.error
+          import json, urllib.request, urllib.error, urllib.parse
           from datetime import datetime, timezone
           from pathlib import Path
           url='https://public-api.monta.com/api/v1/open-data/locations?per_page=3'
@@ -77,6 +77,48 @@ jobs:
               except Exception: pass
           except Exception as e:
               out.update({'status':None,'error':f'{type(e).__name__}: {e}'})
+          # Follow-up probes against identifiers found in the sample.
+          evse_id=((out.get('firstEvse') or {}).get('evse_id'))
+          tariff_id=None
+          connectors=((out.get('firstEvse') or {}).get('connectors') or [])
+          if connectors:
+              tids=connectors[0].get('tariff_ids') or []
+              if tids: tariff_id=str(tids[0])
+
+          follow=[]
+          candidates=[]
+          if evse_id:
+              candidates.append(('afirStatus', 'https://public-api.monta.com/api/v1/afir/charge-points/'+urllib.parse.quote(evse_id,safe='')+'/status'))
+          if tariff_id:
+              candidates.extend([
+                  ('openTariffById','https://public-api.monta.com/api/v1/open-data/tariffs/'+urllib.parse.quote(tariff_id,safe='')),
+                  ('openTariffsFilter','https://public-api.monta.com/api/v1/open-data/tariffs?id='+urllib.parse.quote(tariff_id,safe='')),
+                  ('tariffById','https://public-api.monta.com/api/v1/tariffs/'+urllib.parse.quote(tariff_id,safe=''))
+              ])
+          for label,u in candidates:
+              row={'label':label,'url':u}
+              try:
+                  req=urllib.request.Request(u,headers={'User-Agent':'TeslaChargeCompanion/9 UK-Monta-probe','Accept':'application/json'})
+                  with urllib.request.urlopen(req,timeout=45) as rr:
+                      raw2=rr.read(200000)
+                      row['status']=rr.status
+                      row['contentType']=rr.headers.get('Content-Type')
+                      try:
+                          q=json.loads(raw2.decode('utf-8'))
+                          row['jsonType']=type(q).__name__
+                          row['payload']=q
+                      except Exception:
+                          row['bodyPrefix']=raw2[:1000].decode('utf-8',errors='replace')
+              except urllib.error.HTTPError as e:
+                  row['status']=e.code
+                  row['error']=str(e)
+                  try: row['bodyPrefix']=e.read(1000).decode('utf-8',errors='replace')
+                  except Exception: pass
+              except Exception as e:
+                  row['status']=None; row['error']=f'{type(e).__name__}: {e}'
+              follow.append(row)
+          out['followUp']=follow
+
           Path('reports/uk').mkdir(parents=True,exist_ok=True)
           Path('reports/uk/monta-open-data-probe-latest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
           print(json.dumps(out,ensure_ascii=False,indent=2))
