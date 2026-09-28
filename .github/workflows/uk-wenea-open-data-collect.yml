@@ -51,14 +51,41 @@ jobs:
                       if con.get('tariff_id') is not None: referenced.add(str(con.get('tariff_id')))
           byid={str(t.get('id')):t for t in tariffs if isinstance(t,dict) and t.get('id') is not None}
           selected=[byid[x] for x in sorted(referenced) if x in byid]
-          missing=sorted(referenced-set(byid))
+          upstream_missing=sorted(referenced-set(byid))
+          # The official ZIP currently references one absent UK tariff ID on all connectors.
+          # All UK records are owned+operated by Wenea Mobile Energy. Use Wenea's current
+          # public direct PAYG prices by exact connector power band, preserving upstream IDs.
+          direct={
+            'WENEA-DIRECT-AC':{'price':0.55,'min_w':0,'max_w':22000,'label':'AC 3.5-22 kW'},
+            'WENEA-DIRECT-DC':{'price':0.75,'min_w':22001,'max_w':60000,'label':'DC 30-60 kW'},
+            'WENEA-DIRECT-HPC':{'price':0.85,'min_w':60001,'max_w':400000,'label':'HPC 61-400 kW'},
+          }
+          for loc in uk:
+              for ev in loc.get('evses') or []:
+                  for con in ev.get('connectors') or []:
+                      if not isinstance(con,dict): continue
+                      p=int(con.get('max_electric_power') or 0)
+                      tid=None
+                      if 0 < p <= 22000: tid='WENEA-DIRECT-AC'
+                      elif 22000 < p <= 60000: tid='WENEA-DIRECT-DC'
+                      elif 60000 < p <= 400000: tid='WENEA-DIRECT-HPC'
+                      if tid:
+                          con['_source_tariff_ids']=list(con.get('tariff_ids') or [])
+                          con['tariff_ids']=[tid]
+                          con['tcc_direct_price_gbp_per_kwh']=direct[tid]['price']
+          selected=[{'country_code':'GB','party_id':'WEN','id':tid,'currency':'GBP','elements':[{'price_components':[{'type':'ENERGY','price':v['price'],'step_size':1}]}],'source':'https://wenea.com/uk/charging-tariffs/','source_label':v['label'],'tcc_current_direct_tariff':True} for tid,v in direct.items()]
+          unresolved_power=[]
+          for loc in uk:
+              for ev in loc.get('evses') or []:
+                  for con in ev.get('connectors') or []:
+                      if isinstance(con,dict) and not con.get('tariff_ids'): unresolved_power.append({'location':loc.get('id'),'connector':con.get('id'),'power':con.get('max_electric_power')})
           retrieved=datetime.now(timezone.utc).isoformat()
-          out={'country':'GB','network':'Wenea','retrievedAt':retrieved,'sourceUrl':url,'locations':uk,'tariffs':selected}
-          summary={'country':'GB','network':'Wenea','retrievedAt':retrieved,'zipLocationsTotal':len(locations),'ukLocations':len(uk),'evses':evses,'connectors':connectors,'partyIdsObserved':sorted(parties),'evseStatuses':statuses,'tariffIdsReferenced':len(referenced),'tariffsResolved':len(selected),'missingTariffIds':missing,'status':'complete' if uk and not missing else 'partial'}
+          out={'country':'GB','network':'Wenea','retrievedAt':retrieved,'sourceUrl':url,'officialPricingUrl':'https://wenea.com/uk/charging-tariffs/','locations':uk,'tariffs':selected}
+          summary={'country':'GB','network':'Wenea','retrievedAt':retrieved,'zipLocationsTotal':len(locations),'ukLocations':len(uk),'evses':evses,'connectors':connectors,'partyIdsObserved':sorted(parties),'evseStatuses':statuses,'upstreamTariffIdsReferenced':sorted(referenced),'upstreamMissingTariffIds':upstream_missing,'directTariffs':direct,'unresolvedPowerConnectors':unresolved_power,'status':'complete_with_official_direct_price_fallback' if uk and not unresolved_power else 'partial'}
           with gzip.open('data/national/uk_wenea_open_data.json.gz','wt',encoding='utf-8') as g: json.dump(out,g,ensure_ascii=False,separators=(',',':'))
           Path('reports/uk/wenea-open-data-latest.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
           print(json.dumps(summary,ensure_ascii=False,indent=2))
-          if not uk or missing: raise SystemExit(2)
+          if not uk or unresolved_power: raise SystemExit(2)
           PY
       - name: Publish
         run: |
