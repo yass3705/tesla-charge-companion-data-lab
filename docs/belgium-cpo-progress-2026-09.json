@@ -844,57 +844,60 @@
   },
   "additionalSources": {
     "asOf": "2026-09-29",
-    "inventory": {
-      "road": {
-        "source": "data/belgium/additional/canonical/road-belgium-canonical-2026-09-29.json",
-        "locations": 3271,
-        "evses": 8174,
-        "overlapWithEcoMovementByExternalEvseId": 0,
-        "tariffStatus": "source-limited",
-        "note": "Road inventory is additive. Pricing is location/owner-defined on the E-Flux platform and not present in the public Road feed.",
-        "tariffReport": "reports/belgium/road/road-tariff-source-limit-2026-09-29.json",
-        "blocker": "Station pricing is app/API-delivered behind JWT/App Check; no auth/attestation bypass attempted."
-      },
-      "indigo": {
-        "source": "data/belgium/additional/canonical/indigo-belgium-canonical-2026-09-29.json",
+    "purpose": "Expand beyond Eco-Movement selected-CPO coverage using additional Belgian NAP/AFIR sources.",
+    "sources": {
+      "INDIGO": {
+        "inventorySource": "data/belgium/additional/canonical/indigo-belgium-canonical-2026-09-29.json",
         "sites": 86,
         "evses": 2332,
-        "overlapWithEcoMovementByExternalEvseId": 0,
-        "tariffStatus": "complete",
+        "tariffCoverage": {
+          "pricedEvses": 2332,
+          "missingEvses": 0,
+          "coveragePct": 100
+        },
         "tariffOverlay": "data/operator_direct/indigo_belgium_official_2026-09-29.json",
-        "tariffComponents": [
-          {
-            "priceType": "pricePerKWh",
-            "price": 0.55,
-            "currency": "EUR",
-            "taxIncluded": true
-          },
-          {
-            "priceType": "pricePerMinute",
-            "price": 0.013,
-            "currency": "EUR",
-            "taxIncluded": true
-          },
-          {
-            "priceType": "flatFee",
-            "price": 0.79,
-            "currency": "EUR",
-            "taxIncluded": true
-          }
-        ]
+        "state": "complete",
+        "note": "Official Belgium public tariff integrated with all published components preserved."
+      },
+      "Road": {
+        "locationsSource": "data/belgium/additional/road-2026-09-29.json",
+        "tariffsSource": "data/belgium/additional/road-tariffs-2026-09-29.json",
+        "evses": 8174,
+        "tariffObjects": 17209,
+        "tariffCoverage": {
+          "pricedEvses": 7475,
+          "missingEvses": 699,
+          "coveragePct": 91.45
+        },
+        "tariffOverlay": "data/operator_direct/road_belgium_tariffs_2026-09-29.json",
+        "validationReport": "reports/belgium/belgium-road-atomic-refresh-validation-2026-09-29.json",
+        "state": "partial",
+        "blocker": "699 EVSEs reference tariff_ids that are absent from the public Road tariffs.json even when locations.json and tariffs.json are force-refreshed sequentially in the same run. No tariff is inferred."
+      },
+      "EnergyVision": {
+        "state": "blocked_external_access",
+        "access": "Free API key required from myevplatform@energyvision.be",
+        "note": "Dataset includes static/dynamic infrastructure plus ad-hoc pricing; key is not currently available in the repo."
+      },
+      "Monta": {
+        "state": "blocked_external_access",
+        "access": "Authenticated Public API application required (clientId/clientSecret -> bearer token)",
+        "note": "AFIR Belgium endpoint includes dynamic status and ad-hoc price but all API endpoints require authentication."
       }
     },
-    "pendingSources": [
-      {
-        "name": "Monta",
-        "status": "authentication-required",
-        "note": "Official AFIR endpoint documented; no bypass attempted."
-      },
-      {
-        "name": "EnergyVision",
-        "status": "api-key-required",
-        "note": "Transportdata.be indicates API access is communicated by email."
-      }
+    "summary": {
+      "netNewInventoryKnown": 10506,
+      "exactTariffCoveredAdditionalEvses": 9807,
+      "sourceLimitedAdditionalEvses": 699,
+      "externalCredentialBlockedSources": [
+        "EnergyVision",
+        "Monta"
+      ]
+    },
+    "rules": [
+      "No tariffs are inferred from operator name, power, nearby stations, or stale family similarity.",
+      "Road tariffs are joined only via connector tariff_ids from Road's own public files.",
+      "Credential-gated AFIR sources are not bypassed."
     ]
   }
 }
