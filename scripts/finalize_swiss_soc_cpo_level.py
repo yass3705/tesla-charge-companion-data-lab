@@ -4,14 +4,15 @@ from pathlib import Path
 from datetime import datetime,timezone
 NAT="https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json"
 SRC=Path("data/switzerland/soc-direct-tariffs.json")
+CCISRC=Path("data/switzerland/cci-direct-tariffs-second-pass.json")
 OUT=Path("data/switzerland/soc-move-cpo-tariffs-national.json")
 DOC=Path("docs/switzerland-soc-finalization-2026-09-28.json")
 req=urllib.request.Request(NAT,headers={"User-Agent":"TCC-V9-Switzerland/1.0","Accept":"application/json"})
 with urllib.request.urlopen(req,timeout=120) as r: raw=r.read()
 if len(raw)>=2 and raw[0]==31 and raw[1]==139: raw=gzip.decompress(raw)
-nat=json.loads(raw.decode("utf-8")); src=json.loads(SRC.read_text(encoding="utf-8"))
+nat=json.loads(raw.decode("utf-8")); src=json.loads(SRC.read_text(encoding="utf-8")); ccisrc=json.loads(CCISRC.read_text(encoding="utf-8"))
 schedules={}
-for st in src.get("stations") or []:
+for st in (src.get("stations") or []) + (ccisrc.get("stations") or []):
  for cp in st.get("chargePoints") or []:
   for t in cp.get("directTariffs") or []:
    a=t.get("attributes") or {}; ta=t.get("tariff",{}).get("attributes") or {}
