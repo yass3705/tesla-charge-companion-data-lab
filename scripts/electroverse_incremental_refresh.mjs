@@ -13,6 +13,7 @@ const SELECTION='reports/electroverse/incremental-selection.json';
 const MAPPING='data/electroverse/irve_location_mapping.json';
 const DIR='data/electroverse/tariff_cache';
 const MANIFEST=`${DIR}/manifest.json`;
+const CHECKED=`${DIR}/checked-at.json`;
 if(!API_KEY) throw new Error('ELECTROVERSE_API_KEY required');
 
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -46,6 +47,9 @@ const selection=JSON.parse(await fs.readFile(SELECTION,'utf8'));
 const mapping=JSON.parse(await fs.readFile(MAPPING,'utf8'));
 const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
 const manifest=JSON.parse(await fs.readFile(MANIFEST,'utf8'));
+let checkedState={version:1,generatedAt:null,checkedAt:{}};
+try{checkedState=JSON.parse(await fs.readFile(CHECKED,'utf8'));}catch{}
+checkedState.checkedAt??={};
 const selected=(selection.selected||[]).map(x=>String(x.pk));
 if(!selected.length){
   console.log(JSON.stringify({selected:0,note:'Nothing due'},null,2));
@@ -119,14 +123,16 @@ for(let i=0;i<selected.length;i++){
   }
   if(result.mode==='paged')pagedUsed++;
   const tariff=tariffProjection(result.loc),tariffHash=hash(tariff);
-  if(!prev)newCount++;else if(prev.tariffHash===tariffHash)unchanged++;else changed++;
+  const nowIso=new Date().toISOString();
+  checkedState.checkedAt[pk]=nowIso;
+  if(!prev)newCount++;else if(prev.tariffHash===tariffHash){unchanged++; continue;}else changed++;
   sh.stations[pk]={
     electroverseLocationPk:pk,
     irveStationId:m.irveStationId,
     irvePdcIds:m.irvePdcIds||[],
     matchConfidence:m.confidence||null,
     tariffHash,
-    fetchedAt:new Date().toISOString(),
+    fetchedAt:nowIso,
     fetchMode:result.mode||'single',
     pagedPages:result.pages??null,
     tariff
@@ -136,9 +142,13 @@ for(let i=0;i<selected.length;i++){
 }
 
 for(const [i,data] of shardData){
+  const changedHere=Object.values(data.stations||{}).some(s=>selected.includes(String(s.electroverseLocationPk)) && checkedState.checkedAt[String(s.electroverseLocationPk)]===s.fetchedAt);
+  if(!changedHere) continue;
   data.generatedAt=new Date().toISOString();
   await fs.writeFile(`${DIR}/${shardName(i)}`,JSON.stringify(data,null,2)+'\n');
 }
+checkedState.generatedAt=new Date().toISOString();
+await fs.writeFile(CHECKED,JSON.stringify(checkedState)+'\n');
 
 let totalStations=0,maxShardBytes=0;
 const updatedMeta=[];
