@@ -1,0 +1,32 @@
+name: Switzerland Eponet public charge contract
+on:
+  push:
+    paths:
+      - 'scripts/probe_swiss_eponet_public_charge_contract.py'
+      - '.github/workflows/switzerland-eponet-public-charge-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - run: python3 scripts/probe_swiss_eponet_public_charge_contract.py
+      - name: Persist
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/switzerland-eponet-public-charge-contract-2026-09-28.json
+          git commit -m 'docs(switzerland): inspect Eponet public charge contract' || exit 0
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main || { git rebase --abort || true; sleep $((attempt*2)); continue; }
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
