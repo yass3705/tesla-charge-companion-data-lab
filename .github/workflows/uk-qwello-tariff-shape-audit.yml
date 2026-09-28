@@ -23,7 +23,7 @@ jobs:
           url="https://tariff-locations-file-production.s3.eu-central-1.amazonaws.com/tariff-view.json"
           req=urllib.request.Request(url,headers={"User-Agent":"TeslaChargeCompanion/9","Accept":"application/json"})
           with urllib.request.urlopen(req,timeout=60) as r: rows=json.loads(r.read().decode())
-          uk=[x for x in rows if isinstance(x,dict) and str(x.get("country") or "").upper()=="GB"]
+          uk=[x for x in rows if isinstance(x,dict) and (str(x.get("country") or "").upper() in ("GB","UK","UNITED KINGDOM") or any(str(i).upper().startswith("GB") for i in (x.get("id") or [])))]
           sample=uk[0] if uk else {}
           out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"ukRows":len(uk),
                "topKeys":list(sample.keys()),"tariffKeys":list((sample.get("tariff") or {}).keys()),
