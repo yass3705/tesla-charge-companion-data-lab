@@ -33,6 +33,7 @@ for o in p.get("operators",[]):
       "bundleMatchedEvseCount":len(xs),"pricedEvseCount":counts["resolved"],
       "noPublicDirectTariffCount":counts["no_public_direct_tariff"],
       "unresolvedEvseCount":counts["unresolved"],"resolvedOrClassifiedCount":covered,
+      "unresolvedEvseIds":[e.get("evseId") for e in xs if (e.get("directTariffStatus") or "unresolved")=="unresolved"],
       "coverageComplete": counts["unresolved"]==0,
       "scopeCountChanged": (o.get("evseCount") is not None and len(xs)!=o.get("evseCount"))
     })
