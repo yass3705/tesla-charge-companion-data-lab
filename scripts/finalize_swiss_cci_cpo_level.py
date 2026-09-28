@@ -30,7 +30,10 @@ for st in (src.get("stations") or []) + (socsrc.get("stations") or []):
       kwh=[x for x in seg if x.get("dimension")=="kwh" and x.get("price") is not None]
       if not kwh: continue
       key=(ta.get("name"),ta.get("total_monthly_fee"))
-      schedules[key]={"tariffName":ta.get("name"),"monthlyFee":ta.get("total_monthly_fee"),"currency":ta.get("currency"),"segments":seg}
+      if key not in schedules:
+        schedules[key]={"tariffName":ta.get("name"),"monthlyFee":ta.get("total_monthly_fee"),"currency":ta.get("currency"),"segments":[]}
+      for sg in seg:
+        if sg not in schedules[key]["segments"]: schedules[key]["segments"].append(sg)
 
 atlas_types={}
 for st in src.get("stations") or []:
