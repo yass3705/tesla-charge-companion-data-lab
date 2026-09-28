@@ -3,19 +3,39 @@ from __future__ import annotations
 import json,re,subprocess,zipfile,hashlib
 from pathlib import Path
 
-URL="https://d.apkpure.net/b/XAPK/com.eflux.ev?version=latest"
+URLS=[
+ "https://d.apkpure.net/b/XAPK/com.eflux.ev?version=latest",
+ "https://d.apkpure.net/b/APK/com.eflux.ev?version=latest",
+ "https://e-flux-ev.en.uptodown.com/android/download"
+]
 TMP=Path("/tmp/eflux-apk"); TMP.mkdir(parents=True,exist_ok=True)
 OUT=Path("reports/belgium/road"); OUT.mkdir(parents=True,exist_ok=True)
 xapk=TMP/"app.xapk"
-subprocess.run([
- "curl","-fLsS","--retry","3","--connect-timeout","15","--max-time","240",
- "-A","Mozilla/5.0","-H","Referer: https://apkpure.net/","-o",str(xapk),URL
-],check=True)
+downloaded=None
+for idx,url in enumerate(URLS):
+    p=TMP/f"download-{idx}.bin"
+    r=subprocess.run([
+      "curl","-fLsS","--retry","2","--connect-timeout","15","--max-time","240",
+      "-A","Mozilla/5.0","-H","Referer: https://apkpure.net/","-o",str(p),url
+    ],check=False)
+    if r.returncode==0 and p.exists() and p.stat().st_size>1000000:
+        downloaded=p
+        break
+if downloaded is None:
+    raise SystemExit("no usable APK/XAPK download")
 
 xr=TMP/"x"; xr.mkdir(exist_ok=True)
-with zipfile.ZipFile(xapk) as z:z.extractall(xr)
-apks=list(xr.rglob("*.apk"))
-if not apks: raise SystemExit("no APK found")
+sig=downloaded.read_bytes()[:4]
+apks=[]
+if sig[:2]==b"PK":
+    try:
+        with zipfile.ZipFile(downloaded) as z:z.extractall(xr)
+        apks=list(xr.rglob("*.apk"))
+    except zipfile.BadZipFile:
+        pass
+if not apks:
+    # A standalone APK is itself a ZIP but may have been caught above with no nested apk.
+    apks=[downloaded]
 base=next((p for p in apks if p.name.lower() in ("base.apk","com.eflux.ev.apk")),max(apks,key=lambda p:p.stat().st_size))
 
 # strings is enough for endpoint/contract discovery without persisting secrets.
