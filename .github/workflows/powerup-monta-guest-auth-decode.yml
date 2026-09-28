@@ -1,0 +1,47 @@
+name: PowerUp Monta guest-auth decode
+
+on:
+  push:
+    paths:
+      - '.github/workflows/powerup-monta-guest-auth-decode.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  decode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Decode guest auth call from public frontend bundle
+        shell: python
+        run: |
+          import urllib.request,re,json,pathlib
+          url='https://management.charge.agrola.ch/_next/static/chunks/3ksoa_swx9oq-.js'
+          req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0'})
+          with urllib.request.urlopen(req,timeout=30) as r:
+              js=r.read().decode('utf-8','replace')
+          needles=['/api/v1/auth/guest','getChargePoint:async','apiUrl','MontaAppClientConfig']
+          out={}
+          for needle in needles:
+              arr=[]
+              for m in re.finditer(re.escape(needle),js,re.I):
+                  arr.append(js[max(0,m.start()-5000):min(len(js),m.end()+8000)])
+                  if len(arr)>=8:break
+              out[needle]=arr
+          pathlib.Path('docs/switzerland-powerup-monta-guest-auth-decode-2026-09-28.json').write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps({k:len(v) for k,v in out.items()},indent=2))
+      - name: Persist
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-powerup-monta-guest-auth-decode-2026-09-28.json
+          git commit -m "docs(switzerland): decode PowerUp Monta guest auth"
+          git push origin main
