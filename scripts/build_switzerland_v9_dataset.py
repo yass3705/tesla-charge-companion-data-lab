@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import json, re, urllib.request
+import json, re, gzip, urllib.request
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any
@@ -168,7 +168,10 @@ def extract_source(payload:Any,path:str,priority:int):
 def main():
     req=urllib.request.Request(NATIONAL_URL,headers={"User-Agent":"TCC-V9-Switzerland/1.0","Accept":"application/json"})
     with urllib.request.urlopen(req,timeout=120) as r:
-        national_payload=json.load(r)
+        raw=r.read()
+    if len(raw)>=2 and raw[:2]==b"\\x1f\\x8b":
+        raw=gzip.decompress(raw)
+    national_payload=json.loads(raw.decode("utf-8"))
     national=extract_national(national_payload)
 
     candidates={}
