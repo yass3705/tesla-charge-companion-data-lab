@@ -1,0 +1,32 @@
+name: Belgium ChargePlus GUID tariff validation
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-chargeplus-guid-tariff-validation.txt"
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/belgium_chargeplus_guid_tariff_validation.py
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium/totalenergies/chargeplus-guid-tariff-validation-2026-09-28.json
+          git commit -m "Validate ChargePlus tariffs using BEMO connector GUIDs" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep 3
+          done
+          exit 1
