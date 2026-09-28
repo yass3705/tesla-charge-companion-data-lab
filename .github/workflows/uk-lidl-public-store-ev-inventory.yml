@@ -1,0 +1,118 @@
+name: UK Lidl public store EV inventory
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-lidl-public-store-ev-inventory.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Crawl Lidl GB public store finder for EV sites
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/national reports/uk
+          python - <<'PY'
+          import json,re,time,urllib.request,urllib.parse,gzip
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          UA="Mozilla/5.0 TeslaChargeCompanion/9 Lidl-GB-public-store-inventory"
+          root="https://www.lidl.co.uk/s/en-GB/store-finder/"
+          def get(url):
+              req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"text/html,*/*"})
+              with urllib.request.urlopen(req,timeout=60) as r:
+                  return r.read(3_000_000).decode("utf-8","replace"),r.geturl(),r.status
+          def links(base,html):
+              out=[]
+              for h in re.findall(r'href=["\']([^"\']+)["\']',html,re.I):
+                  u=urllib.parse.urljoin(base,h.split("#")[0])
+                  if u.startswith(root): out.append(u)
+              return out
+
+          home,final,_=get(root)
+          level1=sorted(set(links(final,home)))
+          city_pages=[u for u in level1 if u.rstrip("/")!=root.rstrip("/")]
+          store_urls=set()
+          crawled_city=0
+          for u in city_pages:
+              try:
+                  body,fu,_=get(u); crawled_city+=1
+                  for x in links(fu,body):
+                      # store pages are usually /store-finder/<city>/<street>/
+                      rel=x[len(root):].strip("/")
+                      if rel.count("/")>=1: store_urls.add(x)
+                  time.sleep(.05)
+              except Exception:
+                  pass
+
+          # Some store links can appear directly on root/city pages; crawl discovered candidates
+          stores=[]; failures=[]
+          for i,u in enumerate(sorted(store_urls),1):
+              try:
+                  body,fu,st=get(u)
+                  if "Lidl Store" not in body and "Lidl store" not in body:
+                      continue
+                  txt=re.sub(r'<[^>]+>',' ',body)
+                  txt=re.sub(r'\s+',' ',txt)
+                  ev=("EV Charging" in txt)
+                  titlem=re.search(r'<h1[^>]*>(.*?)</h1>',body,re.I|re.S)
+                  title=re.sub(r'<[^>]+>',' ',titlem.group(1)).strip() if titlem else ""
+                  # JSON-LD sometimes carries geo/address
+                  lat=lon=None
+                  for m in re.finditer(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',body,re.I|re.S):
+                      try:
+                          p=json.loads(m.group(1))
+                          objs=p if isinstance(p,list) else [p]
+                          for o in objs:
+                              if isinstance(o,dict):
+                                  g=o.get("geo") or {}
+                                  if isinstance(g,dict) and g.get("latitude") is not None:
+                                      lat=g.get("latitude"); lon=g.get("longitude")
+                      except Exception: pass
+                  stores.append({"url":fu,"title":title,"evCharging":ev,"lat":lat,"lon":lon})
+              except Exception as e:
+                  failures.append({"url":u,"error":f"{type(e).__name__}: {e}"})
+              if i%100==0: print("progress",i,len(store_urls))
+              time.sleep(.03)
+
+          evsites=[x for x in stores if x["evCharging"]]
+          now=datetime.now(timezone.utc).isoformat()
+          report={"country":"GB","network":"Lidl","retrievedAt":now,"source":root,
+                  "cityPagesCrawled":crawled_city,"storePagesDiscovered":len(store_urls),
+                  "storePagesParsed":len(stores),"evChargingStores":len(evsites),
+                  "geocodedEvStores":sum(1 for x in evsites if x["lat"] is not None and x["lon"] is not None),
+                  "failures":failures[:100],
+                  "officialTariffs":{"lidlPlusAC_GBP_per_kWh":0.40,"lidlPlusDC_GBP_per_kWh":0.59,
+                                     "webAC_GBP_per_kWh":0.55,"webOrContactlessDC_GBP_per_kWh":0.74},
+                  "status":"location_inventory_complete_from_public_store_finder" if evsites else "failed_empty"}
+          with gzip.open("data/national/uk_lidl_public_ev_stores.json.gz","wt",encoding="utf-8") as g:
+              json.dump({"retrievedAt":now,"stores":evsites,"tariffs":report["officialTariffs"]},g,ensure_ascii=False,separators=(",",":"))
+          Path("reports/uk/lidl-public-ev-stores-latest.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          if not evsites: raise SystemExit(2)
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/uk_lidl_public_ev_stores.json.gz reports/uk/lidl-public-ev-stores-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(uk): collect Lidl GB public EV store inventory [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
