@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "country": "CH",
+  "cpo": "GOFAST",
+  "status": "complete",
+  "updatedAt": "2026-09-27",
+  "method": "Public GOFAST web-app JSON feed",
+  "stationCount": 120,
+  "stationsWithPricing": 120,
+  "pricingCoveragePct": 100,
+  "source": {
+    "stations": "https://app.gofast.swiss/db/ev_charger_stations.json",
+    "empPricing": "https://app.gofast.swiss/db/emp_pricing.json",
+    "authentication": "none"
+  },
+  "observedPricingModel": "Per-station direct card price in pricing_de, with detailed blocking fee text in pricing_detail_* when applicable.",
+  "examples": [
+    {
+      "station": "GOFAST Deitingen Süd",
+      "energyChfPerKwh": 0.69,
+      "blockingFeeChfPerMinute": 0.25,
+      "blockingFeeAfterMinutes": 61
+    },
+    {
+      "station": "GOFAST Embrach McDonald's",
+      "energyChfPerKwh": 0.65,
+      "blockingFeeChfPerMinute": 0.25,
+      "blockingFeeAfterMinutes": 61
+    }
+  ],
+  "policy": "Use station-specific values only. Preserve raw pricing detail; do not extrapolate one station's tariff to another.",
+  "collector": "scripts/collect_gofast_public.py",
+  "productionSnapshot": "data/gofast/ev_charger_stations.json"
+}
