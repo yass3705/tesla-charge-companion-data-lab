@@ -24,7 +24,7 @@ jobs:
           import json, urllib.request, urllib.error, urllib.parse
           from datetime import datetime, timezone
           from pathlib import Path
-          url='https://public-api.monta.com/api/v1/open-data/locations?per_page=3'
+          url='https://public-api.monta.com/api/v1/open-data/locations?per_page=100'
           out={'country':'GB','network':'Monta','url':url,'retrievedAt':datetime.now(timezone.utc).isoformat()}
           try:
               req=urllib.request.Request(url,headers={'User-Agent':'TeslaChargeCompanion/9 UK-Monta-probe','Accept':'application/json'})
@@ -84,6 +84,33 @@ jobs:
           if connectors:
               tids=connectors[0].get('tariff_ids') or []
               if tids: tariff_id=str(tids[0])
+
+          sample_data=[]
+          try:
+              req=urllib.request.Request(url,headers={'User-Agent':'TeslaChargeCompanion/9 UK-Monta-probe','Accept':'application/json'})
+              with urllib.request.urlopen(req,timeout=60) as rr:
+                  pp=json.loads(rr.read().decode('utf-8'))
+                  sample_data=pp.get('data') if isinstance(pp,dict) and isinstance(pp.get('data'),list) else []
+          except Exception:
+              sample_data=[]
+
+          nonempty_inline=None
+          status_counts={}
+          party_counts={}
+          tariff_ref_count=0
+          for loc in sample_data:
+              if not isinstance(loc,dict): continue
+              pid=str(loc.get('party_id') or '')
+              if pid: party_counts[pid]=party_counts.get(pid,0)+1
+              for ev in (loc.get('evses') or []):
+                  if not isinstance(ev,dict): continue
+                  st=str(ev.get('status') or 'UNKNOWN'); status_counts[st]=status_counts.get(st,0)+1
+                  if ev.get('tariffs') and nonempty_inline is None:
+                      nonempty_inline={'locationId':loc.get('id'),'party_id':loc.get('party_id'),'evse_id':ev.get('evse_id'),'status':ev.get('status'),'tariffs':ev.get('tariffs')}
+                  for con in (ev.get('connectors') or []):
+                      if isinstance(con,dict):
+                          tariff_ref_count += len(con.get('tariff_ids') or [])
+          out['sample100']={'locations':len(sample_data),'partyCounts':party_counts,'evseStatusCounts':status_counts,'tariffRefs':tariff_ref_count,'firstNonEmptyInlineTariffs':nonempty_inline}
 
           follow=[]
           candidates=[]
