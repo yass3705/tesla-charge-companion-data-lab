@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-import json,urllib.request,urllib.parse,urllib.error
+import json,urllib.request,urllib.parse,urllib.error,os
 from pathlib import Path
 from datetime import datetime,timezone
 
 HOSTS=["https://pdefweushaapiam01.azure-api.net","https://adefweuappbckfa01.azurewebsites.net/api"]
-TENANT="fdcb995a-8234-42ed-826f-3f2c7499d7f8"
+TENANT="fdcb995a-8234-42ed-826f-3f2c7499d7f8"\nSUBSCRIPTION_KEY=os.environ.get("AVIA_DEFTPOWER_SUBSCRIPTION_KEY","").strip()
 LAT,LON=46.818,8.2275
 paths=[
  "/app-backend/v1/cpos",
@@ -25,7 +25,7 @@ paths=[
  f"/nearby-locations?tenantId={TENANT}&latitude={LAT}&longitude={LON}",
  f"/nearby-locations?tenantId={TENANT}&latitude={LAT}&longitude={LON}&radius=500",
 ]
-headersets=[
+headersets=[\n ({"User-Agent":"AVIA-VOLT-Suisse/2.3.0","Accept":"application/json","Ocp-Apim-Subscription-Key":SUBSCRIPTION_KEY,"tenantId":TENANT} if SUBSCRIPTION_KEY else {"User-Agent":"AVIA-VOLT-Suisse/2.3.0","Accept":"application/json","tenantId":TENANT}),
  {"User-Agent":"AVIA-VOLT-Suisse/2.3.0","Accept":"application/json"},
  {"User-Agent":"AVIA-VOLT-Suisse/2.3.0","Accept":"application/json","tenantId":TENANT},
  {"User-Agent":"AVIA-VOLT-Suisse/2.3.0","Accept":"application/json","TenantId":TENANT},
