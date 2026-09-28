@@ -178,10 +178,10 @@
     },
     {
       "name": "Applegreen Fast Charge",
-      "status": "partial",
+      "status": "partial_app_backend_pending",
       "access": "no_direct_endpoint_found_first_pass",
-      "evidence": "First-pass search did not surface a UK PCPR endpoint.",
-      "next": "second pass: inspect operator site/app and third-party PCPR host."
+      "evidence": "Applegreen Electric UK uses a Driivz-backed mobile app with real-time UK/IE station locations and availability. Public web/search surfaces confirm the live map/app but do not expose a directly callable open-data endpoint.",
+      "next": "Recover Driivz/app endpoint via static app/backend inspection when available; no tariff extrapolation from sample sites."
     },
     {
       "name": "bp pulse",
@@ -254,11 +254,11 @@
     },
     {
       "name": "Believ",
-      "status": "source_identified",
-      "access": "public_api",
+      "status": "blocked_free_account_credentials",
+      "access": "free_account_required",
       "locationsEndpoint": "https://api.believ.com/",
-      "evidence": "Believ publishes a public API access page and explicitly states location, connector, pricing and availability data are open.",
-      "next": "second pass: inspect API schema and collect."
+      "evidence": "Official Believ Open Data page points to https://api.believ.com/. The API portal states that a FREE account must be created before documentation and credentials can be generated.",
+      "next": "User creates free Believ API account and provides/generated API credential details; then collect full EVSE/location/tariff data without repeating discovery."
     },
     {
       "name": "Monta",
@@ -389,10 +389,10 @@
     },
     {
       "name": "Qwello",
-      "status": "partial",
+      "status": "partial_pricing_known_inventory_backend_pending",
       "access": "no_direct_endpoint_found_first_pass",
-      "evidence": "First-pass search did not surface a direct UK PCPR feed.",
-      "next": "second pass: inspect Qwello UK endpoints/app/backend."
+      "evidence": "Official Qwello UK website publishes London direct tariff (42p/kWh + 2p/min, night time component capped) and app offers real-time station availability. Static website exposes no callable inventory/API endpoint.",
+      "next": "Recover app/backend inventory endpoint later; do not substitute third-party station counts as canonical."
     },
     {
       "name": "ChargePoint",
@@ -412,18 +412,18 @@
     },
     {
       "name": "TotalEnergies",
-      "status": "partial",
+      "status": "partial_browser_only_inventory",
       "access": "no_direct_uk_endpoint_found_first_pass",
-      "evidence": "TotalEnergies confirms a large UK public charging estate, but first-pass search did not surface the UK PCPR machine-readable endpoint.",
-      "next": "second pass: inspect London network backend/Source relationship and PCPR host."
+      "evidence": "Official UK Charging Services site and tariffs are browser-accessible, but GitHub runner access to the find-a-charger page returns HTTP 403, preventing static bundle/API discovery there. Keep public UK pricing separately; inventory backend still unresolved.",
+      "next": "Revisit with browser/network inspection when available; no user action required now."
     },
     {
       "name": "Connected Kerb",
-      "status": "partial",
+      "status": "blocked_external_token",
       "access": "token_required",
       "versionsEndpoint": "https://cp.connectedkerb.com/ocpi/versions",
-      "evidence": "OCPI endpoint confirmed; anonymous access returns Unauthorized.",
-      "next": "seek statutory public-data surface distinct from roaming endpoint; do not block first pass"
+      "evidence": "Connected Kerb operates OCPI at https://cp.connectedkerb.com/ocpi/ and an AMPECO public API at /public-api/. Both return 401 anonymously; bearer tokens are issued from the operator back office and there is no public self-service credential path.",
+      "next": "External API/OCPI credential required; keep set aside until credentials/onboarding become available."
     },
     {
       "name": "Charge My Street",
@@ -2594,6 +2594,11 @@
       "referencedTariffIds": 7,
       "missingTariffIds": 5,
       "report": "reports/uk/chargy-missing-tariff-resolve-latest.json"
+    },
+    "believBlocker": {
+      "state": "free_account_required",
+      "portal": "https://api.believ.com/",
+      "reason": "documentation and credentials hidden until free account creation"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
