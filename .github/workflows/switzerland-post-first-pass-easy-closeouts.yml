@@ -1,6 +1,9 @@
 name: Switzerland post first-pass easy closeouts
 
 on:
+  push:
+    paths:
+      - '.github/workflows/switzerland-post-first-pass-easy-closeouts.yml'
   workflow_run:
     workflows: ["Switzerland untreated CPO first pass"]
     types: [completed]
@@ -11,7 +14,7 @@ permissions:
 
 jobs:
   easy-closeouts:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
