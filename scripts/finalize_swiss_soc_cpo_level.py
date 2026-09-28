@@ -20,6 +20,17 @@ for st in src.get("stations") or []:
    seg=a.get("restricted_segments") or []
    if not any(x.get("dimension")=="kwh" and x.get("price") is not None for x in seg): continue
    schedules[(ta.get("name"),ta.get("total_monthly_fee"))]={"tariffName":ta.get("name"),"monthlyFee":ta.get("total_monthly_fee"),"currency":ta.get("currency"),"segments":seg}
+atlas_types={}
+for st in src.get("stations") or []:
+  station_types=set()
+  for cp in st.get("chargePoints") or []:
+    cpt=cp.get("chargePoint") or {}; et=(cpt.get("energy_type") or "").lower()
+    if et in ("ac","dc"): station_types.add(et)
+    for aeid in cpt.get("evse_ids") or []:
+      if et in ("ac","dc"): atlas_types.setdefault(aeid,set()).add(et)
+  if len(station_types)==1:
+    et=next(iter(station_types))
+    for aeid in st.get("evseIds") or []: atlas_types.setdefault(aeid,set()).add(et)
 current={}
 def walk(x):
  if isinstance(x,dict):
@@ -40,6 +51,8 @@ for eid,rec in sorted(current.items()):
   plugs=" ".join(str(x) for x in rec.get("Plugs") or []).lower()
   if "chademo" in plugs or "ccs" in plugs or "combo" in plugs: types.add("dc")
   if "type 2" in plugs: types.add("ac")
+ if not types and len(atlas_types.get(eid,set()))==1:
+  types.update(atlas_types[eid])
  applicable=[]
  for sch in schedules.values():
   matched=[x for x in sch["segments"] if x.get("dimension")=="kwh" and (x.get("charge_point_energy_type") or "").lower() in types]
