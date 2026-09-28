@@ -1,0 +1,87 @@
+name: UK Roam public map collect
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-roam-public-map-collect.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Collect Roam public map
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/national reports/uk
+          python - <<'PY'
+          import json,gzip,urllib.request
+          from pathlib import Path
+          from datetime import datetime,timezone
+          url="https://roam-map.marketing-207.workers.dev/"
+          req=urllib.request.Request(url,headers={"User-Agent":"TeslaChargeCompanion/9 UK-Roam","Accept":"application/json"})
+          with urllib.request.urlopen(req,timeout=60) as r:
+              p=json.loads(r.read().decode("utf-8")); status=r.status
+          locs=p.get("locations") if isinstance(p,dict) else None
+          if not isinstance(locs,list): raise SystemExit("unexpected payload")
+          statuses={}; connectors=0; connector_status={}; price_fields={}; parties=set(); price_samples=[]
+          def walk(x,path=""):
+              if isinstance(x,dict):
+                  for k,v in x.items():
+                      kl=str(k).lower()
+                      if any(term in kl for term in ("price","tariff","cost","fee","rate")):
+                          price_fields[kl]=price_fields.get(kl,0)+1
+                          if len(price_samples)<50 and isinstance(v,(str,int,float,bool,type(None))):
+                              price_samples.append({"path":(path+"."+str(k)).lstrip("."),"value":v})
+                      walk(v,(path+"."+str(k)).lstrip("."))
+              elif isinstance(x,list):
+                  for v in x[:100]: walk(v,path+"[]")
+          for l in locs:
+              if not isinstance(l,dict): continue
+              st=str(l.get("status") or "UNKNOWN"); statuses[st]=statuses.get(st,0)+1
+              if l.get("party_id"): parties.add(str(l.get("party_id")))
+              cs=l.get("connectors") or l.get("evses") or []
+              if isinstance(cs,list):
+                  for c in cs:
+                      connectors+=1
+                      if isinstance(c,dict):
+                          cst=str(c.get("status") or c.get("connector_status") or "UNKNOWN")
+                          connector_status[cst]=connector_status.get(cst,0)+1
+              walk(l)
+          now=datetime.now(timezone.utc).isoformat()
+          summary={"country":"GB","network":"Roam","retrievedAt":now,"httpStatus":status,
+                   "locations":len(locs),"connectorsOrEvses":connectors,
+                   "locationStatuses":statuses,"connectorStatuses":connector_status,
+                   "partyIdsObserved":sorted(parties),"pricingFieldCounts":price_fields,
+                   "pricingSamples":price_samples,
+                   "firstLocationKeys":list(locs[0])[:100] if locs and isinstance(locs[0],dict) else [],
+                   "status":"complete_public_map_with_pricing" if locs and price_fields else ("locations_complete_pricing_pending" if locs else "failed_empty")}
+          with gzip.open("data/national/uk_roam_public_map.json.gz","wt",encoding="utf-8") as g:
+              json.dump({"retrievedAt":now,"source":url,"locations":locs},g,ensure_ascii=False,separators=(",",":"))
+          Path("reports/uk/roam-public-map-latest.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps(summary,ensure_ascii=False,indent=2))
+          if not locs: raise SystemExit(2)
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/uk_roam_public_map.json.gz reports/uk/roam-public-map-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(uk): collect Roam public map [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
