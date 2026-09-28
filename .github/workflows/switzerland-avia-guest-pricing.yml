@@ -38,6 +38,22 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Diagnose AVIA DNS
+        if: steps.secret.outputs.configured == 'true'
+        shell: bash
+        run: |
+          set +e
+          HOST=pdefweushapiam01.azure-api.net
+          echo "System resolver:"
+          getent ahosts "$HOST" || true
+          echo "Cloudflare DNS:"
+          dig +short "$HOST" @1.1.1.1 || true
+          echo "Google DNS:"
+          dig +short "$HOST" @8.8.8.8 || true
+          echo "HTTPS probe:"
+          curl -sS -I --max-time 10 "https://$HOST/" || true
+          exit 0
+
       - name: Collect AVIA Switzerland guest prices
         if: steps.secret.outputs.configured == 'true'
         run: python3 scripts/collect_avia_switzerland_guest.py
