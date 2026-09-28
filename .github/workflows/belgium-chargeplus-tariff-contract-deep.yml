@@ -67,6 +67,10 @@ jobs:
               'AtlasClientFactory',
               'v1/pois/tariff',
               'v2/pois/tariff',
+              'v1/pois',
+              'v2/pois',
+              'connectorId',
+              'chargeplus-bff',
           ]
           for p in root.rglob('*.java'):
               try:
@@ -102,6 +106,8 @@ jobs:
               r'v[123]/pois/[^\s\\"\']+',
               r'pois/tariff[^\s\\"\']*',
               r'guest[^\s\\"\']*(?:token|session)[^\s\\"\']*',
+              r'connectorId[^\n]*',
+              r'chargeplus-bff[^\n]*',
           ]
           rx=[re.compile(x,re.I) for x in patterns]
 
