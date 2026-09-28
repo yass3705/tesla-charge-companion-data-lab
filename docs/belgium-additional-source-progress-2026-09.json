@@ -1,0 +1,59 @@
+{
+  "country": "BE",
+  "asOf": "2026-09-29",
+  "scope": "Belgium complementary AFIR/public inventory sources beyond Eco-Movement selected-CPO baseline",
+  "sources": {
+    "INDIGO": {
+      "state": "complete",
+      "sites": 86,
+      "evses": 2332,
+      "pricedEvses": 2332,
+      "missingPriceEvses": 0,
+      "priceCoveragePct": 100,
+      "inventory": "data/belgium/additional/canonical/indigo-belgium-canonical-2026-09-29.json",
+      "tariffOverlay": "data/operator_direct/indigo_belgium_official_2026-09-29.json",
+      "tariff": {
+        "perKWh": 0.55,
+        "perMinute": 0.013,
+        "perSession": 0.79,
+        "currency": "EUR",
+        "taxIncluded": true
+      },
+      "source": "https://blog.indigoneo.be/fr/points-de-recharge-pour-vehicules-electriques/"
+    },
+    "Road": {
+      "state": "partial",
+      "locations": 3456,
+      "evses": 8174,
+      "pricedEvses": 7475,
+      "missingPriceEvses": 699,
+      "priceCoveragePct": 91.45,
+      "tariffObjects": 17209,
+      "distinctUnmatchedTariffIds": 693,
+      "evsesWithoutAnyTariffId": 1,
+      "inventory": "data/belgium/additional/canonical/road-belgium-canonical-2026-09-29.json",
+      "mappedTariffs": "data/operator_direct/road_belgium_tariffs_2026-09-29.json",
+      "synchronizedAudit": "reports/belgium/belgium-road-synchronized-tariff-refresh-2026-09-29.json",
+      "note": "Locations and tariffs were fetched synchronously with ?force=true; the 699 residual EVSEs remain unresolved because the public Road locations feed references 693 tariff IDs absent from the public Road tariffs feed, plus one Go-Blue EVSE with no tariff ID."
+    },
+    "EnergyVision": {
+      "state": "blocked-key-required",
+      "access": "Free API key requested from publisher",
+      "contact": "myevplatform@energyvision.be",
+      "includes": "static, dynamic, operational status and ad-hoc price where applicable",
+      "source": "https://transportdata.be/fr/dataset/energyvision-public-charging-network-locations-afir-ocpi-2-2-1"
+    },
+    "Monta": {
+      "state": "blocked-auth-required",
+      "source": "https://docs.public-api.monta.com/reference/get-afir-charge-points",
+      "note": "AFIR endpoint is documented but requires authentication; no bypass attempted."
+    }
+  },
+  "nextAction": "Obtain EnergyVision API key and/or authorized Monta access; until then continue only source-specific investigation of the 699 Road residuals if a new public tariff source becomes available.",
+  "rules": [
+    "No tariff is invented or extrapolated.",
+    "Road tariff IDs are mapped only when the exact ID exists in the public tariff file.",
+    "INDIGO public tariff components are preserved separately.",
+    "Authenticated sources are not bypassed."
+  ]
+}
