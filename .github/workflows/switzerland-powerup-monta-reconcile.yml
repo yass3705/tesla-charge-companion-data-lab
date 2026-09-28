@@ -1,0 +1,49 @@
+name: Switzerland PowerUp Monta reconciliation
+
+on:
+  push:
+    paths:
+      - 'scripts/collect_powerup_monta_public.py'
+      - '.github/workflows/switzerland-powerup-monta-reconcile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reconcile current PowerUp scope with Monta public tariffs
+        run: python3 scripts/collect_powerup_monta_public.py
+      - name: Validate output
+        run: |
+          python3 - <<'PY'
+          import json
+          p=json.load(open('data/switzerland/powerup-monta-direct-tariffs.json',encoding='utf-8'))
+          f=json.load(open('docs/switzerland-powerup-finalization-2026-09-28.json',encoding='utf-8'))
+          c=p['counts']
+          assert c['nationalEvseCount'] > 0
+          assert c['currentMatchedEvseCount'] <= c['nationalEvseCount']
+          assert c['currentPricedEvseCount'] <= c['currentMatchedEvseCount']
+          assert f['operatorId']=='CH*POW'
+          print(json.dumps(f,indent=2))
+          PY
+      - name: Persist PowerUp dataset
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/switzerland/powerup-monta-direct-tariffs.json docs/switzerland-powerup-finalization-2026-09-28.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'data: reconcile PowerUp current scope with Monta tariffs'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
