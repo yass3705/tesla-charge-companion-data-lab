@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "country": "CH",
-  "updatedAt": "2026-09-28T13:19:37.410Z",
+  "updatedAt": "2026-09-28T13:41:23.257Z",
   "canonicalRepo": "yass3705/tesla-charge-companion-data-lab",
   "sourceMigrationFrom": "yass3705/tesla-stations-updater-test",
   "rules": {
@@ -66,7 +66,10 @@
       "evseCount": 444,
       "stationCount": 444,
       "operatorNames": [],
-      "status": "untreated"
+      "status": "handled-separately",
+      "name": "Tesla Supercharger",
+      "setAside": false,
+      "note": "Tesla scope is handled by the dedicated Tesla weekly source/process, not the CPO direct-tariff queue."
     },
     {
       "operatorId": "CH*CCC",
@@ -85,7 +88,8 @@
       "status": "partial",
       "name": "EPO",
       "evidence": "docs/switzerland-epo-first-pass-2026-09-28.json",
-      "note": "First pass complete; no direct tariffs resolved yet."
+      "note": "Eponet backend supports operator-defined station-specific QR/ad-hoc prices; current national records confirm direct payment, but no deterministic public price endpoint has been recovered. Requires Eponet Go/QR backend evidence; no extrapolation.",
+      "setAside": true
     },
     {
       "operatorId": "CH*360",
@@ -114,7 +118,8 @@
       "status": "partial",
       "name": "IWB",
       "evidence": "docs/switzerland-iwb-finalization-2026-09-28.json",
-      "note": "Current owner scope: 438 priced + 28 restricted/no-auth classified, 6 public EVSE unresolved. Official Basel-Stadt overlay applied only to exact Basel/Rüchligweg Riehen scope; no extrapolation to Basel-Landschaft."
+      "note": "466/472 current owner EVSEs are resolved (438 priced + 28 restricted/no-auth). Six public Basel-Landschaft residuals have no deterministic current direct tariff; exact site research exhausted without extrapolation.",
+      "setAside": true
     },
     {
       "operatorId": "CH*SCH",
@@ -249,10 +254,10 @@
       "evseCount": 6,
       "stationCount": 6,
       "operatorNames": [],
-      "status": "partial",
-      "name": "CH*MMN",
-      "evidence": "docs/switzerland-first-pass-national-reconciliation-2026-09-28.json",
-      "note": "National EVSE reconciliation: 0/6 current EVSEs priced."
+      "status": "complete",
+      "name": "MOVE Mobility / myNet",
+      "evidence": "docs/switzerland-mmn-finalization-2026-09-28.json",
+      "note": "6/6 current CH*MMN EVSEs priced from explicit Move non-roaming CPO-level AC tariffs; national records are nested under Move and advertise direct payment."
     },
     {
       "operatorId": "CH*EBS",
@@ -262,7 +267,8 @@
       "status": "partial",
       "name": "EBS / ebs Energie AG",
       "evidence": "docs/switzerland-ebs-finalization-2026-09-28.json",
-      "note": "5/6 current national records priced: Illgau/Unteriberg/Muotathal via exact same-operator eCarUp; Hofmatt 0.47 CHF/kWh and MythenForum 0.42 CHF/kWh from current official location pages. Sahli remains unresolved because public sources conflict on direct/ad-hoc payment."
+      "note": "5/6 priced. Sahli remains contradictory: current public sources disagree on ad-hoc/direct-payment availability, so it is fail-closed until direct station evidence is available.",
+      "setAside": true
     },
     {
       "operatorId": "CH*EDH",
@@ -282,7 +288,8 @@
       "status": "partial",
       "name": "CH*EVT",
       "evidence": "docs/switzerland-evt-first-pass-2026-09-28.json",
-      "note": "First pass returned no atlas stations; alternate source required."
+      "note": "8/8 current EVSEs advertise direct payment across three EVTEC-hosted sites, but current public research exposes hardware/site identity rather than deterministic station tariffs. Site-specific price evidence required.",
+      "setAside": true
     },
     {
       "operatorId": "CH*AMG",
@@ -312,7 +319,8 @@
       "status": "partial",
       "name": "CH*DIE",
       "evidence": "docs/switzerland-first-pass-national-reconciliation-2026-09-28.json",
-      "note": "National EVSE reconciliation: 0/1 current EVSE priced."
+      "note": "Single Dietikon EVSE supports direct payment, but no current authoritative charging tariff was found; historical parking-inclusive evidence is too old to promote.",
+      "setAside": true
     },
     {
       "operatorId": "CH*HER",
@@ -322,7 +330,8 @@
       "status": "partial",
       "name": "CH*HER",
       "evidence": "docs/switzerland-first-pass-national-reconciliation-2026-09-28.json",
-      "note": "National EVSE reconciliation: 0/1 current EVSE priced."
+      "note": "Single Herrliberg EVSE supports direct payment, but no current authoritative charging tariff was found; electricity retail tariffs are not charging-station tariffs.",
+      "setAside": true
     },
     {
       "operatorId": "CH*CPI",
@@ -394,7 +403,8 @@
       "stationCount": null,
       "status": "partial",
       "evidence": "docs/switzerland-par-finalization-2026-09-28.json",
-      "note": "Owner scope: 210 restricted/no-auth classified; 3 unresolved."
+      "note": "210/213 explicitly restricted/no-auth classified no-public-direct. Three public EVSEs remain operator-defined and no deterministic public station price was found.",
+      "setAside": true
     },
     {
       "operatorId": "CH*ECU",
@@ -411,16 +421,6 @@
       "operatorId": "CH*CCI",
       "name": null,
       "stationCount": 1876
-    },
-    {
-      "operatorId": "CH*EPO",
-      "name": "EPO",
-      "stationCount": 324
-    },
-    {
-      "operatorId": "CH*IWB",
-      "name": "IWB",
-      "stationCount": 217
     },
     {
       "operatorId": "CH*SOC",
@@ -477,7 +477,9 @@
         "name": "PLUG'N ROLL / Repower",
         "evseCount": 134,
         "status": "partial",
-        "evidence": "docs/switzerland-owner-gap-national-reconciliation-2026-09-28.json"
+        "evidence": "docs/switzerland-owner-gap-national-reconciliation-2026-09-28.json",
+        "setAside": true,
+        "note": "PLUG'N ROLL legacy owner scope is in migration to AVIA VOLT; set aside with AVIA pending app/backend capture so no legacy tariff is extrapolated onto migrated stations."
       },
       {
         "operatorId": "CH*911",
@@ -524,14 +526,18 @@
         "name": "en mobilecharge",
         "evseCount": 6,
         "status": "partial",
-        "evidence": "docs/switzerland-owner-gap-ecarup-audit-2026-09-28.json"
+        "evidence": "docs/switzerland-owner-gap-ecarup-audit-2026-09-28.json",
+        "setAside": true,
+        "note": "Legacy mobilecharge-family owner scope; mobilecharge migrated to Eponet and operators set site-specific prices. Set aside pending deterministic Eponet/QR station tariff access."
       },
       {
         "operatorId": "CH*MOBIMOEMOBILITY",
         "name": "Mobimo emobility",
         "evseCount": 6,
         "status": "partial",
-        "evidence": "docs/switzerland-owner-gap-ecarup-audit-2026-09-28.json"
+        "evidence": "docs/switzerland-owner-gap-ecarup-audit-2026-09-28.json",
+        "setAside": true,
+        "note": "Legacy mobilecharge-family owner scope; mobilecharge migrated to Eponet and operators set site-specific prices. Set aside pending deterministic Eponet/QR station tariff access."
       },
       {
         "operatorId": "CH*BCK",
@@ -546,14 +552,18 @@
         "name": "EVA E-Mobilität",
         "evseCount": 4,
         "status": "partial",
-        "evidence": "docs/switzerland-owner-gap-ecarup-audit-2026-09-28.json"
+        "evidence": "docs/switzerland-owner-gap-ecarup-audit-2026-09-28.json",
+        "setAside": true,
+        "note": "Legacy mobilecharge-family owner scope; mobilecharge migrated to Eponet and operators set site-specific prices. Set aside pending deterministic Eponet/QR station tariff access."
       },
       {
         "operatorId": "CH*PACEMOBILITY",
         "name": "PAC e-mobility",
         "evseCount": 1,
         "status": "partial",
-        "evidence": "docs/switzerland-owner-gap-ecarup-audit-2026-09-28.json"
+        "evidence": "docs/switzerland-owner-gap-ecarup-audit-2026-09-28.json",
+        "setAside": true,
+        "note": "Legacy mobilecharge-family owner scope; mobilecharge migrated to Eponet and operators set site-specific prices. Set aside pending deterministic Eponet/QR station tariff access."
       },
       {
         "operatorId": "CH*AUTOSENSE",
