@@ -28,7 +28,7 @@ def curl(url):
 
 def extract_assets(base,html):
     out=[]
-    for pat in [r'<script[^>]+src=["\\']([^"\\']+)',r'<link[^>]+href=["\\']([^"\\']+)']:
+    for pat in [r"<script[^>]+src=[\"']([^\"']+)", r"<link[^>]+href=[\"']([^\"']+)"]:
         for x in re.findall(pat,html,re.I):
             u=urllib.parse.urljoin(base,x)
             if u not in out:
@@ -36,15 +36,15 @@ def extract_assets(base,html):
     return out
 
 def inspect_text(url,text):
-    urls=sorted(set(re.findall(r'https?://[^"\\'\\\\\\s<>]+',text)))
+    urls=sorted(set(re.findall(r"https?://[^\"'\\\\\\s<>]+",text)))
     routes=[]
-    for q in re.findall(r'["\\']([^"\\']{2,350})["\\']',text):
+    for q in re.findall(r"[\"']([^\"']{2,350})[\"']",text):
         ql=q.lower()
         if any(k in ql for k in ("api","station","charger","evse","tariff","price","connector","poi","location","store","map")) and ("/" in q or "?" in q):
             if q not in routes:
                 routes.append(q)
     strings=[]
-    for q in re.findall(r'["\\']([^"\\'\\\\]{3,220})["\\']',text):
+    for q in re.findall(r"[\"']([^\"'\\\\]{3,220})[\"']",text):
         ql=q.lower()
         if any(k in ql for k in ("tariff","price","pricing","evse","station","charger","connector","woosmap","webgeoservices")):
             if q not in strings:
