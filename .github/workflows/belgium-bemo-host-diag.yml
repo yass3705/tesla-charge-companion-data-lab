@@ -1,0 +1,29 @@
+name: Belgium BeMo host diagnostic
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-bemo-host-diag.txt"
+permissions:
+  contents: write
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect BeMo DNS TLS and HTTP
+        run: bash scripts/belgium_bemo_host_diag.sh
+      - name: Persist
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium/totalenergies/bemo-host-diag-2026-09-28.txt
+          git commit -m "Diagnose Belgium BeMo map host" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep 3
+          done
+          exit 1
