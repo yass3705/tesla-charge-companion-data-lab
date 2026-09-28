@@ -1,0 +1,120 @@
+name: UK second-pass open feed probes
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-second-pass-open-feed-probes.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-second-pass-open-feed-probes
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Probe public UK feeds
+        run: |
+          python - <<'PY'
+          import json, hashlib, urllib.request, urllib.error
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          targets = [
+              ("MFG EV Power locations", "https://opendata.motorfuelgroup.net/locations?limit=2"),
+              ("MFG EV Power tariffs", "https://opendata.motorfuelgroup.net/tariffs?limit=2"),
+              ("GeniePoint locations", "https://opendata.geniepoint.co.uk/locations?limit=2"),
+              ("GeniePoint tariffs", "https://opendata.geniepoint.co.uk/tariffs?limit=2"),
+              ("char.gy locations", "https://char.gy/open-ocpi/locations?limit=2"),
+              ("char.gy tariffs", "https://char.gy/open-ocpi/tariffs?limit=2"),
+          ]
+
+          out = {
+              "country": "GB",
+              "purpose": "second-pass anonymous open-feed reachability/schema probe",
+              "retrievedAt": datetime.now(timezone.utc).isoformat(),
+              "results": []
+          }
+
+          for name, url in targets:
+              item = {"name": name, "url": url}
+              req = urllib.request.Request(url, headers={
+                  "User-Agent": "TeslaChargeCompanion/9 UK-open-data-probe",
+                  "Accept": "application/json"
+              })
+              try:
+                  with urllib.request.urlopen(req, timeout=75) as r:
+                      body = r.read(2_000_000)
+                      item.update({
+                          "status": r.status,
+                          "contentType": r.headers.get("Content-Type"),
+                          "contentLengthHeader": r.headers.get("Content-Length"),
+                          "xTotalCount": r.headers.get("X-Total-Count") or r.headers.get("x-total-count"),
+                          "bytesRead": len(body),
+                          "sha256Prefix": hashlib.sha256(body).hexdigest()[:16],
+                      })
+                      txt = body.decode("utf-8", errors="replace")
+                      try:
+                          payload = json.loads(txt)
+                          item["jsonParsed"] = True
+                          item["jsonType"] = type(payload).__name__
+                          if isinstance(payload, dict):
+                              item["topLevelKeys"] = list(payload)[:30]
+                              for key in ("data","locations","tariffs","items","results"):
+                                  if isinstance(payload.get(key), list):
+                                      item["arrayKey"] = key
+                                      item["arrayLengthInProbe"] = len(payload[key])
+                                      if payload[key] and isinstance(payload[key][0], dict):
+                                          item["firstObjectKeys"] = list(payload[key][0])[:40]
+                                      break
+                          elif isinstance(payload, list):
+                              item["arrayLengthInProbe"] = len(payload)
+                              if payload and isinstance(payload[0], dict):
+                                  item["firstObjectKeys"] = list(payload[0])[:40]
+                      except Exception as e:
+                          item["jsonParsed"] = False
+                          item["parseError"] = f"{type(e).__name__}: {e}"
+                          item["bodyPrefix"] = txt[:500]
+              except urllib.error.HTTPError as e:
+                  item.update({"status": e.code, "error": f"HTTPError: {e}"})
+                  try:
+                      item["bodyPrefix"] = e.read(500).decode("utf-8", errors="replace")
+                  except Exception:
+                      pass
+              except Exception as e:
+                  item.update({"status": None, "error": f"{type(e).__name__}: {e}"})
+              out["results"].append(item)
+
+          p = Path("reports/uk")
+          p.mkdir(parents=True, exist_ok=True)
+          Path("reports/uk/open-feed-probes-latest.json").write_text(
+              json.dumps(out, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8"
+          )
+          print(json.dumps(out, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Publish probe report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/open-feed-probes-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): probe second-pass public feeds [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
