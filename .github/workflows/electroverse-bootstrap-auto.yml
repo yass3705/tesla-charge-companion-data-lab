@@ -1,0 +1,94 @@
+name: TEST NON-TESLA — Electroverse autonomous bootstrap
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */2 * * *'
+  push:
+    paths:
+      - tests/non-tesla/active/run-electroverse-bootstrap-auto.trigger
+
+permissions:
+  contents: write
+
+concurrency:
+  group: electroverse-autonomous-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+      REQUEST_INTERVAL_MS: '1500'
+      TTL_HOURS: '168'
+      LIMIT: '500'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run up to 6 incremental batches with checkpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          push_checkpoint() {
+            local max_attempts=5
+            local attempt=1
+            while [ "${attempt}" -le "${max_attempts}" ]; do
+              if git push origin HEAD:main; then
+                return 0
+              fi
+              echo "Concurrent main update detected; rebasing and retrying push (${attempt}/${max_attempts})..."
+              git fetch origin main
+              if ! git rebase origin/main; then
+                echo "Automatic rebase conflict; aborting rather than overwriting concurrent data."
+                git rebase --abort || true
+                return 1
+              fi
+              attempt=$((attempt + 1))
+              sleep $((attempt * 2))
+            done
+            echo "Unable to publish checkpoint after ${max_attempts} attempts."
+            return 1
+          }
+
+          for batch in 1 2 3 4 5 6; do
+            echo "=== autonomous batch ${batch}/6 ==="
+
+            git pull --rebase origin main
+            node scripts/electroverse_incremental_selector.mjs
+
+            selected=$(node -e "const r=require('./reports/electroverse/incremental-selection.json'); process.stdout.write(String(r.selectedCount||0))")
+            fresh=$(node -e "const r=require('./reports/electroverse/incremental-selection.json'); process.stdout.write(String(r.counts?.fresh||0))")
+            new_count=$(node -e "const r=require('./reports/electroverse/incremental-selection.json'); process.stdout.write(String(r.counts?.new||0))")
+            echo "selected=${selected} fresh=${fresh} new=${new_count}"
+
+            if [ "${new_count}" = "0" ]; then
+              echo "BOOTSTRAP_COMPLETE=true"
+              git add reports/electroverse/incremental-selection.json
+              git commit -m "data(electroverse): mark bootstrap complete [run ${GITHUB_RUN_ID}]" || true
+              push_checkpoint || true
+              break
+            fi
+
+            set +e
+            node scripts/electroverse_incremental_refresh.mjs
+            rc=$?
+            set -e
+
+            git add data/electroverse/tariff_cache reports/electroverse/incremental-selection.json
+            git commit -m "data(electroverse): autonomous bootstrap batch ${batch} [run ${GITHUB_RUN_ID}]" || true
+            git pull --rebase origin main
+            push_checkpoint
+
+            if [ "${rc}" -ne 0 ]; then
+              echo "Batch ${batch} reported isolated station failure(s); checkpoint published. Continuing so failed station(s) remain eligible for a later retry."
+            fi
+          done
