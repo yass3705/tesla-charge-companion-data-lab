@@ -1,0 +1,32 @@
+name: Belgium Road tariff surface audit
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-road-tariff-surface-audit.txt"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/belgium_road_tariff_surface_audit.py
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium/belgium-road-tariff-surface-audit-2026-09-29.json
+          git commit -m "Audit Road Belgium tariff surfaces" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep 3
+          done
+          exit 1
