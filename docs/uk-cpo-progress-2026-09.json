@@ -435,10 +435,13 @@
     },
     {
       "name": "Charge My Street",
-      "status": "partial",
-      "access": "no_direct_endpoint_found_first_pass",
-      "evidence": "First-pass search did not surface a direct PCPR feed.",
-      "next": "second pass: inspect operator/backend and local authority feeds."
+      "status": "partial_evse_detail",
+      "access": "anonymous_public_map_plus_official_network_pricing",
+      "evidence": "Public Drupal map collection is complete at 106 map records (89 open, 15 ChargeWhileYouSleep, 2 coming soon). Official Charge My Street pricing page publishes PAYG £0.59/kWh and subscription tiers: Basic £32.50/month incl. 75kWh then £0.43/kWh; Standard £55/month incl. 135kWh then £0.41/kWh; Premium £75/month incl. 200kWh then £0.36/kWh.",
+      "next": "Pricing and site-map inventory are bounded complete. Remaining gap is per-site EVSE/connector detail/power; do not repeat price discovery.",
+      "locationsEndpoint": "https://chargemystreet.co.uk/map",
+      "dataset": "data/national/uk_charge_my_street_map.json.gz",
+      "report": "reports/uk/charge-my-street-map-latest.json"
     },
     {
       "name": "Shell Recharge ubitricity",
@@ -2657,6 +2660,29 @@
       "connectors": 359,
       "failures": 0,
       "report": "reports/uk/qwello-public-evses-latest.json"
+    },
+    "chargeMyStreetBound": {
+      "state": "map_and_pricing_complete_evse_detail_pending",
+      "mapRecords": 106,
+      "pricing": {
+        "paygGbpPerKwh": 0.59,
+        "basic": {
+          "monthlyGbp": 32.5,
+          "includedKwh": 75,
+          "thenGbpPerKwh": 0.43
+        },
+        "standard": {
+          "monthlyGbp": 55,
+          "includedKwh": 135,
+          "thenGbpPerKwh": 0.41
+        },
+        "premium": {
+          "monthlyGbp": 75,
+          "includedKwh": 200,
+          "thenGbpPerKwh": 0.36
+        }
+      },
+      "report": "reports/uk/charge-my-street-map-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
