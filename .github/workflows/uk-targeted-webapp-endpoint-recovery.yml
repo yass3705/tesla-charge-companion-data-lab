@@ -1,0 +1,78 @@
+name: UK targeted webapp endpoint recovery
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-targeted-webapp-endpoint-recovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-targeted-webapp-endpoint-recovery
+  cancel-in-progress: true
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Recover 3ti and ParkRecharge endpoints
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import json,re,urllib.request
+          from datetime import datetime,timezone
+          from pathlib import Path
+          UA="Mozilla/5.0 TeslaChargeCompanion/9"
+          def get(url):
+              req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"text/html,application/javascript,*/*"})
+              with urllib.request.urlopen(req,timeout=60) as r:
+                  return r.read(5_000_000).decode("utf-8","replace")
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat()}
+
+          html=get("https://3ti.co.uk/3ti-public-charge-points/")
+          hits=[]
+          for needle in ["fuuseSiteID","api.fuuse.io/opendata"]:
+              for m in re.finditer(re.escape(needle),html,re.I):
+                  hits.append(html[max(0,m.start()-500):min(len(html),m.end()+800)])
+          # IDs that look like Fuuse ODA UUIDs near source code
+          uuids=sorted(set(re.findall(r'(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',html)))
+          out["3ti"]={"fuuseContexts":hits[:20],"uuidCandidates":uuids}
+
+          env=get("https://parkrecharge.app/assets/js/env.js")
+          app=get("https://parkrecharge.app/assets/js/app.js")
+          combined=env+"\n"+app
+          pctx=[]
+          needles=["hubeleon","fetch(","$.ajax","axios","/api/","location","tariff","chargepoint","socket","device"]
+          for needle in needles:
+              for m in re.finditer(re.escape(needle),combined,re.I):
+                  pctx.append({"needle":needle,"context":combined[max(0,m.start()-300):min(len(combined),m.end()+500)]})
+                  if len(pctx)>200: break
+          urls=sorted(set(re.findall(r'https?://[^"\'\s<>()\\]+',combined)))
+          out["ParkRecharge"]={"env":env,"contexts":pctx[:200],"urls":urls[:200]}
+
+          Path("reports/uk/targeted-webapp-endpoint-recovery-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/targeted-webapp-endpoint-recovery-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): recover targeted webapp endpoints [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
