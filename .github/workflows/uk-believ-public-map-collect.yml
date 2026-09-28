@@ -1,0 +1,102 @@
+name: UK Believ public map collect
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-believ-public-map-collect.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Parse Believ public Next.js map and detail routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk data/national
+          python - <<'PY'
+          import json,re,gzip,urllib.request,urllib.parse,html as htmlmod,time
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          UA="Mozilla/5.0 TeslaChargeCompanion/9 Believ-public-map"
+          def get(url):
+              req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"text/html,application/json,*/*"})
+              with urllib.request.urlopen(req,timeout=60) as r:
+                  return r.read(8_000_000).decode("utf-8","replace")
+
+          body=get("https://charge.believ.com/map")
+          # Next.js serialises props inside self.__next_f strings. Recover the JSON string containing initialLocations.
+          text=body.replace('&quot;','"')
+          m=re.search(r'\\"initialLocations\\":(\[.*?\]),\\"initialFilters\\"',text,re.S)
+          if not m:
+              # fallback on unescaped form
+              m=re.search(r'"initialLocations":(\[.*?\]),"initialFilters"',text,re.S)
+          if not m: raise SystemExit("initialLocations not found")
+          raw=m.group(1)
+          raw=raw.replace('\\"','"').replace('\\/','/').replace('\\u0026','&')
+          locations=json.loads(raw)
+          if not locations: raise SystemExit("empty initialLocations")
+
+          # Detail pages are public via the same map query route used by the client.
+          details=[]; pricing_hits=0; connector_hits=0; detail_errors=[]
+          for loc in locations:
+              lid=str(loc.get("id") or "")
+              if not lid: continue
+              try:
+                  dbody=get("https://charge.believ.com/map?"+urllib.parse.urlencode({"location":lid}))
+                  # Look for server-rendered occurrences around this location id and structured tariff-ish keys.
+                  simple={}
+                  for key in ("tariff","price","cost","rate","connectors","charging_stations","chargingStations","evses"):
+                      if re.search(rf'(?i)\\?"{re.escape(key)}\\?"\s*:',dbody):
+                          simple[key]=True
+                  prices=sorted(set(re.findall(r'(?i)(?:£|GBP\s*)\s*(\d+(?:\.\d+)?)\s*(?:/\s*kWh|p?/?kWh)?',dbody)))
+                  pence=sorted(set(re.findall(r'(?i)(\d+(?:\.\d+)?)\s*p\s*/?\s*kWh',dbody)))
+                  if prices or pence or any(k in simple for k in ("tariff","price","rate","cost")): pricing_hits+=1
+                  if any(k in simple for k in ("connectors","charging_stations","chargingStations","evses")): connector_hits+=1
+                  details.append({"id":lid,"name":loc.get("name"),"structuredKeys":simple,"gbpLike":prices[:20],"pencePerKwh":pence[:20],"htmlBytes":len(dbody)})
+              except Exception as e:
+                  detail_errors.append({"id":lid,"error":f"{type(e).__name__}: {e}"})
+              if len(details)>=50: break
+              time.sleep(.15)
+
+          now=datetime.now(timezone.utc).isoformat()
+          connector_count=0
+          for loc in locations:
+              ov=loc.get("connectors_overview") or {}
+              try: connector_count+=int(ov.get("count") or 0)
+              except Exception: pass
+          summary={"country":"GB","network":"Believ","retrievedAt":now,
+                   "locations":len(locations),"connectorsFromOverview":connector_count,
+                   "detailSampled":len(details),"detailErrors":len(detail_errors),
+                   "pricingSignalDetails":pricing_hits,"connectorSignalDetails":connector_hits,
+                   "firstLocationKeys":list(locations[0])[:50],
+                   "detailsSample":details[:20],"errorsSample":detail_errors[:20],
+                   "status":"locations_complete_pricing_route_detected" if pricing_hits else "locations_complete_pricing_pending"}
+          with gzip.open("data/national/uk_believ_public_map.json.gz","wt",encoding="utf-8") as g:
+              json.dump({"retrievedAt":now,"source":"https://charge.believ.com/map","locations":locations},g,ensure_ascii=False,separators=(",",":"))
+          Path("reports/uk/believ-public-map-latest.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(summary,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/uk_believ_public_map.json.gz reports/uk/believ-public-map-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(uk): collect Believ public map [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
