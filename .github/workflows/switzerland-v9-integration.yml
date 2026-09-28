@@ -5,6 +5,7 @@ on:
     branches: ["main"]
     paths:
       - "scripts/build_switzerland_v9_dataset.py"
+      - "data/tcc_v9/switzerland.json"
       - "data/switzerland/**"
       - "data/swisscharge/**"
       - "data/gofast/**"
@@ -46,7 +47,7 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/national/switzerland_public_charging_v9.json docs/switzerland-v9-integration-2026-09-28.json
+          git add data/national/switzerland_public_charging_v9.json docs/switzerland-v9-canonical-integration-2026-09-28.json
           git commit -m 'data(switzerland): publish V9 canonical integration' || exit 0
           for attempt in 1 2 3 4 5 6; do
             git pull --rebase origin main
