@@ -2,7 +2,15 @@
 import json,urllib.request,urllib.error,urllib.parse
 from pathlib import Path
 BASES=["https://ecarup.com/api/","https://staging.ecarup.com/api/"]
-paths=["stations","stations/search","stations/favorite","chargings","v2/chargings"]
+paths=[
+"stations",
+"stations?location=46.8182%2C8.2275&includePartners=true&onlyAvailable=false",
+"stations?location=47.3769%2C8.5417&includePartners=true&onlyAvailable=false",
+"stations?searchTerm=IWB&location=47.3769%2C8.5417&includePartners=true&onlyAvailable=false&onlyRecentlyUsed=false",
+"stations/search?qr=CH%2AEBS%2AE123%2A0001",
+"stations/search?qr=CH%2AEWO%2AE123%2A0001",
+"stations/search","stations/favorite","chargings","v2/chargings"
+]
 UA={"User-Agent":"eCarUp/2.6.0 Android TCC-research","Accept":"application/json"}
 out=[]
 for base in BASES:
