@@ -254,11 +254,13 @@
     },
     {
       "name": "Believ",
-      "status": "blocked_free_account_credentials",
-      "access": "free_account_required",
-      "locationsEndpoint": "https://api.believ.com/",
-      "evidence": "Official Believ Open Data page points to https://api.believ.com/. The API portal states that a FREE account must be created before documentation and credentials can be generated.",
-      "next": "User creates free Believ API account and provides/generated API credential details; then collect full EVSE/location/tariff data without repeating discovery."
+      "status": "partial_pricing",
+      "access": "anonymous_public_map_plus_free_api_account_for_full_api",
+      "locationsEndpoint": "https://charge.believ.com/map",
+      "evidence": "Believ public Next.js map yields 500 locations and 1620 connectors in server-rendered data without login. Sampling 50 public detail routes found no tariff payload. Full EVSE API at api.believ.com requires a free account.",
+      "next": "Keep public-map inventory. Resolve pricing via public portal internals if found; otherwise free Believ API account is the remaining access step.",
+      "dataset": "data/national/uk_believ_public_map.json.gz",
+      "report": "reports/uk/believ-public-map-latest.json"
     },
     {
       "name": "Monta",
@@ -2599,6 +2601,12 @@
       "state": "free_account_required",
       "portal": "https://api.believ.com/",
       "reason": "documentation and credentials hidden until free account creation"
+    },
+    "believProgress": {
+      "state": "locations_complete_pricing_pending",
+      "locations": 500,
+      "connectors": 1620,
+      "report": "reports/uk/believ-public-map-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
