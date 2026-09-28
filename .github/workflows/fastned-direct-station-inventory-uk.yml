@@ -1,0 +1,51 @@
+name: Fastned Direct station inventory UK
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/fastned_station_inventory_uk.py"
+      - ".github/workflows/fastned-direct-station-inventory-uk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fastned-direct-station-inventory-uk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: python scripts/fastned_station_inventory_uk.py
+      - name: Validate
+        run: |
+          python - <<'PY'
+          import gzip,json
+          p=json.load(gzip.open("data/national/fastned_direct_stations_uk.json.gz","rt",encoding="utf-8"))
+          assert p["operator"]=="Fastned" and p["country"]=="GB"
+          assert p["counts"]["ukLocationCount"]>=10
+          assert all(x["country"]=="GB" for x in p["locations"])
+          assert all(abs(x["stationStandardGbpPerKwh"]-0.79)<0.001 for x in p["locations"])
+          assert all(abs(x["stationGoldGbpPerKwh"]-0.55)<0.001 for x in p["locations"])
+          assert p["scope"]["partnerOperatorLocationsIncluded"] is False
+          print(p["counts"])
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/fastned_direct_stations_uk.json.gz reports/uk/fastned-direct-uk-latest.json
+          git commit -m "data(fastned): publish Direct UK station inventory [run ${GITHUB_RUN_ID}]" || exit 0
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
