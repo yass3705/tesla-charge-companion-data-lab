@@ -48,3 +48,5 @@ for op,rs in rows.items():
     }
 Path("docs/switzerland-active-residual-context-2026-09-28.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps({op:{k:v for k,v in d.items() if k not in ("restrictedNoAuthEvseIds","publicDirectCapableSample")} for op,d in out["operators"].items()},ensure_ascii=False,indent=2))
+
+# trigger
