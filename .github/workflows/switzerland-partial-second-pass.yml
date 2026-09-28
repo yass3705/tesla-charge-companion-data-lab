@@ -1,6 +1,9 @@
 name: Switzerland partial CPO second pass
 
 on:
+  push:
+    paths:
+      - '.github/workflows/switzerland-partial-second-pass.yml'
   workflow_run:
     workflows: ["Switzerland untreated CPO first pass"]
     types: [completed]
@@ -11,7 +14,7 @@ permissions:
 
 jobs:
   discover:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.build.outputs.matrix }}
@@ -27,7 +30,7 @@ jobs:
         run: |
           import glob,json,os,re
           complete={'CH*CCC','CH*360','CH*POW','CH*GFT','CH*EWZ','CH*ELC','CH*AGR'}
-          skip={'CH*TSL','CH*SUI'}
+          skip={'CH*TSL','CH*SUI','CH*CCI','CH*IWB','CH*SHE'}
           rows=[]
           for p in sorted(glob.glob('docs/switzerland-*-first-pass-2026-09-28.json')):
               try:d=json.load(open(p,encoding='utf-8'))
