@@ -1,0 +1,32 @@
+name: Switzerland eCarUp remaining summary
+on:
+  push:
+    paths:
+      - 'scripts/summarize_ecarup_remaining_swiss.py'
+      - '.github/workflows/switzerland-ecarup-remaining-summary.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - run: python3 scripts/summarize_ecarup_remaining_swiss.py
+      - name: Persist
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/switzerland-ecarup-remaining-targeted-summary-2026-09-28.json
+          git commit -m 'docs(switzerland): summarize remaining eCarUp exact matches' || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
