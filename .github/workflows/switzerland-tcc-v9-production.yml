@@ -1,0 +1,39 @@
+name: Switzerland TCC V9 production finalize
+on:
+  push:
+    paths:
+      - 'data/tcc_v9/switzerland.json'
+      - 'scripts/finalize_swiss_tcc_v9_production.py'
+      - '.github/workflows/switzerland-tcc-v9-production.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - run: python3 scripts/finalize_swiss_tcc_v9_production.py
+      - name: Persist production bundle and audit
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/tcc_v9/switzerland-production.json docs/switzerland-v9-production-validation-2026-09-28.json
+          git commit -m 'data(switzerland): finalize TCC V9 production bundle' || exit 0
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
+      - name: Assert validation
+        run: python3 - <<'PY'
+          import json
+          p=json.load(open('docs/switzerland-v9-production-validation-2026-09-28.json'))
+          assert p['overallOk'], p
+          PY
