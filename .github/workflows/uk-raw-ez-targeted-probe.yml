@@ -1,0 +1,149 @@
+name: UK RAW EZ targeted probe
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-raw-ez-targeted-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Probe RAW route variants and EZ public container
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import json,re,urllib.request,urllib.parse,urllib.error,xml.etree.ElementTree as ET
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          UA="Mozilla/5.0 TeslaChargeCompanion/9"
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat()}
+
+          def req(url,headers=None,limit=3_000_000):
+              h={"User-Agent":UA,"Accept":"application/json,text/plain,text/html,*/*"}
+              if headers:h.update(headers)
+              q=urllib.request.Request(url,headers=h)
+              try:
+                  with urllib.request.urlopen(q,timeout=50) as r:
+                      b=r.read(limit)
+                      return {"status":r.status,"contentType":r.headers.get("Content-Type"),"bytes":len(b),"body":b}
+              except urllib.error.HTTPError as e:
+                  b=e.read(2000)
+                  return {"status":e.code,"contentType":e.headers.get("Content-Type"),"bytes":len(b),"body":b}
+              except Exception as e:
+                  return {"error":f"{type(e).__name__}: {e}","body":b""}
+
+          # Recover RAW public-client code in memory only.
+          home=req("https://rawcharging.com/")
+          html=home["body"].decode("utf-8","replace")
+          scripts=[urllib.parse.urljoin("https://rawcharging.com/",s) for s in re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',html,re.I)]
+          chunks=[]
+          for s in scripts[:90]:
+              rr=req(s,limit=6_000_000)
+              txt=rr["body"].decode("utf-8","replace")
+              if "/ocpi/locations" in txt or "reservations-prod-functionapp-flex.azurewebsites.net" in txt:
+                  chunks.append(txt)
+          combined="\n".join(chunks)
+          key=None
+          # Prefer a key/code in the same generated API client chunk, not unrelated contact-form code.
+          for pat in [
+              r'["\']x-functions-key["\']\s*[:,]\s*["\']([^"\']+)["\']',
+              r'[?&]code=([A-Za-z0-9._~+/%=-]{20,})',
+              r'NEXT_PUBLIC_(?:API_)?(?:KEY|CODE)[^"\']*["\']([^"\']{20,})["\']'
+          ]:
+              m=re.search(pat,combined,re.I)
+              if m:
+                  key=urllib.parse.unquote(m.group(1)); break
+
+          bases=[
+              "https://rawcharging.com",
+              "https://rawcharging.com/api",
+              "https://reservations-prod-functionapp-flex.azurewebsites.net",
+              "https://reservations-prod-functionapp-flex.azurewebsites.net/api",
+          ]
+          rawres=[]
+          for base in bases:
+              for path in ["/root-info","/ocpi/locations","/ocpi/locations/report","/ocpi/tariffs/GB/CPIE"]:
+                  for mode in ["anon","header","query"]:
+                      if mode!="anon" and not key: continue
+                      url=base+path
+                      headers={"Origin":"https://rawcharging.com","Referer":"https://rawcharging.com/"}
+                      if mode=="header": headers["x-functions-key"]=key
+                      if mode=="query": url += ("&" if "?" in url else "?")+"code="+urllib.parse.quote(key,safe="")
+                      rr=req(url,headers=headers)
+                      rec={"base":base,"path":path,"mode":mode}
+                      for k in ("status","contentType","bytes","error"):
+                          if k in rr: rec[k]=rr[k]
+                      body=rr["body"].decode("utf-8","replace")
+                      # Persist only schema/shape, never response credentials or arbitrary raw text.
+                      if rr.get("status")==200:
+                          try:
+                              p=json.loads(body); rec["jsonType"]=type(p).__name__
+                              if isinstance(p,dict):
+                                  rec["keys"]=list(p)[:50]
+                                  for ak in ("data","locations","tariffs","items","results"):
+                                      if isinstance(p.get(ak),list): rec["arrayKey"]=ak; rec["arrayCount"]=len(p[ak]); break
+                              elif isinstance(p,list): rec["arrayCount"]=len(p)
+                          except Exception:
+                              rec["bodyKind"]="non_json"
+                      rawres.append(rec)
+          out["RAW Charging"]={"publicClientKeyObserved":bool(key),"probes":rawres}
+
+          # EZ public Azure blob container.
+          ez={}
+          list_url="https://ezchargesitedata.blob.core.windows.net/public?restype=container&comp=list"
+          lr=req(list_url,headers={"Accept":"application/xml,text/xml,*/*"},limit=6_000_000)
+          ez["containerListHttp"]=lr.get("status")
+          names=[]
+          if lr.get("status")==200:
+              try:
+                  root=ET.fromstring(lr["body"])
+                  names=[el.text for el in root.iter() if el.tag.endswith("Name") and el.text]
+              except Exception as e:
+                  ez["containerListParseError"]=str(e)
+          ez["blobCount"]=len(names)
+          ez["blobNames"]=names[:1000]
+          # Probe only likely data blobs discovered from listing.
+          probes=[]
+          for name in names:
+              if not re.search(r'(?i)(site|charger|station|location|tariff|price|area).*\.(json|geojson|csv)$',name):
+                  continue
+              u="https://ezchargesitedata.blob.core.windows.net/public/"+urllib.parse.quote(name,safe="/")
+              rr=req(u,limit=5_000_000)
+              rec={"name":name,"status":rr.get("status"),"bytes":rr.get("bytes"),"contentType":rr.get("contentType")}
+              if rr.get("status")==200 and re.search(r'json',rr.get("contentType") or "",re.I):
+                  try:
+                      p=json.loads(rr["body"].decode("utf-8-sig")); rec["jsonType"]=type(p).__name__
+                      if isinstance(p,dict):
+                          rec["keys"]=list(p)[:50]
+                          for ak,v in p.items():
+                              if isinstance(v,list): rec.setdefault("arrays",{})[ak]=len(v)
+                      elif isinstance(p,list): rec["arrayCount"]=len(p)
+                  except Exception as e:rec["parseError"]=type(e).__name__
+              probes.append(rec)
+          ez["dataBlobProbes"]=probes[:300]
+          out["EZ-Charge"]=ez
+
+          Path("reports/uk/raw-ez-targeted-probe-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish sanitized report
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f reports/uk/raw-ez-targeted-probe-latest.json
+          git commit -m "diag(uk): probe RAW routes and EZ public container [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
