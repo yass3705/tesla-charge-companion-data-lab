@@ -196,11 +196,13 @@
     {
       "name": "Wenea",
       "status": "complete",
-      "access": "official_public_zip_plus_official_direct_pricing",
-      "evidence": "Official Wenea open-data ZIP contains 210 UK locations, 628 EVSEs and 631 connectors. The upstream UK connector tariff id is missing from tariffs.json, but all 210 UK locations are owned/operated by Wenea Mobile Energy and every connector power falls within Wenea's current published direct PAYG bands; zero unresolved connectors after exact power-band fallback.",
-      "next": "validated; retain upstream missing tariff-id audit and refresh official tariff page + ZIP.",
-      "dataset": "data/national/uk_wenea_open_data.json.gz",
-      "report": "reports/uk/wenea-open-data-latest.json"
+      "access": "official_open_data_zip_plus_official_direct_power_bands",
+      "evidence": "Validated UK Wenea dataset: 210 UK locations, all owner/operator Wenea Mobile Energy; 631/631 connectors priced from the official Wenea-owned power bands (339 AC at GBP 0.55/kWh, 168 DC at GBP 0.75/kWh, 124 HPC at GBP 0.85/kWh), no unmatched connectors.",
+      "next": "validated; schedule Wenea ZIP + official tariff-band normalization.",
+      "dataset": "data/national/uk_wenea_direct_priced.json.gz",
+      "report": "reports/uk/wenea-direct-priced-latest.json",
+      "sourceUrl": "https://wenea.com/apilocation/data.zip",
+      "tariffUrl": "https://wenea.com/uk/charging-tariffs/"
     },
     {
       "name": "evyve",
@@ -2475,19 +2477,27 @@
       "report": "reports/uk/fastned-direct-uk-latest.json"
     },
     "weneaFinalization": {
-      "state": "complete_with_official_direct_price_fallback",
-      "ukLocations": 210,
-      "evses": 628,
+      "state": "complete_source_validated",
+      "retrievedAt": "2026-09-28T03:45:49.800013+00:00",
+      "locations": 210,
       "connectors": 631,
-      "upstreamMissingTariffId": "849a30c3-81bf-4c62-b01b-ca9527289f75",
-      "unresolvedPowerConnectors": 0,
-      "directPricesGbpPerKwh": {
-        "AC": 0.55,
-        "DC": 0.75,
-        "HPC": 0.85
+      "unmatchedConnectors": 0,
+      "connectorPriceBands": {
+        "ac": {
+          "connectors": 339,
+          "gbpPerKwh": 0.55
+        },
+        "dc": {
+          "connectors": 168,
+          "gbpPerKwh": 0.75
+        },
+        "hpc": {
+          "connectors": 124,
+          "gbpPerKwh": 0.85
+        }
       },
-      "dataset": "data/national/uk_wenea_open_data.json.gz",
-      "report": "reports/uk/wenea-open-data-latest.json"
+      "dataset": "data/national/uk_wenea_direct_priced.json.gz",
+      "report": "reports/uk/wenea-direct-priced-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
