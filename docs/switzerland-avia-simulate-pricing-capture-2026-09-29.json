@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-09-29",
+  "country": "CH",
+  "cpo": "AVIA VOLT",
+  "source": "User Charles capture from AVIA VOLT Suisse iOS app",
+  "finding": "simulate-pricing endpoint returns deterministic connector pricing",
+  "backend": {
+    "routePattern": "/app-backend/v1/tenants/{tenantId}/locations/{locationUuid}/simulate-pricing",
+    "method": "POST"
+  },
+  "sample": {
+    "locationUuid": "876d0b0d-b3a2-5c35-892c-813f7dc10b05",
+    "locationName": "AVIA VOLT - Garage Meili",
+    "requestTarget": {
+      "evseInternalId": "daa6b4ed-9879-5bea-ae0c-8106c3e84369",
+      "connectorInternalId": "ed3f0d31-03f4-563c-95a6-23eae20007b7"
+    },
+    "response": {
+      "dimension": "ENERGY",
+      "simulatedVolumeKwh": 20,
+      "pricePerKwh": {
+        "currency": "CHF",
+        "amountExclVat": 0.64,
+        "amountInclVat": 0.69,
+        "vatPercentage": 8.1
+      },
+      "totalPrice": {
+        "currency": "CHF",
+        "amountExclVat": 12.77,
+        "amountInclVat": 13.8,
+        "vatPercentage": 8.1
+      },
+      "tariffHasTimeBasedPrice": true,
+      "timeBasedPriceDimensions": [
+        "PARKING_TIME"
+      ],
+      "timeBasedFeeWindows": []
+    }
+  },
+  "interpretation": "This endpoint is sufficient to obtain an exact energy price for a specific AVIA connector and indicates whether time-based components exist. It is preferred over reverse-mapping tariffIds when automating national pricing.",
+  "remainingGap": "Capture the POST request body/query parameters used by the app so the request can be replayed safely and automatically for every AVIA connector.",
+  "security": "No APIM subscription key or authorization token stored."
+}
