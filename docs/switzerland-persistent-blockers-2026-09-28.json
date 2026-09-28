@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "country": "CH",
+  "generatedAt": "2026-09-28T14:26:36.050Z",
+  "status": "persistent-blockers-after-exhaustive-pass",
+  "policy": "No tariff extrapolation. A CPO remains blocked when current deterministic direct-price evidence cannot be obtained from official/public station data, public backend/API, existing app/API reverse engineering, or exact station reconciliation.",
+  "blockers": [
+    {
+      "operatorId": "CH*SUI",
+      "name": "Swisscharge",
+      "resolved": "2401/2445",
+      "blocker": "44 public EVSEs still have no deterministic tariff result after direct Swisscharge endpoint retries. Swisscharge officially states that station owners set prices and current end-customer prices are shown per station in the app/adhoc flow.",
+      "resumeCondition": "Recover the current adhoc/app backend for the 44 physical references or obtain their station-specific prices.",
+      "evidence": [
+        "https://swisscharge.ch/fr/solutions-de-recharge/tarifs-de-recharge/",
+        "https://support.swisscharge.ch/fr/support/solutions/articles/43000614841-combien-co%C3%BBte-le-chargement-aux-bornes-de-swisscharge-",
+        "https://adhoc.swisscharge.ch/tenant/Swisscharge_CH/search"
+      ]
+    },
+    {
+      "operatorId": "CH*EPO",
+      "name": "EPO / Eponet",
+      "resolved": "0/324 deterministic direct prices",
+      "blocker": "Eponet explicitly lets each infrastructure operator define the QR/ad-hoc charging profile, including start, kWh and blocking fees. Current prices are only exposed through the charger-specific QR flow; no public searchable tariff endpoint was recovered.",
+      "resumeCondition": "Obtain Eponet charger IDs/QR URLs or a public Eponet Go/QR backend endpoint that exposes the current station prices.",
+      "evidence": [
+        "https://wiki.eponet.ch/books/e-mobilitat-fahrzeug-laden-an-einer-ladestation/page/laden-mit-qr-code-ad-hoc-laden",
+        "https://wiki.eponet.ch/books/das-eponet-portal/page/ladeprofil-fur-qr-code-laden-offentliches-laden"
+      ]
+    },
+    {
+      "operatorId": "CH*IWB",
+      "name": "IWB",
+      "resolved": "466/472",
+      "blocker": "Six public Basel-Landschaft EVSEs remain. IWB publishes deterministic ad-hoc tariffs for Allmend Basel-Stadt, but not a tariff that can safely be extended to the residual sites in Münchenstein, Pratteln and Muttenz.",
+      "resumeCondition": "Obtain station-specific IWB/Swisscharge prices for the six Basel-Landschaft residual EVSEs.",
+      "evidence": [
+        "https://www.iwb.ch/servicecenter/oeffentliches-ladenetz/mobilitaet-tarife"
+      ]
+    },
+    {
+      "operatorId": "CH*AVI",
+      "name": "AVIA VOLT",
+      "resolved": "0/583 deterministic direct prices",
+      "blocker": "AVIA states there is no uniform standard price; price varies by charge point/provider/speed and is shown per point in the AVIA VOLT Suisse app. XAPK reverse engineering identified the Deftpower backend, tenant and APIM-protected route, but the required subscription key/runtime request is not available from the static package.",
+      "resumeCondition": "Capture one AVIA VOLT app request with Charles (headers + route, no personal credentials) or otherwise recover the APIM subscription key/runtime guest request.",
+      "evidence": [
+        "https://aviavolt.ch/faq/"
+      ]
+    },
+    {
+      "operatorId": "CH*EBS",
+      "name": "EBS",
+      "resolved": "5/6",
+      "blocker": "Sahli remains contradictory. Public station evidence reports contract/RFID only and no ad-hoc price, while other current feed evidence indicates direct-payment capability. The conflict cannot be resolved safely without station-specific current evidence.",
+      "resumeCondition": "Obtain current Sahli QR/app/direct-payment screen or EBS/Swisscharge station-specific tariff.",
+      "evidence": [
+        "https://www.ebs.swiss/",
+        "https://www.goingelectric.de/stromtankstellen/Schweiz/Muotathal/Talstation-Luftseilbahn-Sahli-Glattalp-Sahliboden/32166/"
+      ]
+    },
+    {
+      "operatorId": "CH*EVT",
+      "name": "EVTEC-hosted scope",
+      "resolved": "0/8 deterministic current direct prices",
+      "blocker": "The eight EVSEs expose direct-payment capability but EVTEC is the hardware/backend layer; no current public station-specific end-customer tariff was found.",
+      "resumeCondition": "Obtain the exact site/operator payment page or current station display/QR tariff for the three sites.",
+      "evidence": [
+        "https://www.evtec.ch/"
+      ]
+    },
+    {
+      "operatorId": "CH*DIE",
+      "name": "Stadt Dietikon",
+      "resolved": "0/1",
+      "blocker": "The current EVSE supports direct payment, but no current authoritative charging price is published. The only discovered price rule is historical and is not safe for 2026 production.",
+      "resumeCondition": "Obtain a current Stadt Dietikon station tariff/QR/payment page for Bremgartnerstrasse 15.",
+      "evidence": [
+        "https://www.goingelectric.de/stromtankstellen/Schweiz/Dietikon/Parkplatz-Zentralschulhaus-Bremgartnerstrasse-15/9760/"
+      ]
+    },
+    {
+      "operatorId": "CH*HER",
+      "name": "Elektrizitätswerk Herrliberg",
+      "resolved": "0/1",
+      "blocker": "The current EVSE supports direct payment but no current authoritative station tariff was found. Electricity retail tariffs cannot be substituted for charging-station pricing.",
+      "resumeCondition": "Obtain the current Forchstrasse station QR/payment tariff or an official Elektrizitätswerk Herrliberg charging price.",
+      "evidence": [
+        "https://adhoccharging.eu/city/herrliberg/elektrizitaetswerk-herrliberg-forchstrasse/"
+      ]
+    },
+    {
+      "operatorId": "CH*PAR",
+      "name": "Partino",
+      "resolved": "210/213 classified no-public-direct; 3 unresolved",
+      "blocker": "Partino documents backend billing and public charging services but does not publish the end-customer station price for the three public residual EVSEs. Physical accessibility is not evidence of free charging.",
+      "resumeCondition": "Obtain the three station-specific prices from Partino CH backend/Floatbridge or exact payment pages.",
+      "evidence": [
+        "https://www.partino.ch/de/angebot/e-backend/ch-backend/",
+        "https://www.partino.ch/wp-content/uploads/03_Partino_Abrechnungsmoeglichkeiten-05.2024_DE.pdf"
+      ]
+    },
+    {
+      "operatorId": "CH*ECU",
+      "name": "eCarUp",
+      "resolved": "6470/6764",
+      "blocker": "294 current owner EVSEs remain after exact normalized connector-ID matching, a dense national API sweep and fail-closed coordinate overlays. eCarUp allows station owners to define their own prices, so unresolved stations cannot inherit a network tariff.",
+      "resumeCondition": "Acquire new exact connector IDs/station responses from the eCarUp public API or exact station payment pages for the residual 294 EVSEs.",
+      "evidence": [
+        "https://web.ecarup.com/fr/api-ev-infrastructure/",
+        "https://web.ecarup.com/fr/prices-charging-station-backend/"
+      ]
+    }
+  ],
+  "toolingConstraints": {
+    "firecrawl": "Authenticated Firecrawl balance is exhausted/negative; no further Firecrawl live scrape was available.",
+    "tinyfish": "TinyFish browser automation wallet is negative; free page fetch/search was used where possible, but interactive JS workflows could not be automated.",
+    "note": "These tooling constraints are not used as evidence for pricing; they only explain why interactive app/portal-only surfaces remain unresolved."
+  }
+}
