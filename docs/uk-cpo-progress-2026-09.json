@@ -137,10 +137,12 @@
     },
     {
       "name": "Be.EV",
-      "status": "partial",
-      "access": "no_direct_endpoint_found_first_pass",
-      "evidence": "First-pass web search did not surface a direct public machine-readable endpoint.",
-      "next": "second pass: inspect operator site/app and Eco-Movement/OCPI routes."
+      "status": "complete",
+      "access": "official_public_map_api",
+      "evidence": "Validated Data Lab collection from Be.EV public website API: 600/600 rows are isBeevOperated=true, 1009 charge points, 2539 connectors; site and charge-point tariff coverage is 100%.",
+      "next": "validated; include in scheduled UK aggregation.",
+      "dataset": "data/national/uk_beev_public_map.json.gz",
+      "report": "reports/uk/beev-public-map-latest.json"
     },
     {
       "name": "PoGo Charge",
@@ -314,10 +316,12 @@
     },
     {
       "name": "ParkRecharge",
-      "status": "source_identified",
-      "access": "open_data_page",
-      "evidence": "ParkRecharge publishes a Public Charging & Open Data page confirming PCPR compliance.",
-      "next": "second pass: resolve machine-readable locations/tariffs link."
+      "status": "complete",
+      "access": "official_public_webapp_api",
+      "evidence": "Validated Data Lab collection from ParkRecharge public webapp map API: 459 geocoded devices, 839 connectors, device status and Fees fields available per device. Public client configuration is read at runtime and not persisted.",
+      "next": "validated; include in scheduled UK aggregation.",
+      "dataset": "data/national/uk_parkrecharge_public_map.json.gz",
+      "report": "reports/uk/parkrecharge-public-map-latest.json"
     },
     {
       "name": "ScottishPower Recharge",
@@ -2160,7 +2164,9 @@
       "Dragon Charging",
       "JOLT",
       "MFG EV Power",
-      "Evolt Network"
+      "Evolt Network",
+      "Be.EV",
+      "ParkRecharge"
     ],
     "externalAccessBlocked": [
       {
@@ -2306,12 +2312,6 @@
         "next": "inspect Applegreen Electric app/Driivz tenant network calls."
       },
       {
-        "name": "Be.EV",
-        "status": "bounded_dynamic_backend_required",
-        "backend": "Fuuse",
-        "next": "inspect Be.EV/Fuuse network calls or recover client ODA UUID."
-      },
-      {
         "name": "EZ-Charge",
         "status": "bounded_app_map_backend_required",
         "backend": null,
@@ -2394,6 +2394,29 @@
       "partyId": "JLT",
       "dataset": "data/national/uk_jolt_pcpr.json.gz",
       "report": "reports/uk/jolt-pcpr-latest.json"
+    },
+    "beevFinalization": {
+      "state": "complete_source_validated",
+      "sites": 600,
+      "chargePoints": 1009,
+      "connectors": 2539,
+      "tariffCoverage": "100% at site and charge-point level",
+      "dataset": "data/national/uk_beev_public_map.json.gz",
+      "report": "reports/uk/beev-public-map-latest.json"
+    },
+    "parkRechargeFinalization": {
+      "state": "complete_source_validated",
+      "devices": 459,
+      "connectors": 839,
+      "geocodedDevices": 459,
+      "deviceStatuses": {
+        "Available": 410,
+        "Offline": 48,
+        "Faulted": 1
+      },
+      "pricing": "Fees object captured per device; zero-valued fees preserved as valid source values",
+      "dataset": "data/national/uk_parkrecharge_public_map.json.gz",
+      "report": "reports/uk/parkrecharge-public-map-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
