@@ -1,0 +1,32 @@
+name: Belgium Road tariff mapping
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-road-tariff-mapping.txt"
+permissions:
+  contents: write
+jobs:
+  map:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/belgium_road_map_tariffs.py
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium/belgium-road-tariff-coverage-2026-09-29.json data/operator_direct/road_belgium_tariffs_2026-09-29.json
+          git commit -m "Map Road Belgium tariffs to EVSEs" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep 3
+          done
+          exit 1
