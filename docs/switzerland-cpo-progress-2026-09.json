@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "country": "CH",
-  "updatedAt": "2026-09-28T13:48:56.934Z",
+  "updatedAt": "2026-09-28T14:26:45.640Z",
   "canonicalRepo": "yass3705/tesla-charge-companion-data-lab",
   "sourceMigrationFrom": "yass3705/tesla-stations-updater-test",
   "rules": {
@@ -37,11 +37,14 @@
       "evseCount": 2445,
       "stationCount": 832,
       "operatorNames": [],
-      "status": "partial",
+      "status": "blocked",
       "name": "Swisscharge",
       "evidence": "docs/switzerland-swisscharge-prefix-closeout-2026-09-28.json",
-      "setAside": true,
-      "note": "CH*SUI tariff-prefix scope: 2382 priced + 19 restricted/no-auth classified = 2401/2445 resolved; 44 public EVSEs remain unresolved after direct Swisscharge endpoint retries. The 59 noncanonical EVSEs owned by CH*SUI were separately queried and all returned 404, confirming they are not part of the Swisscharge tariff endpoint scope."
+      "setAside": false,
+      "note": "2401/2445. 44 public EVSEs still have no deterministic tariff result after direct Swisscharge endpoint retries. Swisscharge officially states that station owners set prices and current end-customer prices are shown per station in the app/adhoc flow.",
+      "blockerPersistent": true,
+      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
+      "resumeCondition": "Recover the current adhoc/app backend for the 44 physical references or obtain their station-specific prices."
     },
     {
       "operatorId": "CH*MIG",
@@ -87,11 +90,14 @@
       "evseCount": 324,
       "stationCount": 324,
       "operatorNames": [],
-      "status": "partial",
+      "status": "blocked",
       "name": "EPO",
       "evidence": "docs/switzerland-epo-first-pass-2026-09-28.json",
-      "note": "Eponet backend supports operator-defined station-specific QR/ad-hoc prices; current national records confirm direct payment, but no deterministic public price endpoint has been recovered. Requires Eponet Go/QR backend evidence; no extrapolation.",
-      "setAside": true
+      "note": "0/324 deterministic direct prices. Eponet explicitly lets each infrastructure operator define the QR/ad-hoc charging profile, including start, kWh and blocking fees. Current prices are only exposed through the charger-specific QR flow; no public searchable tariff endpoint was recovered.",
+      "setAside": false,
+      "blockerPersistent": true,
+      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
+      "resumeCondition": "Obtain Eponet charger IDs/QR URLs or a public Eponet Go/QR backend endpoint that exposes the current station prices."
     },
     {
       "operatorId": "CH*360",
@@ -117,11 +123,14 @@
       "evseCount": 472,
       "stationCount": 217,
       "operatorNames": [],
-      "status": "partial",
+      "status": "blocked",
       "name": "IWB",
       "evidence": "docs/switzerland-iwb-finalization-2026-09-28.json",
-      "note": "466/472 current owner EVSEs are resolved (438 priced + 28 restricted/no-auth). Six public Basel-Landschaft residuals have no deterministic current direct tariff; exact site research exhausted without extrapolation.",
-      "setAside": true
+      "note": "466/472. Six public Basel-Landschaft EVSEs remain. IWB publishes deterministic ad-hoc tariffs for Allmend Basel-Stadt, but not a tariff that can safely be extended to the residual sites in Münchenstein, Pratteln and Muttenz.",
+      "setAside": false,
+      "blockerPersistent": true,
+      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
+      "resumeCondition": "Obtain station-specific IWB/Swisscharge prices for the six Basel-Landschaft residual EVSEs."
     },
     {
       "operatorId": "CH*SCH",
@@ -138,11 +147,14 @@
       "evseCount": 583,
       "stationCount": 171,
       "operatorNames": [],
-      "status": "partial",
+      "status": "blocked",
       "name": "AVIA",
       "evidence": "docs/switzerland-avia-first-pass-2026-09-28.json",
-      "note": "Set aside at user request on 2026-09-28 pending AVIA VOLT app/Charles backend capture. Keep current partial evidence; do not re-investigate until new app/API evidence is supplied.",
-      "setAside": true
+      "note": "0/583 deterministic direct prices. AVIA states there is no uniform standard price; price varies by charge point/provider/speed and is shown per point in the AVIA VOLT Suisse app. XAPK reverse engineering identified the Deftpower backend, tenant and APIM-protected route, but the required subscription key/runtime request is not available from the static package.",
+      "setAside": false,
+      "blockerPersistent": true,
+      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
+      "resumeCondition": "Capture one AVIA VOLT app request with Charles (headers + route, no personal credentials) or otherwise recover the APIM subscription key/runtime guest request."
     },
     {
       "operatorId": "CH*SOC",
@@ -266,11 +278,14 @@
       "evseCount": 6,
       "stationCount": 6,
       "operatorNames": [],
-      "status": "partial",
+      "status": "blocked",
       "name": "EBS / ebs Energie AG",
       "evidence": "docs/switzerland-ebs-finalization-2026-09-28.json",
-      "note": "5/6 priced. Sahli remains contradictory: current public sources disagree on ad-hoc/direct-payment availability, so it is fail-closed until direct station evidence is available.",
-      "setAside": true
+      "note": "5/6. Sahli remains contradictory. Public station evidence reports contract/RFID only and no ad-hoc price, while other current feed evidence indicates direct-payment capability. The conflict cannot be resolved safely without station-specific current evidence.",
+      "setAside": false,
+      "blockerPersistent": true,
+      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
+      "resumeCondition": "Obtain current Sahli QR/app/direct-payment screen or EBS/Swisscharge station-specific tariff."
     },
     {
       "operatorId": "CH*EDH",
@@ -287,11 +302,14 @@
       "evseCount": 8,
       "stationCount": 3,
       "operatorNames": [],
-      "status": "partial",
+      "status": "blocked",
       "name": "CH*EVT",
       "evidence": "docs/switzerland-evt-first-pass-2026-09-28.json",
-      "note": "8/8 current EVSEs advertise direct payment across three EVTEC-hosted sites, but current public research exposes hardware/site identity rather than deterministic station tariffs. Site-specific price evidence required.",
-      "setAside": true
+      "note": "0/8 deterministic current direct prices. The eight EVSEs expose direct-payment capability but EVTEC is the hardware/backend layer; no current public station-specific end-customer tariff was found.",
+      "setAside": false,
+      "blockerPersistent": true,
+      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
+      "resumeCondition": "Obtain the exact site/operator payment page or current station display/QR tariff for the three sites."
     },
     {
       "operatorId": "CH*AMG",
@@ -318,22 +336,28 @@
       "evseCount": 1,
       "stationCount": 1,
       "operatorNames": [],
-      "status": "partial",
+      "status": "blocked",
       "name": "CH*DIE",
       "evidence": "docs/switzerland-first-pass-national-reconciliation-2026-09-28.json",
-      "note": "Single Dietikon EVSE supports direct payment, but no current authoritative charging tariff was found; historical parking-inclusive evidence is too old to promote.",
-      "setAside": true
+      "note": "0/1. The current EVSE supports direct payment, but no current authoritative charging price is published. The only discovered price rule is historical and is not safe for 2026 production.",
+      "setAside": false,
+      "blockerPersistent": true,
+      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
+      "resumeCondition": "Obtain a current Stadt Dietikon station tariff/QR/payment page for Bremgartnerstrasse 15."
     },
     {
       "operatorId": "CH*HER",
       "evseCount": 1,
       "stationCount": 1,
       "operatorNames": [],
-      "status": "partial",
+      "status": "blocked",
       "name": "CH*HER",
       "evidence": "docs/switzerland-first-pass-national-reconciliation-2026-09-28.json",
-      "note": "Single Herrliberg EVSE supports direct payment, but no current authoritative charging tariff was found; electricity retail tariffs are not charging-station tariffs.",
-      "setAside": true
+      "note": "0/1. The current EVSE supports direct payment but no current authoritative station tariff was found. Electricity retail tariffs cannot be substituted for charging-station pricing.",
+      "setAside": false,
+      "blockerPersistent": true,
+      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
+      "resumeCondition": "Obtain the current Forchstrasse station QR/payment tariff or an official Elektrizitätswerk Herrliberg charging price."
     },
     {
       "operatorId": "CH*CPI",
@@ -403,20 +427,26 @@
       "name": "Partino",
       "evseCount": 213,
       "stationCount": null,
-      "status": "partial",
+      "status": "blocked",
       "evidence": "docs/switzerland-par-finalization-2026-09-28.json",
-      "note": "210/213 explicitly restricted/no-auth classified no-public-direct. Three public EVSEs remain operator-defined and no deterministic public station price was found.",
-      "setAside": true
+      "note": "210/213 classified no-public-direct; 3 unresolved. Partino documents backend billing and public charging services but does not publish the end-customer station price for the three public residual EVSEs. Physical accessibility is not evidence of free charging.",
+      "setAside": false,
+      "blockerPersistent": true,
+      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
+      "resumeCondition": "Obtain the three station-specific prices from Partino CH backend/Floatbridge or exact payment pages."
     },
     {
       "operatorId": "CH*ECU",
       "name": "eCarUp",
       "evseCount": 6764,
       "stationCount": null,
-      "status": "partial",
+      "status": "blocked",
       "evidence": "docs/switzerland-ecarup-finalization-2026-09-28.json",
-      "note": "6470/6764 current owner EVSEs priced: 3246 exact normalized connector IDs + 3224 conservative coordinate overlays. 294 remain unresolved after a 726-query dense national API sweep (5662 stations), exact-ID reconciliation and <=0.75m/<=3m fail-closed coordinate reconciliation; set aside rather than extrapolate.",
-      "setAside": true
+      "note": "6470/6764. 294 current owner EVSEs remain after exact normalized connector-ID matching, a dense national API sweep and fail-closed coordinate overlays. eCarUp allows station owners to define their own prices, so unresolved stations cannot inherit a network tariff.",
+      "setAside": false,
+      "blockerPersistent": true,
+      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
+      "resumeCondition": "Acquire new exact connector IDs/station responses from the eCarUp public API or exact station payment pages for the residual 294 EVSEs."
     }
   ],
   "nextPriority": [],
@@ -581,5 +611,12 @@
       "handled-separately": 1
     },
     "note": "AVIA and bounded unresolved residuals are set aside; Tesla is handled by the dedicated Tesla process. activeCount=0 means the current Swiss CPO work queue is exhausted without inventing tariffs."
+  },
+  "switzerlandResidualState": {
+    "status": "blocked-after-exhaustive-pass",
+    "completeCount": 29,
+    "blockedCount": 10,
+    "handledSeparatelyCount": 1,
+    "evidence": "docs/switzerland-persistent-blockers-2026-09-28.json"
   }
 }
