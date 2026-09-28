@@ -114,7 +114,10 @@ jobs:
           for p,text in targets:
               lines=text.splitlines()
               for i,line in enumerate(lines):
-                  if any(r.search(line) for r in rx) or any(n in line for n in ['AtlasPoiPricesApiClient','AtlasPoiApiClient','AtlasGuestTokenApiClient']):
+                  extra_af0 = (str(p).endswith('/af0.java') or str(p).endswith('af0.java')) and (
+                      'd(' in line or 'ct5.a(' in line or 'String str' in line or 'pois' in line or 'latitude' in line or 'longitude' in line
+                  )
+                  if extra_af0 or any(r.search(line) for r in rx) or any(n in line for n in ['AtlasPoiPricesApiClient','AtlasPoiApiClient','AtlasGuestTokenApiClient']):
                       lo=max(0,i-8); hi=min(len(lines),i+12)
                       excerpt='\n'.join(f'{j+1}: {lines[j]}' for j in range(lo,hi))
                       excerpt=sanitize(excerpt)
