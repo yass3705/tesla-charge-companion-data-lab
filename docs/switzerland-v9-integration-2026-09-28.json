@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataset": "tcc-v9-switzerland",
-  "generatedAt": "2026-09-28T19:14:13.326418+00:00",
+  "generatedAt": "2026-09-28T22:31:40.618759+00:00",
   "country": "CH",
   "nationalSource": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
   "policy": {
@@ -11,8 +11,8 @@
     "otherPriceLayers": "Electra, Electroverse and subscription-adjusted prices are intentionally separate runtime overlays and are not replaced by this direct-CPO bundle."
   },
   "counts": {
-    "nationalEvseCount": 19454,
-    "directTariffResolvedEvseCount": 17147,
+    "nationalEvseCount": 19450,
+    "directTariffResolvedEvseCount": 17143,
     "noPublicDirectTariffEvseCount": 386,
     "directTariffUnresolvedEvseCount": 1921
   },
@@ -27,7 +27,7 @@
       "label": "Migrol",
       "file": "data/switzerland/migrol-official-direct-tariffs.json",
       "status": "loaded",
-      "matchedEvseCount": 1031
+      "matchedEvseCount": 1027
     },
     {
       "label": "Shell evpass",
@@ -375,11 +375,11 @@
       "status": "blocked",
       "name": "AVIA",
       "evidence": "docs/switzerland-avia-first-pass-2026-09-28.json",
-      "note": "0/583 deterministic direct prices. AVIA states there is no uniform standard price; price varies by charge point/provider/speed and is shown per point in the AVIA VOLT Suisse app. XAPK reverse engineering identified the Deftpower backend, tenant and APIM-protected route, but the required subscription key/runtime request is not available from the static package.",
+      "note": "Charles runtime capture recovered the live Deftpower app-backend location route and station tariff IDs. Sample AVIA VOLT - Garage Meili exposes CH*AVI*E10450 (TYPE2 22 kW) and CH*AVI*E10449 (CCS 40 kW), both tariffId CHAVIT000082; app UI shows 0.69 CHF/kWh + 1.99 CHF/h plus one additional component. Full tariff-object response still required before production use. APIM secret is not stored.",
       "setAside": false,
       "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Capture one AVIA VOLT app request with Charles (headers + route, no personal credentials) or otherwise recover the APIM subscription key/runtime guest request."
+      "blockerEvidence": "docs/switzerland-avia-charles-runtime-capture-2026-09-29.json",
+      "resumeCondition": "Capture the tariff/tariffs response for CHAVIT000082 (including all components) by opening 'Voir tous les prix'; then enumerate tariffIds nationally and map exact tariff objects to AVIA EVSEs."
     },
     "CH*SOC": {
       "operatorId": "CH*SOC",
@@ -675,5 +675,5 @@
     }
   },
   "output": "data/tcc_v9/switzerland.json",
-  "outputBytes": 49115949
+  "outputBytes": 49111306
 }
