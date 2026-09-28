@@ -77,16 +77,17 @@ for sid,st in stations.items():
   unresolved.append({"stationId":sid,"evseIds":st["evses"],"reason":"no_official_station"});continue
  d,o=ranked[0]
  d2=ranked[1][0] if len(ranked)>1 else 999999
- # Fail closed: very tight coordinate match, and no competing official station nearby.
- if d<=25 and d2-d>=15:
+ # Fail closed: accept a unique physical match within 100 m only when the next official candidate is at least 100 m farther away.
+ # This tolerates map/geocoder offsets without allowing ambiguous nearby GOFAST sites.
+ if d<=100 and d2-d>=100:
   used.add(o["id"])
   extra=parse_block(o["details"])
   for eid in st["evses"]:
    resolved.append({"evseId":eid,"chargingStationId":sid,"officialStationId":o["id"],"officialStationName":o["title"],"distanceMeters":round(d,2),"currency":"CHF","pricePerKwh":o["pricePerKwh"],**extra,"source":"GOFAST official public web-app station feed"})
  else:
-  unresolved.append({"stationId":sid,"evseIds":st["evses"],"nearestDistanceMeters":round(d,2),"secondDistanceMeters":round(d2,2),"nearestOfficial":o["title"],"reason":"no_unique_tight_official_match"})
+  unresolved.append({"stationId":sid,"evseIds":st["evses"],"nearestDistanceMeters":round(d,2),"secondDistanceMeters":round(d2,2),"nationalName":st.get("name"),"nationalAddress":st.get("address"),"nearestOfficial":o["title"],"reason":"no_unique_safe_official_match"})
 
-out={"schemaVersion":1,"country":"CH","cpo":"GOFAST","operatorId":"CH*GFT","generatedAt":datetime.now(timezone.utc).isoformat(),"nationalStationCount":len(stations),"nationalEvseCount":sum(len(s["evses"]) for s in stations.values()),"pricedEvseCount":len(resolved),"unresolvedEvseCount":sum(len(x["evseIds"]) for x in unresolved),"matchedOfficialStationCount":len(used),"policy":"Exact current CH*GFT owner scope. Match to official GOFAST station feed only when nearest official station is <=25m and at least 15m better than next candidate. Station-specific official price only; no cross-station extrapolation.","evses":resolved,"unresolved":unresolved}
+out={"schemaVersion":1,"country":"CH","cpo":"GOFAST","operatorId":"CH*GFT","generatedAt":datetime.now(timezone.utc).isoformat(),"nationalStationCount":len(stations),"nationalEvseCount":sum(len(s["evses"]) for s in stations.values()),"pricedEvseCount":len(resolved),"unresolvedEvseCount":sum(len(x["evseIds"]) for x in unresolved),"matchedOfficialStationCount":len(used),"policy":"Exact current CH*GFT owner scope. Match to official GOFAST station feed only when nearest official station is <=100m and at least 100m better than next candidate. Station-specific official price only; no cross-station extrapolation.","evses":resolved,"unresolved":unresolved}
 OUT.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 DOC.write_text(json.dumps({k:v for k,v in out.items() if k not in ("evses","unresolved")}|{"unresolvedStations":unresolved},ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps({k:v for k,v in out.items() if k not in ("evses","unresolved")},indent=2))
