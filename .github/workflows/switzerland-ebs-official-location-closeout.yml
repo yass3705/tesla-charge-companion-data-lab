@@ -1,0 +1,41 @@
+name: Switzerland EBS official location closeout
+on:
+  push:
+    paths:
+      - 'scripts/close_swiss_ebs_official_locations.py'
+      - '.github/workflows/switzerland-ebs-official-location-closeout.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  close:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - run: python3 scripts/close_swiss_ebs_official_locations.py
+      - name: Validate
+        run: |
+          python3 - <<'PY'
+          import json
+          f=json.load(open('docs/switzerland-ebs-finalization-2026-09-28.json',encoding='utf-8'))
+          assert f['pricedEvseCount']+f['unresolvedEvseCount']==f['nationalEvseCount']
+          assert f['pricedEvseCount']>=5
+          print(json.dumps(f,indent=2))
+          PY
+      - name: Persist
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/switzerland/ebs-ecarup-direct-tariffs.json docs/switzerland-ebs-finalization-2026-09-28.json
+          git commit -m 'data(switzerland): close EBS Hofmatt and MythenForum tariffs' || exit 0
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
