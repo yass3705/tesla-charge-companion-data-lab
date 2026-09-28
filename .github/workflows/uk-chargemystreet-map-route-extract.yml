@@ -1,0 +1,81 @@
+name: UK Charge My Street map route extract
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-chargemystreet-map-route-extract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Extract CMS map data routes
+        run: |
+          python - <<'PY'
+          import json,re,urllib.request,urllib.parse
+          from pathlib import Path
+          from datetime import datetime,timezone
+          page="https://chargemystreet.co.uk/map"
+          ua="Mozilla/5.0 Chrome/140"
+          def get(u):
+              req=urllib.request.Request(u,headers={"User-Agent":ua,"Accept":"*/*"})
+              with urllib.request.urlopen(req,timeout=75) as r:
+                  return r.read(10000000).decode("utf-8","replace")
+          html=get(page)
+          srcs=[]
+          for s in re.findall(r'(?:src|href)="([^"]+)"',html,re.I):
+              u=urllib.parse.urljoin(page,s.replace("&amp;","&"))
+              if re.search(r'(?i)\.js(?:\?|$)',u) and u not in srcs: srcs.append(u)
+          texts=[(page,html)]
+          for u in srcs[:30]:
+              try:texts.append((u,get(u)))
+              except Exception:pass
+          findings=[];seen=set()
+          keys=("front-map","marker","leaflet","google.maps","ajax","json","chargepoint","charger","fuuse","latitude","longitude","coordinates")
+          for source,txt in texts:
+              low=txt.lower()
+              for kw in keys:
+                  pos=0
+                  for _ in range(60):
+                      i=low.find(kw.lower(),pos)
+                      if i<0:break
+                      ctx=txt[max(0,i-500):min(len(txt),i+1600)]
+                      rec={"source":source,"keyword":kw,"context":ctx}
+                      k=source+"|"+kw+"|"+ctx[:150]
+                      if k not in seen:seen.add(k);findings.append(rec)
+                      pos=i+len(kw)
+              for m in re.finditer(r'https?://[^"\\s<>]+',txt,re.I):
+                  u=m.group(0).replace("\\/","/")
+                  if any(k in u.lower() for k in ("api","json","map","charge","fuuse")):
+                      rec={"source":source,"url":u[:2000]}
+                      k=json.dumps(rec,sort_keys=True)
+                      if k not in seen:seen.add(k);findings.append(rec)
+              for m in re.finditer(r'["\x27](/[^"\x27]{1,180})["\x27]',txt):
+                  v=m.group(1)
+                  if any(k in v.lower() for k in ("map","charge","point","location","marker","api","json")):
+                      rec={"source":source,"route":v,"context":txt[max(0,m.start()-300):min(len(txt),m.end()+600)]}
+                      k=source+"|route|"+v
+                      if k not in seen:seen.add(k);findings.append(rec)
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"network":"Charge My Street","scripts":srcs,"findings":findings[:2000]}
+          Path("reports/uk").mkdir(parents=True,exist_ok=True)
+          Path("reports/uk/chargemystreet-map-route-extract-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({"scripts":len(srcs),"findings":len(findings)},indent=2))
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/chargemystreet-map-route-extract-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): extract Charge My Street map routes [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do git pull --rebase origin main; git push origin HEAD:main && exit 0; sleep $((attempt*2)); done
+          exit 1
