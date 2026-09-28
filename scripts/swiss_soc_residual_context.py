@@ -38,3 +38,5 @@ out={
 Path("docs/switzerland-soc-residual-national-context-2026-09-28.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps({"targetCount":len(TARGET),"foundCount":len(seen),"missing":sorted(TARGET-seen),
  "summary":[{"evseId":r["evseId"],"address":r["evse"].get("Address"),"names":r["evse"].get("ChargingStationNames"),"facilities":r["evse"].get("ChargingFacilities"),"auth":r["evse"].get("AuthenticationModes"),"payment":r["evse"].get("PaymentOptions"),"accessibility":r["evse"].get("Accessibility")} for r in rows]},ensure_ascii=False,indent=2))
+
+# trigger
