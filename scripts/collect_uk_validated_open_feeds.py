@@ -7,6 +7,7 @@ UA='TeslaChargeCompanion/9 UK-open-data collector'
 # SmartCharging note: final page size must not exceed remaining rows advertised by meta.total.
 SOURCES=[
 {'name':'Clenergy EV','party_ids':['CEV'],'locations':'https://api.clenergy.online/development/pcpr/locations','tariffs':'https://api.clenergy.online/development/pcpr/tariffs','mode':'single'},
+{'name':'Dragon Charging','party_ids':['DGN'],'locations':'https://api.dragoncharging.online/development/pcpr/locations','tariffs':'https://api.dragoncharging.online/development/pcpr/tariffs','mode':'single'},
 {'name':'PoGo Charge','party_ids':['POG'],'locations':'https://info.smartcharging.uk/public_feed/locations/4009','tariffs':'https://info.smartcharging.uk/public_feed/locations/4009/tariffs','mode':'pogo_hybrid'},
 {'name':'Arnold Clark Charge','party_ids':['ACC'],'locations':'https://api.fuuse.io/opendata/e6397b95-1624-49cd-824d-ab2f9dfe7294/location','tariffs':'https://api.fuuse.io/opendata/e6397b95-1624-49cd-824d-ab2f9dfe7294/tariff','mode':'single'},
 {'name':'Urban Fox Networks','party_ids':['UFX'],'locations':'https://api.urbanfox.network/api/opendata/locations','tariffs':'https://api.urbanfox.network/api/opendata/tariffs','mode':'offset'},
