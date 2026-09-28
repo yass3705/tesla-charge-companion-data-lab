@@ -48,7 +48,11 @@ def walk(x,path=""):
             lk=p.lower()
             if any(t in lk for t in ("map","location","tariff","price","connector","search","bounds","zoom","filter")):
                 if isinstance(v,(str,int,float,bool)) or v is None:
-                    hits.append({"path":p,"value":v})
+                    if "key" in p.lower() or "token" in p.lower() or "secret" in p.lower():
+                        sv=str(v)
+                        hits.append({"path":p,"value":{"redacted":True,"length":len(sv)}})
+                    else:
+                        hits.append({"path":p,"value":v})
                 else:
                     hits.append({"path":p,"shape":shape(v)})
             walk(v,p)
