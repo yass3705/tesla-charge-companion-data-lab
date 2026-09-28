@@ -12,7 +12,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-from scripts.belgium_nap_probe import find_location_list, build_canonical
+from belgium_nap_probe import find_location_list, build_canonical
 
 BASE = "https://nap-be.eco-movement.com/datex2/v1/locations"
 TOKEN = os.environ["BELGIUM_NAP_TOKEN"].strip()
