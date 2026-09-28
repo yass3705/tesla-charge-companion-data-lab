@@ -36,7 +36,8 @@ jobs:
       - name: Probe Belgium NAP
         run: |
           python scripts/belgium_nap_probe.py \
-            --raw-output artifacts/belgium-nap-locations-raw.json
+            --raw-output artifacts/belgium-nap-locations-raw.json \
+            --canonical-output data/belgium/nap-belgium-full.json
 
       - name: Upload raw snapshot artifact
         uses: actions/upload-artifact@v4
@@ -51,7 +52,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports/belgium-nap-probe-summary.json reports/belgium-nap-locations-sample.json
+          git add reports/belgium-nap-probe-summary.json reports/belgium-nap-locations-sample.json data/belgium/nap-belgium-full.json
           if git diff --cached --quiet; then
             echo "No report changes"
           else
