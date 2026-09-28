@@ -56,7 +56,15 @@ jobs:
           if git diff --cached --quiet; then
             echo "No report changes"
           else
-            git commit -m "Update Belgium NAP probe report"
-            git pull --rebase origin main
-            git push
+            git commit -m "Update Belgium NAP full-country extraction"
+            for attempt in 1 2 3 4 5; do
+              git pull --rebase origin main
+              if git push; then
+                exit 0
+              fi
+              echo "Push race detected; retrying ($attempt/5)"
+              sleep 3
+            done
+            echo "::error::Could not persist Belgium extraction after 5 retries"
+            exit 1
           fi
