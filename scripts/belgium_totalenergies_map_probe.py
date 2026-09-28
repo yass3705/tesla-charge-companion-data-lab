@@ -13,7 +13,7 @@ TARGETS=[
 ]
 
 def curl(url):
-    cmd=["curl","-LsS","--retry","2","--connect-timeout","15","--max-time","45",
+    cmd=["curl","-k","-LsS","--retry","2","--connect-timeout","15","--max-time","45",
          "-A","Mozilla/5.0","-w","\\n__HTTP__%{http_code}\\n__URL__%{url_effective}",url]
     p=subprocess.run(cmd,capture_output=True,text=True)
     body=p.stdout
