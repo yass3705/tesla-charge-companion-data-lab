@@ -41,3 +41,5 @@ issues=[x for x in rows if not x["coverageComplete"]]
 out={"generatedAt":datetime.now(timezone.utc).isoformat(),"completeCpoCount":len(rows),"issueCount":len(issues),"issues":issues,"operators":rows}
 OUT.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps({"completeCpoCount":len(rows),"issueCount":len(issues),"issues":issues},ensure_ascii=False,indent=2))
+
+# audit final bundle
