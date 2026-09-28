@@ -1,0 +1,152 @@
+{
+  "updatedAt": "2026-09-27",
+  "purpose": "Deferred deep-inspection queue for UK TCC CPOs after exhausting static/browser-fetch discovery. Resume without redoing first/second-pass research when Firecrawl/TinyFish or equivalent network-inspection tooling becomes available.",
+  "resumeRule": "Start with P1, use dynamic page/app network inspection only, and persist any recovered endpoint immediately in uk-cpo-progress-2026-09.json. Do not repeat generic web searches already completed.",
+  "count": 18,
+  "items": [
+    {
+      "name": "3ti Energy Hubs",
+      "status": "blocked_dynamic_endpoint_recovery",
+      "backend": null,
+      "priority": "P1",
+      "next": "after browser automation funding is restored, inspect network requests once and persist Fuuse location/tariff URLs.",
+      "blocker": "Official page demonstrably consumes Fuuse ODA data but the client-specific Fuuse UUID/endpoints are injected dynamically and not exposed in static HTML or WordPress REST content. Live browser/network inspection was attempted but could not start because TinyFish wallet balance is -$1.91."
+    },
+    {
+      "name": "Applegreen Electric",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "Driivz",
+      "priority": "P1",
+      "next": "inspect Applegreen Electric app/Driivz tenant network calls.",
+      "blocker": "Applegreen states its charging data is stored in Driivz and updated via API; no public UK PCPR endpoint is indexed."
+    },
+    {
+      "name": "Be.EV",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "Fuuse",
+      "priority": "P1",
+      "next": "inspect Be.EV/Fuuse network calls or recover client ODA UUID.",
+      "blocker": "Fuuse case study confirms Be.EV migrated to Fuuse and uses its public API capabilities, but the client ODA location/tariff URLs are not publicly indexed."
+    },
+    {
+      "name": "E.ON Drive Infrastructure UK",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "AMPECO",
+      "priority": "P1",
+      "next": "inspect E.ON Drive/EDRI UK app/map network calls or AMPECO tenant endpoints.",
+      "blocker": "EDRI selected AMPECO for its charging platform; no UK public PCPR endpoint is indexed."
+    },
+    {
+      "name": "Zapgo",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "AMPECO",
+      "priority": "P1",
+      "next": "inspect Zapgo app/web network calls or AMPECO tenant endpoints.",
+      "blocker": "Zapgo publicly states open-data standards and its charging platform is AMPECO, but no public PCPR endpoint is indexed."
+    },
+    {
+      "name": "APCOA Parking UK",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "APCOA Connect integrated with Compleo backend",
+      "priority": "P2",
+      "next": "inspect APCOA Connect/Compleo network calls and separate Tesla-hosted sites.",
+      "blocker": "APCOA Connect is API-integrated with Compleo and official app provides station/payment data; no indexed public open-data endpoint was found."
+    },
+    {
+      "name": "CitiCharge",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "CitiCharge app; Monta/EO integrations present",
+      "priority": "P2",
+      "next": "inspect CitiCharge app network calls and identify actual backend/party mapping.",
+      "blocker": "CitiCharge app exposes live charger data. Monta Open Data was tested with party_id=CIT and returned an empty dataset; no distinct public CitiCharge endpoint was found."
+    },
+    {
+      "name": "Dragon Charging",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "Dragon Charging web/PWA",
+      "priority": "P2",
+      "next": "inspect dragoncharging.online PWA network calls.",
+      "blocker": "Official web-app exists and exposes charger use, but no indexed PCPR/open-data endpoint was found after official-domain and API searches."
+    },
+    {
+      "name": "EasyGo Charging",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "EZO/EasyGo proprietary app surface",
+      "priority": "P2",
+      "next": "inspect EZO Charging UK app network calls.",
+      "blocker": "EasyGo has rebranded to EZO and the UK app exposes locations/status/tariffs, but no anonymous machine-readable endpoint is indexed."
+    },
+    {
+      "name": "Elektra Charge",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "Elektra Charge app/web",
+      "priority": "P2",
+      "next": "inspect Elektra Charge app/site network calls.",
+      "blocker": "Official app/site exposes charger location/status/payment but no indexed PCPR/open-data endpoint."
+    },
+    {
+      "name": "Lidl GB / Northern Ireland",
+      "status": "bounded_feed_url_unresolved",
+      "backend": null,
+      "priority": "P2",
+      "next": "recover Lidl open-data/app backend and reconcile GB*LDL vs GB*LNI and Pod-managed sites.",
+      "blocker": "Current Lidl GB tariffs and EV Roam identities are clear, and Zapmap documents Lidl as sourced from Open Data feeds, but the actual machine-readable feed URL is not publicly indexed. Lidl Plus/app or feed discovery is required to obtain station-level records."
+    },
+    {
+      "name": "Qwello UK",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "Qwello proprietary OCPI-compatible backend",
+      "priority": "P2",
+      "next": "inspect Qwello UK app/network calls.",
+      "blocker": "Qwello states its own backend is OCPI-compatible and app provides real-time status, but no public UK OCPI/PCPR endpoint is indexed."
+    },
+    {
+      "name": "EG On The Move",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "mixed EGOTM/Tesla estate",
+      "priority": "P3",
+      "next": "inspect EGOTM locator/app backend and separate actual CPO ownership.",
+      "blocker": "Public estate confirmed but includes Tesla-hosted V4 sites; no standalone machine-readable EGOTM PCPR endpoint surfaced."
+    },
+    {
+      "name": "Evolo",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "Evolo app/roaming platform",
+      "priority": "P3",
+      "next": "inspect app backend and filter own party/operator identifiers.",
+      "blocker": "App exposes charging data but includes roaming partners; no public endpoint found and own-CPO EVSE must be separated from roaming."
+    },
+    {
+      "name": "EZ-Charge",
+      "status": "bounded_app_map_backend_required",
+      "backend": null,
+      "priority": "P3",
+      "next": "inspect EZ-Charge map/app network calls when browser/app inspection is available.",
+      "blocker": "Official site exposes network/tariff information but no public machine-readable endpoint was discoverable via targeted site/open-data searches. Next route is dynamic map/app network inspection."
+    },
+    {
+      "name": "Forward EV",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "Forward EV driver platform",
+      "priority": "P3",
+      "next": "inspect driver map/app network calls.",
+      "blocker": "Official driver platform exposes chargers and host-specific tariffs; no indexed public machine-readable endpoint found."
+    },
+    {
+      "name": "Mercedes-Benz High-Power Charging UK",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "Mercedes-Benz HPC / MB.CHARGE ecosystem",
+      "priority": "P3",
+      "next": "inspect Mercedes-Benz HPC map/app and isolate MBX-owned UK EVSE.",
+      "blocker": "Public CPO identity confirmed but search surfaces MB.CHARGE roaming rather than a dedicated UK PCPR feed; no public endpoint found."
+    },
+    {
+      "name": "Voltshare",
+      "status": "bounded_dynamic_backend_required",
+      "backend": "Voltshare proprietary OCPP platform",
+      "priority": "P3",
+      "next": "inspect Voltshare app/web network calls.",
+      "blocker": "Voltshare operates its own public/destination network and software platform, but no indexed public PCPR endpoint was found."
+    }
+  ]
+}
