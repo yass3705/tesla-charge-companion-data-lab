@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "country": "IT",
-  "asOf": "2026-09-27",
+  "asOf": "2026-09-28",
   "inventoryStatus": "fresh_pun_92_of_92_nominatively_reconciled_first_pass_classified",
   "inventoryComplete": false,
   "policy": {
@@ -893,10 +893,17 @@
         "currentPunPresent": true,
         "punAsOf": "2026-09-20"
       },
-      "tariffModel": "Pay Per Use varies AC/DC; exact current direct values exposed in app",
-      "blockingCondition": "extract current first-party Pay Per Use AC/DC values",
+      "tariffModel": "Current first-party terms: VAT-included all-inclusive direct price is displayed on each public station detail; pay-per-use is kWh-based and may differ by connector/type. May-2026 Magis relaunch states AC/DC-dependent pricing. No public numeric direct grid proven.",
+      "blockingCondition": "Exact Magis E-Mobility / chargecloud station-or-connector payload for current IT*ASS EVSE, exposing the current direct Pay Per Use tariff shown before charging. Do not infer from subscription discounts or roaming prices.",
       "confidence": "high",
-      "lastChanged": "2026-09-23"
+      "lastChanged": "2026-09-23",
+      "lastInvestigated": "2026-09-28",
+      "tariffChannel": "direct Magis Pay Per Use via Magis E-Mobility app; chargecloud backend identified; roaming explicitly separate",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 257
+      },
+      "notes": "run312: current Magis app package de.agsmaim.b2c identified as chargecloud GmbH. First-party current terms and FAQ confirm direct Pay Per Use, station/connector-detail pricing, and separation from roaming. Generic numeric-grid search bounded; resume via exact chargecloud guest/app/backend station payload mapped to IT*ASS EVSE."
     },
     {
       "partyId": "GAS",
@@ -3454,6 +3461,10 @@
     {
       "date": "2026-09-27",
       "change": "Run308 reconciled the 9-EVSE run271 delta as IONITY Vicolungo using the authoritative run192 PUN artifact plus the existing IONITY Direct snapshot. IOY coverage rises 300->309/322 rankable; 13 residual EVSE remain fail-closed. Status remains partial."
+    },
+    {
+      "date": "2026-09-28",
+      "change": "Run312 bounded ASS/AGSM AIM-Magis: current app is chargecloud-backed and first-party terms confirm station/connector-specific direct Pay Per Use with roaming separated. 0/257 promoted; resume only from exact Magis/chargecloud station payload mapped to IT*ASS."
     }
   ],
   "evidenceReports": [
@@ -3508,7 +3519,8 @@
     "data/reports/italy_cpo_reconciliation_20260925_run301.json",
     "data/reports/italy_cpo_reconciliation_20260927_run305.json",
     "data/reports/italy_cpo_reconciliation_20260927_run307.json",
-    "data/reports/italy_cpo_reconciliation_20260927_run308.json"
+    "data/reports/italy_cpo_reconciliation_20260927_run308.json",
+    "data/reports/italy_cpo_reconciliation_20260928_run312.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
