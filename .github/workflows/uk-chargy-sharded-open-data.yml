@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        offset: [0,500,1000,1500,2000,2500,3000,3500,4000,4500,5000,5500]
+        start: [0,1500,3000,4500]
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -101,10 +101,12 @@ jobs:
           from pathlib import Path
           from datetime import datetime,timezone
           rows=[]; totals=[]; shard_meta=[]; seen=set()
-          for fn in sorted(glob.glob("artifacts/chargy-locations-*.json")):
+          files=glob.glob("artifacts/chargy-locations-*.json")
+          files.sort(key=lambda fn:int(Path(fn).stem.split("-")[-1]))
+          for fn in files:
               p=json.load(open(fn))
               totals.append(p.get("advertisedTotal"))
-              shard_meta.append({"offset":p["offset"],"rows":len(p["data"])})
+              shard_meta.append({"start":p["start"],"rows":len(p["data"]),"pages":p.get("pages",[])})
               for x in p["data"]:
                   key=str(x.get("id"))
                   if key not in seen:
@@ -112,9 +114,7 @@ jobs:
           tp=json.load(open("artifacts/chargy-tariffs.json"))
           tariffs=tp.get("data",[])
           advertised=max([x for x in totals if isinstance(x,int)],default=None)
-          # Only retain rows inside current upstream total in case the final 500-page extends past it.
-          if advertised is not None and len(rows)>advertised:
-              rows=rows[:advertised]
+          # Segment pages are non-overlapping; advertised total is the authoritative coverage check.
           evses=connectors=0; refs=set(); parties=set(); statuses={}
           for loc in rows:
               if loc.get("party_id"): parties.add(str(loc["party_id"]))
