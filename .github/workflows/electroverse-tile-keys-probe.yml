@@ -1,0 +1,26 @@
+name: TEST NON-TESLA — Electroverse tile keys probe
+on:
+  push:
+    paths:
+      - tests/non-tesla/active/run-electroverse-tile-keys-probe.trigger
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/electroverse_tile_keys_probe.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/tile-keys-probe.json
+          git commit -m "test(electroverse): record tile keys probe" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
