@@ -23,7 +23,7 @@ jobs:
           import json
           f=json.load(open('docs/switzerland-par-finalization-2026-09-28.json'))
           assert f['nationalEvseCount'] > 0
-          assert f['classifiedNoPublicDirectTariffCount'] + f['unresolvedEvseCount'] == f['nationalEvseCount']
+          assert f['classifiedNoPublicDirectTariffCount'] + f.get('freePublicEvseCount',0) + f['unresolvedEvseCount'] == f['nationalEvseCount']
           print(json.dumps(f,indent=2))
           PY
       - name: Persist
