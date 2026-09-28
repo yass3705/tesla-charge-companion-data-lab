@@ -1,10 +1,10 @@
 {
-  "updatedAt": "2026-09-27",
+  "updatedAt": "2026-09-28",
   "purpose": "Human/external-access queue for UK TCC CPOs after autonomous discovery. Use this instead of repeating web investigations.",
   "regulatoryNote": "UK PCPR requires reference and availability data to be publicly available free of charge and machine-readable, without requiring agreement to terms for use. Some operators nevertheless expose access through account/request/onboarding flows; treat these as access-path facts, not as proof the flows satisfy the regulation.",
   "ecoMovementConsolidationNote": "IONITY, evyve, Source EV, ubitricity and bp pulse routes all involve Eco-Movement. A single Eco-Movement technical identity may simplify integration, but operator grants may be scoped; verify scope before assuming one token covers all networks.",
   "counts": {
-    "total": 17
+    "total": 18
   },
   "groups": {
     "request_only": [
@@ -45,6 +45,9 @@
     ],
     "ocpi_bilateral_token": [
       "Pod"
+    ],
+    "support_endpoint_details": [
+      "Smart Charge"
     ]
   },
   "items": [
@@ -217,6 +220,16 @@
       "priority": "P1",
       "blocker": "Eco-Movement PCPR endpoint requires Authorization; anonymous locations/tariffs test returned HTTP 401.",
       "next": "obtain Eco-Movement PCPR token/onboarding if project access is approved."
+    },
+    {
+      "name": "Smart Charge",
+      "status": "blocked_support_endpoint_details",
+      "group": "support_endpoint_details",
+      "humanAction": "Call Smart Charge customer support on 0800 014 2141 and request the Public Charge Point Regulations open-access data endpoint details.",
+      "cost": "free-request",
+      "priority": "P1",
+      "blocker": "Smart Charge's official FAQ states the open-access data endpoint details are supplied by customer support. Targeted public-web search did not surface an indexed endpoint.",
+      "next": "Once endpoint details are supplied, persist them in Data Lab and collect locations/tariffs without repeating discovery."
     }
   ]
 }
