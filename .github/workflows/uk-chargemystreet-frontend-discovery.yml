@@ -1,0 +1,77 @@
+name: UK Charge My Street frontend discovery
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-chargemystreet-frontend-discovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Inspect Charge My Street public pages and assets
+        run: |
+          python - <<'PY'
+          import json,re,urllib.request,urllib.parse
+          from pathlib import Path
+          from datetime import datetime,timezone
+          starts=["https://chargemystreet.co.uk/","https://chargemystreet.co.uk/map"]
+          ua="Mozilla/5.0 Chrome/140"
+          def get(u):
+              req=urllib.request.Request(u,headers={"User-Agent":ua,"Accept":"*/*"})
+              with urllib.request.urlopen(req,timeout=75) as r:
+                  return r.read(8000000).decode("utf-8","replace"),r.status,r.headers.get("Content-Type")
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"network":"Charge My Street","pages":[],"assets":[],"findings":[]}
+          texts=[]
+          assets=[]
+          for start in starts:
+              try:
+                  html,st,ct=get(start); texts.append((start,html)); out["pages"].append({"url":start,"status":st,"contentType":ct,"bytes":len(html.encode())})
+                  for s in re.findall(r'(?:src|href)="([^"]+)"',html,re.I):
+                      u=urllib.parse.urljoin(start,s)
+                      if (re.search(r'(?i)\.(?:js|mjs)(?:\?|$)',u) or "fuuse" in u.lower() or "map" in u.lower()) and u not in assets:
+                          assets.append(u)
+              except Exception as e:
+                  out["pages"].append({"url":start,"error":f"{type(e).__name__}: {e}"})
+          for u in assets[:100]:
+              row={"url":u}
+              try:
+                  txt,st,ct=get(u); row.update({"status":st,"contentType":ct,"bytes":len(txt.encode())}); texts.append((u,txt))
+              except Exception as e: row["error"]=f"{type(e).__name__}: {e}"
+              out["assets"].append(row)
+          seen=set()
+          for source,txt in texts:
+              # Fuuse ODA UUID URLs and generic URLs.
+              for m in re.finditer(r'https?://[^"\\s<>]+',txt,re.I):
+                  u=m.group(0).replace("\\/","/")
+                  if any(k in u.lower() for k in ("fuuse","api","map","charge","location")):
+                      rec={"source":source,"url":u[:2000]}
+                      k=json.dumps(rec,sort_keys=True)
+                      if k not in seen: seen.add(k); out["findings"].append(rec)
+              for m in re.finditer(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',txt,re.I):
+                  rec={"source":source,"uuid":m.group(0),"context":txt[max(0,m.start()-300):min(len(txt),m.end()+500)]}
+                  k=json.dumps(rec,sort_keys=True)
+                  if k not in seen: seen.add(k); out["findings"].append(rec)
+          Path("reports/uk").mkdir(parents=True,exist_ok=True)
+          Path("reports/uk/chargemystreet-frontend-discovery-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({"pages":len(out["pages"]),"assets":len(out["assets"]),"findings":len(out["findings"])},indent=2))
+          PY
+      - name: Publish
+        if: always()
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/chargemystreet-frontend-discovery-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): inspect Charge My Street frontend [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do git pull --rebase origin main; git push origin HEAD:main && exit 0; sleep $((attempt*2)); done
+          exit 1
