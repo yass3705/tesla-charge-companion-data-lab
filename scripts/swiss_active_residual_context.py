@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, urllib.request, collections
+import json, gzip, urllib.request, collections
 from pathlib import Path
 from datetime import datetime, timezone
 URL="https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json"
