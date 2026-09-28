@@ -1,0 +1,80 @@
+name: UK Charge My Street detail audit
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-charge-my-street-detail-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract map detail links and tariff text
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import re,json,urllib.request,html,urllib.parse,time
+          from pathlib import Path
+          from datetime import datetime,timezone
+          page='https://chargemystreet.co.uk/map'
+          req=urllib.request.Request(page,headers={'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/9'})
+          with urllib.request.urlopen(req,timeout=60) as r: raw=r.read().decode('utf-8','replace')
+          m=re.search(r'<script type="application/json" data-drupal-selector="drupal-settings-json">(.*?)</script>',raw,re.S)
+          settings=json.loads(html.unescape(m.group(1)))
+          rows=[]
+          def walk(x):
+              if isinstance(x,dict) and ('marker' in x or 'popup' in x): rows.append(x)
+              elif isinstance(x,list):
+                  for v in x: walk(v)
+              elif isinstance(x,dict):
+                  for v in x.values(): walk(v)
+          walk(settings.get('mapData') or [])
+          links=[]
+          for x in rows:
+              popup=html.unescape(str(x.get('popup') or ''))
+              for href in re.findall(r'href=["\']([^"\']+)["\']',popup,re.I):
+                  u=urllib.parse.urljoin(page,href)
+                  if u not in links: links.append(u)
+          details=[]
+          for i,u in enumerate(links):
+              item={'url':u}
+              try:
+                  req=urllib.request.Request(u,headers={'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/9'})
+                  with urllib.request.urlopen(req,timeout=45) as r: txt=r.read().decode('utf-8','replace')
+                  plain=html.unescape(re.sub(r'<[^>]+>',' ',txt)); plain=re.sub(r'\s+',' ',plain)
+                  item['priceMatches']=list(dict.fromkeys(re.findall(r'(?i)(?:£\s*)?\d+(?:\.\d+)?\s*p(?:ence)?\s*(?:/|per)?\s*kwh|£\s*0?\.\d+\s*(?:/|per)?\s*kwh',plain)))
+                  # Keep contexts around price/tariff/solar terms only.
+                  ctx=[]
+                  for mm in re.finditer(r'(?i)(tariff|price|p/kwh|per kwh|solar|charge while you sleep)',plain):
+                      sn=plain[max(0,mm.start()-160):min(len(plain),mm.end()+320)]
+                      if sn not in ctx: ctx.append(sn)
+                      if len(ctx)>=8: break
+                  item['contexts']=ctx
+              except Exception as e: item['error']=f'{type(e).__name__}: {e}'
+              details.append(item)
+              time.sleep(.08)
+          out={'country':'GB','network':'Charge My Street','retrievedAt':datetime.now(timezone.utc).isoformat(),'mapRows':len(rows),'detailLinks':len(links),'details':details}
+          Path('reports/uk/charge-my-street-detail-audit-latest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'mapRows':len(rows),'detailLinks':len(links),'withPrices':sum(bool(x.get('priceMatches')) for x in details),'errors':sum('error' in x for x in details),'samples':[x for x in details if x.get('priceMatches')][:10]},ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/charge-my-street-detail-audit-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): audit Charge My Street detail tariffs [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
