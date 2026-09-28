@@ -178,10 +178,14 @@
     },
     {
       "name": "Applegreen Fast Charge",
-      "status": "partial_app_backend_pending",
-      "access": "no_direct_endpoint_found_first_pass",
-      "evidence": "Applegreen Electric UK uses a Driivz-backed mobile app with real-time UK/IE station locations and availability. Public web/search surfaces confirm the live map/app but do not expose a directly callable open-data endpoint.",
-      "next": "Recover Driivz/app endpoint via static app/backend inspection when available; no tariff extrapolation from sample sites."
+      "status": "complete",
+      "access": "anonymous_driivz_driver_portal_api",
+      "evidence": "Validated anonymous Driivz driver-portal collection: 261 UK stations across 33 sites, 534 sockets, 534/534 sockets priced, zero detail failures. All UK socket prices currently resolve to £0.83/kWh.",
+      "next": "validated; refresh anonymous driver portal station bounds + detail pricing on schedule.",
+      "locationsEndpoint": "https://driver.applegreenelectric.com/stationFacade/findStationsInBounds",
+      "detailEndpoint": "https://driver.applegreenelectric.com/stationFacade/findStationById",
+      "dataset": "data/national/uk_applegreen_public_stations.json.gz",
+      "report": "reports/uk/applegreen-public-stations-latest.json"
     },
     {
       "name": "bp pulse",
@@ -2225,7 +2229,8 @@
       "IONITY UK",
       "3ti Energy Hubs",
       "Osprey Charging",
-      "Qwello"
+      "Qwello",
+      "Applegreen Electric"
     ],
     "externalAccessBlocked": [
       {
@@ -2683,6 +2688,16 @@
         }
       },
       "report": "reports/uk/charge-my-street-map-latest.json"
+    },
+    "applegreenFinalization": {
+      "state": "complete",
+      "ukStations": 261,
+      "ukSites": 33,
+      "ukSockets": 534,
+      "pricedSockets": 534,
+      "detailFailures": 0,
+      "currentGbpPerKwh": 0.83,
+      "report": "reports/uk/applegreen-public-stations-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
