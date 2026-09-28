@@ -60,12 +60,21 @@ sources=[
 ("MMN MOVE","data/switzerland/mmn-move-cpo-tariffs.json"),
 ("eCarUp exact","data/switzerland/ecarup-owner-direct-tariffs.json"),
 ("eCarUp coordinate safe","data/switzerland/ecarup-owner-coordinate-safe-overlay.json"),
+("Swisscharge","data/swisscharge/swisscharge-tariffs.json"),
+("ewz","data/switzerland/ewz-direct-tariffs.json"),
+("Energie 360","data/switzerland/energie360-direct-tariffs.json"),
+("Electra","data/switzerland/electra-direct-tariffs.json"),
+("MOVE","data/switzerland/move-direct-tariffs.json"),
+("Energiedienst CH","data/switzerland/edh-direct-tariffs.json"),
+("Energiedienst DE","data/switzerland/de-edh-direct-tariffs.json"),
 ]
 classifications=[
 ("Partino restricted","data/switzerland/par-partino-restricted-direct-classification.json"),
 ("50five restricted","data/switzerland/505-restricted-direct-classification.json"),
 ("Porsche restricted","data/switzerland/911-restricted-direct-classification.json"),
 ("BCK restricted","data/switzerland/bck-restricted-direct-classification.json"),
+("IWB restricted","docs/switzerland-iwb-owner-reconciliation-2026-09-28.json"),
+("Swisscharge restricted","docs/switzerland-swisscharge-prefix-closeout-2026-09-28.json"),
 ]
 
 def ids_from(obj):
@@ -141,9 +150,10 @@ for label,fp in sources:
     except Exception:
         source_stats.append({"label":label,"file":fp,"status":"invalid_json","matchedEvseCount":0}); continue
     seen=set()
+    trusted_top_level_evses=isinstance(obj,dict) and isinstance(obj.get("evses"),list)
     for eid,node in source_rows(obj):
         if not isinstance(eid,str) or eid not in evses: continue
-        if not node_has_real_tariff(node): continue
+        if not trusted_top_level_evses and not node_has_real_tariff(node): continue
         evses[eid]["directTariffs"].append({"sourceLabel":label,"sourceFile":fp,"data":node})
         evses[eid]["directTariffStatus"]="resolved"
         seen.add(eid)
