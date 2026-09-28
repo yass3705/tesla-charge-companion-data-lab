@@ -169,7 +169,7 @@ def main():
     req=urllib.request.Request(NATIONAL_URL,headers={"User-Agent":"TCC-V9-Switzerland/1.0","Accept":"application/json"})
     with urllib.request.urlopen(req,timeout=120) as r:
         raw=r.read()
-    if len(raw)>=2 and raw[:2]==b"\\x1f\\x8b":
+    if len(raw)>=2 and raw[:2]==bytes([0x1f,0x8b]):
         raw=gzip.decompress(raw)
     national_payload=json.loads(raw.decode("utf-8"))
     national=extract_national(national_payload)
