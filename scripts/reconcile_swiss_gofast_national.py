@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json,gzip,urllib.request,math,re
+import json,gzip,urllib.request,math,re,unicodedata
 from pathlib import Path
 from datetime import datetime,timezone
 
@@ -30,6 +30,10 @@ def names(rec):
  if isinstance(n,list): return " ".join(str(x.get("value") or "") for x in n if isinstance(x,dict))
  if isinstance(n,dict): return str(n.get("value") or "")
  return str(n or "")
+def normtext(s):
+ s=unicodedata.normalize("NFKD",str(s or "")).encode("ascii","ignore").decode("ascii").lower()
+ return re.sub(r"[^a-z0-9]+","",s)
+
 def parse_price(s):
  if not isinstance(s,str): return None
  m=re.search(r"([0-9]+(?:[.,][0-9]+)?)\s*CHF\s*/\s*kWh",s,re.I)
@@ -75,19 +79,24 @@ for sid,st in stations.items():
  ranked=sorted((dist(st["coord"],o["coord"]),o) for o in official)
  if not ranked:
   unresolved.append({"stationId":sid,"evseIds":st["evses"],"reason":"no_official_station"});continue
- d,o=ranked[0]
- d2=ranked[1][0] if len(ranked)>1 else 999999
- # Fail closed: accept a unique physical match within 100 m only when the next official candidate is at least 100 m farther away.
- # This tolerates map/geocoder offsets without allowing ambiguous nearby GOFAST sites.
- if d<=100 and d2-d>=100:
+ exact_name=[o for o in official if normtext(o["title"])==normtext(st.get("name")) and normtext(st.get("name"))]
+ if len(exact_name)==1:
+  o=exact_name[0]; d=dist(st["coord"],o["coord"]); d2=next((dd for dd,oo in ranked if oo["id"]!=o["id"]),999999)
+  match_reason="exact_normalized_station_name"
+ else:
+  d,o=ranked[0]
+  d2=ranked[1][0] if len(ranked)>1 else 999999
+  match_reason="unique_safe_proximity"
+ # Fail closed: exact normalized official station title, or unique physical match within 100 m with the next candidate >=100 m farther.
+ if len(exact_name)==1 or (d<=100 and d2-d>=100):
   used.add(o["id"])
   extra=parse_block(o["details"])
   for eid in st["evses"]:
-   resolved.append({"evseId":eid,"chargingStationId":sid,"officialStationId":o["id"],"officialStationName":o["title"],"distanceMeters":round(d,2),"currency":"CHF","pricePerKwh":o["pricePerKwh"],**extra,"source":"GOFAST official public web-app station feed"})
+   resolved.append({"evseId":eid,"chargingStationId":sid,"officialStationId":o["id"],"officialStationName":o["title"],"distanceMeters":round(d,2),"currency":"CHF","pricePerKwh":o["pricePerKwh"],**extra,"matchReason":match_reason,"source":"GOFAST official public web-app station feed"})
  else:
   unresolved.append({"stationId":sid,"evseIds":st["evses"],"nearestDistanceMeters":round(d,2),"secondDistanceMeters":round(d2,2),"nationalName":st.get("name"),"nationalAddress":st.get("address"),"nearestOfficial":o["title"],"reason":"no_unique_safe_official_match"})
 
-out={"schemaVersion":1,"country":"CH","cpo":"GOFAST","operatorId":"CH*GFT","generatedAt":datetime.now(timezone.utc).isoformat(),"nationalStationCount":len(stations),"nationalEvseCount":sum(len(s["evses"]) for s in stations.values()),"pricedEvseCount":len(resolved),"unresolvedEvseCount":sum(len(x["evseIds"]) for x in unresolved),"matchedOfficialStationCount":len(used),"policy":"Exact current CH*GFT owner scope. Match to official GOFAST station feed only when nearest official station is <=100m and at least 100m better than next candidate. Station-specific official price only; no cross-station extrapolation.","evses":resolved,"unresolved":unresolved}
+out={"schemaVersion":1,"country":"CH","cpo":"GOFAST","operatorId":"CH*GFT","generatedAt":datetime.now(timezone.utc).isoformat(),"nationalStationCount":len(stations),"nationalEvseCount":sum(len(s["evses"]) for s in stations.values()),"pricedEvseCount":len(resolved),"unresolvedEvseCount":sum(len(x["evseIds"]) for x in unresolved),"matchedOfficialStationCount":len(used),"policy":"Exact current CH*GFT owner scope. Match to official GOFAST station feed by unique exact normalized station title, otherwise only when nearest official station is <=100m and at least 100m better than next candidate. Station-specific official price only; no cross-station extrapolation.","evses":resolved,"unresolved":unresolved}
 OUT.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 DOC.write_text(json.dumps({k:v for k,v in out.items() if k not in ("evses","unresolved")}|{"unresolvedStations":unresolved},ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps({k:v for k,v in out.items() if k not in ("evses","unresolved")},indent=2))
