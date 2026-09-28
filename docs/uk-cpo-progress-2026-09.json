@@ -254,13 +254,13 @@
     },
     {
       "name": "Believ",
-      "status": "partial_pricing",
-      "access": "anonymous_public_map_plus_free_api_account_for_full_api",
+      "status": "partial_pricing_external_access",
+      "access": "anonymous_next_server_actions_plus_free_api_account_for_pricing",
       "locationsEndpoint": "https://charge.believ.com/map",
-      "evidence": "Believ public Next.js map yields 500 locations and 1620 connectors in server-rendered data without login. Sampling 50 public detail routes found no tariff payload. Full EVSE API at api.believ.com requires a free account.",
-      "next": "Keep public-map inventory. Resolve pricing via public portal internals if found; otherwise free Believ API account is the remaining access step.",
+      "evidence": "Believ public portal exposes anonymous Next.js read-only server actions. Data Lab validated getLocations (706 count in live action response), getLocation and getChargingStationsByLocation with detailed connector status/power. No tariff/price fields are returned by these anonymous actions or public map payloads.",
+      "next": "Inventory/status surface is bounded and usable. Pricing remains external-access only unless Believ later exposes it publicly; free Believ API account is the remaining step. Do not repeat public-route discovery.",
       "dataset": "data/national/uk_believ_public_map.json.gz",
-      "report": "reports/uk/believ-public-map-latest.json"
+      "report": "reports/uk/believ-server-action-probe-latest.json"
     },
     {
       "name": "Monta",
@@ -2624,6 +2624,17 @@
       "blocker": "free Weev Open Data API key required",
       "evidenceReport": "reports/uk/weev-final-keyless-audit-latest.json",
       "requestEndpoint": "https://weev.ie/open-data"
+    },
+    "believBound": {
+      "state": "inventory_status_public_pricing_external",
+      "publicActions": [
+        "getLocations",
+        "getLocation",
+        "getChargingStationsByLocation"
+      ],
+      "liveLocationCountObserved": 706,
+      "pricingPubliclyObserved": false,
+      "report": "reports/uk/believ-server-action-probe-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
