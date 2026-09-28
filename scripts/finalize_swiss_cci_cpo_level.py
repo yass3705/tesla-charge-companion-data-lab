@@ -90,6 +90,6 @@ OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+"\n",encoding="ut
 final={"schemaVersion":1,"country":"CH","cpo":"MOVE Mobility","operatorId":"CH*CCI","status":"complete" if not unresolved else "partial","updatedAt":now,
 "nationalEvseCount":len(current),"pricedEvseCount":len(rows),"unresolvedEvseCount":len(unresolved),
 "method":"Current national CH*CCI EVSE-prefix scope + explicit Move non-roaming CPO-level tariff schedules from current Swiss tariff source, exact AC/DC matching",
-"policy":payload["policy"],"productionSource":str(OUT)}
+"policy":payload["policy"],"unresolvedSample":[{"evseId":x["evseId"],"reason":x["reason"],"plugs":x.get("nationalRecord",{}).get("Plugs"),"facilities":x.get("nationalRecord",{}).get("ChargingFacilities")} for x in unresolved[:20]],"productionSource":str(OUT)}
 DOC.write_text(json.dumps(final,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps(final,ensure_ascii=False,indent=2))
