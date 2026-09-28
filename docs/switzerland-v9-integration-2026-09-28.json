@@ -1,661 +1,323 @@
 {
   "schemaVersion": 1,
-  "dataset": "tcc-v9-switzerland",
-  "generatedAt": "2026-09-28T18:10:30.130195+00:00",
   "country": "CH",
-  "nationalSource": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
-  "policy": {
-    "stationVisibility": "Every EVSE from the current Swiss national source remains in the bundle regardless of CPO complete/blocked/partial status.",
-    "tariffOverlay": "Only validated deterministic direct-tariff production artifacts are overlaid. Missing tariff never removes an EVSE.",
-    "blockedCpoHandling": "Blocked/partial is CPO-level research metadata only; resolved EVSE prices inside such CPOs remain publishable.",
-    "otherPriceLayers": "Electra, Electroverse and subscription-adjusted prices are intentionally separate runtime overlays and are not replaced by this direct-CPO bundle."
-  },
-  "counts": {
+  "dataset": "switzerland-public-charging-v9",
+  "generatedAt": "2026-09-28T18:12:09.919691+00:00",
+  "output": "data/national/switzerland_public_charging_v9.json",
+  "summary": {
     "nationalEvseCount": 19464,
-    "directTariffResolvedEvseCount": 16190,
-    "noPublicDirectTariffEvseCount": 341,
-    "directTariffUnresolvedEvseCount": 2933
+    "directPricedEvseCount": 8387,
+    "classifiedNoPublicDirectTariffCount": 294,
+    "directUnresolvedEvseCount": 10783,
+    "directResolvedEvseCount": 8681,
+    "operatorStatusCounts": {
+      "complete": 29,
+      "blocked": 10,
+      "handled-separately": 1
+    }
   },
-  "sourceStats": [
+  "policy": {
+    "joinKey": "punctuation-insensitive normalized EVSE ID, only from validated production sources",
+    "sourcePrecedence": "lower numeric priority wins",
+    "noCrossStationExtrapolation": true,
+    "unresolvedPriceKeepsEvseVisible": true,
+    "blockedCpoDoesNotHideResolvedEvses": true,
+    "roamingLayersSeparate": [
+      "Electra",
+      "Electroverse"
+    ],
+    "teslaHandledSeparately": true
+  },
+  "sourceReport": [
     {
-      "label": "IONITY",
-      "file": "data/switzerland/ionity-official-national-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 168
+      "path": "data/switzerland/ionity-official-national-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 168
     },
     {
-      "label": "Migrol",
-      "file": "data/switzerland/migrol-official-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 1031
+      "path": "data/switzerland/lidl-official-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 0
     },
     {
-      "label": "Shell evpass",
-      "file": "data/switzerland/shell-evpass-official-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 1171
+      "path": "data/switzerland/migrol-official-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 1031
     },
     {
-      "label": "Lidl",
-      "file": "data/switzerland/lidl-official-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 173
+      "path": "data/switzerland/shell-evpass-official-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 1171
     },
     {
-      "label": "Plenitude",
-      "file": "data/switzerland/plenitude-official-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 180
+      "path": "data/switzerland/plenitude-official-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 189
     },
     {
-      "label": "PowerUp",
-      "file": "data/switzerland/powerup-monta-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 235
+      "path": "data/switzerland/saascharge-official-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 222
     },
     {
-      "label": "AGROLA",
-      "file": "data/switzerland/agr-monta-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 17
+      "path": "data/switzerland/ail-emoti-official-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 0
     },
     {
-      "label": "AIL emoti",
-      "file": "data/switzerland/ail-emoti-official-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 21
+      "path": "data/switzerland/autosense-amag-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 0
     },
     {
-      "label": "autoSense AMAG",
-      "file": "data/switzerland/autosense-amag-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 10
+      "path": "data/switzerland/fastned-official-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 0
     },
     {
-      "label": "Saascharge",
-      "file": "data/switzerland/saascharge-official-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 222
+      "path": "data/switzerland/tae-matterhorn-terminal-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 0
     },
     {
-      "label": "Fastned",
-      "file": "data/switzerland/fastned-official-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 78
+      "path": "data/switzerland/cci-move-cpo-tariffs-national.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 1876
     },
     {
-      "label": "EWD",
-      "file": "data/switzerland/ewd-official-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 8
+      "path": "data/switzerland/soc-move-cpo-tariffs-national.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 144
     },
     {
-      "label": "EWO eCarUp",
-      "file": "data/switzerland/ewo-ecarup-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 7
+      "path": "data/switzerland/iwb-official-basel-overlay.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 31
     },
     {
-      "label": "EBS eCarUp",
-      "file": "data/switzerland/ebs-ecarup-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 5
+      "path": "data/switzerland/iwb-direct-tariffs-second-pass.json",
+      "priority": 20,
+      "status": "ok",
+      "candidateEvseCount": 0
     },
     {
-      "label": "CHEVP evpass",
-      "file": "data/switzerland/chevp-evpass-official-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 40
+      "path": "data/switzerland/ecarup-owner-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 3246
     },
     {
-      "label": "TAE Matterhorn",
-      "file": "data/switzerland/tae-matterhorn-terminal-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 16
+      "path": "data/switzerland/ecarup-owner-coordinate-safe-overlay.json",
+      "priority": 20,
+      "status": "ok",
+      "candidateEvseCount": 0
     },
     {
-      "label": "IWB Basel official",
-      "file": "data/switzerland/iwb-official-basel-overlay.json",
-      "status": "loaded",
-      "matchedEvseCount": 31
+      "path": "data/switzerland/ewo-ecarup-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 0
     },
     {
-      "label": "CPI",
-      "file": "data/switzerland/cpi-current-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 35
+      "path": "data/switzerland/ebs-ecarup-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 5
     },
     {
-      "label": "CCI MOVE",
-      "file": "data/switzerland/cci-move-cpo-tariffs-national.json",
-      "status": "loaded",
-      "matchedEvseCount": 1876
+      "path": "data/switzerland/powerup-monta-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 235
     },
     {
-      "label": "SOC MOVE",
-      "file": "data/switzerland/soc-move-cpo-tariffs-national.json",
-      "status": "loaded",
-      "matchedEvseCount": 144
+      "path": "data/switzerland/agr-monta-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 17
     },
     {
-      "label": "MMN MOVE",
-      "file": "data/switzerland/mmn-move-cpo-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 6
+      "path": "data/switzerland/ewd-official-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 8
     },
     {
-      "label": "eCarUp exact",
-      "file": "data/switzerland/ecarup-owner-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 3246
+      "path": "data/switzerland/ewz-direct-tariffs.json",
+      "priority": 20,
+      "status": "ok",
+      "candidateEvseCount": 0
     },
     {
-      "label": "eCarUp coordinate safe",
-      "file": "data/switzerland/ecarup-owner-coordinate-safe-overlay.json",
-      "status": "loaded",
-      "matchedEvseCount": 3224
+      "path": "data/switzerland/energie360-direct-tariffs.json",
+      "priority": 20,
+      "status": "ok",
+      "candidateEvseCount": 0
     },
     {
-      "label": "Swisscharge",
-      "file": "data/swisscharge/swisscharge-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 2382
+      "path": "data/switzerland/electra-direct-tariffs.json",
+      "priority": 20,
+      "status": "ok",
+      "candidateEvseCount": 0
     },
     {
-      "label": "ewz",
-      "file": "data/switzerland/ewz-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 414
+      "path": "data/switzerland/move-direct-tariffs.json",
+      "priority": 20,
+      "status": "invalid_json",
+      "error": "Expecting value: line 1 column 1 (char 0)"
     },
     {
-      "label": "Energie 360",
-      "file": "data/switzerland/energie360-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 811
+      "path": "data/switzerland/mmn-move-cpo-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 6
     },
     {
-      "label": "Electra",
-      "file": "data/switzerland/electra-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 118
+      "path": "data/switzerland/cpi-current-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 35
     },
     {
-      "label": "MOVE",
-      "file": "data/switzerland/move-direct-tariffs.json",
-      "status": "missing_or_empty",
-      "matchedEvseCount": 0
+      "path": "data/switzerland/chevp-evpass-official-direct-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 0
     },
     {
-      "label": "Energiedienst CH",
-      "file": "data/switzerland/edh-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 16
+      "path": "data/switzerland/edh-direct-tariffs.json",
+      "priority": 20,
+      "status": "ok",
+      "candidateEvseCount": 0
     },
     {
-      "label": "Energiedienst DE",
-      "file": "data/switzerland/de-edh-direct-tariffs.json",
-      "status": "loaded",
-      "matchedEvseCount": 2
+      "path": "data/switzerland/de-edh-direct-tariffs.json",
+      "priority": 20,
+      "status": "ok",
+      "candidateEvseCount": 0
     },
     {
-      "label": "ewz second pass",
-      "file": "data/switzerland/ewz-direct-tariffs-second-pass.json",
-      "status": "loaded",
-      "matchedEvseCount": 394
+      "path": "data/switzerland/505-restricted-direct-classification.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 26
     },
     {
-      "label": "Energie 360 second pass",
-      "file": "data/switzerland/energie360-direct-tariffs-second-pass.json",
-      "status": "loaded",
-      "matchedEvseCount": 818
+      "path": "data/switzerland/911-restricted-direct-classification.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 53
     },
     {
-      "label": "Electra second pass",
-      "file": "data/switzerland/electra-direct-tariffs-second-pass.json",
-      "status": "loaded",
-      "matchedEvseCount": 122
+      "path": "data/switzerland/bck-restricted-direct-classification.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 5
     },
     {
-      "label": "MOVE second pass",
-      "file": "data/switzerland/move-direct-tariffs-second-pass.json",
-      "status": "missing_or_empty",
-      "matchedEvseCount": 0
+      "path": "data/switzerland/par-partino-restricted-direct-classification.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 213
     },
     {
-      "label": "IWB second pass",
-      "file": "data/switzerland/iwb-direct-tariffs-second-pass.json",
-      "status": "loaded",
-      "matchedEvseCount": 409
+      "path": "data/swisscharge/swisscharge-tariffs.json",
+      "priority": 10,
+      "status": "ok",
+      "candidateEvseCount": 0
+    },
+    {
+      "path": "data/gofast/ev_charger_stations.json",
+      "priority": 20,
+      "status": "ok",
+      "candidateEvseCount": 0
     }
   ],
-  "cpoResearchStatus": {
-    "CH*CCI": {
-      "operatorId": "CH*CCI",
-      "evseCount": 1876,
-      "stationCount": 1876,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "MOVE Mobility (CH*CCI)",
-      "note": "1876/1876 current CH*CCI EVSEs priced from explicit Move non-roaming CPO-level AC/DC tariff schedules; prices_per_station_available=false, exact EVSE AC/DC matching, no station extrapolation.",
-      "evidence": "docs/switzerland-cci-finalization-2026-09-28.json"
-    },
-    "CH*SUI": {
+  "usedSourceCounts": {
+    "data/switzerland/cci-move-cpo-tariffs-national.json": 1876,
+    "data/switzerland/mmn-move-cpo-tariffs.json": 6,
+    "data/switzerland/soc-move-cpo-tariffs-national.json": 144,
+    "data/switzerland/ecarup-owner-direct-tariffs.json": 3246,
+    "data/switzerland/ebs-ecarup-direct-tariffs.json": 5,
+    "data/switzerland/ewd-official-direct-tariffs.json": 8,
+    "data/switzerland/migrol-official-direct-tariffs.json": 1031,
+    "data/switzerland/saascharge-official-direct-tariffs.json": 222,
+    "data/switzerland/cpi-current-direct-tariffs.json": 35,
+    "data/switzerland/shell-evpass-official-direct-tariffs.json": 1171,
+    "data/switzerland/powerup-monta-direct-tariffs.json": 235,
+    "data/switzerland/agr-monta-direct-tariffs.json": 17,
+    "data/switzerland/911-restricted-direct-classification.json": 53,
+    "data/switzerland/plenitude-official-direct-tariffs.json": 189,
+    "data/switzerland/par-partino-restricted-direct-classification.json": 213,
+    "data/switzerland/ionity-official-national-direct-tariffs.json": 168,
+    "data/switzerland/iwb-official-basel-overlay.json": 31,
+    "data/switzerland/bck-restricted-direct-classification.json": 5,
+    "data/switzerland/505-restricted-direct-classification.json": 26
+  },
+  "blockedOperators": [
+    {
       "operatorId": "CH*SUI",
-      "evseCount": 2445,
-      "stationCount": 832,
-      "operatorNames": [],
-      "status": "blocked",
       "name": "Swisscharge",
-      "evidence": "docs/switzerland-swisscharge-prefix-closeout-2026-09-28.json",
-      "setAside": false,
-      "note": "2401/2445. 44 public EVSEs still have no deterministic tariff result after direct Swisscharge endpoint retries. Swisscharge officially states that station owners set prices and current end-customer prices are shown per station in the app/adhoc flow.",
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Recover the current adhoc/app backend for the 44 physical references or obtain their station-specific prices."
+      "note": "2401/2445. 44 public EVSEs still have no deterministic tariff result after direct Swisscharge endpoint retries. Swisscharge officially states that station owners set prices and current end-customer prices are shown per station in the app/adhoc flow."
     },
-    "CH*MIG": {
-      "operatorId": "CH*MIG",
-      "evseCount": 1031,
-      "stationCount": 608,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "Migrol / M-Charge",
-      "evidence": "docs/switzerland-migrol-finalization-2026-09-28.json",
-      "note": "Official Migrol national M-Charge power-tier tariff reconciled to current OICP power: 1031/1031 EVSE priced."
-    },
-    "CH*SHE": {
-      "operatorId": "CH*SHE",
-      "evseCount": 1171,
-      "stationCount": 456,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "Shell Recharge / evpass",
-      "evidence": "docs/switzerland-shell-finalization-2026-09-28.json",
-      "note": "1171/1171 current national EVSEs priced from evpass official Switzerland tariff tiers, using each EVSE's own national-feed power; no roaming or cross-station extrapolation."
-    },
-    "CH*TSL": {
-      "operatorId": "CH*TSL",
-      "evseCount": 444,
-      "stationCount": 444,
-      "operatorNames": [],
-      "status": "handled-separately",
-      "name": "Tesla Supercharger",
-      "setAside": false,
-      "note": "Tesla scope is handled by the dedicated Tesla weekly source/process, not the CPO direct-tariff queue."
-    },
-    "CH*CCC": {
-      "operatorId": "CH*CCC",
-      "evseCount": 416,
-      "stationCount": 416,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "MOVE",
-      "evidence": "docs/switzerland-move-second-pass-2026-09-27.json"
-    },
-    "CH*EPO": {
+    {
       "operatorId": "CH*EPO",
-      "evseCount": 324,
-      "stationCount": 324,
-      "operatorNames": [],
-      "status": "blocked",
       "name": "EPO",
-      "evidence": "docs/switzerland-epo-first-pass-2026-09-28.json",
-      "note": "0/324 deterministic direct prices. Eponet explicitly lets each infrastructure operator define the QR/ad-hoc charging profile, including start, kWh and blocking fees. Current prices are only exposed through the charger-specific QR flow; no public searchable tariff endpoint was recovered.",
-      "setAside": false,
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Obtain Eponet charger IDs/QR URLs or a public Eponet Go/QR backend endpoint that exposes the current station prices."
+      "note": "0/324 deterministic direct prices. Eponet explicitly lets each infrastructure operator define the QR/ad-hoc charging profile, including start, kWh and blocking fees. Current prices are only exposed through the charger-specific QR flow; no public searchable tariff endpoint was recovered."
     },
-    "CH*360": {
-      "operatorId": "CH*360",
-      "evseCount": 937,
-      "stationCount": 285,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "Energie 360°",
-      "evidence": "docs/switzerland-energie360-finalization-2026-09-28.json"
-    },
-    "CH*POW": {
-      "operatorId": "CH*POW",
-      "evseCount": 235,
-      "stationCount": 235,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "PowerUp by AGROLA",
-      "evidence": "docs/switzerland-powerup-finalization-2026-09-28.json",
-      "note": "235/235 current national EVSEs priced. 233 from Monta public CPO pricing export; 2 residual Laupen EVSEs closed by direct Monta public payment pages. No extrapolation."
-    },
-    "CH*IWB": {
+    {
       "operatorId": "CH*IWB",
-      "evseCount": 472,
-      "stationCount": 217,
-      "operatorNames": [],
-      "status": "blocked",
       "name": "IWB",
-      "evidence": "docs/switzerland-iwb-finalization-2026-09-28.json",
-      "note": "466/472. Six public Basel-Landschaft EVSEs remain. IWB publishes deterministic ad-hoc tariffs for Allmend Basel-Stadt, but not a tariff that can safely be extended to the residual sites in Münchenstein, Pratteln and Muttenz.",
-      "setAside": false,
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Obtain station-specific IWB/Swisscharge prices for the six Basel-Landschaft residual EVSEs."
+      "note": "466/472. Six public Basel-Landschaft EVSEs remain. IWB publishes deterministic ad-hoc tariffs for Allmend Basel-Stadt, but not a tariff that can safely be extended to the residual sites in Münchenstein, Pratteln and Muttenz."
     },
-    "CH*SCH": {
-      "operatorId": "CH*SCH",
-      "evseCount": 226,
-      "stationCount": 175,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "Saascharge",
-      "evidence": "docs/switzerland-saascharge-finalization-2026-09-28.json",
-      "note": "226/226 current national EVSEs priced from Saascharge published Switzerland Gireve tariff bands by exact EVSE power/type; no extrapolation."
-    },
-    "CH*AVI": {
+    {
       "operatorId": "CH*AVI",
-      "evseCount": 583,
-      "stationCount": 171,
-      "operatorNames": [],
-      "status": "blocked",
       "name": "AVIA",
-      "evidence": "docs/switzerland-avia-first-pass-2026-09-28.json",
-      "note": "0/583 deterministic direct prices. AVIA states there is no uniform standard price; price varies by charge point/provider/speed and is shown per point in the AVIA VOLT Suisse app. XAPK reverse engineering identified the Deftpower backend, tenant and APIM-protected route, but the required subscription key/runtime request is not available from the static package.",
-      "setAside": false,
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Capture one AVIA VOLT app request with Charles (headers + route, no personal credentials) or otherwise recover the APIM subscription key/runtime guest request."
+      "note": "0/583 deterministic direct prices. AVIA states there is no uniform standard price; price varies by charge point/provider/speed and is shown per point in the AVIA VOLT Suisse app. XAPK reverse engineering identified the Deftpower backend, tenant and APIM-protected route, but the required subscription key/runtime request is not available from the static package."
     },
-    "CH*SOC": {
-      "operatorId": "CH*SOC",
-      "evseCount": 144,
-      "stationCount": 144,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "CH*SOC",
-      "evidence": "docs/switzerland-soc-finalization-2026-09-28.json",
-      "note": "144/144 current CH*SOC EVSEs priced from explicit Move non-roaming CPO-level AC/DC tariff schedules, exact EVSE AC/DC matching; no station-specific extrapolation."
-    },
-    "CH*GFT": {
-      "operatorId": "CH*GFT",
-      "evseCount": 563,
-      "stationCount": 99,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "GOFAST",
-      "evidence": "docs/switzerland-gofast-finalization-2026-09-27.json"
-    },
-    "CH*LDL": {
-      "operatorId": "CH*LDL",
-      "evseCount": 173,
-      "stationCount": 58,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "Lidl",
-      "evidence": "docs/switzerland-lidl-finalization-2026-09-28.json",
-      "note": "173/173 current national EVSEs priced from Lidl Switzerland official AC/DC web and Lidl Plus tariff schedule; no cross-station extrapolation."
-    },
-    "CH*EWZ": {
-      "operatorId": "CH*EWZ",
-      "evseCount": 426,
-      "stationCount": 54,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "ewz",
-      "evidence": "docs/switzerland-ewz-finalization-2026-09-28.json"
-    },
-    "CH*PLN": {
-      "operatorId": "CH*PLN",
-      "evseCount": 189,
-      "stationCount": 42,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "Plenitude On The Road",
-      "evidence": "docs/switzerland-plenitude-finalization-2026-09-28.json",
-      "note": "189/189 current national EVSEs deterministically classified: 180 priced from official Switzerland tariff tiers + exact connector metadata; 9 current national records are restricted access with no authentication mode and classified no public direct tariff."
-    },
-    "CH*ELC": {
-      "operatorId": "CH*ELC",
-      "evseCount": 132,
-      "stationCount": 27,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "Electra",
-      "evidence": "docs/switzerland-electra-second-pass-2026-09-27.json"
-    },
-    "CH*AIL": {
-      "operatorId": "CH*AIL",
-      "evseCount": 21,
-      "stationCount": 21,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "AIL / emotì",
-      "evidence": "docs/switzerland-ail-finalization-2026-09-28.json",
-      "note": "21/21 current CH*AIL EVSEs priced from official AIL→emotì network mapping and current emotì <=22 kW tariffs; location/time parking penalties not guessed."
-    },
-    "CH*IOY": {
-      "operatorId": "CH*IOY",
-      "evseCount": 168,
-      "stationCount": 20,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "IONITY",
-      "evidence": "docs/switzerland-ionity-national-finalization-2026-09-28.json",
-      "note": "168/168 current national EVSEs priced from official IONITY v3 IONITY DIRECT connector prices, matched by exact national station coordinates and connector power; no extrapolation."
-    },
-    "CH*AGR": {
-      "operatorId": "CH*AGR",
-      "evseCount": 17,
-      "stationCount": 17,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "AGROLA",
-      "evidence": "docs/switzerland-monta-untreated-coverage-2026-09-28.json",
-      "note": "17/17 current national EVSEs matched and priced in Monta public CPO pricing export; no extrapolation."
-    },
-    "CH*EWD": {
-      "operatorId": "CH*EWD",
-      "evseCount": 8,
-      "stationCount": 8,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "EWD Elektrizitaetswerk Davos AG",
-      "evidence": "docs/switzerland-ewd-finalization-2026-09-28.json",
-      "note": "Official EWD tariff applied to current national CH*EWD scope: 8/8 EVSE priced."
-    },
-    "CH*EWO": {
-      "operatorId": "CH*EWO",
-      "evseCount": 7,
-      "stationCount": 7,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "Elektrizitätswerk Obwalden",
-      "evidence": "docs/switzerland-ewo-finalization-2026-09-28.json",
-      "note": "7/7 current national records resolved via eCarUp public same-operator station/connector pricing; restricted/reserved connectors kept separate."
-    },
-    "CH*MMN": {
-      "operatorId": "CH*MMN",
-      "evseCount": 6,
-      "stationCount": 6,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "MOVE Mobility / myNet",
-      "evidence": "docs/switzerland-mmn-finalization-2026-09-28.json",
-      "note": "6/6 current CH*MMN EVSEs priced from explicit Move non-roaming CPO-level AC tariffs; national records are nested under Move and advertise direct payment."
-    },
-    "CH*EBS": {
+    {
       "operatorId": "CH*EBS",
-      "evseCount": 6,
-      "stationCount": 6,
-      "operatorNames": [],
-      "status": "blocked",
       "name": "EBS / ebs Energie AG",
-      "evidence": "docs/switzerland-ebs-finalization-2026-09-28.json",
-      "note": "5/6. Sahli remains contradictory. Public station evidence reports contract/RFID only and no ad-hoc price, while other current feed evidence indicates direct-payment capability. The conflict cannot be resolved safely without station-specific current evidence.",
-      "setAside": false,
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Obtain current Sahli QR/app/direct-payment screen or EBS/Swisscharge station-specific tariff."
+      "note": "5/6. Sahli remains contradictory. Public station evidence reports contract/RFID only and no ad-hoc price, while other current feed evidence indicates direct-payment capability. The conflict cannot be resolved safely without station-specific current evidence."
     },
-    "CH*EDH": {
-      "operatorId": "CH*EDH",
-      "evseCount": 16,
-      "stationCount": 3,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "Energiedienst CH",
-      "evidence": "docs/switzerland-edh-scope-reconciliation-2026-09-28.json",
-      "note": "16/16 current national EVSEs exactly reconciled and priced."
-    },
-    "CH*EVT": {
+    {
       "operatorId": "CH*EVT",
-      "evseCount": 8,
-      "stationCount": 3,
-      "operatorNames": [],
-      "status": "blocked",
       "name": "CH*EVT",
-      "evidence": "docs/switzerland-evt-first-pass-2026-09-28.json",
-      "note": "0/8 deterministic current direct prices. The eight EVSEs expose direct-payment capability but EVTEC is the hardware/backend layer; no current public station-specific end-customer tariff was found.",
-      "setAside": false,
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Obtain the exact site/operator payment page or current station display/QR tariff for the three sites."
+      "note": "0/8 deterministic current direct prices. The eight EVSEs expose direct-payment capability but EVTEC is the hardware/backend layer; no current public station-specific end-customer tariff was found."
     },
-    "CH*AMG": {
-      "operatorId": "CH*AMG",
-      "evseCount": 10,
-      "stationCount": 2,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "autoSense / AMAG",
-      "evidence": "docs/switzerland-autosense-finalization-2026-09-28.json",
-      "note": "10/10 CH*AMG EVSEs are current CH*AUTOSENSE-owned AMAG Charging Stations; standard public tariff CHF 0.56/kWh, conditional eligible-brand/app tariff CHF 0.28/kWh stored separately."
-    },
-    "DE*EDH": {
-      "operatorId": "DE*EDH",
-      "evseCount": 2,
-      "stationCount": 1,
-      "operatorNames": [],
-      "status": "complete",
-      "name": "Energiedienst DE",
-      "evidence": "docs/switzerland-de-edh-scope-reconciliation-2026-09-28.json",
-      "note": "2/2 current national EVSEs exactly reconciled and priced."
-    },
-    "CH*DIE": {
+    {
       "operatorId": "CH*DIE",
-      "evseCount": 1,
-      "stationCount": 1,
-      "operatorNames": [],
-      "status": "blocked",
       "name": "CH*DIE",
-      "evidence": "docs/switzerland-first-pass-national-reconciliation-2026-09-28.json",
-      "note": "0/1. The current EVSE supports direct payment, but no current authoritative charging price is published. The only discovered price rule is historical and is not safe for 2026 production.",
-      "setAside": false,
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Obtain a current Stadt Dietikon station tariff/QR/payment page for Bremgartnerstrasse 15."
+      "note": "0/1. The current EVSE supports direct payment, but no current authoritative charging price is published. The only discovered price rule is historical and is not safe for 2026 production."
     },
-    "CH*HER": {
+    {
       "operatorId": "CH*HER",
-      "evseCount": 1,
-      "stationCount": 1,
-      "operatorNames": [],
-      "status": "blocked",
       "name": "CH*HER",
-      "evidence": "docs/switzerland-first-pass-national-reconciliation-2026-09-28.json",
-      "note": "0/1. The current EVSE supports direct payment but no current authoritative station tariff was found. Electricity retail tariffs cannot be substituted for charging-station pricing.",
-      "setAside": false,
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Obtain the current Forchstrasse station QR/payment tariff or an official Elektrizitätswerk Herrliberg charging price."
+      "note": "0/1. The current EVSE supports direct payment but no current authoritative station tariff was found. Electricity retail tariffs cannot be substituted for charging-station pricing."
     },
-    "CH*CPI": {
-      "operatorId": "CH*CPI",
-      "name": "ChargePoint",
-      "evseCount": 35,
-      "stationCount": null,
-      "status": "complete",
-      "evidence": "docs/switzerland-cpi-finalization-2026-09-28.json",
-      "note": "Owner scope: 29 priced + 6 restricted/no-auth, 0 unresolved."
-    },
-    "CH*FASTNED": {
-      "operatorId": "CH*FASTNED",
-      "name": "Fastned",
-      "evseCount": 78,
-      "stationCount": null,
-      "status": "complete",
-      "evidence": "docs/switzerland-fastned-finalization-2026-09-28.json",
-      "note": "Owner scope: 78/78 priced from official Switzerland tariff."
-    },
-    "CH*505": {
-      "operatorId": "CH*505",
-      "name": "50five",
-      "evseCount": 26,
-      "stationCount": null,
-      "status": "complete",
-      "evidence": "docs/switzerland-505-finalization-2026-09-28.json",
-      "note": "Owner scope: 26/26 restricted/no-auth; classified no public direct tariff."
-    },
-    "CH*911": {
-      "operatorId": "CH*911",
-      "name": "Porsche Sales & Marketplace",
-      "evseCount": 53,
-      "stationCount": null,
-      "status": "complete",
-      "evidence": "docs/switzerland-911-finalization-2026-09-28.json",
-      "note": "Owner scope: 53/53 restricted/no-auth; classified no public direct tariff."
-    },
-    "CH*BCK": {
-      "operatorId": "CH*BCK",
-      "name": "BCK",
-      "evseCount": 5,
-      "stationCount": null,
-      "status": "complete",
-      "evidence": "docs/switzerland-bck-finalization-2026-09-28.json",
-      "note": "Owner scope: 5/5 restricted/no-auth; classified no public direct tariff."
-    },
-    "CH*TAE": {
-      "operatorId": "CH*TAE",
-      "name": "TAE / Matterhorn Terminal",
-      "evseCount": 16,
-      "stationCount": null,
-      "status": "complete",
-      "evidence": "docs/switzerland-tae-finalization-2026-09-28.json",
-      "note": "Owner scope: 16/16 priced."
-    },
-    "CHEVP": {
-      "operatorId": "CHEVP",
-      "name": "evpass",
-      "evseCount": 40,
-      "stationCount": null,
-      "status": "complete",
-      "evidence": "docs/switzerland-chevp-finalization-2026-09-28.json",
-      "note": "Owner scope: 40/40 priced from current evpass tariff by exact EVSE power."
-    },
-    "CH*PAR": {
+    {
       "operatorId": "CH*PAR",
       "name": "Partino",
-      "evseCount": 213,
-      "stationCount": null,
-      "status": "blocked",
-      "evidence": "docs/switzerland-par-finalization-2026-09-28.json",
-      "note": "210/213 classified no-public-direct; 3 unresolved. Partino documents backend billing and public charging services but does not publish the end-customer station price for the three public residual EVSEs. Physical accessibility is not evidence of free charging.",
-      "setAside": false,
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Obtain the three station-specific prices from Partino CH backend/Floatbridge or exact payment pages."
+      "note": "210/213 classified no-public-direct; 3 unresolved. Partino documents backend billing and public charging services but does not publish the end-customer station price for the three public residual EVSEs. Physical accessibility is not evidence of free charging."
     },
-    "CH*ECU": {
+    {
       "operatorId": "CH*ECU",
       "name": "eCarUp",
-      "evseCount": 6764,
-      "stationCount": null,
-      "status": "blocked",
-      "evidence": "docs/switzerland-ecarup-finalization-2026-09-28.json",
-      "note": "6470/6764. 294 current owner EVSEs remain after exact normalized connector-ID matching, a dense national API sweep and fail-closed coordinate overlays. eCarUp allows station owners to define their own prices, so unresolved stations cannot inherit a network tariff.",
-      "setAside": false,
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Acquire new exact connector IDs/station responses from the eCarUp public API or exact station payment pages for the residual 294 EVSEs."
+      "note": "6470/6764. 294 current owner EVSEs remain after exact normalized connector-ID matching, a dense national API sweep and fail-closed coordinate overlays. eCarUp allows station owners to define their own prices, so unresolved stations cannot inherit a network tariff."
     }
-  },
-  "output": "data/tcc_v9/switzerland.json",
-  "outputBytes": 46813788
+  ],
+  "note": "This is the V9 integration layer: national EVSE visibility is independent from direct-tariff completion. Resolved prices are joined per EVSE; unresolved prices remain null/unranked."
 }
