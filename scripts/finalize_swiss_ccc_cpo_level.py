@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime,timezone
 
 NAT="https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json"
-SRC=Path("data/switzerland/move-direct-tariffs.json")
+SRC=Path("data/switzerland/cci-direct-tariffs-second-pass.json")
 SOCSRC=Path("data/switzerland/soc-direct-tariffs.json")
 OUT=Path("data/switzerland/ccc-move-cpo-tariffs-national.json")
 DOC=Path("docs/switzerland-ccc-finalization-2026-09-28.json")
@@ -87,7 +87,7 @@ for eid,rec in sorted(current.items()):
 
 now=datetime.now(timezone.utc).isoformat()
 payload={"schemaVersion":1,"country":"CH","cpo":"MOVE Mobility","operatorId":"CH*CCC","generatedAt":now,
-"source":["data/switzerland/move-direct-tariffs.json","data/switzerland/soc-direct-tariffs.json"],"nationalSource":NAT,
+"source":["data/switzerland/cci-direct-tariffs-second-pass.json","data/switzerland/soc-direct-tariffs.json"],"nationalSource":NAT,
 "tariffSchedules":list(schedules.values()),"nationalEvseCount":len(current),"resolvedEvseCount":len(rows),"unresolvedEvseCount":len(unresolved),
 "policy":"Apply only explicit non-roaming Move CPO-level tariffs where source metadata says prices_per_station_available=false, matched to each current national EVSE's own AC/DC type. This is CPO-level tariff application, not cross-station price extrapolation.",
 "evses":rows,"unresolved":unresolved}
