@@ -1,0 +1,73 @@
+name: UK Monta tariff fallback audit
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-monta-tariff-fallback-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Resolve missing active EVSEs by exact tariff ID
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          from datetime import datetime,timezone
+          with gzip.open('data/national/uk_monta_public_pricing.json.gz','rt',encoding='utf-8') as g: pricing=json.load(g)
+          with gzip.open('data/national/uk_monta_mon_locations.json.gz','rt',encoding='utf-8') as g: snap=json.load(g)
+          by_evse={}; by_tariff={}
+          for p in pricing.get('pricingRows') or []:
+              if p.get('evseId'): by_evse[str(p['evseId'])]=p
+              tid=p.get('tariffId')
+              if tid:
+                  key=(p.get('energyPrice'),p.get('currency'))
+                  by_tariff.setdefault(str(tid),set()).add(key)
+          active=[]
+          for loc in snap.get('locations') or []:
+              for ev in loc.get('evses') or []:
+                  if not isinstance(ev,dict) or str(ev.get('status') or '').upper()=='REMOVED': continue
+                  for c in ev.get('connectors') or []:
+                      if not isinstance(c,dict): continue
+                      active.append({'locationId':loc.get('id'),'name':loc.get('name'),'evseId':str(ev.get('evse_id')),'status':ev.get('status'),'tariffIds':[str(x) for x in (c.get('tariff_ids') or [])]})
+          direct=[]; fallback=[]; unresolved=[]; ambiguous=[]
+          for a in active:
+              if a['evseId'] in by_evse:
+                  direct.append({**a,'pricing':by_evse[a['evseId']]}); continue
+              candidates=set()
+              for tid in a['tariffIds']:
+                  candidates |= by_tariff.get(tid,set())
+              if len(candidates)==1:
+                  fallback.append({**a,'resolvedBy':'tariffId','priceCurrency':list(candidates)[0]})
+              elif len(candidates)>1:
+                  ambiguous.append({**a,'candidates':[list(x) for x in sorted(candidates,key=str)]})
+              else:
+                  unresolved.append(a)
+          out={'country':'GB','network':'Monta platform','retrievedAt':datetime.now(timezone.utc).isoformat(),'activeConnectors':len(active),'directEvseMatches':len(direct),'tariffIdFallbackMatches':len(fallback),'resolvedTotal':len(direct)+len(fallback),'coveragePct':round(100*(len(direct)+len(fallback))/len(active),2) if active else None,'ambiguous':ambiguous,'unresolved':unresolved,'status':'complete' if active and not ambiguous and not unresolved else 'partial'}
+          Path('reports/uk/monta-tariff-fallback-audit-latest.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({k:v for k,v in out.items() if k not in ('unresolved','ambiguous')},ensure_ascii=False,indent=2))
+          print('UNRESOLVED_SAMPLE',json.dumps(unresolved[:20],ensure_ascii=False))
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/monta-tariff-fallback-audit-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): resolve Monta tariffs by exact tariff id [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
