@@ -1,0 +1,92 @@
+name: Switzerland first-pass fallback
+
+on:
+  workflow_run:
+    workflows: ["Switzerland untreated CPO first pass"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  discover:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - id: m
+        shell: python
+        run: |
+          import json,os
+          from pathlib import Path
+          candidates=[
+            {'operator':'CH*SHE','slug':'shell-recharge','name':'Shell Recharge'},
+            {'operator':'CH*CCI','slug':'cci','name':'CH*CCI'},
+          ]
+          rows=[x for x in candidates if not Path(f"docs/switzerland-{x['slug']}-first-pass-2026-09-28.json").exists()]
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:
+              f.write('matrix='+json.dumps({'include':rows},separators=(',',':'))+'\n')
+          print(rows)
+
+  fallback:
+    needs: discover
+    if: ${{ needs.discover.outputs.matrix != '{"include":[]}' }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Parallel first-pass fallback
+        run: |
+          python3 scripts/collect_swiss_atlas_cpo_parallel.py \
+            --operator '${{ matrix.operator }}' \
+            --name '${{ matrix.name }}' \
+            --output 'data/switzerland/${{ matrix.slug }}-direct-tariffs.json' \
+            --workers 4 --delay 0.10
+      - name: Write record
+        shell: python
+        run: |
+          import json,pathlib
+          slug='${{ matrix.slug }}'; p=pathlib.Path(f'data/switzerland/{slug}-direct-tariffs.json')
+          x=json.loads(p.read_text(encoding='utf-8'));s=x['summary']
+          doc={'schemaVersion':1,'country':'CH','cpo':'${{ matrix.name }}','operatorId':'${{ matrix.operator }}',
+               'pass':'first','status':s['status'],**s,
+               'method':'Swiss eMobility Ladepreisatlas public frontend API; parallel first-pass fallback; direct-only',
+               'policy':'No tariff extrapolation.','productionSource':str(p)}
+          pathlib.Path(f'docs/switzerland-{slug}-first-pass-2026-09-28.json').write_text(json.dumps(doc,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+      - name: Persist fallback
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 'data/switzerland/${{ matrix.slug }}-direct-tariffs.json' 'docs/switzerland-${{ matrix.slug }}-first-pass-2026-09-28.json'
+          git commit -m 'data(switzerland): fallback first-pass ${{ matrix.operator }}' || exit 0
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
+
+  continue:
+    needs: [discover, fallback]
+    if: ${{ always() && needs.discover.result == 'success' && (needs.fallback.result == 'success' || needs.fallback.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Start second pass
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run switzerland-partial-second-pass.yml --repo '${{ github.repository }}'
