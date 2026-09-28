@@ -90,3 +90,5 @@ out={"schemaVersion":1,"country":"CH","cpo":"GOFAST","operatorId":"CH*GFT","gene
 OUT.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 DOC.write_text(json.dumps({k:v for k,v in out.items() if k not in ("evses","unresolved")}|{"unresolvedStations":unresolved},ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps({k:v for k,v in out.items() if k not in ("evses","unresolved")},indent=2))
+
+# trigger
