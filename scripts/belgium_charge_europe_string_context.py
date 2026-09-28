@@ -33,7 +33,8 @@ for ar in ars:
 needles=[
  "evdc-bff-europe","EvsePriceGridViewModelBase","dynamicPriceDescriptions","priceDescriptions",
  "localDynamicPriceModel","LocalProductPrice","PAYGO_ANONYMOUS","connector","evse","chargepoint",
- "chargePoint","tariff","pricing","products","poi","station","locations","map/search","search"
+ "chargePoint","tariff","pricing","products","poi","station","locations","map/search","search",
+ "x-api-key","api-key","apiKey","api_key","subscription-key","Ocp-Apim-Subscription-Key","Authorization","apim"
 ]
 contexts=[]
 routeish=set()
@@ -59,8 +60,11 @@ for fp in files:
 
 # Redact very long opaque tokens, preserving URLs and readable routes.
 def safe(s):
-    if "http://" in s or "https://" in s: return s
-    return re.sub(r'(?<![A-Za-z0-9])([A-Za-z0-9_-]{64,})(?![A-Za-z0-9])','[REDACTED_LONG_LITERAL]',s)
+    # Preserve URLs/header names, but redact likely credential assignments and opaque long literals.
+    s=re.sub(r'(?i)((?:x-api-key|api[_-]?key|subscription[_-]?key|ocp-apim-subscription-key|authorization)\\s*[:=]\\s*)([^\\s,;]+)',r'\\1[REDACTED]',s)
+    if "http://" in s or "https://" in s:
+        return re.sub(r'(?i)([?&](?:key|api_key|apikey|token|access_token)=)[^&\\s]+',r'\\1[REDACTED]',s)
+    return re.sub(r'(?<![A-Za-z0-9])([A-Za-z0-9_-]{48,})(?![A-Za-z0-9])','[REDACTED_LONG_LITERAL]',s)
 
 for c in contexts:
     c["hit"]=safe(c["hit"])
