@@ -705,15 +705,20 @@
       "canonicalName": "NRG4YOU SRL",
       "status": "partial",
       "priority": "station-level",
-      "blockingCondition": "Current NRG4YOU direct tariff source or exact station/EVSE payment surface.",
+      "blockingCondition": "Extract exact station/connector payload from customer.restation.eu or its guest payment/backend flow and map to current IT*NRG EVSE. Do not infer tariff from unrelated ReStation deployments.",
       "confidence": "high",
-      "lastInvestigated": "2026-09-23",
+      "lastInvestigated": "2026-09-28",
       "inventory": {
         "evse": 136,
         "stations": 76,
         "currentPunPresent": true,
         "punAsOf": "2026-09-20"
-      }
+      },
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 136
+      },
+      "tariffChannel": "NRG4YOU-branded ReStation public portal with STATIONS and RECHARGE NOW"
     },
     {
       "partyId": "TCA",
@@ -1044,10 +1049,19 @@
       "officialReferences": [
         "https://www.cogeserenergia.it/it/punti-di-ricarica-ad-uso-pubblico"
       ],
-      "blockingCondition": "prove all current IT*CGS EVSE are Quick AC; any DC/non-Quick subset remains fail-closed",
+      "blockingCondition": "Exact Cogeser Quick QR/ad-hoc price payload or first-party statement explicitly proving customer tariff applies to unauthenticated QR spot charging. PUN topology alone is insufficient.",
       "confidence": "high",
-      "tariffModel": "mixed AC/DC scope; Quick AC candidate retained, DC/direct remainder fail-closed",
-      "lastChanged": "2026-09-22"
+      "tariffModel": "Customer tariff and QR spot flow are distinct; no direct/ad-hoc tariff equivalence proven.",
+      "lastChanged": "2026-09-22",
+      "coverage": {
+        "rankableEvse": 0,
+        "failClosedEvse": 60,
+        "topology": {
+          "acType2": 59,
+          "dc25": 1
+        }
+      },
+      "lastInvestigated": "2026-09-28"
     },
     {
       "partyId": "BPA",
@@ -1214,7 +1228,14 @@
       },
       "tariffModel": "0.67 EUR/kWh proven only for Kostner e-Charge Vahrn HYC 300 kW; remainder requires deterministic EVSE mapping",
       "confidence": "high",
-      "lastChanged": "2026-09-20"
+      "lastChanged": "2026-09-20",
+      "coverage": {
+        "rankableEvse": 6,
+        "failClosedEvse": 48,
+        "rankableScope": "Vahrn/Varna HYC300: exact 3 chargers / 6 CCS EVSE at 300 kW"
+      },
+      "blockingCondition": "Exact first-party QR/backend/direct tariff mapping for the remaining 48 IT*KOS EVSE; do not extrapolate Vahrn HYC300 tariff.",
+      "lastInvestigated": "2026-09-28"
     },
     {
       "partyId": "AXS",
@@ -3485,6 +3506,10 @@
     {
       "date": "2026-09-28",
       "change": "Run313 bounded GMT/ZapGrid and DRW/Unoenergy Driwe without unsafe promotion. ZapGrid explicitly uses owner-defined connector tariffs; DriWe permits host-defined commercial policies and surfaces stations via NextCharge. Resume only from exact connector/backend payloads."
+    },
+    {
+      "date": "2026-09-28",
+      "change": "Run324 canonical catch-up: applied persisted run320 KOS/CGS correction and run321 NRG ReStation backend lineage. No status-count change; fail-closed preserved."
     }
   ],
   "evidenceReports": [
@@ -3541,7 +3566,9 @@
     "data/reports/italy_cpo_reconciliation_20260927_run307.json",
     "data/reports/italy_cpo_reconciliation_20260927_run308.json",
     "data/reports/italy_cpo_reconciliation_20260928_run312.json",
-    "data/reports/italy_cpo_reconciliation_20260928_run313.json"
+    "data/reports/italy_cpo_reconciliation_20260928_run313.json",
+    "data/reports/italy_cpo_reconciliation_20260928_run320.json",
+    "data/reports/italy_cpo_reconciliation_20260928_run321.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
