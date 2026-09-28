@@ -56,3 +56,5 @@ O.write_text(json.dumps(validation,ensure_ascii=False,indent=2)+"\n",encoding="u
 print(json.dumps(validation,ensure_ascii=False,indent=2))
 if not validation["overallOkExcludingTeslaSeparation"]:
     raise SystemExit(2)
+
+# trigger validation
