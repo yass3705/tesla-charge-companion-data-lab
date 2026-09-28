@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "country": "CH",
-  "updatedAt": "2026-09-28T13:44:34.306Z",
+  "updatedAt": "2026-09-28T13:46:40.422Z",
   "canonicalRepo": "yass3705/tesla-charge-companion-data-lab",
   "sourceMigrationFrom": "yass3705/tesla-stations-updater-test",
   "rules": {
@@ -414,8 +414,9 @@
       "evseCount": 6764,
       "stationCount": null,
       "status": "partial",
-      "evidence": "docs/switzerland-ecarup-owner-reconciliation-2026-09-28.json",
-      "note": "Owner scope: 3118/6764 exact public API connector IDs priced; 3646 unresolved, no ambiguous normalized IDs."
+      "evidence": "docs/switzerland-ecarup-finalization-2026-09-28.json",
+      "note": "6470/6764 current owner EVSEs priced: 3246 exact normalized connector IDs + 3224 conservative coordinate overlays. 294 remain unresolved after a 726-query dense national API sweep (5662 stations), exact-ID reconciliation and <=0.75m/<=3m fail-closed coordinate reconciliation; set aside rather than extrapolate.",
+      "setAside": true
     }
   ],
   "nextPriority": [],
@@ -445,8 +446,9 @@
         "name": "eCarUp",
         "evseCount": 6764,
         "status": "partial",
-        "evidence": "docs/switzerland-ecarup-owner-reconciliation-2026-09-28.json",
-        "note": "3118/6764 exact public API connector matches priced; 3646 unresolved."
+        "evidence": "docs/switzerland-ecarup-finalization-2026-09-28.json",
+        "note": "6470/6764 priced after dense public API + exact connector + conservative coordinate reconciliation; 294 fail-closed residuals set aside.",
+        "setAside": true
       },
       {
         "operatorId": "CH*CPI",
@@ -565,5 +567,18 @@
         "note": "10/10 current owner-scope EVSEs priced; standard CHF 0.56/kWh, conditional eligible-brand/app CHF 0.28/kWh."
       }
     ]
+  },
+  "queueSummary": {
+    "operatorScopeCount": 40,
+    "completeCount": 29,
+    "setAsideCount": 10,
+    "handledSeparatelyCount": 1,
+    "activeCount": 0,
+    "statusCounts": {
+      "complete": 29,
+      "partial": 10,
+      "handled-separately": 1
+    },
+    "note": "AVIA and bounded unresolved residuals are set aside; Tesla is handled by the dedicated Tesla process. activeCount=0 means the current Swiss CPO work queue is exhausted without inventing tariffs."
   }
 }
