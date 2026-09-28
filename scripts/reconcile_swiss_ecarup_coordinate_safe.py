@@ -63,17 +63,19 @@ for eid,rec in records.items():
     d=dist(co,(slat,slon))
     if d<=3.0:cand.append((d,s))
  if not cand: no_candidate.append({"evseId":eid,"reason":"no_station_within_3m"});continue
+ exactish=[x for x in cand if x[0]<=0.75]
+ eval_cand=exactish if exactish else cand
  tuples=set(); pub_connectors=[]
- for d,s in cand:
+ for d,s in eval_cand:
   for c in s.get("Connectors") or []:
    if c.get("AccessType")==0:
     pt=price_tuple(c)
     if pt is not None: tuples.add(pt);pub_connectors.append({"distanceMeters":round(d,2),"stationId":s.get("ID"),"stationName":s.get("Name"),"connectorId":c.get("ID"),"hubjectId":c.get("HubjectID"),"price":c.get("Price")})
  if len(tuples)==1 and pub_connectors:
-  resolved.append({"evseId":eid,"nationalCoordinate":{"lat":lat,"lon":lon},"evidence":"all priced public eCarUp connectors within 3m share one identical price tuple","connectors":pub_connectors,"priceTuple":list(next(iter(tuples)))})
+  resolved.append({"evseId":eid,"nationalCoordinate":{"lat":lat,"lon":lon},"evidence":"all priced public eCarUp connectors in the accepted coordinate candidate set share one identical price tuple (prefer <=0.75m exact-coordinate tolerance; otherwise full <=3m set)","connectors":pub_connectors,"priceTuple":list(next(iter(tuples)))})
  else: ambiguous.append({"evseId":eid,"candidateStationCount":len(cand),"distinctPublicPriceTupleCount":len(tuples),"reason":"multiple_or_missing_public_price_tuples"})
 now=datetime.now(timezone.utc).isoformat()
-out={"schemaVersion":1,"country":"CH","operatorId":"CH*ECU","generatedAt":now,"nationalEvseCount":len(records),"alreadyExactPricedCount":len(already),"safeCoordinateOverlayCount":len(resolved),"ambiguousCount":len(ambiguous),"noCandidateCount":len(no_candidate),"policy":"Only unresolved current CH*ECU EVSEs. Accept <=3m coordinate candidates only when every priced public eCarUp connector in the candidate set has one identical complete price tuple. No nearest-neighbour selection and no cross-location extrapolation.","evses":resolved,"ambiguous":ambiguous,"noCandidate":no_candidate}
+out={"schemaVersion":1,"country":"CH","operatorId":"CH*ECU","generatedAt":now,"nationalEvseCount":len(records),"alreadyExactPricedCount":len(already),"safeCoordinateOverlayCount":len(resolved),"ambiguousCount":len(ambiguous),"noCandidateCount":len(no_candidate),"policy":"Only unresolved current CH*ECU EVSEs. Prefer exact-coordinate tolerance <=0.75m when present; otherwise use the full <=3m candidate set. Accept only when every priced public connector in the accepted set has one identical complete price tuple. No nearest-neighbour selection and no cross-location extrapolation.","evses":resolved,"ambiguous":ambiguous,"noCandidate":no_candidate}
 OUT.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 DOC.write_text(json.dumps({k:v for k,v in out.items() if k not in ("evses","ambiguous","noCandidate")},ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps({k:v for k,v in out.items() if k not in ("evses","ambiguous","noCandidate")},indent=2))
