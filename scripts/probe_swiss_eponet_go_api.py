@@ -50,3 +50,5 @@ out={"generatedAt":datetime.now(timezone.utc).isoformat(),"base":BASE,"tests":te
 Path("docs/switzerland-eponet-go-api-probe-2026-09-28.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 interesting=[t for t in tests if t.get("status") not in (404,) or t.get("error")]
 print(json.dumps(interesting,ensure_ascii=False,indent=2)[:120000])
+
+# trigger
