@@ -1,0 +1,70 @@
+name: Switzerland Shell parallel first-pass safety
+
+on:
+  push:
+    paths:
+      - '.github/workflows/switzerland-shell-parallel-first-pass.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  shell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Parallel Shell first pass
+        run: |
+          mkdir -p tmp
+          python3 scripts/collect_swiss_atlas_cpo_parallel.py \
+            --operator 'CH*SHE' --name 'Shell Recharge' \
+            --output tmp/shell-parallel.json --workers 2 --delay 0.12
+      - name: Persist only if canonical is still missing
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase origin main
+          if [ -f docs/switzerland-shell-recharge-first-pass-2026-09-28.json ]; then
+            python3 - <<'PY'
+          import json,pathlib
+          x=json.load(open('tmp/shell-parallel.json',encoding='utf-8'))
+          pathlib.Path('docs/switzerland-shell-parallel-first-pass-audit-2026-09-28.json').write_text(
+              json.dumps({'operatorId':'CH*SHE','status':'audit-only','summary':x['summary'],
+              'note':'Canonical first-pass already existed when parallel safety run finished; no overwrite.'},
+              ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+            git add docs/switzerland-shell-parallel-first-pass-audit-2026-09-28.json
+            git commit -m 'docs(switzerland): record Shell parallel first-pass audit' || exit 0
+          else
+            mkdir -p data/switzerland docs
+            cp tmp/shell-parallel.json data/switzerland/shell-recharge-direct-tariffs.json
+            python3 - <<'PY'
+          import json,pathlib
+          x=json.load(open('tmp/shell-parallel.json',encoding='utf-8'));s=x['summary']
+          doc={'schemaVersion':1,'country':'CH','cpo':'Shell Recharge','operatorId':'CH*SHE',
+               'pass':'first','status':s['status'],'stationCount':s['stationCount'],
+               'stationsWithDirectTariff':s['stationsWithDirectTariff'],
+               'stationsWithoutDirectTariff':s['stationsWithoutDirectTariff'],'coveragePct':s['coveragePct'],
+               'directTariffDetailCount':s['directTariffDetailCount'],
+               'directPaymentTariffDetailCount':s['directPaymentTariffDetailCount'],
+               'method':'Swiss eMobility Ladepreisatlas public frontend API; parallel first-pass safety; direct-only',
+               'policy':'No tariff extrapolation.','productionSource':'data/switzerland/shell-recharge-direct-tariffs.json'}
+          pathlib.Path('docs/switzerland-shell-recharge-first-pass-2026-09-28.json').write_text(
+              json.dumps(doc,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+            git add data/switzerland/shell-recharge-direct-tariffs.json docs/switzerland-shell-recharge-first-pass-2026-09-28.json
+            git commit -m 'data(switzerland): fallback first-pass CH*SHE'
+          fi
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
