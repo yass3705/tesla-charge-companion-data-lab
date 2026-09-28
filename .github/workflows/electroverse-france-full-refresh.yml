@@ -1,0 +1,76 @@
+name: TEST NON-TESLA — Electroverse France full refresh
+on:
+  push:
+    paths:
+      - tests/non-tesla/active/run-electroverse-france-full-refresh.trigger
+permissions:
+  contents: write
+concurrency:
+  group: electroverse-france-full-refresh
+  cancel-in-progress: false
+
+jobs:
+  chunk1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+      CHUNK_OFFSET: '0'
+      CHUNK_COUNT: '6000'
+    steps: &steps
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Refresh France chunk
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          node scripts/electroverse_force_chunk_selection.mjs
+          set +e
+          node scripts/electroverse_hybrid_refresh.mjs
+          rc=$?
+          set -e
+          git add data/electroverse/tariff_cache reports/electroverse/incremental-selection.json reports/electroverse/hybrid-refresh-failures.json
+          git commit -m "data(electroverse): France full refresh offset ${CHUNK_OFFSET} [run ${GITHUB_RUN_ID}]" || true
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main
+            git push origin HEAD:main && break
+            sleep $((i * 3))
+          done
+          exit ${rc}
+
+  chunk2:
+    needs: chunk1
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+      CHUNK_OFFSET: '6000'
+      CHUNK_COUNT: '6000'
+    steps: *steps
+
+  chunk3:
+    needs: chunk2
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+      CHUNK_OFFSET: '12000'
+      CHUNK_COUNT: '6000'
+    steps: *steps
+
+  chunk4:
+    needs: chunk3
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+      CHUNK_OFFSET: '18000'
+      CHUNK_COUNT: '6000'
+    steps: *steps
