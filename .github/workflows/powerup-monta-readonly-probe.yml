@@ -50,13 +50,25 @@ jobs:
           guest_paths=['/api/v1/auth/guest','/api/api/v1/auth/guest']
           token=None
           guest_attempts=[]
+          import uuid
+          guest_id=str(uuid.uuid4())
+          guest_bodies=[
+              {'charge_point_id':'5017670','guest_id':guest_id,'os':'linux','vendor':'browser'},
+              {'charge_point_id':5017670,'guest_id':guest_id,'os':'linux','vendor':'browser'},
+              {'charge_point_id':'5017670','guest_id':guest_id,'os':'unknown','vendor':'unknown'}
+          ]
+          token=None
           for gp in guest_paths:
-              st,p=call('POST',base+gp,{})
-              guest_attempts.append({'path':gp,'status':st,'keys':list(p.keys()) if isinstance(p,dict) else None})
-              if isinstance(p,dict):
-                  token=p.get('access_token') or p.get('accessToken') or (p.get('data') or {}).get('access_token') or (p.get('data') or {}).get('accessToken')
+              for body in guest_bodies:
+                  extra={'Meta':'web;production;1.0.0;browser;chrome linux','Guest_id':guest_id,'Uuid':guest_id,'timezone':'Europe/Zurich'}
+                  st,p=call('POST',base+gp,body,headers=extra)
+                  guest_attempts.append({'path':gp,'status':st,'bodyKeys':list(body.keys()),'message':p.get('message') if isinstance(p,dict) else None,'errors':p.get('errors') if isinstance(p,dict) else None,'keys':list(p.keys()) if isinstance(p,dict) else None})
+                  if isinstance(p,dict):
+                      token=p.get('access_token') or p.get('accessToken') or (p.get('data') or {}).get('access_token') or (p.get('data') or {}).get('accessToken') or ((p.get('token') or {}).get('access_token') if isinstance(p.get('token'),dict) else None)
+                  if token:
+                      report['guestPath']=gp
+                      break
               if token:
-                  report['guestPath']=gp
                   break
           report['guestAttempts']=guest_attempts
           report['tokenObtained']=bool(token)
