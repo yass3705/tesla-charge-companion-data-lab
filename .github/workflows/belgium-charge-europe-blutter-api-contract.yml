@@ -1,0 +1,180 @@
+name: Belgium Charge Europe Blutter API contract
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-charge-europe-blutter-api-contract.txt"
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build pkg-config libicu-dev libcapstone-dev
+          python -m pip install --quiet pyelftools requests
+
+      - name: Download Charge Europe and extract ARM64 Flutter libs
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/charge-europe-blutter /tmp/blutter /tmp/blutter-out
+          mkdir -p /tmp/charge-europe-blutter/xapk /tmp/charge-europe-blutter/lib
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 180             --user-agent 'Mozilla/5.0 TCC-Public-Research/1.0'             -H 'Referer: https://apkpure.net/'             'https://d.apkpure.net/b/XAPK/com.total.europe?version=latest'             -o /tmp/charge-europe-blutter/app.xapk
+          unzip -q /tmp/charge-europe-blutter/app.xapk -d /tmp/charge-europe-blutter/xapk
+          python - <<'PY'
+          import os,zipfile,json,hashlib
+          root='/tmp/charge-europe-blutter/xapk'
+          out='/tmp/charge-europe-blutter/lib'
+          pair={}
+          for fn in os.listdir(root):
+              if not fn.endswith('.apk'): continue
+              p=os.path.join(root,fn)
+              try:
+                  with zipfile.ZipFile(p) as z:
+                      for target in ('libapp.so','libflutter.so'):
+                          n='lib/arm64-v8a/'+target
+                          if n in z.namelist() and target not in pair:
+                              b=z.read(n)
+                              open(os.path.join(out,target),'wb').write(b)
+                              pair[target]={'apk':fn,'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()}
+              except Exception:
+                  pass
+          if len(pair)!=2:
+              raise SystemExit('ARM64 Flutter library pair unavailable')
+          open('/tmp/charge-europe-blutter/pair.json','w').write(json.dumps(pair))
+          PY
+
+      - name: Run Blutter
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth=1 https://github.com/worawit/blutter.git /tmp/blutter
+          set +e
+          timeout 720 python3 /tmp/blutter/blutter.py /tmp/charge-europe-blutter/lib /tmp/blutter-out > /tmp/blutter-run.log 2>&1
+          rc=$?
+          set -e
+          echo "$rc" > /tmp/blutter-rc
+
+      - name: Build sanitized API contract report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/belgium/totalenergies
+          python - <<'PY'
+          import os,re,json,hashlib
+          from pathlib import Path
+          root=Path('/tmp/blutter-out')
+          try: pair=json.load(open('/tmp/charge-europe-blutter/pair.json'))
+          except Exception: pair={}
+          try: rc=int(open('/tmp/blutter-rc').read().strip())
+          except Exception: rc=None
+
+          wanted=[
+            'x-apif-apikey','evdc-bff-europe','/v3/infrastructure/locations',
+            '/v2/infrastructure/locations/status','/v2/infrastructure/locations/timestamp',
+            'priceDescription','priceDescriptions','Public prices','Subscriber prices',
+            'dynamicPriceDescriptions','localDynamicPriceModel','localProductPriceModel',
+            'x-user-account-id','Authorization','Bearer'
+          ]
+          matches=[]
+          context=[]
+          safe_word=re.compile(r'(x-apif-apikey|evdc-bff-europe|infrastructure/locations|priceDescription|priceDescriptions|Public prices|Subscriber prices|dynamicPrice|localDynamicPrice|localProductPrice|x-user-account-id|Authorization|Bearer|headers|query|Dio|RequestOptions|baseUrl)',re.I)
+
+          def sanitize(line):
+              # redact long opaque literals and obvious credential/token values, preserve routes/header names
+              line=re.sub(r'(?i)(Bearer\s+)[A-Za-z0-9._~+/-]{12,}',r'\1<redacted>',line)
+              line=re.sub(r'\b[A-Fa-f0-9]{32,}\b','<redacted-hex>',line)
+              line=re.sub(r'(?<![A-Za-z0-9])([A-Za-z0-9_-]{48,})(?![A-Za-z0-9])','<redacted-long>',line)
+              return line
+
+          files=[]
+          if root.is_dir():
+              for p in root.rglob('*'):
+                  if not p.is_file(): continue
+                  try:
+                      if p.stat().st_size>70_000_000: continue
+                      data=p.read_text(errors='ignore')
+                  except Exception: continue
+                  found=[w for w in wanted if w.lower() in data.lower()]
+                  if found:
+                      rel=str(p.relative_to(root))
+                      files.append((p,rel,data))
+                      for w in found: matches.append({'file':rel,'marker':w})
+
+          for p,rel,data in files:
+              lines=data.splitlines()
+              centers=[i for i,l in enumerate(lines) if any(w.lower() in l.lower() for w in wanted)]
+              for c in centers[:120]:
+                  block=[]
+                  for idx in range(max(0,c-12),min(len(lines),c+22)):
+                      line=lines[idx]
+                      if safe_word.search(line):
+                          block.append({'line':idx+1,'text':sanitize(line)[:900]})
+                  if block:
+                      context.append({'file':rel,'centerLine':c+1,'safeLines':block[:40]})
+
+          # Resolve string-table neighbors around header markers without exposing key values.
+          pp_neighbors=[]
+          pp=root/'pp.txt'
+          if pp.is_file():
+              lines=pp.read_text(errors='ignore').splitlines()
+              indices=[i for i,l in enumerate(lines) if any(x in l.lower() for x in ('x-apif-apikey','evdc-bff-europe','x-user-account-id'))]
+              for i in indices[:80]:
+                  vals=[]
+                  for j in range(max(0,i-10),min(len(lines),i+11)):
+                      l=lines[j]
+                      m=re.search(r'String: "([^"]*)"',l)
+                      if not m: continue
+                      v=m.group(1)
+                      safe=v
+                      if len(v)>=24 and 'http' not in v and not re.search(r'(x-apif-apikey|evdc-bff|x-user-account-id)',v,re.I):
+                          safe='<redacted-candidate len=%d sha256=%s>'%(len(v),hashlib.sha256(v.encode()).hexdigest()[:16])
+                      vals.append({'line':j+1,'value':safe[:500]})
+                  pp_neighbors.append({'markerLine':i+1,'neighbors':vals})
+
+          report={
+            'country':'BE','package':'com.total.europe','source':'APKPure latest',
+            'blutter':{'returnCode':rc,'outputCreated':root.is_dir()},
+            'arm64Libraries':pair,
+            'markers':matches[:500],
+            'contexts':context[:500],
+            'ppNeighbors':pp_neighbors[:120],
+            'policy':{
+              'publicPackageOnly':True,'staticAnalysisOnly':True,'noBackendMutation':True,
+              'credentialValuesPersisted':False,'rawBlutterPersisted':False
+            }
+          }
+          Path('reports/belgium/totalenergies/charge-europe-blutter-api-contract-2026-09-28.json').write_text(
+            json.dumps(report,ensure_ascii=False,indent=2)+'\n'
+          )
+          print(json.dumps({'returnCode':rc,'markerCount':len(matches),'contextCount':len(context),'ppNeighborCount':len(pp_neighbors)},indent=2))
+          PY
+          rm -rf /tmp/charge-europe-blutter /tmp/blutter /tmp/blutter-out /tmp/blutter-run.log /tmp/blutter-rc
+
+      - name: Persist sanitized report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium/totalenergies/charge-europe-blutter-api-contract-2026-09-28.json
+          git commit -m "Analyze Charge Europe API contract with Blutter" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep 3
+          done
+          exit 1
