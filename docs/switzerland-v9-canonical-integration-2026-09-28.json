@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "dataset": "switzerland-public-charging-v9",
   "country": "CH",
-  "generatedAt": "2026-09-28T18:27:03.101901+00:00",
+  "generatedAt": "2026-09-28T22:46:08.913940+00:00",
   "sourceBundle": "data/tcc_v9/switzerland.json",
   "baseInventory": {
     "source": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
@@ -20,11 +20,11 @@
     "teslaHandledSeparately": true
   },
   "summary": {
-    "nationalEvseCount": 19464,
-    "directPricedEvseCount": 17156,
+    "nationalEvseCount": 19450,
+    "directPricedEvseCount": 17143,
     "classifiedNoPublicDirectTariffCount": 386,
-    "directUnresolvedEvseCount": 1922,
-    "directResolvedEvseCount": 17542,
+    "directUnresolvedEvseCount": 1921,
+    "directResolvedEvseCount": 17529,
     "operatorStatusCounts": {
       "complete": 29,
       "blocked": 10,
@@ -160,11 +160,11 @@
       "status": "blocked",
       "name": "AVIA",
       "evidence": "docs/switzerland-avia-first-pass-2026-09-28.json",
-      "note": "0/583 deterministic direct prices. AVIA states there is no uniform standard price; price varies by charge point/provider/speed and is shown per point in the AVIA VOLT Suisse app. XAPK reverse engineering identified the Deftpower backend, tenant and APIM-protected route, but the required subscription key/runtime request is not available from the static package.",
+      "note": "Charles runtime capture recovered the live Deftpower app-backend location route and station tariff IDs. Sample AVIA VOLT - Garage Meili exposes CH*AVI*E10450 (TYPE2 22 kW) and CH*AVI*E10449 (CCS 40 kW), both tariffId CHAVIT000082; app UI shows 0.69 CHF/kWh + 1.99 CHF/h plus one additional component. Full tariff-object response still required before production use. APIM secret is not stored.",
       "setAside": false,
       "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Capture one AVIA VOLT app request with Charles (headers + route, no personal credentials) or otherwise recover the APIM subscription key/runtime guest request."
+      "blockerEvidence": "docs/switzerland-avia-charles-runtime-capture-2026-09-29.json",
+      "resumeCondition": "Capture the tariff/tariffs response for CHAVIT000082 (including all components) by opening 'Voir tous les prix'; then enumerate tariffIds nationally and map exact tariff objects to AVIA EVSEs."
     },
     "CH*SOC": {
       "operatorId": "CH*SOC",
@@ -472,10 +472,10 @@
     "data/switzerland/ebs-ecarup-direct-tariffs.json": 5,
     "data/switzerland/ewd-official-direct-tariffs.json": 8,
     "data/switzerland/ewo-ecarup-direct-tariffs.json": 7,
-    "data/switzerland/migrol-official-direct-tariffs.json": 1031,
+    "data/switzerland/migrol-official-direct-tariffs.json": 1027,
     "data/switzerland/saascharge-official-direct-tariffs.json": 226,
     "data/switzerland/cpi-current-direct-tariffs.json": 35,
-    "data/switzerland/shell-evpass-official-direct-tariffs.json": 1171,
+    "data/switzerland/shell-evpass-official-direct-tariffs.json": 1166,
     "data/switzerland/gofast-official-direct-tariffs.json": 546,
     "data/switzerland/electra-direct-tariffs.json": 118,
     "data/switzerland/electra-direct-tariffs-second-pass.json": 122,
@@ -486,9 +486,9 @@
     "data/switzerland/de-edh-direct-tariffs.json": 2,
     "data/switzerland/edh-direct-tariffs.json": 16,
     "data/switzerland/lidl-official-direct-tariffs.json": 173,
-    "data/switzerland/energie360-direct-tariffs.json": 811,
-    "data/switzerland/energie360-direct-tariffs-second-pass.json": 818,
-    "docs/switzerland-energie360-finalization-2026-09-28.json": 6,
+    "data/switzerland/energie360-direct-tariffs.json": 809,
+    "data/switzerland/energie360-direct-tariffs-second-pass.json": 816,
+    "docs/switzerland-energie360-finalization-2026-09-28.json": 4,
     "data/switzerland/ionity-official-national-direct-tariffs.json": 168,
     "data/swisscharge/swisscharge-tariffs.json": 2382,
     "data/switzerland/ewz-direct-tariffs.json": 414,
@@ -498,5 +498,5 @@
     "data/switzerland/ail-emoti-official-direct-tariffs.json": 21
   },
   "output": "data/national/switzerland_public_charging_v9.json",
-  "outputBytes": 49671007
+  "outputBytes": 49644589
 }
