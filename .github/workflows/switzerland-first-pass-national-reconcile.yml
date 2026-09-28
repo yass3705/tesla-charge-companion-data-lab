@@ -5,6 +5,9 @@ on:
     paths:
       - 'scripts/reconcile_swiss_first_pass_national.py'
       - '.github/workflows/switzerland-first-pass-national-reconcile.yml'
+  workflow_run:
+    workflows: ["Switzerland untreated CPO first pass"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -12,6 +15,7 @@ permissions:
 
 jobs:
   reconcile:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
