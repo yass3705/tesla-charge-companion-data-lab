@@ -1,0 +1,131 @@
+name: UK Zest anonymous auth probe
+
+on:
+  push:
+    branches: ["main"]
+    paths: [".github/workflows/uk-zest-anonymous-auth-probe.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+
+      - name: Test official guest Firebase auth flow and read-only locations
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk /tmp/zest
+          curl -fL --retry 3 --retry-delay 3 -A "Mozilla/5.0"             "https://d.apkpure.net/b/XAPK/com.uk.zest.app?version=latest"             -o /tmp/zest/app.xapk
+          unzip -q /tmp/zest/app.xapk -d /tmp/zest/x
+          mkdir -p /tmp/zest/apks
+          for apk in /tmp/zest/x/*.apk; do
+            [ -f "$apk" ] || continue
+            d="/tmp/zest/apks/$(basename "$apk" .apk)"
+            mkdir -p "$d"; unzip -q "$apk" -d "$d" || true
+          done
+
+          python - <<'PY'
+          import json,glob,os,re,urllib.request,urllib.error
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          # Firebase Android config may be compiled in resources rather than a literal google-services.json.
+          candidates=[]
+          for fn in glob.glob("/tmp/zest/apks/**/*",recursive=True):
+              if not os.path.isfile(fn): continue
+              try:
+                  if os.path.getsize(fn)>50_000_000: continue
+                  b=open(fn,"rb").read()
+              except Exception: continue
+              for raw in re.findall(rb'[ -~]{8,300}',b):
+                  try:s=raw.decode("utf-8","ignore")
+                  except:continue
+                  if re.fullmatch(r'AIza[0-9A-Za-z_-]{30,50}',s):
+                      candidates.append(("apiKey",s,fn))
+                  if re.fullmatch(r'[0-9]+:[0-9]+:android:[0-9a-f]+',s,re.I):
+                      candidates.append(("appId",s,fn))
+                  if "firebaseio.com" in s.lower() or "firebaseapp.com" in s.lower():
+                      candidates.append(("firebaseHost",s,fn))
+
+          api_keys=[]
+          for typ,val,fn in candidates:
+              if typ=="apiKey" and val not in api_keys: api_keys.append(val)
+
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"firebaseCandidates":[{"type":t,"value":v,"file":f.replace("/tmp/zest/apks/","")} for t,v,f in candidates[:100]],"attempts":[]}
+          token=None
+          for key in api_keys[:10]:
+              item={"apiKeyPrefix":key[:8]+"..."}
+              try:
+                  url="https://identitytoolkit.googleapis.com/v1/accounts:signUp?key="+key
+                  body=json.dumps({"returnSecureToken":True}).encode()
+                  req=urllib.request.Request(url,data=body,headers={"Content-Type":"application/json","Accept":"application/json"},method="POST")
+                  with urllib.request.urlopen(req,timeout=45) as r:
+                      p=json.loads(r.read().decode("utf-8"))
+                  item["status"]=200
+                  item["localIdPresent"]=bool(p.get("localId"))
+                  item["idTokenPresent"]=bool(p.get("idToken"))
+                  if p.get("idToken"):
+                      token=p["idToken"]; item["selected"]=True
+                      out["attempts"].append(item); break
+              except urllib.error.HTTPError as e:
+                  raw=e.read(100000).decode("utf-8","replace")
+                  item.update({"status":e.code,"errorBody":raw[:1500]})
+              except Exception as e:
+                  item.update({"status":None,"error":f"{type(e).__name__}: {e}"})
+              out["attempts"].append(item)
+
+          # Never persist the token. Use it only in-memory for public read probes.
+          out["readProbes"]=[]
+          if token:
+              for path in ["/v1/locations?page=1&page_size=5","/v1/locations/evse-statuses"]:
+                  item={"path":path}
+                  try:
+                      req=urllib.request.Request("https://mobile-api.msp.zest.uk.com"+path,headers={
+                          "Authorization":"Bearer "+token,
+                          "User-Agent":"Zest Charging/4.3.15 TeslaChargeCompanion/9",
+                          "Accept":"application/json",
+                          "X-Requested-With":"com.uk.zest.app"
+                      })
+                      with urllib.request.urlopen(req,timeout=45) as r:
+                          raw=r.read(2_000_000)
+                          item.update({"status":r.status,"contentType":r.headers.get("Content-Type"),"bytes":len(raw)})
+                          try:
+                              p=json.loads(raw.decode("utf-8"))
+                              item["json"]=True; item["jsonType"]=type(p).__name__
+                              if isinstance(p,dict):
+                                  item["keys"]=list(p)[:80]
+                                  for k in ("data","locations","items","results"):
+                                      if isinstance(p.get(k),list):
+                                          item["arrayKey"]=k;item["count"]=len(p[k])
+                                          if p[k] and isinstance(p[k][0],dict):item["firstKeys"]=list(p[k][0])[:100]
+                                          break
+                              elif isinstance(p,list):
+                                  item["count"]=len(p)
+                          except Exception:
+                              item["json"]=False;item["prefix"]=raw.decode("utf-8","replace")[:1200]
+                  except urllib.error.HTTPError as e:
+                      raw=e.read(100000)
+                      item.update({"status":e.code,"error":str(e),"bodyPrefix":raw.decode("utf-8","replace")[:1500]})
+                  except Exception as e:
+                      item.update({"status":None,"error":f"{type(e).__name__}: {e}"})
+                  out["readProbes"].append(item)
+          out["anonymousFirebaseTokenObtained"]=bool(token)
+          Path("reports/uk/zest-anonymous-auth-probe-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Publish non-secret diagnostic
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/zest-anonymous-auth-probe-latest.json
+          git commit -m "diag(uk): test Zest official anonymous auth flow [run ${GITHUB_RUN_ID}]" || exit 0
+          for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
