@@ -11,7 +11,7 @@ Optional:
 Outputs sanitized public JSON with no request headers or credentials.
 """
 from __future__ import annotations
-import json, math, os, sys, time
+import json, math, os, sys, time, subprocess
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from urllib.parse import urlencode
@@ -24,6 +24,7 @@ KEY=os.environ.get("AVIA_APIM_SUBSCRIPTION_KEY","").strip()
 OUT=Path(os.environ.get("AVIA_OUT","data/switzerland/avia-guest-direct-tariffs.json"))
 TIMEOUT=int(os.environ.get("AVIA_TIMEOUT","45"))
 SLEEP=float(os.environ.get("AVIA_SLEEP","0.15"))
+RESOLVE_IP=os.environ.get("AVIA_RESOLVE_IP","").strip()
 
 # Conservative Switzerland coverage with overlap around borders.
 LAT_MIN,LAT_MAX=45.75,47.90
@@ -48,6 +49,22 @@ def request_json(method,path,query=None,body=None):
     url=API_BASE+path
     if query:
         url += "?" + urlencode(query, doseq=True)
+    if RESOLVE_IP:
+        from urllib.parse import urlsplit
+        host=urlsplit(API_BASE).hostname
+        cmd=["curl","-sS","--fail-with-body","--max-time",str(TIMEOUT),
+             "--resolve",f"{host}:443:{RESOLVE_IP}","-X",method,
+             "-H","accept: application/json",
+             "-H","content-type: application/json",
+             "-H",f"ocp-apim-subscription-key: {KEY}",
+             url]
+        if body is not None:
+            cmd.extend(["--data-binary",json.dumps(body,separators=(",",":"))])
+        p=subprocess.run(cmd,capture_output=True,text=True)
+        if p.returncode!=0:
+            detail=(p.stderr or p.stdout or "")[:500]
+            raise RuntimeError(f"curl error {path}: {detail}")
+        return json.loads(p.stdout)
     data=None if body is None else json.dumps(body,separators=(",",":")).encode()
     req=Request(url,data=data,headers=headers(),method=method)
     try:
