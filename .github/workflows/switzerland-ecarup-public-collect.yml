@@ -1,0 +1,40 @@
+name: Switzerland eCarUp public national collect
+on:
+  push:
+    paths:
+      - 'scripts/collect_swiss_ecarup_public.py'
+      - '.github/workflows/switzerland-ecarup-public-collect.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - run: python3 scripts/collect_swiss_ecarup_public.py
+      - name: Validate
+        run: |
+          python3 - <<'PY'
+          import json
+          x=json.load(open('docs/switzerland-ecarup-public-coverage-2026-09-28.json',encoding='utf-8'))
+          assert x['stationCount'] > 0
+          print(json.dumps(x,indent=2))
+          PY
+      - name: Persist
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/switzerland/ecarup-public-stations.json docs/switzerland-ecarup-public-coverage-2026-09-28.json
+          git commit -m 'data(switzerland): collect eCarUp public station pricing' || exit 0
+          for attempt in 1 2 3 4 5 6; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
