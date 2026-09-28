@@ -46,6 +46,24 @@ jobs:
                                   out['firstObjectKeys']=list(x)[:80]
                                   out['firstPartyId']=x.get('party_id')
                                   out['firstId']=x.get('id')
+                                  evses=x.get('evses') or []
+                                  if evses and isinstance(evses[0],dict):
+                                      ev=evses[0]
+                                      out['firstEvse']={
+                                          'uid':ev.get('uid'),'evse_id':ev.get('evse_id'),'status':ev.get('status'),
+                                          'keys':list(ev)[:80],
+                                          'connectors':[]
+                                      }
+                                      for con in (ev.get('connectors') or [])[:3]:
+                                          if isinstance(con,dict):
+                                              out['firstEvse']['connectors'].append({
+                                                  'id':con.get('id'),
+                                                  'keys':list(con)[:80],
+                                                  'tariff_ids':con.get('tariff_ids'),
+                                                  'tariff_id':con.get('tariff_id'),
+                                                  'standard':con.get('standard'),
+                                                  'max_electric_power':con.get('max_electric_power')
+                                              })
                               break
                       for key in ('meta','pagination','links'):
                           if isinstance(p.get(key),dict):
