@@ -1,0 +1,49 @@
+name: Belgium national first pass
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-national-first-pass.txt"
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Audit complete Belgium NAP snapshot
+        run: |
+          python scripts/belgium_national_first_pass.py
+
+      - name: Persist Belgium first-pass ledger
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium-national-first-pass-2026-09-28.json docs/belgium-cpo-progress-2026-09.json
+          if git diff --cached --quiet; then
+            echo "No report changes"
+            exit 0
+          fi
+          git commit -m "Audit Belgium national first pass"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then
+              exit 0
+            fi
+            echo "Push race detected; retrying ($attempt/5)"
+            sleep 3
+          done
+          echo "::error::Could not persist Belgium first-pass audit after 5 retries"
+          exit 1
