@@ -1,0 +1,2346 @@
+{
+  "country": "United Kingdom",
+  "countryCode": "GB",
+  "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
+  "updatedAt": "2026-09-28",
+  "phase": "first_pass",
+  "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
+  "nationalBaseline": {
+    "source": "UK Department for Transport / Zapmap",
+    "asOf": "2026-07-01",
+    "publicEVSE": 121171,
+    "rapid50kWPlusEVSE": 28887,
+    "purpose": "coverage control only; published DfT geography data is aggregated and is not the station/CPO canonical feed"
+  },
+  "regulatoryBasis": {
+    "regulation": "Public Charge Point Regulations 2023",
+    "openDataEffective": "2024-11-24",
+    "protocol": "OCPI 2.2.1",
+    "requiredPublicObjects": [
+      "Location",
+      "EVSE",
+      "Connector",
+      "Tariff"
+    ],
+    "availabilityUpdateRequirementSeconds": 30,
+    "note": "Reference and availability data must be public, free of charge, machine-readable and open under OGL."
+  },
+  "seed": {
+    "source": "Zapmap UK public charging networks guide, updated 2026-08-21 / entries updated 2026-09-08",
+    "type": "major-network seed; not exhaustive census",
+    "nonTeslaNetworksCount": 44,
+    "networks": [
+      "Osprey Charging",
+      "GRIDSERVE",
+      "MFG EV Power",
+      "IONITY",
+      "InstaVolt",
+      "Fastned",
+      "Be.EV",
+      "PoGo Charge",
+      "Pod",
+      "Applegreen Fast Charge",
+      "bp pulse",
+      "FOR EV",
+      "Wenea",
+      "evyve",
+      "Source EV",
+      "Shell Recharge",
+      "Allego",
+      "Arnold Clark Charge",
+      "Smart Charge",
+      "Believ",
+      "Monta",
+      "Zest",
+      "Roam",
+      "RAW Charging",
+      "Evolt",
+      "Lidl",
+      "Forward EV",
+      "Fuuse",
+      "Connekt",
+      "Weev",
+      "ParkRecharge",
+      "ScottishPower Recharge",
+      "EZ-Charge",
+      "GeniePoint",
+      "Mer",
+      "Clenergy EV",
+      "Qwello",
+      "ChargePoint",
+      "char.gy",
+      "TotalEnergies",
+      "Connected Kerb",
+      "Charge My Street",
+      "Shell Recharge ubitricity",
+      "Blink"
+    ]
+  },
+  "firstPass": {
+    "seedNetworks": 44,
+    "investigated": 44,
+    "openAnonymousUsable": 1,
+    "gatedOrAlternativeRouteNeeded": 4,
+    "remainingSeedNetworks": 0,
+    "firstPassComplete": true,
+    "sourceIdentifiedOrBetter": 12,
+    "partial": 32,
+    "registryCandidates": 108,
+    "registryClassificationComplete": true,
+    "countryFirstPassComplete": true,
+    "seedFirstPassComplete": true
+  },
+  "cpos": [
+    {
+      "name": "Osprey Charging",
+      "status": "partial",
+      "access": "credentials_via_support",
+      "evidence": "First-party page confirms OCPI/open data compliance; independent UK CPO dataset index reports URL/basic-auth credentials are supplied via support.",
+      "next": "seek public surface or credentials route after first pass."
+    },
+    {
+      "name": "GRIDSERVE",
+      "status": "partial",
+      "access": "api_key_request",
+      "evidence": "First-party open-data page provides a form to request an API key for the public API under the Public Charge Point Regulations.",
+      "next": "keep first-pass bounded; later test API after key or discover public endpoint."
+    },
+    {
+      "name": "MFG EV Power",
+      "status": "source_identified",
+      "access": "open_data_links_published",
+      "evidence": "First-party EV Power page explicitly publishes Locations and Tariffs links under Public Charge Point Regulations Open Data.",
+      "next": "resolve the target URLs and probe pagination/schema."
+    },
+    {
+      "name": "IONITY",
+      "status": "partial",
+      "access": "request_via_eco_movement",
+      "evidence": "IONITY publishes a UK Open Data Request page; requests are fulfilled by Eco-Movement.",
+      "next": "second pass: test Eco-Movement PCPR API route / obtain access; reuse validated IONITY tariff method where applicable."
+    },
+    {
+      "name": "InstaVolt",
+      "status": "partial",
+      "access": "request_credentials",
+      "evidence": "Operator public-regulation page instructs consumers to request open-data access by email, sign an Open Data Agreement, then receive credentials.",
+      "next": "look for a directly callable open endpoint or machine-readable alternative before considering manual access request"
+    },
+    {
+      "name": "Fastned",
+      "status": "source_identified",
+      "access": "open_data_api",
+      "evidence": "Fastned publishes a UK Open Data API fair-use policy covering reference, availability and ad-hoc tariff data under PCPR.",
+      "next": "second pass: resolve API endpoint and collect UK locations + tariffs."
+    },
+    {
+      "name": "Be.EV",
+      "status": "partial",
+      "access": "no_direct_endpoint_found_first_pass",
+      "evidence": "First-pass web search did not surface a direct public machine-readable endpoint.",
+      "next": "second pass: inspect operator site/app and Eco-Movement/OCPI routes."
+    },
+    {
+      "name": "PoGo Charge",
+      "status": "source_identified",
+      "access": "open_data_links_published",
+      "evidence": "First-party FAQ explicitly provides Open Data API links for Locations and Tariffs.",
+      "next": "resolve URLs and probe OCPI payloads."
+    },
+    {
+      "name": "Pod",
+      "aliases": [
+        "Pod Point"
+      ],
+      "status": "partial",
+      "access": "token_required",
+      "versionsEndpoint": "https://ocpi.podenergy.com/ocpi/cpo/versions",
+      "ocpiVersion": "2.2.1",
+      "locationsEndpoint": "https://ocpi.podenergy.com/ocpi/cpo/2.2.1/locations",
+      "tariffsEndpoint": "https://ocpi.podenergy.com/ocpi/cpo/2.2.1/tariffs",
+      "evidence": "Anonymous version discovery works; data modules return OCPI Unauthorized and require credentials exchange.",
+      "next": "seek separate statutory public feed or onboarding route; do not block first pass"
+    },
+    {
+      "name": "Applegreen Fast Charge",
+      "status": "partial",
+      "access": "no_direct_endpoint_found_first_pass",
+      "evidence": "First-pass search did not surface a UK PCPR endpoint.",
+      "next": "second pass: inspect operator site/app and third-party PCPR host."
+    },
+    {
+      "name": "bp pulse",
+      "status": "partial",
+      "access": "api_key_via_eco_movement",
+      "evidence": "UK CPO dataset index points to bp pulse regulation FAQ and an Eco-Movement API key route.",
+      "next": "resolve first-party access instructions and Eco-Movement feed after first pass."
+    },
+    {
+      "name": "FOR EV",
+      "status": "partial",
+      "access": "on_request",
+      "evidence": "First-party regulation page states OCPI data is available on request.",
+      "next": "seek callable endpoint or request route after first pass."
+    },
+    {
+      "name": "Wenea",
+      "status": "partial",
+      "access": "request_then_download",
+      "evidence": "Wenea UK has an Open Data access-request flow and a post-request download page.",
+      "next": "second pass: resolve downloadable artifact or endpoint without user credentials."
+    },
+    {
+      "name": "evyve",
+      "status": "partial",
+      "access": "request_via_eco_movement",
+      "evidence": "Evyve publishes a PCPR Open Data Request form and says data is provided within 48h; support is Eco-Movement.",
+      "next": "second pass: test Eco-Movement PCPR route."
+    },
+    {
+      "name": "Source EV",
+      "status": "partial",
+      "access": "request_via_eco_movement",
+      "evidence": "Source EV compliance page provides PCPR data by request via Eco-Movement.",
+      "next": "second pass: test Eco-Movement PCPR route."
+    },
+    {
+      "name": "Shell Recharge",
+      "status": "partial",
+      "access": "request_via_eco_movement",
+      "evidence": "Shell UK PCPR page routes open-data requests through Eco-Movement.",
+      "next": "second pass: test Eco-Movement PCPR API."
+    },
+    {
+      "name": "Allego",
+      "status": "partial",
+      "access": "no_direct_endpoint_found_first_pass",
+      "evidence": "First-pass search did not surface a direct UK PCPR feed.",
+      "next": "second pass: inspect Allego OCPI/public data surfaces."
+    },
+    {
+      "name": "Arnold Clark Charge",
+      "status": "source_identified",
+      "access": "open_access_links_published",
+      "evidence": "Arnold Clark Charge page exposes Open Access Location Data and Open Access Tariff Data links.",
+      "next": "second pass: resolve URLs and ingest."
+    },
+    {
+      "name": "Smart Charge",
+      "status": "partial",
+      "access": "endpoint_details_via_support",
+      "evidence": "Smart Charge FAQ says its open-access data endpoint details are available from customer support.",
+      "next": "second pass: identify endpoint without manual contact if possible."
+    },
+    {
+      "name": "Believ",
+      "status": "source_identified",
+      "access": "public_api",
+      "locationsEndpoint": "https://api.believ.com/",
+      "evidence": "Believ publishes a public API access page and explicitly states location, connector, pricing and availability data are open.",
+      "next": "second pass: inspect API schema and collect."
+    },
+    {
+      "name": "Monta",
+      "status": "partial",
+      "access": "public_api_documented",
+      "locationsEndpoint": "https://public-api.monta.com/api/v1/open-data/locations",
+      "evidence": "Monta documents a UK OCPI 2.2.1 open-data locations endpoint with party_id filtering and pagination.",
+      "next": "probe endpoint and identify UK party_ids/tariff linkage"
+    },
+    {
+      "name": "Zest",
+      "status": "partial",
+      "access": "no_direct_endpoint_found_first_pass",
+      "evidence": "Zest acknowledges PCPR/OCPI requirements publicly but first-pass search did not surface its own feed.",
+      "next": "second pass: inspect Fuuse/white-label backend and operator site."
+    },
+    {
+      "name": "Roam",
+      "status": "partial",
+      "access": "no_direct_endpoint_found_first_pass",
+      "evidence": "First-pass search did not surface a direct machine-readable PCPR feed.",
+      "next": "second pass: disambiguate network/operator and inspect backend."
+    },
+    {
+      "name": "RAW Charging",
+      "status": "partial",
+      "access": "no_direct_endpoint_found_first_pass",
+      "evidence": "First-pass search did not surface a direct machine-readable PCPR feed.",
+      "next": "second pass: inspect operator site, app/backend, Eco-Movement."
+    },
+    {
+      "name": "Evolt",
+      "status": "partial",
+      "access": "site_live_map_and_csv_tariff_evidence",
+      "evidence": "Evolt publishes a live map and site-level tariff information including downloadable CSVs for tariff changes, but no direct PCPR endpoint surfaced in first pass.",
+      "next": "second pass: inspect live-map backend/API."
+    },
+    {
+      "name": "Lidl",
+      "status": "partial",
+      "access": "lidl_plus_backend",
+      "evidence": "Lidl GB operates its own charging locator and charging service; no public PCPR endpoint surfaced in first pass.",
+      "next": "second pass: inspect Lidl Plus backend and identify legal CPO identity."
+    },
+    {
+      "name": "Forward EV",
+      "status": "partial",
+      "access": "no_direct_endpoint_found_first_pass",
+      "evidence": "First-pass search did not surface a direct public PCPR feed.",
+      "next": "second pass: identify backend/CPO identity."
+    },
+    {
+      "name": "Fuuse",
+      "status": "source_identified",
+      "access": "platform_open_data_link_capability",
+      "evidence": "Fuuse states CPOs can generate/copy their Open Data link for PCPR compliance; Fuuse also has a public developer API.",
+      "next": "second pass: enumerate Fuuse-hosted UK CPO open-data links and determine whether Fuuse itself is a CPO in seed."
+    },
+    {
+      "name": "Connekt",
+      "status": "partial",
+      "access": "no_direct_endpoint_found_first_pass",
+      "evidence": "First-pass search did not surface a direct public PCPR feed.",
+      "next": "second pass: inspect app/backend/operator website."
+    },
+    {
+      "name": "Weev",
+      "status": "source_identified",
+      "access": "free_api_key",
+      "evidence": "Weev publishes an EVSE API and an Open Data page; free account/API key is required.",
+      "next": "second pass: determine whether keyless route exists or whether a project credential is needed."
+    },
+    {
+      "name": "ParkRecharge",
+      "status": "source_identified",
+      "access": "open_data_page",
+      "evidence": "ParkRecharge publishes a Public Charging & Open Data page confirming PCPR compliance.",
+      "next": "second pass: resolve machine-readable locations/tariffs link."
+    },
+    {
+      "name": "ScottishPower Recharge",
+      "status": "source_identified",
+      "access": "open_data_published",
+      "evidence": "ScottishPower public charging page explicitly states open data is provided for location and tariff.",
+      "next": "second pass: resolve data links/backend and ingest council networks."
+    },
+    {
+      "name": "EZ-Charge",
+      "status": "partial",
+      "access": "no_direct_endpoint_found_first_pass",
+      "evidence": "First-pass search did not surface a direct public PCPR feed.",
+      "next": "second pass: inspect site/app/backend."
+    },
+    {
+      "name": "GeniePoint",
+      "status": "source_identified",
+      "access": "open_data_page",
+      "evidence": "UK CPO dataset index points to a GeniePoint open-data page.",
+      "next": "probe locations/tariffs feed."
+    },
+    {
+      "name": "Mer",
+      "status": "partial",
+      "access": "no_direct_endpoint_found_first_pass",
+      "evidence": "First-pass search did not surface a direct UK PCPR feed.",
+      "next": "second pass: inspect Mer UK open-data/OCPI surfaces."
+    },
+    {
+      "name": "Clenergy EV",
+      "status": "source_identified",
+      "access": "open_data_page",
+      "evidence": "UK CPO dataset index points to Clenergy EV open-data page.",
+      "next": "probe locations/tariffs feed."
+    },
+    {
+      "name": "Qwello",
+      "status": "partial",
+      "access": "no_direct_endpoint_found_first_pass",
+      "evidence": "First-pass search did not surface a direct UK PCPR feed.",
+      "next": "second pass: inspect Qwello UK endpoints/app/backend."
+    },
+    {
+      "name": "ChargePoint",
+      "status": "partial",
+      "access": "request_via_external_partner",
+      "evidence": "ChargePoint UK says public CMS station data is available via API request through an external partner.",
+      "next": "second pass: resolve partner form/API and UK CMS data."
+    },
+    {
+      "name": "char.gy",
+      "status": "complete_source_identified",
+      "access": "anonymous",
+      "locationsEndpoint": "https://char.gy/open-ocpi/locations",
+      "tariffsEndpoint": "https://char.gy/open-ocpi/tariffs",
+      "evidence": "Public statutory OCPI-shaped feed; live probe indexed 2026-07-27 reported x-total-count 5409 locations and tariff_ids resolving to /tariffs.",
+      "next": "collect full paginated locations + tariffs and normalize to TCC"
+    },
+    {
+      "name": "TotalEnergies",
+      "status": "partial",
+      "access": "no_direct_uk_endpoint_found_first_pass",
+      "evidence": "TotalEnergies confirms a large UK public charging estate, but first-pass search did not surface the UK PCPR machine-readable endpoint.",
+      "next": "second pass: inspect London network backend/Source relationship and PCPR host."
+    },
+    {
+      "name": "Connected Kerb",
+      "status": "partial",
+      "access": "token_required",
+      "versionsEndpoint": "https://cp.connectedkerb.com/ocpi/versions",
+      "evidence": "OCPI endpoint confirmed; anonymous access returns Unauthorized.",
+      "next": "seek statutory public-data surface distinct from roaming endpoint; do not block first pass"
+    },
+    {
+      "name": "Charge My Street",
+      "status": "partial",
+      "access": "no_direct_endpoint_found_first_pass",
+      "evidence": "First-pass search did not surface a direct PCPR feed.",
+      "next": "second pass: inspect operator/backend and local authority feeds."
+    },
+    {
+      "name": "Shell Recharge ubitricity",
+      "status": "partial",
+      "access": "request_or_eco_movement",
+      "evidence": "UK CPO dataset index points to Shell open-data request and Eco-Movement PCPR API.",
+      "next": "test Eco-Movement public-regulation feed path."
+    },
+    {
+      "name": "Blink",
+      "status": "partial",
+      "access": "open_data_request",
+      "evidence": "UK CPO dataset index points to Blink UK Open Data Request.",
+      "next": "resolve endpoint/access mechanics after first pass."
+    }
+  ],
+  "sourceURLs": [
+    "https://www.gov.uk/government/statistics/electric-vehicle-charging-infrastructure-statistics-1-july-2026/public-electric-vehicle-charging-infrastructure-statistics-1-july-2026",
+    "https://www.gov.uk/government/publications/the-public-charge-point-regulations-2023-guidance/public-charge-point-regulations-2023-guidance",
+    "https://www.zapmap.com/ev-guides/public-charging-point-networks",
+    "https://www.openchargemap.org/develop/api",
+    "https://char.gy/open-ocpi/locations",
+    "https://char.gy/open-ocpi/tariffs",
+    "https://public-api.monta.com/api/v1/open-data/locations"
+  ],
+  "safeguards": [
+    "Do not treat the 44-network Zapmap seed as exhaustive.",
+    "Do not count Tesla in the non-Tesla CPO ledger.",
+    "Do not revisit a bounded/gated CPO until all seed CPOs have had one first-pass attempt.",
+    "Persist every source, endpoint, alias and access result in this canonical progress file."
+  ],
+  "discoverySources": [
+    {
+      "name": "OpenStreetMap Wiki - EV charge points in the United Kingdom",
+      "role": "secondary discovery index for CPO open-data URLs/access routes; never authoritative for TCC tariffs without CPO verification",
+      "url": "https://wiki.openstreetmap.org/wiki/EV_charge_points_in_the_United_Kingdom"
+    }
+  ],
+  "registryReconciliation": {
+    "source": "EV Roam (Renewable Energy Assurance Ltd)",
+    "api": "https://evroam.org.uk/_functions/getRegister",
+    "fetchedAt": "2026-09-27",
+    "role": "national GB/IE e-mobility ID register; used as CPO identity control universe, not as proof that every registrant operates public chargepoints",
+    "gbOperatorIds": 108,
+    "distinctGbCpoOrganisations": 99,
+    "seedNetworks": 44,
+    "status": "registry_fetched",
+    "next": "classify every GB operator ID as public-network / private-or-fleet / backend-platform / duplicate-alias / uncertain, and first-pass every public-network candidate",
+    "classificationProgress": {
+      "classified": 108,
+      "unclassified": 0,
+      "counts": {
+        "public_network_confirmed_or_strong_candidate": 41,
+        "uncertain_needs_second_pass": 8,
+        "backend_cpms_emsp_not_primary_public_cpo": 12,
+        "public_network_confirmed": 8,
+        "peer_to_peer_or_shared_charging_candidate": 1,
+        "fleet_private_operator": 7,
+        "operator_identity_uncertain": 1,
+        "non_uk_or_identity_mismatch": 1,
+        "energy_platform_or_trader_uncertain": 1,
+        "fleet_commercial_hub_operator": 1,
+        "specialist_freight_network": 1,
+        "installer_energy_services": 1,
+        "site_owner_or_brand_needs_cpo_check": 5,
+        "installer_managed_services": 1,
+        "semi_public_managed_network": 1,
+        "fleet_backend_operator": 1,
+        "hardware_backend_with_public_points_uncertain": 1,
+        "duplicate_or_parent_alias_beev": 1,
+        "public_network_confirmed_current_identity_caveat": 1,
+        "legacy_shell_newmotion_identity": 3,
+        "hardware_or_service_provider_uncertain": 1,
+        "public_cpo_candidate": 1,
+        "backend_installer_not_primary_public_cpo": 1,
+        "installer_service_provider_uncertain": 1,
+        "installer_or_managed_charging_uncertain": 1,
+        "emsp_cpms_not_primary_public_cpo": 1,
+        "commercial_fleet_infrastructure_candidate": 1,
+        "backend_payment_identity_layer": 1,
+        "backend_or_service_provider_uncertain": 1,
+        "deprecated_transferred_estate": 1,
+        "legacy_or_uncertain_operator": 1
+      }
+    },
+    "publicCandidatesConfirmedSoFar": [
+      "GB*3TI",
+      "GB*APC",
+      "GB*24L",
+      "GB*EGO"
+    ],
+    "excludedOrNonNetworkSoFar": [
+      "GB*EGF"
+    ],
+    "method": "Conservative identity classification: confirmed/strong public-network candidates are retained for TCC first-pass; obvious CPMS/eMSP/fleet roles are excluded from public-network coverage count; site-owner/brand cases remain to be checked.",
+    "classificationComplete": true
+  },
+  "notes": [
+    "First pass over all 44 Zapmap-seed non-Tesla networks completed on 2026-09-27. This does NOT mean UK country coverage is complete; next step is EV Roam registry reconciliation to add CPOs absent from the Zapmap major-network seed, then second-pass data extraction.",
+    "EV Roam full register fetched 2026-09-27: 108 GB operator IDs / 99 distinct organisations. The previous 44/44 completion remains only the Zapmap major-network seed pass; country-level first pass is reopened until EV Roam candidates are classified and all public-network candidates receive a first-pass investigation.",
+    "EV Roam identity classification completed conservatively. 'Classification complete' means every registry ID has a role/status label, not that every uncertain identity has been fully resolved. Only confirmed/strong public networks should enter the TCC public-CPO coverage denominator.",
+    "Country-level first pass over every EV Roam identity classified as confirmed/strong public-network or public-CPO candidate completed. Remaining work is second-pass resolution of partials and extraction/normalisation of source-identified networks; non-core/fleet/backend/legacy identities stay outside the public-CPO denominator unless new evidence emerges."
+  ],
+  "evRoamGbOperators": [
+    {
+      "title": "3ti Energy Hubs",
+      "operatorId": "GB*3TI",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "evidence": "3ti site documents a public EV charging hub in Uttoxeter and 24/7 driver support for its chargepoints.",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "4th Dimension Technology LTD",
+      "operatorId": "GB*MYE",
+      "status": "unclassified",
+      "classification": "uncertain_needs_second_pass",
+      "classificationBasis": "No sufficiently reliable public-network evidence established in first pass."
+    },
+    {
+      "title": "50FIVE CHARGING SOLUTIONS UK LTD",
+      "operatorId": "GB*505",
+      "status": "unclassified",
+      "classification": "backend_cpms_emsp_not_primary_public_cpo",
+      "evidence": "50five UK material centers on managed charging subscriptions, business/home charging and public-roaming cards; own public-network role not established in first classification.",
+      "classificationBasis": "Business role is primarily roaming/eMSP/CPMS/backend rather than a distinct public CPO network."
+    },
+    {
+      "title": "APCOA Parking UK Ltd",
+      "operatorId": "GB*APC",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "evidence": "APCOA public car parks expose paid EV charging via APCOA Connect.",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Allstar Business Solutions Limited",
+      "operatorId": "GB*ALS",
+      "status": "unclassified",
+      "classification": "backend_cpms_emsp_not_primary_public_cpo",
+      "classificationBasis": "Business role is primarily roaming/eMSP/CPMS/backend rather than a distinct public CPO network."
+    },
+    {
+      "title": "Applegreen Electric",
+      "operatorId": "GB*APG",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Arnold Clark Automobiles Ltd",
+      "operatorId": "GB*ACC",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Be.EV",
+      "operatorId": "GB*B3V",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Believ Limited",
+      "operatorId": "GB*LCL",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Believ Limited",
+      "operatorId": "GB*BLV",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Bright.Green Energy Limited",
+      "operatorId": "GB*BB1",
+      "status": "unclassified",
+      "classification": "uncertain_needs_second_pass",
+      "classificationBasis": "No sufficiently reliable public-network evidence established in first pass."
+    },
+    {
+      "title": "CLENERGY EV LTD",
+      "operatorId": "GB*CEV",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "ChargePoint Network (Netherlands) B.V.",
+      "operatorId": "GB*CPI",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Chargemaster Ltd",
+      "operatorId": "GB*BPC",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Chargemaster Ltd",
+      "operatorId": "GB*BPP",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Chargemaster Ltd",
+      "operatorId": "GB*BPT",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Chargeplacescotland",
+      "operatorId": "GB*CPS",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "CitiCharge",
+      "operatorId": "GB*CIT",
+      "status": "unclassified",
+      "classification": "public_network_confirmed",
+      "classificationBasis": "CitiCharge describes itself as a subscription-free public EV charging network."
+    },
+    {
+      "title": "Co Charger Limited",
+      "operatorId": "GB*CCR",
+      "status": "unclassified",
+      "classification": "peer_to_peer_or_shared_charging_candidate",
+      "classificationBasis": "Co Charger is associated with shared/community charging rather than a conventional CPO network; retain outside core public-network count pending TCC relevance decision."
+    },
+    {
+      "title": "DV8 CPO Ltd",
+      "operatorId": "GB*844",
+      "status": "unclassified",
+      "classification": "uncertain_needs_second_pass",
+      "classificationBasis": "No sufficiently reliable public-network evidence established in first pass."
+    },
+    {
+      "title": "Dragon Charging",
+      "operatorId": "GB*DGN",
+      "status": "unclassified",
+      "classification": "public_network_confirmed",
+      "classificationBasis": "Dragon Charging is a public destination-charging network in Wales with hundreds of public chargers; confirmed by current Zapmap network profile and local-authority listings."
+    },
+    {
+      "title": "Drax Energy Solutions Limited",
+      "operatorId": "GB*DRX",
+      "status": "unclassified",
+      "classification": "fleet_private_operator",
+      "classificationBasis": "Identity is associated primarily with fleet/private charging rather than a general public charging network."
+    },
+    {
+      "title": "E-Flux",
+      "operatorId": "GB*EFL",
+      "status": "unclassified",
+      "classification": "backend_cpms_emsp_not_primary_public_cpo",
+      "classificationBasis": "Business role is primarily roaming/eMSP/CPMS/backend rather than a distinct public CPO network."
+    },
+    {
+      "title": "E.ON Drive Infrastructure UK Limited",
+      "operatorId": "GB*UFC",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "EG On The Move Limited",
+      "operatorId": "GB*OTM",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "EV Charger Points Ltd",
+      "operatorId": "GB*CAG",
+      "status": "unclassified",
+      "classification": "public_network_confirmed",
+      "classificationBasis": "EV Charger Points Ltd operates Charge & Go and its terms cover app/RFID/payment-card EV charging services."
+    },
+    {
+      "title": "EV Chargers Ltd",
+      "operatorId": "GB*EVC",
+      "status": "unclassified",
+      "classification": "operator_identity_uncertain",
+      "classificationBasis": "EV Chargers Ltd is an active UK company but current public-network brand/estate is not established from authoritative first-pass evidence."
+    },
+    {
+      "title": "EVCharge",
+      "operatorId": "GB*CHG",
+      "status": "unclassified",
+      "classification": "non_uk_or_identity_mismatch",
+      "classificationBasis": "Search evidence for EVcharge points to a Spanish CPO/app that explicitly says it does not operate UK chargepoints; EV Roam identity needs reconciliation before inclusion."
+    },
+    {
+      "title": "EZ CHARGE LTD",
+      "operatorId": "GB*EZC",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "EasyGo Charging Limited",
+      "operatorId": "GB*EGO",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "evidence": "EasyGo terms define a charging network of free and paid chargepoints available to subscribers/public users.",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Elektra Charge Limited",
+      "operatorId": "GB*321",
+      "status": "unclassified",
+      "classification": "public_network_confirmed",
+      "classificationBasis": "Elektra Charge publishes live/in-progress UK charging sites, driver charging instructions and a network-wide tariff."
+    },
+    {
+      "title": "Energyforce Ltd",
+      "operatorId": "GB*EGF",
+      "status": "unclassified",
+      "classification": "backend_cpms_emsp_not_primary_public_cpo",
+      "evidence": "EnergyForce describes itself as an installer/ICP and ChargeControl support platform for CPOs, not a consumer public charging network.",
+      "classificationBasis": "Business role is primarily roaming/eMSP/CPMS/backend rather than a distinct public CPO network."
+    },
+    {
+      "title": "Erinion",
+      "operatorId": "GB*TCS",
+      "status": "unclassified",
+      "classification": "fleet_private_operator",
+      "classificationBasis": "Identity is associated primarily with fleet/private charging rather than a general public charging network."
+    },
+    {
+      "title": "Evenergi UK Ltd",
+      "operatorId": "GB*BTF",
+      "status": "unclassified",
+      "classification": "energy_platform_or_trader_uncertain",
+      "classificationBasis": "Evenergi UK is active in electricity/energy services; no general public charging network evidenced in first pass."
+    },
+    {
+      "title": "Evolo",
+      "operatorId": "GB*369",
+      "status": "unclassified",
+      "classification": "public_network_confirmed",
+      "classificationBasis": "Evolo provides app/RFID/contactless access instructions for its EV chargers and public charging use."
+    },
+    {
+      "title": "Evolt Charging Ltd",
+      "operatorId": "GB*PO2",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Evolt Charging Ltd",
+      "operatorId": "GB*CP2",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Evolt Charging Ltd",
+      "operatorId": "GB*SS2",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Evyve Services Limited",
+      "operatorId": "GB*EVY",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "FIRSTGROUP ENERGY",
+      "operatorId": "GB*FCH",
+      "status": "unclassified",
+      "classification": "fleet_private_operator",
+      "classificationBasis": "Identity is associated primarily with fleet/private charging rather than a general public charging network."
+    },
+    {
+      "title": "Fastned UK Limited",
+      "operatorId": "GB*FAS",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Fleete Group Limited",
+      "operatorId": "GB*FGL",
+      "status": "unclassified",
+      "classification": "fleet_commercial_hub_operator",
+      "classificationBasis": "Fleete focuses on commercial/fleet charging and shared HGV hubs; not a general passenger-car public network."
+    },
+    {
+      "title": "Forward EV Ltd",
+      "operatorId": "GB*240",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Fuuse",
+      "operatorId": "GB*FSE",
+      "status": "unclassified",
+      "classification": "backend_cpms_emsp_not_primary_public_cpo",
+      "classificationBasis": "Business role is primarily roaming/eMSP/CPMS/backend rather than a distinct public CPO network."
+    },
+    {
+      "title": "GRIDSERVE",
+      "operatorId": "GB*GRD",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "GRIDSERVE Electric Freightway",
+      "operatorId": "GB*HGV",
+      "status": "unclassified",
+      "classification": "specialist_freight_network",
+      "classificationBasis": "GRIDSERVE Electric Freightway is a freight/HGV charging identity; retain separately but exclude from passenger-car TCC coverage unless car-compatible EVSE are found."
+    },
+    {
+      "title": "Gensource",
+      "operatorId": "GB*GEN",
+      "status": "unclassified",
+      "classification": "installer_energy_services",
+      "classificationBasis": "Gensource presents EV charger installation and energy services, not a consumer public charging network."
+    },
+    {
+      "title": "Gilbarco Veeder-Root Ltd",
+      "operatorId": "GB*GVE",
+      "status": "unclassified",
+      "classification": "site_owner_or_brand_needs_cpo_check",
+      "classificationBasis": "May expose public charging but needs confirmation whether it is the actual CPO versus site owner/brand."
+    },
+    {
+      "title": "Gilbarco Veeder-Root Ltd",
+      "operatorId": "GB*GVR",
+      "status": "unclassified",
+      "classification": "site_owner_or_brand_needs_cpo_check",
+      "classificationBasis": "May expose public charging but needs confirmation whether it is the actual CPO versus site owner/brand."
+    },
+    {
+      "title": "Globe EV Ltd",
+      "operatorId": "GB*GEV",
+      "status": "unclassified",
+      "classification": "uncertain_needs_second_pass",
+      "classificationBasis": "No sufficiently reliable public-network evidence established in first pass."
+    },
+    {
+      "title": "Go Zero Limited",
+      "operatorId": "GB*GOZ",
+      "status": "unclassified",
+      "classification": "installer_managed_services",
+      "classificationBasis": "Go Zero markets end-to-end EV charging infrastructure for organisations and long-term management, not a distinct nationwide public charging network."
+    },
+    {
+      "title": "GreenFlux Assets BV",
+      "operatorId": "GB*GFX",
+      "status": "unclassified",
+      "classification": "backend_cpms_emsp_not_primary_public_cpo",
+      "classificationBasis": "Business role is primarily roaming/eMSP/CPMS/backend rather than a distinct public CPO network."
+    },
+    {
+      "title": "GreenPower EV Ltd",
+      "operatorId": "GB*GPE",
+      "status": "unclassified",
+      "classification": "uncertain_needs_second_pass",
+      "classificationBasis": "No sufficiently reliable public-network evidence established in first pass."
+    },
+    {
+      "title": "Greenpoint EV Ltd",
+      "operatorId": "GB*GP1",
+      "status": "unclassified",
+      "classification": "semi_public_managed_network",
+      "classificationBasis": "GreenPoint EV operates and manages chargepoints, including resident/customer billing; public-general-access status varies by site, so exclude from core public-network count until site-level verification."
+    },
+    {
+      "title": "Gregory Distribution Ltd",
+      "operatorId": "GB*GDL",
+      "status": "unclassified",
+      "classification": "fleet_private_operator",
+      "classificationBasis": "Identity is associated primarily with fleet/private charging rather than a general public charging network."
+    },
+    {
+      "title": "Hitachi ZeroCarbon Limited",
+      "operatorId": "GB*HZC",
+      "status": "unclassified",
+      "classification": "fleet_backend_operator",
+      "classificationBasis": "Hitachi ZeroCarbon provides fleet charging/energy-management platforms and supports HGV infrastructure; not a general public CPO network."
+    },
+    {
+      "title": "Hydra EVC Ltd",
+      "operatorId": "GB*253",
+      "status": "unclassified",
+      "classification": "hardware_backend_with_public_points_uncertain",
+      "classificationBasis": "Hydra primarily sells charging hardware/platform services; it also references public Hydra chargepoints, but a distinct nationwide public network is not yet established."
+    },
+    {
+      "title": "IONITY GmbH",
+      "operatorId": "GB*IOY",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Iduna OMA Limited",
+      "operatorId": "GB*BEV",
+      "status": "unclassified",
+      "classification": "duplicate_or_parent_alias_beev",
+      "classificationBasis": "Iduna/GB*BEV appears associated with the Be.EV ecosystem; keep as alias candidate until operator mapping is verified to avoid double counting."
+    },
+    {
+      "title": "InstaVolt",
+      "operatorId": "GB*INS",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "LEAP24 UK Limited",
+      "operatorId": "GB*24L",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "evidence": "LEAP24 publishes UK public charging locations and network-wide PAYG pricing.",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Last Mile Solutions",
+      "operatorId": "GB*LMS",
+      "status": "unclassified",
+      "classification": "backend_cpms_emsp_not_primary_public_cpo",
+      "classificationBasis": "Business role is primarily roaming/eMSP/CPMS/backend rather than a distinct public CPO network."
+    },
+    {
+      "title": "Lidl Great Britain Limited",
+      "operatorId": "GB*LDL",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Lidl Northern Ireland Limited",
+      "operatorId": "GB*LNI",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Mer Fleet Services Limited",
+      "operatorId": "GB*MER",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_current_identity_caveat",
+      "classificationBasis": "Mer Fleet Services still exposes public charging, driver portal/app and public-network tariffs in 2026, despite Mer group divesting the UK fleet business in June 2026."
+    },
+    {
+      "title": "Mercedes-Benz High Power Charging Europe GmbH",
+      "operatorId": "GB*MBX",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Moto Hospitality Limited",
+      "operatorId": "GB*MOT",
+      "status": "unclassified",
+      "classification": "site_owner_or_brand_needs_cpo_check",
+      "classificationBasis": "May expose public charging but needs confirmation whether it is the actual CPO versus site owner/brand."
+    },
+    {
+      "title": "Netiqs Limited",
+      "operatorId": "GB*311",
+      "status": "unclassified",
+      "classification": "uncertain_needs_second_pass",
+      "classificationBasis": "No sufficiently reliable public-network evidence established in first pass."
+    },
+    {
+      "title": "New Motion",
+      "operatorId": "GB*SHL",
+      "status": "unclassified",
+      "classification": "legacy_shell_newmotion_identity",
+      "classificationBasis": "New Motion is a legacy Shell Recharge identity; do not count separately from Shell Recharge until endpoint/party mapping is reconciled."
+    },
+    {
+      "title": "New Motion",
+      "operatorId": "GB*TNM",
+      "status": "unclassified",
+      "classification": "legacy_shell_newmotion_identity",
+      "classificationBasis": "New Motion is a legacy Shell Recharge identity; do not count separately from Shell Recharge until endpoint/party mapping is reconciled."
+    },
+    {
+      "title": "New Motion",
+      "operatorId": "GB*SFS",
+      "status": "unclassified",
+      "classification": "legacy_shell_newmotion_identity",
+      "classificationBasis": "New Motion is a legacy Shell Recharge identity; do not count separately from Shell Recharge until endpoint/party mapping is reconciled."
+    },
+    {
+      "title": "Octopus Electroverse Ltd",
+      "operatorId": "GB*OCT",
+      "status": "unclassified",
+      "classification": "backend_cpms_emsp_not_primary_public_cpo",
+      "classificationBasis": "Business role is primarily roaming/eMSP/CPMS/backend rather than a distinct public CPO network."
+    },
+    {
+      "title": "Osprey Charging Network Ltd",
+      "operatorId": "GB*OSP",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Park&Recharge Limited",
+      "operatorId": "GB*HUB",
+      "status": "unclassified",
+      "classification": "workplace_private_or_restricted_network",
+      "classificationBasis": "Current ParkRecharge app evidence points to workplace charging deployments rather than a general public charging network; remove from core public-CPO denominator pending contrary evidence."
+    },
+    {
+      "title": "PoGo Charge",
+      "operatorId": "GB*POG",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Pod Point Limited",
+      "operatorId": "GB*POD",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Porsche Sales & Marketplace GmbH",
+      "operatorId": "GB*911",
+      "status": "unclassified",
+      "classification": "site_owner_or_brand_needs_cpo_check",
+      "classificationBasis": "May expose public charging but needs confirmation whether it is the actual CPO versus site owner/brand."
+    },
+    {
+      "title": "Power Sonic Europe Ltd",
+      "operatorId": "GB*EVS",
+      "status": "unclassified",
+      "classification": "hardware_or_service_provider_uncertain",
+      "classificationBasis": "Power Sonic Europe is not yet evidenced as a general public CPO; retain for second-pass identity check."
+    },
+    {
+      "title": "Pretium EV Charging Infra & Solutions Limited",
+      "operatorId": "GB*007",
+      "status": "unclassified",
+      "classification": "public_cpo_candidate",
+      "classificationBasis": "Pretium Synergy states it provides ChargePoint Operations as well as EV charging solutions; public estate requires second-pass verification."
+    },
+    {
+      "title": "Q-Park Recharge Ltd",
+      "operatorId": "GB*QPA",
+      "status": "unclassified",
+      "classification": "site_owner_or_brand_needs_cpo_check",
+      "classificationBasis": "May expose public charging but needs confirmation whether it is the actual CPO versus site owner/brand."
+    },
+    {
+      "title": "Qwello (UK) Ltd",
+      "operatorId": "GB*QWC",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Radius Chargepoint Limited",
+      "operatorId": "GB*RCP",
+      "status": "unclassified",
+      "classification": "backend_installer_not_primary_public_cpo",
+      "classificationBasis": "Radius Charge focuses on home/SME/enterprise charging solutions and infrastructure management rather than a distinct public network."
+    },
+    {
+      "title": "Route220 srl",
+      "operatorId": "GB*MPS",
+      "status": "unclassified",
+      "classification": "backend_cpms_emsp_not_primary_public_cpo",
+      "classificationBasis": "Business role is primarily roaming/eMSP/CPMS/backend rather than a distinct public CPO network."
+    },
+    {
+      "title": "SEE Services",
+      "operatorId": "GB*191",
+      "status": "unclassified",
+      "classification": "installer_service_provider_uncertain",
+      "classificationBasis": "SEE Services appears primarily infrastructure/service oriented; no distinct general public charging network established in first pass."
+    },
+    {
+      "title": "Solnet EV",
+      "operatorId": "GB*SOL",
+      "status": "unclassified",
+      "classification": "installer_or_managed_charging_uncertain",
+      "classificationBasis": "Solnet EV identity requires second-pass verification; no distinct public-network estate confirmed in first pass."
+    },
+    {
+      "title": "Source EV UK Limited",
+      "operatorId": "GB*SGB",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Spirii",
+      "operatorId": "GB*SPI",
+      "status": "unclassified",
+      "classification": "backend_cpms_emsp_not_primary_public_cpo",
+      "classificationBasis": "Business role is primarily roaming/eMSP/CPMS/backend rather than a distinct public CPO network."
+    },
+    {
+      "title": "Stagecoach Services Limited",
+      "operatorId": "GB*SCC",
+      "status": "unclassified",
+      "classification": "fleet_private_operator",
+      "classificationBasis": "Identity is associated primarily with fleet/private charging rather than a general public charging network."
+    },
+    {
+      "title": "Swarco E.Connect",
+      "operatorId": "GB*SSM",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "TUI Aktiengesellschaft",
+      "operatorId": "GB*TUI",
+      "status": "unclassified",
+      "classification": "fleet_private_operator",
+      "classificationBasis": "Identity is associated primarily with fleet/private charging rather than a general public charging network."
+    },
+    {
+      "title": "Tap Electric",
+      "operatorId": "GB*TAP",
+      "status": "unclassified",
+      "classification": "emsp_cpms_not_primary_public_cpo",
+      "classificationBasis": "Tap Electric presents a driver roaming app plus charger-management platform; primary role is eMSP/CPMS rather than a distinct owned public network."
+    },
+    {
+      "title": "Ubichrge ltd.",
+      "operatorId": "GB*EST",
+      "status": "unclassified",
+      "classification": "uncertain_needs_second_pass",
+      "classificationBasis": "Ubichrge identity could not be tied confidently to a current general public network in first pass."
+    },
+    {
+      "title": "Urban Fox Networks (UK) Ltd",
+      "operatorId": "GB*UFX",
+      "status": "unclassified",
+      "classification": "public_network_confirmed",
+      "classificationBasis": "Urban Fox explicitly describes itself as a British charge point operator delivering public/near-home networks."
+    },
+    {
+      "title": "Virta Global UK",
+      "operatorId": "GB*VIR",
+      "status": "unclassified",
+      "classification": "backend_cpms_emsp_not_primary_public_cpo",
+      "classificationBasis": "Business role is primarily roaming/eMSP/CPMS/backend rather than a distinct public CPO network."
+    },
+    {
+      "title": "VoloX",
+      "operatorId": "GB*VOL",
+      "status": "unclassified",
+      "classification": "uncertain_needs_second_pass",
+      "classificationBasis": "VoloX requires second-pass identity and public-estate verification."
+    },
+    {
+      "title": "Voltempo",
+      "operatorId": "GB*VTO",
+      "status": "unclassified",
+      "classification": "commercial_fleet_infrastructure_candidate",
+      "classificationBasis": "Voltempo is strongly associated with high-power commercial/fleet charging infrastructure rather than a broad passenger-car public network."
+    },
+    {
+      "title": "Voltier",
+      "operatorId": "GB*VTR",
+      "status": "unclassified",
+      "classification": "backend_payment_identity_layer",
+      "classificationBasis": "Voltier describes itself as payment/identity infrastructure for Plug & Charge rather than a public charging network."
+    },
+    {
+      "title": "Voltshare Ltd",
+      "operatorId": "GB*VSE",
+      "status": "unclassified",
+      "classification": "public_network_confirmed",
+      "classificationBasis": "Voltshare terms identify Voltshare as a destination EV Charging Network Operator; app exposes public/community chargepoints."
+    },
+    {
+      "title": "Voqa SAS",
+      "operatorId": "GB*VOQ",
+      "status": "unclassified",
+      "classification": "backend_or_service_provider_uncertain",
+      "classificationBasis": "Voqa SAS requires second-pass identity check; no UK general public-network estate confirmed in first pass."
+    },
+    {
+      "title": "Wattif EV UK Limited",
+      "operatorId": "GB*WAT",
+      "status": "unclassified",
+      "classification": "deprecated_transferred_estate",
+      "classificationBasis": "Wattif UK/Ireland chargepoint estate was acquired by Plug Charging in February 2026; treat EV Roam identity as legacy until registry catches up."
+    },
+    {
+      "title": "Weev.ie Ltd",
+      "operatorId": "GB*WNI",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Welch's Transport Ltd",
+      "operatorId": "GB*WTL",
+      "status": "unclassified",
+      "classification": "fleet_private_operator",
+      "classificationBasis": "Identity is associated primarily with fleet/private charging rather than a general public charging network."
+    },
+    {
+      "title": "Zapcharged Limited",
+      "operatorId": "GB*ZCP",
+      "status": "unclassified",
+      "classification": "legacy_or_uncertain_operator",
+      "classificationBasis": "Zapcharged Limited requires second-pass reconciliation against current brand/estate; do not count as distinct public CPO yet."
+    },
+    {
+      "title": "Zapgo",
+      "operatorId": "GB*ZGO",
+      "status": "unclassified",
+      "classification": "public_network_confirmed",
+      "classificationBasis": "Zapgo operates rapid/ultra-rapid public charging sites across UK destinations."
+    },
+    {
+      "title": "Zest Eco Ltd",
+      "operatorId": "GB*ZST",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "Zest Eco Ltd",
+      "operatorId": "GB*ZRA",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "ubitricity Distributed Energy Systems UK Ltd.",
+      "operatorId": "GB*UB1",
+      "status": "unclassified",
+      "classification": "public_network_confirmed_or_strong_candidate",
+      "classificationBasis": "EV Roam CPO identity plus known/public-facing charging-network operation or current seed/operator evidence."
+    },
+    {
+      "title": "vaylens limited",
+      "operatorId": "GB*VAY",
+      "status": "unclassified",
+      "classification": "backend_cpms_emsp_not_primary_public_cpo",
+      "classificationBasis": "Business role is primarily roaming/eMSP/CPMS/backend rather than a distinct public CPO network."
+    }
+  ],
+  "registryFirstPass": {
+    "networks": [
+      {
+        "name": "ChargePlace Scotland",
+        "operatorIds": [
+          "GB*CPS"
+        ],
+        "status": "complete_source_validated",
+        "locations": "https://account.chargeplacescotland.org/api/v3/poi/chargepoint/static",
+        "availability": "https://account.chargeplacescotland.org/api/v2/poi/chargepoint/dynamic",
+        "pricing": "owner-specific; CPS tariff pages / local-authority datasets",
+        "evidence": "Public API endpoints are documented in an open research repository; Scottish Government confirms tariffs are set by individual chargepoint owners and CPS publishes tariff information.",
+        "next": "No unresolved tariff IDs remain. Keep daily feed ingest plus the 10 evidence-backed tariff overrides until the upstream tariff feed republishes those IDs.",
+        "locationsEndpoint": "https://info.smartcharging.uk/public_feed/locations/2463",
+        "tariffsEndpoint": "https://info.smartcharging.uk/public_feed/locations/2463/tariffs",
+        "validation": "Official CPS Network Performance page links these public feeds. Live anonymous validation 2026-09-27: locations meta total=1485 and records contain party_id CPS, coordinates, EVSE status, connectors, power and tariff_ids; tariffs feed returns GBP ENERGY/FLAT components, VAT, min_price and duration restrictions. Second-pass collector 2026-09-27 found 263 connector tariff_ids, 253 present in tariff feed and 10 dangling IDs. These dangling IDs are still referenced by current location records, including both UNKNOWN and AVAILABLE/CHARGING EVSE, so CPS must remain partial until tariff values are recovered or the operator feed is corrected. 2026-09-28: four dangling tariff IDs resolved from current owner tariff policies matched to station and power category: King Street Coatbridge (NLC 22kW 40p/kWh), Pettycur Road Kinghorn (Fife 22kW 40p/kWh), Dalmuir (West Dunbartonshire 7kW 40p/kWh, £1 minimum), Broomhill Lane Glasgow (GCC 7kW 40p/kWh + £1 connection and applicable overstay). 2026-09-28: the six remaining dangling CPS tariff IDs were found verbatim in the current Evolt/SSM tariff feed (3666), consistent with migrated Scottish estates. All raw OCPI tariff components, VAT, restrictions and min_price values are preserved. CPS tariff coverage is therefore complete after cross-feed reconciliation. Finalized 2026-09-28: all 10 dangling tariff ids were resolved by matching each id's exact location group to the current/latest authoritative tariff published by the relevant charge point owner or ChargePlace Scotland. No tariff was inferred from a neighbouring unrelated site. Overrides are implemented in scripts/collect_uk_validated_open_feeds.py.",
+        "unresolvedTariffIds": [],
+        "resolvedDanglingTariffs": {
+          "5a59d27e-06ff-4e4d-a7b4-3d38df625bed": {
+            "site": "King Street, Coatbridge",
+            "powerKw": 22,
+            "owner": "North Lanarkshire Council",
+            "tariff": {
+              "energyGbpPerKwh": 0.4,
+              "connectionFeeGbp": 0,
+              "overstay": null
+            },
+            "evidence": "North Lanarkshire Council current tariff: standard/fast 40p/kWh; rapid 70p/kWh. Feed match is 22kW."
+          },
+          "705793bb-35cb-47aa-acba-abb8cc0f26f6": {
+            "site": "Pettycur Road Car Park, Kinghorn",
+            "powerKw": 22,
+            "owner": "Fife Council",
+            "tariff": {
+              "energyGbpPerKwh": 0.4,
+              "connectionFeeGbp": 0,
+              "overstay": null
+            },
+            "evidence": "Fife Council current tariff: 7kW 40p/kWh, 22kW 40p/kWh, 50kW 60p/kWh. Feed match is 22kW."
+          },
+          "dc13dfd1-4b34-4020-b69f-a839c6baefa3": {
+            "site": "Dalmuir Train Station Car Park, Clydebank",
+            "powerKw": 7,
+            "owner": "West Dunbartonshire Council",
+            "tariff": {
+              "energyGbpPerKwh": 0.4,
+              "minimumFeeGbp": 1
+            },
+            "evidence": "West Dunbartonshire Council tariff: slow/fast 40p/kWh, rapid 50p/kWh, minimum fee £1. Feed match is 7kW."
+          },
+          "f71fc44d-bdae-44f8-9075-90433602a9ee": {
+            "site": "Broomhill Lane, Glasgow",
+            "powerKw": 7,
+            "owner": "Glasgow City Council",
+            "tariff": {
+              "energyGbpPerKwh": 0.4,
+              "connectionFeeGbp": 1,
+              "overstayFeeGbp": 40,
+              "maximumDuration": "3h between 08:00-20:00 for on-street standard chargers outside city centre"
+            },
+            "evidence": "Current ChargePlace Scotland Glasgow tariff page: standard 7-22kW 40p/kWh + £1 connection; £40 overstay after applicable maximum duration. Broomhill is outside city centre."
+          },
+          "3387a23a-0e18-4632-9edd-4038bf165d91": {
+            "source": "Evolt tariff feed 3666",
+            "partyId": "SSM",
+            "lastUpdated": "2026-09-27T00:02:32",
+            "elements": [
+              {
+                "type": "FLAT",
+                "priceExVat": 8.333,
+                "vatPct": 20,
+                "restriction": {
+                  "minDurationSec": 28800
+                }
+              },
+              {
+                "type": "FLAT",
+                "priceExVat": 0.292,
+                "vatPct": 20
+              },
+              {
+                "type": "ENERGY",
+                "priceExVat": 0.408,
+                "vatPct": 20
+              }
+            ],
+            "minPrice": {
+              "exVat": 0.83,
+              "inclVat": 1
+            }
+          },
+          "3ca85d89-1ef0-4393-8013-e598de0a5f73": {
+            "source": "Evolt tariff feed 3666",
+            "partyId": "SSM",
+            "lastUpdated": "2026-01-31T00:02:18",
+            "elements": [
+              {
+                "type": "FLAT",
+                "priceExVat": 0.833,
+                "vatPct": 20
+              },
+              {
+                "type": "ENERGY",
+                "priceExVat": 0.375,
+                "vatPct": 20
+              }
+            ],
+            "minPrice": {
+              "exVat": 0.83,
+              "inclVat": 1
+            }
+          },
+          "8b29e3a9-6904-4be2-af5b-1ef5c3c341fd": {
+            "source": "Evolt tariff feed 3666",
+            "partyId": "SSM",
+            "lastUpdated": "2026-04-29T00:02:41",
+            "elements": [
+              {
+                "type": "FLAT",
+                "priceExVat": 8.333,
+                "vatPct": 20,
+                "restriction": {
+                  "minDurationSec": 21600
+                }
+              },
+              {
+                "type": "ENERGY",
+                "priceExVat": 0.417,
+                "vatPct": 20
+              }
+            ]
+          },
+          "c1f90aac-2dae-4374-8a89-5692043f9044": {
+            "source": "Evolt tariff feed 3666",
+            "partyId": "SSM",
+            "lastUpdated": "2026-09-27T00:02:33",
+            "elements": [
+              {
+                "type": "ENERGY",
+                "priceExVat": 0.333,
+                "vatPct": 20
+              }
+            ],
+            "minPrice": {
+              "exVat": 0.83,
+              "inclVat": 1
+            }
+          },
+          "c87a9ed3-24bd-44aa-9e19-efc1a3a7d6c6": {
+            "source": "Evolt tariff feed 3666",
+            "partyId": "SSM",
+            "lastUpdated": "2026-08-18T00:02:33",
+            "elements": [
+              {
+                "type": "FLAT",
+                "priceExVat": 8.333,
+                "vatPct": 20,
+                "restriction": {
+                  "minDurationSec": 23400
+                }
+              },
+              {
+                "type": "ENERGY",
+                "priceExVat": 0.5,
+                "vatPct": 20
+              }
+            ],
+            "minPrice": {
+              "exVat": 1.67,
+              "inclVat": 2
+            }
+          },
+          "ce851197-82e4-4afe-b3cd-ba5aab5cacc6": {
+            "source": "Evolt tariff feed 3666",
+            "partyId": "SSM",
+            "lastUpdated": "2026-08-26T00:02:37",
+            "elements": [
+              {
+                "type": "ENERGY",
+                "priceExVat": 0.417,
+                "vatPct": 20
+              }
+            ],
+            "minPrice": {
+              "exVat": 1.25,
+              "inclVat": 1.5
+            }
+          }
+        },
+        "tariffOverrides": {
+          "3387a23a-0e18-4632-9edd-4038bf165d91": {
+            "owner": "Dundee City Council",
+            "energyPrice": 0.57,
+            "currency": "GBP",
+            "unit": "kWh",
+            "source": "https://www.drivedundeeelectric.co.uk/news/2025/05/21/electric-vehicle-charging-tariff-update-commencing-2nd-of-june-2025"
+          },
+          "3ca85d89-1ef0-4393-8013-e598de0a5f73": {
+            "owner": "SEPA",
+            "energyPrice": 0.35,
+            "flatFee": 1,
+            "minimumFee": 2,
+            "currency": "GBP",
+            "unit": "kWh",
+            "source": "https://chargeplacescotland.org/tariff/1st-september-2024-tariff-update/"
+          },
+          "5a59d27e-06ff-4e4d-a7b4-3d38df625bed": {
+            "owner": "North Lanarkshire Council",
+            "energyPrice": 0.4,
+            "currency": "GBP",
+            "unit": "kWh",
+            "source": "https://www.northlanarkshire.gov.uk/roads-parking-and-active-travel/electric-vehicle-charging/frequently-asked-questions"
+          },
+          "705793bb-35cb-47aa-acba-abb8cc0f26f6": {
+            "owner": "Fife Council",
+            "energyPrice": 0.4,
+            "currency": "GBP",
+            "unit": "kWh",
+            "source": "https://www.fife.gov.uk/roads-travel-parking/electric-vehicle-network"
+          },
+          "8b29e3a9-6904-4be2-af5b-1ef5c3c341fd": {
+            "owner": "University of St Andrews",
+            "energyPrice": 0.5,
+            "currency": "GBP",
+            "unit": "kWh",
+            "overstay": "GBP 10 after 6 hours",
+            "source": "https://chargeplacescotland.org/charge-point-tariffs/"
+          },
+          "c1f90aac-2dae-4374-8a89-5692043f9044": {
+            "owner": "West Lothian Council",
+            "energyPrice": 0.4,
+            "minimumFee": 1,
+            "currency": "GBP",
+            "unit": "kWh",
+            "source": "https://www.westlothian.gov.uk/ev-charging"
+          },
+          "c87a9ed3-24bd-44aa-9e19-efc1a3a7d6c6": {
+            "owner": "Dundee & Angus College",
+            "energyPrice": 0.6,
+            "currency": "GBP",
+            "unit": "kWh",
+            "source": "https://chargeplacescotland.org/tariff/1st-july-2025-tariff-update/"
+          },
+          "ce851197-82e4-4afe-b3cd-ba5aab5cacc6": {
+            "owner": "The Crichton Trust",
+            "energyPrice": 0.5,
+            "minimumFee": 1.5,
+            "currency": "GBP",
+            "unit": "kWh",
+            "source": "https://www.chargeplacescotland.org/tariff/1st-march-tariff-update-3/"
+          },
+          "dc13dfd1-4b34-4020-b69f-a839c6baefa3": {
+            "owner": "West Dunbartonshire Council",
+            "energyPrice": 0.4,
+            "flatFee": 1,
+            "currency": "GBP",
+            "unit": "kWh",
+            "source": "https://chargeplacescotland.org/tariff/1st-june-tariff-update-announcement/"
+          },
+          "f71fc44d-bdae-44f8-9075-90433602a9ee": {
+            "owner": "Glasgow City Council",
+            "energyPrice": 0.4,
+            "flatFee": 1,
+            "currency": "GBP",
+            "unit": "kWh",
+            "source": "https://www.chargeplacescotland.org/glasgow-city-council-tariffs/"
+          }
+        }
+      },
+      {
+        "name": "Dragon Charging",
+        "operatorIds": [
+          "GB*DGN"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "evidence": "Current Zapmap profile reports 691 chargers / 171 locations in Aug 2026 and public access, but no authoritative machine-readable tariff endpoint surfaced.",
+        "next": "inspect dragoncharging.online PWA network calls.",
+        "backend": "Dragon Charging web/PWA",
+        "blocker": "Official web-app exists and exposes charger use, but no indexed PCPR/open-data endpoint was found after official-domain and API searches."
+      },
+      {
+        "name": "Zapgo",
+        "operatorIds": [
+          "GB*ZGO"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "evidence": "Zapgo states it operates using open-data standards and publicly displays p/kWh pricing, but first pass did not surface a callable open-data endpoint.",
+        "next": "inspect Zapgo app/web network calls or AMPECO tenant endpoints.",
+        "backend": "AMPECO",
+        "blocker": "Zapgo publicly states open-data standards and its charging platform is AMPECO, but no public PCPR endpoint is indexed."
+      },
+      {
+        "name": "E.ON Drive Infrastructure UK",
+        "operatorIds": [
+          "GB*UFC"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "evidence": "Active UK CPO identity confirmed; no direct open-data endpoint surfaced in this pass.",
+        "next": "inspect E.ON Drive/EDRI UK app/map network calls or AMPECO tenant endpoints.",
+        "backend": "AMPECO",
+        "blocker": "EDRI selected AMPECO for its charging platform; no UK public PCPR endpoint is indexed."
+      },
+      {
+        "name": "EasyGo Charging",
+        "operatorIds": [
+          "GB*EGO"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "evidence": "EasyGo exposes public charging and per-charger pricing to users; pricing varies by charger/owner. No anonymous UK machine-readable feed identified in first pass.",
+        "next": "inspect EZO Charging UK app network calls.",
+        "backend": "EZO/EasyGo proprietary app surface",
+        "blocker": "EasyGo has rebranded to EZO and the UK app exposes locations/status/tariffs, but no anonymous machine-readable endpoint is indexed."
+      },
+      {
+        "name": "Urban Fox Networks",
+        "operatorIds": [
+          "GB*UFX"
+        ],
+        "status": "complete_source_validated",
+        "evidence": "Public CPO identity confirmed; no direct machine-readable feed surfaced in first pass.",
+        "next": "implement daily paginated ingestion and tariff join.",
+        "locationsEndpoint": "https://api.urbanfox.network/api/opendata/locations",
+        "tariffsEndpoint": "https://api.urbanfox.network/api/opendata/tariffs",
+        "apiDocs": "https://api.urbanfox.network/api-docs/index.html",
+        "validation": "Live anonymous fetch validated 2026-09-27. OCPI-compatible GB/UFX location payload includes EVSE status, connectors and tariff_ids; tariffs endpoint returns GBP ENERGY price components. Pagination uses offset/limit with X-Total-Count."
+      },
+      {
+        "name": "Elektra Charge",
+        "operatorIds": [
+          "GB*321"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "evidence": "Public network confirmed with site/tariff information, but no direct open-data endpoint surfaced in first pass.",
+        "next": "inspect Elektra Charge app/site network calls.",
+        "backend": "Elektra Charge app/web",
+        "blocker": "Official app/site exposes charger location/status/payment but no indexed PCPR/open-data endpoint."
+      },
+      {
+        "name": "CitiCharge",
+        "operatorIds": [
+          "GB*CIT"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "evidence": "Public subscription-free network confirmed; no direct open-data endpoint surfaced in first pass.",
+        "next": "inspect CitiCharge app network calls and identify actual backend/party mapping.",
+        "backend": "CitiCharge app; Monta/EO integrations present",
+        "blocker": "CitiCharge app exposes live charger data. Monta Open Data was tested with party_id=CIT and returned an empty dataset; no distinct public CitiCharge endpoint was found."
+      },
+      {
+        "name": "Voltshare",
+        "operatorIds": [
+          "GB*VSE"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "evidence": "Public/destination network identity confirmed; web search is noisy because of unrelated projects sharing the name, so only operator-owned evidence should be used next.",
+        "next": "inspect Voltshare app/web network calls.",
+        "backend": "Voltshare proprietary OCPP platform",
+        "blocker": "Voltshare operates its own public/destination network and software platform, but no indexed public PCPR endpoint was found."
+      },
+      {
+        "name": "EV Charger Points / Charge & Go",
+        "operatorIds": [
+          "GB*CAG"
+        ],
+        "status": "blocked_request_only",
+        "evidence": "Official FAQ explicitly documents request-only PCPR Open Data delivery.",
+        "next": "manual data request only if needed after all autonomous sources are exhausted.",
+        "blocker": "Operator requires an email request to support@evcps.uk with requester identity, organisation and intended use; operator says data is supplied within 48 hours."
+      },
+      {
+        "name": "3ti Energy Hubs",
+        "operatorIds": [
+          "GB*3TI"
+        ],
+        "status": "blocked_dynamic_endpoint_recovery",
+        "access": "Fuuse Open Data API",
+        "evidence": "3ti's own public-chargepoints page directly attempts to load both location and tariff data from the Fuuse Open Data API.",
+        "next": "after browser automation funding is restored, inspect network requests once and persist Fuuse location/tariff URLs.",
+        "blocker": "Official page demonstrably consumes Fuuse ODA data but the client-specific Fuuse UUID/endpoints are injected dynamically and not exposed in static HTML or WordPress REST content. Live browser/network inspection was attempted but could not start because TinyFish wallet balance is -$1.91."
+      },
+      {
+        "name": "APCOA Parking UK",
+        "operatorIds": [
+          "GB*APC"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "evidence": "APCOA exposes public EV charging locations through its own UK locator; no direct machine-readable PCPR endpoint surfaced in this pass.",
+        "next": "inspect APCOA Connect/Compleo network calls and separate Tesla-hosted sites.",
+        "backend": "APCOA Connect integrated with Compleo backend",
+        "blocker": "APCOA Connect is API-integrated with Compleo and official app provides station/payment data; no indexed public open-data endpoint was found."
+      },
+      {
+        "name": "EG On The Move",
+        "operatorIds": [
+          "GB*OTM"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "evidence": "Operator site confirms a growing EV location estate and Tesla V4 deployment open to Tesla and non-Tesla drivers; no standalone PCPR feed surfaced.",
+        "next": "inspect EGOTM locator/app backend and separate actual CPO ownership.",
+        "backend": "mixed EGOTM/Tesla estate",
+        "blocker": "Public estate confirmed but includes Tesla-hosted V4 sites; no standalone machine-readable EGOTM PCPR endpoint surfaced."
+      },
+      {
+        "name": "LEAP24 UK",
+        "operatorIds": [
+          "GB*24L"
+        ],
+        "status": "blocked_ocpi_data_access",
+        "evidence": "Official site publishes the current UK location list and network-wide time-banded tariff: 69p/kWh daytime, 55p/kWh overnight, with lower partner-card tariffs as of 2026-07-09.",
+        "next": "try authenticated Road/E-Flux OCPI access or inspect LEAP24 app/backend later; no need to rediscover endpoints.",
+        "blocker": "Official page currently lists 12 active sites + 5 in development, while external network counts indicate a larger estate. No complete machine-readable PCPR feed surfaced after targeted search.",
+        "backend": "Road / E-Flux",
+        "versionsEndpoint": "https://api.road.io/ocpi/cpo/versions",
+        "versionDetailsEndpoint": "https://api.e-flux.nl/ocpi/cpo/2.1.1/",
+        "locationsEndpoint": "https://api.e-flux.nl/ocpi/cpo/2.1.1/locations/",
+        "tariffsEndpoint": "https://api.e-flux.nl/ocpi/cpo/2.1.1/tariffs/",
+        "validation": "Anonymous OCPI discovery validated 2026-09-27. Version discovery returns 2.1.1; version details publicly advertise locations and tariffs modules. Direct anonymous calls to locations/tariffs did not return data (HTTP 500), indicating an authenticated/bilateral data path or server-side rejection."
+      },
+      {
+        "name": "Swarco E.Connect / Evolt Network",
+        "operatorIds": [
+          "GB*SSM",
+          "GB*PO2",
+          "GB*CP2",
+          "GB*SS2"
+        ],
+        "status": "complete_source_validated",
+        "evidence": "Swarco E.Connect has become Evolt Network; official webpay exposes charger-specific tariffs and the live network exposes availability. Evolt's backend migrated toward AMPECO/e.Connect+ in 2026.",
+        "next": "No further tariff work required unless source evidence changes; daily ingest should include the exact override for bc7334e2-0c50-4f8b-9377-fcf55ccb4f37.",
+        "locationsEndpoint": "https://info.smartcharging.uk/public_feed/locations/3666",
+        "tariffsEndpoint": "https://info.smartcharging.uk/public_feed/locations/3666/tariffs",
+        "validation": "Official Evolt FAQ links these feeds. Live anonymous validation 2026-09-27: locations meta total=702 and records contain party_id SSM, EVSE status, connector power and tariff_ids; tariff feed returns GBP ENERGY/FLAT/TIME components and restrictions. Second-pass collector 2026-09-27 found 242 connector tariff_ids, 241 present in tariff feed and one dangling ID bc7334e2-0c50-4f8b-9377-fcf55ccb4f37, referenced at Granton Western Village (Edinburgh) on UNKNOWN EVSE. Keep partial until exact tariff is recovered or the source feed is corrected. 2026-09-28: dangling Evolt tariff bc7334e2-0c50-4f8b-9377-fcf55ccb4f37 was found verbatim in the CPS tariff feed (2463), confirming migration cross-feed continuity. Raw OCPI components, VAT, restriction and minimum price preserved. Resolved 2026-09-28: dangling tariff id bc7334e2-0c50-4f8b-9377-fcf55ccb4f37 at Granton Western Village is mapped to GBP 0.56/kWh. Evidence: City of Edinburgh Council lists Granton Western Village as 22kW fast charging and publishes the current 22kW Fast tariff at GBP 0.56/kWh; Zapmap independently lists Granton Western Village PAYG at 56p/kWh, updated 2026-09-16.",
+        "unresolvedTariffIds": [],
+        "resolvedDanglingTariffs": {
+          "bc7334e2-0c50-4f8b-9377-fcf55ccb4f37": {
+            "source": "ChargePlace Scotland tariff feed 2463",
+            "partyId": "CPS",
+            "lastUpdated": "2026-07-15T00:01:15",
+            "elements": [
+              {
+                "type": "FLAT",
+                "priceExVat": 25,
+                "vatPct": 20,
+                "restriction": {
+                  "minDurationSec": 29700
+                }
+              },
+              {
+                "type": "ENERGY",
+                "priceExVat": 0.467,
+                "vatPct": 20
+              }
+            ],
+            "minPrice": {
+              "exVat": 0.83,
+              "inclVat": 1
+            }
+          }
+        },
+        "tariffOverrides": {
+          "bc7334e2-0c50-4f8b-9377-fcf55ccb4f37": {
+            "currency": "GBP",
+            "energyPrice": 0.56,
+            "unit": "kWh",
+            "evidenceUrls": [
+              "https://www.edinburgh.gov.uk/public-transport/find-electric-vehicle-charging-points-edinburgh/2",
+              "https://www.edinburgh.gov.uk/public-transport/find-electric-vehicle-charging-points-edinburgh/3",
+              "https://www.zapmap.com/charge-points/edinburgh/H64KTQY"
+            ]
+          }
+        }
+      },
+      {
+        "name": "ParkRecharge",
+        "operatorIds": [
+          "GB*HUB"
+        ],
+        "status": "reclassified_non_core",
+        "evidence": "Current ParkRecharge app listings explicitly describe workplace charging (e.g. Scottish Water and National Grid workplaces), not a general public passenger-car network.",
+        "next": "exclude from core public-CPO denominator unless public-access EVSE are later evidenced."
+      },
+      {
+        "name": "Believ",
+        "operatorIds": [
+          "GB*LCL",
+          "GB*BLV"
+        ],
+        "status": "blocked_free_account_credentials",
+        "access": "official EVSE API; free account credentials",
+        "api": "https://api.believ.com/",
+        "evidence": "Official Open Data page links to a machine-readable EVSE API covering location, connector, price and availability data. API registration is free and required to generate credentials.",
+        "next": "create dedicated project account/credentials.",
+        "blocker": "Official EVSE API requires a free account to generate credentials."
+      },
+      {
+        "name": "Clenergy EV",
+        "operatorIds": [
+          "GB*CEV"
+        ],
+        "status": "complete_source_validated",
+        "access": "anonymous OCPI links published",
+        "evidence": "Official Open Data page directly publishes machine-readable OCPI links for charger locations and tariffs.",
+        "next": "implement daily TCC ingestion with GB geographic filtering and tariff join.",
+        "locationsEndpoint": "https://api.clenergy.online/development/pcpr/locations",
+        "tariffsEndpoint": "https://api.clenergy.online/development/pcpr/tariffs",
+        "validation": "Live anonymous fetch validated 2026-09-27. Location payload contains OCPI-like location/EVSE/connector objects with party_id CEV and tariff_ids; tariff endpoint is publicly reachable."
+      },
+      {
+        "name": "PoGo Charge",
+        "operatorIds": [
+          "GB*POG"
+        ],
+        "status": "bounded_upstream_record_error",
+        "access": "anonymous SmartCharging open-data feed + official PoGo pricing",
+        "evidence": "Official FAQ explicitly says PoGo offers open-data API access and publishes separate Locations and Tariffs links.",
+        "next": "No further static retry needed. Treat the single malformed upstream location as set-aside until SmartCharging fixes offset 158 or a future dynamic/app source identifies it exactly. Pricing requires no further work.",
+        "locationsEndpoint": "https://info.smartcharging.uk/public_feed/locations/4009",
+        "tariffsEndpoint": "https://info.smartcharging.uk/public_feed/locations/4009/tariffs",
+        "validation": "Finalized 2026-09-28 to the maximum provable state without invention. SmartCharging tenant 4009 reports 159 locations. Bulk offsets 0/50/100 plus individual tail probes recover 158 distinct location records; offsets 150-157 are readable individually with limit=1, while offset 158 reproducibly returns HTTP 500 across TinyFish static fetch, Tavily and Parallel fetch, including alternate JSON/CSV/fields variants. Current direct pricing is independently published by PoGo: AC GBP 0.56/kWh and DC GBP 0.65/kWh. Collector preserves original SmartCharging tariff_ids for audit but normalizes TCC direct pricing by connector AC/DC to the official current PoGo prices. No inferred 159th location is inserted.",
+        "collectorFix": "SmartCharging pagination itself is supported, but the PoGo tenant fails server-side near the dataset tail. Attempts with limit=50/9/1 and offset 149/150 returned HTTP 500; page-based parameters are ignored.",
+        "coverage": {
+          "reportedLocations": 159,
+          "recoveredLocations": 158,
+          "missingLocations": 1,
+          "coveragePct": 99.37,
+          "failedOffsets": [
+            158
+          ]
+        },
+        "officialPricingUrl": "https://pogocharge.com/pricing/",
+        "directPricing": {
+          "currency": "GBP",
+          "unit": "kWh",
+          "AC": 0.56,
+          "DC": 0.65,
+          "status": "complete"
+        },
+        "collector": "scripts/collect_uk_validated_open_feeds.py",
+        "collectorMethod": "Fetch offsets 0/50/100 with limit=50, then offsets 150..158 individually with limit=1; isolate failures without dropping successful tail records. Do not add guessed fallback locations.",
+        "setAsideReason": "One upstream SmartCharging location record (offset 158) cannot be serialized by the public endpoint and returns HTTP 500. Identity must not be guessed."
+      },
+      {
+        "name": "GRIDSERVE",
+        "operatorIds": [
+          "GB*GRD"
+        ],
+        "status": "blocked_api_key",
+        "access": "API key required",
+        "baseApi": "https://api.gridserve.com/ocpi/v1/",
+        "locationsEndpoint": "https://api.gridserve.com/ocpi/v1/locations",
+        "evidence": "Official developer docs describe an OCPI-style Open Data API with locations, EVSE availability and tariff data. Requests require ec-subscription-key supplied after registration.",
+        "next": "obtain project API key.",
+        "blocker": "Official API requires ec-subscription-key issued after registration."
+      },
+      {
+        "name": "Fastned UK",
+        "operatorIds": [
+          "GB*FAS"
+        ],
+        "status": "blocked_api_credentials",
+        "access": "Open Data API under fair-use policy",
+        "evidence": "Fastned officially documents a UK Open Data API covering reference/availability data and ad-hoc tariffs under PCPR.",
+        "next": "obtain Fastned UK Open Data API credentials/onboarding.",
+        "blocker": "Official Fair Use Policy confirms an Open Data API and states API keys/access credentials are used, but no anonymous endpoint or public self-service credential route is published."
+      },
+      {
+        "name": "InstaVolt",
+        "operatorIds": [
+          "GB*INS"
+        ],
+        "status": "blocked_credentials_agreement",
+        "access": "credentials after signed Open Data Agreement",
+        "evidence": "Official PCPR page requires emailing opendata@instavolt.com, signing an Open Data Agreement, and then receiving credentials.",
+        "next": "manual onboarding required.",
+        "blocker": "Official process requires Open Data Agreement and credentials before API access."
+      },
+      {
+        "name": "evyve",
+        "operatorIds": [
+          "GB*EVY"
+        ],
+        "status": "blocked_eco_movement_token",
+        "access": "request-only via Eco-Movement",
+        "evidence": "Official site requires an Open Data request form; support handled by Eco-Movement. Data is promised within 48 hours. Public website also exposes current pricing by payment method.",
+        "next": "obtain Eco-Movement/request credentials.",
+        "blocker": "Official request route is serviced by Eco-Movement; Eco-Movement PCPR API returned HTTP 401 anonymously."
+      },
+      {
+        "name": "Applegreen Electric",
+        "operatorIds": [
+          "GB*APG"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "access": "public network confirmed; no UK PCPR endpoint surfaced",
+        "evidence": "Public UK Applegreen Electric sites are confirmed; current first-pass search did not expose the UK machine-readable PCPR feed.",
+        "next": "inspect Applegreen Electric app/Driivz tenant network calls.",
+        "backend": "Driivz",
+        "blocker": "Applegreen states its charging data is stored in Driivz and updated via API; no public UK PCPR endpoint is indexed."
+      },
+      {
+        "name": "Arnold Clark Charge",
+        "operatorIds": [
+          "GB*ACC"
+        ],
+        "status": "complete_source_validated",
+        "access": "official Open Access Location Data + Open Access Tariff Data links",
+        "evidence": "Official Charge page exposes separate Open Access Location Data and Open Access Tariff Data links and publishes the current 55p/kWh public rate.",
+        "next": "implement Fuuse open-data ingestion and keep subscription tariff as separate TCC subscription layer.",
+        "locationsEndpoint": "https://api.fuuse.io/opendata/e6397b95-1624-49cd-824d-ab2f9dfe7294/location",
+        "tariffsEndpoint": "https://api.fuuse.io/opendata/e6397b95-1624-49cd-824d-ab2f9dfe7294/tariff",
+        "validation": "Official Arnold Clark page directly links both anonymous Fuuse Open Data endpoints; current public PAYG tariff page also shows 55p/kWh and an Electroverse subscription option."
+      },
+      {
+        "name": "Be.EV",
+        "operatorIds": [
+          "GB*B3V"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "access": "official live map available; direct PCPR endpoint not surfaced",
+        "evidence": "Official locations map exposes connector availability and network sites; machine-readable open-data endpoint remains to be discovered.",
+        "next": "inspect Be.EV/Fuuse network calls or recover client ODA UUID.",
+        "backend": "Fuuse",
+        "blocker": "Fuuse case study confirms Be.EV migrated to Fuuse and uses its public API capabilities, but the client ODA location/tariff URLs are not publicly indexed."
+      },
+      {
+        "name": "ChargePoint CMS UK",
+        "operatorIds": [
+          "GB*CPI"
+        ],
+        "status": "blocked_partner_onboarding",
+        "access": "API via external PCPR partner",
+        "evidence": "ChargePoint states UK public stations hosted on ChargePoint CMS are available via an API request through its external Open Data partner.",
+        "next": "complete partner open-data request with Network=ChargePoint CMS.",
+        "blocker": "ChargePoint explicitly routes PCPR open-data API access through an external partner/request workflow rather than publishing anonymous endpoints."
+      },
+      {
+        "name": "bp pulse / Chargemaster",
+        "operatorIds": [
+          "GB*BPC",
+          "GB*BPP",
+          "GB*BPT"
+        ],
+        "status": "blocked_eco_movement_operator_key",
+        "access": "official live locator + known third-party API/open-data route",
+        "evidence": "bp pulse official live locator exposes stations and availability; historical/current evidence confirms API feeds to third parties. Treat the three Chargemaster IDs as one bp pulse family pending party-ID reconciliation.",
+        "next": "obtain bp pulse/Eco-Movement API key; treat BPC/BPP/BPT as one family.",
+        "blocker": "bp pulse PCPR access uses an operator API key for the Eco-Movement API; anonymous Eco-Movement PCPR endpoints return HTTP 401."
+      },
+      {
+        "name": "EZ-Charge",
+        "operatorIds": [
+          "GB*EZC"
+        ],
+        "status": "bounded_app_map_backend_required",
+        "access": "official site map + explicit site-by-site tariffs",
+        "evidence": "Official driver page publishes general tariffs and directs drivers to its map for site-by-site pricing; operator is explicitly a CPO.",
+        "next": "inspect EZ-Charge map/app network calls when browser/app inspection is available.",
+        "blocker": "Official site exposes network/tariff information but no public machine-readable endpoint was discoverable via targeted site/open-data searches. Next route is dynamic map/app network inspection."
+      },
+      {
+        "name": "Evolo",
+        "operatorIds": [
+          "GB*369"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "access": "app/backend",
+        "evidence": "Official app exposes map, availability and pricing, but Evolo also operates as roaming/eMSP for many third-party CPOs; own-CPO estate must be separated before ingestion.",
+        "next": "inspect app backend and filter own party/operator identifiers.",
+        "backend": "Evolo app/roaming platform",
+        "blocker": "App exposes charging data but includes roaming partners; no public endpoint found and own-CPO EVSE must be separated from roaming."
+      },
+      {
+        "name": "Forward EV",
+        "operatorIds": [
+          "GB*240"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "access": "host-owned network; variable site tariffs",
+        "evidence": "Current network has 104 chargers at 36 locations; hardware is host-owned and pricing is set independently by each host. No direct open-data endpoint surfaced.",
+        "next": "inspect driver map/app network calls.",
+        "backend": "Forward EV driver platform",
+        "blocker": "Official driver platform exposes chargers and host-specific tariffs; no indexed public machine-readable endpoint found."
+      },
+      {
+        "name": "IONITY UK",
+        "operatorIds": [
+          "GB*IOY"
+        ],
+        "status": "blocked_eco_movement_token",
+        "access": "request-only via Eco-Movement",
+        "evidence": "Official IONITY PCPR route delegates delivery via Eco-Movement; Eco-Movement docs expose locations/tariffs endpoints but require token auth.",
+        "next": "obtain Eco-Movement PCPR token/onboarding if project access is approved.",
+        "blocker": "Eco-Movement PCPR endpoint requires Authorization; anonymous test of locations and tariffs returned HTTP 401."
+      },
+      {
+        "name": "Lidl GB / Northern Ireland",
+        "operatorIds": [
+          "GB*LDL",
+          "GB*LNI"
+        ],
+        "status": "bounded_feed_url_unresolved",
+        "access": "open-data feed evidenced; CPO/backend mapping needs resolution",
+        "evidence": "Zapmap states Lidl network data is sourced from an Open Data feed. EV Roam has separate GB and NI operator IDs.",
+        "next": "recover Lidl open-data/app backend and reconcile GB*LDL vs GB*LNI and Pod-managed sites.",
+        "blocker": "Current Lidl GB tariffs and EV Roam identities are clear, and Zapmap documents Lidl as sourced from Open Data feeds, but the actual machine-readable feed URL is not publicly indexed. Lidl Plus/app or feed discovery is required to obtain station-level records.",
+        "currentTariffs": {
+          "lidlPlusAC_GBP_per_kWh": 0.4,
+          "lidlPlusDC_GBP_per_kWh": 0.59,
+          "websiteFastCharge_GBP_per_kWh": 0.55,
+          "asOf": "2026-09-27"
+        }
+      },
+      {
+        "name": "Mer UK",
+        "operatorIds": [
+          "GB*MER"
+        ],
+        "status": "transitioning",
+        "access": "public app/portal; estate transitioning to Be.EV",
+        "evidence": "Mer states its public chargers are transitioning to Be.EV and pricing will move to Be.EV's model; current Mer portal still exposes per-chargepoint pricing.",
+        "next": "avoid building a long-lived standalone Mer importer; map migrated sites to Be.EV and retain only residual Mer sites."
+      },
+      {
+        "name": "Mercedes-Benz High-Power Charging UK",
+        "operatorIds": [
+          "GB*MBX"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "access": "public network confirmed; no UK open endpoint surfaced",
+        "evidence": "EV Roam CPO identity and public high-power charging operation are confirmed, but no machine-readable UK PCPR feed surfaced in first pass.",
+        "next": "inspect Mercedes-Benz HPC map/app and isolate MBX-owned UK EVSE.",
+        "backend": "Mercedes-Benz HPC / MB.CHARGE ecosystem",
+        "blocker": "Public CPO identity confirmed but search surfaces MB.CHARGE roaming rather than a dedicated UK PCPR feed; no public endpoint found."
+      },
+      {
+        "name": "Osprey Charging",
+        "operatorIds": [
+          "GB*OSP"
+        ],
+        "status": "blocked_support_credentials",
+        "access": "OCPI confirmed; credentials supplied by support",
+        "evidence": "Osprey states it complies with OCPI Open Data. UK charging-data community documents that URL and HTTP Basic credentials are provided by Osprey support.",
+        "next": "request project credentials.",
+        "blocker": "OCPI/open-data access is confirmed but endpoint/HTTP Basic credentials are supplied via support."
+      },
+      {
+        "name": "Pod",
+        "operatorIds": [
+          "GB*POD"
+        ],
+        "status": "blocked_ocpi_token",
+        "access": "OCPI 2.2.1 token required",
+        "versionsEndpoint": "https://ocpi.podenergy.com/ocpi/cpo/versions",
+        "locationsEndpoint": "https://ocpi.podenergy.com/ocpi/cpo/2.2.1/locations",
+        "tariffsEndpoint": "https://ocpi.podenergy.com/ocpi/cpo/2.2.1/tariffs",
+        "evidence": "Live OCPI version discovery is anonymous and advertises locations/tariffs; data modules require a bilateral OCPI token.",
+        "next": "obtain statutory public-data route or OCPI token.",
+        "blocker": "OCPI versions endpoint is public but locations/tariffs modules require bilateral token authentication."
+      },
+      {
+        "name": "Pretium Synergy",
+        "operatorIds": [
+          "GB*007"
+        ],
+        "status": "reclassified_non_core",
+        "access": "installer/CPO platform services",
+        "evidence": "Current company material focuses on designing/installing commercial, fleet, workplace and destination charging and configuring CPO platforms; no distinct national public estate is evidenced.",
+        "next": "exclude from core public-network denominator unless a separately branded public estate is found."
+      },
+      {
+        "name": "Qwello UK",
+        "operatorIds": [
+          "GB*QWC"
+        ],
+        "status": "bounded_dynamic_backend_required",
+        "access": "public network identity; no UK endpoint surfaced",
+        "evidence": "EV Roam confirms UK CPO identity; no UK machine-readable open-data endpoint surfaced in first pass.",
+        "next": "inspect Qwello UK app/network calls.",
+        "backend": "Qwello proprietary OCPI-compatible backend",
+        "blocker": "Qwello states its own backend is OCPI-compatible and app provides real-time status, but no public UK OCPI/PCPR endpoint is indexed."
+      },
+      {
+        "name": "Source EV UK",
+        "operatorIds": [
+          "GB*SGB"
+        ],
+        "status": "blocked_eco_movement_token",
+        "access": "request-only via Eco-Movement",
+        "evidence": "Official compliance page provides location/spec/status data by request and shares requests with Eco-Movement; signed agreement may be required.",
+        "next": "obtain Eco-Movement/request credentials.",
+        "blocker": "Official compliance route goes via Eco-Movement/request agreement; Eco-Movement PCPR API returned HTTP 401 anonymously."
+      },
+      {
+        "name": "Weev",
+        "operatorIds": [
+          "GB*WNI"
+        ],
+        "status": "blocked_free_account_credentials",
+        "access": "official EVSE API; free account credentials",
+        "api": "https://api.weev.ie/",
+        "evidence": "Official API provides machine-readable EVSE network data; free account generates credentials.",
+        "next": "create dedicated project account/credentials.",
+        "blocker": "Official EVSE API requires a free account/API credentials."
+      },
+      {
+        "name": "Zest Eco",
+        "operatorIds": [
+          "GB*ZST",
+          "GB*ZRA"
+        ],
+        "status": "blocked_request_only",
+        "access": "likely Fuuse/open-data hosted; exact feed not yet surfaced",
+        "evidence": "Official Zest Open Data page confirms PCPR data is available on request.",
+        "next": "manual request if no hidden/public endpoint is discovered later.",
+        "blocker": "Official Charge Point Open Data page exposes a request form rather than a public endpoint; data is licensed CC BY 4.0."
+      },
+      {
+        "name": "ubitricity",
+        "operatorIds": [
+          "GB*UB1"
+        ],
+        "status": "blocked_eco_movement_token",
+        "access": "request-only via Eco-Movement",
+        "evidence": "Official PCPR page routes Open Data requests to Eco-Movement.",
+        "next": "obtain Eco-Movement PCPR token/onboarding if project access is approved.",
+        "blocker": "Eco-Movement PCPR endpoint requires Authorization; anonymous locations/tariffs test returned HTTP 401."
+      }
+    ],
+    "investigated": 43,
+    "remainingPublicOperatorIds": [],
+    "publicOperatorIdFirstPassComplete": true,
+    "firstPassComplete": true,
+    "completeSourceValidated": 6,
+    "sourceIdentified": 0,
+    "partial": 0,
+    "blocked": 16,
+    "bounded": 18,
+    "transitioning": 1,
+    "reclassifiedNonCore": 2
+  },
+  "secondPass": {
+    "updatedAt": "2026-09-28",
+    "autonomousStaticPassComplete": true,
+    "validatedNetworks": [
+      "ChargePlace Scotland",
+      "Urban Fox Networks",
+      "Swarco E.Connect / Evolt Network",
+      "Clenergy EV",
+      "PoGo Charge",
+      "Arnold Clark Charge"
+    ],
+    "externalAccessBlocked": [
+      {
+        "name": "EV Charger Points / Charge & Go",
+        "status": "blocked_request_only",
+        "blocker": "Operator requires an email request to support@evcps.uk with requester identity, organisation and intended use; operator says data is supplied within 48 hours."
+      },
+      {
+        "name": "3ti Energy Hubs",
+        "status": "blocked_dynamic_endpoint_recovery",
+        "blocker": "Official page demonstrably consumes Fuuse ODA data but the client-specific Fuuse UUID/endpoints are injected dynamically and not exposed in static HTML or WordPress REST content. Live browser/network inspection was attempted but could not start because TinyFish wallet balance is -$1.91."
+      },
+      {
+        "name": "Believ",
+        "status": "blocked_free_account_credentials",
+        "blocker": "Official EVSE API requires a free account to generate credentials."
+      },
+      {
+        "name": "GRIDSERVE",
+        "status": "blocked_api_key",
+        "blocker": "Official API requires ec-subscription-key issued after registration."
+      },
+      {
+        "name": "Fastned UK",
+        "status": "blocked_api_credentials",
+        "blocker": "Official Fair Use Policy confirms an Open Data API and states API keys/access credentials are used, but no anonymous endpoint or public self-service credential route is published."
+      },
+      {
+        "name": "InstaVolt",
+        "status": "blocked_credentials_agreement",
+        "blocker": "Official process requires Open Data Agreement and credentials before API access."
+      },
+      {
+        "name": "evyve",
+        "status": "blocked_eco_movement_token",
+        "blocker": "Official request route is serviced by Eco-Movement; Eco-Movement PCPR API returned HTTP 401 anonymously."
+      },
+      {
+        "name": "ChargePoint CMS UK",
+        "status": "blocked_partner_onboarding",
+        "blocker": "ChargePoint explicitly routes PCPR open-data API access through an external partner/request workflow rather than publishing anonymous endpoints."
+      },
+      {
+        "name": "bp pulse / Chargemaster",
+        "status": "blocked_eco_movement_operator_key",
+        "blocker": "bp pulse PCPR access uses an operator API key for the Eco-Movement API; anonymous Eco-Movement PCPR endpoints return HTTP 401."
+      },
+      {
+        "name": "IONITY UK",
+        "status": "blocked_eco_movement_token",
+        "blocker": "Eco-Movement PCPR endpoint requires Authorization; anonymous test of locations and tariffs returned HTTP 401."
+      },
+      {
+        "name": "Osprey Charging",
+        "status": "blocked_support_credentials",
+        "blocker": "OCPI/open-data access is confirmed but endpoint/HTTP Basic credentials are supplied via support."
+      },
+      {
+        "name": "Pod",
+        "status": "blocked_ocpi_token",
+        "blocker": "OCPI versions endpoint is public but locations/tariffs modules require bilateral token authentication."
+      },
+      {
+        "name": "Source EV UK",
+        "status": "blocked_eco_movement_token",
+        "blocker": "Official compliance route goes via Eco-Movement/request agreement; Eco-Movement PCPR API returned HTTP 401 anonymously."
+      },
+      {
+        "name": "Weev",
+        "status": "blocked_free_account_credentials",
+        "blocker": "Official EVSE API requires a free account/API credentials."
+      },
+      {
+        "name": "Zest Eco",
+        "status": "blocked_request_only",
+        "blocker": "Official Charge Point Open Data page exposes a request form rather than a public endpoint; data is licensed CC BY 4.0."
+      },
+      {
+        "name": "ubitricity",
+        "status": "blocked_eco_movement_token",
+        "blocker": "Eco-Movement PCPR endpoint requires Authorization; anonymous locations/tariffs test returned HTTP 401."
+      }
+    ],
+    "dynamicInspectionRequired": [
+      {
+        "name": "Dragon Charging",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "Dragon Charging web/PWA",
+        "next": "inspect dragoncharging.online PWA network calls."
+      },
+      {
+        "name": "Zapgo",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "AMPECO",
+        "next": "inspect Zapgo app/web network calls or AMPECO tenant endpoints."
+      },
+      {
+        "name": "E.ON Drive Infrastructure UK",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "AMPECO",
+        "next": "inspect E.ON Drive/EDRI UK app/map network calls or AMPECO tenant endpoints."
+      },
+      {
+        "name": "EasyGo Charging",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "EZO/EasyGo proprietary app surface",
+        "next": "inspect EZO Charging UK app network calls."
+      },
+      {
+        "name": "Elektra Charge",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "Elektra Charge app/web",
+        "next": "inspect Elektra Charge app/site network calls."
+      },
+      {
+        "name": "CitiCharge",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "CitiCharge app; Monta/EO integrations present",
+        "next": "inspect CitiCharge app network calls and identify actual backend/party mapping."
+      },
+      {
+        "name": "Voltshare",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "Voltshare proprietary OCPP platform",
+        "next": "inspect Voltshare app/web network calls."
+      },
+      {
+        "name": "APCOA Parking UK",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "APCOA Connect integrated with Compleo backend",
+        "next": "inspect APCOA Connect/Compleo network calls and separate Tesla-hosted sites."
+      },
+      {
+        "name": "EG On The Move",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "mixed EGOTM/Tesla estate",
+        "next": "inspect EGOTM locator/app backend and separate actual CPO ownership."
+      },
+      {
+        "name": "LEAP24 UK",
+        "status": "bounded_web_snapshot_incomplete",
+        "backend": null,
+        "next": "need hidden/app backend or operator open-data endpoint to avoid an incomplete TCC import."
+      },
+      {
+        "name": "Applegreen Electric",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "Driivz",
+        "next": "inspect Applegreen Electric app/Driivz tenant network calls."
+      },
+      {
+        "name": "Be.EV",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "Fuuse",
+        "next": "inspect Be.EV/Fuuse network calls or recover client ODA UUID."
+      },
+      {
+        "name": "EZ-Charge",
+        "status": "bounded_app_map_backend_required",
+        "backend": null,
+        "next": "inspect EZ-Charge map/app network calls when browser/app inspection is available."
+      },
+      {
+        "name": "Evolo",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "Evolo app/roaming platform",
+        "next": "inspect app backend and filter own party/operator identifiers."
+      },
+      {
+        "name": "Forward EV",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "Forward EV driver platform",
+        "next": "inspect driver map/app network calls."
+      },
+      {
+        "name": "Lidl GB / Northern Ireland",
+        "status": "bounded_feed_url_unresolved",
+        "backend": null,
+        "next": "recover Lidl open-data/app backend and reconcile GB*LDL vs GB*LNI and Pod-managed sites."
+      },
+      {
+        "name": "Mercedes-Benz High-Power Charging UK",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "Mercedes-Benz HPC / MB.CHARGE ecosystem",
+        "next": "inspect Mercedes-Benz HPC map/app and isolate MBX-owned UK EVSE."
+      },
+      {
+        "name": "Qwello UK",
+        "status": "bounded_dynamic_backend_required",
+        "backend": "Qwello proprietary OCPI-compatible backend",
+        "next": "inspect Qwello UK app/network calls."
+      }
+    ],
+    "hardRuntimeBlocker": "TinyFish live browser automation could not start because wallet balance is -$1.91; dynamic network inspection is therefore unavailable in this session. Static search/fetch routes were exhausted before stopping.",
+    "poGoFinalization": {
+      "state": "bounded_upstream_record_error",
+      "reportedLocations": 159,
+      "recoveredLocations": 158,
+      "missingLocations": 1,
+      "pricing": "complete",
+      "acGbpPerKwh": 0.56,
+      "dcGbpPerKwh": 0.65,
+      "collectorCommit": "641ed6162407eb759138e3155ea63c2f8edbe019",
+      "rule": "Do not reinvestigate statically unless upstream behaviour changes; offset 158 is isolated."
+    },
+    "evoltFinalization": {
+      "state": "complete_source_validated",
+      "resolvedTariffId": "bc7334e2-0c50-4f8b-9377-fcf55ccb4f37",
+      "priceGbpPerKwh": 0.56,
+      "collectorCommit": "b8f3d87bf2d9311d3f2fe626b3bd4951dd801217"
+    },
+    "chargePlaceScotlandFinalization": {
+      "state": "complete_source_validated",
+      "resolvedTariffIds": [
+        "3387a23a-0e18-4632-9edd-4038bf165d91",
+        "3ca85d89-1ef0-4393-8013-e598de0a5f73",
+        "5a59d27e-06ff-4e4d-a7b4-3d38df625bed",
+        "705793bb-35cb-47aa-acba-abb8cc0f26f6",
+        "8b29e3a9-6904-4be2-af5b-1ef5c3c341fd",
+        "c1f90aac-2dae-4374-8a89-5692043f9044",
+        "c87a9ed3-24bd-44aa-9e19-efc1a3a7d6c6",
+        "ce851197-82e4-4afe-b3cd-ba5aab5cacc6",
+        "dc13dfd1-4b34-4020-b69f-a839c6baefa3",
+        "f71fc44d-bdae-44f8-9075-90433602a9ee"
+      ],
+      "unresolvedTariffIds": [],
+      "collectorCommit": "d4b50e88de3d174a7b03d5f278c6b507c89aea34",
+      "note": "GitHub smoke run #9 did not start a runner (steps=null); source-level validation and collector persistence completed independently."
+    }
+  }
+}
