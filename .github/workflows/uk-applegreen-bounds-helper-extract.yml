@@ -1,0 +1,42 @@
+name: UK Applegreen bounds helper extract
+on:
+  push:
+    branches: ["main"]
+    paths: [".github/workflows/uk-applegreen-bounds-helper-extract.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Extract bounds helper
+        shell: bash
+        run: |
+          mkdir -p reports/uk
+          python - <<'PY'
+          import json,re,urllib.request
+          from pathlib import Path
+          from datetime import datetime,timezone
+          u="https://driver.applegreenelectric.com/resources/js/lib/evmap/jquery.evmap.js?v=80f5b190"
+          req=urllib.request.Request(u,headers={"User-Agent":"Mozilla/5.0"})
+          with urllib.request.urlopen(req,timeout=60) as r:b=r.read(8_000_000).decode("utf-8","replace")
+          hits=[]
+          for pat in [r'EvMapView\.prototype\.getBounds\s*=\s*function',r'getBounds\s*=\s*function']:
+            for m in re.finditer(pat,b):
+              hits.append(b[max(0,m.start()-1200):min(len(b),m.end()+3500)])
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"hits":hits}
+          Path("reports/uk/applegreen-bounds-helper-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/applegreen-bounds-helper-latest.json
+          git commit -m "diag(uk): extract Applegreen bounds helper [run ${GITHUB_RUN_ID}]" || exit 0
+          git pull --rebase origin main
+          git push origin HEAD:main
