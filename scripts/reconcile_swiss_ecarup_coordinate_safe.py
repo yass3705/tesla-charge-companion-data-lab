@@ -81,3 +81,5 @@ DOC.write_text(json.dumps({k:v for k,v in out.items() if k not in ("evses","ambi
 print(json.dumps({k:v for k,v in out.items() if k not in ("evses","ambiguous","noCandidate")},indent=2))
 
 # refreshed inventory trigger
+
+# post-exact-refresh rerun
