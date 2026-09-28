@@ -1,0 +1,97 @@
+name: UK Zest anonymous auth retry
+
+on:
+  push:
+    branches: ["main"]
+    paths: [".github/workflows/uk-zest-anonymous-auth-retry.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Test APK-declared Firebase anonymous auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import json,urllib.request,urllib.error
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          audit=json.loads(Path("reports/uk/zest-firebase-resource-audit-latest.json").read_text())
+          keys=audit.get("apiKeyCandidates") or []
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"keyCount":len(keys),"authAttempts":[],"readProbes":[]}
+          token=None
+          for idx,key in enumerate(keys):
+              item={"candidateIndex":idx}
+              try:
+                  url="https://identitytoolkit.googleapis.com/v1/accounts:signUp?key="+key
+                  req=urllib.request.Request(url,data=json.dumps({"returnSecureToken":True}).encode(),
+                      headers={"Content-Type":"application/json","Accept":"application/json"},method="POST")
+                  with urllib.request.urlopen(req,timeout=45) as r:
+                      p=json.loads(r.read().decode("utf-8"))
+                  item.update({"status":200,"localIdPresent":bool(p.get("localId")),"idTokenPresent":bool(p.get("idToken"))})
+                  if p.get("idToken"):
+                      token=p["idToken"]; item["selected"]=True
+                      out["authAttempts"].append(item); break
+              except urllib.error.HTTPError as e:
+                  raw=e.read(50000).decode("utf-8","replace")
+                  item.update({"status":e.code,"errorBody":raw[:1200]})
+              except Exception as e:
+                  item.update({"status":None,"error":f"{type(e).__name__}: {e}"})
+              out["authAttempts"].append(item)
+
+          if token:
+              for path in ["/v1/locations?page=1&page_size=5","/v1/locations/evse-statuses"]:
+                  item={"path":path}
+                  try:
+                      req=urllib.request.Request("https://mobile-api.msp.zest.uk.com"+path,headers={
+                          "Authorization":"Bearer "+token,
+                          "User-Agent":"Zest Charging/4.3.15 TeslaChargeCompanion/9",
+                          "Accept":"application/json",
+                          "X-Requested-With":"com.uk.zest.app"
+                      })
+                      with urllib.request.urlopen(req,timeout=45) as r:
+                          raw=r.read(2_000_000)
+                          item.update({"status":r.status,"contentType":r.headers.get("Content-Type"),"bytes":len(raw)})
+                          try:
+                              p=json.loads(raw.decode("utf-8")); item["json"]=True; item["jsonType"]=type(p).__name__
+                              if isinstance(p,dict):
+                                  item["keys"]=list(p)[:80]
+                                  for k in ("data","locations","items","results"):
+                                      if isinstance(p.get(k),list):
+                                          item["arrayKey"]=k;item["count"]=len(p[k])
+                                          if p[k] and isinstance(p[k][0],dict): item["firstKeys"]=list(p[k][0])[:100]
+                                          break
+                              elif isinstance(p,list):
+                                  item["count"]=len(p)
+                          except Exception:
+                              item["json"]=False; item["prefix"]=raw.decode("utf-8","replace")[:1200]
+                  except urllib.error.HTTPError as e:
+                      raw=e.read(100000)
+                      item.update({"status":e.code,"error":str(e),"bodyPrefix":raw.decode("utf-8","replace")[:1800]})
+                  except Exception as e:
+                      item.update({"status":None,"error":f"{type(e).__name__}: {e}"})
+                  out["readProbes"].append(item)
+
+          out["anonymousTokenObtained"]=bool(token)
+          # Deliberately never persist API keys or the token in this report.
+          Path("reports/uk/zest-anonymous-auth-retry-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish redacted diagnostic
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/zest-anonymous-auth-retry-latest.json
+          git commit -m "diag(uk): retry Zest official anonymous auth [run ${GITHUB_RUN_ID}]" || exit 0
+          for attempt in 1 2 3; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
