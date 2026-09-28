@@ -281,7 +281,8 @@ def build_status_index(payload: Any) -> dict[str, dict[str, Any]]:
                 cps = rp.get("aegiElectricChargingPointStatus")
                 if not isinstance(cps, dict):
                     continue
-                ident = cps.get("idG") or rp.get("idG")
+                ref = cps.get("reference") if isinstance(cps.get("reference"), dict) else {}
+                ident = ref.get("idG") or cps.get("idG") or rp.get("idG")
                 if isinstance(ident, str) and ident:
                     out[ident] = cps
     return out
