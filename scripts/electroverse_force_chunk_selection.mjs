@@ -1,0 +1,12 @@
+import fs from 'node:fs/promises';
+const MAPPING='data/electroverse/irve_location_mapping.json';
+const OUT='reports/electroverse/incremental-selection.json';
+const OFFSET=Number(process.env.CHUNK_OFFSET||0);
+const COUNT=Number(process.env.CHUNK_COUNT||6000);
+const mapping=JSON.parse(await fs.readFile(MAPPING,'utf8'));
+const rows=(mapping.mappings||[]).map(m=>({pk:String(m.electroverseLocationPk),irveStationId:m.irveStationId||null})).sort((a,b)=>a.pk.localeCompare(b.pk));
+const selected=rows.slice(OFFSET,OFFSET+COUNT).map(x=>({...x,reason:'forced_france_full_refresh',ageHours:null}));
+const report={generatedAt:new Date().toISOString(),storage:'sharded-v1',policy:{mode:'forced_france_full_refresh',offset:OFFSET,count:COUNT},mappingPopulation:rows.length,cachePopulation:null,counts:{forced:selected.length},dueTotal:selected.length,selectedCount:selected.length,selected};
+await fs.mkdir('reports/electroverse',{recursive:true});
+await fs.writeFile(OUT,JSON.stringify(report,null,2)+'\n');
+console.log(JSON.stringify({mappingPopulation:rows.length,offset:OFFSET,selectedCount:selected.length,firstPk:selected[0]?.pk,lastPk:selected.at(-1)?.pk},null,2));
