@@ -50,7 +50,13 @@ for eid,rec in sorted(current.items()):
     if "dc" in pt: types.add("dc")
     elif "ac" in pt: types.add("ac")
   if not types:
-    unresolved.append({"evseId":eid,"reason":"missing_power_type","nationalRecord":rec}); continue
+    plugs=" ".join(str(x) for x in (rec.get("Plugs") or [])).lower()
+    if "chademo" in plugs or "ccs" in plugs or "combo" in plugs or "dc tesla" in plugs:
+      types.add("dc")
+    if "type 2" in plugs and "dc tesla" not in plugs:
+      types.add("ac")
+  if not types:
+    unresolved.append({"evseId":eid,"reason":"missing_power_type_and_unclassifiable_plug","nationalRecord":rec}); continue
   applicable=[]
   for sch in schedules.values():
     ks=[x for x in sch["segments"] if x.get("dimension")=="kwh"]
