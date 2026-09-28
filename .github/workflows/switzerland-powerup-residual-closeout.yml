@@ -1,0 +1,42 @@
+name: Switzerland PowerUp residual closeout
+on:
+  push:
+    paths:
+      - 'scripts/close_powerup_residuals.py'
+      - '.github/workflows/switzerland-powerup-residual-closeout.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  close:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 scripts/close_powerup_residuals.py
+      - name: Validate 235/235
+        run: |
+          python3 - <<'PY'
+          import json
+          f=json.load(open('docs/switzerland-powerup-finalization-2026-09-28.json',encoding='utf-8'))
+          assert f['status']=='complete'
+          assert f['nationalEvseCount']==235
+          assert f['currentPricedEvseCount']==235
+          assert f['currentMissingInMontaCount']==0
+          print(json.dumps(f,indent=2))
+          PY
+      - name: Persist closeout
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/switzerland/powerup-monta-direct-tariffs.json docs/switzerland-powerup-finalization-2026-09-28.json
+          git commit -m 'data(switzerland): close PowerUp residuals 235 of 235'
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
