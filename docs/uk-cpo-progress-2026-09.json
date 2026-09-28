@@ -196,7 +196,7 @@
     },
     {
       "name": "FOR EV",
-      "status": "blocked_external_request",
+      "status": "set_aside_external_request",
       "access": "ocpi_access_on_request",
       "evidence": "FOR EV's official Public Charge Point Regulations page states that its OCPI data is accurate and that open access is available upon request; no public machine-readable endpoint is published on the site. Targeted public endpoint/Fuuse discovery did not yield a callable anonymous feed.",
       "next": "User must request FOR EV OCPI/open-data access (or endpoint details) from FOR EV. Once provided, persist and ingest without repeating discovery."
@@ -276,7 +276,7 @@
     },
     {
       "name": "Zest",
-      "status": "partial_authenticated_app_required",
+      "status": "set_aside_technical_authenticated_app",
       "access": "zest_mobile_api_firebase_android_client_appcheck",
       "evidence": "Static analysis identifies production read routes at mobile-api.msp.zest.uk.com (/v1/locations and /v1/locations/evse-statuses) and an official guest/anonymous app flow. Direct anonymous Firebase auth from APK-declared public keys is rejected outside the authorized Android client (API_KEY_ANDROID_APP_BLOCKED), while unauthenticated API reads return 401. Further access would require an authorized app identity/App Check/session.",
       "next": "Technically bounded. Revisit only if Zest exposes a public PCPR endpoint or legitimate API access becomes available; do not emulate/bypass Android App Check.",
@@ -284,7 +284,7 @@
     },
     {
       "name": "Roam",
-      "status": "partial_pricing",
+      "status": "set_aside_technical_pricing_layer",
       "access": "anonymous_public_map",
       "evidence": "Official Roam charging-map page calls an anonymous Cloudflare Worker feed. Data Lab recovered 401 locations and 566 connectors with status. Feed contains no pricing fields; Roam states exact tariffs vary by site and should be checked in the app.",
       "next": "Inventory/status bounded complete; recover station-specific pricing layer from app/backend. Do not apply network-wide tariff extrapolation.",
@@ -294,7 +294,7 @@
     },
     {
       "name": "RAW Charging",
-      "status": "partial_public_client_routes_unresolved",
+      "status": "set_aside_technical_endpoint_unresolved",
       "access": "no_direct_endpoint_found_first_pass",
       "evidence": "RAW public frontend exposes OCPI client routes /ocpi/locations and /ocpi/tariffs/GB/CPIE plus a public-client function key, but direct probes against rawcharging.com and the visible Azure Function host with/without /api and key/header/query all return 404. No secret is persisted.",
       "next": "Keep bounded pending frontend/API host change or a newly exposed base URL; do not request user action yet."
@@ -315,7 +315,7 @@
     },
     {
       "name": "Forward EV",
-      "status": "partial_roaming_feed_required",
+      "status": "set_aside_technical_roaming_feed",
       "access": "plugsurfing_zapmap_live_integration",
       "evidence": "Forward EV first-party driver page directs users to Plugsurfing. Current Zapmap integration exposes live Forward EV locations/status and site-specific tariffs; observed public tariffs vary by site, so a network-wide price would be invalid.",
       "next": "Inventory/tariff source must be recovered from a legitimate roaming/live feed (Plugsurfing/Zapmap integration or operator PCPR surface). Do not extrapolate prices from sampled sites."
@@ -329,7 +329,7 @@
     },
     {
       "name": "Connekt",
-      "status": "partial_backend_identified_access_required",
+      "status": "set_aside_technical_authenticated_backend",
       "access": "ampeco_white_label_authenticated_app",
       "evidence": "Static inspection of official Get Connekted Android app identifies an AMPECO white-label backend at cp.connektcharging.com and AMPECO dynamic tariff/ad-hoc features. Targeted anonymous/mobile-profile probes show the tenant root requires authentication (401) and common read-only location/tariff routes are not publicly exposed.",
       "next": "Backend identified and public-route discovery bounded. Revisit only with a legitimate app session/public PCPR endpoint; do not repeat generic endpoint guessing.",
@@ -366,7 +366,7 @@
     },
     {
       "name": "EZ-Charge",
-      "status": "partial_public_site_index",
+      "status": "set_aside_technical_public_index_only",
       "access": "no_direct_endpoint_found_first_pass",
       "evidence": "Official EZ-Charge driver page fetches a public Azure blob containing 28 site areas (id/name). Container listing is not enabled (404); blob has no coordinates, status or pricing fields. General pricing is public but site-specific pricing is explicitly map-dependent.",
       "next": "Inventory seed retained; recover detailed map/app backend later. Do not extrapolate general tariff over site-specific exceptions.",
@@ -374,10 +374,10 @@
     },
     {
       "name": "GeniePoint",
-      "status": "source_identified",
+      "status": "set_aside_technical_origin_block",
       "access": "open_data_page",
       "evidence": "UK CPO dataset index points to a GeniePoint open-data page.",
-      "next": "probe locations/tariffs feed."
+      "next": "Official open-data endpoints are identified but return 403 from current runner/browser origins. Revisit only via a new allowed origin/proxy or newly exposed endpoint; no user action required now."
     },
     {
       "name": "Mer",
@@ -416,7 +416,7 @@
     },
     {
       "name": "char.gy",
-      "status": "partial_pricing_reference_integrity",
+      "status": "set_aside_technical_tariff_integrity",
       "access": "anonymous",
       "locationsEndpoint": "https://char.gy/open-ocpi/locations",
       "tariffsEndpoint": "https://char.gy/open-ocpi/tariffs",
@@ -425,7 +425,7 @@
     },
     {
       "name": "TotalEnergies",
-      "status": "partial_browser_only_inventory",
+      "status": "set_aside_technical_browser_inventory",
       "access": "no_direct_uk_endpoint_found_first_pass",
       "evidence": "Official UK Charging Services site and tariffs are browser-accessible, but GitHub runner access to the find-a-charger page returns HTTP 403, preventing static bundle/API discovery there. Keep public UK pricing separately; inventory backend still unresolved.",
       "next": "Revisit with browser/network inspection when available; no user action required now."
@@ -440,7 +440,7 @@
     },
     {
       "name": "Charge My Street",
-      "status": "partial_evse_detail",
+      "status": "set_aside_technical_evse_detail",
       "access": "anonymous_public_map_plus_official_network_pricing",
       "evidence": "Public Drupal map collection is complete at 106 map records (89 open, 15 ChargeWhileYouSleep, 2 coming soon). Official Charge My Street pricing page publishes PAYG £0.59/kWh and subscription tiers: Basic £32.50/month incl. 75kWh then £0.43/kWh; Standard £55/month incl. 135kWh then £0.41/kWh; Premium £75/month incl. 200kWh then £0.36/kWh.",
       "next": "Pricing and site-map inventory are bounded complete. Remaining gap is per-site EVSE/connector detail/power; do not repeat price discovery.",
@@ -2597,7 +2597,18 @@
       "Weev",
       "Allego",
       "GRIDSERVE",
-      "bp pulse"
+      "bp pulse",
+      "GeniePoint",
+      "RAW Charging",
+      "Zest",
+      "Roam",
+      "Connekt",
+      "EZ-Charge",
+      "char.gy",
+      "Charge My Street",
+      "TotalEnergies",
+      "Forward EV",
+      "FOR EV"
     ],
     "rawChargingBounded": {
       "state": "public_client_routes_unresolved",
