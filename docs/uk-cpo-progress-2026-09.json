@@ -391,10 +391,13 @@
     },
     {
       "name": "Qwello",
-      "status": "partial_pricing_known_inventory_backend_pending",
-      "access": "no_direct_endpoint_found_first_pass",
-      "evidence": "Official Qwello UK website publishes London direct tariff (42p/kWh + 2p/min, night time component capped) and app offers real-time station availability. Static website exposes no callable inventory/API endpoint.",
-      "next": "Recover app/backend inventory endpoint later; do not substitute third-party station counts as canonical."
+      "status": "partial_inventory_geolocation",
+      "access": "anonymous_public_tariff_json",
+      "evidence": "Qwello public tariff frontend resolves to a public JSON feed. Data Lab recovered 96 UK stations, 305 GB EVSE IDs and tariff objects for all 96 stations in GBP. Rows contain EVSE IDs, location/city and tariffs but no latitude/longitude.",
+      "next": "Pricing layer complete. Join the 305 GB EVSE IDs to a geolocated inventory/app feed; do not rediscover tariff source.",
+      "tariffsEndpoint": "https://tariff-locations-file-production.s3.eu-central-1.amazonaws.com/tariff-view.json",
+      "dataset": "data/national/uk_qwello_tariff_view.json.gz",
+      "report": "reports/uk/qwello-tariff-view-latest.json"
     },
     {
       "name": "ChargePoint",
@@ -2607,6 +2610,13 @@
       "locations": 500,
       "connectors": 1620,
       "report": "reports/uk/believ-public-map-latest.json"
+    },
+    "qwelloProgress": {
+      "state": "pricing_complete_geolocation_pending",
+      "stations": 96,
+      "evseIds": 305,
+      "pricedStations": 96,
+      "report": "reports/uk/qwello-tariff-view-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
