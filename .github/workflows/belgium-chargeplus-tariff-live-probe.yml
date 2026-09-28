@@ -1,0 +1,32 @@
+name: Belgium ChargePlus tariff live probe
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "triggers/belgium-chargeplus-tariff-live-probe.txt"
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/belgium_chargeplus_tariff_live_probe.py
+      - name: Persist report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium/totalenergies/chargeplus-tariff-live-probe-2026-09-28.json
+          git commit -m "Probe ChargePlus tariffs for Belgian TotalEnergies" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep 3
+          done
+          exit 1
