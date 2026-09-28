@@ -1,13 +1,7 @@
 #!/usr/bin/env python3
-"""Probe the Belgium NAP DATEX II API without ever printing the bearer token.
+"""Probe and profile the official Belgium NAP DATEX II feed.
 
-Outputs:
-- reports/belgium-nap-probe-summary.json
-- reports/belgium-nap-locations-sample.json
-- optional raw snapshot path supplied with --raw-output
-
-The parser is intentionally defensive until the exact production payload shape
-has been validated from the first authenticated run.
+The bearer token is read only from BELGIUM_NAP_TOKEN and is never printed.
 """
 from __future__ import annotations
 
@@ -24,7 +18,7 @@ BASE_URL = "https://nap-be.eco-movement.com"
 LOCATIONS_PATH = "/datex2/v1/locations"
 
 
-def fetch_json(url: str, token: str, timeout: int = 120) -> Any:
+def fetch_json(url: str, token: str, timeout: int = 180) -> Any:
     req = urllib.request.Request(
         url,
         headers={
@@ -44,102 +38,199 @@ def fetch_json(url: str, token: str, timeout: int = 120) -> Any:
         return json.loads(body)
 
 
-def find_location_list(payload: Any) -> list[dict[str, Any]]:
-    if isinstance(payload, list):
-        return [x for x in payload if isinstance(x, dict)]
-    if not isinstance(payload, dict):
-        return []
-
-    preferred = (
-        "locations",
-        "chargingLocations",
-        "charging_locations",
-        "data",
-        "items",
-        "results",
-    )
-    for key in preferred:
-        value = payload.get(key)
-        if isinstance(value, list) and value and all(isinstance(x, dict) for x in value[:10]):
-            return value
-        if isinstance(value, dict):
-            nested = find_location_list(value)
-            if nested:
-                return nested
-
-    # Last-resort recursive search for the largest list of dictionaries.
-    candidates: list[list[dict[str, Any]]] = []
-    def walk(obj: Any) -> None:
-        if isinstance(obj, dict):
-            for v in obj.values():
-                walk(v)
-        elif isinstance(obj, list):
-            dicts = [x for x in obj if isinstance(x, dict)]
-            if dicts:
-                candidates.append(dicts)
-            for x in obj[:50]:
-                walk(x)
-    walk(payload)
-    return max(candidates, key=len) if candidates else []
-
-
-def iter_dicts(obj: Any):
+def walk(obj: Any, path: str = "$"):
+    yield path, obj
     if isinstance(obj, dict):
-        yield obj
-        for v in obj.values():
-            yield from iter_dicts(v)
+        for k, v in obj.items():
+            yield from walk(v, f"{path}.{k}")
     elif isinstance(obj, list):
-        for x in obj:
-            yield from iter_dicts(x)
+        for i, v in enumerate(obj):
+            yield from walk(v, f"{path}[]")
 
 
-def count_named_nodes(payload: Any, names: set[str]) -> int:
-    count = 0
-    for d in iter_dicts(payload):
-        for k, v in d.items():
-            if k.lower() in names:
-                if isinstance(v, list):
-                    count += len(v)
-                elif isinstance(v, dict):
-                    count += 1
-    return count
+def list_shape(payload: Any) -> list[dict[str, Any]]:
+    counts: Counter[str] = Counter()
+    sample_types: dict[str, str] = {}
+    for path, obj in walk(payload):
+        if isinstance(obj, list):
+            counts[path] = max(counts[path], len(obj))
+            if obj:
+                sample_types[path] = type(obj[0]).__name__
+    rows = [
+        {"path": p, "maxLength": n, "firstItemType": sample_types.get(p, "")}
+        for p, n in counts.items()
+    ]
+    rows.sort(key=lambda r: (-r["maxLength"], r["path"]))
+    return rows[:100]
 
 
-def collect_operator_candidates(payload: Any) -> list[dict[str, str]]:
+def find_location_list(payload: Any) -> tuple[str, list[dict[str, Any]]]:
+    # DATEX II Belgium location records can be recognized by station + entrance/brand fields.
+    candidates: list[tuple[str, list[dict[str, Any]]]] = []
+    for path, obj in walk(payload):
+        if isinstance(obj, list) and obj and isinstance(obj[0], dict):
+            sample = obj[: min(10, len(obj))]
+            score = sum(
+                1 for x in sample
+                if "energyInfrastructureStation" in x and ("entrance" in x or "brand" in x or "idG" in x)
+            )
+            if score:
+                candidates.append((path, obj))
+    if candidates:
+        candidates.sort(key=lambda x: len(x[1]), reverse=True)
+        return candidates[0]
+    return "", []
+
+
+def org_name(obj: Any) -> str:
+    try:
+        vals = obj["afacAnOrganisation"]["name"]["values"]
+        if isinstance(vals, list):
+            for v in vals:
+                if isinstance(v, dict) and isinstance(v.get("value"), str) and v["value"].strip():
+                    return v["value"].strip()
+    except Exception:
+        pass
+    return ""
+
+
+def price_rows(cp: dict[str, Any]) -> list[dict[str, Any]]:
     out = []
-    seen = set()
-    id_keys = {
-        "operatorid", "operator_id", "cpoid", "cpo_id", "partyid", "party_id",
-        "chargingstationoperatorid", "chargingstationoperator_id"
-    }
-    name_keys = {"operatorname", "operator_name", "cponame", "cpo_name", "name"}
-    for d in iter_dicts(payload):
-        lowered = {str(k).lower(): v for k, v in d.items()}
-        ids = [(k, lowered[k]) for k in id_keys if k in lowered and isinstance(lowered[k], (str, int))]
-        if not ids:
-            continue
-        ident = str(ids[0][1])
-        name = ""
-        for nk in name_keys:
-            val = lowered.get(nk)
-            if isinstance(val, str) and val.strip():
-                name = val.strip()
-                break
-        key = (ident, name)
-        if key not in seen:
-            seen.add(key)
-            out.append({"id": ident, "name": name})
+    for product in cp.get("energyProduct", []) or []:
+        energy = product.get("aegiElectricEnergy", {}) if isinstance(product, dict) else {}
+        for rate in energy.get("energyRate", []) or []:
+            if not isinstance(rate, dict):
+                continue
+            policy = ((rate.get("ratePolicy") or {}).get("value")
+                      if isinstance(rate.get("ratePolicy"), dict) else None)
+            currencies = rate.get("applicableCurrency") or []
+            for p in rate.get("energyPrice", []) or []:
+                if not isinstance(p, dict):
+                    continue
+                out.append({
+                    "rateId": rate.get("idG"),
+                    "ratePolicy": policy,
+                    "lastUpdated": rate.get("lastUpdated"),
+                    "currency": currencies[0] if currencies else None,
+                    "priceType": ((p.get("priceType") or {}).get("value")
+                                  if isinstance(p.get("priceType"), dict) else None),
+                    "value": p.get("value"),
+                    "taxIncluded": p.get("taxIncluded"),
+                    "taxRate": p.get("taxRate"),
+                })
     return out
 
 
+def parse_locations(locations: list[dict[str, Any]]) -> dict[str, Any]:
+    station_count = 0
+    evse_count = 0
+    connector_count = 0
+    priced_evse_count = 0
+    adhoc_priced_evse_count = 0
+    operators = Counter()
+    prefixes = Counter()
+    current_types = Counter()
+    connector_types = Counter()
+    price_types = Counter()
+    price_fingerprints = Counter()
+    evse_ids: list[str] = []
+    sample_status_ids: list[str] = []
+
+    for loc in locations:
+        loc_op = org_name(loc.get("energyDistributor", {}))
+        if loc_op:
+            operators[loc_op] += 1
+
+        stations = loc.get("energyInfrastructureStation") or []
+        if not isinstance(stations, list):
+            continue
+        station_count += len(stations)
+
+        for st in stations:
+            if not isinstance(st, dict):
+                continue
+            st_op = org_name(st.get("energyDistributor", {}))
+            if st_op and not loc_op:
+                operators[st_op] += 1
+
+            for rp in st.get("refillPoint", []) or []:
+                if not isinstance(rp, dict):
+                    continue
+                cp = rp.get("aegiElectricChargingPoint")
+                if not isinstance(cp, dict):
+                    continue
+                evse_count += 1
+                current = ((cp.get("currentType") or {}).get("value")
+                           if isinstance(cp.get("currentType"), dict) else None)
+                if current:
+                    current_types[str(current)] += 1
+
+                connectors = cp.get("connector") or []
+                if isinstance(connectors, list):
+                    connector_count += len(connectors)
+                    for conn in connectors:
+                        if not isinstance(conn, dict):
+                            continue
+                        ctype = ((conn.get("connectorType") or {}).get("value")
+                                 if isinstance(conn.get("connectorType"), dict) else None)
+                        if ctype:
+                            connector_types[str(ctype)] += 1
+                        for ext in conn.get("externalIdentifier", []) or []:
+                            if not isinstance(ext, dict):
+                                continue
+                            ident = ext.get("identifier")
+                            if isinstance(ident, str) and ident:
+                                if ident not in evse_ids:
+                                    evse_ids.append(ident)
+                                normalized = ident.replace("*", "-")
+                                parts = normalized.split("-")
+                                if len(parts) >= 2:
+                                    prefixes["-".join(parts[:2])] += 1
+                                if len(sample_status_ids) < 12 and ident not in sample_status_ids:
+                                    sample_status_ids.append(ident)
+
+                rows = price_rows(cp)
+                if rows:
+                    priced_evse_count += 1
+                    if any(r.get("ratePolicy") == "adHoc" for r in rows):
+                        adhoc_priced_evse_count += 1
+                    for r in rows:
+                        if r.get("priceType"):
+                            price_types[str(r["priceType"])] += 1
+                        fp = (
+                            r.get("ratePolicy"), r.get("currency"), r.get("priceType"),
+                            r.get("value"), r.get("taxIncluded"), r.get("taxRate")
+                        )
+                        price_fingerprints[str(fp)] += 1
+
+    return {
+        "stationCount": station_count,
+        "evseCount": evse_count,
+        "connectorCount": connector_count,
+        "pricedEvseCount": priced_evse_count,
+        "adHocPricedEvseCount": adhoc_priced_evse_count,
+        "priceCoveragePct": round((priced_evse_count / evse_count * 100), 2) if evse_count else 0,
+        "adHocPriceCoveragePct": round((adhoc_priced_evse_count / evse_count * 100), 2) if evse_count else 0,
+        "operatorLocationCounts": dict(operators.most_common()),
+        "evseCountryPartyPrefixes": dict(prefixes.most_common()),
+        "currentTypes": dict(current_types.most_common()),
+        "connectorTypes": dict(connector_types.most_common()),
+        "priceTypes": dict(price_types.most_common()),
+        "topPriceFingerprints": [
+            {"fingerprint": k, "evseOccurrences": v}
+            for k, v in price_fingerprints.most_common(100)
+        ],
+        "sampleEvseIdsForStatusProbe": sample_status_ids,
+    }
+
+
 def sanitize_sample(locations: list[dict[str, Any]], max_items: int = 3) -> list[dict[str, Any]]:
-    # Payload is public infrastructure data; remove obviously auth-like fields anyway.
     forbidden = {"token", "authorization", "apikey", "api_key", "secret", "password"}
     def scrub(obj: Any) -> Any:
         if isinstance(obj, dict):
             return {k: scrub(v) for k, v in obj.items() if str(k).lower() not in forbidden}
         if isinstance(obj, list):
-            return [scrub(x) for x in obj[:20]]
+            return [scrub(x) for x in obj[:30]]
         return obj
     return [scrub(x) for x in locations[:max_items]]
 
@@ -157,23 +248,19 @@ def main() -> int:
         return 2
 
     payload = fetch_json(BASE_URL + LOCATIONS_PATH, token)
-    locations = find_location_list(payload)
-    operators = collect_operator_candidates(payload)
-
-    top_level_type = type(payload).__name__
-    top_level_keys = sorted(payload.keys()) if isinstance(payload, dict) else []
+    location_path, locations = find_location_list(payload)
+    exact = parse_locations(locations)
 
     summary = {
         "source": BASE_URL + LOCATIONS_PATH,
         "httpAuthenticated": True,
-        "topLevelType": top_level_type,
-        "topLevelKeys": top_level_keys,
+        "topLevelType": type(payload).__name__,
+        "topLevelKeys": sorted(payload.keys()) if isinstance(payload, dict) else [],
+        "detectedLocationPath": location_path,
         "locationCount": len(locations),
-        "evseNodeCountHeuristic": count_named_nodes(payload, {"evses", "evse", "chargingpoints", "charging_points"}),
-        "connectorNodeCountHeuristic": count_named_nodes(payload, {"connectors", "connector"}),
-        "operatorCandidateCount": len(operators),
-        "operatorCandidates": sorted(operators, key=lambda x: (x["name"], x["id"]))[:500],
-        "note": "EVSE/connector/operator counts are heuristic until the exact Belgium NAP payload schema is validated from this first run."
+        **exact,
+        "largestListPaths": list_shape(payload),
+        "note": "Counts are derived from the detected DATEX II Belgium location list and the nested energyInfrastructureStation/refillPoint/aegiElectricChargingPoint structure."
     }
 
     Path(args.summary_output).parent.mkdir(parents=True, exist_ok=True)
