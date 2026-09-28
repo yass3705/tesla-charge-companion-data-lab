@@ -1,8 +1,8 @@
-name: TEST NON-TESLA — Electroverse autonomous bootstrap
+name: TEST NON-TESLA — Electroverse daily incremental refresh
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 */2 * * *'
+    - cron: '17 0 * * *'
   push:
     paths:
       - tests/non-tesla/active/run-electroverse-bootstrap-auto.trigger
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: electroverse-autonomous-bootstrap
+  group: electroverse-daily-refresh
   cancel-in-progress: false
 
 jobs:
@@ -21,8 +21,8 @@ jobs:
     env:
       ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
       REQUEST_INTERVAL_MS: '1500'
-      TTL_HOURS: '168'
-      LIMIT: '500'
+      TTL_HOURS: '24'
+      LIMIT: '1000'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,7 +31,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Run up to 6 incremental batches with checkpoints
+      - name: Run one bounded daily incremental refresh
         shell: bash
         run: |
           set -euo pipefail
@@ -59,36 +59,30 @@ jobs:
             return 1
           }
 
-          for batch in 1 2 3 4 5 6; do
-            echo "=== autonomous batch ${batch}/6 ==="
+          echo "=== daily incremental refresh ==="
 
-            git pull --rebase origin main
-            node scripts/electroverse_incremental_selector.mjs
+          git pull --rebase origin main
+          node scripts/electroverse_incremental_selector.mjs
 
-            selected=$(node -e "const r=require('./reports/electroverse/incremental-selection.json'); process.stdout.write(String(r.selectedCount||0))")
-            fresh=$(node -e "const r=require('./reports/electroverse/incremental-selection.json'); process.stdout.write(String(r.counts?.fresh||0))")
-            new_count=$(node -e "const r=require('./reports/electroverse/incremental-selection.json'); process.stdout.write(String(r.counts?.new||0))")
-            echo "selected=${selected} fresh=${fresh} new=${new_count}"
+          selected=$(node -e "const r=require('./reports/electroverse/incremental-selection.json'); process.stdout.write(String(r.selectedCount||0))")
+          due=$(node -e "const r=require('./reports/electroverse/incremental-selection.json'); process.stdout.write(String(r.dueTotal||0))")
+          echo "selected=${selected} due=${due}"
 
-            if [ "${new_count}" = "0" ]; then
-              echo "BOOTSTRAP_COMPLETE=true"
-              git add reports/electroverse/incremental-selection.json
-              git commit -m "data(electroverse): mark bootstrap complete [run ${GITHUB_RUN_ID}]" || true
-              push_checkpoint || true
-              break
-            fi
+          if [ "${selected}" = "0" ]; then
+            echo "ELECTROVERSE_REFRESH_NOOP=true"
+            exit 0
+          fi
 
-            set +e
-            node scripts/electroverse_incremental_refresh.mjs
-            rc=$?
-            set -e
+          set +e
+          node scripts/electroverse_incremental_refresh.mjs
+          rc=$?
+          set -e
 
-            git add data/electroverse/tariff_cache reports/electroverse/incremental-selection.json
-            git commit -m "data(electroverse): autonomous bootstrap batch ${batch} [run ${GITHUB_RUN_ID}]" || true
-            git pull --rebase origin main
-            push_checkpoint
+          git add data/electroverse/tariff_cache reports/electroverse/incremental-selection.json
+          git commit -m "data(electroverse): daily incremental refresh [run ${GITHUB_RUN_ID}]" || true
+          git pull --rebase origin main
+          push_checkpoint
 
-            if [ "${rc}" -ne 0 ]; then
-              echo "Batch ${batch} reported isolated station failure(s); checkpoint published. Continuing so failed station(s) remain eligible for a later retry."
-            fi
-          done
+          if [ "${rc}" -ne 0 ]; then
+            echo "Refresh reported isolated station failure(s); successful station updates were checkpointed and failures remain eligible for retry."
+          fi
