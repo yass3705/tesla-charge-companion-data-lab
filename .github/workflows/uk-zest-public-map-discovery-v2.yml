@@ -1,0 +1,60 @@
+name: UK Zest public map discovery v2
+on:
+  push:
+    branches: ["main"]
+    paths: [".github/workflows/uk-zest-public-map-discovery-v2.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Extract structural Zest endpoints only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import json,re,urllib.request
+          from pathlib import Path
+          from datetime import datetime,timezone
+          def get(url):
+              req=urllib.request.Request(url,headers={"User-Agent":"TeslaChargeCompanion/9","Accept":"text/html,application/javascript,*/*"})
+              with urllib.request.urlopen(req,timeout=60) as r:return r.read(8000000).decode("utf-8","replace")
+          html=get("https://map.zest.uk.com/")
+          m=re.search(r'<script[^>]+src=["\']([^"\']*main\.[^"\']+\.js)["\']',html,re.I)
+          if not m: raise SystemExit("main bundle not found")
+          src=m.group(1)
+          if src.startswith("/"): src="https://map.zest.uk.com"+src
+          js=get(src)
+          # Only persist hostnames and path literals, never query strings / credential values.
+          hosts=sorted(set(re.findall(r'https?://([A-Za-z0-9.-]+)',js)))
+          hosts=[h for h in hosts if any(k in h.lower() for k in ("zest","charge","api")) and "mapbox" not in h.lower()]
+          paths=sorted(set(re.findall(r'["\']((?:/api/|/v[0-9]+/|/stations?|/locations?|/chargers?|/chargepoints?|/tariffs?|/prices?)[A-Za-z0-9_./{}?=&:-]{0,180})["\']',js,re.I)))
+          # Capture short function contexts after stripping JWT/token-like strings entirely.
+          ctx=[]
+          for mm in re.finditer(r'(?i)(fetch\(|axios|station|location|charger|tariff|price)',js):
+              s=js[max(0,mm.start()-250):min(len(js),mm.end()+500)]
+              s=re.sub(r'[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}','<jwt-redacted>',s)
+              s=re.sub(r'(?:pk|sk)\.[A-Za-z0-9._-]{20,}','<map-token-redacted>',s,flags=re.I)
+              if re.search(r'/api/|fetch\(|axios|https?://',s,re.I):
+                  ctx.append(s)
+                  if len(ctx)>=80: break
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"network":"Zest","bundle":src,"hosts":hosts[:100],"paths":paths[:300],"contexts":ctx}
+          Path("reports/uk/zest-public-map-discovery-v2-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({"hosts":out["hosts"],"paths":out["paths"],"contextCount":len(ctx)},indent=2))
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/zest-public-map-discovery-v2-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): inspect Zest public map safely [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do git pull --rebase origin main; if git push origin HEAD:main; then exit 0; fi; sleep $((attempt*2)); done
+          exit 1
