@@ -79,3 +79,5 @@ out={"schemaVersion":1,"country":"CH","operatorId":"CH*ECU","generatedAt":now,"n
 OUT.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 DOC.write_text(json.dumps({k:v for k,v in out.items() if k not in ("evses","ambiguous","noCandidate")},ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 print(json.dumps({k:v for k,v in out.items() if k not in ("evses","ambiguous","noCandidate")},indent=2))
+
+# refreshed inventory trigger
