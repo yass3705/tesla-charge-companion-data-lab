@@ -276,10 +276,11 @@
     },
     {
       "name": "Zest",
-      "status": "partial",
-      "access": "no_direct_endpoint_found_first_pass",
-      "evidence": "Zest acknowledges PCPR/OCPI requirements publicly but first-pass search did not surface its own feed.",
-      "next": "second pass: inspect Fuuse/white-label backend and operator site."
+      "status": "partial_authenticated_app_required",
+      "access": "zest_mobile_api_firebase_android_client_appcheck",
+      "evidence": "Static analysis identifies production read routes at mobile-api.msp.zest.uk.com (/v1/locations and /v1/locations/evse-statuses) and an official guest/anonymous app flow. Direct anonymous Firebase auth from APK-declared public keys is rejected outside the authorized Android client (API_KEY_ANDROID_APP_BLOCKED), while unauthenticated API reads return 401. Further access would require an authorized app identity/App Check/session.",
+      "next": "Technically bounded. Revisit only if Zest exposes a public PCPR endpoint or legitimate API access becomes available; do not emulate/bypass Android App Check.",
+      "report": "reports/uk/zest-anonymous-auth-retry-latest.json"
     },
     {
       "name": "Roam",
@@ -2698,6 +2699,16 @@
       "detailFailures": 0,
       "currentGbpPerKwh": 0.83,
       "report": "reports/uk/applegreen-public-stations-latest.json"
+    },
+    "zestBound": {
+      "state": "authenticated_android_app_required",
+      "backend": "https://mobile-api.msp.zest.uk.com",
+      "readRoutes": [
+        "/v1/locations",
+        "/v1/locations/evse-statuses"
+      ],
+      "anonymousPublicWebAccess": false,
+      "report": "reports/uk/zest-anonymous-auth-retry-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
