@@ -1,6 +1,9 @@
 name: Switzerland priority second pass
 
 on:
+  push:
+    paths:
+      - '.github/workflows/switzerland-priority-second-pass.yml'
   workflow_run:
     workflows: ["Switzerland untreated CPO first pass"]
     types: [completed]
@@ -11,7 +14,7 @@ permissions:
 
 jobs:
   scan:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     strategy:
       fail-fast: false
       matrix:
