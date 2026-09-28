@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "country": "CH",
+  "app": "eCarUp",
+  "packageId": "com.ecarup",
+  "version": "2.6.0",
+  "source": "user-supplied XAPK static analysis",
+  "findings": {
+    "productionBaseUrl": "https://ecarup.com/api/",
+    "stagingBaseUrl": "https://staging.ecarup.com/api/",
+    "publicStationEndpoint": "GET stations",
+    "stationDetailsEndpoint": "GET stations?id={stationId}",
+    "qrLookupEndpoint": "GET stations/search?qr={qr}",
+    "stationListQueryParameters": [
+      "location",
+      "includePartners",
+      "onlyAvailable"
+    ],
+    "searchQueryParameters": [
+      "searchTerm",
+      "location",
+      "includePartners",
+      "onlyAvailable",
+      "onlyRecentlyUsed"
+    ],
+    "geoPointSerialization": "latitude,longitude",
+    "publicStationResponseIncludes": [
+      "station ID",
+      "name",
+      "description",
+      "address",
+      "latitude",
+      "longitude",
+      "connector list",
+      "per-connector energy price",
+      "parking price",
+      "penalty grace period",
+      "penalty price per minute",
+      "penalty max fee",
+      "currency",
+      "plug type",
+      "max power",
+      "access type",
+      "Hubject ID",
+      "operator name",
+      "station/connector state"
+    ],
+    "confirmedProductionUnauthenticated": true
+  },
+  "endpointEvidence": {
+    "retrofitInterface": "com.ecarup.api.RemoteApi",
+    "methods": {
+      "getStations": "GET stations",
+      "getStationDetails": "GET stations",
+      "findStation": "GET stations/search",
+      "getFavorites": "GET stations/favorite",
+      "getActiveCharging": "GET chargings",
+      "fetchDriverHistory": "GET chargings/history",
+      "postChargingV2": "POST v2/chargings"
+    }
+  },
+  "validation": {
+    "query": "https://ecarup.com/api/stations?location=46.8182,8.2275&includePartners=true&onlyAvailable=false",
+    "result": "HTTP 200 with live public station and connector pricing data",
+    "exampleOperator": "Elektrizitätswerk Obwalden",
+    "exampleEnergyPrice": "0.45 CHF/kWh"
+  },
+  "policy": "Use only unauthenticated read-only station endpoints. No charging/payment/account actions."
+}
