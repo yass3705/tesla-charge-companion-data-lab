@@ -29,6 +29,14 @@ jobs:
             {"name":"ScottishPower Recharge","url":"https://www.scottishpower.co.uk/public-ev-charging"},
             {"name":"ParkRecharge webapp","url":"https://parkrecharge.app/"},
           ]
+          explicit_assets={
+            "ParkRecharge webapp":[
+              "https://parkrecharge.app/assets/js/env.js",
+              "https://parkrecharge.app/assets/js/js-map.js",
+              "https://parkrecharge.app/assets/js/app.js",
+              "https://parkrecharge.app/assets/js/helper.js"
+            ]
+          }
           ua="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
           domain_re=re.compile(r'https?://[^"\'\\s<>]+',re.I)
           uuid_re=re.compile(r'(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b')
@@ -47,7 +55,7 @@ jobs:
               html,status,ctype=get(t["url"])
               rec["status"]=status; rec["contentType"]=ctype
               srcs=re.findall(r'''(?:src|href)=["']([^"'<>]+)["']''',html,re.I)
-              assets=[]
+              assets=list(explicit_assets.get(t["name"],[]))
               for src in srcs:
                 full=urllib.parse.urljoin(t["url"],src)
                 if re.search(r'(?i)\.(?:js|mjs)(?:\?|$)',full) or "/_next/static/" in full:
@@ -86,8 +94,20 @@ jobs:
                 k=json.dumps(x,sort_keys=True)
                 if k not in seen:
                   seen.add(k); dedup.append(x)
-              rec["candidates"]=dedup[:400]
+              rec["candidates"]=dedup[:600]
               rec["uuids"]=sorted(uuids)
+              # Compact extraction of client-visible config and API call expressions.
+              config=[]
+              for kind,source,txt in texts:
+                if t["name"]=="ParkRecharge webapp" and any(source.endswith(x) for x in ("env.js","js-map.js","app.js","helper.js")):
+                  for pat in (
+                    r"(?im)^\s*(?:var|let|const)\s+([A-Za-z_$][\w$]*(?:api|url|endpoint|key)[\w$]*)\s*=\s*([^;\n]+)",
+                    r"(?i)(api_endPoint\s*\+\s*[^;\n]+)",
+                    r"(?i)(apiRequest\s*\(\s*\{.{0,900}?\})"
+                  ):
+                    for m in re.finditer(pat,txt,re.S if "apiRequest" in pat else 0):
+                      config.append({"source":source,"match":m.group(0)[:1400]})
+              rec["configMatches"]=config[:250]
             except Exception as e:
               rec["error"]=f"{type(e).__name__}: {e}"
             out["targets"].append(rec)
