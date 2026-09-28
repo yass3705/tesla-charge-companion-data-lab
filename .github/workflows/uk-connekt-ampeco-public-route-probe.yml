@@ -1,0 +1,96 @@
+name: UK Connekt AMPECO public route probe
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-connekt-ampeco-public-route-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Probe read-only AMPECO routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python - <<'PY'
+          import json,urllib.request,urllib.error
+          from datetime import datetime,timezone
+          from pathlib import Path
+
+          base="https://cp.connektcharging.com"
+          paths=[
+            "/",
+            "/api",
+            "/api/v1",
+            "/api/v1/locations",
+            "/api/v1/locations/search",
+            "/api/v1/tariffs",
+            "/api/v1/charging-stations",
+            "/api/v1/charge-points",
+            "/api/v1/configuration",
+            "/api/v1/configuration/settings",
+            "/api/locations",
+            "/api/locations/search",
+            "/api/tariffs",
+            "/v1/locations",
+            "/v1/locations/search",
+            "/v1/tariffs",
+            "/locations",
+            "/locations/search",
+            "/tariffs"
+          ]
+          profiles=[
+            ("anon",{}),
+            ("mobile",{"X-Requested-With":"com.connektcharging.getconnekted"})
+          ]
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"base":base,"results":[]}
+          for path in paths:
+            for name,extra in profiles:
+              item={"path":path,"profile":name}
+              headers={"User-Agent":"GetConnekted/1 TeslaChargeCompanion/9","Accept":"application/json,text/plain,*/*",**extra}
+              try:
+                req=urllib.request.Request(base+path,headers=headers)
+                with urllib.request.urlopen(req,timeout=30) as r:
+                  raw=r.read(1_000_000)
+                  item.update({"status":r.status,"contentType":r.headers.get("Content-Type"),"bytes":len(raw)})
+                  try:
+                    p=json.loads(raw.decode("utf-8"))
+                    item["json"]=True; item["jsonType"]=type(p).__name__
+                    if isinstance(p,dict): item["keys"]=list(p)[:80]
+                    elif isinstance(p,list): item["count"]=len(p)
+                  except Exception:
+                    item["json"]=False; item["prefix"]=raw.decode("utf-8","replace")[:800]
+              except urllib.error.HTTPError as e:
+                raw=e.read(100000)
+                item.update({"status":e.code,"error":str(e),"bodyPrefix":raw.decode("utf-8","replace")[:1000],
+                             "wwwAuthenticate":e.headers.get("WWW-Authenticate")})
+              except Exception as e:
+                item.update({"status":None,"error":f"{type(e).__name__}: {e}"})
+              out["results"].append(item)
+          Path("reports/uk/connekt-ampeco-public-route-probe-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/connekt-ampeco-public-route-probe-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): probe Connekt AMPECO public routes [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
