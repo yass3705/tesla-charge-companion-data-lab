@@ -58,6 +58,7 @@ def map_candidates(lat,lon,filter_value=None):
       "latLongTopRight":f"{lat+DELTA:.6f},{lon+DELTA:.6f}",
       "evseTypes":"AC,DC,HPC",
       "connectorTypes":"TYPE2,CCS",
+      "locationStatus":"AVAILABLE",
     }
     if filter_value:
         q["includeCpos"]=filter_value
