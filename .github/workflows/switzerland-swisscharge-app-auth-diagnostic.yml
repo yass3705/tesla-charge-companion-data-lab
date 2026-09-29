@@ -1,0 +1,63 @@
+name: Switzerland Swisscharge app auth diagnostic
+
+on:
+  push:
+    paths:
+      - '.github/workflows/switzerland-swisscharge-app-auth-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Download current Swisscharge XAPK
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 -A "Mozilla/5.0"             "https://d.apkpure.net/b/XAPK/cs.swisscharge?version=latest"             -o /tmp/swisscharge.xapk
+      - name: Run sanitized auth probe
+        run: |
+          set +e
+          EVSE_IDENTIFIER="6931" PROBE_REPORT="/tmp/swisscharge-auth.json"             python3 scripts/swisscharge_home_probe.py /tmp/swisscharge.xapk
+          rc=$?
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path("/tmp/swisscharge-auth.json")
+          if not p.exists():
+              raise SystemExit("sanitized auth report missing")
+          d=json.loads(p.read_text())
+          out={
+            "app_version":d.get("app_version"),
+            "host":d.get("host"),
+            "public_host":d.get("public_host"),
+            "oauth_client_id_present":d.get("oauth_client_id_present"),
+            "oauth_secret_present":d.get("oauth_secret_present"),
+            "controls":d.get("controls"),
+            "token_attempts":d.get("token_attempts"),
+          }
+          Path("docs/switzerland-swisscharge-app-auth-diagnostic-2026-09-29.json").write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+"\n"
+          )
+          print(json.dumps(out,ensure_ascii=False))
+          PY
+          exit 0
+      - name: Persist diagnostic
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-swisscharge-app-auth-diagnostic-2026-09-29.json
+          git commit -m "research(ch): diagnose current Swisscharge app auth" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
