@@ -32,7 +32,7 @@ jobs:
               elif isinstance(y,list):
                   for i,v in enumerate(y[:50]): walk(v,path+f'[{i}]')
           walk(x)
-          out={'topKeys':keys.most_common(100),'stringSamples':string_samples,'rootType':type(x).__name__,'rootLen':len(x) if hasattr(x,'__len__') else None}
+          first_evse=((x.get('locations') or [{}])[0].get('stations') or [{}])[0].get('evses',[{}])[0]\n          out={'topKeys':keys.most_common(100),'stringSamples':string_samples,'firstEvse':first_evse,'rootType':type(x).__name__,'rootLen':len(x) if hasattr(x,'__len__') else None}
           Path('reports/belgium/belgium-nap-schema-diagnostic-2026-09-29.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
           print(json.dumps(out,ensure_ascii=False,indent=2))
           PY
