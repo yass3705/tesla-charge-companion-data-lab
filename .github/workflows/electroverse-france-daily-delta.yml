@@ -1,0 +1,64 @@
+name: TEST NON-TESLA — Electroverse France daily delta
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '47 22 * * *'
+  push:
+    paths:
+      - tests/non-tesla/active/run-electroverse-france-daily-delta.trigger
+permissions:
+  contents: write
+concurrency:
+  group: electroverse-france-daily-delta
+  cancel-in-progress: false
+
+jobs:
+  delta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+      ELECTROVERSE_INVENTORY_ZOOM: '9'
+      ELECTROVERSE_TILE_CONCURRENCY: '8'
+      ELECTROVERSE_BATCH_SIZE: '5'
+      ELECTROVERSE_CONCURRENCY: '2'
+      ELECTROVERSE_WAVE_PAUSE_MS: '750'
+      ELECTROVERSE_FALLBACK_INTERVAL_MS: '750'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Scan France inventory and build targeted selection
+        run: node scripts/electroverse_daily_delta_selector.mjs
+
+      - name: Refresh new/mapped/retry stations
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          selected=$(node -e "const r=require('./reports/electroverse/incremental-selection.json');process.stdout.write(String(r.selectedCount||0))")
+          echo "selected=${selected}"
+          if [ "${selected}" != "0" ]; then
+            set +e
+            node scripts/electroverse_hybrid_refresh.mjs
+            rc=$?
+            set -e
+            if [ "${rc}" -ne 0 ]; then
+              echo "Some stations remain unresolved and will stay eligible for the next daily delta run."
+            fi
+          fi
+
+          git add data/electroverse/inventory                   data/electroverse/tariff_cache                   reports/electroverse/daily-delta.json                   reports/electroverse/incremental-selection.json                   reports/electroverse/hybrid-refresh-failures.json
+          git commit -m "data(electroverse): daily France inventory delta [run ${GITHUB_RUN_ID}]" || true
+
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main
+            git push origin HEAD:main && break
+            sleep $((i * 3))
+          done
