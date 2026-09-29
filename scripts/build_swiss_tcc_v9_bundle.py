@@ -90,6 +90,7 @@ sources=[
 ("GOFAST official","data/switzerland/gofast-official-direct-tariffs.json"),
 ("AVIA guest exact","data/switzerland/avia-guest-direct-tariffs.json"),
 ("AVIA successor alias","data/switzerland/avia-successor-alias-overlay.json"),
+("Partino Baden exact","data/switzerland/partino-baden-direct-tariffs.json"),
 ]
 classifications=[
 ("Partino restricted","data/switzerland/par-partino-restricted-direct-classification.json"),
