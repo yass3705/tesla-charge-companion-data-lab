@@ -67,6 +67,17 @@ jobs:
           test -s /tmp/enel-apk/enel.apk
           sha256sum /tmp/enel-apk/enel.apk | tee /tmp/enel-apk/sha256.txt
 
+      - name: Upload fetch diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enel-apk-fetch-diagnostics
+          path: |
+            /tmp/enel-apk/aptoide.json
+            /tmp/enel-apk/meta.json
+            /tmp/enel-apk/url.txt
+          retention-days: 2
+
       - name: Extract endpoint and tariff/payment strings
         shell: bash
         run: |
