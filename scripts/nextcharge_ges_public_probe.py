@@ -59,7 +59,7 @@ def main():
         seen=set()
         evse_variants=[x for x in evse_variants if not (x in seen or seen.add(x))]
         for profile,h in header_profiles:
-          for form_kind,form_value in [("evseId",x) for x in evse_variants]:
+          for form_kind,form_value in [("uidConnector",x) for x in evse_variants]:
             form={form_kind:form_value}
             st=post("/station",form,h)
             entry={"evseId":evse,"submittedEvseId":form_value,"formKind":form_kind,"profile":profile,"stationCall":st}
@@ -91,7 +91,7 @@ def main():
     for r in results:
         walk(r.get("connectorsCall",{}),f"{r['evseId']}:{r['profile']}")
     report={
-      "scope":"GES NextCharge public POST probe from APK 6.2.02",
+      "scope":"GES NextCharge public POST probe from APK 6.2.02 using APK-observed uidConnector key",
       "gesPunEvseCount":len(ges),
       "sampleEvseIds":[str(x["evseId"]) for x in sample],
       "results":results,
