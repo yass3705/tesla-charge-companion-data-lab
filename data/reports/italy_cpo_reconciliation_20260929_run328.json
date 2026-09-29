@@ -8,7 +8,7 @@
   "statusAfter": "partial",
   "inventory": {
     "evse": 2396,
-    "stations": 1131,
+    "stations": 1132,
     "punAsOf": "2026-09-29"
   },
   "coverage": {
@@ -19,8 +19,8 @@
   },
   "evidence": {
     "nextChargeApkVersion": "6.2.02",
-    "nationalWorkflowRunId": 36614177457,
-    "artifactId": 11053784396,
+    "nationalWorkflowRunId": 36615968742,
+    "artifactId": 11055876061,
     "source": "NextCharge public stationsNear + stationConnectors backend",
     "matchPolicy": "PUN coordinate <=100m candidate search, but promoted rows require exact numeric PUN EVSE suffix == NextCharge uidConnector; all 63 promoted matches are 0.0m.",
     "matchMethodCounts": {
@@ -43,11 +43,14 @@
     },
     "unitEvidence": "NextCharge 6.2.02 APK resources explicitly label cost per kWh, cost per minute, and cost to start; backend returns energy/time/parking/session components.",
     "commercialSemantics": "NextCharge terms state the app/service is offered by Go Electric Stations, each payment transaction is managed by Go Electric Stations, connector-specific fees are shown before charging, and roaming is explicitly distinguished. Exact current IT*GES connector mappings are therefore accepted only for the matched rows; no generic NextCharge roaming price is substituted.",
-    "termsUrl": "https://nextcharge.app/apps/map/apis/terms/v1.4/termsAndConditions.php?appearanceFontSize=medium&appearanceTheme=auto&lang=en"
+    "termsUrl": "https://nextcharge.app/apps/map/apis/terms/v1.4/termsAndConditions.php?appearanceFontSize=medium&appearanceTheme=auto&lang=en",
+    "initialResearchWorkflowRunId": 36614177457,
+    "initialResearchArtifactId": 11053784396,
+    "validationNote": "Main-branch reproducibility run confirmed identical 2,396 EVSE, 63 exact matches/rankable EVSE, 2,333 fail-closed and identical tariff/provider distributions. Fresh PUN station grouping was 1,132 vs 1,131 in the earlier research run; EVSE set and matched coverage were unchanged."
   },
   "findings": [
-    "Fresh PUN contains 2,396 GES EVSE across 1,131 stations.",
-    "National deterministic reconciliation scanned all 1,131 PUN GES stations.",
+    "Fresh PUN contains 2,396 GES EVSE across 1,132 stations.",
+    "National deterministic reconciliation scanned all 1,132 PUN GES stations.",
     "63 EVSE across 20 stations have exact numeric suffix -> uidConnector matches; every accepted match is at 0.0m.",
     "All 63 exact matches expose a complete current NextCharge connector tariff surface; 3 are explicitly paymentRequired=false with empty price components and are treated as zero-price on this surface.",
     "Tariffs are heterogeneous by connector/host, so no network-wide or power-class extrapolation is allowed."
