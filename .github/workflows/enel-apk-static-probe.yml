@@ -23,10 +23,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/enel-apk data/reports
+          curl -fL --retry 2 --connect-timeout 20 --max-time 60 \\
+            -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36' \\
+            -H 'Accept: application/json,text/plain,*/*' \\
+            'https://ws75.aptoide.com/api/7/app/get/package_name=com.enel.mobile.recharge2' \\
+            -o /tmp/enel-apk/aptoide.json
           python - <<'PY'
-          import json, urllib.request
-          u='https://ws75.aptoide.com/api/7/app/get/package_name=com.enel.mobile.recharge2'
-          with urllib.request.urlopen(u, timeout=30) as r:
+          import json
+          with open('/tmp/enel-apk/aptoide.json') as r:
               obj=json.load(r)
           app=obj.get('nodes',{}).get('meta',{}).get('data',{}) or obj.get('data',{}) or {}
           file=app.get('file') or {}
