@@ -1,0 +1,59 @@
+{
+  "country": "BE",
+  "asOf": "2026-09-29",
+  "phase": "v9-source-consolidation",
+  "inventorySources": [
+    {
+      "name": "Eco-Movement Belgium NAP",
+      "manifest": "data/belgium/nap-belgium-manifest.json",
+      "scope": "selected CPOs",
+      "locations": 16873,
+      "evses": 70216
+    },
+    {
+      "name": "Road",
+      "canonical": "data/belgium/additional/canonical/road-belgium-canonical-2026-09-29.json",
+      "locations": 3271,
+      "evses": 8174
+    },
+    {
+      "name": "INDIGO",
+      "canonical": "data/belgium/additional/canonical/indigo-belgium-canonical-2026-09-29.json",
+      "sites": 86,
+      "evses": 2332
+    }
+  ],
+  "tariffSources": [
+    {
+      "name": "Eco-Movement + exact official overlays",
+      "progress": "docs/belgium-cpo-progress-2026-09.json"
+    },
+    {
+      "name": "Road public tariffs",
+      "overlay": "data/operator_direct/road_belgium_tariffs_2026-09-29.json",
+      "pricedEvses": 7475,
+      "sourceLimitedEvses": 699
+    },
+    {
+      "name": "INDIGO official Belgium tariff",
+      "overlay": "data/operator_direct/indigo_belgium_official_2026-09-29.json",
+      "pricedEvses": 2332
+    }
+  ],
+  "externalBlockedSources": [
+    {
+      "name": "EnergyVision",
+      "reason": "free API key required from myevplatform@energyvision.be"
+    },
+    {
+      "name": "Monta",
+      "reason": "authenticated Public API application requires clientId/clientSecret"
+    }
+  ],
+  "rules": [
+    "Do not infer tariffs.",
+    "Preserve source provenance.",
+    "Deduplicate only on stable EVSE identifiers or explicit source identity evidence.",
+    "Credential-gated sources remain blocked until legitimate credentials are supplied."
+  ]
+}\n
