@@ -38,6 +38,18 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Verify AVIA secret fingerprint
+        if: steps.secret.outputs.configured == 'true'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib, os, sys
+          k=os.environ.get("AVIA_APIM_SUBSCRIPTION_KEY","")
+          ok=hashlib.sha256(k.encode()).hexdigest().startswith("55d51623b1b0")
+          print("avia_secret_fingerprint_match=" + ("true" if ok else "false"))
+          sys.exit(0 if ok else 3)
+          PY
+
       - name: Collect AVIA Switzerland guest prices
         if: steps.secret.outputs.configured == 'true'
         run: python3 scripts/collect_avia_switzerland_guest.py
