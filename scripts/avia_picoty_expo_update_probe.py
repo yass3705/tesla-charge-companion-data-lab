@@ -1,3 +1,4 @@
+# refresh marker 2026-09-29 tenant discovery
 #!/usr/bin/env python3
 """Probe Picoty's public EAS Update endpoint and safely scan returned launch bundles.
 
