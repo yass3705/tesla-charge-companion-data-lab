@@ -156,14 +156,41 @@ jobs:
           # Inventory ID sets for de-duplication audit.
           def collect_ids(x):
               ids=[]
+              def add(v):
+                  if isinstance(v,(str,int)):
+                      n=norm(v)
+                      if n: ids.append((str(v),n))
               def walk(y):
                   if isinstance(y,dict):
+                      # Eco-Movement canonical: take one stable external identifier per EVSE.
+                      if isinstance(y.get('evses'),list):
+                          for ev in y.get('evses') or []:
+                              if not isinstance(ev,dict): continue
+                              ex=ev.get('externalIdentifiers') or ev.get('external_identifiers') or []
+                              chosen=None
+                              if isinstance(ex,list):
+                                  chosen=next((v for v in ex if isinstance(v,(str,int))),None)
+                              if chosen is None:
+                                  chosen=ev.get('evse_id') or ev.get('evseid') or ev.get('id')
+                              add(chosen)
+                          # Recurse other fields, but skip EVSE list to avoid connector duplicates.
+                          for k,v in y.items():
+                              if k!='evses': walk(v)
+                          return
+                      # INDIGO-style refill points.
+                      if isinstance(y.get('refillPoints'),list):
+                          for rp in y.get('refillPoints') or []:
+                              if isinstance(rp,dict):
+                                  add(rp.get('externalIdentifier') or rp.get('external_identifier'))
+                          for k,v in y.items():
+                              if k!='refillPoints': walk(v)
+                          return
                       for k,v in y.items():
                           kl=str(k).lower()
                           if kl in ('evse_id','evseid','externalidentifier','external_identifier') and isinstance(v,(str,int)):
-                              n=norm(v)
-                              if n: ids.append((str(v),n))
-                      for v in y.values(): walk(v)
+                              add(v)
+                          else:
+                              walk(v)
                   elif isinstance(y,list):
                       for v in y: walk(v)
               walk(x)
@@ -272,3 +299,5 @@ jobs:
           exit 1
 
 # trigger: 2026-09-29T02:18+02:00
+
+# rerun after Eco-Movement EVSE schema fix
