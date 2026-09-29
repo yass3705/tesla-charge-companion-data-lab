@@ -1,0 +1,96 @@
+name: Switzerland EVTEC Swisscharge CPC API probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-evtec-swisscharge-cpc-api-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Extract and test Swisscharge CPC API
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,urllib.request,urllib.parse,urllib.error,http.cookiejar
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          BASE="https://cp.swisscharge.ch"; UA="Mozilla/5.0 TCC-V9-EVTEC-CPC"
+          cj=http.cookiejar.CookieJar()
+          op=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+          def req(url,method="GET",data=None,headers=None):
+              body=None
+              if data is not None:
+                  body=json.dumps(data).encode()
+              h={"User-Agent":UA,"Accept":"application/json,text/html,*/*"}
+              if headers:h.update(headers)
+              if body is not None:h["Content-Type"]="application/json"
+              r=urllib.request.Request(url,data=body,headers=h,method=method)
+              try:
+                  with op.open(r,timeout=35) as x:return x.status,x.geturl(),dict(x.headers.items()),x.read()
+              except urllib.error.HTTPError as e:return e.code,e.geturl(),dict(e.headers.items()),e.read()
+              except Exception as e:return 0,url,{},(type(e).__name__+": "+str(e)).encode()
+
+          st,fu,h,raw=req(BASE+"/js/app.js?id=dbae0f17a4ee0b5bead42af136027639",headers={"Accept":"application/javascript,*/*"})
+          js=raw.decode("utf-8","replace")
+          needles=["/api/v1/cpc/1/connector/","/api/v1/app/session/start","/public/charges/"]
+          snippets=[]
+          for n in needles:
+              pos=0
+              while True:
+                  i=js.find(n,pos)
+                  if i<0:break
+                  snippets.append({"needle":n,"offset":i,"text":js[max(0,i-2500):min(len(js),i+5000)]})
+                  pos=i+len(n)
+
+          tests=[]
+          for ref in ["290524","290525","290526"]:
+              # establish QR page session/cookies
+              req(BASE+f"/public/cs/{ref}",headers={"Accept":"text/html,*/*"})
+              candidates=[
+                  ("GET",BASE+f"/api/v1/cpc/1/connector/{ref}",None),
+                  ("GET",BASE+f"/api/v1/cpc/1/connector/{urllib.parse.quote(ref)}",None),
+                  ("GET",BASE+f"/public/charges/{ref}",None),
+                  ("POST",BASE+"/api/v1/app/session/start",{"connector":ref}),
+                  ("POST",BASE+"/api/v1/app/session/start",{"connector_id":ref}),
+                  ("POST",BASE+"/api/v1/app/session/start",{"physical_reference":ref}),
+              ]
+              for method,url,data in candidates:
+                  st2,fu2,h2,b2=req(url,method,data,{"Referer":BASE+f"/public/cs/{ref}","X-Requested-With":"XMLHttpRequest"})
+                  txt=b2.decode("utf-8","replace")
+                  try: parsed=json.loads(txt)
+                  except: parsed={"raw":txt[:3000]}
+                  tests.append({"reference":ref,"method":method,"url":url,"request":data,"status":st2,"final":fu2,"response":parsed})
+          out={"schemaVersion":1,"generatedAt":datetime.now(timezone.utc).isoformat(),"snippets":snippets,"tests":tests}
+          Path("docs/switzerland-evtec-swisscharge-cpc-api-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps({
+              "snippetCount":len(snippets),
+              "interestingTests":[{"reference":t["reference"],"method":t["method"],"url":t["url"],"status":t["status"]} for t in tests if t["status"] not in (404,405,419)]
+          },ensure_ascii=False))
+          PY
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-evtec-swisscharge-cpc-api-probe-2026-09-29.json
+          git commit -m "research(ch): probe EVTEC Swisscharge CPC API" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
