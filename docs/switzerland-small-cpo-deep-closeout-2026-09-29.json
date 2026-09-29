@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "country": "CH",
+  "generatedAt": "2026-09-29T15:43:00Z",
+  "scope": [
+    "CH*EVT remaining Kobiboden",
+    "CH*HER Herrliberg"
+  ],
+  "result": {
+    "CH*EVT": {
+      "status": "blocked",
+      "resolvedEvseCount": 5,
+      "totalEvseCount": 8,
+      "unresolvedEvseIds": [
+        "CH*EVT*EAVC001001",
+        "CH*EVT*EAVC001002",
+        "CH*EVT*EAVC001003"
+      ],
+      "site": {
+        "name": "#2395 - cappuccino&charge 3in1 100kW",
+        "address": "Kobiboden 57, 8840 Einsiedeln",
+        "coordinates": "47.13687 8.742233",
+        "ownerSite": "AVC-SYSTEMS AG"
+      },
+      "findings": [
+        "parking.ch exact public detail API confirms all three EVSEs, live connector types/powers and Direct Payment, but returns no price or payment URL.",
+        "Generic Swisscharge ad-hoc probes for legacy EVTEC identifiers return no exact mapping.",
+        "Three current Swisscharge/AVC-SYSTEM EVSEs at the same postal address are 30.4 m away and AC-only (22 kW), with tariff CHF 0.45/kWh + CHF 0.01/min; they cannot safely resolve the EVTEC 50/100 kW DC channels.",
+        "EVTEC's current cappuccino&charge documentation states that charging costs are shown in real time on the charger's display and that an optional local NFC card terminal can be used. This supports a physical-terminal/display-only tariff path rather than a recoverable public web price."
+      ],
+      "evidence": [
+        "docs/switzerland-small-cpo-resolution-2026-09-29.json",
+        "docs/switzerland-small-cpo-backend-reconciliation-2026-09-29.json",
+        "docs/switzerland-small-cpo-chargeprice-direct-probe-2026-09-29.json",
+        "docs/switzerland-small-cpo-frontend-backend-probe-2026-09-29.json",
+        "docs/switzerland-small-cpo-exact-parking-detail-probe-2026-09-29.json"
+      ],
+      "resumeCondition": "Obtain a current photo/screen readout from the #2395 charger after selecting AC and DC connectors, or a station-owner/payment-terminal backend record that exposes the exact tariff. Do not map the nearby AC-only Swisscharge tariff to EVTEC DC."
+    },
+    "CH*HER": {
+      "status": "blocked",
+      "resolvedEvseCount": 0,
+      "totalEvseCount": 1,
+      "unresolvedEvseIds": [
+        "CH*HER*E123*0001"
+      ],
+      "site": {
+        "name": "Postparkplatz Herrliberg",
+        "address": "Forchstrasse 16, 8704 Herrliberg",
+        "coordinates": "47.284845 8.611227",
+        "operator": "Elektrizitätswerk Herrliberg"
+      },
+      "findings": [
+        "parking.ch exact public detail API confirms the station, four connector capabilities and Direct Payment, but returns no price or payment URL.",
+        "No same-site successor/operator backend was found in the current national nearby reconciliation.",
+        "The municipality's current 2026 public documentation confirms it has operated this public 150 kW DC fast charger at Postparkplatz since 2019.",
+        "Current official Herrliberg electricity retail tariffs are not station charging tariffs and are not substituted.",
+        "A community source reports CHF 0.39/kWh, but provenance is insufficient for production."
+      ],
+      "evidence": [
+        "docs/switzerland-small-cpo-resolution-2026-09-29.json",
+        "docs/switzerland-small-cpo-backend-reconciliation-2026-09-29.json",
+        "docs/switzerland-her-evt-deep-backend-probe-2026-09-29.json",
+        "docs/switzerland-small-cpo-frontend-backend-probe-2026-09-29.json",
+        "docs/switzerland-small-cpo-exact-parking-detail-probe-2026-09-29.json"
+      ],
+      "resumeCondition": "Obtain the current Postparkplatz payment-terminal/charger display tariff, a Gemeinde/EWH tariff publication, or a payment backend response. Do not promote the community CHF 0.39/kWh value without authoritative confirmation."
+    }
+  },
+  "policy": "Fail closed. No cross-station, retail-electricity, community-only or AC-to-DC tariff extrapolation."
+}
