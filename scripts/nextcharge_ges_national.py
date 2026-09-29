@@ -94,25 +94,33 @@ def process(item):
     candidates.sort(key=lambda x:x[0])
     grid=None
     grid_candidates=[]
-    # Second pass from the exact APK-observed stationsGrid form. This is only
-    # discovery: acceptance still requires an exact connector identifier match.
-    if not candidates:
-        grid_form={
-          "lonSW":str(lon-GRID_HALFSPAN_DEG),"latSW":str(lat-GRID_HALFSPAN_DEG),
-          "lonNE":str(lon+GRID_HALFSPAN_DEG),"latNE":str(lat+GRID_HALFSPAN_DEG),
-          "statusStation":"","UID":"","includeNextcharge":"1","includeHighway":"1",
-          "favorites":"0","filterStations":"",
-          "osType":"android","appVersion":"6.2.02","tokenAppSessionForStations":"",
-        }
-        grid=post("/stationsGrid",grid_form)
-        for st in list_data(grid):
-            if not isinstance(st,dict): continue
-            try: d=hav(lat,lon,float(st.get("latitude")),float(st.get("longitude")))
-            except Exception: d=None
-            grid_candidates.append((d if d is not None else 1e18,st))
-        grid_candidates.sort(key=lambda x:x[0])
-        # Keep a bounded candidate set; exact uid/ref equality below is mandatory.
-        candidates=grid_candidates[:50]
+    # Pass 2: always query the exact APK-observed stationsGrid form and merge it
+    # with stationsNear. The previous pass only used grid when Near returned no
+    # local candidate, which could hide a GES station behind unrelated nearby CPOs.
+    # Discovery is broadened, but acceptance below still requires exact connector
+    # identity (numeric uidConnector suffix or normalized physicalReference).
+    grid_form={
+      "lonSW":str(lon-GRID_HALFSPAN_DEG),"latSW":str(lat-GRID_HALFSPAN_DEG),
+      "lonNE":str(lon+GRID_HALFSPAN_DEG),"latNE":str(lat+GRID_HALFSPAN_DEG),
+      "statusStation":"","UID":"","includeNextcharge":"1","includeHighway":"1",
+      "favorites":"0","filterStations":"",
+      "osType":"android","appVersion":"6.2.02","tokenAppSessionForStations":"",
+    }
+    grid=post("/stationsGrid",grid_form)
+    for st in list_data(grid):
+        if not isinstance(st,dict): continue
+        try: d=hav(lat,lon,float(st.get("latitude")),float(st.get("longitude")))
+        except Exception: d=None
+        grid_candidates.append((d if d is not None else 1e18,st))
+    grid_candidates.sort(key=lambda x:x[0])
+    merged={}
+    for d,st in candidates + grid_candidates[:50]:
+        nsid=st.get("idStation") or st.get("stationId") or st.get("id")
+        if nsid is None: continue
+        key=str(nsid)
+        if key not in merged or d < merged[key][0]:
+            merged[key]=(d,st)
+    candidates=sorted(merged.values(),key=lambda x:x[0])[:70]
     target_by_num={numeric_suffix(e["evseId"]):e for e in evses if numeric_suffix(e["evseId"]) is not None}
     target_refs={norm_ref(e["evseId"]):e for e in evses}
     matches={}
