@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "country": "CH",
-  "updatedAt": "2026-09-29T18:38:00Z",
+  "updatedAt": "2026-09-29T18:56:00Z",
   "canonicalRepo": "yass3705/tesla-charge-companion-data-lab",
   "sourceMigrationFrom": "yass3705/tesla-stations-updater-test",
   "rules": {
@@ -92,12 +92,12 @@
       "operatorNames": [],
       "status": "blocked",
       "name": "EPO",
-      "evidence": "docs/switzerland-epo-charger-id-pivot-2026-09-29.json",
-      "note": "0/324 deterministic direct prices for the current snapshot. Eponet public QR flow has now been decoded: official QR codes resolve to portal.eponet.ch/public-charge.php?id=<opaque-32-hex-token>, and the public page exposes current start/kWh price plus charging-profile details. A wiki fixture (Charger ID 23-2116 / EVSE CH*EPO*E0001579) was decoded successfully, but it is outside the current 324-EVSE snapshot, so no tariff promotion is made.",
-      "setAside": false,
+      "evidence": "docs/switzerland-epo-apk-static-analysis-2026-09-29.json",
+      "note": "0/324 deterministic direct prices. Exhaustive current public-path analysis completed: official QR route is decoded and Eponet Go APK exposes production api.eponet.io plus ocpp/rate/getrates/, but map/detail/rate APIs return 403 without account authentication and current QR URLs use opaque 32-hex tokens. 8 Charger IDs covering 23 current EVSEs are known, but no current-snapshot public-charge token was found in indexed QR files/photos or public directories. Fail closed; no brute force or tariff extrapolation.",
+      "setAside": true,
       "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-epo-all-options-analysis-2026-09-29.json",
-      "resumeCondition": "Recover exact public-charge tokens for EVSEs in the current 324-EVSE snapshot (published QR/label photo, accessible APK/app mapping, or public backend response). Do not derive or extrapolate tokens."
+      "blockerEvidence": "docs/switzerland-epo-apk-static-analysis-2026-09-29.json",
+      "resumeCondition": "Resume when a current-snapshot Eponet QR/label photo or exact public-charge URL is found, or if the user explicitly provides/authorizes an authenticated Eponet app session."
     },
     {
       "operatorId": "CH*360",
