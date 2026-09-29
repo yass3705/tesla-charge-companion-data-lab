@@ -1,0 +1,54 @@
+name: Switzerland AVIA map status probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-avia-map-status-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      AVIA_APIM_SUBSCRIPTION_KEY: ${{ secrets.AVIA_APIM_SUBSCRIPTION_KEY }}
+    steps:
+      - name: Probe locationStatus enum candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, urllib.parse
+          key=os.environ["AVIA_APIM_SUBSCRIPTION_KEY"]
+          base="https://pdefweushaapiam01.azure-api.net"
+          tenant="fdcb995a-8234-42ed-826f-3f2c7499d7f8"
+          path=f"/app-backend/v1/tenants/{tenant}/map-locations"
+          common={
+            "latLongBottomLeft":"47.20,8.30",
+            "latLongTopRight":"47.60,8.90",
+            "evseTypes":"AC,DC,HPC",
+            "connectorTypes":"TYPE2,CCS",
+            "includeCpos":"CHAVI",
+          }
+          candidates=["AVAILABLE","NOT_AVAILABLE","OCCUPIED","CHARGING","IN_USE","OUT_OF_SERVICE","OUTOFORDER","UNKNOWN"]
+          for status in candidates:
+            q=dict(common); q["locationStatus"]=status
+            url=base+path+"?"+urllib.parse.urlencode(q)
+            cmd=["curl","-sS","-o","/tmp/body.json","-w","%{http_code}",
+                 "-H","accept: */*","-H","content-type: application/json; charset=utf-8",
+                 "-H","x-app-platform: ios","-H","x-app-version: 2.3.0",
+                 "-H","user-agent: AVIAVOLTSuisse/4614 CFNetwork",
+                 "-H",f"ocp-apim-subscription-key: {key}",url]
+            p=subprocess.run(cmd,capture_output=True,text=True)
+            code=p.stdout.strip()
+            count=None; err=None
+            try:
+              body=json.load(open("/tmp/body.json",encoding="utf-8"))
+              count=len(body.get("locations") or [])
+              err=body.get("message") or body.get("error")
+            except Exception as e:
+              err=str(e)
+            print(json.dumps({"locationStatus":status,"http":code,"locations":count,"error":err},ensure_ascii=False))
+          PY
