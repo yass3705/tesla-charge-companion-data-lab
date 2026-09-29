@@ -1,0 +1,100 @@
+name: Switzerland Partino map protocol diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-partino-map-protocol-diagnostic.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Diagnose public Partino map AJAX variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,urllib.request,urllib.parse,urllib.error,http.cookiejar
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          BASE="https://partino-chf.evc-net.com"; UA="Mozilla/5.0 TCC-V9-Partino-Diag"
+          cj=http.cookiejar.CookieJar()
+          op=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+          def get(url,params=None,headers=None):
+              if params:
+                  url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
+              req=urllib.request.Request(url,headers=headers or {"User-Agent":UA},method="GET")
+              try:
+                  with op.open(req,timeout=40) as r:return r.status,r.geturl(),dict(r.headers.items()),r.read()
+              except urllib.error.HTTPError as e:return e.code,e.geturl(),dict(e.headers.items()),e.read()
+              except Exception as e:return 0,url,{},(type(e).__name__+": "+str(e)).encode()
+
+          get(BASE+"/Locations",headers={"User-Agent":UA,"Accept":"text/html,*/*"})
+          st,_,_,raw=get(BASE+"/min/?g=js&v=260928",headers={"User-Agent":UA})
+          js=raw.decode("utf-8","replace")
+
+          consts={}
+          for name in ["MODE_ROAMING","MODE_CURRENT","VIEW_CLUSTERED","VIEW_UNCLUSTERED","VIEW_HEATMAP"]:
+              m=re.search(r'DeviceMap\.'+re.escape(name)+r'\s*=\s*([^;]+);',js)
+              consts[name]=m.group(1).strip() if m else None
+
+          variants=[]
+          bound_literals=[
+              ("literal",{"south":47.455,"west":8.285,"north":47.485,"east":8.325}),
+              ("swne",{"southWest":{"lat":47.455,"lng":8.285},"northEast":{"lat":47.485,"lng":8.325}}),
+              ("underscore",{"_southWest":{"lat":47.455,"lng":8.285},"_northEast":{"lat":47.485,"lng":8.325}}),
+              ("none",None),
+          ]
+          views=["unclustered","clustered",0,1]
+          modes=["roaming",0,1]
+          for bname,bounds in bound_literals:
+            for view in views:
+              for mode in modes:
+                params={"active":True,"provider":None,"profile":None,"view":view,"mode":mode,"maxCache":0}
+                if bounds is not None: params["bounds"]=bounds
+                req0={"handler":"\\LMS\\EV\\AsyncServices\\DashboardAsyncService","method":"spotsStatus","params":params}
+                st2,url2,h2,raw2=get(BASE+"/api/ajax",{
+                  "requests":json.dumps({"0":req0},separators=(",",":")),
+                  "metricKey":"DeviceMap_432"
+                },{"User-Agent":UA,"Accept":"application/json","Referer":BASE+"/Locations","X-Requested-With":"XMLHttpRequest"})
+                try: body=json.loads(raw2.decode("utf-8"))
+                except: body={"_raw":raw2.decode("utf-8","replace")[:3000]}
+                val=body.get("0") if isinstance(body,dict) else None
+                count=len(val) if isinstance(val,list) else None
+                sample=val[:2] if isinstance(val,list) else body
+                variants.append({"bounds":bname,"view":view,"mode":mode,"status":st2,"count":count,"sample":sample})
+                if isinstance(val,list) and len(val)>0:
+                    break
+              if variants[-1]["count"]:
+                  break
+            if variants[-1]["count"]:
+              break
+
+          out={"schemaVersion":1,"generatedAt":datetime.now(timezone.utc).isoformat(),"constants":consts,"variants":variants}
+          Path("docs/switzerland-partino-map-protocol-diagnostic-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps({"constants":consts,"successful":[v for v in variants if v.get("count")]},ensure_ascii=False))
+          PY
+      - name: Persist diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-partino-map-protocol-diagnostic-2026-09-29.json
+          git commit -m "research(ch): diagnose Partino public map protocol" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
