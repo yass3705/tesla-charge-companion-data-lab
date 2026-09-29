@@ -1,0 +1,137 @@
+name: Switzerland HER EVT deep backend probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-her-evt-deep-backend-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Inspect Swisscharge QR frontend and Herrliberg aliases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,gzip,math,urllib.request,urllib.parse,urllib.error,http.cookiejar
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          UA="Mozilla/5.0 TCC-V9-HER-EVT"
+          FEED="https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json"
+
+          def fetch(url,headers=None,timeout=45):
+              req=urllib.request.Request(url,headers=headers or {"User-Agent":UA,"Accept":"*/*"})
+              try:
+                  with urllib.request.urlopen(req,timeout=timeout) as r:
+                      return r.status,r.geturl(),dict(r.headers.items()),r.read()
+              except urllib.error.HTTPError as e:
+                  return e.code,e.geturl(),dict(e.headers.items()),e.read()
+              except Exception as e:
+                  return 0,url,{},(type(e).__name__+": "+str(e)).encode()
+
+          # --- Kriens QR frontend + linked JS ---
+          qr_rows=[]
+          for ref in ["290524","290525","290526"]:
+              url=f"https://cp.swisscharge.ch/public/cs/{ref}"
+              st,final,h,raw=fetch(url,{"User-Agent":UA,"Accept":"text/html,*/*"})
+              html=raw.decode("utf-8","replace")
+              scripts=re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',html,re.I)
+              links=re.findall(r'https?://[^"\'<>\s]+',html)
+              assets=[]
+              for src in scripts:
+                  su=urllib.parse.urljoin(final,src)
+                  st2,fu,h2,b2=fetch(su,{"User-Agent":UA,"Accept":"application/javascript,*/*"})
+                  txt=b2.decode("utf-8","replace")
+                  matches=sorted(set(re.findall(r'https?://[^"\'\\\s<>]+|/[A-Za-z0-9_?=&./:-]*(?:api|charge|tariff|session|station|evse)[A-Za-z0-9_?=&./:-]*',txt,re.I)))
+                  if matches:
+                      assets.append({"url":fu,"status":st2,"matches":matches[:300]})
+              qr_rows.append({
+                  "reference":ref,"status":st,"final":final,"headers":{"content-type":h.get("Content-Type"),"location":h.get("Location")},
+                  "html":html[:15000],"links":links[:100],"assets":assets
+              })
+
+          # --- Herrliberg national aliases around exact point ---
+          st,_,h,raw=fetch(FEED,{"User-Agent":UA,"Accept":"application/json"})
+          if (h.get("Content-Encoding") or "").lower()=="gzip" or raw[:2]==b"\x1f\x8b":
+              raw=gzip.decompress(raw)
+          feed=json.loads(raw.decode())
+          tgt=(47.284845,8.611227)
+          def hav(a,b,c,d):
+              R=6371000;p=math.pi/180
+              x=math.sin((c-a)*p/2)**2+math.cos(a*p)*math.cos(c*p)*math.sin((d-b)*p/2)**2
+              return 2*R*math.asin(math.sqrt(x))
+          nearby=[]
+          def walk(v,ctx=None):
+              if ctx is None:ctx={}
+              if isinstance(v,dict):
+                  n=dict(ctx)
+                  for k in ("OperatorID","OperatorName","ChargingStationId","EvseID","Address","GeoCoordinates","ChargingFacilities","Plugs","PaymentOptions","AuthenticationModes","Accessibility"):
+                      if k in v:n[k]=v[k]
+                  eid=v.get("EvseID") or n.get("EvseID")
+                  geo=v.get("GeoCoordinates") or n.get("GeoCoordinates")
+                  if isinstance(eid,str) and isinstance(geo,dict) and isinstance(geo.get("Google"),str):
+                      try:
+                          lat,lon=map(float,geo["Google"].split())
+                          d=hav(tgt[0],tgt[1],lat,lon)
+                          if d<=500:
+                              nearby.append({
+                                  "evseId":eid,"distanceMeters":round(d,1),
+                                  "operatorId":v.get("OperatorID") or n.get("OperatorID"),
+                                  "operatorName":v.get("OperatorName") or n.get("OperatorName"),
+                                  "chargingStationId":v.get("ChargingStationId") or n.get("ChargingStationId"),
+                                  "address":v.get("Address") or n.get("Address"),
+                                  "geo":geo,
+                                  "chargingFacilities":v.get("ChargingFacilities") or n.get("ChargingFacilities"),
+                                  "plugs":v.get("Plugs") or n.get("Plugs"),
+                                  "paymentOptions":v.get("PaymentOptions") or n.get("PaymentOptions"),
+                                  "authenticationModes":v.get("AuthenticationModes") or n.get("AuthenticationModes"),
+                                  "accessibility":v.get("Accessibility") or n.get("Accessibility")
+                              })
+                      except: pass
+                  for x in v.values():walk(x,n)
+              elif isinstance(v,list):
+                  for x in v:walk(x,ctx)
+          walk(feed)
+          by={}
+          for x in nearby:
+              k=x["evseId"]
+              if k not in by or x["distanceMeters"]<by[k]["distanceMeters"]:by[k]=x
+          nearby=sorted(by.values(),key=lambda x:(x["distanceMeters"],x["evseId"]))
+
+          out={
+              "schemaVersion":1,
+              "generatedAt":datetime.now(timezone.utc).isoformat(),
+              "kriensSwisschargeQr":qr_rows,
+              "herrlibergNationalNearby":nearby
+          }
+          Path("docs/switzerland-her-evt-deep-backend-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps({
+              "kriensRefs":[{"ref":x["reference"],"status":x["status"],"assetCount":len(x["assets"])} for x in qr_rows],
+              "herrlibergNearby":[{"evseId":x["evseId"],"distanceMeters":x["distanceMeters"],"operatorId":x["operatorId"]} for x in nearby]
+          },ensure_ascii=False))
+          PY
+      - name: Persist probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-her-evt-deep-backend-probe-2026-09-29.json
+          git commit -m "research(ch): probe Herrliberg and EVTEC backends" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
