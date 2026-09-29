@@ -1,0 +1,97 @@
+name: Switzerland Eponet current app compact contract
+
+on:
+  push:
+    paths:
+      - '.github/workflows/switzerland-eponet-current-app-compact.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Download current Eponet Go
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 -A "Mozilla/5.0"             "https://d.apkpure.net/b/XAPK/com.eponet.eponet?version=latest"             -o /tmp/eponet.xapk
+          mkdir -p /tmp/eponet-xapk
+          unzip -q /tmp/eponet.xapk -d /tmp/eponet-xapk
+      - name: Extract compact network contract
+        run: |
+          python3 - <<'PY'
+          import json,re,zipfile
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          base=Path("/tmp/eponet-xapk/com.eponet.eponet.apk")
+          ad=Path("/tmp/eponet-base"); ad.mkdir(exist_ok=True)
+          with zipfile.ZipFile(base) as z:z.extractall(ad)
+
+          all_strings=[]
+          per_dex={}
+          for dex in sorted(ad.glob("classes*.dex")):
+              raw=dex.read_bytes()
+              strings=[m.group().decode("utf-8","replace") for m in re.finditer(rb"[\x20-\x7e]{3,}",raw)]
+              per_dex[dex.name]=strings
+              all_strings.extend(strings)
+
+          def unique(seq):
+              out=[];seen=set()
+              for x in seq:
+                  if x in seen:continue
+                  seen.add(x);out.append(x)
+              return out
+
+          urls=unique([s for s in all_strings if re.search(r'https?://',s,re.I)])
+          eponet=unique([s for s in all_strings if 'eponet' in s.lower()])
+          routes=unique([s for s in all_strings if any(k in s.lower() for k in [
+              'getmapcharger','getrates','ocpp/charger','portal/user','mapcharger',
+              'charger/details','rate/','signin','login','authorization','bearer',
+              'access_token','refresh_token','api-key','apikey','x-api'
+          ])])
+
+          contexts=[]
+          focus=['api.eponet','getmapchargers','getmapchargerdetails','getrates','authorization','bearer','access_token','portal/user/signin']
+          for dex,strings in per_dex.items():
+              for i,s in enumerate(strings):
+                  if any(k in s.lower() for k in focus):
+                      contexts.append({"dex":dex,"match":s,"before":strings[max(0,i-6):i],"after":strings[i+1:i+7]})
+
+          out={
+            "schemaVersion":1,
+            "generatedAt":datetime.now(timezone.utc).isoformat(),
+            "package":"com.eponet.eponet",
+            "urls":urls,
+            "eponetStrings":eponet,
+            "networkStrings":routes,
+            "contexts":contexts
+          }
+          Path("docs/switzerland-eponet-current-app-compact-2026-09-29.json").write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+"\n"
+          )
+          print(json.dumps({
+             "urls":[x for x in urls if 'eponet' in x.lower()][:100],
+             "networkStrings":routes[:200],
+             "contexts":contexts[:100]
+          },ensure_ascii=False)[:50000])
+          PY
+      - name: Persist
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-eponet-current-app-compact-2026-09-29.json
+          git commit -m "research(ch): compact current Eponet Go network contract" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
