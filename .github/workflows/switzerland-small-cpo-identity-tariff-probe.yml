@@ -1,0 +1,147 @@
+name: Switzerland small CPO identity tariff probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-small-cpo-identity-tariff-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Probe Dietikon Herrliberg EVTEC nearby identities and Swisscharge tariffs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,gzip,math,urllib.request,urllib.parse,urllib.error,http.cookiejar
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          FEED="https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json"
+          BASE="https://adhoc.swisscharge.ch"; TENANT="Swisscharge_CH"
+          UA="Mozilla/5.0 TCC-V9-Small-CPO-Probe"
+          targets=[
+            {"key":"CH*DIE","name":"Dietikon Zentralschulhaus","lat":47.40293,"lon":8.40211},
+            {"key":"CH*HER","name":"Herrliberg Forchstrasse 16","lat":47.284845,"lon":8.611227},
+            {"key":"EVT-Kriens","name":"EVTEC Rengglochstrasse 19","lat":47.034731,"lon":8.24211},
+            {"key":"EVT-Laeufelfingen","name":"ADEV Werkhof Läufelfingen","lat":47.392688,"lon":7.856195},
+            {"key":"EVT-Einsiedeln","name":"Kobiboden 57 Einsiedeln","lat":47.13687,"lon":8.742233},
+          ]
+          def dl(url):
+            req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"application/json"})
+            with urllib.request.urlopen(req,timeout=90) as r:
+              raw=r.read(); enc=(r.headers.get("Content-Encoding") or "").lower()
+            if enc=="gzip" or raw[:2]==b"\x1f\x8b": raw=gzip.decompress(raw)
+            return json.loads(raw.decode())
+          def hav(a,b,c,d):
+            R=6371000;p=math.pi/180
+            z=math.sin((c-a)*p/2)**2+math.cos(a*p)*math.cos(c*p)*math.sin((d-b)*p/2)**2
+            return 2*R*math.asin(math.sqrt(z))
+          feed=dl(FEED)
+          allrows=[]
+          def walk(v,ctx=None):
+            if ctx is None: ctx={}
+            if isinstance(v,dict):
+              n=dict(ctx)
+              for k in ("OperatorID","OperatorName","ChargingStationId","EvseID","Address","GeoCoordinates","ChargingFacilities","Plugs","PaymentOptions","AuthenticationModes","Accessibility"):
+                if k in v: n[k]=v[k]
+              eid=v.get("EvseID") or n.get("EvseID"); geo=v.get("GeoCoordinates") or n.get("GeoCoordinates")
+              if isinstance(eid,str) and isinstance(geo,dict) and isinstance(geo.get("Google"),str):
+                try:
+                  lat,lon=map(float,geo["Google"].split())
+                  allrows.append({
+                    "evseId":eid,"lat":lat,"lon":lon,
+                    "operatorId":v.get("OperatorID") or n.get("OperatorID"),
+                    "operatorName":v.get("OperatorName") or n.get("OperatorName"),
+                    "chargingStationId":v.get("ChargingStationId") or n.get("ChargingStationId"),
+                    "address":v.get("Address") or n.get("Address"),
+                    "chargingFacilities":v.get("ChargingFacilities") or n.get("ChargingFacilities"),
+                    "plugs":v.get("Plugs") or n.get("Plugs"),
+                    "paymentOptions":v.get("PaymentOptions") or n.get("PaymentOptions"),
+                    "authenticationModes":v.get("AuthenticationModes") or n.get("AuthenticationModes"),
+                    "accessibility":v.get("Accessibility") or n.get("Accessibility")
+                  })
+                except: pass
+              for x in v.values(): walk(x,n)
+            elif isinstance(v,list):
+              for x in v: walk(x,ctx)
+          walk(feed)
+          byid={}
+          for x in allrows:
+            byid.setdefault(x["evseId"],x)
+          allrows=list(byid.values())
+
+          cj=http.cookiejar.CookieJar(); op=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+          def get(url,headers=None):
+            req=urllib.request.Request(url,headers=headers or {},method="GET")
+            try:
+              with op.open(req,timeout=30) as r:return r.status,r.read()
+            except urllib.error.HTTPError as e:return e.code,e.read()
+            except Exception as e:return 0,(type(e).__name__+": "+str(e)).encode()
+          out=[]
+          for t in targets:
+            nearby=[]
+            for x in allrows:
+              d=hav(t["lat"],t["lon"],x["lat"],x["lon"])
+              if d<=120:
+                y=dict(x); y["distanceMeters"]=round(d,1); nearby.append(y)
+            nearby.sort(key=lambda x:(x["distanceMeters"],x["evseId"]))
+            refs=[]
+            for x in nearby:
+              eid=x["evseId"]
+              for pfx in ("CH*SUI*E","CH*SWI*E","CH*IWB*E","CH*EWZ*E","CH*360*E"):
+                if eid.upper().startswith(pfx):
+                  refs.append(eid[len(pfx):])
+            refs=list(dict.fromkeys(refs))
+            probes=[]
+            for ref in refs:
+              page=f"{BASE}/tenant/{TENANT}/session-start/{urllib.parse.quote(str(ref),safe='')}"
+              api=f"{BASE}/api/v1/charge-points?evsePhysicalReference={urllib.parse.quote(str(ref),safe='')}"
+              get(page,{"User-Agent":UA})
+              st,raw=get(api,{"Accept":"application/json","Tenant":TENANT,"tenant-path":page,"Referer":page,"User-Agent":UA})
+              try: body=json.loads(raw.decode())
+              except: body={"raw":raw.decode("utf-8","replace")[:500]}
+              data=(body or {}).get("data") if isinstance(body,dict) else None
+              cp=(data or {}).get("chargePoint") or {}
+              evs=(data or {}).get("evses") or []
+              slim=[]
+              for ev in evs:
+                tar=ev.get("tariff") or {}
+                slim.append({
+                  "physicalReference":ev.get("physicalReference"),"emi3Id":ev.get("emi3Id"),
+                  "maxPowerW":(ev.get("powerOptions") or {}).get("maxPower"),"tariff":tar
+                })
+              probes.append({"reference":ref,"httpStatus":st,"chargePoint":{"id":cp.get("id"),"locationName":cp.get("locationName"),"address":cp.get("address"),"city":cp.get("city")},"evses":slim})
+            out.append({"target":t,"nationalNearby":nearby,"swisschargeProbes":probes})
+          payload={"schemaVersion":1,"generatedAt":datetime.now(timezone.utc).isoformat(),"targets":out}
+          Path("docs/switzerland-small-cpo-identity-tariff-probe-2026-09-29.json").write_text(json.dumps(payload,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps([{
+            "target":x["target"]["key"],
+            "nearby":[{"evseId":n["evseId"],"distanceMeters":n["distanceMeters"],"operatorId":n["operatorId"]} for n in x["nationalNearby"]],
+            "successful":[{"reference":p["reference"],"location":p["chargePoint"],"evses":p["evses"]} for p in x["swisschargeProbes"] if p["evses"]]
+          } for x in out],ensure_ascii=False))
+          PY
+      - name: Persist probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-small-cpo-identity-tariff-probe-2026-09-29.json
+          git commit -m "research(ch): probe small CPO identities and tariffs" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
