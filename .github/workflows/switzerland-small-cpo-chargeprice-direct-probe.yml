@@ -1,0 +1,123 @@
+name: Switzerland small CPO Chargeprice direct probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-small-cpo-chargeprice-direct-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Query direct non-roaming tariffs around exact residual sites
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,time,urllib.request,urllib.parse,urllib.error
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          ATLAS="https://api.chargeprice.app"
+          FRONT="https://swiss.chargeprice.app/"
+          UA="Mozilla/5.0 TCC-V9-Small-CPO"
+
+          def get(url,headers=None,timeout=60):
+              req=urllib.request.Request(url,headers=headers or {"User-Agent":UA})
+              with urllib.request.urlopen(req,timeout=timeout) as r:
+                  return r.status,dict(r.headers.items()),r.read()
+
+          def extract_key():
+              _,_,html=get(FRONT,{"User-Agent":UA,"Accept":"text/html"})
+              s=re.findall(r'<script[^>]+src="([^"]+)"',html.decode("utf-8","replace"),re.I)
+              for x in s:
+                  try:_,_,raw=get(urllib.parse.urljoin(FRONT,x),{"User-Agent":UA})
+                  except:continue
+                  m=re.search(r'getApiKey\(\)\{return"([A-Fa-f0-9]{20,})"\}',raw.decode("utf-8","replace"))
+                  if m:return m.group(1)
+              raise SystemExit("key not found")
+
+          key=extract_key()
+          headers={"User-Agent":UA,"Accept":"application/json","Content-Type":"application/json","Api-Key":key,"Accept-Language":"en"}
+
+          def api(url,method="GET",body=None):
+              data=None if body is None else json.dumps(body).encode()
+              req=urllib.request.Request(url,headers=headers,data=data,method=method)
+              try:
+                  with urllib.request.urlopen(req,timeout=60) as r:return r.status,json.loads(r.read().decode())
+              except urllib.error.HTTPError as e:return e.code,{"error":e.read().decode("utf-8","replace")[:1000]}
+
+          sites={
+            "kriens":{"lat":47.034731,"lon":8.24211},
+            "kobiboden":{"lat":47.13687,"lon":8.742233},
+            "herrliberg":{"lat":47.284845,"lon":8.611227},
+          }
+          outsites={}
+          for name,s in sites.items():
+              params={
+                "filter[latitude.gte]":str(s["lat"]-0.003),
+                "filter[latitude.lte]":str(s["lat"]+0.003),
+                "filter[longitude.gte]":str(s["lon"]-0.004),
+                "filter[longitude.lte]":str(s["lon"]+0.004),
+                "page[number]":"1","page[size]":"100"
+              }
+              st,p=api(ATLAS+"/v1/charging_stations?"+urllib.parse.urlencode(params))
+              stations=[]
+              for rec in p.get("data",[]) if isinstance(p,dict) else []:
+                  a=rec.get("attributes") or {}
+                  rows=[]
+                  for cp in a.get("charge_points") or []:
+                      power=cp.get("power");plug=cp.get("plug")
+                      if power is None or plug is None:continue
+                      body={"data":{"attributes":{"station":{"id":[rec.get("id")],"charge_point":{"power":power,"plug":plug}},"filter":{"brand_restricted_tariffs":False,"foreign_tariffs":False,"provider_customer_tariffs":True}},"relationships":{}}}
+                      st2,t=api(ATLAS+"/v1/tariff_details","POST",body)
+                      included={(x.get("type"),x.get("id")):x for x in (t.get("included") or [])} if isinstance(t,dict) else {}
+                      details=[]
+                      for d in (t.get("data") or []) if isinstance(t,dict) else []:
+                          attrs=d.get("attributes") or {}; rel=d.get("relationships") or {}
+                          emp=rel.get("emp",{}).get("data") or {}; cpo=rel.get("cpo",{}).get("data") or {}; tar=rel.get("tariff",{}).get("data") or {}
+                          if attrs.get("is_roaming") is False and emp.get("id") and emp.get("id")==cpo.get("id"):
+                              details.append({
+                                "detailId":d.get("id"),"attributes":attrs,
+                                "emp":included.get((emp.get("type"),emp.get("id"))),
+                                "cpo":included.get((cpo.get("type"),cpo.get("id"))),
+                                "tariff":included.get((tar.get("type"),tar.get("id")))
+                              })
+                      rows.append({"chargePoint":cp,"httpStatus":st2,"directNonRoaming":details})
+                  stations.append({
+                    "stationId":rec.get("id"),"name":a.get("name"),"latitude":a.get("latitude"),"longitude":a.get("longitude"),
+                    "address":a.get("address"),"evseIds":a.get("evse_ids") or [],"evseOperator":a.get("evse_operator"),
+                    "chargePoints":rows
+                  })
+              outsites[name]={"stationQueryStatus":st,"stations":stations}
+
+          out={"schemaVersion":1,"generatedAt":datetime.now(timezone.utc).isoformat(),"source":{"stationApi":ATLAS+"/v1/charging_stations","tariffApi":ATLAS+"/v1/tariff_details","frontend":FRONT},"sites":outsites}
+          Path("docs/switzerland-small-cpo-chargeprice-direct-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({
+            k:[{"name":x["name"],"evseIds":x["evseIds"],"directCount":sum(len(c["directNonRoaming"]) for c in x["chargePoints"])} for x in v["stations"]]
+            for k,v in outsites.items()
+          },ensure_ascii=False))
+          PY
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-small-cpo-chargeprice-direct-probe-2026-09-29.json
+          git commit -m "research(ch): probe direct tariffs for small residuals" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
