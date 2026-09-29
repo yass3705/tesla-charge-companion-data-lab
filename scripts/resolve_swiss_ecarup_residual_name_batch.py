@@ -291,7 +291,7 @@ done |= {r.get("evseId") for r in coord.get("evses",[]) if r.get("evseId")}
 done |= {r.get("evseId") for r in overlay.get("rows",[]) if r.get("evseId")}
 
 remaining=[r for r in owner.get("unresolved",[]) if r.get("evseId") and r.get("evseId") not in done]
-promoted=[]; tested=[]; errors=[]
+promoted=[]; tested=[]; errors=[]; unresolved_diagnostics=[]
 
 for row in remaining[:BATCH]:
     eid=row["evseId"]
@@ -763,6 +763,49 @@ for row in remaining[:BATCH]:
         result="promoted"
     else:
         result="no_safe_exact_match"
+        nearby=[]
+        if co and isinstance(arr,list):
+            tmp=[]
+            for st in arr:
+                sc=station_coord(st)
+                if not sc:
+                    continue
+                dist=distance_m(co,sc)
+                if dist>300:
+                    continue
+                conns=[]
+                for conn in connectors(st):
+                    if connector_access(conn) not in (0,None):
+                        continue
+                    conns.append({
+                        "Id":conn.get("Id") or conn.get("ID") or conn.get("id"),
+                        "DeviceID":conn.get("DeviceID") or conn.get("deviceID") or conn.get("deviceId"),
+                        "Name":conn.get("Name") or conn.get("name"),
+                        "Description":conn.get("Description") or conn.get("description"),
+                        "PlugType":conn.get("PlugType") if "PlugType" in conn else conn.get("plugType"),
+                        "MaxPower":conn.get("MaxPower") or conn.get("maxPower"),
+                        "HubjectID":(conn.get("Hubject") or {}).get("ID") if isinstance(conn.get("Hubject"),dict) else None,
+                        "Price":connector_price(conn)
+                    })
+                tmp.append((dist,{
+                    "stationId":st.get("ID") or st.get("id"),
+                    "stationName":station_name(st),
+                    "address":st.get("Address") or st.get("address"),
+                    "operatorName":((st.get("ContactDetails") or {}).get("OperatorName") if isinstance(st.get("ContactDetails"),dict) else None),
+                    "distanceMeters":round(dist,2),
+                    "connectors":conns
+                }))
+            nearby=[x[1] for x in sorted(tmp,key=lambda z:z[0])[:12]]
+        unresolved_diagnostics.append({
+            "evseId":eid,
+            "names":names,
+            "coordinate":co,
+            "nationalAddress":national_address_parts(rec),
+            "nationalPowerTypes":sorted(national_power_types(rec)),
+            "nationalPowerW":sorted(national_powers_w(rec)),
+            "nationalPlugCodes":sorted(national_plug_codes(rec)),
+            "nearbyCurrentEcarUp":nearby
+        })
     tested.append({"evseId":eid,"result":result,"namesTried":names,"coordinate":co})
     time.sleep(0.15)
 
