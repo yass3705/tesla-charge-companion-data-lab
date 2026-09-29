@@ -31,7 +31,7 @@ RECONCILE_REPORT = ROOT / "reports/uk/canonical-reconcile-latest.json"
 # broad multi-source batch so a degraded batch cannot starve the queue.
 TASKS = [
     {
-        "id": "lidl_uk_inventory",
+        "id": "lidl_uk_inventory_v2",
         "interval_hours": 168,
         "command": [sys.executable, "scripts/lidl_uk_public_store_inventory.py"],
         "progress_task": True,
@@ -108,7 +108,7 @@ def due_task(state, now):
                   if status_bucket(r.get("status")) == "actionable"}
     ordered = TASKS
     if "Lidl" in actionable:
-        ordered = sorted(TASKS, key=lambda t: 0 if t["id"] == "lidl_uk_inventory" else 1)
+        ordered = sorted(TASKS, key=lambda t: 0 if t["id"] == "lidl_uk_inventory_v2" else 1)
     for task in ordered:
         task_state = runs.get(task["id"]) or {}
         last_attempt = parse_time(task_state.get("lastAttemptAt"))
