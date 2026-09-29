@@ -1,0 +1,10 @@
+import fs from 'node:fs/promises';
+const TARGETS=["1419107","2360755","2403403","2541277","2550629","2931493","2931499","372546","391486","3945358","3945363","3947035","3962879","3962881","4010907","4073147","4073405","4097588","4185155","4225624","4225651","4225664","4225672","4225719","4225725","4225727","425195","425196","425197","425221","425222","4267516","4273717","4273723","4273732","4273749","4339298","4339299","4339702","4340891","4340892","4341204","4341215","446224","4466080","4467806","4521392","4521393","4528540","4538884","4538892","4547170","4547364","4564073","4580492","4589497","4590590","4647472","520080","573631","573654","574677","582705","582707","584882","589767","607443","618815","663365","980804"];
+const mapping=JSON.parse(await fs.readFile('data/electroverse/irve_location_mapping.json','utf8'));
+const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
+const selected=TARGETS.map(pk=>({pk,irveStationId:byPk.get(pk)?.irveStationId||null,reason:'france_residual_retry',ageHours:null}));
+const missing=selected.filter(x=>!byPk.has(x.pk)).map(x=>x.pk);
+const report={generatedAt:new Date().toISOString(),storage:'sharded-v1',policy:{mode:'france_residual_retry'},mappingPopulation:(mapping.mappings||[]).length,cachePopulation:null,counts:{retry:selected.length},dueTotal:selected.length,selectedCount:selected.length,missingFromMapping:missing,selected};
+await fs.mkdir('reports/electroverse',{recursive:true});
+await fs.writeFile('reports/electroverse/incremental-selection.json',JSON.stringify(report,null,2)+'\n');
+console.log(JSON.stringify({selected:selected.length,missingFromMapping:missing},null,2));
