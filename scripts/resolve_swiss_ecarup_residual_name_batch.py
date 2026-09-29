@@ -91,7 +91,7 @@ def download_national_context():
     req=urllib.request.Request(NATIONAL_URL, headers=HEADERS)
     with urllib.request.urlopen(req, timeout=90) as r:
         raw=r.read()
-    if raw[:2] == b"\\x1f\\x8b":
+    if len(raw) >= 2 and raw[0] == 31 and raw[1] == 139:
         raw=gzip.decompress(raw)
     root=json.loads(raw.decode("utf-8"))
     contexts={}
