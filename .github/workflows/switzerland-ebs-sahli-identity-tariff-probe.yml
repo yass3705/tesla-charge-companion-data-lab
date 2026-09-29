@@ -1,0 +1,170 @@
+name: Switzerland EBS Sahli identity and tariff probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-ebs-sahli-identity-tariff-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Resolve Sahli national identity and Swisscharge tariff
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,gzip,math,urllib.request,urllib.parse,urllib.error,http.cookiejar
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          FEED="https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json"
+          BASE="https://adhoc.swisscharge.ch"
+          TENANT="Swisscharge_CH"
+          UA="Mozilla/5.0 TCC-V9-EBS-Sahli"
+          TARGET=(46.91384,8.84645)
+
+          def download_json(url):
+              req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"application/json"})
+              with urllib.request.urlopen(req,timeout=90) as r:
+                  raw=r.read()
+                  enc=(r.headers.get("Content-Encoding") or "").lower()
+              if enc=="gzip" or raw[:2]==b"\x1f\x8b": raw=gzip.decompress(raw)
+              return json.loads(raw.decode())
+
+          def hav(lat1,lon1,lat2,lon2):
+              R=6371000
+              p=math.pi/180
+              a=math.sin((lat2-lat1)*p/2)**2+math.cos(lat1*p)*math.cos(lat2*p)*math.sin((lon2-lon1)*p/2)**2
+              return 2*R*math.asin(math.sqrt(a))
+
+          feed=download_json(FEED)
+          nearby=[]
+          def walk(v,ctx=None):
+              if ctx is None: ctx={}
+              if isinstance(v,dict):
+                  n=dict(ctx)
+                  for k in ("OperatorID","OperatorName","ChargingStationId","EvseID","Address","GeoCoordinates","ChargingFacilities","Plugs","PaymentOptions","AuthenticationModes","Accessibility"):
+                      if k in v: n[k]=v[k]
+                  # collect EVSE-level objects when coordinates are reachable in this object/context
+                  eid=v.get("EvseID") or n.get("EvseID")
+                  geo=v.get("GeoCoordinates") or n.get("GeoCoordinates")
+                  if isinstance(eid,str) and isinstance(geo,dict):
+                      g=geo.get("Google")
+                      if isinstance(g,str):
+                          try:
+                              lat,lon=map(float,g.split())
+                              d=hav(TARGET[0],TARGET[1],lat,lon)
+                              if d<=250:
+                                  nearby.append({
+                                      "evseId":eid,
+                                      "distanceMeters":round(d,1),
+                                      "operatorId":v.get("OperatorID") or n.get("OperatorID"),
+                                      "operatorName":v.get("OperatorName") or n.get("OperatorName"),
+                                      "chargingStationId":v.get("ChargingStationId") or n.get("ChargingStationId"),
+                                      "address":v.get("Address") or n.get("Address"),
+                                      "geo":geo,
+                                      "chargingFacilities":v.get("ChargingFacilities") or n.get("ChargingFacilities"),
+                                      "plugs":v.get("Plugs") or n.get("Plugs"),
+                                      "paymentOptions":v.get("PaymentOptions") or n.get("PaymentOptions"),
+                                      "authenticationModes":v.get("AuthenticationModes") or n.get("AuthenticationModes"),
+                                      "accessibility":v.get("Accessibility") or n.get("Accessibility")
+                                  })
+                          except: pass
+                  for x in v.values(): walk(x,n)
+              elif isinstance(v,list):
+                  for x in v: walk(x,ctx)
+          walk(feed)
+          # dedupe by EVSE id keeping nearest
+          by={}
+          for x in nearby:
+              if x["evseId"] not in by or x["distanceMeters"]<by[x["evseId"]]["distanceMeters"]: by[x["evseId"]]=x
+          nearby=sorted(by.values(),key=lambda x:(x["distanceMeters"],x["evseId"]))
+
+          # probe Swisscharge ad-hoc backend for any plausible Sahli references
+          refs=["252166","E252166","CH*SWI*E252166","CH*SUI*E252166","CH*EBS*E123*0009","1230009","0009"]
+          for x in nearby:
+              eid=x["evseId"]
+              for pfx in ("CH*SUI*E","CH*SWI*E"):
+                  if eid.upper().startswith(pfx):
+                      refs.append(eid[len(pfx):])
+          refs=list(dict.fromkeys(refs))
+
+          cj=http.cookiejar.CookieJar()
+          op=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+          def get(url,headers=None):
+              req=urllib.request.Request(url,headers=headers or {},method="GET")
+              try:
+                  with op.open(req,timeout=30) as r:return r.status,r.read()
+              except urllib.error.HTTPError as e:return e.code,e.read()
+              except Exception as e:return 0,(type(e).__name__+": "+str(e)).encode()
+          probes=[]
+          for ref in refs:
+              page=f"{BASE}/tenant/{TENANT}/session-start/{urllib.parse.quote(str(ref),safe='')}"
+              api=f"{BASE}/api/v1/charge-points?evsePhysicalReference={urllib.parse.quote(str(ref),safe='')}"
+              get(page,{"User-Agent":UA})
+              st,raw=get(api,{"Accept":"application/json","Tenant":TENANT,"tenant-path":page,"Referer":page,"User-Agent":UA})
+              try: body=json.loads(raw.decode())
+              except: body={"raw":raw.decode("utf-8","replace")[:500]}
+              data=(body or {}).get("data") if isinstance(body,dict) else None
+              cp=(data or {}).get("chargePoint") or {}
+              evses=(data or {}).get("evses") or []
+              slim=[]
+              for ev in evses:
+                  tariff=ev.get("tariff") or {}
+                  slim.append({
+                      "physicalReference":ev.get("physicalReference"),
+                      "emi3Id":ev.get("emi3Id"),
+                      "hardwareStatus":ev.get("hardwareStatus"),
+                      "maxPowerW":(ev.get("powerOptions") or {}).get("maxPower"),
+                      "tariff":tariff
+                  })
+              probes.append({
+                  "reference":ref,"httpStatus":st,
+                  "chargePoint":{"id":cp.get("id"),"locationName":cp.get("locationName"),"address":cp.get("address"),"city":cp.get("city"),"coordinates":cp.get("coordinates")},
+                  "evses":slim,
+                  "error":None if slim else body
+              })
+
+          out={
+              "schemaVersion":1,
+              "country":"CH",
+              "operatorId":"CH*EBS",
+              "targetEvseId":"CH*EBS*E123*0009",
+              "generatedAt":datetime.now(timezone.utc).isoformat(),
+              "targetCoordinates":{"lat":TARGET[0],"lon":TARGET[1]},
+              "nationalNearby":nearby,
+              "swisschargeProbes":probes
+          }
+          Path("docs/switzerland-ebs-sahli-identity-tariff-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps({
+              "nearbyCount":len(nearby),
+              "nearby":[{"evseId":x["evseId"],"distanceMeters":x["distanceMeters"],"operatorId":x["operatorId"]} for x in nearby],
+              "successfulSwisscharge":[{"reference":p["reference"],"chargePoint":p["chargePoint"],"evses":p["evses"]} for p in probes if p["evses"]]
+          },ensure_ascii=False))
+          PY
+
+      - name: Persist probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-ebs-sahli-identity-tariff-probe-2026-09-29.json
+          git commit -m "research(ch): resolve EBS Sahli identity and tariff" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
