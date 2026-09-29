@@ -1,0 +1,171 @@
+name: Switzerland Partino Baden tariff probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-partino-baden-tariff-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Replay public EVC-Net map API around Baden
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,urllib.request,urllib.parse,urllib.error,http.cookiejar
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          BASE="https://partino-chf.evc-net.com"
+          UA="Mozilla/5.0 TCC-V9-Partino-Baden"
+          cj=http.cookiejar.CookieJar()
+          op=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+
+          def get(url, params=None, headers=None):
+              if params:
+                  url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
+              req=urllib.request.Request(url,headers=headers or {"User-Agent":UA,"Accept":"application/json,text/html,*/*"},method="GET")
+              try:
+                  with op.open(req,timeout=40) as r:
+                      raw=r.read()
+                      return r.status,r.geturl(),dict(r.headers.items()),raw
+              except urllib.error.HTTPError as e:
+                  return e.code,e.geturl(),dict(e.headers.items()),e.read()
+              except Exception as e:
+                  return 0,url,{},(type(e).__name__+": "+str(e)).encode()
+
+          # Establish anonymous public session/cookies.
+          get(BASE+"/Locations",headers={"User-Agent":UA,"Accept":"text/html,*/*"})
+
+          # Resolve the frontend constants from the public JS instead of guessing.
+          st,_,_,raw=get(BASE+"/min/?g=js&v=260928",headers={"User-Agent":UA,"Accept":"application/javascript,*/*"})
+          js=raw.decode("utf-8","replace")
+          def const(name, fallback):
+              pats=[
+                  rf'DeviceMap\.{re.escape(name)}\s*=\s*["\']([^"\']+)["\']',
+                  rf'{re.escape(name)}\s*=\s*["\']([^"\']+)["\']'
+              ]
+              for p in pats:
+                  m=re.search(p,js)
+                  if m:return m.group(1)
+              return fallback
+          mode=const("MODE_ROAMING","roaming")
+          view=const("VIEW_UNCLUSTERED","unclustered")
+
+          req0={
+              "handler":"\\LMS\\EV\\AsyncServices\\DashboardAsyncService",
+              "method":"spotsStatus",
+              "params":{
+                  "active":True,
+                  "rechargeSpotIds":None,
+                  "provider":None,
+                  "profile":None,
+                  "view":view,
+                  "mode":mode,
+                  "maxCache":0,
+                  "bounds":{
+                      "south":47.455,
+                      "west":8.285,
+                      "north":47.485,
+                      "east":8.325
+                  }
+              }
+          }
+          st,url,h,raw=get(BASE+"/api/ajax",{
+              "requests":json.dumps({"0":req0},separators=(",",":")),
+              "metricKey":"DeviceMap_432"
+          },{"User-Agent":UA,"Accept":"application/json","Referer":BASE+"/Locations","X-Requested-With":"XMLHttpRequest"})
+          try: payload=json.loads(raw.decode("utf-8"))
+          except: payload={"_raw":raw.decode("utf-8","replace")[:5000]}
+          channels=payload.get("0") if isinstance(payload,dict) else None
+          if not isinstance(channels,list):
+              channels=[]
+
+          target_channels=[]
+          for c in channels:
+              txt=json.dumps(c,ensure_ascii=False).lower()
+              if ("oberstadt" in txt or "89615556" in txt or
+                  ("baden" in txt and 47.46 <= float(c.get("lat") or 0) <= 47.48 and 8.29 <= float(c.get("lng") or 0) <= 8.32)):
+                  target_channels.append(c)
+
+          # If bounding map returns candidates, ask exactly what the public UI asks
+          # when a user clicks a marker. This response contains simpleTariff.
+          details=[]
+          ids=[]
+          for c in target_channels:
+              if c.get("id") is not None:
+                  ids.append(c.get("id"))
+          if ids:
+              req1={
+                  "handler":"\\LMS\\EV\\AsyncServices\\DashboardAsyncService",
+                  "method":"spotsStatusPointData",
+                  "params":{"deviceIds":ids,"tariffProvider":438}
+              }
+              st2,url2,h2,raw2=get(BASE+"/api/ajax",{
+                  "requests":json.dumps({"0":req1},separators=(",",":")),
+                  "metricKey":"DeviceMap_1037"
+              },{"User-Agent":UA,"Accept":"application/json","Referer":BASE+"/Locations","X-Requested-With":"XMLHttpRequest"})
+              try: p2=json.loads(raw2.decode("utf-8"))
+              except: p2={"_raw":raw2.decode("utf-8","replace")[:10000]}
+              if isinstance(p2,dict) and isinstance(p2.get("0"),list):
+                  details=p2["0"]
+              else:
+                  details=[{"httpStatus":st2,"response":p2}]
+
+          out={
+              "schemaVersion":1,
+              "country":"CH",
+              "cpo":"Partino",
+              "operatorId":"CH*PAR",
+              "generatedAt":datetime.now(timezone.utc).isoformat(),
+              "source":{
+                  "portal":BASE+"/Locations",
+                  "api":BASE+"/api/ajax",
+                  "authentication":"anonymous public portal",
+                  "tariffProvider":438,
+                  "mode":mode,
+                  "view":view
+              },
+              "mapHttpStatus":st,
+              "mapChannelCount":len(channels),
+              "targetChannelCount":len(target_channels),
+              "targetChannels":target_channels,
+              "details":details
+          }
+          Path("docs/switzerland-partino-baden-tariff-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps({
+              "mapHttpStatus":st,
+              "mapChannelCount":len(channels),
+              "targetChannelCount":len(target_channels),
+              "detailCount":len(details),
+              "mode":mode,
+              "view":view
+          },ensure_ascii=False))
+          PY
+
+      - name: Persist sanitized probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-partino-baden-tariff-probe-2026-09-29.json
+          git commit -m "research(ch): probe Partino Baden exact public tariff" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
