@@ -113,11 +113,6 @@ def map_locations():
                         "error":str(e),
                     })
                 time.sleep(SLEEP)
-                    continue
-            for loc in payload.get("locations") or []:
-                if loc.get("partyId")=="AVI" and loc.get("id"):
-                    seen[loc["id"]]=loc
-            time.sleep(SLEEP)
     return list(seen.values()),errors
 
 def detail(location_id):
