@@ -31,6 +31,11 @@ RECONCILE_REPORT = ROOT / "reports/uk/canonical-reconcile-latest.json"
 # broad multi-source batch so a degraded batch cannot starve the queue.
 TASKS = [
     {
+        "id": "lidl_uk_pricing",
+        "interval_hours": 24,
+        "command": [sys.executable, "scripts/lidl_uk_official_pricing.py"],
+    },
+    {
         "id": "ionity_direct",
         "interval_hours": 24,
         "command": [sys.executable, "scripts/ionity_station_tariffs_uk.py"],
