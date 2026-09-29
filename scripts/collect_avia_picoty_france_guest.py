@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collect exact AVIA Picoty France prices from Deftpower guest backend.
+"""Collect exact AVIA Picoty France prices from Deftpower guest backend.\n\nRetrigger marker: 2026-09-29 verified workflow registration.
 
 Uses the existing Picoty national station index as the authoritative coverage skeleton, locates
 backend locations around each known station, requires exact FR*PY2 EVSE matches,
