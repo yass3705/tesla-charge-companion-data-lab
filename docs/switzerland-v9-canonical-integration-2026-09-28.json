@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "dataset": "switzerland-public-charging-v9",
   "country": "CH",
-  "generatedAt": "2026-09-29T15:36:11.082927+00:00",
+  "generatedAt": "2026-09-29T16:18:08.966457+00:00",
   "sourceBundle": "data/tcc_v9/switzerland.json",
   "baseInventory": {
     "source": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
@@ -314,12 +314,12 @@
       "operatorNames": [],
       "status": "blocked",
       "name": "CH*EVT",
-      "evidence": "docs/switzerland-small-cpo-resolution-2026-09-29.json",
-      "note": "5/8 deterministically resolved. ADEV Läufelfingen 2 EVSEs are CHF 0.54/kWh from ADEV official publication. Kriens 3 EVSEs are resolved through deterministic same-site reconciliation to current Swisscharge EVSEs 290524/290525/290526 at Rengglochstrasse 19, whose current Swiss eMobility/Chargeprice non-roaming tariff is CHF 0.29/kWh + CHF 0.09/min. Only Kobiboden 3 EVSEs remain unresolved; the nearby Swisscharge AVC-SYSTEM records are AC-only and cannot safely cover the EVTEC DC channels.",
-      "setAside": false,
+      "evidence": "docs/switzerland-small-cpo-deep-closeout-2026-09-29.json",
+      "note": "5/8 deterministically resolved. Only #2395 Kobiboden 57 remains (3 EVSEs: 50 kW DC, 22 kW AC, 100 kW DC). Exact parking.ch backend confirms Direct Payment but exposes no tariff/payment URL. Nearby AVC-SYSTEM Swisscharge EVSEs are AC-only and cannot resolve the EVTEC DC channels. EVTEC documentation indicates station costs are displayed locally on the charger/payment terminal.",
+      "setAside": true,
       "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-small-cpo-resolution-2026-09-29.json",
-      "resumeCondition": "Resolve the three Kobiboden 57 CH*EVT channels via current exact payment-screen/QR/app tariff or deterministic backend mapping; do not extrapolate the nearby AC-only Swisscharge tariff to EVTEC DC."
+      "blockerEvidence": "docs/switzerland-small-cpo-deep-closeout-2026-09-29.json",
+      "resumeCondition": "Obtain a current photo/screen readout from the #2395 charger after selecting AC and DC connectors, or a station-owner/payment-terminal backend record that exposes the exact tariff. Do not map the nearby AC-only Swisscharge tariff to EVTEC DC."
     },
     "CH*AMG": {
       "operatorId": "CH*AMG",
@@ -362,12 +362,12 @@
       "operatorNames": [],
       "status": "blocked",
       "name": "CH*HER",
-      "evidence": "docs/switzerland-small-cpo-resolution-2026-09-29.json",
-      "note": "0/1 after full small-CPO pass. Exact station/direct card payment confirmed at Forchstrasse 16, but no authoritative current EWH/Gemeinde tariff was found. PlugShare shows CHF 0.39/kWh, but community-only provenance is insufficient for production.",
-      "setAside": false,
+      "evidence": "docs/switzerland-small-cpo-deep-closeout-2026-09-29.json",
+      "note": "0/1 after deep closeout. Postparkplatz Herrliberg / Forchstrasse 16 is confirmed by current municipal documentation as the municipality's public 150 kW DC fast charger. Exact parking.ch backend confirms Direct Payment but exposes no price or payment URL. Community CHF 0.39/kWh remains non-authoritative and is not promoted.",
+      "setAside": true,
       "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-small-cpo-resolution-2026-09-29.json",
-      "resumeCondition": "Obtain current EWH/Gemeinde Herrliberg tariff or the station payment/QR screen."
+      "blockerEvidence": "docs/switzerland-small-cpo-deep-closeout-2026-09-29.json",
+      "resumeCondition": "Obtain the current Postparkplatz payment-terminal/charger display tariff, a Gemeinde/EWH tariff publication, or a payment backend response. Do not promote the community CHF 0.39/kWh value without authoritative confirmation."
     },
     "CH*CPI": {
       "operatorId": "CH*CPI",
@@ -504,5 +504,5 @@
     "data/switzerland/ail-emoti-official-direct-tariffs.json": 21
   },
   "output": "data/national/switzerland_public_charging_v9.json",
-  "outputBytes": 50289881
+  "outputBytes": 50290044
 }
