@@ -47,6 +47,10 @@ jobs:
           url=out['path'] or out['pathAlt']
           if not url:
               raise SystemExit('No APK URL in Aptoide metadata')
+          if url.startswith('//'):
+              url='https:'+url
+          elif url.startswith('/'):
+              url='https://pool.apk.aptoide.com'+url
           open('/tmp/enel-apk/url.txt','w').write(url)
           print(json.dumps({k:v for k,v in out.items() if k not in ('path','pathAlt')},indent=2))
           PY
