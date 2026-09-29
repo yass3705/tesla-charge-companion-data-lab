@@ -1,0 +1,39 @@
+name: TEST NON-TESLA — Electroverse DE+GB inventory probe
+on:
+  push:
+    paths:
+      - tests/non-tesla/active/run-electroverse-country-inventory-probe.trigger
+permissions:
+  contents: write
+jobs:
+  probe:
+    strategy:
+      matrix:
+        country: [DE, GB]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+      ELECTROVERSE_INVENTORY_ZOOM: '9'
+      ELECTROVERSE_TILE_CONCURRENCY: '8'
+      COUNTRY: ${{ matrix.country }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main, fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Probe country inventory
+        run: node scripts/electroverse_country_inventory_probe.mjs
+      - name: Commit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/inventory-$(echo "${COUNTRY}" | tr '[:upper:]' '[:lower:]').json
+          git commit -m "test(electroverse): inventory ${COUNTRY} [run ${GITHUB_RUN_ID}]" || true
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main
+            git push origin HEAD:main && break
+            sleep $((i * 3))
+          done
