@@ -66,6 +66,7 @@ sources=[
 ("CHEVP evpass","data/switzerland/chevp-evpass-official-direct-tariffs.json"),
 ("TAE Matterhorn","data/switzerland/tae-matterhorn-terminal-direct-tariffs.json"),
 ("IWB Basel official","data/switzerland/iwb-official-basel-overlay.json"),
+("IWB residual dedicated adhoc","data/switzerland/iwb-residual-dedicated-adhoc-overlay.json"),
 ("CPI","data/switzerland/cpi-current-direct-tariffs.json"),
 ("CCC MOVE","data/switzerland/ccc-move-cpo-tariffs-national.json"),
 ("CCI MOVE","data/switzerland/cci-move-cpo-tariffs-national.json"),
