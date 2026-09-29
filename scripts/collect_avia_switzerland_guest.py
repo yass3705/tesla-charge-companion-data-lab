@@ -57,8 +57,12 @@ def request_json(method,path,query=None,body=None):
         if TLS_INSECURE:
             cmd.append("--insecure")
         cmd += ["--resolve",f"{host}:443:{RESOLVE_IP}","-X",method,
-             "-H","accept: application/json",
-             "-H","content-type: application/json",
+             "-H","accept: */*",
+             "-H","content-type: application/json; charset=utf-8",
+             "-H","accept-language: fr",
+             "-H","x-app-platform: ios",
+             "-H","x-app-version: 2.3.0",
+             "-H","user-agent: AVIAVOLTSuisse/4614 CFNetwork",
              "-H",f"ocp-apim-subscription-key: {KEY}",
              url]
         if body is not None:
