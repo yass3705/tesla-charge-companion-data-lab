@@ -1,4 +1,5 @@
 name: Switzerland Swisscharge Chargeprice residual probe
+# all-residuals-2026-09-29
 
 on:
   push:
@@ -29,12 +30,10 @@ jobs:
 
           ATLAS="https://api.chargeprice.app"; FRONT="https://swiss.chargeprice.app/"
           UA="Mozilla/5.0 TCC-V9-Swisscharge-Residual"
-          LIVE={"6931","7632","1322","2543","207534","2999","6117","207539","9138"}
           src=json.loads(Path("docs/switzerland-swisscharge-prefix-closeout-2026-09-28.json").read_text())
           targets=[]
           for x in src.get("unresolved",[]):
               ref=str(x.get("physicalReference") or "")
-              if ref not in LIVE: continue
               n=x.get("nationalRecord") or {}
               coord=((n.get("GeoCoordinates") or {}).get("Google") or "").split()
               if len(coord)!=2: continue
@@ -100,7 +99,7 @@ jobs:
                "method":"Exact EVSE-ID match in Chargeprice + Swisscharge CPO + non-roaming EMP=CPO only; no coordinate-only tariff promotion.",
                "rows":rows,
                "summary":{"targets":len(rows),"exactMatches":sum(1 for r in rows if r["matches"]),"withDirectTariff":sum(1 for r in rows if any(m["directSwisschargeNonRoaming"] for m in r["matches"]))}}
-          Path("docs/switzerland-swisscharge-chargeprice-residual-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          Path("docs/switzerland-swisscharge-chargeprice-all-residuals-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
           print(json.dumps(out["summary"]))
           PY
       - name: Persist
@@ -108,7 +107,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/switzerland-swisscharge-chargeprice-residual-probe-2026-09-29.json
-          git commit -m "research(ch): probe Swisscharge residuals via exact Chargeprice EVSEs" || exit 0
+          git commit -m "research(ch): probe all Swisscharge residuals via exact Chargeprice EVSEs" || exit 0
           for attempt in 1 2 3 4 5; do
             git pull --rebase origin main
             if git push origin main; then exit 0; fi
