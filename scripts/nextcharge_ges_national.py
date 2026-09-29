@@ -168,7 +168,7 @@ def process(item):
                 # If duplicated, keep closest deterministic candidate.
                 if eid not in matches or row["distanceM"]<matches[eid]["distanceM"]:
                     matches[eid]=row
-    return {"punStationId":sid,"punEvseCount":len(evses),"nearStatus":(near.get("json") or {}).get("status") if isinstance(near,dict) and isinstance(near.get("json"),dict) else None,"gridStatus":((grid or {}).get("json") or {}).get("status") if isinstance(grid,dict) and isinstance(grid.get("json"),dict) else None,"gridCandidateCount":len(grid_candidates),"candidateStationCount":len(candidates),"stationCalls":station_calls,"matches":list(matches.values())}
+    return {"punStationId":sid,"punEvseCount":len(evses),"punEvseIds":[str(e.get("evseId")) for e in evses],"nearStatus":(near.get("json") or {}).get("status") if isinstance(near,dict) and isinstance(near.get("json"),dict) else None,"gridStatus":((grid or {}).get("json") or {}).get("status") if isinstance(grid,dict) and isinstance(grid.get("json"),dict) else None,"gridCandidateCount":len(grid_candidates),"candidateStationCount":len(candidates),"stationCalls":station_calls,"matches":list(matches.values())}
 
 results=[]
 with ThreadPoolExecutor(max_workers=WORKERS) as pool:
