@@ -802,22 +802,88 @@
       "status": "partial",
       "priority": "station-level",
       "inventory": {
-        "evse": 2402,
-        "stations": 1135,
+        "evse": 2396,
+        "stations": 1131,
         "currentPunPresent": true,
-        "punAsOf": "2026-09-20"
+        "punAsOf": "2026-09-29"
       },
-      "tariffModel": "heterogeneous host/operator pricing; NextCharge activation observed",
+      "tariffModel": "Exact connector-level first-party NextCharge tariff surface only where current PUN IT*GES EVSE is deterministically joined to NextCharge uidConnector. Components may include energy (per kWh), time/parking (per minute), and session/start fee; heterogeneous by host/connector.",
       "coverage": {
-        "rankableEvse": 0,
-        "failClosedEvse": 2402
+        "rankableEvse": 63,
+        "failClosedEvse": 2333,
+        "coveragePct": 2.63,
+        "matchedStations": 20,
+        "rankableSource": "PUN coordinate -> NextCharge stationsNear -> exact numeric EVSE suffix == uidConnector -> stationConnectors tariff"
       },
       "confidence": "high",
-      "tariffChannel": "NextCharge app/eMSP role separated from direct GES CPO pricing",
-      "lastChanged": "2026-09-23",
-      "blockingCondition": "Exact NextCharge guest/app/backend connector payload or QR/payment surface proving the direct CPO tariff for each IT*GES EVSE; do not substitute NextCharge roaming/eMSP pricing.",
-      "lastInvestigated": "2026-09-27",
-      "evidenceState": "Run307: first-party NextCharge confirms tariff/payment surface and exact IT*GES connector/QR join path, but NextCharge also acts as interoperable eMSP; no direct-CPO numeric tariff promotion without exact connector payload."
+      "tariffChannel": "Go Electric Stations / NextCharge first-party app/payment surface on exact IT*GES connectors; generic NextCharge roaming prices remain excluded.",
+      "lastChanged": "2026-09-29",
+      "blockingCondition": "Residual only: 2,333 current PUN GES EVSE remain fail-closed. Resume via exact current IT*GES -> NextCharge uidConnector/physicalReference mapping and connector tariff/payment surface, or equivalent first-party QR/direct-payment evidence; never extrapolate host/network tariffs.",
+      "lastInvestigated": "2026-09-29",
+      "evidenceState": "Run328: current PUN 2,396 GES EVSE / 1,131 stations. National NextCharge reconciliation scanned all stations and promoted 63 EVSE across 20 stations; every promoted row is 0.0 m from PUN and exact numeric EVSE suffix == NextCharge uidConnector. NextCharge terms identify Go Electric Stations as service/payment operator and connector-specific fees are shown before charging; roaming remains explicitly separated.",
+      "currentNextChargeEvidence": {
+        "apkVersion": "6.2.02",
+        "workflowRunId": 36614177457,
+        "artifactId": 11053784396,
+        "matchedEvse": 63,
+        "matchedStations": 20,
+        "allPromotedDistanceM": 0,
+        "matchMethod": "exact_numeric_suffix_uidConnector",
+        "providerCounts": {
+          "Loginet": 3,
+          "Blitz Power": 3,
+          "Sarni": 52,
+          "Ricarica ": 2,
+          "EG ITALIA S.p.A.": 3
+        },
+        "observedTariffComponents": [
+          {
+            "evseCount": 3,
+            "currency": "EUR",
+            "energyEurPerKwh": 0,
+            "paymentRequired": false
+          },
+          {
+            "evseCount": 2,
+            "currency": "EUR",
+            "energyEurPerKwh": 0.85,
+            "parkingEurPerMin": 0.1,
+            "timeEurPerMin": 0.01,
+            "paymentRequired": true
+          },
+          {
+            "evseCount": 1,
+            "currency": "EUR",
+            "energyEurPerKwh": 0.65,
+            "parkingEurPerMin": 0.1,
+            "timeEurPerMin": 0.01,
+            "paymentRequired": true
+          },
+          {
+            "evseCount": 52,
+            "currency": "EUR",
+            "energyEurPerKwh": 0.8,
+            "sessionEur": 0.3,
+            "paymentRequired": true
+          },
+          {
+            "evseCount": 2,
+            "currency": "EUR",
+            "energyEurPerKwh": 0.74,
+            "parkingEurPerMin": 0.1,
+            "timeEurPerMin": 0.01,
+            "paymentRequired": true
+          },
+          {
+            "evseCount": 3,
+            "currency": "EUR",
+            "energyEurPerKwh": 0.85,
+            "paymentRequired": true
+          }
+        ],
+        "unitsEvidence": "NextCharge 6.2.02 APK resources explicitly expose Cost per kWh, Cost per minute, and Cost to start labels.",
+        "officialTerms": "https://nextcharge.app/apps/map/apis/terms/v1.4/termsAndConditions.php?appearanceFontSize=medium&appearanceTheme=auto&lang=en"
+      }
     },
     {
       "partyId": "ESH",
@@ -3554,6 +3620,10 @@
     {
       "date": "2026-09-29",
       "change": "Run327 resolved ENX direct-payment semantics nationally: current APK 4.3.67 + public station-detail backend validate directPaymenthPrice as the direct/ad-hoc field, separate from app/eMSP price. Fresh PUN: 23,001 ENX EVSE / 11,221 serials. First pass + targeted retry yield 21,866 exact rankable EVSE (95.06%); 1,154 EVSE / 606 serials remain fail-closed. ENX remains partial; no class-wide extrapolation."
+    },
+    {
+      "date": "2026-09-29",
+      "change": "Run328 resolved an exact GES subset through the current NextCharge first-party connector surface: fresh PUN 2,396 EVSE / 1,131 stations; 63 EVSE across 20 stations are deterministic 0.0 m matches with exact numeric PUN suffix == NextCharge uidConnector and connector-specific tariff payloads. Coverage 63/2,396 (2.63%); 2,333 remain fail-closed. GES remains partial; no host/network extrapolation."
     }
   ],
   "evidenceReports": [
@@ -3614,7 +3684,8 @@
     "data/reports/italy_cpo_reconciliation_20260928_run320.json",
     "data/reports/italy_cpo_reconciliation_20260928_run321.json",
     "data/reports/italy_cpo_reconciliation_20260929_run326.json",
-    "data/reports/italy_cpo_reconciliation_20260929_run327.json"
+    "data/reports/italy_cpo_reconciliation_20260929_run327.json",
+    "data/reports/italy_cpo_reconciliation_20260929_run328.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
