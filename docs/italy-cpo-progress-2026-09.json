@@ -818,7 +818,7 @@
       "confidence": "high",
       "tariffChannel": "Go Electric Stations / NextCharge first-party app/payment surface on exact IT*GES connectors; generic NextCharge roaming prices remain excluded.",
       "lastChanged": "2026-09-29",
-      "blockingCondition": "Residual only: 2,333 current PUN GES EVSE remain fail-closed. Resume via exact current IT*GES -> NextCharge uidConnector/physicalReference mapping and connector tariff/payment surface, or equivalent first-party QR/direct-payment evidence; never extrapolate host/network tariffs.",
+      "blockingCondition": "Residual only: current PUN GES EVSE not among the 63 exact NextCharge uidConnector matches remain fail-closed. stationsNear, stationsGrid and APK-observed QR payload paths are now bounded; resume only with new first-party connector/QR/payment evidence or a new backend surface. Never extrapolate host/network tariffs.",
       "lastInvestigated": "2026-09-29",
       "evidenceState": "Run328: current PUN 2,396 GES EVSE / 1,132 stations. National NextCharge reconciliation scanned all stations and promoted 63 EVSE across 20 stations; every promoted row is 0.0 m from PUN and exact numeric EVSE suffix == NextCharge uidConnector. NextCharge terms identify Go Electric Stations as service/payment operator and connector-specific fees are shown before charging; roaming remains explicitly separated.",
       "currentNextChargeEvidence": {
@@ -886,6 +886,23 @@
         "initialResearchWorkflowRunId": 36614177457,
         "initialResearchArtifactId": 11053784396,
         "reproducibility": "main run reproduced 2,396 EVSE, 63 exact/rankable, 2,333 fail-closed and identical tariff/provider distribution; PUN station grouping 1,132."
+      },
+      "residualInvestigation": {
+        "state": "bounded_after_nextcharge_map_grid_qr_second_pass",
+        "date": "2026-09-29",
+        "nationalSecondPassRunId": 36634848975,
+        "qrProbeRunId": 36635433068,
+        "findings": [
+          "stationsNear national pass: exact matches remain limited to 63 EVSE across 20 stations.",
+          "For residual stations, stationsGrid returned status OK on 1,109 calls but exposed only 71 candidate stations and produced zero additional exact uidConnector matches.",
+          "APK-observed QR route gesnextcharge://qr?evseid=... was tested through payloadQrCode; known and unresolved GES samples returned NG and did not unlock additional station data.",
+          "No radius-only or provider-only matches are accepted; residual EVSE remain fail-closed."
+        ],
+        "freshProbeSnapshot": {
+          "punEvseCount": 2397,
+          "punStationCount": 1132,
+          "note": "Fresh PUN probe observed one additional GES EVSE versus the canonical 2,396 snapshot. Canonical inventory count is intentionally not changed here without a full ledger recount."
+        }
       }
     },
     {
