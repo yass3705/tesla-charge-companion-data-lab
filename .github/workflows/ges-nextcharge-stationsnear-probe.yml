@@ -21,7 +21,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install --disable-pip-version-check requests
+      - run: pip install --disable-pip-version-check requests requests-aws4auth
+      - name: Rebuild current PUN Italy
+        run: python scripts/pun_italy_national.py --workers 8
       - name: Probe stationsNear
         run: python scripts/nextcharge_ges_stationsnear_probe.py
       - name: Upload report
