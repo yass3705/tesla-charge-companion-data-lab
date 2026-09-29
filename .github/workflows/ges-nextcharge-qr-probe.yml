@@ -1,0 +1,35 @@
+name: GES NextCharge QR probe
+
+on:
+  push:
+    branches:
+      - research/ges-nextcharge-v9
+    paths:
+      - scripts/nextcharge_ges_qr_probe.py
+      - .github/workflows/ges-nextcharge-qr-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests requests-aws4auth
+      - name: Rebuild current PUN Italy
+        run: python scripts/pun_italy_national.py --workers 8
+      - name: Probe APK-observed QR payloads
+        run: python scripts/nextcharge_ges_qr_probe.py
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ges-nextcharge-qr-probe
+          path: data/reports/nextcharge_ges_qr_probe.json
+          retention-days: 14
