@@ -1,0 +1,94 @@
+name: Switzerland Eponet current app contract
+
+on:
+  push:
+    paths:
+      - '.github/workflows/switzerland-eponet-current-app-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Download current Eponet Go package
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 -A "Mozilla/5.0"             "https://d.apkpure.net/b/XAPK/com.eponet.eponet?version=latest"             -o /tmp/eponet.xapk
+          test "$(stat -c%s /tmp/eponet.xapk)" -gt 1000000
+          mkdir -p /tmp/eponet-xapk
+          unzip -q /tmp/eponet.xapk -d /tmp/eponet-xapk
+          find /tmp/eponet-xapk -maxdepth 2 -type f -printf '%p %s\n' | head -100
+      - name: Extract API and auth strings
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,zipfile,subprocess
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          root=Path("/tmp/eponet-xapk")
+          apks=list(root.rglob("*.apk"))
+          outdir=Path("/tmp/eponet-apks"); outdir.mkdir(exist_ok=True)
+          artifacts=[]
+          hits=[]
+          needles=[
+            "api.eponet.io","getmapchargers","getmapchargerdetails","getrates",
+            "Authorization","Bearer","x-api","api-key","apikey","token",
+            "signin","login","retrofit","okhttp","ocpp/chargers","portal/user",
+            "public-charge","shortcut_url"
+          ]
+          for apk in apks:
+            ad=outdir/apk.stem; ad.mkdir(exist_ok=True)
+            try:
+              with zipfile.ZipFile(apk) as z:z.extractall(ad)
+            except Exception as e:
+              artifacts.append({"apk":str(apk),"error":str(e)});continue
+            dexes=sorted(ad.glob("classes*.dex"))
+            artifacts.append({"apk":str(apk),"dexCount":len(dexes)})
+            for dex in dexes:
+              raw=dex.read_bytes()
+              strings=[m.group().decode("utf-8","replace") for m in re.finditer(rb"[\x20-\x7e]{4,}",raw)]
+              for i,s in enumerate(strings):
+                sl=s.lower()
+                if any(n.lower() in sl for n in needles):
+                  ctx=strings[max(0,i-8):min(len(strings),i+9)]
+                  hits.append({"apk":apk.name,"dex":dex.name,"match":s,"context":ctx})
+          # de-duplicate exact contexts
+          uniq=[];seen=set()
+          for h in hits:
+            k=(h["match"],tuple(h["context"]))
+            if k in seen:continue
+            seen.add(k);uniq.append(h)
+          out={
+            "schemaVersion":1,
+            "generatedAt":datetime.now(timezone.utc).isoformat(),
+            "package":"com.eponet.eponet",
+            "xapkBytes":Path("/tmp/eponet.xapk").stat().st_size,
+            "artifacts":artifacts,
+            "hits":uniq
+          }
+          Path("docs/switzerland-eponet-current-app-contract-2026-09-29.json").write_text(
+            json.dumps(out,ensure_ascii=False,indent=2)+"\n"
+          )
+          print(json.dumps({"apks":len(apks),"hits":len(uniq),"sample":uniq[:30]},ensure_ascii=False)[:30000])
+          PY
+      - name: Persist evidence
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-eponet-current-app-contract-2026-09-29.json
+          git commit -m "research(ch): inspect current Eponet Go API contract" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
