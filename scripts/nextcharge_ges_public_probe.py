@@ -49,10 +49,20 @@ def main():
     results=[]
     for e in sample:
         evse=str(e["evseId"])
+        evse_variants=[evse]
+        if evse.startswith("ITGES") and "*" not in evse:
+            tail=evse[5:]
+            if tail.startswith("E"):
+                evse_variants.append("IT*GES*"+tail)
+            else:
+                evse_variants.append("IT*GES*E"+tail)
+        seen=set()
+        evse_variants=[x for x in evse_variants if not (x in seen or seen.add(x))]
         for profile,h in header_profiles:
-            form={"idStation":"","evseId":evse,"uidConnector":"","urlToEncode":"","payloadQrCode":""}
+          for form_kind,form_value in [("evseId",x) for x in evse_variants]:
+            form={form_kind:form_value}
             st=post("/station",form,h)
-            entry={"evseId":evse,"profile":profile,"stationCall":st}
+            entry={"evseId":evse,"submittedEvseId":form_value,"formKind":form_kind,"profile":profile,"stationCall":st}
             data=extract_data(st.get("json") if isinstance(st,dict) else None)
             station_id=None
             if isinstance(data,dict):
