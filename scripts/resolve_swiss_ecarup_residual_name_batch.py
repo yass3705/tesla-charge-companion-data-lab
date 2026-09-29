@@ -828,6 +828,7 @@ report={
     "promoted":promoted,
     "tested":tested,
     "errors":errors,
+    "unresolvedDiagnostics":unresolved_diagnostics,
     "policy":"Fail closed: exact normalized name+coordinate, exact Hubject.ID, identical full public price tuple within <=0.75m/3m, or exactly one public connector within <=3m matching the national declared charging power."
 }
 REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
