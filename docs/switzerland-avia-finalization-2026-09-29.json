@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "country": "CH",
+  "cpo": "AVIA VOLT",
+  "operatorId": "CH*AVI",
+  "finalizedAt": "2026-09-29T11:09:53Z",
+  "status": "complete",
+  "policy": {
+    "exactConnectorPricing": true,
+    "guestSession": true,
+    "noTariffExtrapolation": true,
+    "unavailableLocationsIncluded": true,
+    "successorAliasesRequireDeterministicOneToOneEvidence": true
+  },
+  "sources": {
+    "collector": "scripts/collect_avia_switzerland_guest.py",
+    "workflow": ".github/workflows/switzerland-avia-guest-pricing.yml",
+    "directSnapshot": "data/switzerland/avia-guest-direct-tariffs.json",
+    "reconciliation": "docs/switzerland-avia-guest-reconciliation-2026-09-29.json",
+    "successorAlias": "data/switzerland/avia-successor-alias-overlay.json",
+    "nationalSource": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
+    "successfulRunId": 36558537649
+  },
+  "coverage": {
+    "nationalStationCount": 171,
+    "nationalEvseCount": 583,
+    "guestMapLocations": 171,
+    "guestPricedConnectors": 583,
+    "guestUniquePricedEvses": 583,
+    "exactNationalEvseMatches": 582,
+    "deterministicSuccessorAliasCount": 1,
+    "resolvedNationalEvseCount": 583,
+    "unresolvedNationalEvseCount": 0,
+    "mapErrors": 0,
+    "collectorFailures": 1
+  },
+  "successorAlias": {
+    "nationalEvseId": "CH*AVI*E10599",
+    "liveSuccessorEvseId": "CH*AVI*EEB0C096A*1*1",
+    "locationName": "Garage Muzzarelli AG Tankstelle Schiers",
+    "address": "Schra 11, 7220 Schiers",
+    "coordinates": "46.96663,9.69431",
+    "connectorType": "TYPE2",
+    "powerKw": 11,
+    "priceChfPerKwhInclVat": 0.45,
+    "rationale": "The national residual and live backend successor are the sole 11 kW Type 2 EVSE at the same named site, identical street address and exact coordinates."
+  },
+  "residual404": {
+    "locationUuid": "419ba664-5dc1-59bb-a3be-9a9cd7578fa3",
+    "stage": "detail",
+    "interpretation": "Map listing returned a location UUID whose detail endpoint now returns 404. It is outside the unresolved current national scope because all 583 current national EVSEs are resolved after the deterministic successor alias."
+  },
+  "result": "complete"
+}
