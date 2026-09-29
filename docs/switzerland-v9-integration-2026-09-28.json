@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataset": "tcc-v9-switzerland",
-  "generatedAt": "2026-09-29T19:08:31.994122+00:00",
+  "generatedAt": "2026-09-29T22:39:39.110170+00:00",
   "country": "CH",
   "nationalSource": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
   "policy": {
@@ -701,15 +701,15 @@
       "name": "eCarUp",
       "evseCount": 6764,
       "stationCount": null,
-      "status": "partial",
-      "evidence": "docs/switzerland-ecarup-residual-name-search-2026-09-29.json",
-      "note": "6474/6764 deterministic current prices. New APK-derived exact public search schema recovered: GET /api/stations?searchTerm=...&location=lat,lon&includePartners=true&onlyAvailable=false&onlyRecentlyUsed=false. First 5 residuals tested produced 4 safe exact-name+coordinate single-connector promotions; 290 remain. Continue residual batches fail-closed.",
-      "setAside": false,
-      "blockerPersistent": false,
-      "blockerEvidence": null,
-      "resumeCondition": "Continue exact-name+coordinate public API search over the remaining 290 residual EVSEs; accept only deterministic exact matches."
+      "status": "blocked",
+      "evidence": "docs/switzerland-ecarup-exhaustive-residual-blockers-2026-09-30.json",
+      "note": "6704/6764 deterministic current prices; 60 residual EVSE remain after exhaustive exact-name, Hubject, coordinate, power, plug and AC/DC reconciliation. Remaining cases are stale/missing public records or multi-connector mixed-tariff sites without deterministic EVSE-to-connector identity. No extrapolation.",
+      "setAside": true,
+      "blockerPersistent": true,
+      "blockerEvidence": "docs/switzerland-ecarup-exhaustive-residual-blockers-2026-09-30.json",
+      "resumeCondition": "Resume when a fresh national/eCarUp snapshot fixes stale names or coordinates, an exact public Hubject/station response appears, an exact public payment page is available, or an authoritative owner/source mapping links a residual national EVSE to a specific eCarUp connector/device."
     }
   },
   "output": "data/tcc_v9/switzerland.json",
-  "outputBytes": 49761041
+  "outputBytes": 49761222
 }
