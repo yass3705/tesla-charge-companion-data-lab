@@ -1,0 +1,81 @@
+name: Switzerland AVIA residual unavailable probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-avia-residual-unavailable-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      AVIA_APIM_SUBSCRIPTION_KEY: ${{ secrets.AVIA_APIM_SUBSCRIPTION_KEY }}
+    steps:
+      - name: Probe 15 national residual stations
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, urllib.parse
+          key=os.environ["AVIA_APIM_SUBSCRIPTION_KEY"]
+          base="https://pdefweushaapiam01.azure-api.net"
+          tenant="fdcb995a-8234-42ed-826f-3f2c7499d7f8"
+          targets=[
+            ("Primetower",47.38643,8.51692),
+            ("ABB Schaffhausen",47.70878833,8.64131518),
+            ("Hotel Dorint",47.43867,8.56546),
+            ("Hotel Castell",46.59847,9.94947),
+            ("Hotel Belvoir",47.306047,8.550194),
+            ("Landis-Gyr Zug",47.176067,8.514082),
+            ("Grand Resort Bad Ragaz",46.999054,9.504945),
+            ("Room4U Spreitenbach",47.42769,8.36295),
+            ("Hablützel Degersheim",47.3706,9.19175),
+            ("RhB St Moritz",46.49834,9.8459),
+            ("RhB Scuol",46.79335,10.28593),
+            ("Auto Birrer Sursee",47.178935,8.107846),
+            ("Hotel Chur",46.84807,9.52863),
+            ("Volvo Worben",47.0947865,7.29005525),
+            ("Muzzarelli Schiers",46.96663,9.69431),
+          ]
+          def get(path,q=None):
+            url=base+path
+            if q: url+="?"+urllib.parse.urlencode(q)
+            p=subprocess.run([
+              "curl","-sS","--fail-with-body","--max-time","30",
+              "-H","accept: */*","-H","content-type: application/json; charset=utf-8",
+              "-H","x-app-platform: ios","-H","x-app-version: 2.3.0",
+              "-H","user-agent: AVIAVOLTSuisse/4614 CFNetwork",
+              "-H",f"ocp-apim-subscription-key: {key}",url
+            ],capture_output=True,text=True)
+            if p.returncode: return {"_error":(p.stderr or p.stdout)[:300]}
+            return json.loads(p.stdout)
+          out=[]
+          for label,lat,lon in targets:
+            q={
+              "latLongBottomLeft":f"{lat-0.015:.6f},{lon-0.015:.6f}",
+              "latLongTopRight":f"{lat+0.015:.6f},{lon+0.015:.6f}",
+              "evseTypes":"AC,DC,HPC",
+              "locationStatus":"NOT_AVAILABLE",
+              "connectorTypes":"TYPE2,CCS",
+              "includeCpos":"CHAVI",
+            }
+            m=get(f"/app-backend/v1/tenants/{tenant}/map-locations",q)
+            rows=[]
+            for loc in m.get("locations") or []:
+              if loc.get("partyId")!="AVI" or not loc.get("id"): continue
+              d=get(f"/app-backend/v1/tenants/{tenant}/locations/{loc['id']}")
+              rows.append({
+                "locationUuid":loc["id"],
+                "locationId":d.get("locationId"),
+                "locationName":d.get("locationName"),
+                "address":d.get("address"),
+                "coordinates":d.get("coordinates"),
+                "evses":[{"evseId":e.get("evseId"),"id":e.get("id"),"connectors":[{"id":c.get("evseConnectorId"),"type":c.get("evseCommonConnectorType"),"powerKw":c.get("max_electric_power")} for c in e.get("connectors") or []]} for e in d.get("evses") or []]
+              })
+            out.append({"target":label,"locations":rows,"mapCount":len(m.get("locations") or []),"mapError":m.get("_error")})
+          print("RESIDUAL_PROBE_JSON="+json.dumps(out,ensure_ascii=False,separators=(",",":")))
+          PY
