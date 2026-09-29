@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "country": "CH",
-  "generatedAt": "2026-09-29T12:35:00Z",
+  "generatedAt": "2026-09-29T13:31:30Z",
   "scope": [
     "CH*DIE",
     "CH*HER",
@@ -9,7 +9,9 @@
   ],
   "evidence": [
     "docs/switzerland-small-cpo-identity-tariff-probe-2026-09-29.json",
-    "docs/switzerland-evtec-swisscharge-qr-tenant-probe-2026-09-29.json"
+    "docs/switzerland-evtec-swisscharge-qr-tenant-probe-2026-09-29.json",
+    "docs/switzerland-small-cpo-chargeprice-direct-probe-2026-09-29.json",
+    "docs/switzerland-small-cpo-lcb-exact-probe-2026-09-29.json"
   ],
   "results": {
     "CH*DIE": {
@@ -28,8 +30,8 @@
     },
     "CH*EVT": {
       "status": "blocked",
-      "resolvedEvseCount": 2,
-      "unresolvedEvseCount": 6,
+      "resolvedEvseCount": 5,
+      "unresolvedEvseCount": 3,
       "resolvedSites": [
         {
           "stationId": "119",
@@ -40,9 +42,7 @@
           ],
           "priceChfPerKwh": 0.54,
           "source": "https://www.adev.ch/de/ladestation-laeufelfingen"
-        }
-      ],
-      "unresolvedSites": [
+        },
         {
           "stationId": "84",
           "site": "EVTEC Rengglochstrasse 19, Kriens",
@@ -51,8 +51,15 @@
             "CH*EVT*EEVT0010012",
             "CH*EVT*EEVT0010013"
           ],
-          "finding": "Co-located current Swisscharge EVSEs 290524/290525/290526 exist; their public QR pages require the Swisscharge app and generic ad-hoc API returns 404. lcb.ch shows CHF 0.29/kWh at the exact address from Swiss eMobility-derived data, but detailed fee structure/provenance is insufficient for deterministic production promotion."
-        },
+          "tariff": {
+            "energyPriceChfPerKwh": 0.29,
+            "timePriceChfPerMinute": 0.09
+          },
+          "source": "docs/switzerland-small-cpo-chargeprice-direct-probe-2026-09-29.json",
+          "finding": "Current Swisscharge successor station at the exact Rengglochstrasse 19 address is explicitly named EVTEC ristretto&charge6 and has the same 2xCCS + 1xCHAdeMO physical topology. Exact successor EVSEs 290524/290525/290526 all carry the same current non-roaming Swisscharge tariff; no connector-specific extrapolation."
+        }
+      ],
+      "unresolvedSites": [
         {
           "stationId": "158",
           "site": "Kobiboden 57, Einsiedeln",
@@ -64,7 +71,7 @@
           "finding": "Current co-located Swisscharge/AVC-SYSTEM AC EVSEs expose CHF 0.45/kWh + CHF 0.01/min ad-hoc tariff, but they are 22 kW AC only and do not deterministically map to the legacy/current CH*EVT connector mix (50 kW DC, 22 kW AC, 100 kW DC). No cross-hardware extrapolation."
         }
       ],
-      "resumeCondition": "Obtain current payment-screen/QR/app tariff for the Kriens EVTEC channels and the three Kobiboden EVTEC channels, or a backend mapping from CH*EVT IDs to current payment EVSE IDs."
+      "resumeCondition": "Resolve the three Kobiboden EVTEC channels via exact current payment/backend mapping. Nearby Swisscharge/AVC-SYSTEM records are 22 kW AC only and must not be extrapolated to the 50/100 kW DC EVTEC channels."
     }
   }
 }

@@ -3,17 +3,35 @@
   "country": "CH",
   "cpo": "CH*EVT / EVTEC AG",
   "operatorId": "CH*EVT",
-  "generatedAt": "2026-09-29T12:35:00Z",
+  "generatedAt": "2026-09-29T13:30:41Z",
   "source": {
-    "type": "official site owner/operator publication",
-    "url": "https://www.adev.ch/de/ladestation-laeufelfingen",
-    "station": "ADEV Solarstrom AG - Werkhof Läufelfingen",
-    "address": "Bahnhofstrasse 10, 4448 Läufelfingen",
-    "published": "2026-05-19"
+    "type": "multi-source exact site / deterministic successor reconciliation",
+    "sources": [
+      {
+        "type": "official site owner/operator publication",
+        "url": "https://www.adev.ch/de/ladestation-laeufelfingen",
+        "station": "ADEV Solarstrom AG - Werkhof Läufelfingen",
+        "address": "Bahnhofstrasse 10, 4448 Läufelfingen",
+        "published": "2026-05-19"
+      },
+      {
+        "type": "Swiss eMobility / Chargeprice public API exact EVSE non-roaming tariff",
+        "evidence": "docs/switzerland-small-cpo-chargeprice-direct-probe-2026-09-29.json",
+        "station": "EVTEC, ristretto&charge6 CHAdeMO",
+        "address": "Rengglochstrasse 19, 6012 Kriens-Obernau",
+        "sourceEvseIds": [
+          "CH*SUI*E290524",
+          "CH*SUI*E290525",
+          "CH*SUI*E290526"
+        ],
+        "relationship": "Current Swisscharge successor/backend representation of the same EVTEC physical triplet; exact address, 2x CCS + 1x CHAdeMO topology, and station naming identify the site. All three successor EVSEs carry the same tariff so the two CCS ordering ambiguity is immaterial."
+      }
+    ]
   },
   "policy": {
     "exactStationOnly": true,
-    "noCrossSiteExtrapolation": true
+    "noCrossSiteExtrapolation": true,
+    "successorAliasRequiresDeterministicSiteIdentity": true
   },
   "evses": [
     {
@@ -39,6 +57,71 @@
         ]
       },
       "note": "Official ADEV publication states the new public fast charger has two charge points up to 100 kW and tariff CHF 0.54/kWh."
+    },
+    {
+      "evseId": "CH*EVT*EEVT0010011",
+      "station": "EVTEC Rengglochstrasse 19, Kriens",
+      "connector": "CCS",
+      "nationalPowerKw": 120,
+      "successorEvseIds": [
+        "CH*SUI*E290524",
+        "CH*SUI*E290526"
+      ],
+      "tariff": {
+        "energyPrice": 0.29,
+        "timePricePerMinute": 0.09,
+        "currency": "CHF",
+        "tariffLevel": "evse",
+        "nonRoaming": true,
+        "emp": "Swisscharge",
+        "cpo": "Swisscharge"
+      },
+      "classificationSource": "Swiss eMobility / Chargeprice exact current successor EVSE tariff",
+      "evidence": "docs/switzerland-small-cpo-chargeprice-direct-probe-2026-09-29.json",
+      "note": "Deterministic same-site successor reconciliation: exact Rengglochstrasse 19 address and identical physical connector topology (2x CCS + 1x CHAdeMO). All three current Swisscharge successor EVSEs carry CHF 0.29/kWh + CHF 0.09/min, so CCS ordering does not affect the tariff."
+    },
+    {
+      "evseId": "CH*EVT*EEVT0010012",
+      "station": "EVTEC Rengglochstrasse 19, Kriens",
+      "connector": "CHAdeMO",
+      "nationalPowerKw": 50,
+      "successorEvseIds": [
+        "CH*SUI*E290525"
+      ],
+      "tariff": {
+        "energyPrice": 0.29,
+        "timePricePerMinute": 0.09,
+        "currency": "CHF",
+        "tariffLevel": "evse",
+        "nonRoaming": true,
+        "emp": "Swisscharge",
+        "cpo": "Swisscharge"
+      },
+      "classificationSource": "Swiss eMobility / Chargeprice exact current successor EVSE tariff",
+      "evidence": "docs/switzerland-small-cpo-chargeprice-direct-probe-2026-09-29.json",
+      "note": "Deterministic same-site successor reconciliation: exact Rengglochstrasse 19 address and identical physical connector topology (2x CCS + 1x CHAdeMO). All three current Swisscharge successor EVSEs carry CHF 0.29/kWh + CHF 0.09/min, so CCS ordering does not affect the tariff."
+    },
+    {
+      "evseId": "CH*EVT*EEVT0010013",
+      "station": "EVTEC Rengglochstrasse 19, Kriens",
+      "connector": "CCS",
+      "nationalPowerKw": 120,
+      "successorEvseIds": [
+        "CH*SUI*E290524",
+        "CH*SUI*E290526"
+      ],
+      "tariff": {
+        "energyPrice": 0.29,
+        "timePricePerMinute": 0.09,
+        "currency": "CHF",
+        "tariffLevel": "evse",
+        "nonRoaming": true,
+        "emp": "Swisscharge",
+        "cpo": "Swisscharge"
+      },
+      "classificationSource": "Swiss eMobility / Chargeprice exact current successor EVSE tariff",
+      "evidence": "docs/switzerland-small-cpo-chargeprice-direct-probe-2026-09-29.json",
+      "note": "Deterministic same-site successor reconciliation: exact Rengglochstrasse 19 address and identical physical connector topology (2x CCS + 1x CHAdeMO). All three current Swisscharge successor EVSEs carry CHF 0.29/kWh + CHF 0.09/min, so CCS ordering does not affect the tariff."
     }
   ]
 }
