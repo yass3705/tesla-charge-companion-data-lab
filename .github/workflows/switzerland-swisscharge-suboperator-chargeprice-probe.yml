@@ -1,0 +1,104 @@
+name: Switzerland Swisscharge suboperator Chargeprice probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/switzerland-swisscharge-suboperator-chargeprice-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Query exact residual EVSEs and all direct non-roaming CPOs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,urllib.request,urllib.parse,urllib.error
+          from pathlib import Path
+          from datetime import datetime,timezone
+          ATLAS="https://api.chargeprice.app"; FRONT="https://swiss.chargeprice.app/"
+          UA="Mozilla/5.0 TCC-V9-Swisscharge-Suboperator"
+          src=json.loads(Path("docs/switzerland-swisscharge-prefix-closeout-2026-09-28.json").read_text())
+          targets=[]
+          for x in src.get("unresolved",[]):
+              ref=str(x.get("physicalReference") or "")
+              n=x.get("nationalRecord") or {}
+              coord=((n.get("GeoCoordinates") or {}).get("Google") or "").split()
+              if len(coord)!=2: continue
+              targets.append({"ref":ref,"evseId":x.get("evseId"),"lat":float(coord[0]),"lon":float(coord[1]),"national":n})
+          def get(url,headers=None):
+              req=urllib.request.Request(url,headers=headers or {"User-Agent":UA})
+              with urllib.request.urlopen(req,timeout=60) as r:return r.status,r.read()
+          _,html=get(FRONT,{"User-Agent":UA,"Accept":"text/html"})
+          scripts=re.findall(r'<script[^>]+src="([^"]+)"',html.decode("utf-8","replace"),re.I)
+          key=None
+          for s in scripts:
+              try:_,raw=get(urllib.parse.urljoin(FRONT,s),{"User-Agent":UA})
+              except:continue
+              m=re.search(r'getApiKey\(\)\{return"([A-Fa-f0-9]{20,})"\}',raw.decode("utf-8","replace"))
+              if m:key=m.group(1);break
+          if not key: raise SystemExit("Chargeprice key not found")
+          headers={"User-Agent":UA,"Accept":"application/json","Content-Type":"application/json","Api-Key":key,"Accept-Language":"en"}
+          def api(url,method="GET",body=None):
+              data=None if body is None else json.dumps(body).encode()
+              req=urllib.request.Request(url,headers=headers,data=data,method=method)
+              try:
+                  with urllib.request.urlopen(req,timeout=60) as r:return r.status,json.loads(r.read().decode())
+              except urllib.error.HTTPError as e:return e.code,{"error":e.read().decode("utf-8","replace")[:1000]}
+          rows=[]
+          for t in targets:
+              params={
+                "filter[latitude.gte]":str(t["lat"]-0.0015),"filter[latitude.lte]":str(t["lat"]+0.0015),
+                "filter[longitude.gte]":str(t["lon"]-0.002),"filter[longitude.lte]":str(t["lon"]+0.002),
+                "page[number]":"1","page[size]":"100"}
+              st,p=api(ATLAS+"/v1/charging_stations?"+urllib.parse.urlencode(params))
+              matches=[]
+              for rec in p.get("data",[]) if isinstance(p,dict) else []:
+                  a=rec.get("attributes") or {}
+                  if t["evseId"] not in (a.get("evse_ids") or []):continue
+                  for cp in a.get("charge_points") or []:
+                      if t["evseId"] not in (cp.get("evse_ids") or []):continue
+                      if cp.get("power") is None or cp.get("plug") is None:continue
+                      body={"data":{"attributes":{"station":{"id":[rec.get("id")],"charge_point":{"power":cp["power"],"plug":cp["plug"]}},"filter":{"brand_restricted_tariffs":False,"foreign_tariffs":False,"provider_customer_tariffs":True}},"relationships":{}}}
+                      st2,d=api(ATLAS+"/v1/tariff_details","POST",body)
+                      included={(x.get("type"),x.get("id")):x for x in (d.get("included") or [])} if isinstance(d,dict) else {}
+                      direct=[]
+                      for z in (d.get("data") or []) if isinstance(d,dict) else []:
+                          attrs=z.get("attributes") or {}; rel=z.get("relationships") or {}
+                          emp=rel.get("emp",{}).get("data") or {}; cpo=rel.get("cpo",{}).get("data") or {}; tar=rel.get("tariff",{}).get("data") or {}
+                          if attrs.get("is_roaming") is not False or not emp.get("id") or emp.get("id")!=cpo.get("id"):continue
+                          direct.append({
+                            "detailId":z.get("id"),"attributes":attrs,
+                            "emp":included.get((emp.get("type"),emp.get("id"))),
+                            "cpo":included.get((cpo.get("type"),cpo.get("id"))),
+                            "tariff":included.get((tar.get("type"),tar.get("id")))})
+                      matches.append({"stationId":rec.get("id"),"name":a.get("name"),"address":a.get("address"),"chargePoint":cp,"directNonRoaming":direct})
+              rows.append({"reference":t["ref"],"evseId":t["evseId"],"stationQueryStatus":st,"nationalName":(t["national"].get("ChargingStationNames") or [{}])[0].get("value"),"matches":matches})
+              print(t["ref"],"matches",len(matches),"direct",sum(len(m["directNonRoaming"]) for m in matches),flush=True)
+          out={"schemaVersion":1,"country":"CH","operatorId":"CH*SUI","generatedAt":datetime.now(timezone.utc).isoformat(),
+               "method":"Exact EVSE-ID Chargeprice match; retain all direct non-roaming tariffs where EMP=CPO for sub-operator reconciliation. No promotion by this probe alone.",
+               "rows":rows}
+          Path("docs/switzerland-swisscharge-suboperator-chargeprice-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          PY
+      - name: Persist
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-swisscharge-suboperator-chargeprice-probe-2026-09-29.json
+          git commit -m "research(ch): inspect Swisscharge residual suboperator tariffs" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
