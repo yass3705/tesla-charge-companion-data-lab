@@ -1,0 +1,65 @@
+name: Enel Italy direct-payment targeted retry
+
+on:
+  push:
+    branches:
+      - research/enel-v9-national
+    paths:
+      - scripts/enel_italy_directpayment_retry.py
+      - .github/workflows/enel-italy-directpayment-retry.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  retry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check requests requests-aws4auth selenium
+      - name: Rebuild current PUN Italy inventory
+        run: python scripts/pun_italy_national.py --workers 8
+      - name: Download validated first-pass ENX artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/enxfirst data/national
+          gh api repos/${GITHUB_REPOSITORY}/actions/artifacts/11025563455/zip > /tmp/enxfirst.zip
+          unzip -q /tmp/enxfirst.zip -d /tmp/enxfirst
+          SRC="$(find /tmp/enxfirst -type f -name enel_direct_stations_italy.json.gz | head -n1)"
+          test -n "$SRC" && test -s "$SRC"
+          cp "$SRC" data/national/enel_direct_stations_italy.json.gz
+      - name: Retry only missing ENX serials
+        run: python scripts/enel_italy_directpayment_retry.py --workers 16
+      - name: Validate retry union
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          p=Path('data/national/enel_direct_stations_italy_retry_union.json.gz')
+          d=json.loads(gzip.decompress(p.read_bytes()))
+          c=d['counts']
+          assert c['punEnxEvseCount'] > 20000
+          assert c['retryRequestedStationSerialCount'] > 0
+          assert c['rankableDirectPaymentEvseCountAfterRetry'] >= c['rankableDirectPaymentEvseCount']
+          assert c['rankableDirectPaymentCoveragePctAfterRetry'] >= c['rankableDirectPaymentCoveragePctOfRequestedPunEnx']
+          print(json.dumps(c,indent=2))
+          print(json.dumps(d['observedDirectPaymentPriceEurPerKwhAfterRetry'],indent=2))
+          PY
+      - name: Upload retry union
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enel-directpayment-italy-retry-union
+          path: |
+            data/national/enel_direct_stations_italy_retry_union.json.gz
+            data/reports/enel_italy_directpayment_retry_report.json
+          retention-days: 14
