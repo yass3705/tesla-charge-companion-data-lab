@@ -41,7 +41,7 @@ def main():
                 "instructions":ins[:1200],
             })
         found.append({"string":val,"xrefs":xrefs})
-    report={"scope":"NextCharge station/xref analysis","findings":found}
+    report={"scope":"NextCharge station/xref analysis verified APK 6.2.02","findings":found}
     OUT.parent.mkdir(parents=True,exist_ok=True)
     OUT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
     print(json.dumps(report,ensure_ascii=False,indent=2)[:180000])
