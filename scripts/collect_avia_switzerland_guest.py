@@ -24,7 +24,8 @@ KEY=os.environ.get("AVIA_APIM_SUBSCRIPTION_KEY","").strip()
 OUT=Path(os.environ.get("AVIA_OUT","data/switzerland/avia-guest-direct-tariffs.json"))
 TIMEOUT=int(os.environ.get("AVIA_TIMEOUT","45"))
 SLEEP=float(os.environ.get("AVIA_SLEEP","0.15"))
-RESOLVE_IP=os.environ.get("AVIA_RESOLVE_IP","").strip()\nTLS_INSECURE=os.environ.get("AVIA_TLS_INSECURE","0")=="1"
+RESOLVE_IP=os.environ.get("AVIA_RESOLVE_IP","").strip()
+TLS_INSECURE=os.environ.get("AVIA_TLS_INSECURE","0")=="1"
 
 # Conservative Switzerland coverage with overlap around borders.
 LAT_MIN,LAT_MAX=45.75,47.90
