@@ -8,6 +8,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CANONICAL = ROOT / "docs/uk-cpo-progress-2026-09.json"
 OPEN_FEEDS_REPORT = ROOT / "reports/uk/validated-open-feeds-latest.json"
+LIDL_INVENTORY_REPORT = ROOT / "reports/uk/lidl-public-ev-stores-latest.json"
+LIDL_PRICING_REPORT = ROOT / "reports/uk/lidl-official-pricing-latest.json"
 OUT = ROOT / "reports/uk/canonical-reconcile-latest.json"
 
 EXTERNAL_ONLY = {
@@ -64,6 +66,33 @@ if pogo:
         row["dataset"] = "data/national/uk_validated_open_feeds.json.gz"
         row["report"] = "reports/uk/validated-open-feeds-latest.json"
         changes.append({"name": "PoGo Charge", "from": before, "to": "complete", "reason": "full_location_and_pricing_evidence"})
+
+# Safe deterministic Lidl promotion requires BOTH an official public-store
+# inventory and the separately persisted official pricing evidence.
+lidl_inventory = load(LIDL_INVENTORY_REPORT, {})
+lidl_pricing = load(LIDL_PRICING_REPORT, {})
+lidl_row = by_name.get("Lidl")
+lidl_safe = (
+    lidl_row
+    and lidl_inventory.get("status") == "location_inventory_complete_from_public_store_finder"
+    and int(lidl_inventory.get("evChargingStores") or 0) > 0
+    and int(lidl_inventory.get("storePagesParsed") or 0) >= int(lidl_inventory.get("evChargingStores") or 0)
+    and bool(lidl_pricing.get("officialSource"))
+    and bool(lidl_pricing.get("pricingComplete"))
+)
+if lidl_safe and not str(lidl_row.get("status") or "").startswith("complete"):
+    before = lidl_row.get("status")
+    lidl_row["status"] = "complete"
+    lidl_row["access"] = "official_public_store_inventory_plus_official_network_pricing"
+    lidl_row["evidence"] = (
+        f"Official Lidl GB public store finder recovered {lidl_inventory.get('evChargingStores')} "
+        f"EV-charging stores from {lidl_inventory.get('storePagesParsed')} parsed store pages; "
+        "official Lidl GB tariff evidence is complete and persisted separately."
+    )
+    lidl_row["next"] = "validated; refresh public store inventory and official pricing on schedule."
+    lidl_row["dataset"] = "data/national/uk_lidl_public_ev_stores.json.gz"
+    lidl_row["report"] = "reports/uk/lidl-public-ev-stores-latest.json"
+    changes.append({"name":"Lidl","from":before,"to":"complete","reason":"official_store_inventory_and_pricing_complete"})
 
 # These are not autonomous technical residuals: the current ledger already
 # documents an external/open-data account/request dependency. Keep them visible,
