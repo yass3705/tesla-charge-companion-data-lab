@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "country": "CH",
-  "updatedAt": "2026-09-29T18:00:02.888656+00:00",
+  "updatedAt": "2026-09-29T18:30:00Z",
   "canonicalRepo": "yass3705/tesla-charge-companion-data-lab",
   "sourceMigrationFrom": "yass3705/tesla-stations-updater-test",
   "rules": {
@@ -92,12 +92,12 @@
       "operatorNames": [],
       "status": "blocked",
       "name": "EPO",
-      "evidence": "docs/switzerland-epo-first-pass-2026-09-28.json",
-      "note": "0/324 deterministic direct prices. Eponet explicitly lets each infrastructure operator define the QR/ad-hoc charging profile, including start, kWh and blocking fees. Current prices are only exposed through the charger-specific QR flow; no public searchable tariff endpoint was recovered.",
+      "evidence": "docs/switzerland-epo-charger-id-pivot-2026-09-29.json",
+      "note": "0/324 deterministic direct prices so far. Exhaustive follow-up recovered 8 explicit Eponet Charger IDs covering 23 EVSEs from the existing production dataset, and official Eponet documentation confirms the public QR flow exposes the current station price in portal.eponet.ch before email/payment. The remaining technical blocker is the exact public QR/ad-hoc URL or API request format; Charger IDs are no longer completely absent.",
       "setAside": false,
       "blockerPersistent": true,
       "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Obtain Eponet charger IDs/QR URLs or a public Eponet Go/QR backend endpoint that exposes the current station prices."
+      "resumeCondition": "Recover the exact portal.eponet.ch public QR/ad-hoc URL/API format using known Charger ID + EVSE pairs, or obtain exact station-specific public price evidence. Continue extracting additional Charger IDs from indexed station pages. No tariff extrapolation."
     },
     {
       "operatorId": "CH*360",
