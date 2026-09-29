@@ -7,9 +7,10 @@ OWNER = Path("data/switzerland/ecarup-owner-direct-tariffs.json")
 COORD = Path("data/switzerland/ecarup-owner-coordinate-safe-overlay.json")
 OVERLAY = Path("data/switzerland/ecarup-residual-name-search-overlay-2026-09-29.json")
 REPORT = Path("docs/switzerland-ecarup-residual-name-search-batch-2026-09-29.json")
+CANON = Path("docs/switzerland-cpo-progress-2026-09.json")
 BASE = "https://ecarup.com/api/stations"
 HEADERS = {"User-Agent":"Tesla-Charge-Companion/9","Accept":"application/json"}
-BATCH = 50
+BATCH = 1000
 NATIONAL_URL = "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json"
 
 def norm(s):
@@ -235,4 +236,22 @@ report={
     "policy":"Fail closed: exact normalized name + <=3m coordinate + one explicit public connector price only."
 }
 REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+
+if CANON.exists():
+    canon=json.loads(CANON.read_text(encoding="utf-8"))
+    promoted_total=len({r.get("evseId") for r in overlay.get("rows",[]) if r.get("evseId")})
+    priced_total=6470+promoted_total
+    remaining_total=max(0,6764-priced_total)
+    for op in canon.get("operators",[]):
+        if op.get("operatorId")=="CH*ECU":
+            op["status"]="complete" if remaining_total==0 else "partial"
+            op["evidence"]=str(REPORT)
+            op["note"]=f"{priced_total}/6764 deterministic current prices. Exact ChargingStationNames + coordinate public API reconciliation promoted {promoted_total} residual EVSEs in total; {remaining_total} remain fail-closed."
+            op["setAside"]=False
+            op["blockerPersistent"]=False
+            op["blockerEvidence"]=None
+            op["resumeCondition"]=None if remaining_total==0 else "Continue secondary exact-identity methods on the remaining residual EVSEs; no nearest-neighbour or cross-station tariff extrapolation."
+    canon["updatedAt"]=now
+    CANON.write_text(json.dumps(canon,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+
 print(json.dumps({k:v for k,v in report.items() if k not in ("tested","errors")},ensure_ascii=False,indent=2))
