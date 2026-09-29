@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "country": "CH",
+  "operatorId": "CH*EPO",
+  "generatedAt": "2026-09-29T18:55:00Z",
+  "status": "exhausted-current-public-paths",
+  "apk": {
+    "source": "Eponet+Go_1.4.7_APKPure.xapk",
+    "package": "com.eponet.eponet",
+    "analysis": "static only; no login, no charging/payment action",
+    "productionApiBase": "https://api.eponet.io",
+    "legacyPortalApi": "https://portal.eponet.ch/api.php",
+    "discoveredReadOnlyRelevantRoutes": [
+      "ocpp/chargers/getmapchargers/",
+      "ocpp/chargers/getmapchargerdetails/",
+      "ocpp/chargers/getthirdpartymapchargers/",
+      "ocpp/chargers/getthirdpartychargerdetails/",
+      "ocpp/rate/getrates/"
+    ],
+    "unauthenticatedProbeResult": "403 on api.eponet.io map/detail/rate routes",
+    "legacyPortalProbeResult": "api.php reachable but returns {\"error\":\"no valid data provided\"} without a valid payload"
+  },
+  "publicQr": {
+    "route": "https://portal.eponet.ch/public-charge.php?id=<opaque-32-hex-token>",
+    "knownFixture": {
+      "chargerId": "23-2116",
+      "evseId": "CH*EPO*E0001579",
+      "token": "243fdf344f5a44f4872998649ca89eb3",
+      "inCurrentSnapshot": false
+    },
+    "tokenDerivation": "No deterministic derivation recovered; simple hashes already disproved and APK does not expose a public mapping endpoint.",
+    "currentSnapshotTokensRecovered": 0
+  },
+  "publicSearch": {
+    "knownChargerIdsInCurrentSnapshot": 8,
+    "knownEvseCovered": 23,
+    "exactQrFilenameSearch": "no indexed QR files found",
+    "stationPhotoSearch": "Electromaps current EPO station pages tested expose placeholder/no usable charger-label photo; other public directories expose inventory/status but no QR token or direct tariff.",
+    "aggregatorTariffs": "No exact Eponet direct tariff recovered for current snapshot."
+  },
+  "conclusion": "No safe public technical path currently yields a public-charge token for any EVSE in the current 324-EVSE snapshot. Further progress needs new exact evidence: a published/photographed QR label, accessible authenticated app session explicitly provided by the user, or a newly exposed public backend response.",
+  "policy": "Fail closed. Do not brute-force 32-hex tokens, bypass authentication, infer one station's tariff from another, or create/payment/charging sessions.",
+  "resumeCondition": "Resume EPO immediately when a current-snapshot Eponet QR/label photo, exact public-charge URL, or explicitly authorized authenticated Eponet session becomes available."
+}
