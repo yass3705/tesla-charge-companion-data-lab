@@ -1,0 +1,23 @@
+name: France AVIA Picoty Deftpower smoke
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/avia_picoty_deftpower_smoke.py"
+      - ".github/workflows/france-avia-picoty-deftpower-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    env:
+      AVIA_APIM_SUBSCRIPTION_KEY: ${{ secrets.AVIA_APIM_SUBSCRIPTION_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate syntax
+        run: python3 -m py_compile scripts/avia_picoty_deftpower_smoke.py
+      - name: Run Picoty Deftpower smoke test
+        run: python3 scripts/avia_picoty_deftpower_smoke.py
