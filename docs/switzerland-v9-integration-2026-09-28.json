@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataset": "tcc-v9-switzerland",
-  "generatedAt": "2026-09-29T11:00:06.989861+00:00",
+  "generatedAt": "2026-09-29T11:10:50.964676+00:00",
   "country": "CH",
   "nationalSource": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
   "policy": {
@@ -12,9 +12,9 @@
   },
   "counts": {
     "nationalEvseCount": 19462,
-    "directTariffResolvedEvseCount": 17695,
+    "directTariffResolvedEvseCount": 17729,
     "noPublicDirectTariffEvseCount": 386,
-    "directTariffUnresolvedEvseCount": 1381
+    "directTariffUnresolvedEvseCount": 1347
   },
   "sourceStats": [
     {
@@ -249,7 +249,7 @@
       "label": "AVIA guest exact",
       "file": "data/switzerland/avia-guest-direct-tariffs.json",
       "status": "loaded",
-      "matchedEvseCount": 548
+      "matchedEvseCount": 582
     },
     {
       "label": "AVIA successor alias",
@@ -384,14 +384,14 @@
       "evseCount": 583,
       "stationCount": 171,
       "operatorNames": [],
-      "status": "blocked",
+      "status": "complete",
       "name": "AVIA",
-      "evidence": "docs/switzerland-avia-first-pass-2026-09-28.json",
-      "note": "Guest-session AVIA collector implemented in scripts/collect_avia_switzerland_guest.py with national map tiling, exact location/connector traversal and POST simulate-pricing. GitHub Actions workflow switzerland-avia-guest-pricing.yml is installed; it skips safely until AVIA_APIM_SUBSCRIPTION_KEY is configured as an Actions secret. Outputs are sanitized and fail closed; no auth/APIM material is committed.",
+      "evidence": "docs/switzerland-avia-finalization-2026-09-29.json",
+      "note": "583/583 current national CH*AVI EVSEs deterministically resolved. 582 match the AVIA VOLT guest backend by exact EVSE ID across AVAILABLE + NOT_AVAILABLE map scopes; the sole national residual CH*AVI*E10599 is deterministically mapped to its live successor CH*AVI*EEB0C096A*1*1 at Garage Muzzarelli AG Tankstelle Schiers by identical location/address/coordinates, connector type and 11 kW power. No tariff extrapolation.",
       "setAside": false,
-      "blockerPersistent": true,
-      "blockerEvidence": "scripts/collect_avia_switzerland_guest.py",
-      "resumeCondition": "Configure repository Actions secret AVIA_APIM_SUBSCRIPTION_KEY from the guest app runtime header, manually run 'Switzerland AVIA guest pricing', validate the first national snapshot, then wire the sanitized output into TCC V9."
+      "blockerPersistent": false,
+      "blockerEvidence": null,
+      "resumeCondition": null
     },
     "CH*SOC": {
       "operatorId": "CH*SOC",
@@ -687,5 +687,5 @@
     }
   },
   "output": "data/tcc_v9/switzerland.json",
-  "outputBytes": 49703472
+  "outputBytes": 49738990
 }
