@@ -1,0 +1,65 @@
+{
+  "country": "BE",
+  "asOf": "2026-09-29",
+  "phase": "final-national-dedup-before-energyvision",
+  "sourceCounts": {
+    "ecoMovement": {
+      "evses": 69935,
+      "rawEvseRows": 70216,
+      "rawPricedEvses": 57081
+    },
+    "road": {
+      "evses": 8174,
+      "pricedEvses": 7475,
+      "missingPriceEvses": 699
+    },
+    "indigo": {
+      "evses": 2332,
+      "pricedEvses": 2332
+    },
+    "monta": {
+      "evses": 3389,
+      "pricedEvses": 3389
+    }
+  },
+  "dedup": {
+    "pairwiseOverlaps": {
+      "ecoMovement__road": 0,
+      "ecoMovement__indigo": 0,
+      "ecoMovement__monta": 0,
+      "road__indigo": 0,
+      "road__monta": 0,
+      "indigo__monta": 0
+    },
+    "overlapDistribution": {},
+    "unionUniqueEvses": 83830,
+    "sumSourceEvsesBeforeDedup": 83830,
+    "duplicatesRemovedByExactNormalizedEvseId": 0
+  },
+  "pricing": {
+    "pairwisePricedOverlaps": {
+      "ecoMovement__road": 0,
+      "ecoMovement__indigo": 0,
+      "ecoMovement__monta": 0,
+      "road__indigo": 0,
+      "road__monta": 0,
+      "indigo__monta": 0
+    },
+    "unionUniqueEvsesWithSourceTariffEvidence": 70277,
+    "unionUniqueEvsesWithoutSourceTariffEvidence": 13553,
+    "coveragePct": 83.83,
+    "note": "Eco-Movement count is raw NAP pricing only; the 8 exact Shell official overlay EVSEs are tracked separately in the Belgium final reconciliation and are not double-counted here without explicit stable-id overlay join."
+  },
+  "knownPostAuditFacts": {
+    "montaGapResolutionsAgainstRoadMissing": 0,
+    "montaGapResolutionsAgainstEcoMovementMissing": 0,
+    "roadRemainingSourceLimited": 699,
+    "ecoMovementRemainingSourceLimitedAfterExactShellAndTestExclusion": 12849,
+    "energyVision": "blocked_pending_free_api_key"
+  },
+  "rules": [
+    "Deduplication uses only case/punctuation-normalized stable EVSE identifiers.",
+    "No address, operator, proximity, power or tariff-family fuzzy merge is performed.",
+    "Pricing coverage counts only direct source tariff evidence; exact official overlays remain provenance-separated."
+  ]
+}
