@@ -237,6 +237,40 @@ for row in remaining[:BATCH]:
                 }
             }
 
+        if not accepted and isinstance(arr,list):
+            exact_stations=[]
+            for st in arr:
+                sc=station_coord(st)
+                if sc and distance_m(co,sc) <= 0.75:
+                    exact_stations.append(st)
+            priced_connectors=[]
+            tuple_keys=set()
+            for st in exact_stations:
+                for conn in connectors(st):
+                    p=connector_price(conn)
+                    if connector_access(conn) in (0,None) and isinstance(p,dict):
+                        priced_connectors.append((st,conn,p))
+                        tuple_keys.add(json.dumps(p,sort_keys=True,separators=(",",":")))
+            if priced_connectors and len(tuple_keys)==1:
+                st,conn,p=priced_connectors[0]
+                sc=station_coord(st)
+                accepted={
+                    "evseId":eid,
+                    "stationName":station_name(st),
+                    "stationId":st.get("ID") or st.get("id"),
+                    "match":"exact_coordinate_identical_public_price_tuple",
+                    "distanceMeters":round(distance_m(co,sc),2) if sc else None,
+                    "candidateStationCount":len(exact_stations),
+                    "candidatePublicConnectorCount":len(priced_connectors),
+                    "price":p,
+                    "connector":{
+                        "Id":conn.get("Id") or conn.get("ID") or conn.get("id"),
+                        "Name":conn.get("Name") or conn.get("name"),
+                        "MaxPower":conn.get("MaxPower") or conn.get("maxPower"),
+                        "HubjectID":(conn.get("Hubject") or {}).get("ID") if isinstance(conn.get("Hubject"),dict) else None
+                    }
+                }
+
     if accepted:
         promoted.append(accepted)
         overlay.setdefault("rows",[]).append(accepted)
@@ -248,7 +282,7 @@ for row in remaining[:BATCH]:
 
 now=datetime.now(timezone.utc).isoformat()
 overlay["generatedAt"]=now
-overlay["method"]="Exact eCarUp public API reconciliation: exact ChargingStationNames+coordinate or exact Hubject.ID returned by coordinate search; public explicit connector price required"
+overlay["method"]="Exact eCarUp public API reconciliation: exact ChargingStationNames+coordinate, exact Hubject.ID, or <=0.75m coordinate set with one identical explicit public price tuple"
 overlay["policy"]="No nearest-neighbour tariff inheritance; no cross-station extrapolation."
 OVERLAY.write_text(json.dumps(overlay,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
@@ -265,7 +299,7 @@ report={
     "promoted":promoted,
     "tested":tested,
     "errors":errors,
-    "policy":"Fail closed: exact normalized name + <=3m coordinate, or exact Hubject.ID identity from coordinate search; explicit public connector price required."
+    "policy":"Fail closed: exact normalized name + <=3m coordinate, exact Hubject.ID, or <=0.75m coordinate set where every explicit public connector shares one identical full price object."
 }
 REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
