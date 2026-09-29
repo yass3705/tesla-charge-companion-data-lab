@@ -10,7 +10,7 @@ import {
   DirectElectroverseClient,
   SINGLE_LOCATION_QUERY,
   PAGED_LOCATION_QUERY
-} from './lib/electroverse_direct_client.mjs';
+} from '../lib/electroverse_direct_client.mjs';
 
 const API_KEY=process.env.ELECTROVERSE_API_KEY;
 const REQUEST_INTERVAL_MS=Number(process.env.REQUEST_INTERVAL_MS||1500);
