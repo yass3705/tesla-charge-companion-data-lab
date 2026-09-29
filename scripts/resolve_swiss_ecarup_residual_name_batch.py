@@ -120,6 +120,61 @@ def national_powers_w(rec):
             pass
     return vals
 
+
+def national_address_parts(rec):
+    parts={"street":None,"house":None,"postal":None,"city":None}
+    def walk(x):
+        if isinstance(x,dict):
+            for k,v in x.items():
+                lk=str(k).lower()
+                if isinstance(v,(str,int,float)):
+                    s=str(v).strip()
+                    if not s:
+                        continue
+                    if parts["street"] is None and lk in ("street","streetname","street_name"):
+                        parts["street"]=s
+                    elif parts["house"] is None and lk in ("housenum","housenumber","house_number","streetnumber"):
+                        parts["house"]=s
+                    elif parts["postal"] is None and lk in ("postalcode","postal_code","postcode","zip","zipcode"):
+                        parts["postal"]=s
+                    elif parts["city"] is None and lk in ("city","town","municipality"):
+                        parts["city"]=s
+                if isinstance(v,(dict,list)):
+                    walk(v)
+        elif isinstance(x,list):
+            for v in x:
+                walk(v)
+    walk(rec)
+    return parts
+
+def exact_address_match(rec, station):
+    parts=national_address_parts(rec)
+    addr=norm(station.get("Address") or station.get("address") or "")
+    if not addr:
+        return False,parts
+    anchors=0
+    street=norm(parts.get("street"))
+    house=norm(parts.get("house"))
+    postal=norm(parts.get("postal"))
+    city=norm(parts.get("city"))
+    if street:
+        if street not in addr:
+            return False,parts
+        anchors+=1
+    if postal:
+        if postal not in addr:
+            return False,parts
+        anchors+=1
+    if city:
+        if city not in addr:
+            return False,parts
+        anchors+=1
+    if street and house:
+        if norm(str(parts["street"])+str(parts["house"])) not in addr:
+            return False,parts
+        anchors+=1
+    return anchors>=3,parts
+
 def derive_short_terms(names):
     import re
     out=[]
@@ -642,6 +697,66 @@ for row in remaining[:BATCH]:
                     }
                 }
 
+
+    # Exact-address + compatible-connector uniform-price fallback.
+    # Identity may be ambiguous, but price is deterministic only when every compatible
+    # public connector at the exact national address has the same full price tuple.
+    if not accepted and co and isinstance(arr,list):
+        ntypes=national_power_types(rec)
+        npowers=national_powers_w(rec)
+        address_stations=[]
+        compatible=[]
+        tuples=set()
+        address_parts=None
+        for st in arr:
+            sc=station_coord(st)
+            if not sc or distance_m(co,sc)>150.0:
+                continue
+            same_addr,parts=exact_address_match(rec,st)
+            if not same_addr:
+                continue
+            address_parts=parts
+            address_stations.append(st)
+            for conn in connectors(st):
+                p=connector_price(conn)
+                if connector_access(conn) not in (0,None) or not isinstance(p,dict):
+                    continue
+                code=conn.get("PlugType") if "PlugType" in conn else conn.get("plugType")
+                mp=conn.get("MaxPower") or conn.get("maxPower")
+                if len(ntypes)==1:
+                    target_type=next(iter(ntypes))
+                    if target_type=="AC" and code not in (1,):
+                        continue
+                    if target_type=="DC" and code not in (5,6):
+                        continue
+                if npowers and isinstance(mp,(int,float)) and round(float(mp)) not in npowers:
+                    continue
+                compatible.append((st,conn,p))
+                tuples.add(json.dumps(p,sort_keys=True,separators=(",",":")))
+        if compatible and len(tuples)==1:
+            st,conn,p=compatible[0]
+            sc=station_coord(st)
+            accepted={
+                "evseId":eid,
+                "stationName":station_name(st),
+                "stationId":st.get("ID") or st.get("id"),
+                "match":"exact_address_uniform_compatible_public_price",
+                "distanceMeters":round(distance_m(co,sc),2) if sc else None,
+                "nationalAddress":address_parts,
+                "candidateStationCount":len(address_stations),
+                "candidatePublicConnectorCount":len(compatible),
+                "nationalPowerType":next(iter(ntypes)) if len(ntypes)==1 else None,
+                "nationalPowerW":sorted(npowers),
+                "price":p,
+                "connector":{
+                    "Id":conn.get("Id") or conn.get("ID") or conn.get("id"),
+                    "Name":conn.get("Name") or conn.get("name"),
+                    "PlugType":conn.get("PlugType") if "PlugType" in conn else conn.get("plugType"),
+                    "MaxPower":conn.get("MaxPower") or conn.get("maxPower"),
+                    "HubjectID":(conn.get("Hubject") or {}).get("ID") if isinstance(conn.get("Hubject"),dict) else None
+                }
+            }
+
     if accepted:
         promoted.append(accepted)
         overlay.setdefault("rows",[]).append(accepted)
@@ -653,7 +768,7 @@ for row in remaining[:BATCH]:
 
 now=datetime.now(timezone.utc).isoformat()
 overlay["generatedAt"]=now
-overlay["method"]="Exact eCarUp public API reconciliation: full/short name-search, unique exact name within 100m with uniform tariff, exact Hubject.ID, identical price tuple at <=0.75m/3m, unique power, validated Type2/CCS/CHAdeMO + power, uniform validated AC/DC group price, or unique explicit AC/DC connector"
+overlay["method"]="Exact eCarUp public API reconciliation: full/short name-search, exact Hubject.ID, coordinate/power/plug/ACDC matching, plus exact-national-address compatible candidate sets only when the full public price tuple is uniform across every possible connector."
 overlay["policy"]="No nearest-neighbour tariff inheritance; no cross-station extrapolation."
 OVERLAY.write_text(json.dumps(overlay,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
