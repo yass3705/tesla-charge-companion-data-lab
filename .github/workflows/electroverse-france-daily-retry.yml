@@ -1,0 +1,78 @@
+name: TEST NON-TESLA — Electroverse France daily retry
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '47 1 * * *'
+permissions:
+  contents: write
+concurrency:
+  group: electroverse-france-daily-retry
+  cancel-in-progress: false
+
+jobs:
+  retry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+      REQUEST_INTERVAL_MS: '1500'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build retry selection from unresolved failures
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const p='reports/electroverse/hybrid-refresh-failures.json';
+          const out='reports/electroverse/incremental-selection.json';
+          let failures=[];
+          try{failures=JSON.parse(fs.readFileSync(p,'utf8')).failures||[]}catch{}
+          const seen=new Set(), selected=[];
+          for(const f of failures){
+            const pk=String(f.pk||'');
+            if(pk&&!seen.has(pk)){seen.add(pk);selected.push({pk,reason:'daily_failure_retry',ageHours:null});}
+          }
+          fs.writeFileSync(out,JSON.stringify({
+            generatedAt:new Date().toISOString(),
+            storage:'sharded-v1',
+            policy:{mode:'daily_failure_retry'},
+            dueTotal:selected.length,
+            selectedCount:selected.length,
+            selected
+          },null,2)+'\n');
+          console.log(JSON.stringify({selected:selected.length}));
+          NODE
+
+      - name: Retry unresolved stations
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          selected=$(node -e "const r=require('./reports/electroverse/incremental-selection.json');process.stdout.write(String(r.selectedCount||0))")
+          if [ "${selected}" = "0" ]; then
+            echo "No unresolved Electroverse failures."
+            exit 0
+          fi
+          set +e
+          node scripts/legacy/electroverse_incremental_refresh_sequential_2026-09-28.mjs
+          rc=$?
+          set -e
+          git add data/electroverse/tariff_cache reports/electroverse/incremental-selection.json
+          git commit -m "data(electroverse): daily retry unresolved France stations [run ${GITHUB_RUN_ID}]" || true
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main
+            git push origin HEAD:main && break
+            sleep $((i * 3))
+          done
+          if [ "${rc}" -ne 0 ]; then
+            echo "Some failures remain eligible for the next daily retry."
+          fi
+          exit 0
