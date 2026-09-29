@@ -1,0 +1,100 @@
+name: Switzerland Swisscharge final closeout
+
+on:
+  push:
+    paths:
+      - '.github/workflows/switzerland-swisscharge-final-closeout.yml'
+      - 'docs/switzerland-swisscharge-final-15-closeout-2026-09-29.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Finalize Swisscharge closeout and canonical
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          close_path=Path("docs/switzerland-swisscharge-prefix-closeout-2026-09-28.json")
+          ev_path=Path("docs/switzerland-swisscharge-final-15-closeout-2026-09-29.json")
+          can_path=Path("docs/switzerland-cpo-progress-2026-09.json")
+
+          close=json.loads(close_path.read_text())
+          evidence=json.loads(ev_path.read_text())
+          rows=evidence["rows"]
+          ids={r["evseId"] for r in rows}
+          unresolved={x["evseId"]:x for x in close.get("unresolved",[])}
+
+          additions=[]
+          existing={x.get("evseId") for x in close.get("classified",[])}
+          for r in rows:
+              if r["evseId"] in existing:
+                  continue
+              if r["evseId"] not in unresolved:
+                  raise SystemExit(f"final row not unresolved: {r['evseId']}")
+              additions.append({
+                "evseId":r["evseId"],
+                "physicalReference":r["physicalReference"],
+                "classification":"no_current_public_direct_tariff",
+                "reason":r["reason"],
+                "recheckOnNextRefresh":True,
+                "evidence":"docs/switzerland-swisscharge-final-15-closeout-2026-09-29.json"
+              })
+
+          close["classified"]=close.get("classified",[])+additions
+          close["classifiedNoPublicDirectTariffCount"]=close.get("classifiedNoPublicDirectTariffCount",0)+len(additions)
+          close["unresolved"]=[x for x in close.get("unresolved",[]) if x["evseId"] not in ids]
+          close["unresolvedEvseCount"]=len(close["unresolved"])
+          close["status"]="complete" if close["unresolvedEvseCount"]==0 else "partial"
+          close["updatedAt"]=datetime.now(timezone.utc).isoformat()
+          close["policy"]="Every current CH*SUI EVSE is deterministically priced or explicitly classified for current public-direct-tariff availability. No tariff extrapolation. Temporary disabled/out-of-order/no-active-EVSE states are rechecked on future refreshes."
+          close["finalCloseoutEvidence"]="docs/switzerland-swisscharge-final-15-closeout-2026-09-29.json"
+
+          if close["pricedEvseCount"]+close["classifiedNoPublicDirectTariffCount"]+close["unresolvedEvseCount"] != close["nationalPrefixEvseCount"]:
+              raise SystemExit("Swisscharge accounting mismatch")
+
+          close_path.write_text(json.dumps(close,ensure_ascii=False,indent=2)+"\n")
+
+          can=json.loads(can_path.read_text())
+          op=next(x for x in can["operators"] if x["operatorId"]=="CH*SUI")
+          op["status"]="complete"
+          op["evidence"]="docs/switzerland-swisscharge-final-15-closeout-2026-09-29.json"
+          op["setAside"]=False
+          op["blockerPersistent"]=False
+          op["blockerEvidence"]=None
+          op["resumeCondition"]=None
+          op["note"]=f"{close['nationalPrefixEvseCount']}/{close['nationalPrefixEvseCount']} current CH*SUI EVSEs deterministically resolved for the current snapshot: {close['pricedEvseCount']} with numeric tariffs and {close['classifiedNoPublicDirectTariffCount']} explicitly classified as having no current public direct tariff. Temporary unavailable states are rechecked on future refreshes; no tariff extrapolation."
+          can["updatedAt"]=datetime.now(timezone.utc).isoformat()
+          can_path.write_text(json.dumps(can,ensure_ascii=False,indent=2)+"\n")
+
+          print(json.dumps({
+            "status":close["status"],
+            "priced":close["pricedEvseCount"],
+            "classified":close["classifiedNoPublicDirectTariffCount"],
+            "unresolved":close["unresolvedEvseCount"],
+            "total":close["nationalPrefixEvseCount"]
+          }))
+          PY
+      - name: Persist final closeout
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-swisscharge-prefix-closeout-2026-09-28.json docs/switzerland-cpo-progress-2026-09.json
+          git commit -m "data(ch): complete Swisscharge current tariff scope 2445/2445" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
