@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "country": "CH",
   "operatorId": "CH*EPO",
-  "generatedAt": "2026-09-29T18:27:00Z",
+  "generatedAt": "2026-09-29T18:36:00Z",
   "status": "active-analysis",
   "findings": [
     {
@@ -49,13 +49,38 @@
       "id": "firecrawl",
       "result": "unavailable",
       "detail": "Connected Firecrawl account has insufficient credits; no Firecrawl-based source inspection possible now."
+    },
+    {
+      "id": "real-qr-decoded",
+      "result": "confirmed",
+      "detail": "Official Eponet QR for Charger ID 23-2116 / EVSE CH*EPO*E0001579 decodes to https://portal.eponet.ch/public-charge.php?id=243fdf344f5a44f4872998649ca89eb3."
+    },
+    {
+      "id": "public-token-shape",
+      "result": "confirmed",
+      "detail": "Public charge uses an opaque 32-hex id token rather than exposing Charger ID/EVSE ID directly in the URL."
+    },
+    {
+      "id": "public-page-read",
+      "result": "confirmed",
+      "detail": "Read-only fetch of that QR target returns Charging Port UI with Start Price 0.00 CHF and Price/kWh 0.00 CHF plus Immoconnect/Public Charging choice. This sample EVSE is not present in the current repo EPO snapshot and is retained only as a technical fixture, not tariff evidence for current 324 EVSE."
+    },
+    {
+      "id": "token-derivation",
+      "result": "negative",
+      "detail": "Simple MD5/SHA1/SHA256 candidates built from Charger ID 23-2116 and EVSE CH*EPO*E0001579 do not reproduce token 243fdf344f5a44f4872998649ca89eb3; token should be treated as backend-generated/opaque."
+    },
+    {
+      "id": "additional-wiki-images",
+      "result": "negative",
+      "detail": "Three official public-charging tutorial photos were tested through QR decoding but did not yield additional decodable QR targets at available resolution."
     }
   ],
   "nextSafeTests": [
-    "Recover the QR target from an actual Eponet QR image/label for any known EVSE.",
-    "Static-inspect the Eponet Go APK/XAPK when the attachment is accessible/materialized; search strings for portal.eponet.ch, eponet.info, adhoc, QR/deep-link and API base URLs.",
-    "Inspect official wiki screenshots/assets and any downloadable quick-guide PDF for a photographed QR that can be decoded.",
-    "Use known Charger ID + EVSE pairs as validation fixtures once the target URL schema is recovered."
+    "Recover one or more public-charge tokens belonging to EVSEs in the current 324-EVSE snapshot, ideally by finding published charger-label photos/QR images for known stations.",
+    "Static-inspect Eponet Go APK/XAPK when the attachment is accessible; search for public-charge.php, QR scanner handling, charger lookup/API endpoints and token fields.",
+    "Search public station/operator websites and image indexes using exact current EVSE IDs + Charger IDs to locate photographed Eponet labels.",
+    "Once one current-snapshot token is found, validate that public-charge page against station identity and tariff, then scale only through exact token evidence."
   ],
   "policy": "No brute-force enumeration, no charging/payment action, no tariff extrapolation. Only public read-only endpoints and exact identity matches."
 }
