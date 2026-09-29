@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "country": "CH",
+  "operatorId": "CH*ECU",
+  "generatedAt": "2026-09-30T00:55:00+02:00",
+  "baseline": {
+    "deterministicPricedCount": 6704,
+    "residualCount": 60
+  },
+  "investigation": "Second exhaustive residual investigation after safe-reconciliation closeout",
+  "newEvidence": [
+    {
+      "family": "Orpundgarage Biel AG",
+      "residualEvseIds": [
+        "CH*ECUEKJPF47RDFCM84BGZ9VBV87E6YZ",
+        "CH*ECUEUW4GWHVF785W7D7ZCFX3WHAM72"
+      ],
+      "finding": "National coordinates are malformed. Public Chargeprice index identifies the exact named eCarUp site with one Type 2 22 kW charger and 0.56 CHF/kWh, but no exact residual EVSE-to-current-connector identity was recovered.",
+      "decision": "candidate_only_no_promotion"
+    },
+    {
+      "family": "Catrina Resort Disentis P1",
+      "residualEvseIds": [
+        "CH*ECUELUBPBGNPXRK8H6VML8LT8KCJBQ",
+        "CH*ECUEQMR8JBR58W7UF4WDMZ45VQVHNZ"
+      ],
+      "finding": "Current public eCarUp API exposes P1-1, P1-2, P1-5 and P1-6, each single Type 2 22 kW connector at 0.60 CHF/kWh. Residual P1-3 and P1-4 are absent from current API.",
+      "decision": "candidate_only_no_cross_station_inheritance"
+    },
+    {
+      "family": "Businesspark Gwatt Intern 3",
+      "residualEvseIds": [
+        "CH*ECUEQPRDHKZ3JXGHW8MXTF9CGT45EA"
+      ],
+      "finding": "Current eCarUp API exposes Intern 1, Intern 2, Intern 4 and the public Pico, all at 0.35 CHF/kWh. Intern 3 is absent.",
+      "decision": "candidate_only_no_sibling_inheritance"
+    },
+    {
+      "family": "SH POWER Gemeindehaus Beringen",
+      "residualEvseIds": [
+        "CH*ECUEXT7WRPJ8CNCRYMV3SHN8NGRJJ2"
+      ],
+      "finding": "Current eCarUp API exposes two stations with the exact name. Public connector #1 is 0.45 CHF/kWh; current Hubject IDs differ from the residual national EVSE ID, while carsharing connectors are zero-priced/private-context.",
+      "decision": "stale_identity_no_promotion"
+    },
+    {
+      "family": "Maschinencenter",
+      "residualEvseIds": [
+        "CH*ECUEL4LD7C5PE4NZK2EGNQPZJ3AJV2",
+        "CH*ECUEW3NXQNGMCQ6UWLNJSLL7YWZ7VX"
+      ],
+      "finding": "Exact current station has two public Type 2 connectors with different prices: #1 links 0.40 CHF/kWh and #2 rechts 0 CHF/kWh; Hubject IDs absent.",
+      "decision": "blocked_requires_connector_identity"
+    },
+    {
+      "family": "Place Rochat Echallens",
+      "residualEvseIds": [
+        "CH*ECUE4V49FF2VPZFJXJPRALLQBEW95S",
+        "CH*ECUE8UHC3CBHGTYWKCQL6LAKS8QEMX",
+        "CH*ECUE95Z9XHZ8QG4U8PMUVQM7HEKAT2",
+        "CH*ECUEBF9BSBQFZLYXBD8V9UJ77CHZAW",
+        "CH*ECUEEPBXB5S4EGLRMPRVGNA6GACQ4W",
+        "CH*ECUEM3JMRC93AJQKQGMDRJVCVN42HS"
+      ],
+      "finding": "Current public directories confirm Borne 1-6 identities, address and connector counts, but eCarUp public API exact-family search currently returns no station response and no direct tariff was recovered.",
+      "decision": "identity_confirmed_price_missing"
+    },
+    {
+      "family": "SI Nyon Parking Perdtemps",
+      "residualEvseIds": [
+        "CH*ECUECA39R573FLXHWUB8KTSB2GFG2W",
+        "CH*ECUESJ5BV6GBSU2H48T3LMD244BUVZ"
+      ],
+      "finding": "Official SI Nyon confirms eCarUp-backed public charging infrastructure; current public eCarUp exact search returns no matching residual response. No exact residual direct tariff recovered.",
+      "decision": "official_identity_price_missing"
+    }
+  ],
+  "additionalChecks": [
+    "Exact EVSE-ID web searches across indexed charging directories for major residual families: no exact residual tariff hits recovered.",
+    "Public eCarUp exact-name queries for T-Resort 2 Gauche, Lilie Shopping, Piano 01 SX and Arxada: no current response.",
+    "Low-quality 01/02/03 names: exact public searches return no response; coordinate-only results do not provide exact residual identity.",
+    "Third-party directory existence/connector data alone is not treated as direct tariff evidence."
+  ],
+  "conclusion": {
+    "newSafePromotions": 0,
+    "deterministicPricedCount": 6704,
+    "residualCount": 60,
+    "status": "blocked-with-strong-candidates"
+  },
+  "policy": "Fail closed. Uniform sibling/site-family tariffs are retained as evidence only, never promoted without exact residual EVSE or authoritative owner-level tariff scope."
+}
