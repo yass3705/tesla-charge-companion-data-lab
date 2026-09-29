@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# canonical-refresh-trigger: 2026-09-29
 from __future__ import annotations
 
 import json
