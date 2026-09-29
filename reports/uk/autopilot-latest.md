@@ -1,6 +1,6 @@
 # UK TCC zero-cost autopilot
 
-- Generated: 2026-09-29T09:18:08Z
+- Generated: 2026-09-29T09:18:40Z
 - AI/API cost: **£0 / €0**
 - Complete: **18 / 46**
 - Actionable partial: **2**
