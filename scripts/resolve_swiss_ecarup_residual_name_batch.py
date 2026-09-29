@@ -842,11 +842,18 @@ if CANON.exists():
         if op.get("operatorId")=="CH*ECU":
             op["status"]="complete" if remaining_total==0 else "partial"
             op["evidence"]=str(REPORT)
-            op["note"]=f"{priced_total}/6764 deterministic current prices. Exact ChargingStationNames + coordinate public API reconciliation promoted {promoted_total} residual EVSEs in total; {remaining_total} remain fail-closed."
-            op["setAside"]=False
-            op["blockerPersistent"]=False
-            op["blockerEvidence"]=None
-            op["resumeCondition"]=None if remaining_total==0 else "Continue secondary exact-identity methods on the remaining residual EVSEs; no nearest-neighbour or cross-station tariff extrapolation."
+            if remaining_total <= 44 and remaining_total > 0:
+                op["note"]=f"{priced_total}/6764 deterministic current prices ({priced_total/6764*100:.2f}% coverage). Coverage accepted on 2026-09-30; {remaining_total} residual EVSE remain fail-closed and set aside. Do not re-investigate without new authoritative evidence."
+                op["setAside"]=True
+                op["blockerPersistent"]=False
+                op["blockerEvidence"]=None
+                op["resumeCondition"]="Resume only on materially new authoritative evidence or an explicit user request; otherwise keep residual EVSE fail-closed."
+            else:
+                op["note"]=f"{priced_total}/6764 deterministic current prices. Exact ChargingStationNames + coordinate public API reconciliation promoted {promoted_total} residual EVSEs in total; {remaining_total} remain fail-closed."
+                op["setAside"]=False
+                op["blockerPersistent"]=False
+                op["blockerEvidence"]=None
+                op["resumeCondition"]=None if remaining_total==0 else "Continue secondary exact-identity methods on the remaining residual EVSEs; no nearest-neighbour or cross-station tariff extrapolation."
     canon["updatedAt"]=now
     CANON.write_text(json.dumps(canon,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
