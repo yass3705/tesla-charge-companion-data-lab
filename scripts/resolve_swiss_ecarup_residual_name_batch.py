@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, math, time, urllib.parse, urllib.request
+import json, math, time, urllib.parse, urllib.request, gzip
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -10,6 +10,7 @@ REPORT = Path("docs/switzerland-ecarup-residual-name-search-batch-2026-09-29.jso
 BASE = "https://ecarup.com/api/stations"
 HEADERS = {"User-Agent":"Tesla-Charge-Companion/9","Accept":"application/json"}
 BATCH = 50
+NATIONAL_URL = "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json"
 
 def norm(s):
     return "".join(c for c in str(s or "").upper() if c.isalnum())
@@ -86,6 +87,51 @@ def connector_price(c):
 def connector_access(c):
     return c.get("AccessType", c.get("accessType"))
 
+def download_national_context():
+    req=urllib.request.Request(NATIONAL_URL, headers=HEADERS)
+    with urllib.request.urlopen(req, timeout=90) as r:
+        raw=r.read()
+    if raw[:2] == b"\\x1f\\x8b":
+        raw=gzip.decompress(raw)
+    root=json.loads(raw.decode("utf-8"))
+    contexts={}
+    useful_name_keys=("name","title","label")
+    coord_keys=("GeoCoordinates","Latitude","Longitude","latitude","longitude")
+    def walk(x, inherited_names=None, inherited_coord=None, owner_id=None):
+        inherited_names=list(inherited_names or [])
+        if isinstance(x,dict):
+            if isinstance(x.get("OperatorID"),str):
+                owner_id=x.get("OperatorID")
+            local_names=list(inherited_names)
+            for k,v in x.items():
+                lk=k.lower()
+                if isinstance(v,str) and any(t in lk for t in useful_name_keys):
+                    s=v.strip()
+                    if 2 <= len(s) <= 160 and norm(s) not in {norm(z) for z in local_names}:
+                        local_names.append(s)
+            local_coord=inherited_coord
+            g=(x.get("GeoCoordinates") or {}).get("Google") if isinstance(x.get("GeoCoordinates"),dict) else None
+            if isinstance(g,str):
+                try:
+                    a,b=g.replace(","," ").split()[:2]
+                    local_coord=(float(a),float(b))
+                except Exception:
+                    pass
+            if isinstance(x.get("Latitude"),(int,float)) and isinstance(x.get("Longitude"),(int,float)):
+                local_coord=(float(x["Latitude"]),float(x["Longitude"]))
+            eid=x.get("EvseID")
+            if owner_id=="CH*ECU" and isinstance(eid,str):
+                contexts[eid]={"names":local_names[-12:],"coord":local_coord}
+            for v in x.values():
+                walk(v,local_names,local_coord,owner_id)
+        elif isinstance(x,list):
+            for v in x:
+                walk(v,inherited_names,inherited_coord,owner_id)
+    walk(root)
+    return contexts
+
+national_context=download_national_context()
+
 owner=json.loads(OWNER.read_text(encoding="utf-8"))
 coord=json.loads(COORD.read_text(encoding="utf-8")) if COORD.exists() else {}
 overlay=json.loads(OVERLAY.read_text(encoding="utf-8")) if OVERLAY.exists() else {
@@ -102,8 +148,13 @@ promoted=[]; tested=[]; errors=[]
 for row in remaining[:BATCH]:
     eid=row["evseId"]
     rec=row.get("nationalRecord") or {}
-    co=get_coord(rec)
+    ctx=national_context.get(eid) or {}
+    co=get_coord(rec) or ctx.get("coord")
     names=candidate_names(rec)
+    for s in ctx.get("names") or []:
+        if norm(s) and norm(s) not in {norm(x) for x in names} and not norm(s).startswith("ECARUP"):
+            names.append(s)
+    names=names[:12]
     accepted=None
     if co and names:
         for term in names:
@@ -153,7 +204,7 @@ for row in remaining[:BATCH]:
         result="promoted"
     else:
         result="no_safe_exact_match"
-    tested.append({"evseId":eid,"result":result,"namesTried":names})
+    tested.append({"evseId":eid,"result":result,"namesTried":names,"coordinate":co})
     time.sleep(0.15)
 
 now=datetime.now(timezone.utc).isoformat()
