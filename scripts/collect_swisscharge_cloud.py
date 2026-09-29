@@ -1,3 +1,4 @@
+# Rerun marker 2026-09-29: refresh residual CH*SUI references with validated bootstrap/retry method.
 #!/usr/bin/env python3
 import argparse, gzip, json, re, sys, time, urllib.request, urllib.parse, urllib.error, http.cookiejar
 from datetime import datetime, timezone
