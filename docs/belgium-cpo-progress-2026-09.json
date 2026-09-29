@@ -880,9 +880,14 @@
         "note": "Dataset includes static/dynamic infrastructure plus ad-hoc pricing; key is not currently available in the repo."
       },
       "Monta": {
-        "state": "blocked_external_access",
-        "access": "Authenticated Public API application required (clientId/clientSecret -> bearer token)",
-        "note": "AFIR Belgium endpoint includes dynamic status and ad-hoc price but all API endpoints require authentication."
+        "state": "complete_public_pricing_snapshot",
+        "pricingSource": "data/belgium/additional/monta-public-pricing-2026-09-29.json.gz",
+        "report": "reports/belgium/monta-public-pricing-2026-09-29.json",
+        "pricingRows": 3389,
+        "distinctEvses": 3389,
+        "distinctTariffs": 517,
+        "tariffPriceConflicts": 0,
+        "note": "Public Monta CPO pricing table is accessible without AFIR API credentials; full Belgium pagination completed to five consecutive empty pages. Cross-source exact EVSE audit found no matches against current Road or Eco-Movement missing-price sets."
       }
     },
     "summary": {
@@ -890,9 +895,10 @@
       "exactTariffCoveredAdditionalEvses": 9807,
       "sourceLimitedAdditionalEvses": 699,
       "externalCredentialBlockedSources": [
-        "EnergyVision",
-        "Monta"
-      ]
+        "EnergyVision"
+      ],
+      "montaPublicPricedEvses": 3389,
+      "montaCrossSourceGapResolutions": 0
     },
     "rules": [
       "No tariffs are inferred from operator name, power, nearby stations, or stale family similarity.",
