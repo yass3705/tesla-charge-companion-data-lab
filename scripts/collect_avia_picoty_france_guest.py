@@ -18,7 +18,7 @@ INDEX=Path("data/national/avia_volt_picoty_station_index.json")
 OUT=Path("data/operator_direct/avia_picoty_deftpower_exact_france.json")
 TIMEOUT=int(os.environ.get("AVIA_TIMEOUT","40"))
 SLEEP=float(os.environ.get("AVIA_SLEEP","0.12"))
-DELTA=float(os.environ.get("AVIA_PICOTY_BBOX_DELTA","0.035"))
+DELTAS=[float(x) for x in os.environ.get("AVIA_PICOTY_BBOX_DELTAS","0.035,0.10,0.25").split(",")]
 
 def norm(v):
     return "".join(ch for ch in str(v or "").upper() if ch.isalnum())
@@ -53,17 +53,28 @@ def station_coords(raw):
     raise ValueError("bad coordinates")
 
 def map_candidates(lat,lon,filter_value=None):
-    q={
-      "latLongBottomLeft":f"{lat-DELTA:.6f},{lon-DELTA:.6f}",
-      "latLongTopRight":f"{lat+DELTA:.6f},{lon+DELTA:.6f}",
-      "evseTypes":"AC,DC,HPC",
-      "connectorTypes":"TYPE2,CCS",
-      "locationStatus":"AVAILABLE",
-    }
-    if filter_value:
-        q["includeCpos"]=filter_value
-    p=request_json("GET",f"/app-backend/v1/tenants/{TENANT}/map-locations",q)
-    return p.get("locations") or []
+    seen={}
+    statuses=("AVAILABLE","UNKNOWN","OUT_OF_ORDER")
+    for delta in DELTAS:
+        for status in statuses:
+            q={
+              "latLongBottomLeft":f"{lat-delta:.6f},{lon-delta:.6f}",
+              "latLongTopRight":f"{lat+delta:.6f},{lon+delta:.6f}",
+              "evseTypes":"AC,DC,HPC",
+              "connectorTypes":"TYPE2,CCS",
+              "locationStatus":status,
+            }
+            if filter_value:
+                q["includeCpos"]=filter_value
+            p=request_json("GET",f"/app-backend/v1/tenants/{TENANT}/map-locations",q)
+            for loc in p.get("locations") or []:
+                if loc.get("id"):
+                    seen[loc["id"]]=loc
+            if seen:
+                break
+        if seen:
+            break
+    return list(seen.values())
 
 def detail(lid):
     return request_json("GET",f"/app-backend/v1/tenants/{TENANT}/locations/{lid}")
