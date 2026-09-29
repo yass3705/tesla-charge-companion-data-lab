@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "country": "IT",
-  "asOf": "2026-09-28",
+  "asOf": "2026-09-29",
   "inventoryStatus": "fresh_pun_92_of_92_nominatively_reconciled_first_pass_classified",
   "inventoryComplete": false,
   "policy": {
@@ -742,41 +742,58 @@
       "status": "partial",
       "priority": "station-level",
       "inventory": {
-        "evse": 23007,
-        "stations": 11224,
+        "evse": 23001,
+        "stations": 11221,
         "currentPunPresent": true,
-        "punAsOf": "2026-09-20"
+        "punAsOf": "2026-09-29"
       },
-      "tariffModel": "station/EVSE-level direct-payment tariff exposed by current Enel public station-detail backend; app/eMSP price remains separate",
+      "tariffModel": "Exact station/EVSE direct-payment pricing from Enel public station-detail backend. directPaymenthPrice is the direct/ad-hoc energy field; app/eMSP price is a separate commercial surface and must not be substituted.",
       "coverage": {
-        "rankableEvse": 0,
-        "failClosedEvse": 23007
+        "rankableEvse": 21866,
+        "failClosedEvse": 1154,
+        "coveragePct": 95.06,
+        "rankableSource": "directPaymenthPrice with directPaymenthTypePrice=KWH",
+        "retryRecoveredEvse": 3,
+        "residualStationSerials": 606
       },
       "confidence": "high",
-      "tariffChannel": "direct/ad-hoc candidate: directPaymenthPrice + directPaymenthTypePrice + directPaymenthPenaltyPrice; do not substitute generic price/app Pay Per Use",
+      "tariffChannel": "direct/ad-hoc via Enel guest/direct-payment flow; exact EVSE/plug station-detail mapping",
       "lastChanged": "2026-09-29",
-      "blockingCondition": "Fresh national exact PUN->Enel station/EVSE rebuild using current directPaymenthPrice/directPaymenthTypePrice/directPaymenthPenaltyPrice. Promote only deterministically mapped current EVSE and preserve fail-closed residuals.",
+      "blockingCondition": "Residual only: 1,154 current PUN ENX EVSE / 606 serials remain fail-closed. Resume only from successful current station-detail with exact ENX EVSE match, first-party QR/direct-payment payload, or newer authoritative PUN/Enel identity evidence; no generic tariff search or power-class extrapolation.",
       "lastInvestigated": "2026-09-29",
       "evidence": [
-        "data/reports/italy_cpo_reconciliation_20260929_run326.json"
+        "data/reports/italy_cpo_reconciliation_20260929_run326.json",
+        "data/reports/italy_cpo_reconciliation_20260929_run327.json"
       ],
       "currentDirectPaymentEvidence": {
         "apkVersion": "4.3.67 (2102)",
         "apkResearchRunId": 36550914728,
         "stationProbeRunId": 36551103730,
-        "sampleDetailStations": 9,
-        "observedEurPerKwh": {
+        "nationalWorkflowRunId": 36552155809,
+        "retryWorkflowRunId": 36553965843,
+        "currentPunEvse": 23001,
+        "currentPunStationSerials": 11221,
+        "rankableEvse": 21866,
+        "failClosedEvse": 1154,
+        "coveragePct": 95.06,
+        "observedDirectEnergyEurPerKwh": {
           "ac": 0.69,
           "dc": 0.74,
           "hpc": 0.74
         },
-        "observedAppPriceEurPerKwh": {
+        "observedAppPayPerUseEurPerKwh": {
           "ac": 0.67,
           "dc": 0.75,
           "hpc": 0.82
         },
         "directPaymentType": "KWH",
-        "note": "Sample validates a distinct direct-payment surface; national coverage not yet rebuilt."
+        "observedDirectPenaltyCandidateEurPerMin": {
+          "ac": 0.12,
+          "dc": 0.24,
+          "hpc": 0.24
+        },
+        "penaltyNote": "Current APK indicates a 60-minute post-charge idle window and plug-detail amount. Direct penalty remains modeled separately from energy; no unsupported overnight/time-window rule is extrapolated.",
+        "residualNote": "577 serials persist with Enel businessCode 12500 / evOs generic error after retry; other residual serials lack an exact current ENX PUN EVSE match."
       }
     },
     {
@@ -3533,6 +3550,10 @@
     {
       "date": "2026-09-28",
       "change": "Run324 canonical catch-up: applied persisted run320 KOS/CGS correction and run321 NRG ReStation backend lineage. No status-count change; fail-closed preserved."
+    },
+    {
+      "date": "2026-09-29",
+      "change": "Run327 resolved ENX direct-payment semantics nationally: current APK 4.3.67 + public station-detail backend validate directPaymenthPrice as the direct/ad-hoc field, separate from app/eMSP price. Fresh PUN: 23,001 ENX EVSE / 11,221 serials. First pass + targeted retry yield 21,866 exact rankable EVSE (95.06%); 1,154 EVSE / 606 serials remain fail-closed. ENX remains partial; no class-wide extrapolation."
     }
   ],
   "evidenceReports": [
@@ -3591,7 +3612,9 @@
     "data/reports/italy_cpo_reconciliation_20260928_run312.json",
     "data/reports/italy_cpo_reconciliation_20260928_run313.json",
     "data/reports/italy_cpo_reconciliation_20260928_run320.json",
-    "data/reports/italy_cpo_reconciliation_20260928_run321.json"
+    "data/reports/italy_cpo_reconciliation_20260928_run321.json",
+    "data/reports/italy_cpo_reconciliation_20260929_run326.json",
+    "data/reports/italy_cpo_reconciliation_20260929_run327.json"
   ],
   "crossCountryReuseAudit": {
     "auditedAt": "2026-09-23",
