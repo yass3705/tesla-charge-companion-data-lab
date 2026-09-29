@@ -1,0 +1,117 @@
+name: Switzerland Swisscharge Chargeprice residual probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/switzerland-swisscharge-chargeprice-residual-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Query exact residual EVSEs via Chargeprice
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,urllib.request,urllib.parse,urllib.error
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          ATLAS="https://api.chargeprice.app"; FRONT="https://swiss.chargeprice.app/"
+          UA="Mozilla/5.0 TCC-V9-Swisscharge-Residual"
+          LIVE={"6931","7632","1322","2543","207534","2999","6117","207539","9138"}
+          src=json.loads(Path("docs/switzerland-swisscharge-prefix-closeout-2026-09-28.json").read_text())
+          targets=[]
+          for x in src.get("unresolved",[]):
+              ref=str(x.get("physicalReference") or "")
+              if ref not in LIVE: continue
+              n=x.get("nationalRecord") or {}
+              coord=((n.get("GeoCoordinates") or {}).get("Google") or "").split()
+              if len(coord)!=2: continue
+              targets.append({"ref":ref,"evseId":"CH*SUI*E"+ref,"lat":float(coord[0]),"lon":float(coord[1]),"national":n})
+
+          def get(url,headers=None):
+              req=urllib.request.Request(url,headers=headers or {"User-Agent":UA})
+              with urllib.request.urlopen(req,timeout=60) as r:return r.status,r.read()
+          _,html=get(FRONT,{"User-Agent":UA,"Accept":"text/html"})
+          scripts=re.findall(r'<script[^>]+src="([^"]+)"',html.decode("utf-8","replace"),re.I)
+          key=None
+          for s in scripts:
+              try:_,raw=get(urllib.parse.urljoin(FRONT,s),{"User-Agent":UA})
+              except:continue
+              m=re.search(r'getApiKey\(\)\{return"([A-Fa-f0-9]{20,})"\}',raw.decode("utf-8","replace"))
+              if m:key=m.group(1);break
+          if not key: raise SystemExit("Chargeprice key not found")
+          headers={"User-Agent":UA,"Accept":"application/json","Content-Type":"application/json","Api-Key":key,"Accept-Language":"en"}
+          def api(url,method="GET",body=None):
+              data=None if body is None else json.dumps(body).encode()
+              req=urllib.request.Request(url,headers=headers,data=data,method=method)
+              try:
+                  with urllib.request.urlopen(req,timeout=60) as r:return r.status,json.loads(r.read().decode())
+              except urllib.error.HTTPError as e:return e.code,{"error":e.read().decode("utf-8","replace")[:1000]}
+
+          rows=[]
+          for t in targets:
+              lat,lon=t["lat"],t["lon"]
+              params={
+                "filter[latitude.gte]":str(lat-0.0015),"filter[latitude.lte]":str(lat+0.0015),
+                "filter[longitude.gte]":str(lon-0.002),"filter[longitude.lte]":str(lon+0.002),
+                "page[number]":"1","page[size]":"100"
+              }
+              st,p=api(ATLAS+"/v1/charging_stations?"+urllib.parse.urlencode(params))
+              exact=[]
+              for rec in p.get("data",[]) if isinstance(p,dict) else []:
+                  a=rec.get("attributes") or {}
+                  evseids=a.get("evse_ids") or []
+                  if t["evseId"] not in evseids: continue
+                  for cp in a.get("charge_points") or []:
+                      if t["evseId"] not in (cp.get("evse_ids") or []): continue
+                      power=cp.get("power");plug=cp.get("plug")
+                      if power is None or plug is None:continue
+                      body={"data":{"attributes":{"station":{"id":[rec.get("id")],"charge_point":{"power":power,"plug":plug}},"filter":{"brand_restricted_tariffs":False,"foreign_tariffs":False,"provider_customer_tariffs":True}},"relationships":{}}}
+                      st2,d=api(ATLAS+"/v1/tariff_details","POST",body)
+                      included={(x.get("type"),x.get("id")):x for x in (d.get("included") or [])} if isinstance(d,dict) else {}
+                      direct=[]
+                      for z in (d.get("data") or []) if isinstance(d,dict) else []:
+                          attrs=z.get("attributes") or {}; rel=z.get("relationships") or {}
+                          emp=rel.get("emp",{}).get("data") or {}; cpo=rel.get("cpo",{}).get("data") or {}; tar=rel.get("tariff",{}).get("data") or {}
+                          cpo_obj=included.get((cpo.get("type"),cpo.get("id"))) or {}
+                          cpo_name=((cpo_obj.get("attributes") or {}).get("name") or "")
+                          if attrs.get("is_roaming") is False and emp.get("id") and emp.get("id")==cpo.get("id") and "swisscharge" in cpo_name.lower():
+                              direct.append({
+                                "detailId":z.get("id"),"attributes":attrs,
+                                "cpo":cpo_obj,
+                                "tariff":included.get((tar.get("type"),tar.get("id")))
+                              })
+                      exact.append({"stationId":rec.get("id"),"name":a.get("name"),"address":a.get("address"),"chargePoint":cp,"tariffHttpStatus":st2,"directSwisschargeNonRoaming":direct})
+              rows.append({"reference":t["ref"],"evseId":t["evseId"],"stationQueryStatus":st,"matches":exact})
+              print(t["ref"],"matches",len(exact),"direct",sum(len(x["directSwisschargeNonRoaming"]) for x in exact),flush=True)
+          out={"schemaVersion":1,"country":"CH","operatorId":"CH*SUI","generatedAt":datetime.now(timezone.utc).isoformat(),
+               "method":"Exact EVSE-ID match in Chargeprice + Swisscharge CPO + non-roaming EMP=CPO only; no coordinate-only tariff promotion.",
+               "rows":rows,
+               "summary":{"targets":len(rows),"exactMatches":sum(1 for r in rows if r["matches"]),"withDirectTariff":sum(1 for r in rows if any(m["directSwisschargeNonRoaming"] for m in r["matches"]))}}
+          Path("docs/switzerland-swisscharge-chargeprice-residual-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(out["summary"]))
+          PY
+      - name: Persist
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-swisscharge-chargeprice-residual-probe-2026-09-29.json
+          git commit -m "research(ch): probe Swisscharge residuals via exact Chargeprice EVSEs" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
