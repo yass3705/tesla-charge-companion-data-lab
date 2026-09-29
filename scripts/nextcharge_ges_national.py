@@ -131,7 +131,23 @@ def process(item):
         cf={"idStation":str(nsid),"limit":"100","offset":"0","osType":"android","appVersion":"6.2.02","tokenAppSessionForStations":""}
         cresp=post("/stationConnectors",cf)
         conns=list_data(cresp)
-        station_calls.append({"idStation":nsid,"distanceM":round(d,2),"provider":st.get("provider"),"connectorCount":len(conns),"status":(cresp.get("json") or {}).get("status") if isinstance(cresp,dict) and isinstance(cresp.get("json"),dict) else None})
+        station_calls.append({
+          "idStation":nsid,
+          "distanceM":round(d,2),
+          "provider":st.get("provider"),
+          "connectorCount":len(conns),
+          "status":(cresp.get("json") or {}).get("status") if isinstance(cresp,dict) and isinstance(cresp.get("json"),dict) else None,
+          "connectorIdentities":[
+            {
+              "uidConnector":c.get("uidConnector"),
+              "physicalReference":c.get("physicalReference"),
+              "powerMax":c.get("powerMax"),
+              "current":c.get("current"),
+              "standard":c.get("standard"),
+            }
+            for c in conns if isinstance(c,dict)
+          ],
+        })
         for c in conns:
             if not isinstance(c,dict): continue
             uid=c.get("uidConnector")
