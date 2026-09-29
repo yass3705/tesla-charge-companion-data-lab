@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataset": "tcc-v9-switzerland",
-  "generatedAt": "2026-09-29T18:49:11.603811+00:00",
+  "generatedAt": "2026-09-29T19:08:31.994122+00:00",
   "country": "CH",
   "nationalSource": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
   "policy": {
@@ -255,13 +255,13 @@
       "label": "AVIA guest exact",
       "file": "data/switzerland/avia-guest-direct-tariffs.json",
       "status": "loaded",
-      "matchedEvseCount": 582
+      "matchedEvseCount": 583
     },
     {
       "label": "AVIA successor alias",
       "file": "data/switzerland/avia-successor-alias-overlay.json",
       "status": "loaded",
-      "matchedEvseCount": 1
+      "matchedEvseCount": 0
     },
     {
       "label": "Partino Baden exact",
@@ -701,15 +701,15 @@
       "name": "eCarUp",
       "evseCount": 6764,
       "stationCount": null,
-      "status": "blocked",
-      "evidence": "docs/switzerland-ecarup-finalization-2026-09-28.json",
-      "note": "6470/6764. 294 current owner EVSEs remain after exact normalized connector-ID matching, a dense national API sweep and fail-closed coordinate overlays. eCarUp allows station owners to define their own prices, so unresolved stations cannot inherit a network tariff.",
+      "status": "partial",
+      "evidence": "docs/switzerland-ecarup-residual-name-search-2026-09-29.json",
+      "note": "6474/6764 deterministic current prices. New APK-derived exact public search schema recovered: GET /api/stations?searchTerm=...&location=lat,lon&includePartners=true&onlyAvailable=false&onlyRecentlyUsed=false. First 5 residuals tested produced 4 safe exact-name+coordinate single-connector promotions; 290 remain. Continue residual batches fail-closed.",
       "setAside": false,
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Acquire new exact connector IDs/station responses from the eCarUp public API or exact station payment pages for the residual 294 EVSEs."
+      "blockerPersistent": false,
+      "blockerEvidence": null,
+      "resumeCondition": "Continue exact-name+coordinate public API search over the remaining 290 residual EVSEs; accept only deterministic exact matches."
     }
   },
   "output": "data/tcc_v9/switzerland.json",
-  "outputBytes": 49760737
+  "outputBytes": 49761041
 }
