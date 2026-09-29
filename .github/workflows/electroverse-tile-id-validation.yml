@@ -1,0 +1,27 @@
+name: TEST NON-TESLA — Electroverse tile ID validation
+on:
+  push:
+    paths:
+      - tests/non-tesla/active/run-electroverse-tile-id-validation.trigger
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          node scripts/electroverse_tile_id_validation.mjs
+          git add reports/electroverse/tile-id-validation.json
+          git commit -m "test(electroverse): record tile ID validation [run ${GITHUB_RUN_ID}]" || true
+          git pull --rebase origin main
+          git push origin HEAD:main
