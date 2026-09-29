@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 API=os.environ.get("AVIA_API_BASE","https://pdefweushaapiam01.azure-api.net").rstrip("/")
 TENANT=os.environ.get("AVIA_PICOTY_TENANT_ID","9439c762-3ce1-45fc-a9ea-a92ed5e06489")
 KEY=os.environ.get("AVIA_APIM_SUBSCRIPTION_KEY","").strip()
-# Known AVIA Picoty site: Maulette, FRPY2P785500029.
+# Known AVIA Picoty site used only for a bounded smoke test: Maulette, FRPY2P785500029.
 BBOX=("48.70,1.50","48.88,1.78")
 
 def get(path, query=None):
