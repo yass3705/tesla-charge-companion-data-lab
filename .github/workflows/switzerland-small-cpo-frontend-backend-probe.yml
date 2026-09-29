@@ -1,0 +1,149 @@
+name: Switzerland remaining small CPO frontend/backend probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-small-cpo-frontend-backend-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Inspect parking.ch frontend and probe Swisscharge legacy refs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,urllib.request,urllib.parse,urllib.error,http.cookiejar
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          UA="Mozilla/5.0 TCC-V9-small-cpo"
+          pages={
+            "kobiboden":"https://www.parking.ch/en/e-loading/einsiedeln/ch-evt-eavc001001",
+            "herrliberg":"https://www.parking.ch/en/e-loading/herrliberg/ch-her-e123-0001",
+          }
+          def fetch(url,headers=None,timeout=40):
+            req=urllib.request.Request(url,headers=headers or {"User-Agent":UA,"Accept":"*/*"})
+            try:
+              with urllib.request.urlopen(req,timeout=timeout) as r:
+                return r.status,r.geturl(),dict(r.headers.items()),r.read()
+            except urllib.error.HTTPError as e:
+              return e.code,e.geturl(),dict(e.headers.items()),e.read()
+            except Exception as e:
+              return 0,url,{},(type(e).__name__+": "+str(e)).encode()
+
+          page_results={}
+          asset_urls=[]
+          for name,url in pages.items():
+            st,final,h,raw=fetch(url,{"User-Agent":UA,"Accept":"text/html,*/*"})
+            html=raw.decode("utf-8","replace")
+            scripts=re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',html,re.I)
+            links=re.findall(r'<link[^>]+href=["\']([^"\']+)["\']',html,re.I)
+            token_m=re.search(r'<meta[^>]+name=["\']api-token["\'][^>]+content=["\']([^"\']+)["\']',html,re.I)
+            if not token_m:
+              token_m=re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']api-token["\']',html,re.I)
+            token=token_m.group(1) if token_m else None
+            abs_scripts=[urllib.parse.urljoin(final,s) for s in scripts]
+            asset_urls.extend(abs_scripts)
+            page_results[name]={
+              "url":url,"status":st,"finalUrl":final,"apiToken":token,
+              "scripts":abs_scripts,"links":[urllib.parse.urljoin(final,x) for x in links[:100]],
+              "apiLikeHtml":sorted(set(re.findall(r'[^"\'\s<>]{0,120}(?:api|tariff|price|charging|eloading)[^"\'\s<>]{0,180}',html,re.I)))[:300]
+            }
+
+          assets=[]
+          for u in list(dict.fromkeys(asset_urls)):
+            st,final,h,raw=fetch(u,{"User-Agent":UA,"Accept":"application/javascript,*/*"})
+            txt=raw.decode("utf-8","replace")
+            matches=[]
+            for pat in [
+              r'https?://[^"\'\\\s<>]+',
+              r'["\']([^"\']*/api/[^"\']*)["\']',
+              r'["\']([^"\']*(?:e-loading|eloading|charging|tariff|price)[^"\']*)["\']'
+            ]:
+              for m in re.finditer(pat,txt,re.I):
+                val=m.group(1) if m.lastindex else m.group(0)
+                if val not in matches: matches.append(val[:500])
+                if len(matches)>=500: break
+            token_context=[]
+            for needle in ["api-token","apiToken","Authorization","axios","fetch(","tariff","price","e-loading"]:
+              pos=0
+              while True:
+                i=txt.find(needle,pos)
+                if i<0 or len(token_context)>=120: break
+                token_context.append({"needle":needle,"text":txt[max(0,i-1000):min(len(txt),i+2200)]})
+                pos=i+len(needle)
+            assets.append({"url":final,"status":st,"bytes":len(raw),"matches":matches,"contexts":token_context})
+
+          # Probe known public Swisscharge portals with legacy EVTEC identifiers.
+          bases=[
+            ("adhoc","https://adhoc.swisscharge.ch","Swisscharge_CH"),
+          ]
+          refs=[
+            "EAVC001001","EAVC001002","EAVC001003",
+            "AVC001001","AVC001002","AVC001003",
+            "001001","001002","001003",
+            "2395",
+            "CH*EVT*EAVC001001","CH*EVT*EAVC001002","CH*EVT*EAVC001003"
+          ]
+          probes=[]
+          for label,base,tenant in bases:
+            cj=http.cookiejar.CookieJar()
+            op=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+            def get(url,headers=None):
+              req=urllib.request.Request(url,headers=headers or {},method="GET")
+              try:
+                with op.open(req,timeout=25) as r:return r.status,r.geturl(),r.read()
+              except urllib.error.HTTPError as e:return e.code,e.geturl(),e.read()
+              except Exception as e:return 0,url,(type(e).__name__+": "+str(e)).encode()
+            for ref in refs:
+              page=f"{base}/tenant/{tenant}/session-start/{urllib.parse.quote(ref,safe='')}"
+              api=f"{base}/api/v1/charge-points?evsePhysicalReference={urllib.parse.quote(ref,safe='')}"
+              get(page,{"User-Agent":UA})
+              st,fu,raw=get(api,{"Accept":"application/json","Tenant":tenant,"tenant-path":page,"Referer":page,"User-Agent":UA})
+              try: body=json.loads(raw.decode())
+              except: body={"raw":raw.decode("utf-8","replace")[:500]}
+              data=(body or {}).get("data") if isinstance(body,dict) else None
+              evses=(data or {}).get("evses") or []
+              probes.append({"reference":ref,"status":st,"evses":evses,"chargePoint":(data or {}).get("chargePoint") if data else None,"error":None if evses else body})
+
+          out={
+            "schemaVersion":1,
+            "generatedAt":datetime.now(timezone.utc).isoformat(),
+            "pages":page_results,
+            "assets":assets,
+            "swisschargeLegacyEvtecProbes":probes
+          }
+          Path("docs/switzerland-small-cpo-frontend-backend-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps({
+            "pages":{k:{"status":v["status"],"scriptCount":len(v["scripts"]),"hasApiToken":bool(v["apiToken"])} for k,v in page_results.items()},
+            "assetCount":len(assets),
+            "successfulLegacy":[{"reference":p["reference"],"status":p["status"],"evseCount":len(p["evses"])} for p in probes if p["evses"]]
+          },ensure_ascii=False))
+          PY
+
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-small-cpo-frontend-backend-probe-2026-09-29.json
+          git commit -m "research(ch): probe remaining small-CPO frontends and legacy refs" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
