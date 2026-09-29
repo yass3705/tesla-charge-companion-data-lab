@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "dataset": "switzerland-public-charging-v9",
   "country": "CH",
-  "generatedAt": "2026-09-29T13:34:07.596065+00:00",
+  "generatedAt": "2026-09-29T15:36:11.082927+00:00",
   "sourceBundle": "data/tcc_v9/switzerland.json",
   "baseInventory": {
     "source": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
@@ -21,10 +21,10 @@
   },
   "summary": {
     "nationalEvseCount": 19466,
-    "directPricedEvseCount": 17742,
+    "directPricedEvseCount": 17745,
     "classifiedNoPublicDirectTariffCount": 386,
-    "directUnresolvedEvseCount": 1338,
-    "directResolvedEvseCount": 18128,
+    "directUnresolvedEvseCount": 1335,
+    "directResolvedEvseCount": 18131,
     "operatorStatusCounts": {
       "complete": 34,
       "blocked": 5,
@@ -315,11 +315,11 @@
       "status": "blocked",
       "name": "CH*EVT",
       "evidence": "docs/switzerland-small-cpo-resolution-2026-09-29.json",
-      "note": "2/8 deterministically resolved. ADEV Werkhof Läufelfingen EVSEs EADE0010011/EADE0010012 are CHF 0.54/kWh from ADEV's official 19 May 2026 publication. Kriens (3 EVSEs) and Einsiedeln/Kobiboden (3 EVSEs) remain unresolved because current co-located Swisscharge records do not provide a deterministic fee-complete mapping to the CH*EVT channels.",
+      "note": "5/8 deterministically resolved. ADEV Läufelfingen 2 EVSEs are CHF 0.54/kWh from ADEV official publication. Kriens 3 EVSEs are resolved through deterministic same-site reconciliation to current Swisscharge EVSEs 290524/290525/290526 at Rengglochstrasse 19, whose current Swiss eMobility/Chargeprice non-roaming tariff is CHF 0.29/kWh + CHF 0.09/min. Only Kobiboden 3 EVSEs remain unresolved; the nearby Swisscharge AVC-SYSTEM records are AC-only and cannot safely cover the EVTEC DC channels.",
       "setAside": false,
       "blockerPersistent": true,
       "blockerEvidence": "docs/switzerland-small-cpo-resolution-2026-09-29.json",
-      "resumeCondition": "Obtain current exact payment-screen/QR/app tariffs or backend ID mappings for Kriens and Kobiboden CH*EVT channels."
+      "resumeCondition": "Resolve the three Kobiboden 57 CH*EVT channels via current exact payment-screen/QR/app tariff or deterministic backend mapping; do not extrapolate the nearby AC-only Swisscharge tariff to EVTEC DC."
     },
     "CH*AMG": {
       "operatorId": "CH*AMG",
@@ -490,7 +490,7 @@
     "data/switzerland/avia-successor-alias-overlay.json": 1,
     "data/switzerland/lidl-official-direct-tariffs.json": 173,
     "data/switzerland/partino-baden-direct-tariffs.json": 3,
-    "data/switzerland/evt-official-site-partial-tariffs.json": 2,
+    "data/switzerland/evt-official-site-partial-tariffs.json": 5,
     "data/switzerland/energie360-direct-tariffs.json": 809,
     "data/switzerland/energie360-direct-tariffs-second-pass.json": 816,
     "docs/switzerland-energie360-finalization-2026-09-28.json": 4,
@@ -504,5 +504,5 @@
     "data/switzerland/ail-emoti-official-direct-tariffs.json": 21
   },
   "output": "data/national/switzerland_public_charging_v9.json",
-  "outputBytes": 50286884
+  "outputBytes": 50289881
 }
