@@ -1,0 +1,108 @@
+name: Switzerland small CPO exact parking detail probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-small-cpo-exact-parking-detail-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Extract DetailELoadingMap ids and call exact API
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,urllib.request,urllib.parse,urllib.error,http.cookiejar
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          UA="Mozilla/5.0 TCC-V9-small-cpo-exact"
+          targets={
+            "kobiboden":"https://www.parking.ch/en/e-loading/einsiedeln/ch-evt-eavc001001",
+            "herrliberg":"https://www.parking.ch/en/e-loading/herrliberg/ch-her-e123-0001",
+          }
+          def opener():
+            cj=http.cookiejar.CookieJar()
+            return urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+          def get(op,url,headers=None):
+            req=urllib.request.Request(url,headers=headers or {"User-Agent":UA},method="GET")
+            try:
+              with op.open(req,timeout=35) as r:return r.status,r.geturl(),dict(r.headers.items()),r.read()
+            except urllib.error.HTTPError as e:return e.code,e.geturl(),dict(e.headers.items()),e.read()
+            except Exception as e:return 0,url,{},(type(e).__name__+": "+str(e)).encode()
+
+          rows=[]
+          for name,page in targets.items():
+            op=opener()
+            st,fu,h,raw=get(op,page,{"User-Agent":UA,"Accept":"text/html,*/*"})
+            html=raw.decode("utf-8","replace")
+            token=None
+            for pat in [
+              r'<meta[^>]+name=["\']api-token["\'][^>]+content=["\']([^"\']+)["\']',
+              r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']api-token["\']'
+            ]:
+              m=re.search(pat,html,re.I)
+              if m: token=m.group(1); break
+            # Capture exact constructor invocation(s)
+            inv=[]
+            for m in re.finditer(r'new\s+DetailELoadingMap\s*\(([^)]*)\)',html):
+              inv.append({"args":m.group(1),"context":html[max(0,m.start()-600):min(len(html),m.end()+1000)]})
+            # Also capture detail id variables near map initialization
+            candidates=[]
+            for x in inv:
+              first=x["args"].split(",")[0].strip().strip("'\"")
+              if first: candidates.append(first)
+            for pat in [
+              r'DetailELoadingMap\s*\(\s*["\']?([^,"\')\s]+)',
+              r'detailId\s*[:=]\s*["\']?([A-Za-z0-9_*\-]+)',
+              r'eloading[^\n]{0,120}\bid\b\s*[:=]\s*["\']?([A-Za-z0-9_*\-]+)'
+            ]:
+              for m in re.finditer(pat,html,re.I):
+                candidates.append(m.group(1))
+            candidates=list(dict.fromkeys(candidates))
+
+            probes=[]
+            for ident in candidates[:30]:
+              url="https://www.parking.ch/?"+urllib.parse.urlencode({"rex-api-call":"get_eloading","id":ident})
+              headers={"User-Agent":UA,"Accept":"application/json,text/plain,*/*","X-Api-Token":token or "","Referer":page}
+              st2,fu2,h2,raw2=get(op,url,headers)
+              txt=raw2.decode("utf-8","replace")
+              try: body=json.loads(txt)
+              except: body=txt[:3000]
+              probes.append({"id":ident,"status":st2,"body":body})
+            rows.append({
+              "target":name,"pageStatus":st,"tokenPresent":bool(token),
+              "invocations":inv,"candidateIds":candidates,"probes":probes
+            })
+          out={"schemaVersion":1,"generatedAt":datetime.now(timezone.utc).isoformat(),"rows":rows}
+          Path("docs/switzerland-small-cpo-exact-parking-detail-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps([{
+            "target":r["target"],"candidateIds":r["candidateIds"],
+            "successes":[{"id":p["id"],"status":p["status"],"body":p["body"]} for p in r["probes"] if p["status"]==200]
+          } for r in rows],ensure_ascii=False))
+          PY
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-small-cpo-exact-parking-detail-probe-2026-09-29.json
+          git commit -m "research(ch): query exact parking.ch e-loading details" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
