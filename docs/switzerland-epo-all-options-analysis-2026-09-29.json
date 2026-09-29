@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "country": "CH",
+  "operatorId": "CH*EPO",
+  "generatedAt": "2026-09-29T18:27:00Z",
+  "status": "active-analysis",
+  "findings": [
+    {
+      "id": "official-qr-flow",
+      "result": "confirmed",
+      "detail": "Official Eponet wiki states QR opens a browser flow whose step 1 exposes current station price and price details; operator controls start/kWh/blocking/parking fees."
+    },
+    {
+      "id": "qr-identity",
+      "result": "confirmed",
+      "detail": "Official portal documentation shows each QR is associated with Charger ID + EVSE ID; example Charger ID 25-5889 / EVSE CHEPOE0001749; downloaded filename QR-Code_CH-EPO-E0001749.svg."
+    },
+    {
+      "id": "frontend-domain",
+      "result": "confirmed",
+      "detail": "Official screenshots show the QR/ad-hoc flow runs on portal.eponet.ch."
+    },
+    {
+      "id": "legacy-public-link",
+      "result": "confirmed-but-unreachable",
+      "detail": "Official wiki currently links to https://www.eponet.info/adhoc_laden; current fetchers cannot reach this host/path."
+    },
+    {
+      "id": "known-charger-ids",
+      "result": "confirmed",
+      "detail": "Eight Charger IDs are embedded in current national inventory names, covering 23 EVSE; see switzerland-epo-charger-id-pivot-2026-09-29.json."
+    },
+    {
+      "id": "aggregator",
+      "result": "inventory-only",
+      "detail": "adhoccharging.eu currently indexes 72 Eponet stations / 338 charge points but exposes no Eponet direct prices for tested known Charger-ID sites; useful for inventory/status, not tariff resolution."
+    },
+    {
+      "id": "portal-route-probes",
+      "result": "negative",
+      "detail": "Guessed portal routes /adhoc_laden, /adhoc_laden.php, /adhoc, /publiccharge.php, /public_charging.php and /charge.php return 404; QR target likely uses a different path or tokenized/query route."
+    },
+    {
+      "id": "search-index",
+      "result": "negative",
+      "detail": "Search engines did not index portal.eponet.ch price/ad-hoc pages or exact known Charger-ID/EVSE QR targets."
+    },
+    {
+      "id": "firecrawl",
+      "result": "unavailable",
+      "detail": "Connected Firecrawl account has insufficient credits; no Firecrawl-based source inspection possible now."
+    }
+  ],
+  "nextSafeTests": [
+    "Recover the QR target from an actual Eponet QR image/label for any known EVSE.",
+    "Static-inspect the Eponet Go APK/XAPK when the attachment is accessible/materialized; search strings for portal.eponet.ch, eponet.info, adhoc, QR/deep-link and API base URLs.",
+    "Inspect official wiki screenshots/assets and any downloadable quick-guide PDF for a photographed QR that can be decoded.",
+    "Use known Charger ID + EVSE pairs as validation fixtures once the target URL schema is recovered."
+  ],
+  "policy": "No brute-force enumeration, no charging/payment action, no tariff extrapolation. Only public read-only endpoints and exact identity matches."
+}
