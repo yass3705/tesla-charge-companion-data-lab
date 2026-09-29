@@ -10,11 +10,9 @@ the rest of the identifier is unchanged.
 Safety / tariff rules:
 - The public anonymous browser session is held only in process memory.
 - No cookies, bearer values or raw response bodies are persisted.
-- ``price`` is promoted only when currency=EUR and typePrice=KWH.
-- ``directPaymenthPrice`` is retained as a separate candidate but is NOT made
-  rankable until its consumer semantics are independently validated.
-- penalty fields are retained raw but are NOT applied until their units and
-  triggering rules are independently validated.
+- ``price`` is retained as the Enel app / Pay Per Use commercial surface and is NOT used as direct/ad-hoc price.
+- ``directPaymenthPrice`` is the rankable direct/ad-hoc energy field when currency=EUR and directPaymenthTypePrice=KWH. This semantic was independently validated on 2026-09-29 by current APK 4.3.67 plus anonymous station-detail probes.
+- ``directPaymenthPenaltyPrice`` is retained as a direct-payment penalty candidate; energy rankability does not require applying the penalty until its trigger/unit semantics are fully validated.
 - Any unmatched or malformed EVSE fails closed.
 """
 from __future__ import annotations
@@ -218,24 +216,24 @@ def normalize_plug(
             "powerDeltaKw": round(power_delta, 6) if power_delta is not None else None,
             "powerMatchesWithin0_1Kw": power_delta is not None and power_delta <= 0.1,
         },
-        "directOperatorTariff": {
+        "appPayPerUseTariff": {
             "sourceField": "price",
             "rawValueCents": raw_price,
             "currency": currency,
             "type": price_type,
             "eurPerKwh": operator_eur_kwh,
-            "rankable": operator_eur_kwh is not None,
-            "rankableReason": "enel_public_detail_eur_kwh" if operator_eur_kwh is not None else "unsupported_or_missing_price_semantics",
-            "snapshotNature": "current_price_returned_by_enel_station_detail",
+            "rankableAsDirect": False,
+            "reason": "separate_app_pay_per_use_surface",
         },
-        "directPaymentCandidate": {
+        "directPaymentTariff": {
             "sourceField": "directPaymenthPrice",
             "rawValueCents": finite_number(plug.get("directPaymenthPrice")),
             "currency": currency,
             "type": direct_type,
-            "eurPerKwhCandidate": direct_eur_kwh,
-            "rankable": False,
-            "rankableReason": "directPaymenthPrice_consumer_semantics_not_independently_validated",
+            "eurPerKwh": direct_eur_kwh,
+            "rankable": direct_eur_kwh is not None,
+            "rankableReason": "current_apk_and_public_station_detail_semantics_validated_2026-09-29" if direct_eur_kwh is not None else "unsupported_or_missing_direct_payment_price_semantics",
+            "snapshotNature": "current_direct_payment_price_returned_by_enel_station_detail",
         },
         "penaltyCandidate": {
             "rawPenaltyPrice": finite_number(plug.get("penaltyPrice")),
@@ -315,12 +313,12 @@ def main() -> None:
                     continue
                 assert record is not None
                 records_by_evse[record["evseId"]].append(record)
-                tariff = record["directOperatorTariff"]
-                if tariff.get("rankable"):
-                    price_counter[f"{tariff.get('eurPerKwh'):.3f}"] += 1
-                direct = record["directPaymentCandidate"].get("eurPerKwhCandidate")
-                if direct is not None:
-                    direct_counter[f"{direct:.3f}"] += 1
+                app_tariff = record["appPayPerUseTariff"]
+                if app_tariff.get("eurPerKwh") is not None:
+                    price_counter[f"{app_tariff.get('eurPerKwh'):.3f}"] += 1
+                direct_tariff = record["directPaymentTariff"]
+                if direct_tariff.get("rankable"):
+                    direct_counter[f"{direct_tariff.get('eurPerKwh'):.3f}"] += 1
                 status_counter[str(record.get("enelPlugStatus") or "UNKNOWN")] += 1
 
     output_records: list[dict[str, Any]] = []
@@ -344,8 +342,8 @@ def main() -> None:
                 {
                     "connector": row.get("connector"),
                     "enelPlugStatus": row.get("enelPlugStatus"),
-                    "directOperatorTariff": row.get("directOperatorTariff"),
-                    "directPaymentCandidate": row.get("directPaymentCandidate"),
+                    "appPayPerUseTariff": row.get("appPayPerUseTariff"),
+                    "directPaymentTariff": row.get("directPaymentTariff"),
                     "penaltyCandidate": row.get("penaltyCandidate"),
                 }
                 for row in rows
@@ -354,7 +352,7 @@ def main() -> None:
 
     rankable_evse_count = sum(
         1 for row in output_records
-        if any((plug.get("directOperatorTariff") or {}).get("rankable") for plug in row.get("plugs", []))
+        if any((plug.get("directPaymentTariff") or {}).get("rankable") for plug in row.get("plugs", []))
     )
     power_match_count = sum(
         1 for row in output_records
@@ -369,8 +367,8 @@ def main() -> None:
         "failedStationDetailCount": len(detail_failures),
         "matchedEnelEvseCount": len(output_records),
         "unmatchedEnelPlugCount": len(unmatched),
-        "rankableOperatorTariffEvseCount": rankable_evse_count,
-        "rankableCoveragePctOfRequestedPunEnx": round(100.0 * rankable_evse_count / max(1, sum(len(serial_to_pun[s]) for s in serials)), 2),
+        "rankableDirectPaymentEvseCount": rankable_evse_count,
+        "rankableDirectPaymentCoveragePctOfRequestedPunEnx": round(100.0 * rankable_evse_count / max(1, sum(len(serial_to_pun[s]) for s in serials)), 2),
         "powerMatchWithin0_1KwEvseCount": power_match_count,
         "malformedPunEnxEvseIdCount": len(malformed_pun_ids),
     }
@@ -392,16 +390,18 @@ def main() -> None:
             "rawResponseBodiesPersisted": False,
         },
         "tariffPolicy": {
-            "rankableField": "price",
-            "rankableOnlyWhen": "currency=EUR and typePrice=KWH and numeric price",
+            "rankableField": "directPaymenthPrice",
+            "rankableOnlyWhen": "currency=EUR and directPaymenthTypePrice=KWH and numeric directPaymenthPrice",
             "priceStorageUnitDetected": "integer euro-cents; normalized by /100",
-            "directPaymenthPriceRankable": False,
+            "directPaymenthPriceRankable": True,
+            "semanticValidation": "2026-09-29 APK 4.3.67 + anonymous public station-detail probe; run326",
+            "appPriceRankableAsDirect": False,
             "penaltiesRankable": False,
-            "important": "operator price is an observed current station-detail snapshot; time-slot schedule overlay must be validated separately before future-time simulation",
+            "important": "direct-payment energy price is rankable per exact EVSE/plug; penalty is retained separately pending complete trigger semantics",
         },
         "counts": counts,
-        "observedOperatorPriceEurPerKwh": dict(sorted(price_counter.items())),
-        "observedDirectPaymentCandidateEurPerKwh": dict(sorted(direct_counter.items())),
+        "observedAppPayPerUsePriceEurPerKwh": dict(sorted(price_counter.items())),
+        "observedDirectPaymentPriceEurPerKwh": dict(sorted(direct_counter.items())),
         "observedPlugStatusCounts": dict(sorted(status_counter.items())),
         "quality": {
             "legacyEvoToEnxPrefixOnlyNormalization": True,
@@ -414,8 +414,8 @@ def main() -> None:
     report = {
         "generatedAt": generated,
         "counts": counts,
-        "observedOperatorPriceEurPerKwh": payload["observedOperatorPriceEurPerKwh"],
-        "observedDirectPaymentCandidateEurPerKwh": payload["observedDirectPaymentCandidateEurPerKwh"],
+        "observedAppPayPerUsePriceEurPerKwh": payload["observedAppPayPerUsePriceEurPerKwh"],
+        "observedDirectPaymentPriceEurPerKwh": payload["observedDirectPaymentPriceEurPerKwh"],
         "observedPlugStatusCounts": payload["observedPlugStatusCounts"],
         "detailFailureSample": detail_failures[:30],
         "unmatchedSample": unmatched[:30],
