@@ -87,31 +87,32 @@ def map_locations():
     errors=[]
     for la0,la1 in frange(LAT_MIN,LAT_MAX,LAT_STEP):
         for lo0,lo1 in frange(LON_MIN,LON_MAX,LON_STEP):
-            # Prefer an unfiltered status query so temporarily unavailable AVIA
-            # locations remain in the national reconciliation. Some backend
-            # versions require locationStatus, so fall back to AVAILABLE only
-            # when the all-status request itself is rejected.
-            q={
+            base_q={
                 "latLongBottomLeft":f"{la0:.6f},{lo0:.6f}",
                 "latLongTopRight":f"{la1:.6f},{lo1:.6f}",
                 "evseTypes":"AC,DC,HPC",
                 "connectorTypes":"TYPE2,CCS",
                 "includeCpos":"CHAVI",
             }
-            try:
-                payload=request_json("GET",f"/app-backend/v1/tenants/{TENANT_ID}/map-locations",q)
-            except Exception as all_status_error:
-                q["locationStatus"]="AVAILABLE"
+            # Deftpower's AVIA map accepts both AVAILABLE and NOT_AVAILABLE.
+            # Their union is the full map scope; other enum-like values are
+            # ignored by the backend and must not be used as evidence.
+            for location_status in ("AVAILABLE","NOT_AVAILABLE"):
+                q=dict(base_q)
+                q["locationStatus"]=location_status
                 try:
                     payload=request_json("GET",f"/app-backend/v1/tenants/{TENANT_ID}/map-locations",q)
+                    for loc in payload.get("locations") or []:
+                        if loc.get("partyId")=="AVI" and loc.get("id"):
+                            seen[loc["id"]]=loc
+                except Exception as e:
                     errors.append({
                         "bbox":[la0,lo0,la1,lo1],
-                        "stage":"all_status_fallback",
-                        "error":str(all_status_error),
+                        "locationStatus":location_status,
+                        "stage":"map",
+                        "error":str(e),
                     })
-                except Exception as e:
-                    errors.append({"bbox":[la0,lo0,la1,lo1],"stage":"map","error":str(e)})
-                    time.sleep(SLEEP)
+                time.sleep(SLEEP)
                     continue
             for loc in payload.get("locations") or []:
                 if loc.get("partyId")=="AVI" and loc.get("id"):
