@@ -22,6 +22,20 @@ def post(path, data, headers=None, timeout=(8,20)):
     except Exception as e:
         return {"elapsed":round(time.time()-t,3),"error":f"{type(e).__name__}: {e}"}
 
+def post_multipart(path, data, headers=None, timeout=(8,20)):
+    h={"User-Agent":"NextCharge/6.2.02 Android"}
+    if headers: h.update(headers)
+    files={k:(None,str(v)) for k,v in data.items()}
+    t=time.time()
+    try:
+        r=requests.post(BASE+path,files=files,headers=h,timeout=timeout)
+        row={"elapsed":round(time.time()-t,3),"httpStatus":r.status_code,"contentType":r.headers.get("content-type")}
+        try: row["json"]=r.json()
+        except Exception: row["textPrefix"]=r.text[:800]
+        return row
+    except Exception as e:
+        return {"elapsed":round(time.time()-t,3),"error":f"{type(e).__name__}: {e}"}
+
 def token_from(row):
     o=row.get("json") if isinstance(row,dict) else None
     if not isinstance(o,dict): return None
@@ -66,7 +80,7 @@ def main():
             ]
             for hn,hh in header_sets:
                 for ev in (EVSE,"IT*GES*E125845134"):
-                    s=post("/station",{"evseId":ev},hh)
+                    s=post_multipart("/station",{"uidConnector":ev},hh)
                     row={"authVariant":name,"headerVariant":hn,"submittedEvseId":ev,"response":s}
                     o=s.get("json") if isinstance(s,dict) else None
                     sid=None
@@ -81,10 +95,10 @@ def main():
                                     if sid is not None: break
                     if sid is not None:
                         row["stationId"]=sid
-                        row["connectors"]=post("/stationConnectors",{"idStation":str(sid),"limit":"100","offset":"0"},hh)
+                        row["connectors"]=post_multipart("/stationConnectors",{"idStation":str(sid),"limit":"100","offset":"0"},hh)
                     station.append(row)
     report={
-      "scope":"NextCharge guest stations-session reconstruction from APK 6.2.02",
+      "scope":"NextCharge guest station reconstruction using APK-observed multipart uidConnector flow",
       "deviceKey":DEVICE,
       "authAttempts":auth,
       "stationAttempts":station,
