@@ -1,0 +1,73 @@
+name: Switzerland EVTEC Swisscharge QR tenant probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-evtec-swisscharge-qr-tenant-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Resolve Swisscharge QR tenants for EVTEC co-located sites
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error,re,http.cookiejar,urllib.parse
+          from pathlib import Path
+          from datetime import datetime,timezone
+          refs=["290524","290525","290526","25665","25666","27986"]
+          UA="Mozilla/5.0 TCC-V9-EVTEC-QR"
+          rows=[]
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,req,fp,code,msg,hdrs,newurl): return None
+          nr=urllib.request.build_opener(NoRedirect)
+          for ref in refs:
+              url=f"https://cp.swisscharge.ch/public/cs/{ref}"
+              req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"text/html,*/*"})
+              try:
+                  with nr.open(req,timeout=30) as r:
+                      rows.append({"reference":ref,"status":r.status,"location":r.headers.get("Location"),"final":r.geturl()})
+              except urllib.error.HTTPError as e:
+                  rows.append({"reference":ref,"status":e.code,"location":e.headers.get("Location"),"body":e.read().decode("utf-8","replace")[:500]})
+              except Exception as e:
+                  rows.append({"reference":ref,"status":0,"error":type(e).__name__+": "+str(e)})
+          # Follow redirects and parse adhoc host/tenant/session ref
+          for row in rows:
+              loc=row.get("location")
+              if not loc: continue
+              if loc.startswith("/"): loc=urllib.parse.urljoin("https://cp.swisscharge.ch",loc)
+              row["redirectAbsolute"]=loc
+              m=re.search(r'https://([^/]+)/tenant/([^/]+)/session-start/([^/?#]+)',loc)
+              if m:
+                  row["adhocHost"]=m.group(1)
+                  row["tenant"]=urllib.parse.unquote(m.group(2))
+                  row["sessionReference"]=urllib.parse.unquote(m.group(3))
+          out={"schemaVersion":1,"generatedAt":datetime.now(timezone.utc).isoformat(),"rows":rows}
+          Path("docs/switzerland-evtec-swisscharge-qr-tenant-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps(out,ensure_ascii=False))
+          PY
+      - name: Persist probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-evtec-swisscharge-qr-tenant-probe-2026-09-29.json
+          git commit -m "research(ch): resolve EVTEC Swisscharge QR tenants" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
