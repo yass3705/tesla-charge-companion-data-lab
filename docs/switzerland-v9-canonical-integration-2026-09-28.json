@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "dataset": "switzerland-public-charging-v9",
   "country": "CH",
-  "generatedAt": "2026-09-29T23:02:58.158542+00:00",
+  "generatedAt": "2026-09-29T23:07:59.535775+00:00",
   "sourceBundle": "data/tcc_v9/switzerland.json",
   "baseInventory": {
     "source": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
@@ -28,7 +28,8 @@
     "operatorStatusCounts": {
       "complete": 35,
       "handled-separately": 1,
-      "blocked": 4
+      "blocked": 3,
+      "partial": 1
     }
   },
   "cpoResearchStatus": {
@@ -450,13 +451,13 @@
       "name": "eCarUp",
       "evseCount": 6764,
       "stationCount": null,
-      "status": "blocked",
-      "evidence": "docs/switzerland-ecarup-exhaustive-residual-blockers-2026-09-30.json",
-      "note": "6704/6764 deterministic current prices; 60 residual EVSE remain after exhaustive exact-name, Hubject, coordinate, power, plug and AC/DC reconciliation. Remaining cases are stale/missing public records or multi-connector mixed-tariff sites without deterministic EVSE-to-connector identity. No extrapolation.",
+      "status": "partial",
+      "evidence": "docs/switzerland-ecarup-residual-name-search-batch-2026-09-29.json",
+      "note": "6720/6764 deterministic current prices (99.35% coverage). User accepted this coverage on 2026-09-30; remaining 44 EVSE stay fail-closed and are set aside. Do not re-investigate without new authoritative evidence.",
       "setAside": true,
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-ecarup-exhaustive-residual-blockers-2026-09-30.json",
-      "resumeCondition": "Resume when a fresh national/eCarUp snapshot fixes stale names or coordinates, an exact public Hubject/station response appears, an exact public payment page is available, or an authoritative owner/source mapping links a residual national EVSE to a specific eCarUp connector/device."
+      "blockerPersistent": false,
+      "blockerEvidence": null,
+      "resumeCondition": "Resume only on materially new authoritative evidence or an explicit user request; otherwise keep the 44 residual EVSE fail-closed."
     }
   },
   "usedSourceCounts": {
@@ -503,5 +504,5 @@
     "data/switzerland/ail-emoti-official-direct-tariffs.json": 21
   },
   "output": "data/national/switzerland_public_charging_v9.json",
-  "outputBytes": 50292754
+  "outputBytes": 50292453
 }
