@@ -1,0 +1,59 @@
+name: Enel Italy direct-payment national rebuild
+
+on:
+  push:
+    branches:
+      - research/enel-v9-national
+    paths:
+      - scripts/enel_italy_national_tariffs.py
+      - .github/workflows/enel-italy-directpayment-national.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install --disable-pip-version-check requests requests-aws4auth selenium
+      - name: Rebuild current PUN Italy inventory
+        run: python scripts/pun_italy_national.py --workers 8
+      - name: Build current ENX direct-payment national candidate
+        run: python scripts/enel_italy_national_tariffs.py --workers 16
+      - name: Validate direct-payment candidate
+        run: |
+          python - <<'PY'
+          import gzip, json
+          from pathlib import Path
+          p=Path('data/national/enel_direct_stations_italy.json.gz')
+          r=json.loads(gzip.decompress(p.read_bytes()))
+          c=r['counts']
+          t=r['tariffPolicy']
+          assert r['country']=='IT'
+          assert c['punEnxEvseCount'] > 20000
+          assert c['punEnxStationSerialCount'] > 9000
+          assert c['requestedStationSerialCount'] == c['punEnxStationSerialCount']
+          assert t['rankableField'] == 'directPaymenthPrice'
+          assert t['directPaymenthPriceRankable'] is True
+          assert t['appPriceRankableAsDirect'] is False
+          assert c['rankableDirectPaymentEvseCount'] > 0
+          print(json.dumps(c,ensure_ascii=False,indent=2))
+          print(json.dumps(r['observedDirectPaymentPriceEurPerKwh'],ensure_ascii=False,indent=2))
+          print(json.dumps(r['observedAppPayPerUsePriceEurPerKwh'],ensure_ascii=False,indent=2))
+          PY
+      - name: Upload ENX direct-payment national candidate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enel-directpayment-italy-national
+          path: |
+            data/national/enel_direct_stations_italy.json.gz
+            data/reports/enel_italy_national_tariffs_report.json
+          retention-days: 14
