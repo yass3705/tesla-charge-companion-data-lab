@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "dataset": "switzerland-public-charging-v9",
   "country": "CH",
-  "generatedAt": "2026-09-29T19:08:30.418645+00:00",
+  "generatedAt": "2026-09-29T19:09:09.093438+00:00",
   "sourceBundle": "data/tcc_v9/switzerland.json",
   "baseInventory": {
     "source": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
@@ -28,7 +28,8 @@
     "operatorStatusCounts": {
       "complete": 35,
       "handled-separately": 1,
-      "blocked": 4
+      "blocked": 3,
+      "partial": 1
     }
   },
   "cpoResearchStatus": {
@@ -450,13 +451,13 @@
       "name": "eCarUp",
       "evseCount": 6764,
       "stationCount": null,
-      "status": "blocked",
-      "evidence": "docs/switzerland-ecarup-finalization-2026-09-28.json",
-      "note": "6470/6764. 294 current owner EVSEs remain after exact normalized connector-ID matching, a dense national API sweep and fail-closed coordinate overlays. eCarUp allows station owners to define their own prices, so unresolved stations cannot inherit a network tariff.",
+      "status": "partial",
+      "evidence": "docs/switzerland-ecarup-residual-name-search-2026-09-29.json",
+      "note": "6474/6764 deterministic current prices. New APK-derived exact public search schema recovered: GET /api/stations?searchTerm=...&location=lat,lon&includePartners=true&onlyAvailable=false&onlyRecentlyUsed=false. First 5 residuals tested produced 4 safe exact-name+coordinate single-connector promotions; 290 remain. Continue residual batches fail-closed.",
       "setAside": false,
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Acquire new exact connector IDs/station responses from the eCarUp public API or exact station payment pages for the residual 294 EVSEs."
+      "blockerPersistent": false,
+      "blockerEvidence": null,
+      "resumeCondition": "Continue exact-name+coordinate public API search over the remaining 290 residual EVSEs; accept only deterministic exact matches."
     }
   },
   "usedSourceCounts": {
@@ -486,8 +487,7 @@
     "data/switzerland/plenitude-official-direct-tariffs.json": 180,
     "data/switzerland/de-edh-direct-tariffs.json": 2,
     "data/switzerland/edh-direct-tariffs.json": 16,
-    "data/switzerland/avia-guest-direct-tariffs.json": 582,
-    "data/switzerland/avia-successor-alias-overlay.json": 1,
+    "data/switzerland/avia-guest-direct-tariffs.json": 583,
     "data/switzerland/lidl-official-direct-tariffs.json": 173,
     "data/switzerland/partino-baden-direct-tariffs.json": 3,
     "data/switzerland/evt-official-site-partial-tariffs.json": 5,
@@ -504,5 +504,5 @@
     "data/switzerland/ail-emoti-official-direct-tariffs.json": 21
   },
   "output": "data/national/switzerland_public_charging_v9.json",
-  "outputBytes": 50292324
+  "outputBytes": 50292585
 }
