@@ -4,7 +4,7 @@ import json,re,xml.etree.ElementTree as ET
 from pathlib import Path
 from collections import Counter,defaultdict
 
-ROAD=Path("data/belgium/additional/road-2026-09-28.json")
+ROAD=Path("data/belgium/additional/road-2026-09-29.json")
 INDIGO=Path("data/belgium/additional/indigo-2026-09-28.xml")
 OUTD=Path("data/belgium/additional/canonical"); OUTD.mkdir(parents=True,exist_ok=True)
 REPD=Path("reports/belgium"); REPD.mkdir(parents=True,exist_ok=True)
@@ -113,5 +113,30 @@ report={
    "Tariff resolution is performed separately per operator/source."
  ]
 }
-(REPD/"belgium-additional-inventory-integration-2026-09-29.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
+(REPD/"belgium-additional-inventory-integration-2026-09-29.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\\n")
+
+manifest={
+ "country":"BE","asOf":"2026-09-29","phase":"v9-source-consolidation",
+ "inventorySources":[
+   {"name":"Eco-Movement Belgium NAP","manifest":"data/belgium/nap-belgium-manifest.json","scope":"selected CPOs","locations":16873,"evses":70216},
+   {"name":"Road","canonical":"data/belgium/additional/canonical/road-belgium-canonical-2026-09-29.json","locations":len(locations),"evses":len(road_rows)},
+   {"name":"INDIGO","canonical":"data/belgium/additional/canonical/indigo-belgium-canonical-2026-09-29.json","sites":len(indigo_sites),"evses":indigo_evses}
+ ],
+ "tariffSources":[
+   {"name":"Eco-Movement + exact official overlays","progress":"docs/belgium-cpo-progress-2026-09.json"},
+   {"name":"Road public tariffs","overlay":"data/operator_direct/road_belgium_tariffs_2026-09-29.json","pricedEvses":7475,"sourceLimitedEvses":699},
+   {"name":"INDIGO official Belgium tariff","overlay":"data/operator_direct/indigo_belgium_official_2026-09-29.json","pricedEvses":indigo_evses}
+ ],
+ "externalBlockedSources":[
+   {"name":"EnergyVision","reason":"free API key required from myevplatform@energyvision.be"},
+   {"name":"Monta","reason":"authenticated Public API application requires clientId/clientSecret"}
+ ],
+ "rules":[
+   "Do not infer tariffs.",
+   "Preserve source provenance.",
+   "Deduplicate only on stable EVSE identifiers or explicit source identity evidence.",
+   "Credential-gated sources remain blocked until legitimate credentials are supplied."
+ ]
+}
+(REPD/"belgium-v9-source-manifest-2026-09-29.json").write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+"\\n")
 print(json.dumps(report,ensure_ascii=False,indent=2))
