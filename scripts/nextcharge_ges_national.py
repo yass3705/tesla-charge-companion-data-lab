@@ -12,6 +12,7 @@ OUT=Path("data/reports/nextcharge_ges_national_report.json")
 DATA=Path("data/national/nextcharge_ges_national.json.gz")
 UA="NextCharge/6.2.02 Android"
 MAX_DISTANCE_M=100.0
+GRID_HALFSPAN_DEG=0.02
 WORKERS=12
 
 def post(path,data,attempts=3):
