@@ -120,6 +120,30 @@ def national_powers_w(rec):
             pass
     return vals
 
+def derive_short_terms(names):
+    import re
+    out=[]
+    seen=set()
+    stop={"STATION","LADESTATION","BORNE","PARKING","GARAGE","AG","SA","HOTEL","RESTAURANT","PUBLIC","PUBLIQUE"}
+    for name in names or []:
+        raw=str(name or "").strip()
+        candidates=[]
+        first=re.split(r"\s+-\s+",raw,1)[0].strip()
+        if len(first)>=4:
+            candidates.append(first)
+        words=re.findall(r"[A-Za-zÀ-ÿ0-9']+",raw)
+        meaningful=[w for w in words if len(w)>=3 and w.upper() not in stop and not w.isdigit()]
+        if meaningful:
+            candidates.append(" ".join(meaningful[:2]))
+            if len(meaningful)>=2:
+                candidates.append(meaningful[-1])
+        for term in candidates:
+            n=norm(term)
+            if len(n)<4 or n in seen or n in {norm(x) for x in names}:
+                continue
+            seen.add(n); out.append(term)
+    return out[:6]
+
 def fetch_search(term, co):
     q = urllib.parse.urlencode({
         "searchTerm": term,
@@ -300,6 +324,58 @@ for row in remaining[:BATCH]:
                 }
             }
             break
+    if not accepted and co:
+        for short_term in derive_short_terms(names):
+            try:
+                short_arr=fetch_search(short_term,co)
+            except Exception as e:
+                errors.append({"evseId":eid,"term":short_term,"error":str(e)[:200]})
+                continue
+            if not isinstance(short_arr,list):
+                continue
+            exact_h=[]
+            near=[]
+            priced=[]
+            tuples=set()
+            for st in short_arr:
+                sc=station_coord(st)
+                if not sc or distance_m(co,sc)>3.0:
+                    continue
+                near.append(st)
+                for conn in connectors(st):
+                    p=connector_price(conn)
+                    if connector_access(conn) not in (0,None) or not isinstance(p,dict):
+                        continue
+                    hub=(conn.get("Hubject") or {}).get("ID") if isinstance(conn.get("Hubject"),dict) else None
+                    if norm(hub)==norm(eid):
+                        exact_h.append((st,conn,p))
+                    priced.append((st,conn,p))
+                    tuples.add(json.dumps(p,sort_keys=True,separators=(",",":")))
+            if len(exact_h)==1:
+                st,conn,p=exact_h[0]
+                sc=station_coord(st)
+                accepted={
+                    "evseId":eid,"stationName":station_name(st),"stationId":st.get("ID") or st.get("id"),
+                    "match":"short_search_exact_hubject_id","searchTerm":short_term,
+                    "distanceMeters":round(distance_m(co,sc),2),"price":p,
+                    "connector":{"Id":conn.get("Id") or conn.get("ID") or conn.get("id"),"Name":conn.get("Name") or conn.get("name"),
+                                 "MaxPower":conn.get("MaxPower") or conn.get("maxPower"),
+                                 "HubjectID":(conn.get("Hubject") or {}).get("ID") if isinstance(conn.get("Hubject"),dict) else None}
+                }
+                break
+            if priced and len(tuples)==1:
+                st,conn,p=priced[0]
+                sc=station_coord(st)
+                accepted={
+                    "evseId":eid,"stationName":station_name(st),"stationId":st.get("ID") or st.get("id"),
+                    "match":"short_search_nearby_identical_public_price_tuple","searchTerm":short_term,
+                    "distanceMeters":round(distance_m(co,sc),2),"candidateStationCount":len(near),
+                    "candidatePublicConnectorCount":len(priced),"price":p,
+                    "connector":{"Id":conn.get("Id") or conn.get("ID") or conn.get("id"),"Name":conn.get("Name") or conn.get("name"),
+                                 "MaxPower":conn.get("MaxPower") or conn.get("maxPower")}
+                }
+                break
+
     if not accepted and co:
         try:
             arr=fetch_search("", co)
@@ -521,7 +597,7 @@ for row in remaining[:BATCH]:
 
 now=datetime.now(timezone.utc).isoformat()
 overlay["generatedAt"]=now
-overlay["method"]="Exact eCarUp public API reconciliation: name-search uniform tariff, exact ChargingStationNames+coordinate, exact Hubject.ID, identical price tuple at <=0.75m/3m, unique exact connector power, validated Type2/CCS/CHAdeMO + power, or unique explicit AC/DC connector within 3m"
+overlay["method"]="Exact eCarUp public API reconciliation: full/short name-search uniform tariff or exact Hubject.ID, exact ChargingStationNames+coordinate, exact Hubject.ID, identical price tuple at <=0.75m/3m, unique exact connector power, validated Type2/CCS/CHAdeMO + power, or unique explicit AC/DC connector within 3m"
 overlay["policy"]="No nearest-neighbour tariff inheritance; no cross-station extrapolation."
 OVERLAY.write_text(json.dumps(overlay,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
