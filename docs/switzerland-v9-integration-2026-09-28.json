@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataset": "tcc-v9-switzerland",
-  "generatedAt": "2026-09-29T17:55:02.721605+00:00",
+  "generatedAt": "2026-09-29T18:25:42.702239+00:00",
   "country": "CH",
   "nationalSource": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
   "policy": {
@@ -13,8 +13,8 @@
   "counts": {
     "nationalEvseCount": 19466,
     "directTariffResolvedEvseCount": 17745,
-    "noPublicDirectTariffEvseCount": 386,
-    "directTariffUnresolvedEvseCount": 1335
+    "noPublicDirectTariffEvseCount": 401,
+    "directTariffUnresolvedEvseCount": 1320
   },
   "sourceStats": [
     {
@@ -298,14 +298,14 @@
       "evseCount": 2445,
       "stationCount": 832,
       "operatorNames": [],
-      "status": "blocked",
+      "status": "complete",
       "name": "Swisscharge",
-      "evidence": "docs/switzerland-swisscharge-suboperator-chargeprice-probe-2026-09-29.json",
+      "evidence": "docs/switzerland-swisscharge-final-15-closeout-2026-09-29.json",
       "setAside": false,
-      "note": "2430/2445 deterministically resolved. 15 public EVSEs remain. After the first 17 exact Chargeprice promotions, 8 additional exact EVSE matches were promoted (Quellenhof Winterthur, PGS Winterthur, and the remaining Spundisstrasse connector), each with Swisscharge=CPO=EMP, is_roaming=false and tariff_level=evse.",
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Resolve the remaining 15 by exact site/sub-operator evidence, dedicated tenant/payment backend, or exact-EVSE direct tariff evidence; no site-level extrapolation."
+      "note": "2445/2445 current CH*SUI EVSEs deterministically resolved for the current snapshot: 2411 with numeric tariffs and 34 explicitly classified as having no current public direct tariff. Temporary unavailable states are rechecked on future refreshes; no tariff extrapolation.",
+      "blockerPersistent": false,
+      "blockerEvidence": null,
+      "resumeCondition": null
     },
     "CH*MIG": {
       "operatorId": "CH*MIG",
@@ -353,12 +353,12 @@
       "operatorNames": [],
       "status": "blocked",
       "name": "EPO",
-      "evidence": "docs/switzerland-epo-first-pass-2026-09-28.json",
-      "note": "0/324 deterministic direct prices. Eponet explicitly lets each infrastructure operator define the QR/ad-hoc charging profile, including start, kWh and blocking fees. Current prices are only exposed through the charger-specific QR flow; no public searchable tariff endpoint was recovered.",
+      "evidence": "docs/switzerland-epo-charger-id-pivot-2026-09-29.json",
+      "note": "0/324 deterministic direct prices so far. Exhaustive follow-up recovered 8 explicit Eponet Charger IDs covering 23 EVSEs from the existing production dataset, and official Eponet documentation confirms the public QR flow exposes the current station price in portal.eponet.ch before email/payment. The remaining technical blocker is the exact public QR/ad-hoc URL or API request format; Charger IDs are no longer completely absent.",
       "setAside": false,
       "blockerPersistent": true,
       "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Obtain Eponet charger IDs/QR URLs or a public Eponet Go/QR backend endpoint that exposes the current station prices."
+      "resumeCondition": "Recover the exact portal.eponet.ch public QR/ad-hoc URL/API format using known Charger ID + EVSE pairs, or obtain exact station-specific public price evidence. Continue extracting additional Charger IDs from indexed station pages. No tariff extrapolation."
     },
     "CH*360": {
       "operatorId": "CH*360",
@@ -711,5 +711,5 @@
     }
   },
   "output": "data/tcc_v9/switzerland.json",
-  "outputBytes": 49757862
+  "outputBytes": 49760732
 }
