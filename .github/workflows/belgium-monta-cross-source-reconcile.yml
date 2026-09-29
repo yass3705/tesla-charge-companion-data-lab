@@ -1,0 +1,272 @@
+name: Belgium Monta cross-source reconciliation
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/belgium-monta-cross-source-reconcile.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Reconcile Monta against Road and Eco-Movement
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,gzip,re
+          from pathlib import Path
+          from collections import defaultdict,Counter
+
+          ROOT=Path('.')
+          OUT=Path('reports/belgium/belgium-monta-cross-source-reconciliation-2026-09-29.json')
+          OUT.parent.mkdir(parents=True,exist_ok=True)
+          OVER=Path('data/operator_direct/monta_belgium_exact_cross_source_2026-09-29.json')
+          OVER.parent.mkdir(parents=True,exist_ok=True)
+
+          def norm(x):
+              if x is None: return None
+              s=re.sub(r'[^A-Z0-9]','',str(x).upper())
+              return s or None
+
+          def load_json(path):
+              p=Path(path)
+              if p.suffix=='.gz':
+                  with gzip.open(p,'rt',encoding='utf-8') as f: return json.load(f)
+              return json.loads(p.read_text())
+
+          # Monta public pricing
+          monta=load_json('data/belgium/additional/monta-public-pricing-2026-09-29.json.gz')
+          pricing=monta.get('pricingRows') or []
+          by_exact=defaultdict(list); by_norm=defaultdict(list)
+          for p in pricing:
+              eid=p.get('evseId')
+              if not eid: continue
+              by_exact[str(eid).upper()].append(p)
+              n=norm(eid)
+              if n: by_norm[n].append(p)
+
+          # Keep only unambiguous normalized ids (same EVSE row identity).
+          unique_norm={}
+          ambiguous_norm={}
+          for n,rows in by_norm.items():
+              ids={str(r.get('evseId')).upper() for r in rows}
+              tariffs={str(r.get('tariffId')) for r in rows}
+              vals={(r.get('energyPrice'),r.get('currency'),tuple((r.get('raw') or [])[5:9])) for r in rows}
+              if len(ids)==1 and len(vals)==1:
+                  unique_norm[n]=rows[0]
+              else:
+                  ambiguous_norm[n]={'ids':sorted(ids),'tariffs':sorted(tariffs),'rows':len(rows)}
+
+          # Road rows + missing tariff ids
+          road=load_json('data/belgium/additional/road-2026-09-29.json')
+          road_tariffs=load_json('data/belgium/additional/road-tariffs-2026-09-29.json')
+          road_tariff_ids={str(t.get('id')) for t in road_tariffs if isinstance(t,dict) and t.get('id') is not None}
+          road_rows=[]
+          def walk_road(x):
+              if isinstance(x,dict):
+                  low={str(k).lower():v for k,v in x.items()}
+                  evses=low.get('evses')
+                  if isinstance(evses,list) and any(k in low for k in ('coordinates','city','country','address')):
+                      op=low.get('operator') or low.get('cpo') or low.get('network') or low.get('party_id') or low.get('partyid')
+                      if isinstance(op,dict): op=op.get('name') or op.get('id')
+                      for ev in evses:
+                          if not isinstance(ev,dict): continue
+                          tids=[]
+                          for c in ev.get('connectors') or []:
+                              if not isinstance(c,dict): continue
+                              for tid in c.get('tariff_ids') or []:
+                                  if str(tid) not in tids: tids.append(str(tid))
+                          eid=ev.get('evse_id') or ev.get('evseid') or ev.get('uid') or ev.get('id')
+                          road_rows.append({
+                              'operator':str(op or 'UNKNOWN'),
+                              'locationId':low.get('id'),
+                              'locationName':low.get('name'),
+                              'city':low.get('city'),
+                              'evseId':eid,
+                              'tariffIds':tids,
+                              'hasRoadTariff':any(t in road_tariff_ids for t in tids)
+                          })
+                  for v in x.values(): walk_road(v)
+              elif isinstance(x,list):
+                  for v in x: walk_road(v)
+          walk_road(road)
+          road_missing=[r for r in road_rows if not r['hasRoadTariff']]
+
+          def match_monta(eid):
+              if not eid: return (None,None)
+              ex=by_exact.get(str(eid).upper(),[])
+              if len(ex)==1: return ('exact',ex[0])
+              n=norm(eid)
+              if n and n in unique_norm: return ('normalized_unique',unique_norm[n])
+              return (None,None)
+
+          road_resolved=[]; road_unresolved=[]
+          for r in road_missing:
+              mode,p=match_monta(r.get('evseId'))
+              if p:
+                  road_resolved.append({**r,'matchMode':mode,'montaPricing':p})
+              else:
+                  road_unresolved.append(r)
+
+          # Eco-Movement missing-price report: recursively find any object carrying an EVSE id.
+          eco_missing_blob=load_json('reports/belgium-missing-price-evses-2026-09-28.json')
+          eco_candidates=[]
+          seen=set()
+          def walk_eco(x,ctx=None):
+              if isinstance(x,dict):
+                  keys={str(k).lower():k for k in x}
+                  eid=None
+                  for kk in ('evseid','evse_id','evseid','externalidentifier','external_identifier'):
+                      if kk in keys:
+                          v=x.get(keys[kk])
+                          if isinstance(v,(str,int)): eid=str(v); break
+                  if eid:
+                      n=norm(eid)
+                      sig=(n,json.dumps(x,sort_keys=True,ensure_ascii=False)[:500])
+                      if sig not in seen:
+                          seen.add(sig)
+                          op=x.get('operator') or x.get('cpo') or x.get('operatorName') or x.get('operator_name')
+                          eco_candidates.append({'evseId':eid,'operator':op,'raw':x})
+                  for v in x.values(): walk_eco(v,ctx)
+              elif isinstance(x,list):
+                  for v in x: walk_eco(v,ctx)
+          walk_eco(eco_missing_blob)
+
+          eco_resolved=[]; eco_unresolved=[]
+          for r in eco_candidates:
+              mode,p=match_monta(r.get('evseId'))
+              if p:
+                  eco_resolved.append({**r,'matchMode':mode,'montaPricing':p})
+              else:
+                  eco_unresolved.append(r)
+
+          # Inventory ID sets for de-duplication audit.
+          def collect_ids(x):
+              ids=[]
+              def walk(y):
+                  if isinstance(y,dict):
+                      for k,v in y.items():
+                          kl=str(k).lower()
+                          if kl in ('evse_id','evseid','externalidentifier','external_identifier') and isinstance(v,(str,int)):
+                              n=norm(v)
+                              if n: ids.append((str(v),n))
+                      for v in y.values(): walk(v)
+                  elif isinstance(y,list):
+                      for v in y: walk(v)
+              walk(x)
+              return ids
+
+          nap_ids=[]
+          manifest=load_json('data/belgium/nap-belgium-manifest.json')
+          for page in manifest.get('pages') or []:
+              p=page.get('canonicalPath')
+              if p and Path(p).exists():
+                  nap_ids.extend(collect_ids(load_json(p)))
+          road_ids=[(str(r['evseId']),norm(r['evseId'])) for r in road_rows if r.get('evseId') and norm(r.get('evseId'))]
+          indigo=load_json('data/belgium/additional/canonical/indigo-belgium-canonical-2026-09-29.json')
+          indigo_ids=collect_ids(indigo)
+          monta_ids=[(str(p.get('evseId')),norm(p.get('evseId'))) for p in pricing if p.get('evseId') and norm(p.get('evseId'))]
+
+          sets={
+              'ecoMovement':{n for _,n in nap_ids},
+              'road':{n for _,n in road_ids},
+              'indigo':{n for _,n in indigo_ids},
+              'monta':{n for _,n in monta_ids},
+          }
+          all_unique=set().union(*sets.values())
+          overlaps={}
+          names=list(sets)
+          for i,a in enumerate(names):
+              for b in names[i+1:]:
+                  overlaps[f'{a}__{b}']=len(sets[a]&sets[b])
+
+          resolved_overlay=[]
+          for src,rows in [('Road',road_resolved),('Eco-Movement',eco_resolved)]:
+              for r in rows:
+                  p=r['montaPricing']
+                  resolved_overlay.append({
+                      'targetSource':src,
+                      'targetEvseId':r.get('evseId'),
+                      'matchMode':r.get('matchMode'),
+                      'montaEvseId':p.get('evseId'),
+                      'tariffId':p.get('tariffId'),
+                      'currency':p.get('currency'),
+                      'powerKw':p.get('powerKw'),
+                      'energyPrice':p.get('energyPrice'),
+                      'rawPricingColumns':p.get('raw'),
+                      'provenance':'Monta public CPO pricing table'
+                  })
+
+          report={
+              'country':'BE','asOf':'2026-09-29','phase':'monta-cross-source-reconciliation',
+              'monta':{
+                  'pricingRows':len(pricing),
+                  'distinctNormalizedEvses':len(sets['monta']),
+                  'distinctTariffs':len({p.get('tariffId') for p in pricing if p.get('tariffId')}),
+                  'ambiguousNormalizedIds':len(ambiguous_norm)
+              },
+              'road':{
+                  'evseRows':len(road_rows),
+                  'roadTariffMissingBefore':len(road_missing),
+                  'resolvedByMontaExactOrUniqueNormalization':len(road_resolved),
+                  'remainingAfterMonta':len(road_unresolved),
+                  'resolvedByOperator':dict(Counter(r['operator'] for r in road_resolved)),
+                  'remainingByOperator':dict(Counter(r['operator'] for r in road_unresolved))
+              },
+              'ecoMovement':{
+                  'missingReportCandidatesWithEvseId':len(eco_candidates),
+                  'resolvedByMontaExactOrUniqueNormalization':len(eco_resolved),
+                  'remainingCandidatesAfterMonta':len(eco_unresolved),
+                  'resolvedByOperator':dict(Counter(str(r.get('operator')) for r in eco_resolved))
+              },
+              'dedupAudit':{
+                  'rawIdCounts':{
+                      'ecoMovement':len(nap_ids),'road':len(road_ids),'indigo':len(indigo_ids),'monta':len(monta_ids)
+                  },
+                  'uniqueNormalizedIdsBySource':{k:len(v) for k,v in sets.items()},
+                  'pairwiseOverlaps':overlaps,
+                  'unionUniqueNormalizedEvseIds':len(all_unique)
+              },
+              'rules':[
+                  'Only exact EVSE id or punctuation/case normalized unique EVSE id matches are accepted.',
+                  'No operator-, address-, proximity-, power- or tariff-family inference is used.',
+                  'Monta pricing preserves all raw public table fee columns for downstream tariff modelling.'
+              ],
+              'samples':{
+                  'roadResolved':road_resolved[:50],
+                  'ecoResolved':eco_resolved[:50]
+              }
+          }
+          OUT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          OVER.write_text(json.dumps({'country':'BE','asOf':'2026-09-29','source':'Monta public CPO pricing','matches':resolved_overlay},ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({k:report[k] for k in ('monta','road','ecoMovement','dedupAudit')},ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium/belgium-monta-cross-source-reconciliation-2026-09-29.json
+          git add data/operator_direct/monta_belgium_exact_cross_source_2026-09-29.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "audit(be): reconcile Monta against Road and Eco-Movement"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
