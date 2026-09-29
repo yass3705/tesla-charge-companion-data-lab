@@ -107,6 +107,22 @@ def main():
             statuses[str(pl.get("enelPlugStatus") or "UNKNOWN")]+=1
         rankable += int(is_rank)
 
+    failure_class_counts=Counter()
+    failure_http_counts=Counter()
+    for x in failures:
+        failure_class_counts[str(x.get("error") or "unknown")] += 1
+        if x.get("httpStatus") is not None:
+            failure_http_counts[str(x.get("httpStatus"))] += 1
+    unmatched_prefix_counts=Counter()
+    for x in unmatched:
+        raw=x.get("rawEnelEvseId")
+        if isinstance(raw,str) and raw.startswith("IT*"):
+            parts=raw.split("*")
+            if len(parts) >= 2:
+                unmatched_prefix_counts[parts[1]] += 1
+        else:
+            unmatched_prefix_counts["UNKNOWN"] += 1
+
     successful_after={str(e.get("stationSerialNumber")) for e in union if e.get("stationSerialNumber")}
     remaining_serials=sorted(set(serial_to_pun)-successful_after)
     remaining_evs=sorted(set(pun_index)-set(by_evse))
@@ -121,6 +137,9 @@ def main():
       "rankableDirectPaymentCoveragePctAfterRetry":round(100*rankable/max(1,len(pun_evs)),2),
       "remainingStationSerialWithoutDetailAfterRetry":len(remaining_serials),
       "remainingEvseWithoutMatchedDetailAfterRetry":len(remaining_evs),
+      "retryFailureClassCounts":dict(sorted(failure_class_counts.items())),
+      "retryFailureHttpStatusCounts":dict(sorted(failure_http_counts.items())),
+      "retryUnmatchedPrefixCounts":dict(sorted(unmatched_prefix_counts.items())),
     })
     out=dict(first)
     out["generatedAtAfterRetry"]=base.now_iso()
@@ -133,6 +152,9 @@ def main():
       "unmatchedSample":unmatched[:100],
       "remainingSerialSample":remaining_serials[:100],
       "remainingEvseSample":remaining_evs[:100],
+      "failureClassCounts":dict(sorted(failure_class_counts.items())),
+      "failureHttpStatusCounts":dict(sorted(failure_http_counts.items())),
+      "unmatchedPrefixCounts":dict(sorted(unmatched_prefix_counts.items())),
     }
     out["evses"]=union
     OUT.parent.mkdir(parents=True,exist_ok=True); REPORT.parent.mkdir(parents=True,exist_ok=True)
@@ -146,6 +168,9 @@ def main():
       "retryUnmatchedSample":unmatched[:100],
       "remainingSerialSample":remaining_serials[:100],
       "remainingEvseSample":remaining_evs[:100],
+      "failureClassCounts":dict(sorted(failure_class_counts.items())),
+      "failureHttpStatusCounts":dict(sorted(failure_http_counts.items())),
+      "unmatchedPrefixCounts":dict(sorted(unmatched_prefix_counts.items())),
     }
     REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
     print(json.dumps(report,ensure_ascii=False,indent=2)[:30000])
