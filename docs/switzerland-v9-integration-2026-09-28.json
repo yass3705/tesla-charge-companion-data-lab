@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "dataset": "tcc-v9-switzerland",
-  "generatedAt": "2026-09-29T11:22:07.726299+00:00",
+  "generatedAt": "2026-09-29T11:47:26.930810+00:00",
   "country": "CH",
   "nationalSource": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
   "policy": {
@@ -11,10 +11,10 @@
     "otherPriceLayers": "Electra, Electroverse and subscription-adjusted prices are intentionally separate runtime overlays and are not replaced by this direct-CPO bundle."
   },
   "counts": {
-    "nationalEvseCount": 19462,
-    "directTariffResolvedEvseCount": 17735,
+    "nationalEvseCount": 19466,
+    "directTariffResolvedEvseCount": 17738,
     "noPublicDirectTariffEvseCount": 386,
-    "directTariffUnresolvedEvseCount": 1341
+    "directTariffUnresolvedEvseCount": 1342
   },
   "sourceStats": [
     {
@@ -262,6 +262,12 @@
       "file": "data/switzerland/avia-successor-alias-overlay.json",
       "status": "loaded",
       "matchedEvseCount": 1
+    },
+    {
+      "label": "Partino Baden exact",
+      "file": "data/switzerland/partino-baden-direct-tariffs.json",
+      "status": "loaded",
+      "matchedEvseCount": 3
     }
   ],
   "cpoResearchStatus": {
@@ -670,13 +676,13 @@
       "name": "Partino",
       "evseCount": 213,
       "stationCount": null,
-      "status": "blocked",
-      "evidence": "docs/switzerland-par-finalization-2026-09-28.json",
-      "note": "210/213 classified no-public-direct; 3 unresolved. Partino documents backend billing and public charging services but does not publish the end-customer station price for the three public residual EVSEs. Physical accessibility is not evidence of free charging.",
+      "status": "complete",
+      "evidence": "docs/switzerland-partino-finalization-2026-09-29.json",
+      "note": "213/213 current national CH*PAR EVSEs deterministically resolved. 210 restricted/no-auth EVSEs remain classified no-public-direct-tariff. The final three public residual EVSEs at Parkhaus Klösterli, Oberstadtstrasse 4, Baden were resolved from Partino's public EVC-Net portal via exact channel IDs and DashboardAsyncService.spotsStatusPointData. simpleTariff is CHF 0.55/kWh excl. VAT; portal VAT is 8.1%, yielding CHF 0.59455/kWh incl. VAT. No extrapolation.",
       "setAside": false,
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Obtain the three station-specific prices from Partino CH backend/Floatbridge or exact payment pages."
+      "blockerPersistent": false,
+      "blockerEvidence": null,
+      "resumeCondition": null
     },
     "CH*ECU": {
       "operatorId": "CH*ECU",
@@ -693,5 +699,5 @@
     }
   },
   "output": "data/tcc_v9/switzerland.json",
-  "outputBytes": 49746449
+  "outputBytes": 49751717
 }
