@@ -113,6 +113,16 @@ def main():
         failure_class_counts[str(x.get("error") or "unknown")] += 1
         if x.get("httpStatus") is not None:
             failure_http_counts[str(x.get("httpStatus"))] += 1
+    failure_business_code_counts=Counter()
+    failure_business_message_counts=Counter()
+    failure_business_pair_counts=Counter()
+    for x in failures:
+        code=str(x.get("businessCode") if x.get("businessCode") is not None else "NONE")
+        msg=str(x.get("businessMessage") if x.get("businessMessage") is not None else "NONE")
+        failure_business_code_counts[code] += 1
+        failure_business_message_counts[msg] += 1
+        failure_business_pair_counts[f"{code} | {msg}"] += 1
+
     unmatched_prefix_counts=Counter()
     for x in unmatched:
         raw=x.get("rawEnelEvseId")
@@ -140,6 +150,9 @@ def main():
       "retryFailureClassCounts":dict(sorted(failure_class_counts.items())),
       "retryFailureHttpStatusCounts":dict(sorted(failure_http_counts.items())),
       "retryUnmatchedPrefixCounts":dict(sorted(unmatched_prefix_counts.items())),
+      "retryFailureBusinessCodeCounts":dict(sorted(failure_business_code_counts.items())),
+      "retryFailureBusinessMessageCounts":dict(sorted(failure_business_message_counts.items())),
+      "retryFailureBusinessPairCounts":dict(sorted(failure_business_pair_counts.items())),
     })
     out=dict(first)
     out["generatedAtAfterRetry"]=base.now_iso()
@@ -155,6 +168,9 @@ def main():
       "failureClassCounts":dict(sorted(failure_class_counts.items())),
       "failureHttpStatusCounts":dict(sorted(failure_http_counts.items())),
       "unmatchedPrefixCounts":dict(sorted(unmatched_prefix_counts.items())),
+      "failureBusinessCodeCounts":dict(sorted(failure_business_code_counts.items())),
+      "failureBusinessMessageCounts":dict(sorted(failure_business_message_counts.items())),
+      "failureBusinessPairCounts":dict(sorted(failure_business_pair_counts.items())),
     }
     out["evses"]=union
     OUT.parent.mkdir(parents=True,exist_ok=True); REPORT.parent.mkdir(parents=True,exist_ok=True)
