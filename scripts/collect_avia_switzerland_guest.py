@@ -24,7 +24,7 @@ KEY=os.environ.get("AVIA_APIM_SUBSCRIPTION_KEY","").strip()
 OUT=Path(os.environ.get("AVIA_OUT","data/switzerland/avia-guest-direct-tariffs.json"))
 TIMEOUT=int(os.environ.get("AVIA_TIMEOUT","45"))
 SLEEP=float(os.environ.get("AVIA_SLEEP","0.15"))
-RESOLVE_IP=os.environ.get("AVIA_RESOLVE_IP","").strip()
+RESOLVE_IP=os.environ.get("AVIA_RESOLVE_IP","").strip()\nTLS_INSECURE=os.environ.get("AVIA_TLS_INSECURE","0")=="1"
 
 # Conservative Switzerland coverage with overlap around borders.
 LAT_MIN,LAT_MAX=45.75,47.90
@@ -52,8 +52,10 @@ def request_json(method,path,query=None,body=None):
     if RESOLVE_IP:
         from urllib.parse import urlsplit
         host=urlsplit(API_BASE).hostname
-        cmd=["curl","-sS","--fail-with-body","--max-time",str(TIMEOUT),
-             "--resolve",f"{host}:443:{RESOLVE_IP}","-X",method,
+        cmd=["curl","-sS","--fail-with-body","--max-time",str(TIMEOUT)]
+        if TLS_INSECURE:
+            cmd.append("--insecure")
+        cmd += ["--resolve",f"{host}:443:{RESOLVE_IP}","-X",method,
              "-H","accept: application/json",
              "-H","content-type: application/json",
              "-H",f"ocp-apim-subscription-key: {KEY}",
