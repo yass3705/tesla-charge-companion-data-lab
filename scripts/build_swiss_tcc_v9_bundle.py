@@ -87,6 +87,7 @@ sources=[
 ("IWB second pass","data/switzerland/iwb-direct-tariffs-second-pass.json"),
 ("Energie360 final residual","docs/switzerland-energie360-finalization-2026-09-28.json"),
 ("GOFAST official","data/switzerland/gofast-official-direct-tariffs.json"),
+("AVIA guest exact","data/switzerland/avia-guest-direct-tariffs.json"),
 ]
 classifications=[
 ("Partino restricted","data/switzerland/par-partino-restricted-direct-classification.json"),
@@ -164,7 +165,7 @@ def node_has_real_tariff(node):
             return True
     p=node.get("price")
     if isinstance(p,dict):
-        for k in ("EnergyPrice","EnergyPricePerKwh","ParkingPrice","ParkingPricePerHour","Price"):
+        for k in ("EnergyPrice","EnergyPricePerKwh","ParkingPrice","ParkingPricePerHour","Price","pricePerKwhInclVat","pricePerKwhExclVat"):
             if isinstance(p.get(k),(int,float)):
                 return True
     if isinstance(node.get("directTariffs"),list) and node["directTariffs"]:
