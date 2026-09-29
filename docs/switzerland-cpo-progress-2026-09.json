@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "country": "CH",
-  "updatedAt": "2026-09-29T22:36:47.966395+00:00",
+  "updatedAt": "2026-09-30T00:41:00+02:00",
   "canonicalRepo": "yass3705/tesla-charge-companion-data-lab",
   "sourceMigrationFrom": "yass3705/tesla-stations-updater-test",
   "rules": {
@@ -440,13 +440,13 @@
       "name": "eCarUp",
       "evseCount": 6764,
       "stationCount": null,
-      "status": "partial",
-      "evidence": "docs/switzerland-ecarup-residual-name-search-batch-2026-09-29.json",
-      "note": "6704/6764 deterministic current prices. Exact ChargingStationNames + coordinate public API reconciliation promoted 234 residual EVSEs in total; 60 remain fail-closed.",
-      "setAside": false,
-      "blockerPersistent": false,
-      "blockerEvidence": null,
-      "resumeCondition": "Continue secondary exact-identity methods on the remaining residual EVSEs; no nearest-neighbour or cross-station tariff extrapolation."
+      "status": "blocked",
+      "evidence": "docs/switzerland-ecarup-exhaustive-residual-blockers-2026-09-30.json",
+      "note": "6704/6764 deterministic current prices; 60 residual EVSE remain after exhaustive exact-name, Hubject, coordinate, power, plug and AC/DC reconciliation. Remaining cases are stale/missing public records or multi-connector mixed-tariff sites without deterministic EVSE-to-connector identity. No extrapolation.",
+      "setAside": true,
+      "blockerPersistent": true,
+      "blockerEvidence": "docs/switzerland-ecarup-exhaustive-residual-blockers-2026-09-30.json",
+      "resumeCondition": "Resume when a fresh national/eCarUp snapshot fixes stale names or coordinates, an exact public Hubject/station response appears, an exact public payment page is available, or an authoritative owner/source mapping links a residual national EVSE to a specific eCarUp connector/device."
     }
   ],
   "nextPriority": [],
