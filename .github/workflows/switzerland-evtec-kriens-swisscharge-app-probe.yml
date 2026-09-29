@@ -1,0 +1,87 @@
+name: Switzerland EVTEC Kriens Swisscharge app probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-evtec-kriens-swisscharge-app-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Download Swisscharge XAPK
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3             -A "Mozilla/5.0"             "https://d.apkpure.com/b/XAPK/cs.swisscharge?version=latest"             -o /tmp/swisscharge.xapk
+          file /tmp/swisscharge.xapk
+          test "$(stat -c%s /tmp/swisscharge.xapk)" -gt 50000000
+
+      - name: Probe Kriens refs through Swisscharge app API
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/probes docs
+          for ref in 290524 290525 290526; do
+            EVSE_IDENTIFIER="$ref" PROBE_REPORT="/tmp/probes/$ref.json"               python3 scripts/swisscharge_home_probe.py /tmp/swisscharge.xapk
+          done
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rows=[]
+          for ref in ["290524","290525","290526"]:
+              p=json.loads(Path(f"/tmp/probes/{ref}.json").read_text())
+              matches=[]
+              loc=None
+              for a in p.get("location_attempts",[]):
+                  if a.get("status")==200:
+                      loc=a.get("body");break
+              def walk(x):
+                  if isinstance(x,dict):
+                      if str(x.get("identifier",""))==ref:
+                          matches.append(x)
+                      for v in x.values():walk(v)
+                  elif isinstance(x,list):
+                      for v in x:walk(v)
+              if loc is not None:walk(loc)
+              rows.append({
+                  "reference":ref,
+                  "appVersion":p.get("app_version"),
+                  "host":p.get("host"),
+                  "publicHost":p.get("public_host"),
+                  "tokenObtained":any((x.get("status")==200 and isinstance(x.get("response"),dict) and x["response"].get("access_token")=="[REDACTED]") for x in p.get("token_attempts",[])),
+                  "locationAttempts":p.get("location_attempts"),
+                  "matches":matches,
+                  "tariffs":p.get("tariffs")
+              })
+          out={"schemaVersion":1,"country":"CH","operatorId":"CH*EVT","site":"Rengglochstrasse 19, Kriens","rows":rows}
+          Path("docs/switzerland-evtec-kriens-swisscharge-app-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({
+              "rows":[{"ref":r["reference"],"appVersion":r["appVersion"],"tokenObtained":r["tokenObtained"],"matches":len(r["matches"]),"tariffCalls":len(r["tariffs"] or [])} for r in rows]
+          },ensure_ascii=False))
+          PY
+
+      - name: Persist sanitized probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-evtec-kriens-swisscharge-app-probe-2026-09-29.json
+          git commit -m "research(ch): probe Kriens via Swisscharge app API" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
