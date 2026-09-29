@@ -21,8 +21,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AVIA_APIM_SUBSCRIPTION_KEY: ${{ secrets.AVIA_APIM_SUBSCRIPTION_KEY }}
-      AVIA_RESOLVE_IP: 51.105.172.25
-      AVIA_TLS_INSECURE: 1
     steps:
       - uses: actions/checkout@v4
 
@@ -39,15 +37,6 @@ jobs:
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Inspect AVIA TLS certificate
-        if: steps.secret.outputs.configured == 'true'
-        shell: bash
-        run: |
-          set +e
-          echo | openssl s_client -connect 51.105.172.25:443 -servername pdefweushapiam01.azure-api.net 2>/dev/null \
-            | openssl x509 -noout -subject -issuer -ext subjectAltName || true
-          exit 0
 
       - name: Collect AVIA Switzerland guest prices
         if: steps.secret.outputs.configured == 'true'
