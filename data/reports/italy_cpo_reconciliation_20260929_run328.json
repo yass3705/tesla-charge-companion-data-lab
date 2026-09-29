@@ -1,0 +1,68 @@
+{
+  "run": 328,
+  "date": "2026-09-29",
+  "partyId": "GES",
+  "canonicalName": "Go Electric Stations",
+  "decision": "remain_partial",
+  "statusBefore": "partial",
+  "statusAfter": "partial",
+  "inventory": {
+    "evse": 2396,
+    "stations": 1131,
+    "punAsOf": "2026-09-29"
+  },
+  "coverage": {
+    "rankableEvse": 63,
+    "failClosedEvse": 2333,
+    "coveragePct": 2.63,
+    "matchedStations": 20
+  },
+  "evidence": {
+    "nextChargeApkVersion": "6.2.02",
+    "nationalWorkflowRunId": 36614177457,
+    "artifactId": 11053784396,
+    "source": "NextCharge public stationsNear + stationConnectors backend",
+    "matchPolicy": "PUN coordinate <=100m candidate search, but promoted rows require exact numeric PUN EVSE suffix == NextCharge uidConnector; all 63 promoted matches are 0.0m.",
+    "matchMethodCounts": {
+      "exact_numeric_suffix_uidConnector": 63
+    },
+    "providerCounts": {
+      "Loginet": 3,
+      "Blitz Power": 3,
+      "Sarni": 52,
+      "Ricarica ": 2,
+      "EG ITALIA S.p.A.": 3
+    },
+    "tariffTupleCounts": {
+      "EUR|free|paymentRequired=false": 3,
+      "EUR|energy=0.85|parking=0.10|time=0.01": 2,
+      "EUR|energy=0.65|parking=0.10|time=0.01": 1,
+      "EUR|energy=0.80|session=0.30": 52,
+      "EUR|energy=0.74|parking=0.10|time=0.01": 2,
+      "EUR|energy=0.85": 3
+    },
+    "unitEvidence": "NextCharge 6.2.02 APK resources explicitly label cost per kWh, cost per minute, and cost to start; backend returns energy/time/parking/session components.",
+    "commercialSemantics": "NextCharge terms state the app/service is offered by Go Electric Stations, each payment transaction is managed by Go Electric Stations, connector-specific fees are shown before charging, and roaming is explicitly distinguished. Exact current IT*GES connector mappings are therefore accepted only for the matched rows; no generic NextCharge roaming price is substituted.",
+    "termsUrl": "https://nextcharge.app/apps/map/apis/terms/v1.4/termsAndConditions.php?appearanceFontSize=medium&appearanceTheme=auto&lang=en"
+  },
+  "findings": [
+    "Fresh PUN contains 2,396 GES EVSE across 1,131 stations.",
+    "National deterministic reconciliation scanned all 1,131 PUN GES stations.",
+    "63 EVSE across 20 stations have exact numeric suffix -> uidConnector matches; every accepted match is at 0.0m.",
+    "All 63 exact matches expose a complete current NextCharge connector tariff surface; 3 are explicitly paymentRequired=false with empty price components and are treated as zero-price on this surface.",
+    "Tariffs are heterogeneous by connector/host, so no network-wide or power-class extrapolation is allowed."
+  ],
+  "antiRepeat": "Do not repeat generic web tariff searches or broad /station parameter guessing. The working discovery path is PUN coordinates -> NextCharge /stationsNear -> exact zero-distance uidConnector join -> /stationConnectors. Resume residuals by improving deterministic identity coverage only; never apply matched host tariffs to unmatched IT*GES EVSE.",
+  "blockingCondition": "2,333 current PUN GES EVSE remain fail-closed. Promote only with an exact current IT*GES -> NextCharge uidConnector/physicalReference mapping and connector tariff/payment surface, or equivalent first-party QR/direct-payment evidence.",
+  "security": {
+    "credentialsUsed": false,
+    "paymentAttempted": false,
+    "chargingStarted": false
+  },
+  "arithmetic": {
+    "rankableEvse": 63,
+    "failClosedEvse": 2333,
+    "currentPunEvse": 2396,
+    "ok": true
+  }
+}
