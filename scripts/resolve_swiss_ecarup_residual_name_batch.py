@@ -58,6 +58,24 @@ def candidate_names(rec):
             seen.add(n); out.append(s)
     return out[:8]
 
+def national_powers_w(rec):
+    vals=set()
+    if not isinstance(rec,dict):
+        return vals
+    facilities=rec.get("ChargingFacilities") or []
+    if isinstance(facilities,dict):
+        facilities=[facilities]
+    for f in facilities:
+        if not isinstance(f,dict):
+            continue
+        v=f.get("power")
+        try:
+            if v is not None:
+                vals.add(round(float(v)*1000))
+        except Exception:
+            pass
+    return vals
+
 def fetch_search(term, co):
     q = urllib.parse.urlencode({
         "searchTerm": term,
@@ -305,6 +323,40 @@ for row in remaining[:BATCH]:
                     }
                 }
 
+    if not accepted and co and isinstance(arr,list):
+        npowers=national_powers_w(rec)
+        if npowers:
+            power_matches=[]
+            for st in arr:
+                sc=station_coord(st)
+                if not sc or distance_m(co,sc) > 3.0:
+                    continue
+                for conn in connectors(st):
+                    p=connector_price(conn)
+                    mp=conn.get("MaxPower") or conn.get("maxPower")
+                    if connector_access(conn) not in (0,None) or not isinstance(p,dict) or not isinstance(mp,(int,float)):
+                        continue
+                    if round(float(mp)) in npowers:
+                        power_matches.append((st,conn,p))
+            if len(power_matches)==1:
+                st,conn,p=power_matches[0]
+                sc=station_coord(st)
+                accepted={
+                    "evseId":eid,
+                    "stationName":station_name(st),
+                    "stationId":st.get("ID") or st.get("id"),
+                    "match":"unique_exact_power_connector_within_3m",
+                    "distanceMeters":round(distance_m(co,sc),2) if sc else None,
+                    "nationalPowerW":sorted(npowers),
+                    "price":p,
+                    "connector":{
+                        "Id":conn.get("Id") or conn.get("ID") or conn.get("id"),
+                        "Name":conn.get("Name") or conn.get("name"),
+                        "MaxPower":conn.get("MaxPower") or conn.get("maxPower"),
+                        "HubjectID":(conn.get("Hubject") or {}).get("ID") if isinstance(conn.get("Hubject"),dict) else None
+                    }
+                }
+
     if accepted:
         promoted.append(accepted)
         overlay.setdefault("rows",[]).append(accepted)
@@ -316,7 +368,7 @@ for row in remaining[:BATCH]:
 
 now=datetime.now(timezone.utc).isoformat()
 overlay["generatedAt"]=now
-overlay["method"]="Exact eCarUp public API reconciliation: exact ChargingStationNames+coordinate, exact Hubject.ID, <=0.75m coordinate set, or <=3m candidate set with one identical explicit public price tuple"
+overlay["method"]="Exact eCarUp public API reconciliation: exact ChargingStationNames+coordinate, exact Hubject.ID, identical price tuple at <=0.75m/3m, or one uniquely matching connector power within 3m"
 overlay["policy"]="No nearest-neighbour tariff inheritance; no cross-station extrapolation."
 OVERLAY.write_text(json.dumps(overlay,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
@@ -333,7 +385,7 @@ report={
     "promoted":promoted,
     "tested":tested,
     "errors":errors,
-    "policy":"Fail closed: exact normalized name + <=3m coordinate, exact Hubject.ID, or coordinate candidate set <=0.75m then <=3m where every explicit public connector shares one identical full price object."
+    "policy":"Fail closed: exact normalized name+coordinate, exact Hubject.ID, identical full public price tuple within <=0.75m/3m, or exactly one public connector within <=3m matching the national declared charging power."
 }
 REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
