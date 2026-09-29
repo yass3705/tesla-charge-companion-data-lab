@@ -50,38 +50,31 @@ def request_json(method,path,query=None,body=None):
     url=API_BASE+path
     if query:
         url += "?" + urlencode(query, doseq=True)
+    from urllib.parse import urlsplit
+    host=urlsplit(API_BASE).hostname
+    cmd=["curl","-sS","--fail-with-body","--max-time",str(TIMEOUT)]
+    if TLS_INSECURE:
+        cmd.append("--insecure")
     if RESOLVE_IP:
-        from urllib.parse import urlsplit
-        host=urlsplit(API_BASE).hostname
-        cmd=["curl","-sS","--fail-with-body","--max-time",str(TIMEOUT)]
-        if TLS_INSECURE:
-            cmd.append("--insecure")
-        cmd += ["--resolve",f"{host}:443:{RESOLVE_IP}","-X",method,
-             "-H","accept: */*",
-             "-H","content-type: application/json; charset=utf-8",
-             "-H","accept-language: fr",
-             "-H","x-app-platform: ios",
-             "-H","x-app-version: 2.3.0",
-             "-H","user-agent: AVIAVOLTSuisse/4614 CFNetwork",
-             "-H",f"ocp-apim-subscription-key: {KEY}",
-             url]
-        if body is not None:
-            cmd.extend(["--data-binary",json.dumps(body,separators=(",",":"))])
-        p=subprocess.run(cmd,capture_output=True,text=True)
-        if p.returncode!=0:
-            detail=(p.stderr or p.stdout or "")[:500]
-            raise RuntimeError(f"curl error {path}: {detail}")
-        return json.loads(p.stdout)
-    data=None if body is None else json.dumps(body,separators=(",",":")).encode()
-    req=Request(url,data=data,headers=headers(),method=method)
-    try:
-        with urlopen(req,timeout=TIMEOUT) as r:
-            return json.loads(r.read().decode("utf-8"))
-    except HTTPError as e:
-        detail=e.read().decode("utf-8","replace")[:500]
-        raise RuntimeError(f"HTTP {e.code} {path}: {detail}") from e
-    except URLError as e:
-        raise RuntimeError(f"URL error {path}: {e}") from e
+        cmd += ["--resolve",f"{host}:443:{RESOLVE_IP}"]
+    cmd += [
+        "-X",method,
+        "-H","accept: */*",
+        "-H","content-type: application/json; charset=utf-8",
+        "-H","accept-language: fr",
+        "-H","x-app-platform: ios",
+        "-H","x-app-version: 2.3.0",
+        "-H","user-agent: AVIAVOLTSuisse/4614 CFNetwork",
+        "-H",f"ocp-apim-subscription-key: {KEY}",
+        url,
+    ]
+    if body is not None:
+        cmd.extend(["--data-binary",json.dumps(body,separators=(",",":"))])
+    p=subprocess.run(cmd,capture_output=True,text=True)
+    if p.returncode!=0:
+        detail=(p.stderr or p.stdout or "")[:500]
+        raise RuntimeError(f"curl error {path}: {detail}")
+    return json.loads(p.stdout)
 
 def frange(a,b,step):
     x=a
