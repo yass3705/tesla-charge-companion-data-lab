@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "country": "CH",
+  "operatorId": "CH*EPO",
+  "generatedAt": "2026-09-29T18:38:00Z",
+  "status": "exhaustive-free-surface-pass",
+  "result": {
+    "numericTariffsPromoted": 0,
+    "knownExplicitChargerIds": 8,
+    "evseCoveredByExplicitChargerIds": 23,
+    "indexedExternalChargepoints": 312,
+    "canonicalEvseCount": 324
+  },
+  "findings": [
+    {
+      "path": "official_qr_flow",
+      "outcome": "confirmed",
+      "detail": "Official Eponet documentation confirms the QR code uniquely identifies the charging point, displays Charger ID + EVSE ID, and opens a browser flow on portal.eponet.ch where current prices are shown before email/payment."
+    },
+    {
+      "path": "known_charger_ids",
+      "outcome": "usable_identity_evidence",
+      "detail": "Eight explicit Charger IDs were recovered from existing production station names, covering 23 EVSEs. See switzerland-epo-charger-id-pivot-2026-09-29.json."
+    },
+    {
+      "path": "adhoccharging_station_index",
+      "outcome": "identity_only",
+      "detail": "station.adhoc/adhoccharging indexes 312 Eponet chargepoints and exact EVSE IDs, but current numeric tariff and payment link are absent on inspected EPO pages."
+    },
+    {
+      "path": "mobilecharge_migration",
+      "outcome": "architecture_clue_only",
+      "detail": "Eponet took over mobilecharge billing on 2025-10-01 and migrated systems to Eponet. Official migration docs say public Eponet QR stations charge at the QR-code price, but no reusable public legacy mobilecharge tariff endpoint was recovered."
+    },
+    {
+      "path": "electromaps_coparking_chargeprice",
+      "outcome": "identity_and_access_only",
+      "detail": "External station pages help confirm exact station/EVSE identity, access and connector data. No authoritative Eponet direct numeric tariff was exposed for tested residuals."
+    },
+    {
+      "path": "portal_search_index",
+      "outcome": "no_public_endpoint_indexed",
+      "detail": "Searches for portal.eponet.ch adhoc/charge/start-price/Charger-ID pages return only the login portal; no indexed public QR route was recovered."
+    },
+    {
+      "path": "official_quick_guide",
+      "outcome": "documentation_only",
+      "detail": "eponet.info/adhoc_laden redirects to a generic Eponet ad-hoc PDF guide, not a station-specific QR target."
+    },
+    {
+      "path": "apk",
+      "outcome": "not_available_in_current_runtime",
+      "detail": "Eponet Go package com.eponet.eponet is current and capable of station search/start/payment, but the previously supplied XAPK is not available in the current runtime for static extraction."
+    },
+    {
+      "path": "paid_browser_tools",
+      "outcome": "not_used",
+      "detail": "TinyFish wallet is negative and Firecrawl has insufficient credits; no paid automation was used."
+    }
+  ],
+  "blocker": "Exact station QR target URL/API format on portal.eponet.ch remains unrecovered. Without it, known Charger ID + EVSE pairs cannot yet be converted to current direct prices.",
+  "nextFreeActions": [
+    "Continue mining indexed station pages for additional Charger IDs and exact public/private classifications.",
+    "Search legacy mobilecharge public assets and exact EPO station names for migrated payment URL traces.",
+    "If the Eponet Go XAPK becomes available again, statically inspect it for portal/API hostnames, route names and request schemas.",
+    "If a real Eponet QR code or its decoded URL is obtained from any station, use it as the seed to test all known Charger ID + EVSE pairs."
+  ],
+  "policy": "No tariff extrapolation. External indexes are identity evidence unless an exact current direct tariff is exposed."
+}
