@@ -70,7 +70,7 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/enel-apk/unpack
           unzip -q /tmp/enel-apk/enel.apk -d /tmp/enel-apk/unpack
-          find /tmp/enel-apk/unpack -type f \( -name 'classes*.dex' -o -name '*.json' -o -name '*.js' -o -name '*.xml' -o -name '*.txt' \) -print0 |
+          find /tmp/enel-apk/unpack -type f \( -name 'classes*.dex' -o -name '*.so' -o -name '*.json' -o -name '*.js' -o -name '*.xml' -o -name '*.txt' \) -print0 |
             xargs -0 -r strings -a -n 5 > /tmp/enel-apk/all_strings.txt
           python - <<'PY'
           import json,re,pathlib
