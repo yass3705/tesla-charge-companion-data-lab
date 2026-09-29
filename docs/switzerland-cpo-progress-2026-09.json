@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "country": "CH",
-  "updatedAt": "2026-09-29T12:19:14.677028+00:00",
+  "updatedAt": "2026-09-29T12:35:00Z",
   "canonicalRepo": "yass3705/tesla-charge-companion-data-lab",
   "sourceMigrationFrom": "yass3705/tesla-stations-updater-test",
   "rules": {
@@ -304,12 +304,12 @@
       "operatorNames": [],
       "status": "blocked",
       "name": "CH*EVT",
-      "evidence": "docs/switzerland-evt-first-pass-2026-09-28.json",
-      "note": "0/8 deterministic current direct prices. The eight EVSEs expose direct-payment capability but EVTEC is the hardware/backend layer; no current public station-specific end-customer tariff was found.",
+      "evidence": "docs/switzerland-small-cpo-resolution-2026-09-29.json",
+      "note": "2/8 deterministically resolved. ADEV Werkhof Läufelfingen EVSEs EADE0010011/EADE0010012 are CHF 0.54/kWh from ADEV's official 19 May 2026 publication. Kriens (3 EVSEs) and Einsiedeln/Kobiboden (3 EVSEs) remain unresolved because current co-located Swisscharge records do not provide a deterministic fee-complete mapping to the CH*EVT channels.",
       "setAside": false,
       "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Obtain the exact site/operator payment page or current station display/QR tariff for the three sites."
+      "blockerEvidence": "docs/switzerland-small-cpo-resolution-2026-09-29.json",
+      "resumeCondition": "Obtain current exact payment-screen/QR/app tariffs or backend ID mappings for Kriens and Kobiboden CH*EVT channels."
     },
     {
       "operatorId": "CH*AMG",
@@ -336,14 +336,14 @@
       "evseCount": 1,
       "stationCount": 1,
       "operatorNames": [],
-      "status": "blocked",
+      "status": "complete",
       "name": "CH*DIE",
-      "evidence": "docs/switzerland-first-pass-national-reconciliation-2026-09-28.json",
-      "note": "0/1. The current EVSE supports direct payment, but no current authoritative charging price is published. The only discovered price rule is historical and is not safe for 2026 production.",
+      "evidence": "docs/switzerland-small-cpo-resolution-2026-09-29.json",
+      "note": "1/1 current CH*DIE EVSE resolved from the current official Stadt Dietikon page for Zentralschulhaus, Bremgartnerstrasse 15: CHF 0.50/kWh; parking fee is separate. No extrapolation.",
       "setAside": false,
-      "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Obtain a current Stadt Dietikon station tariff/QR/payment page for Bremgartnerstrasse 15."
+      "blockerPersistent": false,
+      "blockerEvidence": null,
+      "resumeCondition": null
     },
     {
       "operatorId": "CH*HER",
@@ -352,12 +352,12 @@
       "operatorNames": [],
       "status": "blocked",
       "name": "CH*HER",
-      "evidence": "docs/switzerland-first-pass-national-reconciliation-2026-09-28.json",
-      "note": "0/1. The current EVSE supports direct payment but no current authoritative station tariff was found. Electricity retail tariffs cannot be substituted for charging-station pricing.",
+      "evidence": "docs/switzerland-small-cpo-resolution-2026-09-29.json",
+      "note": "0/1 after full small-CPO pass. Exact station/direct card payment confirmed at Forchstrasse 16, but no authoritative current EWH/Gemeinde tariff was found. PlugShare shows CHF 0.39/kWh, but community-only provenance is insufficient for production.",
       "setAside": false,
       "blockerPersistent": true,
-      "blockerEvidence": "docs/switzerland-persistent-blockers-2026-09-28.json",
-      "resumeCondition": "Obtain the current Forchstrasse station QR/payment tariff or an official Elektrizitätswerk Herrliberg charging price."
+      "blockerEvidence": "docs/switzerland-small-cpo-resolution-2026-09-29.json",
+      "resumeCondition": "Obtain current EWH/Gemeinde Herrliberg tariff or the station payment/QR screen."
     },
     {
       "operatorId": "CH*CPI",

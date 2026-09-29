@@ -91,6 +91,8 @@ sources=[
 ("AVIA guest exact","data/switzerland/avia-guest-direct-tariffs.json"),
 ("AVIA successor alias","data/switzerland/avia-successor-alias-overlay.json"),
 ("Partino Baden exact","data/switzerland/partino-baden-direct-tariffs.json"),
+("EVTEC ADEV official","data/switzerland/evt-official-site-partial-tariffs.json"),
+("Dietikon official","data/switzerland/dietikon-official-direct-tariff.json"),
 ]
 classifications=[
 ("Partino restricted","data/switzerland/par-partino-restricted-direct-classification.json"),
