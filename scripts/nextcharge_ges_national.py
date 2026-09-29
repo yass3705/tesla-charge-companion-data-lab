@@ -10,7 +10,8 @@ BASE="https://nextcharge.app.apis.goelectricstations.com/apis"
 PUN=Path("data/national/pun_italy_national.json.gz")
 OUT=Path("data/reports/nextcharge_ges_national_report.json")
 DATA=Path("data/national/nextcharge_ges_national.json.gz")
-UA="NextCharge/6.2.02 Android"\n# canonical-main reproducibility trigger 2026-09-29
+UA="NextCharge/6.2.02 Android"
+# canonical-main reproducibility trigger 2026-09-29
 MAX_DISTANCE_M=100.0
 WORKERS=12
 
