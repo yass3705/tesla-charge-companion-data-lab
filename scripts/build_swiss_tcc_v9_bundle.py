@@ -88,6 +88,7 @@ sources=[
 ("Energie360 final residual","docs/switzerland-energie360-finalization-2026-09-28.json"),
 ("GOFAST official","data/switzerland/gofast-official-direct-tariffs.json"),
 ("AVIA guest exact","data/switzerland/avia-guest-direct-tariffs.json"),
+("AVIA successor alias","data/switzerland/avia-successor-alias-overlay.json"),
 ]
 classifications=[
 ("Partino restricted","data/switzerland/par-partino-restricted-direct-classification.json"),
