@@ -44,6 +44,7 @@ jobs:
             'md5sum': file.get('md5sum'),
           }
           open('/tmp/enel-apk/meta.json','w').write(json.dumps(out,indent=2))
+          open('data/reports/enel_apk_fetch_meta.json','w').write(json.dumps(out,indent=2))
           url=out['path'] or out['pathAlt']
           if not url:
               raise SystemExit('No APK URL in Aptoide metadata')
@@ -54,6 +55,7 @@ jobs:
           elif '://' not in url:
               url='https://'+url.lstrip('/')
           open('/tmp/enel-apk/url.txt','w').write(url)
+          open('data/reports/enel_apk_fetch_url.txt','w').write(url)
           print(json.dumps({k:v for k,v in out.items() if k not in ('path','pathAlt')},indent=2))
           PY
           URL="$(cat /tmp/enel-apk/url.txt)"
@@ -73,9 +75,8 @@ jobs:
         with:
           name: enel-apk-fetch-diagnostics
           path: |
-            /tmp/enel-apk/aptoide.json
-            /tmp/enel-apk/meta.json
-            /tmp/enel-apk/url.txt
+            data/reports/enel_apk_fetch_meta.json
+            data/reports/enel_apk_fetch_url.txt
           retention-days: 2
 
       - name: Extract endpoint and tariff/payment strings
