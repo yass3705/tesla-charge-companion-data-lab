@@ -91,6 +91,27 @@ def process(item):
         if d<=MAX_DISTANCE_M:
             candidates.append((d,st))
     candidates.sort(key=lambda x:x[0])
+    grid=None
+    grid_candidates=[]
+    # Second pass from the exact APK-observed stationsGrid form. This is only
+    # discovery: acceptance still requires an exact connector identifier match.
+    if not candidates:
+        grid_form={
+          "lonSW":str(lon-GRID_HALFSPAN_DEG),"latSW":str(lat-GRID_HALFSPAN_DEG),
+          "lonNE":str(lon+GRID_HALFSPAN_DEG),"latNE":str(lat+GRID_HALFSPAN_DEG),
+          "statusStation":"","UID":"","includeNextcharge":"1","includeHighway":"1",
+          "favorites":"0","filterStations":"",
+          "osType":"android","appVersion":"6.2.02","tokenAppSessionForStations":"",
+        }
+        grid=post("/stationsGrid",grid_form)
+        for st in list_data(grid):
+            if not isinstance(st,dict): continue
+            try: d=hav(lat,lon,float(st.get("latitude")),float(st.get("longitude")))
+            except Exception: d=None
+            grid_candidates.append((d if d is not None else 1e18,st))
+        grid_candidates.sort(key=lambda x:x[0])
+        # Keep a bounded candidate set; exact uid/ref equality below is mandatory.
+        candidates=grid_candidates[:50]
     target_by_num={numeric_suffix(e["evseId"]):e for e in evses if numeric_suffix(e["evseId"]) is not None}
     target_refs={norm_ref(e["evseId"]):e for e in evses}
     matches={}
@@ -122,7 +143,7 @@ def process(item):
                 # If duplicated, keep closest deterministic candidate.
                 if eid not in matches or row["distanceM"]<matches[eid]["distanceM"]:
                     matches[eid]=row
-    return {"punStationId":sid,"punEvseCount":len(evses),"nearStatus":(near.get("json") or {}).get("status") if isinstance(near,dict) and isinstance(near.get("json"),dict) else None,"candidateStationCount":len(candidates),"stationCalls":station_calls,"matches":list(matches.values())}
+    return {"punStationId":sid,"punEvseCount":len(evses),"nearStatus":(near.get("json") or {}).get("status") if isinstance(near,dict) and isinstance(near.get("json"),dict) else None,"gridStatus":((grid or {}).get("json") or {}).get("status") if isinstance(grid,dict) and isinstance(grid.get("json"),dict) else None,"gridCandidateCount":len(grid_candidates),"candidateStationCount":len(candidates),"stationCalls":station_calls,"matches":list(matches.values())}
 
 results=[]
 with ThreadPoolExecutor(max_workers=WORKERS) as pool:
@@ -161,7 +182,7 @@ provider_counts=Counter(str(m.get("provider")) for m in matches)
 method_counts=Counter(str(m.get("matchMethod")) for m in matches)
 
 payload={"schemaVersion":1,"source":"NextCharge 6.2.02 public stationsNear/stationConnectors","partyId":"GES","punEvseCount":len(ges),"punStationCount":len(stations),"matchedEvseCount":len(matched_ids),"rankableEvseCount":len(rank_ids),"failClosedEvseCount":len(ges)-len(rank_ids),"matches":sorted(rankable,key=lambda x:x["evseId"])}
-report={"scope":"GES national deterministic NextCharge reconciliation","punEvseCount":len(ges),"punStationCount":len(stations),"matchedEvseCount":len(matched_ids),"rankableEvseCount":len(rank_ids),"coveragePct":round(100*len(rank_ids)/len(ges),2) if ges else 0,"failClosedEvseCount":len(ges)-len(rank_ids),"matchedButNotRankableCount":len(matched_no_rank),"matchMethodCounts":dict(method_counts),"providerCounts":dict(provider_counts),"tariffTupleCounts":dict(tariff_counts),"stationOutcomeCounts":dict(Counter("error" if r.get("error") else ("matched" if r.get("matches") else "no_match") for r in results)),"maxDistanceM":MAX_DISTANCE_M,"security":{"credentialsUsed":False,"paymentAttempted":False,"chargingStarted":False},"stationDiagnostics":results}
+report={"scope":"GES national deterministic NextCharge reconciliation","punEvseCount":len(ges),"punStationCount":len(stations),"matchedEvseCount":len(matched_ids),"rankableEvseCount":len(rank_ids),"coveragePct":round(100*len(rank_ids)/len(ges),2) if ges else 0,"failClosedEvseCount":len(ges)-len(rank_ids),"matchedButNotRankableCount":len(matched_no_rank),"matchMethodCounts":dict(method_counts),"providerCounts":dict(provider_counts),"tariffTupleCounts":dict(tariff_counts),"stationOutcomeCounts":dict(Counter("error" if r.get("error") else ("matched" if r.get("matches") else "no_match") for r in results)),"maxDistanceM":MAX_DISTANCE_M,"gridHalfspanDeg":GRID_HALFSPAN_DEG,"gridStatusCounts":dict(Counter(str(r.get("gridStatus")) for r in results if r.get("gridStatus") is not None)),"gridCandidateStationTotal":sum(int(r.get("gridCandidateCount") or 0) for r in results),"security":{"credentialsUsed":False,"paymentAttempted":False,"chargingStarted":False},"stationDiagnostics":results}
 
 OUT.parent.mkdir(parents=True,exist_ok=True); DATA.parent.mkdir(parents=True,exist_ok=True)
 OUT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
