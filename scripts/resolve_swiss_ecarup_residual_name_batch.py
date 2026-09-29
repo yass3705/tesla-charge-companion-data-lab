@@ -205,6 +205,38 @@ for row in remaining[:BATCH]:
                 }
             }
             break
+    if not accepted and co:
+        try:
+            arr=fetch_search("", co)
+        except Exception as e:
+            errors.append({"evseId":eid,"term":"","error":str(e)[:200]})
+            arr=[]
+        exact_id_matches=[]
+        if isinstance(arr,list):
+            for st in arr:
+                for conn in connectors(st):
+                    hub=(conn.get("Hubject") or {}).get("ID") if isinstance(conn.get("Hubject"),dict) else None
+                    p=connector_price(conn)
+                    if norm(hub)==norm(eid) and connector_access(conn) in (0,None) and isinstance(p,dict):
+                        exact_id_matches.append((st,conn))
+        if len(exact_id_matches)==1:
+            st,conn=exact_id_matches[0]
+            sc=station_coord(st)
+            accepted={
+                "evseId":eid,
+                "stationName":station_name(st),
+                "stationId":st.get("ID") or st.get("id"),
+                "match":"exact_hubject_id_from_coordinate_search",
+                "distanceMeters":round(distance_m(co,sc),2) if sc else None,
+                "price":connector_price(conn),
+                "connector":{
+                    "Id":conn.get("Id") or conn.get("ID") or conn.get("id"),
+                    "Name":conn.get("Name") or conn.get("name"),
+                    "MaxPower":conn.get("MaxPower") or conn.get("maxPower"),
+                    "HubjectID":(conn.get("Hubject") or {}).get("ID") if isinstance(conn.get("Hubject"),dict) else None
+                }
+            }
+
     if accepted:
         promoted.append(accepted)
         overlay.setdefault("rows",[]).append(accepted)
@@ -216,7 +248,7 @@ for row in remaining[:BATCH]:
 
 now=datetime.now(timezone.utc).isoformat()
 overlay["generatedAt"]=now
-overlay["method"]="Exact eCarUp public API searchTerm + national coordinate; accept only unique exact-name/coordinate station and deterministic single public connector/price"
+overlay["method"]="Exact eCarUp public API reconciliation: exact ChargingStationNames+coordinate or exact Hubject.ID returned by coordinate search; public explicit connector price required"
 overlay["policy"]="No nearest-neighbour tariff inheritance; no cross-station extrapolation."
 OVERLAY.write_text(json.dumps(overlay,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
@@ -233,7 +265,7 @@ report={
     "promoted":promoted,
     "tested":tested,
     "errors":errors,
-    "policy":"Fail closed: exact normalized name + <=3m coordinate + one explicit public connector price only."
+    "policy":"Fail closed: exact normalized name + <=3m coordinate, or exact Hubject.ID identity from coordinate search; explicit public connector price required."
 }
 REPORT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
