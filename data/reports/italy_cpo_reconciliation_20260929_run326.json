@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "country": "IT",
+  "run": 326,
+  "asOf": "2026-09-29",
+  "subject": "ENX / Enel X Way Italia current APK 4.3.67 and direct-payment backend validation",
+  "canonicalPath": "docs/italy-cpo-progress-2026-09.json",
+  "decision": {
+    "partyId": "ENX",
+    "canonicalName": "Enel X Way Italia",
+    "statusBefore": "partial",
+    "statusAfter": "partial",
+    "reason": "Current Android APK 4.3.67 confirms an explicit Guest charging/payment flow and retains direct-payment tariff model fields in Flutter native code. A fresh anonymous public station-detail probe returns distinct operator/app price and directPaymenthPrice values on AC, DC and HPC samples. This validates a dedicated direct-payment price surface, but national deterministic coverage against all 23,007 current PUN ENX EVSE has not yet been rebuilt, so no partial->treated promotion is made.",
+    "tariffChannel": "direct/ad-hoc candidate = station-detail directPaymenthPrice; app/eMSP price kept separate",
+    "apk": {
+      "package": "com.enel.mobile.recharge2",
+      "versionName": "4.3.67",
+      "versionCode": 2102,
+      "sha256": "9da7ec5d56840f69edd93b6ca7043cc326ee5e2cfbba6c66164672255de96ac5",
+      "researchCommit": "a3f5dd06cb2ebe04525c3733a7af3283390c90b0",
+      "workflowRunId": 36550914728,
+      "findings": [
+        "Guest flow explicit: isGuest/GUEST_USER/chargeAsGuestResult/guestAddPaymentMethod",
+        "directPaymenthTypePrice retained in libapp.so",
+        "directPaymenthPenaltyPrice retained in libapp.so",
+        "Pay Per Use and card pre-authorization strings present"
+      ]
+    },
+    "liveBackendProbe": {
+      "workflowRunId": 36551103730,
+      "researchCommit": "2679fb519c41addc913810d11ddc30e20826c0a1",
+      "endpoint": "https://emobility.enelx.com/api/emobility/v2/charging/station/{serialNumber}",
+      "sample": {
+        "cities": 3,
+        "mapStationsReturned": 2207,
+        "detailStations": 9,
+        "successfulDetailStations": 9,
+        "classes": {
+          "quick": 3,
+          "fast": 3,
+          "hpc": 3
+        }
+      },
+      "observedPairs": [
+        {
+          "class": "AC <=43 kW",
+          "priceEurPerKwh": 0.67,
+          "directPaymentEurPerKwh": 0.69
+        },
+        {
+          "class": "DC 43-99 kW",
+          "priceEurPerKwh": 0.75,
+          "directPaymentEurPerKwh": 0.74
+        },
+        {
+          "class": "HPC >99 kW",
+          "priceEurPerKwh": 0.82,
+          "directPaymentEurPerKwh": 0.74
+        }
+      ],
+      "observedDirectPaymentType": "KWH",
+      "observedAcPenalty": {
+        "operatorPriceEurPerMinute": 0.1,
+        "directPaymentEurPerMinute": 0.12
+      },
+      "note": "The API exposes price and directPaymenthPrice simultaneously, proving they are distinct commercial surfaces. Do not substitute price for directPaymenthPrice."
+    },
+    "coverage": {
+      "canonicalPunEvse": 23007,
+      "rankableEvse": 0,
+      "failClosedEvse": 23007,
+      "rankableAddedThisRun": 0
+    },
+    "resumeCondition": "Run a fresh national ENX/PUN exact mapping using current public station-detail responses and directPaymenthPrice/directPaymenthTypePrice/directPaymenthPenaltyPrice. Promote only EVSE with deterministic current mapping and validated direct-payment units/penalty semantics; keep any unmatched or unsupported EVSE fail-closed."
+  },
+  "coherence": {
+    "currentPunPartyIds": 92,
+    "treated": 24,
+    "partialCurrent": 68,
+    "active": 0,
+    "setAside": 0,
+    "unreconciledCurrentPunPartyIds": 0,
+    "arithmeticCheckCurrentPun": true
+  }
+}
