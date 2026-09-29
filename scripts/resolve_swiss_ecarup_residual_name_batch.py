@@ -105,7 +105,13 @@ def download_national_context():
             local_names=list(inherited_names)
             for k,v in x.items():
                 lk=k.lower()
-                if isinstance(v,str) and any(t in lk for t in useful_name_keys):
+                if k == "ChargingStationNames" and isinstance(v,list):
+                    for item in v:
+                        if isinstance(item,dict) and isinstance(item.get("value"),str):
+                            s=item["value"].strip()
+                            if 2 <= len(s) <= 160 and norm(s) not in {norm(z) for z in local_names}:
+                                local_names.append(s)
+                elif isinstance(v,str) and any(t in lk for t in useful_name_keys):
                     s=v.strip()
                     if 2 <= len(s) <= 160 and norm(s) not in {norm(z) for z in local_names}:
                         local_names.append(s)
