@@ -80,9 +80,10 @@ async function worker(){
 await Promise.all(Array.from({length:Math.min(CONCURRENCY,tiles.length)},()=>worker()));
 
 const allIds=[...new Set(Object.values(results).flatMap(t=>t.ids||[]))].sort((a,b)=>a.localeCompare(b));
+const baseline=!previous.generatedAt;
 const prevIds=new Set(previous.allIds||[]);
 const nowIds=new Set(allIds);
-const newIds=allIds.filter(id=>!prevIds.has(id));
+const newIds=baseline?[]:allIds.filter(id=>!prevIds.has(id));
 const disappearedIds=[...prevIds].filter(id=>!nowIds.has(id));
 
 const mapping=JSON.parse(await fs.readFile(MAPPING,'utf8'));
@@ -114,7 +115,7 @@ await fs.mkdir('data/electroverse/inventory',{recursive:true});
 await fs.mkdir('reports/electroverse',{recursive:true});
 await fs.writeFile(SNAPSHOT,JSON.stringify({version:1,generatedAt,zoom:Z,tileCount:tiles.length,tiles:results,allIds},null,2)+'\n');
 await fs.writeFile(REPORT,JSON.stringify({
-  generatedAt,baseline:!previous.generatedAt,zoom:Z,tileCount:tiles.length,failedTileCount:failedTiles.length,failedTiles,
+  generatedAt,baseline,zoom:Z,tileCount:tiles.length,failedTileCount:failedTiles.length,failedTiles,
   inventoryCount:allIds.length,previousInventoryCount:(previous.allIds||[]).length,
   newIdCount:newIds.length,disappearedIdCount:disappearedIds.length,
   mappedNewCount:mappedNewIds.length,unmappedNewCount:unmappedNewIds.length,
@@ -127,7 +128,7 @@ await fs.writeFile(SELECTION,JSON.stringify({
   dueTotal:selected.length,selectedCount:selected.length,selected
 },null,2)+'\n');
 console.log(JSON.stringify({
-  generatedAt,baseline:!previous.generatedAt,tileCount:tiles.length,failedTileCount:failedTiles.length,
+  generatedAt,baseline,tileCount:tiles.length,failedTileCount:failedTiles.length,
   inventoryCount:allIds.length,newIdCount:newIds.length,mappedNewCount:mappedNewIds.length,
   unmappedNewCount:unmappedNewIds.length,mappingNotCachedCount:mappingNotCached.length,
   retryFailureCount:failureIds.length,selectedCount:selected.length
