@@ -1,0 +1,56 @@
+name: Switzerland Swisscharge public CS HTML probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-swisscharge-public-cs-html-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Inspect public CS HTML around embedded data
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,urllib.request
+          from pathlib import Path
+          from datetime import datetime,timezone
+          refs=["290524","290525","290526","1717"]
+          rows=[]
+          for ref in refs:
+            url=f"https://cp.swisscharge.ch/public/cs/{ref}"
+            html=urllib.request.urlopen(urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0"}),timeout=30).read().decode("utf-8","replace")
+            matches=[]
+            for pat in [ref,"price","tariff","connector","session","chargePoint","charge-point","data-","csrf"]:
+              pos=0;count=0
+              while True:
+                i=html.lower().find(pat.lower(),pos)
+                if i<0 or count>=20:break
+                matches.append({"needle":pat,"offset":i,"text":html[max(0,i-500):min(len(html),i+1800)]})
+                pos=i+len(pat);count+=1
+            rows.append({"reference":ref,"htmlBytes":len(html),"matches":matches})
+          out={"schemaVersion":1,"generatedAt":datetime.now(timezone.utc).isoformat(),"rows":rows}
+          Path("docs/switzerland-swisscharge-public-cs-html-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps([{"ref":r["reference"],"bytes":r["htmlBytes"],"matches":len(r["matches"])} for r in rows]))
+          PY
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-swisscharge-public-cs-html-probe-2026-09-29.json
+          git commit -m "research(ch): inspect Swisscharge public CS HTML" || exit 0
+          git pull --rebase origin main
+          git push origin main
