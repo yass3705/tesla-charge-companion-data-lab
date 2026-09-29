@@ -1,0 +1,44 @@
+name: TEST NON-TESLA — Electroverse France residual retry
+on:
+  push:
+    paths:
+      - tests/non-tesla/active/run-electroverse-france-residual-retry.trigger
+permissions:
+  contents: write
+jobs:
+  retry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
+      REQUEST_INTERVAL_MS: '1500'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Retry France residuals with legacy sequential method
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          node scripts/electroverse_france_residual_selector.mjs
+          set +e
+          node scripts/legacy/electroverse_incremental_refresh_sequential_2026-09-28.mjs
+          rc=$?
+          set -e
+          git add data/electroverse/tariff_cache reports/electroverse/incremental-selection.json
+          git commit -m "data(electroverse): retry France residual stations [run ${GITHUB_RUN_ID}]" || true
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main
+            git push origin HEAD:main && break
+            sleep $((i * 3))
+          done
+          if [ "${rc}" -ne 0 ]; then
+            echo "Residual retry completed with remaining isolated failures."
+          fi
+          exit 0
