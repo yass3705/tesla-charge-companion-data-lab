@@ -47,7 +47,8 @@ jobs:
           base='https://app.monta.app/roaming/monta-as-a-cpo-pricing'
           all_rows=[]; header=None; pages=0
           evse_re=re.compile(r'[A-Z]{2}\*?[A-Z0-9]{3}\*?E[A-Z0-9]+')
-          for page in range(1,100):
+          empty_pages=0
+          for page in range(1,501):
               url=base+'?'+urllib.parse.urlencode({'country':'BE','page':page,'per_page':200})
               req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/9','Accept':'text/html,*/*'})
               with urllib.request.urlopen(req,timeout=90) as r: raw=r.read().decode('utf-8','replace')
@@ -60,8 +61,10 @@ jobs:
               data=[rr for rr in rows if any(evse_re.fullmatch(x.strip()) for x in rr)]
               all_rows.extend(data); pages+=1
               print(json.dumps({'page':page,'dataRows':len(data)}))
-              if len(data)<200: break
-              time.sleep(.35)
+              empty_pages = empty_pages + 1 if not data else 0
+              if empty_pages >= 5: break
+              if page >= 500: raise SystemExit('pagination guard reached before end-of-table')
+              time.sleep(.2)
 
           parsed=[]
           for rr in all_rows:
