@@ -78,11 +78,19 @@ def main():
               ("body_original_device_user",{"tokenAppSessionForStations":tok,"deviceKey":DEVICE,"osType":"android","appVersion":"6.2.02","userId":server_user or ""}),
               ("body_ephemeral_device_user",{"tokenAppSessionForStations":tok,"deviceKey":ephemeral or DEVICE,"osType":"android","appVersion":"6.2.02","userId":server_user or ""}),
             ]
+            qr_cases=[
+              ("uidConnector",EVSE,"uid_raw_missing"),
+              ("uidConnector","171731","uid_numeric_known"),
+              ("payloadQrCode","gesnextcharge://qr?evseid="+EVSE,"qr_raw_missing"),
+              ("payloadQrCode","gesnextcharge://qr?evseid=IT*GES*E125845134","qr_star_missing"),
+              ("payloadQrCode","gesnextcharge://qr?evseid=ITGESE171731","qr_raw_known"),
+              ("payloadQrCode","gesnextcharge://qr?evseid=171731","qr_numeric_known"),
+            ]
             for hn,ctx in station_contexts:
-                for ev in (EVSE,"IT*GES*E125845134","171731"):
-                    payload={"uidConnector":ev,**ctx}
+                for field,value,label in qr_cases:
+                    payload={field:value,**ctx}
                     s=post("/station",payload)
-                    row={"authVariant":name,"headerVariant":hn,"submittedEvseId":ev,"response":s}
+                    row={"authVariant":name,"headerVariant":hn,"requestField":field,"case":label,"submittedValue":value,"response":s}
                     o=s.get("json") if isinstance(s,dict) else None
                     sid=None
                     if isinstance(o,dict) and o.get("status")=="OK":
@@ -99,7 +107,7 @@ def main():
                         row["connectors"]=post("/stationConnectors",{"idStation":str(sid),"limit":"100","offset":"0",**ctx})
                     station.append(row)
     report={
-      "scope":"NextCharge guest station reconstruction using APK-observed uidConnector plus POST body session context",
+      "scope":"NextCharge guest station reconstruction including APK-observed gesnextcharge QR payloads",
       "deviceKey":DEVICE,
       "authAttempts":auth,
       "stationAttempts":station,
