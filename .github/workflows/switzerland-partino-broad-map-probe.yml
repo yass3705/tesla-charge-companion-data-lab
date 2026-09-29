@@ -1,0 +1,76 @@
+name: Switzerland Partino broad map probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-partino-broad-map-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Probe Partino map on broad Swiss bounds
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,urllib.request,urllib.parse,urllib.error,http.cookiejar
+          from pathlib import Path
+          from datetime import datetime,timezone
+          BASE="https://partino-chf.evc-net.com"; UA="Mozilla/5.0 TCC-V9-Partino-Broad"
+          cj=http.cookiejar.CookieJar()
+          op=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+          def get(url,params=None,headers=None):
+            if params: url += ("&" if "?" in url else "?")+urllib.parse.urlencode(params)
+            req=urllib.request.Request(url,headers=headers or {"User-Agent":UA},method="GET")
+            try:
+              with op.open(req,timeout=45) as r:return r.status,r.read()
+            except urllib.error.HTTPError as e:return e.code,e.read()
+            except Exception as e:return 0,(type(e).__name__+": "+str(e)).encode()
+          get(BASE+"/Locations",headers={"User-Agent":UA,"Accept":"text/html,*/*"})
+          variants=[]
+          for view in ("clustered","unclustered"):
+            req0={"handler":"\\LMS\\EV\\AsyncServices\\DashboardAsyncService","method":"spotsStatus","params":{
+              "active":True,"provider":None,"profile":None,"view":view,"mode":"roaming","maxCache":0,
+              "bounds":{"south":45.7,"west":5.7,"north":47.95,"east":10.7}
+            }}
+            st,raw=get(BASE+"/api/ajax",{
+              "requests":json.dumps({"0":req0},separators=(",",":")),"metricKey":"DeviceMap_432"
+            },{"User-Agent":UA,"Accept":"application/json","Referer":BASE+"/Locations","X-Requested-With":"XMLHttpRequest"})
+            try: body=json.loads(raw.decode())
+            except: body={"_raw":raw.decode("utf-8","replace")[:3000]}
+            arr=body.get("0") if isinstance(body,dict) else None
+            targets=[]
+            if isinstance(arr,list):
+              for c in arr:
+                txt=json.dumps(c,ensure_ascii=False).lower()
+                if "89615556" in txt or "oberstadt" in txt or "baden" in txt:
+                  targets.append(c)
+            variants.append({"view":view,"status":st,"count":len(arr) if isinstance(arr,list) else None,"targets":targets,"nonListResponse":None if isinstance(arr,list) else body})
+          out={"schemaVersion":1,"generatedAt":datetime.now(timezone.utc).isoformat(),"variants":variants}
+          Path("docs/switzerland-partino-broad-map-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps([{"view":v["view"],"status":v["status"],"count":v["count"],"targets":len(v["targets"])} for v in variants]))
+          PY
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-partino-broad-map-probe-2026-09-29.json
+          git commit -m "research(ch): probe Partino broad public map" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
