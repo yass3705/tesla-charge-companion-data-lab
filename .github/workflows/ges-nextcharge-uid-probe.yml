@@ -1,0 +1,35 @@
+name: GES NextCharge UID probe
+
+on:
+  push:
+    branches:
+      - research/ges-nextcharge-v9
+    paths:
+      - scripts/nextcharge_ges_uid_probe.py
+      - .github/workflows/ges-nextcharge-uid-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install --disable-pip-version-check requests requests-aws4auth
+      - name: Rebuild current PUN Italy
+        run: python scripts/pun_italy_national.py --workers 8
+      - name: Probe exact stationsGrid UID lookup
+        run: python scripts/nextcharge_ges_uid_probe.py
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ges-nextcharge-uid-probe
+          path: data/reports/nextcharge_ges_uid_probe.json
+          retention-days: 14
