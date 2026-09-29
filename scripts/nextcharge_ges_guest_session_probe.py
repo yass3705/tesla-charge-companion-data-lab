@@ -67,20 +67,21 @@ def main():
     for name,form in variants:
         a=post("/userSession",form)
         tok=token_from(a)
+        ao=a.get("json") if isinstance(a,dict) else None
+        server_user=(ao or {}).get("userId") if isinstance(ao,dict) else None
+        ephemeral=(ao or {}).get("ephemeralDeviceKey") if isinstance(ao,dict) else None
         auth.append({"variant":name,"formKeys":sorted(form.keys()),"response":a,"tokenObtained":bool(tok)})
         if tok:
-            header_sets=[
-              ("token_only",{"tokenAppSessionForStations":tok}),
-              ("apk_headers",{
-                "tokenAppSessionForStations":tok,
-                "deviceKey":DEVICE,
-                "osType":"android",
-                "appVersion":"6.2.02",
-              }),
+            station_contexts=[
+              ("body_original_device",{"tokenAppSessionForStations":tok,"deviceKey":DEVICE,"osType":"android","appVersion":"6.2.02"}),
+              ("body_ephemeral_device",{"tokenAppSessionForStations":tok,"deviceKey":ephemeral or DEVICE,"osType":"android","appVersion":"6.2.02"}),
+              ("body_original_device_user",{"tokenAppSessionForStations":tok,"deviceKey":DEVICE,"osType":"android","appVersion":"6.2.02","userId":server_user or ""}),
+              ("body_ephemeral_device_user",{"tokenAppSessionForStations":tok,"deviceKey":ephemeral or DEVICE,"osType":"android","appVersion":"6.2.02","userId":server_user or ""}),
             ]
-            for hn,hh in header_sets:
+            for hn,ctx in station_contexts:
                 for ev in (EVSE,"IT*GES*E125845134"):
-                    s=post_multipart("/station",{"uidConnector":ev},hh)
+                    payload={"uidConnector":ev,**ctx}
+                    s=post("/station",payload)
                     row={"authVariant":name,"headerVariant":hn,"submittedEvseId":ev,"response":s}
                     o=s.get("json") if isinstance(s,dict) else None
                     sid=None
@@ -95,10 +96,10 @@ def main():
                                     if sid is not None: break
                     if sid is not None:
                         row["stationId"]=sid
-                        row["connectors"]=post_multipart("/stationConnectors",{"idStation":str(sid),"limit":"100","offset":"0"},hh)
+                        row["connectors"]=post("/stationConnectors",{"idStation":str(sid),"limit":"100","offset":"0",**ctx})
                     station.append(row)
     report={
-      "scope":"NextCharge guest station reconstruction using APK-observed multipart uidConnector flow",
+      "scope":"NextCharge guest station reconstruction using APK-observed uidConnector plus POST body session context",
       "deviceKey":DEVICE,
       "authAttempts":auth,
       "stationAttempts":station,
