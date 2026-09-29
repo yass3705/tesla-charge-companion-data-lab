@@ -29,22 +29,29 @@ def tls_probe(ip=None):
         return {"ok":False,"error":f"{type(e).__name__}: {e}"}
 
 def post_station(evse):
+    # APK 6.2.02 LS3/b.e: station-family requests are multipart/form-data.
+    # The method augments the caller map with osType=android and appVersion.
     sess=requests.Session()
-    headers={"User-Agent":"NextCharge/6.2.02 Android","Content-Type":"application/x-www-form-urlencoded"}
+    headers={"User-Agent":"NextCharge/6.2.02 Android"}
     attempts=[]
-    for i in range(3):
+    versions=["6.2.02","6.2.2","60202"]
+    for i,app_version in enumerate(versions,1):
         t0=time.time()
+        fields={"evseId":evse,"osType":"android","appVersion":app_version}
+        files={k:(None,str(v)) for k,v in fields.items()}
         try:
-            r=sess.post(BASE+"/station",data={"evseId":evse},headers=headers,timeout=(8,20))
-            row={"attempt":i+1,"elapsed":round(time.time()-t0,3),"httpStatus":r.status_code,"contentType":r.headers.get("content-type")}
+            r=sess.post(BASE+"/station",files=files,headers=headers,timeout=(8,20))
+            row={"attempt":i,"appVersion":app_version,"encoding":"multipart/form-data","submittedFields":fields,
+                 "elapsed":round(time.time()-t0,3),"httpStatus":r.status_code,"contentType":r.headers.get("content-type")}
             try: row["json"]=r.json()
             except Exception: row["textPrefix"]=r.text[:500]
             attempts.append(row)
-            if r.status_code==200:
+            if r.status_code==200 and isinstance(row.get("json"),dict) and row["json"].get("status")=="OK":
                 return {"evseId":evse,"attempts":attempts}
         except Exception as e:
-            attempts.append({"attempt":i+1,"elapsed":round(time.time()-t0,3),"error":f"{type(e).__name__}: {e}"})
-        time.sleep(2)
+            attempts.append({"attempt":i,"appVersion":app_version,"encoding":"multipart/form-data",
+                             "elapsed":round(time.time()-t0,3),"error":f"{type(e).__name__}: {e}"})
+        time.sleep(1)
     return {"evseId":evse,"attempts":attempts}
 
 def station_id_from(o):
@@ -62,8 +69,9 @@ def station_id_from(o):
 
 def post_connectors(station_id):
     try:
-        r=requests.post(BASE+"/stationConnectors",data={"idStation":str(station_id),"limit":"100","offset":"0"},
-                        headers={"User-Agent":"NextCharge/6.2.02 Android","Content-Type":"application/x-www-form-urlencoded"},timeout=(8,20))
+        fields={"idStation":str(station_id),"limit":"100","offset":"0","osType":"android","appVersion":"6.2.02"}
+        r=requests.post(BASE+"/stationConnectors",files={k:(None,str(v)) for k,v in fields.items()},
+                        headers={"User-Agent":"NextCharge/6.2.02 Android"},timeout=(8,20))
         row={"httpStatus":r.status_code,"contentType":r.headers.get("content-type")}
         try: row["json"]=r.json()
         except Exception: row["textPrefix"]=r.text[:1000]
