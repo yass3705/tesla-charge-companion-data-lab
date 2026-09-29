@@ -31,9 +31,16 @@ RECONCILE_REPORT = ROOT / "reports/uk/canonical-reconcile-latest.json"
 # broad multi-source batch so a degraded batch cannot starve the queue.
 TASKS = [
     {
+        "id": "lidl_uk_inventory",
+        "interval_hours": 168,
+        "command": [sys.executable, "scripts/lidl_uk_public_store_inventory.py"],
+        "progress_task": True,
+    },
+    {
         "id": "lidl_uk_pricing",
-        "interval_hours": 24,
+        "interval_hours": 168,
         "command": [sys.executable, "scripts/lidl_uk_official_pricing.py"],
+        "maintenance_only": True,
     },
     {
         "id": "ionity_direct",
@@ -93,7 +100,16 @@ def due_task(state, now):
     char.gy/Go Zero from causing hourly reruns of a 20-minute 12-source batch.
     """
     runs = state.get("tasks", {})
-    for task in TASKS:
+    # KPI work first: if Lidl is still actionable, inventory recovery outranks
+    # maintenance refreshes. A task that already proved no progress is parked
+    # until its normal interval rather than being retried every cycle.
+    canonical = load_json(CANONICAL, {})
+    actionable = {r.get("name") for r in canonical.get("cpos", [])
+                  if status_bucket(r.get("status")) == "actionable"}
+    ordered = TASKS
+    if "Lidl" in actionable:
+        ordered = sorted(TASKS, key=lambda t: 0 if t["id"] == "lidl_uk_inventory" else 1)
+    for task in ordered:
         task_state = runs.get(task["id"]) or {}
         last_attempt = parse_time(task_state.get("lastAttemptAt"))
         if last_attempt is None or now - last_attempt >= timedelta(hours=task["interval_hours"]):
@@ -308,6 +324,16 @@ def main():
     reconcile_after = run_reconciler()
     reconcile = reconcile_after if reconcile_after.get("changeCount") else reconcile_before
     canonical = load_json(CANONICAL, canonical)
+
+    # A green command is not progress. Record whether the deterministic task
+    # actually changed the canonical ledger so repeated green/no-op work is
+    # visible and can be parked by interval.
+    if task:
+        task_state = state.setdefault("tasks", {}).setdefault(task["id"], {})
+        task_state["lastCanonicalChangeCount"] = int(reconcile_after.get("changeCount") or 0)
+        task_state["madeCanonicalProgress"] = bool(reconcile_after.get("changeCount"))
+        if run_result.get("returnCode") == 0 and not reconcile_after.get("changeCount"):
+            task_state["lastNoProgressAt"] = run_result["finishedAt"]
 
     history = state.setdefault("history", [])
     history.append({k: run_result.get(k) for k in ("taskId", "startedAt", "finishedAt", "returnCode")})
