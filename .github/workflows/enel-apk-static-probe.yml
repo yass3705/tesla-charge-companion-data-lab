@@ -57,6 +57,12 @@ jobs:
           print(json.dumps({k:v for k,v in out.items() if k not in ('path','pathAlt')},indent=2))
           PY
           URL="$(cat /tmp/enel-apk/url.txt)"
+          python - <<'PY'
+          from urllib.parse import urlsplit
+          u=open('/tmp/enel-apk/url.txt').read()
+          p=urlsplit(u)
+          print({'scheme':p.scheme,'hostname':p.hostname,'pathPrefix':p.path[:80],'urlRepr':repr(u[:220])})
+          PY
           curl -fL --retry 3 --connect-timeout 20 --max-time 180 "$URL" -o /tmp/enel-apk/enel.apk
           test -s /tmp/enel-apk/enel.apk
           sha256sum /tmp/enel-apk/enel.apk | tee /tmp/enel-apk/sha256.txt
