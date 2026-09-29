@@ -78,13 +78,17 @@ def main():
               ("body_original_device_user",{"tokenAppSessionForStations":tok,"deviceKey":DEVICE,"osType":"android","appVersion":"6.2.02","userId":server_user or ""}),
               ("body_ephemeral_device_user",{"tokenAppSessionForStations":tok,"deviceKey":ephemeral or DEVICE,"osType":"android","appVersion":"6.2.02","userId":server_user or ""}),
             ]
+            # SplashActivity decodes gesnextcharge://qr?evseid=X, strips the
+            # scheme and extracts only X. MainActivity then dispatches X with
+            # typeCode=urlToEncode, and LR3/I0 sends payloadQrCode=X.
             qr_cases=[
               ("uidConnector",EVSE,"uid_raw_missing"),
               ("uidConnector","171731","uid_numeric_known"),
-              ("payloadQrCode","gesnextcharge://qr?evseid="+EVSE,"qr_raw_missing"),
-              ("payloadQrCode","gesnextcharge://qr?evseid=IT*GES*E125845134","qr_star_missing"),
-              ("payloadQrCode","gesnextcharge://qr?evseid=ITGESE171731","qr_raw_known"),
-              ("payloadQrCode","gesnextcharge://qr?evseid=171731","qr_numeric_known"),
+              ("payloadQrCode",EVSE,"qr_extracted_raw_missing"),
+              ("payloadQrCode","IT*GES*E125845134","qr_extracted_star_missing"),
+              ("payloadQrCode","ITGESE171731","qr_extracted_raw_known"),
+              ("payloadQrCode","IT*GES*E171731","qr_extracted_star_known"),
+              ("payloadQrCode","171731","qr_extracted_numeric_known"),
             ]
             for hn,ctx in station_contexts:
                 for field,value,label in qr_cases:
