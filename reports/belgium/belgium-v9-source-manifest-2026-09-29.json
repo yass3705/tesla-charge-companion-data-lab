@@ -21,6 +21,13 @@
       "canonical": "data/belgium/additional/canonical/indigo-belgium-canonical-2026-09-29.json",
       "sites": 86,
       "evses": 2332
+    },
+    {
+      "name": "Monta",
+      "scope": "public CPO pricing table rows",
+      "snapshot": "data/belgium/additional/monta-public-pricing-2026-09-29.json.gz",
+      "evses": 3389,
+      "note": "Inventory-like EVSE rows retained with provenance; national de-duplication against Eco-Movement remains under exact-ID audit."
     }
   ],
   "tariffSources": [
@@ -38,16 +45,20 @@
       "name": "INDIGO official Belgium tariff",
       "overlay": "data/operator_direct/indigo_belgium_official_2026-09-29.json",
       "pricedEvses": 2332
+    },
+    {
+      "name": "Monta public CPO pricing",
+      "snapshot": "data/belgium/additional/monta-public-pricing-2026-09-29.json.gz",
+      "report": "reports/belgium/monta-public-pricing-2026-09-29.json",
+      "pricedEvses": 3389,
+      "distinctTariffs": 517,
+      "crossSourceGapResolutions": 0
     }
   ],
   "externalBlockedSources": [
     {
       "name": "EnergyVision",
       "reason": "free API key required from myevplatform@energyvision.be"
-    },
-    {
-      "name": "Monta",
-      "reason": "authenticated Public API application requires clientId/clientSecret"
     }
   ],
   "rules": [
@@ -56,4 +67,4 @@
     "Deduplicate only on stable EVSE identifiers or explicit source identity evidence.",
     "Credential-gated sources remain blocked until legitimate credentials are supplied."
   ]
-}\n
+}
