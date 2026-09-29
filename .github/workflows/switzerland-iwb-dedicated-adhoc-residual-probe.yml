@@ -1,0 +1,113 @@
+name: Switzerland IWB dedicated adhoc residual probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-iwb-dedicated-adhoc-residual-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Probe IWB dedicated adhoc backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, urllib.request, urllib.parse, urllib.error, http.cookiejar
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          BASE="https://adhoc.iwb.swisscharge.ch"
+          TENANT="Industrielle-Werke-Basel_CH"
+          UA="Mozilla/5.0 TCC-V9-IWB-Dedicated"
+          refs=["247322","247323","35375","35376","46250","46251"]
+
+          cj=http.cookiejar.CookieJar()
+          op=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+          def get(url,headers=None):
+            req=urllib.request.Request(url,headers=headers or {},method="GET")
+            try:
+              with op.open(req,timeout=30) as r:return r.status,dict(r.headers.items()),r.read()
+            except urllib.error.HTTPError as e:return e.code,dict(e.headers.items()),e.read()
+            except Exception as e:return 0,{},(type(e).__name__+": "+str(e)).encode()
+
+          rows=[]
+          for ref in refs:
+            page=f"{BASE}/tenant/{TENANT}/session-start/{urllib.parse.quote(ref,safe='')}"
+            api=f"{BASE}/api/v1/charge-points?evsePhysicalReference={urllib.parse.quote(ref,safe='')}"
+            get(page,{"User-Agent":UA})
+            st,h,raw=get(api,{
+              "Accept":"application/json",
+              "Tenant":TENANT,
+              "tenant-path":page,
+              "Referer":page,
+              "User-Agent":UA,
+            })
+            try: body=json.loads(raw.decode("utf-8"))
+            except: body={"raw":raw.decode("utf-8","replace")[:1000]}
+            data=(body or {}).get("data") if isinstance(body,dict) else None
+            cp=(data or {}).get("chargePoint") or {}
+            evses=(data or {}).get("evses") or []
+            slim=[]
+            for ev in evses:
+              tariff=ev.get("tariff") or {}
+              slim.append({
+                "physicalReference":ev.get("physicalReference"),
+                "emi3Id":ev.get("emi3Id"),
+                "internalEvseId":ev.get("id"),
+                "chargePointId":cp.get("id"),
+                "locationName":cp.get("locationName"),
+                "address":cp.get("address"),
+                "city":cp.get("city"),
+                "networkStatus":cp.get("networkStatus"),
+                "hardwareStatus":ev.get("hardwareStatus"),
+                "currentType":ev.get("currentType"),
+                "maxPowerW":(ev.get("powerOptions") or {}).get("maxPower"),
+                "tariff":{
+                  "id":tariff.get("id"),
+                  "name":tariff.get("name"),
+                  "type":tariff.get("type"),
+                  "currency":tariff.get("currency"),
+                  "pricing":tariff.get("pricing") or {},
+                  "restrictions":tariff.get("restrictions") or {},
+                  "stopSession":tariff.get("stopSession"),
+                }
+              })
+            rows.append({
+              "reference":ref,
+              "httpStatus":st,
+              "chargePoint": {
+                "id":cp.get("id"),"locationName":cp.get("locationName"),
+                "address":cp.get("address"),"city":cp.get("city")
+              },
+              "evses":slim,
+              "error":None if slim else body
+            })
+          out={
+            "schemaVersion":1,"country":"CH","operatorId":"CH*IWB",
+            "source":{"base":BASE,"tenant":TENANT,"authentication":"none"},
+            "generatedAt":datetime.now(timezone.utc).isoformat(),"rows":rows
+          }
+          Path("docs/switzerland-iwb-dedicated-adhoc-residual-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps(out,ensure_ascii=False))
+          PY
+      - name: Persist sanitized probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-iwb-dedicated-adhoc-residual-probe-2026-09-29.json
+          git commit -m "research(ch): probe IWB dedicated adhoc residuals" || exit 0
+          git pull --rebase origin main
+          git push origin main
