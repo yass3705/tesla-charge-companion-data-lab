@@ -1,0 +1,59 @@
+name: Switzerland Swisscharge QR tenant probe small CPOs
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-swisscharge-qr-tenant-probe-small.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Probe public Swisscharge QR redirects
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,urllib.request,urllib.error
+          from pathlib import Path
+          from datetime import datetime,timezone
+          refs=["290524","290525","290526","1717","25665","25666","27986"]
+          rows=[]
+          for ref in refs:
+            url=f"https://cp.swisscharge.ch/public/cs/{ref}"
+            req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 TCC-V9-Small-QR","Accept":"text/html,*/*"})
+            try:
+              with urllib.request.urlopen(req,timeout=30) as r:
+                raw=r.read()
+                rows.append({"reference":ref,"status":r.status,"finalUrl":r.geturl(),"contentType":r.headers.get("Content-Type"),"body":raw.decode("utf-8","replace")[:2500]})
+            except urllib.error.HTTPError as e:
+              rows.append({"reference":ref,"status":e.code,"finalUrl":e.geturl(),"body":e.read().decode("utf-8","replace")[:1000]})
+            except Exception as e:
+              rows.append({"reference":ref,"status":0,"error":type(e).__name__+": "+str(e)})
+          out={"schemaVersion":1,"generatedAt":datetime.now(timezone.utc).isoformat(),"rows":rows}
+          Path("docs/switzerland-small-cpo-swisscharge-qr-tenant-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps([{"reference":x["reference"],"status":x["status"],"finalUrl":x.get("finalUrl")} for x in rows],ensure_ascii=False))
+          PY
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-small-cpo-swisscharge-qr-tenant-probe-2026-09-29.json
+          git commit -m "research(ch): probe Swisscharge QR tenants for small CPOs" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
