@@ -1,0 +1,112 @@
+name: Enel APK static endpoint probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/enel-v9-national
+    paths:
+      - .github/workflows/enel-apk-static-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch current Enel On Your Way APK metadata and package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/enel-apk data/reports
+          python - <<'PY'
+          import json, urllib.request
+          u='https://ws75.aptoide.com/api/7/app/get/package_name=com.enel.mobile.recharge2'
+          with urllib.request.urlopen(u, timeout=30) as r:
+              obj=json.load(r)
+          app=obj.get('nodes',{}).get('meta',{}).get('data',{}) or obj.get('data',{}) or {}
+          file=app.get('file') or {}
+          out={
+            'package': app.get('package') or 'com.enel.mobile.recharge2',
+            'name': app.get('name'),
+            'versionName': file.get('vername') or app.get('version_name'),
+            'versionCode': file.get('vercode') or app.get('version_code'),
+            'path': file.get('path'),
+            'pathAlt': file.get('path_alt'),
+            'md5sum': file.get('md5sum'),
+          }
+          open('/tmp/enel-apk/meta.json','w').write(json.dumps(out,indent=2))
+          url=out['path'] or out['pathAlt']
+          if not url:
+              raise SystemExit('No APK URL in Aptoide metadata')
+          open('/tmp/enel-apk/url.txt','w').write(url)
+          print(json.dumps({k:v for k,v in out.items() if k not in ('path','pathAlt')},indent=2))
+          PY
+          URL="$(cat /tmp/enel-apk/url.txt)"
+          curl -fL --retry 3 --connect-timeout 20 --max-time 180 "$URL" -o /tmp/enel-apk/enel.apk
+          test -s /tmp/enel-apk/enel.apk
+          sha256sum /tmp/enel-apk/enel.apk | tee /tmp/enel-apk/sha256.txt
+
+      - name: Extract endpoint and tariff/payment strings
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/enel-apk/unpack
+          unzip -q /tmp/enel-apk/enel.apk -d /tmp/enel-apk/unpack
+          {
+            find /tmp/enel-apk/unpack -type f \( -name 'classes*.dex' -o -name '*.json' -o -name '*.js' -o -name '*.xml' -o -name '*.txt' \) -print0 |
+              xargs -0 -r strings -a -n 5
+          } > /tmp/enel-apk/all_strings.txt
+          python - <<'PY'
+          import json,re, pathlib
+          p=pathlib.Path('/tmp/enel-apk/all_strings.txt')
+          lines=p.read_text(errors='replace').splitlines()
+          pats=[
+            r'https?://[^\s"\'<>]{4,300}',
+            r'[^\s]{0,100}(?:guest|directpayment|payperuse|pay.per.use|adhoc|ad.hoc|charging/station|payment|tariff|price|penalty|occupancy|qr)[^\s]{0,180}',
+          ]
+          hits=[]
+          seen=set()
+          for line in lines:
+              low=line.lower()
+              if not any(k in low for k in ('guest','directpayment','payperuse','pay_per_use','ad-hoc','adhoc','charging/station','payment','tariff','price','penalty','occupancy','qr','emobility.enelx.com')):
+                  continue
+              s=line.strip()
+              if 4 <= len(s) <= 500 and s not in seen:
+                  seen.add(s); hits.append(s)
+              if len(hits)>=2500: break
+          urls=[]
+          useen=set()
+          for line in lines:
+              for m in re.findall(r'https?://[^\s"\'<>]{4,300}',line):
+                  if ('enel' in m.lower() or 'emobility' in m.lower()) and m not in useen:
+                      useen.add(m); urls.append(m)
+                  if len(urls)>=500: break
+              if len(urls)>=500: break
+          meta=json.load(open('/tmp/enel-apk/meta.json'))
+          report={
+            'schemaVersion':1,
+            'scope':'static_public_apk_string_probe',
+            'package':meta.get('package'),
+            'versionName':meta.get('versionName'),
+            'versionCode':meta.get('versionCode'),
+            'sha256':open('/tmp/enel-apk/sha256.txt').read().split()[0],
+            'security':{'credentialsUsed':False,'runtimeTrafficCaptured':False,'apkSource':'public Aptoide API'},
+            'counts':{'matchingStrings':len(hits),'enelUrls':len(urls)},
+            'matchingStrings':hits,
+            'enelUrls':urls,
+          }
+          pathlib.Path('data/reports/enel_apk_static_probe_20260929.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'versionName':report['versionName'],'versionCode':report['versionCode'],'counts':report['counts'],'sample':hits[:120]},ensure_ascii=False,indent=2))
+          PY
+
+      - name: Upload probe report
+        uses: actions/upload-artifact@v4
+        with:
+          name: enel-apk-static-probe
+          path: data/reports/enel_apk_static_probe_20260929.json
+          retention-days: 14
