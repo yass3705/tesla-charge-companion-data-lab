@@ -1,0 +1,60 @@
+name: Switzerland Swisscharge public CS frontend probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-swisscharge-public-cs-frontend-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Inspect cp.swisscharge.ch public charging frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,urllib.request
+          from pathlib import Path
+          from datetime import datetime,timezone
+          page="https://cp.swisscharge.ch/public/cs/290524"
+          req=urllib.request.Request(page,headers={"User-Agent":"Mozilla/5.0 TCC-V9-Swisscharge-Public"})
+          html=urllib.request.urlopen(req,timeout=30).read().decode("utf-8","replace")
+          scripts=re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',html,re.I)
+          assets=[]
+          for src in scripts:
+            url=urllib.request.urljoin(page,src)
+            try:
+              txt=urllib.request.urlopen(urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0"}),timeout=60).read().decode("utf-8","replace")
+              strings=sorted(set(re.findall(r'["\']([^"\']{3,300})["\']',txt)))
+              keep=[s for s in strings if any(k in s.lower() for k in ["api/","public/cs","charge","tariff","price","session","station","evse"])]
+              assets.append({"url":url,"bytes":len(txt),"strings":keep[:1200]})
+            except Exception as e:
+              assets.append({"url":url,"error":type(e).__name__+": "+str(e)})
+          out={"schemaVersion":1,"generatedAt":datetime.now(timezone.utc).isoformat(),"page":page,"scripts":scripts,"assets":assets}
+          Path("docs/switzerland-swisscharge-public-cs-frontend-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps({"scripts":scripts,"assets":[{"url":a["url"],"bytes":a.get("bytes"),"stringCount":len(a.get("strings",[]))} for a in assets]},ensure_ascii=False))
+          PY
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-swisscharge-public-cs-frontend-probe-2026-09-29.json
+          git commit -m "research(ch): inspect Swisscharge public CS frontend" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
