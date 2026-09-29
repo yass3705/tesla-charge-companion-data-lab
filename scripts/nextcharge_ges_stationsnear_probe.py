@@ -36,9 +36,29 @@ for name,lat,lon in samples:
       ("app_form",{**base,"osType":"android","appVersion":"6.2.02","tokenAppSessionForStations":""}),
     ]
     for vn,form in variants:
-        rows.append({"sample":name,"variant":vn,"formKeys":sorted(form.keys()),"response":post("/stationsNear",form)})
+        near=post("/stationsNear",form)
+        row={"sample":name,"variant":vn,"formKeys":sorted(form.keys()),"response":near}
+        obj=near.get("json") if isinstance(near,dict) else None
+        data=obj.get("data") if isinstance(obj,dict) and obj.get("status")=="OK" else None
+        stations=[]
+        if isinstance(data,dict):
+            for k in ("results","stations","data"):
+                if isinstance(data.get(k),list):
+                    stations=data[k]; break
+        elif isinstance(data,list):
+            stations=data
+        chains=[]
+        for st in stations[:8]:
+            if not isinstance(st,dict): continue
+            sid=st.get("idStation") or st.get("stationId") or st.get("id")
+            if sid is None: continue
+            cf={"idStation":str(sid),"limit":"100","offset":"0","osType":"android","appVersion":"6.2.02","tokenAppSessionForStations":""}
+            cr=post("/stationConnectors",cf)
+            chains.append({"idStation":sid,"stationSummary":st,"connectorsResponse":cr})
+        row["connectorChains"]=chains
+        rows.append(row)
 
-report={"scope":"NextCharge stationsNear unauthenticated/app-form probe","results":rows}
+report={"scope":"NextCharge stationsNear -> stationConnectors tariff-chain probe","results":rows}
 OUT.parent.mkdir(parents=True,exist_ok=True)
 OUT.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
 print(json.dumps(report,ensure_ascii=False,indent=2)[:120000])
