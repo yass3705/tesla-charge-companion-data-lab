@@ -25,7 +25,8 @@ def post(path, data, headers=None, timeout=(8,20)):
 def token_from(row):
     o=row.get("json") if isinstance(row,dict) else None
     if not isinstance(o,dict): return None
-    if o.get("status")!="OK": return None
+    status=o.get("status")
+    if status not in ("OK","AUTH_NEW_USER"): return None
     d=o.get("data")
     if isinstance(d,dict):
         return d.get("token") or d.get("tokenStations") or d.get("tokenAppSessionForStations")
@@ -66,7 +67,22 @@ def main():
             for hn,hh in header_sets:
                 for ev in (EVSE,"IT*GES*E125845134"):
                     s=post("/station",{"evseId":ev},hh)
-                    station.append({"authVariant":name,"headerVariant":hn,"submittedEvseId":ev,"response":s})
+                    row={"authVariant":name,"headerVariant":hn,"submittedEvseId":ev,"response":s}
+                    o=s.get("json") if isinstance(s,dict) else None
+                    sid=None
+                    if isinstance(o,dict) and o.get("status")=="OK":
+                        d=o.get("data")
+                        if isinstance(d,dict):
+                            sid=d.get("idStation") or d.get("stationId") or d.get("id")
+                        elif isinstance(d,list):
+                            for x in d:
+                                if isinstance(x,dict):
+                                    sid=x.get("idStation") or x.get("stationId") or x.get("id")
+                                    if sid is not None: break
+                    if sid is not None:
+                        row["stationId"]=sid
+                        row["connectors"]=post("/stationConnectors",{"idStation":str(sid),"limit":"100","offset":"0"},hh)
+                    station.append(row)
     report={
       "scope":"NextCharge guest stations-session reconstruction from APK 6.2.02",
       "deviceKey":DEVICE,
