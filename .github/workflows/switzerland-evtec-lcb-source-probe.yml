@@ -1,0 +1,70 @@
+name: Switzerland EVTEC LCB source probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-evtec-lcb-source-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Inspect lcb.ch public map data
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,urllib.request,urllib.parse,urllib.error
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          UA="Mozilla/5.0 TCC-V9-LCB"
+          def get(url):
+              req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"*/*"})
+              try:
+                  with urllib.request.urlopen(req,timeout=35) as r:return r.status,r.geturl(),dict(r.headers.items()),r.read()
+              except urllib.error.HTTPError as e:return e.code,e.geturl(),dict(e.headers.items()),e.read()
+              except Exception as e:return 0,url,{},(type(e).__name__+": "+str(e)).encode()
+
+          st,final,h,raw=get("https://lcb.ch/")
+          html=raw.decode("utf-8","replace")
+          assets=[]
+          for src in re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',html,re.I):
+              url=urllib.parse.urljoin(final,src)
+              st2,fu,h2,b2=get(url)
+              txt=b2.decode("utf-8","replace")
+              matches=sorted(set(re.findall(r'https?://[^"\'\\\s<>]+|/[A-Za-z0-9_?=&./:-]*(?:api|json|station|price|tariff|map)[A-Za-z0-9_?=&./:-]*',txt,re.I)))
+              strings=[]
+              for needle in ["Rengglochstrasse","Swiss eMobility","chargeprice","api.","wp-json","station","tariff"]:
+                  if needle.lower() in txt.lower():
+                      i=txt.lower().find(needle.lower())
+                      strings.append(txt[max(0,i-1000):i+2500])
+              assets.append({"url":fu,"status":st2,"bytes":len(b2),"matches":matches[:300],"snippets":strings[:20]})
+          inline=re.findall(r'<script(?:[^>]*)>(.*?)</script>',html,re.I|re.S)
+          out={"schemaVersion":1,"generatedAt":datetime.now(timezone.utc).isoformat(),"pageStatus":st,"finalUrl":final,"assets":assets,"inlineScripts":inline}
+          Path("docs/switzerland-evtec-lcb-source-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({"status":st,"assetCount":len(assets),"assetUrls":[a["url"] for a in assets]},ensure_ascii=False))
+          PY
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-evtec-lcb-source-probe-2026-09-29.json
+          git commit -m "research(ch): inspect lcb EVTEC source" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
