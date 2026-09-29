@@ -4,6 +4,7 @@ import gzip, json, uuid
 from pathlib import Path
 import requests
 
+# PUN builder restored from validated ENX branch.
 PUN=Path("data/national/pun_italy_national.json.gz")
 OUT=Path("data/reports/nextcharge_ges_public_probe.json")
 BASE="https://nextcharge.app.apis.goelectricstations.com/apis"
