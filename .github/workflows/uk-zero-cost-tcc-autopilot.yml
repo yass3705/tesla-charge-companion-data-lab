@@ -53,7 +53,6 @@ jobs:
             reports/uk/autopilot-latest.json
             reports/uk/autopilot-latest.md
             reports/uk/canonical-reconcile-latest.json
-            docs/uk-cpo-progress-2026-09.json
             reports/uk/validated-open-feeds-latest.json
             reports/uk/fastned-direct-uk-latest.json
             reports/uk/ionity-direct-uk-latest.json
@@ -63,6 +62,11 @@ jobs:
             data/national/fastned_direct_stations_uk.json.gz
             data/national/ionity_direct_stations_uk.json.gz
           )
+
+          canonical="docs/uk-cpo-progress-2026-09.json"
+          if ! git diff --quiet -- "$canonical"; then
+            files+=("$canonical")
+          fi
 
           changed=0
           for p in "${files[@]}"; do
