@@ -79,7 +79,7 @@ def main():
               ("body_ephemeral_device_user",{"tokenAppSessionForStations":tok,"deviceKey":ephemeral or DEVICE,"osType":"android","appVersion":"6.2.02","userId":server_user or ""}),
             ]
             for hn,ctx in station_contexts:
-                for ev in (EVSE,"IT*GES*E125845134"):
+                for ev in (EVSE,"IT*GES*E125845134","171731"):
                     payload={"uidConnector":ev,**ctx}
                     s=post("/station",payload)
                     row={"authVariant":name,"headerVariant":hn,"submittedEvseId":ev,"response":s}
