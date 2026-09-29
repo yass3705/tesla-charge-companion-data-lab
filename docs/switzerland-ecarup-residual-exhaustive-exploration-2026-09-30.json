@@ -1,0 +1,4517 @@
+{
+  "schemaVersion": 1,
+  "country": "CH",
+  "operatorId": "CH*ECU",
+  "generatedAt": "2026-09-30T00:40:00+02:00",
+  "status": "exhausted-current-safe-paths-after-user-request",
+  "coverage": {
+    "pricedEvseCount": 6721,
+    "totalEvseCount": 6764,
+    "coveragePct": 99.36,
+    "residualEvseCount": 43
+  },
+  "discoveries": {
+    "qrLookup": {
+      "route": "GET https://ecarup.com/api/stations/search?qr=<full-qr-payload>",
+      "validatedPayloadShape": "https://ecarup.com/app/?serial=<printed-code>",
+      "responseIncludes": "SelectedConnectorId",
+      "significance": "A public photo or exact printed eCarUp serial can deterministically map mixed-price stations such as PDGR/Maschinencenter/SH POWER to a connector.",
+      "limitations": "DeviceID UUIDs and visible hardware Description identifiers are not the printed QR serial; substituting them does not resolve."
+    },
+    "stationDetails": {
+      "route": "GET https://ecarup.com/api/stations?id=<station-uuid>",
+      "limitation": "Returns connector DeviceID/price/Hubject fields but not printed QR serial."
+    },
+    "zeroPowerFix": {
+      "meaning": "National charging power 0 treated as unknown, not literal 0 W.",
+      "promotion": "CH*ECUE6LJZFYKCT3TFWHCPU64P6CFTUZ -> RAICDC-SAV",
+      "tariff": {
+        "EnergyPrice": 0.4,
+        "ParkingPrice": 1.5,
+        "Currency": "CHF"
+      }
+    }
+  },
+  "exploredMethods": [
+    "Exact ChargingStationNames search against current eCarUp public API",
+    "Shortened-name and exact-name GPS drift searches",
+    "Exact Hubject.ID reconciliation",
+    "Exact-coordinate and <=3m uniform-price reconciliation",
+    "Plug type, charging power and AC/DC compatible-group reconciliation",
+    "Exact national address + compatible connector set, only when full public price tuple is uniform",
+    "National 0 W normalization to unknown power",
+    "Corrected-geography search for nationally corrupt coordinates (including Orpundgarage)",
+    "APK static analysis of Retrofit station search/details and QR lookup routes",
+    "Read-only QR endpoint validation with a known public eCarUp code",
+    "DeviceID/hardware-ID attempts against QR lookup (rejected; not serial)",
+    "Public owner/municipality pages and charging directories",
+    "Exact EVSE-ID and station-name web searches for indexed tariff or QR evidence",
+    "Public photo/image searches for charger QR labels"
+  ],
+  "blockerGroups": {
+    "mixedCurrentExactSite": [
+      "CH*ECUE49B5TY9Z757TY7CQDGV3JXPU93",
+      "CH*ECUE8KH7H6AHUUQCWGVRJ3DJ49QYAA",
+      "CH*ECUED4AEQQFCERE4PJ83NSWGLA8UK2",
+      "CH*ECUEHARMNHD9UJMFWCLMR4EPSQUNXX",
+      "CH*ECUEL4LD7C5PE4NZK2EGNQPZJ3AJV2",
+      "CH*ECUEW3NXQNGMCQ6UWLNJSLL7YWZ7VX",
+      "CH*ECUEW7J65STKF4PGWNNBPYGG96AKXA",
+      "CH*ECUEXFX7HAYRCRP8YKB3Q8GC9TVXUQ",
+      "CH*ECUEXT7WRPJ8CNCRYMV3SHN8NGRJJ2"
+    ],
+    "staleOrMissingFromCurrentApi": [
+      "CH*ECUE2Y73CQNXY2A3G95MCQMAWR8BTX",
+      "CH*ECUE45L3CREQNQL9CCTQAXY2497773",
+      "CH*ECUE4PTJHA38YYTJRJAJBYAYSSR9NA",
+      "CH*ECUE4V49FF2VPZFJXJPRALLQBEW95S",
+      "CH*ECUE72TCR4AXYZUN6YANGJD63Z5MLQ",
+      "CH*ECUE7LH2AES3WS3KJKTTBXAVYN2EH3",
+      "CH*ECUE8UHC3CBHGTYWKCQL6LAKS8QEMX",
+      "CH*ECUE95Z9XHZ8QG4U8PMUVQM7HEKAT2",
+      "CH*ECUE9UAYG36FDHAJHU9R54M347DZ2A",
+      "CH*ECUEAACQL9G6JZAGDJ4HKXSJ95U8NS",
+      "CH*ECUEACTU64CTEAY6HHYL9RNDMMCC6A",
+      "CH*ECUEBF9BSBQFZLYXBD8V9UJ77CHZAW",
+      "CH*ECUEBQNXYEWZESJ5Y7XANE6YLPRCL3",
+      "CH*ECUEEPBXB5S4EGLRMPRVGNA6GACQ4W",
+      "CH*ECUEF86DTCT828QPE52YP8H3V6EEUW",
+      "CH*ECUEFFCCCU86FXEZEZYA6NG5EGQ7DW",
+      "CH*ECUEFKW22TY8Q9U4BNYR5YG5NPV5J3",
+      "CH*ECUEG5LJKMB6EELMXUWNBQ9LXSYK63",
+      "CH*ECUEGS3ZBW5RVFFQ9M9TE8Y3YTNUHZ",
+      "CH*ECUEH4BWTB6Y65PX9BEP274H7ASAQ2",
+      "CH*ECUEHBKQDS44AH47HVEHZWFAYHKJBX",
+      "CH*ECUEJG5E5DQD9W7CKJ789PZ95LS2KS",
+      "CH*ECUEKJPF47RDFCM84BGZ9VBV87E6YZ",
+      "CH*ECUEKQJXYJWUK53ZE395CSZUXS6BQ2",
+      "CH*ECUEM3JMRC93AJQKQGMDRJVCVN42HS",
+      "CH*ECUET7C7W75FLCEDATRE9C2H32KRSQ",
+      "CH*ECUEUW4GWHVF785W7D7ZCFX3WHAM72"
+    ],
+    "nearbyButDifferentSite": [
+      "CH*ECUE2P6DWQ44GUWTU4BWN3N4KJRZNS",
+      "CH*ECUE5XHE6D75X7SG86VJ6WJXXWTFLZ",
+      "CH*ECUEE8QM4SSLE6MWDBAVBU7RNDVGHX",
+      "CH*ECUEVSR2P7DB8DHTEKLZYX237BYGWW",
+      "CH*ECUEVTE5GAU8VTFVNKKMHQ6YQAYXAA",
+      "CH*ECUEY3F3LCATFLSAQQKGX99CW3DRFS",
+      "CH*ECUEZ7CUG863J8ZFLYPTPM7NKTDDG2"
+    ],
+    "coordinateOrIdentityCorruption": [
+      "CH*ECUEE8QM4SSLE6MWDBAVBU7RNDVGHX",
+      "CH*ECUEFKW22TY8Q9U4BNYR5YG5NPV5J3",
+      "CH*ECUEKJPF47RDFCM84BGZ9VBV87E6YZ",
+      "CH*ECUEUW4GWHVF785W7D7ZCFX3WHAM72"
+    ]
+  },
+  "residuals": [
+    {
+      "evseId": "CH*ECUE2P6DWQ44GUWTU4BWN3N4KJRZNS",
+      "names": [
+        "TL29BIEL"
+      ],
+      "coordinate": [
+        46.541443,
+        6.628034
+      ],
+      "nationalAddress": {
+        "street": "Chem. de Maillefer 61",
+        "house": null,
+        "postal": "1052",
+        "city": "Le Mont-sur-Lausanne"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "26b6ed1f-41ce-5603-8ad6-f201622fb83e",
+          "stationName": "Borne N°3 arbre OUEST",
+          "address": "Chem. du Rionzi 58, 1052 Le Mont-sur-Lausanne, Suisse",
+          "operatorName": "Groux arts graphiques SA",
+          "distanceMeters": 168.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "26b6ed1f-41ce-5603-8ad6-f201622fb83e",
+              "Name": "#3",
+              "Description": "Prise type 2 avec cable",
+              "PlugType": 1,
+              "MaxPower": 11000,
+              "HubjectID": "CH*ECUEPE8F46UJAMQRSSMMB5QWN7Q7LA",
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "chf"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "0404bf8c-b5fb-c07c-52fb-93f8be2568cc",
+          "stationName": "Borne N°1 Mur bâtiment",
+          "address": "Chem. du Rionzi 58, 1052 Le Mont-sur-Lausanne, Suisse",
+          "operatorName": "Groux arts graphiques SA",
+          "distanceMeters": 169.65,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "0404bf8c-b5fb-c07c-52fb-93f8be2568cc",
+              "Name": "#1",
+              "Description": "Prise type 2 avec cable",
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": "CH*ECUERK5DQZRPHSPQRDFP6WL98BQFRX",
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "chf"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "6d393313-304e-2b6f-c71a-dc274f345c4e",
+          "stationName": "Borne N°2 arbre EST",
+          "address": "Chem. du Rionzi 58, 1052 Le Mont-sur-Lausanne, Suisse",
+          "operatorName": "Groux arts graphiques SA",
+          "distanceMeters": 182.17,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "6d393313-304e-2b6f-c71a-dc274f345c4e",
+              "Name": "#2",
+              "Description": "Prise type 2 avec cable",
+              "PlugType": 1,
+              "MaxPower": 11000,
+              "HubjectID": "CH*ECUE6URB6NJDTJ8NB242KLDLWMT4VZ",
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "chf"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "37831bbe-667d-9570-6450-33c49fc512cf",
+          "stationName": "Witty plus Hager Salle Expo",
+          "address": "Chem. du Petit-Flon 31, 1052 Le Mont-sur-Lausanne, Suisse",
+          "operatorName": "Ali Tizniti",
+          "distanceMeters": 269.25,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "37831bbe-667d-9570-6450-33c49fc512cf",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 11000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUE2Y73CQNXY2A3G95MCQMAWR8BTX",
+      "names": [
+        "01"
+      ],
+      "coordinate": [
+        47.01562,
+        8.31096
+      ],
+      "nationalAddress": {
+        "street": "Papiermühleweg 1",
+        "house": null,
+        "postal": "6048",
+        "city": "Horw"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUE45L3CREQNQL9CCTQAXY2497773",
+      "names": [],
+      "coordinate": [
+        47.170654,
+        8.517259
+      ],
+      "nationalAddress": {
+        "street": "Industriestrasse 5",
+        "house": null,
+        "postal": "6300",
+        "city": "Zug"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        11000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUE49B5TY9Z757TY7CQDGV3JXPU93",
+      "names": [
+        "PDGR Haus F"
+      ],
+      "coordinate": [
+        46.869997,
+        9.541233
+      ],
+      "nationalAddress": {
+        "street": "Loestrasse 220",
+        "house": null,
+        "postal": "7000",
+        "city": "Chur"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "40040569-8853-f5a1-f33e-b690e8c3c67c",
+          "stationName": "PDGR Haus F",
+          "address": "Loestrasse 220, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 0.04,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "40040569-8853-f5a1-f33e-b690e8c3c67c",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 2,
+              "DeviceID": "6b6d3035-38ea-46eb-94d7-6ca15f00b6c6",
+              "Name": "#2",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 3,
+              "DeviceID": "6907cbab-f717-485d-af02-29ba93cdc7fd",
+              "Name": "#3",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 4,
+              "DeviceID": "675bd79b-18a8-4503-a263-f9a4bc3aa021",
+              "Name": "#4",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 5,
+              "DeviceID": "0af9e6e4-6de4-48fd-ac95-9fc6d867e026",
+              "Name": "#5",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 6,
+              "DeviceID": "035b99a6-8a65-4dfd-b93c-6047d5a13318",
+              "Name": "#6",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "663492e0-90b3-a6fc-2e61-a8921d44c228",
+          "stationName": "#10 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "663492e0-90b3-a6fc-2e61-a8921d44c228",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "6d6bba2a-10ee-8323-554c-373c56dd4998",
+          "stationName": "#08 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "6d6bba2a-10ee-8323-554c-373c56dd4998",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "b33eddea-a0ee-f31c-f504-ca15a7bfe99b",
+          "stationName": "#09 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "b33eddea-a0ee-f31c-f504-ca15a7bfe99b",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "0c9c2c22-6b10-af2c-e620-b4eb8038eed2",
+          "stationName": "#01 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "0c9c2c22-6b10-af2c-e620-b4eb8038eed2",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "12fd8ebf-402e-6171-09dd-d4ccbcecaa81",
+          "stationName": "#11 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "12fd8ebf-402e-6171-09dd-d4ccbcecaa81",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "66300700-d2ee-589e-98a7-14d29626a680",
+          "stationName": "#13 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "66300700-d2ee-589e-98a7-14d29626a680",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "1c7a729f-02f7-d2ca-32f0-d945cf9c68d2",
+          "stationName": "#14 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "1c7a729f-02f7-d2ca-32f0-d945cf9c68d2",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "1030e4a1-5b06-b47d-6694-0b6ca105dddc",
+          "stationName": "#12 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "1030e4a1-5b06-b47d-6694-0b6ca105dddc",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "b5d5c6ef-85d5-4c8b-9e4d-dd364a8c5463",
+          "stationName": "#02 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "b5d5c6ef-85d5-4c8b-9e4d-dd364a8c5463",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "f92a68d0-7d6f-86c2-9387-c8a5e664e060",
+          "stationName": "#03 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f92a68d0-7d6f-86c2-9387-c8a5e664e060",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "f4250cc8-41b6-46bc-3a39-5b4c64376535",
+          "stationName": "#08 UG Behinderten PP",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f4250cc8-41b6-46bc-3a39-5b4c64376535",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUE4PTJHA38YYTJRJAJBYAYSSR9NA",
+      "names": [
+        "03"
+      ],
+      "coordinate": [
+        47.01558,
+        8.310956
+      ],
+      "nationalAddress": {
+        "street": "Papiermühleweg 1",
+        "house": null,
+        "postal": "6048",
+        "city": "Horw"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUE4V49FF2VPZFJXJPRALLQBEW95S",
+      "names": [
+        "Commune d'Echallens - Place Rochat - Borne N° 1"
+      ],
+      "coordinate": [
+        46.640803,
+        6.631697
+      ],
+      "nationalAddress": {
+        "street": "Av. des Terreaux 7",
+        "house": null,
+        "postal": "1040",
+        "city": "Echallens"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUE5XHE6D75X7SG86VJ6WJXXWTFLZ",
+      "names": [
+        "UG P5"
+      ],
+      "coordinate": [
+        47.143789,
+        7.245666
+      ],
+      "nationalAddress": {
+        "street": "Höheweg 96",
+        "house": null,
+        "postal": "2502",
+        "city": "Biel"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "f83500fa-933e-cd88-3476-863d296d8c7f",
+          "stationName": "ESB 1 Altstadt / Vieille Ville",
+          "address": "Rue Franche 15, 2502 Biel/Bienne, Suisse",
+          "operatorName": "Energie Service Biel/ Bienne",
+          "distanceMeters": 296.35,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f83500fa-933e-cd88-3476-863d296d8c7f",
+              "Name": "AC/Typ2",
+              "Description": "Typ 2 Steckdose (ohne Ladekabel) / Prise type 2 (sans câble de recharge)",
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": "CH*ECUEM3QC2K836WZ8RMUVXR5BBNGGP2",
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": 240,
+                "PenaltyPricePerMinute": 0,
+                "PenaltyMaxFee": 50,
+                "Currency": "chf"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "79be86ea-25fb-8f8e-4a31-0e836ad8b266",
+          "stationName": "ESB 2 Altstadt / Vieille Ville",
+          "address": "Rue Franche 15, 2502 Biel/Bienne, Suisse",
+          "operatorName": "Energie Service Biel/ Bienne",
+          "distanceMeters": 296.68,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "79be86ea-25fb-8f8e-4a31-0e836ad8b266",
+              "Name": "AC/Typ2",
+              "Description": "Typ 2 Steckdose (ohne Ladekabel) / Prise type 2 (sans câble de recharge)",
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": "CH*ECUEC7A98KFPSG2PESSXVUQHXR4NX2",
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": 240,
+                "PenaltyPricePerMinute": 0,
+                "PenaltyMaxFee": 50,
+                "Currency": "chf"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "f183a9bd-b9c4-7250-95a9-681fd25437fa",
+          "stationName": "ESB 3 Altstadt / Vieille Ville",
+          "address": "Rue Franche 15, 2502 Biel/Bienne, Suisse",
+          "operatorName": "Energie Service Biel/ Bienne",
+          "distanceMeters": 297.86,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f183a9bd-b9c4-7250-95a9-681fd25437fa",
+              "Name": "AC/Typ2",
+              "Description": "Typ 2 Steckdose (ohne Ladekabel) / Prise type 2 (sans câble de recharge)",
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": "CH*ECUE9FC3UU6UJSYW7CXHE83WFC9XM3",
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": 240,
+                "PenaltyPricePerMinute": 0,
+                "PenaltyMaxFee": 50,
+                "Currency": "chf"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "b4a09577-c7b6-0a5a-3588-b2f8b0af26e3",
+          "stationName": "ESB 4 Altstadt / Vieille Ville",
+          "address": "Rue Franche 15, 2502 Biel/Bienne, Suisse",
+          "operatorName": "Energie Service Biel/ Bienne",
+          "distanceMeters": 298.41,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "b4a09577-c7b6-0a5a-3588-b2f8b0af26e3",
+              "Name": "AC/Typ2",
+              "Description": "Typ 2 Steckdose (ohne Ladekabel) / Prise type 2 (sans câble de recharge)",
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": "CH*ECUE74SACMMN3NNYTMQGBSLA87MW23",
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": 240,
+                "PenaltyPricePerMinute": 0,
+                "PenaltyMaxFee": 50,
+                "Currency": "chf"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUE72TCR4AXYZUN6YANGJD63Z5MLQ",
+      "names": [
+        "P1-202137-006-E7"
+      ],
+      "coordinate": [
+        46.067251,
+        8.963779
+      ],
+      "nationalAddress": {
+        "street": "Via Alle Pezze 30",
+        "house": null,
+        "postal": "6950",
+        "city": "Capriasca"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUE7LH2AES3WS3KJKTTBXAVYN2EH3",
+      "names": [
+        "P1-202137-005-73"
+      ],
+      "coordinate": [
+        46.067243,
+        8.96374
+      ],
+      "nationalAddress": {
+        "street": "Via Alle Pezze 30",
+        "house": null,
+        "postal": "6950",
+        "city": "Capriasca"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUE8KH7H6AHUUQCWGVRJ3DJ49QYAA",
+      "names": [
+        "PDGR Haus F"
+      ],
+      "coordinate": [
+        46.869997,
+        9.541233
+      ],
+      "nationalAddress": {
+        "street": "Loestrasse 220",
+        "house": null,
+        "postal": "7000",
+        "city": "Chur"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "40040569-8853-f5a1-f33e-b690e8c3c67c",
+          "stationName": "PDGR Haus F",
+          "address": "Loestrasse 220, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 0.04,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "40040569-8853-f5a1-f33e-b690e8c3c67c",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 2,
+              "DeviceID": "6b6d3035-38ea-46eb-94d7-6ca15f00b6c6",
+              "Name": "#2",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 3,
+              "DeviceID": "6907cbab-f717-485d-af02-29ba93cdc7fd",
+              "Name": "#3",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 4,
+              "DeviceID": "675bd79b-18a8-4503-a263-f9a4bc3aa021",
+              "Name": "#4",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 5,
+              "DeviceID": "0af9e6e4-6de4-48fd-ac95-9fc6d867e026",
+              "Name": "#5",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 6,
+              "DeviceID": "035b99a6-8a65-4dfd-b93c-6047d5a13318",
+              "Name": "#6",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "663492e0-90b3-a6fc-2e61-a8921d44c228",
+          "stationName": "#10 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "663492e0-90b3-a6fc-2e61-a8921d44c228",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "6d6bba2a-10ee-8323-554c-373c56dd4998",
+          "stationName": "#08 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "6d6bba2a-10ee-8323-554c-373c56dd4998",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "b33eddea-a0ee-f31c-f504-ca15a7bfe99b",
+          "stationName": "#09 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "b33eddea-a0ee-f31c-f504-ca15a7bfe99b",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "0c9c2c22-6b10-af2c-e620-b4eb8038eed2",
+          "stationName": "#01 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "0c9c2c22-6b10-af2c-e620-b4eb8038eed2",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "12fd8ebf-402e-6171-09dd-d4ccbcecaa81",
+          "stationName": "#11 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "12fd8ebf-402e-6171-09dd-d4ccbcecaa81",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "66300700-d2ee-589e-98a7-14d29626a680",
+          "stationName": "#13 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "66300700-d2ee-589e-98a7-14d29626a680",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "1c7a729f-02f7-d2ca-32f0-d945cf9c68d2",
+          "stationName": "#14 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "1c7a729f-02f7-d2ca-32f0-d945cf9c68d2",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "1030e4a1-5b06-b47d-6694-0b6ca105dddc",
+          "stationName": "#12 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "1030e4a1-5b06-b47d-6694-0b6ca105dddc",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "b5d5c6ef-85d5-4c8b-9e4d-dd364a8c5463",
+          "stationName": "#02 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "b5d5c6ef-85d5-4c8b-9e4d-dd364a8c5463",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "f92a68d0-7d6f-86c2-9387-c8a5e664e060",
+          "stationName": "#03 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f92a68d0-7d6f-86c2-9387-c8a5e664e060",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "f4250cc8-41b6-46bc-3a39-5b4c64376535",
+          "stationName": "#08 UG Behinderten PP",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f4250cc8-41b6-46bc-3a39-5b4c64376535",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUE8UHC3CBHGTYWKCQL6LAKS8QEMX",
+      "names": [
+        "Commune d'Echallens - Place Rochat - Borne N° 5"
+      ],
+      "coordinate": [
+        46.640769,
+        6.631686
+      ],
+      "nationalAddress": {
+        "street": "Av. des Terreaux 7",
+        "house": null,
+        "postal": "1040",
+        "city": "Echallens"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUE95Z9XHZ8QG4U8PMUVQM7HEKAT2",
+      "names": [
+        "Commune d'Echallens - Place Rochat - Borne N° 2"
+      ],
+      "coordinate": [
+        46.640798,
+        6.631697
+      ],
+      "nationalAddress": {
+        "street": "Av. des Terreaux 7",
+        "house": null,
+        "postal": "1040",
+        "city": "Echallens"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUE9UAYG36FDHAJHU9R54M347DZ2A",
+      "names": [
+        "pico 7000127"
+      ],
+      "coordinate": [
+        47.097409,
+        8.296866
+      ],
+      "nationalAddress": {
+        "street": "Hüslenmoos 33",
+        "house": null,
+        "postal": "6032",
+        "city": "Emmen"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEAACQL9G6JZAGDJ4HKXSJ95U8NS",
+      "names": [
+        "02"
+      ],
+      "coordinate": [
+        47.015601,
+        8.310956
+      ],
+      "nationalAddress": {
+        "street": "Papiermühleweg 1",
+        "house": null,
+        "postal": "6048",
+        "city": "Horw"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEACTU64CTEAY6HHYL9RNDMMCC6A",
+      "names": [
+        "EVLINK - CHARGING STATION - EVLINK"
+      ],
+      "coordinate": [
+        46.518568,
+        6.542511
+      ],
+      "nationalAddress": {
+        "street": "Rte de la Pale 3",
+        "house": null,
+        "postal": "1026",
+        "city": "Denges"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        11000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEBF9BSBQFZLYXBD8V9UJ77CHZAW",
+      "names": [
+        "Commune d'Echallens - Place Rochat - Borne N° 4"
+      ],
+      "coordinate": [
+        46.640785,
+        6.631695
+      ],
+      "nationalAddress": {
+        "street": "Av. des Terreaux 7",
+        "house": null,
+        "postal": "1040",
+        "city": "Echallens"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEBQNXYEWZESJ5Y7XANE6YLPRCL3",
+      "names": [],
+      "coordinate": [
+        46.361079,
+        7.622723
+      ],
+      "nationalAddress": {
+        "street": "Albinenleitern (Torrentbahn)",
+        "house": null,
+        "postal": "3955",
+        "city": "Albinen"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUED4AEQQFCERE4PJ83NSWGLA8UK2",
+      "names": [
+        "PDGR Haus F"
+      ],
+      "coordinate": [
+        46.869997,
+        9.541233
+      ],
+      "nationalAddress": {
+        "street": "Loestrasse 220",
+        "house": null,
+        "postal": "7000",
+        "city": "Chur"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "40040569-8853-f5a1-f33e-b690e8c3c67c",
+          "stationName": "PDGR Haus F",
+          "address": "Loestrasse 220, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 0.04,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "40040569-8853-f5a1-f33e-b690e8c3c67c",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 2,
+              "DeviceID": "6b6d3035-38ea-46eb-94d7-6ca15f00b6c6",
+              "Name": "#2",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 3,
+              "DeviceID": "6907cbab-f717-485d-af02-29ba93cdc7fd",
+              "Name": "#3",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 4,
+              "DeviceID": "675bd79b-18a8-4503-a263-f9a4bc3aa021",
+              "Name": "#4",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 5,
+              "DeviceID": "0af9e6e4-6de4-48fd-ac95-9fc6d867e026",
+              "Name": "#5",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 6,
+              "DeviceID": "035b99a6-8a65-4dfd-b93c-6047d5a13318",
+              "Name": "#6",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "663492e0-90b3-a6fc-2e61-a8921d44c228",
+          "stationName": "#10 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "663492e0-90b3-a6fc-2e61-a8921d44c228",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "6d6bba2a-10ee-8323-554c-373c56dd4998",
+          "stationName": "#08 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "6d6bba2a-10ee-8323-554c-373c56dd4998",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "b33eddea-a0ee-f31c-f504-ca15a7bfe99b",
+          "stationName": "#09 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "b33eddea-a0ee-f31c-f504-ca15a7bfe99b",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "0c9c2c22-6b10-af2c-e620-b4eb8038eed2",
+          "stationName": "#01 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "0c9c2c22-6b10-af2c-e620-b4eb8038eed2",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "12fd8ebf-402e-6171-09dd-d4ccbcecaa81",
+          "stationName": "#11 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "12fd8ebf-402e-6171-09dd-d4ccbcecaa81",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "66300700-d2ee-589e-98a7-14d29626a680",
+          "stationName": "#13 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "66300700-d2ee-589e-98a7-14d29626a680",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "1c7a729f-02f7-d2ca-32f0-d945cf9c68d2",
+          "stationName": "#14 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "1c7a729f-02f7-d2ca-32f0-d945cf9c68d2",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "1030e4a1-5b06-b47d-6694-0b6ca105dddc",
+          "stationName": "#12 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "1030e4a1-5b06-b47d-6694-0b6ca105dddc",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "b5d5c6ef-85d5-4c8b-9e4d-dd364a8c5463",
+          "stationName": "#02 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "b5d5c6ef-85d5-4c8b-9e4d-dd364a8c5463",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "f92a68d0-7d6f-86c2-9387-c8a5e664e060",
+          "stationName": "#03 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f92a68d0-7d6f-86c2-9387-c8a5e664e060",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "f4250cc8-41b6-46bc-3a39-5b4c64376535",
+          "stationName": "#08 UG Behinderten PP",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f4250cc8-41b6-46bc-3a39-5b4c64376535",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUEE8QM4SSLE6MWDBAVBU7RNDVGHX",
+      "names": [
+        "Log Strüby ESH Teil B LP3 7000321 alt"
+      ],
+      "coordinate": [
+        47.032621,
+        8.629965
+      ],
+      "nationalAddress": {
+        "street": "Steinbislin 14",
+        "house": null,
+        "postal": "6423",
+        "city": "Seewen"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "aa17635a-182e-ba41-8aa4-e2cb10933946",
+          "stationName": "pico 7008302 LP2",
+          "address": "Steinbislin 19, 6423 Seewen, Schweiz",
+          "operatorName": "STWEG GZ-Urmiberg",
+          "distanceMeters": 75.31,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "aa17635a-182e-ba41-8aa4-e2cb10933946",
+              "Name": "GZU ESH Teil D LP2",
+              "Description": "Pico Ladebox (7008302)",
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.44,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUEEPBXB5S4EGLRMPRVGNA6GACQ4W",
+      "names": [
+        "Commune d'Echallens - Place Rochat - Borne N° 6"
+      ],
+      "coordinate": [
+        46.640761,
+        6.631683
+      ],
+      "nationalAddress": {
+        "street": "Av. des Terreaux 7",
+        "house": null,
+        "postal": "1040",
+        "city": "Echallens"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEF86DTCT828QPE52YP8H3V6EEUW",
+      "names": [],
+      "coordinate": [
+        46.361079,
+        7.622723
+      ],
+      "nationalAddress": {
+        "street": "Albinenleitern (Torrentbahn)",
+        "house": null,
+        "postal": "3955",
+        "city": "Albinen"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEFFCCCU86FXEZEZYA6NG5EGQ7DW",
+      "names": [
+        "Ladestation Arxada 2"
+      ],
+      "coordinate": [
+        46.300543,
+        7.891737
+      ],
+      "nationalAddress": {
+        "street": "Lonzastrasse M4",
+        "house": null,
+        "postal": "3931",
+        "city": "Lalden"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        11000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEFKW22TY8Q9U4BNYR5YG5NPV5J3",
+      "names": [
+        "HL67T13021 - TESTING"
+      ],
+      "coordinate": [
+        46.518416,
+        6.543031
+      ],
+      "nationalAddress": {
+        "street": "Rte de la Pale 3",
+        "house": null,
+        "postal": "1026",
+        "city": "Denges"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        400000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEG5LJKMB6EELMXUWNBQ9LXSYK63",
+      "names": [
+        "ZPR124814"
+      ],
+      "coordinate": [
+        47.284273,
+        8.523766
+      ],
+      "nationalAddress": {
+        "street": "Winzelenweg 10",
+        "house": null,
+        "postal": "8135",
+        "city": "Langnau am Albis"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEGS3ZBW5RVFFQ9M9TE8Y3YTNUHZ",
+      "names": [
+        "Ladestation Arxada 1"
+      ],
+      "coordinate": [
+        46.300593,
+        7.891742
+      ],
+      "nationalAddress": {
+        "street": "Lonzastrasse M4",
+        "house": null,
+        "postal": "3931",
+        "city": "Lalden"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        11000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEH4BWTB6Y65PX9BEP274H7ASAQ2",
+      "names": [
+        "P1-202137-004-AC"
+      ],
+      "coordinate": [
+        46.063512,
+        8.973338
+      ],
+      "nationalAddress": {
+        "street": "Via Lugano 56",
+        "house": null,
+        "postal": "6953",
+        "city": "Lugaggia"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEHARMNHD9UJMFWCLMR4EPSQUNXX",
+      "names": [
+        "PDGR Haus F"
+      ],
+      "coordinate": [
+        46.869997,
+        9.541233
+      ],
+      "nationalAddress": {
+        "street": "Loestrasse 220",
+        "house": null,
+        "postal": "7000",
+        "city": "Chur"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "40040569-8853-f5a1-f33e-b690e8c3c67c",
+          "stationName": "PDGR Haus F",
+          "address": "Loestrasse 220, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 0.04,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "40040569-8853-f5a1-f33e-b690e8c3c67c",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 2,
+              "DeviceID": "6b6d3035-38ea-46eb-94d7-6ca15f00b6c6",
+              "Name": "#2",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 3,
+              "DeviceID": "6907cbab-f717-485d-af02-29ba93cdc7fd",
+              "Name": "#3",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 4,
+              "DeviceID": "675bd79b-18a8-4503-a263-f9a4bc3aa021",
+              "Name": "#4",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 5,
+              "DeviceID": "0af9e6e4-6de4-48fd-ac95-9fc6d867e026",
+              "Name": "#5",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 6,
+              "DeviceID": "035b99a6-8a65-4dfd-b93c-6047d5a13318",
+              "Name": "#6",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "663492e0-90b3-a6fc-2e61-a8921d44c228",
+          "stationName": "#10 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "663492e0-90b3-a6fc-2e61-a8921d44c228",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "6d6bba2a-10ee-8323-554c-373c56dd4998",
+          "stationName": "#08 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "6d6bba2a-10ee-8323-554c-373c56dd4998",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "b33eddea-a0ee-f31c-f504-ca15a7bfe99b",
+          "stationName": "#09 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "b33eddea-a0ee-f31c-f504-ca15a7bfe99b",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "0c9c2c22-6b10-af2c-e620-b4eb8038eed2",
+          "stationName": "#01 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "0c9c2c22-6b10-af2c-e620-b4eb8038eed2",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "12fd8ebf-402e-6171-09dd-d4ccbcecaa81",
+          "stationName": "#11 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "12fd8ebf-402e-6171-09dd-d4ccbcecaa81",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "66300700-d2ee-589e-98a7-14d29626a680",
+          "stationName": "#13 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "66300700-d2ee-589e-98a7-14d29626a680",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "1c7a729f-02f7-d2ca-32f0-d945cf9c68d2",
+          "stationName": "#14 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "1c7a729f-02f7-d2ca-32f0-d945cf9c68d2",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "1030e4a1-5b06-b47d-6694-0b6ca105dddc",
+          "stationName": "#12 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "1030e4a1-5b06-b47d-6694-0b6ca105dddc",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "b5d5c6ef-85d5-4c8b-9e4d-dd364a8c5463",
+          "stationName": "#02 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "b5d5c6ef-85d5-4c8b-9e4d-dd364a8c5463",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "f92a68d0-7d6f-86c2-9387-c8a5e664e060",
+          "stationName": "#03 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f92a68d0-7d6f-86c2-9387-c8a5e664e060",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "f4250cc8-41b6-46bc-3a39-5b4c64376535",
+          "stationName": "#08 UG Behinderten PP",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f4250cc8-41b6-46bc-3a39-5b4c64376535",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUEHBKQDS44AH47HVEHZWFAYHKJBX",
+      "names": [
+        "Ladestation Arxada 3"
+      ],
+      "coordinate": [
+        46.300489,
+        7.89172
+      ],
+      "nationalAddress": {
+        "street": "Lonzastrasse P1a",
+        "house": null,
+        "postal": "3931",
+        "city": "Lalden"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        11000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEJG5E5DQD9W7CKJ789PZ95LS2KS",
+      "names": [],
+      "coordinate": [
+        47.316688,
+        8.468443
+      ],
+      "nationalAddress": {
+        "street": "Alte Stationsstrasse 16",
+        "house": null,
+        "postal": "8906",
+        "city": "Bonstetten"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        11000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEKJPF47RDFCM84BGZ9VBV87E6YZ",
+      "names": [
+        "Öffentliche Ladestation Orpundgarage Biel AG"
+      ],
+      "coordinate": [
+        47.79025,
+        -25.246196
+      ],
+      "nationalAddress": {
+        "street": "89VPQQR3+3G",
+        "house": null,
+        "postal": "-",
+        "city": "-"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEKQJXYJWUK53ZE395CSZUXS6BQ2",
+      "names": [],
+      "coordinate": [
+        47.170714,
+        8.517094
+      ],
+      "nationalAddress": {
+        "street": "Poststrasse 22",
+        "house": null,
+        "postal": "6300",
+        "city": "Zug"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        11000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEL4LD7C5PE4NZK2EGNQPZJ3AJV2",
+      "names": [
+        "Maschinencenter"
+      ],
+      "coordinate": [
+        47.503144,
+        9.358282
+      ],
+      "nationalAddress": {
+        "street": "Bahnhofstrasse 4",
+        "house": null,
+        "postal": "9308",
+        "city": "Lömmenschwil"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "d574f97e-68fb-c159-078a-167c914fc86e",
+          "stationName": "Maschinencenter",
+          "address": "Bahnhofstrasse 4, 9308 Lömmenschwil, Schweiz",
+          "operatorName": "Maschinencenter AG",
+          "distanceMeters": 0.01,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "d574f97e-68fb-c159-078a-167c914fc86e",
+              "Name": "#1_links",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.4,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 2,
+              "DeviceID": "6c0358e4-0ad4-4c4c-bccd-c5fb4b89b8ce",
+              "Name": "#2_rechts",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUEM3JMRC93AJQKQGMDRJVCVN42HS",
+      "names": [
+        "Commune d'Echallens - Place Rochat - Borne N° 3"
+      ],
+      "coordinate": [
+        46.640791,
+        6.631696
+      ],
+      "nationalAddress": {
+        "street": "Av. des Terreaux 7",
+        "house": null,
+        "postal": "1040",
+        "city": "Echallens"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUET7C7W75FLCEDATRE9C2H32KRSQ",
+      "names": [],
+      "coordinate": [
+        47.316649,
+        8.468442
+      ],
+      "nationalAddress": {
+        "street": "Alte Stationsstrasse 16",
+        "house": null,
+        "postal": "8906",
+        "city": "Bonstetten"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        11000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEUW4GWHVF785W7D7ZCFX3WHAM72",
+      "names": [
+        "Öffentliche Ladestation Orpundgarage Biel AG"
+      ],
+      "coordinate": [
+        48.206985,
+        -22.330715
+      ],
+      "nationalAddress": {
+        "street": "89WV6M49+QP",
+        "house": null,
+        "postal": "-",
+        "city": "-"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": []
+    },
+    {
+      "evseId": "CH*ECUEVSR2P7DB8DHTEKLZYX237BYGWW",
+      "names": [
+        "20292500001"
+      ],
+      "coordinate": [
+        45.905417,
+        8.981104
+      ],
+      "nationalAddress": {
+        "street": "Via Carlo Maderno 20",
+        "house": null,
+        "postal": "6825",
+        "city": "Capolago"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "3ab5e6ed-696d-ff82-3ac8-40b396969c7d",
+          "stationName": "WBA-VEN25000733",
+          "address": "Via Luigi Dottesio 3, 6825 Capolago, Switzerland",
+          "operatorName": "Ventisei Swiss SA",
+          "distanceMeters": 31.78,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "3ab5e6ed-696d-ff82-3ac8-40b396969c7d",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 11000,
+              "HubjectID": "CH*ECUEF7J449YFD6QP59QJQMRFD4B692",
+              "Price": {
+                "EnergyPrice": 0.79,
+                "ParkingPrice": 3,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "chf"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUEVTE5GAU8VTFVNKKMHQ6YQAYXAA",
+      "names": [
+        "TACW2244120G0004"
+      ],
+      "coordinate": [
+        47.479216,
+        8.303173
+      ],
+      "nationalAddress": {
+        "street": "Bruggerstrasse 66",
+        "house": null,
+        "postal": "5400",
+        "city": "Baden"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "4dbb851e-b18b-ff11-0bea-78ba1f563b26",
+          "stationName": "Berufsfachschule Baden",
+          "address": "Schmiedestrasse 4, 5400 Baden, Schweiz",
+          "operatorName": "Berufsfachschule BBB",
+          "distanceMeters": 217.56,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "4dbb851e-b18b-ff11-0bea-78ba1f563b26",
+              "Name": "Station 1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": "CH*ECUELEA78XFGGFWLPSE9U6VPA4F3XA",
+              "Price": {
+                "EnergyPrice": 0.3,
+                "ParkingPrice": 2,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 2,
+              "DeviceID": "8779ee5d-44b7-465a-afeb-df4df8bcb0e0",
+              "Name": "Station 2",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": "CH*ECUE9B8672LNWBNRY7V9PV6T5LZNQ3",
+              "Price": {
+                "EnergyPrice": 0.3,
+                "ParkingPrice": 2,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "341dd26c-d09b-5bd8-100f-f062ae287c0a",
+          "stationName": "Aussenparkplatz Müller Brau",
+          "address": "Dynamostrasse 8, 5400 Baden, Schweiz",
+          "operatorName": "ista swiss ag",
+          "distanceMeters": 290.11,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "341dd26c-d09b-5bd8-100f-f062ae287c0a",
+              "Name": "Aussenparkplatz Müller Bräu",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 11000,
+              "HubjectID": "CH*ECUER6Y8AMR6TXN7SEKAT7UKCYT5CQ",
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUEW3NXQNGMCQ6UWLNJSLL7YWZ7VX",
+      "names": [
+        "Maschinencenter"
+      ],
+      "coordinate": [
+        47.503144,
+        9.358282
+      ],
+      "nationalAddress": {
+        "street": "Bahnhofstrasse 4",
+        "house": null,
+        "postal": "9308",
+        "city": "Lömmenschwil"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "d574f97e-68fb-c159-078a-167c914fc86e",
+          "stationName": "Maschinencenter",
+          "address": "Bahnhofstrasse 4, 9308 Lömmenschwil, Schweiz",
+          "operatorName": "Maschinencenter AG",
+          "distanceMeters": 0.01,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "d574f97e-68fb-c159-078a-167c914fc86e",
+              "Name": "#1_links",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.4,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 2,
+              "DeviceID": "6c0358e4-0ad4-4c4c-bccd-c5fb4b89b8ce",
+              "Name": "#2_rechts",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUEW7J65STKF4PGWNNBPYGG96AKXA",
+      "names": [
+        "PDGR Haus F"
+      ],
+      "coordinate": [
+        46.869997,
+        9.541233
+      ],
+      "nationalAddress": {
+        "street": "Loestrasse 220",
+        "house": null,
+        "postal": "7000",
+        "city": "Chur"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "40040569-8853-f5a1-f33e-b690e8c3c67c",
+          "stationName": "PDGR Haus F",
+          "address": "Loestrasse 220, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 0.04,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "40040569-8853-f5a1-f33e-b690e8c3c67c",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 2,
+              "DeviceID": "6b6d3035-38ea-46eb-94d7-6ca15f00b6c6",
+              "Name": "#2",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 3,
+              "DeviceID": "6907cbab-f717-485d-af02-29ba93cdc7fd",
+              "Name": "#3",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 4,
+              "DeviceID": "675bd79b-18a8-4503-a263-f9a4bc3aa021",
+              "Name": "#4",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 5,
+              "DeviceID": "0af9e6e4-6de4-48fd-ac95-9fc6d867e026",
+              "Name": "#5",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 6,
+              "DeviceID": "035b99a6-8a65-4dfd-b93c-6047d5a13318",
+              "Name": "#6",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "663492e0-90b3-a6fc-2e61-a8921d44c228",
+          "stationName": "#10 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "663492e0-90b3-a6fc-2e61-a8921d44c228",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "6d6bba2a-10ee-8323-554c-373c56dd4998",
+          "stationName": "#08 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "6d6bba2a-10ee-8323-554c-373c56dd4998",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "b33eddea-a0ee-f31c-f504-ca15a7bfe99b",
+          "stationName": "#09 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "b33eddea-a0ee-f31c-f504-ca15a7bfe99b",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "0c9c2c22-6b10-af2c-e620-b4eb8038eed2",
+          "stationName": "#01 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "0c9c2c22-6b10-af2c-e620-b4eb8038eed2",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "12fd8ebf-402e-6171-09dd-d4ccbcecaa81",
+          "stationName": "#11 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "12fd8ebf-402e-6171-09dd-d4ccbcecaa81",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "66300700-d2ee-589e-98a7-14d29626a680",
+          "stationName": "#13 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "66300700-d2ee-589e-98a7-14d29626a680",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "1c7a729f-02f7-d2ca-32f0-d945cf9c68d2",
+          "stationName": "#14 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "1c7a729f-02f7-d2ca-32f0-d945cf9c68d2",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "1030e4a1-5b06-b47d-6694-0b6ca105dddc",
+          "stationName": "#12 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "1030e4a1-5b06-b47d-6694-0b6ca105dddc",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "b5d5c6ef-85d5-4c8b-9e4d-dd364a8c5463",
+          "stationName": "#02 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "b5d5c6ef-85d5-4c8b-9e4d-dd364a8c5463",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "f92a68d0-7d6f-86c2-9387-c8a5e664e060",
+          "stationName": "#03 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f92a68d0-7d6f-86c2-9387-c8a5e664e060",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "f4250cc8-41b6-46bc-3a39-5b4c64376535",
+          "stationName": "#08 UG Behinderten PP",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f4250cc8-41b6-46bc-3a39-5b4c64376535",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUEXFX7HAYRCRP8YKB3Q8GC9TVXUQ",
+      "names": [
+        "PDGR Haus F"
+      ],
+      "coordinate": [
+        46.869997,
+        9.541233
+      ],
+      "nationalAddress": {
+        "street": "Loestrasse 220",
+        "house": null,
+        "postal": "7000",
+        "city": "Chur"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "40040569-8853-f5a1-f33e-b690e8c3c67c",
+          "stationName": "PDGR Haus F",
+          "address": "Loestrasse 220, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 0.04,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "40040569-8853-f5a1-f33e-b690e8c3c67c",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 2,
+              "DeviceID": "6b6d3035-38ea-46eb-94d7-6ca15f00b6c6",
+              "Name": "#2",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 3,
+              "DeviceID": "6907cbab-f717-485d-af02-29ba93cdc7fd",
+              "Name": "#3",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 4,
+              "DeviceID": "675bd79b-18a8-4503-a263-f9a4bc3aa021",
+              "Name": "#4",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 5,
+              "DeviceID": "0af9e6e4-6de4-48fd-ac95-9fc6d867e026",
+              "Name": "#5",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 6,
+              "DeviceID": "035b99a6-8a65-4dfd-b93c-6047d5a13318",
+              "Name": "#6",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "663492e0-90b3-a6fc-2e61-a8921d44c228",
+          "stationName": "#10 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "663492e0-90b3-a6fc-2e61-a8921d44c228",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "6d6bba2a-10ee-8323-554c-373c56dd4998",
+          "stationName": "#08 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "6d6bba2a-10ee-8323-554c-373c56dd4998",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "b33eddea-a0ee-f31c-f504-ca15a7bfe99b",
+          "stationName": "#09 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "b33eddea-a0ee-f31c-f504-ca15a7bfe99b",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "0c9c2c22-6b10-af2c-e620-b4eb8038eed2",
+          "stationName": "#01 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "0c9c2c22-6b10-af2c-e620-b4eb8038eed2",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "12fd8ebf-402e-6171-09dd-d4ccbcecaa81",
+          "stationName": "#11 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "12fd8ebf-402e-6171-09dd-d4ccbcecaa81",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "66300700-d2ee-589e-98a7-14d29626a680",
+          "stationName": "#13 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "66300700-d2ee-589e-98a7-14d29626a680",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "1c7a729f-02f7-d2ca-32f0-d945cf9c68d2",
+          "stationName": "#14 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "1c7a729f-02f7-d2ca-32f0-d945cf9c68d2",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "1030e4a1-5b06-b47d-6694-0b6ca105dddc",
+          "stationName": "#12 EG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "1030e4a1-5b06-b47d-6694-0b6ca105dddc",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "b5d5c6ef-85d5-4c8b-9e4d-dd364a8c5463",
+          "stationName": "#02 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "b5d5c6ef-85d5-4c8b-9e4d-dd364a8c5463",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "f92a68d0-7d6f-86c2-9387-c8a5e664e060",
+          "stationName": "#03 UG",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f92a68d0-7d6f-86c2-9387-c8a5e664e060",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "f4250cc8-41b6-46bc-3a39-5b4c64376535",
+          "stationName": "#08 UG Behinderten PP",
+          "address": "Loestrasse 212, 7000 Chur, Schweiz",
+          "operatorName": "Psychiatrische Dienste Graubünden",
+          "distanceMeters": 278.4,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f4250cc8-41b6-46bc-3a39-5b4c64376535",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUEXT7WRPJ8CNCRYMV3SHN8NGRJJ2",
+      "names": [
+        "SH POWER - Gemeindehaus Beringen"
+      ],
+      "coordinate": [
+        47.696127,
+        8.573739
+      ],
+      "nationalAddress": {
+        "street": "Zelgstrasse 8",
+        "house": null,
+        "postal": "8222",
+        "city": "Beringen"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "17e4b6f5-3274-e3c4-6122-ef6bd74a1203",
+          "stationName": "SH POWER - Gemeindehaus Beringen",
+          "address": "Zelgstrasse 8, 8222 Beringen, Schweiz",
+          "operatorName": "SH POWER",
+          "distanceMeters": 0.03,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "17e4b6f5-3274-e3c4-6122-ef6bd74a1203",
+              "Name": "#1 öffentliches Laden",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": "CH*ECUEH7FDL4TVBAG3LTDW5PMVFSDZ2Q",
+              "Price": {
+                "EnergyPrice": 0.45,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 2,
+              "DeviceID": "7ec25e06-cade-462a-b53b-a5da6d23cb79",
+              "Name": "#2 Carsharing",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": null,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "551175ac-d0ce-d97c-7adb-3c82ef5e6372",
+          "stationName": "SH POWER - Gemeindehaus Beringen",
+          "address": "Zelgstrasse 8, 8222 Beringen, Schweiz",
+          "operatorName": "SH POWER",
+          "distanceMeters": 19.27,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "551175ac-d0ce-d97c-7adb-3c82ef5e6372",
+              "Name": "#1 öffentliches Laden",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": "CH*ECUERF9ZGCJJTXPBF9F8KGQPV5FRB2",
+              "Price": {
+                "EnergyPrice": 0.45,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "f633d4dc-d46f-9031-082f-f0a28e01ec56",
+          "stationName": "Frueling Zentrum fürs Alter Tiefgarage Parkplatz 1 [EC4K2A33]",
+          "address": "Bahnhofstrasse 9, 8222 Beringen, Schweiz",
+          "operatorName": "Alters- und Pflegeheim Ruhesitz",
+          "distanceMeters": 112.97,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "f633d4dc-d46f-9031-082f-f0a28e01ec56",
+              "Name": "In Tiefgarage Früeling, welche zwischen 21.00 Uhr und 06.00 Uhr geschlossen ist",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": "",
+              "Price": {
+                "EnergyPrice": 0.45,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "b0f1fd79-99b3-38bb-ae9d-987ab58edc6d",
+          "stationName": "Frueling Zentrum fürs Alter Tiefgarage Parkplatz 2 [ECQRH95U]",
+          "address": "Bahnhofstrasse 9, 8222 Beringen, Schweiz",
+          "operatorName": "Alters- und Pflegeheim Ruhesitz",
+          "distanceMeters": 113.47,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "b0f1fd79-99b3-38bb-ae9d-987ab58edc6d",
+              "Name": "In Tiefgarage Früeling, welche zwischen 21.00 Uhr und 06.00 Uhr geschlossen ist",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": "",
+              "Price": {
+                "EnergyPrice": 0.45,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "5e67c26d-7d11-a96d-b43a-73f6969e42c6",
+          "stationName": "Frueling Zentrum fürs Alter Tiefgarage Parkplatz 3 [ECGFPP4P]",
+          "address": "Bahnhofstrasse 9, 8222 Beringen, Schweiz",
+          "operatorName": "Alters- und Pflegeheim Ruhesitz",
+          "distanceMeters": 116.01,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "5e67c26d-7d11-a96d-b43a-73f6969e42c6",
+              "Name": "In Tiefgarage Früeling, welche zwischen 21.00 Uhr und 06.00 Uhr geschlossen ist",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": "",
+              "Price": {
+                "EnergyPrice": 0.45,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUEY3F3LCATFLSAQQKGX99CW3DRFS",
+      "names": [
+        "Ladestation Aussen"
+      ],
+      "coordinate": [
+        46.732974,
+        7.62581
+      ],
+      "nationalAddress": {
+        "street": "Hännisweg 5",
+        "house": null,
+        "postal": "3645",
+        "city": "Thun"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        22000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "70547453-31d9-4793-9da8-673ee4460ff0",
+          "stationName": "Garage Bärfuss AG",
+          "address": "Gwattstrasse 54, 3604 Thun, Schweiz",
+          "operatorName": "Garage Bärfuss AG",
+          "distanceMeters": 196.25,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "70547453-31d9-4793-9da8-673ee4460ff0",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": "CH*ECUE6Z9ESUS8GJW5YVZH365EV29AT3",
+              "Price": {
+                "EnergyPrice": 0.5,
+                "ParkingPrice": 1,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evseId": "CH*ECUEZ7CUG863J8ZFLYPTPM7NKTDDG2",
+      "names": [
+        "DURISOLSTRASSE-10-121"
+      ],
+      "coordinate": [
+        47.355955,
+        8.254124
+      ],
+      "nationalAddress": {
+        "street": "Durisolstrasse 10",
+        "house": null,
+        "postal": "5612",
+        "city": "Villmergen"
+      },
+      "nationalPowerTypes": [
+        "AC"
+      ],
+      "nationalPowerW": [
+        11000
+      ],
+      "nationalPlugCodes": [
+        1
+      ],
+      "nearbyCurrentEcarUp": [
+        {
+          "stationId": "07dc6350-1adb-a074-54c8-cbd3459ce2fa",
+          "stationName": "EVVIO-CH-5612-DURISOLSTRASSE12-PP128",
+          "address": "Durisolstrasse 12, 5612 Villmergen, Schweiz",
+          "operatorName": "Netsuisse AG",
+          "distanceMeters": 23.07,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "07dc6350-1adb-a074-54c8-cbd3459ce2fa",
+              "Name": "#1",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": "CH*ECUETMUU92R8MQ9QCCAJ4LY4WVCKM3",
+              "Price": {
+                "EnergyPrice": 0.7,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            },
+            {
+              "Id": 2,
+              "DeviceID": "30534e05-cb9f-43f5-bfd7-a1cdd73a8985",
+              "Name": "#2",
+              "Description": null,
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": "CH*ECUEST6XSUK64V93YPLMAF65F9WGSW",
+              "Price": {
+                "EnergyPrice": 0.7,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        },
+        {
+          "stationId": "362e523b-d86d-1c7f-c766-af306a7ccb73",
+          "stationName": "Inno-Pack GmbH - E-Ladestation",
+          "address": "Allmendstrasse 4, 5612 Villmergen, Schweiz",
+          "operatorName": "Inno-Pack GmbH",
+          "distanceMeters": 264.94,
+          "connectors": [
+            {
+              "Id": 1,
+              "DeviceID": "362e523b-d86d-1c7f-c766-af306a7ccb73",
+              "Name": "Strom von der Hauseigenen PV-Anlage.",
+              "Description": "Laden Sie Ihr Auto mit lokal produziertem Sonnenstrom. Direkt von unserem Dach. Der Parkplatz ist öffentlich zugängig. Keine 10 min von der Autobahnausfahrt Lenzburg entfernt. https://www.innopack.ch/photovoltaikanlage ",
+              "PlugType": 1,
+              "MaxPower": 22000,
+              "HubjectID": null,
+              "Price": {
+                "EnergyPrice": 0.44,
+                "ParkingPrice": 0,
+                "SpecialUserEnergyPrice": null,
+                "SpecialUserParkingPrice": null,
+                "PenaltyGracePeriodMinutes": null,
+                "PenaltyPricePerMinute": null,
+                "PenaltyMaxFee": null,
+                "Currency": "CHF"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "policy": "Fail closed. No cross-site tariff inheritance, no nearest-neighbour tariff inheritance, no assumption that zero-priced secondary connector shares a priced master's tariff, and no station-to-connector mapping without deterministic evidence.",
+  "resumeConditions": [
+    "A public photo/label exposing the printed eCarUp QR serial for a residual connector.",
+    "A fresh eCarUp/national/Hubject snapshot restoring exact connector identity or tariff.",
+    "An authoritative owner/municipal tariff that explicitly covers the exact residual site/connectors.",
+    "A public payment/deep-link page that deterministically resolves the residual EVSE or printed serial.",
+    "A source mapping a national residual EVSE to eCarUp DeviceID/SelectedConnectorId."
+  ]
+}
