@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, os, subprocess, sys
+import json, os, subprocess, sys\nfrom pathlib import Path
 from urllib.parse import urlencode
 
 API=os.environ.get("AVIA_API_BASE","https://pdefweushaapiam01.azure-api.net").rstrip("/")
