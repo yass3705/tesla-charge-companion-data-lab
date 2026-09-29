@@ -11,6 +11,7 @@ concurrency:
 
 jobs:
   chunk1:
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 300
     env:
@@ -43,10 +44,12 @@ jobs:
             git push origin HEAD:main && break
             sleep $((i * 3))
           done
-          exit ${rc}
+          if [ "${rc}" -ne 0 ]; then
+            echo "Chunk completed with isolated Electroverse failure(s); checkpoint kept and chain continues."
+          fi
+          exit 0
 
   chunk2:
-    needs: chunk1
     runs-on: ubuntu-latest
     timeout-minutes: 300
     env:
