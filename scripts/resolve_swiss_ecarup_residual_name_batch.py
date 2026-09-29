@@ -115,7 +115,9 @@ def national_powers_w(rec):
         v=f.get("power")
         try:
             if v is not None:
-                vals.add(round(float(v)*1000))
+                watts=round(float(v)*1000)
+                if watts > 0:
+                    vals.add(watts)
         except Exception:
             pass
     return vals
