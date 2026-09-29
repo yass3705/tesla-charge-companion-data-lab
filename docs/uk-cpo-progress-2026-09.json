@@ -270,12 +270,11 @@
     },
     {
       "name": "Monta",
-      "status": "set_aside_technical_pricing_residual",
+      "status": "partial_pricing_99_17",
       "access": "public_api_documented",
       "locationsEndpoint": "https://public-api.monta.com/api/v1/open-data/locations",
-      "evidence": "Full Monta UK public pricing extraction reached 224 pages / 40,959 pricing rows. 1,438 of 1,450 active connectors are priced (99.17%). A targeted tariff-id fallback audit resolved none of the remaining 12 connectors; there are no tariff-id mismatches or tariff price conflicts. The residual is bounded to 12 connectors.",
-      "next": "Set aside the 12 bounded pricing residuals. Revisit only if Monta's public pricing table changes or a new exact tariff source appears; do not rerun the full 224-page extraction without new evidence.",
-      "report": "reports/uk/monta-tariff-fallback-audit-latest.json"
+      "evidence": "After fixing the hard 120-page pricing cap, the full Monta public pricing table ran to 224 pages / 40,959 rows. 1,438 of 1,450 active connectors now match public pricing (99.17%), with 12 unresolved connectors across a small set of underlying tariff IDs and no tariff ID mismatches or price conflicts.",
+      "next": "Keep 12 unresolved connectors as targeted residuals; do not rerun truncated pagination."
     },
     {
       "name": "Zest",
@@ -311,12 +310,10 @@
     },
     {
       "name": "Lidl",
-      "status": "partial_inventory_backend_pricing_complete",
-      "access": "official_public_pricing_plus_lidl_plus_inventory_backend",
-      "evidence": "Official Lidl GB charging page confirms Lidl Great Britain operates the network and publishes network tariffs: Lidl Plus AC £0.40/kWh and DC £0.59/kWh; ad-hoc fast £0.55/kWh and rapid £0.74/kWh. Pricing is therefore bounded; the remaining gap is obtaining a complete machine-readable national charger inventory/EVSE feed from the Lidl Plus/store-finder backend.",
-      "next": "Collect the national Lidl GB station/EVSE inventory from an official/public backend. Do not repeat tariff discovery.",
-      "pricingReport": "reports/uk/lidl-official-pricing-latest.json",
-      "pricingDataset": "data/national/uk_lidl_official_pricing.json"
+      "status": "partial",
+      "access": "lidl_plus_backend",
+      "evidence": "Lidl GB operates its own charging locator and charging service; no public PCPR endpoint surfaced in first pass.",
+      "next": "second pass: inspect Lidl Plus backend and identify legal CPO identity."
     },
     {
       "name": "Forward EV",
