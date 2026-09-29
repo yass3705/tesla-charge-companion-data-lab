@@ -258,6 +258,32 @@ for row in remaining[:BATCH]:
                 continue
             if not isinstance(arr,list):
                 continue
+            exact_name_wide=[]
+            for st in arr:
+                sc=station_coord(st)
+                if sc and distance_m(co,sc) <= 100.0 and norm(station_name(st)) == norm(term):
+                    exact_name_wide.append(st)
+            if len(exact_name_wide)==1:
+                st=exact_name_wide[0]
+                exact_priced=[]
+                exact_tuples=set()
+                for conn in connectors(st):
+                    p=connector_price(conn)
+                    if connector_access(conn) in (0,None) and isinstance(p,dict):
+                        exact_priced.append((conn,p))
+                        exact_tuples.add(json.dumps(p,sort_keys=True,separators=(",",":")))
+                if exact_priced and len(exact_tuples)==1:
+                    conn,p=exact_priced[0]
+                    sc=station_coord(st)
+                    accepted={
+                        "evseId":eid,"stationName":station_name(st),"stationId":st.get("ID") or st.get("id"),
+                        "match":"unique_exact_name_within_100m_uniform_public_price","searchTerm":term,
+                        "distanceMeters":round(distance_m(co,sc),2),"candidatePublicConnectorCount":len(exact_priced),
+                        "price":p,
+                        "connector":{"Id":conn.get("Id") or conn.get("ID") or conn.get("id"),"Name":conn.get("Name") or conn.get("name"),
+                                     "MaxPower":conn.get("MaxPower") or conn.get("maxPower")}
+                    }
+                    break
             term_near=[]
             term_priced=[]
             term_tuples=set()
@@ -555,6 +581,36 @@ for row in remaining[:BATCH]:
         ntypes=national_power_types(rec)
         if len(ntypes)==1:
             target_type=next(iter(ntypes))
+            valid_codes={1} if target_type=="AC" else {5,6}
+            typed=[]
+            typed_tuples=set()
+            for st in arr:
+                sc=station_coord(st)
+                if not sc or distance_m(co,sc)>3.0:
+                    continue
+                for conn in connectors(st):
+                    p=connector_price(conn)
+                    code=conn.get("PlugType") if "PlugType" in conn else conn.get("plugType")
+                    if connector_access(conn) in (0,None) and isinstance(p,dict) and code in valid_codes:
+                        typed.append((st,conn,p))
+                        typed_tuples.add(json.dumps(p,sort_keys=True,separators=(",",":")))
+            if typed and len(typed_tuples)==1:
+                st,conn,p=typed[0]
+                sc=station_coord(st)
+                accepted={
+                    "evseId":eid,"stationName":station_name(st),"stationId":st.get("ID") or st.get("id"),
+                    "match":"uniform_validated_acdc_group_price_within_3m",
+                    "distanceMeters":round(distance_m(co,sc),2),"nationalPowerType":target_type,
+                    "candidatePublicConnectorCount":len(typed),"price":p,
+                    "connector":{"Id":conn.get("Id") or conn.get("ID") or conn.get("id"),"Name":conn.get("Name") or conn.get("name"),
+                                 "PlugType":conn.get("PlugType") if "PlugType" in conn else conn.get("plugType"),
+                                 "MaxPower":conn.get("MaxPower") or conn.get("maxPower")}
+                }
+
+    if not accepted and co and isinstance(arr,list):
+        ntypes=national_power_types(rec)
+        if len(ntypes)==1:
+            target_type=next(iter(ntypes))
             type_matches=[]
             for st in arr:
                 sc=station_coord(st)
@@ -597,7 +653,7 @@ for row in remaining[:BATCH]:
 
 now=datetime.now(timezone.utc).isoformat()
 overlay["generatedAt"]=now
-overlay["method"]="Exact eCarUp public API reconciliation: full/short name-search uniform tariff or exact Hubject.ID, exact ChargingStationNames+coordinate, exact Hubject.ID, identical price tuple at <=0.75m/3m, unique exact connector power, validated Type2/CCS/CHAdeMO + power, or unique explicit AC/DC connector within 3m"
+overlay["method"]="Exact eCarUp public API reconciliation: full/short name-search, unique exact name within 100m with uniform tariff, exact Hubject.ID, identical price tuple at <=0.75m/3m, unique power, validated Type2/CCS/CHAdeMO + power, uniform validated AC/DC group price, or unique explicit AC/DC connector"
 overlay["policy"]="No nearest-neighbour tariff inheritance; no cross-station extrapolation."
 OVERLAY.write_text(json.dumps(overlay,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
