@@ -58,6 +58,23 @@ def candidate_names(rec):
             seen.add(n); out.append(s)
     return out[:8]
 
+def national_plug_codes(rec):
+    vals=set()
+    if not isinstance(rec,dict):
+        return vals
+    plugs=rec.get("Plugs") or []
+    if isinstance(plugs,str):
+        plugs=[plugs]
+    for raw in plugs:
+        s=str(raw or "").upper()
+        if "CHADEMO" in s:
+            vals.add(6)
+        elif "CCS" in s or "COMBO" in s:
+            vals.add(5)
+        elif "TYPE 2" in s or "TYPE2" in s:
+            vals.add(1)
+    return vals
+
 def national_power_types(rec):
     vals=set()
     if not isinstance(rec,dict):
@@ -217,6 +234,39 @@ for row in remaining[:BATCH]:
                 continue
             if not isinstance(arr,list):
                 continue
+            term_near=[]
+            term_priced=[]
+            term_tuples=set()
+            for st in arr:
+                sc=station_coord(st)
+                if not sc or distance_m(co,sc) > 3.0:
+                    continue
+                term_near.append(st)
+                for conn in connectors(st):
+                    p=connector_price(conn)
+                    if connector_access(conn) in (0,None) and isinstance(p,dict):
+                        term_priced.append((st,conn,p))
+                        term_tuples.add(json.dumps(p,sort_keys=True,separators=(",",":")))
+            if term_priced and len(term_tuples)==1:
+                st,conn,p=term_priced[0]
+                sc=station_coord(st)
+                accepted={
+                    "evseId":eid,
+                    "stationName":station_name(st),
+                    "stationId":st.get("ID") or st.get("id"),
+                    "match":"name_search_nearby_identical_public_price_tuple",
+                    "distanceMeters":round(distance_m(co,sc),2) if sc else None,
+                    "searchTerm":term,
+                    "candidateStationCount":len(term_near),
+                    "candidatePublicConnectorCount":len(term_priced),
+                    "price":p,
+                    "connector":{
+                        "Id":conn.get("Id") or conn.get("ID") or conn.get("id"),
+                        "Name":conn.get("Name") or conn.get("name"),
+                        "MaxPower":conn.get("MaxPower") or conn.get("maxPower")
+                    }
+                }
+                break
             matches=[]
             for st in arr:
                 sc=station_coord(st)
@@ -385,6 +435,47 @@ for row in remaining[:BATCH]:
                 }
 
     if not accepted and co and isinstance(arr,list):
+        plugcodes=national_plug_codes(rec)
+        npowers=national_powers_w(rec)
+        if plugcodes:
+            plug_matches=[]
+            for st in arr:
+                sc=station_coord(st)
+                if not sc or distance_m(co,sc) > 3.0:
+                    continue
+                for conn in connectors(st):
+                    p=connector_price(conn)
+                    code=conn.get("PlugType") if "PlugType" in conn else conn.get("plugType")
+                    mp=conn.get("MaxPower") or conn.get("maxPower")
+                    if connector_access(conn) not in (0,None) or not isinstance(p,dict):
+                        continue
+                    if code not in plugcodes:
+                        continue
+                    if npowers and isinstance(mp,(int,float)) and round(float(mp)) not in npowers:
+                        continue
+                    plug_matches.append((st,conn,p))
+            if len(plug_matches)==1:
+                st,conn,p=plug_matches[0]
+                sc=station_coord(st)
+                accepted={
+                    "evseId":eid,
+                    "stationName":station_name(st),
+                    "stationId":st.get("ID") or st.get("id"),
+                    "match":"unique_validated_plug_and_power_connector_within_3m",
+                    "distanceMeters":round(distance_m(co,sc),2) if sc else None,
+                    "nationalPlugCodes":sorted(plugcodes),
+                    "nationalPowerW":sorted(npowers),
+                    "price":p,
+                    "connector":{
+                        "Id":conn.get("Id") or conn.get("ID") or conn.get("id"),
+                        "Name":conn.get("Name") or conn.get("name"),
+                        "PlugType":code,
+                        "MaxPower":mp,
+                        "HubjectID":(conn.get("Hubject") or {}).get("ID") if isinstance(conn.get("Hubject"),dict) else None
+                    }
+                }
+
+    if not accepted and co and isinstance(arr,list):
         ntypes=national_power_types(rec)
         if len(ntypes)==1:
             target_type=next(iter(ntypes))
@@ -430,7 +521,7 @@ for row in remaining[:BATCH]:
 
 now=datetime.now(timezone.utc).isoformat()
 overlay["generatedAt"]=now
-overlay["method"]="Exact eCarUp public API reconciliation: exact ChargingStationNames+coordinate, exact Hubject.ID, identical price tuple at <=0.75m/3m, unique exact connector power, or unique explicit AC/DC connector within 3m"
+overlay["method"]="Exact eCarUp public API reconciliation: name-search uniform tariff, exact ChargingStationNames+coordinate, exact Hubject.ID, identical price tuple at <=0.75m/3m, unique exact connector power, validated Type2/CCS/CHAdeMO + power, or unique explicit AC/DC connector within 3m"
 overlay["policy"]="No nearest-neighbour tariff inheritance; no cross-station extrapolation."
 OVERLAY.write_text(json.dumps(overlay,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
