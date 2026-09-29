@@ -1,5 +1,8 @@
 name: TEST NON-TESLA — Electroverse France full refresh
 on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 0 * * 0'
   push:
     paths:
       - tests/non-tesla/active/run-electroverse-france-full-refresh.trigger
@@ -11,7 +14,6 @@ concurrency:
 
 jobs:
   chunk1:
-    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 300
     env:
@@ -50,6 +52,7 @@ jobs:
           exit 0
 
   chunk2:
+    needs: chunk1
     runs-on: ubuntu-latest
     timeout-minutes: 300
     env:
