@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-09-28",
+  "updatedAt": "2026-09-29",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -157,10 +157,12 @@
     },
     {
       "name": "PoGo Charge",
-      "status": "partial_location_feed",
+      "status": "complete",
       "access": "anonymous_smartcharging_plus_official_pricing",
-      "evidence": "158/159 upstream locations recovered; offset 158 returns HTTP 500 upstream. Pricing complete via official PoGo AC/DC tariffs and all local tariff links resolved.",
-      "next": "keep bounded until upstream missing record recovers; pricing is complete."
+      "evidence": "Validated UK collector run 2026-09-29 recovered all 159/159 SmartCharging locations, 799 EVSE/connectors, 2/2 direct tariff IDs resolved, no missing tariff IDs, and pricing complete via official PoGo AC/DC tariffs (£0.56/kWh AC, £0.65/kWh DC).",
+      "next": "validated; include in scheduled UK aggregation. Keep fail-closed if a future refresh loses location or tariff coverage.",
+      "dataset": "data/national/uk_validated_open_feeds.json.gz",
+      "report": "reports/uk/validated-open-feeds-latest.json"
     },
     {
       "name": "Pod",
@@ -222,17 +224,17 @@
     },
     {
       "name": "Source EV",
-      "status": "partial",
+      "status": "set_aside_external_request",
       "access": "request_via_eco_movement",
       "evidence": "Source EV compliance page provides PCPR data by request via Eco-Movement.",
-      "next": "second pass: test Eco-Movement PCPR route."
+      "next": "Set aside pending the already-identified external/open-data access route. test Eco-Movement PCPR route."
     },
     {
       "name": "Shell Recharge",
-      "status": "partial",
+      "status": "set_aside_external_request",
       "access": "request_via_eco_movement",
       "evidence": "Shell UK PCPR page routes open-data requests through Eco-Movement.",
-      "next": "second pass: test Eco-Movement PCPR API."
+      "next": "Set aside pending the already-identified external/open-data access route. test Eco-Movement PCPR API."
     },
     {
       "name": "Allego",
@@ -258,11 +260,11 @@
     },
     {
       "name": "Believ",
-      "status": "partial_pricing_external_access",
+      "status": "set_aside_external_free_api_account",
       "access": "anonymous_next_server_actions_plus_free_api_account_for_pricing",
       "locationsEndpoint": "https://charge.believ.com/map",
       "evidence": "Believ public portal exposes anonymous Next.js read-only server actions. Data Lab validated getLocations (706 count in live action response), getLocation and getChargingStationsByLocation with detailed connector status/power. No tariff/price fields are returned by these anonymous actions or public map payloads.",
-      "next": "Inventory/status surface is bounded and usable. Pricing remains external-access only unless Believ later exposes it publicly; free Believ API account is the remaining step. Do not repeat public-route discovery.",
+      "next": "Inventory/status is already bounded. Set aside until the free Believ API account/pricing access is available; do not repeat anonymous pricing discovery.",
       "dataset": "data/national/uk_believ_public_map.json.gz",
       "report": "reports/uk/believ-server-action-probe-latest.json"
     },
@@ -409,10 +411,10 @@
     },
     {
       "name": "ChargePoint",
-      "status": "partial",
+      "status": "set_aside_external_request",
       "access": "request_via_external_partner",
       "evidence": "ChargePoint UK says public CMS station data is available via API request through an external partner.",
-      "next": "second pass: resolve partner form/API and UK CMS data."
+      "next": "Set aside pending the already-identified external/open-data access route. resolve partner form/API and UK CMS data."
     },
     {
       "name": "char.gy",
@@ -450,17 +452,17 @@
     },
     {
       "name": "Shell Recharge ubitricity",
-      "status": "partial",
+      "status": "set_aside_external_request",
       "access": "request_or_eco_movement",
       "evidence": "UK CPO dataset index points to Shell open-data request and Eco-Movement PCPR API.",
-      "next": "test Eco-Movement public-regulation feed path."
+      "next": "Set aside pending the already-identified external/open-data access route. test Eco-Movement public-regulation feed path."
     },
     {
       "name": "Blink",
-      "status": "partial",
+      "status": "set_aside_external_request",
       "access": "open_data_request",
       "evidence": "UK CPO dataset index points to Blink UK Open Data Request.",
-      "next": "resolve endpoint/access mechanics after first pass."
+      "next": "Set aside pending the already-identified external/open-data access route. resolve endpoint/access mechanics after first pass."
     },
     {
       "name": "JOLT",
@@ -2729,5 +2731,12 @@
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
   "migratedFrom": "yass3705/tesla-stations-updater-test",
   "migratedAt": "2026-09-28",
-  "executionPolicy": "Run UK collection and investigation workflows from Data Lab. The legacy updater-test UK workflow is manual-only to avoid duplicate Actions consumption."
+  "executionPolicy": "Run UK collection and investigation workflows from Data Lab. The legacy updater-test UK workflow is manual-only to avoid duplicate Actions consumption.",
+  "autopilotPolicy": {
+    "updatedAt": "2026-09-29",
+    "kpi": "Reduce actionable partial CPOs through evidence-backed partial->complete promotions or evidence-backed set-aside classification; maintenance refreshes are secondary.",
+    "isolatedFailures": "An isolated CPO/source failure must not cause immediate reruns of an otherwise successful multi-source batch.",
+    "retryPolicy": "Maintenance tasks are not retried before their normal interval after a completed degraded attempt. Repeated identical failures are parked for targeted investigation.",
+    "canonicalReconciliation": "Persist successful source results even when another source in the same batch fails, then reconcile the canonical ledger from persisted evidence."
+  }
 }
