@@ -1,0 +1,100 @@
+name: Switzerland small CPO LCB exact probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-small-cpo-lcb-exact-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Filter current lcb / Swiss eMobility cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, math, urllib.request
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          url="https://lcb.ch/ladekarte-proxy.php"
+          req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0 TCC-V9-LCB-Exact","Accept":"application/json"})
+          with urllib.request.urlopen(req,timeout=90) as r:
+              data=json.loads(r.read().decode())
+
+          targets={
+            "kriens":(47.034731,8.24211),
+            "kobiboden":(47.13687,8.742233),
+            "herrliberg":(47.284845,8.611227),
+          }
+          ids={
+            "CH*EVT*EEVT0010011","CH*EVT*EEVT0010012","CH*EVT*EEVT0010013",
+            "CH*EVT*EAVC001001","CH*EVT*EAVC001002","CH*EVT*EAVC001003",
+            "CH*HER*E123*0001",
+            "CH*SUI*E290524","CH*SUI*E290525","CH*SUI*E290526",
+            "CH*SUI*E25665","CH*SUI*E25666","CH*SUI*E27986"
+          }
+          def hav(a,b,c,d):
+              R=6371000;p=math.pi/180
+              q=math.sin((c-a)*p/2)**2+math.cos(a*p)*math.cos(c*p)*math.sin((d-b)*p/2)**2
+              return 2*R*math.asin(math.sqrt(q))
+          hits={}
+          for name,(lat,lon) in targets.items():
+              rows=[]
+              for st in data.get("stations",[]):
+                  try:d=hav(lat,lon,float(st["lat"]),float(st["lon"]))
+                  except:continue
+                  conn_ids={str(c.get("evse_id")) for c in st.get("connectors",[])}
+                  if d<=120 or conn_ids & ids:
+                      rows.append({
+                        "distanceMeters":round(d,1),
+                        "id":st.get("id"),"name":st.get("name"),
+                        "lat":st.get("lat"),"lon":st.get("lon"),
+                        "address":st.get("address"),"source":st.get("source"),
+                        "connectors":st.get("connectors",[])
+                      })
+              hits[name]=sorted(rows,key=lambda x:x["distanceMeters"])
+
+          out={
+            "schemaVersion":1,
+            "retrievedAt":datetime.now(timezone.utc).isoformat(),
+            "source":url,
+            "sourceGeneratedAt":data.get("generated_at"),
+            "sourceAttribution":data.get("source_attribution"),
+            "hits":hits
+          }
+          Path("docs/switzerland-small-cpo-lcb-exact-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({
+            "generatedAt":data.get("generated_at"),
+            "counts":{k:len(v) for k,v in hits.items()},
+            "priced":[
+              {"site":site,"evse":c.get("evse_id"),"price":c.get("price_chf_per_kwh"),"extra":c.get("price_extra"),"provider":c.get("price_provider")}
+              for site,sts in hits.items() for s in sts for c in s.get("connectors",[])
+              if c.get("evse_id") in ids
+            ]
+          },ensure_ascii=False))
+          PY
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-small-cpo-lcb-exact-probe-2026-09-29.json
+          git commit -m "research(ch): capture exact LCB small-CPO pricing" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
