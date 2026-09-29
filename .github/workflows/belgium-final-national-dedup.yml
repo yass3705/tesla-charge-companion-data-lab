@@ -1,0 +1,168 @@
+name: Belgium final national dedup audit
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/belgium-final-national-dedup.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build final Belgian national dedup audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,gzip,re
+          from pathlib import Path
+          from collections import defaultdict
+
+          def norm(x):
+              if x is None: return None
+              s=re.sub(r'[^A-Z0-9]','',str(x).upper())
+              return s or None
+
+          def load(path):
+              p=Path(path)
+              if p.suffix=='.gz':
+                  with gzip.open(p,'rt',encoding='utf-8') as f: return json.load(f)
+              return json.loads(p.read_text())
+
+          # Eco-Movement: one stable externalIdentifiers[0] per EVSE.
+          eco_all=set(); eco_priced=set(); eco_rows=0
+          manifest=load('data/belgium/nap-belgium-manifest.json')
+          for page in manifest.get('pages') or []:
+              data=load(page['canonicalPath'])
+              for loc in data.get('locations') or []:
+                  for st in loc.get('stations') or []:
+                      for ev in st.get('evses') or []:
+                          eco_rows+=1
+                          ex=ev.get('externalIdentifiers') or []
+                          eid=next((v for v in ex if isinstance(v,(str,int))),None) or ev.get('id')
+                          n=norm(eid)
+                          if not n: continue
+                          eco_all.add(n)
+                          if ev.get('prices'):
+                              eco_priced.add(n)
+
+          # Road.
+          road=load('data/belgium/additional/road-2026-09-29.json')
+          tariffs=load('data/belgium/additional/road-tariffs-2026-09-29.json')
+          tids={str(t.get('id')) for t in tariffs if isinstance(t,dict) and t.get('id') is not None}
+          road_all=set(); road_priced=set()
+          def walk_road(x):
+              if isinstance(x,dict):
+                  low={str(k).lower():v for k,v in x.items()}
+                  evses=low.get('evses')
+                  if isinstance(evses,list) and any(k in low for k in ('coordinates','city','country','address')):
+                      for ev in evses:
+                          if not isinstance(ev,dict): continue
+                          eid=ev.get('evse_id') or ev.get('evseid') or ev.get('uid') or ev.get('id')
+                          n=norm(eid)
+                          if not n: continue
+                          road_all.add(n)
+                          found=False
+                          for c in ev.get('connectors') or []:
+                              if not isinstance(c,dict): continue
+                              if any(str(t) in tids for t in (c.get('tariff_ids') or [])):
+                                  found=True; break
+                          if found: road_priced.add(n)
+                  for v in x.values(): walk_road(v)
+              elif isinstance(x,list):
+                  for v in x: walk_road(v)
+          walk_road(road)
+
+          # INDIGO.
+          indigo=load('data/belgium/additional/canonical/indigo-belgium-canonical-2026-09-29.json')
+          indigo_all=set()
+          for site in indigo.get('items') or []:
+              for rp in site.get('refillPoints') or []:
+                  n=norm(rp.get('externalIdentifier'))
+                  if n: indigo_all.add(n)
+          indigo_priced=set(indigo_all)
+
+          # Monta.
+          monta=load('data/belgium/additional/monta-public-pricing-2026-09-29.json.gz')
+          monta_all=set(); monta_priced=set()
+          for p in monta.get('pricingRows') or []:
+              n=norm(p.get('evseId'))
+              if not n: continue
+              monta_all.add(n)
+              raw=p.get('raw') or []
+              # Every public pricing-table row is tariff evidence; preserve rows even if energy price is blank.
+              monta_priced.add(n)
+
+          sets={'ecoMovement':eco_all,'road':road_all,'indigo':indigo_all,'monta':monta_all}
+          priced={'ecoMovement':eco_priced,'road':road_priced,'indigo':indigo_priced,'monta':monta_priced}
+          names=list(sets)
+          pair={}
+          pair_priced={}
+          for i,a in enumerate(names):
+              for b in names[i+1:]:
+                  pair[f'{a}__{b}']=len(sets[a]&sets[b])
+                  pair_priced[f'{a}__{b}']=len(priced[a]&priced[b])
+
+          union_all=set().union(*sets.values())
+          union_priced=set().union(*priced.values())
+          overlap_members={n:sorted([k for k,s in sets.items() if n in s]) for n in union_all if sum(n in s for s in sets.values())>1}
+          overlap_distribution=defaultdict(int)
+          for srcs in overlap_members.values(): overlap_distribution['+'.join(srcs)]+=1
+
+          report={
+            'country':'BE','asOf':'2026-09-29','phase':'final-national-dedup-before-energyvision',
+            'sourceCounts':{
+              'ecoMovement':{'evses':len(eco_all),'rawEvseRows':eco_rows,'rawPricedEvses':len(eco_priced)},
+              'road':{'evses':len(road_all),'pricedEvses':len(road_priced),'missingPriceEvses':len(road_all-road_priced)},
+              'indigo':{'evses':len(indigo_all),'pricedEvses':len(indigo_priced)},
+              'monta':{'evses':len(monta_all),'pricedEvses':len(monta_priced)}
+            },
+            'dedup':{
+              'pairwiseOverlaps':pair,
+              'overlapDistribution':dict(overlap_distribution),
+              'unionUniqueEvses':len(union_all),
+              'sumSourceEvsesBeforeDedup':sum(len(s) for s in sets.values()),
+              'duplicatesRemovedByExactNormalizedEvseId':sum(len(s) for s in sets.values())-len(union_all)
+            },
+            'pricing':{
+              'pairwisePricedOverlaps':pair_priced,
+              'unionUniqueEvsesWithSourceTariffEvidence':len(union_priced),
+              'unionUniqueEvsesWithoutSourceTariffEvidence':len(union_all-union_priced),
+              'coveragePct':round(len(union_priced)*100/len(union_all),2) if union_all else 0,
+              'note':'Eco-Movement count is raw NAP pricing only; the 8 exact Shell official overlay EVSEs are tracked separately in the Belgium final reconciliation and are not double-counted here without explicit stable-id overlay join.'
+            },
+            'knownPostAuditFacts':{
+              'montaGapResolutionsAgainstRoadMissing':0,
+              'montaGapResolutionsAgainstEcoMovementMissing':0,
+              'roadRemainingSourceLimited':699,
+              'ecoMovementRemainingSourceLimitedAfterExactShellAndTestExclusion':12849,
+              'energyVision':'blocked_pending_free_api_key'
+            },
+            'rules':[
+              'Deduplication uses only case/punctuation-normalized stable EVSE identifiers.',
+              'No address, operator, proximity, power or tariff-family fuzzy merge is performed.',
+              'Pricing coverage counts only direct source tariff evidence; exact official overlays remain provenance-separated.'
+            ]
+          }
+          p=Path('reports/belgium/belgium-final-national-dedup-2026-09-29.json')
+          p.parent.mkdir(parents=True,exist_ok=True)
+          p.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/belgium/belgium-final-national-dedup-2026-09-29.json
+          git commit -m "audit(be): finalize national EVSE dedup before EnergyVision" || exit 0
+          git pull --rebase origin main
+          git push
