@@ -1,0 +1,128 @@
+name: Switzerland small CPO parking API probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/switzerland-small-cpo-parking-api-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Reverse engineer parking.ch e-loading API
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,re,urllib.request,urllib.parse,urllib.error
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          UA="Mozilla/5.0 TCC-V9-small-cpo-parking"
+          JS="https://www.parking.ch/theme/js/minify/bundled.js.js?time=1790145853"
+          pages={
+            "kobiboden":"https://www.parking.ch/en/e-loading/einsiedeln/ch-evt-eavc001001",
+            "herrliberg":"https://www.parking.ch/en/e-loading/herrliberg/ch-her-e123-0001",
+          }
+
+          def fetch(url,headers=None):
+            req=urllib.request.Request(url,headers=headers or {"User-Agent":UA,"Accept":"*/*"})
+            try:
+              with urllib.request.urlopen(req,timeout=45) as r:return r.status,r.geturl(),dict(r.headers.items()),r.read()
+            except urllib.error.HTTPError as e:return e.code,e.geturl(),dict(e.headers.items()),e.read()
+            except Exception as e:return 0,url,{},(type(e).__name__+": "+str(e)).encode()
+
+          st,fu,h,raw=fetch(JS)
+          js=raw.decode("utf-8","replace")
+          needles=["DetailELoadingMap","ELoading","eLoading","eloading","rex-api-call","apiFetch("]
+          contexts=[]
+          for n in needles:
+            pos=0
+            count=0
+            while True:
+              i=js.find(n,pos)
+              if i<0 or count>=80: break
+              contexts.append({"needle":n,"offset":i,"text":js[max(0,i-1800):min(len(js),i+4200)]})
+              pos=i+len(n); count+=1
+
+          rex_calls=sorted(set(re.findall(r'rex-api-call=([A-Za-z0-9_\-]+)',js)))
+          path_literals=sorted(set(re.findall(r'["\']([^"\']*rex-api-call[^"\']*)["\']',js)))
+          e_calls=[x for x in rex_calls if any(k in x.lower() for k in ["eload","charg","poi","detail","parking"])]
+
+          page_meta={}
+          for name,url in pages.items():
+            stp,fup,hp,rp=fetch(url,{"User-Agent":UA,"Accept":"text/html,*/*"})
+            html=rp.decode("utf-8","replace")
+            token=None
+            for pat in [
+              r'<meta[^>]+name=["\']api-token["\'][^>]+content=["\']([^"\']+)["\']',
+              r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']api-token["\']'
+            ]:
+              m=re.search(pat,html,re.I)
+              if m: token=m.group(1); break
+            page_meta[name]={"url":url,"status":stp,"apiToken":token}
+
+          # Try API calls discovered from JS with both public page tokens.
+          probes=[]
+          for name,meta in page_meta.items():
+            token=meta.get("apiToken")
+            headers={"User-Agent":UA,"Accept":"application/json,text/plain,*/*","X-Api-Token":token or "","Referer":meta["url"]}
+            candidates=[]
+            # generic endpoints that often appear on parking maps
+            for call in list(dict.fromkeys(e_calls + ["get_eloading","get_eloading_detail","get_e_loading","get_poi","get_parking","get_location"])):
+              for params in [
+                {"rex-api-call":call,"evse_id":"CH*EVT*EAVC001001" if name=="kobiboden" else "CH*HER*E123*0001"},
+                {"rex-api-call":call,"id":"CH*EVT*EAVC001001" if name=="kobiboden" else "CH*HER*E123*0001"},
+                {"rex-api-call":call,"lat":"47.13687" if name=="kobiboden" else "47.284845","lng":"8.742233" if name=="kobiboden" else "8.611227"},
+              ]:
+                qs=urllib.parse.urlencode(params)
+                url="https://www.parking.ch/?"+qs
+                stq,fuq,hq,rq=fetch(url,headers)
+                txt=rq.decode("utf-8","replace")
+                if stq!=404 and len(txt)<250000:
+                  try: body=json.loads(txt)
+                  except: body=txt[:3000]
+                  # keep all non-empty JSON or non-template responses
+                  if body not in ("",None,[]) and not (isinstance(body,str) and "<!DOCTYPE html" in body[:200]):
+                    candidates.append({"call":call,"params":params,"status":stq,"body":body})
+            probes.append({"target":name,"results":candidates})
+
+          out={
+            "schemaVersion":1,
+            "generatedAt":datetime.now(timezone.utc).isoformat(),
+            "js":{"url":JS,"status":st,"rexCalls":rex_calls,"eLoadingCalls":e_calls,"pathLiterals":path_literals[:500],"contexts":contexts},
+            "pages":page_meta,
+            "apiProbes":probes
+          }
+          Path("docs/switzerland-small-cpo-parking-api-probe-2026-09-29.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps({
+            "rexCalls":rex_calls,
+            "eLoadingCalls":e_calls,
+            "probeCounts":{p["target"]:len(p["results"]) for p in probes}
+          },ensure_ascii=False))
+          PY
+
+      - name: Persist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-small-cpo-parking-api-probe-2026-09-29.json
+          git commit -m "research(ch): inspect parking.ch e-loading API" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
