@@ -20,7 +20,10 @@ jobs:
     timeout-minutes: 120
     env:
       ELECTROVERSE_API_KEY: ${{ secrets.ELECTROVERSE_API_KEY }}
-      REQUEST_INTERVAL_MS: '1500'
+      ELECTROVERSE_BATCH_SIZE: '5'
+      ELECTROVERSE_CONCURRENCY: '2'
+      ELECTROVERSE_WAVE_PAUSE_MS: '750'
+      ELECTROVERSE_FALLBACK_INTERVAL_MS: '750'
       TTL_HOURS: '504'
       LIMIT: '1200'
     steps:
@@ -74,11 +77,11 @@ jobs:
           fi
 
           set +e
-          node scripts/electroverse_incremental_refresh.mjs
+          node scripts/electroverse_hybrid_refresh.mjs
           rc=$?
           set -e
 
-          git add data/electroverse/tariff_cache reports/electroverse/incremental-selection.json reports/electroverse/cache-audit.json
+          git add data/electroverse/tariff_cache reports/electroverse/incremental-selection.json reports/electroverse/cache-audit.json reports/electroverse/hybrid-refresh-failures.json
           git commit -m "data(electroverse): daily incremental refresh [run ${GITHUB_RUN_ID}]" || true
           git pull --rebase origin main
           push_checkpoint
