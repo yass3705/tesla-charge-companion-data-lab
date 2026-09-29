@@ -1,0 +1,107 @@
+name: Switzerland Eponet public pricing contract
+
+on:
+  push:
+    paths:
+      - '.github/workflows/switzerland-eponet-public-pricing-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Extract public pricing contract and probe known QR IDs
+        run: |
+          python3 - <<'PY'
+          import json,re,urllib.request,urllib.parse,urllib.error
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          BASE="https://portal.eponet.ch"
+          JS1=BASE+"/assets/js/public-charge-datatrans.5dd6ab598ed3bcd56ab3992b6a6d20fd89e02d21.js"
+          JS2=BASE+"/assets/js/public-charge.b25c6e51c11d7c9ef1f05647435070a10aa5520a.js"
+          API=BASE+"/api/publicCharger.php"
+          UA="Mozilla/5.0 TCC-V9-Eponet-Public-Probe"
+
+          def get(url):
+              req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"*/*"})
+              with urllib.request.urlopen(req,timeout=40) as r:return r.status,r.read().decode("utf-8","replace")
+          def post(body):
+              data=urllib.parse.urlencode(body).encode()
+              req=urllib.request.Request(API,data=data,headers={
+                  "User-Agent":UA,
+                  "Accept":"application/json, text/javascript, */*; q=0.01",
+                  "Content-Type":"application/x-www-form-urlencoded; charset=UTF-8",
+                  "X-Requested-With":"XMLHttpRequest",
+                  "Referer":BASE+"/public-charge.php"
+              },method="POST")
+              try:
+                  with urllib.request.urlopen(req,timeout=40) as r:
+                      raw=r.read().decode("utf-8","replace"); st=r.status
+              except urllib.error.HTTPError as e:
+                  st=e.code; raw=e.read().decode("utf-8","replace")
+              try:p=json.loads(raw)
+              except:p={"raw":raw[:5000]}
+              return st,p
+
+          _,s1=get(JS1); _,s2=get(JS2)
+          def around(s,needle,before=800,after=7000):
+              i=s.find(needle)
+              return None if i<0 else s[max(0,i-before):min(len(s),i+after)]
+
+          extracts={}
+          for needle in [
+              "const PricingManager",
+              "setCurrentChargingPrices",
+              "getCurrentChargerPrice",
+              "const DataManager",
+              "fetchChargerData",
+              "getChargerDetails"
+          ]:
+              extracts[needle]=around(s1,needle) or around(s2,needle)
+
+          requests=sorted(set(re.findall(r'request\s*:\s*["\']([^"\']+)["\']',s2)))
+          probes=[]
+          for qrid in [
+              "243fdf344f5a44f4872998649ca89eb3",
+              "7247eeea997d2b47b434e381b69005df"
+          ]:
+              st,p=post({"request":"getChargerDetails","id":qrid})
+              probes.append({"id":qrid,"status":st,"response":p})
+
+          out={
+            "schemaVersion":1,
+            "generatedAt":datetime.now(timezone.utc).isoformat(),
+            "api":API,
+            "knownRequestNames":requests,
+            "extracts":extracts,
+            "probes":probes
+          }
+          Path("docs/switzerland-eponet-public-pricing-contract-live-2026-09-29.json").write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+"\n"
+          )
+          print(json.dumps({
+              "requestNames":requests,
+              "probes":[{"id":x["id"],"status":x["status"],"ack":x["response"].get("ack") if isinstance(x["response"],dict) else None} for x in probes]
+          },ensure_ascii=False))
+          PY
+      - name: Persist evidence
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-eponet-public-pricing-contract-live-2026-09-29.json
+          git commit -m "research(ch): recover Eponet public pricing contract" || exit 0
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
