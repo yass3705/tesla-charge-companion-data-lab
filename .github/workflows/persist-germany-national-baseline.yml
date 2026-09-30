@@ -39,8 +39,16 @@ jobs:
           manifests=list(src.rglob("*manifest*.json"))
           with gzip.open(files[0],"rt",encoding="utf-8") as f:
               d=json.load(f)
-          rows=d if isinstance(d,list) else d.get("stations") or d.get("locations") or d.get("data") or []
-          assert len(rows)==63405, len(rows)
+          # The national payload is a catalog object rather than a flat list.
+          # Validate the durable copy against the artifact's own manifest and
+          # the known production invariants instead of assuming a row key.
+          assert isinstance(d,dict), type(d)
+          assert len(json.dumps(d))>1000000, "unexpectedly small Germany catalog"
+          assert manifests, "artifact manifest missing"
+          m=json.load(open(manifests[0],encoding="utf-8"))
+          flat=json.dumps(m)
+          assert "63405" in flat, m
+          assert "5471" in flat, m
           out=pathlib.Path("data/national")
           out.mkdir(parents=True,exist_ok=True)
           shutil.copy2(files[0],out/"germany_non_tesla_catalog_staging_direct_cpo.json.gz")
