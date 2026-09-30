@@ -1,71 +1,160 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import gzip,json,re,time,urllib.parse,urllib.request
+import concurrent.futures
+import gzip
+import html
+import json
+import re
+import time
+import urllib.parse
+import urllib.request
 from datetime import datetime,timezone
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
-BASE="https://www.lidl.co.uk/s/en-GB/store-finder/"
+BASE="https://www.lidl.co.uk"
+STORE_ROOT="/s/en-GB/store-finder/"
 UA="Mozilla/5.0 TeslaChargeCompanion/9 Lidl-GB-public-store-inventory"
 
-def get(url):
-    req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"text/html,*/*"})
-    with urllib.request.urlopen(req,timeout=60) as r:
-        return r.read(3_000_000).decode("utf-8","replace"),r.geturl()
+def get(url_or_path,retries=3):
+    url=url_or_path if url_or_path.startswith("http") else BASE+url_or_path
+    req=urllib.request.Request(url,headers={"User-Agent":UA,"Accept":"text/html,application/xhtml+xml"})
+    last=None
+    for i in range(retries):
+        try:
+            with urllib.request.urlopen(req,timeout=40) as r:
+                return r.read().decode("utf-8","replace"),r.geturl()
+        except Exception as e:
+            last=e
+            time.sleep(1+i)
+    raise last
 
 def links(base,body):
-    out=[]
-    for h in re.findall(r'href=["\\\']([^"\\\']+)["\\\']',body,re.I):
-        u=urllib.parse.urljoin(base,h.split("#")[0])
-        if u.startswith(BASE): out.append(u)
+    out=set()
+    for h in re.findall(r'href=["\']([^"\']+)["\']',body,re.I):
+        u=urllib.parse.urljoin(base,html.unescape(h).split("#")[0])
+        p=urllib.parse.urlparse(u)
+        if p.netloc in ("www.lidl.co.uk","lidl.co.uk") and p.path.startswith(STORE_ROOT):
+            out.add(urllib.parse.urlunparse(("https","www.lidl.co.uk",p.path,"","","")))
     return out
 
-home,final=get(BASE)
-cities=[u for u in sorted(set(links(final,home))) if u.rstrip("/")!=BASE.rstrip("/")]
-store_urls=set(); city_ok=0
-for u in cities:
-    try:
-        body,fu=get(u); city_ok+=1
-        for x in links(fu,body):
-            if x[len(BASE):].strip("/").count("/")>=1: store_urls.add(x)
-        time.sleep(.03)
-    except Exception: pass
+def clean(body):
+    body=re.sub(r"<script\b[^>]*>.*?</script>"," ",body,flags=re.I|re.S)
+    body=re.sub(r"<style\b[^>]*>.*?</style>"," ",body,flags=re.I|re.S)
+    body=re.sub(r"<[^>]+>"," ",body)
+    return re.sub(r"\s+"," ",html.unescape(body)).strip()
 
-stores=[]; failures=[]
-for i,u in enumerate(sorted(store_urls),1):
-    try:
-        body,fu=get(u)
-        txt=re.sub(r"<[^>]+>"," ",body); txt=re.sub(r"\\s+"," ",txt)
-        if "Lidl Store" not in body and "Lidl store" not in body: continue
-        ev="EV Charging" in txt
-        lat=lon=None
-        for m in re.finditer(r'<script[^>]+type=["\\\']application/ld\\+json["\\\'][^>]*>(.*?)</script>',body,re.I|re.S):
-            try:
-                p=json.loads(m.group(1)); objs=p if isinstance(p,list) else [p]
-                for o in objs:
-                    if isinstance(o,dict):
-                        g=o.get("geo") or {}
-                        if isinstance(g,dict) and g.get("latitude") is not None:
-                            lat=g.get("latitude"); lon=g.get("longitude")
-            except Exception: pass
-        stores.append({"url":fu,"evCharging":ev,"lat":lat,"lon":lon})
-    except Exception as e:
-        failures.append({"url":u,"error":f"{type(e).__name__}: {e}"})
-    if i%100==0: print("progress",i,len(store_urls))
-    time.sleep(.02)
+def parse_store(url):
+    body,final=get(url)
+    txt=clean(body)
+    if "Lidl Store" not in txt and "Lidl store" not in txt:
+        return None
+    ev=bool(re.search(r"\bEV Charging\b",txt,re.I))
+    title=None
+    m=re.search(r"Lidl Store\s+(.+?)(?:Navigate me to store|Opening hours|Store Details)",txt,re.I)
+    if m: title=m.group(1).strip()
+    postcode=None
+    pm=re.search(r"\b([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\b",txt,re.I)
+    if pm: postcode=pm.group(1).upper()
+    lat=lon=None
+    for m in re.finditer(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',body,re.I|re.S):
+        try:
+            payload=json.loads(m.group(1))
+            objs=payload if isinstance(payload,list) else [payload]
+            for o in objs:
+                if isinstance(o,dict):
+                    g=o.get("geo") or {}
+                    if isinstance(g,dict) and g.get("latitude") is not None:
+                        lat=g.get("latitude"); lon=g.get("longitude")
+        except Exception:
+            pass
+    return {
+      "url":final,
+      "name":title,
+      "postcode":postcode,
+      "evCharging":ev,
+      "lat":lat,
+      "lon":lon
+    }
 
-ev=[x for x in stores if x["evCharging"]]
-now=datetime.now(timezone.utc).isoformat()
-report={"country":"GB","network":"Lidl","retrievedAt":now,"source":BASE,
-        "cityPagesCrawled":city_ok,"storePagesDiscovered":len(store_urls),
-        "storePagesParsed":len(stores),"evChargingStores":len(ev),
-        "geocodedEvStores":sum(1 for x in ev if x["lat"] is not None and x["lon"] is not None),
-        "failureCount":len(failures),"failures":failures[:100],
-        "status":"location_inventory_complete_from_public_store_finder" if ev else "failed_empty"}
-(ROOT/"reports/uk").mkdir(parents=True,exist_ok=True)
-(ROOT/"data/national").mkdir(parents=True,exist_ok=True)
-(ROOT/"reports/uk/lidl-public-ev-stores-latest.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\\n")
-with gzip.open(ROOT/"data/national/uk_lidl_public_ev_stores.json.gz","wt",encoding="utf-8") as g:
-    json.dump({"retrievedAt":now,"stores":ev},g,ensure_ascii=False,separators=(",",":"))
-print(json.dumps(report,ensure_ascii=False,indent=2))
-if not ev: raise SystemExit(2)
+def main():
+    home,final=get(BASE+STORE_ROOT)
+    city_urls=set()
+    for u in links(final,home):
+        rel=urllib.parse.urlparse(u).path[len(STORE_ROOT):].strip("/")
+        if rel and "/" not in rel:
+            city_urls.add(u if u.endswith("/") else u+"/")
+    if len(city_urls)<200:
+        raise SystemExit(f"Fail closed: only {len(city_urls)} city pages discovered")
+
+    store_urls=set()
+    city_errors=[]
+    def city_one(u):
+        try: return u,get(u)[0],None
+        except Exception as e: return u,None,f"{type(e).__name__}: {e}"
+    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:
+        for city,body,err in ex.map(city_one,sorted(city_urls)):
+            if err:
+                city_errors.append({"url":city,"error":err}); continue
+            for x in links(city,body):
+                rel=urllib.parse.urlparse(x).path[len(STORE_ROOT):].strip("/")
+                if len(rel.split("/"))>=2:
+                    store_urls.add(x if x.endswith("/") else x+"/")
+    if len(store_urls)<500:
+        raise SystemExit(f"Fail closed: only {len(store_urls)} store pages discovered")
+
+    stores=[]; failures=[]
+    def store_one(u):
+        try: return parse_store(u),None
+        except Exception as e: return None,{"url":u,"error":f"{type(e).__name__}: {e}"}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=16) as ex:
+        for row,err in ex.map(store_one,sorted(store_urls)):
+            if row: stores.append(row)
+            if err: failures.append(err)
+
+    stores.sort(key=lambda x:x["url"])
+    ev=[x for x in stores if x["evCharging"]]
+    if len(stores)<500:
+        raise SystemExit(f"Fail closed: only {len(stores)} stores parsed")
+    if len(ev)<50:
+        raise SystemExit(f"Fail closed: only {len(ev)} EV charging stores found")
+    failure_ratio=(len(failures)/len(store_urls)) if store_urls else 1
+    if failure_ratio>0.05:
+        raise SystemExit(f"Fail closed: store fetch failure ratio {failure_ratio:.2%}")
+
+    now=datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00","Z")
+    report={
+      "schemaVersion":2,
+      "country":"GB",
+      "network":"Lidl GB",
+      "retrievedAt":now,
+      "source":BASE+STORE_ROOT,
+      "sourceType":"official_public_store_finder",
+      "cityPagesDiscovered":len(city_urls),
+      "cityFetchErrors":len(city_errors),
+      "storePagesDiscovered":len(store_urls),
+      "storePagesParsed":len(stores),
+      "evChargingStores":len(ev),
+      "geocodedEvStores":sum(1 for x in ev if x["lat"] is not None and x["lon"] is not None),
+      "failureCount":len(failures),
+      "failureRatio":failure_ratio,
+      "status":"official_store_level_inventory_complete",
+      "remainingGap":"Store Finder proves store-level EV charging presence only. Exact charger/EVSE count, connector power and live status require Lidl Plus/charging backend; never infer them from store services.",
+      "policy":{
+        "readOnly":True,
+        "noLogin":True,
+        "noMutation":True,
+        "doNotInferConnectorPower":True,
+        "doNotInferEvseCount":True
+      },
+      "failures":failures[:100]
+    }
+    (ROOT/"reports/uk").mkdir(parents=True,exist_ok=True)
+    (ROOT/"data/national").mkdir(parents=True,exist_ok=True)
+    (ROOT/"reports/uk/lidl-public-ev-stores-latest.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+    with gzip.open(ROOT/"data/national/uk_lidl_public_ev_stores.json.gz","wt",encoding="utf-8") as g:
+        json.dump({"schemaVersion":2,"country":"GB","network":"Lidl GB","retrievedAt":now,"stores":ev},g,ensure_ascii=False,separators=(",",":"))
+    print(json.dumps({k:report[k] for k in ("cityPagesDiscovered","storePagesDiscovered","storePagesParsed","evChargingStores","geocodedEvStores","failureCount")},ensure_ascii=False))
+
+if __name__=="__main__":
+    main()
