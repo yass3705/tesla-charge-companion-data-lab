@@ -32,7 +32,7 @@ jobs:
           from datetime import datetime, timezone
 
           root=pathlib.Path('/tmp/roam-unpack')
-          urls=set(); hosts=set(); routes=set(); hits=[]
+          urls=set(); hosts=set(); domains=set(); routes=set(); hits=[]
           needles=re.compile(r'(?i)(tariff|price|pricing|charger|station|location|evse|connector|api|graphql|ocpi)')
           url_re=re.compile(r'https?://[^\s"\'<>\\]{4,500}')
           route_re=re.compile(r'["\'](/(?:api|v[0-9]+|locations?|stations?|chargers?|chargepoints?|tariffs?|pricing|prices?|evses?|connectors?)[^"\']{0,180})["\']',re.I)
@@ -52,6 +52,10 @@ jobs:
                       h=urlparse(u).netloc
                       if h: hosts.add(h)
                   except Exception: pass
+              for d in domain_re.findall(txt):
+                  dl=d.lower()
+                  if any(k in dl for k in ("evc","roam","tecno","charge","api","cloud","backend","app")):
+                      domains.add(d)
               for rr in route_re.findall(txt): routes.add(rr[:300])
               if needles.search(txt):
                   for m in needles.finditer(txt):
@@ -81,6 +85,7 @@ jobs:
             "versionCode":184,
             "source":"public APKPure download; transient static inspection only",
             "hosts":sorted(hosts)[:300],
+            "domainCandidates":sorted(domains)[:500],
             "urls":relevant_urls[:500],
             "routes":sorted(routes)[:500],
             "hits":hits[:250]
@@ -88,7 +93,7 @@ jobs:
           pathlib.Path('reports/uk/roam-app-static-pricing-discovery-latest.json').write_text(
               json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
           )
-          print(json.dumps({"hosts":out["hosts"],"urls":out["urls"][:80],"routes":out["routes"][:80],"hitCount":len(out["hits"])},ensure_ascii=False,indent=2))
+          print(json.dumps({"hosts":out["hosts"],"domainCandidates":out["domainCandidates"][:100],"urls":out["urls"][:80],"routes":out["routes"][:80],"hitCount":len(out["hits"])},ensure_ascii=False,indent=2))
           PY
 
           rm -rf /tmp/roam-xapk /tmp/roam-unpack
