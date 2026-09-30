@@ -14,8 +14,15 @@ def main():
     c=idx["countries"]
 
     fr=c["FR"]["counters"]
+    fr_ledger=load(ROOT/c["FR"]["ledger"])
     assert fr["totalCpos"]==291
     assert fr["treated"]+fr["setAside"]+fr["active"]==fr["totalCpos"]
+    assert fr=={
+        "totalCpos":fr_ledger["totalCpos"],
+        "treated":fr_ledger["treatedCpos"],
+        "setAside":fr_ledger["setAsideCpos"],
+        "active":fr_ledger["activeRemainingCpos"],
+    }, (fr, fr_ledger["treatedCpos"], fr_ledger["setAsideCpos"], fr_ledger["activeRemainingCpos"])
 
     de=c["DE"]["counters"]
     assert de["totalNamedCpos"]==591
