@@ -386,10 +386,17 @@
     },
     {
       "name": "GeniePoint",
-      "status": "set_aside_technical_origin_block",
+      "status": "complete",
       "access": "open_data_page",
-      "evidence": "UK CPO dataset index points to a GeniePoint open-data page.",
-      "next": "Official open-data endpoints are identified but return 403 from current runner/browser origins. Revisit only via a new allowed origin/proxy or newly exposed endpoint; no user action required now."
+      "evidence": "Official GeniePoint OCPI open-data endpoints validated through browser fetch on 2026-09-30. Full UK feed contains 306 locations, 1,138 EVSE/connectors and 530 tariff records. Connectors reference 91 distinct tariff IDs and all 91 resolve exactly in the official tariffs feed (0 missing tariff IDs). EVSE IDs use GB*GPT. Direct GitHub-runner HTTP remains origin/IP-blocked with 403, so refresh transport must preserve browser-capable retrieval or another legitimate accessible path.",
+      "next": "Treat network data coverage as complete. Keep refresh transport fail-closed: do not regress to inferred prices. Reopen only if official open-data schema/coverage changes or a GitHub-runner-compatible legitimate transport is found.",
+      "completionMode": "complete_official_ocpi_browser_transport",
+      "locationCount": 306,
+      "evseCount": 1138,
+      "connectorCount": 1138,
+      "tariffCount": 530,
+      "referencedTariffIds": 91,
+      "missingTariffIds": 0
     },
     {
       "name": "Mer",
@@ -2755,7 +2762,7 @@
   },
   "currentStatusCounts": {
     "asOf": "2026-09-30",
-    "complete": 21,
+    "complete": 22,
     "set_aside_external_request": 12,
     "blocked_external_ocpi_token": 1,
     "set_aside_user_followup": 1,
@@ -2767,7 +2774,6 @@
     "coverage_platform_scope_not_cpo": 1,
     "set_aside_technical_authenticated_backend": 1,
     "set_aside_technical_public_index_only": 1,
-    "set_aside_technical_origin_block": 1,
     "set_aside_technical_browser_inventory": 1,
     "blocked_external_token": 1,
     "canonicalEntries": 46,
