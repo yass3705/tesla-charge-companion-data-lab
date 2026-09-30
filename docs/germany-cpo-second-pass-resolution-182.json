@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 182,
+  "date": "2026-09-30",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-181.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 245,
+    "partial": 346,
+    "blocked": 0
+  },
+  "promotions": [],
+  "investigations": [
+    {
+      "name": "GEW Wilhelmshaven GmbH",
+      "bucket": "ChargePoint / Mobilithek-EcoMovement",
+      "status": "partial",
+      "evidenceSummary": "Current GEW first-party page closes the operator scope at five public charging locations and states all GEW stations are operated with ChargePoint; direct card payment (girocard/Mastercard/Visa) and ChargePoint app are supported. Fresh Mobilithek/Eco-Movement surfaces expose concrete ChargePoint EVSEs at 0.44 EUR/kWh with no start/blocking fee on sampled sites, but another current direct-payment surface reports 0.52 EUR/kWh. 0.44*1.19=0.5236 suggests net-vs-gross VAT presentation, but this is not inferred canonically.",
+      "exactGap": "Need an authoritative current gross anonymous_ad_hoc tariff/checkout or machine-readable ChargePoint/Mobilithek field that explicitly resolves whether 0.44 EUR/kWh is net and 0.52 EUR/kWh gross across all five GEW public locations; do not promote before that.",
+      "evidence": [
+        "https://www.gew-wilhelmshaven.de/produkte/elektromobilitaet/unterwegs/",
+        "https://www.e-stations.de/ladestationen/wilhelmshaven/gew-whv-station-04-36342",
+        "https://www.e-stations.de/ladestationen/wilhelmshaven/gew-whv-station-01-34923"
+      ]
+    }
+  ],
+  "priorityTop5": {
+    "status": "parked after two distinct evidence-led passes",
+    "names": [
+      "solid GmbH / LadeVerbundPlus",
+      "NEW AG / NEW Energie",
+      "RhönEnergie Fulda GmbH",
+      "amperio GmbH",
+      "50five"
+    ]
+  },
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 245,
+    "partial": 346,
+    "blocked": 0
+  },
+  "statusChanges": 0,
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "245 + 346 + 0 = 591",
+    "indicator": "221 -> 245 complete (+24)",
+    "promotions": 0,
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS",
+    "top5Guard": "PASS",
+    "repeatInvestigationGuard": "PASS"
+  },
+  "nextSafeAction": "Continue ChargePoint/Mobilithek-EcoMovement on another bounded partial; park GEW unless a new authoritative gross anonymous-ad-hoc price path appears. Then move to m8mit. No production merge."
+}
