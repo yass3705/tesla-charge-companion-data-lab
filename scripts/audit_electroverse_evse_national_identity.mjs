@@ -164,6 +164,70 @@ for(const row of rows){
   }
 }
 
+let ordinalLocationsSafe=0,ordinalRefsSafe=0,ordinalLocationsTested=0;
+const ordinalSamples=[];
+for(const row of rows){
+  const m=byPk.get(String(row.electroverseLocationPk));
+  const rawLocal=[...(m?.irvePdcIds||[]),...(row.irvePdcIds||[])];
+  const localMap=new Map(rawLocal.map(p=>[norm(p),p]).filter(([k])=>k));
+  const local=[...localMap.keys()];
+  if(!local.length)continue;
+  const used=new Set(), hardNumeric=[];
+  for(const e of row.tariff?.evses||[]){
+    const pr=String(e?.physicalReference??'').trim();
+    if(!pr)continue;
+    const k=norm(pr);
+    if(localMap.has(k)){used.add(k);continue;}
+    const parents=local.filter(p=>{
+      if(!k.startsWith(p)||k.length<=p.length)return false;
+      const suffix=k.slice(p.length);
+      return /^\d{1,2}$/.test(suffix);
+    });
+    if(parents.length===1){used.add(parents[0]);continue;}
+    if(/^\d{1,2}$/.test(k)) hardNumeric.push({e,pr,k});
+  }
+  if(!hardNumeric.length)continue;
+  ordinalLocationsTested++;
+  const available=local.filter(p=>!used.has(p));
+  const refInts=hardNumeric.map(x=>Number(x.k));
+  if(new Set(refInts).size!==hardNumeric.length)continue;
+  let chosen=null;
+  for(const width of [1,2]){
+    if(available.some(p=>p.length<=width))continue;
+    const prefixes=new Set(available.map(p=>p.slice(0,-width)));
+    if(prefixes.size!==1)continue;
+    const suffixNums=available.map(p=>{
+      const s=p.slice(-width);
+      return /^\d+$/.test(s)?Number(s):NaN;
+    });
+    if(suffixNums.some(x=>!Number.isFinite(x)))continue;
+    const targetSet=new Set(refInts);
+    const candidates=available.filter((p,i)=>targetSet.has(suffixNums[i]));
+    if(candidates.length!==hardNumeric.length)continue;
+    const mappingByNum=new Map();
+    let ok=true;
+    for(let i=0;i<available.length;i++){
+      const n=suffixNums[i];
+      if(!targetSet.has(n))continue;
+      if(mappingByNum.has(n)){ok=false;break;}
+      mappingByNum.set(n,available[i]);
+    }
+    if(ok && mappingByNum.size===hardNumeric.length){
+      chosen={width,mappingByNum,prefix:[...prefixes][0]};break;
+    }
+  }
+  if(!chosen)continue;
+  ordinalLocationsSafe++;
+  ordinalRefsSafe+=hardNumeric.length;
+  if(ordinalSamples.length<100) ordinalSamples.push({
+    pk:row.electroverseLocationPk,
+    irveStationId:m?.irveStationId??row.irveStationId,
+    width:chosen.width,
+    commonPrefix:chosen.prefix,
+    mappings:hardNumeric.map(x=>({physicalReference:x.pr,targetPdc:localMap.get(chosen.mappingByNum.get(Number(x.k)))}))
+  });
+}
+
 let parentGroupsUniqueOwner=0,parentGroupsHomogeneousPricing=0,parentGroupsSafe=0,parentChildRefsSafe=0,parentGroupsHeterogeneousPricing=0,parentGroupsNonUniqueOwner=0;
 const parentGroupSamples=[];
 for(const g of parentGroups.values()){
@@ -205,6 +269,9 @@ const out={
   parentGroupsHeterogeneousPricing,
   parentGroupsSafe,
   parentChildRefsSafe,
+  ordinalLocationsTested,
+  ordinalLocationsSafe,
+  ordinalRefsSafe,
   hardResidualCount,
   hardResidualByOperator:Object.fromEntries(Object.entries(hardResidualByOperator).sort((a,b)=>b[1]-a[1]).slice(0,50)),
   suffixCounts:Object.fromEntries(Object.entries(suffixCounts).sort((a,b)=>b[1]-a[1]).slice(0,50)),
@@ -214,6 +281,7 @@ const out={
   parentGroupSamples,
   globalParentSamples,
   hardResidualSamples,
+  ordinalSamples,
   unmatchedSamples
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
