@@ -1,0 +1,174 @@
+name: UK Believ public label inventory
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-believ-public-label-inventory.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "20 1 * * 0"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-believ-public-label-inventory
+  cancel-in-progress: false
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+
+      - name: Build national Believ public label inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/national reports/uk
+          python3 - <<'PY'
+          import json,re,time,urllib.request,urllib.error
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          URL="https://charge.believ.com/map"
+          ACTION_LOCATIONS="405356f63ba570cc8fc4c395a98a38b45438cdf400"
+          ACTION_STATIONS="40ed5a602385af62845cf9866945f0fc7284fcc025"
+          UA="Mozilla/5.0 TeslaChargeCompanion/9 Believ-public-inventory"
+
+          def action(aid,payload,timeout=45):
+              body=json.dumps(payload,separators=(",",":")).encode()
+              req=urllib.request.Request(URL,data=body,method="POST",headers={
+                  "User-Agent":UA,
+                  "Accept":"text/x-component",
+                  "Content-Type":"text/plain;charset=UTF-8",
+                  "Next-Action":aid,
+                  "Origin":"https://charge.believ.com",
+                  "Referer":"https://charge.believ.com/map"
+              })
+              with urllib.request.urlopen(req,timeout=timeout) as r:
+                  txt=r.read(5_000_000).decode("utf-8","replace")
+              for line in txt.splitlines():
+                  if line.startswith("1:"):
+                      obj=json.loads(line[2:])
+                      return obj.get("result")
+              raise RuntimeError("No result payload in RSC response")
+
+          # Cover the whole UK from a central point with a deliberately broad radius.
+          page_size=100
+          offset=0
+          locations=[]
+          total=None
+          while total is None or offset < total:
+              payload=[{
+                  "charging_speed_ids":[],
+                  "origin_lat":54.5,
+                  "origin_lng":-3.0,
+                  "radius":1000000,
+                  "limit":page_size,
+                  "offset":offset
+              }]
+              result=action(ACTION_LOCATIONS,payload)
+              if not isinstance(result,dict):
+                  raise RuntimeError(f"Unexpected getLocations result at offset {offset}: {type(result).__name__}")
+              total=int(result.get("count") or 0)
+              items=result.get("items") or []
+              locations.extend(items)
+              if not items: break
+              offset += len(items)
+              time.sleep(.15)
+
+          # Deduplicate location ids before the per-location public station lookup.
+          by_id={}
+          for loc in locations:
+              lid=str(loc.get("id") or "")
+              if lid: by_id[lid]=loc
+          locations=list(by_id.values())
+
+          labels={}
+          errors=[]
+          for idx,loc in enumerate(locations,1):
+              lid=str(loc.get("id"))
+              try:
+                  result=action(ACTION_STATIONS,[[{"locationId":lid}][0]])
+              except Exception:
+                  # canonical payload shape is a one-element argument list
+                  try:
+                      result=action(ACTION_STATIONS,[{"locationId":lid}])
+                  except Exception as e:
+                      errors.append({"locationId":lid,"name":loc.get("name"),"error":f"{type(e).__name__}: {e}"})
+                      continue
+              if not isinstance(result,dict):
+                  errors.append({"locationId":lid,"name":loc.get("name"),"error":"unexpected_result"})
+                  continue
+              for st in result.get("items") or []:
+                  raw=str(st.get("name") or "").strip()
+                  if not raw: continue
+                  label=raw
+                  if label.upper().startswith("GB-LCL-"):
+                      label=label[7:]
+                  # Keep the station label exactly when it looks like the documented charger label.
+                  if not re.fullmatch(r"[A-Za-z]\d{4,6}",label):
+                      continue
+                  labels[label.upper()]={
+                      "label":label.upper(),
+                      "stationId":st.get("id"),
+                      "locationId":lid,
+                      "locationName":loc.get("name"),
+                      "formattedAddress":loc.get("formatted_address"),
+                      "lat":loc.get("gmaps_lat"),
+                      "lng":loc.get("gmaps_lng"),
+                      "connectorCount":len(st.get("connectors") or [])
+                  }
+              if idx < len(locations):
+                  time.sleep(.12)
+
+          now=datetime.now(timezone.utc).isoformat()
+          ordered=[labels[k] for k in sorted(labels)]
+          inventory={
+              "retrievedAt":now,
+              "source":"https://charge.believ.com/map",
+              "scope":{"origin":[54.5,-3.0],"radiusMeters":1000000},
+              "reportedLocationCount":total,
+              "locationsRetrieved":len(locations),
+              "labelsCount":len(ordered),
+              "stationLookupErrors":len(errors),
+              "labels":ordered,
+              "errorsSample":errors[:25]
+          }
+          Path("data/national/uk_believ_public_labels.json").write_text(json.dumps(inventory,ensure_ascii=False,indent=2)+"\n")
+          Path("reports/uk/believ-public-label-inventory-latest.json").write_text(json.dumps({
+              "retrievedAt":now,
+              "reportedLocationCount":total,
+              "locationsRetrieved":len(locations),
+              "labelsCount":len(ordered),
+              "stationLookupErrors":len(errors),
+              "firstLabels":[x["label"] for x in ordered[:20]],
+              "lastLabels":[x["label"] for x in ordered[-20:]]
+          },ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({
+              "reportedLocationCount":total,
+              "locationsRetrieved":len(locations),
+              "labelsCount":len(ordered),
+              "stationLookupErrors":len(errors)
+          },indent=2))
+          PY
+
+      - name: Publish inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/uk_believ_public_labels.json reports/uk/believ-public-label-inventory-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(uk): refresh Believ public label inventory [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
