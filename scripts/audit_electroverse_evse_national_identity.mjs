@@ -17,6 +17,7 @@ let globalExactOutsideLocal=0,globalParentUniqueAny=0,globalParentUniqueOutsideL
 const suffixCounts={},hardResidualByOperator={};
 let hardResidualCount=0;
 let uniqueLocalEndsWith=0,uniqueLocalContains=0,uniqueLocalStartsWith=0,uniqueCommonPrefixTail=0;
+const suffixLengthBuckets={ge3:0,ge4:0,ge5:0,ge6:0},containsLengthBuckets={ge4:0,ge5:0,ge6:0};
 const textualPatternCounts={};
 const unmatchedSamples=[], recoveredSamples=[], parentPrefixSamples=[], globalParentSamples=[], hardResidualSamples=[], textualSamples=[];
 
@@ -120,9 +121,20 @@ for(const row of rows){
         const ends=uniqLocal.filter(p=>k.length>=2 && p.endsWith(k));
         const starts=uniqLocal.filter(p=>k.length>=2 && p.startsWith(k));
         const contains=uniqLocal.filter(p=>k.length>=3 && p.includes(k));
-        if(ends.length===1){uniqueLocalEndsWith++;textualPatternCounts.endsWith=(textualPatternCounts.endsWith||0)+1;}
+        if(ends.length===1){
+          uniqueLocalEndsWith++;textualPatternCounts.endsWith=(textualPatternCounts.endsWith||0)+1;
+          if(k.length>=3)suffixLengthBuckets.ge3++;
+          if(k.length>=4)suffixLengthBuckets.ge4++;
+          if(k.length>=5)suffixLengthBuckets.ge5++;
+          if(k.length>=6)suffixLengthBuckets.ge6++;
+        }
         if(starts.length===1){uniqueLocalStartsWith++;textualPatternCounts.startsWith=(textualPatternCounts.startsWith||0)+1;}
-        if(contains.length===1){uniqueLocalContains++;textualPatternCounts.contains=(textualPatternCounts.contains||0)+1;}
+        if(contains.length===1){
+          uniqueLocalContains++;textualPatternCounts.contains=(textualPatternCounts.contains||0)+1;
+          if(k.length>=4)containsLengthBuckets.ge4++;
+          if(k.length>=5)containsLengthBuckets.ge5++;
+          if(k.length>=6)containsLengthBuckets.ge6++;
+        }
 
         let commonPrefix='';
         if(uniqLocal.length){
@@ -377,6 +389,8 @@ const out={
   uniqueLocalContains,
   uniqueCommonPrefixTail,
   textualPatternCounts,
+  suffixLengthBuckets,
+  containsLengthBuckets,
   hardResidualByOperator:Object.fromEntries(Object.entries(hardResidualByOperator).sort((a,b)=>b[1]-a[1]).slice(0,50)),
   suffixCounts:Object.fromEntries(Object.entries(suffixCounts).sort((a,b)=>b[1]-a[1]).slice(0,50)),
   policy:'Diagnostic only. Exact normalized physicalReference against union of mapping + row IRVE PDC IDs; no proximity inference.',
