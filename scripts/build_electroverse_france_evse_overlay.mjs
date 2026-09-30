@@ -205,7 +205,7 @@ for(const sh of manifest.shards||[]){
         const candidates=[...local].filter(p=>{
           if(!k.startsWith(p)||k.length<=p.length)return false;
           const suffix=k.slice(p.length);
-          return /^\\d{1,2}$/.test(suffix);
+          return /^\d{1,2}$/.test(suffix);
         });
         if(candidates.length!==1){rej(candidates.length?'parent_pdc_ambiguous':'physical_reference_not_in_local_national_pdcs');continue;}
         parentNorm=candidates[0];
