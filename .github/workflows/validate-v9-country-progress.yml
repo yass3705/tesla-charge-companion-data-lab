@@ -1,0 +1,19 @@
+name: Validate V9 country progress index
+
+on:
+  push:
+    paths:
+      - "docs/v9-country-progress-2026-09-30.json"
+      - "scripts/validate_v9_country_progress.py"
+      - ".github/workflows/validate-v9-country-progress.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/validate_v9_country_progress.py
