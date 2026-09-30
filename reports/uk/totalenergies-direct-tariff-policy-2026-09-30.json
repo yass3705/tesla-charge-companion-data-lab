@@ -1,0 +1,186 @@
+{
+  "asOf": "2026-09-30",
+  "network": "TotalEnergies UK",
+  "inventoryIdentity": {
+    "chargePlusAliases": [
+      "source-london",
+      "GB*BPL",
+      "SLMS"
+    ],
+    "note": "Identity source only; do not use ChargePlus/eMSP tariff as TotalEnergies direct tariff."
+  },
+  "directPayg": {
+    "source": "https://chargingservices.totalenergies.com/en/home/united-kingdom",
+    "currency": "GBP",
+    "general": [
+      {
+        "powerMinKw": 7,
+        "powerMaxKw": 22,
+        "timeWindow": "20:00-07:00",
+        "energyGbpPerKwh": 0.61
+      },
+      {
+        "powerMinKw": 7,
+        "powerMaxKw": 22,
+        "timeWindow": "07:00-20:00",
+        "energyGbpPerKwh": 0.65
+      },
+      {
+        "powerKw": 50,
+        "energyGbpPerKwh": 0.73
+      },
+      {
+        "powerMinKw": 100,
+        "powerMaxKw": 200,
+        "energyGbpPerKwh": 0.82
+      }
+    ],
+    "ancillary": {
+      "paygIdleStandardGbpPerMinute": 0.05,
+      "paygIdleCentralLondonGbpPerMinute": 0.06,
+      "birminghamParkingGbpPerMinute": 0.017,
+      "minimumBilledEnergyKwh": 2.5,
+      "autoCancelledIf": {
+        "durationLessThanMinutes": 3,
+        "energyLessThanKwh": 0.5
+      }
+    }
+  },
+  "promotions": [
+    {
+      "name": "Camden Ultra-Rapid Charging Offer",
+      "source": "https://totalenergies.co.uk/2026-ev",
+      "validThrough": "2026-10-31",
+      "powerKw": 150,
+      "energyGbpPerKwh": 0.59,
+      "matchingRule": "Exact postcode/address + 150kW only",
+      "locations": [
+        [
+          "Abbey Road",
+          "NW8 0BL"
+        ],
+        [
+          "Bartholomew Road",
+          "NW5 2DP"
+        ],
+        [
+          "Chalton Street",
+          "NW1 1HS"
+        ],
+        [
+          "2 Croftdown Road",
+          "NW5 1EH"
+        ],
+        [
+          "116 Fortune Green Road",
+          "NW6 1DR"
+        ],
+        [
+          "Haverstock Road",
+          "NW5 4BS"
+        ],
+        [
+          "Netherwood Street",
+          "NW6 2JX"
+        ],
+        [
+          "14 Spring Place",
+          "NW5 3AS"
+        ],
+        [
+          "60 Whitfield Street",
+          "W1T 4HD"
+        ]
+      ]
+    },
+    {
+      "name": "TfL Special Charging Offers",
+      "source": "https://totalenergies.co.uk/totalenergies-and-tfl-bring-new-ultra-rapid-charging-london",
+      "validThrough": "2026-12-31",
+      "rates": [
+        {
+          "powerKw": 50,
+          "energyGbpPerKwh": 0.54
+        },
+        {
+          "powerKw": 150,
+          "energyGbpPerKwh": 0.59
+        }
+      ],
+      "matchingRule": "Exact address/postcode + exact power + site active/validated in inventory",
+      "locations": [
+        [
+          "Rectory Road",
+          "N16 7SD",
+          50
+        ],
+        [
+          "South Lambeth Road",
+          "SW8 1QX",
+          150
+        ],
+        [
+          "Kennington Park Road",
+          "SE11 4DE",
+          150
+        ],
+        [
+          "Cavendish Road",
+          "SW12 0BH",
+          50
+        ],
+        [
+          "Streatham High Road",
+          "SW16 1BS",
+          150
+        ],
+        [
+          "South Lambeth Road",
+          "SW8 1QX",
+          50
+        ],
+        [
+          "Isledon Road",
+          "N4 3NT",
+          50
+        ],
+        [
+          "Upper Street",
+          "N1 2TU",
+          150
+        ],
+        [
+          "Godstone Road",
+          "CR8 5JE",
+          50
+        ],
+        [
+          "Well Hall Road",
+          "SE9 6UF",
+          150
+        ],
+        [
+          "Bromley Road",
+          "BR1 4JX",
+          50
+        ],
+        [
+          "Bromley Road",
+          "BR1 4JX",
+          150
+        ],
+        [
+          "Commercial Road",
+          "E1 1LP",
+          150
+        ]
+      ]
+    }
+  ],
+  "failClosed": [
+    "Do not apply a general power-band tariff outside explicitly documented power bands.",
+    "Do not treat ChargePlus/roaming tariff as TotalEnergies direct price.",
+    "Do not apply a promotion unless address/postcode/power match exactly.",
+    "After promotion expiry, fall back only to an applicable documented general tariff."
+  ]
+}
