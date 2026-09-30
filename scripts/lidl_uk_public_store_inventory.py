@@ -78,30 +78,37 @@ def parse_store(url):
     }
 
 def main():
-    home,final=get(BASE+STORE_ROOT)
-    city_urls=set()
-    for u in links(final,home):
-        rel=urllib.parse.urlparse(u).path[len(STORE_ROOT):].strip("/")
-        if rel and "/" not in rel:
-            city_urls.add(u if u.endswith("/") else u+"/")
-    if len(city_urls)<200:
-        raise SystemExit(f"Fail closed: only {len(city_urls)} city pages discovered")
-
+    sitemap_root=BASE+"/static/sitemap.xml"
+    sitemap_seen=set()
+    sitemap_errors=[]
     store_urls=set()
-    city_errors=[]
-    def city_one(u):
-        try: return u,get(u)[0],None
-        except Exception as e: return u,None,f"{type(e).__name__}: {e}"
-    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:
-        for city,body,err in ex.map(city_one,sorted(city_urls)):
-            if err:
-                city_errors.append({"url":city,"error":err}); continue
-            for x in links(city,body):
-                rel=urllib.parse.urlparse(x).path[len(STORE_ROOT):].strip("/")
-                if len(rel.split("/"))>=2:
-                    store_urls.add(x if x.endswith("/") else x+"/")
+
+    def crawl_sitemap(url,depth=0):
+        if url in sitemap_seen or depth>3:
+            return
+        sitemap_seen.add(url)
+        try:
+            body,_=get(url)
+        except Exception as e:
+            sitemap_errors.append({"url":url,"error":f"{type(e).__name__}: {e}"})
+            return
+        locs=[html.unescape(x.strip()) for x in re.findall(r"<loc>(.*?)</loc>",body,re.I|re.S)]
+        for loc in locs:
+            p=urllib.parse.urlparse(loc)
+            if p.netloc not in ("www.lidl.co.uk","lidl.co.uk"):
+                continue
+            if p.path.endswith(".xml"):
+                crawl_sitemap(loc,depth+1)
+                continue
+            if not p.path.startswith(STORE_ROOT):
+                continue
+            rel=p.path[len(STORE_ROOT):].strip("/")
+            if len(rel.split("/"))>=2:
+                store_urls.add(urllib.parse.urlunparse(("https","www.lidl.co.uk",p.path if p.path.endswith("/") else p.path+"/","","","")))
+
+    crawl_sitemap(sitemap_root)
     if len(store_urls)<500:
-        raise SystemExit(f"Fail closed: only {len(store_urls)} store pages discovered")
+        raise SystemExit(f"Fail closed: only {len(store_urls)} store pages discovered from official sitemap")
 
     stores=[]; failures=[]
     def store_one(u):
@@ -130,8 +137,8 @@ def main():
       "retrievedAt":now,
       "source":BASE+STORE_ROOT,
       "sourceType":"official_public_store_finder",
-      "cityPagesDiscovered":len(city_urls),
-      "cityFetchErrors":len(city_errors),
+      "sitemapsCrawled":len(sitemap_seen),
+      "sitemapFetchErrors":len(sitemap_errors),
       "storePagesDiscovered":len(store_urls),
       "storePagesParsed":len(stores),
       "evChargingStores":len(ev),
@@ -147,6 +154,7 @@ def main():
         "doNotInferConnectorPower":True,
         "doNotInferEvseCount":True
       },
+      "sitemapErrors":sitemap_errors[:50],
       "failures":failures[:100]
     }
     (ROOT/"reports/uk").mkdir(parents=True,exist_ok=True)
@@ -154,7 +162,7 @@ def main():
     (ROOT/"reports/uk/lidl-public-ev-stores-latest.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     with gzip.open(ROOT/"data/national/uk_lidl_public_ev_stores.json.gz","wt",encoding="utf-8") as g:
         json.dump({"schemaVersion":2,"country":"GB","network":"Lidl GB","retrievedAt":now,"stores":ev},g,ensure_ascii=False,separators=(",",":"))
-    print(json.dumps({k:report[k] for k in ("cityPagesDiscovered","storePagesDiscovered","storePagesParsed","evChargingStores","geocodedEvStores","failureCount")},ensure_ascii=False))
+    print(json.dumps({k:report[k] for k in ("sitemapsCrawled","storePagesDiscovered","storePagesParsed","evChargingStores","geocodedEvStores","failureCount")},ensure_ascii=False))
 
 if __name__=="__main__":
     main()
