@@ -36,6 +36,7 @@ for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
 }
 
 const unmatched=[];
+const operatorProfiles=new Map();
 const counters={
   byNormLength:{},byRawShape:{},byOperator:{},byLocalPdcCount:{},
   uniqueLocalContainsRef:{},uniqueRefContainsLocalPdc:{},uniquePdcPayloadEqualsRef:{},
@@ -132,6 +133,13 @@ for(const sh of manifest.shards||[]){
       if(parents.length)continue;
 
       const operator=opOf(local[0]);
+      let op=operatorProfiles.get(operator);
+      if(!op){op={count:0,lengths:{},shapes:{},samples:[]};operatorProfiles.set(operator,op);}
+      op.count++;inc(op.lengths,String(k.length));inc(op.shapes,rawShape(raw));
+      if(op.samples.length<12)op.samples.push({
+        locationPk:String(row.electroverseLocationPk),evsePk:e.pk??null,
+        physicalReference:raw,normalized:k,localPdcCount:local.length,localPdcs:localRaw.slice(0,20)
+      });
       inc(counters.byNormLength,String(k.length));inc(counters.byRawShape,rawShape(raw));
       inc(counters.byOperator,operator);inc(counters.byLocalPdcCount,String(local.length));
 
@@ -173,6 +181,9 @@ const report={
   generatedAt:new Date().toISOString(),dataset:'electroverse-fr-unmatched-identity-pattern-audit',
   totalUnmatched:total,
   topOperators:top(counters.byOperator,30),
+  operatorProfiles:[...operatorProfiles.entries()].sort((a,b)=>b[1].count-a[1].count).slice(0,30).map(([operator,p])=>({
+    operator,count:p.count,topLengths:top(p.lengths,10),topShapes:top(p.shapes,10),samples:p.samples
+  })),
   normLength:top(counters.byNormLength,50),
   rawShape:top(counters.byRawShape,20),
   localPdcCount:top(counters.byLocalPdcCount,30),
