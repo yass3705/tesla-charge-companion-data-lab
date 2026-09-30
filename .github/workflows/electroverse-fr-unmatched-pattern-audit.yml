@@ -1,0 +1,32 @@
+name: Audit Electroverse FR unmatched identity patterns
+on:
+  push:
+    branches:
+      - audit/electroverse-fr-unmatched-patterns
+    paths:
+      - "scripts/audit_electroverse_fr_unmatched_patterns.mjs"
+      - ".github/workflows/electroverse-fr-unmatched-pattern-audit.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run unmatched identity audit
+        run: node scripts/audit_electroverse_fr_unmatched_patterns.mjs
+      - name: Persist audit report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse-fr-unmatched-patterns.json
+          if git diff --cached --quiet; then
+            echo "No report changes"
+          else
+            git commit -m "audit: publish Electroverse FR unmatched pattern report"
+            git push
+          fi
