@@ -1,0 +1,179 @@
+name: UK TotalEnergies deep APK forensics
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-totalenergies-deep-apk-forensics.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Deep inspect Charge Europe package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/te/xapk /tmp/te/unpack /tmp/te/apks reports/uk
+          curl -fL --retry 3 --retry-delay 2             'https://d.apkpure.net/b/XAPK/com.total.europe?version=latest'             -o /tmp/te/xapk/app.xapk
+          unzip -q /tmp/te/xapk/app.xapk -d /tmp/te/unpack
+
+          find /tmp/te/unpack -name '*.apk' -print0 | while IFS= read -r -d '' apk; do
+            n=$(basename "$apk" .apk)
+            mkdir -p "/tmp/te/apks/$n"
+            unzip -q "$apk" -d "/tmp/te/apks/$n" || true
+          done
+
+          python3 - <<'PY'
+          import pathlib,re,json,hashlib,subprocess,os
+          from datetime import datetime,timezone
+          root=pathlib.Path('/tmp/te/apks')
+          report={
+            "retrievedAt":datetime.now(timezone.utc).isoformat(),
+            "package":"com.total.europe",
+            "files":[],
+            "configLikeFiles":[],
+            "domains":[],
+            "endpointStrings":[],
+            "headerContexts":[],
+            "highEntropyNearHeaders":[],
+            "resourceToolOutput":{}
+          }
+
+          # inventory + config-like file content
+          cfg_patterns=re.compile(r'(?i)(config|env|setting|resource|asset|firebase|google-services|manifest|properties|json|yaml|yml|xml)$')
+          domains=set(); endpoints=set(); contexts=[]; entropy=[]
+
+          def printable_ratio(b):
+            if not b: return 0
+            return sum(32<=x<127 or x in (9,10,13) for x in b)/len(b)
+
+          def sanitize(s):
+            s=re.sub(r'([?&](?:access_token|token|key|api_key|apikey|code|signature)=)[^&#\s]+',r'\1<redacted>',s,flags=re.I)
+            s=re.sub(r'(?i)(bearer\s+)[A-Za-z0-9._~+/=-]{12,}',r'\1<redacted>',s)
+            return s
+
+          for p in root.rglob('*'):
+            if not p.is_file(): continue
+            rel=str(p.relative_to(root))
+            try: size=p.stat().st_size
+            except: continue
+            report["files"].append({"path":rel,"size":size})
+            data=b''
+            if size <= 4_000_000:
+              try: data=p.read_bytes()
+              except: pass
+            text=''
+            if data and printable_ratio(data[:min(len(data),200000)])>0.65:
+              text=data.decode('utf-8','replace')
+            elif p.suffix.lower() in {'.so','.dex','.arsc','.xml'} or p.name in {'resources.arsc','AndroidManifest.xml'}:
+              try:
+                text=subprocess.run(['strings','-a',str(p)],capture_output=True,text=True,errors='replace',timeout=60).stdout
+              except: pass
+
+            if text:
+              # config-like snippets
+              if re.search(r'(?i)(config|env|firebase|google-services|settings|manifest|assets)',rel):
+                hits=[]
+                for line in text.splitlines():
+                  if re.search(r'(?i)(baseurl|base_url|api|apikey|api_key|x-apif|tgscloud|tcsev|endpoint|countrycode|mapbox|firebase)',line):
+                    hits.append(sanitize(line[:1200]))
+                    if len(hits)>=80: break
+                if hits: report["configLikeFiles"].append({"path":rel,"hits":hits})
+
+              for d in re.findall(r'(?i)(?:https?://)?((?:[a-z0-9-]+\.)+(?:com|net|io|cloud|app|uk|fr|de|nl|be|lu))(?:[:/]|\b)',text):
+                dl=d.lower()
+                if any(k in dl for k in ('total','tgscloud','tcsev','apix','charge','evdc','source','greenflux','ocpi')):
+                  domains.add(dl)
+              for u in re.findall(r'https?://[^\s"\'<>\\]{6,800}',text):
+                ul=u.lower()
+                if any(k in ul for k in ('tgscloud','tcsev','apix','evdc','charge','location','tariff','price','ocpi')):
+                  endpoints.add(sanitize(u)[:1200])
+
+              for needle in ('x-apif-apikey','x-api-key','ocp-apim-subscription-key','baseurl','base_url','evdc-bff-europe'):
+                pos=0
+                while True:
+                  i=text.lower().find(needle,pos)
+                  if i<0: break
+                  chunk=text[max(0,i-2500):min(len(text),i+5000)]
+                  contexts.append({"file":rel,"needle":needle,"context":sanitize(chunk)[:8000]})
+                  # candidate opaque strings nearby, persist only fingerprints
+                  for token in re.findall(r'(?<![A-Za-z0-9])[A-Za-z0-9._~+/=-]{20,180}(?![A-Za-z0-9])',chunk):
+                    if len(set(token))<8: continue
+                    if any(w in token.lower() for w in ('flutter','android','application','totalenergies','http','assets','viewmodel','google','sentry','mapbox')):
+                      continue
+                    entropy.append({
+                      "file":rel,"needle":needle,"length":len(token),
+                      "sha256_16":hashlib.sha256(token.encode()).hexdigest()[:16]
+                    })
+                  pos=i+len(needle)
+                  if sum(1 for c in contexts if c["file"]==rel and c["needle"]==needle)>=15: break
+
+          report["domains"]=sorted(domains)
+          report["endpointStrings"]=sorted(endpoints)
+          report["headerContexts"]=contexts[:250]
+          uniq=[]
+          seen=set()
+          for x in entropy:
+            k=(x["sha256_16"],x["length"])
+            if k in seen: continue
+            seen.add(k); uniq.append(x)
+          report["highEntropyNearHeaders"]=uniq[:500]
+
+          # Android SDK tooling if available
+          for toolcmd,label in [
+            (['bash','-lc',"command -v apkanalyzer || true"],'apkanalyzerPath'),
+            (['bash','-lc',"command -v aapt2 || command -v aapt || true"],'aaptPath')
+          ]:
+            try:
+              report["resourceToolOutput"][label]=subprocess.run(toolcmd,capture_output=True,text=True,timeout=20).stdout.strip()
+            except: pass
+
+          apk=next(pathlib.Path('/tmp/te/unpack').glob('*.apk'),None)
+          if apk:
+            apkan=report["resourceToolOutput"].get("apkanalyzerPath")
+            if apkan:
+              try:
+                out=subprocess.run([apkan,'manifest','print',str(apk)],capture_output=True,text=True,timeout=60).stdout
+                report["resourceToolOutput"]["manifest"]=sanitize(out)[:50000]
+              except Exception as e: report["resourceToolOutput"]["manifestError"]=type(e).__name__
+
+          pathlib.Path('reports/uk/totalenergies-deep-apk-forensics-latest.json').write_text(
+            json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print(json.dumps({
+            "domains":report["domains"],
+            "endpoints":report["endpointStrings"][:120],
+            "configFiles":len(report["configLikeFiles"]),
+            "headerContexts":len(report["headerContexts"]),
+            "entropyCandidates":len(report["highEntropyNearHeaders"]),
+            "tools":report["resourceToolOutput"]
+          },ensure_ascii=False,indent=2))
+          PY
+
+          rm -rf /tmp/te
+
+      - name: Publish sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/totalenergies-deep-apk-forensics-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): deep inspect TotalEnergies Charge Europe package [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
