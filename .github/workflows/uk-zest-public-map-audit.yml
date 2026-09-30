@@ -1,0 +1,108 @@
+name: UK Zest public map audit
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-zest-public-map-audit.yml"
+      - "data/national/uk_zest_public_map.json.gz"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Audit Zest public map coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python3 - <<'PY'
+          import gzip,json,pathlib,collections
+          from datetime import datetime,timezone
+
+          with gzip.open("data/national/uk_zest_public_map.json.gz","rt",encoding="utf-8") as f:
+              wrapper=json.load(f)
+          obj=wrapper["data"]
+          locs=obj.get("locations",[]) if isinstance(obj,dict) else obj
+          cp=evse=connectors=0
+          missing_price=[]; invalid_price=[]; missing_power=[]
+          powers=collections.Counter(); statuses=collections.Counter(); price_modes=collections.Counter(); prices=collections.Counter()
+          daynight=0; idle_nonzero=0; public=0
+          for loc in locs:
+              if loc.get("public") is True: public+=1
+              for cpoint in loc.get("chargePoints") or []:
+                  cp+=1
+                  for e in cpoint.get("evses") or []:
+                      evse+=1
+                      statuses[str(e.get("status") or "UNKNOWN")]+=1
+                      p=e.get("maxPower")
+                      if p is None: missing_power.append({"locationId":loc.get("id"),"evseId":e.get("id")})
+                      else: powers[str(p)]+=1
+                      conns=e.get("connectors") or []
+                      connectors+=len(conns)
+                      flat=e.get("pricePerKwh")
+                      day=e.get("dayPricePerKwh")
+                      night=e.get("nightPricePerKwh")
+                      if flat is not None:
+                          try:
+                              fv=float(flat)
+                              if fv < 0: raise ValueError()
+                              prices[str(fv)]+=1; price_modes["flat"]+=1
+                          except: invalid_price.append({"locationId":loc.get("id"),"evseId":e.get("id"),"price":flat})
+                      elif day is not None and night is not None:
+                          try:
+                              dv=float(day); nv=float(night)
+                              if dv<0 or nv<0: raise ValueError()
+                              prices["day:"+str(dv)]+=1; prices["night:"+str(nv)]+=1
+                              price_modes["day_night"]+=1; daynight+=1
+                          except: invalid_price.append({"locationId":loc.get("id"),"evseId":e.get("id"),"day":day,"night":night})
+                      else:
+                          missing_price.append({"locationId":loc.get("id"),"evseId":e.get("id"),"flat":flat,"day":day,"night":night})
+                      vals=[e.get("idleFeePerMinute"),e.get("dayIdleFeePerMinute"),e.get("nightIdleFeePerMinute")]
+                      if any(v not in (None,0,0.0,"0","0.0") for v in vals): idle_nonzero+=1
+
+          out={
+            "retrievedAt":datetime.now(timezone.utc).isoformat(),
+            "source":"https://map.zest.uk.com/MapData.json",
+            "locations":len(locs),"publicLocations":public,"chargePoints":cp,"evses":evse,"connectors":connectors,
+            "statusCounts":dict(statuses),"powerWDistribution":dict(powers),
+            "pricing":{
+              "pricedEvses":evse-len(missing_price)-len(invalid_price),
+              "missingPriceEvses":len(missing_price),
+              "invalidPriceEvses":len(invalid_price),
+              "coveragePct":round(100*(evse-len(missing_price)-len(invalid_price))/evse,4) if evse else 0,
+              "modes":dict(price_modes),"priceValues":dict(prices),
+              "dayNightEvses":daynight,"nonzeroIdleFeeEvses":idle_nonzero
+            },
+            "missingPowerEvses":len(missing_power),
+            "missingPriceSample":missing_price[:100],
+            "invalidPriceSample":invalid_price[:100],
+            "missingPowerSample":missing_power[:100]
+          }
+          pathlib.Path("reports/uk/zest-public-map-audit-latest.json").write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8"
+          )
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/zest-public-map-audit-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "audit(uk): validate Zest public map pricing [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
