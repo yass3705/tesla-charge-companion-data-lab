@@ -1,0 +1,62 @@
+name: UK Zest residual audit
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-zest-residual-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Audit unpriced Zest EVSE residual
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python3 - <<'PY'
+          import gzip,json,pathlib,collections
+          from datetime import datetime,timezone
+          with gzip.open("data/national/uk_zest_public_map.json.gz","rt",encoding="utf-8") as f:
+              locs=json.load(f)["data"]["locations"]
+          residual=[]
+          for loc in locs:
+              for cp in loc.get("chargePoints") or []:
+                  for e in cp.get("evses") or []:
+                      flat=e.get("pricePerKwh"); day=e.get("dayPricePerKwh"); night=e.get("nightPricePerKwh")
+                      if flat is None and not (day is not None and night is not None):
+                          residual.append({
+                            "locationId":loc.get("id"),"locationName":loc.get("name"),"postCode":loc.get("postCode"),
+                            "locationStatus":loc.get("status"),"evseId":e.get("id"),"evseStatus":e.get("status"),
+                            "maxPower":e.get("maxPower"),"connectors":e.get("connectors")
+                          })
+          out={
+            "retrievedAt":datetime.now(timezone.utc).isoformat(),
+            "residualCount":len(residual),
+            "evseStatusCounts":dict(collections.Counter(str(x["evseStatus"]) for x in residual)),
+            "locationStatusCounts":dict(collections.Counter(str(x["locationStatus"]) for x in residual)),
+            "powerDistributionW":dict(collections.Counter(str(x["maxPower"]) for x in residual)),
+            "residual":residual
+          }
+          pathlib.Path("reports/uk/zest-unpriced-residual-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/zest-unpriced-residual-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "audit(uk): bound Zest unpriced residual [run ${GITHUB_RUN_ID}]"
+          git pull --rebase origin main
+          git push origin HEAD:main
