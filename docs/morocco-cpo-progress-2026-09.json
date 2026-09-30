@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "country": "MA",
+  "updatedAt": "2026-09-30",
+  "nationalBaseline": "none",
+  "policy": {
+    "failClosed": true,
+    "noNationalExtrapolation": true,
+    "directOperatorEvidencePreferred": true,
+    "overlappingNetworksMustBeReconciledByCanonicalIdentity": true
+  },
+  "operators": [
+    {
+      "name": "EVGO",
+      "status": "validated-production-feed",
+      "stations": 17,
+      "evses": 43,
+      "evidence": "reports/morocco/evgo/latest-production-stations.json",
+      "tariffPolicy": "EVGO-only missing-tariff=>free rule retained as operator-specific policy; do not generalize."
+    },
+    {
+      "name": "FastVolt / Afrimobility",
+      "status": "partial",
+      "productionCandidates": 97,
+      "evidence": [
+        "reports/morocco/fastvolt/latest-public-map-inventory.json",
+        "reports/morocco/fastvolt/tariff-reconciliation-2026-08-31.json"
+      ],
+      "tariff": "Official published base tariff retained: DC 2.5 MAD/min, AC 0.5 MAD/min.",
+      "blocker": "Public discrepancy evidence exists for final charged amount; no deterministic extra fee/override model proven. Do not invent surcharge."
+    },
+    {
+      "name": "Kilowatt",
+      "status": "complete-current-scope",
+      "productionStations": 43,
+      "tariffResolvedStations": 43,
+      "unresolvedStations": 0,
+      "evidence": [
+        "reports/morocco/kilowatt/latest-native-connector-tariffs.json",
+        "reports/morocco/kilowatt/latest-v9-tariff-overlay-manifest.json"
+      ]
+    },
+    {
+      "name": "TotalEnergies / Club EV-Charge",
+      "status": "complete-current-native-guest-scope",
+      "stations": 18,
+      "connectors": 38,
+      "pricedConnectors": 38,
+      "liveStatusConnectors": 38,
+      "tariffType": "MAD/min",
+      "evidence": "reports/morocco/totalenergies/latest-native-overlay.json",
+      "note": "Official guest inventory IDs only; read-only native flow; all extracted connectors have explicit native rates and live status."
+    },
+    {
+      "name": "EVOne",
+      "status": "supporting-policy-only",
+      "evidence": "reports/morocco/evone/production-status-policy.json",
+      "note": "Retained for status/roaming semantics; not counted as an independent national station inventory."
+    },
+    {
+      "name": "Shell / Vivo Energy",
+      "status": "set-aside-tariff-evidence",
+      "evidence": [
+        "reports/morocco/shell/network-contract-final-2026-09-27.json",
+        "reports/morocco/shell-vivo/tariff-policy.json"
+      ],
+      "blocker": "Current missing-price=>free fallback is a TCC policy and historical corroboration, not deterministic official station-level tariff evidence. Do not promote as complete direct pricing."
+    }
+  ],
+  "summary": {
+    "operatorFamiliesTracked": 6,
+    "publishableStationDatasets": [
+      "EVGO",
+      "FastVolt / Afrimobility",
+      "Kilowatt",
+      "TotalEnergies / Club EV-Charge"
+    ],
+    "completeCurrentScope": [
+      "Kilowatt",
+      "TotalEnergies / Club EV-Charge"
+    ],
+    "partial": [
+      "FastVolt / Afrimobility"
+    ],
+    "supportingOrSetAside": [
+      "EVOne",
+      "Shell / Vivo Energy"
+    ]
+  }
+}
