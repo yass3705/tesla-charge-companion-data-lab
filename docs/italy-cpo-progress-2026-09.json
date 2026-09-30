@@ -34,10 +34,10 @@
     "currentPunNamedInCanonical": 92,
     "historicalNonCurrentNamed": 2,
     "canonicalNamedEntries": 94,
-    "treated": 25,
-    "partialCurrent": 67,
+    "treated": 26,
+    "partialCurrent": 66,
     "partialHistoricalNonCurrent": 2,
-    "partial": 69,
+    "partial": 68,
     "setAside": 0,
     "active": 0,
     "supersededAlias": 0,
@@ -88,7 +88,6 @@
       "GES",
       "GMT",
       "HER",
-      "IOY",
       "ISE",
       "JOI",
       "KIW",
@@ -946,8 +945,8 @@
     {
       "partyId": "IOY",
       "canonicalName": "IONITY",
-      "status": "partial",
-      "priority": "station-level",
+      "status": "treated",
+      "priority": "station-level-bounded-residual",
       "inventory": {
         "evse": 322,
         "stations": 44,
@@ -990,7 +989,7 @@
         "liveUnpricedConnectors": 0,
         "canonicalPunEvse": 322
       },
-      "blockingCondition": "13 residual PUN EVSE: Piacenza E429801-806 (6), Valmontone E433101/E433109-111 (4), Brissogne Sud E407551-553 (3). Revisit only with current IONITY Direct connector evidence or newer deterministic identity mapping.",
+      "blockingCondition": "Residual-only maintenance: resolve the 13 named PUN EVSE when new deterministic IONITY Direct identity evidence appears.",
       "confidence": "high",
       "lastInvestigated": "2026-09-27",
       "lastChanged": "2026-09-27",
@@ -1005,7 +1004,8 @@
           "data/reports/italy_cpo_reconciliation_20260923_run271.json"
         ],
         "method": "PUN/TCC coordinates -> IONITY location UUID -> connector number -> adhocPrice; strict IONITY_CPO filter"
-      }
+      },
+      "treatmentDecision": "Promoted to treated with 309 exact PUN EVSE mappings and 13 explicit fail-closed residual EVSE; no tariff extrapolation."
     },
     {
       "partyId": "GMT",
@@ -3479,7 +3479,7 @@
     }
   ],
   "coherence": {
-    "currentPunArithmetic": "25 treated + 67 partial + 0 setAside + 0 active + 0 supersededAlias = 92 current partyIds",
+    "currentPunArithmetic": "26 treated + 66 partial + 0 setAside + 0 active + 0 supersededAlias = 92 current partyIds",
     "aliasCorrections": [
       "ATL->ATE",
       "HRA->HER"
@@ -3491,7 +3491,7 @@
     "noDoubleCount": true,
     "lastAudit": "2026-09-29",
     "atlanteDecision": "ATE is one CPO. Snapshot stations/connectors are coverage units, not CPOs. ATE setAside->partial; no partial->treated promotion.",
-    "identityAudit": "PASS: exact current canonical arithmetic 25 treated + 67 partial + 0 setAside + 0 active + 0 supersededAlias = 92; Enel X Way promoted with 1,154 fail-closed residual EVSE; no duplicate current partyId detected",
+    "identityAudit": "PASS: exact current canonical arithmetic 26 treated + 66 partial + 0 setAside + 0 active + 0 supersededAlias = 92; bounded Enel X Way and IONITY residual EVSE remain fail-closed.",
     "identityCorrections": [
       "P62 is the current PUN partyId for EUM Genossenschaft; IT*EUM is the EVSE prefix and is not a second current CPO.",
       "AXS is the current PUN partyId for Axpo Energy Solutions Italia; AXP later-research evidence merged into AXS and AXE retained as observed EVSE prefix.",
@@ -3649,6 +3649,11 @@
       "at": "2026-09-30",
       "change": "ENX partial->treated with bounded fail-closed residuals",
       "reason": "21,866/23,001 current PUN EVSE have exact direct-payment pricing (95.06%); 1,154 residual EVSE remain fail-closed."
+    },
+    {
+      "at": "2026-09-30",
+      "change": "IOY partial->treated with bounded fail-closed residuals",
+      "reason": "309/322 current PUN EVSE exactly mapped to IONITY Direct; 13 remain explicit fail-closed."
     }
   ],
   "evidenceReports": [
