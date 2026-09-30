@@ -1,0 +1,79 @@
+name: UK Zest public map collect
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-zest-public-map-collect.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Collect official Zest public map JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk data/national
+          curl -fL --retry 3 --retry-delay 2             -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36'             -e 'https://map.zest.uk.com/'             'https://map.zest.uk.com/MapData.json' -o /tmp/zest-map.json
+
+          python3 - <<'PY'
+          import json,gzip,pathlib,collections
+          from datetime import datetime,timezone
+          obj=json.load(open('/tmp/zest-map.json',encoding='utf-8'))
+          # Preserve shape summary robustly before assuming schema.
+          rows=obj if isinstance(obj,list) else next((v for v in obj.values() if isinstance(v,list)),[])
+          keys=collections.Counter()
+          price_keys=collections.Counter()
+          status_keys=collections.Counter()
+          power_keys=collections.Counter()
+          for row in rows:
+              if not isinstance(row,dict): continue
+              keys.update(row.keys())
+              for k,v in row.items():
+                  kl=k.lower()
+                  if 'price' in kl or 'tariff' in kl or 'cost' in kl: price_keys[k]+=1
+                  if 'status' in kl or 'available' in kl: status_keys[k]+=1
+                  if 'power' in kl or 'kw' in kl: power_keys[k]+=1
+
+          out={
+            "retrievedAt":datetime.now(timezone.utc).isoformat(),
+            "source":"https://map.zest.uk.com/MapData.json",
+            "jsonType":type(obj).__name__,
+            "topLevelKeys":list(obj)[:100] if isinstance(obj,dict) else None,
+            "rowCount":len(rows),
+            "rowKeys":dict(keys),
+            "priceLikeKeys":dict(price_keys),
+            "statusLikeKeys":dict(status_keys),
+            "powerLikeKeys":dict(power_keys),
+            "sampleRows":rows[:5]
+          }
+          pathlib.Path("reports/uk/zest-public-map-collect-latest.json").write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8"
+          )
+          with gzip.open("data/national/uk_zest_public_map.json.gz","wt",encoding="utf-8") as g:
+              json.dump({"retrievedAt":out["retrievedAt"],"source":out["source"],"data":obj},g,ensure_ascii=False,separators=(",",":"))
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/zest-public-map-collect-latest.json data/national/uk_zest_public_map.json.gz
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(uk): collect Zest official public map [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
