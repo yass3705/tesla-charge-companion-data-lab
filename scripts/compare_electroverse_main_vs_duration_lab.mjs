@@ -67,6 +67,15 @@ for(const k of common){
 }
 
 const addedWithBands=added.filter(k=>(lab.byEvse.get(k)?.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)).length;
+const parentIdentity='exact_unique_national_irve_pdc_parent_connector_suffix';
+const removedParentSafetyDrops=removed.filter(k=>main.byEvse.get(k)?.metadata?.identityMode===parentIdentity);
+const mainParentHetero=Number(main.manifest.rejected?.parent_pdc_heterogeneous_child_pricing||0);
+const labParentHetero=Number(lab.manifest.rejected?.parent_pdc_heterogeneous_child_pricing||0);
+const parentHeteroDelta=labParentHetero-mainParentHetero;
+const safetyDropsValidated=
+  removed.length===removedParentSafetyDrops.length &&
+  removed.length===parentHeteroDelta;
+
 const result={
   generatedAt:new Date().toISOString(),
   main:{publishedEvses:main.manifest.stats?.publishedEvses,tileCount:main.manifest.tileCount},
@@ -78,7 +87,12 @@ const result={
   exactUnchanged,
   durationMigrationChanged,
   unexpectedChanged,
-  verdict:removed.length===0&&unexpectedChanged===0?'PASS':'FAIL',
+  removedParentSafetyDrops:removedParentSafetyDrops.length,
+  parentHeterogeneousRejectsMain:mainParentHetero,
+  parentHeterogeneousRejectsLab:labParentHetero,
+  parentHeterogeneousRejectDelta:parentHeteroDelta,
+  safetyDropsValidated,
+  verdict:unexpectedChanged===0&&safetyDropsValidated?'PASS':'FAIL',
   removedSamples:removed.slice(0,50).map(k=>{
     const a=main.byEvse.get(k);
     return {evseId:k,offerId:a?.id||null,identityMode:a?.metadata?.identityMode||null,pricing:a?.pricing||null,metadata:a?.metadata||null};
