@@ -175,7 +175,8 @@ const stats={
   cacheLocations:0,cacheEvses:0,physicalRefs:0,exactUniqueNationalEvses:0,
   parentConnectorRefs:0,parentCandidateGroups:0,parentPublishedEvses:0,parentPublishedChildRefs:0,
   ordinalCandidateRefs:0,ordinalPublishedEvses:0,
-  duplicatePublishedEvseTargets:0,conflictingPublishedEvseTargets:0,
+  duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
+  dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
   pricedExactEvses:0,publishedEvses:0,publishedOffers:0,publishedConnectorCount:0
 };
 function rej(k){rejected[k]=(rejected[k]||0)+1;}
@@ -362,21 +363,49 @@ for(const g of parentGroups.values()){
   stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=offer.metadata.connectorCount;
 }
 
-const publishedTargetSeen=new Map(),duplicateSamples=[];
-for(const offers of tiles.values()) for(const offer of offers){
+const offersByTarget=new Map(),duplicateSamples=[];
+for(const [tileIdKey,offers] of tiles.entries()) for(const offer of offers){
   const target=norm(offer.evseIds?.[0]);
   if(!target)continue;
-  const sig=pricingSig(offer.pricing);
-  const prev=publishedTargetSeen.get(target);
-  if(prev){
-    stats.duplicatePublishedEvseTargets++;
-    if(prev.pricingSig!==sig)stats.conflictingPublishedEvseTargets++;
-    if(duplicateSamples.length<25)duplicateSamples.push({
-      evseId:offer.evseIds?.[0],firstOfferId:prev.offerId,secondOfferId:offer.id,
-      pricingConflict:prev.pricingSig!==sig
-    });
-  }else publishedTargetSeen.set(target,{offerId:offer.id,pricingSig:sig});
+  const arr=offersByTarget.get(target)||[];
+  arr.push({tileIdKey,offer,pricingSig:pricingSig(offer.pricing)});
+  offersByTarget.set(target,arr);
 }
+const dropOfferIds=new Set();
+for(const [target,items] of offersByTarget.entries()){
+  if(items.length<2)continue;
+  stats.duplicatePublishedEvseTargetsBeforeDedup+=items.length-1;
+  const sigs=new Set(items.map(x=>x.pricingSig));
+  if(sigs.size===1){
+    const sorted=[...items].sort((a,b)=>String(a.offer.id).localeCompare(String(b.offer.id)));
+    for(const x of sorted.slice(1))dropOfferIds.add(x.offer.id);
+    stats.dedupedIdenticalOffers+=items.length-1;
+  }else{
+    for(const x of items)dropOfferIds.add(x.offer.id);
+    stats.conflictingPublishedEvseTargetsBeforeDedup+=items.length-1;
+    stats.conflictingTargetsDropped++;
+    rej('duplicate_evse_conflicting_pricing');
+  }
+  if(duplicateSamples.length<25)duplicateSamples.push({
+    evseId:items[0].offer.evseIds?.[0],
+    offerIds:items.map(x=>x.offer.id),
+    pricingConflict:sigs.size>1
+  });
+}
+for(const [tileIdKey,offers] of tiles.entries()){
+  tiles.set(tileIdKey,offers.filter(o=>!dropOfferIds.has(o.id)));
+}
+
+// Recompute final published KPIs after dedupe/fail-closed conflict removal.
+const finalOffers=[...tiles.values()].flat();
+stats.publishedEvses=finalOffers.length;
+stats.publishedOffers=finalOffers.length;
+stats.publishedConnectorCount=finalOffers.reduce((n,o)=>n+Number(o.metadata?.connectorCount||0),0);
+stats.parentPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='exact_unique_national_irve_pdc_parent_connector_suffix').length;
+stats.parentPublishedChildRefs=finalOffers
+  .filter(o=>o.metadata?.identityMode==='exact_unique_national_irve_pdc_parent_connector_suffix')
+  .reduce((n,o)=>n+Number(o.metadata?.childReferenceCount||0),0);
+stats.ordinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_station_ordinal_suffix_bijection').length;
 
 const manifestTiles=[];
 for(const [id,offers] of [...tiles.entries()].sort((a,b)=>a[0].localeCompare(b[0]))){
@@ -409,7 +438,9 @@ const out={
     electraDependency:false,
     proximityInference:false,
     heterogeneousConnectorsWithinEvseFailClosed:true,
-    unsupportedPricingFailClosed:true
+    unsupportedPricingFailClosed:true,
+    duplicateSamePriceDeduplicated:true,
+    duplicateConflictingPriceFailClosed:true
   },
   source:{
     tariffCacheGeneratedAt:manifest.generatedAt,
