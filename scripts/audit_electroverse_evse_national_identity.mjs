@@ -16,7 +16,9 @@ let uniqueLocalParentPrefix=0,ambiguousLocalParentPrefix=0;
 let globalExactOutsideLocal=0,globalParentUniqueAny=0,globalParentUniqueOutsideLocal=0,globalParentAmbiguous=0;
 const suffixCounts={},hardResidualByOperator={};
 let hardResidualCount=0;
-const unmatchedSamples=[], recoveredSamples=[], parentPrefixSamples=[], globalParentSamples=[], hardResidualSamples=[];
+let uniqueLocalEndsWith=0,uniqueLocalContains=0,uniqueLocalStartsWith=0,uniqueCommonPrefixTail=0;
+const textualPatternCounts={};
+const unmatchedSamples=[], recoveredSamples=[], parentPrefixSamples=[], globalParentSamples=[], hardResidualSamples=[], textualSamples=[];
 
 const rows=[];
 const parentGroups=new Map();
@@ -113,6 +115,41 @@ for(const row of rows){
         const parts=pr.split('*').map(x=>x.trim()).filter(Boolean);
         const op=parts.length>=2?parts[1].toUpperCase():norm(pr).slice(0,6);
         hardResidualByOperator[op]=(hardResidualByOperator[op]||0)+1;
+
+        const uniqLocal=[...new Set(rawLocal.map(norm).filter(Boolean))];
+        const ends=uniqLocal.filter(p=>k.length>=2 && p.endsWith(k));
+        const starts=uniqLocal.filter(p=>k.length>=2 && p.startsWith(k));
+        const contains=uniqLocal.filter(p=>k.length>=3 && p.includes(k));
+        if(ends.length===1){uniqueLocalEndsWith++;textualPatternCounts.endsWith=(textualPatternCounts.endsWith||0)+1;}
+        if(starts.length===1){uniqueLocalStartsWith++;textualPatternCounts.startsWith=(textualPatternCounts.startsWith||0)+1;}
+        if(contains.length===1){uniqueLocalContains++;textualPatternCounts.contains=(textualPatternCounts.contains||0)+1;}
+
+        let commonPrefix='';
+        if(uniqLocal.length){
+          commonPrefix=uniqLocal[0];
+          for(const p of uniqLocal.slice(1)){
+            let i=0; while(i<commonPrefix.length&&i<p.length&&commonPrefix[i]===p[i])i++;
+            commonPrefix=commonPrefix.slice(0,i);
+            if(!commonPrefix)break;
+          }
+        }
+        const tails=uniqLocal.map(p=>p.slice(commonPrefix.length));
+        const tailHits=tails.map((t,i)=>({t,p:uniqLocal[i]})).filter(x=>x.t===k);
+        if(commonPrefix.length>=4&&tailHits.length===1){
+          uniqueCommonPrefixTail++;
+          textualPatternCounts.commonPrefixTail=(textualPatternCounts.commonPrefixTail||0)+1;
+        }
+
+        if(textualSamples.length<150 && (ends.length===1||starts.length===1||contains.length===1||tailHits.length===1)){
+          textualSamples.push({
+            pk:row.electroverseLocationPk,
+            irveStationId:m?.irveStationId??row.irveStationId,
+            physicalReference:pr,normalizedPhysicalReference:k,
+            evsePk:e.pk,localPdcNorms:uniqLocal,
+            endsWith:ends,startsWith:starts,contains,
+            commonPrefix,tailHits
+          });
+        }
         if(hardResidualSamples.length<150) hardResidualSamples.push({
           pk:row.electroverseLocationPk,
           irveStationId:m?.irveStationId??row.irveStationId,
@@ -273,6 +310,11 @@ const out={
   ordinalLocationsSafe,
   ordinalRefsSafe,
   hardResidualCount,
+  uniqueLocalEndsWith,
+  uniqueLocalStartsWith,
+  uniqueLocalContains,
+  uniqueCommonPrefixTail,
+  textualPatternCounts,
   hardResidualByOperator:Object.fromEntries(Object.entries(hardResidualByOperator).sort((a,b)=>b[1]-a[1]).slice(0,50)),
   suffixCounts:Object.fromEntries(Object.entries(suffixCounts).sort((a,b)=>b[1]-a[1]).slice(0,50)),
   policy:'Diagnostic only. Exact normalized physicalReference against union of mapping + row IRVE PDC IDs; no proximity inference.',
@@ -281,6 +323,7 @@ const out={
   parentGroupSamples,
   globalParentSamples,
   hardResidualSamples,
+  textualSamples,
   ordinalSamples,
   unmatchedSamples
 };
