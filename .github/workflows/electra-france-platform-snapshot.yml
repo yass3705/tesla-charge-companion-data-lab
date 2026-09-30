@@ -1,0 +1,42 @@
+name: Build France Electra platform overlay
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/electra_france_platform_snapshot.mjs"
+      - ".github/workflows/electra-france-platform-snapshot.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: electra-france-platform-snapshot
+  cancel-in-progress: false
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-stable
+          ref: 0a6d2c3415504397310d3dc92fae40be843b2435
+          path: stable
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build exact national-EVSE Electra platform overlay
+        run: |
+          rm -rf data/platforms/electra/france
+          node scripts/electra_france_platform_snapshot.mjs data/platforms/electra/france stable/v9-production-runtime/data/v9/france-static/all.json.gz
+      - name: Persist validated overlay
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/platforms/electra/france scripts/electra_france_platform_snapshot.mjs .github/workflows/electra-france-platform-snapshot.yml
+          git commit -m 'data: publish France Electra platform overlay joined to national EVSEs' || exit 0
+          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          exit 1
