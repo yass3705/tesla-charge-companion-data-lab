@@ -176,6 +176,7 @@ const stats={
   parentConnectorRefs:0,parentCandidateGroups:0,parentPublishedEvses:0,parentPublishedChildRefs:0,
   ordinalCandidateRefs:0,ordinalPublishedEvses:0,
   genericTailCandidateRefs:0,genericTailPublishedEvses:0,
+  suffixIdentityCandidateRefs:0,suffixIdentityPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
   pricedExactEvses:0,publishedEvses:0,publishedOffers:0,publishedConnectorCount:0
@@ -270,6 +271,41 @@ for(const sh of manifest.shards||[]){
       }
     }
 
+    const suffixTargets=new Map();
+    const reservedTargets=new Set();
+    for(const e0 of row.tariff?.evses||[]){
+      const pr0=text(e0?.physicalReference); if(!pr0)continue;
+      const k0=norm(pr0);
+      if(local.has(k0)){reservedTargets.add(k0);continue;}
+      const p0=[...local].filter(p=>{
+        if(!k0.startsWith(p)||k0.length<=p.length)return false;
+        return /^\d{1,2}$/.test(k0.slice(p.length));
+      });
+      if(p0.length===1){reservedTargets.add(p0[0]);continue;}
+      if(ordinalTargets.has(e0)){reservedTargets.add(ordinalTargets.get(e0));continue;}
+      if(genericTargets.has(e0)){reservedTargets.add(genericTargets.get(e0));continue;}
+    }
+    const claimedSuffixTargets=new Set();
+    for(const e0 of row.tariff?.evses||[]){
+      const pr0=text(e0?.physicalReference); if(!pr0)continue;
+      const k0=norm(pr0);
+      if(k0.length<6)continue;
+      if(local.has(k0))continue;
+      if(ordinalTargets.has(e0)||genericTargets.has(e0))continue;
+      const p0=[...local].filter(p=>{
+        if(!k0.startsWith(p)||k0.length<=p.length)return false;
+        return /^\d{1,2}$/.test(k0.slice(p.length));
+      });
+      if(p0.length===1)continue;
+      const matches=[...local].filter(p=>p.endsWith(k0));
+      if(matches.length!==1)continue;
+      const target=matches[0];
+      if(reservedTargets.has(target)||claimedSuffixTargets.has(target))continue;
+      if((globalPdcOwners.get(target)?.size||0)!==1)continue;
+      suffixTargets.set(e0,target);
+      claimedSuffixTargets.add(target);
+    }
+
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
       const pr=text(e?.physicalReference);
@@ -310,6 +346,13 @@ for(const sh of manifest.shards||[]){
           targetPdc=localByNorm.get(targetNorm);
           identityMode='strict_station_common_prefix_tail_bijection';
           stats.genericTailCandidateRefs++;
+        }else if(suffixTargets.has(e)){
+          const targetNorm=suffixTargets.get(e);
+          const owners=globalPdcOwners.get(targetNorm);
+          if(!owners||owners.size!==1){rej('suffix_identity_pdc_not_globally_unique');continue;}
+          targetPdc=localByNorm.get(targetNorm);
+          identityMode='strict_unique_local_suffix_identity';
+          stats.suffixIdentityCandidateRefs++;
         }else{
           rej(candidates.length?'parent_pdc_ambiguous':'physical_reference_not_in_local_national_pdcs');continue;
         }
@@ -370,6 +413,7 @@ for(const sh of manifest.shards||[]){
       tiles.get(id).push(offer);
       if(ordinalMode)stats.ordinalPublishedEvses++;
       if(identityMode==='strict_station_common_prefix_tail_bijection')stats.genericTailPublishedEvses++;
+      if(identityMode==='strict_unique_local_suffix_identity')stats.suffixIdentityPublishedEvses++;
       stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=compiled.length;
     }
   }
@@ -455,6 +499,7 @@ stats.parentPublishedChildRefs=finalOffers
   .reduce((n,o)=>n+Number(o.metadata?.childReferenceCount||0),0);
 stats.ordinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_station_ordinal_suffix_bijection').length;
 stats.genericTailPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_station_common_prefix_tail_bijection').length;
+stats.suffixIdentityPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_unique_local_suffix_identity').length;
 
 const manifestTiles=[];
 for(const [id,offers] of [...tiles.entries()].sort((a,b)=>a[0].localeCompare(b[0]))){
@@ -484,6 +529,9 @@ const out={
     ordinalPdcRequiresGlobalUniqueness:true,
     strictStationCommonPrefixTailBijection:true,
     genericTailRequiresGlobalUniqueness:true,
+    strictUniqueLocalSuffixIdentityMinLength:6,
+    suffixIdentityRequiresGlobalUniqueness:true,
+    suffixIdentityRequiresUnclaimedTarget:true,
     evseLevelPricing:true,
     stationLevelFlattening:false,
     electraDependency:false,
