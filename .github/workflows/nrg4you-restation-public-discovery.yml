@@ -1,0 +1,123 @@
+name: NRG4YOU ReStation public discovery
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/nrg4you-restation-public-discovery.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Inspect public ReStation portal
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,re,urllib.parse,urllib.request,ssl
+          from pathlib import Path
+
+          roots=[
+            'https://customer.restation.eu/',
+            'https://customer.restation.eu/stations',
+          ]
+          ua='Mozilla/5.0 TCC-V9-readonly-discovery'
+          ctx=ssl.create_default_context()
+
+          def get(url):
+            req=urllib.request.Request(url,headers={'User-Agent':ua,'Accept':'text/html,application/json,*/*'})
+            with urllib.request.urlopen(req,timeout=30,context=ctx) as r:
+              b=r.read()
+              return r.status,dict(r.headers),b
+
+          docs={}
+          assets=set()
+          fetched=[]
+          for u in roots:
+            try:
+              s,h,b=get(u)
+              t=b.decode('utf-8','replace')
+              docs[u]=t
+              fetched.append({'url':u,'status':s,'bytes':len(b),'contentType':h.get('Content-Type','')})
+              for m in re.finditer(r'''(?:src|href)=["']([^"'#]+)["']''',t,re.I):
+                au=urllib.parse.urljoin(u,m.group(1))
+                if urllib.parse.urlparse(au).netloc=='customer.restation.eu':
+                  assets.add(au)
+            except Exception as e:
+              fetched.append({'url':u,'error':type(e).__name__+': '+str(e)[:300]})
+
+          for u in sorted(assets):
+            try:
+              s,h,b=get(u)
+              ct=h.get('Content-Type','')
+              if len(b)<=10_000_000 and ('javascript' in ct or 'json' in ct or 'text' in ct or u.endswith(('.js','.json','.map','.css'))):
+                docs[u]=b.decode('utf-8','replace')
+              fetched.append({'url':u,'status':s,'bytes':len(b),'contentType':ct})
+            except Exception as e:
+              fetched.append({'url':u,'error':type(e).__name__+': '+str(e)[:300]})
+
+          blob='\n'.join(docs.values())
+          absolute=sorted(set(re.findall(r'https?://[^"\'<>\\\s]+',blob)))
+          abs_candidates=[
+            x.rstrip('),;')
+            for x in absolute
+            if any(k in x.lower() for k in ('api','station','charge','recharge','connector','tariff','price','restation','graphql'))
+          ]
+          rels=sorted(set(re.findall(r'''["'](/[^"'\s]{2,220})["']''',blob)))
+          rel_candidates=[x for x in rels if any(k in x.lower() for k in ('api','station','charge','recharge','connector','tariff','price','graphql'))]
+
+          ctxhits=[]
+          pats=('axios','fetch(','graphql','api','station','connector','tariff','price','recharge','chargepoint','evse')
+          for url,t in docs.items():
+            low=t.lower()
+            for p in pats:
+              pos=0
+              while True:
+                i=low.find(p,pos)
+                if i<0: break
+                ctxhits.append({'asset':url,'pattern':p,'context':t[max(0,i-220):i+500]})
+                pos=i+len(p)
+                if len(ctxhits)>=400: break
+              if len(ctxhits)>=400: break
+            if len(ctxhits)>=400: break
+
+          out={
+            'schemaVersion':1,
+            'subject':'NRG4YOU / ReStation public portal discovery',
+            'roots':roots,
+            'fetched':fetched,
+            'absoluteCandidates':abs_candidates[:400],
+            'relativeCandidates':rel_candidates[:600],
+            'contextHits':ctxhits,
+            'safety':'Public GET/static inspection only; no login, payment, recharge action, POST, mutation, credentials or session creation.'
+          }
+          p=Path('data/reports/nrg4you_restation_public_discovery_latest.json')
+          p.parent.mkdir(parents=True,exist_ok=True)
+          p.write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'docs':len(docs),'absoluteCandidates':len(abs_candidates),'relativeCandidates':len(rel_candidates),'contextHits':len(ctxhits)}))
+          PY
+
+      - name: Publish evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/nrg4you_restation_public_discovery_latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "research(italy): inspect NRG4YOU ReStation public surface [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
