@@ -34,10 +34,10 @@
     "currentPunNamedInCanonical": 92,
     "historicalNonCurrentNamed": 2,
     "canonicalNamedEntries": 94,
-    "treated": 24,
-    "partialCurrent": 68,
+    "treated": 25,
+    "partialCurrent": 67,
     "partialHistoricalNonCurrent": 2,
-    "partial": 70,
+    "partial": 69,
     "setAside": 0,
     "active": 0,
     "supersededAlias": 0,
@@ -78,7 +78,6 @@
       "EMO",
       "EMV",
       "ENR",
-      "ENX",
       "ES1",
       "ES2",
       "ES3",
@@ -739,8 +738,8 @@
     {
       "partyId": "ENX",
       "canonicalName": "Enel X Way Italia",
-      "status": "partial",
-      "priority": "station-level",
+      "status": "treated",
+      "priority": "station-level-bounded-residual",
       "inventory": {
         "evse": 23001,
         "stations": 11221,
@@ -759,7 +758,7 @@
       "confidence": "high",
       "tariffChannel": "direct/ad-hoc via Enel guest/direct-payment flow; exact EVSE/plug station-detail mapping",
       "lastChanged": "2026-09-29",
-      "blockingCondition": "Residual only: 1,154 current PUN ENX EVSE / 606 serials remain fail-closed. Resume only from successful current station-detail with exact ENX EVSE match, first-party QR/direct-payment payload, or newer authoritative PUN/Enel identity evidence; no generic tariff search or power-class extrapolation.",
+      "blockingCondition": "Residual-only maintenance: recover exact direct price for remaining 1,154 EVSE when deterministic station-detail evidence becomes available; treatment status does not authorize extrapolation.",
       "lastInvestigated": "2026-09-29",
       "evidence": [
         "data/reports/italy_cpo_reconciliation_20260929_run326.json",
@@ -794,7 +793,8 @@
         },
         "penaltyNote": "Current APK indicates a 60-minute post-charge idle window and plug-detail amount. Direct penalty remains modeled separately from energy; no unsupported overnight/time-window rule is extrapolated.",
         "residualNote": "577 serials persist with Enel businessCode 12500 / evOs generic error after retry; other residual serials lack an exact current ENX PUN EVSE match."
-      }
+      },
+      "treatmentDecision": "Promoted to treated: 95.06% exact direct-payment coverage is production-useful at very large scale; 1,154 residual EVSE remain explicit fail-closed and are not assigned inferred tariffs."
     },
     {
       "partyId": "GES",
@@ -3479,7 +3479,7 @@
     }
   ],
   "coherence": {
-    "currentPunArithmetic": "24 treated + 68 partial + 0 setAside + 0 active + 0 supersededAlias = 92 current partyIds",
+    "currentPunArithmetic": "25 treated + 67 partial + 0 setAside + 0 active + 0 supersededAlias = 92 current partyIds",
     "aliasCorrections": [
       "ATL->ATE",
       "HRA->HER"
@@ -3491,7 +3491,7 @@
     "noDoubleCount": true,
     "lastAudit": "2026-09-29",
     "atlanteDecision": "ATE is one CPO. Snapshot stations/connectors are coverage units, not CPOs. ATE setAside->partial; no partial->treated promotion.",
-    "identityAudit": "PASS: exact current canonical arithmetic 24 treated + 68 partial + 0 setAside + 0 active + 0 supersededAlias = 92; no duplicate current partyId detected",
+    "identityAudit": "PASS: exact current canonical arithmetic 25 treated + 67 partial + 0 setAside + 0 active + 0 supersededAlias = 92; Enel X Way promoted with 1,154 fail-closed residual EVSE; no duplicate current partyId detected",
     "identityCorrections": [
       "P62 is the current PUN partyId for EUM Genossenschaft; IT*EUM is the EVSE prefix and is not a second current CPO.",
       "AXS is the current PUN partyId for Axpo Energy Solutions Italia; AXP later-research evidence merged into AXS and AXE retained as observed EVSE prefix.",
@@ -3644,6 +3644,11 @@
     {
       "date": "2026-09-29",
       "change": "Run328 resolved an exact GES subset through the current NextCharge first-party connector surface: fresh PUN 2,396 EVSE / 1,132 stations; 63 EVSE across 20 stations are deterministic 0.0 m matches with exact numeric PUN suffix == NextCharge uidConnector and connector-specific tariff payloads. Coverage 63/2,396 (2.63%); 2,333 remain fail-closed. GES remains partial; no host/network extrapolation."
+    },
+    {
+      "at": "2026-09-30",
+      "change": "ENX partial->treated with bounded fail-closed residuals",
+      "reason": "21,866/23,001 current PUN EVSE have exact direct-payment pricing (95.06%); 1,154 residual EVSE remain fail-closed."
     }
   ],
   "evidenceReports": [
