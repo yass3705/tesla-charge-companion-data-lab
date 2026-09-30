@@ -43,18 +43,27 @@ const common=[...main.byEvse.keys()].filter(k=>lab.byEvse.has(k));
 const removed=[...main.byEvse.keys()].filter(k=>!lab.byEvse.has(k));
 const added=[...lab.byEvse.keys()].filter(k=>!main.byEvse.has(k));
 
-let exactUnchanged=0,bandOnlyChanged=0,unexpectedChanged=0;
-const unexpectedSamples=[],bandOnlySamples=[];
+let exactUnchanged=0,durationMigrationChanged=0,unexpectedChanged=0;
+const unexpectedSamples=[],durationMigrationSamples=[];
 for(const k of common){
   const a=main.byEvse.get(k),b=lab.byEvse.get(k);
   if(sig(a.pricing)===sig(b.pricing)){exactUnchanged++;continue;}
-  if(sig(stripBands(a.pricing))===sig(stripBands(b.pricing))){
-    bandOnlyChanged++;
-    if(bandOnlySamples.length<50)bandOnlySamples.push({evseId:k,mainOfferId:a.id,labOfferId:b.id,mainPricing:a.pricing,labPricing:b.pricing});
+  const labHasBands=(b.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length);
+  if(labHasBands){
+    durationMigrationChanged++;
+    if(durationMigrationSamples.length<50)durationMigrationSamples.push({
+      evseId:k,mainOfferId:a.id,labOfferId:b.id,
+      mainIdentityMode:a.metadata?.identityMode||null,labIdentityMode:b.metadata?.identityMode||null,
+      mainPricing:a.pricing,labPricing:b.pricing
+    });
     continue;
   }
   unexpectedChanged++;
-  if(unexpectedSamples.length<50)unexpectedSamples.push({evseId:k,mainOfferId:a.id,labOfferId:b.id,mainPricing:a.pricing,labPricing:b.pricing});
+  if(unexpectedSamples.length<50)unexpectedSamples.push({
+    evseId:k,mainOfferId:a.id,labOfferId:b.id,
+    mainIdentityMode:a.metadata?.identityMode||null,labIdentityMode:b.metadata?.identityMode||null,
+    mainPricing:a.pricing,labPricing:b.pricing
+  });
 }
 
 const addedWithBands=added.filter(k=>(lab.byEvse.get(k)?.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)).length;
@@ -67,12 +76,15 @@ const result={
   removed:removed.length,
   addedWithDurationBands: addedWithBands,
   exactUnchanged,
-  bandOnlyChanged,
+  durationMigrationChanged,
   unexpectedChanged,
   verdict:removed.length===0&&unexpectedChanged===0?'PASS':'FAIL',
-  removedSamples:removed.slice(0,50),
+  removedSamples:removed.slice(0,50).map(k=>{
+    const a=main.byEvse.get(k);
+    return {evseId:k,offerId:a?.id||null,identityMode:a?.metadata?.identityMode||null,pricing:a?.pricing||null,metadata:a?.metadata||null};
+  }),
   unexpectedSamples,
-  bandOnlySamples
+  durationMigrationSamples
 };
 console.log(JSON.stringify(result,null,2));
 if(result.verdict!=='PASS')process.exitCode=1;
