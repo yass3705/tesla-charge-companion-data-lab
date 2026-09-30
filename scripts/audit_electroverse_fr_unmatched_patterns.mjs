@@ -51,7 +51,8 @@ const counters={
   byNormLength:{},byRawShape:{},byOperator:{},byLocalPdcCount:{},
   uniqueLocalContainsRef:{},uniqueRefContainsLocalPdc:{},uniquePdcPayloadEqualsRef:{},
   uniqueLastTokenSuffix:{},uniqueFirstTokenSuffix:{},partialCommonPrefixTail:{},
-  unclaimedFinalOrdinalRefs:{},unclaimedShortSuffixRefs:{},unclaimedPdcsByOperator:{}
+  unclaimedFinalOrdinalRefs:{},unclaimedShortSuffixRefs:{},unclaimedPdcsByOperator:{},
+  trimmedLongSuffixRefs:{},trimmedLongSuffixLengths:{}
 };
 
 for(const sh of manifest.shards||[]){
@@ -158,6 +159,15 @@ for(const sh of manifest.shards||[]){
       if(k0.length<4){
         const sm=unclaimedLocal.filter(p=>p.endsWith(k0));
         if(sm.length===1)inc(counters.unclaimedShortSuffixRefs,opOf(sm[0]),1);
+      }
+      let trimmedHit=null;
+      for(let len=Math.min(k0.length-1,20);len>=6;len--){
+        const s=k0.slice(-len),sm=unclaimedLocal.filter(p=>p.endsWith(s));
+        if(sm.length===1&&(globalPdcOwners.get(sm[0])?.size||0)===1){trimmedHit={p:sm[0],len};break;}
+      }
+      if(trimmedHit){
+        inc(counters.trimmedLongSuffixRefs,opOf(trimmedHit.p),1);
+        inc(counters.trimmedLongSuffixLengths,String(trimmedHit.len),1);
       }
     }
     const stemGroups=new Map();
@@ -286,7 +296,9 @@ const report={
     individualCommonPrefixTailHitByRefLength:top(counters.partialCommonPrefixTail,50),
     unclaimedPdcCountByOperator:top(counters.unclaimedPdcsByOperator,50),
     strictFinalOrdinalRefsAgainstUnclaimedPdcsByOperator:top(counters.unclaimedFinalOrdinalRefs,50),
-    shortSuffixRefsAgainstUnclaimedPdcsByOperator:top(counters.unclaimedShortSuffixRefs,50)
+    shortSuffixRefsAgainstUnclaimedPdcsByOperator:top(counters.unclaimedShortSuffixRefs,50),
+    trimmedLongSuffixRefsAgainstUnclaimedPdcsByOperator:top(counters.trimmedLongSuffixRefs,50),
+    trimmedLongSuffixMatchLengths:top(counters.trimmedLongSuffixLengths,50)
   },
   sampleUnmatched:unmatched
 };
