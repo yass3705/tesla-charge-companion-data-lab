@@ -1,0 +1,75 @@
+name: Persist Germany national baseline
+
+on:
+  push:
+    paths:
+      - ".github/workflows/persist-germany-national-baseline.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: persist-germany-national-baseline
+  cancel-in-progress: false
+
+jobs:
+  persist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download validated Germany artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "/repos/yass3705/tesla-charge-companion-data-lab/actions/artifacts/9866595035/zip" > /tmp/de.zip
+          mkdir -p /tmp/de
+          unzip -q /tmp/de.zip -d /tmp/de
+          find /tmp/de -maxdepth 2 -type f -printf '%p %s bytes\n'
+      - name: Validate and stage durable files
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import gzip,json,pathlib,shutil
+          src=pathlib.Path("/tmp/de")
+          files=list(src.rglob("germany_non_tesla_catalog_staging_direct_cpo.json.gz"))
+          assert len(files)==1, files
+          manifests=list(src.rglob("*manifest*.json"))
+          with gzip.open(files[0],"rt",encoding="utf-8") as f:
+              d=json.load(f)
+          rows=d if isinstance(d,list) else d.get("stations") or d.get("locations") or d.get("data") or []
+          assert len(rows)==63405, len(rows)
+          out=pathlib.Path("data/national")
+          out.mkdir(parents=True,exist_ok=True)
+          shutil.copy2(files[0],out/"germany_non_tesla_catalog_staging_direct_cpo.json.gz")
+          if manifests:
+              shutil.copy2(manifests[0],out/"germany_non_tesla_catalog_staging_direct_cpo_manifest.json")
+          meta={
+            "schemaVersion":1,
+            "country":"DE",
+            "stationCount":63405,
+            "sourceArtifactId":9866595035,
+            "sourceArtifactRun":33681925587,
+            "persistedAt":"2026-09-30",
+            "policy":"Immutable validated national baseline copy. Refresh through a newly validated national extraction; never infer missing tariffs."
+          }
+          (out/"germany_non_tesla_catalog_staging_direct_cpo_persistence.json").write_text(json.dumps(meta,indent=2)+"\n")
+          print(meta)
+          PY
+      - name: Commit durable baseline
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/germany_non_tesla_catalog_staging_direct_cpo*
+          git diff --cached --quiet && exit 0
+          git commit -m "data(de): persist validated national baseline"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then exit 0; fi
+            git fetch origin main
+            git rebase origin/main
+            sleep $((attempt*2))
+          done
+          exit 1
