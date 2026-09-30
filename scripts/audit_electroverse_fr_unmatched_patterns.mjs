@@ -50,7 +50,8 @@ const operatorProfiles=new Map();
 const counters={
   byNormLength:{},byRawShape:{},byOperator:{},byLocalPdcCount:{},
   uniqueLocalContainsRef:{},uniqueRefContainsLocalPdc:{},uniquePdcPayloadEqualsRef:{},
-  uniqueLastTokenSuffix:{},uniqueFirstTokenSuffix:{},partialCommonPrefixTail:{}
+  uniqueLastTokenSuffix:{},uniqueFirstTokenSuffix:{},partialCommonPrefixTail:{},
+  unclaimedFinalOrdinalRefs:{},unclaimedShortSuffixRefs:{},unclaimedPdcsByOperator:{}
 };
 
 for(const sh of manifest.shards||[]){
@@ -132,6 +133,57 @@ for(const sh of manifest.shards||[]){
       const target=matches[0];
       if(reservedTargets.has(target)||claimed.has(target)||(globalPdcOwners.get(target)?.size||0)!==1)continue;
       suffixTargets.set(e0,target);claimed.add(target);
+    }
+
+    const claimedIdentityTargets=new Set();
+    for(const e0 of row.tariff?.evses||[]){
+      const pr0=text(e0?.physicalReference);if(!pr0)continue;const k0=norm(pr0);
+      if(local.includes(k0)){claimedIdentityTargets.add(k0);continue;}
+      const p0=local.filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\\d{1,2}$/.test(k0.slice(p.length)));
+      if(p0.length===1){claimedIdentityTargets.add(p0[0]);continue;}
+      if(ordinalTargets.has(e0)){claimedIdentityTargets.add(ordinalTargets.get(e0));continue;}
+      if(genericTargets.has(e0)){claimedIdentityTargets.add(genericTargets.get(e0));continue;}
+      if(suffixTargets.has(e0)){claimedIdentityTargets.add(suffixTargets.get(e0));continue;}
+    }
+    const unclaimedLocal=local.filter(p=>!claimedIdentityTargets.has(p));
+    if(unclaimedLocal.length)inc(counters.unclaimedPdcsByOperator,opOf(local[0]),unclaimedLocal.length);
+
+    const unresolvedForUnclaimed=[];
+    for(const e0 of row.tariff?.evses||[]){
+      const pr0=text(e0?.physicalReference);if(!pr0)continue;const k0=norm(pr0);
+      if(local.includes(k0)||ordinalTargets.has(e0)||genericTargets.has(e0)||suffixTargets.has(e0))continue;
+      const p0=local.filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\\d{1,2}$/.test(k0.slice(p.length)));
+      if(p0.length)continue;
+      unresolvedForUnclaimed.push({e:e0,raw:pr0,k:k0});
+      if(k0.length<4){
+        const sm=unclaimedLocal.filter(p=>p.endsWith(k0));
+        if(sm.length===1)inc(counters.unclaimedShortSuffixRefs,opOf(sm[0]),1);
+      }
+    }
+    const stemGroups=new Map();
+    for(const x of unresolvedForUnclaimed){
+      const mm=x.raw.match(/^(.*?)[\\s_\\-\\/]*([0-9]{1,2})$/);if(!mm||!mm[1])continue;
+      const stem=norm(mm[1]),ord=Number(mm[2]),arr=stemGroups.get(stem)||[];
+      arr.push({...x,ord});stemGroups.set(stem,arr);
+    }
+    for(const items of stemGroups.values()){
+      if(!items.length||new Set(items.map(x=>x.ord)).size!==items.length)continue;
+      const wanted=new Set(items.map(x=>x.ord)),matches=[];
+      for(const width of [1,2]){
+        const groups=new Map();
+        for(const p of unclaimedLocal){
+          if(p.length<=width)continue;const tail=p.slice(-width);if(!/^\\d+$/.test(tail))continue;
+          const prefix=p.slice(0,-width),ord=Number(tail),arr=groups.get(prefix)||[];
+          arr.push({p,ord});groups.set(prefix,arr);
+        }
+        for(const rows of groups.values()){
+          if(rows.length!==items.length||new Set(rows.map(r=>r.ord)).size!==rows.length)continue;
+          if(rows.some(r=>!wanted.has(r.ord)))continue;
+          if(rows.some(r=>(globalPdcOwners.get(r.p)?.size||0)!==1))continue;
+          matches.push(rows);
+        }
+      }
+      if(matches.length===1)inc(counters.unclaimedFinalOrdinalRefs,opOf(matches[0][0].p),items.length);
     }
 
     for(const e of row.tariff?.evses||[]){
@@ -231,7 +283,10 @@ const report={
     exactPdcPayloadAfterFirstEEqualsRefByRefLength:top(counters.uniquePdcPayloadEqualsRef,50),
     uniqueLastRawTokenMatchesPdcSuffixByTokenLength:top(counters.uniqueLastTokenSuffix,50),
     uniqueFirstRawTokenMatchesPdcSuffixByTokenLength:top(counters.uniqueFirstTokenSuffix,50),
-    individualCommonPrefixTailHitByRefLength:top(counters.partialCommonPrefixTail,50)
+    individualCommonPrefixTailHitByRefLength:top(counters.partialCommonPrefixTail,50),
+    unclaimedPdcCountByOperator:top(counters.unclaimedPdcsByOperator,50),
+    strictFinalOrdinalRefsAgainstUnclaimedPdcsByOperator:top(counters.unclaimedFinalOrdinalRefs,50),
+    shortSuffixRefsAgainstUnclaimedPdcsByOperator:top(counters.unclaimedShortSuffixRefs,50)
   },
   sampleUnmatched:unmatched
 };
