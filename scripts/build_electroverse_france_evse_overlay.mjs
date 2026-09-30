@@ -213,7 +213,8 @@ for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
 const tiles=new Map(),rejected={},parentGroups=new Map();
 const pricingDiagnostics={
   dateRestriction:{evses:0,restrictions:0,withStart:0,withEnd:0,withBoth:0,ranges:{},samples:[]},
-  boundedDuration:{evses:0,restrictions:0,bands:{},componentTypes:{},samples:[]}
+  boundedDuration:{evses:0,restrictions:0,bands:{},componentTypes:{},samples:[]},
+  thresholdMismatch:{evses:0,pairs:{},samples:[]}
 };
 const stats={
   cacheLocations:0,cacheEvses:0,physicalRefs:0,exactUniqueNationalEvses:0,
@@ -434,6 +435,27 @@ for(const sh of manifest.shards||[]){
                 priceComponents:r0?.priceComponents||[]
               });
             }
+          }
+        }else if(bad==='duration_threshold_mismatch'){
+          pricingDiagnostics.thresholdMismatch.evses++;
+          for(const c0 of connectors){
+            const rs=c0?.complexPricingDetail?.restrictions||[];
+            const mins=rs.map(r=>Number(r?.durationRestrictions?.minDurationSeconds)).filter(x=>Number.isFinite(x)&&x>0);
+            const maxs=rs.map(r=>Number(r?.durationRestrictions?.maxDurationSeconds)).filter(x=>Number.isFinite(x)&&x>0);
+            for(const min of mins)for(const max of maxs){
+              const key=`${max}->${min}`;
+              pricingDiagnostics.thresholdMismatch.pairs[key]=(pricingDiagnostics.thresholdMismatch.pairs[key]||0)+1;
+            }
+            if(pricingDiagnostics.thresholdMismatch.samples.length<60)pricingDiagnostics.thresholdMismatch.samples.push({
+              locationPk:String(row.electroverseLocationPk),physicalReference:pr,evsePk:e.pk??null,
+              connectorPk:c0.pk??null,
+              restrictions:rs.map(r=>({
+                timeRestrictions:r?.timeRestrictions||null,
+                weekdayRestrictions:r?.weekdayRestrictions||null,
+                durationRestrictions:r?.durationRestrictions||null,
+                priceComponents:r?.priceComponents||[]
+              }))
+            });
           }
         }else if(bad==='bounded_duration_range'){
           pricingDiagnostics.boundedDuration.evses++;
