@@ -1,0 +1,26 @@
+name: Audit Electroverse EVSE national identities
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/audit_electroverse_evse_national_identity.mjs"
+      - ".github/workflows/electroverse-evse-national-identity-audit.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Audit exact EVSE/PDC identity coverage
+        run: node scripts/audit_electroverse_evse_national_identity.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: electroverse-evse-national-identity-audit
+          path: reports/electroverse/evse-national-identity-audit.json
+          retention-days: 14
