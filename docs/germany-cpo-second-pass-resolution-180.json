@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 180,
+  "date": "2026-09-29",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-179.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 243,
+    "partial": 348,
+    "blocked": 0
+  },
+  "promotions": [
+    {
+      "name": "Stadtwerke Göttingen AG",
+      "from": "partial",
+      "to": "complete",
+      "bucket": "B1/B3 chargecloud",
+      "backend": "chargecloud / Mobilithek DATEX II",
+      "coverage": "Anonymous ad-hoc tariff matrix is now closed across relevant AC/DC/HPC classes. Bürgerstraße provides AC 22 kW = 0.46 EUR/kWh + 1.50 EUR start + 0.06 EUR/min after 240 min and DC 50 kW = 0.52 EUR/kWh + 2.50 EUR start + 0.06 EUR/min after 120 min. Fresh Mobilithek/chargecloud-backed Gallus-Park evidence closes both 150 kW CCS EVSE DE*GOE*E00105*001 and *002 at 0.52 EUR/kWh + 2.50 EUR start + 0.06 EUR/min after 120 min.",
+      "evidence": [
+        "https://www.e-stations.de/ladestationen/goettingen/parkplatz-buergerstrasse-3764",
+        "https://www.e-stations.de/ladestationen/goettingen/gallus-park-3763",
+        "https://ladestau.de/goettingen/stadtwerke-goettingen-edeka/"
+      ],
+      "guard": "Promotion is based on explicit EVSE/class tariff tuples; no registered-card tariff, roaming tariff, or inferred absence of fees was used."
+    }
+  ],
+  "priorityTop5": {
+    "status": "parked after two distinct evidence-led passes",
+    "names": [
+      "solid GmbH / LadeVerbundPlus",
+      "NEW AG / NEW Energie",
+      "RhönEnergie Fulda GmbH",
+      "amperio GmbH",
+      "50five"
+    ]
+  },
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 244,
+    "partial": 347,
+    "blocked": 0
+  },
+  "statusChanges": 1,
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "244 + 347 + 0 = 591",
+    "indicator": "221 -> 244 complete (+23)",
+    "promotions": 1,
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS",
+    "top5Guard": "PASS",
+    "repeatInvestigationGuard": "PASS"
+  },
+  "nextSafeAction": "Continue industrialized chargecloud -> Mobilithek/AFIR/DATEX II batch on another bounded B1/B3/B6 partial. Do not reopen the parked Top 5 without a genuinely new backend/source path. No production merge."
+}
