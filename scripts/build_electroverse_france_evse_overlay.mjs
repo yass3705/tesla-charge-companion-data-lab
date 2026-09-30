@@ -16,6 +16,19 @@ const text=x=>String(x??'').trim();
 const round=(x,d=6)=>Number(Number(x).toFixed(d));
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 const weekdays={SUNDAY:0,MONDAY:1,TUESDAY:2,WEDNESDAY:3,THURSDAY:4,FRIDAY:5,SATURDAY:6};
+const TODAY_FR=new Intl.DateTimeFormat('en-CA',{
+  timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'
+}).format(new Date());
+function activeDateRestriction(d){
+  if(!d||( !d.startDate && !d.endDate))return true;
+  const start=d.startDate?String(d.startDate).slice(0,10):null;
+  const end=d.endDate?String(d.endDate).slice(0,10):null;
+  if(start&&TODAY_FR<start)return false;
+  // Treat end as exclusive: adjacent tariff versions commonly use the same
+  // boundary date for old.endDate and new.startDate.
+  if(end&&TODAY_FR>=end)return false;
+  return true;
+}
 
 function parseMoney(v){
   const s=text(v).replace(/\u00a0/g,' ').replace(',','.');
@@ -79,16 +92,17 @@ function compileConnector(c){
   let base={...simple.rate};
   if(c?.isChargingFree===true)base=emptyRate();
 
-  const restrictions=c?.complexPricingDetail?.restrictions||[];
+  const rawRestrictions=c?.complexPricingDetail?.restrictions||[];
+  const restrictions=rawRestrictions.filter(r=>!hasDateRestriction(r)||activeDateRestriction(r?.dateRestrictions));
+  const hadDateRestrictions=rawRestrictions.some(hasDateRestriction);
   if(!restrictions.length){
     if(c?.isChargingFree!==true && !(c?.priceComponents||[]).length)
-      return{ok:false,reason:'no_pricing'};
+      return{ok:false,reason:hadDateRestrictions?'no_active_pricing':'no_pricing'};
     return{ok:true,pricing:{type:'rules',rules:[makeRule('allDay','00:00','24:00',currency,base)]}};
   }
 
   const groups=new Map();
   for(const r of restrictions){
-    if(hasDateRestriction(r))return{ok:false,reason:'date_restriction'};
     const parsed=parseComponents(r?.priceComponents||[]);
     if(!parsed.ok)return parsed;
     const w=windowKey(r);
@@ -590,12 +604,15 @@ const out={
     heterogeneousConnectorsWithinEvseFailClosed:true,
     unsupportedPricingFailClosed:true,
     duplicateSamePriceDeduplicated:true,
-    duplicateConflictingPriceFailClosed:true
+    duplicateConflictingPriceFailClosed:true,
+    dateRestrictedPricingUsesActiveFranceLocalDate:true,
+    dateRestrictionEndExclusive:true
   },
   source:{
     tariffCacheGeneratedAt:manifest.generatedAt,
     tariffCacheStations:manifest.totalStations,
-    mappingGeneratedAt:mapping.generatedAt
+    mappingGeneratedAt:mapping.generatedAt,
+    pricingEffectiveDateFrance:TODAY_FR
   },
   tiles:manifestTiles
 };
