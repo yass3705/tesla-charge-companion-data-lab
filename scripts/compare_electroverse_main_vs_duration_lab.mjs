@@ -65,7 +65,7 @@ const result={
   common:common.length,
   added:added.length,
   removed:removed.length,
-  addedWithDurationBands,
+  addedWithDurationBands: addedWithBands,
   exactUnchanged,
   bandOnlyChanged,
   unexpectedChanged,
