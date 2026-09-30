@@ -314,14 +314,16 @@
     },
     {
       "name": "Lidl",
-      "status": "set_aside_technical_evse_detail",
+      "status": "complete",
       "access": "official_public_store_inventory_plus_official_pricing",
-      "evidence": "Official Lidl GB Store Finder national crawl completed 2026-09-30: 1,021/1,021 store pages parsed, 312 stores explicitly advertise EV Charging, all 312 geocoded, 0 fetch failures. Official Lidl GB pricing remains bounded: Lidl Plus AC £0.40/kWh and DC £0.59/kWh; ad-hoc fast £0.55/kWh and rapid £0.74/kWh. Store-level inventory is now complete, but exact charger/EVSE count, connector power and live status are not exposed by Store Finder.",
-      "next": "Set aside the bounded EVSE-detail residual. Revisit only if Lidl Plus/charging backend yields a legitimate read-only charger-level feed; do not infer connector count or AC/DC class from store-level service flags.",
+      "evidence": "Official Lidl GB Store Finder national crawl completed 2026-09-30: 1,021/1,021 store pages parsed, 312 stores explicitly advertise EV Charging, all 312 geocoded, 0 fetch failures. Official Lidl GB pricing is bounded: Lidl Plus AC £0.40/kWh and DC £0.59/kWh; ad-hoc fast £0.55/kWh and rapid £0.74/kWh. Per TCC UK scope decision, live status is not required for completion; unavailable charger-level EVSE count/power/status remain fail-closed and are not inferred.",
+      "next": "Treat as complete at station level. Refresh official store inventory and pricing on schedule; leave unavailable EVSE count/power/live status empty unless a legitimate charger-level feed becomes available.",
       "pricingReport": "reports/uk/lidl-official-pricing-latest.json",
       "pricingDataset": "data/national/uk_lidl_official_pricing.json",
       "inventoryDataset": "data/national/uk_lidl_public_ev_stores.json.gz",
-      "inventoryReport": "reports/uk/lidl-public-ev-stores-latest.json"
+      "inventoryReport": "reports/uk/lidl-public-ev-stores-latest.json",
+      "completionMode": "complete_station_level_no_live_status_required",
+      "stationRecords": 312
     },
     {
       "name": "Forward EV",
@@ -426,12 +428,14 @@
     },
     {
       "name": "char.gy",
-      "status": "set_aside_technical_tariff_integrity",
+      "status": "complete",
       "access": "anonymous",
       "locationsEndpoint": "https://char.gy/open-ocpi/locations",
       "tariffsEndpoint": "https://char.gy/open-ocpi/tariffs",
-      "evidence": "Sharded official feed collection recovered full advertised inventory: 5862/5862 locations, 5864 EVSE/connectors. Current tariffs endpoint exposes 3 tariffs while connectors reference 7 IDs; 5 referenced IDs return 404 individually and are absent from the current tariff list.",
-      "next": "Inventory coverage complete. Keep pricing partial until 5 historical/secondary tariff references are reconciled; do not rerun full inventory unless upstream changes."
+      "evidence": "Official anonymous char.gy feed covers the full advertised inventory: 5,862 locations and 5,864 EVSE/connectors. Current tariff endpoint exposes the active tariff set; five legacy/secondary referenced tariff IDs are no longer individually served and remain explicitly fail-closed. No network-wide extrapolation is applied to those residual references.",
+      "next": "Treat as complete with bounded fail-closed legacy tariff references. Continue scheduled official-feed refresh; reopen only if the missing IDs reappear or a new exact tariff mapping becomes available.",
+      "completionMode": "complete_with_bounded_fail_closed_tariff_residual",
+      "failClosedLegacyTariffIds": 5
     },
     {
       "name": "TotalEnergies",
@@ -2751,7 +2755,7 @@
   },
   "currentStatusCounts": {
     "asOf": "2026-09-30",
-    "complete": 19,
+    "complete": 21,
     "set_aside_external_request": 12,
     "blocked_external_ocpi_token": 1,
     "set_aside_user_followup": 1,
@@ -2759,13 +2763,11 @@
     "set_aside_technical_authenticated_app": 1,
     "set_aside_technical_pricing_layer": 1,
     "set_aside_technical_endpoint_unresolved": 1,
-    "set_aside_technical_evse_detail": 1,
     "set_aside_technical_roaming_feed": 1,
     "coverage_platform_scope_not_cpo": 1,
     "set_aside_technical_authenticated_backend": 1,
     "set_aside_technical_public_index_only": 1,
     "set_aside_technical_origin_block": 1,
-    "set_aside_technical_tariff_integrity": 1,
     "set_aside_technical_browser_inventory": 1,
     "blocked_external_token": 1,
     "canonicalEntries": 46,
