@@ -191,6 +191,7 @@ const stats={
   ordinalCandidateRefs:0,ordinalPublishedEvses:0,
   genericTailCandidateRefs:0,genericTailPublishedEvses:0,
   suffixIdentityCandidateRefs:0,suffixIdentityPublishedEvses:0,
+  finalOrdinalSubgroupCandidateRefs:0,finalOrdinalSubgroupPublishedEvses:0,
   durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
@@ -321,6 +322,61 @@ for(const sh of manifest.shards||[]){
       claimedSuffixTargets.add(target);
     }
 
+    const finalOrdinalTargets=new Map();
+    const alreadyClaimed=new Set();
+    for(const e0 of row.tariff?.evses||[]){
+      const pr0=text(e0?.physicalReference);if(!pr0)continue;
+      const k0=norm(pr0);
+      if(local.has(k0)){alreadyClaimed.add(k0);continue;}
+      const parent0=[...local].filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\\d{1,2}$/.test(k0.slice(p.length)));
+      if(parent0.length===1){alreadyClaimed.add(parent0[0]);continue;}
+      if(ordinalTargets.has(e0)){alreadyClaimed.add(ordinalTargets.get(e0));continue;}
+      if(genericTargets.has(e0)){alreadyClaimed.add(genericTargets.get(e0));continue;}
+      if(suffixTargets.has(e0)){alreadyClaimed.add(suffixTargets.get(e0));continue;}
+    }
+    const unresolvedByStem=new Map();
+    for(const e0 of row.tariff?.evses||[]){
+      const pr0=text(e0?.physicalReference);if(!pr0)continue;
+      const k0=norm(pr0);
+      if(local.has(k0)||ordinalTargets.has(e0)||genericTargets.has(e0)||suffixTargets.has(e0))continue;
+      const parent0=[...local].filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\\d{1,2}$/.test(k0.slice(p.length)));
+      if(parent0.length)continue;
+      const m0=pr0.match(/^(.*?)[\\s_\\-\\/]*([0-9]{1,2})$/);
+      if(!m0||!m0[1])continue;
+      const stem=norm(m0[1]),ord=Number(m0[2]);
+      const arr=unresolvedByStem.get(stem)||[];arr.push({e:e0,ord});unresolvedByStem.set(stem,arr);
+    }
+    const proposals=[];
+    for(const items of unresolvedByStem.values()){
+      if(!items.length||new Set(items.map(x=>x.ord)).size!==items.length)continue;
+      const wanted=new Set(items.map(x=>x.ord)),matches=[];
+      for(const width of [1,2]){
+        const groups=new Map();
+        for(const p of local){
+          if(alreadyClaimed.has(p)||p.length<=width)continue;
+          const tail=p.slice(-width);if(!/^\\d+$/.test(tail))continue;
+          const prefix=p.slice(0,-width),ord=Number(tail);
+          const arr=groups.get(prefix)||[];arr.push({p,ord});groups.set(prefix,arr);
+        }
+        for(const rows of groups.values()){
+          if(rows.length!==items.length)continue;
+          if(new Set(rows.map(r=>r.ord)).size!==rows.length)continue;
+          if(rows.some(r=>!wanted.has(r.ord)))continue;
+          if(rows.some(r=>(globalPdcOwners.get(r.p)?.size||0)!==1))continue;
+          matches.push(rows);
+        }
+      }
+      if(matches.length!==1)continue;
+      const byOrd=new Map(matches[0].map(r=>[r.ord,r.p]));
+      proposals.push({items,targets:matches[0].map(r=>r.p),byOrd});
+    }
+    const targetUse=new Map();
+    for(const p of proposals)for(const t of p.targets)targetUse.set(t,(targetUse.get(t)||0)+1);
+    for(const p of proposals){
+      if(p.targets.some(t=>(targetUse.get(t)||0)!==1))continue;
+      for(const x of p.items)finalOrdinalTargets.set(x.e,p.byOrd.get(x.ord));
+    }
+
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
       const pr=text(e?.physicalReference);
@@ -368,6 +424,13 @@ for(const sh of manifest.shards||[]){
           targetPdc=localByNorm.get(targetNorm);
           identityMode='strict_unique_local_suffix_identity';
           stats.suffixIdentityCandidateRefs++;
+        }else if(finalOrdinalTargets.has(e)){
+          const targetNorm=finalOrdinalTargets.get(e);
+          const owners=globalPdcOwners.get(targetNorm);
+          if(!owners||owners.size!==1){rej('final_ordinal_subgroup_pdc_not_globally_unique');continue;}
+          targetPdc=localByNorm.get(targetNorm);
+          identityMode='strict_final_numeric_token_pdc_subgroup_bijection';
+          stats.finalOrdinalSubgroupCandidateRefs++;
         }else{
           rej(candidates.length?'parent_pdc_ambiguous':'physical_reference_not_in_local_national_pdcs');continue;
         }
@@ -583,6 +646,7 @@ stats.parentPublishedChildRefs=finalOffers
 stats.ordinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_station_ordinal_suffix_bijection').length;
 stats.genericTailPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_station_common_prefix_tail_bijection').length;
 stats.suffixIdentityPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_unique_local_suffix_identity').length;
+stats.finalOrdinalSubgroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_final_numeric_token_pdc_subgroup_bijection').length;
 stats.durationBandPublishedEvses=finalOffers.filter(o=>(o.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)).length;
 
 const manifestTiles=[];
@@ -617,6 +681,11 @@ const out={
     strictUniqueLocalSuffixIdentityMinLength:4,
     suffixIdentityRequiresGlobalUniqueness:true,
     suffixIdentityRequiresUnclaimedTarget:true,
+    strictFinalNumericTokenPdcSubgroupBijection:true,
+    finalOrdinalSubgroupRequiresUniqueOrdinalSet:true,
+    finalOrdinalSubgroupRequiresUniquePdcFamily:true,
+    finalOrdinalSubgroupRequiresUnclaimedTargets:true,
+    finalOrdinalSubgroupRejectsCrossGroupTargetReuse:true,
     evseLevelPricing:true,
     stationLevelFlattening:false,
     electraDependency:false,
