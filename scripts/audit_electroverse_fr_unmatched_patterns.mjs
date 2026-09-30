@@ -1,9 +1,11 @@
 import fs from 'node:fs/promises';
+import zlib from 'node:zlib';
 
 const CACHE='data/electroverse/tariff_cache';
 const MAP='data/electroverse/irve_location_mapping.json';
 const MANIFEST=CACHE+'/manifest.json';
 const OUT=process.argv[2]||'reports/electroverse-fr-unmatched-patterns.json';
+const OVERLAY='data/platforms/electroverse/france-evse';
 
 const norm=x=>String(x??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
 const text=x=>String(x??'').trim();
@@ -28,6 +30,13 @@ const rawShape=s=>{
 
 const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
 const manifest=JSON.parse(await fs.readFile(MANIFEST,'utf8'));
+const overlayManifest=JSON.parse(await fs.readFile(OVERLAY+'/manifest.json','utf8'));
+const publishedPdcs=new Set();
+for(const t of overlayManifest.tiles||[]){
+  const gz=await fs.readFile(OVERLAY+'/'+t.file);
+  const payload=JSON.parse(zlib.gunzipSync(gz).toString('utf8'));
+  for(const o of payload.emspOffers||[])for(const id of o.evseIds||[])publishedPdcs.add(norm(id));
+}
 const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
 const globalPdcOwners=new Map();
 for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
@@ -36,6 +45,7 @@ for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
 }
 
 const unmatched=[];
+const unmatchedByLocation=new Map();
 const operatorProfiles=new Map();
 const counters={
   byNormLength:{},byRawShape:{},byOperator:{},byLocalPdcCount:{},
@@ -168,6 +178,8 @@ for(const sh of manifest.shards||[]){
         if(hits.length===1)inc(counters.partialCommonPrefixTail,String(k.length));
       }
 
+      const locKey=String(row.electroverseLocationPk);
+      unmatchedByLocation.set(locKey,(unmatchedByLocation.get(locKey)||0)+1);
       if(unmatched.length<200)unmatched.push({
         locationPk:String(row.electroverseLocationPk),evsePk:e.pk??null,physicalReference:raw,
         normalized:k,operator,localPdcCount:local.length,localPdcs:localRaw.slice(0,30)
@@ -177,9 +189,35 @@ for(const sh of manifest.shards||[]){
 }
 
 const total=Object.values(counters.byNormLength).reduce((a,b)=>a+b,0);
+let preciseFullyCoveredLocations=0,precisePartialLocations=0,preciseZeroCoveredLocations=0;
+let preciseLocalPdcs=0,preciseCoveredPdcs=0,preciseUncoveredPdcs=0;
+const preciseUncoveredByOperator={};
+for(const [locationPk] of unmatchedByLocation){
+  const m=byPk.get(locationPk);if(!m)continue;
+  const local=[...new Set((m.irvePdcIds||[]).map(norm).filter(Boolean))];
+  if(!local.length)continue;
+  const covered=local.filter(p=>publishedPdcs.has(p)),missing=local.filter(p=>!publishedPdcs.has(p));
+  preciseLocalPdcs+=local.length;preciseCoveredPdcs+=covered.length;preciseUncoveredPdcs+=missing.length;
+  const op=opOf(local[0]);
+  if(!missing.length)preciseFullyCoveredLocations++;
+  else if(!covered.length)preciseZeroCoveredLocations++;
+  else precisePartialLocations++;
+  if(missing.length)inc(preciseUncoveredByOperator,op,missing.length);
+}
 const report={
   generatedAt:new Date().toISOString(),dataset:'electroverse-fr-unmatched-identity-pattern-audit',
   totalUnmatched:total,
+  preciseCoverageGap:{
+    locationsWithExactUnmatchedRefs:unmatchedByLocation.size,
+    fullyCoveredLocations:preciseFullyCoveredLocations,
+    partialLocations:precisePartialLocations,
+    zeroCoveredLocations:preciseZeroCoveredLocations,
+    localPdcsAtThoseLocations:preciseLocalPdcs,
+    coveredPdcsAtThoseLocations:preciseCoveredPdcs,
+    uncoveredPdcsAtThoseLocations:preciseUncoveredPdcs,
+    coverageRate:preciseLocalPdcs?preciseCoveredPdcs/preciseLocalPdcs:null,
+    uncoveredPdcsByOperator:top(preciseUncoveredByOperator,50)
+  },
   topOperators:top(counters.byOperator,30),
   operatorProfiles:[...operatorProfiles.entries()].sort((a,b)=>b[1].count-a[1].count).slice(0,30).map(([operator,p])=>({
     operator,count:p.count,topLengths:top(p.lengths,10),topShapes:top(p.shapes,10),samples:p.samples
