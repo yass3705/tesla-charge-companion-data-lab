@@ -73,10 +73,14 @@ def main():
         auth.append({"variant":name,"formKeys":sorted(form.keys()),"response":a,"tokenObtained":bool(tok)})
         if tok:
             station_contexts=[
-              ("body_original_device",{"tokenAppSessionForStations":tok,"deviceKey":DEVICE,"osType":"android","appVersion":"6.2.02"}),
-              ("body_ephemeral_device",{"tokenAppSessionForStations":tok,"deviceKey":ephemeral or DEVICE,"osType":"android","appVersion":"6.2.02"}),
-              ("body_original_device_user",{"tokenAppSessionForStations":tok,"deviceKey":DEVICE,"osType":"android","appVersion":"6.2.02","userId":server_user or ""}),
-              ("body_ephemeral_device_user",{"tokenAppSessionForStations":tok,"deviceKey":ephemeral or DEVICE,"osType":"android","appVersion":"6.2.02","userId":server_user or ""}),
+              ("body_tokenAppSession",{"body":{"tokenAppSessionForStations":tok,"deviceKey":DEVICE,"osType":"android","appVersion":"6.2.02"},"headers":{}}),
+              ("body_tokenStations",{"body":{"tokenStations":tok,"deviceKey":DEVICE,"osType":"android","appVersion":"6.2.02"},"headers":{}}),
+              ("body_token",{"body":{"token":tok,"deviceKey":DEVICE,"osType":"android","appVersion":"6.2.02"},"headers":{}}),
+              ("header_tokenAppSession",{"body":{"deviceKey":DEVICE,"osType":"android","appVersion":"6.2.02"},"headers":{"tokenAppSessionForStations":tok}}),
+              ("header_tokenStations",{"body":{"deviceKey":DEVICE,"osType":"android","appVersion":"6.2.02"},"headers":{"tokenStations":tok}}),
+              ("header_bearer",{"body":{"deviceKey":DEVICE,"osType":"android","appVersion":"6.2.02"},"headers":{"Authorization":"Bearer "+tok}}),
+              ("body_and_header_tokenAppSession",{"body":{"tokenAppSessionForStations":tok,"deviceKey":DEVICE,"osType":"android","appVersion":"6.2.02","userId":server_user or ""},"headers":{"tokenAppSessionForStations":tok}}),
+              ("body_tokenStations_ephemeral",{"body":{"tokenStations":tok,"deviceKey":ephemeral or DEVICE,"osType":"android","appVersion":"6.2.02","userId":server_user or ""},"headers":{}}),
             ]
             # SplashActivity decodes gesnextcharge://qr?evseid=X, strips the
             # scheme and extracts only X. MainActivity then dispatches X with
@@ -92,8 +96,8 @@ def main():
             ]
             for hn,ctx in station_contexts:
                 for field,value,label in qr_cases:
-                    payload={field:value,**ctx}
-                    s=post("/station",payload)
+                    payload={field:value,**ctx["body"]}
+                    s=post("/station",payload,headers=ctx["headers"])
                     row={"authVariant":name,"headerVariant":hn,"requestField":field,"case":label,"submittedValue":value,"response":s}
                     o=s.get("json") if isinstance(s,dict) else None
                     sid=None
@@ -108,7 +112,7 @@ def main():
                                     if sid is not None: break
                     if sid is not None:
                         row["stationId"]=sid
-                        row["connectors"]=post("/stationConnectors",{"idStation":str(sid),"limit":"100","offset":"0",**ctx})
+                        row["connectors"]=post("/stationConnectors",{"idStation":str(sid),"limit":"100","offset":"0",**ctx["body"]},headers=ctx["headers"])
                     station.append(row)
     report={
       "scope":"NextCharge guest station reconstruction including APK-observed gesnextcharge QR payloads",
