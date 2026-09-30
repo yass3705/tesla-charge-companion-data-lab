@@ -1,0 +1,111 @@
+name: UK TotalEnergies Charge Europe static discovery
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-totalenergies-charge-europe-static-discovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download and inspect public Charge Europe package transiently
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/total-xapk /tmp/total-unpack reports/uk
+          curl -fL --retry 3 --retry-delay 2             'https://d.apkpure.net/b/XAPK/com.total.europe?versionCode=3098'             -o /tmp/total-xapk/total.xapk
+          unzip -q /tmp/total-xapk/total.xapk -d /tmp/total-unpack
+
+          python3 - <<'PY'
+          import json, pathlib, re, subprocess, os
+          from datetime import datetime, timezone
+          from urllib.parse import urlparse
+
+          root=pathlib.Path('/tmp/total-unpack')
+          url_re=re.compile(r'https?://[^\s"\'<>\\]{4,600}')
+          route_re=re.compile(r'["\'](/(?:api|v[0-9]+|locations?|stations?|chargers?|chargepoints?|tariffs?|pricing|prices?|evses?|connectors?|map)[^"\']{0,220})["\']',re.I)
+          signal_re=re.compile(r'(?i)(tariff|price|pricing|chargepoint|charger|station|location|evse|connector|graphql|ocpi|baseurl|base_url|api[-_ ]?url|paygo)')
+          urls=set(); hosts=set(); routes=set(); snippets=[]
+
+          def sanitize(s):
+              s=re.sub(r'([?&](?:access_token|token|key|api_key|apikey|code|signature)=)[^&#\s]+',r'\1<redacted>',s,flags=re.I)
+              s=re.sub(r'(?i)(bearer\s+)[A-Za-z0-9._~+/=-]{12,}',r'\1<redacted>',s)
+              return s
+
+          candidates=[]
+          for p in root.rglob('*'):
+              if p.is_file() and (p.suffix.lower() in {'.apk','.dex','.so','.json','.xml','.js','.bundle','.txt','.properties'} or p.name in {'resources.arsc'}):
+                  candidates.append(p)
+
+          for p in candidates:
+              try:
+                  if p.suffix.lower() in {'.apk','.dex','.so'}:
+                      txt=subprocess.run(['strings','-a',str(p)],capture_output=True,text=True,errors='replace',timeout=50).stdout
+                  else:
+                      txt=p.read_text(errors='replace')
+              except Exception:
+                  continue
+              for u in url_re.findall(txt):
+                  su=sanitize(u)
+                  urls.add(su[:1200])
+                  h=urlparse(su).netloc
+                  if h: hosts.add(h)
+              for rr in route_re.findall(txt): routes.add(rr[:400])
+              for m in signal_re.finditer(txt):
+                  s=txt[max(0,m.start()-220):min(len(txt),m.end()+650)]
+                  if re.search(r'https?://|/api|/v[0-9]+|tariff|price|pricing|baseurl|base_url|paygo',s,re.I):
+                      snippets.append({"file":str(p.relative_to(root)),"context":sanitize(s)[:1000]})
+                      if len(snippets)>=300: break
+              if len(snippets)>=300: break
+
+          relevant_urls=sorted(u for u in urls if any(k in u.lower() for k in [
+              'total','charge','ev','api','station','location','tariff','price','azure','blob'
+          ]))
+          relevant_hosts=sorted(h for h in hosts if any(k in h.lower() for k in [
+              'total','charge','ev','api','azure','blob'
+          ]))
+          out={
+            "retrievedAt":datetime.now(timezone.utc).isoformat(),
+            "package":"com.total.europe",
+            "version":"1.25.2",
+            "versionCode":3098,
+            "source":"public APKPure download; transient static inspection only",
+            "hosts":relevant_hosts[:300],
+            "urls":relevant_urls[:600],
+            "routes":sorted(routes)[:600],
+            "hits":snippets[:300]
+          }
+          pathlib.Path('reports/uk/totalenergies-charge-europe-static-discovery-latest.json').write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print(json.dumps({"hosts":out["hosts"],"urls":out["urls"][:100],"routes":out["routes"][:100],"hitCount":len(out["hits"])},ensure_ascii=False,indent=2))
+          PY
+
+          rm -rf /tmp/total-xapk /tmp/total-unpack
+
+      - name: Publish sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/totalenergies-charge-europe-static-discovery-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): inspect TotalEnergies Charge Europe routes [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
