@@ -3,9 +3,9 @@
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 94,
-  "setAsideCpos": 27,
-  "activeRemainingCpos": 170,
-  "updatedAt": "2026-09-30T12:56:00+02:00",
+  "setAsideCpos": 30,
+  "activeRemainingCpos": 167,
+  "updatedAt": "2026-09-30T13:02:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -281,6 +281,27 @@
       "since": "2026-09-30",
       "lastChecked": "2026-09-30",
       "audit": "docs/france-regional-cpo-evbox-batch483-2026-09-30.json"
+    },
+    {
+      "name": "bp Pulse | raw rank57",
+      "reason": "batch484 fail-closed after two evidence-led passes; exact current ad-hoc/contactless direct tariff not proven. Reopen only on new first-party QR/TPE/AFIR/QualiCharge evidence.",
+      "since": "2026-09-30",
+      "lastChecked": "2026-09-30",
+      "audit": "docs/france-regional-cpo-antistagnation-batch484-2026-09-30.json"
+    },
+    {
+      "name": "Shell Recharge | raw rank82",
+      "reason": "batch484 fail-closed: historical fixed V8 rule is stale; current direct price is station-level/dynamic and exact public resolver remains unproven.",
+      "since": "2026-09-30",
+      "lastChecked": "2026-09-30",
+      "audit": "docs/france-regional-cpo-antistagnation-batch484-2026-09-30.json"
+    },
+    {
+      "name": "WattzHub | FR*SMI | raw rank150",
+      "reason": "batch484 fail-closed: current producer route exhausted; historical static tariff not promoted as current price.",
+      "since": "2026-09-30",
+      "lastChecked": "2026-09-30",
+      "audit": "docs/france-regional-cpo-antistagnation-batch484-2026-09-30.json"
     }
   ],
   "activeNominative": [
@@ -323,7 +344,6 @@
     "UNPROVEN_ACTIVE_054",
     "UNPROVEN_ACTIVE_055",
     "UNPROVEN_ACTIVE_056",
-    "UNPROVEN_ACTIVE_057",
     "UNPROVEN_ACTIVE_058",
     "UNPROVEN_ACTIVE_059",
     "UNPROVEN_ACTIVE_065",
@@ -337,7 +357,6 @@
     "UNPROVEN_ACTIVE_077",
     "UNPROVEN_ACTIVE_078",
     "UNPROVEN_ACTIVE_081",
-    "UNPROVEN_ACTIVE_082",
     "UNPROVEN_ACTIVE_083",
     "UNPROVEN_ACTIVE_085",
     "UNPROVEN_ACTIVE_088",
@@ -388,7 +407,6 @@
     "UNPROVEN_ACTIVE_147",
     "UNPROVEN_ACTIVE_148",
     "UNPROVEN_ACTIVE_149",
-    "UNPROVEN_ACTIVE_150",
     "UNPROVEN_ACTIVE_RAW_SLOT_RELEASED_BY_EMOTUM_ALIAS",
     "UNPROVEN_ACTIVE_152",
     "UNPROVEN_ACTIVE_153",
@@ -1165,18 +1183,23 @@
       "date": "2026-09-30",
       "batch": "batch483",
       "change": "Moved EVBOX raw60 active->setAside: EVBox is platform/equipment scope with station-owner-defined tariffs; underlying site tariff authority required. Counters 94/27/170."
+    },
+    {
+      "date": "2026-09-30",
+      "batch": "batch484",
+      "change": "Moved bp Pulse raw57, Shell Recharge raw82 and WattzHub raw150 active->setAside after bounded evidence-led passes. Counters 94/27/170 -> 94/30/167."
     }
   ],
-  "currentInvestigation": "GreenFlux Assets/EVzen raw121 remains active: heterogeneous GreenFlux Assets estate prevents global EVzen alias/tariff inheritance. Continue next unresolved nominative active after batch483 using exact authority/station evidence.",
+  "currentInvestigation": "GreenFlux Assets/EVzen raw121 remains active; continue only with exact territorial authority mapping. Next safe queue: unresolved nominative active cases with a concrete new source path.",
   "coherenceControl": {
-    "batch": "batch483",
-    "result": "PASS_BATCH483_94_27_170_PENDING_ZERO",
-    "arithmetic": "94 + 27 + 170 = 291",
+    "batch": "batch484",
+    "result": "PASS_BATCH484_94_30_167_PENDING_ZERO",
+    "arithmetic": "94 + 30 + 167 = 291",
     "treatedLength": 94,
-    "setAsideLength": 27,
-    "activeLength": 170,
+    "setAsideLength": 30,
+    "activeLength": 167,
     "pendingDedupeCount": 0,
-    "lastChecked": "2026-09-30T12:56:00+02:00",
+    "lastChecked": "2026-09-30T13:02:00+02:00",
     "arithmeticOk": true
   },
   "lastRun": {
@@ -1458,6 +1481,30 @@
       "category": "setAside-authority",
       "decision": "active->setAside; station owner/operator defines fees; resolve underlying tariff authority per site",
       "evidence": "docs/france-regional-cpo-evbox-batch483-2026-09-30.json"
+    },
+    {
+      "rawRank": 57,
+      "historicalOperator": "bp Pulse",
+      "authority": "bp Pulse",
+      "category": "setAside-authority",
+      "decision": "active->setAside after bounded evidence-led passes; no tariff extrapolation",
+      "evidence": "docs/france-regional-cpo-antistagnation-batch484-2026-09-30.json"
+    },
+    {
+      "rawRank": 82,
+      "historicalOperator": "Shell Recharge",
+      "authority": "Shell Recharge",
+      "category": "setAside-authority",
+      "decision": "active->setAside after bounded evidence-led passes; no tariff extrapolation",
+      "evidence": "docs/france-regional-cpo-antistagnation-batch484-2026-09-30.json"
+    },
+    {
+      "rawRank": 150,
+      "historicalOperator": "WattzHub | FR*SMI",
+      "authority": "WattzHub | FR*SMI",
+      "category": "setAside-authority",
+      "decision": "active->setAside after bounded evidence-led passes; no tariff extrapolation",
+      "evidence": "docs/france-regional-cpo-antistagnation-batch484-2026-09-30.json"
     }
   ],
   "rawLineageCoverage": {
