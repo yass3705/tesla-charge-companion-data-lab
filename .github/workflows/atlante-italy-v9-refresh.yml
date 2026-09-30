@@ -25,13 +25,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check Atlante credential
+      - name: Resolve technical Atlante app header
         shell: bash
-        run: |
-          test -n "${ATLANTE_API_SUBSCRIPTION_KEY:-}" || {
-            echo "ATLANTE_API_SUBSCRIPTION_KEY is missing"
-            exit 1
-          }
+        run: bash scripts/atlante/bootstrap_subscription_key.sh
 
       - name: Install PUN dependency
         run: python -m pip install --disable-pip-version-check requests requests-aws4auth
