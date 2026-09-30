@@ -30,10 +30,11 @@ jobs:
       - name: Test strict IONITY CPO extraction
         run: python -m unittest tests/test_ionity_station_tariffs.py -v
 
-      - name: Build current France and Italy Direct maps
+      - name: Build current France, Italy and Germany Direct maps
         run: |
           python scripts/ionity_station_tariffs.py --country FR
-          python scripts/ionity_station_tariffs.py --country IT --out data/national/ionity_direct_stations_italy.json.gz
+          python scripts/ionity_station_tariffs.py --country IT
+          python scripts/ionity_station_tariffs.py --country DE
 
       - name: Validate generated maps
         run: |
@@ -44,6 +45,7 @@ jobs:
           rules={
             "FR":{"path":"data/national/ionity_direct_stations_france.json.gz","minLocations":180,"minConnectors":1800},
             "IT":{"path":"data/national/ionity_direct_stations_italy.json.gz","minLocations":40,"minConnectors":300},
+            "DE":{"path":"data/national/ionity_direct_stations_germany.json.gz","minLocations":100,"minConnectors":1000},
           }
 
           for country,rule in rules.items():
@@ -72,6 +74,7 @@ jobs:
 
           cp data/national/ionity_direct_stations_france.json.gz /tmp/ionity-france.json.gz
           cp data/national/ionity_direct_stations_italy.json.gz /tmp/ionity-italy.json.gz
+          cp data/national/ionity_direct_stations_germany.json.gz /tmp/ionity-germany.json.gz
 
           for attempt in 1 2 3 4 5 6; do
             git fetch origin main
@@ -79,14 +82,15 @@ jobs:
 
             cp /tmp/ionity-france.json.gz data/national/ionity_direct_stations_france.json.gz
             cp /tmp/ionity-italy.json.gz data/national/ionity_direct_stations_italy.json.gz
-            git add data/national/ionity_direct_stations_france.json.gz data/national/ionity_direct_stations_italy.json.gz
+            cp /tmp/ionity-germany.json.gz data/national/ionity_direct_stations_germany.json.gz
+            git add data/national/ionity_direct_stations_france.json.gz data/national/ionity_direct_stations_italy.json.gz data/national/ionity_direct_stations_germany.json.gz
 
             if git diff --cached --quiet; then
               echo "No IONITY data changes after resync."
               exit 0
             fi
 
-            git commit -m "data(ionity): refresh Direct France and Italy station tariffs [run ${GITHUB_RUN_ID}]"
+            git commit -m "data(ionity): refresh Direct France Italy Germany tariffs [run ${GITHUB_RUN_ID}]"
             if git push origin HEAD:main; then
               exit 0
             fi
