@@ -75,15 +75,34 @@ function windowKey(r){
 function rateEqual(a,b){
   return ['energy','time','parking','flat'].every(k=>Math.abs(Number(a[k]||0)-Number(b[k]||0))<1e-9);
 }
-function makeRule(scope,start,end,currency,rate,days=null,after=null){
+function makeRule(scope,start,end,currency,rate,days=null,after=null,bands=[]){
   return{
     scope,start,end,billing:rate.energy>0?'kwh':rate.time>0?'minute':'kwh',currency,
     pricePerKwh:round(rate.energy),chargePerMinute:round(rate.time),
     connectionFee:round(rate.flat),idlePerMinute:round(rate.parking),
     afterMinutesRate:after?round(after.rate):0,
     afterMinutesThreshold:after?Math.round(after.threshold):0,
-    days:days?.length?days:null,ocpiDurationBands:[]
+    days:days?.length?days:null,ocpiDurationBands:bands
   };
+}
+const ocpiDimension={energy:'ENERGY',time:'TIME',parking:'PARKING_TIME',flat:'FLAT'};
+function durationBandsFor(group){
+  const bands=[];
+  for(const item of group.bounded||[]){
+    for(const kind of item.present){
+      const dim=ocpiDimension[kind];if(!dim)continue;
+      bands.push([dim,item.minSeconds,item.maxSeconds,round(item.rate[kind])]);
+    }
+  }
+  // Fail closed on overlapping bands for the same priced dimension.
+  for(const dim of ['ENERGY','TIME','PARKING_TIME','FLAT']){
+    const rows=bands.filter(b=>b[0]===dim).sort((a,b)=>a[1]-b[1]||(a[2]??Infinity)-(b[2]??Infinity));
+    for(let i=0;i<rows.length;i++)for(let j=i+1;j<rows.length;j++){
+      const a=rows[i],b=rows[j],aMax=a[2]??Infinity,bMax=b[2]??Infinity;
+      if(Math.max(a[1],b[1])<Math.min(aMax,bMax)-1e-9)return{ok:false,reason:'overlapping_duration_bands'};
+    }
+  }
+  return{ok:true,bands};
 }
 function compileConnector(c){
   const currency=text(c?.complexPricingDetail?.currency||'EUR').toUpperCase()||'EUR';
@@ -109,11 +128,15 @@ function compileConnector(c){
     const dr=r?.durationRestrictions||{};
     const min=Number(dr.minDurationSeconds),max=Number(dr.maxDurationSeconds);
     const hasMin=Number.isFinite(min)&&min>0,hasMax=Number.isFinite(max)&&max>0;
-    if(hasMin&&hasMax)return{ok:false,reason:'bounded_duration_range'};
     let g=groups.get(w.key);
-    if(!g){g={...w,plain:[],upper:[],lower:[]};groups.set(w.key,g);}
-    const item={rate:parsed.rate,present:parsed.present,threshold:hasMin?min/60:hasMax?max/60:0};
-    if(hasMin)g.lower.push(item);
+    if(!g){g={...w,plain:[],upper:[],lower:[],bounded:[]};groups.set(w.key,g);}
+    const item={
+      rate:parsed.rate,present:parsed.present,
+      threshold:hasMin?min/60:hasMax?max/60:0,
+      minSeconds:hasMin?min:0,maxSeconds:hasMax?max:null
+    };
+    if(hasMin&&hasMax)g.bounded.push(item);
+    else if(hasMin)g.lower.push(item);
     else if(hasMax)g.upper.push(item);
     else g.plain.push(item);
   }
@@ -129,8 +152,11 @@ function compileConnector(c){
 
   const rules=[makeRule('allDay','00:00','24:00',currency,base)];
   for(const g of groups.values()){
-    if(g.key==='00:00|24:00|'&&!g.plain.length&&!g.upper.length&&!g.lower.length)continue;
+    if(g.key==='00:00|24:00|'&&!g.plain.length&&!g.upper.length&&!g.lower.length&&!g.bounded.length)continue;
     let rate={...base};
+    const db=durationBandsFor(g);
+    if(!db.ok)return db;
+    const durationBands=db.bands;
 
     if(g.plain.length>1)return{ok:false,reason:'multiple_plain_window_rules'};
     if(g.plain.length===1)for(const k of g.plain[0].present)rate[k]=g.plain[0].rate[k];
@@ -161,13 +187,13 @@ function compileConnector(c){
     const isAll=g.start==='00:00'&&g.end==='24:00';
     if(isAll&&!g.days?.length){
       // merge duration-only semantics into base rule when possible
-      if(g.plain.length||g.upper.length){
-        rules[0]=makeRule('allDay','00:00','24:00',currency,rate,null,after);
+      if(g.plain.length||g.upper.length||g.bounded.length){
+        rules[0]=makeRule('allDay','00:00','24:00',currency,rate,null,after,durationBands);
       }else if(after){
         rules[0]={...rules[0],afterMinutesRate:round(after.rate),afterMinutesThreshold:Math.round(after.threshold)};
       }
     }else{
-      rules.push(makeRule('timeWindow',g.start,g.end,currency,rate,g.days,after));
+      rules.push(makeRule('timeWindow',g.start,g.end,currency,rate,g.days,after,durationBands));
     }
   }
   return{ok:true,pricing:{type:'rules',rules}};
@@ -195,6 +221,7 @@ const stats={
   ordinalCandidateRefs:0,ordinalPublishedEvses:0,
   genericTailCandidateRefs:0,genericTailPublishedEvses:0,
   suffixIdentityCandidateRefs:0,suffixIdentityPublishedEvses:0,
+  durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
   pricedExactEvses:0,publishedEvses:0,publishedOffers:0,publishedConnectorCount:0
@@ -433,6 +460,7 @@ for(const sh of manifest.shards||[]){
         continue;
       }
       stats.pricedExactEvses++;
+      if(compiled.some(x=>(x.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)))stats.durationBandCandidateEvses++;
       const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
       if(unique.length!==1){rej('heterogeneous_connectors_within_evse');continue;}
 
@@ -564,6 +592,7 @@ stats.parentPublishedChildRefs=finalOffers
 stats.ordinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_station_ordinal_suffix_bijection').length;
 stats.genericTailPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_station_common_prefix_tail_bijection').length;
 stats.suffixIdentityPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_unique_local_suffix_identity').length;
+stats.durationBandPublishedEvses=finalOffers.filter(o=>(o.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)).length;
 
 const manifestTiles=[];
 for(const [id,offers] of [...tiles.entries()].sort((a,b)=>a[0].localeCompare(b[0]))){
@@ -606,7 +635,9 @@ const out={
     duplicateSamePriceDeduplicated:true,
     duplicateConflictingPriceFailClosed:true,
     dateRestrictedPricingUsesActiveFranceLocalDate:true,
-    dateRestrictionEndExclusive:true
+    dateRestrictionEndExclusive:true,
+    boundedDurationPricingAsOcpiBands:true,
+    boundedDurationBandOverlapFailClosed:true
   },
   source:{
     tariffCacheGeneratedAt:manifest.generatedAt,
