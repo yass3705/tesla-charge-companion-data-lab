@@ -1,0 +1,159 @@
+name: UK Roam Firebase config discovery
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-roam-firebase-config-discovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract public Firebase client config and inspect Remote Config
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/roam-xapk /tmp/roam-unpack reports/uk
+          curl -fL --retry 3 --retry-delay 2             'https://d.apkpure.net/b/XAPK/net.tecnov8.t8MobileEvcApp?versionCode=184'             -o /tmp/roam-xapk/roam.xapk
+          unzip -q /tmp/roam-xapk/roam.xapk -d /tmp/roam-unpack
+
+          python3 - <<'PY'
+          import json, pathlib, re, subprocess, urllib.request, urllib.error, secrets, base64, hashlib, os
+          from datetime import datetime, timezone
+
+          root=pathlib.Path('/tmp/roam-unpack')
+          # Pull public Firebase identifiers from resource dumps/strings. Never persist the API key.
+          dumps=[]
+          for p in root.rglob('*.apk'):
+              try:
+                  dumps.append(subprocess.run(['strings','-a',str(p)],capture_output=True,text=True,errors='replace',timeout=60).stdout)
+              except Exception:
+                  pass
+          blob='\n'.join(dumps)
+
+          def first(patterns):
+              for pat in patterns:
+                  m=re.search(pat,blob,re.I)
+                  if m: return m.group(1)
+              return None
+
+          api_key=first([
+              r'AIza[0-9A-Za-z_-]{30,50}',
+          ])
+          app_id=first([
+              r'(1:\d{6,20}:android:[0-9a-f]{8,64})',
+          ])
+          project_id=first([
+              r'([a-z][a-z0-9-]{4,40})\.appspot\.com',
+              r'projects/([a-z][a-z0-9-]{4,40})',
+          ])
+
+          out={
+              "retrievedAt":datetime.now(timezone.utc).isoformat(),
+              "package":"net.tecnov8.t8MobileEvcApp",
+              "firebaseClientConfigFound":bool(api_key and app_id and project_id),
+              "appIdFound":bool(app_id),
+              "projectIdFound":bool(project_id),
+              "apiKeyFingerprint":hashlib.sha256(api_key.encode()).hexdigest()[:16] if api_key else None
+          }
+
+          if api_key and app_id and project_id:
+              # Create an ephemeral Firebase Installation, as the public mobile client does.
+              fid='c'+base64.urlsafe_b64encode(secrets.token_bytes(16)).decode().rstrip('=')[:21]
+              payload=json.dumps({
+                  "fid":fid,"appId":app_id,"authVersion":"FIS_v2","sdkVersion":"a:17.2.0"
+              }).encode()
+              req=urllib.request.Request(
+                  f'https://firebaseinstallations.googleapis.com/v1/projects/{project_id}/installations',
+                  data=payload,method='POST',
+                  headers={'Content-Type':'application/json','Accept':'application/json','x-goog-api-key':api_key}
+              )
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as r:
+                      install=json.loads(r.read().decode())
+                  token=(install.get('authToken') or {}).get('token')
+                  out['installationStatus']=200
+              except urllib.error.HTTPError as e:
+                  out['installationStatus']=e.code
+                  token=None
+              except Exception as e:
+                  out['installationError']=type(e).__name__
+                  token=None
+
+              if token:
+                  # Fetch active config as an anonymous app installation.
+                  req=urllib.request.Request(
+                      f'https://firebaseremoteconfig.googleapis.com/v1/projects/{project_id}/namespaces/firebase:fetch',
+                      data=json.dumps({
+                          "appId":app_id,
+                          "appInstanceId":fid,
+                          "appInstanceIdToken":token,
+                          "languageCode":"en-GB",
+                          "countryCode":"GB",
+                          "platformVersion":"35",
+                          "appVersion":"2.8.10",
+                          "packageName":"net.tecnov8.t8MobileEvcApp"
+                      }).encode(),
+                      method='POST',
+                      headers={
+                          'Content-Type':'application/json',
+                          'Accept':'application/json',
+                          'x-goog-api-key':api_key,
+                          'X-Android-Package':'net.tecnov8.t8MobileEvcApp'
+                      }
+                  )
+                  try:
+                      with urllib.request.urlopen(req,timeout=30) as r:
+                          rc=json.loads(r.read().decode())
+                      out['remoteConfigStatus']=200
+                      entries=rc.get('entries') or {}
+                      safe={}
+                      for k,v in entries.items():
+                          sv=str(v)
+                          kl=k.lower()
+                          # Only keep endpoint-ish values and explicitly reject credentials/tokens.
+                          if any(bad in kl for bad in ('secret','token','password','apikey','api_key','auth','stripe','key')):
+                              continue
+                          if re.search(r'(?i)(https?://|api\.|backend|baseurl|base_url|host|endpoint|tariff|pricing)',sv) or any(x in kl for x in ('url','host','endpoint','backend','tariff','price','api')):
+                              sv=re.sub(r'([?&](?:access_token|token|key|api_key|apikey|code)=)[^&#\s]+',r'\1<redacted>',sv,flags=re.I)
+                              safe[k]=sv[:2000]
+                      out['safeRemoteConfig']=safe
+                      out['safeRemoteConfigKeys']=sorted(safe)
+                  except urllib.error.HTTPError as e:
+                      out['remoteConfigStatus']=e.code
+                  except Exception as e:
+                      out['remoteConfigError']=type(e).__name__
+
+          pathlib.Path('reports/uk/roam-firebase-config-discovery-latest.json').write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+
+          rm -rf /tmp/roam-xapk /tmp/roam-unpack
+
+      - name: Publish sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/roam-firebase-config-discovery-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): inspect Roam public Firebase config [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
