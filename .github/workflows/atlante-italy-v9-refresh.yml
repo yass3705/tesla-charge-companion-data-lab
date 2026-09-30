@@ -1,0 +1,160 @@
+name: Atlante Italy V9 refresh
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/atlante-italy-v9-refresh.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: atlante-italy-v9-refresh
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ATLANTE_API_SUBSCRIPTION_KEY: ${{ secrets.ATLANTE_API_SUBSCRIPTION_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check Atlante credential
+        shell: bash
+        run: |
+          test -n "${ATLANTE_API_SUBSCRIPTION_KEY:-}" || {
+            echo "ATLANTE_API_SUBSCRIPTION_KEY is missing"
+            exit 1
+          }
+
+      - name: Install PUN dependency
+        run: python -m pip install --disable-pip-version-check requests requests-aws4auth
+
+      - name: Refresh official PUN Italy inventory
+        run: |
+          python scripts/pun_italy_national.py \
+            --out /tmp/pun_italy_national.json.gz \
+            --report /tmp/pun_italy_national_report.json \
+            --workers 10
+
+      - name: Refresh myAtlante Italy
+        run: |
+          rm -rf /tmp/atlante_it
+          python scripts/atlante/extract_atlante.py \
+            --countries IT \
+            --out /tmp/atlante_it \
+            --workers 10
+
+      - name: Reconcile exact EVSE identities and build durable refresh
+        shell: bash
+        run: |
+          python - <<'PY'
+          import gzip, json, hashlib
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          pun = json.loads(gzip.decompress(Path('/tmp/pun_italy_national.json.gz').read_bytes()))
+          atl = json.loads(Path('/tmp/atlante_it/IT/stations.json').read_text())
+          atl_report = json.loads(Path('/tmp/atlante_it/IT/report.json').read_text())
+          pun_report = json.loads(Path('/tmp/pun_italy_national_report.json').read_text())
+
+          pun_ate = {
+              str(e.get('evseId'))
+              for e in pun.get('evses', [])
+              if e.get('partyId') == 'ATE' and e.get('evseId')
+          }
+          atl_ids = {
+              str(c.get('evseId'))
+              for loc in atl.get('locations', [])
+              for c in (loc.get('connectors') or [])
+              if c.get('evseId')
+          }
+
+          exact = pun_ate & atl_ids
+          pun_only = pun_ate - atl_ids
+          atl_only = atl_ids - pun_ate
+
+          out = {
+              'schemaVersion': 1,
+              'country': 'IT',
+              'operator': 'Atlante',
+              'generatedAt': datetime.now(timezone.utc).isoformat(),
+              'source': {
+                  'pun': 'GSE PUN live public API',
+                  'atlante': 'myAtlante live app-backend',
+                  'method': 'exact EVSE-id set reconciliation; no fuzzy promotion'
+              },
+              'counts': {
+                  'punAteEvse': len(pun_ate),
+                  'myAtlanteUniqueEvse': len(atl_ids),
+                  'exactMatches': len(exact),
+                  'punOnlyEvse': len(pun_only),
+                  'myAtlanteOnlyEvse': len(atl_only),
+                  'atlanteStations': atl_report.get('inventoryStations'),
+                  'atlanteConnectors': atl_report.get('connectorCount'),
+                  'pricedConnectors': atl_report.get('pricedConnectors'),
+                  'unpricedConnectors': atl_report.get('unpricedConnectors'),
+                  'atlanteErrors': len(atl_report.get('errors') or []),
+              },
+              'quality': {
+                  'punNoFailedBatches': pun_report.get('fetch', {}).get('failedBatchCount') == 0,
+                  'atlanteNoErrors': not atl_report.get('errors'),
+                  'allAtlanteConnectorsPriced': atl_report.get('unpricedConnectors') == 0,
+                  'exactMatchesAtLeastHistorical1830': len(exact) >= 1830,
+                  'atlanteStationsAtLeast450': (atl_report.get('inventoryStations') or 0) >= 450,
+              },
+              'punOnlySample': sorted(pun_only)[:200],
+              'myAtlanteOnlySample': sorted(atl_only)[:200],
+          }
+          if not all(out['quality'].values()):
+              raise SystemExit('Atlante Italy V9 refresh quality gate failed: ' + json.dumps(out['quality']))
+
+          Path('data/reports/atlante_italy_refresh_latest.json').write_text(
+              json.dumps(out, ensure_ascii=False, indent=2) + '\n', encoding='utf-8'
+          )
+
+          payload = {
+              'metadata': {
+                  'operator': 'Atlante',
+                  'country': 'IT',
+                  'cpo': 'ITATE',
+                  'tariffChannel': 'myAtlante direct without subscription',
+                  'rankablePolicy': 'exact live myAtlante connectors only; PUN-only residuals fail closed',
+                  'reconciliation': out,
+                  'atlanteExtraction': atl_report,
+              },
+              'locations': atl.get('locations', []),
+          }
+          raw = (json.dumps(payload, ensure_ascii=False, separators=(',', ':')) + '\n').encode()
+          Path('data/national/atlante_direct_stations_italy_refresh_latest.json.gz').write_bytes(
+              gzip.compress(raw, compresslevel=9, mtime=0)
+          )
+          print(json.dumps(out['counts'], indent=2))
+          PY
+
+      - name: Publish refresh evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            data/reports/atlante_italy_refresh_latest.json \
+            data/national/atlante_direct_stations_italy_refresh_latest.json.gz
+          if git diff --cached --quiet; then
+            echo "No Atlante Italy refresh change"
+            exit 0
+          fi
+          git commit -m "data(italy): refresh Atlante exact V9 coverage [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
