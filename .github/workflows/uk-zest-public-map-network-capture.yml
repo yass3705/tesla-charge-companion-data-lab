@@ -1,0 +1,75 @@
+name: UK Zest public map network capture
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-zest-public-map-network-capture.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Capture official public map network
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/zest-chrome reports/uk
+          google-chrome --headless=new --no-sandbox --disable-gpu             --user-data-dir=/tmp/zest-chrome             --log-net-log=/tmp/zest-netlog.json             --net-log-capture-mode=IncludeSensitive             --virtual-time-budget=15000             --dump-dom 'https://map.zest.uk.com/' >/tmp/zest-dom.html 2>/tmp/zest.err || true
+
+          python3 - <<'PY'
+          import json,re,pathlib,urllib.parse
+          from datetime import datetime,timezone
+          urls=set()
+          try:
+              n=json.load(open('/tmp/zest-netlog.json'))
+              for ev in n.get('events',[]):
+                  p=ev.get('params') or {}
+                  for k,v in p.items():
+                      if isinstance(v,str) and v.startswith(('http://','https://')):
+                          urls.add(v)
+          except Exception: pass
+          dom=pathlib.Path('/tmp/zest-dom.html').read_text(errors='replace') if pathlib.Path('/tmp/zest-dom.html').exists() else ''
+          for u in re.findall(r'https?://[^\s"\'<>\\]{5,1400}',dom): urls.add(u)
+
+          def sanitize(u):
+              return re.sub(r'([?&](?:access_token|token|key|api_key|apikey|code|authorization)=)[^&#\s]+',r'\1<redacted>',u,flags=re.I)
+          candidates=[]
+          for u in sorted(urls):
+              ul=u.lower()
+              if any(k in ul for k in ('zest','api','location','charger','station','evse','tariff','price','status','map')):
+                  if not any(x in ul for x in ('google-analytics','doubleclick','googletag','sentry','mapbox.com/styles','mapbox.com/fonts','mapbox.com/v4')):
+                      candidates.append(sanitize(u)[:1600])
+          out={
+            "retrievedAt":datetime.now(timezone.utc).isoformat(),
+            "page":"https://map.zest.uk.com/",
+            "domBytes":len(dom),
+            "candidateUrls":candidates[:800]
+          }
+          pathlib.Path('reports/uk/zest-public-map-network-capture-latest.json').write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/zest-public-map-network-capture-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): capture Zest public map network [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
