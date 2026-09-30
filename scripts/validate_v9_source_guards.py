@@ -50,6 +50,19 @@ def main():
     assert nit>=470, nit
     checks["ATLANTE"]={"FR_stations":nfr,"IT_stations":nit}
 
+    # IONITY France exact direct-price snapshot.
+    ion=load_gz(Path("data/national/ionity_direct_stations_france.json.gz"))
+    assert ion["operator"]=="IONITY", ion.get("operator")
+    ic=ion["counts"]
+    assert ic["franceLocationCount"]>=180, ic
+    assert ic["franceConnectorCount"]>=1800, ic
+    assert ic["franceUnpricedConnectorCount"]==0, ic
+    checks["IONITY_FR"]={
+      "locations":ic["franceLocationCount"],
+      "connectors":ic["franceConnectorCount"],
+      "unpriced":0
+    }
+
     # Electroverse France daily inventory must be complete at tile level.
     ev=load(Path("reports/electroverse/daily-delta.json"))
     assert ev["failedTileCount"]==0, ev["failedTileCount"]
