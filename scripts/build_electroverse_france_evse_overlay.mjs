@@ -175,6 +175,7 @@ const stats={
   cacheLocations:0,cacheEvses:0,physicalRefs:0,exactUniqueNationalEvses:0,
   parentConnectorRefs:0,parentCandidateGroups:0,parentPublishedEvses:0,parentPublishedChildRefs:0,
   ordinalCandidateRefs:0,ordinalPublishedEvses:0,
+  genericTailCandidateRefs:0,genericTailPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
   pricedExactEvses:0,publishedEvses:0,publishedOffers:0,publishedConnectorCount:0
@@ -230,6 +231,45 @@ for(const sh of manifest.shards||[]){
       if(chosen) for(const x of hardNumeric) ordinalTargets.set(x.e,chosen.get(x.n));
     }
 
+    const genericTargets=new Map(),usedForGeneric=new Set(),genericHard=[];
+    for(const e0 of row.tariff?.evses||[]){
+      const pr0=text(e0?.physicalReference); if(!pr0)continue;
+      const k0=norm(pr0);
+      if(local.has(k0)){usedForGeneric.add(k0);continue;}
+      const p0=[...local].filter(p=>{
+        if(!k0.startsWith(p)||k0.length<=p.length)return false;
+        return /^\d{1,2}$/.test(k0.slice(p.length));
+      });
+      if(p0.length===1){usedForGeneric.add(p0[0]);continue;}
+      genericHard.push({e:e0,k:k0});
+    }
+    if(genericHard.length && new Set(genericHard.map(x=>x.k)).size===genericHard.length){
+      const available=[...local].filter(p=>!usedForGeneric.has(p));
+      if(available.length){
+        let commonPrefix=available[0];
+        for(const p of available.slice(1)){
+          let i=0;while(i<commonPrefix.length&&i<p.length&&commonPrefix[i]===p[i])i++;
+          commonPrefix=commonPrefix.slice(0,i);
+          if(!commonPrefix)break;
+        }
+        if(commonPrefix.length>=4){
+          const tailToPdc=new Map(); let ok=true;
+          for(const p of available){
+            const tail=p.slice(commonPrefix.length);
+            if(!tail||tailToPdc.has(tail)){ok=false;break;}
+            tailToPdc.set(tail,p);
+          }
+          if(ok && genericHard.every(x=>tailToPdc.has(x.k))){
+            const targets=genericHard.map(x=>tailToPdc.get(x.k));
+            if(new Set(targets).size===genericHard.length &&
+               targets.every(p=>(globalPdcOwners.get(p)?.size||0)===1)){
+              for(const x of genericHard)genericTargets.set(x.e,tailToPdc.get(x.k));
+            }
+          }
+        }
+      }
+    }
+
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
       const pr=text(e?.physicalReference);
@@ -263,6 +303,13 @@ for(const sh of manifest.shards||[]){
           identityMode='strict_station_ordinal_suffix_bijection';
           ordinalMode=true;
           stats.ordinalCandidateRefs++;
+        }else if(genericTargets.has(e)){
+          const targetNorm=genericTargets.get(e);
+          const owners=globalPdcOwners.get(targetNorm);
+          if(!owners||owners.size!==1){rej('generic_tail_pdc_not_globally_unique');continue;}
+          targetPdc=localByNorm.get(targetNorm);
+          identityMode='strict_station_common_prefix_tail_bijection';
+          stats.genericTailCandidateRefs++;
         }else{
           rej(candidates.length?'parent_pdc_ambiguous':'physical_reference_not_in_local_national_pdcs');continue;
         }
@@ -322,6 +369,7 @@ for(const sh of manifest.shards||[]){
       const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
       tiles.get(id).push(offer);
       if(ordinalMode)stats.ordinalPublishedEvses++;
+      if(identityMode==='strict_station_common_prefix_tail_bijection')stats.genericTailPublishedEvses++;
       stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=compiled.length;
     }
   }
@@ -406,6 +454,7 @@ stats.parentPublishedChildRefs=finalOffers
   .filter(o=>o.metadata?.identityMode==='exact_unique_national_irve_pdc_parent_connector_suffix')
   .reduce((n,o)=>n+Number(o.metadata?.childReferenceCount||0),0);
 stats.ordinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_station_ordinal_suffix_bijection').length;
+stats.genericTailPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_station_common_prefix_tail_bijection').length;
 
 const manifestTiles=[];
 for(const [id,offers] of [...tiles.entries()].sort((a,b)=>a[0].localeCompare(b[0]))){
@@ -433,6 +482,8 @@ const out={
     parentPdcRequiresHomogeneousChildPricing:true,
     strictStationOrdinalSuffixBijection:true,
     ordinalPdcRequiresGlobalUniqueness:true,
+    strictStationCommonPrefixTailBijection:true,
+    genericTailRequiresGlobalUniqueness:true,
     evseLevelPricing:true,
     stationLevelFlattening:false,
     electraDependency:false,
