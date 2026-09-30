@@ -307,7 +307,7 @@ for(const sh of manifest.shards||[]){
     for(const e0 of row.tariff?.evses||[]){
       const pr0=text(e0?.physicalReference); if(!pr0)continue;
       const k0=norm(pr0);
-      if(k0.length<5)continue;
+      if(k0.length<4)continue;
       if(local.has(k0))continue;
       if(ordinalTargets.has(e0)||genericTargets.has(e0))continue;
       const p0=[...local].filter(p=>{
@@ -594,7 +594,7 @@ const out={
     ordinalPdcRequiresGlobalUniqueness:true,
     strictStationCommonPrefixTailBijection:true,
     genericTailRequiresGlobalUniqueness:true,
-    strictUniqueLocalSuffixIdentityMinLength:5,
+    strictUniqueLocalSuffixIdentityMinLength:4,
     suffixIdentityRequiresGlobalUniqueness:true,
     suffixIdentityRequiresUnclaimedTarget:true,
     evseLevelPricing:true,
