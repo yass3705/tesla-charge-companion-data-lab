@@ -16,7 +16,7 @@ let uniqueLocalParentPrefix=0,ambiguousLocalParentPrefix=0;
 let globalExactOutsideLocal=0,globalParentUniqueAny=0,globalParentUniqueOutsideLocal=0,globalParentAmbiguous=0;
 const suffixCounts={},hardResidualByOperator={};
 let hardResidualCount=0;
-const unmatchedSamples=[], recoveredSamples=[], parentPrefixSamples=[], globalParentSamples=[];
+const unmatchedSamples=[], recoveredSamples=[], parentPrefixSamples=[], globalParentSamples=[], hardResidualSamples=[];
 
 const rows=[];
 const parentGroups=new Map();
@@ -113,6 +113,18 @@ for(const row of rows){
         const parts=pr.split('*').map(x=>x.trim()).filter(Boolean);
         const op=parts.length>=2?parts[1].toUpperCase():norm(pr).slice(0,6);
         hardResidualByOperator[op]=(hardResidualByOperator[op]||0)+1;
+        if(hardResidualSamples.length<150) hardResidualSamples.push({
+          pk:row.electroverseLocationPk,
+          irveStationId:m?.irveStationId??row.irveStationId,
+          physicalReference:pr,
+          normalizedPhysicalReference:k,
+          evsePk:e.pk,
+          localPdcIds:rawLocal,
+          localPdcNorms:rawLocal.map(norm),
+          parentCandidates,
+          numericLocalParents,
+          globalOwners:uOwners?[...uOwners]:[]
+        });
       }
       if(parentCandidates.length===1){
         uniqueLocalParentPrefix++;
@@ -201,6 +213,7 @@ const out={
   parentPrefixSamples,
   parentGroupSamples,
   globalParentSamples,
+  hardResidualSamples,
   unmatchedSamples
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
