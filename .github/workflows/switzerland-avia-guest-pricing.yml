@@ -68,7 +68,16 @@ jobs:
           d=json.load(open(p,encoding="utf-8"))
           assert d["country"]=="CH"
           assert d["operatorId"]=="CH*AVI"
-          assert d["counts"]["pricedConnectors"]>0
+          assert d["counts"]["pricedConnectors"]>=583, d["counts"]
+          assert d["counts"]["uniquePricedEvses"]>=583, d["counts"]
+          r=json.load(open("docs/switzerland-avia-guest-reconciliation-2026-09-29.json",encoding="utf-8"))
+          assert r["counts"]["nationalEvseCount"]==583, r["counts"]
+          assert r["counts"]["missingNationalEvseCount"]<=1, r["counts"]
+          # Accepted final state may retain exactly one stale national EVSE id
+          # that is closed by the deterministic successor alias overlay.
+          if r["counts"]["missingNationalEvseCount"]==1:
+              alias=json.load(open("data/switzerland/avia-successor-alias-overlay.json",encoding="utf-8"))
+              assert alias, "missing accepted successor alias overlay"
           raw=open(p,encoding="utf-8").read().lower()
           for forbidden in ("subscription-key","authorization","bearer ","ocp-apim"):
               assert forbidden not in raw, forbidden
