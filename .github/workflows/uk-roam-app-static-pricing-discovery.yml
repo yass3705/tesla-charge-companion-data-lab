@@ -1,0 +1,110 @@
+name: UK Roam app static pricing discovery
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-roam-app-static-pricing-discovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download and inspect public ROAM app package transiently
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/roam-xapk /tmp/roam-unpack reports/uk
+          curl -fL --retry 3 --retry-delay 2             'https://d.apkpure.net/b/XAPK/net.tecnov8.t8MobileEvcApp?versionCode=184'             -o /tmp/roam-xapk/roam.xapk
+          unzip -q /tmp/roam-xapk/roam.xapk -d /tmp/roam-unpack
+
+          python3 - <<'PY'
+          import json, pathlib, re, subprocess, os
+          from datetime import datetime, timezone
+
+          root=pathlib.Path('/tmp/roam-unpack')
+          urls=set(); hosts=set(); routes=set(); hits=[]
+          needles=re.compile(r'(?i)(tariff|price|pricing|charger|station|location|evse|connector|api|graphql|ocpi)')
+          url_re=re.compile(r'https?://[^\s"\'<>\\]{4,500}')
+          route_re=re.compile(r'["\'](/(?:api|v[0-9]+|locations?|stations?|chargers?|chargepoints?|tariffs?|pricing|prices?|evses?|connectors?)[^"\']{0,180})["\']',re.I)
+
+          files=[]
+          for p in root.rglob('*'):
+              if not p.is_file(): continue
+              if p.suffix.lower() in {'.apk','.dex','.so','.json','.xml','.js','.bundle','.txt','.properties'} or p.name in {'resources.arsc'}:
+                  files.append(p)
+
+          def add_text(p,txt):
+              for u in url_re.findall(txt):
+                  u=re.sub(r'([?&](?:access_token|token|key|api_key|apikey|code)=)[^&#]+',r'\1<redacted>',u,flags=re.I)
+                  urls.add(u[:1000])
+                  try:
+                      from urllib.parse import urlparse
+                      h=urlparse(u).netloc
+                      if h: hosts.add(h)
+                  except Exception: pass
+              for rr in route_re.findall(txt): routes.add(rr[:300])
+              if needles.search(txt):
+                  for m in needles.finditer(txt):
+                      s=txt[max(0,m.start()-180):min(len(txt),m.end()+500)]
+                      if re.search(r'https?://|/api|tariff|pricing|price',s,re.I):
+                          hits.append({"file":str(p.relative_to(root)),"context":s[:800]})
+                          if len(hits)>=250: return
+
+          for p in files:
+              try:
+                  if p.suffix.lower() in {'.apk','.dex','.so'}:
+                      cp=subprocess.run(['strings','-a',str(p)],capture_output=True,text=True,errors='replace',timeout=50)
+                      txt=cp.stdout
+                  else:
+                      txt=p.read_text(errors='replace')
+                  add_text(p,txt)
+              except Exception:
+                  pass
+              if len(hits)>=250: break
+
+          relevant_urls=sorted(u for u in urls if any(k in u.lower() for k in [
+              'evc','roam','tecnov8','charge','api','station','location','tariff','price'
+          ]))
+          out={
+            "retrievedAt":datetime.now(timezone.utc).isoformat(),
+            "package":"net.tecnov8.t8MobileEvcApp",
+            "versionCode":184,
+            "source":"public APKPure download; transient static inspection only",
+            "hosts":sorted(hosts)[:300],
+            "urls":relevant_urls[:500],
+            "routes":sorted(routes)[:500],
+            "hits":hits[:250]
+          }
+          pathlib.Path('reports/uk/roam-app-static-pricing-discovery-latest.json').write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print(json.dumps({"hosts":out["hosts"],"urls":out["urls"][:80],"routes":out["routes"][:80],"hitCount":len(out["hits"])},ensure_ascii=False,indent=2))
+          PY
+
+          rm -rf /tmp/roam-xapk /tmp/roam-unpack
+
+      - name: Publish sanitized static-analysis report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/roam-app-static-pricing-discovery-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): inspect Roam app pricing routes [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
