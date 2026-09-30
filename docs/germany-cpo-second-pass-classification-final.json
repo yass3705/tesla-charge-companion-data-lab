@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 2,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-classification-final",
+  "date": "2026-09-16",
+  "startingReportedState": {
+    "currentPartials": 389,
+    "classifiedRows": 200,
+    "reportedRemainingByArithmetic": 189
+  },
+  "workCompleted": {
+    "newClassificationBatches": [12,13,14,15,16,17],
+    "newlyClassifiedDistinctCanonicalNames": 169,
+    "classificationRowsAfterBatches": 369,
+    "newBatchCategoryCounts": {
+      "B1_COVERAGE_EVSE_MATRIX": 24,
+      "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 93,
+      "B3_SITE_CONFIGURABLE_BACKEND": 13,
+      "B4_FEE_COMPONENT_COMPLETENESS": 0,
+      "B5_OPERATOR_IDENTITY_RECONCILIATION": 8,
+      "B6_DYNAMIC_SURFACE_OR_APP": 23,
+      "B7_CONTRADICTORY_SOURCES": 8
+    }
+  },
+  "reportedAggregateRowsAfterBatches": {
+    "B1_COVERAGE_EVSE_MATRIX": 97,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 151,
+    "B3_SITE_CONFIGURABLE_BACKEND": 22,
+    "B4_FEE_COMPONENT_COMPLETENESS": 5,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 19,
+    "B6_DYNAMIC_SURFACE_OR_APP": 57,
+    "B7_CONTRADICTORY_SOURCES": 18,
+    "totalRows": 369
+  },
+  "canonicalAudit": {
+    "workflowRun": 35134920012,
+    "result": "PASS_AFTER_ALIAS_RECONCILIATION",
+    "rawUnmatchedAfterRecursiveFirstPassReconstruction": 3,
+    "rawUnmatchedResolution": [
+      {
+        "raw": "Energie- und Wasserversorgung Altenburg GmbH",
+        "resolution": "already classified through the Stadtwerke Altenburg canonical/brand identity in classification batch 003; no new CPO"
+      },
+      {
+        "raw": "Leipziger Stadtwerke GmbH",
+        "resolution": "already classified as Stadtwerke Leipzig GmbH in classification batch 004; no new CPO"
+      },
+      {
+        "raw": "Stadtwerke Ludwigsburg-Kornwestheim GmbH",
+        "resolution": "historical duplicate alias of SWLB Mobilitaet GmbH; the duplicate was explicitly corrected in first-pass counter reconciliation and must not remain a separate partial"
+      }
+    ],
+    "knownDuplicateClassificationRows": [
+      "StadtWerke Roesrath appears in batches 005 and 007 under spelling variants",
+      "Leitungstiefbau Dithmarschen appears in batches 007 and 010 under spelling variants"
+    ],
+    "unclassifiedCanonicalNamesRemaining": 0,
+    "importantCorrection": "The prior value 189 was only 389 minus 200. It was not a persisted nominative queue. Exhaustive legacy-source traversal resolved 169 distinct unclassified canonical names; the remaining arithmetic residue is tracking/alias/count history and must not be converted into anonymous CPO classifications."
+  },
+  "status": "CLASSIFICATION_NOMINATIVELY_COMPLETE",
+  "policy": "No anonymous/count-only slot is created. Resolution work must use canonical names and blocker families, not stale aggregate subtraction.",
+  "nextSafeAction": "Build canonical backend/source execution queues from the classified names, deduplicate classification-row aliases, then resolve B1/B3/B6 in bulk before the B2 long tail."
+}
