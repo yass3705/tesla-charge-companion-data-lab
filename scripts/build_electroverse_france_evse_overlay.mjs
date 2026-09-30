@@ -171,6 +171,10 @@ for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
 }
 
 const tiles=new Map(),rejected={},parentGroups=new Map();
+const pricingDiagnostics={
+  dateRestriction:{evses:0,restrictions:0,withStart:0,withEnd:0,withBoth:0,ranges:{},samples:[]},
+  boundedDuration:{evses:0,restrictions:0,bands:{},componentTypes:{},samples:[]}
+};
 const stats={
   cacheLocations:0,cacheEvses:0,physicalRefs:0,exactUniqueNationalEvses:0,
   parentConnectorRefs:0,parentCandidateGroups:0,parentPublishedEvses:0,parentPublishedChildRefs:0,
@@ -367,7 +371,53 @@ for(const sh of manifest.shards||[]){
         if(!x.ok){bad=x.reason;break;}
         compiled.push({pricing:x.pricing,connectorPk:c.pk??null,powerKw:c.kilowatts??null,standard:c.standard??null});
       }
-      if(bad){rej('pricing_'+bad);continue;}
+      if(bad){
+        rej('pricing_'+bad);
+        if(bad==='date_restriction'){
+          pricingDiagnostics.dateRestriction.evses++;
+          for(const c0 of connectors){
+            for(const r0 of c0?.complexPricingDetail?.restrictions||[]){
+              const d=r0?.dateRestrictions;
+              if(!d||( !d.startDate && !d.endDate))continue;
+              pricingDiagnostics.dateRestriction.restrictions++;
+              if(d.startDate)pricingDiagnostics.dateRestriction.withStart++;
+              if(d.endDate)pricingDiagnostics.dateRestriction.withEnd++;
+              if(d.startDate&&d.endDate)pricingDiagnostics.dateRestriction.withBoth++;
+              const rk=`${d.startDate||''}..${d.endDate||''}`;
+              pricingDiagnostics.dateRestriction.ranges[rk]=(pricingDiagnostics.dateRestriction.ranges[rk]||0)+1;
+              if(pricingDiagnostics.dateRestriction.samples.length<40)pricingDiagnostics.dateRestriction.samples.push({
+                locationPk:String(row.electroverseLocationPk),physicalReference:pr,evsePk:e.pk??null,
+                connectorPk:c0.pk??null,startDate:d.startDate||null,endDate:d.endDate||null,
+                timeRestrictions:r0?.timeRestrictions||null,weekdayRestrictions:r0?.weekdayRestrictions||null,
+                durationRestrictions:r0?.durationRestrictions||null,
+                priceComponents:r0?.priceComponents||[]
+              });
+            }
+          }
+        }else if(bad==='bounded_duration_range'){
+          pricingDiagnostics.boundedDuration.evses++;
+          for(const c0 of connectors){
+            for(const r0 of c0?.complexPricingDetail?.restrictions||[]){
+              const dr=r0?.durationRestrictions||{};
+              const min=Number(dr.minDurationSeconds),max=Number(dr.maxDurationSeconds);
+              if(!(Number.isFinite(min)&&min>0&&Number.isFinite(max)&&max>0))continue;
+              pricingDiagnostics.boundedDuration.restrictions++;
+              const bk=`${min}..${max}`;
+              pricingDiagnostics.boundedDuration.bands[bk]=(pricingDiagnostics.boundedDuration.bands[bk]||0)+1;
+              for(const pc of r0?.priceComponents||[]){
+                const t=String(pc?.__typename||'unknown');
+                pricingDiagnostics.boundedDuration.componentTypes[t]=(pricingDiagnostics.boundedDuration.componentTypes[t]||0)+1;
+              }
+              if(pricingDiagnostics.boundedDuration.samples.length<40)pricingDiagnostics.boundedDuration.samples.push({
+                locationPk:String(row.electroverseLocationPk),physicalReference:pr,evsePk:e.pk??null,
+                connectorPk:c0.pk??null,minDurationSeconds:min,maxDurationSeconds:max,
+                priceComponents:r0?.priceComponents||[],currency:c0?.complexPricingDetail?.currency||null
+              });
+            }
+          }
+        }
+        continue;
+      }
       stats.pricedExactEvses++;
       const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
       if(unique.length!==1){rej('heterogeneous_connectors_within_evse');continue;}
@@ -517,6 +567,7 @@ const out={
   tileSizeDegrees:TILE,
   tileCount:manifestTiles.length,
   stats,rejected,
+  pricingDiagnostics,
   duplicateSamples,
   policy:{
     nationalFranceIsIdentityHub:true,
