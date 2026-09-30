@@ -191,6 +191,7 @@ const stats={
   ordinalCandidateRefs:0,ordinalPublishedEvses:0,
   genericTailCandidateRefs:0,genericTailPublishedEvses:0,
   suffixIdentityCandidateRefs:0,suffixIdentityPublishedEvses:0,
+  trimmedSuffixCandidateRefs:0,trimmedSuffixPublishedEvses:0,
   durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
@@ -321,6 +322,36 @@ for(const sh of manifest.shards||[]){
       claimedSuffixTargets.add(target);
     }
 
+    const trimmedSuffixProposals=[];
+    for(const e0 of row.tariff?.evses||[]){
+      const pr0=text(e0?.physicalReference);if(!pr0)continue;
+      const k0=norm(pr0);
+      if(local.has(k0)||ordinalTargets.has(e0)||genericTargets.has(e0)||suffixTargets.has(e0))continue;
+      const p0=[...local].filter(p=>{
+        if(!k0.startsWith(p)||k0.length<=p.length)return false;
+        return /^\d{1,2}$/.test(k0.slice(p.length));
+      });
+      if(p0.length)continue;
+      let hit=null;
+      for(let len=Math.min(k0.length-1,20);len>=7;len--){
+        const s=k0.slice(-len);
+        const matches=[...local].filter(p=>p.endsWith(s));
+        if(matches.length!==1)continue;
+        const target=matches[0];
+        if(reservedTargets.has(target)||claimedSuffixTargets.has(target))continue;
+        if((globalPdcOwners.get(target)?.size||0)!==1)continue;
+        hit={target,suffix:s};break;
+      }
+      if(hit)trimmedSuffixProposals.push({e:e0,...hit});
+    }
+    const trimmedTargetUse=new Map();
+    for(const x of trimmedSuffixProposals)trimmedTargetUse.set(x.target,(trimmedTargetUse.get(x.target)||0)+1);
+    const trimmedSuffixTargets=new Map();
+    for(const x of trimmedSuffixProposals){
+      if((trimmedTargetUse.get(x.target)||0)!==1)continue;
+      trimmedSuffixTargets.set(x.e,x.target);
+    }
+
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
       const pr=text(e?.physicalReference);
@@ -368,6 +399,13 @@ for(const sh of manifest.shards||[]){
           targetPdc=localByNorm.get(targetNorm);
           identityMode='strict_unique_local_suffix_identity';
           stats.suffixIdentityCandidateRefs++;
+        }else if(trimmedSuffixTargets.has(e)){
+          const targetNorm=trimmedSuffixTargets.get(e);
+          const owners=globalPdcOwners.get(targetNorm);
+          if(!owners||owners.size!==1){rej('trimmed_suffix_pdc_not_globally_unique');continue;}
+          targetPdc=localByNorm.get(targetNorm);
+          identityMode='strict_trimmed_long_suffix_identity';
+          stats.trimmedSuffixCandidateRefs++;
         }else{
           rej(candidates.length?'parent_pdc_ambiguous':'physical_reference_not_in_local_national_pdcs');continue;
         }
@@ -583,6 +621,7 @@ stats.parentPublishedChildRefs=finalOffers
 stats.ordinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_station_ordinal_suffix_bijection').length;
 stats.genericTailPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_station_common_prefix_tail_bijection').length;
 stats.suffixIdentityPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_unique_local_suffix_identity').length;
+stats.trimmedSuffixPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_trimmed_long_suffix_identity').length;
 stats.durationBandPublishedEvses=finalOffers.filter(o=>(o.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)).length;
 
 const manifestTiles=[];
@@ -617,6 +656,10 @@ const out={
     strictUniqueLocalSuffixIdentityMinLength:4,
     suffixIdentityRequiresGlobalUniqueness:true,
     suffixIdentityRequiresUnclaimedTarget:true,
+    strictTrimmedLongSuffixIdentityMinLength:7,
+    trimmedSuffixRequiresGlobalUniqueness:true,
+    trimmedSuffixRequiresUnclaimedTarget:true,
+    trimmedSuffixRejectsDuplicateTargetClaims:true,
     evseLevelPricing:true,
     stationLevelFlattening:false,
     electraDependency:false,
