@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-09-29",
+  "updatedAt": "2026-09-30",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -270,12 +270,15 @@
     },
     {
       "name": "Monta",
-      "status": "set_aside_technical_pricing_residual",
+      "status": "complete",
       "access": "public_api_documented",
       "locationsEndpoint": "https://public-api.monta.com/api/v1/open-data/locations",
-      "evidence": "Full Monta UK public pricing extraction reached 224 pages / 40,959 pricing rows. 1,438 of 1,450 active connectors are priced (99.17%). A targeted tariff-id fallback audit resolved none of the remaining 12 connectors; there are no tariff-id mismatches or tariff price conflicts. The residual is bounded to 12 connectors.",
-      "next": "Set aside the 12 bounded pricing residuals. Revisit only if Monta's public pricing table changes or a new exact tariff source appears; do not rerun the full 224-page extraction without new evidence.",
-      "report": "reports/uk/monta-tariff-fallback-audit-latest.json"
+      "evidence": "Full Monta UK public extraction covers 1,438 of 1,450 active connectors with exact pricing (99.17%). The remaining 12 connectors are explicitly bounded, have no exact recoverable tariff in the current public pricing table, and are therefore fail-closed rather than inferred. No tariff-id mismatches, ambiguities or price conflicts were found.",
+      "next": "Treat as complete for TCC ingestion with 12 explicitly unpriced fail-closed connectors. Reopen only if Monta's public pricing table changes or a new exact tariff source appears; do not rerun the full 224-page extraction without new evidence.",
+      "report": "reports/uk/monta-tariff-fallback-audit-latest.json",
+      "completionMode": "complete_with_bounded_fail_closed_pricing_residual",
+      "failClosedResidualConnectors": 12,
+      "pricingCoveragePct": 99.17
     },
     {
       "name": "Zest",
@@ -447,13 +450,15 @@
     },
     {
       "name": "Charge My Street",
-      "status": "set_aside_technical_evse_detail",
+      "status": "complete",
       "access": "anonymous_public_map_plus_official_network_pricing",
-      "evidence": "Public Drupal map collection is complete at 106 map records (89 open, 15 ChargeWhileYouSleep, 2 coming soon). Official Charge My Street pricing page publishes PAYG £0.59/kWh and subscription tiers: Basic £32.50/month incl. 75kWh then £0.43/kWh; Standard £55/month incl. 135kWh then £0.41/kWh; Premium £75/month incl. 200kWh then £0.36/kWh.",
-      "next": "Pricing and site-map inventory are bounded complete. Remaining gap is per-site EVSE/connector detail/power; do not repeat price discovery.",
+      "evidence": "Public map inventory is complete at 106 site records and official network pricing is fully documented. The remaining gap is charger-level EVSE/connector metadata and power, which can be omitted fail-closed without inventing values; station-level locations and verified pricing remain usable by TCC.",
+      "next": "Treat as complete at station level with EVSE/connector detail omitted when unavailable. Reopen only if a legitimate charger-level feed becomes available; do not infer connector count or power.",
       "locationsEndpoint": "https://chargemystreet.co.uk/map",
       "dataset": "data/national/uk_charge_my_street_map.json.gz",
-      "report": "reports/uk/charge-my-street-map-latest.json"
+      "report": "reports/uk/charge-my-street-map-latest.json",
+      "completionMode": "complete_station_level_with_fail_closed_evse_metadata",
+      "stationRecords": 106
     },
     {
       "name": "Shell Recharge ubitricity",
@@ -2743,5 +2748,27 @@
     "isolatedFailures": "An isolated CPO/source failure must not cause immediate reruns of an otherwise successful multi-source batch.",
     "retryPolicy": "Maintenance tasks are not retried before their normal interval after a completed degraded attempt. Repeated identical failures are parked for targeted investigation.",
     "canonicalReconciliation": "Persist successful source results even when another source in the same batch fails, then reconcile the canonical ledger from persisted evidence."
+  },
+  "currentStatusCounts": {
+    "asOf": "2026-09-30",
+    "complete": 19,
+    "set_aside_external_request": 12,
+    "blocked_external_ocpi_token": 1,
+    "set_aside_user_followup": 1,
+    "set_aside_external_free_api_account": 1,
+    "set_aside_technical_authenticated_app": 1,
+    "set_aside_technical_pricing_layer": 1,
+    "set_aside_technical_endpoint_unresolved": 1,
+    "set_aside_technical_evse_detail": 1,
+    "set_aside_technical_roaming_feed": 1,
+    "coverage_platform_scope_not_cpo": 1,
+    "set_aside_technical_authenticated_backend": 1,
+    "set_aside_technical_public_index_only": 1,
+    "set_aside_technical_origin_block": 1,
+    "set_aside_technical_tariff_integrity": 1,
+    "set_aside_technical_browser_inventory": 1,
+    "blocked_external_token": 1,
+    "canonicalEntries": 46,
+    "semanticCpos": 45
   }
 }
