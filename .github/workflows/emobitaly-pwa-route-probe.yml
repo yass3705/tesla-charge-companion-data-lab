@@ -1,0 +1,99 @@
+name: EMOBITALY PWA route probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/emobitaly-pwa-route-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Inspect public PWA route hints
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,re,urllib.request,urllib.parse
+          from pathlib import Path
+
+          base='https://app.emobitaly.com/'
+          urls=[
+            base,
+            urllib.parse.urljoin(base,'sw.js'),
+            urllib.parse.urljoin(base,'assets/js/app-pwa.js'),
+            urllib.parse.urljoin(base,'manifest.webmanifest'),
+          ]
+          docs={}
+          for u in urls:
+            try:
+              req=urllib.request.Request(u,headers={'User-Agent':'Mozilla/5.0 TCC-V9-readonly-probe'})
+              with urllib.request.urlopen(req,timeout=30) as r:
+                docs[u]=r.read().decode('utf-8','replace')
+            except Exception as e:
+              docs[u]='ERROR '+type(e).__name__+': '+str(e)
+
+          hints=set()
+          for u,t in docs.items():
+            for q in re.findall(r'''["']([^"'\n\r]{1,220})["']''',t):
+              low=q.lower()
+              if any(k in low for k in ('station','connector','charge','ricaric','tariff','price','map','api','ajax','php','evse')):
+                hints.add(q)
+
+          # Probe only same-origin GET routes explicitly hinted by public assets.
+          probes=[]
+          for h in sorted(hints):
+            if h.startswith(('http://','https://')):
+              pu=urllib.parse.urlparse(h)
+              if pu.netloc!='app.emobitaly.com':
+                continue
+              target=h
+            elif h.startswith('/'):
+              target=urllib.parse.urljoin(base,h)
+            else:
+              continue
+            try:
+              req=urllib.request.Request(target,headers={'User-Agent':'Mozilla/5.0 TCC-V9-readonly-probe','Accept':'text/html,application/json,*/*'})
+              with urllib.request.urlopen(req,timeout=20) as r:
+                b=r.read(200000)
+                probes.append({
+                  'url':target,'status':r.status,'contentType':r.headers.get('Content-Type',''),
+                  'bytesSampled':len(b),'sample':b.decode('utf-8','replace')[:4000]
+                })
+            except Exception as e:
+              probes.append({'url':target,'error':type(e).__name__+': '+str(e)[:300]})
+
+          out={
+            'schemaVersion':1,
+            'subject':'EMOBITALY public PWA route/static probe',
+            'documents':docs,
+            'routeHints':sorted(hints),
+            'sameOriginGetProbes':probes,
+            'safety':'Public same-origin GET only; no login, credentials, payment, charging, POST, mutation or session creation.'
+          }
+          p=Path('data/reports/emobitaly_pwa_route_probe_latest.json')
+          p.parent.mkdir(parents=True,exist_ok=True)
+          p.write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'hints':len(hints),'probes':len(probes)}))
+          PY
+
+      - name: Publish route evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/emobitaly_pwa_route_probe_latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "research(italy): probe EMOBITALY public PWA routes [run ${GITHUB_RUN_ID}]"
+          git pull --rebase origin main
+          git push origin HEAD:main
