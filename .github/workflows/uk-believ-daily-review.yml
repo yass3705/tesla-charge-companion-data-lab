@@ -1,0 +1,187 @@
+name: UK Believ daily 100-label review
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "10 2 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-believ-daily-review
+  cancel-in-progress: false
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BELIEV_CLIENT_ID: ${{ secrets.BELIEV_CLIENT_ID }}
+      BELIEV_CLIENT_SECRET: ${{ secrets.BELIEV_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+
+      - name: Review up to 100 Believ labels
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/national reports/uk/believ-daily
+          python3 - <<'PY'
+          import os,json,time,urllib.request,urllib.parse,urllib.error
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          LIMIT=100
+          SLEEP=1.05
+          BASE="https://api.believ.com"
+          now=datetime.now(timezone.utc)
+          now_iso=now.isoformat()
+          day=now.date().isoformat()
+
+          inventory_path=Path("data/national/uk_believ_public_labels.json")
+          state_path=Path("data/national/uk_believ_daily_state.json")
+          cache_path=Path("data/national/uk_believ_official_api.json")
+
+          if not inventory_path.exists():
+              raise SystemExit("Believ public label inventory missing")
+
+          inventory=json.loads(inventory_path.read_text())
+          inv_labels=[str(x.get("label") or "").upper() for x in inventory.get("labels",[]) if x.get("label")]
+          inv_labels=list(dict.fromkeys(inv_labels))
+
+          if state_path.exists():
+              state=json.loads(state_path.read_text())
+          else:
+              state={"updatedAt":None,"policy":{"dailyLabelLimit":100,"retry503First":True},"labels":{}}
+          state_labels=state.setdefault("labels",{})
+
+          # Priority: unresolved 503 first, then never checked, then oldest checked.
+          def key(label):
+              rec=state_labels.get(label)
+              if rec and rec.get("lastHttpStatus")==503:
+                  return (0, rec.get("lastCheckedAt") or "", label)
+              if not rec:
+                  return (1, "", label)
+              return (2, rec.get("lastCheckedAt") or "", label)
+
+          selected=sorted(inv_labels,key=key)[:LIMIT]
+
+          cid=os.environ.get("BELIEV_CLIENT_ID","")
+          secret=os.environ.get("BELIEV_CLIENT_SECRET","")
+          if not cid or not secret:
+              raise SystemExit("Believ credentials missing")
+
+          form=urllib.parse.urlencode({
+              "grant_type":"client_credentials",
+              "client_id":cid,
+              "client_secret":secret,
+          }).encode()
+          req=urllib.request.Request(
+              BASE+"/oauth/token",data=form,method="POST",
+              headers={"Accept":"application/json","Content-Type":"application/x-www-form-urlencoded","User-Agent":"TeslaChargeCompanion/9 daily"}
+          )
+          with urllib.request.urlopen(req,timeout=30) as r:
+              token=json.loads(r.read().decode("utf-8"))["access_token"]
+
+          cache={"updatedAt":None,"labels":{}}
+          if cache_path.exists():
+              try: cache=json.loads(cache_path.read_text())
+              except Exception: pass
+          cache_labels=cache.setdefault("labels",{})
+
+          results=[]
+          stopped_on_429=False
+          for idx,label in enumerate(selected):
+              rec={"label":label}
+              q=urllib.request.Request(
+                  f"{BASE}/1.0/evses/{label}",
+                  headers={"Accept":"application/json","Authorization":"Bearer "+token,"User-Agent":"TeslaChargeCompanion/9 daily"}
+              )
+              try:
+                  with urllib.request.urlopen(q,timeout=30) as r:
+                      data=json.loads(r.read().decode("utf-8"))
+                      rec.update({
+                          "httpStatus":r.status,
+                          "id":data.get("id"),
+                          "status":data.get("status"),
+                          "location":data.get("location"),
+                          "connectors":data.get("connectors"),
+                          "tariffs":data.get("tariffs")
+                      })
+                      cache_labels[label]={"retrievedAt":now_iso,**data}
+              except urllib.error.HTTPError as e:
+                  rec["httpStatus"]=e.code
+                  try:
+                      body=json.loads(e.read().decode("utf-8"))
+                      rec["message"]=body.get("message") or body.get("error")
+                  except Exception:
+                      rec["message"]="non_json_error"
+              except Exception as e:
+                  rec["httpStatus"]=None
+                  rec["message"]=f"{type(e).__name__}: {e}"
+
+              prev=state_labels.get(label,{})
+              status=rec.get("httpStatus")
+              state_labels[label]={
+                  **prev,
+                  "lastHttpStatus":status,
+                  "lastCheckedAt":now_iso,
+                  "attempts":int(prev.get("attempts") or 0)+1,
+                  "consecutive503":int(prev.get("consecutive503") or 0)+1 if status==503 else 0
+              }
+              results.append(rec)
+
+              if status==429:
+                  stopped_on_429=True
+                  break
+              if idx < len(selected)-1:
+                  time.sleep(SLEEP)
+
+          state["updatedAt"]=now_iso
+          state["policy"]={
+              "dailyLabelLimit":LIMIT,
+              "retry503First":True,
+              "selectionOrder":["previous_503","never_checked","oldest_checked"]
+          }
+          cache["updatedAt"]=now_iso
+
+          summary={
+              "retrievedAt":now_iso,
+              "inventoryLabels":len(inv_labels),
+              "selected":len(selected),
+              "attempted":len(results),
+              "success200":sum(1 for r in results if r.get("httpStatus")==200),
+              "notFound404":sum(1 for r in results if r.get("httpStatus")==404),
+              "serviceUnavailable503":sum(1 for r in results if r.get("httpStatus")==503),
+              "rateLimited429":sum(1 for r in results if r.get("httpStatus")==429),
+              "other":sum(1 for r in results if r.get("httpStatus") not in (200,404,503,429)),
+              "stoppedOn429":stopped_on_429,
+              "retry503Next":[k for k,v in state_labels.items() if v.get("lastHttpStatus")==503],
+              "neverCheckedRemaining":sum(1 for x in inv_labels if x not in state_labels)
+          }
+
+          report={"summary":summary,"results":results}
+          state_path.write_text(json.dumps(state,ensure_ascii=False,indent=2)+"\n")
+          cache_path.write_text(json.dumps(cache,ensure_ascii=False,indent=2)+"\n")
+          Path("reports/uk/believ-daily-latest.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
+          Path(f"reports/uk/believ-daily/{day}.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(summary,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Publish daily state and data
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/uk_believ_daily_state.json data/national/uk_believ_official_api.json reports/uk/believ-daily-latest.json reports/uk/believ-daily/
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(uk): Believ daily 100-label review [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
