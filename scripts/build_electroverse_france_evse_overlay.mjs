@@ -174,6 +174,7 @@ const tiles=new Map(),rejected={},parentGroups=new Map();
 const stats={
   cacheLocations:0,cacheEvses:0,physicalRefs:0,exactUniqueNationalEvses:0,
   parentConnectorRefs:0,parentCandidateGroups:0,parentPublishedEvses:0,parentPublishedChildRefs:0,
+  ordinalCandidateRefs:0,ordinalPublishedEvses:0,
   pricedExactEvses:0,publishedEvses:0,publishedOffers:0,publishedConnectorCount:0
 };
 function rej(k){rejected[k]=(rejected[k]||0)+1;}
@@ -190,13 +191,50 @@ for(const sh of manifest.shards||[]){
     const lat=Number(m.electroverse?.lat??m.irve?.lat),lon=Number(m.electroverse?.lon??m.irve?.lon);
     if(!Number.isFinite(lat)||!Number.isFinite(lon)){rej('missing_coordinates');continue;}
 
+    // Strict station-local ordinal mapping for providers that expose physicalReference
+    // only as "1", "2", ... while the national PDCs share one prefix and indexed suffixes.
+    const ordinalTargets=new Map(),usedForOrdinal=new Set(),hardNumeric=[];
+    for(const e0 of row.tariff?.evses||[]){
+      const pr0=text(e0?.physicalReference); if(!pr0)continue;
+      const k0=norm(pr0);
+      if(local.has(k0)){usedForOrdinal.add(k0);continue;}
+      const p0=[...local].filter(p=>{
+        if(!k0.startsWith(p)||k0.length<=p.length)return false;
+        return /^\d{1,2}$/.test(k0.slice(p.length));
+      });
+      if(p0.length===1){usedForOrdinal.add(p0[0]);continue;}
+      if(/^\d{1,2}$/.test(k0))hardNumeric.push({e:e0,n:Number(k0)});
+    }
+    if(hardNumeric.length && new Set(hardNumeric.map(x=>x.n)).size===hardNumeric.length){
+      const available=[...local].filter(p=>!usedForOrdinal.has(p));
+      let chosen=null;
+      for(const width of [1,2]){
+        if(available.some(p=>p.length<=width))continue;
+        const prefixes=new Set(available.map(p=>p.slice(0,-width)));
+        if(prefixes.size!==1)continue;
+        const nums=available.map(p=>/^\d+$/.test(p.slice(-width))?Number(p.slice(-width)):NaN);
+        if(nums.some(x=>!Number.isFinite(x)))continue;
+        const wanted=new Set(hardNumeric.map(x=>x.n));
+        const byNum=new Map(); let ok=true;
+        for(let i=0;i<available.length;i++){
+          const n=nums[i]; if(!wanted.has(n))continue;
+          if(byNum.has(n)){ok=false;break;}
+          byNum.set(n,available[i]);
+        }
+        if(!ok||byNum.size!==hardNumeric.length)continue;
+        if([...byNum.values()].some(p=>(globalPdcOwners.get(p)?.size||0)!==1))continue;
+        chosen=byNum;break;
+      }
+      if(chosen) for(const x of hardNumeric) ordinalTargets.set(x.e,chosen.get(x.n));
+    }
+
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
       const pr=text(e?.physicalReference);
       if(!pr){rej('evse_missing_physical_reference');continue;}
       stats.physicalRefs++;
       const k=norm(pr);
-      let targetPdc=pr,identityMode='exact_unique_national_irve_pdc',parentMode=false,parentNorm='';
+      let targetPdc=pr,identityMode='exact_unique_national_irve_pdc',parentMode=false,parentNorm='',ordinalMode=false;
       if(local.has(k)){
         const owners=globalPdcOwners.get(k);
         if(!owners||owners.size!==1){rej('physical_reference_not_globally_unique');continue;}
@@ -207,14 +245,25 @@ for(const sh of manifest.shards||[]){
           const suffix=k.slice(p.length);
           return /^\d{1,2}$/.test(suffix);
         });
-        if(candidates.length!==1){rej(candidates.length?'parent_pdc_ambiguous':'physical_reference_not_in_local_national_pdcs');continue;}
-        parentNorm=candidates[0];
-        const owners=globalPdcOwners.get(parentNorm);
-        if(!owners||owners.size!==1){rej('parent_pdc_not_globally_unique');continue;}
-        targetPdc=localByNorm.get(parentNorm);
-        identityMode='exact_unique_national_irve_pdc_parent_connector_suffix';
-        parentMode=true;
-        stats.parentConnectorRefs++;
+        if(candidates.length===1){
+          parentNorm=candidates[0];
+          const owners=globalPdcOwners.get(parentNorm);
+          if(!owners||owners.size!==1){rej('parent_pdc_not_globally_unique');continue;}
+          targetPdc=localByNorm.get(parentNorm);
+          identityMode='exact_unique_national_irve_pdc_parent_connector_suffix';
+          parentMode=true;
+          stats.parentConnectorRefs++;
+        }else if(ordinalTargets.has(e)){
+          const targetNorm=ordinalTargets.get(e);
+          const owners=globalPdcOwners.get(targetNorm);
+          if(!owners||owners.size!==1){rej('ordinal_pdc_not_globally_unique');continue;}
+          targetPdc=localByNorm.get(targetNorm);
+          identityMode='strict_station_ordinal_suffix_bijection';
+          ordinalMode=true;
+          stats.ordinalCandidateRefs++;
+        }else{
+          rej(candidates.length?'parent_pdc_ambiguous':'physical_reference_not_in_local_national_pdcs');continue;
+        }
       }
 
       const connectors=e?.connectors||[];
@@ -270,6 +319,7 @@ for(const sh of manifest.shards||[]){
       };
       const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
       tiles.get(id).push(offer);
+      if(ordinalMode)stats.ordinalPublishedEvses++;
       stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=compiled.length;
     }
   }
@@ -334,6 +384,8 @@ const out={
     parentPdcRequiresUniqueLocalPrefix:true,
     parentPdcRequiresNumericSuffixMax2:true,
     parentPdcRequiresHomogeneousChildPricing:true,
+    strictStationOrdinalSuffixBijection:true,
+    ordinalPdcRequiresGlobalUniqueness:true,
     evseLevelPricing:true,
     stationLevelFlattening:false,
     electraDependency:false,
