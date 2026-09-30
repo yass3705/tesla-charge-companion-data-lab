@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-30",
+  "policy": "fail-closed",
+  "purpose": "Single canonical progress index for TCC V9 country snapshot planning. This file summarizes validated ledgers; it does not replace country-specific evidence.",
+  "countries": {
+    "TESLA": {
+      "coverage": "current",
+      "source": "dedicated Tesla weekly source/process",
+      "publication": "include"
+    },
+    "ES": {
+      "coverage": "complete",
+      "publication": "include",
+      "note": "REVE-based Spain V9 baseline finalized before 2026-09-30."
+    },
+    "NL": {
+      "coverage": "complete",
+      "publication": "include",
+      "note": "Netherlands V9 baseline finalized before 2026-09-30."
+    },
+    "CH": {
+      "coverage": "complete-with-fail-closed-residuals",
+      "publication": "include",
+      "ledger": "docs/switzerland-cpo-progress-2026-09.json",
+      "note": "Country finalized for V9; bounded residuals remain explicit fail-closed and do not suppress resolved stations."
+    },
+    "FR": {
+      "coverage": "partial",
+      "publication": "include",
+      "ledger": "docs/france-cpo-progress-2026-09.json",
+      "counters": {
+        "totalCpos": 291,
+        "treated": 92,
+        "setAside": 23,
+        "active": 176
+      },
+      "invariant": "treated + setAside + active = 291"
+    },
+    "IT": {
+      "coverage": "partial",
+      "publication": "include",
+      "ledger": "docs/italy-cpo-progress-2026-09.json",
+      "counters": {
+        "currentPunPartyIds": 92,
+        "currentPunNamedInCanonical": 92,
+        "treated": 24,
+        "partialCurrent": 68,
+        "partialHistoricalNonCurrent": 2,
+        "partialTotal": 70,
+        "setAside": 0,
+        "active": 0,
+        "unreconciledCurrentPunPartyIds": 0
+      },
+      "invariant": "All 92 current PUN partyIds are nominatively reconciled; no identity backlog."
+    },
+    "DE": {
+      "coverage": "partial",
+      "publication": "include",
+      "ledger": "docs/germany-cpo-progress-2026-09.json",
+      "resolutionLedger": "docs/germany-cpo-second-pass-resolution-180.json",
+      "counters": {
+        "totalNamedCpos": 591,
+        "complete": 244,
+        "partial": 347,
+        "blocked": 0
+      },
+      "invariant": "complete + partial + blocked = 591"
+    },
+    "UK": {
+      "coverage": "partial",
+      "publication": "include",
+      "ledger": "docs/uk-cpo-progress-2026-09.json",
+      "counters": {
+        "canonicalCpos": 46,
+        "complete": 18,
+        "actionablePartial": 1,
+        "setAsideOrExternalBlocked": 27,
+        "other": 0
+      },
+      "firstPassComplete": true,
+      "invariant": "complete + actionablePartial + setAsideOrExternalBlocked + other = 46"
+    },
+    "MA": {
+      "coverage": "partial-cpo-consolidated",
+      "publication": "include",
+      "knownValidatedSources": [
+        "EVGO",
+        "FastVolt",
+        "Kilowatt",
+        "EVOne"
+      ],
+      "snapshotSourceCount": 6,
+      "note": "No single national base; publish validated CPO data only and reconcile overlaps by canonical identity."
+    }
+  }
+}
