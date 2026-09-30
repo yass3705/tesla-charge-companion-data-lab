@@ -201,6 +201,8 @@ for(const row of rows){
   }
 }
 
+let genericTailLocationsTested=0,genericTailLocationsSafe=0,genericTailRefsSafe=0,genericTailNonNumericRefsSafe=0;
+const genericTailSamples=[];
 let ordinalLocationsSafe=0,ordinalRefsSafe=0,ordinalLocationsTested=0;
 const ordinalSamples=[];
 for(const row of rows){
@@ -265,6 +267,62 @@ for(const row of rows){
   });
 }
 
+for(const row of rows){
+  const m=byPk.get(String(row.electroverseLocationPk));
+  const rawLocal=[...(m?.irvePdcIds||[]),...(row.irvePdcIds||[])];
+  const localMap=new Map(rawLocal.map(p=>[norm(p),p]).filter(([k])=>k));
+  const local=[...localMap.keys()];
+  if(local.length<2)continue;
+
+  const used=new Set(),hard=[];
+  for(const e0 of row.tariff?.evses||[]){
+    const pr0=String(e0?.physicalReference??'').trim(); if(!pr0)continue;
+    const k0=norm(pr0);
+    if(localMap.has(k0)){used.add(k0);continue;}
+    const parents=local.filter(p=>{
+      if(!k0.startsWith(p)||k0.length<=p.length)return false;
+      return /^\d{1,2}$/.test(k0.slice(p.length));
+    });
+    if(parents.length===1){used.add(parents[0]);continue;}
+    hard.push({e:e0,pr:pr0,k:k0});
+  }
+  if(!hard.length)continue;
+  genericTailLocationsTested++;
+  const available=local.filter(p=>!used.has(p));
+  if(!available.length)continue;
+
+  let commonPrefix=available[0];
+  for(const p of available.slice(1)){
+    let i=0;while(i<commonPrefix.length&&i<p.length&&commonPrefix[i]===p[i])i++;
+    commonPrefix=commonPrefix.slice(0,i);
+    if(!commonPrefix)break;
+  }
+  if(commonPrefix.length<4)continue;
+  const tailToPdc=new Map(); let uniqueTails=true;
+  for(const p of available){
+    const tail=p.slice(commonPrefix.length);
+    if(!tail||tailToPdc.has(tail)){uniqueTails=false;break;}
+    tailToPdc.set(tail,p);
+  }
+  if(!uniqueTails)continue;
+  const hardKeys=hard.map(x=>x.k);
+  if(new Set(hardKeys).size!==hard.length)continue;
+  if(hard.some(x=>!tailToPdc.has(x.k)))continue;
+  const targets=hard.map(x=>tailToPdc.get(x.k));
+  if(new Set(targets).size!==hard.length)continue;
+  if(targets.some(p=>(currentOwners.get(p)?.size||0)!==1))continue;
+
+  genericTailLocationsSafe++;
+  genericTailRefsSafe+=hard.length;
+  genericTailNonNumericRefsSafe+=hard.filter(x=>!/^[0-9]{1,2}$/.test(x.k)).length;
+  if(genericTailSamples.length<100)genericTailSamples.push({
+    pk:row.electroverseLocationPk,
+    irveStationId:m?.irveStationId??row.irveStationId,
+    commonPrefix,
+    mappings:hard.map(x=>({physicalReference:x.pr,targetPdc:localMap.get(tailToPdc.get(x.k)),numeric:/^[0-9]{1,2}$/.test(x.k)}))
+  });
+}
+
 let parentGroupsUniqueOwner=0,parentGroupsHomogeneousPricing=0,parentGroupsSafe=0,parentChildRefsSafe=0,parentGroupsHeterogeneousPricing=0,parentGroupsNonUniqueOwner=0;
 const parentGroupSamples=[];
 for(const g of parentGroups.values()){
@@ -306,6 +364,10 @@ const out={
   parentGroupsHeterogeneousPricing,
   parentGroupsSafe,
   parentChildRefsSafe,
+  genericTailLocationsTested,
+  genericTailLocationsSafe,
+  genericTailRefsSafe,
+  genericTailNonNumericRefsSafe,
   ordinalLocationsTested,
   ordinalLocationsSafe,
   ordinalRefsSafe,
@@ -324,6 +386,7 @@ const out={
   globalParentSamples,
   hardResidualSamples,
   textualSamples,
+  genericTailSamples,
   ordinalSamples,
   unmatchedSamples
 };
