@@ -88,7 +88,7 @@ function makeRule(scope,start,end,currency,rate,days=null,after=null,bands=[]){
 const ocpiDimension={energy:'ENERGY',time:'TIME',parking:'PARKING_TIME',flat:'FLAT'};
 function durationBandsFor(group){
   const bands=[];
-  for(const item of group.bounded||[]){
+  for(const item of group.duration||[]){
     for(const kind of item.present){
       const dim=ocpiDimension[kind];if(!dim)continue;
       bands.push([dim,item.minSeconds,item.maxSeconds,round(item.rate[kind])]);
@@ -129,15 +129,12 @@ function compileConnector(c){
     const min=Number(dr.minDurationSeconds),max=Number(dr.maxDurationSeconds);
     const hasMin=Number.isFinite(min)&&min>0,hasMax=Number.isFinite(max)&&max>0;
     let g=groups.get(w.key);
-    if(!g){g={...w,plain:[],upper:[],lower:[],bounded:[]};groups.set(w.key,g);}
+    if(!g){g={...w,plain:[],duration:[]};groups.set(w.key,g);}
     const item={
       rate:parsed.rate,present:parsed.present,
-      threshold:hasMin?min/60:hasMax?max/60:0,
       minSeconds:hasMin?min:0,maxSeconds:hasMax?max:null
     };
-    if(hasMin&&hasMax)g.bounded.push(item);
-    else if(hasMin)g.lower.push(item);
-    else if(hasMax)g.upper.push(item);
+    if(hasMin||hasMax)g.duration.push(item);
     else g.plain.push(item);
   }
 
@@ -152,7 +149,7 @@ function compileConnector(c){
 
   const rules=[makeRule('allDay','00:00','24:00',currency,base)];
   for(const g of groups.values()){
-    if(g.key==='00:00|24:00|'&&!g.plain.length&&!g.upper.length&&!g.lower.length&&!g.bounded.length)continue;
+    if(g.key==='00:00|24:00|'&&!g.plain.length&&!g.duration.length)continue;
     let rate={...base};
     const db=durationBandsFor(g);
     if(!db.ok)return db;
@@ -161,39 +158,11 @@ function compileConnector(c){
     if(g.plain.length>1)return{ok:false,reason:'multiple_plain_window_rules'};
     if(g.plain.length===1)for(const k of g.plain[0].present)rate[k]=g.plain[0].rate[k];
 
-    if(g.upper.length>1||g.lower.length>1)return{ok:false,reason:'multiple_duration_thresholds'};
-    let after=null;
-    if(g.upper.length){
-      const up=g.upper[0];
-      // A max-duration rule defines the rate up to threshold.
-      for(const k of up.present)rate[k]=up.rate[k];
-    }
-    if(g.lower.length){
-      const lo=g.lower[0];
-      const threshold=lo.threshold;
-      if(g.upper.length && Math.abs(g.upper[0].threshold-threshold)>1e-9)
-        return{ok:false,reason:'duration_threshold_mismatch'};
-      // Engine supports time/parking surcharge after threshold, but not an
-      // energy/flat tariff switch by duration.
-      if(lo.present.has('energy') && Math.abs(lo.rate.energy-rate.energy)>1e-9)
-        return{ok:false,reason:'energy_changes_after_duration'};
-      if(lo.present.has('flat') && Math.abs(lo.rate.flat-rate.flat)>1e-9)
-        return{ok:false,reason:'flat_changes_after_duration'};
-      const surcharge=Math.max(0,lo.rate.time-rate.time)+Math.max(0,lo.rate.parking-rate.parking);
-      if((lo.present.has('time')&&lo.rate.time<rate.time)||(lo.present.has('parking')&&lo.rate.parking<rate.parking))
-        return{ok:false,reason:'rate_decreases_after_duration'};
-      if(surcharge>0)after={threshold,rate:surcharge};
-    }
     const isAll=g.start==='00:00'&&g.end==='24:00';
     if(isAll&&!g.days?.length){
-      // merge duration-only semantics into base rule when possible
-      if(g.plain.length||g.upper.length||g.bounded.length){
-        rules[0]=makeRule('allDay','00:00','24:00',currency,rate,null,after,durationBands);
-      }else if(after){
-        rules[0]={...rules[0],afterMinutesRate:round(after.rate),afterMinutesThreshold:Math.round(after.threshold)};
-      }
+      rules[0]=makeRule('allDay','00:00','24:00',currency,rate,null,null,durationBands);
     }else{
-      rules.push(makeRule('timeWindow',g.start,g.end,currency,rate,g.days,after,durationBands));
+      rules.push(makeRule('timeWindow',g.start,g.end,currency,rate,g.days,null,durationBands));
     }
   }
   return{ok:true,pricing:{type:'rules',rules}};
@@ -659,6 +628,7 @@ const out={
     dateRestrictedPricingUsesActiveFranceLocalDate:true,
     dateRestrictionEndExclusive:true,
     boundedDurationPricingAsOcpiBands:true,
+    allDurationRestrictionsAsOcpiBands:true,
     boundedDurationBandOverlapFailClosed:true
   },
   source:{
