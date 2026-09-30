@@ -17,6 +17,7 @@ const suffixCounts={};
 const unmatchedSamples=[], recoveredSamples=[], parentPrefixSamples=[];
 
 const rows=[];
+const parentGroups=new Map();
 for(const sh of manifest.shards||[]){
   const data=JSON.parse(await fs.readFile('data/electroverse/tariff_cache/'+sh.file,'utf8'));
   for(const row of Object.values(data.stations||{})) rows.push(row);
@@ -26,6 +27,13 @@ const currentOwners=new Map(), unionOwners=new Map();
 function addOwner(map,pdc,station){
   const k=norm(pdc); if(!k)return;
   const s=map.get(k)||new Set(); s.add(String(station??'')); map.set(k,s);
+}
+function rawPricingSig(e){
+  return JSON.stringify((e?.connectors||[]).map(c=>({
+    isChargingFree:c?.isChargingFree??null,
+    priceComponents:c?.priceComponents??null,
+    complexPricingDetail:c?.complexPricingDetail??null
+  })));
 }
 for(const m of mapping.mappings||[]) for(const p of m.irvePdcIds||[]) addOwner(currentOwners,p,m.irveStationId);
 for(const row of rows){
@@ -76,11 +84,20 @@ for(const row of rows){
         const parent=norm(parentCandidates[0]);
         const suffix=k.slice(parent.length);
         suffixCounts[suffix]=(suffixCounts[suffix]||0)+1;
+        const parentPdc=parentCandidates[0];
+        const parentNorm=norm(parentPdc);
+        const ownerCount=currentOwners.get(parentNorm)?.size||0;
+        const gk=String(row.electroverseLocationPk)+'|'+parentNorm;
+        const g=parentGroups.get(gk)||{pk:String(row.electroverseLocationPk),parentPdc,parentNorm,ownerCount,children:[],pricingSigs:new Set()};
+        g.children.push({physicalReference:pr,evsePk:e.pk,suffix});
+        g.pricingSigs.add(rawPricingSig(e));
+        parentGroups.set(gk,g);
         if(parentPrefixSamples.length<100) parentPrefixSamples.push({
           pk:row.electroverseLocationPk,
           irveStationId:m?.irveStationId??row.irveStationId,
           physicalReference:pr,
-          parentPdc:parentCandidates[0],
+          parentPdc,
+          parentOwnerCount:ownerCount,
           suffix,
           evsePk:e.pk
         });
@@ -100,6 +117,21 @@ for(const row of rows){
   }
 }
 
+let parentGroupsUniqueOwner=0,parentGroupsHomogeneousPricing=0,parentGroupsSafe=0,parentChildRefsSafe=0,parentGroupsHeterogeneousPricing=0,parentGroupsNonUniqueOwner=0;
+const parentGroupSamples=[];
+for(const g of parentGroups.values()){
+  const uniqueOwner=g.ownerCount===1;
+  const homogeneous=g.pricingSigs.size===1;
+  if(uniqueOwner) parentGroupsUniqueOwner++; else parentGroupsNonUniqueOwner++;
+  if(homogeneous) parentGroupsHomogeneousPricing++; else parentGroupsHeterogeneousPricing++;
+  if(uniqueOwner&&homogeneous){parentGroupsSafe++;parentChildRefsSafe+=g.children.length;}
+  if(parentGroupSamples.length<100) parentGroupSamples.push({
+    pk:g.pk,parentPdc:g.parentPdc,ownerCount:g.ownerCount,
+    childCount:g.children.length,pricingVariantCount:g.pricingSigs.size,
+    safe:uniqueOwner&&homogeneous,children:g.children.slice(0,10)
+  });
+}
+
 const out={
   generatedAt:new Date().toISOString(),
   locations,evses,physicalRefs,
@@ -115,10 +147,18 @@ const out={
   globallyAmbiguousViaUnion,
   uniqueLocalParentPrefix,
   ambiguousLocalParentPrefix,
+  parentGroupsTotal:parentGroups.size,
+  parentGroupsUniqueOwner,
+  parentGroupsNonUniqueOwner,
+  parentGroupsHomogeneousPricing,
+  parentGroupsHeterogeneousPricing,
+  parentGroupsSafe,
+  parentChildRefsSafe,
   suffixCounts:Object.fromEntries(Object.entries(suffixCounts).sort((a,b)=>b[1]-a[1]).slice(0,50)),
   policy:'Diagnostic only. Exact normalized physicalReference against union of mapping + row IRVE PDC IDs; no proximity inference.',
   recoveredSamples,
   parentPrefixSamples,
+  parentGroupSamples,
   unmatchedSamples
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
