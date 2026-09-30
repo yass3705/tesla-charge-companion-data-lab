@@ -1,0 +1,99 @@
+name: UK Forward EV Zapmap public discovery
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-forward-zapmap-public-discovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Inspect public Zapmap Forward EV network page
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk /tmp/chrome
+          URL='https://www.zapmap.com/ev-guides/public-charging-point-networks/forward-ev'
+          google-chrome --headless=new --no-sandbox --disable-gpu             --user-data-dir=/tmp/chrome             --log-net-log=/tmp/netlog.json             --net-log-capture-mode=IncludeSensitive             --virtual-time-budget=12000             --dump-dom "$URL" > /tmp/dom.html 2>/tmp/chrome.err || true
+
+          python3 - <<'PY'
+          import json,re,pathlib,urllib.parse
+          from datetime import datetime,timezone
+
+          urls=set()
+          try:
+              n=json.load(open('/tmp/netlog.json'))
+              const=n.get('constants',{})
+              for ev in n.get('events',[]):
+                  p=ev.get('params') or {}
+                  for k,v in p.items():
+                      if isinstance(v,str) and v.startswith(('http://','https://')):
+                          urls.add(v)
+          except Exception: pass
+          try:
+              dom=pathlib.Path('/tmp/dom.html').read_text(errors='replace')
+          except: dom=''
+          for u in re.findall(r'https?://[^\s"\'<>\\]{5,1200}',dom):
+              urls.add(u)
+
+          def sanitize(u):
+              return re.sub(r'([?&](?:token|key|api_key|apikey|code|authorization)=)[^&#\s]+',r'\1<redacted>',u,flags=re.I)
+
+          candidates=[]
+          for u in sorted(urls):
+              ul=u.lower()
+              if any(k in ul for k in ('api','charge','station','location','network','forward','tariff','price','map')):
+                  if not any(x in ul for x in ('google-analytics','doubleclick','googletag','facebook','sentry')):
+                      candidates.append(sanitize(u)[:1500])
+
+          # Pull explicit charge-point links and any embedded JSON-ish Forward data.
+          links=sorted(set(re.findall(r'https?://www\.zapmap\.com/charge-points/[^\s"\'<>\\]+',dom,re.I)))
+          rel=sorted(set(re.findall(r'href=["\'](/charge-points/[^"\']+)["\']',dom,re.I)))
+          contexts=[]
+          for needle in ('Forward EV','104','36 locations','pricing','tariff','charge-points'):
+              pos=0
+              while True:
+                  i=dom.lower().find(needle.lower(),pos)
+                  if i<0: break
+                  contexts.append(dom[max(0,i-500):min(len(dom),i+1600)])
+                  pos=i+len(needle)
+                  if len(contexts)>=80: break
+              if len(contexts)>=80: break
+          out={
+            "retrievedAt":datetime.now(timezone.utc).isoformat(),
+            "url":'https://www.zapmap.com/ev-guides/public-charging-point-networks/forward-ev',
+            "domBytes":len(dom),
+            "candidateUrls":candidates[:500],
+            "absoluteChargePointLinks":links[:500],
+            "relativeChargePointLinks":rel[:500],
+            "contexts":contexts[:80]
+          }
+          pathlib.Path('reports/uk/forward-zapmap-public-discovery-latest.json').write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print(json.dumps({k:out[k] for k in ('domBytes','candidateUrls','absoluteChargePointLinks','relativeChargePointLinks')},ensure_ascii=False,indent=2))
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/forward-zapmap-public-discovery-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): inspect Forward EV public Zapmap surface [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
