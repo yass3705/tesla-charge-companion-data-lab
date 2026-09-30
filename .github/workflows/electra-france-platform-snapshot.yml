@@ -10,7 +10,7 @@ permissions:
   contents: write
 concurrency:
   group: electra-france-platform-snapshot
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   snapshot:
     runs-on: ubuntu-24.04
@@ -25,6 +25,9 @@ jobs:
           ref: 0a6d2c3415504397310d3dc92fae40be843b2435
           path: stable
           persist-credentials: false
+          sparse-checkout: |
+            v9-production-runtime/data/v9/france-static/all.json.gz
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
