@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": "batch484",
+  "date": "2026-09-30",
+  "purpose": "Anti-stagnation closure of active cases whose evidence-led paths are already bounded; no tariff extrapolation.",
+  "decisions": [
+    {
+      "rawRank": 57,
+      "authority": "bp Pulse",
+      "historical": {
+        "stations": 20,
+        "pdc": 503
+      },
+      "decision": "active->setAside",
+      "evidence": [
+        "docs/france-regional-cpo-v8-bp-pulse-shell-audit-batch327-2026-09-18.json",
+        "docs/france-regional-cpo-v8-direct-bppulse-batch341-2026-09-19.json"
+      ],
+      "reason": "Two distinct passes recovered operator/direct-app context but no current exact ad-hoc/contactless tariff equivalence. Generic search is explicitly exhausted.",
+      "reopenOn": "New bp first-party QR/TPE/contactless station tariff, or deterministic AFIR/QualiCharge producer tariff text."
+    },
+    {
+      "rawRank": 82,
+      "authority": "Shell Recharge",
+      "historical": {
+        "stations": 32,
+        "pdc": 265
+      },
+      "decision": "active->setAside",
+      "evidence": [
+        "docs/france-regional-cpo-v8-bp-pulse-shell-audit-batch327-2026-09-18.json"
+      ],
+      "reason": "Current Shell terms make tariff station-level/dynamic and the historical fixed V8 rule is explicitly stale/not generalizable.",
+      "reopenOn": "Current station/EVSE-level Shell app/web/QR direct price feed."
+    },
+    {
+      "rawRank": 150,
+      "authority": "WattzHub | FR*SMI",
+      "historical": {
+        "stations": 10,
+        "pdc": 41
+      },
+      "decision": "active->setAside",
+      "evidence": [
+        "docs/france-cpo-progress-2026-09.json#activeEvidenceStatus"
+      ],
+      "reason": "Current producer data.gouv route was exhausted; only historical static tariff evidence is usable and cannot be transposed as current exact price.",
+      "reopenOn": "New HubEx QR/ad-hoc/backend, AFIR/QualiCharge producer text, or current first-party exact station tariff."
+    }
+  ],
+  "counterTransition": {
+    "before": {
+      "treated": 94,
+      "setAside": 27,
+      "active": 170,
+      "total": 291
+    },
+    "after": {
+      "treated": 94,
+      "setAside": 30,
+      "active": 167,
+      "total": 291
+    }
+  },
+  "policy": {
+    "failClosed": true,
+    "noHistoricalTariffReplay": true,
+    "noRoamingSubstitution": true
+  },
+  "result": "bounded-set-aside"
+}
