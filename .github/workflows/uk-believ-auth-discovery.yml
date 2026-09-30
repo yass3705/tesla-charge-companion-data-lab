@@ -1,0 +1,216 @@
+name: UK Believ authenticated API discovery
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-believ-auth-discovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      BELIEV_CLIENT_ID: ${{ secrets.BELIEV_CLIENT_ID }}
+      BELIEV_CLIENT_SECRET: ${{ secrets.BELIEV_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+
+      - name: Discover Believ API contract and authenticate safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python3 - <<'PY'
+          import os,re,json,urllib.request,urllib.parse,urllib.error,base64,hashlib
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          BASE="https://api.believ.com"
+          CID=os.environ.get("BELIEV_CLIENT_ID","")
+          SEC=os.environ.get("BELIEV_CLIENT_SECRET","")
+          UA="TeslaChargeCompanion/9 Believ-auth-discovery"
+
+          def req(url, method="GET", data=None, headers=None, timeout=30):
+              h={"User-Agent":UA,"Accept":"application/json,text/html,*/*"}
+              if headers: h.update(headers)
+              r=urllib.request.Request(url,data=data,headers=h,method=method)
+              try:
+                  with urllib.request.urlopen(r,timeout=timeout) as x:
+                      b=x.read(5_000_000)
+                      return x.status,dict(x.headers.items()),b,x.geturl()
+              except urllib.error.HTTPError as e:
+                  return e.code,dict(e.headers.items()),e.read(500_000),url
+              except Exception as e:
+                  return None,{},str(e).encode(),url
+
+          out={
+            "retrievedAt":datetime.now(timezone.utc).isoformat(),
+            "base":BASE,
+            "credentialsPresent":bool(CID and SEC),
+            "clientIdFingerprint":hashlib.sha256(CID.encode()).hexdigest()[:16] if CID else None,
+            "clientSecretFingerprint":hashlib.sha256(SEC.encode()).hexdigest()[:16] if SEC else None,
+            "publicProbes":[],
+            "auth":{"attempted":False},
+            "apiProbes":[]
+          }
+
+          # Public contract/documentation probes.
+          candidates=[
+            "/", "/openapi.json", "/swagger.json", "/swagger/v1/swagger.json",
+            "/api/openapi.json", "/api/swagger.json", "/docs", "/swagger", "/redoc",
+            "/.well-known/openid-configuration", "/oauth/.well-known/openid-configuration"
+          ]
+          specs=[]
+          html_blobs=[]
+          for p in candidates:
+              st,h,b,final=req(BASE+p)
+              ct=h.get("Content-Type","")
+              rec={"path":p,"status":st,"contentType":ct,"bytes":len(b),"finalUrl":final}
+              txt=b.decode("utf-8","replace")
+              if st==200 and ("json" in ct.lower() or txt.lstrip().startswith(("{","["))):
+                  try:
+                      j=json.loads(txt)
+                      rec["jsonKeys"]=list(j)[:30] if isinstance(j,dict) else []
+                      if isinstance(j,dict) and ("openapi" in j or "swagger" in j):
+                          specs.append((p,j))
+                      if isinstance(j,dict) and ("token_endpoint" in j or "authorization_endpoint" in j):
+                          rec["oidc"]={k:j.get(k) for k in ("issuer","token_endpoint","authorization_endpoint","scopes_supported") if k in j}
+                  except Exception: pass
+              if st==200 and "html" in ct.lower():
+                  html_blobs.append((p,txt))
+                  # Safe route hints only; never persist inline credentials/tokens.
+                  urls=sorted(set(re.findall(r'https?://[^"\'\s<>]+',txt)))
+                  rec["urlHints"]=[u for u in urls if any(k in u.lower() for k in ("oauth","token","auth","swagger","openapi","api"))][:50]
+              out["publicProbes"].append(rec)
+
+          # Inspect JS linked from public portal for auth/docs endpoint hints.
+          st,h,b,final=req(BASE+"/")
+          if st==200:
+              html=b.decode("utf-8","replace")
+              srcs=re.findall(r'<script[^>]+src=["\']([^"\']+)["\']',html,re.I)
+              from urllib.parse import urljoin
+              for s in srcs[:50]:
+                  u=urljoin(final,s)
+                  sst,sh,sb,sf=req(u)
+                  if sst!=200: continue
+                  txt=sb.decode("utf-8","replace")
+                  hints=sorted(set(re.findall(r'https?://[^"\'\s<>]+',txt)))
+                  hints=[x for x in hints if any(k in x.lower() for k in ("oauth","token","auth","api.believ","openapi","swagger"))]
+                  if hints:
+                      out["publicProbes"].append({"path":u,"status":sst,"bytes":len(sb),"urlHints":hints[:80]})
+
+          # Derive auth configuration from OpenAPI/OIDC if exposed.
+          token_urls=[]
+          api_paths=[]
+          security=[]
+          for sp,j in specs:
+              comps=(j.get("components") or {}).get("securitySchemes") or {}
+              for name,sc in comps.items():
+                  safe={"name":name,"type":sc.get("type"),"scheme":sc.get("scheme"),"in":sc.get("in"),"paramName":sc.get("name")}
+                  flows=sc.get("flows") or {}
+                  safe["flows"]={fk:{k:v.get(k) for k in ("authorizationUrl","tokenUrl","refreshUrl","scopes") if k in v} for fk,v in flows.items()}
+                  security.append(safe)
+                  for v in flows.values():
+                      if v.get("tokenUrl"): token_urls.append(v["tokenUrl"])
+              for p,ops in (j.get("paths") or {}).items():
+                  if isinstance(ops,dict) and "get" in ops:
+                      api_paths.append(p)
+          out["securitySchemes"]=security
+
+          # OIDC discovery token endpoint.
+          for rec in out["publicProbes"]:
+              if isinstance(rec.get("oidc"),dict) and rec["oidc"].get("token_endpoint"):
+                  token_urls.append(rec["oidc"]["token_endpoint"])
+          token_urls=list(dict.fromkeys(token_urls))
+          out["tokenUrlCandidates"]=token_urls
+
+          # Auth only when a documented token endpoint exists.
+          access_token=None
+          if CID and SEC and token_urls:
+              out["auth"]["attempted"]=True
+              for tu in token_urls:
+                  url=urllib.parse.urljoin(BASE+"/",tu)
+                  attempts=[
+                    ("basic_client_credentials",
+                     urllib.parse.urlencode({"grant_type":"client_credentials"}).encode(),
+                     {"Content-Type":"application/x-www-form-urlencoded",
+                      "Authorization":"Basic "+base64.b64encode((CID+":"+SEC).encode()).decode()}),
+                    ("form_client_credentials",
+                     urllib.parse.urlencode({"grant_type":"client_credentials","client_id":CID,"client_secret":SEC}).encode(),
+                     {"Content-Type":"application/x-www-form-urlencoded"})
+                  ]
+                  for mode,data,headers in attempts:
+                      st,h,b,final=req(url,"POST",data,headers)
+                      txt=b.decode("utf-8","replace")
+                      rec={"tokenUrl":url,"mode":mode,"status":st,"contentType":h.get("Content-Type"),"bytes":len(b)}
+                      try:
+                          j=json.loads(txt)
+                          rec["responseKeys"]=list(j)[:30] if isinstance(j,dict) else []
+                          tok=j.get("access_token") if isinstance(j,dict) else None
+                          if tok:
+                              access_token=tok
+                              rec["tokenReceived"]=True
+                              rec["tokenFingerprint"]=hashlib.sha256(tok.encode()).hexdigest()[:16]
+                              rec["tokenType"]=j.get("token_type")
+                              rec["expiresIn"]=j.get("expires_in")
+                          else:
+                              rec["tokenReceived"]=False
+                              rec["errorFields"]={k:j.get(k) for k in ("error","error_description","message","detail") if k in j}
+                      except Exception:
+                          rec["responseTextPrefix"]=re.sub(r'(?i)(client_secret|access_token|token)\s*[:=]\s*[^\s,}]+',r'\1=<redacted>',txt[:800])
+                      out["auth"].setdefault("attempts",[]).append(rec)
+                      if access_token: break
+                  if access_token: break
+
+          # Read-only API GET probes from documented OpenAPI paths after successful auth.
+          if access_token:
+              safe_paths=[]
+              for p in api_paths:
+                  if "{" in p: continue
+                  pl=p.lower()
+                  if any(k in pl for k in ("location","evse","chargepoint","station","tariff","price")):
+                      safe_paths.append(p)
+              for p in list(dict.fromkeys(safe_paths))[:30]:
+                  st,h,b,final=req(urllib.parse.urljoin(BASE+"/",p.lstrip("/")),headers={"Authorization":"Bearer "+access_token})
+                  rec={"path":p,"status":st,"contentType":h.get("Content-Type"),"bytes":len(b)}
+                  try:
+                      j=json.loads(b.decode("utf-8","replace"))
+                      if isinstance(j,dict):
+                          rec["keys"]=list(j)[:30]
+                          for key in ("count","total","totalCount"):
+                              if key in j: rec[key]=j[key]
+                      elif isinstance(j,list): rec["count"]=len(j)
+                  except Exception: pass
+                  out["apiProbes"].append(rec)
+
+          Path("reports/uk/believ-auth-discovery-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({
+            "credentialsPresent":out["credentialsPresent"],
+            "tokenUrlCandidates":out.get("tokenUrlCandidates"),
+            "auth":out["auth"],
+            "securitySchemes":out.get("securitySchemes"),
+            "apiProbes":out.get("apiProbes")
+          },ensure_ascii=False,indent=2))
+          PY
+
+      - name: Publish sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/believ-auth-discovery-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): test Believ authenticated API contract [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
