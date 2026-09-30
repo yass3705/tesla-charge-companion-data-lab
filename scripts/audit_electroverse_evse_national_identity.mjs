@@ -12,7 +12,9 @@ const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationP
 let locations=0,evses=0,physicalRefs=0,currentExact=0,unionExact=0,rowOnlyRecovered=0;
 let mappingEmptyRowNonEmptyLocations=0,mappingEmptyRowNonEmptyEvses=0;
 let globallyUniqueViaUnion=0,globallyAmbiguousViaUnion=0;
-const unmatchedSamples=[], recoveredSamples=[];
+let uniqueLocalParentPrefix=0,ambiguousLocalParentPrefix=0;
+const suffixCounts={};
+const unmatchedSamples=[], recoveredSamples=[], parentPrefixSamples=[];
 
 const rows=[];
 for(const sh of manifest.shards||[]){
@@ -66,14 +68,32 @@ for(const row of rows){
         mappingPdcCount:mapIds.length,
         rowPdcCount:rowIds.length
       });
-    } else if(!uni && unmatchedSamples.length<100){
-      unmatchedSamples.push({
+    } else if(!uni) {
+      const rawLocal=[...(m?.irvePdcIds||[]),...(row.irvePdcIds||[])];
+      const parentCandidates=[...new Map(rawLocal.map(p=>[norm(p),p]).filter(([p])=>p && k.startsWith(p) && k.length>p.length)).values()];
+      if(parentCandidates.length===1){
+        uniqueLocalParentPrefix++;
+        const parent=norm(parentCandidates[0]);
+        const suffix=k.slice(parent.length);
+        suffixCounts[suffix]=(suffixCounts[suffix]||0)+1;
+        if(parentPrefixSamples.length<100) parentPrefixSamples.push({
+          pk:row.electroverseLocationPk,
+          irveStationId:m?.irveStationId??row.irveStationId,
+          physicalReference:pr,
+          parentPdc:parentCandidates[0],
+          suffix,
+          evsePk:e.pk
+        });
+      } else if(parentCandidates.length>1) ambiguousLocalParentPrefix++;
+      if(unmatchedSamples.length<100) unmatchedSamples.push({
         pk:row.electroverseLocationPk,
         irveStationId:m?.irveStationId??row.irveStationId,
         physicalReference:pr,
         evsePk:e.pk,
         mappingPdcCount:mapIds.length,
         rowPdcCount:rowIds.length,
+        localPdcIds:rawLocal,
+        parentCandidates,
         unionOwners:uOwners?[...uOwners]:[]
       });
     }
@@ -93,8 +113,12 @@ const out={
   mappingEmptyRowNonEmptyEvses,
   globallyUniqueViaUnion,
   globallyAmbiguousViaUnion,
+  uniqueLocalParentPrefix,
+  ambiguousLocalParentPrefix,
+  suffixCounts:Object.fromEntries(Object.entries(suffixCounts).sort((a,b)=>b[1]-a[1]).slice(0,50)),
   policy:'Diagnostic only. Exact normalized physicalReference against union of mapping + row IRVE PDC IDs; no proximity inference.',
   recoveredSamples,
+  parentPrefixSamples,
   unmatchedSamples
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
