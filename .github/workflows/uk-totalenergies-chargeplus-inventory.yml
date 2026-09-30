@@ -75,7 +75,14 @@ jobs:
                   statuses[str(st)]+=1
                   if isinstance(d,dict):
                       marker=" ".join(str(d.get(k) or "") for k in ("networkName","networkId","name","cpoVendorId","cpoOrganizationId")).lower()
-                      if "totalenergies" in marker or "total energies" in marker:
+                      network_id=str(d.get("networkId") or "").upper()
+                      # UK TotalEnergies/Source London lineage is exposed as GB*BPL / source-london / SLMS.
+                      if (
+                          "totalenergies" in marker or "total energies" in marker
+                          or network_id=="GB*BPL"
+                          or "source-london" in marker
+                          or str(d.get("cpoVendorId") or "").upper()=="SLMS"
+                      ):
                           total.append(d)
 
           # Deduplicate by stable POI id.
@@ -103,7 +110,7 @@ jobs:
               "retrievedAt":datetime.now(timezone.utc).isoformat(),
               "source":"public ChargePlus BFF validated previously in Belgium",
               "sourceBase":BASE,
-              "scope":{"officialTotalEnergiesUK":"Greater London + Birmingham","centers":listing_meta},
+              "scope":{"officialTotalEnergiesUK":"Greater London + Birmingham","aliases":["TotalEnergies","source-london","GB*BPL","SLMS"],"centers":listing_meta},
               "summary":{
                   "uniqueListedPois":len(summaries),
                   "detailStatusCounts":dict(statuses),
