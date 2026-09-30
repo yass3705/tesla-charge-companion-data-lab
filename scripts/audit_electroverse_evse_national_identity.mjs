@@ -19,7 +19,7 @@ let hardResidualCount=0;
 let uniqueLocalEndsWith=0,uniqueLocalContains=0,uniqueLocalStartsWith=0,uniqueCommonPrefixTail=0;
 const suffixLengthBuckets={ge3:0,ge4:0,ge5:0,ge6:0},containsLengthBuckets={ge4:0,ge5:0,ge6:0};
 const textualPatternCounts={};
-const unmatchedSamples=[], recoveredSamples=[], parentPrefixSamples=[], globalParentSamples=[], hardResidualSamples=[], textualSamples=[];
+const unmatchedSamples=[], recoveredSamples=[], parentPrefixSamples=[], globalParentSamples=[], hardResidualSamples=[], textualSamples=[], suffixLen5Samples=[];
 
 const rows=[];
 const parentGroups=new Map();
@@ -127,6 +127,12 @@ for(const row of rows){
           if(k.length>=4)suffixLengthBuckets.ge4++;
           if(k.length>=5)suffixLengthBuckets.ge5++;
           if(k.length>=6)suffixLengthBuckets.ge6++;
+          if(k.length===5 && suffixLen5Samples.length<120) suffixLen5Samples.push({
+            pk:row.electroverseLocationPk,
+            irveStationId:m?.irveStationId??row.irveStationId,
+            physicalReference:pr,normalizedPhysicalReference:k,
+            targetPdc:ends[0],evsePk:e.pk,localPdcIds:rawLocal
+          });
         }
         if(starts.length===1){uniqueLocalStartsWith++;textualPatternCounts.startsWith=(textualPatternCounts.startsWith||0)+1;}
         if(contains.length===1){
@@ -400,6 +406,7 @@ const out={
   globalParentSamples,
   hardResidualSamples,
   textualSamples,
+  suffixLen5Samples,
   genericTailSamples,
   ordinalSamples,
   unmatchedSamples
