@@ -1,0 +1,26 @@
+name: Compare Electroverse main vs duration lab
+on:
+  push:
+    branches:
+      - electroverse-duration-bands-lab
+    paths:
+      - "scripts/compare_electroverse_main_vs_duration_lab.mjs"
+      - "data/platforms/electroverse/france-evse/**"
+      - ".github/workflows/electroverse-duration-lab-compare.yml"
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Fetch main ref
+        run: git fetch origin main:refs/remotes/origin/main
+      - name: Compare overlays
+        run: node scripts/compare_electroverse_main_vs_duration_lab.mjs
