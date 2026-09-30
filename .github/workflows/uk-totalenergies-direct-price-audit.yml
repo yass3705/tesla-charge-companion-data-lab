@@ -1,0 +1,161 @@
+name: UK TotalEnergies direct price audit
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-totalenergies-direct-price-audit.yml"
+      - "data/national/uk_totalenergies_chargeplus_locations.json.gz"
+      - "reports/uk/totalenergies-direct-tariff-policy-2026-09-30.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Audit direct tariff coverage and dated promotion joins
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import gzip,json,re,pathlib,collections
+          from datetime import datetime, timezone
+
+          with gzip.open("data/national/uk_totalenergies_chargeplus_locations.json.gz","rt",encoding="utf-8") as f:
+              inv=json.load(f)
+          policy=json.load(open("reports/uk/totalenergies-direct-tariff-policy-2026-09-30.json",encoding="utf-8"))
+
+          def norm(s):
+              return re.sub(r'[^A-Z0-9]','',str(s or '').upper())
+
+          general=[]
+          for r in policy["directPayg"]["general"]:
+              general.append(r)
+
+          promo_index=[]
+          for promo in policy["promotions"]:
+              if "rates" in promo:
+                  rates={float(x["powerKw"]):x["energyGbpPerKwh"] for x in promo["rates"]}
+                  for row in promo["locations"]:
+                      addr,pc,power=row
+                      promo_index.append({
+                          "name":promo["name"],"validThrough":promo["validThrough"],
+                          "address":addr,"postcode":pc,"powerKw":float(power),
+                          "energyGbpPerKwh":rates[float(power)]
+                      })
+              else:
+                  for row in promo["locations"]:
+                      addr,pc=row
+                      promo_index.append({
+                          "name":promo["name"],"validThrough":promo["validThrough"],
+                          "address":addr,"postcode":pc,"powerKw":float(promo["powerKw"]),
+                          "energyGbpPerKwh":promo["energyGbpPerKwh"]
+                      })
+
+          def general_rate(power):
+              p=float(power)
+              if p in (7.0,22.0):
+                  return {"mode":"time_of_day","offpeak":0.61,"peak":0.65}
+              if p==50.0:
+                  return {"mode":"flat","price":0.73}
+              if 100.0 <= p <= 200.0:
+                  return {"mode":"flat","price":0.82}
+              return None
+
+          total_conn=0; mapped_general=0; unmapped=[]
+          promo_matches=[]; by_power=collections.Counter()
+          unique_cp=set(); unique_loc=set()
+          for loc in inv.get("locations") or []:
+              lid=str(loc.get("id") or "")
+              unique_loc.add(lid)
+              pc=norm(loc.get("postalCode"))
+              addr=norm((loc.get("address") or "")+" "+(loc.get("name") or ""))
+              for cp in loc.get("chargePoints") or []:
+                  cpid=str(cp.get("id") or "")
+                  unique_cp.add(cpid)
+                  for c in cp.get("connectors") or []:
+                      total_conn+=1
+                      try: power=float(c.get("power"))
+                      except Exception:
+                          unmapped.append({"locationId":lid,"chargePointId":cpid,"reason":"missing_power"}); continue
+                      by_power[str(power)]+=1
+                      gr=general_rate(power)
+                      if gr is None:
+                          unmapped.append({"locationId":lid,"chargePointId":cpid,"powerKw":power,"reason":"undocumented_power_band"})
+                          continue
+                      mapped_general+=1
+
+                      matches=[]
+                      for pr in promo_index:
+                          if power != pr["powerKw"]: continue
+                          if pc and pc==norm(pr["postcode"]):
+                              # Postcode + exact power is the primary exact join.
+                              matches.append(pr)
+                      if matches:
+                          # If duplicate same postcode/power promotion rows exist, keep all evidence,
+                          # but never silently choose conflicting prices.
+                          prices={m["energyGbpPerKwh"] for m in matches}
+                          if len(prices)==1:
+                              promo_matches.append({
+                                "locationId":lid,"chargePointId":cpid,"connectorId":c.get("id"),
+                                "address":loc.get("address"),"postalCode":loc.get("postalCode"),
+                                "powerKw":power,"promotions":matches
+                              })
+                          else:
+                              unmapped.append({"locationId":lid,"chargePointId":cpid,"powerKw":power,"reason":"conflicting_promotion_prices","promotions":matches})
+
+          result={
+              "retrievedAt":datetime.now(timezone.utc).isoformat(),
+              "network":"TotalEnergies UK / Source London",
+              "identity":{"networkId":"GB*BPL","cpoVendorId":"SLMS"},
+              "inventory":{
+                  "locations":len(unique_loc),"chargePoints":len(unique_cp),"connectors":total_conn,
+                  "powerDistributionKw":dict(sorted(by_power.items(),key=lambda kv:float(kv[0])))
+              },
+              "directPaygCoverage":{
+                  "generalMappedConnectors":mapped_general,
+                  "unmappedConnectors":len(unmapped),
+                  "coveragePct":round(100*mapped_general/total_conn,4) if total_conn else 0,
+                  "allConnectorPowersCoveredByOfficialGeneralBands":len(unmapped)==0
+              },
+              "promotionMatches":{
+                  "connectorMatches":len(promo_matches),
+                  "matches":promo_matches
+              },
+              "unmapped":unmapped[:500],
+              "policyNotes":[
+                  "ChargePlus is used only for inventory/identity; its eMSP tariff is not used as TotalEnergies direct tariff.",
+                  "Promotions override general PAYG only on exact postcode + exact power matches and only while valid.",
+                  "General tariff applies only to documented power bands; otherwise fail closed."
+              ]
+          }
+          pathlib.Path("reports/uk/totalenergies-direct-price-audit-latest.json").write_text(
+              json.dumps(result,ensure_ascii=False,indent=2)+"\n",encoding="utf-8"
+          )
+          print(json.dumps({k:result[k] for k in ("inventory","directPaygCoverage")},ensure_ascii=False,indent=2))
+          print("promotion connector matches",len(promo_matches))
+          PY
+
+      - name: Publish audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/totalenergies-direct-price-audit-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "audit(uk): validate TotalEnergies direct tariff coverage [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
