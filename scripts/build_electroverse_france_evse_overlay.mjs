@@ -175,6 +175,7 @@ const stats={
   cacheLocations:0,cacheEvses:0,physicalRefs:0,exactUniqueNationalEvses:0,
   parentConnectorRefs:0,parentCandidateGroups:0,parentPublishedEvses:0,parentPublishedChildRefs:0,
   ordinalCandidateRefs:0,ordinalPublishedEvses:0,
+  duplicatePublishedEvseTargets:0,conflictingPublishedEvseTargets:0,
   pricedExactEvses:0,publishedEvses:0,publishedOffers:0,publishedConnectorCount:0
 };
 function rej(k){rejected[k]=(rejected[k]||0)+1;}
@@ -361,6 +362,22 @@ for(const g of parentGroups.values()){
   stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=offer.metadata.connectorCount;
 }
 
+const publishedTargetSeen=new Map(),duplicateSamples=[];
+for(const offers of tiles.values()) for(const offer of offers){
+  const target=norm(offer.evseIds?.[0]);
+  if(!target)continue;
+  const sig=pricingSig(offer.pricing);
+  const prev=publishedTargetSeen.get(target);
+  if(prev){
+    stats.duplicatePublishedEvseTargets++;
+    if(prev.pricingSig!==sig)stats.conflictingPublishedEvseTargets++;
+    if(duplicateSamples.length<25)duplicateSamples.push({
+      evseId:offer.evseIds?.[0],firstOfferId:prev.offerId,secondOfferId:offer.id,
+      pricingConflict:prev.pricingSig!==sig
+    });
+  }else publishedTargetSeen.set(target,{offerId:offer.id,pricingSig:sig});
+}
+
 const manifestTiles=[];
 for(const [id,offers] of [...tiles.entries()].sort((a,b)=>a[0].localeCompare(b[0]))){
   const payload={schemaVersion:1,country:'FR',generatedAt:new Date().toISOString(),emspOffers:offers};
@@ -377,6 +394,7 @@ const out={
   tileSizeDegrees:TILE,
   tileCount:manifestTiles.length,
   stats,rejected,
+  duplicateSamples,
   policy:{
     nationalFranceIsIdentityHub:true,
     exactUniqueNationalPdcOnly:true,
