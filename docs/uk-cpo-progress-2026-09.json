@@ -311,12 +311,14 @@
     },
     {
       "name": "Lidl",
-      "status": "partial_inventory_backend_pricing_complete",
-      "access": "official_public_pricing_plus_lidl_plus_inventory_backend",
-      "evidence": "Official Lidl GB charging page confirms Lidl Great Britain operates the network and publishes network tariffs: Lidl Plus AC £0.40/kWh and DC £0.59/kWh; ad-hoc fast £0.55/kWh and rapid £0.74/kWh. Pricing is bounded; the remaining gap is a complete machine-readable national charger inventory/EVSE feed from the Lidl Plus/store-finder backend.",
-      "next": "Collect the national Lidl GB station/EVSE inventory from an official/public backend. Do not repeat tariff discovery.",
+      "status": "set_aside_technical_evse_detail",
+      "access": "official_public_store_inventory_plus_official_pricing",
+      "evidence": "Official Lidl GB Store Finder national crawl completed 2026-09-30: 1,021/1,021 store pages parsed, 312 stores explicitly advertise EV Charging, all 312 geocoded, 0 fetch failures. Official Lidl GB pricing remains bounded: Lidl Plus AC £0.40/kWh and DC £0.59/kWh; ad-hoc fast £0.55/kWh and rapid £0.74/kWh. Store-level inventory is now complete, but exact charger/EVSE count, connector power and live status are not exposed by Store Finder.",
+      "next": "Set aside the bounded EVSE-detail residual. Revisit only if Lidl Plus/charging backend yields a legitimate read-only charger-level feed; do not infer connector count or AC/DC class from store-level service flags.",
       "pricingReport": "reports/uk/lidl-official-pricing-latest.json",
-      "pricingDataset": "data/national/uk_lidl_official_pricing.json"
+      "pricingDataset": "data/national/uk_lidl_official_pricing.json",
+      "inventoryDataset": "data/national/uk_lidl_public_ev_stores.json.gz",
+      "inventoryReport": "reports/uk/lidl-public-ev-stores-latest.json"
     },
     {
       "name": "Forward EV",
