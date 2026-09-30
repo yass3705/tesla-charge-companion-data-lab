@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 181,
+  "date": "2026-09-30",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-180.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 244,
+    "partial": 347,
+    "blocked": 0
+  },
+  "promotions": [
+    {
+      "name": "Stadtwerke Weinheim GmbH",
+      "from": "partial",
+      "to": "complete",
+      "bucket": "B1/B3 chargecloud",
+      "backend": "chargecloud / Mobilithek DATEX II",
+      "coverage": "Current first-party SWW tariff page explicitly defines the unregistered Ad-hoc Ladung network rule: AC 0.59 EUR/kWh, no base/start fee, 0.07 EUR/min after 180 min; DC 0.69 EUR/kWh, no base/start fee, 0.07 EUR/min after 120 min; time fee capped at 15 EUR/session. This deterministic current first-party rule closes the prior 87/89 EVSE observation gap without inferring the two residual EVSE. Mobilithek/chargecloud EVSE examples independently confirm the AC tuple and no start fee. Earlier third-party DC 0.65 observations are superseded for canonical tariff by the current first-party 0.69 tariff.",
+      "evidence": [
+        "https://sww.de/de/Produkte/Mobilitaet/Tarife.php",
+        "https://www.e-stations.de/ladestationen/weinheim/stadtwerke-weinheim-gmbh-rote-turm-strasse-69469-weinheim-10834"
+      ],
+      "guard": "Promotion uses a current deterministic first-party anonymous_ad_hoc rule. Registered/app Basic, customer, contract and roaming tariffs remain separate; no 0.65 third-party DC value is generalized."
+    }
+  ],
+  "priorityTop5": {
+    "status": "parked after two distinct evidence-led passes",
+    "names": [
+      "solid GmbH / LadeVerbundPlus",
+      "NEW AG / NEW Energie",
+      "RhönEnergie Fulda GmbH",
+      "amperio GmbH",
+      "50five"
+    ]
+  },
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 245,
+    "partial": 346,
+    "blocked": 0
+  },
+  "statusChanges": 1,
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "245 + 346 + 0 = 591",
+    "indicator": "221 -> 245 complete (+24)",
+    "promotions": 1,
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS",
+    "top5Guard": "PASS",
+    "repeatInvestigationGuard": "PASS"
+  },
+  "nextSafeAction": "Continue industrialized chargecloud -> Mobilithek/AFIR/DATEX II batch on another bounded B1/B3/B6 partial. Do not reopen parked Top 5 without a genuinely new backend/source path. No production merge."
+}
