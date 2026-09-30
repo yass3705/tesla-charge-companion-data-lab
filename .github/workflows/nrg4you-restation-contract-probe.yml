@@ -1,0 +1,98 @@
+name: NRG4YOU ReStation contract probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/nrg4you-restation-contract-probe.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Inspect contract and test read-only calls
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,re,urllib.request,urllib.error
+          from pathlib import Path
+
+          JS='https://customer.restation.eu/main-es2015.b18fc01a6c41432f5296.js'
+          BASE='https://api-app.restation.eu/nrg4you_be'
+          UA='Mozilla/5.0 TCC-V9-readonly-contract-probe'
+
+          def req(url, method='GET', body=None, headers=None):
+            h={'User-Agent':UA,'Accept':'application/json,text/plain,*/*'}
+            if headers: h.update(headers)
+            data=None
+            if body is not None:
+              data=json.dumps(body).encode()
+              h['Content-Type']='application/json'
+            r=urllib.request.Request(url,data=data,headers=h,method=method)
+            try:
+              with urllib.request.urlopen(r,timeout=30) as x:
+                b=x.read(5_000_000)
+                return {'url':url,'method':method,'status':x.status,'contentType':x.headers.get('Content-Type',''),'bytes':len(b),'body':b.decode('utf-8','replace')}
+            except urllib.error.HTTPError as e:
+              b=e.read(500000)
+              return {'url':url,'method':method,'status':e.code,'contentType':e.headers.get('Content-Type',''),'bytes':len(b),'body':b.decode('utf-8','replace')}
+            except Exception as e:
+              return {'url':url,'method':method,'error':type(e).__name__+': '+str(e)[:300]}
+
+          j=req(JS)
+          text=j.get('body','')
+          needles=['SEARCH_STATION','GET_STATION','/noauth/station/search','/noauth/station/get']
+          contexts={}
+          for needle in needles:
+            arr=[]; pos=0
+            while True:
+              i=text.find(needle,pos)
+              if i<0: break
+              arr.append(text[max(0,i-1800):i+2600])
+              pos=i+len(needle)
+              if len(arr)>=20: break
+            contexts[needle]=arr
+
+          calls=[
+            req(BASE+'/noauth/station/getAlll',headers={'Content-Type':'application/json'}),
+            req(BASE+'/noauth/station/search',method='POST',body={}),
+            req(BASE+'/noauth/station/get',method='POST',body={}),
+          ]
+
+          out={
+            'schemaVersion':1,
+            'subject':'NRG4YOU/ReStation noauth station contract probe',
+            'contexts':contexts,
+            'calls':calls,
+            'safety':'Only read-only station get/search endpoints were invoked. No login, payment, reservation, recharge, mutation, credentials or session creation.'
+          }
+          p=Path('data/reports/nrg4you_restation_contract_probe_latest.json')
+          p.parent.mkdir(parents=True,exist_ok=True)
+          p.write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps({'contextHits':{k:len(v) for k,v in contexts.items()},'statuses':[c.get('status') for c in calls]}))
+          PY
+
+      - name: Publish evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/reports/nrg4you_restation_contract_probe_latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "research(italy): resolve NRG4YOU ReStation station contract [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
