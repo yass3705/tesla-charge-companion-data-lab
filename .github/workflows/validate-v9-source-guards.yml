@@ -1,0 +1,27 @@
+name: Validate V9 source regression guards
+
+on:
+  push:
+    paths:
+      - "data/switzerland/avia-guest-direct-tariffs.json"
+      - "docs/switzerland-avia-guest-reconciliation-2026-09-29.json"
+      - "docs/switzerland-avia-finalization-2026-09-29.json"
+      - "data/national/atlante_direct_stations_france_latest.json.gz"
+      - "data/national/atlante_direct_stations_italy_latest.json.gz"
+      - "reports/electroverse/daily-delta.json"
+      - "data/national/uk_lidl_public_ev_stores.json.gz"
+      - "reports/morocco/kilowatt/latest-v9-tariff-overlay-manifest.json"
+      - "reports/morocco/totalenergies/latest-native-overlay.json"
+      - "scripts/validate_v9_source_guards.py"
+      - ".github/workflows/validate-v9-source-guards.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/validate_v9_source_guards.py
