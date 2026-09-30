@@ -2,10 +2,10 @@
   "schemaVersion": 106,
   "country": "FR",
   "totalCpos": 291,
-  "treatedCpos": 92,
+  "treatedCpos": 93,
   "setAsideCpos": 23,
-  "activeRemainingCpos": 176,
-  "updatedAt": "2026-09-29T15:15:00+02:00",
+  "activeRemainingCpos": 175,
+  "updatedAt": "2026-09-30T12:50:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -103,7 +103,8 @@
     "Zephyre SAS | FR*ZP1 | raw rank68",
     "ALDI France | FR*ALN",
     "Zunder | ES*ZUN",
-    "AVIA/Picoty | FR*PY2"
+    "AVIA/Picoty | FR*PY2",
+    "DEJA BLUE FRANCE | raw rank129"
   ],
   "setAside": [
     {
@@ -344,7 +345,6 @@
     "RELEASED_ACTIVE_SLOT_126 | alias ALDI France FR*ALN",
     "RELEASED_ACTIVE_SLOT_127 | alias ZEBORNE",
     "RELEASED_ACTIVE_SLOT_128 | alias Eiffage Energie Systèmes FR*WGO raw87",
-    "UNPROVEN_ACTIVE_129",
     "RELEASED_ACTIVE_SLOT_130 | authority Sorel energies already treated",
     "UNPROVEN_ACTIVE_131",
     "RELEASED_ACTIVE_SLOT_132 | authority Eranovum already treated",
@@ -720,7 +720,8 @@
     "FR*ACA": "raw rank122 Aéroports de la Côte d'Azur. First-party airport page confirms paid charging but directs users to their usual operator for tariff and lists multiple available operators. No single airport direct numeric tariff may be inferred; keep active pending exact FR*ACA station/EVSE -> producer IRVE/QualiCharge/AFIR or QR/ad-hoc tariff mapping.",
     "ALDI regional entities": "RESOLVED batch463: official ALDI France tariff scope is AC versus DC, not a power-band tariff. raw93/raw94 reconcile to one national ALDI France | FR*ALN authority; raw94 is non-counting duplicate authority lineage. ALDI-operated FR*ALN connectors use AC 0.29 EUR/kWh / DC 0.35 EUR/kWh from recovered V8 direct dataset; third-party-operated ALDI-branded sites remain with their physical CPO.",
     "FR*WII": "Historical raw rank96 is exactly W:I (Comelec) | FR*WII (78 stations / 199 PDC), establishing deterministic authority lineage. Current accounting membership remains fail-closed because the authority has not yet been excluded from the 12 anonymous historical treated slots. Exact current direct producer tariff also remains unresolved; do not promote or transpose third-party tariff observations.",
-    "e-Vadea / FREVAE": "Closed as a non-counting operated-network overlay of treated SPIE CityNetworks. V8 direct mapping covers 331 EVSE / 16 stations with deterministic EVSE, address+power, or unique geo+power joins and fail-closed residuals."
+    "e-Vadea / FREVAE": "Closed as a non-counting operated-network overlay of treated SPIE CityNetworks. V8 direct mapping covers 331 EVSE / 16 stations with deterministic EVSE, address+power, or unique geo+power joins and fail-closed residuals.",
+    "DEJA BLUE FRANCE | raw rank129": "Treated 2026-09-30: current IRVE-backed public inventory exposes 92/92 charge points at 0.45 EUR/kWh across AC/DC; historical 14-station footprint now materializes as 12 current active sites. No residual PDC."
   },
   "history": [
     {
@@ -1107,16 +1108,21 @@
       "date": "2026-09-29",
       "batch": "batch477",
       "change": "AVIA/Picoty FR*PY2 promoted setAside -> treated using current official Picoty/Deftpower guest backend: 29/41 registry stations, 191 exact EVSE prices via simulate-pricing; 12 registry-present/backend-absent stations remain fail-closed with no extrapolation. Counters 91/24/176 -> 92/23/176."
+    },
+    {
+      "date": "2026-09-30",
+      "batch": "batch478",
+      "change": "Promoted DEJA BLUE FRANCE raw129 active->treated after exact 92/92 current public charge-point tariff coverage at 0.45 EUR/kWh. Counters 93/23/175."
     }
   ],
-  "currentInvestigation": "GreenFlux Assets/EVzen raw121 territorial-family mapping; DEJA BLUE raw129 site/family direct tariff mapping.",
+  "currentInvestigation": "GreenFlux Assets/EVzen raw121 territorial-family mapping; continue next unresolved nominative active after DEJA BLUE raw129 closure.",
   "coherenceControl": {
-    "batch": "batch477",
-    "result": "PASS_BATCH477_92_23_176_PENDING_ZERO",
-    "arithmetic": "92 + 23 + 176 = 291",
-    "treatedLength": 92,
+    "batch": "batch478",
+    "result": "PASS_BATCH478_93_23_175_PENDING_ZERO",
+    "arithmetic": "93 + 23 + 175 = 291",
+    "treatedLength": 93,
     "setAsideLength": 23,
-    "activeLength": 176,
+    "activeLength": 175,
     "pendingDedupeCount": 0,
     "lastChecked": "2026-09-29T15:15:00+02:00",
     "arithmeticOk": true
@@ -1352,6 +1358,14 @@
       "authority": "Eiffage Energie Systèmes | FR*WGO | raw rank87",
       "category": "setAside-authority-alias",
       "decision": "same FR*WGO authority already setAside at raw87; non-counting; active placeholder released"
+    },
+    {
+      "rawRank": 129,
+      "historicalOperator": "DEJA BLUE FRANCE",
+      "authority": "DEJA BLUE FRANCE",
+      "category": "treated-authority",
+      "decision": "one-for-one active->treated promotion; 92 historical PDC reconcile to 92 current priced public charge points",
+      "evidence": "docs/france-regional-cpo-dejablue-batch478-2026-09-30.json"
     }
   ],
   "rawLineageCoverage": {
