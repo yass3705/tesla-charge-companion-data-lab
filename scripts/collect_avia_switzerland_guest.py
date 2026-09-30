@@ -32,6 +32,8 @@ TIMEOUT=int(os.environ.get("AVIA_TIMEOUT","45"))
 SLEEP=float(os.environ.get("AVIA_SLEEP","0.08"))
 WORKERS=max(1,min(int(os.environ.get("AVIA_WORKERS","8")),12))
 ATTEMPTS=max(1,min(int(os.environ.get("AVIA_REQUEST_ATTEMPTS","3")),5))
+FAILURE_RETRY_PASSES=max(0,min(int(os.environ.get("AVIA_FAILURE_RETRY_PASSES","2")),4))
+FAILURE_RETRY_SLEEP=float(os.environ.get("AVIA_FAILURE_RETRY_SLEEP","4"))
 RESOLVE_IP=os.environ.get("AVIA_RESOLVE_IP","").strip()
 TLS_INSECURE=os.environ.get("AVIA_TLS_INSECURE","0")=="1"
 
@@ -206,6 +208,19 @@ def process_location(loc):
             time.sleep(SLEEP)
     return out,failures
 
+def retryable_failure(row):
+    if row.get("stage") not in ("detail","simulate"):
+        return False
+    s=str(row.get("error") or "").lower()
+    return (
+        "timed out" in s
+        or "timeout" in s
+        or "error: 500" in s
+        or "error: 502" in s
+        or "error: 503" in s
+        or "error: 504" in s
+    )
+
 def main():
     if not KEY:
         print("Missing AVIA_APIM_SUBSCRIPTION_KEY",file=sys.stderr)
@@ -220,6 +235,32 @@ def main():
             rows,errs=fut.result()
             out.extend(rows)
             failures.extend(errs)
+
+    # Targeted recovery pass for transient detail/simulate failures only.
+    # Do not rerun the whole country and do not retry deterministic 404s.
+    by_id={loc["id"]:loc for loc in locations}
+    recovery=[]
+    for retry_pass in range(1,FAILURE_RETRY_PASSES+1):
+        retry_ids=sorted({
+            f.get("locationId") for f in failures
+            if f.get("locationId") in by_id and retryable_failure(f)
+        })
+        if not retry_ids:
+            break
+        print(f"Transient recovery pass {retry_pass}/{FAILURE_RETRY_PASSES}: {len(retry_ids)} locations")
+        time.sleep(FAILURE_RETRY_SLEEP)
+        for lid in retry_ids:
+            rows,errs=process_location(by_id[lid])
+            out.extend(rows)
+            previous=[f for f in failures if f.get("locationId")==lid]
+            failures=[f for f in failures if f.get("locationId")!=lid]
+            failures.extend(errs)
+            recovery.append({
+                "pass":retry_pass,
+                "locationId":lid,
+                "previousFailures":len(previous),
+                "remainingFailures":len(errs),
+            })
 
     dedupe={}
     for row in out:
@@ -241,6 +282,7 @@ def main():
             "failClosed":True,
             "transientRequestRetries":ATTEMPTS,
             "boundedParallelWorkers":WORKERS,
+            "targetedFailureRetryPasses":FAILURE_RETRY_PASSES,
         },
         "counts":{
             "mapLocations":len(locations),
@@ -252,6 +294,7 @@ def main():
         "connectors":out,
         "failures":failures,
         "mapErrors":map_errors,
+        "recovery":recovery,
     }
     OUT.parent.mkdir(parents=True,exist_ok=True)
     OUT.write_text(json.dumps(payload,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
