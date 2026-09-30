@@ -33,6 +33,7 @@ TARGET_COUNTRY = "FR"
 COUNTRY_BOUNDS = {
     "FR": (41.0, -6.0, 52.0, 10.0),
     "IT": (35.0, 6.0, 48.0, 19.0),
+    "DE": (47.0, 5.5, 55.2, 15.6),
 }
 HEADERS = {
     "User-Agent": "IONITY/2.428.0 (Android; TeslaChargeCompanion data validation)",
@@ -253,7 +254,7 @@ def live_build(workers: int) -> dict[str, Any]:
 def main() -> None:
     global TARGET_COUNTRY
     parser = argparse.ArgumentParser()
-    parser.add_argument("--country", choices=("FR", "IT"), default="FR")
+    parser.add_argument("--country", choices=("FR", "IT", "DE"), default="FR")
     parser.add_argument("--out", type=Path)
     parser.add_argument("--workers", type=int, default=16)
     args = parser.parse_args()
@@ -261,7 +262,12 @@ def main() -> None:
     HEADERS["x-adhoc-device-country"] = TARGET_COUNTRY
     HEADERS["x-adhoc-device-language"] = TARGET_COUNTRY.lower()
     if args.out is None:
-        args.out = DEFAULT_OUT if TARGET_COUNTRY == "FR" else Path("data/national/ionity_direct_stations_italy.json.gz")
+        outputs={
+            "FR":DEFAULT_OUT,
+            "IT":Path("data/national/ionity_direct_stations_italy.json.gz"),
+            "DE":Path("data/national/ionity_direct_stations_germany.json.gz"),
+        }
+        args.out=outputs[TARGET_COUNTRY]
     payload = live_build(args.workers)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     rendered = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
