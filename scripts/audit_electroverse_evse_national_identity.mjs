@@ -14,7 +14,8 @@ let mappingEmptyRowNonEmptyLocations=0,mappingEmptyRowNonEmptyEvses=0;
 let globallyUniqueViaUnion=0,globallyAmbiguousViaUnion=0;
 let uniqueLocalParentPrefix=0,ambiguousLocalParentPrefix=0;
 let globalExactOutsideLocal=0,globalParentUniqueAny=0,globalParentUniqueOutsideLocal=0,globalParentAmbiguous=0;
-const suffixCounts={};
+const suffixCounts={},hardResidualByOperator={};
+let hardResidualCount=0;
 const unmatchedSamples=[], recoveredSamples=[], parentPrefixSamples=[], globalParentSamples=[];
 
 const rows=[];
@@ -103,6 +104,16 @@ for(const row of rows){
           parentNorm:gp.parent,suffix:gp.suffix,ownerStationId:gp.owner,localHas
         });
       } else if(uniqueGlobalParents.length>1) globalParentAmbiguous++;
+      const numericLocalParents=parentCandidates.filter(p=>{
+        const pn=norm(p); const suffix=k.slice(pn.length);
+        return /^\d{1,2}$/.test(suffix);
+      });
+      if(numericLocalParents.length!==1){
+        hardResidualCount++;
+        const parts=pr.split('*').map(x=>x.trim()).filter(Boolean);
+        const op=parts.length>=2?parts[1].toUpperCase():norm(pr).slice(0,6);
+        hardResidualByOperator[op]=(hardResidualByOperator[op]||0)+1;
+      }
       if(parentCandidates.length===1){
         uniqueLocalParentPrefix++;
         const parent=norm(parentCandidates[0]);
@@ -182,6 +193,8 @@ const out={
   parentGroupsHeterogeneousPricing,
   parentGroupsSafe,
   parentChildRefsSafe,
+  hardResidualCount,
+  hardResidualByOperator:Object.fromEntries(Object.entries(hardResidualByOperator).sort((a,b)=>b[1]-a[1]).slice(0,50)),
   suffixCounts:Object.fromEntries(Object.entries(suffixCounts).sort((a,b)=>b[1]-a[1]).slice(0,50)),
   policy:'Diagnostic only. Exact normalized physicalReference against union of mapping + row IRVE PDC IDs; no proximity inference.',
   recoveredSamples,
