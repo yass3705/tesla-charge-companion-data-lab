@@ -75,6 +75,18 @@ def main():
       "unpriced":0
     }
 
+    ion_de=load_gz(Path("data/national/ionity_direct_stations_germany.json.gz"))
+    assert ion_de["operator"]=="IONITY"
+    dec=ion_de["counts"]
+    assert dec["countryLocationCount"]>=190, dec
+    assert dec["countryConnectorCount"]>=1500, dec
+    assert dec["countryUnpricedConnectorCount"]==0, dec
+    checks["IONITY_DE"]={
+      "locations":dec["countryLocationCount"],
+      "connectors":dec["countryConnectorCount"],
+      "unpriced":0
+    }
+
     # Electroverse France daily inventory must be complete at tile level.
     ev=load(Path("reports/electroverse/daily-delta.json"))
     assert ev["failedTileCount"]==0, ev["failedTileCount"]
