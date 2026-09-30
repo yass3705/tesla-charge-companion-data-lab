@@ -80,6 +80,11 @@ jobs:
               domtxt=pathlib.Path(dom).read_text(errors="replace") if os.path.exists(dom) else ""
               urls.update(re.findall(r'https?://[^"\'<>\\\s]+',domtxt))
               keep=[]
+              def sanitize_url(u):
+                  # Persist endpoint shape, never public/private client tokens or auth-like query values.
+                  u=re.sub(r'([?&](?:access_token|token|key|api_key|apikey|code)=)[^&#]+', r'\\1<redacted>', u, flags=re.I)
+                  u=re.sub(r'([?&](?:cid|initialCid)=)[^&#]+', r'\\1<redacted>', u, flags=re.I)
+                  return u
               for u in sorted(urls):
                   ul=u.lower()
                   host=urlparse(u).netloc.lower()
@@ -94,7 +99,7 @@ jobs:
                         "hotjar","clarity.ms","segment","sentry"
                       ]):
                         continue
-                      keep.append(u[:1000])
+                      keep.append(sanitize_url(u)[:1000])
               report["targets"][name]={
                 "url":url,"chromeReturnCode":rc,"domBytes":len(domtxt),
                 "networkUrlCount":len(urls),"candidateUrls":keep[:400],
