@@ -170,9 +170,10 @@ for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
   const set=globalPdcOwners.get(k)||new Set();set.add(m.irveStationId);globalPdcOwners.set(k,set);
 }
 
-const tiles=new Map(),rejected={};
+const tiles=new Map(),rejected={},parentGroups=new Map();
 const stats={
   cacheLocations:0,cacheEvses:0,physicalRefs:0,exactUniqueNationalEvses:0,
+  parentConnectorRefs:0,parentCandidateGroups:0,parentPublishedEvses:0,parentPublishedChildRefs:0,
   pricedExactEvses:0,publishedEvses:0,publishedOffers:0,publishedConnectorCount:0
 };
 function rej(k){rejected[k]=(rejected[k]||0)+1;}
@@ -183,7 +184,9 @@ for(const sh of manifest.shards||[]){
     stats.cacheLocations++;
     const m=byPk.get(String(row.electroverseLocationPk));
     if(!m){rej('missing_location_mapping');continue;}
-    const local=new Set((m.irvePdcIds||row.irvePdcIds||[]).map(norm).filter(Boolean));
+    const localRaw=(m.irvePdcIds||row.irvePdcIds||[]).filter(Boolean);
+    const localByNorm=new Map(localRaw.map(p=>[norm(p),p]).filter(([k])=>k));
+    const local=new Set(localByNorm.keys());
     const lat=Number(m.electroverse?.lat??m.irve?.lat),lon=Number(m.electroverse?.lon??m.irve?.lon);
     if(!Number.isFinite(lat)||!Number.isFinite(lon)){rej('missing_coordinates');continue;}
 
@@ -192,10 +195,27 @@ for(const sh of manifest.shards||[]){
       const pr=text(e?.physicalReference);
       if(!pr){rej('evse_missing_physical_reference');continue;}
       stats.physicalRefs++;
-      const k=norm(pr),owners=globalPdcOwners.get(k);
-      if(!local.has(k)){rej('physical_reference_not_in_local_national_pdcs');continue;}
-      if(!owners||owners.size!==1){rej('physical_reference_not_globally_unique');continue;}
-      stats.exactUniqueNationalEvses++;
+      const k=norm(pr);
+      let targetPdc=pr,identityMode='exact_unique_national_irve_pdc',parentMode=false,parentNorm='';
+      if(local.has(k)){
+        const owners=globalPdcOwners.get(k);
+        if(!owners||owners.size!==1){rej('physical_reference_not_globally_unique');continue;}
+        stats.exactUniqueNationalEvses++;
+      }else{
+        const candidates=[...local].filter(p=>{
+          if(!k.startsWith(p)||k.length<=p.length)return false;
+          const suffix=k.slice(p.length);
+          return /^\\d{1,2}$/.test(suffix);
+        });
+        if(candidates.length!==1){rej(candidates.length?'parent_pdc_ambiguous':'physical_reference_not_in_local_national_pdcs');continue;}
+        parentNorm=candidates[0];
+        const owners=globalPdcOwners.get(parentNorm);
+        if(!owners||owners.size!==1){rej('parent_pdc_not_globally_unique');continue;}
+        targetPdc=localByNorm.get(parentNorm);
+        identityMode='exact_unique_national_irve_pdc_parent_connector_suffix';
+        parentMode=true;
+        stats.parentConnectorRefs++;
+      }
 
       const connectors=e?.connectors||[];
       if(!connectors.length){rej('evse_no_connectors');continue;}
@@ -212,6 +232,20 @@ for(const sh of manifest.shards||[]){
       if(unique.length!==1){rej('heterogeneous_connectors_within_evse');continue;}
 
       const pricing=unique[0],currency=pricing.rules?.[0]?.currency||'EUR';
+      if(parentMode){
+        const gk=`${row.electroverseLocationPk}|${parentNorm}`;
+        const g=parentGroups.get(gk)||{
+          locationPk:String(row.electroverseLocationPk),parentPdc:targetPdc,parentNorm,
+          lat,lon,entries:[],pricingBySig:new Map(),tariffHashes:new Set(),fetchedAts:new Set()
+        };
+        g.entries.push({physicalReference:pr,evsePk:e.pk??null,connectorPks:compiled.map(x=>x.connectorPk),connectorCount:compiled.length});
+        g.pricingBySig.set(pricingSig(pricing),pricing);
+        if(row.tariffHash)g.tariffHashes.add(row.tariffHash);
+        if(row.fetchedAt)g.fetchedAts.add(row.fetchedAt);
+        parentGroups.set(gk,g);
+        continue;
+      }
+
       const offer={
         id:`electroverse-evse:${row.electroverseLocationPk}:${e.pk??k}`,
         provider:'Electroverse',
@@ -219,11 +253,11 @@ for(const sh of manifest.shards||[]){
         currency,
         priority:80,
         verifiedScope:'exact_evse',
-        evseIds:[pr],
+        evseIds:[targetPdc],
         pricing,
         metadata:{
           verified:true,
-          identityMode:'exact_unique_national_irve_pdc',
+          identityMode,
           electroverseLocationPk:String(row.electroverseLocationPk),
           electroverseEvsePk:e.pk??null,
           physicalReference:pr,
@@ -239,6 +273,42 @@ for(const sh of manifest.shards||[]){
       stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=compiled.length;
     }
   }
+}
+
+stats.parentCandidateGroups=parentGroups.size;
+for(const g of parentGroups.values()){
+  if(g.pricingBySig.size!==1){rej('parent_pdc_heterogeneous_child_pricing');continue;}
+  const pricing=[...g.pricingBySig.values()][0];
+  const currency=pricing.rules?.[0]?.currency||'EUR';
+  const connectorPks=g.entries.flatMap(x=>x.connectorPks);
+  const offer={
+    id:`electroverse-evse-parent:${g.locationPk}:${g.parentNorm}`,
+    provider:'Electroverse',
+    countries:['FR'],
+    currency,
+    priority:80,
+    verifiedScope:'exact_evse',
+    evseIds:[g.parentPdc],
+    pricing,
+    metadata:{
+      verified:true,
+      identityMode:'exact_unique_national_irve_pdc_parent_connector_suffix',
+      electroverseLocationPk:g.locationPk,
+      physicalReferences:g.entries.map(x=>x.physicalReference),
+      electroverseEvsePks:g.entries.map(x=>x.evsePk),
+      connectorPks,
+      connectorCount:g.entries.reduce((n,x)=>n+x.connectorCount,0),
+      childReferenceCount:g.entries.length,
+      tariffHashes:[...g.tariffHashes],
+      fetchedAts:[...g.fetchedAts],
+      source:'Electroverse tariff cache'
+    }
+  };
+  const id=tileId(g.lat,g.lon);if(!tiles.has(id))tiles.set(id,[]);
+  tiles.get(id).push(offer);
+  stats.parentPublishedEvses++;
+  stats.parentPublishedChildRefs+=g.entries.length;
+  stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=offer.metadata.connectorCount;
 }
 
 const manifestTiles=[];
@@ -260,6 +330,10 @@ const out={
   policy:{
     nationalFranceIsIdentityHub:true,
     exactUniqueNationalPdcOnly:true,
+    exactParentPdcConnectorSuffix:true,
+    parentPdcRequiresUniqueLocalPrefix:true,
+    parentPdcRequiresNumericSuffixMax2:true,
+    parentPdcRequiresHomogeneousChildPricing:true,
     evseLevelPricing:true,
     stationLevelFlattening:false,
     electraDependency:false,
