@@ -292,11 +292,11 @@
       "name": "Roam",
       "status": "set_aside_technical_pricing_layer",
       "access": "anonymous_public_map",
-      "evidence": "Official Roam charging-map page calls an anonymous Cloudflare Worker feed. Data Lab recovered 401 locations and 566 connectors with status. Feed contains no pricing fields; Roam states exact tariffs vary by site and should be checked in the app.",
-      "next": "Inventory/status bounded complete; recover station-specific pricing layer from app/backend. Do not apply network-wide tariff extrapolation.",
+      "evidence": "Official anonymous Roam map feed remains usable for inventory/status (Data Lab snapshot 401 locations / 566 connectors), but contains no tariff fields. Deep app static analysis confirms station-specific tariff models (tariffsDetails, nightTariffId, kwhTariffEnergyDetails, PAYG/member pricing) yet exposes no business backend host; Firebase Installation and Remote Config both succeeded (HTTP 200) but yielded no endpoint/tariff configuration. Fresh 2026-09-30 search found no public PCPR/open-data tariff endpoint. Zapmap reports 960 chargers across 356 locations and no network pricing information, reinforcing that public pricing remains unresolved.",
+      "next": "Technically bounded on pricing layer. Preserve public map inventory/status; do not infer network-wide prices. Reopen only on new public tariff/backend evidence, official open-data feed, or legitimate app/backend access.",
       "locationsEndpoint": "https://roam-map.marketing-207.workers.dev/",
       "dataset": "data/national/uk_roam_public_map.json.gz",
-      "report": "reports/uk/roam-public-map-latest.json"
+      "report": "reports/uk/roam-firebase-config-discovery-latest.json"
     },
     {
       "name": "RAW Charging",
@@ -339,8 +339,9 @@
       "name": "Forward EV",
       "status": "set_aside_technical_roaming_feed",
       "access": "plugsurfing_zapmap_live_integration",
-      "evidence": "Forward EV first-party driver page directs users to Plugsurfing. Current Zapmap integration exposes live Forward EV locations/status and site-specific tariffs; observed public tariffs vary by site, so a network-wide price would be invalid.",
-      "next": "Inventory/tariff source must be recovered from a legitimate roaming/live feed (Plugsurfing/Zapmap integration or operator PCPR surface). Do not extrapolate prices from sampled sites."
+      "evidence": "Deep recheck 2026-09-30 confirms Forward EV is host-owned with site-specific tariffs. Zapmap current network guide reports 104 chargers across 36 locations and says live status/speed/cost are visible in its app/desktop map. Headless browser/netlog inspection of the public Forward EV guide did not expose a reusable charging-data API or enumerate station links. First-party Forward EV directs drivers to Plugsurfing; Plugsurfing OCPI/Drive access requires partner credentials. No legitimate anonymous feed suitable for exact national tariff ingestion was found.",
+      "next": "Technically bounded pending a legitimate public/partner roaming feed. Do not extrapolate sampled Zapmap tariffs. Reopen if Forward EV publishes PCPR/open-data or a public Zapmap/Plugsurfing data surface becomes available.",
+      "report": "reports/uk/forward-zapmap-public-discovery-latest.json"
     },
     {
       "name": "Fuuse",
@@ -353,8 +354,8 @@
       "name": "Connekt",
       "status": "set_aside_technical_authenticated_backend",
       "access": "ampeco_white_label_authenticated_app",
-      "evidence": "Static inspection of official Get Connekted Android app identifies an AMPECO white-label backend at cp.connektcharging.com and AMPECO dynamic tariff/ad-hoc features. Targeted anonymous/mobile-profile probes show the tenant root requires authentication (401) and common read-only location/tariff routes are not publicly exposed.",
-      "next": "Backend identified and public-route discovery bounded. Revisit only with a legitimate app session/public PCPR endpoint; do not repeat generic endpoint guessing.",
+      "evidence": "Deep recheck 2026-09-30 confirms official Get Connekted app is an AMPECO white-label tenant at cp.connektcharging.com with dynamic tariff/ad-hoc capability. Tenant root requires authentication (401), common anonymous read-only location/tariff routes are not exposed, and current first-party web pages expose no public map/data API. Fresh search surfaces Zapmap's current network guide (1,069 chargers as of Aug 2026) but no Connekt PCPR/open-data endpoint.",
+      "next": "Technically bounded behind authenticated AMPECO backend. Reopen only with a legitimate public PCPR/open-data endpoint or authorized app/API access; do not repeat generic route guessing.",
       "report": "reports/uk/connekt-ampeco-public-route-probe-latest.json"
     },
     {
@@ -389,10 +390,11 @@
     {
       "name": "EZ-Charge",
       "status": "set_aside_technical_public_index_only",
-      "access": "no_direct_endpoint_found_first_pass",
-      "evidence": "Official EZ-Charge driver page fetches a public Azure blob containing 28 site areas (id/name). Container listing is not enabled (404); blob has no coordinates, status or pricing fields. General pricing is public but site-specific pricing is explicitly map-dependent.",
-      "next": "Inventory seed retained; recover detailed map/app backend later. Do not extrapolate general tariff over site-specific exceptions.",
-      "locationsEndpoint": "https://ezchargesitedata.blob.core.windows.net/public/site-areas.json"
+      "access": "public_site_area_index_plus_hidden_runtime_cpms",
+      "evidence": "Deep recheck 2026-09-30 exhausted current public surfaces. Official web map exposes only ezchargesitedata.blob.core.windows.net/public/site-areas.json (28 site-area ids/names) and current general direct prices, while explicitly warning of site-specific pricing. Android 4.3.0 static analysis exposes CPMS/OCPI capabilities (CPI_CPO_GET_TARIFF, OcpiEmspGetTariff, connector pricing, tenantEndpoint, site-area routes) but no callable tenant base URL. Deeper domain/config scan found no EZ business API host; vev-iq-prod.appspot.com returns 404 on read-only location/site-area/OCPI/tariff probes. No exact per-site tariff feed recovered.",
+      "next": "Technically bounded. Keep 28-site seed plus official general pricing as reference only; do not mark priced/complete because site-specific exceptions are explicitly possible. Reopen only if the public map/app exposes a tenant endpoint or a legitimate PCPR/open-data feed appears.",
+      "locationsEndpoint": "https://ezchargesitedata.blob.core.windows.net/public/site-areas.json",
+      "report": "reports/uk/ezcharge-domain-config-discovery-latest.json"
     },
     {
       "name": "GeniePoint",
