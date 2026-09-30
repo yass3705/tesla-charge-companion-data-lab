@@ -13,8 +13,9 @@ let locations=0,evses=0,physicalRefs=0,currentExact=0,unionExact=0,rowOnlyRecove
 let mappingEmptyRowNonEmptyLocations=0,mappingEmptyRowNonEmptyEvses=0;
 let globallyUniqueViaUnion=0,globallyAmbiguousViaUnion=0;
 let uniqueLocalParentPrefix=0,ambiguousLocalParentPrefix=0;
+let globalExactOutsideLocal=0,globalParentUniqueAny=0,globalParentUniqueOutsideLocal=0,globalParentAmbiguous=0;
 const suffixCounts={};
-const unmatchedSamples=[], recoveredSamples=[], parentPrefixSamples=[];
+const unmatchedSamples=[], recoveredSamples=[], parentPrefixSamples=[], globalParentSamples=[];
 
 const rows=[];
 const parentGroups=new Map();
@@ -63,7 +64,10 @@ for(const row of rows){
     const uni=unionLocal.has(k)&&uOwners?.size===1;
     if(cur) currentExact++;
     if(uni) unionExact++;
-    if(uOwners?.size===1) globallyUniqueViaUnion++;
+    if(uOwners?.size===1) {
+      globallyUniqueViaUnion++;
+      if(!unionLocal.has(k)) globalExactOutsideLocal++;
+    }
     if(uOwners?.size>1) globallyAmbiguousViaUnion++;
     if(mapIds.length===0 && rowIds.length>0) mappingEmptyRowNonEmptyEvses++;
     if(!cur && uni){
@@ -79,6 +83,26 @@ for(const row of rows){
     } else if(!uni) {
       const rawLocal=[...(m?.irvePdcIds||[]),...(row.irvePdcIds||[])];
       const parentCandidates=[...new Map(rawLocal.map(p=>[norm(p),p]).filter(([p])=>p && k.startsWith(p) && k.length>p.length)).values()];
+      const globalParents=[];
+      for(const n of [1,2]){
+        if(k.length<=n)continue;
+        const suffix=k.slice(-n);
+        if(!/^\d{1,2}$/.test(suffix))continue;
+        const parent=k.slice(0,-n);
+        const owners=currentOwners.get(parent);
+        if(owners?.size===1) globalParents.push({parent,suffix,owner:[...owners][0]});
+      }
+      const uniqueGlobalParents=[...new Map(globalParents.map(x=>[x.parent,x])).values()];
+      if(uniqueGlobalParents.length===1){
+        globalParentUniqueAny++;
+        const gp=uniqueGlobalParents[0];
+        const localHas=[...rawLocal].some(p=>norm(p)===gp.parent);
+        if(!localHas) globalParentUniqueOutsideLocal++;
+        if(globalParentSamples.length<100) globalParentSamples.push({
+          pk:row.electroverseLocationPk,physicalReference:pr,evsePk:e.pk,
+          parentNorm:gp.parent,suffix:gp.suffix,ownerStationId:gp.owner,localHas
+        });
+      } else if(uniqueGlobalParents.length>1) globalParentAmbiguous++;
       if(parentCandidates.length===1){
         uniqueLocalParentPrefix++;
         const parent=norm(parentCandidates[0]);
@@ -145,6 +169,10 @@ const out={
   mappingEmptyRowNonEmptyEvses,
   globallyUniqueViaUnion,
   globallyAmbiguousViaUnion,
+  globalExactOutsideLocal,
+  globalParentUniqueAny,
+  globalParentUniqueOutsideLocal,
+  globalParentAmbiguous,
   uniqueLocalParentPrefix,
   ambiguousLocalParentPrefix,
   parentGroupsTotal:parentGroups.size,
@@ -159,6 +187,7 @@ const out={
   recoveredSamples,
   parentPrefixSamples,
   parentGroupSamples,
+  globalParentSamples,
   unmatchedSamples
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
