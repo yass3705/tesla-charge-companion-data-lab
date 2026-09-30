@@ -446,10 +446,20 @@
     },
     {
       "name": "TotalEnergies",
-      "status": "set_aside_technical_browser_inventory",
-      "access": "no_direct_uk_endpoint_found_first_pass",
-      "evidence": "Official UK Charging Services site and tariffs are browser-accessible, but GitHub runner access to the find-a-charger page returns HTTP 403, preventing static bundle/API discovery there. Keep public UK pricing separately; inventory backend still unresolved.",
-      "next": "Revisit with browser/network inspection when available; no user action required now."
+      "status": "complete",
+      "access": "public_chargeplus_inventory_plus_official_totalenergies_direct_tariffs",
+      "evidence": "Resolved 2026-09-30 by reusing the validated TotalEnergies Charge+ public BFF method previously proven in Belgium. UK TotalEnergies/Source London is exposed as networkId GB*BPL, networkName source-london, cpoVendorId SLMS. Full Greater London + Birmingham sweep returned 3,338 unique POIs with 3,338/3,338 detail calls HTTP 200; exact TotalEnergies lineage contains 1,439 locations, 3,243 charge points and 3,263 connectors. Power distribution: 1,790x7kW, 1,424x22kW, 18x50kW, 29x150kW, 2x200kW. All 3,263 connectors map to current official TotalEnergies UK PAYG power bands (100.0% coverage, 0 unmapped). 33 connector-level promotion matches are joined fail-closed by exact postcode + exact power for current Camden/TfL offers. Charge+ is used only for inventory/identity; Charge+ roaming tariffs are not used as TotalEnergies direct prices.",
+      "next": "Treat as complete. Refresh inventory from the public Charge+ BFF using GB*BPL/source-london/SLMS lineage; refresh direct prices from official TotalEnergies UK tariff pages. Apply dated Camden/TfL promotions only on exact postcode + power matches and only while valid; otherwise use documented general PAYG bands. Fail closed on any future undocumented power band.",
+      "completionMode": "complete_public_chargeplus_inventory_official_direct_tariffs",
+      "inventorySource": "https://public.mycardprd.alzp.tgscloud.net/chargeplus-bff/v2",
+      "networkId": "GB*BPL",
+      "cpoVendorId": "SLMS",
+      "locationCount": 1439,
+      "chargePointCount": 3243,
+      "connectorCount": 3263,
+      "directPaygCoveragePct": 100,
+      "unmappedDirectPaygConnectors": 0,
+      "activePromotionConnectorMatches": 33
     },
     {
       "name": "Connected Kerb",
@@ -2762,7 +2772,7 @@
   },
   "currentStatusCounts": {
     "asOf": "2026-09-30",
-    "complete": 22,
+    "complete": 23,
     "set_aside_external_request": 12,
     "blocked_external_ocpi_token": 1,
     "set_aside_user_followup": 1,
@@ -2774,7 +2784,6 @@
     "coverage_platform_scope_not_cpo": 1,
     "set_aside_technical_authenticated_backend": 1,
     "set_aside_technical_public_index_only": 1,
-    "set_aside_technical_browser_inventory": 1,
     "blocked_external_token": 1,
     "canonicalEntries": 46,
     "semanticCpos": 45
