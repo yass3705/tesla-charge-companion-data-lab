@@ -1,0 +1,100 @@
+name: UK EZ-Charge app endpoint discovery
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-ezcharge-app-endpoint-discovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download and inspect EZ Charge app transiently
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ez-xapk /tmp/ez-unpack reports/uk
+          curl -fL --retry 3 --retry-delay 2             'https://d.apkpure.net/b/XAPK/com.urbanintegrateduk.ezcharge?version=latest'             -o /tmp/ez-xapk/ez.xapk
+          unzip -q /tmp/ez-xapk/ez.xapk -d /tmp/ez-unpack
+
+          python3 - <<'PY'
+          import json, pathlib, re, subprocess, hashlib
+          from datetime import datetime, timezone
+          from urllib.parse import urlparse
+
+          root=pathlib.Path('/tmp/ez-unpack')
+          url_re=re.compile(r'https?://[^\s"\'<>\\]{4,700}')
+          route_re=re.compile(r'["\'](/(?:api|v[0-9]+|locations?|stations?|chargers?|chargepoints?|tariffs?|pricing|prices?|evses?|connectors?)[^"\']{0,240})["\']',re.I)
+          signal=re.compile(r'(?i)(tariff|price|pricing|charger|station|location|evse|connector|baseurl|base_url|api[-_ ]?url|sitearea)')
+          urls=set(); hosts=set(); routes=set(); hits=[]
+
+          def sanitize(s):
+              s=re.sub(r'([?&](?:access_token|token|key|api_key|apikey|code|signature)=)[^&#\s]+',r'\1<redacted>',s,flags=re.I)
+              s=re.sub(r'(?i)(bearer\s+)[A-Za-z0-9._~+/=-]{12,}',r'\1<redacted>',s)
+              return s
+
+          for p in root.rglob('*'):
+              if not p.is_file(): continue
+              if p.suffix.lower() not in {'.apk','.dex','.so','.json','.xml','.js','.bundle','.txt','.properties'} and p.name!='resources.arsc':
+                  continue
+              try:
+                  txt=subprocess.run(['strings','-a',str(p)],capture_output=True,text=True,errors='replace',timeout=60).stdout if p.suffix.lower() in {'.apk','.dex','.so'} else p.read_text(errors='replace')
+              except Exception:
+                  continue
+              for u in url_re.findall(txt):
+                  su=sanitize(u)
+                  urls.add(su[:1400])
+                  h=urlparse(su).netloc
+                  if h: hosts.add(h)
+              for rr in route_re.findall(txt): routes.add(rr[:400])
+              for m in signal.finditer(txt):
+                  s=txt[max(0,m.start()-250):min(len(txt),m.end()+800)]
+                  if re.search(r'https?://|/api|/v[0-9]+|tariff|price|pricing|baseurl|base_url|sitearea',s,re.I):
+                      hits.append({"file":str(p.relative_to(root)),"context":sanitize(s)[:1200]})
+                      if len(hits)>=300: break
+              if len(hits)>=300: break
+
+          relevant_urls=sorted(u for u in urls if any(k in u.lower() for k in ['ez','urbanintegrated','charge','api','station','location','tariff','price','azure','blob']))
+          relevant_hosts=sorted(h for h in hosts if any(k in h.lower() for k in ['ez','urban','charge','api','azure','blob']))
+          out={
+            "retrievedAt":datetime.now(timezone.utc).isoformat(),
+            "package":"com.urbanintegrateduk.ezcharge",
+            "source":"public APKPure latest package; transient static inspection only",
+            "hosts":relevant_hosts[:300],
+            "urls":relevant_urls[:700],
+            "routes":sorted(routes)[:700],
+            "hits":hits[:300]
+          }
+          pathlib.Path('reports/uk/ezcharge-app-endpoint-discovery-latest.json').write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8'
+          )
+          print(json.dumps({"hosts":out["hosts"],"urls":out["urls"][:120],"routes":out["routes"][:120],"hitCount":len(out["hits"])},ensure_ascii=False,indent=2))
+          PY
+
+          rm -rf /tmp/ez-xapk /tmp/ez-unpack
+
+      - name: Publish sanitized report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/ezcharge-app-endpoint-discovery-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "diag(uk): inspect EZ-Charge app endpoints [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
