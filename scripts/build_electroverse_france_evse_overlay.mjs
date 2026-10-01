@@ -267,6 +267,7 @@ const stats={
   validatedNumericResidualCandidateEvses:0,validatedNumericResidualPublishedEvses:0,
   validatedNumericResidualDiagnostics:{noConnectors:0,compileReasons:{},heterogeneous:0,compiledHomogeneous:0},
   validatedS82ResidualCandidateEvses:0,validatedS82ResidualPublishedEvses:0,
+  validatedS82ResidualDiagnostics:{noConnectors:0,compileReasons:{},heterogeneous:0,compiledHomogeneous:0},
   drvPowerGroupCandidateEvses:0,drvPowerGroupPublishedEvses:0,drvPowerGroupByKw:{},
   pd1TechnicalGroupCandidateEvses:0,pd1TechnicalGroupPublishedEvses:0,pd1TechnicalGroupByKey:{},
   drvHomogeneousGroupCandidateEvses:0,drvHomogeneousGroupPublishedEvses:0,
@@ -1666,6 +1667,7 @@ for(const sh of manifest.shards||[]){
       const connectors=e?.connectors||[];
       if(!connectors.length){
         if(identityMode==='validated_numeric_residual_unique_bijection')stats.validatedNumericResidualDiagnostics.noConnectors++;
+        if(identityMode==='validated_s82_residual_unique_suffix_bijection')stats.validatedS82ResidualDiagnostics.noConnectors++;
         rej('evse_no_connectors');continue;
       }
       const compiled=[];
@@ -1678,6 +1680,10 @@ for(const sh of manifest.shards||[]){
       if(bad){
         if(identityMode==='validated_numeric_residual_unique_bijection'){
           const d=stats.validatedNumericResidualDiagnostics.compileReasons;
+          d[bad]=(d[bad]||0)+1;
+        }
+        if(identityMode==='validated_s82_residual_unique_suffix_bijection'){
+          const d=stats.validatedS82ResidualDiagnostics.compileReasons;
           d[bad]=(d[bad]||0)+1;
         }
         rej('pricing_'+bad);
@@ -1752,9 +1758,11 @@ for(const sh of manifest.shards||[]){
       const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
       if(unique.length!==1){
         if(identityMode==='validated_numeric_residual_unique_bijection')stats.validatedNumericResidualDiagnostics.heterogeneous++;
+        if(identityMode==='validated_s82_residual_unique_suffix_bijection')stats.validatedS82ResidualDiagnostics.heterogeneous++;
         rej('heterogeneous_connectors_within_evse');continue;
       }
       if(identityMode==='validated_numeric_residual_unique_bijection')stats.validatedNumericResidualDiagnostics.compiledHomogeneous++;
+      if(identityMode==='validated_s82_residual_unique_suffix_bijection')stats.validatedS82ResidualDiagnostics.compiledHomogeneous++;
 
       const pricing=unique[0],currency=pricing.rules?.[0]?.currency||'EUR';
       if(parentMode){
