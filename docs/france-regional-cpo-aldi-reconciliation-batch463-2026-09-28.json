@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "batch": "batch463",
+  "date": "2026-09-28",
+  "country": "FR",
+  "subject": "ALDI raw93/raw94 reconciliation and national AC/DC direct tariff scope",
+  "decision": "promote_one_authority_reconcile_second_raw_as_non_counting_alias",
+  "evidence": {
+    "officialPage": "https://www.aldi.fr/services/borne-recharge.html",
+    "interpretation": "ALDI France presents charging prices by connector current type (AC versus DC), not by power tranche. Power values shown with illustrations describe equipment, not tariff eligibility thresholds.",
+    "roamingSeparation": "ALDI explicitly distinguishes the final price that can vary when a mobility badge/provider is used; this roaming/eMSP layer is not the CPO-direct tariff.",
+    "v8Recovered": {
+      "partyId": "FRALN",
+      "runtime": "assets/v8-aldi-direct.js",
+      "dataset": "data/aldi_direct_france_20260826.json",
+      "acEurPerKwh": 0.29,
+      "dcEurPerKwh": 0.35
+    },
+    "applicability": "Apply 0.29 EUR/kWh to ALDI-operated FR*ALN AC connectors and 0.35 EUR/kWh to ALDI-operated FR*ALN DC connectors regardless of connector power. Do not apply to ALDI-branded sites physically operated by another CPO."
+  },
+  "lineage": {
+    "raw93": "ALDI MARCHE BOIS-GRENIER SARL",
+    "raw94": "ALDI MARCHE SARL (LYO)",
+    "authority": "ALDI France | FR*ALN",
+    "reconciliation": "Both historical legal/regional ALDI occurrences resolve to the same national FR*ALN tariff authority; raw94 is retained as a non-counting historical alias rather than a second CPO authority."
+  },
+  "canonicalDelta": {
+    "before": {
+      "treated": 89,
+      "setAside": 16,
+      "active": 186,
+      "total": 291
+    },
+    "after": {
+      "treated": 90,
+      "setAside": 16,
+      "active": 185,
+      "total": 291
+    },
+    "newlyTreated": [
+      "ALDI France | FR*ALN"
+    ],
+    "aliasesResolved": [
+      "ALDI MARCHE BOIS-GRENIER SARL | raw rank93 -> ALDI France | FR*ALN",
+      "ALDI MARCHE SARL (LYO) | raw rank94 -> ALDI France | FR*ALN (same national tariff authority; non-counting)"
+    ],
+    "pendingDedupe": 0
+  },
+  "safeguards": [
+    "No power-band extrapolation: rule is AC/DC.",
+    "No tariff inheritance to third-party-operated ALDI-branded sites.",
+    "Electra/Electroverse remain fallback only and are not direct-tariff evidence."
+  ]
+}
