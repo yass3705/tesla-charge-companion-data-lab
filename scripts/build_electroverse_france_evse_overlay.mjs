@@ -1820,7 +1820,20 @@ for(const [target,items] of offersByTarget.entries()){
   if(items.length<2)continue;
   stats.duplicatePublishedEvseTargetsBeforeDedup+=items.length-1;
   const sigs=new Set(items.map(x=>x.pricingSig));
-  if(sigs.size===1){
+  const validatedItems=items.filter(x=>x.offer.metadata?.identityMode==='validated_numeric_residual_unique_bijection');
+  if(validatedItems.length===1){
+    // A strict individual post-overlay bijection is more specific than any grouped
+    // attribution that happens to claim the same national target. Preserve it and
+    // discard the competing group offers, even when their pricing differs.
+    const keep=validatedItems[0];
+    for(const x of items) if(x!==keep) dropOfferIds.add(x.offer.id);
+    stats.dedupedIdenticalOffers+=sigs.size===1?items.length-1:0;
+    if(sigs.size>1){
+      stats.conflictingPublishedEvseTargetsBeforeDedup+=items.length-1;
+      stats.conflictingTargetsDropped++;
+      rej('validated_numeric_superseded_group_conflict');
+    }
+  }else if(sigs.size===1){
     const sorted=[...items].sort((a,b)=>String(a.offer.id).localeCompare(String(b.offer.id)));
     for(const x of sorted.slice(1))dropOfferIds.add(x.offer.id);
     stats.dedupedIdenticalOffers+=items.length-1;
