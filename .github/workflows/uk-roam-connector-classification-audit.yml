@@ -1,0 +1,71 @@
+name: UK Roam connector classification audit
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-roam-connector-classification-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Inspect Roam connector schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python3 - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          from collections import Counter,defaultdict
+          with gzip.open("data/national/uk_roam_public_map.json.gz","rt",encoding="utf-8") as g:
+              p=json.load(g)
+          locs=p.get("locations") or []
+          keys=Counter(); values=defaultdict(Counter); samples=[]
+          power_fields=Counter(); type_fields=Counter()
+          for l in locs:
+              cs=l.get("connectors") or l.get("evses") or []
+              if not isinstance(cs,list): continue
+              for c in cs:
+                  if not isinstance(c,dict): continue
+                  for k,v in c.items():
+                      keys[k]+=1
+                      kl=k.lower()
+                      if isinstance(v,(str,int,float,bool)) and len(values[k])<100:
+                          values[k][str(v)]+=1
+                      if any(t in kl for t in ("power","kw","watt","capacity")):
+                          power_fields[k]+=1
+                      if any(t in kl for t in ("type","format","current","connector","standard")):
+                          type_fields[k]+=1
+                  if len(samples)<20: samples.append(c)
+          out={
+            "locations":len(locs),
+            "connectorCount":sum(keys.values()) if False else sum(len((l.get("connectors") or l.get("evses") or [])) for l in locs if isinstance(l,dict)),
+            "connectorKeys":dict(keys),
+            "powerFields":dict(power_fields),
+            "typeFields":dict(type_fields),
+            "sampleValues":{k:dict(v.most_common(30)) for k,v in values.items()},
+            "samples":samples
+          }
+          Path("reports/uk/roam-connector-classification-audit-latest.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(out,ensure_ascii=False,indent=2)[:30000])
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/roam-connector-classification-audit-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "audit(uk): classify Roam connector schema [run ${GITHUB_RUN_ID}]"
+          git pull --rebase origin main
+          git push origin HEAD:main
