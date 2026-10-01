@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": "batch440",
+  "date": "2026-09-25",
+  "cpo": "OZECAR",
+  "rawRank": 80,
+  "historical": {
+    "stations": 269,
+    "pdc": 269
+  },
+  "decision": "treated-public-monta-evse-deeplink",
+  "supersedes": "docs/france-regional-cpo-ozecar-batch437-2026-09-25.json",
+  "evidence": {
+    "appArtifact": {
+      "name": "OZECAR One",
+      "version": "2.73.0",
+      "package": "fr.ozecar.monta.ozecarone",
+      "runtime": "Flutter / Monta white-label"
+    },
+    "apkFindings": [
+      "production public deep-link base https://app.monta.app/d",
+      "runtime contains /api/v1/deeplinks/payload, /api/v1/charge_points, /available_tariffs, /price_groups and /pay-charge",
+      "runtime explicitly handles unauthenticated deeplinks and charge-point-open deeplinks"
+    ],
+    "directPublicResolver": {
+      "template": "https://app.monta.app/d/{id_pdc_itinerance}",
+      "authentication": "none",
+      "input": "exact FROZE EVSE roaming ID from OZECAR first-party IRVE",
+      "output": [
+        "station name",
+        "location",
+        "live state",
+        "pricing type",
+        "additional-fee flag",
+        "exact displayed direct price components",
+        "public driver cp link"
+      ]
+    },
+    "validatedExamples": [
+      {
+        "evse": "FROZEE3523439",
+        "price": "0.60 EUR/kWh + 1.50 EUR fee",
+        "state": "busy-charging"
+      },
+      {
+        "evse": "FROZEE3523676",
+        "price": "0.60 EUR/kWh + 1.50 EUR fee",
+        "state": "available"
+      },
+      {
+        "evse": "FROZEE3627088",
+        "price": "0.55 EUR/kWh + 1.50 EUR fee",
+        "state": "available"
+      },
+      {
+        "evse": "FROZEE3588571",
+        "price": "0.62 EUR/kWh + 1.50 EUR fee",
+        "state": "available"
+      },
+      {
+        "evse": "FROZEE3430505",
+        "price": "0.42 EUR/kWh",
+        "state": "available"
+      },
+      {
+        "evse": "FROZEE3602938",
+        "price": "0.52 EUR/kWh + 1.50 EUR fee",
+        "state": "available"
+      },
+      {
+        "evse": "FROZEE3627074",
+        "price": "0.55 EUR/kWh + 0.10 EUR/min",
+        "pricingType": "dynamic price",
+        "state": "available"
+      },
+      {
+        "evse": "FROZEE4780797",
+        "price": "0.45 EUR/kWh + 1.50 EUR fee",
+        "state": "available"
+      },
+      {
+        "evse": "FROZEE5783309",
+        "price": "0.30 EUR/kWh",
+        "pricingType": "dynamic price",
+        "state": "available"
+      },
+      {
+        "evse": "FROZEE6285889",
+        "price": "0.55 EUR/kWh",
+        "state": "available"
+      }
+    ],
+    "exceptionExample": {
+      "evse": "FROZEE3648761",
+      "result": "Private charger",
+      "policy": "fail closed; do not invent an ad-hoc tariff"
+    }
+  },
+  "sourceInventory": {
+    "authority": "OZECAR official data.gouv producer",
+    "datasetId": "65f3112cc53fbbd3b1d7208b",
+    "resourceId": "03110e59-6d04-48f7-be50-15727eb6f3ce",
+    "currentResourceLastModified": "2026-09-04",
+    "frequency": "weekly"
+  },
+  "policy": {
+    "exactEvseOnly": true,
+    "nationalConstantAllowed": false,
+    "preserveComponents": true,
+    "preservePricingType": true,
+    "privateOrUnresolved": "fail closed then TCC fallback",
+    "statusMayBeCollectedFromSamePublicPage": true
+  },
+  "conclusion": "The batch437 authentication blocker is disproven for driver/ad-hoc pricing. Exact FROZE EVSE IDs resolve anonymously on Monta's public /d/{EVSE} surface to station identity, live state and exact displayed price components. OZECAR is complete at CPO-method level with per-EVSE fail-closed exceptions."
+}
