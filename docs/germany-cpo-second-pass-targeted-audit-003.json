@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-targeted-audit",
+  "auditBatch": 3,
+  "date": "2026-09-16",
+  "audited": [
+    {
+      "name": "Allgaeuer Kraftwerke GmbH",
+      "statusAfter": "partial",
+      "result": "Station-level AFIR/Mobilithek evidence materially narrows the unresolved estate without extrapolation. Am Alten Bahnhof 10A (DE*738*E00033*001/002, 50 kW CCS) is evidenced at 0.57 EUR/kWh, no start fee, blocking fee 0.06 EUR/min after 180 min. Sudetenstrasse 3 (2x 150 kW CCS) is evidenced at 0.66 EUR/kWh, no start fee, blocking fee 0.10 EUR/min after 45 min. Johann-Althaus-Strasse 3 has mixed 50/150 kW CCS and current Mobilithek-derived evidence shows 0.66 EUR/kWh on both connectors with no start fee and 0.10 EUR/min after 45 min, so nominal power alone is not a safe tariff-key shortcut. Current anonymous AC evidence remains 0.51 EUR/kWh at named AKW sites. The first-party AKW FAQ independently confirms ad-hoc credit-card access by QR. Operator-level discovery reports 25 stations / 67 charge points and is retained only as discovery evidence, not as a substitute for station-level proof.",
+      "sources": [
+        "https://www.allgaeukraft.de/faq.html",
+        "https://www.e-stations.de/ladestationen/sonthofen/akw-besucherparkplatzhyc-5235",
+        "https://www.e-stations.de/ladestationen/sonthofen/sudetenstrassehyc-5229",
+        "https://www.e-stations.de/ladestationen/sonthofen/parkplatz-immenstaedter-str-hyc-5233",
+        "https://adhocladen.de/sonthofen/allgaeuer-kraftwerke-am-alten-bahnhof-10/",
+        "https://adhoccharging.eu/de/operator/allg-uer-kraftwerke-gmbh/"
+      ],
+      "nextBlocker": "B1_COVERAGE_EVSE_MATRIX",
+      "nextAction": "Map the exact unresolved EVSE IDs against current Mobilithek/chargecloud or QR direct-payment records. Preserve per-station fee components and do not infer 0.57 vs 0.66 from nominal power alone."
+    },
+    {
+      "name": "GEW Wilhelmshaven GmbH",
+      "statusAfter": "partial",
+      "result": "The net/gross correction from audit 002 is independently corroborated on another GEW ChargePoint station record: GEW WHV Station 02 exposes 0.44 EUR/kWh plus 19% VAT and card/app/RFID access. This strengthens the normalization rule but does not close the residual because the exact official-location mapping and zero-fee proof for every GEW location remain incomplete.",
+      "sources": [
+        "https://www.automatenwegweiser.de/automat/chargepoint/wilhelmshaven/gew-whv-station-02"
+      ],
+      "nextBlocker": "B4_FEE_COMPONENT_COMPLETENESS",
+      "nextAction": "Keep 0.44 EUR/kWh as source-net, not final gross. Resolve the remaining official-location/EVSE mapping and confirm start/blocking fee fields before promotion."
+    },
+    {
+      "name": "Stadtwerke Leipzig GmbH",
+      "statusAfter": "partial",
+      "result": "Fresh 2026 first-party material confirms registered L-Strom.drive prices are a separate product (0.54 EUR/kWh AC, 0.64 EUR/kWh DC regular). A current report citing Stadtwerke Leipzig states 2026 anonymous ad-hoc at 0.65 EUR/kWh AC and 0.75 EUR/kWh DC, consistent with the already-known ad-hoc values, but this does not establish EVSE coverage for the post-13.04.2024 subset. No registered tariff is substituted and no promotion is made.",
+      "sources": [
+        "https://www.l.de/stadtwerke/privatkunden/e-mobilitaet/unterwegs-laden/",
+        "https://www.electrive.net/2025/11/06/leipziger-stadtwerke-senken-preis-fuer-ladestrom-um-rund-zehn-prozent/"
+      ],
+      "nextBlocker": "B1_COVERAGE_EVSE_MATRIX",
+      "nextAction": "Enumerate only post-13.04.2024 Stadtwerke Leipzig EVSEs and query their direct-payment records; do not reopen the legacy subset or substitute registered L-Strom.drive prices."
+    }
+  ],
+  "statusChanges": 0,
+  "canonicalCountsAfter": {"totalNamedCpos":591,"complete":202,"partial":389,"blocked":0},
+  "consistencyCheck": {
+    "status":"PASS",
+    "arithmetic":"202 + 389 + 0 = 591",
+    "promotions":0,
+    "unsafeExtrapolations":0,
+    "registeredOrRoamingTariffSubstituted":false,
+    "duplicateOrAliasChange":0,
+    "repeatInvestigationGuard":"PASS: work stayed on unresolved station-level coverage; GEW and Leipzig completed price questions were not reopened.",
+    "materialProgress":"Allgaeuer gained exact station-level energy and fee evidence for Am Alten Bahnhof 10A, Sudetenstrasse 3 and Johann-Althaus-Strasse 3 plus a critical anti-extrapolation finding for its mixed 50/150 kW site. Leipzig remains bounded to newer-EVSE coverage only."
+  },
+  "nextSafeAction":"Resolve exact remaining Allgaeuer EVSE identities against Mobilithek/chargecloud, then enumerate Leipzig post-13.04.2024 EVSEs. Keep GEW and Goettingen dormant until new fee-completeness evidence appears."
+}
