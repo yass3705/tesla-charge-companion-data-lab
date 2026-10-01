@@ -59,6 +59,25 @@ for(const sh of cman.shards||[]){
       const n=norm(v),mm=n.match(/^FR[A-Z0-9]{1,8}E(.+)$/);
       return mm?mm[1]:null;
     };
+    const structuredParent=[];
+    for(const x of refs){
+      const parts=String(x.raw||'').split('*').map(v=>v.trim()).filter(Boolean);
+      // Expected P01 child reference: FR*P01*E<zone>*<station>*<point>*<connector>.
+      if(parts.length!==6||parts[0].toUpperCase()!=='FR'||parts[1].toUpperCase()!=='P01')continue;
+      const parentBody=norm(parts[2]+parts[3]+parts[4]).replace(/^E/,'');
+      if(!parentBody)continue;
+      const matches=available.filter(p=>{
+        const pb=evseBody(p);
+        return pb===parentBody&&(owners.get(p)?.size||0)===1;
+      });
+      if(matches.length===1)structuredParent.push({
+        evsePk:x.e.pk,target:matches[0],raw:x.raw,
+        parentBody,connectorOrdinal:parts[5]
+      });
+    }
+    const structuredTargetCounts=new Map();
+    for(const x of structuredParent)structuredTargetCounts.set(x.target,(structuredTargetCounts.get(x.target)||0)+1);
+
     const crossOperatorParent=[];
     for(const x of refs){
       const sb=evseBody(x.raw);
@@ -122,6 +141,11 @@ for(const sh of cman.shards||[]){
       homogeneousPricing,
       uniformConnectorCount:connectorCounts.size===1,
       commonPrefix:commonPrefix||null,
+      structuredParentCount:structuredParent.length,
+      structuredParentUniqueTargets:new Set(structuredParent.map(x=>x.target)).size,
+      structuredParentAllSourcesMatched:structuredParent.length===es.length,
+      structuredParentTargetMultiplicity:Object.fromEntries([...structuredTargetCounts.entries()].sort()),
+      structuredParent:structuredParent.slice(0,120),
       crossOperatorParentCount:crossOperatorParent.length,
       crossOperatorParentUniqueTargets:new Set(crossOperatorParent.map(x=>x.target)).size,
       crossOperatorParent:crossOperatorParent.slice(0,80),
