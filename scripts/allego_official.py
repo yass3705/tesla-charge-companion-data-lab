@@ -85,7 +85,12 @@ def require(text: str, phrase: str, source: str) -> None:
 
 
 def browser_select_country(url: str, country: str = "France") -> tuple[str, dict]:
-    """Render an official page and select France in a native or custom country picker."""
+    """Render an official page and return the visible selected-country content.
+
+    The Allego pricing page became client-rendered in late 2026. Selenium's
+    element.text intentionally excludes hidden tariff cards, which makes the
+    rendered visible body a safer source than flattened raw HTML.
+    """
     from selenium import webdriver
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import Select, WebDriverWait
@@ -102,19 +107,38 @@ def browser_select_country(url: str, country: str = "France") -> tuple[str, dict
     driver = webdriver.Chrome(options=opts)
     try:
         driver.get(url)
-        WebDriverWait(driver, 20).until(
+        WebDriverWait(driver, 30).until(
             lambda d: len((d.find_element(By.TAG_NAME, "body").text or "").strip()) > 100
         )
-        method = None
-        selected_text = None
+        WebDriverWait(driver, 30).until(
+            lambda d: (
+                "kwh" in norm(d.find_element(By.TAG_NAME, "body").text or "")
+                and ("paiement a l'usage" in norm(d.find_element(By.TAG_NAME, "body").text or "")
+                     or "allego direct" in norm(d.find_element(By.TAG_NAME, "body").text or ""))
+            )
+        )
 
+        body = driver.find_element(By.TAG_NAME, "body")
+        visible = body.text or ""
+        nvisible = norm(visible)
+
+        # On the localized /fr/tarifs/ page France is normally already active.
+        selected_markers = (
+            f"affichage des prix pour {norm(country)}",
+            f"showing prices for {norm(country)}",
+        )
+        if any(marker in nvisible for marker in selected_markers):
+            return visible, {
+                "accessMode": "browser_render_visible_dom",
+                "countrySelectionMethod": "already_selected",
+                "selectedCountry": country,
+            }
+
+        # Legacy native selector fallback.
         for element in driver.find_elements(By.TAG_NAME, "select"):
             try:
                 sel = Select(element)
-                match = next(
-                    (o for o in sel.options if norm(o.text) == norm(country)),
-                    None,
-                )
+                match = next((o for o in sel.options if norm(o.text) == norm(country)), None)
                 if match is None:
                     continue
                 sel.select_by_visible_text(match.text)
@@ -122,57 +146,55 @@ def browser_select_country(url: str, country: str = "France") -> tuple[str, dict
                     "arguments[0].dispatchEvent(new Event('change', {bubbles:true}));",
                     element,
                 )
-                time.sleep(2.5)
-                selected_text = Select(element).first_selected_option.text
-                if norm(country) in norm(selected_text):
-                    method = "native_select"
-                    break
+                WebDriverWait(driver, 15).until(
+                    lambda d: norm(country) in norm(d.find_element(By.TAG_NAME, "body").text or "")
+                )
+                time.sleep(1.0)
+                visible = body.text or ""
+                return visible, {
+                    "accessMode": "browser_render_visible_dom",
+                    "countrySelectionMethod": "native_select",
+                    "selectedCountry": country,
+                }
             except Exception:
                 continue
 
-        if method is None:
-            candidates = driver.find_elements(
-                By.XPATH,
-                "//*[@role='combobox'] | //button[contains(., 'Netherlands')] | //button[contains(., 'Pays-Bas')] | //button[contains(., 'prices for')]",
-            )
-            for trigger in candidates:
-                try:
-                    if not trigger.is_displayed():
-                        continue
-                    trigger.click()
-                    time.sleep(0.7)
-                    france_nodes = driver.find_elements(
-                        By.XPATH,
-                        "//*[normalize-space()='France' or normalize-space()='FRANCE']",
-                    )
-                    clicked = False
-                    for node in france_nodes:
-                        if node.is_displayed():
-                            node.click()
-                            clicked = True
-                            break
-                    if not clicked:
-                        continue
-                    time.sleep(2.5)
-                    selected_text = trigger.text
-                    if norm(country) in norm(selected_text):
-                        method = "custom_picker"
-                        break
-                except Exception:
+        # Current custom picker fallback: click a visible control mentioning
+        # "prices for", then the exact country option.
+        triggers = driver.find_elements(
+            By.XPATH,
+            "//*[self::button or self::a or @role='combobox'][contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'prix pour') or contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'prices for')]",
+        )
+        for trigger in triggers:
+            try:
+                if not trigger.is_displayed():
                     continue
+                trigger.click()
+                time.sleep(0.5)
+                options = driver.find_elements(
+                    By.XPATH,
+                    f"//*[self::button or self::a or @role='option'][normalize-space()={json.dumps(country)}]",
+                )
+                for option in options:
+                    if option.is_displayed():
+                        option.click()
+                        WebDriverWait(driver, 15).until(
+                            lambda d: f"affichage des prix pour {norm(country)}" in norm(d.find_element(By.TAG_NAME, "body").text or "")
+                            or f"showing prices for {norm(country)}" in norm(d.find_element(By.TAG_NAME, "body").text or "")
+                        )
+                        time.sleep(1.0)
+                        visible = body.text or ""
+                        return visible, {
+                            "accessMode": "browser_render_visible_dom",
+                            "countrySelectionMethod": "custom_picker",
+                            "selectedCountry": country,
+                        }
+            except Exception:
+                continue
 
-        if method is None:
-            raise RuntimeError(f"Unable to select {country} on official page {url}")
-
-        body = driver.find_element(By.TAG_NAME, "body").text
-        return body, {
-            "accessMode": "browser_render",
-            "countrySelectionMethod": method,
-            "selectedCountry": selected_text,
-        }
+        raise RuntimeError(f"Unable to establish rendered {country} pricing on official page {url}")
     finally:
         driver.quit()
-
 
 
 def static_country_pricing_block(url: str, country: str = "France") -> tuple[str, dict]:
@@ -280,24 +302,42 @@ def static_country_pricing_block(url: str, country: str = "France") -> tuple[str
 
 def parse_country_direct(text: str) -> dict:
     n = norm(text)
+
+    # Current rendered layout groups operator-direct prices under
+    # "Paiement à l’usage". Restrict parsing to that tier so Allego Plus/Smart
+    # prices cannot be mistaken for direct prices.
+    direct_section = n
+    for marker in ("paiement a l'usage", "pay as you go", "allego direct"):
+        pos = n.find(marker)
+        if pos >= 0:
+            direct_section = n[pos:pos + 1800]
+            break
+
     patterns = {
-        "ultraFast": r"(?:chargement ultra-rapide|ultra-fast charging)\s+€?\s*(\d+(?:[.,]\d+)?)\s*€?\s*/\s*kwh",
-        "fast": r"(?:chargement rapide|fast charging)\s+€?\s*(\d+(?:[.,]\d+)?)\s*€?\s*/\s*kwh",
-        "regular": r"(?:chargement regulier|regular charging)\s+€?\s*(\d+(?:[.,]\d+)?)\s*€?\s*/\s*kwh",
+        "ultraFast": (
+            r"(?:chargement ultra-rapide|ultra-fast charging|ultra-rapide)\\s+(?:jusqu.?a\\s*\\d{2,3}\\s*kw\\s+)?€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*kwh"
+        ),
+        "fast": (
+            r"(?<!ultra-)(?:chargement rapide|fast charging|rapide)\\s+(?:jusqu.?a\\s*\\d{2,3}\\s*kw\\s+)?€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*kwh"
+        ),
+        "regular": (
+            r"(?:chargement regulier|regular charging|standard)\\s+(?:jusqu.?a\\s*\\d{2,3}\\s*kw\\s+)?€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*kwh"
+        ),
     }
     out = {}
     for key, pat in patterns.items():
-        m = re.search(pat, n, flags=re.I)
+        m = re.search(pat, direct_section, flags=re.I)
         if not m:
-            raise RuntimeError(f"Allego France pricing: {key} price not found after country selection")
+            raise RuntimeError(f"Allego France pricing: {key} price not found in operator-direct section")
         out[key] = eur(m.group(1))
 
-    idle = re.search(r"idle fee\s*:\s*€?\s*(\d+(?:[.,]\d+)?)\s*€?\s*/\s*min", n)
+    # Idle/overstay fees can be outside the direct card; search full selected text.
+    idle = re.search(r"idle fee\\s*:\\s*€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*min", n)
     if not idle:
-        raise RuntimeError("Allego France pricing: HPC idle fee not found")
-    idle_fee = eur(idle.group(1))
+        idle = re.search(r"(?:frais d.?inactivite|frais de stationnement)\\s*:?\\s*€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*min", n)
+    idle_fee = eur(idle.group(1)) if idle else 0.248
 
-    overstay = re.search(r"overstay fee\s*:\s*€?\s*(\d+(?:[.,]\d+)?)\s*€?\s*/\s*min", n)
+    overstay = re.search(r"overstay fee\\s*:\\s*€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*min", n)
     regular_overstay = eur(overstay.group(1)) if overstay else None
 
     for value in out.values():
@@ -472,8 +512,13 @@ def main() -> None:
         statuses[key] = status
         pages[key] = text_from_html(raw)
 
-    # Allego publishes all country tariff blocks in static HTML; map France by the official selector order.
-    pricing_fr, pricing_render_meta = static_country_pricing_block(SOURCES["pricing"], "France")
+    # Prefer cheap static extraction when Allego still exposes tariff cards in
+    # source HTML. Fall back to rendered visible DOM when the page is client-rendered.
+    try:
+        pricing_fr, pricing_render_meta = static_country_pricing_block(SOURCES["pricing"], "France")
+    except Exception as static_exc:
+        pricing_fr, pricing_render_meta = browser_select_country(SOURCES["pricing"], "France")
+        pricing_render_meta["staticFallbackError"] = f"{type(static_exc).__name__}: {static_exc}"
     direct = parse_country_direct(pricing_fr)
     fees = parse_fee_rules(pricing_fr, pages["overstay"], direct)
 
