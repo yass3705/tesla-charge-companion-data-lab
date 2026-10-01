@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 123,
+  "schemaVersion": 124,
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 96,
-  "setAsideCpos": 39,
-  "activeRemainingCpos": 156,
-  "updatedAt": "2026-10-01T18:50:00+02:00",
+  "setAsideCpos": 40,
+  "activeRemainingCpos": 155,
+  "updatedAt": "2026-10-01T19:05:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -367,6 +367,13 @@
       "since": "2026-10-01",
       "lastChecked": "2026-10-01",
       "audit": "docs/france-regional-cpo-greenflux-assets-batch502-2026-10-01.json"
+    },
+    {
+      "name": "Porsche Sales | raw rank109",
+      "reason": "batch503 fail-closed: historical/current Porsche Sales & Marketplace inventory mixes Porsche Centres/Sales & Marketplace with Porsche Destination Charging partner sites. First-party Porsche states Destination Charging is free for Porsche customers but fees for non-Porsche users may depend on the partner establishment; Porsche Charging Service prices (including 0.39 EUR/kWh Preferred) are eMSP/subscription prices, not universal direct-CPO authority. No deterministic anonymous station/EVSE -> current direct host/CPO tariff resolver was recovered.",
+      "since": "2026-10-01",
+      "lastChecked": "2026-10-01",
+      "audit": "docs/france-regional-cpo-porsche-sales-batch503-2026-10-01.json"
     }
   ],
   "activeNominative": [
@@ -434,7 +441,6 @@
     "RELEASED_ACTIVE_SLOT_105 | authority ALDI France | FR*ALN already treated",
     "RELEASED_ACTIVE_SLOT_107_ZUNDER_DUPLICATE_AUTHORITY",
     "RELEASED_ACTIVE_SLOT_108 | authority ALDI France | FR*ALN already treated",
-    "UNPROVEN_ACTIVE_109",
     "RELEASED_ACTIVE_SLOT_111 | authority ALDI France | FR*ALN already treated",
     "RELEASED_ACTIVE_SLOT_113 | alias EASYCHARGE",
     "RELEASED_ACTIVE_SLOT_114 | authority ALDI France | FR*ALN already treated",
@@ -834,7 +840,8 @@
     "LUMI'IN / ChargeFacile | FR*LUM": "batch498 lineage: raw142 LUMI'IN is materialized as the same LUMI'IN ENERGIES authority as raw98 ChargeFacile | FR*LUM. Current official Charge Facile app provider/developer is LUMI'IN ENERGIES and supports QR charging/payment. Authority remains active pending exact current direct tariff mapping; no tariff inheritance.",
     "ChargeFacile | FR*LUM | raw rank98": "batch499 setAside: official Charge Facile app (LUMI'IN ENERGIES) handles QR start, payment methods and invoices; no public deterministic FR*LUM station/EVSE -> current numeric tariff resolver was recovered. raw142 LUMI'IN remains a non-counting identity lineage.",
     "FAROAD | FR*EVE | raw rank135": "batch501 setAside: FAROAD first-party supervision lets managers define prices per kWh; current FR*EVE inventory is heterogeneous and no anonymous station/EVSE -> configured direct tariff resolver was recovered. raw177 remains non-counting identity lineage.",
-    "GreenFlux Assets B.V. | FR*EVZ | raw rank121": "batch502 setAside: current FR*EVZ spans multiple networks/site authorities (EVzen, CARF, Norauto and others). GreenFlux is the CPO software/platform layer; exact underlying network/site direct tariff must be resolved per EVSE. No national GreenFlux Assets tariff and no inheritance from treated Greenflux/EVzen."
+    "GreenFlux Assets B.V. | FR*EVZ | raw rank121": "batch502 setAside: current FR*EVZ spans multiple networks/site authorities (EVzen, CARF, Norauto and others). GreenFlux is the CPO software/platform layer; exact underlying network/site direct tariff must be resolved per EVSE. No national GreenFlux Assets tariff and no inheritance from treated Greenflux/EVzen.",
+    "Porsche Sales | raw rank109": "batch503 setAside: Porsche Sales/Marketplace estate mixes Porsche Centres and Destination Charging partner sites. Destination Charging can be free for eligible Porsche guests but partner/site fees may apply to others; Porsche Charging Service prices are eMSP/contract prices and not universal direct-CPO tariffs."
   },
   "history": [
     {
@@ -1434,9 +1441,19 @@
         "setAsideCpos": 39,
         "activeRemainingCpos": 156
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch503",
+      "change": "Moved Porsche Sales raw109 active->setAside. First-party evidence proves heterogeneous Centre/Destination Charging policies; Porsche Charging Service prices are eMSP, not universal CPO-direct tariffs; no deterministic station/EVSE direct host tariff resolver recovered.",
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 40,
+        "activeRemainingCpos": 155
+      }
     }
   ],
-  "currentInvestigation": "Porsche Sales | raw rank109 | 146 stations / 146 PDC: inspect current first-party charging network identity/tariff authority and determine whether historical estate is owner-operated, roaming, or third-party.",
+  "currentInvestigation": "PARERA MOBILITE | raw rank99/156: inspect current first-party operator estates FR*MW1 and FR*VIS, determine whether tariffs are host/site configurable, and seek deterministic station/EVSE direct pricing before any classification.",
   "coherenceControl": {
     "batch": "batch491",
     "result": "PASS",
@@ -1451,11 +1468,11 @@
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch502",
-    "result": "PASS_GREENFLUX_ASSETS_FAIL_CLOSED",
+    "batch": "batch503",
+    "result": "PASS_PORSCHE_SALES_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch502",
+  "latestBatch": "batch503",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2216,6 +2233,14 @@
       "category": "setAside-authority",
       "decision": "active->setAside: heterogeneous technical/CPO-platform estate; exact underlying network/site tariff authority required per EVSE; no inheritance from Greenflux or EVzen",
       "evidence": "docs/france-regional-cpo-greenflux-assets-batch502-2026-10-01.json"
+    },
+    {
+      "rawRank": 109,
+      "historicalOperator": "Porsche Sales",
+      "authority": "Porsche Sales & Marketplace / Porsche Destination Charging",
+      "category": "setAside-authority",
+      "decision": "active->setAside: heterogeneous Porsche Centre + Destination Charging estate; direct price depends on site/eligibility, while Porsche Charging Service pricing is eMSP and cannot be used as CPO-direct authority",
+      "evidence": "docs/france-regional-cpo-porsche-sales-batch503-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
