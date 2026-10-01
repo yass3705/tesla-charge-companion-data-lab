@@ -178,60 +178,104 @@ def browser_select_country(url: str, country: str = "France") -> tuple[str, dict
 def static_country_pricing_block(url: str, country: str = "France") -> tuple[str, dict]:
     """Map one country to Allego's ordered static tariff blocks.
 
-    Allego ships all tariff blocks in the source HTML while the browser UI hides
-    them behind a country selector. The selector options and tariff blocks are in
-    the same order, so this maps the selected country by index without relying on
-    client-side JavaScript rendering.
+    Allego has used both a native <select> and a link/button country picker.
+    In both versions the country controls and tariff cards are emitted in the
+    same document order, so we can map a country to its static block by index.
     """
     status, raw = fetch(url)
     if status != 200:
         raise RuntimeError(f"Allego pricing: unexpected HTTP status {status}")
 
-    selects = re.findall(r"<select\b[^>]*>.*?</select>", raw, flags=re.I | re.S)
-    country_select = None
-    for candidate in selects:
-        ctext = norm(text_from_html(candidate))
-        if "france" in ctext and "allemagne" in ctext and "pays-bas" in ctext:
-            country_select = candidate
-            break
-    if country_select is None:
-        raise RuntimeError("Allego pricing: country selector not found in official HTML")
+    page_text = text_from_html(raw)
 
     labels = []
-    for option_html in re.findall(r"<option\b[^>]*>(.*?)</option>", country_select, flags=re.I | re.S):
-        label = text_from_html(option_html).strip()
-        nl = norm(label)
-        if not label or "choisissez" in nl or "select" in nl:
-            continue
-        labels.append(label)
+    access_mode = None
+
+    # Legacy/native selector.
+    selects = re.findall(r"<select\\b[^>]*>.*?</select>", raw, flags=re.I | re.S)
+    for candidate in selects:
+        ctext = norm(text_from_html(candidate))
+        if "france" in ctext and ("allemagne" in ctext or "germany" in ctext) and ("pays-bas" in ctext or "netherlands" in ctext):
+            for option_html in re.findall(r"<option\\b[^>]*>(.*?)</option>", candidate, flags=re.I | re.S):
+                label = text_from_html(option_html).strip()
+                nl = norm(label)
+                if not label or "choisissez" in nl or "select" in nl:
+                    continue
+                labels.append(label)
+            access_mode = "official_static_html_country_index"
+            break
+
+    # Current Allego markup (2026-10): country controls are links/buttons whose
+    # accessible text is "Affichage des prix pour <country>" / "Showing prices for <country>".
+    if not labels:
+        candidates = []
+        patterns = (
+            r"Affichage des prix pour\\s+([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’ .-]{1,40}?)(?=\\s+(?:Affichage des prix pour|Showing prices for|Vitesse de charge|Charging speed)|$)",
+            r"Showing prices for\\s+([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’ .-]{1,40}?)(?=\\s+(?:Affichage des prix pour|Showing prices for|Vitesse de charge|Charging speed)|$)",
+        )
+        for pat in patterns:
+            candidates.extend(re.findall(pat, page_text, flags=re.I))
+        # Fallback to raw accessibility attributes if text flattening joins controls oddly.
+        if not candidates:
+            candidates = re.findall(
+                r"(?:aria-label|title)=[\"'](?:Affichage des prix pour|Showing prices for)\\s+([^\"']+)[\"']",
+                raw,
+                flags=re.I,
+            )
+        seen = set()
+        for candidate in candidates:
+            label = re.sub(r"\\s+", " ", html.unescape(candidate)).strip()
+            key = norm(label)
+            if label and key not in seen:
+                seen.add(key)
+                labels.append(label)
+        if labels:
+            access_mode = "official_static_html_country_link_index"
+
+    if not labels:
+        raise RuntimeError("Allego pricing: country controls not found in official HTML")
 
     country_index = next((i for i, label in enumerate(labels) if norm(label) == norm(country)), None)
     if country_index is None:
-        raise RuntimeError(f"Allego pricing: {country} missing from country selector")
+        raise RuntimeError(f"Allego pricing: {country} missing from country controls: {labels[:20]}")
 
-    ntext = norm(text_from_html(raw))
-    marker = norm("Chargement ultra-rapide")
-    starts = [m.start() for m in re.finditer(re.escape(marker), ntext)]
-    if len(starts) != len(labels):
+    ntext = norm(page_text)
+
+    # Each country card starts with a charging-speed header. Prefer the current
+    # French label; retain legacy/English fallbacks.
+    marker_candidates = ("vitesse de charge", "charging speed", "chargement ultra-rapide", "ultra-fast charging")
+    starts = []
+    marker_used = None
+    for marker in marker_candidates:
+        trial = [m.start() for m in re.finditer(re.escape(norm(marker)), ntext)]
+        if len(trial) >= len(labels):
+            starts = trial
+            marker_used = marker
+            break
+    if len(starts) < len(labels):
         raise RuntimeError(
-            f"Allego pricing: tariff block count {len(starts)} differs from country option count {len(labels)}"
+            f"Allego pricing: tariff block count {len(starts)} is smaller than country control count {len(labels)}"
         )
 
+    # Some page chrome can repeat the first heading; align by taking the first
+    # contiguous country-card sequence matching the number of controls.
+    starts = starts[:len(labels)]
     blocks = []
-    for i, start in enumerate(starts):
-        end = starts[i + 1] if i + 1 < len(starts) else len(ntext)
-        blocks.append(ntext[start:end])
+    for i, block_start in enumerate(starts):
+        block_end = starts[i + 1] if i + 1 < len(starts) else len(ntext)
+        blocks.append(ntext[block_start:block_end])
 
     block = blocks[country_index]
     if "kwh" not in block:
         raise RuntimeError(f"Allego pricing: mapped {country} block contains no kWh tariff")
 
     return block, {
-        "accessMode": "official_static_html_country_index",
+        "accessMode": access_mode,
         "selectedCountry": labels[country_index],
         "countryIndex": country_index,
         "countryOptionCount": len(labels),
         "tariffBlockCount": len(starts),
+        "tariffBlockMarker": marker_used,
     }
 
 def parse_country_direct(text: str) -> dict:
