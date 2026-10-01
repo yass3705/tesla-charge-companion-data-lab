@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": 432,
+  "date": "2026-09-25",
+  "cpo": "Ze-Watt",
+  "purpose": "Idempotent V9 runtime integration follow-up after canonical batch431 promotion. Preserve treated status while attaching the independently validated stable-repo national refresh and exact-EVSE offer layer.",
+  "canonicalBefore": {
+    "treated": 84,
+    "setAside": 8,
+    "active": 199,
+    "total": 291,
+    "pendingDedupe": 0
+  },
+  "canonicalAfter": {
+    "treated": 84,
+    "setAside": 8,
+    "active": 199,
+    "total": 291,
+    "pendingDedupe": 0
+  },
+  "canonicalDecision": "NO_COUNTER_CHANGE_ALREADY_TREATED_BATCH431",
+  "stableRepository": {
+    "repository": "yass3705/tesla-charge-companion-stable",
+    "extractor": "scripts/zewatt/extract_zewatt_france.mjs",
+    "extractorCommit": "08993f790de6f1b4cc5a15e865d9e89912270776",
+    "compiler": "scripts/zewatt/compile_zewatt_v9_offers.mjs",
+    "compilerCommit": "86cbdc41cb1a9d00007b2f494aa8a1ff170ca7e3",
+    "workflow": ".github/workflows/zewatt-france-refresh.yml",
+    "workflowIntegrationCommit": "78353dbf869b25f9606f0c7c328efa3ca17adc71",
+    "snapshotAndOffersCommit": "c7908ed090292bcaa278b1d12b1d6f5b7c7071ca",
+    "sourceRegistryCommit": "ac80500d69b49b4e4776b0ecace6fe5e48c78581",
+    "workflowRun": 36067923991
+  },
+  "latestValidatedRun": {
+    "staticRows": 880,
+    "dynamicRows": 880,
+    "uniqueZwSerials": 651,
+    "companyEndpointSuccess": 650,
+    "companyEndpointErrors": 1,
+    "directGuestStations": 596,
+    "accountOrRoamingOnlyStations": 54,
+    "unresolvedStaticRows": 21,
+    "exactV9EvseIds": 757,
+    "directOfferProfiles": 39
+  },
+  "v9Runtime": {
+    "snapshot": "data/zewatt/france/current/zewatt.json.gz",
+    "summary": "data/zewatt/france/current/summary.json",
+    "offers": "v9-production-runtime/data/v9/france-zewatt-offers.json",
+    "sourceId": "france-zewatt-offers",
+    "adapter": "direct-offer-json",
+    "priority": 132,
+    "active": true,
+    "exactEvseOnly": true
+  },
+  "pricingMapping": {
+    "per_kwh_price": "pricing.rules[].pricePerKwh",
+    "per_session_price": "pricing.rules[].sessionFeeEur",
+    "per_minute_price": "pricing.rules[].chargingTimePerMinuteEur",
+    "transaction_time_per_minute_parking_price": "pricing.rules[].connectedTimePerMinuteAfterFreeEur",
+    "transaction_time_parking_delay_in_minutes": "pricing.rules[].connectedTimeFreeMinutes",
+    "per_minute_parking_price": "pricing.postChargeFee.eurPerMinute",
+    "parking_delay_in_minutes": "pricing.postChargeFee.graceMinutes",
+    "price_min": "metadata only; not rankable because tariff semantics are not independently proven"
+  },
+  "failClosedPolicy": {
+    "visitorStripeFalse": "no anonymous direct offer; fallback Electra then Electroverse",
+    "endpointError": "retain last known good where safe; otherwise fallback",
+    "unresolvedSerial": "no invented serial/tariff; fallback",
+    "roaming": "never substitute Ze-Watt mobility/eMSP tariff for CPO-direct"
+  },
+  "reconciliation": {
+    "batch431Snapshot": "650 mapped serials / 650 endpoint successes / 596 visitor_stripe=true / 40 structured signatures",
+    "latestV9Snapshot": "651 serials / 650 endpoint successes / 1 fail-closed endpoint error / 596 visitor_stripe=true / 39 compiled rankable profiles",
+    "interpretation": "A newer inventory introduced one additional serial while one current endpoint call failed. This does not regress CPO-method completeness because the exception is explicitly fail-closed and the direct layer remains exact-EVSE only."
+  },
+  "pendingDedupeCreated": false
+}
