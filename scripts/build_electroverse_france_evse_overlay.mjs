@@ -1915,9 +1915,11 @@ for(const sh of manifest.shards||[]){
           stats.validatedLe2ResidualCandidateEvses++;
         }else if(validatedP01ResidualTargets.has(validatedKey)){
           const p01Meta0=validatedP01ResidualMetadata.get(validatedKey);
-          identityMode=p01Meta0?.recoveryMode==='same_parent_homogeneous_price_only'
-            ? 'validated_p01_same_parent_homogeneous_price_only'
-            : 'validated_p01_structured_parent_identity';
+          identityMode=p01Meta0?.recoveryMode==='station_point_ordinal_remap'
+            ? 'validated_p01_station_point_ordinal_remap'
+            : p01Meta0?.recoveryMode==='same_parent_homogeneous_price_only'
+              ? 'validated_p01_same_parent_homogeneous_price_only'
+              : 'validated_p01_structured_parent_identity';
           parentMode=true;
           parentNorm=targetNorm;
           stats.validatedP01ResidualCandidateEvses++;
