@@ -55,6 +55,22 @@ for(const sh of cman.shards||[]){
     const local=[...new Set((m?.irvePdcIds||row.irvePdcIds||[]).map(norm).filter(Boolean))];
     const available=local.filter(p=>!publishedTargets.has(p));
     const refs=es.map(e=>({e,k:norm(e.physicalReference),raw:String(e.physicalReference)}));
+    const evseBody=v=>{
+      const n=norm(v),mm=n.match(/^FR[A-Z0-9]{1,8}E(.+)$/);
+      return mm?mm[1]:null;
+    };
+    const crossOperatorParent=[];
+    for(const x of refs){
+      const sb=evseBody(x.raw);
+      if(!sb)continue;
+      const matches=available.filter(p=>{
+        const pb=evseBody(p);
+        if(!pb||!sb.startsWith(pb)||sb.length<=pb.length)return false;
+        const suffix=sb.slice(pb.length);
+        return /^\\d{1,2}$/.test(suffix)&&(owners.get(p)?.size||0)===1;
+      });
+      if(matches.length===1)crossOperatorParent.push({evsePk:x.e.pk,target:matches[0],raw:x.raw});
+    }
 
     const exactSuffix=[];
     for(const x of refs){
@@ -106,6 +122,9 @@ for(const sh of cman.shards||[]){
       homogeneousPricing,
       uniformConnectorCount:connectorCounts.size===1,
       commonPrefix:commonPrefix||null,
+      crossOperatorParentCount:crossOperatorParent.length,
+      crossOperatorParentUniqueTargets:new Set(crossOperatorParent.map(x=>x.target)).size,
+      crossOperatorParent:crossOperatorParent.slice(0,80),
       refs:refs.slice(0,20).map(x=>({
         evsePk:x.e.pk,
         physicalReference:x.raw,
