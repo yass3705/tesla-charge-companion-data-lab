@@ -214,3 +214,5 @@ console.log(JSON.stringify({
 // verify post-rebuild residual count 2026-10-01
 
 // debug six post-connector-power residuals 2026-10-01
+
+// verify residuals after split pricing merge 2026-10-01
