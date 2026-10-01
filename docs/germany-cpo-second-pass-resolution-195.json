@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 195,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-194.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Bühl GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; second distinct pass bounded and parked",
+      "newEvidence": "Current first-party charging page confirms the operator's own tariff logic at 0.48 EUR/kWh AC and 0.60 EUR/kWh DC/HPC with blocking fees, while also distinguishing charging points belonging to Ladeverbund+.",
+      "exactGap": "The 47-EVSE current estate from resolution-194 cannot yet be deterministically partitioned between the Stadtwerke Bühl own-tariff rule and Ladeverbund+ exceptions. The rendered public feed also previously exposed 0.59 vs operator 0.60 on five DC/HPC EVSEs.",
+      "antiStagnation": "Two distinct evidence-led passes are now exhausted (Mobilithek/chargecloud EVSE/fee enumeration; current first-party tariff/exception-rule check). Park until raw per-EVSE payload or authoritative site-to-tariff partition appears.",
+      "resumeCondition": "Raw current chargecloud/Mobilithek records for all 47 EVSE or authoritative first-party mapping of each site to own tariff vs Ladeverbund+."
+    },
+    {
+      "name": "Stadtwerke Menden GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; current first-party denominator supersedes stale classification denominator",
+      "newEvidence": {
+        "currentNetwork": "first-party now states more than 30 charging points",
+        "anonymousDirect": "QR direct payment without contract; first-party direct price 0.52 EUR/kWh; exact price/conditions displayed after QR scan"
+      },
+      "exactGap": "The earlier 6-site/20-point classification denominator and sampled 0.49 EUR/kWh evidence are stale against the expanded >30-point estate. Current first-party evidence does not expose an exhaustive EVSE list or prove that every QR checkout has identical fee components/power-class treatment.",
+      "resumeCondition": "Current authoritative EVSE inventory plus QR/direct checkout fee matrix, or a first-party statement explicitly making 0.52 EUR/kWh and all fee components estate-wide with no exceptions."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS",
+    "repeatInvestigationGuard": "PASS; Bühl now parked after two distinct passes"
+  },
+  "nextSafeAction": "Move away from Bühl. Continue another B1/B3/B6 candidate whose current first-party denominator is small and whose direct-payment rule can be exhaustively bound; do not revisit Menden until its >30-point estate is enumerated."
+}
