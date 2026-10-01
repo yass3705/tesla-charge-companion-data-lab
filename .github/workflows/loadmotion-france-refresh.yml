@@ -1,0 +1,116 @@
+name: Load Motion France refresh
+
+on:
+  workflow_dispatch:
+    inputs:
+      tenant:
+        description: Tenant to refresh
+        required: true
+        type: choice
+        default: all
+        options: [all, yes55, loadstations, reveo, mobisdec]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: loadmotion-france-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Refresh YES55
+        if: ${{ inputs.tenant == 'all' || inputs.tenant == 'yes55' }}
+        env:
+          LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_YES55_TOKEN }}
+        run: |
+          if [ -z "$LOADMOTION_TOKEN" ]; then echo "YES55 token missing: keeping previous snapshot"; exit 0; fi
+          node scripts/loadmotion/extract_loadmotion_france.mjs --tenant yes55 --out data/loadmotion/france/current/yes55.json.gz || echo "YES55 refresh failed: keeping previous snapshot"
+
+      - name: Refresh Load Stations
+        if: ${{ inputs.tenant == 'all' || inputs.tenant == 'loadstations' }}
+        env:
+          LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_LOADSTATIONS_TOKEN }}
+        run: |
+          if [ -z "$LOADMOTION_TOKEN" ]; then echo "Load Stations token missing: keeping previous snapshot"; exit 0; fi
+          node scripts/loadmotion/extract_loadmotion_france.mjs --tenant loadstations --out data/loadmotion/france/current/loadstations.json.gz || echo "Load Stations refresh failed: keeping previous snapshot"
+
+      - name: Refresh Reveo
+        if: ${{ inputs.tenant == 'all' || inputs.tenant == 'reveo' }}
+        env:
+          LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_REVEO_TOKEN }}
+        run: |
+          if [ -z "$LOADMOTION_TOKEN" ]; then echo "Reveo token missing: keeping previous snapshot"; exit 0; fi
+          node scripts/loadmotion/extract_loadmotion_france.mjs --tenant reveo --concurrency 2 --out data/loadmotion/france/current/reveo.json.gz || echo "Reveo refresh failed: keeping previous snapshot"
+
+      - name: Refresh MobiSDEC
+        if: ${{ inputs.tenant == 'all' || inputs.tenant == 'mobisdec' }}
+        env:
+          LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_MOBISDEC_TOKEN }}
+        run: |
+          if [ -z "$LOADMOTION_TOKEN" ]; then echo "MobiSDEC token missing: keeping previous snapshot"; exit 0; fi
+          node scripts/loadmotion/extract_loadmotion_france.mjs --tenant mobisdec --out data/loadmotion/france/current/mobisdec.json.gz || echo "MobiSDEC refresh failed: keeping previous snapshot"
+
+      - name: Compile V9 Load Motion offers
+        run: |
+          node scripts/loadmotion/compile_loadmotion_v9_offers.mjs \
+            --current data/loadmotion/france/current \
+            --out v9-production-runtime/data/v9/france-loadmotion-offers.json
+
+      - name: Validate compiled offers
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const p='v9-production-runtime/data/v9/france-loadmotion-offers.json';
+          const d=JSON.parse(fs.readFileSync(p,'utf8'));
+          if(d.country!=='FR'||d.mode!=='verified_loadmotion_direct') throw new Error('unexpected Load Motion payload');
+          if(!Array.isArray(d.directOffers)||d.directOffers.length<70) throw new Error(`Load Motion offers incomplete: ${d.directOffers?.length||0}`);
+          if(d.directOffers.some(x=>JSON.stringify(x).includes('No Tariff'))) throw new Error('No Tariff leaked into rankable offers');
+          const legacy=['chargePerMinute','afterMinutesRate','postChargeRate','connectionFee'];
+          const raw=JSON.stringify(d.directOffers);
+          for(const field of legacy){
+            if(raw.includes(`"${field}"`)) throw new Error(`legacy unsupported pricing field leaked: ${field}`);
+          }
+          const byTenant={};
+          for(const offer of d.directOffers){
+            const tenant=offer?.metadata?.tenant||'unknown';
+            byTenant[tenant]=(byTenant[tenant]||0)+1;
+          }
+          for(const tenant of ['yes55','loadstations','reveo','mobisdec']){
+            if(!byTenant[tenant]) throw new Error(`missing rankable Load Motion tenant: ${tenant}`);
+          }
+          console.log(`validated ${d.directOffers.length} Load Motion direct offers`,byTenant);
+          NODE
+
+      - name: Commit refreshed snapshots and V9 offers
+        shell: bash
+        run: |
+          if git diff --quiet -- data/loadmotion/france/current v9-production-runtime/data/v9/france-loadmotion-offers.json; then
+            echo "No Load Motion data change"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/loadmotion/france/current v9-production-runtime/data/v9/france-loadmotion-offers.json
+          git commit -m "data(france): refresh Load Motion direct tariffs"
+
+          # Main may advance while this long refresh is running. Rebase only when
+          # the refresh logic itself has not changed; otherwise fail closed and
+          # require a fresh run with the new logic.
+          git fetch origin main
+          changed_since_start="$(git diff --name-only "$GITHUB_SHA"..origin/main || true)"
+          if printf '%s\n' "$changed_since_start" | grep -Eq '^(scripts/loadmotion/|\.github/workflows/loadmotion-france-refresh\.yml$|v9-production-runtime/data/v9/source-registry\.json$)'; then
+            echo "Load Motion refresh logic changed on main while this run was executing; refusing to publish stale-generation output."
+            printf '%s\n' "$changed_since_start"
+            exit 1
+          fi
+          git rebase origin/main
+          git push origin HEAD:main
