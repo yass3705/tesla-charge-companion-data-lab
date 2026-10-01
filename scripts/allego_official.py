@@ -298,6 +298,30 @@ def static_country_pricing_block(url: str, country: str = "France") -> tuple[str
 
     page_text = text_from_html(raw)
 
+    # Current Allego markup (2026-10) emits all country panels in the server HTML
+    # as divs with ids pricing-<id>, and marks the localized country's panel
+    # with class "active". On /fr/tarifs/ that active block is France.
+    panel_rx = re.compile(
+        r"<div\\b(?=[^>]*\\bid=[\"']pricing-[^\"']+[\"'])(?=[^>]*\\bclass=[\"'][^\"']*\\bcolumns\\b[^\"']*[\"'])[^>]*>",
+        flags=re.I,
+    )
+    panel_matches = list(panel_rx.finditer(raw))
+    for idx, match in enumerate(panel_matches):
+        opening = match.group(0)
+        if not re.search(r"\\bclass=[\"'][^\"']*\\bactive\\b", opening, flags=re.I):
+            continue
+        end = panel_matches[idx + 1].start() if idx + 1 < len(panel_matches) else len(raw)
+        block_html = raw[match.start():end]
+        block_text = text_from_html(block_html)
+        if country == "France" and "/fr/" in url and "kwh" in norm(block_text):
+            panel_id_match = re.search(r"\\bid=[\"'](pricing-[^\"']+)[\"']", opening, flags=re.I)
+            return block_text, {
+                "accessMode": "official_static_html_active_panel",
+                "selectedCountry": country,
+                "pricingPanelId": panel_id_match.group(1) if panel_id_match else None,
+                "pricingPanelCount": len(panel_matches),
+            }
+
     labels = []
     access_mode = None
 
