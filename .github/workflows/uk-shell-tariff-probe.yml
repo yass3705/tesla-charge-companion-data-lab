@@ -1,0 +1,120 @@
+name: UK Shell tariff probe
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-shell-tariff-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SHELL_EV_CLIENT_ID: ${{ secrets.SHELL_EV_CLIENT_ID }}
+      SHELL_EV_CLIENT_SECRET: ${{ secrets.SHELL_EV_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe Shell tariff provider IDs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/uk
+          python3 - <<'PY'
+          import os,json,time,uuid,urllib.parse,urllib.request,urllib.error
+          from pathlib import Path
+
+          cid=os.environ.get("SHELL_EV_CLIENT_ID")
+          secret=os.environ.get("SHELL_EV_CLIENT_SECRET")
+          if not cid or not secret:
+              raise SystemExit("Shell secrets missing")
+
+          AUTH="https://api-test.shell.com/v1/oauth/token"
+          BASE="https://api-test.shell.com/ev"
+          UA="TeslaChargeCompanion/9 Shell-Tariff-Probe"
+          min_interval=7.5
+          last=0.0
+
+          def throttle():
+              global last
+              now=time.monotonic()
+              wait=min_interval-(now-last)
+              if wait>0: time.sleep(wait)
+              last=time.monotonic()
+
+          throttle()
+          form=urllib.parse.urlencode({
+              "client_id":cid,
+              "client_secret":secret,
+              "grant_type":"client_credentials"
+          }).encode()
+          req=urllib.request.Request(AUTH,data=form,method="POST",headers={
+              "Content-Type":"application/x-www-form-urlencoded",
+              "Accept":"application/json",
+              "User-Agent":UA
+          })
+          with urllib.request.urlopen(req,timeout=30) as rr:
+              tok=json.loads(rr.read().decode())
+          token=tok["access_token"]
+
+          def call(uid,provider=None):
+              throttle()
+              path="/v2/locations/"+urllib.parse.quote(uid,safe="")
+              params={} if provider is None else {"providerId":provider}
+              url=BASE+path+("?" + urllib.parse.urlencode(params) if params else "")
+              req=urllib.request.Request(url,headers={
+                  "Authorization":"Bearer "+token,
+                  "Accept":"application/json",
+                  "RequestId":str(uuid.uuid4()),
+                  "User-Agent":UA
+              })
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as rr:
+                      body=json.loads(rr.read().decode())
+                      return {"httpStatus":rr.status,"body":body}
+              except urllib.error.HTTPError as e:
+                  return {"httpStatus":e.code,"bodyText":e.read().decode("utf-8","replace")[:4000]}
+
+          # Known UK Shell/ubitricity UIDs from previous successful inventory.
+          uids=["DE*UBI*5007","GB*TNM*5220"]
+          providers=[None,"Shell_RP_2","Shell_RP_1","Shell_RP"]
+          out={"retrievedAt":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()),"results":[]}
+
+          for uid in uids:
+              item={"uid":uid,"probes":[]}
+              for provider in providers:
+                  res=call(uid,provider)
+                  entry={"providerId":provider,"httpStatus":res["httpStatus"]}
+                  if "body" in res:
+                      body=res["body"]
+                      entry["status"]=body.get("status") if isinstance(body,dict) else None
+                      data=body.get("data") if isinstance(body,dict) else None
+                      entry["dataType"]=type(data).__name__
+                      entry["dataKeys"]=list(data.keys()) if isinstance(data,dict) else None
+                      entry["body"]=body
+                  else:
+                      entry["bodyText"]=res.get("bodyText")
+                  item["probes"].append(entry)
+              out["results"].append(item)
+
+          Path("reports/uk/shell-tariff-probe-latest.json").write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+"\n"
+          )
+          print(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Publish report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/shell-tariff-probe-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(uk): Shell tariff provider probe [run ${GITHUB_RUN_ID}]"
+          git pull --rebase origin main
+          git push origin HEAD:main
