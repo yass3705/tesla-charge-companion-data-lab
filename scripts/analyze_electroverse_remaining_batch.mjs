@@ -51,6 +51,7 @@ const cman=JSON.parse(await fs.readFile(CACHE+'/manifest.json','utf8'));
 const byOperator=new Map();
 const validatedMappings=[];
 const fullyCoveredLocationGroups=[];
+const actionableGapLocations=[];
 let fullyCoveredSourceEvses=0;
 
 function addOp(op,group){
@@ -86,6 +87,20 @@ for(const sh of cman.shards||[]){
       });
       continue;
     }
+    const sourceOperators={};
+    for(const e of pending){
+      const op=opFromRef(e?.physicalReference);
+      sourceOperators[op]=(sourceOperators[op]||0)+1;
+    }
+    actionableGapLocations.push({
+      electroverseLocationPk:String(row.electroverseLocationPk),
+      irveStationId:m?.irveStationId??row.irveStationId??null,
+      sourceEvseCount:pending.length,
+      nationalPdcCount:local.length,
+      unpricedNationalPdcCount:available.length,
+      sourceOperators,
+      unpricedPdcSample:available.slice(0,30)
+    });
     const byOp=new Map();
     for(const e of pending){
       const op=opFromRef(e?.physicalReference);
@@ -176,6 +191,12 @@ const out={
   classifiedNationalOrphanSourceEvses:classifiedNationalOrphanPks.size,
   classifiedFullyCoveredSourceEvses:fullyCoveredSourceEvses,
   classifiedFullyCoveredLocations:fullyCoveredLocationGroups.length,
+  actionableGapLocations:actionableGapLocations.length,
+  unpricedNationalPdcCount:[...new Set(actionableGapLocations.flatMap(x=>x.unpricedPdcSample))].length,
+  unpricedNationalPdcOccurrences:actionableGapLocations.reduce((n,x)=>n+x.unpricedNationalPdcCount,0),
+  zeroNationalPdcLocations:actionableGapLocations.filter(x=>x.nationalPdcCount===0).length,
+  zeroNationalPdcSourceEvses:actionableGapLocations.filter(x=>x.nationalPdcCount===0).reduce((n,x)=>n+x.sourceEvseCount,0),
+  gapLocationSamples:actionableGapLocations.sort((a,b)=>b.unpricedNationalPdcCount-a.unpricedNationalPdcCount||b.sourceEvseCount-a.sourceEvseCount).slice(0,250),
   schemaVersion:1,generatedAt:new Date().toISOString(),
   sourceEvseResidualCount:operators.reduce((n,x)=>n+x.residualSourceEvses,0),
   operatorBucketCount:operators.length,
@@ -239,6 +260,10 @@ console.log(JSON.stringify({
   sourceEvseResidualCount:out.sourceEvseResidualCount,
   classifiedFullyCoveredSourceEvses:out.classifiedFullyCoveredSourceEvses,
   classifiedFullyCoveredLocations:out.classifiedFullyCoveredLocations,
+  actionableGapLocations:out.actionableGapLocations,
+  unpricedNationalPdcOccurrences:out.unpricedNationalPdcOccurrences,
+  zeroNationalPdcLocations:out.zeroNationalPdcLocations,
+  zeroNationalPdcSourceEvses:out.zeroNationalPdcSourceEvses,
   operatorBucketCount:out.operatorBucketCount,
   safelyRecoverableSourceEvses:out.safelyRecoverableSourceEvses,
   uniqueSuffixValidatedMappings:out.uniqueSuffixValidatedMappings,
