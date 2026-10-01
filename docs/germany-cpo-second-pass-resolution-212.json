@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 212,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-211.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "HEOS Services GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; candidate screened but no new machine-readable exhaustive source established",
+      "evidence": {
+        "knownScale": "approximately 70 charge points from prior classification context",
+        "knownIssue": "aggregate/direct observations differ by class, including DC; sampled values cannot be generalized."
+      },
+      "exactGap": "No current authoritative structured export was established in this pass that binds every active HEOS EVSE to anonymous energy/start/time/blocking fields.",
+      "antiStagnation": "Do not spend a second generic public-search pass. Re-open only with a concrete AFIR/Mobilithek/backend dataset or first-party deterministic tariff matrix.",
+      "resumeCondition": "Machine-readable active EVSE inventory with anonymous fee components or explicit all-estate first-party class rule."
+    },
+    {
+      "name": "Stadtwerke Schifferstadt",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; existing AC direct-price evidence retained, legacy/DC matrix still incomplete",
+      "evidence": {
+        "knownDirectEvidence": "Sampled current/previous direct AC evidence around 0.53 EUR/kWh exists for exact public charging points.",
+        "scopeGuard": "B1 requires complete mapping; legacy/unknown EVSE and DC cannot inherit sampled AC price."
+      },
+      "exactGap": "Need current complete EVSE denominator and anonymous energy/start/time/blocking matrix for legacy/unknown records and DC class. Sampled AC 0.53 EUR/kWh is insufficient for promotion.",
+      "resumeCondition": "Current public backend/AFIR/Mobilithek export for all Schifferstadt EVSEs or first-party deterministic AC/DC rule with complete fee semantics."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "antiStagnation": "PASS; HEOS screened once and not re-probed generically"
+  },
+  "nextSafeAction": "Seek a genuinely machine-readable current backend for Schifferstadt. If absent, skip immediately to another B1 with an identifiable AFIR/Mobilithek feed rather than broad web searching."
+}
