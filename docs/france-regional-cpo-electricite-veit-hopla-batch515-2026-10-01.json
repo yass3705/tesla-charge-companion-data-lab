@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": "batch515",
+  "date": "2026-10-01",
+  "subject": "Electricité Veit | FR*HOP | raw rank165",
+  "result": "PASS_FAIL_CLOSED_SETASIDE",
+  "inventory": {
+    "historical": {
+      "stations": 6,
+      "pdc": 20
+    },
+    "currentObserved": {
+      "stations": 6,
+      "note": "current public IRVE surfaces show 6 Hopla Power Charge stations; charge-point count has evolved"
+    }
+  },
+  "directEvidence": [
+    {
+      "type": "first_party",
+      "source": "hoplapowercharge.fr",
+      "finding": "Hopla Power Charge is the Electricité Veit charging brand; official supervision explicitly supports tariff parameterization."
+    },
+    {
+      "type": "first_party_app",
+      "source": "HPC Connect / com.hoplapowercharge.mobile",
+      "finding": "Official driver app supports station search, QR/station-ID start and secure payment; no reusable anonymous public EVSE-to-current-price endpoint recovered."
+    },
+    {
+      "type": "inventory",
+      "finding": "FR*HOP EVSE IDs and Hopla Power Charge station identity are deterministic."
+    }
+  ],
+  "rejectedEvidence": [
+    {
+      "source": "VAB charging network tariff 2026",
+      "value": "0.41 EUR/kWh + 0.03 EUR/min",
+      "reason": "eMSP/roaming tariff, not CPO-direct authority"
+    }
+  ],
+  "decision": "active->setAside; site/station tariffs are configurable and exact current direct price requires app/QR/backend resolution not anonymously recovered",
+  "fallback": "Electra then Electroverse only as roaming fallback",
+  "pendingDedupeCreated": false,
+  "next": "OG Clean Fuels France | FR*PVD | raw rank166 | 6 stations / 20 PDC"
+}
