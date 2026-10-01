@@ -18,47 +18,36 @@ jobs:
       - name: Audit canonical Germany staging catalog
         run: |
           python - <<'PY'
-          import gzip,json,pathlib
+          import gzip,json,pathlib,collections,re
           with gzip.open("data/national/germany_non_tesla_catalog_staging_direct_cpo.json.gz","rt",encoding="utf-8") as f:d=json.load(f)
-          aliases={
-            "Stadtwerke Schifferstadt":["stadtwerke schifferstadt"],
-            "Bad Honnef AG":["bad honnef ag"],
-            "Stadtwerke Garbsen":["stadtwerke garbsen"],
-            "Stadtwerke Lemgo":["stadtwerke lemgo"],
-            "HEOS":["heos object","heos services"],
-            "Stadtwerke Iserlohn":["stadtwerke iserlohn"],
-            "Stadtwerke Eutin":["stadtwerke eutin"],
-            "Stadtwerke Lehrte":["stadtwerke lehrte"],
-            "Stadtwerke Wolfenbuettel":["stadtwerke wolfenb"],
-            "Stadtwerke Emmendingen":["stadtwerke emmendingen"],
-            "Energieversorgung Sehnde":["energieversorgung sehnde"],
-            "Stadtwerke Weinstadt":["stadtwerke weinstadt"],
-            "Nienburg Energie":["nienburg energie"],
-            "Stadtwerke Wunstorf":["stadtwerke wunstorf","meerenergie"],
-            "Stadtwerke Holzminden":["stadtwerke holzminden"],
-            "Stadtwerke Brilon":["stadtwerke brilon"],
-            "Stadtwerke Warburg":["stadtwerke warburg"],
-            "Stadtwerke Emmerich":["stadtwerke emmerich"],
-            "Stadtwerke Ploen":["stadtwerke plön","stadtwerke ploen"]
-          }
-          out={"schemaVersion":2,"country":"DE","source":"canonical national staging","targets":{}}
-          sites=d.get("sites",[])
-          for name,als in aliases.items():
-            rows=[]
-            for s in sites:
-              op=str(s.get("operator") or "").lower()
-              if not any(a in op for a in als):continue
-              af=s.get("afir") or {}; ad=af.get("data") or {}
-              rows.append({"id":s.get("id"),"operator":s.get("operator"),"powerKw":s.get("maxConnectionPowerKw"),"evseIds":s.get("evseIds"),"sourceStationIds":s.get("sourceStationIds"),"afirMatchStatus":af.get("matchStatus"),"afirProvider":(af.get("match") or {}).get("provider"),"hasRawTariff":ad.get("hasRawTariff"),"rawTariffs":ad.get("rawTariffs") if ad.get("hasRawTariff") else None})
-            out["targets"][name]={"sites":len(rows),"matchedSafe":sum(r["afirMatchStatus"]=="matched_safe" for r in rows),"rawTariffSites":sum(bool(r["hasRawTariff"]) for r in rows),"rows":rows}
-          pathlib.Path("docs/germany-afir-partial-candidate-audit-2026-10-01.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
-          print(json.dumps({k:{x:v[x] for x in ("sites","matchedSafe","rawTariffSites")} for k,v in out["targets"].items()},indent=2))
+          agg={}
+          for s in d.get("sites",[]):
+            op=(s.get("operator") or "").strip()
+            if not op: continue
+            a=agg.setdefault(op,{"sites":0,"matchedSafe":0,"rawTariffSites":0,"evseIds":set(),"providers":collections.Counter(),"samples":[]})
+            a["sites"]+=1;a["evseIds"].update(s.get("evseIds") or [])
+            af=s.get("afir") or {}; ad=af.get("data") or {}
+            if af.get("matchStatus")=="matched_safe":
+              a["matchedSafe"]+=1
+              pr=(af.get("match") or {}).get("provider")
+              if pr:a["providers"][pr]+=1
+            if ad.get("hasRawTariff"):
+              a["rawTariffSites"]+=1
+              if len(a["samples"])<4:a["samples"].append({"siteId":s.get("id"),"powerKw":s.get("maxConnectionPowerKw"),"evseIds":s.get("evseIds"),"provider":ad.get("provider"),"rawTariffs":ad.get("rawTariffs")})
+          rows=[]
+          for op,a in agg.items():
+            if a["rawTariffSites"]<=0:continue
+            rows.append({"operator":op,"sites":a["sites"],"matchedSafe":a["matchedSafe"],"rawTariffSites":a["rawTariffSites"],"rawCoverage":round(a["rawTariffSites"]/a["sites"],4),"evseIdCount":len(a["evseIds"]),"providers":dict(a["providers"]),"samples":a["samples"]})
+          rows.sort(key=lambda x:(x["rawCoverage"],x["rawTariffSites"],x["sites"]),reverse=True)
+          out={"schemaVersion":1,"country":"DE","source":"data/national/germany_non_tesla_catalog_staging_direct_cpo.json.gz","operatorsWithRawTariff":len(rows),"operators":rows}
+          pathlib.Path("docs/germany-afir-operator-coverage-2026-10-01.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps([{k:r[k] for k in ("operator","sites","matchedSafe","rawTariffSites","rawCoverage","evseIdCount")} for r in rows[:80]],ensure_ascii=False,indent=2))
           PY
       - name: Commit report
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/germany-afir-partial-candidate-audit-2026-10-01.json
+          git add docs/germany-afir-operator-coverage-2026-10-01.json
           git diff --cached --quiet && exit 0
           git commit -m "audit(de): map partial candidates against national AFIR staging"
           for attempt in 1 2 3 4 5; do
