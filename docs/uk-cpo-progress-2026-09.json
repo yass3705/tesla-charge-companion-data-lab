@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-10-02T01:30:00+02:00",
+  "updatedAt": "2026-10-02T01:45:00+02:00",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -353,10 +353,10 @@
     },
     {
       "name": "Forward EV",
-      "status": "set_aside_technical_roaming_feed",
-      "access": "plugsurfing_zapmap_live_integration",
-      "evidence": "Deep recheck 2026-09-30 confirms Forward EV is host-owned with site-specific tariffs. Zapmap current network guide reports 104 chargers across 36 locations and says live status/speed/cost are visible in its app/desktop map. Headless browser/netlog inspection of the public Forward EV guide did not expose a reusable charging-data API or enumerate station links. First-party Forward EV directs drivers to Plugsurfing; Plugsurfing OCPI/Drive access requires partner credentials. No legitimate anonymous feed suitable for exact national tariff ingestion was found.",
-      "next": "Technically bounded pending a legitimate public/partner roaming feed. Do not extrapolate sampled Zapmap tariffs. Reopen if Forward EV publishes PCPR/open-data or a public Zapmap/Plugsurfing data surface becomes available.",
+      "status": "set_aside_station_specific_pricing_no_direct_feed",
+      "access": "official_forward_ev_site_owned_pricing_plus_third_party_station_views",
+      "evidence": "Forward EV's official site states site owners own/control the chargers and retain revenue, with pricing set at site level. Current station examples show materially different PAYG prices (e.g. 59p, 68p, 70p, 76p/kWh), confirming there is no valid network-wide tariff. Plugsurfing is supported as an app/payment route, but using its tariff layer would be eMSP/roaming rather than canonical direct-CPO pricing. No official Forward EV machine-readable PCPR/open-data or station tariff feed was found in the final targeted search.",
+      "next": "Set aside. Forward EV pricing is host/site-specific and no official machine-readable PCPR/open-data or station-pricing feed was found. Do not substitute Plugsurfing/eMSP tariffs as direct CPO pricing. Reopen on official Forward EV station tariff feed, PCPR/open-data publication, or direct station-level tariff source.",
       "report": "reports/uk/forward-zapmap-public-discovery-latest.json"
     },
     {
