@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 12,
+  "date": "2026-09-17",
+  "strategy": "Continue easy current first-party/direct guest tariff resolutions immediately, without waiting for scheduled automation.",
+  "canonicalBefore": {"totalNamedCpos":591,"complete":217,"partial":374,"blocked":0},
+  "promotions": [
+    {
+      "name":"Stadtwerke Norderstedt",
+      "previousStatus":"partial",
+      "newStatus":"complete",
+      "resolution":"Current first-party payment page explicitly exposes anonymous spontaneous/ad-hoc charging at all Stadtwerke Norderstedt stations through SMS and web/M8MIT without a contract: AC 0.6528 EUR/kWh gross and DC 0.7718 EUR/kWh gross. The current public M8MIT guest checkout independently binds the guest AC tariff to concrete DE*NOR EVSEs at 0.6528 EUR/kWh including VAT. A separate anonymous Giro-e path is explicitly scoped to DC fast chargers at 0.66 EUR/kWh gross plus 0.35 EUR activation per session. These direct channels are retained separately and are not replaced by the TuWatt+2Go contract tariff.",
+      "sources":["https://www.stadtwerke-norderstedt.de/e-mobilitaet/bezahlmoeglichkeiten","https://nds.m8mit.de/station/nds/DE%2ANOR%2AE1256%2A01?lang=en"],
+      "verificationDate":"2026-09-17"
+    },
+    {
+      "name":"Stadtwerke Stendal GmbH",
+      "previousStatus":"partial",
+      "newStatus":"complete",
+      "resolution":"The current official eMobil Stadtwerke Stendal charging site explicitly publishes the anonymous Ad-hoc tariff without a charging card: AC 0.44 EUR/kWh gross, DC 0.54 EUR/kWh gross, 0.99 EUR per session with a 3-minute tolerance, and no blocking fee. It separately publishes a no-registration DC credit-card-terminal tariff at 0.62 EUR/kWh gross with no blocking fee. The site explicitly scopes these tariffs to Stadtwerke Stendal charging infrastructure and keeps registered eMobil and roaming tariffs separate.",
+      "sources":["https://www.emobil-altmark.de/oeffentlich-laden","https://www.emobil-altmark.de/barrierefreiheit"],
+      "verificationDate":"2026-09-17"
+    },
+    {
+      "name":"Versorgungsbetriebe Hoyerswerda GmbH",
+      "previousStatus":"partial",
+      "newStatus":"complete",
+      "resolution":"Current official VBH ad-hoc price sheet valid from 2025-08-01 explicitly defines the guest/ad-hoc tariff at public VBH charging stations: 0.59 EUR/kWh gross, 1.99 EUR service fee per session, and 0.02 EUR/min blocking fee after 240 minutes capped at 10 EUR gross. The sheet states the service fee is omitted at DC charging stations under AFIR and that local parking fees, where applicable, are separate. This is a complete operator-specific anonymous tariff and fee matrix, not a registered or roaming tariff.",
+      "sources":["https://www.vbh-hoy.de/s/wp-content/uploads/sites/2/2025/08/VBH_Gasttarif_ad-hoc_ab01082025.pdf"],
+      "verificationDate":"2026-09-17"
+    }
+  ],
+  "checkedStillPartial": [
+    {"name":"Stadtwerke Andernach Energie GmbH","reason":"Current first-party page explicitly gives ad-hoc at 0.57 EUR/kWh across three named sites, but does not explicitly prove absence/presence of start or blocking fees; retain partial rather than infer zero fees."},
+    {"name":"Stadtwerke Annaberg-Buchholz Energie AG","reason":"Current first-party page confirms QR ad-hoc access and separately publishes registered Standardtarif values, but does not explicitly bind those registered values to anonymous ad-hoc; no equivalence inference."},
+    {"name":"Energieversorgung Apolda GmbH","reason":"Current first-party page and price sheet publish registered card tariff and reference punktuelles Laden, but the anonymous point-charge numeric tariff is not exposed in the accessible current surface."}
+  ],
+  "canonicalAfter":{"totalNamedCpos":591,"complete":220,"partial":371,"blocked":0},
+  "statusChanges":3,
+  "consistencyCheck":{"status":"PASS","arithmetic":"220 + 371 + 0 = 591","promotions":3,"unsafeExtrapolations":0,"registeredOrRoamingTariffSubstituted":false,"duplicateOrAliasChange":0,"repeatInvestigationGuard":"PASS"},
+  "nextSafeAction":"Continue direct first-party easy candidates for one more bounded batch, then move to shared-backend bulk resolution. Prioritize chargecloud/Mobilithek-DATEX-II B1/B3/B6 and m8mit members; do not reopen the three retained partials without a new fee/equivalence surface."
+}
