@@ -10,6 +10,7 @@ const DRIVECO='data/operator_direct/driveco_evse_tariffs.json';
 const POWERDOT_TECH='data/operator_direct/powerdot_evse_technical_inventory.json';
 const VALIDATED_NUMERIC_MAP='data/platforms/electroverse/validated-mappings/numeric-residual.json';
 const VALIDATED_S82_MAP='data/platforms/electroverse/validated-mappings/s82-residual.json';
+const VALIDATED_MGP_MAP='data/platforms/electroverse/validated-mappings/mgp-residual.json';
 const OUT=process.argv[2]||'data/platforms/electroverse/france-evse';
 const TILE=.5;
 // Rebuild marker: validate protected PD1 technical grouping on main.
@@ -181,6 +182,7 @@ const driveco=JSON.parse(await fs.readFile(DRIVECO,'utf8'));
 const powerdotTech=JSON.parse(await fs.readFile(POWERDOT_TECH,'utf8'));
 const validatedNumericMap=JSON.parse(await fs.readFile(VALIDATED_NUMERIC_MAP,'utf8'));
 const validatedS82Map=JSON.parse(await fs.readFile(VALIDATED_S82_MAP,'utf8'));
+const validatedMgpMap=JSON.parse(await fs.readFile(VALIDATED_MGP_MAP,'utf8'));
 const powerdotByEvse=new Map((powerdotTech.evses||[]).map(x=>[norm(x.evseId),x]));
 const drivecoNative=[...(driveco.resolved||[]),...(driveco.unresolved||[])];
 const drivecoByEvse=new Map(drivecoNative.map(x=>[norm(x.evseId),x]));
@@ -236,7 +238,18 @@ const validatedS82ResidualTargets=new Map(
     norm(x.targetPdc)
   ])
 );
-const validatedResidualTargets=new Map([...validatedNumericResidualTargets,...validatedS82ResidualTargets]);
+const validatedMgpResidualTargets=new Map(
+  (validatedMgpMap.mappings||[]).map(x=>[
+    String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk),
+    norm(x.targetPdc)
+  ])
+);
+const validatedResidualTargets=new Map([
+  ...validatedNumericResidualTargets,
+  ...validatedS82ResidualTargets,
+  ...validatedMgpResidualTargets
+]);
+const isValidatedResidualSource=(row,e)=>validatedResidualTargets.has(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
 const globalPdcOwners=new Map();
 for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
   const k=norm(p);if(!k)continue;
@@ -266,6 +279,7 @@ const stats={
   c55BIndexCandidateEvses:0,c55BIndexPublishedEvses:0,
   validatedNumericResidualCandidateEvses:0,validatedNumericResidualPublishedEvses:0,
   validatedS82ResidualCandidateEvses:0,validatedS82ResidualPublishedEvses:0,
+  validatedMgpResidualCandidateEvses:0,validatedMgpResidualPublishedEvses:0,
   drvPowerGroupCandidateEvses:0,drvPowerGroupPublishedEvses:0,drvPowerGroupByKw:{},
   pd1TechnicalGroupCandidateEvses:0,pd1TechnicalGroupPublishedEvses:0,pd1TechnicalGroupByKey:{},
   drvHomogeneousGroupCandidateEvses:0,drvHomogeneousGroupPublishedEvses:0,
@@ -451,6 +465,7 @@ for(const sh of manifest.shards||[]){
     if(isPd1){
       const alreadyClaimed=new Set();
       for(const e0 of row.tariff?.evses||[]){
+        if(isValidatedResidualSource(row,e0))continue;
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
         if(local.has(k0)){alreadyClaimed.add(k0);continue;}
@@ -463,6 +478,7 @@ for(const sh of manifest.shards||[]){
       }
       const unresolved=[];
       for(const e0 of row.tariff?.evses||[]){
+        if(isValidatedResidualSource(row,e0))continue;
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
         if(local.has(k0)||ordinalTargets.has(e0)||genericTargets.has(e0)||suffixTargets.has(e0)||trimmedSuffixTargets.has(e0))continue;
@@ -515,6 +531,7 @@ for(const sh of manifest.shards||[]){
     if(localListForVia.some(p=>/^FRVIAE/.test(p))){
       const alreadyClaimed=new Set();
       for(const e0 of row.tariff?.evses||[]){
+        if(isValidatedResidualSource(row,e0))continue;
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
         if(local.has(k0)){alreadyClaimed.add(k0);continue;}
@@ -528,6 +545,7 @@ for(const sh of manifest.shards||[]){
       }
       const unresolved=[];
       for(const e0 of row.tariff?.evses||[]){
+        if(isValidatedResidualSource(row,e0))continue;
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
         if(local.has(k0)||ordinalTargets.has(e0)||genericTargets.has(e0)||suffixTargets.has(e0)||trimmedSuffixTargets.has(e0)||pd1FinalOrdinalTargets.has(e0))continue;
@@ -585,6 +603,7 @@ for(const sh of manifest.shards||[]){
       const alreadyClaimed=new Set();
       const unresolved=[];
       for(const e0 of row.tariff?.evses||[]){
+        if(isValidatedResidualSource(row,e0))continue;
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
         if(local.has(k0)){alreadyClaimed.add(k0);continue;}
@@ -675,6 +694,7 @@ for(const sh of manifest.shards||[]){
       const alreadyClaimed=new Set();
       const unresolved=[];
       for(const e0 of row.tariff?.evses||[]){
+        if(isValidatedResidualSource(row,e0))continue;
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
         if(local.has(k0)){alreadyClaimed.add(k0);continue;}
@@ -766,6 +786,7 @@ for(const sh of manifest.shards||[]){
       const alreadyClaimed=new Set();
       const unresolved=[];
       for(const e0 of row.tariff?.evses||[]){
+        if(isValidatedResidualSource(row,e0))continue;
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
         if(local.has(k0)){alreadyClaimed.add(k0);continue;}
@@ -864,6 +885,7 @@ for(const sh of manifest.shards||[]){
       const alreadyClaimed=new Set();
       const unresolved=[];
       for(const e0 of row.tariff?.evses||[]){
+        if(isValidatedResidualSource(row,e0))continue;
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
         if(local.has(k0)){alreadyClaimed.add(k0);continue;}
@@ -1066,6 +1088,7 @@ for(const sh of manifest.shards||[]){
       const claimed=new Set();
       const unresolved=[];
       for(const e0 of row.tariff?.evses||[]){
+        if(isValidatedResidualSource(row,e0))continue;
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
         if(local.has(k0)){claimed.add(k0);continue;}
@@ -1131,6 +1154,7 @@ for(const sh of manifest.shards||[]){
       const claimed=new Set();
       const unresolved=[];
       for(const e0 of row.tariff?.evses||[]){
+        if(isValidatedResidualSource(row,e0))continue;
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
         if(local.has(k0)){claimed.add(k0);continue;}
@@ -1225,6 +1249,7 @@ for(const sh of manifest.shards||[]){
       const claimed=new Set();
       const unresolved=[];
       for(const e0 of row.tariff?.evses||[]){
+        if(isValidatedResidualSource(row,e0))continue;
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
         if(local.has(k0)){claimed.add(k0);continue;}
@@ -1353,6 +1378,7 @@ for(const sh of manifest.shards||[]){
       const alreadyClaimed=new Set();
       const unresolved=[];
       for(const e0 of row.tariff?.evses||[]){
+        if(isValidatedResidualSource(row,e0))continue;
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
         if(local.has(k0)){alreadyClaimed.add(k0);continue;}
@@ -1448,6 +1474,7 @@ for(const sh of manifest.shards||[]){
       const claimed=new Set();
       const unresolved=[];
       for(const e0 of row.tariff?.evses||[]){
+        if(isValidatedResidualSource(row,e0))continue;
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
         const validatedNumericTarget=validatedResidualTargets.get(String(row.electroverseLocationPk)+':'+String(e0?.pk??''));
@@ -1578,6 +1605,9 @@ for(const sh of manifest.shards||[]){
         if(validatedS82ResidualTargets.has(validatedKey)){
           identityMode='validated_s82_residual_unique_suffix_bijection';
           stats.validatedS82ResidualCandidateEvses++;
+        }else if(validatedMgpResidualTargets.has(validatedKey)){
+          identityMode='validated_mgp_residual_unique_suffix_bijection';
+          stats.validatedMgpResidualCandidateEvses++;
         }else{
           identityMode='validated_numeric_residual_unique_bijection';
           stats.validatedNumericResidualCandidateEvses++;
@@ -1845,7 +1875,7 @@ for(const [target,items] of offersByTarget.entries()){
   if(items.length<2)continue;
   stats.duplicatePublishedEvseTargetsBeforeDedup+=items.length-1;
   const sigs=new Set(items.map(x=>x.pricingSig));
-  const validatedItems=items.filter(x=>['validated_numeric_residual_unique_bijection','validated_s82_residual_unique_suffix_bijection'].includes(x.offer.metadata?.identityMode));
+  const validatedItems=items.filter(x=>['validated_numeric_residual_unique_bijection','validated_s82_residual_unique_suffix_bijection','validated_mgp_residual_unique_suffix_bijection'].includes(x.offer.metadata?.identityMode));
   if(validatedItems.length===1){
     // A strict individual post-overlay bijection is more specific than any grouped
     // attribution that happens to claim the same national target. Preserve it and
@@ -1901,6 +1931,7 @@ stats.hpcOrdinalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMo
 stats.c55BIndexPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_bindex_zero_based_suffix').length;
 stats.validatedNumericResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_numeric_residual_unique_bijection').length;
 stats.validatedS82ResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_s82_residual_unique_suffix_bijection').length;
+stats.validatedMgpResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_mgp_residual_unique_suffix_bijection').length;
 stats.pd1TechnicalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_pd1_official_technical_homogeneous_group').length;
 stats.pd1TechnicalGroupByKey={};
 for(const o of finalOffers.filter(o=>o.metadata?.identityMode==='strict_pd1_official_technical_homogeneous_group')){
@@ -1992,6 +2023,8 @@ const out={
     validatedNumericResidualMappingCount:validatedNumericResidualTargets.size,
     validatedS82ResidualUniqueSuffixBijection:true,
     validatedS82ResidualMappingCount:validatedS82ResidualTargets.size,
+    validatedMgpResidualUniqueSuffixBijection:true,
+    validatedMgpResidualMappingCount:validatedMgpResidualTargets.size,
     c55BIndexRequiresExactResidualSet:true,
     c55BIndexRequiresGlobalPdcUniqueness:true,
     strictPd1OfficialTechnicalHomogeneousGroup:true,
