@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 126,
+  "schemaVersion": 127,
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 96,
-  "setAsideCpos": 42,
-  "activeRemainingCpos": 153,
-  "updatedAt": "2026-10-01T19:35:00+02:00",
+  "setAsideCpos": 43,
+  "activeRemainingCpos": 152,
+  "updatedAt": "2026-10-01T20:05:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -388,6 +388,13 @@
       "since": "2026-10-01",
       "lastChecked": "2026-10-01",
       "audit": "docs/france-regional-cpo-anyos-batch505-2026-10-01.json"
+    },
+    {
+      "name": "LMS / Last Mile Solutions | raw rank146",
+      "reason": "batch506 fail-closed: current first-party Last Mile Solutions states that a CPO can configure a different tariff for each charging point, can change that tariff daily, and that correct pricing must be retrieved from the live tariff feed by EVSE-ID. Historical LMS/FRLMS estate is therefore point-specific and mutable. No reusable anonymous live EVSE-ID -> current direct tariff feed was recovered for the 39-station/48-PDC historical estate. AVIA LOCATION raw241 and LAST MILES SOLUTIONS raw248 remain non-counting identity/site lineages; no tariff inheritance.",
+      "since": "2026-10-01",
+      "lastChecked": "2026-10-01",
+      "audit": "docs/france-regional-cpo-lms-batch506-2026-10-01.json"
     }
   ],
   "activeNominative": [
@@ -476,7 +483,6 @@
     "RELEASED_ACTIVE_SLOT_142 | alias ChargeFacile | FR*LUM | raw rank98 (same LUMI'IN ENERGIES authority)",
     "RELEASED_SLOT_143_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_SLOT_145_TREATED_HISTORICALLY_PROVEN",
-    "UNPROVEN_ACTIVE_146",
     "RELEASED_ACTIVE_SLOT_147 | alias Greenspot | FR*GSP | raw rank50",
     "UNPROVEN_ACTIVE_149",
     "UNPROVEN_ACTIVE_RAW_SLOT_RELEASED_BY_EMOTUM_ALIAS",
@@ -855,7 +861,8 @@
     "GreenFlux Assets B.V. | FR*EVZ | raw rank121": "batch502 setAside: current FR*EVZ spans multiple networks/site authorities (EVzen, CARF, Norauto and others). GreenFlux is the CPO software/platform layer; exact underlying network/site direct tariff must be resolved per EVSE. No national GreenFlux Assets tariff and no inheritance from treated Greenflux/EVzen.",
     "Porsche Sales | raw rank109": "batch503 setAside: Porsche Sales/Marketplace estate mixes Porsche Centres and Destination Charging partner sites. Destination Charging can be free for eligible Porsche guests but partner/site fees may apply to others; Porsche Charging Service prices are eMSP/contract prices and not universal direct-CPO tariffs.",
     "PARERA MOBILITE | FR*MW1 / FR*VIS": "batch504: one PARERA MOBILITÉ authority across FR*MW1 and FR*VIS technical estates. First-party MobilyWeb supports customer/site-defined tariffs and monetization; no deterministic anonymous station/EVSE -> current direct tariff resolver recovered. raw99 setAside; raw156 released as non-counting alias.",
-    "ANYOS | raw rank148": "batch505 setAside: ANYOS first-party terms make the applicable pre-charge displayed price authoritative, with possible kWh/start/time/parking components; no public deterministic exact-tariff resolver recovered."
+    "ANYOS | raw rank148": "batch505 setAside: ANYOS first-party terms make the applicable pre-charge displayed price authoritative, with possible kWh/start/time/parking components; no public deterministic exact-tariff resolver recovered.",
+    "LMS / Last Mile Solutions | raw rank146": "batch506 setAside: current LMS first-party roaming/CPO documentation says tariffs are per-charge-point, mutable daily, and should be pulled from the live EVSE-ID tariff feed. No reusable anonymous live tariff feed recovered for historical France estate."
   },
   "history": [
     {
@@ -1489,9 +1496,19 @@
         "setAsideCpos": 42,
         "activeRemainingCpos": 153
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch506",
+      "change": "Moved LMS / Last Mile Solutions raw146 active->setAside. First-party LMS states tariffs are configurable per charge point, may change daily and require live EVSE-ID tariff feed; no anonymous deterministic current feed recovered for historical estate.",
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 43,
+        "activeRemainingCpos": 152
+      }
     }
   ],
-  "currentInvestigation": "LMS | raw rank146 | 39 stations / 48 PDC: inspect First-party/backend Last Mile Solutions lineage and exact tariff authority; reuse existing LMS/AVIA-location artifacts before web.",
+  "currentInvestigation": "Idex | raw rank149 | 3 stations / 43 PDC: inspect first-party operator/tariff authority and deterministic current direct pricing.",
   "coherenceControl": {
     "batch": "batch491",
     "result": "PASS",
@@ -1506,11 +1523,11 @@
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch505",
-    "result": "PASS_ANYOS_FAIL_CLOSED",
+    "batch": "batch506",
+    "result": "PASS_LMS_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch505",
+  "latestBatch": "batch506",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2288,6 +2305,14 @@
       "category": "setAside-authority",
       "decision": "active->setAside: first-party ANYOS confirms configurable CPO/eMSP pricing with multiple possible price components and session-specific pre-charge display; no anonymous deterministic station/EVSE -> current configured direct tariff resolver recovered",
       "evidence": "docs/france-regional-cpo-anyos-batch505-2026-10-01.json"
+    },
+    {
+      "rawRank": 146,
+      "historicalOperator": "LMS",
+      "authority": "Last Mile Solutions / FRLMS",
+      "category": "setAside-authority",
+      "decision": "active->setAside: first-party LMS tariff engine permits a different mutable tariff per charging point and requires EVSE-ID live tariff feed; no anonymous deterministic current feed recovered for historical estate",
+      "evidence": "docs/france-regional-cpo-lms-batch506-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
