@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "date": "2026-10-01",
+  "batch": "batch551",
+  "rawRank": 216,
+  "historicalOperator": "Réseau de recharge Charge-in",
+  "historicalFootprint": {
+    "stations": 3,
+    "pdc": 4
+  },
+  "authority": "Charge-in (Monta-hosted estate)",
+  "result": "PASS_FAIL_CLOSED_CURRENT_ESTATE_CHANGED",
+  "evidence": [
+    {
+      "type": "current-monta-derived",
+      "finding": "Current Charge-in estate exposes 5 French locations / 13 charge points through Monta-hosted inventory; observed direct/ad-hoc station prices are heterogeneous (e.g. 0.25 EUR/kWh Provins, 0.30 AC and 0.48 HPC Orchies, 0.44 AC Sarlat)."
+    },
+    {
+      "type": "platform-separation",
+      "finding": "Monta is the supervision/payment platform; price observations must not be promoted as a universal Charge-in tariff and historical 3-station/4-PDC estate no longer matches current footprint."
+    }
+  ],
+  "decision": "active->setAside; authority is resolved but estate changed and tariff is station/connector-specific. No universal CPO-direct tariff. Exact current Monta/QR tariff may be used only when station/EVSE mapping is deterministic; otherwise fallback.",
+  "tariffPolicy": "No eMSP tariff inheritance. Monta-hosted station tariff is acceptable only as exact ad-hoc station/EVSE evidence, not network extrapolation. Fallback Electra then Electroverse.",
+  "counterTransition": {
+    "treated": [
+      98,
+      98
+    ],
+    "setAside": [
+      77,
+      78
+    ],
+    "active": [
+      116,
+      115
+    ],
+    "total": 291
+  },
+  "pendingDedupeCreated": false
+}
