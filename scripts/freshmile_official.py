@@ -104,7 +104,7 @@ def main() -> None:
 
     if not re.search(r"\b4[,.]99\s*€", pass_text):
         raise RuntimeError("Freshmile Pass: current 4.99 EUR price evidence missing")
-    require_any(pass_text, ("650 000", "650000"), "Freshmile Pass roaming coverage")
+    require_any(pass_text, ("750 000", "750000"), "Freshmile Pass roaming coverage")
     require_any(pass_text, ("sans abonnement",), "Freshmile Pass no subscription")
 
     if not re.search(r"empreinte(?: bancaire)? de\s*50\s*€", pass_overview):
@@ -166,7 +166,7 @@ def main() -> None:
                 "classification": "emsp_rfid_pass",
                 "purchasePriceEur": 4.99,
                 "monthlyFeeEur": 0.0,
-                "coveragePointsEuropePublished": 650000,
+                "coveragePointsEuropePublished": 750000,
                 "thirdPartyRoamingPriceSetByFreshmileAndShownInApp": True,
                 "mustNotBeClassifiedAsThirdPartyCpoDirect": True,
             },
@@ -242,7 +242,7 @@ def main() -> None:
         "# Freshmile France official check\n\n"
         "- National guaranteed charging tariff: **none**; network/station lookup required.\n"
         "- Freshmile account: **free, no monthly fee**.\n"
-        "- Freshmile Pass: **4.99 EUR**, no monthly subscription, **650,000** published interoperable points in Europe.\n"
+        "- Freshmile Pass: **4.99 EUR**, no monthly subscription, **750,000+** published interoperable points in France/Europe.\n"
         "- Bank-card preauthorization: **50 EUR**; only actual session amount captured.\n"
         "- Connection-time component: **not asserted network-wide**; check the exact station tariff.\n"
         "- Parking: **local policy**, not a Freshmile-wide fee.\n"
