@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "batch": "batch400",
+  "date": "2026-09-23",
+  "country": "FR",
+  "subject": "e-Vadea / FREVAE V8-direct recovery and canonical lineage closure",
+  "decision": {
+    "canonicalAuthority": "SPIE CityNetworks",
+    "overlay": "e-Vadea",
+    "partyId": "FREVAE",
+    "accounting": "non_counting_operated_network_overlay",
+    "promotion": false,
+    "pendingDedupeCreated": false,
+    "rationale": [
+      "The original 291 inventory contains SPIE CityNetworks at raw ranks 20 and 49 and no separate e-Vadea CPO occurrence.",
+      "The uppercase SPIE occurrence is already a proven non-counting identity alias of treated SPIE CityNetworks.",
+      "e-Vadea is therefore retained as a tariff/network overlay under the treated SPIE authority, not promoted as an additional CPO."
+    ]
+  },
+  "v8Recovery": {
+    "status": "reusable_with_fail_closed_residual",
+    "artifacts": [
+      "assets/v8-operator-tariff-overlay.js",
+      "assets/v8-evadea-band-fallback.js",
+      "data/evadea_evse_tariffs_v1.json"
+    ],
+    "coverage": {
+      "evses": 331,
+      "stations": 16,
+      "motorwayEvses": 325,
+      "offMotorwayEvses": 6
+    },
+    "deterministicMapping": [
+      "exact FREVAE EVSE identifier",
+      "exact normalized address plus power",
+      "unique geospatial plus power match within 150 metres"
+    ],
+    "unmatchedPolicy": "fail_closed"
+  },
+  "tariffEvidence": {
+    "verifiedAt": "2026-09-21",
+    "authority": "first-party e-Vadea tariff visual",
+    "roamingExcluded": true,
+    "firstFiveMinutesFree": true,
+    "bands": [
+      {
+        "context": "motorway",
+        "power": "<100 kW",
+        "energyEurPerKwh": 0.48,
+        "occupationEurPer15Min": 6
+      },
+      {
+        "context": "motorway",
+        "power": ">=100 kW",
+        "energyEurPerKwh": 0.62,
+        "occupationEurPer15Min": 6
+      },
+      {
+        "context": "off-motorway",
+        "power": "<30 kW",
+        "energyEurPerKwh": 0.4,
+        "occupationEurPer15Min": 0.5
+      },
+      {
+        "context": "off-motorway",
+        "power": "30-60 kW",
+        "energyEurPerKwh": 0.48,
+        "occupationEurPer15Min": 5
+      },
+      {
+        "context": "off-motorway",
+        "power": ">=60 kW",
+        "energyEurPerKwh": 0.58,
+        "occupationEurPer15Min": 5
+      }
+    ]
+  },
+  "provenance": {
+    "v8ArtifactRecoveryCommit": "d256551a",
+    "firstPartyFreshnessCommit": "b60c106a",
+    "priorLineageDecisionCommit": "8e7fb33e",
+    "correctiveAuditCommit": "bdb1b849"
+  },
+  "canonicalDelta": {
+    "before": {
+      "treated": 79,
+      "setAside": 11,
+      "active": 201,
+      "total": 291
+    },
+    "after": {
+      "treated": 79,
+      "setAside": 11,
+      "active": 201,
+      "total": 291
+    },
+    "newlyTreated": [],
+    "aliasesAdded": [
+      "e-Vadea / FREVAE -> SPIE CityNetworks (operated network overlay; non-counting)"
+    ],
+    "pendingDedupe": 0
+  },
+  "next": {
+    "cpo": "ALDI",
+    "method": "Reuse the staged V8 FRALN direct adapter and dataset; validate current first-party numeric tariff before any promotion.",
+    "failClosed": "Do not apply the historical DC 50 kW price to 60/100 kW stations and do not treat ALDI-branded sites operated by a third-party CPO as FRALN."
+  }
+}
