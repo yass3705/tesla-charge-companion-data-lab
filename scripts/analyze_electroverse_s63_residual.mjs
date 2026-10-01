@@ -105,7 +105,19 @@ for(const sh of cman.shards||[]){
       homogeneousPricing,
       uniformConnectorCount:connectorCounts.size===1,
       commonPrefix:commonPrefix||null,
-      refs:refs.slice(0,20).map(x=>({evsePk:x.e.pk,physicalReference:x.raw,connectorCount:(x.e.connectors||[]).length})),
+      refs:refs.slice(0,20).map(x=>({
+        evsePk:x.e.pk,
+        physicalReference:x.raw,
+        connectorCount:(x.e.connectors||[]).length,
+        connectors:(x.e.connectors||[]).map(c=>({
+          pk:c?.pk??null,
+          kilowatts:c?.kilowatts??null,
+          standard:c?.standard??null,
+          isChargingFree:c?.isChargingFree??null,
+          priceComponents:c?.priceComponents??null,
+          complexPricingDetail:c?.complexPricingDetail??null
+        }))
+      })),
       exactSuffix:exactSuffix.slice(0,20),
       commonTailMappings:commonTailBijection?tailMatches.slice(0,20):[]
     });
@@ -126,3 +138,5 @@ await fs.writeFile(OUT,JSON.stringify(out,null,2)+'\n');
 console.log(JSON.stringify(out,null,2));
 
 // manual V9 residual pass trigger 2026-10-01
+
+// include raw connector tariff details for S63 verification 2026-10-01
