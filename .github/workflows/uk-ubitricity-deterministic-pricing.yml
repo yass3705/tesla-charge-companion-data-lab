@@ -1,0 +1,149 @@
+name: UK ubitricity deterministic pricing from snapshot
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-ubitricity-deterministic-pricing.yml"
+      - "data/operator_direct/ubitricity_uk_official_payg_2026-10-01.json"
+      - "data/national/uk_shell_ev_public_locations.json.gz"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-ubitricity-deterministic-pricing
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+
+      - name: Build deterministic ubitricity pricing overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/uk
+          python3 - <<'PY'
+          import json,gzip,re
+          from pathlib import Path
+          from collections import Counter
+
+          with gzip.open("data/national/uk_shell_ev_public_locations.json.gz","rt",encoding="utf-8") as g:
+              inv=json.load(g)
+          rules=json.loads(Path("data/operator_direct/ubitricity_uk_official_payg_2026-10-01.json").read_text())
+
+          authorities=[x.lower() for x in rules["explicitlyAffectedLocalAuthorities"]]
+          exception_terms=["richmond","wandsworth","greenwich","tower hamlets"]
+
+          def norm(s):
+              return re.sub(r"[^a-z0-9 ]+"," ",str(s or "").lower()).strip()
+
+          ubi=[x for x in inv.get("locations",[]) if str(x.get("operatorName") or "")=="Migration Shell Recharge"]
+          rows=[]
+          auth_counts=Counter()
+          fail_reasons=Counter()
+          priced_evse=0
+          priced_connectors=0
+          fail_evse=0
+          fail_connectors=0
+
+          for loc in ubi:
+              addr=loc.get("address") or {}
+              hay=" ".join(norm(addr.get(k)) for k in ("city","streetAndNumber","postalCode"))
+              matched=[a for a in authorities if a in hay]
+              exception=next((e for e in exception_terms if e in hay),None)
+              evses=loc.get("evses") or []
+              connector_count=sum(len(e.get("connectors") or []) for e in evses)
+
+              if len(matched)==1 and not exception:
+                  status="priced_standard_time_bands"
+                  authority=matched[0]
+                  auth_counts[authority]+=1
+                  tariff={
+                    "standardTimeBands":rules["standardTimeBands"],
+                    "fallbackWhenSmartChargingUnavailable":rules["fallbackWhenSmartChargingUnavailable"],
+                    "idleFee":rules["idleFee"],
+                    "connectionFeeGbp":rules["connectionFeeGbp"]
+                  }
+                  reason=None
+                  priced_evse+=len(evses)
+                  priced_connectors+=connector_count
+              else:
+                  status="fail_closed"
+                  authority=matched[0] if len(matched)==1 else None
+                  tariff=None
+                  if exception:
+                      reason="known_multi_tariff_exception"
+                  elif len(matched)==0:
+                      reason="no_deterministic_local_authority_match"
+                  else:
+                      reason="ambiguous_local_authority_match"
+                  fail_reasons[reason]+=1
+                  fail_evse+=len(evses)
+                  fail_connectors+=connector_count
+
+              rows.append({
+                "uid":loc.get("uid"),
+                "externalId":loc.get("externalId"),
+                "operatorId":loc.get("operatorId"),
+                "operatorName":loc.get("operatorName"),
+                "address":addr,
+                "evseCount":len(evses),
+                "connectorCount":connector_count,
+                "matchedLocalAuthority":authority,
+                "status":status,
+                "tariff":tariff,
+                "failClosedReason":reason
+              })
+
+          priced=[r for r in rows if r["status"]!="fail_closed"]
+          fail=[r for r in rows if r["status"]=="fail_closed"]
+          out={
+            "schemaVersion":1,
+            "country":"UK",
+            "operator":"Shell Recharge ubitricity",
+            "sourceInventory":"data/national/uk_shell_ev_public_locations.json.gz",
+            "sourceTariffRule":"data/operator_direct/ubitricity_uk_official_payg_2026-10-01.json",
+            "locationCount":len(rows),
+            "pricedLocationCount":len(priced),
+            "failClosedLocationCount":len(fail),
+            "coveragePct":round(100*len(priced)/len(rows),2) if rows else 0,
+            "pricedEvseCount":priced_evse,
+            "pricedConnectorCount":priced_connectors,
+            "failClosedEvseCount":fail_evse,
+            "failClosedConnectorCount":fail_connectors,
+            "pricedByLocalAuthority":dict(sorted(auth_counts.items())),
+            "failClosedReasons":dict(fail_reasons),
+            "rows":rows
+          }
+          Path("data/operator_direct/ubitricity_uk_deterministic_pricing.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          report={k:out[k] for k in (
+            "locationCount","pricedLocationCount","failClosedLocationCount","coveragePct",
+            "pricedEvseCount","pricedConnectorCount","failClosedEvseCount","failClosedConnectorCount",
+            "pricedByLocalAuthority","failClosedReasons"
+          )}
+          Path("reports/uk/ubitricity-deterministic-pricing-latest.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/ubitricity_uk_deterministic_pricing.json reports/uk/ubitricity-deterministic-pricing-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(uk): publish deterministic ubitricity pricing overlay [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
