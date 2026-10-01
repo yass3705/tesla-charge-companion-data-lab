@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": "batch445",
+  "generatedAt": "2026-09-25T20:20:00Z",
+  "cpo": {
+    "name": "Zephyre SAS",
+    "rawRank": 68,
+    "operatorId": "FR*ZP1",
+    "decision": "treated"
+  },
+  "discovery": {
+    "publicFrontend": "https://www.epowerdirect.com/",
+    "productionBff": "https://api.services-emobility.com/pay/api",
+    "stationLookup": "GET /stations/chargepoint/{normalizedEvseId}",
+    "normalization": "IRVE FRZP1E... -> ePowerDirect FR*ZP1*E...",
+    "authentication": "none for station/tariff lookup",
+    "bundleEvidence": [
+      "chunk-6N6KTALU.js defines bffUrl=https://api.services-emobility.com/pay/api",
+      "chunk-SBCPVG23.js defines GET /stations/chargepoint/{id}",
+      "chunk-E6HRIZNV.js renders selectedChargePoint.tariff before payment"
+    ]
+  },
+  "validation": {
+    "sampleSuccess": [
+      {
+        "evseId": "FR*ZP1*E130798",
+        "internalChargePoint": "LF-9659-8",
+        "city": "Argentat-Sur-Dordogne",
+        "directPayment": true,
+        "tariff": {
+          "currency": "EUR",
+          "components": [
+            {
+              "priceUnit": "CHARGING_SESSION",
+              "price": 18,
+              "taxAmount": 20
+            }
+          ]
+        }
+      },
+      {
+        "evseId": "FR*ZP1*E94579",
+        "internalChargePoint": "LF-6221-2",
+        "city": "Bort-les-orgues",
+        "directPayment": true,
+        "tariff": {
+          "currency": "EUR",
+          "components": [
+            {
+              "priceUnit": "CHARGING_SESSION",
+              "price": 18,
+              "taxAmount": 20
+            }
+          ]
+        }
+      }
+    ],
+    "failClosedExamples": [
+      "FR*ZP1*EAC24062",
+      "FR*ZP1*EAC25064"
+    ],
+    "inventoryProbe": {
+      "source": "IRVE-derived adhoccharging inventory cross-check 2026-09-25",
+      "stationPagesParsed": 50,
+      "uniqueEvseCandidates": 104,
+      "note": "identity discovery only; third-party prices are never used as direct authority"
+    }
+  },
+  "tariffModel": {
+    "components": [
+      "CHARGING_KWH",
+      "CHARGING_TIME",
+      "CHARGING_SESSION",
+      "PARKING_TIME",
+      "PARKING_SESSION"
+    ],
+    "vatField": "station.vat",
+    "directPaymentFlag": "chargePoints[].multitenantDirectPaymentAvailable",
+    "freeFlag": "chargePoints[].freeChargingAvailable",
+    "token": "ephemeral binding pricing offer; do not persist"
+  },
+  "policy": {
+    "rankable": "only exact first-party ePowerDirect response for the requested normalized EVSE with multitenantDirectPaymentAvailable=true and structured tariff",
+    "noTariffIsFree": false,
+    "nationalConstantAllowed": false,
+    "unresolvedFallback": [
+      "Electra",
+      "Electroverse"
+    ],
+    "siteSpecific": true
+  },
+  "conclusion": "Reusable anonymous deterministic EVSE->Vaylens charge point->direct tariff resolver is proven. Zephyre can be treated at CPO-method level; unresolved/404 EVSEs fail closed to fallback rather than blocking the CPO."
+}
