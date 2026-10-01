@@ -198,6 +198,9 @@ const stats={
   viaHomogeneousGroupCandidateEvses:0,viaHomogeneousGroupPublishedEvses:0,
   c55HomogeneousGroupCandidateEvses:0,c55HomogeneousGroupPublishedEvses:0,
   hpcOrdinalGroupCandidateEvses:0,hpcOrdinalGroupPublishedEvses:0,
+  drvHomogeneousGroupCandidateEvses:0,drvHomogeneousGroupPublishedEvses:0,
+  sigHomogeneousGroupCandidateEvses:0,sigHomogeneousGroupPublishedEvses:0,
+  qovHomogeneousGroupCandidateEvses:0,qovHomogeneousGroupPublishedEvses:0,
   durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
@@ -879,9 +882,110 @@ for(const sh of manifest.shards||[]){
       }
     }
 
+    // DRV/SIG/QOV lab: operator-locked homogeneous exact-set fallback.
+    // This never assigns an individual source reference to an individual PDC. It is used
+    // only when the entire unresolved source set has the same size as the entire unclaimed
+    // national PDC set for exactly one operator, all PDCs are globally unique, and all
+    // source EVSEs have identical compiled pricing and connector counts.
+    const operatorExactSetTargets=new Map();
+    const operatorGroupedSourceEvses=new Set();
+    const exactSetOps=[
+      {code:'DRV',prefix:'FRDRVE',mode:'strict_drv_homogeneous_exact_set',stat:'drvHomogeneousGroup'},
+      {code:'SIG',prefix:'FRSIGE',mode:'strict_sig_homogeneous_exact_set',stat:'sigHomogeneousGroup'},
+      {code:'QOV',prefix:'FRQOVE',mode:'strict_qov_homogeneous_exact_set',stat:'qovHomogeneousGroup'}
+    ];
+    for(const cfg of exactSetOps){
+      const localListOp=[...local];
+      if(!localListOp.some(p=>p.startsWith(cfg.prefix)))continue;
+      const alreadyClaimed=new Set();
+      const unresolved=[];
+      for(const e0 of row.tariff?.evses||[]){
+        const pr0=text(e0?.physicalReference);if(!pr0)continue;
+        const k0=norm(pr0);
+        if(local.has(k0)){alreadyClaimed.add(k0);continue;}
+        const p0=localListOp.filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\d{1,2}$/.test(k0.slice(p.length)));
+        if(p0.length===1){alreadyClaimed.add(p0[0]);continue;}
+        if(ordinalTargets.has(e0)){alreadyClaimed.add(ordinalTargets.get(e0));continue;}
+        if(genericTargets.has(e0)){alreadyClaimed.add(genericTargets.get(e0));continue;}
+        if(suffixTargets.has(e0)){alreadyClaimed.add(suffixTargets.get(e0));continue;}
+        if(trimmedSuffixTargets.has(e0)){alreadyClaimed.add(trimmedSuffixTargets.get(e0));continue;}
+        if(pd1FinalOrdinalTargets.has(e0)){alreadyClaimed.add(pd1FinalOrdinalTargets.get(e0));continue;}
+        if(viaFinalOrdinalTargets.has(e0)){alreadyClaimed.add(viaFinalOrdinalTargets.get(e0));continue;}
+        if(izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0)||c55GroupedSourceEvses.has(e0)||hpcGroupedSourceEvses.has(e0))continue;
+        unresolved.push(e0);
+      }
+      const allUnclaimed=localListOp.filter(p=>!alreadyClaimed.has(p));
+      const unclaimedOp=allUnclaimed.filter(p=>p.startsWith(cfg.prefix));
+      if(!unresolved.length||unresolved.length!==unclaimedOp.length||allUnclaimed.length!==unclaimedOp.length)continue;
+      if(!unclaimedOp.every(p=>(globalPdcOwners.get(p)?.size||0)===1))continue;
+      const compiledRows=[];
+      let valid=true;
+      for(const e0 of unresolved){
+        const connectors=e0?.connectors||[];
+        if(!connectors.length){valid=false;break;}
+        const compiled=[];
+        for(const c0 of connectors){
+          const x=compileConnector(c0);if(!x.ok){valid=false;break;}
+          compiled.push({pricing:x.pricing,connectorPk:c0.pk??null});
+        }
+        if(!valid)break;
+        const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
+        if(unique.length!==1){valid=false;break;}
+        compiledRows.push({e:e0,pricing:unique[0],connectorCount:connectors.length});
+      }
+      if(!valid||compiledRows.length!==unresolved.length)continue;
+      const pricingSigs=new Set(compiledRows.map(x=>pricingSig(x.pricing)));
+      const connectorCounts=new Set(compiledRows.map(x=>x.connectorCount));
+      if(pricingSigs.size!==1||connectorCounts.size!==1)continue;
+      const sharedPricing=compiledRows[0].pricing;
+      const connectorCount=compiledRows[0].connectorCount;
+      for(const p of unclaimedOp){
+        operatorExactSetTargets.set(p,{cfg,pricing:sharedPricing,connectorCount,sourceEvses:unresolved});
+      }
+      for(const e0 of unresolved)operatorGroupedSourceEvses.add(e0);
+    }
+
+    if(operatorExactSetTargets.size){
+      for(const [targetNorm,g] of operatorExactSetTargets.entries()){
+        const targetPdc=localByNorm.get(targetNorm);
+        const sourceEvses=g.sourceEvses;
+        const currency=g.pricing.rules?.[0]?.currency||'EUR';
+        const offer={
+          id:`electroverse-evse-${g.cfg.code.toLowerCase()}-group:${row.electroverseLocationPk}:${targetNorm}`,
+          provider:'Electroverse',
+          countries:['FR'],
+          currency,
+          priority:80,
+          verifiedScope:'exact_evse_group',
+          evseIds:[targetPdc],
+          pricing:g.pricing,
+          metadata:{
+            verified:true,
+            identityMode:g.cfg.mode,
+            electroverseLocationPk:String(row.electroverseLocationPk),
+            electroverseEvsePks:sourceEvses.map(e=>e.pk??null),
+            physicalReferences:sourceEvses.map(e=>text(e?.physicalReference)),
+            connectorCount:g.connectorCount,
+            sourceGroupSize:sourceEvses.length,
+            targetGroupSize:sourceEvses.length,
+            operator:g.cfg.code,
+            tariffHash:row.tariffHash||null,
+            fetchedAt:row.fetchedAt||null,
+            source:'Electroverse tariff cache'
+          }
+        };
+        const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
+        tiles.get(id).push(offer);
+        stats[g.cfg.stat+'CandidateEvses']++;
+        stats[g.cfg.stat+'PublishedEvses']++;
+        stats.pricedExactEvses++;
+        stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=g.connectorCount;
+      }
+    }
+
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
-      if(izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e)||hpcGroupedSourceEvses.has(e))continue;
+      if(izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e)||hpcGroupedSourceEvses.has(e)||operatorGroupedSourceEvses.has(e))continue;
       const pr=text(e?.physicalReference);
       if(!pr){rej('evse_missing_physical_reference');continue;}
       stats.physicalRefs++;
@@ -1173,6 +1277,9 @@ stats.viaFinalOrdinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMo
 stats.viaHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_via_homogeneous_exact_set').length;
 stats.c55HomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_homogeneous_exact_set').length;
 stats.hpcOrdinalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_hpc_duplicate_ordinal_to_three_digit_pdc').length;
+stats.drvHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_drv_homogeneous_exact_set').length;
+stats.sigHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_sig_homogeneous_exact_set').length;
+stats.qovHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_qov_homogeneous_exact_set').length;
 stats.trimmedSuffixPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_trimmed_long_suffix_identity').length;
 stats.durationBandPublishedEvses=finalOffers.filter(o=>(o.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)).length;
 
@@ -1227,6 +1334,14 @@ const out={
     hpcOrdinalRequiresExactSourceTargetOrdinalSet:true,
     hpcOrdinalRequiresGlobalPdcUniqueness:true,
     hpcDuplicateOrdinalRequiresHomogeneousPricing:true,
+    strictDrvHomogeneousExactSet:true,
+    strictSigHomogeneousExactSet:true,
+    strictQovHomogeneousExactSet:true,
+    operatorExactSetRequiresEqualCardinality:true,
+    operatorExactSetRequiresSingleOperatorUnclaimedTargets:true,
+    operatorExactSetRequiresHomogeneousPricing:true,
+    operatorExactSetRequiresUniformConnectorCount:true,
+    operatorExactSetRequiresGlobalPdcUniqueness:true,
     suffixIdentityRequiresGlobalUniqueness:true,
     suffixIdentityRequiresUnclaimedTarget:true,
     strictTrimmedLongSuffixIdentityMinLength:7,
