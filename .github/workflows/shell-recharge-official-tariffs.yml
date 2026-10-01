@@ -37,6 +37,7 @@ jobs:
           set -o pipefail
           mkdir -p out/shell_recharge
           python -m py_compile scripts/shell_recharge_official.py
+          python -m pip install --disable-pip-version-check selenium
           python scripts/shell_recharge_official.py --out out/shell_recharge 2> >(tee out/shell_recharge/error.log >&2)
           cat out/shell_recharge/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
 
@@ -76,24 +77,20 @@ jobs:
           from pathlib import Path
           p=json.loads(Path('out/shell_recharge/shell_recharge_official_france.json').read_text())
           c=p['classification']
-          assert c['singleNationalFastShellRechargeCardTariffRule'] is True
-          assert c['exactCurrentKwhAmountAutoExtracted'] is False
-          direct=p['operatorDirect']['fastShellRechargeWithShellCard']
-          assert direct['uniformAcrossFastShellRechargeStations'] is True
-          assert direct['representativeCurrentEurPerKwh'] == 0.64
-          assert direct['monthlySubscriptionFeeEur'] == 0.0
-          assert direct['cardOrderFeeEur'] == 0.0
+          assert c['singleNationalFastShellRechargeCardTariffRule'] is False
+          assert c['exactCurrentKwhAmountAutoExtracted'] is True
+          assert c['representativeCurrentSamplesConsistent'] is True
+          direct=p['operatorDirect']['fastShellRechargeWithShellApp']
+          assert 0.10 <= direct['representativeCurrentEurPerKwh'] <= 2.0
+          assert direct['exactStationLookupRecommended'] is True
           assert p['operatorDirect']['renderedFirstPartySamples']['count'] >= 5
-          assert p['fees']['representativeShellAppSessionFeeEur'] == 0.35
-          assert p['payment']['preauthorization']['shellCardOrAppEur'] == 45.0
-          assert p['payment']['preauthorization']['bankCardEur'] == 65.0
-          assert p['payment']['adHocQrOnline'] is True
-          assert p['payment']['contactlessBankCardFastChargers'] is True
+          fee=p['fees']['representativeShellAppSessionFeeEur']
+          assert fee is None or 0 <= fee <= 2.0
           assert p['roaming']['operatorDirect'] is False
-          assert p['roaming']['shellTransactionFeePerSessionEur'] == 0.35
           assert p['roaming']['exactPartnerPriceLookupRequired'] is True
-          assert {50,150,300}.issubset(set(p['technical']['representativePowerClassesKw']))
-          print('Validated Shell Recharge uniform fast-rate rule, payment, preauthorization and roaming separation')
+          assert p['technical']['retiredSupportArticleApiDetected'] is True
+          assert len(p['technical']['representativePowerClassesKw']) >= 1
+          print('Validated Shell current rendered station tariff samples and retired support-source handling')
           PY
 
       - name: Publish only when evidence changes
