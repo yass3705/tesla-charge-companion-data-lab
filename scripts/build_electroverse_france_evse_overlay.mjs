@@ -197,6 +197,7 @@ const stats={
   viaFinalOrdinalCandidateRefs:0,viaFinalOrdinalPublishedEvses:0,
   viaHomogeneousGroupCandidateEvses:0,viaHomogeneousGroupPublishedEvses:0,
   c55HomogeneousGroupCandidateEvses:0,c55HomogeneousGroupPublishedEvses:0,
+  hpcOrdinalGroupCandidateEvses:0,hpcOrdinalGroupPublishedEvses:0,
   durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
@@ -769,9 +770,118 @@ for(const sh of manifest.shards||[]){
       c55GroupTargets.size ? [...c55GroupTargets.values()][0].sourceEvses : []
     );
 
+    // HPC lab: group duplicate numeric physical references by ordinal and map them
+    // to globally unique HPC PDCs whose final three digits encode the same ordinal.
+    // Multiple Electroverse entries sharing an ordinal are accepted only when every
+    // connector compiles and all pricing is homogeneous; their connector sets are aggregated.
+    const hpcGroupTargets=new Map();
+    const hpcGroupedSourceEvses=new Set();
+    const localListForHpc=[...local];
+    if(localListForHpc.some(p=>/^FRHPCE/.test(p))){
+      const alreadyClaimed=new Set();
+      const unresolved=[];
+      for(const e0 of row.tariff?.evses||[]){
+        const pr0=text(e0?.physicalReference);if(!pr0)continue;
+        const k0=norm(pr0);
+        if(local.has(k0)){alreadyClaimed.add(k0);continue;}
+        const p0=localListForHpc.filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\d{1,2}$/.test(k0.slice(p.length)));
+        if(p0.length===1){alreadyClaimed.add(p0[0]);continue;}
+        if(ordinalTargets.has(e0)){alreadyClaimed.add(ordinalTargets.get(e0));continue;}
+        if(genericTargets.has(e0)){alreadyClaimed.add(genericTargets.get(e0));continue;}
+        if(suffixTargets.has(e0)){alreadyClaimed.add(suffixTargets.get(e0));continue;}
+        if(trimmedSuffixTargets.has(e0)){alreadyClaimed.add(trimmedSuffixTargets.get(e0));continue;}
+        if(pd1FinalOrdinalTargets.has(e0)){alreadyClaimed.add(pd1FinalOrdinalTargets.get(e0));continue;}
+        if(viaFinalOrdinalTargets.has(e0)){alreadyClaimed.add(viaFinalOrdinalTargets.get(e0));continue;}
+        if(izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0)||c55GroupedSourceEvses.has(e0))continue;
+        if(!/^\d{1,2}$/.test(pr0.trim()))continue;
+        unresolved.push({e:e0,ord:Number(pr0.trim())});
+      }
+      const unclaimed=localListForHpc.filter(p=>!alreadyClaimed.has(p)&&/^FRHPCE/.test(p));
+      const byOrd=new Map();
+      for(const x of unresolved){
+        const arr=byOrd.get(x.ord)||[];arr.push(x.e);byOrd.set(x.ord,arr);
+      }
+      const pdcByOrd=new Map();
+      let pdcValid=true;
+      for(const p of unclaimed){
+        const m=p.match(/(\d{3})$/);
+        if(!m){pdcValid=false;break;}
+        const ord=Number(m[1]);
+        if(!Number.isFinite(ord)||pdcByOrd.has(ord)){pdcValid=false;break;}
+        if((globalPdcOwners.get(p)?.size||0)!==1){pdcValid=false;break;}
+        pdcByOrd.set(ord,p);
+      }
+      const sourceOrds=[...byOrd.keys()].sort((a,b)=>a-b);
+      const targetOrds=[...pdcByOrd.keys()].sort((a,b)=>a-b);
+      const exactOrdSet=pdcValid && sourceOrds.length===targetOrds.length &&
+        sourceOrds.every((v,i)=>v===targetOrds[i]);
+      if(exactOrdSet&&sourceOrds.length){
+        for(const ord of sourceOrds){
+          const es=byOrd.get(ord)||[];
+          const compiledAll=[];
+          let valid=true;
+          for(const e0 of es){
+            const connectors=e0?.connectors||[];
+            if(!connectors.length){valid=false;break;}
+            for(const c0 of connectors){
+              const x=compileConnector(c0);if(!x.ok){valid=false;break;}
+              compiledAll.push({pricing:x.pricing,connectorPk:c0.pk??null});
+            }
+            if(!valid)break;
+          }
+          if(!valid||!compiledAll.length)continue;
+          const unique=[...new Map(compiledAll.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
+          if(unique.length!==1)continue;
+          const targetNorm=pdcByOrd.get(ord);
+          hpcGroupTargets.set(targetNorm,{
+            pricing:unique[0],
+            connectorPks:compiledAll.map(x=>x.connectorPk),
+            sourceEvses:es
+          });
+          for(const e0 of es)hpcGroupedSourceEvses.add(e0);
+        }
+      }
+    }
+
+    if(hpcGroupTargets.size){
+      for(const [targetNorm,g] of hpcGroupTargets.entries()){
+        const targetPdc=localByNorm.get(targetNorm);
+        const currency=g.pricing.rules?.[0]?.currency||'EUR';
+        const offer={
+          id:`electroverse-evse-hpc-ordinal:${row.electroverseLocationPk}:${targetNorm}`,
+          provider:'Electroverse',
+          countries:['FR'],
+          currency,
+          priority:80,
+          verifiedScope:'exact_evse_group',
+          evseIds:[targetPdc],
+          pricing:g.pricing,
+          metadata:{
+            verified:true,
+            identityMode:'strict_hpc_duplicate_ordinal_to_three_digit_pdc',
+            electroverseLocationPk:String(row.electroverseLocationPk),
+            electroverseEvsePks:g.sourceEvses.map(e=>e.pk??null),
+            physicalReferences:g.sourceEvses.map(e=>text(e?.physicalReference)),
+            connectorPks:g.connectorPks,
+            connectorCount:g.connectorPks.length,
+            sourceEntryCount:g.sourceEvses.length,
+            tariffHash:row.tariffHash||null,
+            fetchedAt:row.fetchedAt||null,
+            source:'Electroverse tariff cache'
+          }
+        };
+        const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
+        tiles.get(id).push(offer);
+        stats.hpcOrdinalGroupCandidateEvses++;
+        stats.hpcOrdinalGroupPublishedEvses++;
+        stats.pricedExactEvses++;
+        stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=g.connectorPks.length;
+      }
+    }
+
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
-      if(izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e))continue;
+      if(izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e)||hpcGroupedSourceEvses.has(e))continue;
       const pr=text(e?.physicalReference);
       if(!pr){rej('evse_missing_physical_reference');continue;}
       stats.physicalRefs++;
@@ -1062,6 +1172,7 @@ stats.izfHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identi
 stats.viaFinalOrdinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_via_final_ordinal_subgroup_bijection').length;
 stats.viaHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_via_homogeneous_exact_set').length;
 stats.c55HomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_homogeneous_exact_set').length;
+stats.hpcOrdinalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_hpc_duplicate_ordinal_to_three_digit_pdc').length;
 stats.trimmedSuffixPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_trimmed_long_suffix_identity').length;
 stats.durationBandPublishedEvses=finalOffers.filter(o=>(o.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)).length;
 
@@ -1112,6 +1223,10 @@ const out={
     c55ExactSetRequiresHomogeneousPricing:true,
     c55ExactSetRequiresUniformConnectorCount:true,
     c55ExactSetRequiresGlobalPdcUniqueness:true,
+    strictHpcDuplicateOrdinalToThreeDigitPdc:true,
+    hpcOrdinalRequiresExactSourceTargetOrdinalSet:true,
+    hpcOrdinalRequiresGlobalPdcUniqueness:true,
+    hpcDuplicateOrdinalRequiresHomogeneousPricing:true,
     suffixIdentityRequiresGlobalUniqueness:true,
     suffixIdentityRequiresUnclaimedTarget:true,
     strictTrimmedLongSuffixIdentityMinLength:7,
