@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 200,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-199.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Burgdorf GmbH",
+      "classification": "B3_SITE_CONFIGURABLE_BACKEND",
+      "decision": "remain partial; payment-provider/site variability confirmed",
+      "evidence": {
+        "classificationFinding": "Operator/public material makes effective charging price dependent on selected mobility/payment provider; AC and 180-kW DC are distinct relevant classes."
+      },
+      "exactGap": "No single network tariff is safe. Binding anonymous direct-payment offers must be captured per active EVSE/site, including the 180-kW DC subset and fee components.",
+      "resumeCondition": "Authoritative per-EVSE direct-payment export/checkout matrix for the active Burgdorf estate."
+    },
+    {
+      "name": "CUBOS Service GmbH",
+      "classification": "B3_SITE_CONFIGURABLE_BACKEND",
+      "decision": "remain partial; backend/site-configurable treatment retained",
+      "evidence": {
+        "backend": "SWARCO/ChargeOne integration and station-configurable pricing require per-EVSE extraction rather than operator-level inference."
+      },
+      "exactGap": "Current canonical estate lacks an exhaustive direct-price/fee matrix after backend integration; operator-level examples cannot close the CPO.",
+      "resumeCondition": "Bulk public/read-only per-EVSE direct offers from the current backend with site/power/fee fields."
+    },
+    {
+      "name": "Inselwerke eG",
+      "classification": "B3_SITE_CONFIGURABLE_BACKEND",
+      "decision": "remain partial; routed to backend extraction rather than broad search",
+      "exactGap": "Site-configurable backend classification means an estate-wide anonymous tariff cannot be inferred. Need active EVSE inventory and binding direct offers per site.",
+      "resumeCondition": "Authoritative public backend inventory plus per-EVSE anonymous price and fee components."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "backendFamilyProgress": {
+    "m8mit": "No new safe unbounded candidate found beyond already promoted Parchim/Bernburg/Rostock and bounded MEGA/Aue cases; avoided repeating bounded m8mit work.",
+    "B3": "Advanced three site-configurable candidates and formalized exact backend extraction gaps."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "antiStagnation": "PASS"
+  },
+  "nextSafeAction": "Prioritize B1/B3/B6 only when a public/read-only machine-readable backend can enumerate the full estate. Candidate next probes: Stadtwerke Nortorf fixed estate, Stadtwerke Peine DE*SPE QR/browser, or a Mobilithek/AFIR operator with explicit fee fields."
+}
