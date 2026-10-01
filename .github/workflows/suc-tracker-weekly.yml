@@ -1,0 +1,78 @@
+name: Weekly SuC Tracker Tesla snapshot (Data Lab)
+
+on:
+  schedule:
+    - cron: '17 4 * * 0'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/suc-tracker-weekly.yml'
+      - 'scripts/suc_tracker/**'
+      - 'tests/suc_tracker/**'
+  pull_request:
+    paths:
+      - '.github/workflows/suc-tracker-weekly.yml'
+      - 'scripts/suc_tracker/**'
+      - 'tests/suc_tracker/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: suc-tracker-${{ github.event_name == 'pull_request' && github.ref || 'weekly' }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test tariff conversion and country scope
+        run: python3 -m unittest discover -s tests/suc_tracker -p 'test_*.py' -v
+
+  refresh:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Fetch and validate SuC Tracker
+        run: python3 scripts/suc_tracker/update.py
+      - name: Commit independent SuC files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -- data/suc-tracker/europe.json data/suc-tracker/tesla_stations.json data/suc-tracker/metadata.json
+          if git diff --cached --quiet; then
+            echo "SuC Tracker files unchanged."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'chore(tesla): refresh independent weekly SuC Tracker snapshot'
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+          done
+          echo 'Unable to push the validated SuC snapshot.' >&2
+          exit 1
+      - name: Summary
+        if: success()
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          m = json.loads(Path('data/suc-tracker/metadata.json').read_text())
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write(f"SuC Tracker: **{m['exportStationCount']}** TCC stations.\n\n")
+              f.write(f"Source generation: {m['sourceGeneratedAt']}. Download checked: {m['checkedAt']}.\n\n")
+              f.write('Independent dataset. No Tesla query, no Mac runner, no production catalogue replacement.\n')
+          PY
