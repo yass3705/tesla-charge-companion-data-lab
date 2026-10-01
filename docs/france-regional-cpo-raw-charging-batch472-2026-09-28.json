@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "batch": "batch472",
+  "date": "2026-09-28",
+  "country": "FR",
+  "rawRank": 106,
+  "cpo": "Raw Charging",
+  "decision": "setAside_fail_closed",
+  "evidence": [
+    {
+      "type": "historical_inventory",
+      "finding": "raw rank106 = Raw Charging, 81 stations / 162 PDC in canonical 291 ledger."
+    },
+    {
+      "type": "first_party_current",
+      "url": "https://rawcharging.com/news/article/chargepoint-app-changes-how-to-keep-using-it-with-raw-rewards",
+      "finding": "RAW confirms its driver programme uses ChargePoint and that contactless/roaming access can coexist; this does not expose a France-wide direct tariff."
+    },
+    {
+      "type": "first_party_current",
+      "url": "https://rawcharging.com/world-cup-2026-greene-king",
+      "finding": "RAW publishes site/programme/time-specific tariffs and promotions, proving pricing can vary by site/programme/time rather than one universal network price."
+    }
+  ],
+  "rationale": "French RAW Charging EVSEs exist in the historical inventory, but no deterministic public/guest France station/EVSE -> current direct tariff resolver or France-wide first-party tariff grid was recovered. UK programme tariffs must not be transposed to France. Fail closed rather than use third-party or roaming prices.",
+  "fallback": "Electra then Electroverse where available.",
+  "reopenOn": [
+    "first-party France numeric tariff grid with deterministic scope",
+    "ChargePoint/RAW guest station-level tariff tied to exact French EVSE",
+    "AFIR/QualiCharge producer numeric direct tariff"
+  ],
+  "pendingDedupeTouched": [],
+  "reemploiV8V9CpoDirect": {
+    "result": "no retained deterministic France Raw Charging CPO-direct resolver recovered; generic search closed to avoid repetition"
+  }
+}
