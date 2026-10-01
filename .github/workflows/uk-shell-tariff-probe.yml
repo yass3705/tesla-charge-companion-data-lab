@@ -1,4 +1,4 @@
-name: UK Shell tariff probe
+name: UK Shell direct CPO tariffs
 
 on:
   push:
@@ -10,62 +10,73 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: uk-shell-direct-cpo-tariffs
+  cancel-in-progress: false
+
 jobs:
-  probe:
+  collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     env:
       SHELL_EV_CLIENT_ID: ${{ secrets.SHELL_EV_CLIENT_ID }}
       SHELL_EV_CLIENT_SECRET: ${{ secrets.SHELL_EV_CLIENT_SECRET }}
     steps:
       - uses: actions/checkout@v4
-      - name: Probe Shell tariff provider IDs
+        with: {fetch-depth: 0}
+
+      - name: Collect Shell-operated UK tariffs only
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p reports/uk
+          mkdir -p data/operator_direct reports/uk
           python3 - <<'PY'
-          import os,json,time,uuid,urllib.parse,urllib.request,urllib.error
+          import os,json,time,uuid,urllib.parse,urllib.request,urllib.error,gzip
           from pathlib import Path
+          from datetime import datetime,timezone
 
-          cid=os.environ.get("SHELL_EV_CLIENT_ID")
-          secret=os.environ.get("SHELL_EV_CLIENT_SECRET")
+          cid=os.environ.get("SHELL_EV_CLIENT_ID","").strip()
+          secret=os.environ.get("SHELL_EV_CLIENT_SECRET","").strip()
           if not cid or not secret:
               raise SystemExit("Shell secrets missing")
 
           AUTH="https://api-test.shell.com/v1/oauth/token"
-          BASE="https://api-test.shell.com/ev"
-          UA="TeslaChargeCompanion/9 Shell-Tariff-Probe"
-          min_interval=7.5
+          BASE="https://api-test.shell.com/ev/v2/locations"
+          PROVIDER="Shell_RP_2"
+          UA="TeslaChargeCompanion/9 Shell-UK-Direct-CPO"
+          MIN_INTERVAL=7.5
           last=0.0
+          token=None
 
           def throttle():
               global last
               now=time.monotonic()
-              wait=min_interval-(now-last)
+              wait=MIN_INTERVAL-(now-last)
               if wait>0: time.sleep(wait)
               last=time.monotonic()
 
-          throttle()
-          form=urllib.parse.urlencode({
-              "client_id":cid,
-              "client_secret":secret,
-              "grant_type":"client_credentials"
-          }).encode()
-          req=urllib.request.Request(AUTH,data=form,method="POST",headers={
-              "Content-Type":"application/x-www-form-urlencoded",
-              "Accept":"application/json",
-              "User-Agent":UA
-          })
-          with urllib.request.urlopen(req,timeout=30) as rr:
-              tok=json.loads(rr.read().decode())
-          token=tok["access_token"]
-
-          def call(uid,provider=None):
+          def auth():
+              global token
               throttle()
-              path="/v2/locations/"+urllib.parse.quote(uid,safe="")
-              params={} if provider is None else {"providerId":provider}
-              url=BASE+path+("?" + urllib.parse.urlencode(params) if params else "")
+              form=urllib.parse.urlencode({
+                  "client_id":cid,
+                  "client_secret":secret,
+                  "grant_type":"client_credentials"
+              }).encode()
+              req=urllib.request.Request(AUTH,data=form,method="POST",headers={
+                  "Content-Type":"application/x-www-form-urlencoded",
+                  "Accept":"application/json",
+                  "User-Agent":UA
+              })
+              with urllib.request.urlopen(req,timeout=30) as r:
+                  token=json.loads(r.read().decode("utf-8"))["access_token"]
+
+          auth()
+
+          def call(uid,retry=True):
+              global token
+              throttle()
+              url=BASE+"/"+urllib.parse.quote(uid,safe="")+"?"+urllib.parse.urlencode({"providerId":PROVIDER})
               req=urllib.request.Request(url,headers={
                   "Authorization":"Bearer "+token,
                   "Accept":"application/json",
@@ -73,76 +84,112 @@ jobs:
                   "User-Agent":UA
               })
               try:
-                  with urllib.request.urlopen(req,timeout=30) as rr:
-                      body=json.loads(rr.read().decode())
-                      return {"httpStatus":rr.status,"body":body}
+                  with urllib.request.urlopen(req,timeout=45) as r:
+                      return r.status,json.loads(r.read().decode("utf-8"))
               except urllib.error.HTTPError as e:
-                  return {"httpStatus":e.code,"bodyText":e.read().decode("utf-8","replace")[:4000]}
+                  if e.code==401 and retry:
+                      auth()
+                      return call(uid,False)
+                  return e.code,{"error":e.read().decode("utf-8","replace")[:1000]}
 
-          import gzip
-          dataset="data/national/uk_shell_ev_public_locations.json.gz"
-          with gzip.open(dataset,"rt",encoding="utf-8") as g:
+          with gzip.open("data/national/uk_shell_ev_public_locations.json.gz","rt",encoding="utf-8") as g:
               inv=json.load(g)
-          locs=inv.get("locations") or []
 
-          ubi=[x for x in locs if str(x.get("operatorName") or "")=="Migration Shell Recharge"][:10]
-          shell=[x for x in locs if str(x.get("operatorName") or "")=="Shell Recharge"][:10]
-          samples=[("ubitricity",x) for x in ubi]+[("shell_recharge",x) for x in shell]
+          # Canonical rule 2026-10-01:
+          # - retain Shell_RP_2 tariff only when the actual CPO is Shell Recharge (GB*TNM family)
+          # - never promote provider/eMSP tariffs for third-party CPOs
+          shell_locs=[]
+          for loc in inv.get("locations") or []:
+              op_name=str(loc.get("operatorName") or "").strip()
+              op_id=str(loc.get("operatorId") or "").strip().upper()
+              if op_name=="Shell Recharge" and op_id.startswith("GB*TNM"):
+                  shell_locs.append(loc)
 
-          out={"retrievedAt":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()),
-               "providerId":"Shell_RP_2","sampleCount":len(samples),"results":[]}
-
-          for family,loc in samples:
+          results=[]
+          for loc in shell_locs:
               uid=str(loc.get("uid") or loc.get("externalId") or "")
-              if not uid: continue
-              res=call(uid,"Shell_RP_2")
-              entry={"family":family,"uid":uid,"operatorId":loc.get("operatorId"),
-                     "operatorName":loc.get("operatorName"),"httpStatus":res["httpStatus"],
-                     "tariffCount":0,"connectorCount":0,"tariffConnectors":[]}
-              if "body" in res:
-                  body=res["body"]
-                  entry["status"]=body.get("status") if isinstance(body,dict) else None
-                  data=body.get("data") if isinstance(body,dict) else None
-                  if isinstance(data,list) and data:
-                      data=data[0]
-                  if isinstance(data,dict):
-                      for ev in data.get("evses") or []:
-                          for conn in ev.get("connectors") or []:
-                              entry["connectorCount"]+=1
-                              ts=conn.get("tariffs") or []
-                              if ts:
-                                  entry["tariffCount"]+=len(ts)
-                                  entry["tariffConnectors"].append({
-                                      "evseId":ev.get("evseId"),"connectorUid":conn.get("uid"),
-                                      "tariffs":ts
-                                  })
-              else:
-                  entry["bodyText"]=res.get("bodyText")
-              out["results"].append(entry)
+              if not uid:
+                  continue
+              status,body=call(uid)
+              data=body.get("data") if isinstance(body,dict) else None
+              if isinstance(data,list) and data:
+                  data=data[0]
+              tariff_connectors=[]
+              connector_count=0
+              tariff_count=0
+              if isinstance(data,dict):
+                  for ev in data.get("evses") or []:
+                      for conn in ev.get("connectors") or []:
+                          connector_count+=1
+                          ts=conn.get("tariffs") or []
+                          if ts:
+                              tariff_count+=len(ts)
+                              tariff_connectors.append({
+                                  "evseId":ev.get("evseId"),
+                                  "connectorUid":conn.get("uid"),
+                                  "tariffs":ts
+                              })
+              results.append({
+                  "uid":uid,
+                  "operatorId":loc.get("operatorId"),
+                  "operatorName":loc.get("operatorName"),
+                  "address":loc.get("address"),
+                  "httpStatus":status,
+                  "connectorCount":connector_count,
+                  "tariffCount":tariff_count,
+                  "tariffConnectors":tariff_connectors
+              })
 
-          fam={}
-          for e in out["results"]:
-              f=e["family"]
-              z=fam.setdefault(f,{"locations":0,"locationsWithTariff":0,"tariffObjects":0})
-              z["locations"]+=1
-              z["tariffObjects"]+=e["tariffCount"]
-              if e["tariffCount"]>0: z["locationsWithTariff"]+=1
-          out["coverageByFamily"]=fam
-
-          Path("reports/uk/shell-tariff-probe-latest.json").write_text(
-              json.dumps(out,ensure_ascii=False,indent=2)+"\n"
+          priced=[x for x in results if x["tariffCount"]>0]
+          unpriced=[x for x in results if x["tariffCount"]==0]
+          payload={
+              "retrievedAt":datetime.now(timezone.utc).isoformat(),
+              "country":"GB",
+              "source":"Shell EV Public Locations API v2",
+              "providerId":PROVIDER,
+              "classification":{
+                  "acceptedScope":"Shell Recharge CPO only",
+                  "acceptedOperatorName":"Shell Recharge",
+                  "acceptedOperatorIdPrefix":"GB*TNM",
+                  "thirdPartyProviderTariffsIncluded":False,
+                  "rule":"Shell-operated CPO => accept Shell tariff; other CPO => never use Shell eMSP tariff"
+              },
+              "locationCount":len(results),
+              "pricedLocationCount":len(priced),
+              "unpricedLocationCount":len(unpriced),
+              "coveragePct":round(100*len(priced)/len(results),2) if results else 0,
+              "results":results
+          }
+          Path("data/operator_direct/shell_recharge_uk_api_direct.json").write_text(
+              json.dumps(payload,ensure_ascii=False,indent=2)+"\n"
           )
-          print(json.dumps(out,ensure_ascii=False,indent=2))
+          report={
+              "retrievedAt":payload["retrievedAt"],
+              "locationCount":len(results),
+              "pricedLocationCount":len(priced),
+              "unpricedLocationCount":len(unpriced),
+              "coveragePct":payload["coveragePct"],
+              "unpriced":[{"uid":x["uid"],"address":x.get("address")} for x in unpriced],
+              "thirdPartyProviderTariffsIncluded":False
+          }
+          Path("reports/uk/shell-direct-cpo-tariffs-latest.json").write_text(
+              json.dumps(report,ensure_ascii=False,indent=2)+"\n"
+          )
+          print(json.dumps(report,ensure_ascii=False,indent=2))
           PY
 
-      - name: Publish report
+      - name: Publish
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports/uk/shell-tariff-probe-latest.json
+          git add data/operator_direct/shell_recharge_uk_api_direct.json reports/uk/shell-direct-cpo-tariffs-latest.json
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "data(uk): Shell tariff provider probe [run ${GITHUB_RUN_ID}]"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          git commit -m "data(uk): retain Shell direct CPO tariffs only [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
