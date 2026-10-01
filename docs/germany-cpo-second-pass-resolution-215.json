@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 215,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-214.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 251,
+    "partial": 340,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Espelkamp AoeR",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "decision": "remain partial; parked after second distinct fee-field pass",
+      "evidence": {
+        "estate": "5 first-party sites / 14 Vaylens-Mobilithek EVSE, fully reconciled",
+        "energy": "14/14 at 0.51 EUR/kWh anonymous direct",
+        "secondPass": "Dedicated fee-field recheck found no richer authoritative public Vaylens/eCharge payload than the already sampled zero session-fee records."
+      },
+      "exactGap": "Explicit exhaustive time/blocking-fee semantics only. Energy, active denominator and direct-payment channel are closed.",
+      "antiStagnation": "Two distinct passes exhausted: estate+energy reconciliation, then fee-field payload recheck. Park until a new raw Vaylens/eCharge tariff payload or first-party fee statement appears.",
+      "resumeCondition": "Authoritative explicit time/blocking values, including explicit zero where applicable, covering all 14 EVSEs."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 251,
+    "partial": 340,
+    "blocked": 0
+  },
+  "indicator": "221 -> 251 complete (+30)",
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "251 + 340 + 0 = 591",
+    "antiStagnation": "PASS; Espelkamp now parked",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Continue B6 with Nienburg Energie or another bounded first-party estate; seek current anonymous checkout tariff plus all fee components."
+}
