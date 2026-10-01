@@ -20,10 +20,6 @@ jobs:
       # Persisted validation pass with generic-set preservation.
       - name: Build PD1 preserve-generic lab overlay
         run: node scripts/build_electroverse_france_evse_overlay.mjs
-      - name: Fetch main ref
-        run: git fetch origin main:refs/remotes/origin/main
-      - name: Compare lab against main
-        run: node scripts/compare_electroverse_main_vs_duration_lab.mjs
       - name: Persist lab overlay
         run: |
           git config user.name "github-actions[bot]"
@@ -36,3 +32,7 @@ jobs:
             git pull --rebase origin electroverse-pd1-technical-preserve-generic-lab
             git push
           fi
+      - name: Fetch main ref
+        run: git fetch origin main:refs/remotes/origin/main
+      - name: Compare persisted lab against main
+        run: node scripts/compare_electroverse_main_vs_duration_lab.mjs
