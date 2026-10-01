@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 130,
+  "schemaVersion": 131,
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 96,
   "setAsideCpos": 46,
   "activeRemainingCpos": 149,
-  "updatedAt": "2026-10-01T20:50:00+02:00",
+  "updatedAt": "2026-10-01T19:45:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -384,10 +384,10 @@
     },
     {
       "name": "ANYOS | raw rank148",
-      "reason": "batch505 fail-closed: current first-party ANYOS material defines a highly configurable CPO/eMSP service and states that the applicable price is displayed before each charge and may include per-kWh, parking-duration, session-start and charging-time components. No public first-party national tariff grid or deterministic anonymous station/EVSE -> current configured tariff payload was recovered for the historical 44-station/44-PDC estate. Site-specific observations such as 0.42 EUR/kWh are not generalized.",
+      "reason": "batch505 fail-closed, strengthened by batch510 exhaustive Monta direct-vs-roaming probe: public Monta CPO pricing export exposes 67/67 current FR*PAN EVSE across 12 sites with 12 tariff IDs, but that surface is explicitly CPO pricing exposed to external/internal eMSPs. Exact public driver deeplinks /d/{EVSE} were tested for all 67 EVSE: 67/67 returned HTTP 200 with 'Private charge point', 0 public direct pages, 0 errors. Therefore the export tariffs must not be promoted as ANYOS direct/ad-hoc prices. Keep fail-closed until an authenticated/guest ANYOS direct app/QR tariff becomes legitimately retrievable.",
       "since": "2026-10-01",
       "lastChecked": "2026-10-01",
-      "audit": "docs/france-regional-cpo-anyos-batch505-2026-10-01.json"
+      "audit": "docs/france-regional-cpo-anyos-monta-batch510-2026-10-01.json"
     },
     {
       "name": "LMS / Last Mile Solutions | raw rank146",
@@ -883,7 +883,8 @@
     "LMS / Last Mile Solutions | raw rank146": "batch506 setAside: current LMS first-party roaming/CPO documentation says tariffs are per-charge-point, mutable daily, and should be pulled from the live EVSE-ID tariff feed. No reusable anonymous live tariff feed recovered for historical France estate.",
     "Idex | raw rank149": "batch507 setAside: current inventory still reconciles 3 stations/43 PDC, but first-party Idex model is customer/site-specific tariff configuration and billing. Exact site direct price requires station-specific resolver.",
     "NVH | raw rank152": "batch508 setAside: first-party NVH site exposes installation/IRVE services, not a current public numeric charging tariff; producer dataset stale Dec 2024 and current estate diverges from historical 35/35 footprint.",
-    "SOLVEO ENERGIES | raw rank153": "batch509 setAside: project-specific producer IRVE datasets and no current first-party network tariff surface; current exact station/EVSE direct tariff resolver not recovered."
+    "SOLVEO ENERGIES | raw rank153": "batch509 setAside: project-specific producer IRVE datasets and no current first-party network tariff surface; current exact station/EVSE direct tariff resolver not recovered.",
+    "ANYOS | FR*PAN | raw rank148": "batch510 closure: Monta public CPO pricing export has 67/67 current FR*PAN EVSE priced across 12 sites / 12 tariff IDs, but it is explicitly an eMSP-facing CPO price surface. Exhaustive public driver deeplink test checked all 67: 67 Private charge point, 0 public direct, 0 errors. Keep setAside; never use Monta roaming export as ANYOS direct price."
   },
   "history": [
     {
@@ -1557,6 +1558,16 @@
         "setAsideCpos": 46,
         "activeRemainingCpos": 149
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch510",
+      "change": "Strengthened ANYOS raw148 setAside with exhaustive Monta separation: 67/67 FR*PAN EVSE have CPO->eMSP pricing, but all 67 public driver deeplinks return Private charge point (0 public direct, 0 errors). Roaming/CPO-export prices explicitly rejected as direct authority; no counter change.",
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 46,
+        "activeRemainingCpos": 149
+      }
     }
   ],
   "currentInvestigation": "Alterna Énergie | raw rank154 | 6 stations / 34 PDC: inspect first-party CPO/direct tariff scope and current station-level pricing.",
@@ -1574,11 +1585,11 @@
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch509",
-    "result": "PASS_SOLVEO_FAIL_CLOSED",
-    "counterChange": true
+    "batch": "batch510",
+    "result": "PASS_ANYOS_ROAMING_DIRECT_SEPARATION",
+    "counterChange": false
   },
-  "latestBatch": "batch509",
+  "latestBatch": "batch510",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2354,8 +2365,8 @@
       "historicalOperator": "ANYOS",
       "authority": "ANYOS",
       "category": "setAside-authority",
-      "decision": "active->setAside: first-party ANYOS confirms configurable CPO/eMSP pricing with multiple possible price components and session-specific pre-charge display; no anonymous deterministic station/EVSE -> current configured direct tariff resolver recovered",
-      "evidence": "docs/france-regional-cpo-anyos-batch505-2026-10-01.json"
+      "decision": "setAside retained and strengthened in batch510: 67 current FR*PAN EVSE have exact Monta CPO->eMSP prices, but all 67 public driver deeplinks resolve as Private charge point; roaming/CPO export is not direct/ad-hoc authority",
+      "evidence": "docs/france-regional-cpo-anyos-monta-batch510-2026-10-01.json"
     },
     {
       "rawRank": 146,
@@ -3227,7 +3238,48 @@
         "yass3705/tesla-charge-companion-data-lab:reports/france/avia_picoty/closure-2026-09-29.json"
       ]
     },
-    "Delmonicos | raw rank78": "batch500: current SAS Delmonicos producer inventory 63 stations/146 PDC. 60 stations/140 PDC in the exact Orne Transition commune scope use first-party 0.35 EUR/kWh; Homécourt 3/6 fail closed. Yutz exact no-subscription grid validated separately for exact Yutz mappings."
+    "Delmonicos | raw rank78": "batch500: current SAS Delmonicos producer inventory 63 stations/146 PDC. 60 stations/140 PDC in the exact Orne Transition commune scope use first-party 0.35 EUR/kWh; Homécourt 3/6 fail closed. Yutz exact no-subscription grid validated separately for exact Yutz mappings.",
+    "ANYOS": {
+      "status": "setAside_direct_unresolved_roaming_bulk_recovered",
+      "rawRank": 148,
+      "identity": {
+        "canonical": "ANYOS",
+        "partyId": "FR*PAN",
+        "appPackage": "fr.anyos.monta.charge",
+        "platform": "Monta white-label"
+      },
+      "cpoPricingExport": {
+        "url": "https://app.monta.app/roaming/monta-as-a-cpo-pricing/export/json",
+        "classification": "CPO price exposed to external/internal eMSPs; NOT direct/ad-hoc authority",
+        "workflowRun": 36882338234,
+        "matchedEvses": 67,
+        "sites": 12,
+        "tariffIds": 12,
+        "missingPriceRecords": 0,
+        "observedEnergyRangeEurPerKwh": [
+          0.26,
+          0.468
+        ],
+        "idleFeeEurPerMinuteValues": [
+          0.08,
+          0.12
+        ]
+      },
+      "directDriverProbe": {
+        "template": "https://app.monta.app/d/{EVSE}",
+        "checked": 67,
+        "privateChargePoint": 67,
+        "publicDirect": 0,
+        "errors": 0,
+        "conclusion": "No anonymous direct/ad-hoc price recovered for current FR*PAN public CPO-export inventory."
+      },
+      "workflow": ".github/workflows/france-anyos-monta-probe.yml",
+      "script": "scripts/france/probe_anyos_monta.py",
+      "policy": {
+        "doNotPromoteRoamingExportAsDirect": true,
+        "reopenOn": "ANYOS direct app/QR/guest tariff or exact AFIR/QualiCharge direct field"
+      }
+    }
   },
   "operatorResolutionRegistry": {
     "Zephyre": {
