@@ -122,16 +122,21 @@ def browser_select_country(url: str, country: str = "France") -> tuple[str, dict
         visible = body.text or ""
         nvisible = norm(visible)
 
-        # On the localized /fr/tarifs/ page France is normally already active.
-        selected_markers = (
-            f"affichage des prix pour {norm(country)}",
-            f"showing prices for {norm(country)}",
+        # Determine the *active* country from the first picker label.
+        # Do not merely search for France anywhere because the opened menu also
+        # contains France as one of its options.
+        current_match = re.search(
+            r"(?:affichage des prix pour|showing prices for)\\s+([a-zA-ZÀ-ÖØ-öø-ÿ'’ -]{2,40})",
+            visible,
+            flags=re.I,
         )
-        if any(marker in nvisible for marker in selected_markers):
+        current_country = current_match.group(1).strip() if current_match else None
+        if current_country and norm(current_country) == norm(country):
             return visible, {
                 "accessMode": "browser_render_visible_dom",
                 "countrySelectionMethod": "already_selected",
                 "selectedCountry": country,
+                "observedCurrentCountry": current_country,
             }
 
         # Legacy native selector fallback.
@@ -173,14 +178,27 @@ def browser_select_country(url: str, country: str = "France") -> tuple[str, dict
                 time.sleep(0.5)
                 options = driver.find_elements(
                     By.XPATH,
-                    f"//*[self::button or self::a or @role='option'][normalize-space()={json.dumps(country)}]",
+                    "//*[self::button or self::a or @role='option' or self::li]",
                 )
                 for option in options:
-                    if option.is_displayed():
+                    try:
+                        if not option.is_displayed():
+                            continue
+                        ot = (option.text or "").strip()
+                        notext = norm(ot)
+                        if not (notext == norm(country) or notext.startswith(norm(country) + " ")):
+                            continue
                         option.click()
                         WebDriverWait(driver, 15).until(
-                            lambda d: f"affichage des prix pour {norm(country)}" in norm(d.find_element(By.TAG_NAME, "body").text or "")
-                            or f"showing prices for {norm(country)}" in norm(d.find_element(By.TAG_NAME, "body").text or "")
+                            lambda d: (
+                                (lambda m: bool(m and norm(m.group(1).strip()) == norm(country)))(
+                                    re.search(
+                                        r"(?:affichage des prix pour|showing prices for)\\s+([a-zA-ZÀ-ÖØ-öø-ÿ'’ -]{2,40})",
+                                        d.find_element(By.TAG_NAME, "body").text or "",
+                                        flags=re.I,
+                                    )
+                                )
+                            )
                         )
                         time.sleep(1.0)
                         visible = body.text or ""
@@ -188,7 +206,10 @@ def browser_select_country(url: str, country: str = "France") -> tuple[str, dict
                             "accessMode": "browser_render_visible_dom",
                             "countrySelectionMethod": "custom_picker",
                             "selectedCountry": country,
+                            "observedCurrentCountry": current_country,
                         }
+                    except Exception:
+                        continue
             except Exception:
                 continue
 
