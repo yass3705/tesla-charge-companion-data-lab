@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-10-01T20:29:00+02:00",
+  "updatedAt": "2026-10-02T00:00:00+02:00",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -512,11 +512,12 @@
     },
     {
       "name": "Shell Recharge ubitricity",
-      "status": "partial",
-      "access": "official_direct_payg_pricing_plus_shell_inventory",
-      "evidence": "Official ubitricity UK PAYG pricing effective 2026-10-01 provides direct CPO tariffs: 0.45 GBP/kWh 00:00-07:00, 0.56 GBP/kWh 07:00-16:00 and 20:00-24:00, 0.67 GBP/kWh 16:00-20:00. A small minority of charge points without smart charging use a flat 0.54 GBP/kWh. Official page also states some charge points differ and specifically flags multiple tariffs across Richmond and Wandsworth, Greenwich and Tower Hamlets. 7-22 kW points have a 0.05 GBP/min idle fee after 60 minutes, between 08:00 and 20:00. These are direct PAYG CPO prices, not Shell app/eMSP prices.",
-      "dataset": "data/operator_direct/ubitricity_uk_official_payg_2026-10-01.json",
-      "next": "Map Shell/ubitricity EVSEs deterministically to the official local-authority tariff matrix. Apply standard bands only where scope is proven; map no-smart sites to 0.54 GBP/kWh; keep borough/site-specific exceptions fail-closed until exact PAYG values are recovered. Do not use Shell_RP_* provider tariffs."
+      "status": "set_aside_external_request",
+      "access": "official_ubitricity_pcpr_open_data_request",
+      "evidence": "Current Shell EV Public Locations snapshot exposes only 320 ubitricity/Migration Shell Recharge locations and is incomplete versus ubitricity's national estate. Deterministic pricing overlay reaches 149/320 locations (46.56%) but this is not sufficient for canonical national coverage. Official ubitricity PCPR/Open Data request has now been submitted; canonical inventory work should resume from that feed when received.",
+      "dataset": "data/operator_direct/ubitricity_uk_deterministic_pricing.json",
+      "next": "User submitted the official ubitricity PCPR/Open Data request on 2026-10-02. Set aside until the official feed/API access is received; do not continue reconstructing national inventory from Shell. Retain existing official PAYG tariff rules and current Shell-derived subset only as supplemental evidence.",
+      "report": "reports/uk/ubitricity-deterministic-pricing-latest.json"
     },
     {
       "name": "Blink",
