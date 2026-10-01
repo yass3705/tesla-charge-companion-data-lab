@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 124,
+  "schemaVersion": 125,
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 96,
-  "setAsideCpos": 40,
-  "activeRemainingCpos": 155,
-  "updatedAt": "2026-10-01T19:05:00+02:00",
+  "setAsideCpos": 41,
+  "activeRemainingCpos": 154,
+  "updatedAt": "2026-10-01T19:10:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -374,6 +374,13 @@
       "since": "2026-10-01",
       "lastChecked": "2026-10-01",
       "audit": "docs/france-regional-cpo-porsche-sales-batch503-2026-10-01.json"
+    },
+    {
+      "name": "PARERA MOBILITE | FR*MW1 | raw rank99",
+      "reason": "batch504 fail-closed: first-party PARERA MobilyWeb explicitly supports custom tariff policies by user profile and session billing/revenue collection for site owners, proving configurable site/profile pricing rather than one national CPO price. FR*MW1 current observations vary by site. No anonymous deterministic station/EVSE -> current configured direct tariff resolver was recovered. FR*VIS raw156 is the same operator identity but a separate technical estate and is materialized as a non-counting lineage only; no tariff inheritance.",
+      "since": "2026-10-01",
+      "lastChecked": "2026-10-01",
+      "audit": "docs/france-regional-cpo-parera-batch504-2026-10-01.json"
     }
   ],
   "activeNominative": [
@@ -435,7 +442,6 @@
     "RELEASED_ACTIVE_SLOT_092 | alias SDEHG Haute-Garonne | FR*S31",
     "RELEASED_ACTIVE_SLOT_094_ALDI_DUPLICATE_AUTHORITY",
     "RELEASED_ACTIVE_SLOT_095 | alias Chargelec36 / SDEI Indre | FR*S36",
-    "UNPROVEN_ACTIVE_099",
     "RELEASED_ACTIVE_SLOT_100 | alias Zephyre SAS | FR*ZP1 | raw rank68",
     "RELEASED_ACTIVE_SLOT_103_BP_PULSE_DUPLICATE_AUTHORITY",
     "RELEASED_ACTIVE_SLOT_105 | authority ALDI France | FR*ALN already treated",
@@ -472,7 +478,7 @@
     "UNPROVEN_ACTIVE_153",
     "UNPROVEN_ACTIVE_154",
     "UNPROVEN_ACTIVE_155",
-    "UNPROVEN_ACTIVE_156",
+    "RELEASED_ACTIVE_SLOT_156 | alias PARERA MOBILITE | FR*VIS -> PARERA MOBILITE | FR*MW1 raw99 (same operator identity; separate technical estate; no tariff inheritance)",
     "UNPROVEN_ACTIVE_157",
     "RELEASED_ACTIVE_SLOT_158 | alias Jerecharge.com | FR*JRC | raw rank158",
     "RELEASED_ACTIVE_SLOT_159 | alias TotalEnergies Charging Services / FR*TCB",
@@ -841,7 +847,8 @@
     "ChargeFacile | FR*LUM | raw rank98": "batch499 setAside: official Charge Facile app (LUMI'IN ENERGIES) handles QR start, payment methods and invoices; no public deterministic FR*LUM station/EVSE -> current numeric tariff resolver was recovered. raw142 LUMI'IN remains a non-counting identity lineage.",
     "FAROAD | FR*EVE | raw rank135": "batch501 setAside: FAROAD first-party supervision lets managers define prices per kWh; current FR*EVE inventory is heterogeneous and no anonymous station/EVSE -> configured direct tariff resolver was recovered. raw177 remains non-counting identity lineage.",
     "GreenFlux Assets B.V. | FR*EVZ | raw rank121": "batch502 setAside: current FR*EVZ spans multiple networks/site authorities (EVzen, CARF, Norauto and others). GreenFlux is the CPO software/platform layer; exact underlying network/site direct tariff must be resolved per EVSE. No national GreenFlux Assets tariff and no inheritance from treated Greenflux/EVzen.",
-    "Porsche Sales | raw rank109": "batch503 setAside: Porsche Sales/Marketplace estate mixes Porsche Centres and Destination Charging partner sites. Destination Charging can be free for eligible Porsche guests but partner/site fees may apply to others; Porsche Charging Service prices are eMSP/contract prices and not universal direct-CPO tariffs."
+    "Porsche Sales | raw rank109": "batch503 setAside: Porsche Sales/Marketplace estate mixes Porsche Centres and Destination Charging partner sites. Destination Charging can be free for eligible Porsche guests but partner/site fees may apply to others; Porsche Charging Service prices are eMSP/contract prices and not universal direct-CPO tariffs.",
+    "PARERA MOBILITE | FR*MW1 / FR*VIS": "batch504 setAside authority: PARERA MobilyWeb permits custom tariff policies by user profile and handles billing/revenue. No universal direct tariff; raw156 FR*VIS is non-counting same-operator lineage with separate technical estate."
   },
   "history": [
     {
@@ -1451,9 +1458,19 @@
         "setAsideCpos": 40,
         "activeRemainingCpos": 155
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch504",
+      "change": "Moved PARERA MOBILITE FR*MW1 raw99 active->setAside after first-party configurable tariff-policy proof; materialized FR*VIS raw156 as non-counting same-operator lineage with separate technical estate. No tariff inheritance.",
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 41,
+        "activeRemainingCpos": 154
+      }
     }
   ],
-  "currentInvestigation": "PARERA MOBILITE | raw rank99/156: inspect current first-party operator estates FR*MW1 and FR*VIS, determine whether tariffs are host/site configurable, and seek deterministic station/EVSE direct pricing before any classification.",
+  "currentInvestigation": "LMS | raw rank146 | 39 stations / 48 PDC: inspect first-party/backend lineage, exact tariff authority and reuse Last Mile Solutions artifacts before any classification.",
   "coherenceControl": {
     "batch": "batch491",
     "result": "PASS",
@@ -1468,11 +1485,11 @@
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch503",
-    "result": "PASS_PORSCHE_SALES_FAIL_CLOSED",
+    "batch": "batch504",
+    "result": "PASS_PARERA_FAIL_CLOSED_AND_LINEAGE",
     "counterChange": true
   },
-  "latestBatch": "batch503",
+  "latestBatch": "batch504",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2241,6 +2258,22 @@
       "category": "setAside-authority",
       "decision": "active->setAside: heterogeneous Porsche Centre + Destination Charging estate; direct price depends on site/eligibility, while Porsche Charging Service pricing is eMSP and cannot be used as CPO-direct authority",
       "evidence": "docs/france-regional-cpo-porsche-sales-batch503-2026-10-01.json"
+    },
+    {
+      "rawRank": 99,
+      "historicalOperator": "PARERA MOBILITE | FR*MW1",
+      "authority": "PARERA MOBILITE",
+      "category": "setAside-authority",
+      "decision": "active->setAside: first-party MobilyWeb supports custom per-profile tariffs and billing; no deterministic anonymous station/EVSE -> current configured direct tariff resolver recovered",
+      "evidence": "docs/france-regional-cpo-parera-batch504-2026-10-01.json"
+    },
+    {
+      "rawRank": 156,
+      "historicalOperator": "PARERA MOBILITE | FR*VIS",
+      "authority": "PARERA MOBILITE | FR*MW1",
+      "category": "setAside-authority-alias",
+      "decision": "same operator identity, separate technical estate; non-counting lineage to raw99; no tariff inheritance",
+      "evidence": "docs/france-regional-cpo-parera-batch504-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
