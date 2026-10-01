@@ -1,86 +1,63 @@
 #!/usr/bin/env python3
-import json, sys
+import json, sys, urllib.request, urllib.parse
 src, out = sys.argv[1:3]
 with open(src, encoding="utf-8") as f:
     data=json.load(f)
 
 def records(x):
     if isinstance(x,list):
-        for v in x:
-            if isinstance(v,dict): yield v
-    elif isinstance(x,dict):
+        return [v for v in x if isinstance(v,dict)]
+    if isinstance(x,dict):
         for key in ("data","records","items","charge_points","chargePoints","pricing"):
             v=x.get(key)
             if isinstance(v,list):
-                for row in v:
-                    if isinstance(row,dict): yield row
-                return
+                return [row for row in v if isinstance(row,dict)]
         for v in x.values():
             if isinstance(v,list) and v and isinstance(v[0],dict):
-                for row in v: yield row
+                return [row for row in v if isinstance(row,dict)]
+    return []
 
-rows=list(records(data))
-def val(row,*keys):
-    for k in keys:
-        if k in row and row[k] is not None: return row[k]
-    return None
-
+rows=records(data)
 matched=[]
 for r in rows:
-    ev=str(val(r,"evse","evse_id","evseId","id") or "")
-    op=str(val(r,"operator","operator_name","operatorName","name") or "")
-    blob=json.dumps(r, ensure_ascii=False).lower()
-    if ev.upper().startswith("FR*PAN") or "anyos" in op.lower() or '"fr*pan' in blob or "anyos" in blob:
+    ev=str(r.get("evse_id") or r.get("evse") or r.get("evseId") or r.get("id") or "")
+    op=str(r.get("operator") or r.get("operator_name") or r.get("operatorName") or r.get("name") or "")
+    if ev.upper().startswith("FR*PAN") or "anyos" in op.lower():
         matched.append(r)
 
-def scalar(row, names):
-    for n in names:
-        v=row.get(n)
-        if isinstance(v,(str,int,float,bool)) or v is None:
-            if n in row: return v
-    return None
+evses=sorted({str(r.get("evse_id") or r.get("evse") or r.get("evseId") or "") for r in matched if (r.get("evse_id") or r.get("evse") or r.get("evseId"))})
+sites=sorted({str(r.get("address") or "") for r in matched if r.get("address")})
+tariffs=sorted({str(r.get("ocpi_tariff_id") or r.get("ocpi_tariff") or r.get("tariff_id") or "") for r in matched if (r.get("ocpi_tariff_id") or r.get("ocpi_tariff") or r.get("tariff_id"))})
 
-norm=[]
-for r in matched:
-    norm.append({
-      "evse": scalar(r,["evse","evse_id","evseId","id"]),
-      "operator": scalar(r,["operator","operator_name","operatorName","name"]),
-      "country": scalar(r,["country","country_name","countryName"]),
-      "address": scalar(r,["address","location","site"]),
-      "kw": scalar(r,["kw","kW","power","max_power"]),
-      "price_per_kwh": scalar(r,["price_per_kwh","pricePerKwh","price_kwh","priceKwh"]),
-      "price_per_min": scalar(r,["price_per_min","pricePerMin","price_min"]),
-      "start_fee": scalar(r,["start_fee","startFee"]),
-      "parking_fee": scalar(r,["parking_fee","parkingFee"]),
-      "currency": scalar(r,["currency"]),
-      "tariff_id": scalar(r,["ocpi_tariff","ocpiTariff","tariff_id","tariffId"]),
-      "raw": r
-    })
+sample_evse="FR*PAN*E5678518"
+sample_url="https://app.monta.app/d/"+urllib.parse.quote(sample_evse, safe="*")
+req=urllib.request.Request(sample_url, headers={"User-Agent":"Mozilla/5.0"})
+sample={"evse":sample_evse,"url":sample_url}
+try:
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        body=resp.read().decode("utf-8","replace")
+        sample.update({
+          "status":resp.status,
+          "final_url":resp.geturl(),
+          "body_length":len(body),
+          "contains_export_price_0_275":("0.275" in body),
+          "contains_private_charger":("Private charger" in body),
+          "body_prefix":body[:120000]
+        })
+except Exception as e:
+    sample["error"]=repr(e)
 
-evses=sorted({str(x["evse"]) for x in norm if x["evse"]})
-sites=sorted({str(x["address"]) for x in norm if x["address"]})
-tariffs=sorted({str(x["tariff_id"]) for x in norm if x["tariff_id"]})
-combos={}
-for x in norm:
-    key=(x["price_per_kwh"],x["price_per_min"],x["start_fee"],x["parking_fee"],x["currency"],x["tariff_id"])
-    combos[str(key)]=combos.get(str(key),0)+1
 res={
  "source":"https://app.monta.app/roaming/monta-as-a-cpo-pricing/export/json",
  "source_record_count":len(rows),
- "matched_record_count":len(norm),
+ "matched_record_count":len(matched),
  "unique_evses":len(evses),
  "unique_sites":len(sites),
  "unique_tariff_ids":len(tariffs),
- "evses":evses,
- "sites":sites,
- "tariff_ids":tariffs,
- "tariff_combinations":combos,
- "records":norm
+ "records":matched,
+ "direct_deeplink_sample":sample
 }
 with open(out,"w",encoding="utf-8") as f:
     json.dump(res,f,ensure_ascii=False,indent=2)
 print(json.dumps({k:res[k] for k in ("source_record_count","matched_record_count","unique_evses","unique_sites","unique_tariff_ids")}))
-
-# synchronize trigger: 2026-10-01
-
-# run trigger after workflow is on main
+print(json.dumps({k:sample.get(k) for k in ("evse","status","final_url","body_length","contains_export_price_0_275","contains_private_charger","error")}))
