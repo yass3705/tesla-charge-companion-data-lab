@@ -262,6 +262,53 @@ jobs:
                               if c.get("tariff") or c.get("tariffs") or c.get("price") or c.get("pricing"):
                                   tariffs+=1
 
+          # Tariff validation: Shell v2.1.2 exposes tariff details only on
+          # /locations/{uid} and requires providerId. Test the providerId used
+          # in Shell's public v2.1.2 tariff example, plus a no-provider control.
+          tariff_probes=[]
+          shell_candidates=[
+              loc for loc in uk
+              if str(loc.get("operatorName") or "").lower() in ("shell recharge","migration shell recharge")
+              or str(loc.get("operatorId") or "").upper().startswith(("GB*SHE","GB*UBI","DE*UBI"))
+          ][:5]
+
+          def detail_with_provider(uid,provider_id=None):
+              params={}
+              if provider_id is not None:
+                  params["providerId"]=provider_id
+              path="/v2/locations/"+urllib.parse.quote(str(uid),safe="")
+              jj=probe(path,params,diag_key=path+(" provider "+str(provider_id) if provider_id else " no-provider"))
+              return jj
+
+          for loc in shell_candidates:
+              uid=loc.get("uid") or loc.get("externalId")
+              if not uid:
+                  continue
+              item={
+                  "uid":uid,
+                  "operatorId":loc.get("operatorId"),
+                  "operatorName":loc.get("operatorName"),
+                  "address":loc.get("address")
+              }
+              for provider in (None,"Shell_RP_2","Shell_RP_1","Shell_RP"):
+                  jj=detail_with_provider(uid,provider)
+                  data=jj.get("data") if isinstance(jj,dict) else None
+                  if isinstance(data,list) and data:
+                      data=data[0]
+                  tariffs=[]
+                  if isinstance(data,dict):
+                      tariffs=data.get("tariffs") or []
+                      if not tariffs:
+                          for ev in data.get("evses") or []:
+                              for conn in ev.get("connectors") or []:
+                                  tariffs.extend(conn.get("tariffs") or ([] if conn.get("tariff") is None else [conn.get("tariff")]))
+                  item["noProvider" if provider is None else provider]={
+                      "status":jj.get("status") if isinstance(jj,dict) else None,
+                      "tariffCount":len(tariffs) if isinstance(tariffs,list) else 0,
+                      "tariffs":tariffs[:5] if isinstance(tariffs,list) else []
+                  }
+              tariff_probes.append(item)
+
           report={
               "retrievedAt":now,
               "diagnostics":diag,
@@ -276,7 +323,8 @@ jobs:
               "firstLocationKeys":list(uk[0].keys()) if uk else [],
               "coarseMarkerCount":len(marker_items),
               "fineMarkerCount":len(unique_markers),
-              "fineMarkerSamples":unique_markers[:10]
+              "fineMarkerSamples":unique_markers[:10],
+              "tariffProbes":tariff_probes
           }
           Path("reports/uk/shell-ev-public-locations-latest.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
           print(json.dumps(report,ensure_ascii=False,indent=2))
