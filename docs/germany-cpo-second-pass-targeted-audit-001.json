@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-targeted-audit",
+  "auditBatch": 1,
+  "date": "2026-09-16",
+  "supersessionNotice": "For GEW Wilhelmshaven price normalization only, see docs/germany-cpo-second-pass-targeted-audit-002.json. Audit #2 identified that the 0.44 EUR/kWh source field can be net of 19% VAT and must not be treated as the confirmed gross/user-facing tariff without normalization. All other audit #1 findings remain in force.",
+  "audited": [
+    {
+      "name": "Allgaeuer Kraftwerke GmbH",
+      "statusAfter": "partial",
+      "result": "Current chargecloud/Mobilithek operator profile still identifies 25 ad-hoc stations / 67 charge points, but exact energy-price coverage remains only 61 points: 53 AC at 0.51 EUR/kWh, 5 DC with 0.57-0.66 EUR/kWh, and 3 HPC at 0.66 EUR/kWh. Six charge points remain without exact verified price, so the bounded gap is real and no network-wide extrapolation is allowed.",
+      "sources": ["https://adhoccharging.eu/de/operator/allg-uer-kraftwerke-gmbh/","https://www.allgaeukraft.de/faq.html"],
+      "nextBlocker": "B1_COVERAGE_EVSE_MATRIX",
+      "nextAction": "Target only the six unpriced charge points through the chargecloud/Mobilithek inventory or direct checkout; do not repeat broad operator discovery."
+    },
+    {
+      "name": "Stadtwerke Goettingen AG",
+      "statusAfter": "partial",
+      "result": "Energy-price coverage is now essentially reconciled: the current chargecloud/Mobilithek operator profile exposes 225 AC points at 0.46 EUR/kWh, 3 DC points at 0.52 EUR/kWh and 6 HPC points at 0.52 EUR/kWh across the ad-hoc estate. However, fee components are not uniform in current direct-payment evidence: sampled AC direct-payment sites expose a 1.50 EUR start fee plus 0.06 EUR/min after 240 minutes, while the Gallus-Park 150 kW HPC site exposes a 2.50 EUR start fee plus 0.06 EUR/min after 120 minutes. The first-party registered Basistarif separately shows a 0.70 EUR start fee and cannot be substituted. Therefore the energy matrix is solved but the anonymous fee matrix is not.",
+      "sources": ["https://www.stadtwerke-goettingen.de/energieloesungen/e-mobilitaet/","https://adhoccharging.eu/de/operator/stadtwerke-g-ttingen-aktiengesellschaft/","https://www.e-stations.de/ladestationen/goettingen/gallus-park-3763"],
+      "nextBlocker": "B4_FEE_COMPONENT_COMPLETENESS",
+      "nextAction": "Map direct start/blocking fees by EVSE/power class; do not re-investigate the already reconciled 0.46 AC / 0.52 DC-HPC energy rates."
+    },
+    {
+      "name": "Stadtwerke Leipzig GmbH",
+      "statusAfter": "partial",
+      "result": "The 2026 first-party ad-hoc lead is confirmed. Official AGB valid from 01.01.2026 explicitly set anonymous ad-hoc pricing at 0.65 EUR/kWh AC and 0.75 EUR/kWh DC plus 0.0833 EUR per started minute after minute 240 AC / 120 DC, only from 08:00-20:00; P+R locations are exempt from the stand-time fee. The same AGB explicitly limits this contract to public Stadtwerke Leipzig stations erected before 13.04.2024. Since the current estate exceeds 900 charge points and includes newer infrastructure, the tariff cannot yet be generalized to the entire canonical CPO estate.",
+      "sources": ["https://files.l.de/lde-typo3/Leipziger/Stadtwerke/Dokumente/E-Mobilitaet/Stadtwerke-E-Mobilitaet-AGB-Ad-hoc-Laden.pdf","https://kundenservice-stadtwerke.l.de/hc/de/articles/360022131059-Wie-erhalte-ich-einen-Zugang-zu-den-Ladestationen-der-Leipziger-Stadtwerke","https://www.l.de/stadtwerke/privatkunden/e-mobilitaet/unterwegs-laden/"],
+      "nextBlocker": "B1_COVERAGE_EVSE_MATRIX",
+      "nextAction": "Split pre-13.04.2024 legacy EVSEs from newer AFIR-era stations and recover the direct price/fee rules for the newer subset only."
+    },
+    {
+      "name": "Stadtwerke Kempen GmbH",
+      "statusAfter": "partial",
+      "result": "The first-party conflict remains genuine. The current FAQ explicitly says the same ad-hoc and registered-app price is 1.19 EUR start + 0.45 EUR/kWh, while the current public-charging page states 1.19 EUR start + 0.48 EUR/kWh. Both are live first-party surfaces, so neither value is promoted until a timestamped tariff artifact or live checkout resolves precedence.",
+      "sources": ["https://www.stadtwerke-kempen.de/de/Strom/E-Mobilitaet/FAQ/","https://www.stadtwerke-kempen.de/de/Strom/E-Mobilitaet/Oeffentliches-Laden/"],
+      "nextBlocker": "B7_CONTRADICTORY_SOURCES",
+      "nextAction": "Use one live ad-hoc QR checkout or dated price sheet to resolve 0.45 versus 0.48 EUR/kWh; start fee is consistently 1.19 EUR."
+    },
+    {
+      "name": "Stadtwerke Erft GmbH / Ladekooperation Erft",
+      "statusAfter": "partial",
+      "result": "Current first-party material confirms 27 charging columns in the cooperation area, a 0.49 EUR/kWh RFID-card tariff with no monthly fee, and QR/browser charging at all Stadtwerke Erft columns. The current first-party AGB explicitly treats ad-hoc as a separate product whose current price includes a per-session base fee plus consumption charge and is shown in the ladeapp before charging. Therefore 0.49 EUR/kWh RFID cannot be promoted to anonymous QR pricing.",
+      "sources": ["https://stadtwerke-erft.de/ladesaeulen/","https://stadtwerke-erft.de/wp-content/uploads/2023/07/AGB-Ladeinfrastruktur-SWErft.pdf"],
+      "nextBlocker": "B6_DYNAMIC_SURFACE_OR_APP",
+      "nextAction": "Capture the current ladeapp/QR ad-hoc base fee and EUR/kWh value from one or more SWErft EVSEs; card equivalence is explicitly disproven by product separation."
+    },
+    {
+      "name": "GEW Wilhelmshaven GmbH",
+      "statusAfter": "partial",
+      "result": "SUPERSEDED IN PART BY AUDIT #2 FOR PRICE NORMALIZATION. The bounded estate is now clearer: GEW's current first-party page lists five public locations and confirms direct contactless card payment without registration. Current Mobilithek/Eco-Movement station surfaces expose a 0.44 EUR/kWh source price across named ChargePoint-backed GEW locations, with no start/blocking fee on fully exposed records. Audit #2 established that at least one current presentation explicitly treats 0.44 EUR/kWh as net plus 19% VAT and current direct-payment surfaces display about 0.52 EUR/kWh gross. Therefore 0.44 must not be ingested as confirmed gross/user-facing price.",
+      "sources": ["https://www.gew-wilhelmshaven.de/produkte/elektromobilitaet/unterwegs/","https://www.gew-wilhelmshaven.de/aktuelles/news/geaenderte-zahlungsmoeglichkeiten-an-unseren-e-ladesaeulen-275/","https://www.e-stations.de/ladestationen/wilhelmshaven/gew-whv-station-04-36342","https://www.e-stations.de/ladestationen/wilhelmshaven/gew-whv-station-7-30652","https://www.automatenwegweiser.de/automat/chargepoint/wilhelmshaven/gew-whv-station-02","https://www.ladeguru.de/ort/wilhelmshaven"],
+      "nextBlocker": "B4_FEE_COMPONENT_COMPLETENESS",
+      "nextAction": "Follow audit #2: normalize net/gross first, then confirm fee components for the remaining official locations."
+    }
+  ],
+  "statusChanges": 0,
+  "consistencyCheck": {
+    "status": "PASS_WITH_LATER_GEWCORRECTION",
+    "promotions": 0,
+    "unsafeExtrapolations": 0,
+    "registeredOrRoamingTariffSubstituted": false,
+    "materialProgress": "Six broad partials were reduced to bounded residual tasks. Goettingen energy-rate discovery is closed and now needs fee mapping only; Leipzig legacy ad-hoc pricing is authoritatively confirmed and only post-13.04.2024 coverage remains; GEW energy-price source was bounded but its gross/net interpretation is superseded by audit #2; Erft RFID/ad-hoc equivalence is explicitly ruled out by first-party AGB."
+  },
+  "nextSafeAction": "Use docs/germany-cpo-second-pass-targeted-audit-002.json as the current targeted-audit authority, especially for GEW price normalization."
+}
