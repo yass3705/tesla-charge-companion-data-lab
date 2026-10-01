@@ -113,6 +113,31 @@ for(const sh of cman.shards||[]){
 }
 const byMode={};
 for(const g of groups)byMode[g.mode]=(byMode[g.mode]||0)+g.residualCount;
+const validatedGroups=[];
+for(const g of groups.filter(g=>g.mode==='homogeneous_exact_set')){
+  validatedGroups.push({
+    electroverseLocationPk:g.electroverseLocationPk,
+    irveStationId:g.irveStationId,
+    electroverseEvsePks:g.refs.map(x=>x.evsePk),
+    physicalReferences:g.refs.map(x=>x.physicalReference),
+    targetPdcs:[...localPdcByLocation.get(String(g.electroverseLocationPk))||[]],
+    evidence:{mode:'homogeneous_exact_set',homogeneousPricing:g.homogeneousPricing,uniformConnectorCount:g.uniformConnectorCount}
+  });
+}
+await fs.mkdir('data/platforms/electroverse/validated-mappings',{recursive:true});
+await fs.writeFile(
+  'data/platforms/electroverse/validated-mappings/zero-residual-groups.json',
+  JSON.stringify({
+    schemaVersion:1,
+    generatedAt:new Date().toISOString(),
+    dataset:'electroverse-france-zero-validated-residual-groups',
+    groupCount:validatedGroups.length,
+    sourceEvseCount:validatedGroups.reduce((n,g)=>n+g.electroverseEvsePks.length,0),
+    policy:'Only homogeneous exact-set groups where residual source count equals available unpublished local national target count; no per-EVSE permutation invented.',
+    groups:validatedGroups
+  },null,2)+'\n'
+);
+
 const out={
  schemaVersion:1,generatedAt:new Date().toISOString(),
  residualSourceEvses:residual,affectedLocations:locations,byMode,
