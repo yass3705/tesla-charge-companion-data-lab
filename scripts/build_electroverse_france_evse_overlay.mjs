@@ -196,6 +196,7 @@ const stats={
   izfHomogeneousGroupCandidateEvses:0,izfHomogeneousGroupPublishedEvses:0,
   viaFinalOrdinalCandidateRefs:0,viaFinalOrdinalPublishedEvses:0,
   viaHomogeneousGroupCandidateEvses:0,viaHomogeneousGroupPublishedEvses:0,
+  c55HomogeneousGroupCandidateEvses:0,c55HomogeneousGroupPublishedEvses:0,
   durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
@@ -674,9 +675,103 @@ for(const sh of manifest.shards||[]){
       viaGroupTargets.size ? [...viaGroupTargets.values()][0].sourceEvses : []
     );
 
+    // 55C lab: homogeneous exact-set fallback after all existing identity families.
+    const c55GroupTargets=new Map();
+    const localListFor55C=[...local];
+    if(localListFor55C.some(p=>/^FR55CE/.test(p))){
+      const alreadyClaimed=new Set();
+      const unresolved=[];
+      for(const e0 of row.tariff?.evses||[]){
+        const pr0=text(e0?.physicalReference);if(!pr0)continue;
+        const k0=norm(pr0);
+        if(local.has(k0)){alreadyClaimed.add(k0);continue;}
+        const p0=localListFor55C.filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\d{1,2}$/.test(k0.slice(p.length)));
+        if(p0.length===1){alreadyClaimed.add(p0[0]);continue;}
+        if(ordinalTargets.has(e0)){alreadyClaimed.add(ordinalTargets.get(e0));continue;}
+        if(genericTargets.has(e0)){alreadyClaimed.add(genericTargets.get(e0));continue;}
+        if(suffixTargets.has(e0)){alreadyClaimed.add(suffixTargets.get(e0));continue;}
+        if(trimmedSuffixTargets.has(e0)){alreadyClaimed.add(trimmedSuffixTargets.get(e0));continue;}
+        if(pd1FinalOrdinalTargets.has(e0)){alreadyClaimed.add(pd1FinalOrdinalTargets.get(e0));continue;}
+        if(viaFinalOrdinalTargets.has(e0)){alreadyClaimed.add(viaFinalOrdinalTargets.get(e0));continue;}
+        if(izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0))continue;
+        unresolved.push(e0);
+      }
+      const allUnclaimed=localListFor55C.filter(p=>!alreadyClaimed.has(p));
+      const unclaimed55=allUnclaimed.filter(p=>/^FR55CE/.test(p));
+      if(unresolved.length>=1 && unresolved.length===unclaimed55.length &&
+         allUnclaimed.length===unclaimed55.length &&
+         unclaimed55.every(p=>(globalPdcOwners.get(p)?.size||0)===1)){
+        const compiledRows=[];
+        let valid=true;
+        for(const e0 of unresolved){
+          const connectors=e0?.connectors||[];
+          if(!connectors.length){valid=false;break;}
+          const compiled=[];
+          for(const c0 of connectors){
+            const x=compileConnector(c0);if(!x.ok){valid=false;break;}
+            compiled.push({pricing:x.pricing,connectorPk:c0.pk??null});
+          }
+          if(!valid)break;
+          const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
+          if(unique.length!==1){valid=false;break;}
+          compiledRows.push({e:e0,pricing:unique[0],connectorCount:connectors.length});
+        }
+        if(valid&&compiledRows.length===unresolved.length){
+          const pricingSigs=new Set(compiledRows.map(x=>pricingSig(x.pricing)));
+          const connectorCounts=new Set(compiledRows.map(x=>x.connectorCount));
+          if(pricingSigs.size===1&&connectorCounts.size===1){
+            const sharedPricing=compiledRows[0].pricing;
+            const connectorCount=compiledRows[0].connectorCount;
+            for(const p of unclaimed55)c55GroupTargets.set(p,{pricing:sharedPricing,connectorCount,sourceEvses:unresolved});
+          }
+        }
+      }
+    }
+
+    if(c55GroupTargets.size){
+      const sourceEvses=[...new Set([...c55GroupTargets.values()].flatMap(x=>x.sourceEvses))];
+      const shared=[...c55GroupTargets.values()][0];
+      const currency=shared.pricing.rules?.[0]?.currency||'EUR';
+      for(const targetNorm of c55GroupTargets.keys()){
+        const targetPdc=localByNorm.get(targetNorm);
+        const offer={
+          id:`electroverse-evse-55c-group:${row.electroverseLocationPk}:${targetNorm}`,
+          provider:'Electroverse',
+          countries:['FR'],
+          currency,
+          priority:80,
+          verifiedScope:'exact_evse_group',
+          evseIds:[targetPdc],
+          pricing:shared.pricing,
+          metadata:{
+            verified:true,
+            identityMode:'strict_55c_homogeneous_exact_set',
+            electroverseLocationPk:String(row.electroverseLocationPk),
+            electroverseEvsePks:sourceEvses.map(e=>e.pk??null),
+            physicalReferences:sourceEvses.map(e=>text(e?.physicalReference)),
+            connectorCount:shared.connectorCount,
+            sourceGroupSize:sourceEvses.length,
+            targetGroupSize:c55GroupTargets.size,
+            tariffHash:row.tariffHash||null,
+            fetchedAt:row.fetchedAt||null,
+            source:'Electroverse tariff cache'
+          }
+        };
+        const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
+        tiles.get(id).push(offer);
+        stats.c55HomogeneousGroupCandidateEvses++;
+        stats.c55HomogeneousGroupPublishedEvses++;
+        stats.pricedExactEvses++;
+        stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=shared.connectorCount;
+      }
+    }
+    const c55GroupedSourceEvses=new Set(
+      c55GroupTargets.size ? [...c55GroupTargets.values()][0].sourceEvses : []
+    );
+
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
-      if(izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e))continue;
+      if(izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e))continue;
       const pr=text(e?.physicalReference);
       if(!pr){rej('evse_missing_physical_reference');continue;}
       stats.physicalRefs++;
@@ -966,6 +1061,7 @@ stats.pd1FinalOrdinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMo
 stats.izfHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_izf_homogeneous_exact_set').length;
 stats.viaFinalOrdinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_via_final_ordinal_subgroup_bijection').length;
 stats.viaHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_via_homogeneous_exact_set').length;
+stats.c55HomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_homogeneous_exact_set').length;
 stats.trimmedSuffixPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_trimmed_long_suffix_identity').length;
 stats.durationBandPublishedEvses=finalOffers.filter(o=>(o.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)).length;
 
@@ -1011,6 +1107,11 @@ const out={
     viaExactSetRequiresHomogeneousPricing:true,
     viaExactSetRequiresUniformConnectorCount:true,
     viaExactSetRequiresGlobalPdcUniqueness:true,
+    strict55cHomogeneousExactSet:true,
+    c55ExactSetRequiresEqualCardinality:true,
+    c55ExactSetRequiresHomogeneousPricing:true,
+    c55ExactSetRequiresUniformConnectorCount:true,
+    c55ExactSetRequiresGlobalPdcUniqueness:true,
     suffixIdentityRequiresGlobalUniqueness:true,
     suffixIdentityRequiresUnclaimedTarget:true,
     strictTrimmedLongSuffixIdentityMinLength:7,
