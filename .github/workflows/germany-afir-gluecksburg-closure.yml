@@ -1,0 +1,44 @@
+name: Germany AFIR Gluecksburg closure
+on:
+  push:
+    paths: [".github/workflows/germany-afir-gluecksburg-closure.yml"]
+  workflow_dispatch:
+permissions: {contents: write}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          import gzip,json,pathlib,collections
+          with gzip.open("data/national/germany_non_tesla_catalog_staging_direct_cpo.json.gz","rt",encoding="utf-8") as f:d=json.load(f)
+          rows=[]
+          for s in d.get("sites",[]):
+            if str(s.get("operator") or "").strip().casefold()!="stadt glücksburg".casefold(): continue
+            af=s.get("afir") or {}; ad=af.get("data") or {}
+            rows.append({"siteId":s.get("id"),"powerKw":s.get("maxConnectionPowerKw"),"evseIds":s.get("evseIds"),"matchStatus":af.get("matchStatus"),"provider":ad.get("provider"),"sourceSiteId":ad.get("sourceSiteId"),"rawTariffs":ad.get("rawTariffs"),"hasRawTariff":ad.get("hasRawTariff")})
+          sig=collections.Counter(); pays=collections.Counter(); tax=collections.Counter(); n=anon=0
+          for r in rows:
+            for t in r.get("rawTariffs") or []:
+              n+=1; pay=t.get("payment"); pays[json.dumps(pay,sort_keys=True,ensure_ascii=False)]+=1
+              ptxt=json.dumps(pay,ensure_ascii=False).lower()
+              if any(k in ptxt for k in ("qrcode","creditcard","debitcard","credit_card","debit_card","qr_code")): anon+=1
+              ps=[]
+              for x in t.get("prices") or []:
+                tax[str(x.get("taxIncluded"))]+=1
+                ps.append({"priceType":x.get("priceType"),"value":x.get("value"),"taxIncluded":x.get("taxIncluded"),"timeBasedApplicability":x.get("timeBasedApplicability"),"overallPeriod":x.get("overallPeriod")})
+              sig[json.dumps({"payment":pay,"prices":ps},sort_keys=True,ensure_ascii=False)]+=1
+          out={"schemaVersion":1,"operator":"Stadt Glücksburg","sites":len(rows),"matchedSafe":sum(r["matchStatus"]=="matched_safe" for r in rows),"rawTariffSites":sum(bool(r["hasRawTariff"]) for r in rows),"tariffObjects":n,"anonymousPaymentTariffObjects":anon,"paymentCounts":dict(pays),"taxIncludedCounts":dict(tax),"tariffSignatureCounts":dict(sig),"rows":rows}
+          pathlib.Path("docs/germany-afir-gluecksburg-closure-2026-10-01.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({k:out[k] for k in ("sites","matchedSafe","rawTariffSites","tariffObjects","anonymousPaymentTariffObjects","paymentCounts","taxIncludedCounts","tariffSignatureCounts")},ensure_ascii=False,indent=2))
+          assert out["sites"]==10 and out["matchedSafe"]==10 and out["rawTariffSites"]==10
+          PY
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/germany-afir-gluecksburg-closure-2026-10-01.json
+          git diff --cached --quiet && exit 0
+          git commit -m "audit(de): close Gluecksburg AFIR tariff matrix"
+          for attempt in 1 2 3 4 5; do git pull --rebase origin main && git push origin HEAD:main && exit 0 || true; sleep $((attempt*2)); done
+          exit 1
