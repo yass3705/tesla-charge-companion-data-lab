@@ -99,4 +99,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/operator_direct/lidl_plus_france.json reports/lidl-plus/latest_summary.md
           git commit -m "data(lidl): publish official Lidl Plus national tariff [run ${GITHUB_RUN_ID}]"
-          git push origin HEAD:main
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
