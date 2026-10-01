@@ -18,44 +18,41 @@ jobs:
       - name: Audit canonical Germany staging catalog
         run: |
           python - <<'PY'
-          import gzip,json,pathlib,re
-          p=pathlib.Path("data/national/germany_non_tesla_catalog_staging_direct_cpo.json.gz")
-          with gzip.open(p,"rt",encoding="utf-8") as f: d=json.load(f)
-          targets=[
-            "Stadtwerke Schifferstadt","Bad Honnef","Stadtwerke Garbsen","Stadtwerke Lemgo",
-            "HEOS","Stadtwerke Iserlohn","Stadtwerke Eutin","Stadtwerke Lehrte",
-            "Stadtwerke Wolfenbüttel","Stadtwerke Emmendingen","Energieversorgung Sehnde",
-            "Stadtwerke Weinstadt","Nienburg Energie","Stadtwerke Wunstorf","Stadtwerke Holzminden",
-            "Stadtwerke Brilon","Stadtwerke Warburg","Stadtwerke Emmerich","Stadtwerke Plön"
-          ]
-          found={t:[] for t in targets}
-          def walk(x,path="$"):
-            if isinstance(x,dict):
-              s=json.dumps(x,ensure_ascii=False)
-              for t in targets:
-                if t.lower() in s.lower() and len(found[t])<20:
-                  # retain compact tariff/operator/EVSE evidence, bounded in size
-                  keep={}
-                  for k,v in x.items():
-                    kl=k.lower()
-                    if any(z in kl for z in ["operator","name","evse","station","tariff","price","fee","afir","provider","power","connector","adhoc","vat","blocking","time","id"]):
-                      keep[k]=v
-                  found[t].append({"path":path,"fields":keep})
-              for k,v in x.items(): walk(v,path+"."+str(k))
-            elif isinstance(x,list):
-              for i,v in enumerate(x): walk(v,path+f"[{i}]")
-          walk(d)
-          out={"schemaVersion":1,"country":"DE","source":str(p),"targets":{}}
-          for t,rows in found.items():
-            # dedupe exact rows
-            seen=set(); uniq=[]
-            for r in rows:
-              key=json.dumps(r,sort_keys=True,ensure_ascii=False)
-              if key not in seen: seen.add(key);uniq.append(r)
-            out["targets"][t]={"matches":len(uniq),"samples":uniq[:8]}
-          q=pathlib.Path("docs/germany-afir-partial-candidate-audit-2026-10-01.json")
-          q.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
-          print(json.dumps({k:v["matches"] for k,v in out["targets"].items()},indent=2))
+          import gzip,json,pathlib
+          with gzip.open("data/national/germany_non_tesla_catalog_staging_direct_cpo.json.gz","rt",encoding="utf-8") as f:d=json.load(f)
+          aliases={
+            "Stadtwerke Schifferstadt":["stadtwerke schifferstadt"],
+            "Bad Honnef AG":["bad honnef ag"],
+            "Stadtwerke Garbsen":["stadtwerke garbsen"],
+            "Stadtwerke Lemgo":["stadtwerke lemgo"],
+            "HEOS":["heos object","heos services"],
+            "Stadtwerke Iserlohn":["stadtwerke iserlohn"],
+            "Stadtwerke Eutin":["stadtwerke eutin"],
+            "Stadtwerke Lehrte":["stadtwerke lehrte"],
+            "Stadtwerke Wolfenbuettel":["stadtwerke wolfenb"],
+            "Stadtwerke Emmendingen":["stadtwerke emmendingen"],
+            "Energieversorgung Sehnde":["energieversorgung sehnde"],
+            "Stadtwerke Weinstadt":["stadtwerke weinstadt"],
+            "Nienburg Energie":["nienburg energie"],
+            "Stadtwerke Wunstorf":["stadtwerke wunstorf","meerenergie"],
+            "Stadtwerke Holzminden":["stadtwerke holzminden"],
+            "Stadtwerke Brilon":["stadtwerke brilon"],
+            "Stadtwerke Warburg":["stadtwerke warburg"],
+            "Stadtwerke Emmerich":["stadtwerke emmerich"],
+            "Stadtwerke Ploen":["stadtwerke plön","stadtwerke ploen"]
+          }
+          out={"schemaVersion":2,"country":"DE","source":"canonical national staging","targets":{}}
+          sites=d.get("sites",[])
+          for name,als in aliases.items():
+            rows=[]
+            for s in sites:
+              op=str(s.get("operator") or "").lower()
+              if not any(a in op for a in als):continue
+              af=s.get("afir") or {}; ad=af.get("data") or {}
+              rows.append({"id":s.get("id"),"operator":s.get("operator"),"powerKw":s.get("maxConnectionPowerKw"),"evseIds":s.get("evseIds"),"sourceStationIds":s.get("sourceStationIds"),"afirMatchStatus":af.get("matchStatus"),"afirProvider":(af.get("match") or {}).get("provider"),"hasRawTariff":ad.get("hasRawTariff"),"rawTariffs":ad.get("rawTariffs") if ad.get("hasRawTariff") else None})
+            out["targets"][name]={"sites":len(rows),"matchedSafe":sum(r["afirMatchStatus"]=="matched_safe" for r in rows),"rawTariffSites":sum(bool(r["hasRawTariff"]) for r in rows),"rows":rows}
+          pathlib.Path("docs/germany-afir-partial-candidate-audit-2026-10-01.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({k:{x:v[x] for x in ("sites","matchedSafe","rawTariffSites")} for k,v in out["targets"].items()},indent=2))
           PY
       - name: Commit report
         run: |
