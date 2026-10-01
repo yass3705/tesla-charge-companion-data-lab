@@ -5,6 +5,7 @@ const CACHE='data/electroverse/tariff_cache';
 const MAP='data/electroverse/irve_location_mapping.json';
 const OVERLAY='data/platforms/electroverse/france-evse';
 const OUT='reports/electroverse/p01-residual-analysis.json';
+const VALIDATED_OUT='data/platforms/electroverse/validated-mappings/p01-structured-residual.json';
 const norm=x=>String(x??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
 const opFromRef=raw=>{
   const s=String(raw??'').trim();
@@ -41,6 +42,7 @@ for(const m of mapping.mappings||[]) for(const p of m.irvePdcIds||[]){
 
 const cman=JSON.parse(await fs.readFile(CACHE+'/manifest.json','utf8'));
 const groups=[];
+const structuredCandidates=[];
 let residual=0,locations=0;
 for(const sh of cman.shards||[]){
   const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
@@ -76,7 +78,18 @@ for(const sh of cman.shards||[]){
       });
     }
     const structuredTargetCounts=new Map();
-    for(const x of structuredParent)structuredTargetCounts.set(x.target,(structuredTargetCounts.get(x.target)||0)+1);
+    for(const x of structuredParent){
+      structuredTargetCounts.set(x.target,(structuredTargetCounts.get(x.target)||0)+1);
+      structuredCandidates.push({
+        electroverseLocationPk:String(row.electroverseLocationPk),
+        irveStationId:m?.irveStationId??row.irveStationId??null,
+        electroverseEvsePk:x.evsePk,
+        targetPdc:x.target,
+        physicalReference:x.raw,
+        parentBody:x.parentBody,
+        connectorOrdinal:x.connectorOrdinal
+      });
+    }
 
     const crossOperatorParent=[];
     for(const x of refs){
@@ -165,16 +178,31 @@ for(const sh of cman.shards||[]){
 }
 const byMode={};
 for(const g of groups)byMode[g.mode]=(byMode[g.mode]||0)+g.residualCount;
+const globalTargetCounts=new Map();
+for(const x of structuredCandidates)globalTargetCounts.set(x.target,(globalTargetCounts.get(x.target)||0)+1);
+const validatedMappings=structuredCandidates.filter(x=>globalTargetCounts.get(x.target)===1);
 const out={
  schemaVersion:1,generatedAt:new Date().toISOString(),
  residualSourceEvses:residual,affectedLocations:locations,byMode,
  safelyRecoverableSourceEvses:Object.entries(byMode).filter(([k])=>k!=='none').reduce((n,[,v])=>n+v,0),
+ structuredCandidateSourceEvses:structuredCandidates.length,
+ structuredInjectiveSourceEvses:validatedMappings.length,
  safeGroups:groups.filter(g=>g.mode!=='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,200),
  unresolvedSamples:groups.filter(g=>g.mode==='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,100),
- policy:'Diagnostic only. P01 bucket uses the exact same opFromRef classifier as the canonical unpublished-source ranking; local unpublished national targets; global target uniqueness; no proximity inference.'
+ policy:'Diagnostic only. P01 bucket uses exact structured parent reconstruction, local unpublished national targets, global target uniqueness, and no proximity inference.'
+};
+const validated={
+ schemaVersion:1,
+ generatedAt:out.generatedAt,
+ dataset:'electroverse-france-p01-structured-residual-mappings',
+ count:validatedMappings.length,
+ policy:'Only exact P01 structured parent identities with one source EVSE to one globally unique unpublished local national PDC. Any target hit by multiple residual sources is excluded. No proximity inference.',
+ mappings:validatedMappings
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
+await fs.mkdir('data/platforms/electroverse/validated-mappings',{recursive:true});
 await fs.writeFile(OUT,JSON.stringify(out,null,2)+'\n');
-console.log(JSON.stringify(out,null,2));
+await fs.writeFile(VALIDATED_OUT,JSON.stringify(validated,null,2)+'\n');
+console.log(JSON.stringify({report:out,validatedCount:validatedMappings.length},null,2));
 
 // structured P01 residual diagnostic 2026-10-01
