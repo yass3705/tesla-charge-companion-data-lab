@@ -3,9 +3,9 @@
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 96,
-  "setAsideCpos": 48,
-  "activeRemainingCpos": 147,
-  "updatedAt": "2026-10-01T17:58:00+02:00",
+  "setAsideCpos": 49,
+  "activeRemainingCpos": 146,
+  "updatedAt": "2026-10-01T18:04:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -430,6 +430,13 @@
       "since": "2026-10-01",
       "lastChecked": "2026-10-01",
       "audit": "docs/france-regional-cpo-recharge-active-solutions-batch513-2026-10-01.json"
+    },
+    {
+      "name": "Electricité Veit | FR*HOP | raw rank165",
+      "reason": "batch515 fail-closed: first-party Hopla Power Charge supervision explicitly supports configurable tariffs; official HPC Connect app handles QR/station-ID charging and payment, but no reusable anonymous deterministic FR*HOP EVSE -> current direct tariff resolver was recovered. Roaming/eMSP tariffs rejected.",
+      "since": "2026-10-01",
+      "lastChecked": "2026-10-01",
+      "audit": "docs/france-regional-cpo-electricite-veit-hopla-batch515-2026-10-01.json"
     }
   ],
   "activeNominative": [
@@ -529,7 +536,6 @@
     "UNPROVEN_ACTIVE_161",
     "UNPROVEN_ACTIVE_162",
     "RELEASED_ACTIVE_SLOT_164 | alias ProperPhi | raw rank155 (same legal entity; ECOPHI MOBILITY renamed PROPERPHI; no tariff inheritance)",
-    "UNPROVEN_ACTIVE_165",
     "UNPROVEN_ACTIVE_166",
     "UNPROVEN_ACTIVE_168",
     "UNPROVEN_ACTIVE_169",
@@ -902,7 +908,8 @@
     "Alterna Énergie | raw rank154": "batch511 lineage resolved: 6-station/34-PDC historical Alterna estate uses FRSRG EVSE identifiers and current hub identities overlap Sorégies Mobilités. Groupe Sorégies first-party sources distinguish Alterna energy supply from Sorégies charging-network operation. Raw154 is a non-counting treated-authority lineage alias; exact EVSE tariff remains governed by Sorégies method/rules, not Alterna retail energy offers.",
     "Properphi | raw rank155": "batch512 setAside: ProperPhi first-party CGU says recharge tariffs are decided by the customer/site operator; supervision supports QR/app, roaming and bank-card payment. Pricing is site-configurable and heterogeneous; no anonymous deterministic station/EVSE -> current direct tariff resolver recovered.",
     "RECHARGE ACTIVE SOLUTIONS | raw rank163": "batch513 setAside: Recharge Active Solutions/Evoltigo/Wewise is a customer-site charging infrastructure operator/supervisor using Virta-backed billing; current producer IRVE dataset is June 2026 but no public deterministic EVSE -> direct tariff resolver or national grid was recovered.",
-    "Ecophi mobility | raw rank164": "batch514 lineage resolved: same legal entity as ProperPhi raw155 (SIREN 891937641; ECOPHI MOBILITY renamed PROPERPHI). Current 21-PDC Mauffrey Academy footprint is labelled network PROPERPHI. Non-counting alias; ProperPhi remains setAside under batch512; no historical 0.22 tariff inheritance."
+    "Ecophi mobility | raw rank164": "batch514 lineage resolved: same legal entity as ProperPhi raw155 (SIREN 891937641; ECOPHI MOBILITY renamed PROPERPHI). Current 21-PDC Mauffrey Academy footprint is labelled network PROPERPHI. Non-counting alias; ProperPhi remains setAside under batch512; no historical 0.22 tariff inheritance.",
+    "Electricité Veit | FR*HOP | raw rank165": "batch515 setAside: Hopla Power Charge is Electricité Veit first-party charging network; tariffs are configurable in supervision and exact payment is app/QR scoped. No anonymous deterministic current direct tariff resolver; VAB roaming tariff rejected."
   },
   "history": [
     {
@@ -1636,28 +1643,38 @@
         "setAsideCpos": 48,
         "activeRemainingCpos": 147
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch515",
+      "change": "Moved Electricité Veit / FR*HOP raw165 active->setAside. First-party Hopla tariff configuration and official HPC Connect payment flow proven; no anonymous deterministic current direct-tariff resolver. Roaming tariff rejected.",
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 49,
+        "activeRemainingCpos": 146
+      }
     }
   ],
-  "currentInvestigation": "Electricité Veit | FR*HOP | raw rank165 | 6 stations / 20 PDC: inspect V8/V9/Data Lab direct evidence first, then first-party/network/global tariff or deterministic station/EVSE mapping.",
+  "currentInvestigation": "OG Clean Fuels France | FR*PVD | raw rank166 | 6 stations / 20 PDC: inspect V8/V9/Data Lab direct evidence, first-party PitPoint/OG Clean Fuels lineage and exact direct tariff surface.",
   "coherenceControl": {
-    "batch": "batch514",
+    "batch": "batch515",
     "result": "PASS",
-    "arithmetic": "96 + 48 + 147 = 291",
+    "arithmetic": "96 + 49 + 146 = 291",
     "treatedLength": 96,
-    "setAsideLength": 48,
-    "activeLength": 147,
+    "setAsideLength": 49,
+    "activeLength": 146,
     "pendingDedupeCount": 0,
-    "lastChecked": "2026-10-01T17:58:00+02:00",
+    "lastChecked": "2026-10-01T18:04:00+02:00",
     "arithmeticOk": true,
     "treatedPlusSetAsidePlusActive": 291
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch514",
-    "result": "PASS_ECOPHI_PROPERPHI_LINEAGE",
-    "counterChange": false
+    "batch": "batch515",
+    "result": "PASS_HOPLA_FAIL_CLOSED",
+    "counterChange": true
   },
-  "latestBatch": "batch514",
+  "latestBatch": "batch515",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2499,6 +2516,14 @@
       "category": "setAside-authority-alias",
       "decision": "materialized as non-counting legal-name lineage of ProperPhi raw155; ECOPHI MOBILITY renamed PROPERPHI under same SIREN 891937641; raw164 21-PDC footprint is current PROPERPHI-network Mauffrey Academy estate; no tariff inheritance",
       "evidence": "docs/france-cpo-dual-ledger-lineage-batch514-2026-10-01.json"
+    },
+    {
+      "rawRank": 165,
+      "historicalOperator": "Electricité Veit | FR*HOP",
+      "authority": "Electricité Veit / Hopla Power Charge",
+      "category": "setAside-authority",
+      "decision": "active->setAside: configurable first-party tariff model; exact direct price remains app/QR/backend scoped; no anonymous deterministic EVSE resolver recovered",
+      "evidence": "docs/france-regional-cpo-electricite-veit-hopla-batch515-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
