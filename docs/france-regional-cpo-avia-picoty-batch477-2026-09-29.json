@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0.0",
+  "batch": "batch477",
+  "date": "2026-09-29",
+  "cpo": "AVIA/Picoty",
+  "operatorId": "FR*PY2",
+  "decision": "treated",
+  "decisionReason": "Current Picoty Deftpower guest backend provides deterministic exact EVSE-level direct pricing for a validated subset; all unmatched registry stations remain explicitly fail-closed, satisfying the France canonical treated criterion.",
+  "coverage": {
+    "registryStations": 41,
+    "exactPricedStations": 29,
+    "exactPricedEvses": 191,
+    "exactPricedConnectors": 191,
+    "unresolvedRegistryStations": 12,
+    "collectionFailures": 0
+  },
+  "tariffMethod": {
+    "backend": "https://pdefweushaapiam01.azure-api.net/app-backend/v1",
+    "tenantId": "9439c762-3ce1-45fc-a9ea-a92ed5e06489",
+    "cpoFilter": "FRPY2",
+    "mapRule": "Query map-locations with locationStatus (AVAILABLE/UNKNOWN/OUT_OF_ORDER), widening bbox only when necessary.",
+    "priceRule": "Use simulate-pricing only after exact normalized FR*PY2 EVSE match.",
+    "noTariffExtrapolation": true,
+    "unresolvedRowsFailClosed": true
+  },
+  "unresolvedPolicy": "The 12 registry-present stations not exposed with their exact historical EVSE IDs in the current Picoty backend remain in inventory without direct price. Do not infer a price from a nearby Picoty station or another EVSE.",
+  "sourceRepo": "yass3705/tesla-charge-companion-data-lab",
+  "sourceEvidence": [
+    "reports/france/avia_picoty/closure-2026-09-29.json",
+    "data/operator_direct/avia_picoty_deftpower_exact_france.json",
+    "data/reports/avia_picoty_residual_probe.json",
+    "data/reports/avia_picoty_authenticated_bootstrap_probe.json",
+    "data/reports/avia_picoty_expo_update_probe.json",
+    "data/national/avia_volt_picoty_station_index.json"
+  ],
+  "sourceCommits": [
+    "a9637c33d49fb27613bc462836e4b18778cfab64",
+    "edd3fcfd66ebece3328d61ef3bbaaf19eb401fea"
+  ]
+}
