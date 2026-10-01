@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": "batch435",
+  "date": "2026-09-25",
+  "cpo": "RossiniEnergy",
+  "rawRank": 40,
+  "historical": {
+    "stations": 307,
+    "pdc": 873
+  },
+  "decision": "treated-authority",
+  "evidence": {
+    "officialMap": "https://maps.rossinienergy.com/",
+    "publicApiRoot": "https://api.charge.re/public/1/",
+    "inventoryEndpoint": "https://api.charge.re/public/1/map_parks/",
+    "detailTemplate": "https://api.charge.re/public/1/parks/{park_id}/",
+    "paymentFrontend": "https://charge.re/",
+    "evseNamespace": "FR*ROS",
+    "fields": [
+      "id",
+      "name",
+      "latitude",
+      "longitude",
+      "address",
+      "postal_code",
+      "city",
+      "country_alpha2",
+      "accept_gireve",
+      "chargingstations[].evse_id",
+      "chargingstations[].qrcodeid",
+      "chargingstations[].payment_enabled",
+      "chargingstations[].price",
+      "installed"
+    ],
+    "priceSemantics": "chargingstations[].price is integer cents/kWh; charge.re frontend computes price/100 for base EUR/kWh",
+    "cardPaymentFees": {
+      "fixedEurPerSession": 0.25,
+      "variableRate": 0.015,
+      "displayedVariablePerKwhFormula": "(price/100)*0.015",
+      "displayedTotalPerKwhFormula": "(price/100)*1.015"
+    },
+    "samples": [
+      {
+        "parkId": 2,
+        "evses": [
+          "FR*ROS*E2*1",
+          "FR*ROS*E2*2"
+        ],
+        "priceCentsPerKwh": 33,
+        "paymentEnabled": true
+      },
+      {
+        "parkId": 3,
+        "evses": [
+          "FR*ROS*E3*1",
+          "FR*ROS*E3*2",
+          "FR*ROS*E3*3",
+          "FR*ROS*E3*4"
+        ],
+        "priceCentsPerKwh": 20,
+        "paymentEnabled": false
+      },
+      {
+        "parkId": 4,
+        "evses": [
+          "FR*ROS*E4*1",
+          "FR*ROS*E4*2"
+        ],
+        "priceCentsPerKwh": 40,
+        "paymentEnabled": true
+      },
+      {
+        "parkId": 11,
+        "evses": [
+          "FR*ROS*E11*1",
+          "FR*ROS*E11*2"
+        ],
+        "priceCentsPerKwh": 39,
+        "paymentEnabled": true
+      }
+    ]
+  },
+  "policy": {
+    "tariffGranularity": "EVSE",
+    "nationalConstantAllowed": false,
+    "directTariffEurPerKwh": "price/100",
+    "cardCheckoutTariffEurPerKwh": "(price/100)*1.015",
+    "cardCheckoutFixedFeeEur": 0.25,
+    "paymentDisabled": "preserve price as operator-configured EVSE value but do not present card checkout as available",
+    "fallback": "If an EVSE cannot be deterministically matched to current FR*ROS detail data, fail closed then Electra then Electroverse."
+  },
+  "conclusion": "RossiniEnergy is deterministically resolvable from its own public infrastructure. Promote raw rank40 from setAside to treated; counters 86/6/199."
+}
