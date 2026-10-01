@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-targeted-audit",
+  "auditBatch": 8,
+  "date": "2026-09-17",
+  "strategyChange":"Classification is complete. Resolution now prioritizes bounded near-complete CPOs plus reusable backend/source-family extraction over repeated unit searches.",
+  "audited": [
+    {
+      "name":"Allgaeuer Kraftwerke GmbH",
+      "statusAfter":"partial",
+      "result":"First-party AUEW tariff matrix was revalidated current: anonymous credit-card ad-hoc AC zone I/II is 0.51 EUR/kWh plus 1 EUR start; DC <=50 kW is 0.57 EUR/kWh with zero start; DC >50 kW is 0.66 EUR/kWh with zero start. Blocking differs by zone/class. Existing audits already contain multiple exact DE*738 identities from chargecloud/Mobilithek-derived evidence. No tariff-policy research remains; the only legitimate blocker is exact reconciliation of the residual canonical EVSEs to zone/class and fee rule.",
+      "sources":["https://auew.de/privatkunden/e-mobilitaet/allgaeustrom-stromtankstellen/","docs/germany-cpo-second-pass-targeted-audit-003.json","docs/germany-cpo-second-pass-targeted-audit-004.json","docs/germany-cpo-second-pass-targeted-audit-005.json"],
+      "nextBlocker":"B1_RESIDUAL_EVSE_IDENTITY_TO_ZONE_CLASS",
+      "nextAction":"No more broad Allgaeuer tariff search. Reconcile residual canonical EVSE IDs only."
+    },
+    {
+      "name":"Stadtwerke Leipzig GmbH",
+      "statusAfter":"partial",
+      "result":"The ad-hoc semantic conflict is now resolved at product level. First-party FAQ explicitly routes anonymous users through the second non-Hubject QR code to the dedicated ad-hoc frontend. Registered L-Strom.drive remains a separate product, so 0.54/0.64 EUR/kWh must not enter the anonymous layer. Current 2026 ad-hoc evidence remains 0.65 EUR/kWh AC and 0.75 EUR/kWh DC. Residual blocker is now coverage/exception binding for post-2024 EVSEs, not product-layer ambiguity.",
+      "sources":["https://kundenservice-stadtwerke.l.de/hc/de/articles/360022109880-Wie-starte-ich-einen-Ladevorgang","https://kundenservice-stadtwerke.l.de/hc/de/articles/360022109840-Wieso-gibt-es-zwei-QR-Codes-pro-Ladepunkt-auf-den-Ladestationen-der-Leipziger-Stadtwerke","https://www.l.de/stadtwerke/privatkunden/e-mobilitaet/unterwegs-laden/","docs/germany-cpo-second-pass-targeted-audit-007.json"],
+      "nextBlocker":"B1_POST_2024_EVSE_COVERAGE_AND_FEE_EXCEPTIONS",
+      "nextAction":"Enumerate/bind only post-2024 EVSEs through the public ad-hoc frontend/Mobilithek; do not reopen registered-vs-ad-hoc semantics."
+    },
+    {
+      "name":"GEW Wilhelmshaven GmbH",
+      "statusAfter":"partial",
+      "result":"Fresh first-party GEW evidence confirms direct registration-free contactless payment at the official GEW estate. A dated 2026 first-party notice also states ChargePoint app/card ceased to be available to end customers from 30 June 2026, while Visa/Mastercard and roaming remain. Current Mobilithek/Eco-Movement-derived records continue to show 0.44 EUR/kWh and zero start/blocking on multiple GEW/ChargePoint EVSEs, but external current presentations disagree on whether 0.44 is source-net or final gross. Therefore no gross-price promotion is safe yet. The useful new constraint is that current anonymous direct payment should be modeled as contactless-card, not legacy ChargePoint app/card.",
+      "sources":["https://www.gew-wilhelmshaven.de/produkte/elektromobilitaet/unterwegs/","https://www.gew-wilhelmshaven.de/aktuelles/news/geaenderte-zahlungsmoeglichkeiten-an-unseren-e-ladesaeulen-275/","https://www.e-stations.de/ladestationen/wilhelmshaven/gew-whv-station-7-30652","https://adhocladen.de/wilhelmshaven/chargepoint-valoisplatz/"],
+      "nextBlocker":"B4_GROSS_NET_AND_OFFICIAL_SITE_FEE_COMPLETENESS",
+      "nextAction":"Use the ChargePoint/Mobilithek family queue to reconcile official GEW EVSEs and binding gross semantics. Do not ingest 0.44 as gross while source semantics conflict."
+    },
+    {
+      "name":"Stadtwerke Goettingen AG",
+      "statusAfter":"partial",
+      "result":"No new authoritative anonymous fee-export was found in this pass. First-party current registered Basistarif remains 0.46 EUR/kWh AC, 0.52 EUR/kWh DC and 0.70 EUR start with registered blocking rules, which is explicitly not a substitute for the already-observed anonymous direct fee classes. The prior bounded blocker remains fee-component exhaustiveness only.",
+      "sources":["https://www.stadtwerke-goettingen.de/energieloesungen/e-mobilitaet/","docs/germany-cpo-second-pass-targeted-audit-002.json"],
+      "nextBlocker":"B4_ANONYMOUS_FEE_CLASS_EXHAUSTIVENESS",
+      "nextAction":"Park broad web search. Resume only through backend/operator fee export or authoritative per-EVSE direct-payment records."
+    }
+  ],
+  "backendRoutingCreated":"docs/germany-cpo-second-pass-backend-routing-001.json",
+  "newReusableFamiliesSeeded":7,
+  "statusChanges":0,
+  "canonicalCountsAfter":{"totalNamedCpos":591,"complete":202,"partial":389,"blocked":0},
+  "consistencyCheck":{"status":"PASS","arithmetic":"202 + 389 + 0 = 591","promotions":0,"unsafeExtrapolations":0,"registeredOrRoamingTariffSubstituted":false,"duplicateOrAliasChange":0,"repeatInvestigationGuard":"PASS: broad searches were stopped where the blocker is already bounded; work is routed to exact EVSE/backend tasks."},
+  "nextSafeAction":"Run the charge_it_easy shared-backend probe for Greifswald + Einbeck while reconciling the residual Allgaeuer DE*738 identities. Then expand backend routing only with independently evidenced mappings."
+}
