@@ -117,7 +117,7 @@ def main() -> None:
 
     require_any(cpo_terms, ("client professionnel propose a freshmile les tarifs de recharge",), "Freshmile CPO owner-defined tariff")
 
-    require_any(map_article, ("verifier leur disponibilite et consulter leur tarif",), "Freshmile map price/availability")
+    require_any(help_text, ("etat des bornes en temps reel", "les tarifs en application", "tarif y sera mentionne"), "Freshmile current map price/availability")
 
     partner_subscriptions = []
     if "connect and go moselle metz" in shop and "3.00 € / mois" in shop:
