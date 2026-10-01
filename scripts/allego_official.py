@@ -382,11 +382,35 @@ def parse_country_direct(text: str) -> dict:
         ),
     }
     out = {}
+    missing = []
     for key, pat in patterns.items():
         m = re.search(pat, direct_section, flags=re.I)
-        if not m:
-            raise RuntimeError(f"Allego France pricing: {key} price not found in operator-direct section")
-        out[key] = eur(m.group(1))
+        if m:
+            out[key] = eur(m.group(1))
+        else:
+            missing.append(key)
+
+    # On desktop Allego hides the repeated mobile speed labels inside each
+    # tariff column. Selenium innerText therefore exposes only the three
+    # €/kWh values under "Paiement à l’usage". Their DOM order follows the
+    # visible speed column: Ultra-fast, Fast, Standard.
+    if missing:
+        ordered_prices = [
+            eur(x)
+            for x in re.findall(r"(\\d+(?:[.,]\\d+)?)\\s*€\\s*/\\s*kwh", direct_section, flags=re.I)
+        ]
+        if len(ordered_prices) >= 3:
+            out = {
+                "ultraFast": ordered_prices[0],
+                "fast": ordered_prices[1],
+                "regular": ordered_prices[2],
+            }
+            missing = []
+    if missing:
+        raise RuntimeError(
+            f"Allego France pricing: missing {missing} in operator-direct section; "
+            f"ordered EUR/kWh values found={re.findall(r'(?:\\d+(?:[.,]\\d+)?)\\s*€\\s*/\\s*kwh', direct_section, flags=re.I)}"
+        )
 
     # Idle/overstay fees can be outside the direct card; search full selected text.
     idle = re.search(r"idle fee\\s*:\\s*€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*min", n)
