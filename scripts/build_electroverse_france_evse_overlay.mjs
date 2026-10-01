@@ -289,6 +289,13 @@ const validatedP01ResidualMetadata=new Map(
     x
   ])
 );
+const validatedP01AliasesByTarget=new Map();
+for(const x of validatedP01Map.aliasMappings||[]){
+  const k=norm(x.targetPdc);
+  if(!k)continue;
+  const a=validatedP01AliasesByTarget.get(k)||[];
+  a.push(x);validatedP01AliasesByTarget.set(k,a);
+}
 const finalResidualIndividualTargets=new Map(
   (finalResidualPlan.individualMappings||[]).map(x=>[
     String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk),
@@ -360,6 +367,7 @@ const stats={
   validatedLe2ResidualCandidateEvses:0,validatedLe2ResidualPublishedEvses:0,
   validatedP01ResidualCandidateEvses:0,validatedP01ResidualPublishedEvses:0,
   validatedP01PriceOnlyCandidateEvses:0,validatedP01PriceOnlyPublishedEvses:0,
+  validatedP01AliasSourceEvses:0,
   finalResidualUniqueSuffixCandidateEvses:0,finalResidualUniqueSuffixPublishedEvses:0,
   finalResidualCommonTailCandidateEvses:0,finalResidualCommonTailPublishedEvses:0,
   finalResidualHomogeneousGroupCandidateEvses:0,finalResidualHomogeneousGroupPublishedEvses:0,
@@ -2337,6 +2345,28 @@ for(const g of parentGroups.values()){
     stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=v.units.length;
   }
 }
+
+const attachedP01Aliases=new Set();
+for(const offers of tiles.values()) for(const offer of offers){
+  const target=norm(offer.evseIds?.[0]);
+  if(!target)continue;
+  const aliases=validatedP01AliasesByTarget.get(target)||[];
+  if(!aliases.length)continue;
+  const offerLoc=String(offer.metadata?.electroverseLocationPk??'');
+  const matching=aliases.filter(x=>!offerLoc||String(x.electroverseLocationPk)===offerLoc);
+  if(!matching.length)continue;
+  offer.metadata=offer.metadata||{};
+  offer.metadata.electroverseAliasEvsePks=[...new Set([
+    ...(offer.metadata.electroverseAliasEvsePks||[]),
+    ...matching.map(x=>x.electroverseEvsePk).filter(x=>x!=null)
+  ])];
+  offer.metadata.electroverseAliasPhysicalReferences=[...new Set([
+    ...(offer.metadata.electroverseAliasPhysicalReferences||[]),
+    ...matching.map(x=>x.physicalReference).filter(Boolean)
+  ])];
+  for(const x of matching)attachedP01Aliases.add(String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk));
+}
+stats.validatedP01AliasSourceEvses=attachedP01Aliases.size;
 
 const offersByTarget=new Map(),duplicateSamples=[];
 for(const [tileIdKey,offers] of tiles.entries()) for(const offer of offers){
