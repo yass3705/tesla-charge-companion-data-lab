@@ -305,6 +305,7 @@ const stats={
   viaOfficialIdentityCandidateEvses:0,viaOfficialIdentityPublishedEvses:0,
   c55HomogeneousGroupCandidateEvses:0,c55HomogeneousGroupPublishedEvses:0,
   hpcOrdinalGroupCandidateEvses:0,hpcOrdinalGroupPublishedEvses:0,
+  s30StructuredChildCandidateEvses:0,s30StructuredChildPublishedEvses:0,
   c55BIndexCandidateEvses:0,c55BIndexPublishedEvses:0,
   validatedNumericResidualCandidateEvses:0,validatedNumericResidualPublishedEvses:0,
   validatedS82ResidualCandidateEvses:0,validatedS82ResidualPublishedEvses:0,
@@ -1018,6 +1019,73 @@ for(const sh of manifest.shards||[]){
       }
     }
 
+    // S30 structured child identity.
+    // FR*S30*E30008*001*1*2 and *2*2 -> FRS30E300080012:
+    // remove the penultimate source segment (connector branch) and keep the final child ordinal.
+    // Multiple source EVSEs may collapse to one national PDC only when all compiled connector
+    // pricing is homogeneous. Targets must be local and globally unique.
+    const s30StructuredTargets=new Map();
+    const s30StructuredSourceEvses=new Set();
+    {
+      const byTarget=new Map();
+      for(const e0 of row.tariff?.evses||[]){
+        const pr0=text(e0?.physicalReference);if(!pr0)continue;
+        const mm=pr0.match(/^FR\*S30\*(E[0-9A-Z]+)\*([0-9A-Z]+)\*([0-9]+)\*([0-9]+)$/i);
+        if(!mm)continue;
+        const target=norm('FRS30'+mm[1]+mm[2]+mm[4]);
+        if(!local.has(target))continue;
+        if((globalPdcOwners.get(target)?.size||0)!==1)continue;
+        const arr=byTarget.get(target)||[];arr.push(e0);byTarget.set(target,arr);
+      }
+      for(const [target,es] of byTarget){
+        if(!es.length)continue;
+        const compiledAll=[];let valid=true;
+        for(const e0 of es){
+          const connectors=e0?.connectors||[];
+          if(!connectors.length){valid=false;break;}
+          for(const c0 of connectors){
+            const x=compileConnector(c0);if(!x.ok){valid=false;break;}
+            compiledAll.push({pricing:x.pricing,connectorPk:c0.pk??null});
+          }
+          if(!valid)break;
+        }
+        if(!valid||!compiledAll.length)continue;
+        const unique=[...new Map(compiledAll.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
+        if(unique.length!==1)continue;
+        s30StructuredTargets.set(target,{
+          pricing:unique[0],
+          connectorPks:compiledAll.map(x=>x.connectorPk),
+          sourceEvses:es
+        });
+        for(const e0 of es)s30StructuredSourceEvses.add(e0);
+      }
+    }
+    if(s30StructuredTargets.size){
+      for(const [targetNorm,g] of s30StructuredTargets){
+        const targetPdc=localByNorm.get(targetNorm);
+        const currency=g.pricing.rules?.[0]?.currency||'EUR';
+        const offer={
+          id:`electroverse-evse-s30-child:${row.electroverseLocationPk}:${targetNorm}`,
+          provider:'Electroverse',countries:['FR'],currency,priority:80,
+          verifiedScope:'exact_evse_group',evseIds:[targetPdc],pricing:g.pricing,
+          metadata:{
+            verified:true,identityMode:'strict_s30_structured_child_collapse',
+            electroverseLocationPk:String(row.electroverseLocationPk),
+            electroverseEvsePks:g.sourceEvses.map(e=>e.pk??null),
+            physicalReferences:g.sourceEvses.map(e=>text(e?.physicalReference)),
+            connectorPks:g.connectorPks,connectorCount:g.connectorPks.length,
+            sourceEntryCount:g.sourceEvses.length,
+            tariffHash:row.tariffHash||null,fetchedAt:row.fetchedAt||null,
+            source:'Electroverse tariff cache'
+          }
+        };
+        const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);tiles.get(id).push(offer);
+        stats.s30StructuredChildCandidateEvses++;
+        stats.s30StructuredChildPublishedEvses++;
+        stats.pricedExactEvses++;stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=g.connectorPks.length;
+      }
+    }
+
     // VIA structured base-pair identity.
     // Example: 164006-01 -> FRVIAE20164006011, 164006-02 -> ...012,
     // 164006-03 -> ...021. The source station stem must be embedded verbatim in the
@@ -1725,7 +1793,7 @@ for(const sh of manifest.shards||[]){
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
       const validatedResidualTargetPre=validatedResidualTargets.get(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
-      if(!validatedResidualTargetPre && (izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e)||hpcGroupedSourceEvses.has(e)||pd1TechnicalSourceEvses.has(e)||drvPowerSourceEvses.has(e)||operatorGroupedSourceEvses.has(e)||genericGroupedSourceEvses.has(e)))continue;
+      if(!validatedResidualTargetPre && (izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e)||hpcGroupedSourceEvses.has(e)||s30StructuredSourceEvses.has(e)||pd1TechnicalSourceEvses.has(e)||drvPowerSourceEvses.has(e)||operatorGroupedSourceEvses.has(e)||genericGroupedSourceEvses.has(e)))continue;
       const pr=text(e?.physicalReference);
       if(!pr){rej('evse_missing_physical_reference');continue;}
       stats.physicalRefs++;
@@ -2094,6 +2162,7 @@ stats.viaStructuredBasePairPublishedEvses=finalOffers.filter(o=>o.metadata?.iden
 stats.viaOfficialIdentityPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_vianeo_official_source_ref_identity').length;
 stats.c55HomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_homogeneous_exact_set').length;
 stats.hpcOrdinalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_hpc_duplicate_ordinal_to_three_digit_pdc').length;
+stats.s30StructuredChildPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_s30_structured_child_collapse').length;
 stats.c55BIndexPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_bindex_zero_based_suffix').length;
 stats.validatedNumericResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_numeric_residual_unique_bijection').length;
 stats.validatedS82ResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_s82_residual_unique_suffix_bijection').length;
