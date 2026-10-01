@@ -79,20 +79,20 @@ jobs:
           assert p['classification']['singleGuaranteedNationalTariff'] is False
           assert p['classification']['stationLevelPriceLookupRequiredForExactSimulation'] is True
           assert p['operatorDirect']['adHocQr']['exactPriceLookupRequired'] is True
-          assert p['mobilityProviders']['electroversePowerdotSubscription']['operatorDirect'] is False
-          assert p['mobilityProviders']['electroversePowerdotSubscription']['monthlyFeeEur'] == 1.99
-          assert p['mobilityProviders']['electroversePowerdotSubscription']['franceDiscountPercent'] == 28.0
+          sub=p['mobilityProviders']['electroversePowerdotSubscription']
+          assert sub['operatorDirect'] is False
+          assert sub['monthlyFeeEur'] == 1.99
+          assert sub['franceDiscountPercent'] == 28.0
+          assert sub['historicalPromotionStatus'] == 'expired'
           leasing=p['specialPrograms']['leasingSocial']
           assert leasing['generalPublicTariff'] is False
-          assert leasing['eurPerKwh'] == 0.29
-          assert leasing['freeSubscriptionMonths'] == 3
-          assert leasing['monthlyFeeAfterFreePeriodEur'] == 9.99
-          assert leasing['commitment'] == 'sans engagement'
-          assert p['fees']['paymentPreauthorization']['possibleAmountsEur'] == [15.0, 25.0, 35.0]
+          assert leasing['status'] == 'not_revalidated_on_current_powerdot_site'
+          assert leasing['eurPerKwh'] is None
+          assert p['fees']['paymentPreauthorization']['status'] == 'not_revalidated_on_current_powerdot_site'
           assert p['inventory']['rowCount'] > 100
           assert len(p['inventory']['samples']) >= 3
           assert p['sourceEvidence']['cpoFactsFromPowerdotOfficial'] is True
-          print('Validated Powerdot current tariff-layer separation, Leasing Social terms and static inventory evidence')
+          print('Validated Powerdot current QR/eMSP separation and stale-offer retirement')
           PY
 
       - name: Publish only when evidence changes
