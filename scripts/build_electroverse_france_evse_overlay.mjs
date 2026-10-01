@@ -1019,8 +1019,9 @@ for(const sh of manifest.shards||[]){
         return m?m[1]:null;
       };
       const opSet=new Set(unclaimed.map(opCode).filter(Boolean));
+      const protectedOp=opSet.size===1?[...opSet][0]:null;
       const recognizedSingleOperator=unclaimed.length>0 && opSet.size===1 &&
-        [...opSet][0]==='PD1' && unclaimed.every(p=>opCode(p));
+        String(protectedOp||'').startsWith('PD1') && unclaimed.every(p=>opCode(p));
       if(recognizedSingleOperator && unresolved.length===unclaimed.length &&
          unclaimed.every(p=>(globalPdcOwners.get(p)?.size||0)===1)){
         const compiledRows=[];
