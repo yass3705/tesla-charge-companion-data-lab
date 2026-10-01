@@ -6,6 +6,7 @@ const MAP='data/electroverse/irve_location_mapping.json';
 const OVERLAY='data/platforms/electroverse/france-evse';
 const OUT='reports/electroverse/remaining-batch-analysis.json';
 const VALIDATED='data/platforms/electroverse/validated-mappings/remaining-unique-suffix-residual.json';
+const NON_ACTIONABLE='data/platforms/electroverse/validated-mappings/non-actionable-covered-source-residuals.json';
 const P01_VALIDATED='data/platforms/electroverse/validated-mappings/p01-structured-residual.json';
 
 const norm=x=>String(x??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -49,6 +50,8 @@ for(const m of mapping.mappings||[]) for(const p of m.irvePdcIds||[]){
 const cman=JSON.parse(await fs.readFile(CACHE+'/manifest.json','utf8'));
 const byOperator=new Map();
 const validatedMappings=[];
+const fullyCoveredLocationGroups=[];
+let fullyCoveredSourceEvses=0;
 
 function addOp(op,group){
   let x=byOperator.get(op);
@@ -67,15 +70,27 @@ for(const sh of cman.shards||[]){
   for(const row of Object.values(data.stations||{})){
     const pending=(row?.tariff?.evses||[]).filter(e=>e?.pk!=null&&!publishedSourcePks.has(String(e.pk))&&!classifiedNationalOrphanPks.has(String(e.pk)));
     if(!pending.length)continue;
+    const m=byPk.get(String(row.electroverseLocationPk));
+    const local=[...new Set((m?.irvePdcIds||row.irvePdcIds||[]).map(norm).filter(Boolean))];
+    const available=local.filter(p=>!publishedTargets.has(p));
+    if(local.length>0&&available.length===0){
+      fullyCoveredSourceEvses+=pending.length;
+      fullyCoveredLocationGroups.push({
+        electroverseLocationPk:String(row.electroverseLocationPk),
+        irveStationId:m?.irveStationId??row.irveStationId??null,
+        sourceEvseCount:pending.length,
+        nationalPdcCount:local.length,
+        sourceEvsePks:pending.map(e=>e.pk),
+        physicalReferences:pending.map(e=>String(e?.physicalReference??'')),
+        reason:'all_mapped_national_pdcs_already_priced'
+      });
+      continue;
+    }
     const byOp=new Map();
     for(const e of pending){
       const op=opFromRef(e?.physicalReference);
       const a=byOp.get(op)||[];a.push(e);byOp.set(op,a);
     }
-    const m=byPk.get(String(row.electroverseLocationPk));
-    const local=[...new Set((m?.irvePdcIds||row.irvePdcIds||[]).map(norm).filter(Boolean))];
-    const available=local.filter(p=>!publishedTargets.has(p));
-
     for(const [op,es] of byOp){
       const refs=es.map(e=>({e,k:norm(e.physicalReference),raw:String(e.physicalReference)}));
       const exactSuffix=[];
@@ -159,6 +174,8 @@ const operators=[...byOperator.values()].map(x=>({
 
 const out={
   classifiedNationalOrphanSourceEvses:classifiedNationalOrphanPks.size,
+  classifiedFullyCoveredSourceEvses:fullyCoveredSourceEvses,
+  classifiedFullyCoveredLocations:fullyCoveredLocationGroups.length,
   schemaVersion:1,generatedAt:new Date().toISOString(),
   sourceEvseResidualCount:operators.reduce((n,x)=>n+x.residualSourceEvses,0),
   operatorBucketCount:operators.length,
@@ -176,6 +193,15 @@ await fs.writeFile(VALIDATED,JSON.stringify({
   count:validatedMappings.length,
   policy:'Only exact unique suffix bijections to currently unpublished local national PDC targets that are globally unique. No proximity inference.',
   mappings:validatedMappings
+},null,2)+'\n');
+await fs.writeFile(NON_ACTIONABLE,JSON.stringify({
+  schemaVersion:1,
+  generatedAt:out.generatedAt,
+  dataset:'electroverse-france-non-actionable-covered-source-residuals',
+  sourceEvseCount:fullyCoveredSourceEvses,
+  locationCount:fullyCoveredLocationGroups.length,
+  policy:'Source EVSE rows are non-actionable only when their mapped location has at least one national PDC and every mapped national PDC is already priced in the canonical Electroverse overlay. No source-to-PDC identity is invented.',
+  locations:fullyCoveredLocationGroups
 },null,2)+'\n');
 
 
@@ -211,6 +237,8 @@ console.log('DEBUG_SIX_RESIDUALS '+JSON.stringify({
 console.log(JSON.stringify({
   generatedAt:out.generatedAt,
   sourceEvseResidualCount:out.sourceEvseResidualCount,
+  classifiedFullyCoveredSourceEvses:out.classifiedFullyCoveredSourceEvses,
+  classifiedFullyCoveredLocations:out.classifiedFullyCoveredLocations,
   operatorBucketCount:out.operatorBucketCount,
   safelyRecoverableSourceEvses:out.safelyRecoverableSourceEvses,
   uniqueSuffixValidatedMappings:out.uniqueSuffixValidatedMappings,
