@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 197,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-196.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Staedtische Betriebswerke Luckenwalde GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; previously unpersisted bounded evidence recovered",
+      "evidence": {
+        "verifiedEvse": [
+          "DE*ISE*E0022573",
+          "DE*ISE*E0022574"
+        ],
+        "site": "Weinberge",
+        "anonymousAdHocEnergy": "0.49 EUR/kWh"
+      },
+      "exactGap": "Two current direct-priced EVSEs are verified, but no authoritative evidence proves these two EVSEs exhaust the canonical SBL public charging estate. Do not infer estate completeness.",
+      "resumeCondition": "Authoritative current SBL EVSE inventory or AFIR/Mobilithek operator export proving the full denominator and fee completeness."
+    },
+    {
+      "name": "Allgaeuer Kraftwerke GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; previously unpersisted bounded evidence recovered",
+      "evidence": {
+        "currentExample": "Am Anger current anonymous ad-hoc observed at 0.51 EUR/kWh",
+        "directPayment": "Goethestrasse still exposes direct-payment capability without an accessible numeric price in the checked public surface"
+      },
+      "exactGap": "Residual EVSE coverage remains incomplete: current direct-payment capability exists on an uncovered site without an authoritative numeric tariff/fee stack. Do not generalize the 0.51 EUR/kWh sample.",
+      "resumeCondition": "Raw AFIR/Mobilithek/chargecloud records or first-party direct checkout exposing numeric price and all fee components for the residual EVSEs."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS"
+  },
+  "nextSafeAction": "After pointer synchronization, move to a different small B1/B3/B6 candidate; do not repeat Luckenwalde or Allgaeuer without their stated resume conditions."
+}
