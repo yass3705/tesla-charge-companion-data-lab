@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 199,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-198.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Barmstedt Xtra GmbH",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "decision": "remain partial; fixed four-location denominator confirmed but tariff matrix not closed",
+      "evidence": {
+        "denominator": "four official public charging locations retained as the bounded estate",
+        "knownSample": "Kuesterkamp direct-price evidence 0.61 EUR/kWh plus a blocking component remains station-scoped",
+        "paymentSurface": "current public charging information routes charging/payment through the operator's charging/payment ecosystem rather than publishing one binding anonymous tariff table"
+      },
+      "exactGap": "Need binding anonymous direct prices and complete fee components for all four official locations. One Kuesterkamp observation cannot be generalized to the other three.",
+      "resumeCondition": "Public guest checkout/backend payload for the four locations, or a current first-party tariff table explicitly covering all four without exceptions."
+    },
+    {
+      "name": "Stadtwerke Eberbach GmbH public charging",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "decision": "remain partial; anonymous path confirmed, numeric payload still not exposed",
+      "evidence": {
+        "firstParty": "Anonymous QR/browser charging with credit-card payment is confirmed; applicable cost is displayed before confirmation."
+      },
+      "exactGap": "The accessible public/first-party surface still does not expose the numeric anonymous checkout tariff or fee stack for the active DE*SDE EVSEs. Registered/roaming values cannot substitute.",
+      "resumeCondition": "Read-only QR/browser checkout payload or current first-party numeric ad-hoc tariff tied to the active EVSE set."
+    },
+    {
+      "name": "Stadtwerke Sinsheim Versorgungs GmbH & Co. KG",
+      "classification": "B2_FIRST_PARTY_ADHOC_EQUIVALENCE",
+      "decision": "remain partial; small named-site target retained",
+      "evidence": {
+        "knownSites": [
+          "Dr.-Sieber-Halle",
+          "Grabengasse"
+        ],
+        "firstParty": "Direct/ad-hoc access is confirmed on the operator public-charging surface."
+      },
+      "exactGap": "No current authoritative numeric anonymous checkout tariff was exposed for the two named sites; do not substitute observed ladenetz/MSP values.",
+      "resumeCondition": "Current anonymous credit-card/QR checkout values for both named sites or a first-party ad-hoc tariff statement explicitly covering them."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; no genuinely new source/backend evidence found in this run"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS",
+    "antiStagnation": "PASS; fixed-estate candidates advanced without reopening bounded dossiers"
+  },
+  "nextSafeAction": "Continue fixed-small-estate queue. Prefer another candidate where all public EVSE IDs are enumerable and the guest checkout is machine-readable; m8mit or AFIR/Mobilithek remains preferred."
+}
