@@ -1,0 +1,19 @@
+name: Audit Electroverse generic exact-set blockers
+on:
+  push:
+    branches:
+      - audit/electroverse-generic-exact-set-blockers
+    paths:
+      - "scripts/build_electroverse_france_evse_overlay.mjs"
+      - ".github/workflows/electroverse-generic-exact-set-blockers.yml"
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build diagnostic overlay
+        run: node scripts/build_electroverse_france_evse_overlay.mjs /tmp/electroverse-fr-blocker-audit
