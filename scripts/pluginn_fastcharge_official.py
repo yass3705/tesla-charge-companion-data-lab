@@ -9,6 +9,7 @@ import json
 import re
 import unicodedata
 import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -31,10 +32,33 @@ def fetch(url: str) -> tuple[int, str]:
         "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.6",
         "Cache-Control": "no-cache",
     })
-    with urllib.request.urlopen(req, timeout=45) as resp:
-        raw = resp.read()
-        charset = resp.headers.get_content_charset() or "utf-8"
-        return int(getattr(resp, "status", 200)), raw.decode(charset, errors="replace")
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            raw = resp.read()
+            charset = resp.headers.get_content_charset() or "utf-8"
+            return int(getattr(resp, "status", 200)), raw.decode(charset, errors="replace")
+    except urllib.error.HTTPError as exc:
+        if exc.code not in (403, 429):
+            raise
+    # Renault may block non-browser GitHub-runner requests. Use a real
+    # headless browser only as a fallback, preserving official first-party URLs.
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    opts = webdriver.ChromeOptions()
+    opts.add_argument("--headless=new")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--disable-gpu")
+    opts.add_argument("--lang=fr-FR")
+    opts.add_argument(f"--user-agent={UA}")
+    driver = webdriver.Chrome(options=opts)
+    try:
+        driver.get(url)
+        WebDriverWait(driver, 30).until(lambda d: len((d.find_element(By.TAG_NAME, "body").text or "").strip()) > 200)
+        return 200, driver.page_source
+    finally:
+        driver.quit()
 
 
 def text_from_html(raw: str) -> str:
