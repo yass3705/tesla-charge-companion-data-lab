@@ -8,6 +8,7 @@ const MANIFEST=CACHE+'/manifest.json';
 const MAP='data/electroverse/irve_location_mapping.json';
 const DRIVECO='data/operator_direct/driveco_evse_tariffs.json';
 const POWERDOT_TECH='data/operator_direct/powerdot_evse_technical_inventory.json';
+const VALIDATED_NUMERIC_MAP='data/platforms/electroverse/validated-mappings/numeric-residual.json';
 const OUT=process.argv[2]||'data/platforms/electroverse/france-evse';
 const TILE=.5;
 // Rebuild marker: validate protected PD1 technical grouping on main.
@@ -177,6 +178,7 @@ const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
 const manifest=JSON.parse(await fs.readFile(MANIFEST,'utf8'));
 const driveco=JSON.parse(await fs.readFile(DRIVECO,'utf8'));
 const powerdotTech=JSON.parse(await fs.readFile(POWERDOT_TECH,'utf8'));
+const validatedNumericMap=JSON.parse(await fs.readFile(VALIDATED_NUMERIC_MAP,'utf8'));
 const powerdotByEvse=new Map((powerdotTech.evses||[]).map(x=>[norm(x.evseId),x]));
 const drivecoNative=[...(driveco.resolved||[]),...(driveco.unresolved||[])];
 const drivecoByEvse=new Map(drivecoNative.map(x=>[norm(x.evseId),x]));
@@ -220,12 +222,12 @@ const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationP
 // Proven post-overlay numeric residuals from the strict residual audit.
 // Keys are Electroverse location PK + source EVSE PK. These are accepted only
 // when the target remains local and globally unique at build time.
-const validatedNumericResidualTargets=new Map([
-  ['1454880:3923163','FRY55EAE5044L1GS6C0011761'],
-  ['1454880:3923164','FRY55EAE5044L1GS6C0011762'],
-  ['1258861:3767759','FRY55EFR67450YESSTRASBOURGNORD1'],
-  ['1303241:3405443','FRY55EAE0022H1GR4C00179X1']
-]);
+const validatedNumericResidualTargets=new Map(
+  (validatedNumericMap.mappings||[]).map(x=>[
+    String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk),
+    norm(x.targetPdc)
+  ])
+);
 const globalPdcOwners=new Map();
 for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
   const k=norm(p);if(!k)continue;
@@ -1940,6 +1942,7 @@ const out={
     hpcDuplicateOrdinalRequiresHomogeneousPricing:true,
     strict55cBIndexZeroBasedSuffix:true,
     validatedNumericResidualUniqueBijection:true,
+    validatedNumericResidualMappingCount:validatedNumericResidualTargets.size,
     c55BIndexRequiresExactResidualSet:true,
     c55BIndexRequiresGlobalPdcUniqueness:true,
     strictPd1OfficialTechnicalHomogeneousGroup:true,
