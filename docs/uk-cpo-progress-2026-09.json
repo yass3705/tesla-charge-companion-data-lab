@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-10-01T19:05:00+02:00",
+  "updatedAt": "2026-10-01T19:15:00+02:00",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -231,11 +231,10 @@
     },
     {
       "name": "Shell Recharge",
-      "status": "set_aside_external_request",
-      "access": "shell_ev_public_locations_sandbox_inventory_only_plus_eco_movement_pcpr_request",
-      "evidence": "Shell EV Public Locations Sandbox can provide UK inventory/status/connectors, but tariffs returned only when a provider/eMSP identifier such as Shell_RP_2 is supplied are provider/driver tariffs and are not accepted as proof of Shell Recharge's direct/ad-hoc CPO tariff. The earlier 347/352 tariff coverage result is therefore rejected for canonical CPO pricing.",
-      "next": "Keep Shell inventory/status extraction only if useful. For CPO-direct/ad-hoc pricing, use an official Shell/ubitricity direct tariff surface or the already identified Eco-Movement/PCPR route. Do not use Shell_RP_* provider tariffs as CPO pricing.",
-      "report": "reports/uk/shell-ev-public-locations-latest.json"
+      "status": "partial",
+      "access": "official_shell_location_pricing_surface_plus_shell_inventory",
+      "evidence": "Official Shell UK pricing confirms Shell forecourt/destination charging is location-priced and the current price must be checked at the payment terminal or in the Shell App. This is CPO-direct pricing context, but not a single national tariff. Shell_RP_* API tariffs are excluded because they are provider/eMSP driver tariffs.",
+      "next": "Resolve direct station-level Shell forecourt/destination prices from official Shell location pages/payment-terminal equivalent surfaces, then join them to the Shell inventory by address/coordinates/operator identity. Keep unmatched sites fail-closed. Do not use Shell_RP_* tariffs."
     },
     {
       "name": "Allego",
@@ -511,10 +510,11 @@
     },
     {
       "name": "Shell Recharge ubitricity",
-      "status": "set_aside_external_request",
-      "access": "request_or_eco_movement",
-      "evidence": "Shell/ubitricity inventory may be visible through Shell EV Public Locations, but Shell_RP_* tariff objects are eMSP/driver pricing and are excluded from direct CPO pricing evidence.",
-      "next": "Use the identified external/open-data or Eco-Movement PCPR route for direct CPO pricing. Do not use providerId tariffs."
+      "status": "partial",
+      "access": "official_direct_payg_pricing_plus_shell_inventory",
+      "evidence": "Official ubitricity UK PAYG pricing effective 2026-10-01 provides direct CPO tariffs: 0.45 GBP/kWh 00:00-07:00, 0.56 GBP/kWh 07:00-16:00 and 20:00-24:00, 0.67 GBP/kWh 16:00-20:00. A small minority of charge points without smart charging use a flat 0.54 GBP/kWh. Official page also states some charge points differ and specifically flags multiple tariffs across Richmond and Wandsworth, Greenwich and Tower Hamlets. 7-22 kW points have a 0.05 GBP/min idle fee after 60 minutes, between 08:00 and 20:00. These are direct PAYG CPO prices, not Shell app/eMSP prices.",
+      "dataset": "data/operator_direct/ubitricity_uk_official_payg_2026-10-01.json",
+      "next": "Map Shell/ubitricity EVSEs deterministically to the official local-authority tariff matrix. Apply standard bands only where scope is proven; map no-smart sites to 0.54 GBP/kWh; keep borough/site-specific exceptions fail-closed until exact PAYG values are recovered. Do not use Shell_RP_* provider tariffs."
     },
     {
       "name": "Blink",
