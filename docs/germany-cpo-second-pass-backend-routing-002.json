@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-backend-routing",
+  "routingBatch": 2,
+  "date": "2026-09-17",
+  "supersedesForQueueState": "docs/germany-cpo-second-pass-backend-routing-001.json",
+  "canonicalStatus": {"totalNamedCpos":591,"complete":203,"partial":388,"blocked":0},
+  "family": "charge_it_easy_ChargeIT_LichtBlick",
+  "publicSurfaceDiscovery": {
+    "result": "A current official Charge-IT/LichtBlick public ad-hoc entry point was found. The legacy Charge-IT direct-charging page redirects to a current Linktree whose first official action is Online-Direktbezahlung at payments.lichtblick-emobility.de. The payment landing page is public, but this pass did not expose a stable documented query/API contract for retrieving a station tariff without a station identifier. Therefore the family remains suitable for evidence-led per-EVSE probing, but no private endpoint is guessed or reverse-engineered.",
+    "sources": [
+      "https://www.chargeit-mobility.com/ueber-uns/freischaltung-ladestation/",
+      "https://linktr.ee/chargeit_easy_app",
+      "https://payments.lichtblick-emobility.de/de"
+    ],
+    "retryGuard": "One public-surface probe completed. A second probe is allowed only with a concrete station/EVSE identifier or QR/direct-payment URL shape. Do not repeat generic endpoint guessing."
+  },
+  "resolvedFromFamily": [
+    {
+      "name": "Stadtwerke Greifswald GmbH",
+      "status": "complete",
+      "resolutionReference": "docs/germany-cpo-second-pass-resolution-002.json",
+      "why": "The CPO's own current page already publishes a complete direct/ad-hoc normal-public-estate matrix, making backend extraction unnecessary: 0.50 EUR/kWh AC plus 0.10 EUR/min blocking from minute 241, with direct credit-card charging without registration."
+    }
+  ],
+  "remainingConfirmedCpos": [
+    {
+      "name": "Stadtwerke Einbeck GmbH",
+      "status": "partial",
+      "evidence": "Current tourism/Stadtwerke-supplied station pages confirm charge it easy can be used without registration and paid by credit card. Current secondary station records report 0.49 EUR/kWh AC / 0.64 EUR/kWh DC, but exact direct fee completeness and authoritative estate-wide equivalence remain unproven.",
+      "next": "Use a concrete Einbeck EVSE/QR/direct-payment identifier to query the public LichtBlick payment surface; otherwise reconcile current per-EVSE records from Mobilithek/AFIR."
+    },
+    {
+      "name": "Stadtwerke Bad Kissingen GmbH",
+      "status": "partial",
+      "evidence": "Current first-party page confirms charge it easy ad-hoc without registration and credit-card payment, but its numeric tariff table is explicitly dated 15.06.2021; Parkhaus Zentrum is currently unavailable.",
+      "next": "Do not ingest the 2021 numeric table as current. Query current direct-payment conditions for the active KissSalis/Tattersall/Kaserne points or obtain current authoritative per-EVSE records."
+    },
+    {
+      "name": "FAMILA public charging network",
+      "status": "partial",
+      "evidence": "Charge-IT/charge it easy relationship is confirmed at multiple FAMILA sites, but current direct prices are site/class-variable and operator/brand ownership requires reconciliation. Current station evidence includes a Weyhe example at 0.29 EUR/kWh AC and 0.48 EUR/kWh DC; this is station-scoped only and must not be generalized.",
+      "next": "Reconcile FAMILA physical operator/EVSE identities first, then bind direct prices per EVSE/site."
+    }
+  ],
+  "batchImpact": {
+    "familyMembersBefore": 4,
+    "promotedComplete": 1,
+    "familyMembersStillPartial": 3,
+    "genericPublicPaymentSurfaceFound": true,
+    "documentedGuestTariffApiFound": false
+  },
+  "safetyRules": [
+    "read-only public/guest surfaces only",
+    "no authentication bypass",
+    "no guessing private API endpoints",
+    "no tariff generalization across Charge-IT/LichtBlick customers",
+    "registered/card/roaming tariffs stay separate from anonymous direct charging"
+  ],
+  "nextSafeAction": "Obtain one concrete current Einbeck station identifier/QR path and perform the second and final evidence-led public-payment probe. In parallel continue Allgaeuer residual EVSE mapping. If the second probe yields no readable tariff surface, park generic Charge-IT backend extraction and use Mobilithek/AFIR per-EVSE reconciliation for the three remaining CPOs."
+}
