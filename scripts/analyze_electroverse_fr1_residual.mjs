@@ -6,6 +6,18 @@ const MAP='data/electroverse/irve_location_mapping.json';
 const OVERLAY='data/platforms/electroverse/france-evse';
 const OUT='reports/electroverse/fr1-residual-analysis.json';
 const norm=x=>String(x??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+const opFromRef=raw=>{
+  const s=String(raw??'').trim();
+  const star=s.split('*').map(x=>x.trim()).filter(Boolean);
+  if(star.length>=2 && /^FR$/i.test(star[0])) return star[1].toUpperCase();
+  const n=norm(s);
+  const m=n.match(/^FR([A-Z0-9]{1,8})E/);
+  if(m)return m[1];
+  if(/^MAT\d+/i.test(s))return 'MAT';
+  if(/^B\d+/i.test(s))return 'B';
+  if(/^\d+$/.test(s))return 'NUMERIC';
+  return n.slice(0,12)||'MISSING';
+};
 
 const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
 const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
@@ -34,8 +46,7 @@ for(const sh of cman.shards||[]){
   for(const row of Object.values(data.stations||{})){
     const es=(row?.tariff?.evses||[]).filter(e=>{
       if(e?.pk==null||publishedSourcePks.has(String(e.pk)))return false;
-      const s=String(e?.physicalReference??'').trim();
-      return /^FR\*?1(?:\*|$)/i.test(s) || /^FR1/i.test(norm(s));
+      return opFromRef(e?.physicalReference)==='FR1';
     });
     if(!es.length)continue;
     residual+=es.length;locations++;
@@ -107,7 +118,7 @@ const out={
  safelyRecoverableSourceEvses:Object.entries(byMode).filter(([k])=>k!=='none').reduce((n,[,v])=>n+v,0),
  safeGroups:groups.filter(g=>g.mode!=='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,200),
  unresolvedSamples:groups.filter(g=>g.mode==='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,100),
- policy:'Diagnostic only. FR1 unpublished source EVSEs; local unpublished national targets; global target uniqueness; no proximity inference.'
+ policy:'Diagnostic only. FR1 bucket uses the exact same opFromRef classifier as the canonical unpublished-source ranking; local unpublished national targets; global target uniqueness; no proximity inference.'
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
 await fs.writeFile(OUT,JSON.stringify(out,null,2)+'\n');
