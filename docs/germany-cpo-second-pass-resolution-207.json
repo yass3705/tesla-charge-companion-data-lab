@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 207,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-206.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Luebbecke GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; 100% current energy-price coverage achieved, fee stack remains",
+      "evidence": {
+        "backend": "Vaylens via Mobilithek-derived current data",
+        "currentEstate": "13 stations / 30 EVSE",
+        "powerClass": "All 30 current points AC; 11/22 kW classes observed",
+        "anonymousEnergyCoverage": "30/30 at 0.49 EUR/kWh; min=max=average 0.49",
+        "directPayment": "Multiple current public station surfaces state charging without contract or charging card via direct credit/debit-card payment at 0.49 EUR/kWh.",
+        "sampleEvse": [
+          "DE*ISE*E0007094",
+          "DE*ISE*E0007098",
+          "DE*ISE*EA125986",
+          "DE*ISE*EA127491",
+          "DE*ISE*E0012797",
+          "DE*ISE*E0012798"
+        ]
+      },
+      "exactGap": "No authoritative inspected source explicitly closes anonymous start fee, time fee and blocking fee across all 30 EVSEs. A homogeneous kWh value does not prove those components are zero.",
+      "resumeCondition": "Raw Vaylens/Mobilithek anonymous tariff payload or direct checkout exposing energy plus start/time/blocking fields for the full 30-EVSE estate. Promote immediately if fee coverage is exhaustive and deterministic."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "backendFamilyProgress": {
+    "vaylens_mobilithek": "Two high-yield candidates now reduced to fee-only gaps: Horb 12/12 energy at 0.70 EUR/kWh; Luebbecke 30/30 energy at 0.49 EUR/kWh."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS"
+  },
+  "nextSafeAction": "Prioritize a raw Vaylens/Mobilithek fee-field extraction for Horb and Luebbecke together. This single backend pass could yield two promotions. If explicit fee fields remain unavailable, park both after that distinct payload pass and continue to another Vaylens operator."
+}
