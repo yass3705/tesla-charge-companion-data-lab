@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 201,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-200.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Peine GmbH",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "decision": "remain partial; energy matrix materially narrowed",
+      "evidence": {
+        "operatorCoverage": "21 stations / 51 charge points in current operator profile",
+        "numericEnergyCoverage": "38/51 points",
+        "classes": {
+          "AC": "34 points at 0.64 EUR/kWh",
+          "DC": "2 points at 0.78 EUR/kWh",
+          "HPC": "2 points at 0.78 EUR/kWh"
+        },
+        "exactExample": "DE*SPE*E43098*01 observed as 50 kW DC at 0.78 EUR/kWh"
+      },
+      "exactGap": "13/51 current points remain without exhaustively verified anonymous direct price/fee stack. A Rathaus observation at 0.49 EUR/kWh conflicts with the current 0.64/0.78 matrix and must be reconciled rather than generalized.",
+      "resumeCondition": "Target only the 13 residual EVSEs through current public QR/browser or AFIR/Mobilithek records, including start/blocking fields; resolve Rathaus exception."
+    },
+    {
+      "name": "Stadtwerke Nortorf",
+      "classification": "small fixed-estate candidate",
+      "decision": "remain partial; contradictory current public price evidence",
+      "evidence": {
+        "observations": [
+          "~0.55 EUR/kWh current public charging observation",
+          "0.46 EUR/kWh AC on another recent surface"
+        ],
+        "separation": "2026 first-party 'Nortorf Ladestrom' tariff is household/wallbox charging and is not anonymous public ad-hoc."
+      },
+      "exactGap": "No authoritative current anonymous public checkout tariff resolves 0.55 versus 0.46 EUR/kWh across the active estate.",
+      "resumeCondition": "First-party/public backend anonymous checkout or authoritative AFIR/Mobilithek price+fee matrix for all active Nortorf EVSEs."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS"
+  },
+  "nextSafeAction": "Resolve only the 13 Stadtwerke Peine residual points and Rathaus conflict using a genuinely new backend/source. If no progress, park Peine after the distinct residual pass and move to another machine-readable AFIR/Mobilithek candidate."
+}
