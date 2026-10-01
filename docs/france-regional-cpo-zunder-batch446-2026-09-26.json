@@ -1,0 +1,135 @@
+{
+  "batch": "batch446",
+  "date": "2026-09-26",
+  "scope": "Zunder raw ranks75/79/107 identity family; current first-party France tariff authority and deterministic tariff classes; no counter change because the canonical 291-slot replacement remains unnamed.",
+  "startingState": {
+    "treatedCpos": 89,
+    "setAsideCpos": 11,
+    "activeRemainingCpos": 191,
+    "pendingDedupe": 0
+  },
+  "identityEvidence": {
+    "priorAudit": "docs/france-regional-cpo-batch163-audit-2026-09-10.json",
+    "canonicalIdentity": "Zunder raw rank79 identity",
+    "historicalAliases": [
+      {
+        "rawRank": 75,
+        "label": "Zunder | ES*ZUN"
+      },
+      {
+        "rawRank": 107,
+        "label": "Zunder (Grupo Easycharger S.A)"
+      }
+    ]
+  },
+  "firstPartyTariffEvidence": {
+    "source": "https://www.zunder.com/fr/utilisateur-ve/",
+    "franceVatIncluded": 0.2,
+    "default": [
+      {
+        "class": "AC <=50 kW",
+        "eurPerKwh": 0.42
+      },
+      {
+        "class": ">50 kW",
+        "eurPerKwh": 0.59
+      }
+    ],
+    "families": {
+      "Alicorne": [
+        [
+          "AC",
+          0.33
+        ],
+        [
+          "fast <=150 kW",
+          0.578
+        ],
+        [
+          "fast >150 kW",
+          0.595
+        ]
+      ],
+      "VINCI": [
+        [
+          "AC",
+          0.44
+        ],
+        [
+          "fast <=150 kW",
+          0.44
+        ],
+        [
+          "fast >150 kW",
+          0.59
+        ]
+      ],
+      "A63": [
+        [
+          "AC",
+          0.4
+        ],
+        [
+          "fast <=150 kW",
+          0.4
+        ],
+        [
+          "fast >150 kW",
+          0.564
+        ]
+      ],
+      "Risle": [
+        [
+          "<=50 kW",
+          0.32
+        ],
+        [
+          ">50 kW",
+          0.57
+        ]
+      ]
+    },
+    "rule": "Specific municipal/partner locations can have their own tariff; do not inherit the generic grid when a deterministic family/site mapping is absent."
+  },
+  "dynamicSites": {
+    "source": "https://www.zunder.com/fr/zunder-deploie-de-nouveaux-tarifs-dynamiques-dans-laube-et-les-vosges/",
+    "effectiveEvidenceDate": "2026-05-27",
+    "sites": [
+      {
+        "site": "Saint-André-les-Vergers",
+        "day": "08:00-18:00",
+        "dayEurPerKwh": 0.49,
+        "night": "18:00-08:00",
+        "nightEurPerKwh": 0.4
+      },
+      {
+        "site": "Charmes",
+        "day": "08:00-18:00",
+        "dayEurPerKwh": 0.49,
+        "night": "18:00-08:00",
+        "nightEurPerKwh": 0.35
+      }
+    ],
+    "appliesTo": "Zunder app and direct card/TPE"
+  },
+  "decision": {
+    "classification": "direct-authority-resolved-counter-neutral",
+    "reason": "One counting Zunder authority is proven and current first-party France tariff grids are recovered. Do not consume an arbitrary UNPROVEN_ACTIVE slot until its deterministic historical slot replacement is established.",
+    "fallback": "For an EVSE/site that cannot be deterministically assigned to a first-party Zunder tariff family/site class, fail closed then Electra -> Electroverse; never infer free."
+  },
+  "pendingDedupeTouched": [],
+  "coherenceControl": {
+    "treated": 89,
+    "setAside": 11,
+    "active": 191,
+    "total": 291,
+    "arithmeticOk": true,
+    "pendingDedupe": 0,
+    "counterChange": false
+  },
+  "reemploiV8V9CpoDirect": {
+    "method": "current first-party national/family power-class tariff grids; identity aliases reused from batch163",
+    "bulkCoverage": "Zunder France network where site family + connector power are deterministic",
+    "integrated": "audit authority/mapping rules only; no unsafe station extrapolation"
+  }
+}
