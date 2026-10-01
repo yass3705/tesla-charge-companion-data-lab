@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 6,
+  "date": "2026-09-17",
+  "strategy": "Start with easy family: current first-party LadeVerbundPlus member pages that explicitly publish anonymous ad-hoc prices and the relevant fee rules. No tariff is generalized from one member to another.",
+  "canonicalBefore": {"totalNamedCpos":591,"complete":206,"partial":385,"blocked":0},
+  "promotions": [
+    {
+      "name": "Stadtwerke Forchheim",
+      "previousStatus": "partial",
+      "newStatus": "complete",
+      "resolution": "Current first-party Stadtwerke Forchheim page, explicitly updated for the new LadeVerbundPlus offer from September 2026, publishes a separate Ad-hoc-Tarif column for its LadeVerbundPlus estate: AC 0.62 EUR/kWh and DC 0.82 EUR/kWh. It also publishes blocking fees: AC 0.10 EUR/min after 240 minutes in the 08:00-20:00 window and DC 0.10 EUR/min after 60 minutes; parking garages are exempt from the blocking fee. Prices are stated gross including VAT. Anonymous ad-hoc remains separate from LadeVerbundPlus registered and Stadtwerke partner tariffs.",
+      "anonymousAdHoc": {
+        "AC": {"energyEurPerKwh":0.62,"blockingEurPerMin":0.10,"blockingAfterMin":240,"blockingWindow":"08:00-20:00","parkingGarageBlockingExempt":true},
+        "DC": {"energyEurPerKwh":0.82,"blockingEurPerMin":0.10,"blockingAfterMin":60,"parkingGarageBlockingExempt":true},
+        "vat":"included"
+      },
+      "sources": ["https://www.stadtwerke-forchheim.de/unsere-leistungen/mobilitaet/stadtwerke-kunden-tanken-preiswerter/"],
+      "verificationDate":"2026-09-17"
+    },
+    {
+      "name": "Stadtwerke Bamberg",
+      "previousStatus": "partial",
+      "newStatus": "complete",
+      "resolution": "Current first-party Stadtwerke Bamberg public-charging page states that all listed Stadtwerke public charge points are AC up to 22 kW, explicitly allows spontaneous anonymous charging by QR code without registration, and gives the current ad-hoc price as 0.62 EUR/kWh. The same page identifies the station-specific standing-fee scope: after four hours in the named parking garages/underground garages, while P+R Heinrichsdamm and P+R Kronacher Strasse are explicitly exempt all day for LadeVerbundPlus/ad-hoc charging. This is sufficient for the current Bamberg public estate without importing another member's tariff.",
+      "anonymousAdHoc": {
+        "AC": {"energyEurPerKwh":0.62,"access":"QR without registration"},
+        "estatePower":"up to 22 kW AC per first-party FAQ",
+        "standingFeeScope":"after four hours at specified parking/underground-garage sites; P+R Heinrichsdamm and P+R Kronacher Strasse explicitly exempt for ad-hoc/LadeVerbundPlus"
+      },
+      "sources": ["https://www.stadtwerke-bamberg.de/e-laden"],
+      "verificationDate":"2026-09-17"
+    }
+  ],
+  "familyProgress": {
+    "family":"LadeVerbundPlus_easy_first_party",
+    "promotedThisBatch":2,
+    "method":"Use only member-specific current first-party pages that explicitly bind anonymous ad-hoc price/access and relevant fee scope. Central LadeVerbundPlus registered tariffs are not substituted for ad-hoc and no member tariff is propagated to another CPO.",
+    "nextCandidates":["Erlanger Stadtwerke / ESTW","Stadtwerke Neumarkt","Stadtwerke Hof","SUEC Coburg","Stadtwerke Amberg / SWA-E-Charge","Stadtwerke Kulmbach"],
+    "guard":"Candidates whose first-party pages still expose pre-September-2026 tariff tables or omit current anonymous price/fee completeness remain partial until current CPO-specific evidence is found."
+  },
+  "canonicalAfter": {"totalNamedCpos":591,"complete":208,"partial":383,"blocked":0},
+  "statusChanges":2,
+  "consistencyCheck": {
+    "status":"PASS",
+    "arithmetic":"208 + 383 + 0 = 591",
+    "promotions":2,
+    "unsafeExtrapolations":0,
+    "registeredOrRoamingTariffSubstituted":false,
+    "duplicateOrAliasChange":0,
+    "repeatInvestigationGuard":"PASS"
+  },
+  "nextSafeAction":"Continue the easy LadeVerbundPlus member family using current CPO-specific first-party pages. Promote only when anonymous ad-hoc price plus applicable fee scope are current and explicit; otherwise leave partial and move immediately to the next candidate. In parallel retain Allgaeuer as a bounded B1 residual rather than repeating broad research."
+}
