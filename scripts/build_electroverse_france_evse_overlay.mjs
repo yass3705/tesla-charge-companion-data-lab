@@ -2559,3 +2559,5 @@ if(stats.publishedOffers<5000)throw new Error('too few safe Electroverse EVSE of
 // trace NUMERIC source connector profiles 2026-10-01
 
 // rebuild trigger after hardened zero mapping 2026-10-01
+
+// rebuild after persisted P01 donor ledger 2026-10-01
