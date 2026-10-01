@@ -1039,8 +1039,7 @@ for(const sh of manifest.shards||[]){
         });
         if(parentCandidates.length===1)continue;
         if(ordinalTargets.has(e0)||genericTargets.has(e0)||suffixTargets.has(e0)||trimmedSuffixTargets.has(e0)||
-           pd1FinalOrdinalTargets.has(e0)||viaFinalOrdinalTargets.has(e0)||hpcGroupedSourceEvses.has(e0)||
-           pd1TechnicalSourceEvses.has(e0)||drvPowerSourceEvses.has(e0))continue;
+           pd1FinalOrdinalTargets.has(e0)||viaFinalOrdinalTargets.has(e0)||hpcGroupedSourceEvses.has(e0))continue;
         const mm=pr0.match(/^FR\*S30\*(E[0-9A-Z]+)\*([0-9A-Z]+)\*([0-9]+)\*([0-9]+)$/i);
         if(!mm)continue;
         const target=norm('FRS30'+mm[1]+mm[2]+mm[4]);
