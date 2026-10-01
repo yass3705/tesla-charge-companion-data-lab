@@ -38,6 +38,7 @@ jobs:
           set -o pipefail
           mkdir -p out/powerdot
           python -m py_compile scripts/powerdot_official.py
+          python -m pip install --disable-pip-version-check selenium
           python scripts/powerdot_official.py --out out/powerdot 2> >(tee out/powerdot/error.log >&2)
           cat out/powerdot/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
 
