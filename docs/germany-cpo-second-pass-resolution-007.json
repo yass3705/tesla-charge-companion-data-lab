@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 7,
+  "date": "2026-09-17",
+  "strategy": "Continue easy/high-yield first-party resolution queue. Promote only current CPO-specific anonymous ad-hoc tariffs with explicit energy and applicable time/blocking rules; leave ambiguous or stale cases partial and move on.",
+  "canonicalBefore": {"totalNamedCpos":591,"complete":208,"partial":383,"blocked":0},
+  "promotions": [
+    {
+      "name":"Stadtwerke Muenster / Momente",
+      "previousStatus":"partial",
+      "newStatus":"complete",
+      "resolution":"Current first-party Stadtwerke Muenster page publishes a tariff explicitly valid from 2026-04-01 and separately identifies Kreditkarte/Ad-Hoc-Ladung. QR plus credit-card payment requires no substitution from Momente Card or roaming. Anonymous ad-hoc is 0.47 EUR/kWh AC plus 0.05 EUR/min after 240 minutes, and 0.52 EUR/kWh DC plus 0.05 EUR/min after 60 minutes. The time component applies 06:00-22:00; minutes continue counting overnight but no time charge is levied 22:00-06:00. At parking garages and P+R, the AC stand component starts after 480 minutes according to the first-party exception note.",
+      "anonymousAdHoc": {
+        "access":"QR at charge point + credit card",
+        "AC":{"energyEurPerKwh":0.47,"blockingEurPerMin":0.05,"blockingAfterMin":240,"blockingChargedWindow":"06:00-22:00","parkingGarageAndPRBlockingAfterMin":480},
+        "DC":{"energyEurPerKwh":0.52,"blockingEurPerMin":0.05,"blockingAfterMin":60,"blockingChargedWindow":"06:00-22:00"},
+        "vat":"included"
+      },
+      "sources":["https://www.stadtwerke-muenster.de/unterwegs/e-mobilitaet/elektroauto-laden"],
+      "verificationDate":"2026-09-17"
+    },
+    {
+      "name":"Stadtwerke Duesseldorf",
+      "previousStatus":"partial",
+      "newStatus":"complete",
+      "resolution":"Current first-party Stadtwerke Duesseldorf tariff page explicitly publishes Ad-hoc Laden effective 2026-04-01 for Stadtwerke Duesseldorf charge points: 0.48 EUR/kWh AC and 0.60 EUR/kWh DC. The same table gives the usage fee: 0.10 EUR/min between 08:00 and 21:00 after four hours AC or one hour DC. This is explicitly the anonymous ad-hoc layer and remains separate from Stadtwerke charging-card and roaming tariffs.",
+      "anonymousAdHoc": {
+        "AC":{"energyEurPerKwh":0.48,"usageFeeEurPerMin":0.10,"usageFeeAfterMin":240,"usageFeeWindow":"08:00-21:00"},
+        "DC":{"energyEurPerKwh":0.60,"usageFeeEurPerMin":0.10,"usageFeeAfterMin":60,"usageFeeWindow":"08:00-21:00"}
+      },
+      "sources":["https://www.swd-ag.de/pk/elektromobilitaet/unterwegs-laden/ladekarte-e-auto/","https://www.swd-ag.de/ueber-uns/presse/2026/20260302-stadtwerke-senken-ladepreise/"],
+      "verificationDate":"2026-09-17"
+    }
+  ],
+  "easyQueueCheckedButStillPartial": [
+    {"name":"Stadtwerke Hof","reason":"Not a current CPO anymore: first-party states Stadtwerke Hof ended operation on 2025-07-31 and N-ERGIE took over from 2025-08-01. Historical Hof ad-hoc tariff sheets must not be ingested as a current Stadtwerke-Hof CPO tariff. Requires canonical operator-identity reconciliation rather than tariff promotion."},
+    {"name":"SUEC Coburg","reason":"Current first-party material clearly publishes SUEC-card energy/blocking prices, but does not bind those values to anonymous ad-hoc. Current Mobilithek-derived station records show site/power-class values that differ, so no card-to-ad-hoc equivalence is inferred."},
+    {"name":"Stadtwerke Amberg / SWA-E-Charge","reason":"Current first-party page says current prices are in the app but does not publish a complete anonymous direct tariff matrix. Remains dynamic/app case."},
+    {"name":"Stadtwerke Kulmbach","reason":"Current first-party site enumerates public stations but does not publish a complete anonymous tariff matrix. A current Mobilithek-derived station record shows 0.40 EUR/kWh AC with no start/blocking fee at one station only; this is insufficient for estate-wide promotion."},
+    {"name":"Stadtwerke Dachau","reason":"Two live first-party pages conflict for anonymous AC: one direct-payment section gives 0.65 EUR/kWh plus blocking/minimum-spend rules while the station page says charging without card currently costs 0.69 EUR/kWh. Requires live checkout or dated artifact before promotion."},
+    {"name":"Stadtwerke Schweinfurt","reason":"Current first-party page maps charge-it-easy to 0.55 EUR/kWh and confirms use without registration, but current Mobilithek/LichtBlick-derived station evidence exposes a materially different station tariff structure (0.462 EUR/kWh plus time component) on at least one SW Schweinfurt EVSE. Keep fail-closed until current direct-price scope is reconciled."},
+    {"name":"Stadtwerke Trostberg","reason":"Binding 2025-2026 first-party price sheet gives ladeapp ad-hoc 0.59 EUR/kWh, but first-party Ladeapp AGB states costs can vary by charge point. Exact current per-EVSE equivalence across the four public sites is not yet proven, so no network-wide promotion."}
+  ],
+  "canonicalAfter":{"totalNamedCpos":591,"complete":210,"partial":381,"blocked":0},
+  "statusChanges":2,
+  "consistencyCheck":{"status":"PASS","arithmetic":"210 + 381 + 0 = 591","promotions":2,"unsafeExtrapolations":0,"registeredOrRoamingTariffSubstituted":false,"duplicateOrAliasChange":0,"repeatInvestigationGuard":"PASS"},
+  "nextSafeAction":"Continue the easy first-party queue beyond LadeVerbundPlus, prioritizing current pages that explicitly publish Kreditkarte/QR/Ad-hoc tariff rows and complete fee rules. Candidates without current anonymous equivalence are immediately parked for later backend/AFIR reconciliation. After easy first-party yield drops, batch chargecloud/Mobilithek B1/B3/B6 cases."
+}
