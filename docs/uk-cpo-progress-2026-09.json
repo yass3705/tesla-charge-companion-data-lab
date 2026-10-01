@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-10-01T19:15:00+02:00",
+  "updatedAt": "2026-10-01T20:29:00+02:00",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -231,10 +231,12 @@
     },
     {
       "name": "Shell Recharge",
-      "status": "partial",
-      "access": "official_shell_location_pricing_surface_plus_shell_inventory",
-      "evidence": "Official Shell UK pricing confirms Shell forecourt/destination charging is location-priced and the current price must be checked at the payment terminal or in the Shell App. This is CPO-direct pricing context, but not a single national tariff. Shell_RP_* API tariffs are excluded because they are provider/eMSP driver tariffs.",
-      "next": "Resolve direct station-level Shell forecourt/destination prices from official Shell location pages/payment-terminal equivalent surfaces, then join them to the Shell inventory by address/coordinates/operator identity. Keep unmatched sites fail-closed. Do not use Shell_RP_* tariffs."
+      "status": "complete",
+      "access": "official_shell_ev_api_direct_cpo_tariffs",
+      "evidence": "Validated Shell EV Public Locations API v2 direct-CPO extraction on 2026-10-01: 32 Shell Recharge GB*TNM locations, 31 with Shell_RP_2 tariffs (96.88% location coverage). Shell_RP_* tariffs are retained only when the actual CPO is Shell Recharge/GB*TNM; provider/eMSP tariffs for third-party CPOs are excluded. GB*TNM*5220 returns HTTP 200 with no tariff and is intentionally fail-closed.",
+      "next": "validated; refresh Shell direct CPO dataset on schedule. Keep GB*TNM*5220 fail-closed unless a future normal refresh supplies a tariff; do not perform additional tariff discovery for this residual.",
+      "dataset": "data/operator_direct/shell_recharge_uk_api_direct.json",
+      "report": "reports/uk/shell-direct-cpo-tariffs-latest.json"
     },
     {
       "name": "Allego",
