@@ -6,6 +6,7 @@ const MAP='data/electroverse/irve_location_mapping.json';
 const OVERLAY='data/platforms/electroverse/france-evse';
 const OUT='reports/electroverse/remaining-batch-analysis.json';
 const VALIDATED='data/platforms/electroverse/validated-mappings/remaining-unique-suffix-residual.json';
+const P01_VALIDATED='data/platforms/electroverse/validated-mappings/p01-structured-residual.json';
 
 const norm=x=>String(x??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
 const opFromRef=raw=>{
@@ -22,6 +23,9 @@ const opFromRef=raw=>{
 };
 
 const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
+let p01Validated={nationalOrphanSources:[]};
+try{p01Validated=JSON.parse(await fs.readFile(P01_VALIDATED,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
+const classifiedNationalOrphanPks=new Set((p01Validated.nationalOrphanSources||[]).map(x=>String(x.electroverseEvsePk)).filter(Boolean));
 const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
 
 const oman=JSON.parse(await fs.readFile(OVERLAY+'/manifest.json','utf8'));
@@ -61,7 +65,7 @@ function addOp(op,group){
 for(const sh of cman.shards||[]){
   const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
   for(const row of Object.values(data.stations||{})){
-    const pending=(row?.tariff?.evses||[]).filter(e=>e?.pk!=null&&!publishedSourcePks.has(String(e.pk)));
+    const pending=(row?.tariff?.evses||[]).filter(e=>e?.pk!=null&&!publishedSourcePks.has(String(e.pk))&&!classifiedNationalOrphanPks.has(String(e.pk)));
     if(!pending.length)continue;
     const byOp=new Map();
     for(const e of pending){
@@ -154,6 +158,7 @@ const operators=[...byOperator.values()].map(x=>({
 })).sort((a,b)=>b.residualSourceEvses-a.residualSourceEvses||a.operator.localeCompare(b.operator));
 
 const out={
+  classifiedNationalOrphanSourceEvses:classifiedNationalOrphanPks.size,
   schemaVersion:1,generatedAt:new Date().toISOString(),
   sourceEvseResidualCount:operators.reduce((n,x)=>n+x.residualSourceEvses,0),
   operatorBucketCount:operators.length,
