@@ -26,28 +26,27 @@ jobs:
         run: |
           cp reports/electroverse/p01-residual-analysis.json /tmp/p01-residual-analysis.json
           cp data/platforms/electroverse/validated-mappings/p01-structured-residual.json /tmp/p01-structured-residual.json
-          git fetch origin main
-          git reset --hard origin/main
-          mkdir -p reports/electroverse data/platforms/electroverse/validated-mappings
-          cp /tmp/p01-residual-analysis.json reports/electroverse/p01-residual-analysis.json
-          cp /tmp/p01-structured-residual.json data/platforms/electroverse/validated-mappings/p01-structured-residual.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports/electroverse/p01-residual-analysis.json data/platforms/electroverse/validated-mappings/p01-structured-residual.json
-          if git diff --cached --quiet; then
-            echo "No P01 analysis changes"
-          else
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p reports/electroverse data/platforms/electroverse/validated-mappings
+            cp /tmp/p01-residual-analysis.json reports/electroverse/p01-residual-analysis.json
+            cp /tmp/p01-structured-residual.json data/platforms/electroverse/validated-mappings/p01-structured-residual.json
+            git add reports/electroverse/p01-residual-analysis.json data/platforms/electroverse/validated-mappings/p01-structured-residual.json
+            if git diff --cached --quiet; then
+              echo "No P01 analysis changes"
+              exit 0
+            fi
             git commit -m "data: persist Electroverse P01 residual analysis"
-            for attempt in 1 2 3 4 5; do
-              if git push origin HEAD:main; then
-                break
-              fi
-              git fetch origin main
-              git rebase origin/main
-              sleep $((attempt * 2))
-            done
-            git push origin HEAD:main
-          fi
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          echo "Unable to persist P01 analysis after retries" >&2
+          exit 1
       - uses: actions/upload-artifact@v4
         with:
           name: electroverse-france-p01-residual-analysis
