@@ -1,0 +1,49 @@
+{
+  "schemaVersion":1,
+  "country":"DE",
+  "project":"Tesla Charge Companion V9",
+  "phase":"second-pass-backend-routing",
+  "routingBatch":4,
+  "date":"2026-09-17",
+  "canonicalStatus":{"totalNamedCpos":591,"complete":221,"partial":370,"blocked":0},
+  "reason":"Direct first-party easy-candidate yield has declined after resolution batches 008-013. Remaining work is routed primarily by backend/source family and exact EVSE/fee coverage instead of broad CPO-by-CPO searches.",
+  "priorityQueues":[
+    {
+      "family":"chargecloud_plus_Mobilithek_AFIR",
+      "confirmedOrHighConfidenceTargets":["Allgaeuer Kraftwerke GmbH","Stadtwerke Feuchtwangen KU"],
+      "evidence":"Allgaeuer already has exact chargecloud/Mobilithek DE*738 evidence. Feuchtwangen current Mobilithek/DATEX-II chargecloud evidence at Am Bleichwasen exposes 0.70 EUR/kWh AC, zero start fee and 0.05 EUR/min blocking after 240 minutes.",
+      "resolutionRule":"Enumerate canonical EVSE set, calculate priced+fee-complete coverage, and promote only at full relevant coverage or when a current first-party deterministic rule closes all residual exceptions.",
+      "next":"Allgaeuer residual exact EVSE identities first; then enumerate Feuchtwangen estate and test whether observed tariff/fee class is exhaustive."
+    },
+    {
+      "family":"first_party_rule_plus_station_exception_mapping",
+      "targets":["infra fuerth service gmbh","REWAG / Regensburger Energie- und Wasserversorgung AG & Co KG"],
+      "evidence":"infra Fürth publishes current ad-hoc classes 0.6188 EUR/kWh for AC and DC <=50 kW and 0.8144 EUR/kWh for DC >50 kW, with blocking only at selected sites. REWAG publishes current direct PayPal 0.50 EUR/kWh <=49 kW and 0.55 EUR/kWh >=50 kW, with blocking only at marked stations.",
+      "resolutionRule":"Do not re-research energy prices. Extract only station-list flags determining blocking applicability and bind them to EVSE/site IDs.",
+      "next":"Map station exception flags in bulk; promote when every canonical site is assigned."
+    },
+    {
+      "family":"m8mit_public_guest",
+      "targets":["Stadtwerke Schwerin","Stadtwerke Güstrow GmbH"],
+      "evidence":"Public m8mit guest/contact surfaces are confirmed. Schwerin remains location-scoped at Im Eckdrift; Güstrow has current m8mit operator surface but numeric estate coverage is not complete.",
+      "resolutionRule":"Use public guest station pages only; enumerate EVSEs and price/fee fields without authentication. Promote only when estate coverage is complete.",
+      "next":"Enumerate canonical station list and compare to guest pages; avoid generic m8mit probing."
+    },
+    {
+      "family":"ChargePoint_plus_Mobilithek_EcoMovement",
+      "targets":["GEW Wilhelmshaven GmbH"],
+      "resolutionRule":"Resolve only official GEW sites, normalize binding gross semantics, and verify start/blocking fields per site.",
+      "next":"Finish official-site mapping and gross/net conflict; no legacy ChargePoint app/card substitution."
+    },
+    {
+      "family":"ladenetz_ladeapp_LadeVerbundPlus",
+      "targets":["Stadtwerke Crailsheim GmbH","Kommunalunternehmen Stadtwerke Pfaffenhofen a. d. Ilm","Stadtwerke Andernach Energie GmbH"],
+      "evidence":"All have current QR/direct access evidence, but either current anonymous numeric equivalence or exact fee/site exceptions remain incomplete.",
+      "resolutionRule":"Use direct QR/ladeapp tariff surfaces or current CPO-specific first-party ad-hoc rows. Never substitute registered tariffs.",
+      "next":"Prioritize candidates where only one missing fee/equivalence field remains."
+    }
+  ],
+  "antiStagnation":"Two distinct passes without promotion for a family => persist exact gap and move to next family. Broad tariff searches are forbidden for bounded cases unless a new source appears.",
+  "consistencyCheck":{"status":"PASS","arithmetic":"221 + 370 + 0 = 591","anonymousRegisteredSeparation":"PASS","countOnlyEntries":0},
+  "nextSafeAction":"Execute chargecloud/Mobilithek coverage first, while mapping infra Fürth and REWAG station blocking exceptions in parallel."
+}
