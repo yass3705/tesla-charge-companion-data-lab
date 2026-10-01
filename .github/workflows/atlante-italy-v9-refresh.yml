@@ -110,7 +110,7 @@ jobs:
               'myAtlanteOnlySample': sorted(atl_only)[:200],
           }
           if not all(out['quality'].values()):
-              raise SystemExit('Atlante Italy V9 refresh quality gate failed: ' + json.dumps(out['quality']))
+              raise SystemExit('Atlante Italy V9 refresh quality gate failed: ' + json.dumps({'quality':out['quality'],'counts':out['counts']}))
 
           Path('data/reports/atlante_italy_refresh_latest.json').write_text(
               json.dumps(out, ensure_ascii=False, indent=2) + '\n', encoding='utf-8'
