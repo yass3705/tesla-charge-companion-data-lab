@@ -1,0 +1,32 @@
+name: Build France Electroverse PD1 final-ordinal lab
+on:
+  push:
+    branches:
+      - electroverse-pd1-final-ordinal-lab
+    paths:
+      - "scripts/build_electroverse_france_evse_overlay.mjs"
+      - ".github/workflows/electroverse-pd1-final-ordinal-lab.yml"
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build PD1 lab overlay
+        run: node scripts/build_electroverse_france_evse_overlay.mjs
+      - name: Persist lab overlay
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/platforms/electroverse/france-evse
+          if git diff --cached --quiet; then
+            echo "No data changes"
+          else
+            git commit -m "lab: publish PD1 final-ordinal Electroverse overlay"
+            git push
+          fi
