@@ -45,10 +45,8 @@ let residual=0,locations=0;
 for(const sh of cman.shards||[]){
   const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
   for(const row of Object.values(data.stations||{})){
-    const es=(row?.tariff?.evses||[]).filter(e=>{
-      if(e?.pk==null||publishedSourcePks.has(String(e.pk)))return false;
-      return opFromRef(e?.physicalReference)==='0';
-    });
+    const pending=(row?.tariff?.evses||[]).filter(e=>e?.pk!=null&&!publishedSourcePks.has(String(e.pk)));
+    const es=pending.filter(e=>opFromRef(e?.physicalReference)==='0');
     if(!es.length)continue;
     residual+=es.length;locations++;
     const m=byPk.get(String(row.electroverseLocationPk));
@@ -88,8 +86,14 @@ for(const sh of cman.shards||[]){
       complexPricingDetail:c?.complexPricingDetail??null
     }))))).size===1;
     const connectorCounts=new Set(es.map(e=>(e.connectors||[]).length));
+    const technicalProfiles=new Set(es.map(e=>JSON.stringify((e.connectors||[]).map(c=>({
+      kilowatts:c?.kilowatts??null,
+      standard:c?.standard?.name??c?.standard??null
+    })).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))))));
     const exactSetSafe=es.length===available.length&&available.length>0&&
-      available.every(p=>(owners.get(p)?.size||0)===1)&&homogeneousPricing;
+      pending.length===es.length&&
+      available.every(p=>(owners.get(p)?.size||0)===1)&&
+      homogeneousPricing&&technicalProfiles.size===1;
 
     let mode='none';
     if(exactSuffix.length===es.length&&exactSuffixUniqueTargets)mode='unique_suffix_bijection';
