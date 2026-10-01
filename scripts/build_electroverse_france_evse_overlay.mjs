@@ -2343,3 +2343,5 @@ const out={
 await fs.writeFile(path.join(OUT,'manifest.json'),JSON.stringify(out,null,2)+'\n');
 console.log(JSON.stringify(out,null,2));
 if(stats.publishedOffers<5000)throw new Error('too few safe Electroverse EVSE offers: '+stats.publishedOffers);
+
+// rebuild trigger after S63 validated residual mappings 2026-10-01
