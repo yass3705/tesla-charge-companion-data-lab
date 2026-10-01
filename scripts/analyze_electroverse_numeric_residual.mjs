@@ -88,6 +88,39 @@ for(const g of groups){
   buckets[k]=(buckets[k]||0)+g.numericResidualCount;
 }
 const solvable=groups.filter(g=>!g.duplicateSourceOrdinals&&g.exactCandidateCount===1);
+const validatedMappings=[];
+for(const g of solvable){
+  const cand=g.exactCandidates[0];
+  const byOrd=new Map(cand.targets.map(x=>[x.n,x.p]));
+  for(const x of g.ordinals){
+    const target=byOrd.get(x.n);
+    if(!target)continue;
+    validatedMappings.push({
+      electroverseLocationPk:g.electroverseLocationPk,
+      electroverseEvsePk:x.evsePk,
+      physicalReference:x.physicalReference,
+      targetPdc:target,
+      evidence:{
+        mode:'strict_post_overlay_numeric_suffix_bijection',
+        width:cand.width,
+        prefix:cand.prefix,
+        sourceResidualCount:g.numericResidualCount,
+        availablePdcCount:g.availablePdcCount
+      }
+    });
+  }
+}
+const validatedOut={
+  schemaVersion:1,
+  generatedAt:new Date().toISOString(),
+  dataset:'electroverse-france-validated-numeric-residual-mappings',
+  count:validatedMappings.length,
+  policy:'Generated only from unique post-overlay suffix-ordinal bijections with globally unique national PDC targets; no proximity inference.',
+  mappings:validatedMappings
+};
+await fs.mkdir('data/platforms/electroverse/validated-mappings',{recursive:true});
+await fs.writeFile('data/platforms/electroverse/validated-mappings/numeric-residual.json',JSON.stringify(validatedOut,null,2)+'\n');
+
 const out={
   schemaVersion:1,
   generatedAt:new Date().toISOString(),
