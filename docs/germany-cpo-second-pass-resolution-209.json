@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 209,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-208.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Bad Nauheim GmbH / ensev GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; first-party anonymous tariff rule found, but current estate/fee coverage has a residual exception",
+      "evidence": {
+        "operatorLineage": "Stadtwerke Bad Nauheim transferred its charging infrastructure to wholly owned e-mobility subsidiary ensev GmbH; first-party states practically nothing changes for customers.",
+        "firstPartyAnonymousRule": "ensev public charging tariff: AC up to 22 kW and DC up to 150 kW, ad-hoc 0.57 EUR/kWh gross + 3.00 EUR start fee per session; spontaneous smartphone/credit-card charging supported.",
+        "firstPartyEstate": "ensev states 58 AC public charge points in Bad Nauheim plus public DC infrastructure; Taubenbaum adds 6 public CCS points up to 150 kW.",
+        "mobilithekCorroboration": "Current Mobilithek/chargecloud station records at Frankfurter Strasse, Landesaerztekammer, Fachmarktzentrum, Hohe Strasse and other sampled ensev sites expose 0.57 EUR/kWh + 3.00 EUR start + 0.00 EUR/min blocking for AC and DC/HPC.",
+        "exception": "A current Parkstrasse Mobilithek-derived surface contains at least one EVSE with no ad-hoc tariff populated while neighboring EVSEs show 0.57 + 3.00 + zero blocking."
+      },
+      "exactGap": "Need reconcile the canonical 68-EVSE denominator against the current ensev estate and close the Parkstrasse missing-tariff EVSE(s). First-party rule closes energy+start fee for AC/DC <=150 kW, but explicit zero blocking is currently evidenced on sampled Mobilithek records rather than exhaustively every EVSE.",
+      "resumeCondition": "Current raw Mobilithek/chargecloud export for all canonical 68 EVSEs confirming operator=ensev, tariff 0.57 EUR/kWh, start 3.00 EUR, blocking 0.00 (or deterministic explicit rule), including Parkstrasse residuals. Then promote."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "backendFamilyProgress": {
+    "chargecloud_mobilithek": "Bad Nauheim materially advanced: authoritative anonymous energy+start rule obtained and multiple AC/DC/HPC records confirm zero blocking; remaining issue narrowed to estate reconciliation plus Parkstrasse missing tariff field(s)."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS"
+  },
+  "nextSafeAction": "Target Bad Nauheim raw Mobilithek/chargecloud 68-EVSE export and Parkstrasse residual only. Do not repeat broad tariff search. If reconciled, promote; otherwise park and move to another chargecloud/Mobilithek operator."
+}
