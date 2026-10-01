@@ -8,6 +8,9 @@ on:
       - ".github/workflows/electroverse-p01-residual-analysis.yml"
 permissions:
   contents: write
+concurrency:
+  group: electroverse-p01-residual-analysis
+  cancel-in-progress: true
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -21,6 +24,13 @@ jobs:
         run: node scripts/analyze_electroverse_p01_residual.mjs
       - name: Persist P01 residual analysis
         run: |
+          cp reports/electroverse/p01-residual-analysis.json /tmp/p01-residual-analysis.json
+          cp data/platforms/electroverse/validated-mappings/p01-structured-residual.json /tmp/p01-structured-residual.json
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p reports/electroverse data/platforms/electroverse/validated-mappings
+          cp /tmp/p01-residual-analysis.json reports/electroverse/p01-residual-analysis.json
+          cp /tmp/p01-structured-residual.json data/platforms/electroverse/validated-mappings/p01-structured-residual.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add reports/electroverse/p01-residual-analysis.json data/platforms/electroverse/validated-mappings/p01-structured-residual.json
@@ -28,11 +38,7 @@ jobs:
             echo "No P01 analysis changes"
           else
             git commit -m "data: persist Electroverse P01 residual analysis"
-            for attempt in 1 2 3; do
-              git pull --rebase origin main && git push && break
-              git rebase --abort || true
-              sleep $((attempt * 2))
-            done
+            git push origin HEAD:main
           fi
       - uses: actions/upload-artifact@v4
         with:
