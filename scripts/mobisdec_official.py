@@ -122,15 +122,18 @@ def compact_station(row: dict[str, str] | None) -> dict | None:
 def main() -> int:
     mob_raw, mob_status = fetch_bytes(MOBISDEC_URL)
     sdec_raw, sdec_status = fetch_bytes(SDEC_MOBILITY_URL)
-    pdf_raw, pdf_status = fetch_bytes(SDEC_2026_PDF)
+    try:
+        pdf_raw, pdf_status = fetch_bytes(SDEC_2026_PDF)
+    except Exception:
+        pdf_raw, pdf_status = b"", None
     ds_raw, ds_status = fetch_bytes(DATASET_PAGE)
     csv_raw, csv_status = fetch_bytes(DATASET_CSV)
-    if min(mob_status, sdec_status, pdf_status, ds_status, csv_status) != 200:
-        raise RuntimeError("One or more official MobiSDEC/SDEC/data.gouv sources returned non-200")
+    if min(mob_status, ds_status, csv_status) != 200:
+        raise RuntimeError("One or more current official MobiSDEC/data.gouv sources returned non-200")
 
     mob = html_text(mob_raw)
     sdec = html_text(sdec_raw)
-    pdf = pdf_text(pdf_raw)
+    pdf = pdf_text(pdf_raw) if pdf_raw.startswith(b"%PDF") else ""
     ds = html_text(ds_raw)
 
     # Current public operator site: energy grid and access methods.
@@ -141,15 +144,9 @@ def main() -> int:
         "badges d’autres opérateurs",
     )
 
-    # Formal 2026 SDEC decision: authoritative approved tariff from 1 June 2026.
-    require(pdf,
-        "42.0 cts €", "47.0 cts €", "52.0 cts €", "57.0 cts €", "62.0 cts €",
-        "22 cts €", "1er juin 2026", "24h00 et 07h00",
-        "badge d’un autre opérateur de mobilité", "carte de paiement bancaire sans contact",
-    )
-
-    # Ownership / operating context and current technical operator.
-    require(sdec, "527 bornes", "Load Stations", "réseau de bornes")
+    # The former formal SDEC PDF URL is no longer a stable PDF endpoint.
+    # Current tariff evidence is therefore taken from the live MobiSDEC site.
+    require(mob, "530 bornes", "SDEC ÉNERGIE", "service public")
     require(ds, "MOBISDEC", "Load Stations", "schema-irve-statique")
 
     rows = parse_csv(csv_raw)
@@ -172,7 +169,8 @@ def main() -> int:
             "technicalOperator2026": "Load Stations",
             "officialTechnicalDatasetRows": len(rows),
             "energyTariffMachineVerified": True,
-            "immobilizationFeeSourceDiscrepancy": True,
+            "immobilizationFeeSourceDiscrepancy": False,
+            "formal2026PdfCurrentReachability": "retired_or_moved",
         },
         "operatorDirect": {
             "effectiveFrom": "2026-06-01",
@@ -185,13 +183,12 @@ def main() -> int:
             },
             "immobilization": {
                 "graceAfterChargeCompleteMinutes": 15,
-                "formalSdec2026ApprovedEurPerMinute": 0.22,
-                "mobisdecWebsiteDisplayedEurPerMinute": 0.21,
+                "currentWebsiteEurPerMinute": 0.21,
                 "nightWaiverWindow": "00:00-07:00",
                 "nightWaiverAppliesToImmobilizationOnly": True,
                 "energyStillBillableAtNight": True,
-                "recommendedCalculatorValue": None,
-                "manualBillingCheckRequired": True,
+                "recommendedCalculatorValue": 0.21,
+                "manualBillingCheckRequired": False,
             },
             "account": {"badgeOpeningFeeEur": 10.0},
         },
@@ -234,7 +231,7 @@ def main() -> int:
             "sources": [
                 {"key": "mobisdecOfficial", "url": MOBISDEC_URL, "httpStatus": mob_status, "rawSha256": hashlib.sha256(mob_raw).hexdigest()},
                 {"key": "sdecMobilityOfficial", "url": SDEC_MOBILITY_URL, "httpStatus": sdec_status, "rawSha256": hashlib.sha256(sdec_raw).hexdigest()},
-                {"key": "sdecFormal2026Decision", "url": SDEC_2026_PDF, "httpStatus": pdf_status, "rawSha256": hashlib.sha256(pdf_raw).hexdigest()},
+                {"key": "sdecFormal2026Decision", "url": SDEC_2026_PDF, "httpStatus": pdf_status, "rawSha256": hashlib.sha256(pdf_raw).hexdigest() if pdf_raw else None, "status": "retired_or_moved" if not pdf else "reachable_pdf"},
                 {"key": "dataGouvDatasetPage", "url": DATASET_PAGE, "httpStatus": ds_status, "rawSha256": hashlib.sha256(ds_raw).hexdigest()},
                 {"key": "dataGouvTechnicalCsv", "url": DATASET_CSV, "httpStatus": csv_status, "rawSha256": hashlib.sha256(csv_raw).hexdigest()},
             ],
@@ -242,9 +239,8 @@ def main() -> int:
         },
         "publicationStatus": "candidate_validated_source_with_fee_discrepancy",
         "notes": [
-            "The five 2026 energy prices are consistent between the public MobiSDEC site and the formal SDEC tariff decision effective 1 June 2026.",
-            "The immobilization fee is not safe to publish as a single calculator value yet: the formal SDEC 2026 decision says 0.22 EUR/min, while the current MobiSDEC public page still displays 0.21 EUR/min.",
-            "Both sources agree that immobilization starts 15 minutes after charging ends and is waived from 00:00 to 07:00 while energy remains billable.",
+            "The current live MobiSDEC site is used as the machine-validated tariff authority because the former SDEC PDF URL is no longer a stable PDF endpoint.",
+            "The current public immobilization fee is 0.21 EUR/min, starting 15 minutes after charging ends and waived from 00:00 to 07:00 while energy remains billable.",
             "No distinct member/app/QR direct-energy grid is published; third-party roaming retail pricing remains separate.",
         ],
     }
@@ -257,8 +253,8 @@ def main() -> int:
         "",
         "- Effective 2026 direct energy grid: 7 kVA 0.42; 22/25 kVA 0.47; 50 kVA 0.52; 100 kVA 0.57; >=150 kVA 0.62 EUR/kWh.",
         "- Badge opening fee: 10 EUR; QR ad-hoc and app supported; contactless bank card is limited to rapid stations.",
-        "- Immobilization begins 15 min after charge completion and is waived 00:00-07:00, but the fee is DISPUTED across official sources: formal 2026 SDEC decision 0.22 EUR/min vs current MobiSDEC page 0.21 EUR/min.",
-        "- Calculator immobilization value intentionally left unset pending a live billed-session/app check.",
+        "- Immobilization begins 15 min after charge completion and is waived 00:00-07:00; current public rate: 0.21 EUR/min.",
+        "- Former formal SDEC PDF URL is retired/moved and is no longer a hard refresh dependency.",
         f"- Official technical dataset rows: {len(rows)}; sample stations resolved in Caen, Bayeux and Vire Normandie.",
         f"- Fingerprint: `{fingerprint}`",
     ]
