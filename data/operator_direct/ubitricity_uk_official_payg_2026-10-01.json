@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "country": "UK",
+  "operator": "Shell Recharge ubitricity",
+  "tariffChannel": "direct_cpo_payg",
+  "effectiveFrom": "2026-10-01",
+  "sourceType": "official_cpo_pricing_page_plus_official_price_change_pdf",
+  "sources": [
+    "https://ubitricity.com/en/driver/pricing/",
+    "https://ubitricity.com/wp-content/uploads/ubitricity_1st-October_2026_Pricing.pdf"
+  ],
+  "standardTimeBands": [
+    {
+      "name": "off_peak",
+      "start": "00:00",
+      "end": "07:00",
+      "gbpPerKwh": 0.45
+    },
+    {
+      "name": "standard",
+      "windows": [
+        "07:00-16:00",
+        "20:00-24:00"
+      ],
+      "gbpPerKwh": 0.56
+    },
+    {
+      "name": "peak",
+      "start": "16:00",
+      "end": "20:00",
+      "gbpPerKwh": 0.67
+    }
+  ],
+  "fallbackWhenSmartChargingUnavailable": {
+    "gbpPerKwh": 0.54
+  },
+  "connectionFeeGbp": 0,
+  "idleFee": {
+    "appliesTo": "7-22kW charge points",
+    "gbpPerMinute": 0.05,
+    "graceMinutes": 60,
+    "activeWindow": "08:00-20:00"
+  },
+  "explicitlyAffectedLocalAuthorities": [
+    "Bexley",
+    "Birmingham",
+    "Brent",
+    "Camden",
+    "Croydon",
+    "Ealing",
+    "Enfield",
+    "Greenwich",
+    "Hammersmith and Fulham",
+    "Harrangey",
+    "Islington",
+    "Kensington and Chelsea",
+    "Kingston upon Thames",
+    "Lewisham",
+    "Liverpool",
+    "Merton",
+    "Middlesbrough",
+    "Newham",
+    "North Lincolnshire",
+    "Oxford",
+    "Redbridge",
+    "Southwark",
+    "Sutton",
+    "Tower Hamlets",
+    "Waltham Forest (lamppost charge points only)",
+    "West Berkshire",
+    "West Suffolk",
+    "Windsor and Maidenhead"
+  ],
+  "exceptions": [
+    "Official page states prices may differ on some charge points.",
+    "Richmond and Wandsworth, Greenwich and Tower Hamlets have multiple tariffs and must be checked station-by-station in PAYG.",
+    "Small minority of charge points without smart charging use the 0.54 GBP/kWh flat tariff."
+  ],
+  "canonicalRule": "Use only where the EVSE can be deterministically matched to an explicitly covered local-authority/tariff rule. Exception or unmatched EVSEs remain fail-closed. Do not substitute Shell app/eMSP pricing."
+}
