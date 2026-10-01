@@ -79,27 +79,55 @@ jobs:
               except urllib.error.HTTPError as e:
                   return {"httpStatus":e.code,"bodyText":e.read().decode("utf-8","replace")[:4000]}
 
-          # Known UK Shell/ubitricity UIDs from previous successful inventory.
-          uids=["DE*UBI*5007","GB*TNM*5220"]
-          providers=[None,"Shell_RP_2","Shell_RP_1","Shell_RP"]
-          out={"retrievedAt":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()),"results":[]}
+          import gzip
+          dataset="data/national/uk_shell_ev_public_locations.json.gz"
+          with gzip.open(dataset,"rt",encoding="utf-8") as g:
+              inv=json.load(g)
+          locs=inv.get("locations") or []
 
-          for uid in uids:
-              item={"uid":uid,"probes":[]}
-              for provider in providers:
-                  res=call(uid,provider)
-                  entry={"providerId":provider,"httpStatus":res["httpStatus"]}
-                  if "body" in res:
-                      body=res["body"]
-                      entry["status"]=body.get("status") if isinstance(body,dict) else None
-                      data=body.get("data") if isinstance(body,dict) else None
-                      entry["dataType"]=type(data).__name__
-                      entry["dataKeys"]=list(data.keys()) if isinstance(data,dict) else None
-                      entry["body"]=body
-                  else:
-                      entry["bodyText"]=res.get("bodyText")
-                  item["probes"].append(entry)
-              out["results"].append(item)
+          ubi=[x for x in locs if str(x.get("operatorName") or "")=="Migration Shell Recharge"][:10]
+          shell=[x for x in locs if str(x.get("operatorName") or "")=="Shell Recharge"][:10]
+          samples=[("ubitricity",x) for x in ubi]+[("shell_recharge",x) for x in shell]
+
+          out={"retrievedAt":time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime()),
+               "providerId":"Shell_RP_2","sampleCount":len(samples),"results":[]}
+
+          for family,loc in samples:
+              uid=str(loc.get("uid") or loc.get("externalId") or "")
+              if not uid: continue
+              res=call(uid,"Shell_RP_2")
+              entry={"family":family,"uid":uid,"operatorId":loc.get("operatorId"),
+                     "operatorName":loc.get("operatorName"),"httpStatus":res["httpStatus"],
+                     "tariffCount":0,"connectorCount":0,"tariffConnectors":[]}
+              if "body" in res:
+                  body=res["body"]
+                  entry["status"]=body.get("status") if isinstance(body,dict) else None
+                  data=body.get("data") if isinstance(body,dict) else None
+                  if isinstance(data,list) and data:
+                      data=data[0]
+                  if isinstance(data,dict):
+                      for ev in data.get("evses") or []:
+                          for conn in ev.get("connectors") or []:
+                              entry["connectorCount"]+=1
+                              ts=conn.get("tariffs") or []
+                              if ts:
+                                  entry["tariffCount"]+=len(ts)
+                                  entry["tariffConnectors"].append({
+                                      "evseId":ev.get("evseId"),"connectorUid":conn.get("uid"),
+                                      "tariffs":ts
+                                  })
+              else:
+                  entry["bodyText"]=res.get("bodyText")
+              out["results"].append(entry)
+
+          fam={}
+          for e in out["results"]:
+              f=e["family"]
+              z=fam.setdefault(f,{"locations":0,"locationsWithTariff":0,"tariffObjects":0})
+              z["locations"]+=1
+              z["tariffObjects"]+=e["tariffCount"]
+              if e["tariffCount"]>0: z["locationsWithTariff"]+=1
+          out["coverageByFamily"]=fam
 
           Path("reports/uk/shell-tariff-probe-latest.json").write_text(
               json.dumps(out,ensure_ascii=False,indent=2)+"\n"
