@@ -1,0 +1,114 @@
+name: UK Roam direct pricing overlay
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/uk-roam-direct-pricing-overlay.yml"
+      - "data/national/uk_roam_public_map.json.gz"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-roam-direct-pricing-overlay
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+
+      - name: Build Roam direct tariff overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/uk
+          python3 - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          from datetime import datetime,timezone
+
+          with gzip.open("data/national/uk_roam_public_map.json.gz","rt",encoding="utf-8") as g:
+              src=json.load(g)
+
+          tariff_source={
+            "operator":"Roam",
+            "country":"GB",
+            "tariffChannel":"direct_cpo_payg",
+            "retrievedAt":datetime.now(timezone.utc).isoformat(),
+            "sourceUrl":"https://www.roamcharging.com/help-and-advice/resources/how-much-does-it-cost-to-charge-an-electric-car-in-the-uk",
+            "standardTariffs":{
+              "Fast":{"currentType":"AC","maxKw":22,"gbpPerKwh":0.54},
+              "Rapid":{"currentType":"DC","gbpPerKwh":0.69}
+            },
+            "overrideRule":"If an official Roam station-specific tariff is available, it overrides the standard tariff for that station only.",
+            "refreshRule":"Refresh from official Roam pricing source; preserve last validated tariff on source/parser failure."
+          }
+
+          locs=src.get("locations") or []
+          total=0; priced=0; unknown=0
+          by_type={"Fast":0,"Rapid":0}
+          rows=[]
+          for loc in locs:
+              out_loc={k:v for k,v in loc.items() if k!="connectors"}
+              outs=[]
+              for c in (loc.get("connectors") or []):
+                  total+=1
+                  typ=str(c.get("type") or "")
+                  tariff=tariff_source["standardTariffs"].get(typ)
+                  if tariff:
+                      priced+=1
+                      by_type[typ]=by_type.get(typ,0)+1
+                      status="priced_standard_tariff"
+                  else:
+                      unknown+=1
+                      status="fail_closed_unknown_type"
+                  outs.append({**c,"pricingStatus":status,"directTariff":tariff})
+              out_loc["connectors"]=outs
+              rows.append(out_loc)
+
+          out={
+            "schemaVersion":1,
+            "country":"GB",
+            "operator":"Roam",
+            "sourceInventory":"data/national/uk_roam_public_map.json.gz",
+            "tariffSource":tariff_source,
+            "locationCount":len(locs),
+            "connectorCount":total,
+            "pricedConnectorCount":priced,
+            "failClosedConnectorCount":unknown,
+            "coveragePct":round(100*priced/total,2) if total else 0,
+            "pricedByType":by_type,
+            "locations":rows
+          }
+          Path("data/operator_direct/roam_uk_direct_pricing.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          report={k:out[k] for k in ("locationCount","connectorCount","pricedConnectorCount","failClosedConnectorCount","coveragePct","pricedByType")}
+          report["tariffSource"]=tariff_source
+          Path("reports/uk/roam-direct-pricing-latest.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          if unknown:
+              raise SystemExit(3)
+          PY
+
+      - name: Publish
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f data/operator_direct/roam_uk_direct_pricing.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/roam_uk_direct_pricing.json reports/uk/roam-direct-pricing-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(uk): publish Roam direct pricing overlay [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
