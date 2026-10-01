@@ -93,6 +93,7 @@ def render_station_tariff(url: str) -> dict:
     from selenium import webdriver
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import WebDriverWait
+    import time
 
     opts = webdriver.ChromeOptions()
     opts.add_argument("--headless=new")
@@ -104,27 +105,35 @@ def render_station_tariff(url: str) -> dict:
     driver = webdriver.Chrome(options=opts)
     try:
         driver.get(url)
-        WebDriverWait(driver, 35).until(
-            lambda d: len((d.find_element(By.TAG_NAME, "body").text or "").strip()) > 150
+        WebDriverWait(driver, 30).until(
+            lambda d: len((d.find_element(By.TAG_NAME, "body").text or "").strip()) > 100
         )
-        WebDriverWait(driver, 35).until(
-            lambda d: (
-                "€/kwh" in norm(d.find_element(By.TAG_NAME, "body").text or "")
-                or "price per kwh" in norm(d.find_element(By.TAG_NAME, "body").text or "")
-            )
-        )
-        text = norm(driver.find_element(By.TAG_NAME, "body").text or "")
-        prices = [float(x.replace(",", ".")) for x in re.findall(r"(\d+(?:[.,]\d+)?)\s*€\s*/\s*kwh", text)]
-        fees = [float(x.replace(",", ".")) for x in re.findall(r"(?:session fee|frais de session)\s*:?\s*€?\s*(\d+(?:[.,]\d+)?)", text)]
-        powers = [int(float(x)) for x in re.findall(r"(\d{2,3}(?:\.0)?)\s*kw", text)]
-        if not prices:
-            raise RuntimeError("rendered Shell station page exposes no EUR/kWh tariff")
-        return {
-            "eurPerKwh": prices[0],
-            "sessionFeeEur": fees[0] if fees else None,
-            "powerKwObserved": sorted(set(powers)),
-            "evidenceMode": "current_rendered_first_party_station_page",
-        }
+        # Geo.me/Shell loads the EV tariff asynchronously. The tariff can be
+        # present in hidden/rendered DOM or embedded page data even when it is
+        # not yet visible in body.innerText, so inspect both.
+        for _ in range(8):
+            body_text = driver.find_element(By.TAG_NAME, "body").text or ""
+            source = driver.page_source or ""
+            corpus = html.unescape(body_text + " " + source)
+            n = norm(corpus)
+            prices = [
+                float(x.replace(",", "."))
+                for x in re.findall(r"(\d+(?:[.,]\d+)?)\s*€\s*/\s*kwh", n)
+            ]
+            fees = [
+                float(x.replace(",", "."))
+                for x in re.findall(r"(?:session fee|frais de session)\s*:?\s*€?\s*(\d+(?:[.,]\d+)?)", n)
+            ]
+            powers = [int(float(x)) for x in re.findall(r"(\d{2,3}(?:\.0)?)\s*kw", n)]
+            if prices:
+                return {
+                    "eurPerKwh": prices[0],
+                    "sessionFeeEur": fees[0] if fees else None,
+                    "powerKwObserved": sorted(set(powers)),
+                    "evidenceMode": "current_rendered_first_party_station_page",
+                }
+            time.sleep(2)
+        raise RuntimeError("rendered Shell station page exposes no EUR/kWh tariff after DOM wait")
     finally:
         driver.quit()
 
@@ -158,16 +167,20 @@ def main() -> None:
     )
 
     station_results = []
+    station_errors = []
     for sample in REPRESENTATIVE_RENDERED_SAMPLES:
         key = sample["key"]
         url = SOURCES[key]
-        current = render_station_tariff(url)
-        station_results.append({"key": key, "url": url, **current})
+        try:
+            current = render_station_tariff(url)
+            station_results.append({"key": key, "url": url, **current})
+        except Exception as exc:
+            station_errors.append({"key": key, "error": f"{type(exc).__name__}: {exc}"})
 
     current_prices = [x["eurPerKwh"] for x in station_results]
     current_fees = [x["sessionFeeEur"] for x in station_results if x["sessionFeeEur"] is not None]
     if len(current_prices) < 3:
-        raise RuntimeError(f"Shell: insufficient current rendered tariff samples: {len(current_prices)}")
+        raise RuntimeError(f"Shell: insufficient current rendered tariff samples: {len(current_prices)}; errors={station_errors}")
     if len(set(round(v, 4) for v in current_prices)) != 1:
         raise RuntimeError(f"Shell: representative station tariffs diverged: {current_prices}")
 
@@ -225,6 +238,7 @@ def main() -> None:
             "representativePowerClassesKw": powers,
             "stationPagesReachable": all(statuses.get(k) == 200 for k in STATION_KEYS),
             "retiredSupportArticleApiDetected": retired_support_api,
+            "stationRenderErrors": station_errors,
         },
     }
 
