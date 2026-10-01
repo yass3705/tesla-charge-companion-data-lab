@@ -1,0 +1,28 @@
+name: Debug Electroverse GSP quickwin location
+on:
+  push:
+    branches:
+      - electroverse-residual-quickwins-lab
+    paths:
+      - "scripts/debug_electroverse_location_4456304.mjs"
+      - ".github/workflows/electroverse-gsp-quickwin-debug.yml"
+permissions:
+  contents: write
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/debug_electroverse_location_4456304.mjs
+      - name: Persist
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/location-4456304-debug.json
+          git commit -m "audit: publish GSP quickwin debug" || exit 0
+          git pull --rebase origin electroverse-residual-quickwins-lab
+          git push
