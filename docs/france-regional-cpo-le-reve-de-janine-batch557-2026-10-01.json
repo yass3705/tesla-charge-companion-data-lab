@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "date": "2026-10-01",
+  "batch": "batch557",
+  "rawRank": 226,
+  "historicalOperator": "LE REVE DE JANINE",
+  "historicalFootprint": {
+    "stations": 1,
+    "pdc": 3
+  },
+  "authority": "LE REVE DE JANINE",
+  "result": "PASS_TREATED_EXACT_CURRENT_IRVE_TARIFF",
+  "station": {
+    "id_station_itinerance": "FRMAPP000000007777",
+    "address": "Domaine Pozzo di Mastri, 20114 Figari",
+    "pdc": 3,
+    "powerKw": 7.4,
+    "evseIds": [
+      "FRMAPE000034619094",
+      "FRMAPE000034619187",
+      "FRMAPE000034619401"
+    ]
+  },
+  "tariff": {
+    "raw": "0,2",
+    "normalizedValue": 0.2,
+    "currency": "EUR",
+    "unit": "source tariff string; do not invent unit beyond producer declaration",
+    "access": "reserved",
+    "paid": true,
+    "paymentCard": true
+  },
+  "evidence": [
+    {
+      "type": "current-consolidated-IRVE",
+      "finding": "2026 consolidated IRVE retains exact 1-station/3-PDC footprint and the same three EVSE IDs; tariff field is 0,2 and station is marked paid/card-enabled."
+    },
+    {
+      "type": "historical-producer-lineage",
+      "finding": "CONECTYS producer dataset explicitly names LE REVE DE JANINE; current station/EVSE identity is deterministic."
+    }
+  ],
+  "decision": "treated: exact current station + all three EVSE deterministically mapped to current producer-declared tariff string 0,2. Preserve raw tariff semantics; do not infer €/kWh unless source schema explicitly establishes it.",
+  "integrationRule": "V9 may attach raw direct tariff 0,2 to these exact EVSE IDs. No extrapolation outside FRMAPP000000007777.",
+  "counterTransition": {
+    "treated": [
+      98,
+      99
+    ],
+    "setAside": [
+      82,
+      82
+    ],
+    "active": [
+      111,
+      110
+    ],
+    "total": 291
+  },
+  "pendingDedupeCreated": false
+}
