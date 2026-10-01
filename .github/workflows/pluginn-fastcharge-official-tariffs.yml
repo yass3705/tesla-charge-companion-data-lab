@@ -37,6 +37,7 @@ jobs:
           set -o pipefail
           mkdir -p out/pluginn
           python -m py_compile scripts/pluginn_fastcharge_official.py
+          python -m pip install --disable-pip-version-check selenium
           python scripts/pluginn_fastcharge_official.py --out out/pluginn 2> >(tee out/pluginn/error.log >&2)
           cat out/pluginn/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
 
