@@ -7,6 +7,8 @@ on:
       - "scripts/validate_v9_country_progress.py"
       - ".github/workflows/validate-v9-country-progress.yml"
   workflow_dispatch:
+  schedule:
+    - cron: "50 22 * * *"
 
 permissions:
   contents: read
@@ -17,3 +19,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python scripts/validate_v9_country_progress.py
+      - name: Summarize current CPO ledgers
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          files=[
+            "docs/france-cpo-progress-2026-09.json",
+            "docs/italy-cpo-progress-2026-09.json",
+            "docs/germany-cpo-progress-2026-09.json",
+            "docs/uk-cpo-progress-2026-09.json",
+            "docs/v9-country-progress-2026-09-30.json",
+          ]
+          print("## V9 country/CPO progress guard")
+          for name in files:
+            p=pathlib.Path(name)
+            if not p.exists():
+              print(f"- {name}: MISSING")
+              continue
+            obj=json.loads(p.read_text(encoding="utf-8"))
+            counts=obj.get("counts") or obj.get("summary") or {}
+            print(f"- {name}: present; counts={json.dumps(counts,ensure_ascii=False)[:1000]}")
+          PY
