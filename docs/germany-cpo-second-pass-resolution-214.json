@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 214,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-213.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 251,
+    "partial": 340,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Espelkamp AoeR",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "decision": "remain partial; estate and energy fully reconciled, fee completeness remains",
+      "evidence": {
+        "firstPartyEstate": "Current Stadtwerke Espelkamp page lists exactly five public sites: Rathaus, Marktkauf Espelkamp, Espelkamper Baeder, Verwaltungsstuetzpunkt Kreis MI-LK, nah & gut.",
+        "firstPartyPayment": "Ad-hoc prices per kWh and charging session are displayed in eCharge and billed by vaylens GmbH.",
+        "currentStructuredCoverage": "Vaylens via Mobilithek-derived surface exposes exactly 5 stations / 14 EVSE; all are AC Type 2 up to 22 kW and all 14 show 0.51 EUR/kWh.",
+        "sampledFees": "Structured station surfaces show 0.00 EUR session fee on sampled/current EVSE records, with direct payment methods including credit card/ec card/website."
+      },
+      "exactGap": "The structured source explicitly warns that conditional/unknown fees may remain and does not authoritatively expose a complete time/blocking-fee rule. Estate and energy are 14/14 closed; only exhaustive fee completeness remains.",
+      "resumeCondition": "Raw Vaylens/eCharge anonymous tariff payload or first-party tariff statement explicitly closing session/time/blocking components for the five-site/14-EVSE estate. Promote immediately if complete."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 251,
+    "partial": 340,
+    "blocked": 0
+  },
+  "indicator": "221 -> 251 complete (+30)",
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "backendFamilyProgress": {
+    "B6": "EMERGY promoted in prior ledger; Espelkamp reduced to fee-only gap with exact 5-site/14-EVSE denominator and 100% energy coverage."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "251 + 340 + 0 = 591",
+    "channelSeparation": "PASS",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "A raw Vaylens/eCharge fee payload for Espelkamp is high-value and could promote it immediately. Otherwise park after one distinct fee-field pass and continue B6 first-party deterministic candidates."
+}
