@@ -270,6 +270,11 @@ for(const sh of manifest.shards||[]){
     const lat=Number(m.electroverse?.lat??m.irve?.lat),lon=Number(m.electroverse?.lon??m.irve?.lon);
     if(!Number.isFinite(lat)||!Number.isFinite(lon)){rej('missing_coordinates');continue;}
 
+    // Per-location PD1 technical-group state is declared before earlier identity passes
+    // because those passes may safely consult the (initially empty) handled-source set.
+    const pd1TechnicalTargets=new Map();
+    const pd1TechnicalSourceEvses=new Set();
+
     // Strict station-local ordinal mapping for providers that expose physicalReference
     // only as "1", "2", ... while the national PDCs share one prefix and indexed suffixes.
     const ordinalTargets=new Map(),usedForOrdinal=new Set(),hardNumeric=[];
@@ -986,8 +991,6 @@ for(const sh of manifest.shards||[]){
     }
 
     // PD1/Powerdot official technical-group identity.
-    const pd1TechnicalTargets=new Map();
-    const pd1TechnicalSourceEvses=new Set();
     {
       const claimed=new Set();
       const unresolved=[];
