@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "date": "2026-10-01",
+  "batch": "batch548",
+  "rawRank": 212,
+  "historicalOperator": "NM SECURELEC",
+  "historicalFootprint": {
+    "stations": 4,
+    "pdc": 4
+  },
+  "authority": "NM SECURELEC",
+  "decision": "setAside",
+  "reason": "Fail-closed: NM SECURELEC is currently an IRVE installer and historical IRVE producer. Its first-party site exposes installation/services but no current public numeric charging tariff or anonymous station/EVSE direct-tariff resolver. The producer datasets found are last updated 2024-12-06. A third-party 0.35 observation exists for Hôtel le Kaya but is not first-party authority and is not generalized.",
+  "evidence": [
+    {
+      "type": "first-party",
+      "url": "https://www.nmsecurelec.com/",
+      "finding": "IRVE installation/service activity; no current public numeric charging tariff surface recovered"
+    },
+    {
+      "type": "official-open-data",
+      "url": "https://www.data.gouv.fr/datasets/infrastructures-de-recharge-pour-vehicules-electriques-organisation-nm-securelec/",
+      "finding": "NM SECURELEC producer dataset; last update 2024-12-06"
+    },
+    {
+      "type": "official-open-data",
+      "url": "https://www.data.gouv.fr/datasets/declaration-irve-le-morgane",
+      "finding": "NM SECURELEC Le Morgane declaration; last update 2024-12-06"
+    },
+    {
+      "type": "rejected-third-party",
+      "url": "https://www.applivoiture.fr/bornes-recharge-electrique/les-belleville-73440/nm-securelec-1",
+      "finding": "0.35 observation rejected as direct authority / national extrapolation"
+    }
+  ],
+  "tariffPolicy": "No roaming/eMSP or third-party tariff promoted as CPO-direct. Fallback Electra then Electroverse.",
+  "counterTransition": {
+    "treated": [
+      98,
+      98
+    ],
+    "setAside": [
+      74,
+      75
+    ],
+    "active": [
+      119,
+      118
+    ],
+    "total": 291
+  },
+  "persistenceRule": "Audit must exist on Data Lab main before canonical mutation; canonical must be reread after mutation."
+}
