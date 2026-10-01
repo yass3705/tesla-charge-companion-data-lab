@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 221,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-220.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 251,
+    "partial": 340,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "family": "AFIR/Mobilithek strict operator cohort",
+      "source": "docs/germany-afir-partial-candidate-audit-2026-10-01.json",
+      "method": "exact operator identity against persisted national staging; address/city substring matches excluded",
+      "result": {
+        "candidates": 19,
+        "rawTariffCandidates": 0,
+        "onlyMatchedSafeWithoutRawTariff": "Stadtwerke Wunstorf: 19 sites, 1 matched_safe, 0 rawTariff"
+      },
+      "bounded": [
+        "Stadtwerke Schifferstadt",
+        "Bad Honnef AG",
+        "Stadtwerke Garbsen",
+        "Stadtwerke Lemgo",
+        "HEOS",
+        "Stadtwerke Iserlohn",
+        "Stadtwerke Eutin",
+        "Stadtwerke Lehrte",
+        "Stadtwerke Wolfenbuettel",
+        "Stadtwerke Emmendingen",
+        "Energieversorgung Sehnde",
+        "Stadtwerke Weinstadt",
+        "Nienburg Energie",
+        "Stadtwerke Wunstorf",
+        "Stadtwerke Holzminden",
+        "Stadtwerke Brilon",
+        "Stadtwerke Warburg",
+        "Stadtwerke Emmerich",
+        "Stadtwerke Ploen"
+      ],
+      "exactGap": "Current persisted national AFIR staging exposes no raw anonymous tariff for this cohort. Do not repeat the same AFIR operator pass until staging refresh/new provider data.",
+      "falsePositiveExcluded": "Berliner Stadtwerke Lehrter Str. chargecloud tariff is not Stadtwerke Lehrte."
+    },
+    {
+      "family": "AFIR/Mobilithek operator-wide ranking",
+      "workflowRun": 36890795176,
+      "status": "in_progress",
+      "output": "docs/germany-afir-operator-coverage-2026-10-01.json",
+      "goal": "rank every operator in national staging with raw tariff by exact operator coverage, then intersect with remaining canonical partials"
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 251,
+    "partial": 340,
+    "blocked": 0
+  },
+  "indicator": "221 -> 251 complete (+30)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific raw tariff proof in strict cohort"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "251 + 340 + 0 = 591",
+    "unsafeExtrapolations": 0,
+    "noRepeat": "19-candidate AFIR cohort now bounded against same staging snapshot"
+  },
+  "nextSafeAction": "Consume operator-wide raw-tariff ranking, intersect exact operator names/aliases with remaining partial ledger/classification, then investigate highest complete-coverage candidates first."
+}
