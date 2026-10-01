@@ -89,6 +89,46 @@ def require_amount(text: str, amount: float, label: str) -> None:
         raise RuntimeError(f"{label}: amount {amount:g} not found")
 
 
+def render_station_tariff(url: str) -> dict:
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+
+    opts = webdriver.ChromeOptions()
+    opts.add_argument("--headless=new")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--disable-gpu")
+    opts.add_argument("--lang=fr-FR")
+    opts.add_argument(f"--user-agent={UA}")
+    driver = webdriver.Chrome(options=opts)
+    try:
+        driver.get(url)
+        WebDriverWait(driver, 35).until(
+            lambda d: len((d.find_element(By.TAG_NAME, "body").text or "").strip()) > 150
+        )
+        WebDriverWait(driver, 35).until(
+            lambda d: (
+                "€/kwh" in norm(d.find_element(By.TAG_NAME, "body").text or "")
+                or "price per kwh" in norm(d.find_element(By.TAG_NAME, "body").text or "")
+            )
+        )
+        text = norm(driver.find_element(By.TAG_NAME, "body").text or "")
+        prices = [float(x.replace(",", ".")) for x in re.findall(r"(\d+(?:[.,]\d+)?)\s*€\s*/\s*kwh", text)]
+        fees = [float(x.replace(",", ".")) for x in re.findall(r"(?:session fee|frais de session)\s*:?\s*€?\s*(\d+(?:[.,]\d+)?)", text)]
+        powers = [int(float(x)) for x in re.findall(r"(\d{2,3}(?:\.0)?)\s*kw", text)]
+        if not prices:
+            raise RuntimeError("rendered Shell station page exposes no EUR/kWh tariff")
+        return {
+            "eurPerKwh": prices[0],
+            "sessionFeeEur": fees[0] if fees else None,
+            "powerKwObserved": sorted(set(powers)),
+            "evidenceMode": "current_rendered_first_party_station_page",
+        }
+    finally:
+        driver.quit()
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="out/shell_recharge")
@@ -99,81 +139,92 @@ def main() -> None:
     statuses = {}
     pages = {}
     for key, url in SOURCES.items():
-        status, raw = fetch(url)
-        if status != 200:
-            raise RuntimeError(f"{key}: HTTP {status}")
-        statuses[key] = status
-        pages[key] = norm(text_from_html(raw))
+        try:
+            status, raw = fetch(url)
+            statuses[key] = status
+            pages[key] = norm(text_from_html(raw))
+        except Exception as exc:
+            statuses[key] = None
+            pages[key] = f"fetch_error {type(exc).__name__}: {exc}"
 
-    uniform = pages["uniformFastRate"]
-    require_tokens(uniform, ("meme tarif", "toutes les bornes rapides shell recharge", "carte shell recharge", "application shell"), "Shell uniform fast-rate rule")
+    # The former Zendesk-like JSON article URLs now redirect to Shell France's
+    # generic help page. Treat those rules as retired rather than silently
+    # accepting stale article text.
+    support_keys = ("uniformFastRate", "payment", "preauthorization", "roamingCost", "directCost")
+    retired_support_api = all(
+        "bienvenue au service client shell france" in pages.get(k, "")
+        or "aide et support" in pages.get(k, "")
+        for k in support_keys
+    )
 
-    direct = pages["directCost"]
-    require_tokens(direct, ("tarif avantageux", "reseau shell recharge", "aucun frais d'abonnement", "carte shell recharge"), "Shell direct-network cost rule")
+    station_results = []
+    for sample in REPRESENTATIVE_RENDERED_SAMPLES:
+        key = sample["key"]
+        url = SOURCES[key]
+        current = render_station_tariff(url)
+        station_results.append({"key": key, "url": url, **current})
 
-    payment = pages["payment"]
-    require_tokens(payment, ("application shell", "carte shell recharge", "qr code", "carte bancaire sans contact", "apple pay", "google pay"), "Shell payment methods")
+    current_prices = [x["eurPerKwh"] for x in station_results]
+    current_fees = [x["sessionFeeEur"] for x in station_results if x["sessionFeeEur"] is not None]
+    if len(current_prices) < 3:
+        raise RuntimeError(f"Shell: insufficient current rendered tariff samples: {len(current_prices)}")
+    if len(set(round(v, 4) for v in current_prices)) != 1:
+        raise RuntimeError(f"Shell: representative station tariffs diverged: {current_prices}")
 
-    pre = pages["preauthorization"]
-    require_tokens(pre, ("montant provisoire", "carte de recharge shell recharge", "application shell", "carte bancaire"), "Shell preauthorization")
-    require_amount(pre, 45.0, "Shell app/card preauthorization")
-    require_amount(pre, 65.0, "Shell bank-card preauthorization")
+    representative_price = current_prices[0]
+    representative_fee = current_fees[0] if current_fees and len(set(round(v, 4) for v in current_fees)) == 1 else None
+    if not (0.10 <= representative_price <= 2.0):
+        raise RuntimeError(f"Shell: implausible current rendered tariff {representative_price}")
 
-    roaming = pages["roamingCost"]
-    require_tokens(roaming, ("bornes autres que shell recharge", "tarifs des operateurs de borne", "frais de transaction", "0,35"), "Shell roaming price rule")
-
+    powers = sorted({p for x in station_results for p in x["powerKwObserved"]})
     facts = {
         "classification": {
-            "singleNationalFastShellRechargeCardTariffRule": True,
-            "exactCurrentKwhAmountAutoExtracted": False,
-            "stationLevelLookupRecommendedForNonShellCardOrRoaming": True,
-            "reason": "Shell explicitly states that Shell Recharge card users pay the same tariff at all Shell Recharge fast chargers; the current numeric kWh tariff is exposed on the tariff/app or rendered station layer.",
+            "singleNationalFastShellRechargeCardTariffRule": False,
+            "currentUniformRuleSourceStatus": "retired_support_article_api" if retired_support_api else "not_confirmed",
+            "representativeCurrentSamplesConsistent": True,
+            "exactCurrentKwhAmountAutoExtracted": True,
+            "stationLevelLookupRecommendedForExactSimulation": True,
+            "reason": "Current first-party station pages expose a consistent Shell App tariff across representative sites, while the former support-article API no longer exposes the national uniform-rule article.",
         },
         "operatorDirect": {
-            "fastShellRechargeWithShellCard": {
-                "uniformAcrossFastShellRechargeStations": True,
-                "representativeCurrentEurPerKwh": 0.64,
-                "representativePriceStatus": "observed_on_rendered_first_party_station_pages_2026-08-20",
-                "monthlySubscriptionFeeEur": 0.0,
-                "cardOrderFeeEur": 0.0,
+            "fastShellRechargeWithShellApp": {
+                "uniformAcrossFastShellRechargeStations": None,
+                "representativeCurrentEurPerKwh": representative_price,
+                "representativePriceStatus": "auto_extracted_current_first_party_station_samples",
+                "exactStationLookupRecommended": True,
             },
             "renderedFirstPartySamples": {
-                "count": len(REPRESENTATIVE_RENDERED_SAMPLES),
-                "allObservedEurPerKwh": 0.64,
-                "allObservedSessionFeeEur": 0.35,
-                "powerClassesKw": [50, 150, 300],
+                "count": len(station_results),
+                "allObservedEurPerKwh": representative_price,
+                "allObservedSessionFeeEur": representative_fee,
+                "powerClassesKw": powers,
             },
         },
         "payment": {
-            "shellApp": True,
-            "shellRechargeCard": True,
-            "adHocQrOnline": True,
-            "contactlessBankCardFastChargers": True,
-            "applePayFastChargers": True,
-            "googlePayFastChargers": True,
+            "shellApp": "shell recharge" in " ".join(pages.values()),
+            "shellRechargeCard": "carte de recharge" in " ".join(pages.values()),
             "preauthorization": {
-                "shellCardOrAppEur": 45.0,
-                "bankCardEur": 65.0,
-                "temporaryReservation": True,
+                "status": "not_revalidated_after_support_article_api_retirement",
+                "shellCardOrAppEur": None,
+                "bankCardEur": None,
             },
         },
         "fees": {
-            "representativeShellAppSessionFeeEur": 0.35,
+            "representativeShellAppSessionFeeEur": representative_fee,
             "networkWideIdleFee": None,
             "parking": {"status": "site_specific_unless_explicitly_published"},
         },
         "roaming": {
             "classification": "partner_cpo_layer",
             "operatorDirect": False,
-            "partnerCpoTariffApplies": True,
-            "shellTransactionFeePerSessionEur": 0.35,
             "exactPartnerPriceLookupRequired": True,
-            "priceDisplay": "Shell app / tariff layer",
+            "legacyTransactionFeeStatus": "not_revalidated_after_support_article_api_retirement",
         },
-        "representativeStationChecks": REPRESENTATIVE_RENDERED_SAMPLES,
+        "representativeStationChecks": station_results,
         "technical": {
-            "representativePowerClassesKw": [50, 150, 300],
-            "stationPagesReachable": all(statuses[k] == 200 for k in STATION_KEYS),
+            "representativePowerClassesKw": powers,
+            "stationPagesReachable": all(statuses.get(k) == 200 for k in STATION_KEYS),
+            "retiredSupportArticleApiDetected": retired_support_api,
         },
     }
 
@@ -182,7 +233,7 @@ def main() -> None:
     ).hexdigest()
 
     payload = {
-        "schemaVersion": "1.2.0",
+        "schemaVersion": "1.3.0",
         "dataset": "shell-recharge-official-france",
         "generatedAt": now_iso(),
         "operator": "Shell Recharge",
@@ -190,31 +241,28 @@ def main() -> None:
         **facts,
         "sourceEvidence": {
             "officialOnly": True,
-            "automatedRuleSources": ["uniformFastRate", "directCost", "payment", "preauthorization", "roamingCost"],
-            "representativeStationTariffsCapturedFromRenderedFirstPartyPagesOn": "2026-08-20",
-            "sources": [{"key": k, "url": u, "httpStatus": statuses[k]} for k, u in SOURCES.items()],
+            "supportArticleApiStatus": "retired_redirects_to_generic_help" if retired_support_api else "unknown",
+            "sources": [{"key": k, "url": u, "httpStatus": statuses.get(k)} for k, u in SOURCES.items()],
             "relevantTariffFingerprintSha256": fingerprint,
         },
         "publicationStatus": "candidate_validated_source",
         "notes": [
-            "This validator intentionally does not build a national station database.",
-            "Shell's official support confirms a uniform tariff rule for Shell Recharge card users across fast Shell Recharge stations.",
-            "The current 0.64 EUR/kWh value is retained from five rendered first-party Shell station samples; automated plain-HTML checks validate the rule layer rather than client-rendered numeric tariff blocks.",
-            "Roaming remains separate: partner CPO tariff plus Shell transaction fee.",
+            "Current numeric direct tariff is refreshed from rendered first-party Shell station pages.",
+            "The former support-article API no longer proves a nationwide uniform tariff, so exact station lookup remains recommended.",
+            "Preauthorization and legacy roaming-fee amounts are not carried forward as current facts without a current official source.",
         ],
     }
 
-    (out / "shell_recharge_official_france.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (out / "shell_recharge_official_france.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     summary = (
         "# Shell Recharge France official check\n\n"
-        "- Validation model: **operator rules only**, no national station extract.\n"
-        "- Shell Recharge card: official support confirms **the same tariff at all fast Shell Recharge stations**.\n"
-        "- Current representative first-party sample: **0.64 EUR/kWh** across 5 sites (50/150/300 kW).\n"
-        "- Representative rendered station session fee: **0.35 EUR**.\n"
-        "- No subscription fee; Shell Recharge card order is free.\n"
-        "- Payment: **app/card, QR ad hoc, contactless bank card, Apple Pay, Google Pay**.\n"
-        "- Preauthorization: **45 EUR app/Shell card; 65 EUR bank card**.\n"
-        "- Roaming: **partner CPO tariff + 0.35 EUR/session Shell transaction fee**.\n"
+        f"- Current representative Shell App tariff: **{representative_price:.2f} EUR/kWh** across **{len(station_results)}** rendered first-party samples.\n"
+        f"- Representative session fee: **{representative_fee} EUR**.\n"
+        "- Former Shell support article API: **retired/redirected to generic help**, so the old nationwide-uniform rule is no longer asserted.\n"
+        "- Exact station lookup: **recommended**.\n"
+        "- Preauthorization / legacy roaming fee amounts: **not revalidated from a current official source**.\n"
         f"- Fingerprint: `{fingerprint}`\n"
     )
     (out / "SUMMARY.md").write_text(summary, encoding="utf-8")
