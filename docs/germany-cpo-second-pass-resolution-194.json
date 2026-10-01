@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 194,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-193.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Ribnitz-Damgarten GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; current estate and energy-price coverage materially closed",
+      "coverage": {
+        "firstPartySites": 5,
+        "currentMobilithekVaylensSites": 5,
+        "currentEvse": 18,
+        "energyPricedEvse": 18,
+        "energyCoveragePct": 100
+      },
+      "evidence": {
+        "firstParty": "Five named public sites; Direct Payment without contract; official QR domain epowerdirect.com; AC Type 2.",
+        "publicAFIR": "Vaylens/Mobilithek current operator inventory: 5 sites / 18 EVSE, all 22 kW AC, all observed anonymous ad-hoc energy price 0.77 EUR/kWh."
+      },
+      "exactGap": "The accessible first-party page does not publish the complete Direct Payment fee stack, and the current public aggregation does not prove that start/time/blocking/payment fees are absent. Energy coverage is 18/18 but fee-component completeness is not yet authoritative.",
+      "resumeCondition": "Read-only epowerdirect checkout/payload for one or all current EVSEs, or authoritative AFIR payload explicitly closing start/time/blocking/payment fee components."
+    },
+    {
+      "name": "Stadtwerke Bühl GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; chargecloud/Mobilithek estate now bounded",
+      "coverage": {
+        "currentSites": 10,
+        "currentEvse": 47,
+        "acEvse": 42,
+        "dcEvse": 3,
+        "hpcEvse": 2,
+        "energyCoveragePct": 100
+      },
+      "evidence": {
+        "publicAFIR": "chargecloud via Mobilithek enumerates 10 sites / 47 EVSE. AC is 0.48 EUR/kWh on 42/42 with zero start fee and 0.06 EUR/min blocking from minute 181 on inspected records. DC/HPC records expose zero start fee and 0.10 EUR/min blocking from minute 46.",
+        "conflict": "Recent rendered records expose 0.59 EUR/kWh for inspected 50 kW DC and 180 kW HPC, while current operator aggregation rounds/reports DC/HPC up to 0.60 EUR/kWh."
+      },
+      "exactGap": "A 0.59 vs 0.60 EUR/kWh conflict remains on DC/HPC. Do not promote until the current raw chargecloud/Mobilithek payload deterministically resolves exact per-EVSE values for all five DC/HPC EVSEs.",
+      "resumeCondition": "Retrieve current raw Mobilithek/chargecloud records for all 47 EVSE, especially the five DC/HPC EVSEs, and verify fee fields."
+    },
+    {
+      "name": "Staedtische Betriebswerke Luckenwalde GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; first-party 2026 website checked without repeating station-price inference",
+      "evidence": {
+        "knownExact": "DE*ISE*E0022573/2574 previously verified at 0.49 EUR/kWh direct.",
+        "currentFirstParty": "Current 2026 SBL public pages expose household/network electricity price sheets but no current public EV charging estate/tariff matrix in the accessible indexed surface."
+      },
+      "exactGap": "No authoritative current estate-wide anonymous EV charging matrix or deterministic first-party rule was established; the two previously verified EVSEs cannot be generalized.",
+      "resumeCondition": "Current Mobilithek/AFIR inventory with per-EVSE direct-price and fee fields, or a new first-party EV charging tariff surface."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "anonymousRegisteredSeparation": "PASS",
+    "repeatInvestigationGuard": "PASS"
+  },
+  "nextSafeAction": "Use raw AFIR/Mobilithek payload retrieval for Stadtwerke Bühl first because only five DC/HPC exact values block promotion; if unavailable, move to another B1/B3/B6 candidate with a complete public guest surface."
+}
