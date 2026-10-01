@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 119,
+  "schemaVersion": 120,
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 95,
-  "setAsideCpos": 36,
-  "activeRemainingCpos": 160,
-  "updatedAt": "2026-10-01T17:30:00+02:00",
+  "setAsideCpos": 37,
+  "activeRemainingCpos": 159,
+  "updatedAt": "2026-10-01T17:45:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -345,6 +345,13 @@
       "since": "2026-10-01",
       "lastChecked": "2026-10-01",
       "audit": "docs/france-regional-cpo-autorecharge-batch497-2026-10-01.json"
+    },
+    {
+      "name": "ChargeFacile | FR*LUM | raw rank98",
+      "reason": "batch499 fail-closed: current first-party Charge Facile app by LUMI'IN ENERGIES confirms QR-based charging, payment method handling and invoices, but no public first-party numeric tariff grid or deterministic anonymous FR*LUM station/EVSE -> current tariff payload was recovered. Current IRVE/public inventory confirms multiple FR*LUM/LUMI'IN sites; historical observed tariffs are heterogeneous and must not be generalized. LUMI'IN raw142 remains a non-counting identity lineage of this same authority.",
+      "since": "2026-10-01",
+      "lastChecked": "2026-10-01",
+      "audit": "docs/france-regional-cpo-chargefacile-batch499-2026-10-01.json"
     }
   ],
   "activeNominative": [
@@ -407,7 +414,6 @@
     "RELEASED_ACTIVE_SLOT_092 | alias SDEHG Haute-Garonne | FR*S31",
     "RELEASED_ACTIVE_SLOT_094_ALDI_DUPLICATE_AUTHORITY",
     "RELEASED_ACTIVE_SLOT_095 | alias Chargelec36 / SDEI Indre | FR*S36",
-    "UNPROVEN_ACTIVE_098",
     "UNPROVEN_ACTIVE_099",
     "RELEASED_ACTIVE_SLOT_100 | alias Zephyre SAS | FR*ZP1 | raw rank68",
     "RELEASED_ACTIVE_SLOT_103_BP_PULSE_DUPLICATE_AUTHORITY",
@@ -813,7 +819,8 @@
     "Altensys | FR*ALS | raw rank137": "batch495 setAside: current 8-station Altensys estate and anonymous connector QR Scan&Pay are proven first-party; Chargekeeper is the supervision backend. Exact numeric direct tariff remains connector/QR scoped and no deterministic public EVSE->tariff resolver was recovered.",
     "Z-E-N | raw rank138": "batch496 setAside: current Z-E-N first-party CGV makes the mobile-app tariff the only exact valid tariff at charge time; site also advertises contract and volume discounts. No anonymous public/guest station/EVSE -> current direct tariff resolver recovered.",
     "AUTORECHARGE SAS | raw rank140": "batch497 setAside: current first-party site confirms AUTORECHARGE operates charging infrastructure but publishes no current numeric public tariff; producer IRVE resources are stale at Dec 2024 and old 0.32 EUR/kWh Niort evidence is not 2026 authority.",
-    "LUMI'IN / ChargeFacile | FR*LUM": "batch498 lineage: raw142 LUMI'IN is materialized as the same LUMI'IN ENERGIES authority as raw98 ChargeFacile | FR*LUM. Current official Charge Facile app provider/developer is LUMI'IN ENERGIES and supports QR charging/payment. Authority remains active pending exact current direct tariff mapping; no tariff inheritance."
+    "LUMI'IN / ChargeFacile | FR*LUM": "batch498 lineage: raw142 LUMI'IN is materialized as the same LUMI'IN ENERGIES authority as raw98 ChargeFacile | FR*LUM. Current official Charge Facile app provider/developer is LUMI'IN ENERGIES and supports QR charging/payment. Authority remains active pending exact current direct tariff mapping; no tariff inheritance.",
+    "ChargeFacile | FR*LUM | raw rank98": "batch499 setAside: official Charge Facile app (LUMI'IN ENERGIES) handles QR start, payment methods and invoices; no public deterministic FR*LUM station/EVSE -> current numeric tariff resolver was recovered. raw142 LUMI'IN remains a non-counting identity lineage."
   },
   "history": [
     {
@@ -1373,9 +1380,19 @@
         "setAsideCpos": 36,
         "activeRemainingCpos": 160
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch499",
+      "change": "Moved ChargeFacile | FR*LUM raw98 active->setAside. Current first-party app proves QR/payment flow but exposes no public deterministic EVSE -> numeric tariff resolver; heterogeneous historical/site pricing not generalized. LUMI'IN raw142 remains a non-counting lineage alias.",
+      "counters": {
+        "treatedCpos": 95,
+        "setAsideCpos": 37,
+        "activeRemainingCpos": 159
+      }
     }
   ],
-  "currentInvestigation": "ChargeFacile | FR*LUM | raw rank98 (including LUMI'IN raw142 lineage): resolve current QR/app station/EVSE -> direct tariff mapping; then return to Delmonicos bulk mapping.",
+  "currentInvestigation": "Delmonicos | raw rank78 | 79 stations / 294 PDC: continue deterministic bulk station/EVSE -> territorial/site authority mapping after batch499 persistence.",
   "coherenceControl": {
     "batch": "batch491",
     "result": "PASS",
@@ -1390,11 +1407,11 @@
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch498",
-    "result": "PASS_LUMIIN_CHARGEFACILE_LINEAGE",
-    "counterChange": false
+    "batch": "batch499",
+    "result": "PASS_CHARGEFACILE_FAIL_CLOSED",
+    "counterChange": true
   },
-  "latestBatch": "batch498",
+  "latestBatch": "batch499",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2123,6 +2140,14 @@
       "category": "active-authority-alias",
       "decision": "official Charge Facile app is published/provided by LUMI'IN ENERGIES and current FR*LUM public inventory coexists with LUMI'IN labels; materialize raw142 as non-counting identity lineage over active FR*LUM authority; no tariff inheritance",
       "evidence": "docs/france-cpo-dual-ledger-lineage-batch498-2026-10-01.json"
+    },
+    {
+      "rawRank": 98,
+      "historicalOperator": "ChargeFacile | FR*LUM",
+      "authority": "ChargeFacile / LUMI'IN ENERGIES | FR*LUM",
+      "category": "setAside-authority",
+      "decision": "active->setAside after first-party app/public-surface review: exact pricing is app/QR scoped and no deterministic anonymous current numeric tariff resolver was recovered; no historical tariff extrapolation",
+      "evidence": "docs/france-regional-cpo-chargefacile-batch499-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
