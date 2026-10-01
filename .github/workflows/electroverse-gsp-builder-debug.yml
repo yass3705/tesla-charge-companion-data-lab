@@ -1,0 +1,18 @@
+name: Debug Electroverse GSP builder conflict
+on:
+  push:
+    branches:
+      - electroverse-residual-quickwins-lab
+    paths:
+      - "scripts/build_electroverse_france_evse_overlay.mjs"
+      - ".github/workflows/electroverse-gsp-builder-debug.yml"
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/build_electroverse_france_evse_overlay.mjs /tmp/electroverse-gsp-debug
