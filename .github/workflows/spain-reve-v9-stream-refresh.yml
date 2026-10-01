@@ -1,0 +1,106 @@
+name: Spain REVE V9 tariff/status refresh
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "27 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/reve_es_stream_collect.py"
+      - ".github/workflows/spain-reve-v9-stream-refresh.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: spain-reve-v9-stream-refresh
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      REVE_API_KEY: ${{ secrets.MAPA_REVE_API_KEY || secrets.REVE_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate REVE secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${REVE_API_KEY:-}" || { echo "No REVE API key configured" >&2; exit 2; }
+          echo "REVE key present; length=${#REVE_API_KEY}"
+
+      - name: Restore durable REVE stream state from validated upstream if needed
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/spain_reve
+          base="https://raw.githubusercontent.com/yass3705/tesla-charge-companion-stable/spain-reve-preintegration/data/spain_reve"
+          for f in tariff_status_stream_state.json reve_connector_tariffs_raw.json.gz reve_operational_status_raw.json.gz; do
+            if [ ! -s "data/spain_reve/$f" ]; then
+              echo "Restoring $f from validated upstream snapshot"
+              curl -fL --retry 3 --retry-delay 2 "$base/$f" -o "data/spain_reve/$f"
+            fi
+          done
+
+      - name: Collect next REVE tariff/status pages
+        shell: bash
+        run: python scripts/reve_es_stream_collect.py --collect
+
+      - name: Verify request budget and persistence
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('data/spain_reve/tariff_status_stream_last_run.json').read_text())
+          attempted=r.get('requestsAttempted',0)
+          succeeded=r.get('requestsSucceeded',0)
+          if attempted > 5:
+              raise SystemExit(f'Hard REVE request budget violated: {attempted}')
+          if attempted != succeeded:
+              raise SystemExit(f'REVE stream batch incomplete: {succeeded}/{attempted}')
+          s=r.get('stateAfter') or {}
+          if int(s.get('nextTariffPage') or 0) < 245:
+              raise SystemExit('Tariff cursor regressed')
+          if int(s.get('nextStatusPage') or 0) < 164:
+              raise SystemExit('Status cursor regressed')
+          print(json.dumps({
+              'attempted':attempted,
+              'succeeded':succeeded,
+              'nextTariffPage':s.get('nextTariffPage'),
+              'nextStatusPage':s.get('nextStatusPage'),
+              'tariffRowsStored':s.get('tariffRowsStored'),
+              'statusRowsStored':s.get('statusRowsStored'),
+              'complete':s.get('complete')
+          }, indent=2))
+          PY
+
+      - name: Persist REVE stream progress
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            data/spain_reve/tariff_status_stream_state.json \
+            data/spain_reve/tariff_status_stream_last_run.json \
+            data/spain_reve/reve_connector_tariffs_raw.json.gz \
+            data/spain_reve/reve_operational_status_raw.json.gz
+          if git diff --cached --quiet; then
+            echo "No REVE stream change to publish"
+            exit 0
+          fi
+          git commit -m "data(spain): advance REVE tariff/status stream [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt * 2))
+          done
+          exit 1
