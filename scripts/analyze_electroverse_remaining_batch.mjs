@@ -176,3 +176,5 @@ console.log(JSON.stringify({
     operator:x.operator,residual:x.residualSourceEvses,recoverable:x.safelyRecoverableSourceEvses,byMode:x.byMode
   }))
 },null,2));
+
+// rerun marker 2026-10-01 post-79373
