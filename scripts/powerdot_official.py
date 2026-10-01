@@ -51,22 +51,51 @@ def fetch(url: str) -> tuple[int, str]:
             "Cache-Control": "no-cache",
         },
     )
+    first_exc = None
     try:
         with urllib.request.urlopen(req, timeout=40) as resp:
             raw = resp.read()
             charset = resp.headers.get_content_charset() or "utf-8"
             return int(getattr(resp, "status", 200)), raw.decode(charset, errors="replace")
-    except Exception as first_exc:
-        cp = subprocess.run(
-            ["curl", "-fsSL", "--max-redirs", "12", "--connect-timeout", "20", "--max-time", "60",
-             "-A", UA, "-H", "Accept-Language: fr-FR,fr;q=0.9,en;q=0.6", url],
-            capture_output=True,
-        )
-        if cp.returncode != 0:
-            raise RuntimeError(
-                f"Powerdot fetch failed for {url}: urllib={type(first_exc).__name__}: {first_exc}; curl_exit={cp.returncode}"
-            )
+    except Exception as exc:
+        first_exc = exc
+
+    cp = subprocess.run(
+        ["curl", "-fsSL", "--max-redirs", "12", "--connect-timeout", "20", "--max-time", "60",
+         "-A", UA, "-H", "Accept-Language: fr-FR,fr;q=0.9,en;q=0.6", url],
+        capture_output=True,
+    )
+    if cp.returncode == 0 and cp.stdout:
         return 200, cp.stdout.decode("utf-8", errors="replace")
+
+    # Powerdot's website currently loops 307 redirects specifically for
+    # non-browser GitHub-runner clients. A real browser reaches the same
+    # first-party page normally.
+    if "powerdot.eu/" in url:
+        from selenium import webdriver
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support.ui import WebDriverWait
+        opts = webdriver.ChromeOptions()
+        opts.add_argument("--headless=new")
+        opts.add_argument("--no-sandbox")
+        opts.add_argument("--disable-dev-shm-usage")
+        opts.add_argument("--disable-gpu")
+        opts.add_argument("--lang=en-GB")
+        opts.add_argument(f"--user-agent={UA}")
+        driver = webdriver.Chrome(options=opts)
+        try:
+            driver.get(url)
+            WebDriverWait(driver, 30).until(
+                lambda d: len((d.find_element(By.TAG_NAME, "body").text or "").strip()) > 100
+            )
+            return 200, driver.page_source
+        finally:
+            driver.quit()
+
+    raise RuntimeError(
+        f"Powerdot fetch failed for {url}: urllib={type(first_exc).__name__}: {first_exc}; "
+        f"curl_exit={cp.returncode}"
+    )
 
 
 def text_from_html(raw: str) -> str:
