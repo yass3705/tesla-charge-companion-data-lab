@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-classification",
+  "classificationBatch": 1,
+  "sourceCheckpoint": "docs/germany-cpo-first-pass-automation197.json",
+  "baseline": {
+    "totalCpos": 591,
+    "complete": 201,
+    "partial": 390,
+    "blocked": 0,
+    "partialClassified": 28,
+    "partialQueued": 362
+  },
+  "rules": {
+    "singlePrimaryBlocker": true,
+    "failClosed": true,
+    "separateTariffLayers": ["anonymous_ad_hoc", "registered_card_or_app", "contract", "roaming"],
+    "noTariffExtrapolation": true,
+    "retryGuard": "Do not repeat the same failed investigation more than twice without new evidence.",
+    "priorityOrder": ["B1_COVERAGE_EVSE_MATRIX", "B2_FIRST_PARTY_ADHOC_EQUIVALENCE", "B4_FEE_COMPONENT_COMPLETENESS", "B3_SITE_CONFIGURABLE_BACKEND", "B5_OPERATOR_IDENTITY_RECONCILIATION", "B6_DYNAMIC_SURFACE_OR_APP"]
+  },
+  "families": {
+    "B1_COVERAGE_EVSE_MATRIX": {
+      "description": "Direct/ad-hoc prices are observed at station/EVSE level, but estate coverage or an authoritative complete EVSE-to-tariff matrix is missing.",
+      "nextAction": "Batch CPO-to-station-to-EVSE reconciliation using Mobilithek/AFIR/DATEX II and the identified backend; certify only fully covered tariff classes."
+    },
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": {
+      "description": "The operator/network and some prices are known, but a current first-party anonymous/ad-hoc matrix or proof of equivalence is missing.",
+      "nextAction": "Search current first-party tariff sheets, QR/direct-payment checkout and authoritative AFIR/EVSE price records; keep card/contract pricing separate."
+    },
+    "B3_SITE_CONFIGURABLE_BACKEND": {
+      "description": "The backend/operator explicitly supports owner/site/charge-point-specific pricing, so no network-wide tariff can be inferred.",
+      "nextAction": "Extract public per-EVSE prices from the shared backend/AFIR surface in bulk and retain station-scoped tariffs."
+    },
+    "B4_FEE_COMPONENT_COMPLETENESS": {
+      "description": "The energy price is known on sampled EVSEs but one or more session/time/blocking/grace/payment components are not fully proven.",
+      "nextAction": "Audit complete binding price offers/checkout terms per EVSE, including time and blocking fees before promoting to complete."
+    },
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": {
+      "description": "Brand, physical CPO, backend operator, duplicate sites or feed ownership are not sufficiently reconciled.",
+      "nextAction": "Resolve physical operator and aliases first, then attach station/EVSE tariffs to the canonical CPO without double counting."
+    },
+    "B6_DYNAMIC_SURFACE_OR_APP": {
+      "description": "The authoritative tariff exists behind a dynamic widget/app/backend surface but the numeric anonymous values were not exposed in the accessible first pass.",
+      "nextAction": "Inspect the public/guest dynamic endpoint or app backend without bypassing authentication/security; otherwise retain fail-closed."
+    }
+  },
+  "classified": [
+    {"name":"SÜC GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE"},
+    {"name":"becharged GmbH","primaryBlocker":"B3_SITE_CONFIGURABLE_BACKEND"},
+    {"name":"Charge & Co GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX"},
+    {"name":"advercharge GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX"},
+    {"name":"Home and Business Charging","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX"},
+    {"name":"Stadtwerke Warburg GmbH","primaryBlocker":"B4_FEE_COMPONENT_COMPLETENESS"},
+    {"name":"Stadtwerke Emmerich GmbH","primaryBlocker":"B4_FEE_COMPONENT_COMPLETENESS"},
+    {"name":"Stadtwerke Neuenhaus GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE"},
+    {"name":"Stadtwerke Voerde GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE"},
+    {"name":"Stadtwerke Bramsche GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE"},
+    {"name":"Stadtwerke Aue - Bad Schlema GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE"},
+    {"name":"smopi – Multi Chargepoint Solution GmbH","primaryBlocker":"B3_SITE_CONFIGURABLE_BACKEND"},
+    {"name":"Krones AG public charging","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE"},
+    {"name":"ASAP Electronics GmbH public charging","primaryBlocker":"B5_OPERATOR_IDENTITY_RECONCILIATION"},
+    {"name":"e-HET GmbH","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP"},
+    {"name":"Wohnungsbau Neumünster GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX"},
+    {"name":"Stadtwerke Plön Versorgungs GmbH","primaryBlocker":"B4_FEE_COMPONENT_COMPLETENESS"},
+    {"name":"Fraunhofer-Freiburg public charging","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX"},
+    {"name":"eCharge Hardy Barth PV","primaryBlocker":"B3_SITE_CONFIGURABLE_BACKEND"},
+    {"name":"POWERJames GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX"},
+    {"name":"HX Power Charger & Solar GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE"},
+    {"name":"UNI ELEKTRO Fachgroßhandel GmbH & Co. KG","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX"},
+    {"name":"Lindig Fördertechnik GmbH","primaryBlocker":"B5_OPERATOR_IDENTITY_RECONCILIATION"},
+    {"name":"Haller Windenergie public charging","primaryBlocker":"B4_FEE_COMPONENT_COMPLETENESS"},
+    {"name":"ElektroBirk public charging","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX"},
+    {"name":"FAMILA public charging network","primaryBlocker":"B5_OPERATOR_IDENTITY_RECONCILIATION"},
+    {"name":"Stadtwerke Geseke GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX"},
+    {"name":"Q-Park Germany public charging","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX"}
+  ],
+  "countsByPrimaryBlocker": {
+    "B1_COVERAGE_EVSE_MATRIX": 10,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 7,
+    "B3_SITE_CONFIGURABLE_BACKEND": 3,
+    "B4_FEE_COMPONENT_COMPLETENESS": 4,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 3,
+    "B6_DYNAMIC_SURFACE_OR_APP": 1
+  },
+  "backendRouting": {
+    "Monta": "Prioritize public AFIR/DATEX II EVSE status/ad-hoc price extraction where available; public prices can be charge-point specific.",
+    "vaylens": "Prioritize binding pricing/direct-payment per charge point; vaylens supports unique tariffs per charge point and QR direct payment.",
+    "Mobilithek_AFIR_DATEX": "Use as station/EVSE inventory and authoritative/public price reconciliation layer, not as permission to extrapolate missing tariffs."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "10 + 7 + 3 + 4 + 3 + 1 = 28 classified; 390 - 28 = 362 queued",
+    "duplicateNamesInBatch": 0,
+    "statusChanges": 0,
+    "note": "Classification only; no partial CPO is promoted to complete until second-pass evidence closes its blocker."
+  },
+  "nextSafeAction": "Continue classification over the remaining 362 partial CPOs from the historical checkpoint chain, then execute the B1/B2/B4 high-resolvability batches before configurable-backend and identity long-tail work."
+}
