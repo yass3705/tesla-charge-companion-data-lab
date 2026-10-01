@@ -1,0 +1,28 @@
+name: Audit Electroverse FR VIA unmatched
+on:
+  push:
+    branches:
+      - audit/electroverse-via-unmatched
+    paths:
+      - "scripts/audit_electroverse_via_unmatched.mjs"
+      - ".github/workflows/electroverse-via-unmatched-audit.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run VIA audit
+        run: node scripts/audit_electroverse_via_unmatched.mjs
+      - name: Persist report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse-fr-via-unmatched.json
+          git commit -m "audit: publish VIA unmatched report" || exit 0
+          git push
