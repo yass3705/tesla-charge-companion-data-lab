@@ -387,6 +387,8 @@ const stats={
   stationHomogeneousBroadcastAuditByOperator:{},
   stationHomogeneousBroadcastMismatchLocations:0,stationHomogeneousBroadcastMismatchTargets:0,stationHomogeneousBroadcastMismatchSources:0,
   stationHomogeneousBroadcastMismatchByOperator:{},
+  stationHomogeneousBroadcastStrictMismatchLocations:0,stationHomogeneousBroadcastStrictMismatchTargets:0,stationHomogeneousBroadcastStrictMismatchSources:0,
+  stationHomogeneousBroadcastStrictMismatchByOperator:{},
   durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
@@ -1837,6 +1839,33 @@ for(const sh of manifest.shards||[]){
             const b=stats.stationHomogeneousBroadcastMismatchByOperator[operator]||{locations:0,targets:0,sources:0};
             b.locations++;b.targets+=unclaimed.length;b.sources+=unresolved.length;
             stats.stationHomogeneousBroadcastMismatchByOperator[operator]=b;
+
+            // Strong form: every tariff-bearing Electroverse EVSE at this mapped location
+            // must compile successfully to one EVSE-level price, and all such prices must match.
+            const allStationPricings=[];
+            let stationPriceValid=true;
+            for(const eAll of row.tariff?.evses||[]){
+              const cs=eAll?.connectors||[];
+              if(!cs.length)continue;
+              const ps=[];
+              for(const cAll of cs){
+                const xAll=compileConnector(cAll);if(!xAll.ok){stationPriceValid=false;break;}
+                ps.push(xAll.pricing);
+              }
+              if(!stationPriceValid)break;
+              const uniq=[...new Map(ps.map(p=>[pricingSig(p),p])).values()];
+              if(uniq.length!==1){stationPriceValid=false;break;}
+              allStationPricings.push(uniq[0]);
+            }
+            if(stationPriceValid&&allStationPricings.length&&
+               new Set(allStationPricings.map(pricingSig)).size===1){
+              stats.stationHomogeneousBroadcastStrictMismatchLocations++;
+              stats.stationHomogeneousBroadcastStrictMismatchTargets+=unclaimed.length;
+              stats.stationHomogeneousBroadcastStrictMismatchSources+=unresolved.length;
+              const q=stats.stationHomogeneousBroadcastStrictMismatchByOperator[operator]||{locations:0,targets:0,sources:0};
+              q.locations++;q.targets+=unclaimed.length;q.sources+=unresolved.length;
+              stats.stationHomogeneousBroadcastStrictMismatchByOperator[operator]=q;
+            }
           }
         }
       }
