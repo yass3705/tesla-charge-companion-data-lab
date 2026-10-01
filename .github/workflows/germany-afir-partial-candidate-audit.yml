@@ -1,0 +1,71 @@
+name: Germany AFIR partial-candidate audit
+on:
+  push:
+    paths:
+      - ".github/workflows/germany-afir-partial-candidate-audit.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: germany-afir-partial-candidate-audit
+  cancel-in-progress: false
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit canonical Germany staging catalog
+        run: |
+          python - <<'PY'
+          import gzip,json,pathlib,re
+          p=pathlib.Path("data/national/germany_non_tesla_catalog_staging_direct_cpo.json.gz")
+          with gzip.open(p,"rt",encoding="utf-8") as f: d=json.load(f)
+          targets=[
+            "Stadtwerke Schifferstadt","Bad Honnef","Stadtwerke Garbsen","Stadtwerke Lemgo",
+            "HEOS","Stadtwerke Iserlohn","Stadtwerke Eutin","Stadtwerke Lehrte",
+            "Stadtwerke Wolfenbüttel","Stadtwerke Emmendingen","Energieversorgung Sehnde",
+            "Stadtwerke Weinstadt","Nienburg Energie","Stadtwerke Wunstorf","Stadtwerke Holzminden",
+            "Stadtwerke Brilon","Stadtwerke Warburg","Stadtwerke Emmerich","Stadtwerke Plön"
+          ]
+          found={t:[] for t in targets}
+          def walk(x,path="$"):
+            if isinstance(x,dict):
+              s=json.dumps(x,ensure_ascii=False)
+              for t in targets:
+                if t.lower() in s.lower() and len(found[t])<20:
+                  # retain compact tariff/operator/EVSE evidence, bounded in size
+                  keep={}
+                  for k,v in x.items():
+                    kl=k.lower()
+                    if any(z in kl for z in ["operator","name","evse","station","tariff","price","fee","afir","provider","power","connector","adhoc","vat","blocking","time","id"]):
+                      keep[k]=v
+                  found[t].append({"path":path,"fields":keep})
+              for k,v in x.items(): walk(v,path+"."+str(k))
+            elif isinstance(x,list):
+              for i,v in enumerate(x): walk(v,path+f"[{i}]")
+          walk(d)
+          out={"schemaVersion":1,"country":"DE","source":str(p),"targets":{}}
+          for t,rows in found.items():
+            # dedupe exact rows
+            seen=set(); uniq=[]
+            for r in rows:
+              key=json.dumps(r,sort_keys=True,ensure_ascii=False)
+              if key not in seen: seen.add(key);uniq.append(r)
+            out["targets"][t]={"matches":len(uniq),"samples":uniq[:8]}
+          q=pathlib.Path("docs/germany-afir-partial-candidate-audit-2026-10-01.json")
+          q.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({k:v["matches"] for k,v in out["targets"].items()},indent=2))
+          PY
+      - name: Commit report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/germany-afir-partial-candidate-audit-2026-10-01.json
+          git diff --cached --quiet && exit 0
+          git commit -m "audit(de): map partial candidates against national AFIR staging"
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
