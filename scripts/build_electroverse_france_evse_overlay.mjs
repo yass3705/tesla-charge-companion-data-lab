@@ -9,6 +9,7 @@ const MAP='data/electroverse/irve_location_mapping.json';
 const DRIVECO='data/operator_direct/driveco_evse_tariffs.json';
 const POWERDOT_TECH='data/operator_direct/powerdot_evse_technical_inventory.json';
 const VALIDATED_NUMERIC_MAP='data/platforms/electroverse/validated-mappings/numeric-residual.json';
+const VALIDATED_S82_MAP='data/platforms/electroverse/validated-mappings/s82-residual.json';
 const OUT=process.argv[2]||'data/platforms/electroverse/france-evse';
 const TILE=.5;
 // Rebuild marker: validate protected PD1 technical grouping on main.
@@ -179,6 +180,7 @@ const manifest=JSON.parse(await fs.readFile(MANIFEST,'utf8'));
 const driveco=JSON.parse(await fs.readFile(DRIVECO,'utf8'));
 const powerdotTech=JSON.parse(await fs.readFile(POWERDOT_TECH,'utf8'));
 const validatedNumericMap=JSON.parse(await fs.readFile(VALIDATED_NUMERIC_MAP,'utf8'));
+const validatedS82Map=JSON.parse(await fs.readFile(VALIDATED_S82_MAP,'utf8'));
 const powerdotByEvse=new Map((powerdotTech.evses||[]).map(x=>[norm(x.evseId),x]));
 const drivecoNative=[...(driveco.resolved||[]),...(driveco.unresolved||[])];
 const drivecoByEvse=new Map(drivecoNative.map(x=>[norm(x.evseId),x]));
@@ -228,6 +230,13 @@ const validatedNumericResidualTargets=new Map(
     norm(x.targetPdc)
   ])
 );
+const validatedS82ResidualTargets=new Map(
+  (validatedS82Map.mappings||[]).map(x=>[
+    String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk),
+    norm(x.targetPdc)
+  ])
+);
+const validatedResidualTargets=new Map([...validatedNumericResidualTargets,...validatedS82ResidualTargets]);
 const globalPdcOwners=new Map();
 for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
   const k=norm(p);if(!k)continue;
@@ -256,6 +265,7 @@ const stats={
   hpcOrdinalGroupCandidateEvses:0,hpcOrdinalGroupPublishedEvses:0,
   c55BIndexCandidateEvses:0,c55BIndexPublishedEvses:0,
   validatedNumericResidualCandidateEvses:0,validatedNumericResidualPublishedEvses:0,
+  validatedS82ResidualCandidateEvses:0,validatedS82ResidualPublishedEvses:0,
   drvPowerGroupCandidateEvses:0,drvPowerGroupPublishedEvses:0,drvPowerGroupByKw:{},
   pd1TechnicalGroupCandidateEvses:0,pd1TechnicalGroupPublishedEvses:0,pd1TechnicalGroupByKey:{},
   drvHomogeneousGroupCandidateEvses:0,drvHomogeneousGroupPublishedEvses:0,
@@ -1440,7 +1450,7 @@ for(const sh of manifest.shards||[]){
       for(const e0 of row.tariff?.evses||[]){
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
-        const validatedNumericTarget=validatedNumericResidualTargets.get(String(row.electroverseLocationPk)+':'+String(e0?.pk??''));
+        const validatedNumericTarget=validatedResidualTargets.get(String(row.electroverseLocationPk)+':'+String(e0?.pk??''));
         if(validatedNumericTarget){
           const targetNorm=norm(validatedNumericTarget);
           if(local.has(targetNorm)&&(globalPdcOwners.get(targetNorm)?.size||0)===1)claimed.add(targetNorm);
@@ -1551,21 +1561,27 @@ for(const sh of manifest.shards||[]){
 
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
-      const validatedResidualTargetPre=validatedNumericResidualTargets.get(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
+      const validatedResidualTargetPre=validatedResidualTargets.get(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
       if(!validatedResidualTargetPre && (izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e)||hpcGroupedSourceEvses.has(e)||pd1TechnicalSourceEvses.has(e)||drvPowerSourceEvses.has(e)||operatorGroupedSourceEvses.has(e)||genericGroupedSourceEvses.has(e)))continue;
       const pr=text(e?.physicalReference);
       if(!pr){rej('evse_missing_physical_reference');continue;}
       stats.physicalRefs++;
       const k=norm(pr);
       let targetPdc=pr,identityMode='exact_unique_national_irve_pdc',parentMode=false,parentNorm='',ordinalMode=false;
-      const validatedResidualTarget=validatedNumericResidualTargets.get(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
+      const validatedResidualTarget=validatedResidualTargets.get(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
       if(validatedResidualTarget){
         const targetNorm=norm(validatedResidualTarget);
         const owners=globalPdcOwners.get(targetNorm);
         if(!local.has(targetNorm)||!owners||owners.size!==1){rej('validated_numeric_residual_target_invalid');continue;}
         targetPdc=localByNorm.get(targetNorm);
-        identityMode='validated_numeric_residual_unique_bijection';
-        stats.validatedNumericResidualCandidateEvses++;
+        const validatedKey=String(row.electroverseLocationPk)+':'+String(e?.pk??'');
+        if(validatedS82ResidualTargets.has(validatedKey)){
+          identityMode='validated_s82_residual_unique_suffix_bijection';
+          stats.validatedS82ResidualCandidateEvses++;
+        }else{
+          identityMode='validated_numeric_residual_unique_bijection';
+          stats.validatedNumericResidualCandidateEvses++;
+        }
       }else if(local.has(k)){
         const owners=globalPdcOwners.get(k);
         if(!owners||owners.size!==1){rej('physical_reference_not_globally_unique');continue;}
@@ -1829,7 +1845,7 @@ for(const [target,items] of offersByTarget.entries()){
   if(items.length<2)continue;
   stats.duplicatePublishedEvseTargetsBeforeDedup+=items.length-1;
   const sigs=new Set(items.map(x=>x.pricingSig));
-  const validatedItems=items.filter(x=>x.offer.metadata?.identityMode==='validated_numeric_residual_unique_bijection');
+  const validatedItems=items.filter(x=>['validated_numeric_residual_unique_bijection','validated_s82_residual_unique_suffix_bijection'].includes(x.offer.metadata?.identityMode));
   if(validatedItems.length===1){
     // A strict individual post-overlay bijection is more specific than any grouped
     // attribution that happens to claim the same national target. Preserve it and
@@ -1884,6 +1900,7 @@ stats.c55HomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identi
 stats.hpcOrdinalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_hpc_duplicate_ordinal_to_three_digit_pdc').length;
 stats.c55BIndexPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_bindex_zero_based_suffix').length;
 stats.validatedNumericResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_numeric_residual_unique_bijection').length;
+stats.validatedS82ResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_s82_residual_unique_suffix_bijection').length;
 stats.pd1TechnicalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_pd1_official_technical_homogeneous_group').length;
 stats.pd1TechnicalGroupByKey={};
 for(const o of finalOffers.filter(o=>o.metadata?.identityMode==='strict_pd1_official_technical_homogeneous_group')){
@@ -1973,6 +1990,8 @@ const out={
     strict55cBIndexZeroBasedSuffix:true,
     validatedNumericResidualUniqueBijection:true,
     validatedNumericResidualMappingCount:validatedNumericResidualTargets.size,
+    validatedS82ResidualUniqueSuffixBijection:true,
+    validatedS82ResidualMappingCount:validatedS82ResidualTargets.size,
     c55BIndexRequiresExactResidualSet:true,
     c55BIndexRequiresGlobalPdcUniqueness:true,
     strictPd1OfficialTechnicalHomogeneousGroup:true,
