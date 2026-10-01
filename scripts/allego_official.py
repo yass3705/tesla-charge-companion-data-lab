@@ -193,7 +193,7 @@ def browser_select_country(url: str, country: str = "France") -> tuple[str, dict
         # Do not merely search for France anywhere because the opened menu also
         # contains France as one of its options.
         current_match = re.search(
-            r"(?:affichage des prix pour|showing prices for)\\s+([a-zA-ZÀ-ÖØ-öø-ÿ'’ -]{2,40})",
+            r"(?:affichage des prix pour|showing prices for)\s+([a-zA-ZÀ-ÖØ-öø-ÿ'’ -]{2,40})",
             visible,
             flags=re.I,
         )
@@ -260,7 +260,7 @@ def browser_select_country(url: str, country: str = "France") -> tuple[str, dict
                             lambda d: (
                                 (lambda m: bool(m and norm(m.group(1).strip()) == norm(country)))(
                                     re.search(
-                                        r"(?:affichage des prix pour|showing prices for)\\s+([a-zA-ZÀ-ÖØ-öø-ÿ'’ -]{2,40})",
+                                        r"(?:affichage des prix pour|showing prices for)\s+([a-zA-ZÀ-ÖØ-öø-ÿ'’ -]{2,40})",
                                         d.find_element(By.TAG_NAME, "body").text or "",
                                         flags=re.I,
                                     )
@@ -302,19 +302,19 @@ def static_country_pricing_block(url: str, country: str = "France") -> tuple[str
     # as divs with ids pricing-<id>, and marks the localized country's panel
     # with class "active". On /fr/tarifs/ that active block is France.
     panel_rx = re.compile(
-        r"<div\\b(?=[^>]*\\bid=[\"']pricing-[^\"']+[\"'])(?=[^>]*\\bclass=[\"'][^\"']*\\bcolumns\\b[^\"']*[\"'])[^>]*>",
+        r"<div\b(?=[^>]*\bid=[\"']pricing-[^\"']+[\"'])(?=[^>]*\bclass=[\"'][^\"']*\bcolumns\b[^\"']*[\"'])[^>]*>",
         flags=re.I,
     )
     panel_matches = list(panel_rx.finditer(raw))
     for idx, match in enumerate(panel_matches):
         opening = match.group(0)
-        if not re.search(r"\\bclass=[\"'][^\"']*\\bactive\\b", opening, flags=re.I):
+        if not re.search(r"\bclass=[\"'][^\"']*\bactive\b", opening, flags=re.I):
             continue
         end = panel_matches[idx + 1].start() if idx + 1 < len(panel_matches) else len(raw)
         block_html = raw[match.start():end]
         block_text = text_from_html(block_html)
         if country == "France" and "/fr/" in url and "kwh" in norm(block_text):
-            panel_id_match = re.search(r"\\bid=[\"'](pricing-[^\"']+)[\"']", opening, flags=re.I)
+            panel_id_match = re.search(r"\bid=[\"'](pricing-[^\"']+)[\"']", opening, flags=re.I)
             return block_text, {
                 "accessMode": "official_static_html_active_panel",
                 "selectedCountry": country,
@@ -326,11 +326,11 @@ def static_country_pricing_block(url: str, country: str = "France") -> tuple[str
     access_mode = None
 
     # Legacy/native selector.
-    selects = re.findall(r"<select\\b[^>]*>.*?</select>", raw, flags=re.I | re.S)
+    selects = re.findall(r"<select\b[^>]*>.*?</select>", raw, flags=re.I | re.S)
     for candidate in selects:
         ctext = norm(text_from_html(candidate))
         if "france" in ctext and ("allemagne" in ctext or "germany" in ctext) and ("pays-bas" in ctext or "netherlands" in ctext):
-            for option_html in re.findall(r"<option\\b[^>]*>(.*?)</option>", candidate, flags=re.I | re.S):
+            for option_html in re.findall(r"<option\b[^>]*>(.*?)</option>", candidate, flags=re.I | re.S):
                 label = text_from_html(option_html).strip()
                 nl = norm(label)
                 if not label or "choisissez" in nl or "select" in nl:
@@ -344,21 +344,21 @@ def static_country_pricing_block(url: str, country: str = "France") -> tuple[str
     if not labels:
         candidates = []
         patterns = (
-            r"Affichage des prix pour\\s+([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’ .-]{1,40}?)(?=\\s+(?:Affichage des prix pour|Showing prices for|Vitesse de charge|Charging speed)|$)",
-            r"Showing prices for\\s+([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’ .-]{1,40}?)(?=\\s+(?:Affichage des prix pour|Showing prices for|Vitesse de charge|Charging speed)|$)",
+            r"Affichage des prix pour\s+([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’ .-]{1,40}?)(?=\s+(?:Affichage des prix pour|Showing prices for|Vitesse de charge|Charging speed)|$)",
+            r"Showing prices for\s+([A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'’ .-]{1,40}?)(?=\s+(?:Affichage des prix pour|Showing prices for|Vitesse de charge|Charging speed)|$)",
         )
         for pat in patterns:
             candidates.extend(re.findall(pat, page_text, flags=re.I))
         # Fallback to raw accessibility attributes if text flattening joins controls oddly.
         if not candidates:
             candidates = re.findall(
-                r"(?:aria-label|title)=[\"'](?:Affichage des prix pour|Showing prices for)\\s+([^\"']+)[\"']",
+                r"(?:aria-label|title)=[\"'](?:Affichage des prix pour|Showing prices for)\s+([^\"']+)[\"']",
                 raw,
                 flags=re.I,
             )
         seen = set()
         for candidate in candidates:
-            label = re.sub(r"\\s+", " ", html.unescape(candidate)).strip()
+            label = re.sub(r"\s+", " ", html.unescape(candidate)).strip()
             key = norm(label)
             if label and key not in seen:
                 seen.add(key)
@@ -427,13 +427,13 @@ def parse_country_direct(text: str) -> dict:
 
     patterns = {
         "ultraFast": (
-            r"(?:chargement ultra-rapide|ultra-fast charging|ultra-rapide)\\s+(?:jusqu.?a\\s*\\d{2,3}\\s*kw\\s+)?€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*kwh"
+            r"(?:chargement ultra-rapide|ultra-fast charging|ultra-rapide)\s+(?:jusqu.?a\s*\d{2,3}\s*kw\s+)?€?\s*(\d+(?:[.,]\d+)?)\s*€?\s*/\s*kwh"
         ),
         "fast": (
-            r"(?<!ultra-)(?:chargement rapide|fast charging|rapide)\\s+(?:jusqu.?a\\s*\\d{2,3}\\s*kw\\s+)?€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*kwh"
+            r"(?<!ultra-)(?:chargement rapide|fast charging|rapide)\s+(?:jusqu.?a\s*\d{2,3}\s*kw\s+)?€?\s*(\d+(?:[.,]\d+)?)\s*€?\s*/\s*kwh"
         ),
         "regular": (
-            r"(?:chargement regulier|regular charging|standard)\\s+(?:jusqu.?a\\s*\\d{2,3}\\s*kw\\s+)?€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*kwh"
+            r"(?:chargement regulier|regular charging|standard)\s+(?:jusqu.?a\s*\d{2,3}\s*kw\s+)?€?\s*(\d+(?:[.,]\d+)?)\s*€?\s*/\s*kwh"
         ),
     }
     out = {}
@@ -452,7 +452,7 @@ def parse_country_direct(text: str) -> dict:
     if missing:
         ordered_prices = [
             eur(x)
-            for x in re.findall(r"(\\d+(?:[.,]\\d+)?)\\s*€\\s*/\\s*kwh", direct_section, flags=re.I)
+            for x in re.findall(r"(\d+(?:[.,]\d+)?)\s*€\s*/\s*kwh", direct_section, flags=re.I)
         ]
         if len(ordered_prices) >= 3:
             out = {
@@ -464,17 +464,17 @@ def parse_country_direct(text: str) -> dict:
     if missing:
         raise RuntimeError(
             f"Allego France pricing: missing {missing} in operator-direct section; "
-            f"ordered EUR/kWh values found={re.findall(r'(?:\\d+(?:[.,]\\d+)?)\\s*€\\s*/\\s*kwh', direct_section, flags=re.I)}; "
+            f"ordered EUR/kWh values found={re.findall(r'(?:\d+(?:[.,]\d+)?)\s*€\s*/\s*kwh', direct_section, flags=re.I)}; "
             f"section_preview={direct_section[:1200]!r}"
         )
 
     # Idle/overstay fees can be outside the direct card; search full selected text.
-    idle = re.search(r"idle fee\\s*:\\s*€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*min", n)
+    idle = re.search(r"idle fee\s*:\s*€?\s*(\d+(?:[.,]\d+)?)\s*€?\s*/\s*min", n)
     if not idle:
-        idle = re.search(r"(?:frais d.?inactivite|frais de stationnement)\\s*:?\\s*€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*min", n)
+        idle = re.search(r"(?:frais d.?inactivite|frais de stationnement)\s*:?\s*€?\s*(\d+(?:[.,]\d+)?)\s*€?\s*/\s*min", n)
     idle_fee = eur(idle.group(1)) if idle else 0.248
 
-    overstay = re.search(r"overstay fee\\s*:\\s*€?\\s*(\\d+(?:[.,]\\d+)?)\\s*€?\\s*/\\s*min", n)
+    overstay = re.search(r"overstay fee\s*:\s*€?\s*(\d+(?:[.,]\d+)?)\s*€?\s*/\s*min", n)
     regular_overstay = eur(overstay.group(1)) if overstay else None
 
     for value in out.values():
