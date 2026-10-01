@@ -1,0 +1,20 @@
+name: Debug Electroverse S30 sample profiles
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/debug_electroverse_s30_sample_profiles.mjs"
+      - ".github/workflows/electroverse-s30-sample-debug.yml"
+permissions:
+  contents: read
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/debug_electroverse_s30_sample_profiles.mjs
