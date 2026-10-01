@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 216,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-215.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 251,
+    "partial": 340,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Nienburg Energie GmbH",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "decision": "remain partial; first B6 checkout pass bounded",
+      "evidence": {
+        "firstPartyScope": "Operator publicly lists its charging locations and supports contract-free/digital charging through its current mobility/payment path.",
+        "backend": "Mer/web/app checkout semantics identified from prior classification."
+      },
+      "exactGap": "Current binding anonymous energy/start/time/blocking values are still rendered in the station-selected checkout rather than an accessible authoritative all-estate tariff matrix.",
+      "antiStagnation": "Do not repeat broad public search. One further pass is justified only with a concrete Mer station/EVSE checkout payload.",
+      "resumeCondition": "Current station-selected Mer/web/app payload for the complete first-party location set, or first-party deterministic anonymous rule."
+    },
+    {
+      "name": "Stadtwerke Rotenburg (Wuemme) GmbH",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "decision": "remain partial; anonymous payment path confirmed but numeric direct matrix not closed",
+      "evidence": {
+        "channel": "First-party anonymous EC/credit-card/QR/display payment semantics retained; registered SR-Ladekarte tariff remains a separate product.",
+        "registeredReference": "0.49 EUR/kWh AC / 0.59 EUR/kWh DC is registered-card evidence only and is not substituted for anonymous_ad_hoc."
+      },
+      "exactGap": "Need the numeric price displayed by charger/QR checkout for every active anonymous tariff class, plus start/time/blocking components.",
+      "resumeCondition": "Machine-readable/display/QR checkout values covering active AC and DC classes, or explicit first-party anonymous rule."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 251,
+    "partial": 340,
+    "blocked": 0
+  },
+  "indicator": "221 -> 251 complete (+30)",
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "backendFamilyProgress": {
+    "B6": "Espelkamp parked; Nienburg and Rotenburg advanced to concrete checkout-payload gaps without mixing registered tariffs."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "251 + 340 + 0 = 591",
+    "channelSeparation": "PASS",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Continue B6 with a candidate where the first-party page publishes the anonymous numeric tariff directly; avoid opaque checkout-only operators unless a concrete station token/payload is available."
+}
