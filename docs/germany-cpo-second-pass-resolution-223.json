@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 223,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-222.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 252,
+    "partial": 339,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "family": "AFIR/Mobilithek chargecloud 100%-raw-coverage cohort",
+      "source": "docs/germany-afir-100pct-chargecloud-closure-2026-10-01.json",
+      "workflowRun": 36906982813,
+      "status": "bounded-no-promotion",
+      "cpos": [
+        {
+          "cpo": "SCHARR WÄRME GmbH & Co. KG",
+          "coverage": "39/39 sites matched_safe with raw tariff; 96 EVSE IDs; 123 tariff objects",
+          "observed": "113 objects 0.59 EUR/kWh; 10 objects 0.69 EUR/kWh plus 0.12 EUR/min from minute 120",
+          "gap": "123/123 payment=null and all 389 price components taxIncluded=null; AFIR snapshot does not prove anonymous_ad_hoc TTC."
+        },
+        {
+          "cpo": "ServiceSTADTwerke GmbH & Co. KG",
+          "coverage": "22/22 sites matched_safe with raw tariff; 23 EVSE IDs; 85 tariff objects",
+          "observed": "raw tariff includes flatRate, per-kWh and station/time-scoped per-minute components",
+          "gap": "85/85 payment=null and all 510 price components taxIncluded=null; anonymous_ad_hoc TTC and site-specific tariff mapping are not closed."
+        },
+        {
+          "cpo": "Autostrom Einert GmbH & Co. KG",
+          "coverage": "19/19 sites matched_safe with raw tariff; 38 EVSE IDs; 38 tariff objects",
+          "observed": "single raw signature: 0.50 EUR flatRate + 0.50 EUR/kWh + 0.01 EUR/min from minute 240",
+          "gap": "38/38 payment=null and all 228 price components taxIncluded=null; cannot classify raw signature as anonymous_ad_hoc TTC."
+        },
+        {
+          "cpo": "ib company GmbH",
+          "coverage": "12/12 sites matched_safe with raw tariff; 25 EVSE IDs; 62 tariff objects",
+          "observed": "multiple site-specific signatures including flatRate, per-kWh and time-based components",
+          "gap": "62/62 payment=null and all 556 price components taxIncluded=null; anonymous_ad_hoc TTC and site-specific signatures remain unproven."
+        }
+      ],
+      "exactGap": "chargecloud AFIR staging has complete raw price coverage for this cohort but strips/omits payment classification and taxIncluded. Do not repeat the same AFIR pass; reopen only with first-party/chargecloud evidence that identifies anonymous payment and gross/TTC treatment."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 252,
+    "partial": 339,
+    "blocked": 0
+  },
+  "indicator": "221 -> 252 complete (+31)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific source/backend proof"
+  },
+  "backendFamilyProgress": {
+    "AFIR_Mobilithek": "Four additional 100%-raw-coverage chargecloud CPOs materialized and bounded. Raw prices are useful, but payment/tax metadata is absent."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "252 + 339 + 0 = 591",
+    "unsafeExtrapolations": 0,
+    "noRepeat": "SCHARR, ServiceSTADTwerke, Autostrom Einert and ib company are now bounded against the current AFIR chargecloud snapshot; do not repeat this method."
+  },
+  "nextSafeAction": "Move to the next family/candidate where AFIR exposes explicit payment metadata (eRound or another provider), beginning with Stadt Glücksburg if still canonical partial; otherwise ChargePoint/Mobilithek-EcoMovement, then m8mit."
+}
