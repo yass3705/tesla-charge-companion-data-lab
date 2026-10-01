@@ -239,3 +239,5 @@ console.log(JSON.stringify({
 // rerank after hardened zero integration 2026-10-01
 
 // rerank after P01 exact-reference donor publication 2026-10-01
+
+// rerank after strict station-homogeneous price broadcast 2026-10-01
