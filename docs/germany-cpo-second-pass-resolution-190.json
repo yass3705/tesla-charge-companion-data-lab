@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 190,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-189.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 247,
+    "partial": 344,
+    "blocked": 0
+  },
+  "promotions": [
+    {
+      "name": "Stadtwerke Rostock AG",
+      "from": "partial",
+      "to": "complete",
+      "bucket": "B7 / m8mit exhaustive checkout",
+      "coverage": "Fresh exhaustive traversal of all 10 current hro.m8mit.de operator inventory pages yielded 142 unique EVSE. Every one of the 142 public guest checkout pages was fetched independently with zero fetch errors. Seven tariff signatures cover 100%: 12 DC EVSE at 0.59 EUR/kWh + 0.10 EUR/min after 90 min; 111 AC at 0.49 EUR/kWh + 1.49 EUR Direct-Pay + 0.10 EUR/min after 4h; 1 AC Nachtladen at 0.49 + 1.49 Direct-Pay + 0.10/min after 3h; 4 AC HTL at 0.69 EUR/kWh + 0.07 EUR/min after 4h; 4 AC Tourismuszentrale at 0.59 EUR/kWh + 1.49 Direct-Pay + 0.10/min after 4h; 10 AC generic Gasttarif at 0.65 EUR/kWh + 1.49 Direct-Pay with no blocking component displayed. Public checkout identifies credit-card payment and VAT-inclusive pricing.",
+      "denominator": {
+        "inventoryPages": 10,
+        "uniqueEvse": 142,
+        "checkoutFetched": 142,
+        "fetchErrors": 0
+      },
+      "anonymousAdHocSignatures": [
+        {
+          "evse": 2,
+          "connector": "CCS 90 kW",
+          "energyEurPerKwh": 0.59,
+          "blockingEurPerMin": 0.1,
+          "blockingAfterMinutes": 90
+        },
+        {
+          "evse": 10,
+          "connector": "CCS 150 kW",
+          "energyEurPerKwh": 0.59,
+          "blockingEurPerMin": 0.1,
+          "blockingAfterMinutes": 90
+        },
+        {
+          "evse": 111,
+          "connector": "Type 2 22 kW",
+          "tariff": "Gasttarif - AC - HRO 2024",
+          "energyEurPerKwh": 0.49,
+          "directPayFeeEur": 1.49,
+          "blockingEurPerMin": 0.1,
+          "blockingAfterMinutes": 240
+        },
+        {
+          "evse": 1,
+          "connector": "Type 2 22 kW",
+          "tariff": "Gasttarif - AC - HRO Nachtladen",
+          "energyEurPerKwh": 0.49,
+          "directPayFeeEur": 1.49,
+          "blockingEurPerMin": 0.1,
+          "blockingAfterMinutes": 180
+        },
+        {
+          "evse": 4,
+          "connector": "Type 2 22 kW",
+          "tariff": "Gasttarif - AC - HTL",
+          "energyEurPerKwh": 0.69,
+          "blockingEurPerMin": 0.07,
+          "blockingAfterMinutes": 240
+        },
+        {
+          "evse": 4,
+          "connector": "Type 2 22 kW",
+          "tariff": "Gasttarif - AC - Tourismuszentrale Rostock + Warnemünde",
+          "energyEurPerKwh": 0.59,
+          "directPayFeeEur": 1.49,
+          "blockingEurPerMin": 0.1,
+          "blockingAfterMinutes": 240
+        },
+        {
+          "evse": 10,
+          "connector": "Type 2 22 kW",
+          "tariff": "Gasttarif",
+          "energyEurPerKwh": 0.65,
+          "directPayFeeEur": 1.49,
+          "blockingFee": "none displayed"
+        }
+      ],
+      "evidence": [
+        "hro.m8mit.de/stationslist pages 1-10",
+        "all 142 current hro.m8mit.de station checkout URLs fetched 2026-10-01"
+      ],
+      "guard": "100% EVSE-level public guest checkout coverage; no network-wide tariff inference. Registered/app/contract/roaming remain separate."
+    }
+  ],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 248,
+    "partial": 343,
+    "blocked": 0
+  },
+  "statusChanges": 1,
+  "priorityTop5": {
+    "status": "parked after two distinct evidence-led passes; not reopened",
+    "names": [
+      "solid GmbH / LadeVerbundPlus",
+      "NEW AG / NEW Energie",
+      "RhönEnergie Fulda GmbH",
+      "amperio GmbH",
+      "50five"
+    ]
+  },
+  "partialsLeftBounded": [
+    {
+      "name": "Stadtwerke Parchim GmbH",
+      "gap": "guest tariff known; operator denominator not closed"
+    },
+    {
+      "name": "Stadtwerke Bernburg GmbH",
+      "gap": "2024 Direct-Pay sheet not revalidated as current 2026"
+    }
+  ],
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "248 + 343 + 0 = 591",
+    "indicator": "221 -> 248 complete (+27)",
+    "promotions": 1,
+    "unsafeExtrapolations": 0,
+    "aliases": "no new alias introduced",
+    "channelSeparation": "PASS",
+    "reAuditGuard": "PASS"
+  },
+  "nextSafeAction": "Continue m8mit family on another nominative partial with exhaustively traversable station list; then chargecloud/Mobilithek batch candidates. No production merge."
+}
