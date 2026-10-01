@@ -32,10 +32,9 @@ jobs:
       - name: Public-safety scan
         run: python scripts/public_safety_check.py .
 
-      - name: Install PDF text extractor
+      - name: Install extraction dependencies
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq poppler-utils
+          python -m pip install --disable-pip-version-check selenium
 
       - name: Extract and validate official MobiSDEC evidence
         id: extract
@@ -93,10 +92,10 @@ jobs:
           assert p['dataset'] == 'mobisdec-official-calvados'
           assert p['operator'] == 'MobiSDEC / SDEC Énergie'
           assert p['country'] == 'FR'
-          assert p['publicationStatus'] == 'candidate_validated_source_with_fee_discrepancy'
+          assert p['publicationStatus'] == 'candidate_validated_source'
           assert p['sourceEvidence']['officialOnly'] is True
           assert p['classification']['technicalOperator2026'] == 'Load Stations'
-          assert p['classification']['immobilizationFeeSourceDiscrepancy'] is True
+          assert p['classification']['immobilizationFeeSourceDiscrepancy'] is False
           d=p['operatorDirect']
           assert d['energyTariffs']['slow7Kva']['eurPerKwh'] == 0.42
           assert d['energyTariffs']['normal22To25Kva']['eurPerKwh'] == 0.47
@@ -105,16 +104,15 @@ jobs:
           assert d['energyTariffs']['rapid150KvaAndAbove']['eurPerKwh'] == 0.62
           i=d['immobilization']
           assert i['graceAfterChargeCompleteMinutes'] == 15
-          assert i['formalSdec2026ApprovedEurPerMinute'] == 0.22
-          assert i['mobisdecWebsiteDisplayedEurPerMinute'] == 0.21
-          assert i['recommendedCalculatorValue'] is None
-          assert i['manualBillingCheckRequired'] is True
+          assert i['currentWebsiteEurPerMinute'] == 0.21
+          assert i['recommendedCalculatorValue'] == 0.21
+          assert i['manualBillingCheckRequired'] is False
           assert p['accessChannels']['qrSubscriptionRequired'] is False
           assert p['accessChannels']['contactlessRestrictedToRapidStations'] is True
           assert p['roaming']['mustRemainSeparateFromMobisdecDirectTariff'] is True
           samples=p['technical']['stationExamplesFromOfficialDataset']
           assert samples['caen'] and samples['bayeux'] and samples['vireNormandie']
-          print('Validated MobiSDEC output envelope with immobilization-fee discrepancy preserved')
+          print('Validated MobiSDEC current live tariff envelope')
           PY
 
       - name: Publish validated rule set only when model changes
