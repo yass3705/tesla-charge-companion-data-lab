@@ -203,6 +203,8 @@ const stats={
   qovHomogeneousGroupCandidateEvses:0,qovHomogeneousGroupPublishedEvses:0,
   genericHomogeneousGroupCandidateEvses:0,genericHomogeneousGroupPublishedEvses:0,
   genericHomogeneousGroupByOperator:{},
+  genericPriceOnlyGroupCandidateEvses:0,genericPriceOnlyGroupPublishedEvses:0,
+  genericPriceOnlyGroupByOperator:{},
   durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
@@ -1037,11 +1039,17 @@ for(const sh of manifest.shards||[]){
         if(valid&&compiledRows.length===unresolved.length&&compiledRows.length){
           const pricingSigs=new Set(compiledRows.map(x=>pricingSig(x.pricing)));
           const connectorCounts=new Set(compiledRows.map(x=>x.connectorCount));
-          if(pricingSigs.size===1&&connectorCounts.size===1){
+          if(pricingSigs.size===1){
             const operator=[...opSet][0];
             const sharedPricing=compiledRows[0].pricing;
-            const connectorCount=compiledRows[0].connectorCount;
-            for(const p of unclaimed)genericExactSetTargets.set(p,{operator,pricing:sharedPricing,connectorCount,sourceEvses:unresolved});
+            const exactConnectorCount=connectorCounts.size===1?compiledRows[0].connectorCount:null;
+            const sourceConnectorCountTotal=compiledRows.reduce((n,x)=>n+x.connectorCount,0);
+            for(const p of unclaimed)genericExactSetTargets.set(p,{
+              operator,pricing:sharedPricing,connectorCount:exactConnectorCount,
+              connectorCountKnown:connectorCounts.size===1,
+              sourceConnectorCountTotal,
+              sourceEvses:unresolved
+            });
             for(const e0 of unresolved)genericGroupedSourceEvses.add(e0);
           }
         }
@@ -1063,11 +1071,13 @@ for(const sh of manifest.shards||[]){
           pricing:g.pricing,
           metadata:{
             verified:true,
-            identityMode:'strict_generic_single_operator_homogeneous_exact_set',
+            identityMode:g.connectorCountKnown?'strict_generic_single_operator_homogeneous_exact_set':'strict_generic_single_operator_price_only_exact_set',
             electroverseLocationPk:String(row.electroverseLocationPk),
             electroverseEvsePks:g.sourceEvses.map(e=>e.pk??null),
             physicalReferences:g.sourceEvses.map(e=>text(e?.physicalReference)),
             connectorCount:g.connectorCount,
+            connectorCountKnown:g.connectorCountKnown,
+            sourceConnectorCountTotal:g.sourceConnectorCountTotal,
             sourceGroupSize:g.sourceEvses.length,
             targetGroupSize:g.sourceEvses.length,
             operator:g.operator,
@@ -1078,11 +1088,18 @@ for(const sh of manifest.shards||[]){
         };
         const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
         tiles.get(id).push(offer);
-        stats.genericHomogeneousGroupCandidateEvses++;
-        stats.genericHomogeneousGroupPublishedEvses++;
-        stats.genericHomogeneousGroupByOperator[g.operator]=(stats.genericHomogeneousGroupByOperator[g.operator]||0)+1;
+        if(g.connectorCountKnown){
+          stats.genericHomogeneousGroupCandidateEvses++;
+          stats.genericHomogeneousGroupPublishedEvses++;
+          stats.genericHomogeneousGroupByOperator[g.operator]=(stats.genericHomogeneousGroupByOperator[g.operator]||0)+1;
+        }else{
+          stats.genericPriceOnlyGroupCandidateEvses++;
+          stats.genericPriceOnlyGroupPublishedEvses++;
+          stats.genericPriceOnlyGroupByOperator[g.operator]=(stats.genericPriceOnlyGroupByOperator[g.operator]||0)+1;
+        }
         stats.pricedExactEvses++;
-        stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=g.connectorCount;
+        stats.publishedEvses++;stats.publishedOffers++;
+        if(g.connectorCountKnown)stats.publishedConnectorCount+=g.connectorCount;
       }
     }
 
@@ -1384,10 +1401,16 @@ stats.drvHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identi
 stats.sigHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_sig_homogeneous_exact_set').length;
 stats.qovHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_qov_homogeneous_exact_set').length;
 stats.genericHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_generic_single_operator_homogeneous_exact_set').length;
+stats.genericPriceOnlyGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_generic_single_operator_price_only_exact_set').length;
 stats.genericHomogeneousGroupByOperator={};
 for(const o of finalOffers.filter(o=>o.metadata?.identityMode==='strict_generic_single_operator_homogeneous_exact_set')){
   const op=String(o.metadata?.operator||'UNKNOWN');
   stats.genericHomogeneousGroupByOperator[op]=(stats.genericHomogeneousGroupByOperator[op]||0)+1;
+}
+stats.genericPriceOnlyGroupByOperator={};
+for(const o of finalOffers.filter(o=>o.metadata?.identityMode==='strict_generic_single_operator_price_only_exact_set')){
+  const op=String(o.metadata?.operator||'UNKNOWN');
+  stats.genericPriceOnlyGroupByOperator[op]=(stats.genericPriceOnlyGroupByOperator[op]||0)+1;
 }
 stats.trimmedSuffixPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_trimmed_long_suffix_identity').length;
 stats.durationBandPublishedEvses=finalOffers.filter(o=>(o.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)).length;
@@ -1456,6 +1479,8 @@ const out={
     genericExactSetRequiresEqualCardinality:true,
     genericExactSetRequiresHomogeneousPricing:true,
     genericExactSetRequiresUniformConnectorCount:true,
+    genericPriceOnlyExactSetAllowsUnknownConnectorDistribution:true,
+    genericPriceOnlyExactSetRequiresHomogeneousPricing:true,
     genericExactSetRequiresGlobalPdcUniqueness:true,
     suffixIdentityRequiresGlobalUniqueness:true,
     suffixIdentityRequiresUnclaimedTarget:true,
