@@ -326,14 +326,32 @@ const out={
  unresolvedSamples:groups.filter(g=>g.mode==='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,100),
  policy:'Diagnostic only. P01 bucket uses exact structured parent reconstruction. Multiple distinct child references may map to one national parent PDC. Exact duplicate child references are deduplicated only when tariff and technical profiles are identical; conflicting duplicates fail closed. No proximity inference.'
 };
+let previousValidated={mappings:[]};
+try{previousValidated=JSON.parse(await fs.readFile(VALIDATED_OUT,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
+const recoveryRank=x=>x?.recoveryMode==='exact_physical_reference_donor'?3:
+  x?.recoveryMode==='same_parent_homogeneous_price_only'?2:
+  x?.recoveryMode==='station_homogeneous_price_only'?1:0;
+const canonicalMap=new Map();
+for(const x of [
+  ...(previousValidated.mappings||[]),
+  ...donorRecoverableMappings,
+  ...sameParentHomogeneousCandidates
+]){
+  const k=String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk);
+  const prev=canonicalMap.get(k);
+  if(!prev||recoveryRank(x)>recoveryRank(prev))canonicalMap.set(k,x);
+}
+const canonicalMappings=[...canonicalMap.values()];
 const validated={
  schemaVersion:1,
  generatedAt:out.generatedAt,
  dataset:'electroverse-france-p01-structured-residual-mappings',
- count:donorRecoverableMappings.length,
- identityCount:validatedMappings.length,
- policy:'Exact P01 child-to-parent identities only. Multiple distinct child references may share one globally unique local national parent PDC. Exact duplicate child references are deduplicated only when tariff and technical profiles are identical; any conflicting duplicate makes that parent fail closed. No proximity inference.',
- mappings:donorRecoverableMappings,
+ count:canonicalMappings.length,
+ currentResidualIdentityCount:validatedMappings.length,
+ newlyExactReferenceDonors:donorRecoverableMappings.length,
+ newlySameParentHomogeneous:sameParentHomogeneousCandidates.length,
+ policy:'Append-only canonical P01 residual ledger. Exact-reference donor mappings are strongest. Same-parent homogeneous price-only mappings are accepted only when all priced siblings under the exact reconstructed parent share one price profile. Station-wide fallback is not promoted. No proximity inference.',
+ mappings:canonicalMappings,
  identityMappings:validatedMappings,
  conflictedTargets,
  donorAmbiguities,
