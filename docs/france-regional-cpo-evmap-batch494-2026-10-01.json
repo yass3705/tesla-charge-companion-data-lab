@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "date": "2026-10-01",
+  "batch": "batch494",
+  "cpo": "EV MAP SAS",
+  "rawRank": 144,
+  "historical": {
+    "stations": 40,
+    "pdc": 51
+  },
+  "firstPartyEvidence": [
+    {
+      "url": "https://evmap.fr/conditions-generales-de-vente/",
+      "finding": "Session price is fixed by the host; some hosts use variable amounts including duration."
+    },
+    {
+      "url": "https://evmap.fr/foire-aux-questions/",
+      "finding": "Tariffs are defined and vary by charging network; exact tariffs are shown on charge points/app/map."
+    },
+    {
+      "url": "https://evmap.fr/tarifs/",
+      "finding": "Multiple tariff IDs/models are published (energy-only and energy+duration), proving no single national EV MAP price."
+    },
+    {
+      "url": "https://evmap.fr/solution-entreprise/terminal-de-paiement/",
+      "finding": "TPE flow asks user to verify the tariff proposed for the selected charge point."
+    }
+  ],
+  "testedConclusion": "No deterministic historical station/EVSE -> current host tariff ID mapping recovered from public first-party surfaces. No national extrapolation is safe.",
+  "decision": "SET_ASIDE_FAIL_CLOSED",
+  "reopenCondition": "Exact EV MAP app/QR/TPE/API station or EVSE mapping to the current host tariff, or authoritative producer/AFIR/QualiCharge tariff text tied to exact EVSE.",
+  "counterTransition": {
+    "before": {
+      "treated": 95,
+      "setAside": 32,
+      "active": 164,
+      "total": 291
+    },
+    "after": {
+      "treated": 95,
+      "setAside": 33,
+      "active": 163,
+      "total": 291,
+      "pendingDedupe": 0
+    }
+  },
+  "result": "PASS_FAIL_CLOSED"
+}
