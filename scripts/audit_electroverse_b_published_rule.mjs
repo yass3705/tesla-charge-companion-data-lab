@@ -42,8 +42,11 @@ for(const t of man.tiles||[]){
     }
   }
 }
+const identityRows=rows.filter(r=>[
+  'strict_55c_bindex_zero_based_suffix'
+].includes(r.identityMode));
 const relation={};
-for(const r of rows){
+for(const r of identityRows){
   const tail=r.targetTail;
   const key=tail==null?'none':
     Number(tail)===r.b-1?'b_minus_1':
@@ -53,7 +56,7 @@ for(const r of rows){
   relation[key]=(relation[key]||0)+1;
 }
 const samples={};
-for(const k of Object.keys(relation))samples[k]=rows.filter(r=>{
+for(const k of Object.keys(relation))samples[k]=identityRows.filter(r=>{
   const tail=r.targetTail;
   const kk=tail==null?'none':
     Number(tail)===r.b-1?'b_minus_1':
@@ -62,7 +65,19 @@ for(const k of Object.keys(relation))samples[k]=rows.filter(r=>{
     Number(tail.slice(-2))===r.b?'last2_b_equal':'other';
   return kk===k;
 }).slice(0,25);
-const out={generatedAt:new Date().toISOString(),publishedBSourceTargetPairs:rows.length,relation,samples};
+const offsets={};
+for(const r of identityRows){
+  const m=String(r.target).match(/(\d+)$/); if(!m)continue;
+  const digits=m[1];
+  for(const width of [1,2,3]){
+    if(digits.length<width)continue;
+    const n=Number(digits.slice(-width));
+    const off=n-(r.b-1);
+    const key=width+':'+off;
+    offsets[key]=(offsets[key]||0)+1;
+  }
+}
+const out={generatedAt:new Date().toISOString(),publishedBSourceTargetPairs:rows.length,identityRows:identityRows.length,relation,offsets,samples};
 await fs.mkdir('reports/electroverse',{recursive:true});
 await fs.writeFile(OUT,JSON.stringify(out,null,2)+'\n');
 console.log(JSON.stringify(out,null,2));
