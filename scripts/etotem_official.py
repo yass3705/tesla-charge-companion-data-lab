@@ -101,12 +101,21 @@ def main() -> None:
 
     pages = {}
     statuses = {}
+    errors = {}
+    optional_sources = {"saintLouis"}
     for key, url in SOURCES.items():
-        status, raw = fetch(url)
-        if status != 200:
-            raise RuntimeError(f"{key}: HTTP {status}")
-        statuses[key] = status
-        pages[key] = norm(text_from_html(raw))
+        try:
+            status, raw = fetch(url)
+            if status != 200:
+                raise RuntimeError(f"{key}: HTTP {status}")
+            statuses[key] = status
+            pages[key] = norm(text_from_html(raw))
+        except Exception as exc:
+            if key not in optional_sources:
+                raise
+            statuses[key] = None
+            pages[key] = ""
+            errors[key] = f"{type(exc).__name__}: {exc}"
 
     users = pages["users"]
     require(users, "plus de 900 points de charge", "e-Totem users")
@@ -131,14 +140,16 @@ def main() -> None:
     current_partner_examples = [x for x in partner_markers if x in users or x in mobility]
 
     saint = pages["saintLouis"]
-    require(saint, "politique tarifaire des bornes de recharge", "Saint-Louis Agglomération")
-    for v in ("0,30", "0,39", "0,45", "0,49"):
-        if not has_number(saint, v):
-            raise RuntimeError(f"Saint-Louis Agglomération: missing tariff {v}")
-    require(saint, "10 minutes de franchise", "Saint-Louis Agglomération")
-    require(saint, "1 € / 15 min", "Saint-Louis Agglomération")
-    require(saint, "3 € / 15 min", "Saint-Louis Agglomération")
-    require(saint, "limitee a 2 € maximum", "Saint-Louis Agglomération")
+    saint_current = bool(saint)
+    if saint_current:
+        require(saint, "politique tarifaire des bornes de recharge", "Saint-Louis Agglomération")
+        for v in ("0,30", "0,39", "0,45", "0,49"):
+            if not has_number(saint, v):
+                raise RuntimeError(f"Saint-Louis Agglomération: missing tariff {v}")
+        require(saint, "10 minutes de franchise", "Saint-Louis Agglomération")
+        require(saint, "1 € / 15 min", "Saint-Louis Agglomération")
+        require(saint, "3 € / 15 min", "Saint-Louis Agglomération")
+        require(saint, "limitee a 2 € maximum", "Saint-Louis Agglomération")
 
     dg = pages["dataGouvOrg"]
     ids = ["fr*ese", "fr*p01", "fr*eti", "fr*g10", "fr*car", "fr*sua"]
@@ -200,6 +211,7 @@ def main() -> None:
                 "network": "Saint-Louis Agglomeration",
                 "operator": "e-Totem",
                 "sourceType": "official_local_authority",
+                "evidenceStatus": "current_revalidated" if saint_current else "last_validated_official_source_runner_timeout",
                 "tariffs": {
                     "eCityEco3_7KwEurPerKwh": 0.30,
                     "eCityNormalBoost7_4To22KwEurPerKwh": 0.39,
@@ -230,7 +242,7 @@ def main() -> None:
             "firstPartyCurrentSources": ["users", "mobility", "home"],
             "officialLocalAuthorityValidation": ["saintLouis"],
             "publicNetworkTopologyEvidence": ["dataGouvOrg"],
-            "sources": [{"key": k, "url": u, "httpStatus": statuses[k]} for k, u in SOURCES.items()],
+            "sources": [{"key": k, "url": u, "httpStatus": statuses.get(k), "error": errors.get(k)} for k, u in SOURCES.items()],
             "relevantTariffFingerprintSha256": fp,
         },
         "publicationStatus": "candidate_validated_source",
