@@ -27,9 +27,26 @@ jobs:
         run: node scripts/build_electroverse_france_evse_overlay.mjs
       - name: Persist validated EVSE overlay
         run: |
+          rm -rf /tmp/electroverse-france-evse
+          cp -a data/platforms/electroverse/france-evse /tmp/electroverse-france-evse
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/platforms/electroverse/france-evse scripts/build_electroverse_france_evse_overlay.mjs .github/workflows/electroverse-france-evse-overlay.yml
-          git commit -m 'data: publish France Electroverse EVSE-level national overlay' || exit 0
-          for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            rm -rf data/platforms/electroverse/france-evse
+            mkdir -p data/platforms/electroverse
+            cp -a /tmp/electroverse-france-evse data/platforms/electroverse/france-evse
+            git add data/platforms/electroverse/france-evse
+            if git diff --cached --quiet; then
+              echo 'No overlay changes'
+              exit 0
+            fi
+            git commit -m 'data: publish France Electroverse EVSE-level national overlay'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          echo 'Unable to persist Electroverse overlay after retries' >&2
           exit 1
