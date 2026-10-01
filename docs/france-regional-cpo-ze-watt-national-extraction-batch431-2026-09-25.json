@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": 431,
+  "date": "2026-09-25",
+  "cpo": "Ze-Watt",
+  "purpose": "Close Ze-Watt at CPO-method level using deterministic national FR*ZWO inventory plus the public first-party per-terminal pricing/status endpoint; keep non-guest and unmapped exceptions fail-closed.",
+  "canonicalBefore": {
+    "treated": 83,
+    "setAside": 9,
+    "active": 199,
+    "total": 291,
+    "pendingDedupe": 0
+  },
+  "priorEvidence": [
+    "docs/france-regional-cpo-ze-watt-site-tariff-evidence-batch411-2026-09-24.json",
+    "docs/france-regional-cpo-ze-watt-public-terminal-segmentation-batch412-2026-09-24.json",
+    "docs/france-regional-cpo-ze-watt-first-party-contract-semantics-batch413-2026-09-24.json",
+    "docs/france-regional-cpo-ze-watt-public-api-batch430-2026-09-25.json"
+  ],
+  "extractor": {
+    "script": "scripts/ze-watt/extract_ze_watt.py",
+    "workflow": ".github/workflows/ze-watt-france-extract.yml",
+    "readOnly": true,
+    "paymentIntentEndpointCalled": false,
+    "githubRun": 36065944857,
+    "dataStepResult": "success",
+    "overallRunConclusion": "failure only because the generated commit raced with a newer main commit; extraction itself completed and printed the full report",
+    "resource": "data.gouv.fr national static IRVE resource eb76d20a-8501-400e-b336-d85724de5435",
+    "inventoryFilter": "id_pdc_itinerance contains FR*ZWO",
+    "directEndpoint": "https://my.ze-watt.com/api/stripe-payment/v1/charge-point/{serial}/company"
+  },
+  "exhaustiveCoverage": {
+    "irvePdcRowsReported": 880,
+    "irvePdcRowsFetched": 880,
+    "mappedUniqueZwSerials": 650,
+    "unmappedIrveRows": 21,
+    "endpointHttp200": 650,
+    "endpointFailures": 0,
+    "structuredTariffResponses": 650,
+    "uniqueStructuredTariffSignatures": 40,
+    "visitorStripeTrue": 596,
+    "visitorStripeFalse": 54
+  },
+  "validatedSemantics": {
+    "exactPerTerminal": true,
+    "returnedFields": [
+      "connectors[].ocpp_id",
+      "connectors[].status",
+      "connectors[].available",
+      "visitor_stripe",
+      "visitor_gireve",
+      "price_ttc",
+      "json_ttc_price_for_legal_compliance.per_kwh_price",
+      "json_ttc_price_for_legal_compliance.per_minute_price",
+      "json_ttc_price_for_legal_compliance.per_session_price",
+      "json_ttc_price_for_legal_compliance.per_minute_parking_price",
+      "json_ttc_price_for_legal_compliance.parking_delay_in_minutes",
+      "json_ttc_price_for_legal_compliance.transaction_time_per_minute_parking_price",
+      "json_ttc_price_for_legal_compliance.transaction_time_parking_delay_in_minutes",
+      "price_min"
+    ],
+    "exampleZW04008": {
+      "visitorStripe": true,
+      "visitorGireve": true,
+      "perKwhEurTtc": 0.2,
+      "perMinuteEurTtc": 0.0083,
+      "perSessionEurTtc": 0.6,
+      "transactionTimePerMinuteEurTtc": 0.0083,
+      "priceMinEur": 2.4
+    },
+    "heterogeneity": "40 distinct structured TTC tariff signatures prove that no national Ze-Watt tariff constant may be used."
+  },
+  "tccPolicy": {
+    "directRankable": "For visitor_stripe=true terminals, use only the exact structured TTC tariff returned for that terminal and preserve all energy/time/session/parking/minimum-charge components.",
+    "registeredOnly": "For visitor_stripe=false terminals, do not treat the unauthenticated company-endpoint tariff as the anonymous/ad-hoc price when account-context evidence differs; keep the direct anonymous channel unavailable and use the existing TCC fallback.",
+    "unmapped": "For the 21 FR*ZWO IRVE rows without a deterministic ZWxxxxx serial, do not invent a serial or tariff; use the existing TCC fallback.",
+    "fallback": "Use the existing TCC eMSP fallback policy for non-rankable direct exceptions; never classify missing direct data as free.",
+    "roaming": "Do not use Ze-Watt mobility-card/roaming tariffs as CPO-direct authority."
+  },
+  "decision": {
+    "canonicalCategory": "treated",
+    "classification": "complete_at_CPO_method_level_with_terminal_level_fail_closed_exceptions",
+    "treatedDelta": 1,
+    "setAsideDelta": -1,
+    "activeDelta": 0,
+    "pendingDedupeCreated": false,
+    "reason": "National inventory was exhausted (880/880 FR*ZWO PDC), every one of the 650 deterministically mapped ZW serials returned a first-party structured tariff, and direct guest/card eligibility is machine-readable per terminal. Non-guest/unmapped cases are explicitly fail-closed rather than blocking the CPO method."
+  },
+  "canonicalAfter": {
+    "treated": 84,
+    "setAside": 8,
+    "active": 199,
+    "total": 291,
+    "pendingDedupe": 0
+  }
+}
