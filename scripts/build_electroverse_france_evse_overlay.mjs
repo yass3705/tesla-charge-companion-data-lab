@@ -10,6 +10,7 @@ const DRIVECO='data/operator_direct/driveco_evse_tariffs.json';
 const POWERDOT_TECH='data/operator_direct/powerdot_evse_technical_inventory.json';
 const OUT=process.argv[2]||'data/platforms/electroverse/france-evse';
 const TILE=.5;
+// Rebuild marker: validate protected PD1 technical grouping on main.
 await fs.rm(OUT,{recursive:true,force:true});
 await fs.mkdir(OUT,{recursive:true});
 
