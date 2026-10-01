@@ -192,6 +192,7 @@ const stats={
   genericTailCandidateRefs:0,genericTailPublishedEvses:0,
   suffixIdentityCandidateRefs:0,suffixIdentityPublishedEvses:0,
   trimmedSuffixCandidateRefs:0,trimmedSuffixPublishedEvses:0,
+  pd1FinalOrdinalCandidateRefs:0,pd1FinalOrdinalPublishedEvses:0,
   durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
@@ -352,6 +353,74 @@ for(const sh of manifest.shards||[]){
       trimmedSuffixTargets.set(x.e,x.target);
     }
 
+    // PD1 lab: strict subgroup ordinal bijection.
+    // Some PD1 Electroverse physical references use an unrelated subgroup stem but preserve
+    // the final ordinal present on the national PDCs. Promote only when one subgroup maps to
+    // exactly one unclaimed PDC prefix with the exact same ordinal set.
+    const pd1FinalOrdinalTargets=new Map();
+    const localList=[...local];
+    const isPd1=localList.some(p=>/^FRPD1E/.test(p));
+    if(isPd1){
+      const alreadyClaimed=new Set();
+      for(const e0 of row.tariff?.evses||[]){
+        const pr0=text(e0?.physicalReference);if(!pr0)continue;
+        const k0=norm(pr0);
+        if(local.has(k0)){alreadyClaimed.add(k0);continue;}
+        const p0=localList.filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\d{1,2}$/.test(k0.slice(p.length)));
+        if(p0.length===1){alreadyClaimed.add(p0[0]);continue;}
+        if(ordinalTargets.has(e0)){alreadyClaimed.add(ordinalTargets.get(e0));continue;}
+        if(genericTargets.has(e0)){alreadyClaimed.add(genericTargets.get(e0));continue;}
+        if(suffixTargets.has(e0)){alreadyClaimed.add(suffixTargets.get(e0));continue;}
+        if(trimmedSuffixTargets.has(e0)){alreadyClaimed.add(trimmedSuffixTargets.get(e0));continue;}
+      }
+      const unresolved=[];
+      for(const e0 of row.tariff?.evses||[]){
+        const pr0=text(e0?.physicalReference);if(!pr0)continue;
+        const k0=norm(pr0);
+        if(local.has(k0)||ordinalTargets.has(e0)||genericTargets.has(e0)||suffixTargets.has(e0)||trimmedSuffixTargets.has(e0))continue;
+        const p0=localList.filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\d{1,2}$/.test(k0.slice(p.length)));
+        if(p0.length)continue;
+        const mm=pr0.match(/^(.*?)[\s_\-\/]*([0-9]{1,2})$/);
+        if(!mm||!mm[1])continue;
+        unresolved.push({e:e0,stem:norm(mm[1]),ord:Number(mm[2])});
+      }
+      const groups=new Map();
+      for(const x of unresolved){
+        const arr=groups.get(x.stem)||[];
+        arr.push(x);groups.set(x.stem,arr);
+      }
+      const available=localList.filter(p=>!alreadyClaimed.has(p));
+      const claimedLabTargets=new Set();
+      for(const items of groups.values()){
+        if(!items.length||new Set(items.map(x=>x.ord)).size!==items.length)continue;
+        const wanted=new Set(items.map(x=>x.ord)),matches=[];
+        for(const width of [1,2]){
+          const byPrefix=new Map();
+          for(const p of available){
+            if(claimedLabTargets.has(p)||p.length<=width)continue;
+            const tail=p.slice(-width);if(!/^\d+$/.test(tail))continue;
+            const prefix=p.slice(0,-width),ord=Number(tail);
+            const arr=byPrefix.get(prefix)||[];
+            arr.push({p,ord});byPrefix.set(prefix,arr);
+          }
+          for(const rows of byPrefix.values()){
+            if(rows.length!==items.length)continue;
+            if(new Set(rows.map(r=>r.ord)).size!==rows.length)continue;
+            if(rows.some(r=>!wanted.has(r.ord)))continue;
+            if(rows.some(r=>(globalPdcOwners.get(r.p)?.size||0)!==1))continue;
+            matches.push(rows);
+          }
+        }
+        if(matches.length!==1)continue;
+        const byOrd=new Map(matches[0].map(r=>[r.ord,r.p]));
+        for(const x of items){
+          const target=byOrd.get(x.ord);if(!target)continue;
+          pd1FinalOrdinalTargets.set(x.e,target);
+          claimedLabTargets.add(target);
+        }
+      }
+    }
+
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
       const pr=text(e?.physicalReference);
@@ -406,6 +475,13 @@ for(const sh of manifest.shards||[]){
           targetPdc=localByNorm.get(targetNorm);
           identityMode='strict_trimmed_long_suffix_identity';
           stats.trimmedSuffixCandidateRefs++;
+        }else if(pd1FinalOrdinalTargets.has(e)){
+          const targetNorm=pd1FinalOrdinalTargets.get(e);
+          const owners=globalPdcOwners.get(targetNorm);
+          if(!owners||owners.size!==1){rej('pd1_final_ordinal_pdc_not_globally_unique');continue;}
+          targetPdc=localByNorm.get(targetNorm);
+          identityMode='strict_pd1_final_ordinal_subgroup_bijection';
+          stats.pd1FinalOrdinalCandidateRefs++;
         }else{
           rej(candidates.length?'parent_pdc_ambiguous':'physical_reference_not_in_local_national_pdcs');continue;
         }
@@ -535,6 +611,8 @@ for(const sh of manifest.shards||[]){
       if(ordinalMode)stats.ordinalPublishedEvses++;
       if(identityMode==='strict_station_common_prefix_tail_bijection')stats.genericTailPublishedEvses++;
       if(identityMode==='strict_unique_local_suffix_identity')stats.suffixIdentityPublishedEvses++;
+      if(identityMode==='strict_trimmed_long_suffix_identity')stats.trimmedSuffixPublishedEvses++;
+      if(identityMode==='strict_pd1_final_ordinal_subgroup_bijection')stats.pd1FinalOrdinalPublishedEvses++;
       stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=compiled.length;
     }
   }
@@ -622,6 +700,8 @@ stats.ordinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='st
 stats.genericTailPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_station_common_prefix_tail_bijection').length;
 stats.suffixIdentityPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_unique_local_suffix_identity').length;
 stats.trimmedSuffixPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_trimmed_long_suffix_identity').length;
+stats.pd1FinalOrdinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_pd1_final_ordinal_subgroup_bijection').length;
+stats.trimmedSuffixPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_trimmed_long_suffix_identity').length;
 stats.durationBandPublishedEvses=finalOffers.filter(o=>(o.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)).length;
 
 const manifestTiles=[];
@@ -654,6 +734,7 @@ const out={
     strictStationCommonPrefixTailBijection:true,
     genericTailRequiresGlobalUniqueness:true,
     strictUniqueLocalSuffixIdentityMinLength:4,
+    strictPd1FinalOrdinalSubgroupBijection:true,
     suffixIdentityRequiresGlobalUniqueness:true,
     suffixIdentityRequiresUnclaimedTarget:true,
     strictTrimmedLongSuffixIdentityMinLength:7,
