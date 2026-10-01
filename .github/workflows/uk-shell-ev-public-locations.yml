@@ -137,12 +137,39 @@ jobs:
           marker_items=extract_items(markers)
           nearby_items=extract_items(nearby)
 
-          # Resolve marker IDs to full LocationV2 objects. Marker schemas may use id/uid/externalId/locationId.
+          # Marker endpoint clusters at low zoom. Query a UK tile grid at high zoom so
+          # individual-location markers can surface, then resolve any identifiers found.
+          fine_markers=[]
+          lon_edges=[-8.7,-6.0,-3.5,-1.0,1.9]
+          lat_edges=[49.8,52.0,54.0,56.0,58.0,60.9]
+          for yi in range(len(lat_edges)-1):
+              for xi in range(len(lon_edges)-1):
+                  west,east=lon_edges[xi],lon_edges[xi+1]
+                  south,north=lat_edges[yi],lat_edges[yi+1]
+                  mm=probe(f"/v2/locations/markers?tile={yi}-{xi}",{
+                      "west":west,"south":south,"east":east,"north":north,"zoom":12
+                  })
+                  fine_markers.extend(extract_items(mm))
+                  time.sleep(.05)
+
+          # Dedupe marker objects by stable identity if present, else by coordinate+type.
+          unique_markers=[]
+          seen_marker=set()
+          for m in fine_markers:
+              if not isinstance(m,dict): continue
+              coords=m.get("coordinates") or {}
+              mk=(
+                  m.get("id") or m.get("locationId") or m.get("uid") or m.get("externalId"),
+                  coords.get("latitude"),coords.get("longitude"),
+                  m.get("markerType")
+              )
+              if mk in seen_marker: continue
+              seen_marker.add(mk)
+              unique_markers.append(m)
+
           resolved=[]
           seen_ids=set()
-          for m in marker_items:
-              if not isinstance(m,dict):
-                  continue
+          for m in unique_markers:
               mid=m.get("id") or m.get("locationId") or m.get("uid") or m.get("externalId")
               if not mid:
                   continue
@@ -159,10 +186,25 @@ jobs:
                       resolved.append(detail["data"])
               time.sleep(.05)
 
+          # If markers still do not expose ids, use nearby probes centered on each fine marker
+          # and dedupe full LocationV2 records by uid/externalId.
+          if not resolved and unique_markers:
+              loc_by_id={}
+              for m in unique_markers:
+                  coords=m.get("coordinates") or {}
+                  lat,lon=coords.get("latitude"),coords.get("longitude")
+                  if lat is None or lon is None: continue
+                  jj=probe(f"/v2/locations/nearby?marker={len(loc_by_id)}",{"latitude":lat,"longitude":lon})
+                  for loc in extract_items(jj):
+                      if not isinstance(loc,dict): continue
+                      lid=str(loc.get("uid") or loc.get("externalId") or "")
+                      if lid:
+                          loc_by_id[lid]=loc
+                  time.sleep(.05)
+              resolved=list(loc_by_id.values())
+
           if resolved:
               all_items=resolved
-          elif marker_items:
-              all_items=marker_items
           elif nearby_items:
               all_items=nearby_items
 
@@ -230,7 +272,10 @@ jobs:
               "evsesWithPricingSignal":evse_tariff_signals,
               "operatorCounts":dict(sorted(operator_counts.items(),key=lambda kv:(-kv[1],kv[0]))),
               "operatorNetworkNames":sorted(names)[:200],
-              "firstLocationKeys":list(uk[0].keys()) if uk else []
+              "firstLocationKeys":list(uk[0].keys()) if uk else [],
+              "coarseMarkerCount":len(marker_items),
+              "fineMarkerCount":len(unique_markers),
+              "fineMarkerSamples":unique_markers[:10]
           }
           Path("reports/uk/shell-ev-public-locations-latest.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n")
           print(json.dumps(report,ensure_ascii=False,indent=2))
