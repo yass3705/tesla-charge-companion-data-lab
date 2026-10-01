@@ -1,0 +1,21 @@
+name: Analyze Electroverse SIGESIG HXW GLY gap
+on:
+  push:
+    branches: [audit/electroverse-sigesig-hxw-gly-gap]
+    paths: ["scripts/analyze_electroverse_sigesig_hxw_gly_gap.mjs",".github/workflows/electroverse-sigesig-hxw-gly-gap.yml"]
+permissions: {contents: write}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - run: node scripts/analyze_electroverse_sigesig_hxw_gly_gap.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/*-gap-analysis.json
+          git commit -m "audit: publish SIGESIG HXW GLY gap analyses" || exit 0
+          git push
