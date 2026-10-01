@@ -53,7 +53,16 @@ jobs:
         shell: bash
         run: python scripts/reve_es_stream_collect.py --collect
 
+      - name: Show REVE batch diagnostic
+        if: always()
+        shell: bash
+        run: |
+          if [ -f data/spain_reve/tariff_status_stream_last_run.json ]; then
+            cat data/spain_reve/tariff_status_stream_last_run.json
+          fi
+
       - name: Verify request budget and persistence
+        if: success()
         shell: bash
         run: |
           python - <<'PY'
@@ -83,6 +92,7 @@ jobs:
           PY
 
       - name: Persist REVE stream progress
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
