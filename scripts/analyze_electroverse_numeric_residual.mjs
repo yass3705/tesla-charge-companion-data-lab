@@ -110,16 +110,27 @@ for(const g of solvable){
     });
   }
 }
+await fs.mkdir('data/platforms/electroverse/validated-mappings',{recursive:true});
+const canonicalPath='data/platforms/electroverse/validated-mappings/numeric-residual.json';
+let previousMappings=[];
+try{
+  const previous=JSON.parse(await fs.readFile(canonicalPath,'utf8'));
+  previousMappings=Array.isArray(previous.mappings)?previous.mappings:[];
+}catch{}
+const mappingKey=m=>String(m.electroverseLocationPk)+':'+String(m.electroverseEvsePk)+':'+norm(m.targetPdc);
+const mergedMappings=new Map();
+for(const m of [...previousMappings,...validatedMappings])mergedMappings.set(mappingKey(m),m);
+const canonicalMappings=[...mergedMappings.values()];
 const validatedOut={
   schemaVersion:1,
   generatedAt:new Date().toISOString(),
   dataset:'electroverse-france-validated-numeric-residual-mappings',
-  count:validatedMappings.length,
-  policy:'Generated only from unique post-overlay suffix-ordinal bijections with globally unique national PDC targets; no proximity inference.',
-  mappings:validatedMappings
+  count:canonicalMappings.length,
+  newlyValidatedCount:validatedMappings.length,
+  policy:'Append-only canonical ledger. New entries require unique post-overlay suffix-ordinal bijections with globally unique national PDC targets; no proximity inference.',
+  mappings:canonicalMappings
 };
-await fs.mkdir('data/platforms/electroverse/validated-mappings',{recursive:true});
-await fs.writeFile('data/platforms/electroverse/validated-mappings/numeric-residual.json',JSON.stringify(validatedOut,null,2)+'\n');
+await fs.writeFile(canonicalPath,JSON.stringify(validatedOut,null,2)+'\n');
 
 const out={
   schemaVersion:1,
