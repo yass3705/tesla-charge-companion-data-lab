@@ -23,6 +23,7 @@ import json
 import re
 import unicodedata
 import urllib.request
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -42,19 +43,27 @@ def now_iso() -> str:
 
 
 def fetch(url: str) -> tuple[int, str]:
-    req = urllib.request.Request(
-        url,
-        headers={
-            "User-Agent": UA,
-            "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
-            "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.5",
-            "Cache-Control": "no-cache",
-        },
-    )
-    with urllib.request.urlopen(req, timeout=40) as resp:
-        raw = resp.read()
-        charset = resp.headers.get_content_charset() or "utf-8"
-        return int(getattr(resp, "status", 200)), raw.decode(charset, errors="replace")
+    last = None
+    for attempt in range(4):
+        req = urllib.request.Request(
+            url,
+            headers={
+                "User-Agent": UA,
+                "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
+                "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.5",
+                "Cache-Control": "no-cache",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                raw = resp.read()
+                charset = resp.headers.get_content_charset() or "utf-8"
+                return int(getattr(resp, "status", 200)), raw.decode(charset, errors="replace")
+        except Exception as exc:
+            last = exc
+            if attempt < 3:
+                time.sleep(2 ** attempt)
+    raise RuntimeError(f"fetch failed after retries for {url}: {type(last).__name__}: {last}")
 
 
 def text_from_html(raw: str) -> str:
