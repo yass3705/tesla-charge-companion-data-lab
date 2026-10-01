@@ -40,7 +40,7 @@ jobs:
           mkdir -p out/allego
           python -m py_compile scripts/allego_official.py scripts/allego_static_wrapper.py
           python -m pip install --disable-pip-version-check selenium
-          python scripts/allego_static_wrapper.py --out out/allego 2> >(tee out/allego/error.log >&2)
+          python scripts/allego_official.py --out out/allego 2> >(tee out/allego/error.log >&2)
           cat out/allego/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish sanitized diagnostic after extraction failure
