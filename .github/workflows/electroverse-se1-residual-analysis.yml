@@ -1,0 +1,26 @@
+name: Analyze Electroverse France SE1 residual
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/analyze_electroverse_se1_residual.mjs"
+      - ".github/workflows/electroverse-se1-residual-analysis.yml"
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Analyze SE1 unpublished residual
+        run: node scripts/analyze_electroverse_se1_residual.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: electroverse-france-se1-residual-analysis
+          path: reports/electroverse/se1-residual-analysis.json
+          retention-days: 14
