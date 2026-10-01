@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 193,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-192.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "REWAG / Regensburger Energie- und Wasserversorgung AG & Co KG",
+      "decision": "remain partial; new first-party denominator and tariff evidence persisted",
+      "evidence": {
+        "currentNetwork": "over 1,300 charging points, REWAG first-party, Sep 2026",
+        "anonymousAdHoc": "PayPal direct: <=49 kW 0.5000 EUR/kWh; >=50 kW 0.5500 EUR/kWh",
+        "blocking": "AC 0.0200 EUR/min 09:00-19:00 from minute 121 only at specifically marked Regensburg stations; DC 0.1000 EUR/min from minute 61"
+      },
+      "exactGap": "First-party location inventory is dynamically rendered; current public HTML does not expose the per-station marker set needed to bind the selective AC blocking fee across the canonical estate. Do not generalize the AC blocking fee to unmarked stations.",
+      "resumeCondition": "Obtain the public/read-only station-map payload or another authoritative export containing the per-station Ladeinfo/blocking marker."
+    },
+    {
+      "name": "infra fuerth service gmbh",
+      "decision": "remain partial; current September 2026 first-party rule sharpened",
+      "evidence": {
+        "anonymousAdHoc": "LadeVerbundPlus: AC and DC <=50 kW 0.6188 EUR/kWh; DC >50 kW 0.8144 EUR/kWh",
+        "blocking": "AC 0.10 EUR/min after 240 min during 08:00-20:00; DC 0.10 EUR/min after 60 min; no blocking fee in parking garages",
+        "vat": "gross prices include 19% VAT"
+      },
+      "exactGap": "The first-party rule now deterministically identifies the exception class (Parkhäuser), but the full canonical infra EVSE/site estate has not yet been exhaustively mapped to parking-garage vs non-garage. Promotion waits for that mapping rather than inferring from names.",
+      "resumeCondition": "Enumerate canonical infra sites/EVSE and tag Parkhaus membership from authoritative location data."
+    },
+    {
+      "name": "Stadtwerke Leipzig GmbH",
+      "decision": "remain partial; current 2026 registered tariff separated from stale ad-hoc evidence",
+      "evidence": {
+        "registeredCardOrApp": "L-Strom.drive from 2026-01-01: AC regular 0.54 EUR/kWh, DC regular 0.64 EUR/kWh; >900 charging points first-party",
+        "anonymousAdHocHistorical": "The accessible first-party ad-hoc AGB is explicitly valid only through 2025-12-31 and applies to stations built before 2024-04-13."
+      },
+      "exactGap": "No current 2026 first-party anonymous_ad_hoc numeric tariff was established in this pass. Registered L-Strom.drive values cannot substitute for ad-hoc, and the expired 2025 ad-hoc sheet cannot be promoted.",
+      "resumeCondition": "Current first-party 2026 ad-hoc checkout/AGB or deterministic public frontend tariff surface."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked after two distinct evidence-led passes; not reopened"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS",
+    "repeatInvestigationGuard": "PASS"
+  },
+  "nextSafeAction": "Continue to a different partial with a deterministic exception mapping or exhaustive public guest surface; prioritize m8mit or another B1/B3/B6 candidate rather than repeating REWAG/infra/Leipzig without the stated resume condition."
+}
