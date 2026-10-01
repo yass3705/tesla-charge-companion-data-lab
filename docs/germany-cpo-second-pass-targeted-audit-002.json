@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-targeted-audit",
+  "auditBatch": 2,
+  "date": "2026-09-16",
+  "audited": [
+    {
+      "name": "Stadtwerke Goettingen AG",
+      "statusAfter": "partial",
+      "result": "The direct-payment class pattern is now strongly corroborated across mixed AC/DC sites and the 150 kW HPC site. Current Mobilithek/chargecloud-derived records show AC at 0.46 EUR/kWh + 1.50 EUR start + 0.06 EUR/min after 240 minutes; DC 50 kW and HPC 150 kW at 0.52 EUR/kWh + 2.50 EUR start + 0.06 EUR/min after 120 minutes. The current first-party page independently confirms Direct Payment/AdHoc access but now publishes registered Basistarif prices of 0.44 EUR/kWh AC and 0.50 EUR/kWh DC plus 0.70 EUR start, further proving that registered and anonymous tariffs are distinct products and must not be conflated. The operator profile covers 234 ad-hoc charge points (225 AC, 3 DC, 6 HPC) with uniform energy prices by class, but a single authoritative export proving the fee components on every one of the 234 EVSEs is still absent, so the entry remains fail-closed partial.",
+      "sources": [
+        "https://www.stadtwerke-goettingen.de/energieloesungen/e-mobilitaet/",
+        "https://adhoccharging.eu/de/operator/stadtwerke-g-ttingen-aktiengesellschaft/",
+        "https://www.e-stations.de/ladestationen/goettingen/am-geismartor-acdc-3821",
+        "https://www.e-stations.de/ladestationen/goettingen/parkplatz-buergerstrasse-3764",
+        "https://www.e-stations.de/ladestationen/goettingen/gallus-park-3763"
+      ],
+      "nextBlocker": "B4_FEE_COMPONENT_COMPLETENESS",
+      "nextAction": "Do not re-research energy prices. Obtain one operator/backend-level fee export or enough exhaustive EVSE records to prove AC=1.50/start + 0.06/min after 240 and DC/HPC=2.50/start + 0.06/min after 120 across the full 234-point direct-payment estate."
+    },
+    {
+      "name": "GEW Wilhelmshaven GmbH",
+      "statusAfter": "partial",
+      "result": "A material gross/net presentation inconsistency from audit #1 was identified and corrected. GEW's current first-party page lists the five public locations and says they are operated with ChargePoint/direct contactless payment. Eco-Movement/Mobilithek-derived station records expose 0.44 EUR/kWh with no start/blocking fee on multiple GEW/ChargePoint EVSEs, while another current presentation explicitly labels the same 0.44 EUR/kWh as excluding 19% VAT. Current direct-payment comparison surfaces consequently display approximately 0.52 EUR/kWh gross for GEW stations, including Marktstrasse/Bahnhofstrasse, Rathausplatz, Valoisplatz, Muehlenweg and Suedstrand. Therefore audit #1's wording that treated 0.44 EUR/kWh as the user-facing final price was too strong. No TCC tariff promotion is made until the canonical pipeline explicitly normalizes the source field as net versus gross and fee completeness is confirmed for every official location.",
+      "sources": [
+        "https://www.gew-wilhelmshaven.de/produkte/elektromobilitaet/unterwegs/",
+        "https://www.e-stations.de/ladestationen/wilhelmshaven/gew-whv-station-04-36342",
+        "https://www.e-stations.de/ladestationen/wilhelmshaven/gew-whv-station-7-30652",
+        "https://www.automatenwegweiser.de/automat/chargepoint/wilhelmshaven/gew-whv-station-02",
+        "https://www.automatenwegweiser.de/automat/chargepoint/wilhelmshaven/gew-whv-station-04",
+        "https://www.ladeguru.de/ort/wilhelmshaven"
+      ],
+      "nextBlocker": "B4_FEE_COMPONENT_COMPLETENESS",
+      "nextAction": "Normalize GEW ChargePoint price fields as net/gross before ingestion (0.44 net corresponds to about 0.52 gross at 19% VAT), then confirm zero start/blocking fees for Marktstrasse/Bahnhofstrasse and Valoisplatz as well as the already evidenced Rathausplatz/Muehlenweg/Suedstrand records."
+    },
+    {
+      "name": "Stadtwerke Leipzig GmbH",
+      "statusAfter": "partial",
+      "result": "No safe promotion in this execution. Current first-party 2026 AGB remains authoritative for the legacy subset: 0.65 EUR/kWh AC, 0.75 EUR/kWh DC and 0.0833 EUR per started minute after 240/120 minutes during 08:00-20:00, with P+R standing-fee exemption, but the AGB explicitly scopes itself to public stations erected before 13.04.2024. Additional current public material confirms ad-hoc QR access and the stand-time rule at legacy city-centre stations, but no authoritative tariff matrix for the post-13.04.2024 subset was recovered. Broad discovery is therefore stopped; only the newer subset remains in scope.",
+      "sources": [
+        "https://files.l.de/lde-typo3/Leipziger/Stadtwerke/Dokumente/E-Mobilitaet/Stadtwerke-E-Mobilitaet-AGB-Ad-hoc-Laden.pdf",
+        "https://www.energieforen.de/anreisebeschreibung"
+      ],
+      "nextBlocker": "B1_COVERAGE_EVSE_MATRIX",
+      "nextAction": "Enumerate post-13.04.2024 Stadtwerke Leipzig EVSEs and query only their current direct-payment records; do not re-audit the legacy subset."
+    }
+  ],
+  "statusChanges": 0,
+  "canonicalCountsAfter": {
+    "totalNamedCpos": 591,
+    "complete": 202,
+    "partial": 389,
+    "blocked": 0
+  },
+  "consistencyCheck": {
+    "status": "PASS_WITH_CORRECTION",
+    "arithmetic": "202 + 389 + 0 = 591",
+    "promotions": 0,
+    "unsafeExtrapolations": 0,
+    "registeredOrRoamingTariffSubstituted": false,
+    "correction": "GEW audit #1 price interpretation is superseded for ingestion purposes: 0.44 EUR/kWh must not be treated as confirmed gross/user-facing price because current source presentation explicitly exposes a +19% VAT treatment and current direct-payment surfaces show about 0.52 EUR/kWh gross.",
+    "materialProgress": "Goettingen is reduced to fee-class exhaustiveness only; GEW gained a necessary net/gross normalization rule and a smaller two-location fee residual; Leipzig remains bounded to post-13.04.2024 EVSEs only."
+  },
+  "nextSafeAction": "Continue classification from checkpoint 124 backward. For targeted resolution, prioritize GEW two-location fee confirmation and Goettingen backend fee export, then Leipzig newer-EVSE enumeration and Allgaeuer six unpriced points."
+}
