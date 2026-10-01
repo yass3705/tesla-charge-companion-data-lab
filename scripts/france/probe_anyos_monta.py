@@ -80,3 +80,5 @@ res={
 with open(out,"w",encoding="utf-8") as f:
     json.dump(res,f,ensure_ascii=False,indent=2)
 print(json.dumps({k:res[k] for k in ("source_record_count","matched_record_count","unique_evses","unique_sites","unique_tariff_ids")}))
+
+# synchronize trigger: 2026-10-01
