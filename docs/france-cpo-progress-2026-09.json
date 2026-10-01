@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 120,
+  "schemaVersion": 121,
   "country": "FR",
   "totalCpos": 291,
-  "treatedCpos": 95,
+  "treatedCpos": 96,
   "setAsideCpos": 37,
-  "activeRemainingCpos": 159,
-  "updatedAt": "2026-10-01T17:45:00+02:00",
+  "activeRemainingCpos": 158,
+  "updatedAt": "2026-10-01T18:10:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -106,7 +106,8 @@
     "AVIA/Picoty | FR*PY2",
     "DEJA BLUE FRANCE | raw rank129",
     "IONITY | raw rank24 | direct FR",
-    "G-MOB / Sy.MEG | raw rank104"
+    "G-MOB / Sy.MEG | raw rank104",
+    "Delmonicos | raw rank78 | current producer direct mapping"
   ],
   "setAside": [
     {
@@ -405,7 +406,6 @@
     "RELEASED_ACTIVE_SLOT_075_ZUNDER_DUPLICATE_AUTHORITY",
     "RELEASED_SLOT_076_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_ACTIVE_SLOT_077 | alias WAAT SAS / WAAT",
-    "UNPROVEN_ACTIVE_078",
     "RELEASED_ACTIVE_SLOT_081 | alias SIEGE27 | FR*S27",
     "RELEASED_ACTIVE_SLOT_085 | alias AVIA/Picoty | FR*PY2",
     "RELEASED_ACTIVE_SLOT_088 | alias IONITY | raw rank24 | direct FR",
@@ -807,7 +807,7 @@
     "FDE80 | FR*S80 | raw rank64": "Resolved as historical territorial alias of existing FR*S80 / Territoire d Energie Somme estate. TE80/FDE80 is tariff authority, Freshmile technical operator; non-counting alias, no tariff transposition outside FR*S80.",
     "Zephyre SAS | raw rank68": "First-party evidence proves tariffs are site/station configurable. Keep active; exact FR*ZP1 station/EVSE producer/public-authority tariff required. Do not infer a national Zephyre tariff.",
     "SGA Industries | raw rank73": "First pass confirms SGA operates/supervises public charging and publishes a producer IRVE dataset, but SGA-labelled stations span territorial/site owners with distinct tariffs (e.g. MobiSDEC). SGA CGVU states the session is charged at the tariff in force, while first-party/territorial evidence shows tariff authority can be the network owner. Keep active; resolve station/EVSE -> territorial/site tariff authority, QR/TPE or SGA Mercure payload. No national tariff extrapolation.",
-    "Delmonicos | raw rank78": "Batch492: current first-party producer dataset remains available (SAS DELMONICOS, updated 2026-07-13). Current first-party territorial grids prove at least two distinct direct tariff authorities: Orne Transition 0.35 EUR/kWh and Yutz/Connect&go no-subscription 0.38 EUR/kWh day <=25kW, 0.29 EUR/kWh night <=25kW, 0.53 EUR/kWh >=50kW, with separate time surcharges. No national Delmonicos tariff is safe. Continue bulk station/EVSE -> territorial/site authority mapping; UEM/Metz historical lineage not promoted without deterministic current mapping.",
+    "Delmonicos | raw rank78": "treated batch500; direct map snapshot data/operator_direct/delmonicos_direct_france_20261001.json; Homécourt residual fallback only.",
     "OZECAR | raw rank80": "Treated batch440: exact FROZE EVSE IDs resolve anonymously via https://app.monta.app/d/{id_pdc_itinerance} to station identity, live state, pricing type and exact direct price components; private/unresolved EVSE fail closed.",
     "FR*S82": "SDE82 / Tarn-et-Garonne | raw rank90 deterministically mapped. Current 2026 exact numeric direct tariff remains unresolved: batch99 proves the current tariff is energy+time but current numeric coefficients were not recovered; the latest numeric first-party grid recovered was 2023-2024 and must not be transposed. Reopen only on a new exact SDE82/Freshmile QR-payment payload, current SDE82 tariff annex/deliberation, or producer-side QualiCharge/AFIR tariff text.",
     "FR*ACA": "raw rank122 Aéroports de la Côte d'Azur. First-party airport page confirms paid charging but directs users to their usual operator for tariff and lists multiple available operators. No single airport direct numeric tariff may be inferred; keep active pending exact FR*ACA station/EVSE -> producer IRVE/QualiCharge/AFIR or QR/ad-hoc tariff mapping.",
@@ -1390,9 +1390,19 @@
         "setAsideCpos": 37,
         "activeRemainingCpos": 159
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch500",
+      "change": "Promoted Delmonicos raw78 active->treated using current SAS Delmonicos producer inventory: 60/63 stations and 140/146 PDC deterministically mapped to Orne Transition first-party 0.35 EUR/kWh; 3 Homécourt stations / 6 PDC fail closed. Yutz direct grid retained as separate exact territorial overlay.",
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 37,
+        "activeRemainingCpos": 158
+      }
     }
   ],
-  "currentInvestigation": "Delmonicos | raw rank78 | 79 stations / 294 PDC: continue deterministic bulk station/EVSE -> territorial/site authority mapping after batch499 persistence.",
+  "currentInvestigation": "FAROAD | raw rank135 | 19 stations / 70 PDC: inspect first-party app/backend/QR and producer inventory; avoid tariff extrapolation.",
   "coherenceControl": {
     "batch": "batch491",
     "result": "PASS",
@@ -1407,11 +1417,11 @@
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch499",
-    "result": "PASS_CHARGEFACILE_FAIL_CLOSED",
+    "batch": "batch500",
+    "result": "PASS_DELMONICOS_DIRECT_WITH_RESIDUAL",
     "counterChange": true
   },
-  "latestBatch": "batch499",
+  "latestBatch": "batch500",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2148,6 +2158,14 @@
       "category": "setAside-authority",
       "decision": "active->setAside after first-party app/public-surface review: exact pricing is app/QR scoped and no deterministic anonymous current numeric tariff resolver was recovered; no historical tariff extrapolation",
       "evidence": "docs/france-regional-cpo-chargefacile-batch499-2026-10-01.json"
+    },
+    {
+      "rawRank": 78,
+      "historicalOperator": "Delmonicos",
+      "authority": "Delmonicos",
+      "category": "treated-authority",
+      "decision": "active->treated: current producer CSV 63 stations/146 PDC; 60 stations/140 PDC deterministically mapped to Orne Transition 0.35 EUR/kWh; 3 Homécourt stations/6 PDC fail closed; separate Yutz first-party grid retained as territorial overlay.",
+      "evidence": "docs/france-regional-cpo-delmonicos-batch500-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
@@ -2986,7 +3004,8 @@
         "yass3705/tesla-charge-companion-data-lab:data/operator_direct/avia_picoty_deftpower_exact_france.json",
         "yass3705/tesla-charge-companion-data-lab:reports/france/avia_picoty/closure-2026-09-29.json"
       ]
-    }
+    },
+    "Delmonicos | raw rank78": "batch500: current SAS Delmonicos producer inventory 63 stations/146 PDC. 60 stations/140 PDC in the exact Orne Transition commune scope use first-party 0.35 EUR/kWh; Homécourt 3/6 fail closed. Yutz exact no-subscription grid validated separately for exact Yutz mappings."
   },
   "operatorResolutionRegistry": {
     "Zephyre": {
