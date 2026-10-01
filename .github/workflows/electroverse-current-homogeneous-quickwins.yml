@@ -1,0 +1,29 @@
+name: Extract Electroverse current homogeneous quick wins
+on:
+  push:
+    branches:
+      - electroverse-residual-quickwins-lab
+    paths:
+      - "scripts/extract_electroverse_current_homogeneous_quickwins.mjs"
+      - ".github/workflows/electroverse-current-homogeneous-quickwins.yml"
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Extract homogeneous quick wins
+        run: node scripts/extract_electroverse_current_homogeneous_quickwins.mjs
+      - name: Persist extract
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/current-homogeneous-quickwins.json
+          git commit -m "audit: publish current homogeneous quick wins" || exit 0
+          git pull --rebase origin electroverse-residual-quickwins-lab
+          git push
