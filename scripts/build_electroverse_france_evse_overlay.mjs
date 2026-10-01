@@ -280,6 +280,7 @@ const stats={
   validatedNumericResidualCandidateEvses:0,validatedNumericResidualPublishedEvses:0,
   validatedS82ResidualCandidateEvses:0,validatedS82ResidualPublishedEvses:0,
   validatedMgpResidualCandidateEvses:0,validatedMgpResidualPublishedEvses:0,
+  validatedResidualCompileFailures:{},validatedResidualHeterogeneousConnectors:0,validatedResidualOffersCreated:0,
   drvPowerGroupCandidateEvses:0,drvPowerGroupPublishedEvses:0,drvPowerGroupByKw:{},
   pd1TechnicalGroupCandidateEvses:0,pd1TechnicalGroupPublishedEvses:0,pd1TechnicalGroupByKey:{},
   drvHomogeneousGroupCandidateEvses:0,drvHomogeneousGroupPublishedEvses:0,
@@ -1702,6 +1703,9 @@ for(const sh of manifest.shards||[]){
         compiled.push({pricing:x.pricing,connectorPk:c.pk??null,powerKw:c.kilowatts??null,standard:c.standard??null});
       }
       if(bad){
+        if(validatedResidualTarget){
+          stats.validatedResidualCompileFailures[bad]=(stats.validatedResidualCompileFailures[bad]||0)+1;
+        }
         rej('pricing_'+bad);
         if(bad==='date_restriction'){
           pricingDiagnostics.dateRestriction.evses++;
@@ -1772,7 +1776,10 @@ for(const sh of manifest.shards||[]){
       stats.pricedExactEvses++;
       if(compiled.some(x=>(x.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)))stats.durationBandCandidateEvses++;
       const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
-      if(unique.length!==1){rej('heterogeneous_connectors_within_evse');continue;}
+      if(unique.length!==1){
+        if(validatedResidualTarget)stats.validatedResidualHeterogeneousConnectors++;
+        rej('heterogeneous_connectors_within_evse');continue;
+      }
 
       const pricing=unique[0],currency=pricing.rules?.[0]?.currency||'EUR';
       if(parentMode){
@@ -1813,6 +1820,7 @@ for(const sh of manifest.shards||[]){
       };
       const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
       tiles.get(id).push(offer);
+      if(validatedResidualTarget)stats.validatedResidualOffersCreated++;
       if(ordinalMode)stats.ordinalPublishedEvses++;
       if(identityMode==='strict_station_common_prefix_tail_bijection')stats.genericTailPublishedEvses++;
       if(identityMode==='strict_unique_local_suffix_identity')stats.suffixIdentityPublishedEvses++;
