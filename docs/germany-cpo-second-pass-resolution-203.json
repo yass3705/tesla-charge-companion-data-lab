@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 203,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-202.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Aschersleben GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; bounded six-site LichtBlick estate identified but anonymous semantics/fees not closed",
+      "evidence": {
+        "currentEstate": "Six Stadtwerke Aschersleben sites / 18 charge points observed in current LichtBlick-derived inventory",
+        "sites": [
+          "Geschwister-Scholl-Str.",
+          "Magdeburger Str. 26",
+          "Duesteres Tor 2",
+          "Oberstrasse 60",
+          "Klopstockstrasse 24",
+          "Kopernikusstrasse 10"
+        ],
+        "energyEvidence": "Current LichtBlick-derived records show 0.36 EUR/kWh incl VAT on multiple exact DE*BDO AC EVSEs, including Kopernikusstrasse, Klopstockstrasse and eight Magdeburger-Strasse connectors.",
+        "paymentEvidence": "The same structured records expose RFID as payment method, while a current E-Center public surface confirms ad-hoc direct charging exists but leaves its direct price unknown."
+      },
+      "exactGap": "Energy coverage strongly suggests a homogeneous 0.36 EUR/kWh LichtBlick/RFID layer across the six-site estate, but anonymous_ad_hoc direct price equivalence and complete fee stack are not authoritative for every EVSE. Do not substitute RFID/registered pricing.",
+      "resumeCondition": "Public LichtBlick direct-payment/QR checkout or authoritative per-EVSE anonymous fields proving 0.36 EUR/kWh plus all start/time/blocking fees across all 18 points."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "channelSeparation": "PASS; RFID evidence not substituted for anonymous_ad_hoc",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Use the LichtBlick family only if a public direct-payment payload can expose anonymous fields for DE*BDO EVSEs; otherwise move to another AFIR/Mobilithek candidate with explicit anonymous fee fields."
+}
