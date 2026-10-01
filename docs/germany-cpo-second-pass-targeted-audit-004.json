@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-targeted-audit",
+  "auditBatch": 4,
+  "date": "2026-09-16",
+  "audited": [
+    {
+      "name": "Allgaeuer Kraftwerke GmbH",
+      "statusAfter": "partial",
+      "result": "Fresh station-level chargecloud/Mobilithek discovery expands the exact EVSE matrix materially without tariff extrapolation. Am Anger 9 is DE*738*E00011*001/002 at 0.51 EUR/kWh AC; Gruentenstrasse 7 is DE*738*E00009*001/002 at 0.51 EUR/kWh AC; Bahnhofsplatz 10 exposes DE*738*E00012*001/002, DE*738*E00037*001 and DE*738*E00038*001/002 at 0.51 EUR/kWh AC; Am Alten Bahnhof 10 is DE*738*E00003*001/002 at 0.51 EUR/kWh AC; Am Alten Bahnhof 10A remains DE*738*E00033*001/002 at 0.57 EUR/kWh DC. Additional current Mobilithek-derived identity evidence confirms Quartier Jahnstrasse DE*738*E00008*001/002, Sonthofener Strasse 11 DE*738*E00006*001/002, Im Wasen DE*738*E00029*001/002 and Johann-Althaus-Strasse AC DE*738*E00010*001/002. Rudolf-Diesel-Strasse 3 has current Mobilithek-derived station-level tariff evidence at 0.51 EUR/kWh AC plus a 1.00 EUR start fee and no blocking fee, demonstrating that fee components can vary and must be preserved per station. No network-wide zero-start-fee assumption is allowed.",
+      "sources": [
+        "https://adhocladen.de/sonthofen/allgaeuer-kraftwerke-am-anger-9/",
+        "https://adhocladen.de/sonthofen/allgaeuer-kraftwerke-gruentenstrasse-7/",
+        "https://adhocladen.de/sonthofen/allgaeuer-kraftwerke-bahnhofsplatz-10/",
+        "https://adhocladen.de/sonthofen/allgaeuer-kraftwerke-am-alten-bahnhof-10/",
+        "https://adhocladen.de/sonthofen/allgaeuer-kraftwerke-am-alten-bahnhof-10a/",
+        "https://www.automatenwegweiser.de/automat/allgaeuer-kraftwerke-gmbh/blaichach/quartier-jahnstrasse",
+        "https://www.automatenwegweiser.de/automat/allgaeuer-kraftwerke-gmbh/blaichach/sonthofener-strasse-11",
+        "https://www.automatenwegweiser.de/automat/allgaeuer-kraftwerke-gmbh/blaichach/im-wasen",
+        "https://www.automatenwegweiser.de/automat/allgaeuer-kraftwerke-gmbh/sonthofen/parkplatz-immenstaedter-strasse",
+        "https://www.e-stations.de/ladestationen/sonthofen/rudolf-diesel-strasse-3-5221"
+      ],
+      "nextBlocker": "B1_COVERAGE_EVSE_MATRIX_AND_B4_FEES",
+      "nextAction": "Reconcile these newly named EVSEs against the exact residual six from the canonical Allgaeuer queue. Promote only exact matches with complete fee components; continue direct-payment/Mobilithek lookup for any residual identities."
+    }
+  ],
+  "statusChanges": 0,
+  "canonicalCountsAfter": {"totalNamedCpos":591,"complete":202,"partial":389,"blocked":0},
+  "consistencyCheck": {
+    "status":"PASS",
+    "arithmetic":"202 + 389 + 0 = 591",
+    "promotions":0,
+    "unsafeExtrapolations":0,
+    "registeredOrRoamingTariffSubstituted":false,
+    "duplicateOrAliasChange":0,
+    "repeatInvestigationGuard":"PASS: new evidence added exact EVSE identities and a station-specific start-fee exception; prior known price questions were not reopened.",
+    "materialProgress":"Allgaeuer EVSE matrix expanded with exact IDs for multiple sites and a critical fee-component exception at Rudolf-Diesel-Strasse 3."
+  },
+  "nextSafeAction":"Reconcile the expanded Allgaeuer EVSE matrix to the six canonical residual points, then continue Leipzig post-13.04.2024 enumeration. Keep GEW/Goettingen dormant absent new fee-completeness evidence."
+}
