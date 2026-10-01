@@ -1,0 +1,52 @@
+name: Germany AFIR 100pct chargecloud cohort closure
+on:
+  push:
+    paths: [".github/workflows/germany-afir-100pct-chargecloud-closure.yml"]
+  workflow_dispatch:
+permissions: {contents: write}
+concurrency: {group: germany-afir-100pct-chargecloud-closure, cancel-in-progress: false}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          import gzip,json,pathlib,collections
+          targets=["SCHARR WÄRME GmbH & Co. KG","ServiceSTADTwerke GmbH & Co. KG","Autostrom Einert GmbH & Co. KG","ib company GmbH"]
+          with gzip.open("data/national/germany_non_tesla_catalog_staging_direct_cpo.json.gz","rt",encoding="utf-8") as f:d=json.load(f)
+          out={"schemaVersion":1,"country":"DE","source":"data/national/germany_non_tesla_catalog_staging_direct_cpo.json.gz","operators":[]}
+          for target in targets:
+            rows=[]
+            for s in d.get("sites",[]):
+              if str(s.get("operator") or "").strip().casefold()!=target.casefold(): continue
+              af=s.get("afir") or {}; ad=af.get("data") or {}
+              rows.append({"siteId":s.get("id"),"operator":s.get("operator"),"powerKw":s.get("maxConnectionPowerKw"),"evseIds":s.get("evseIds"),"matchStatus":af.get("matchStatus"),"provider":ad.get("provider"),"offerId":ad.get("offerId"),"sourceSiteId":ad.get("sourceSiteId"),"rawTariffs":ad.get("rawTariffs"),"hasRawTariff":ad.get("hasRawTariff")})
+            sig=collections.Counter(); payment=collections.Counter(); price_types=collections.Counter(); tax=collections.Counter(); tariff_objects=0; anonymous=0
+            for r in rows:
+              for t in r.get("rawTariffs") or []:
+                tariff_objects+=1
+                pay=t.get("payment")
+                payment[json.dumps(pay,sort_keys=True,ensure_ascii=False)]+=1
+                ps=[]
+                for x in t.get("prices") or []:
+                  price_types[str(x.get("priceType"))]+=1; tax[str(x.get("taxIncluded"))]+=1
+                  ps.append({"priceType":x.get("priceType"),"value":x.get("value"),"taxIncluded":x.get("taxIncluded"),"timeBasedApplicability":x.get("timeBasedApplicability"),"overallPeriod":x.get("overallPeriod")})
+                sig[json.dumps({"payment":pay,"prices":ps},sort_keys=True,ensure_ascii=False)]+=1
+                ptxt=json.dumps(pay,ensure_ascii=False).lower()
+                if any(k in ptxt for k in ("qrcode","creditcard","debitcard","credit_card","debit_card","qr_code")): anonymous+=1
+            out["operators"].append({"operator":target,"sites":len(rows),"matchedSafe":sum(r["matchStatus"]=="matched_safe" for r in rows),"rawTariffSites":sum(bool(r["hasRawTariff"]) for r in rows),"uniqueEvseIds":len({e for r in rows for e in (r.get("evseIds") or [])}),"tariffObjects":tariff_objects,"anonymousPaymentTariffObjects":anonymous,"paymentCounts":dict(payment),"priceTypes":dict(price_types),"taxIncludedCounts":dict(tax),"tariffSignatureCounts":dict(sig),"rows":rows})
+          p=pathlib.Path("docs/germany-afir-100pct-chargecloud-closure-2026-10-01.json")
+          p.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          summary=[{k:o[k] for k in ("operator","sites","matchedSafe","rawTariffSites","uniqueEvseIds","tariffObjects","anonymousPaymentTariffObjects","priceTypes","taxIncludedCounts","tariffSignatureCounts")} for o in out["operators"]]
+          print(json.dumps(summary,ensure_ascii=False,indent=2))
+          assert all(o["sites"] and o["matchedSafe"]==o["sites"] and o["rawTariffSites"]==o["sites"] for o in out["operators"])
+          PY
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/germany-afir-100pct-chargecloud-closure-2026-10-01.json
+          git diff --cached --quiet && exit 0
+          git commit -m "audit(de): close 100pct AFIR chargecloud cohort"
+          for attempt in 1 2 3 4 5; do git pull --rebase origin main && git push origin HEAD:main && exit 0 || true; sleep $((attempt*2)); done
+          exit 1
