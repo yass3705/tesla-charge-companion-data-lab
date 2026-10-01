@@ -7,7 +7,7 @@ on:
       - "scripts/analyze_electroverse_sae_residual.mjs"
       - ".github/workflows/electroverse-sae-residual-analysis.yml"
 permissions:
-  contents: read
+  contents: write
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -19,6 +19,28 @@ jobs:
           node-version: 22
       - name: Analyze SAE unpublished residual
         run: node scripts/analyze_electroverse_sae_residual.mjs
+      - name: Persist SAE residual analysis
+        run: |
+          test -s reports/electroverse/sae-residual-analysis.json
+          node -e "JSON.parse(require('fs').readFileSync('reports/electroverse/sae-residual-analysis.json','utf8'))"
+          cp reports/electroverse/sae-residual-analysis.json /tmp/sae-residual-analysis.json
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p reports/electroverse
+          cp /tmp/sae-residual-analysis.json reports/electroverse/sae-residual-analysis.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/sae-residual-analysis.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data: persist Electroverse SAE residual analysis"
+            for attempt in 1 2 3 4 5; do
+              if git push origin HEAD:main; then break; fi
+              git fetch origin main
+              git rebase origin/main
+              sleep $((attempt * 2))
+            done
+            git push origin HEAD:main
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: electroverse-france-sae-residual-analysis
