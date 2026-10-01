@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 224,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-223.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 252,
+    "partial": 339,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Stadt Glücksburg",
+      "classification": "B1",
+      "backend": "eRound / AFIR national staging",
+      "source": "docs/germany-afir-gluecksburg-closure-2026-10-01.json",
+      "workflowRun": 36907161073,
+      "coverage": {
+        "bnetzaSites": 10,
+        "matchedSafeSites": 10,
+        "rawTariffSites": 10,
+        "tariffObjects": 21,
+        "anonymousPaymentTariffObjects": 21
+      },
+      "anonymousAdHoc": {
+        "closed": true,
+        "paymentEvidence": "21/21 tariff objects expose QR payment; accepted brands include American Express, Apple Pay, MasterCard and Visa",
+        "taxIncluded": true,
+        "priceComponentsTaxIncluded": "42/42",
+        "tariffSignatures": [
+          {
+            "energyEurPerKwh": 0.44,
+            "basePriceEur": 1.5,
+            "objects": 16
+          },
+          {
+            "energyEurPerKwh": 0.54,
+            "basePriceEur": 1.5,
+            "objects": 5
+          }
+        ]
+      },
+      "decision": "partial -> complete",
+      "rationale": "All 10 canonical operator sites are matched_safe and carry raw tariffs. Every tariff object is anonymous QR payment and every price component is explicitly taxIncluded=true; the two signatures exhaust all 21 tariff objects."
+    }
+  ],
+  "promotions": [
+    "Stadt Glücksburg"
+  ],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "indicator": "221 -> 253 complete (+32)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific source/backend proof"
+  },
+  "backendFamilyProgress": {
+    "AFIR_eRound": "Second deterministic eRound promotion after Geesthacht. A four-operator 100%-coverage small eRound cohort has been launched for Schreinerhof Betriebs, ecoCharge, Grünstrom Ladepark A44 and PMP Energie."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "253 + 338 + 0 = 591",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Evaluate the four 1/1-site 100%-raw-coverage eRound operators from docs/germany-afir-eround-small-cohort-closure-2026-10-01.json. Promote only canonical partials with 100% anonymous payment and explicit taxIncluded; otherwise persist exact gaps."
+}
