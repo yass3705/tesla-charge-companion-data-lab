@@ -229,3 +229,5 @@ console.log(JSON.stringify({
 // verify hardened NUMERIC conflict resolution 2026-10-01
 
 // rerank after parent connector-power publication 2026-10-01
+
+// rerank after hardened zero integration 2026-10-01
