@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 121,
+  "schemaVersion": 122,
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 96,
-  "setAsideCpos": 37,
-  "activeRemainingCpos": 158,
-  "updatedAt": "2026-10-01T18:10:00+02:00",
+  "setAsideCpos": 38,
+  "activeRemainingCpos": 157,
+  "updatedAt": "2026-10-01T18:25:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -353,6 +353,13 @@
       "since": "2026-10-01",
       "lastChecked": "2026-10-01",
       "audit": "docs/france-regional-cpo-chargefacile-batch499-2026-10-01.json"
+    },
+    {
+      "name": "FAROAD | FR*EVE | raw rank135",
+      "reason": "batch501 fail-closed: current first-party FAROAD supervision explicitly lets infrastructure managers create profiles and set prices per kWh, proving host/site-configurable pricing. FAROAD app handles station discovery/payment, but no anonymous deterministic FR*EVE station/EVSE -> current configured direct tariff resolver was recovered. Current FR*EVE inventory spans heterogeneous sites/power classes and cannot use a national extrapolation.",
+      "since": "2026-10-01",
+      "lastChecked": "2026-10-01",
+      "audit": "docs/france-regional-cpo-faroad-batch501-2026-10-01.json"
     }
   ],
   "activeNominative": [
@@ -439,7 +446,6 @@
     "RELEASED_ACTIVE_SLOT_132 | authority Eranovum already treated",
     "RELEASED_ACTIVE_SLOT_133 | authority ALDI France | FR*ALN already treated",
     "RELEASED_ACTIVE_SLOT_134 | authority Eranovum duplicate raw occurrence already treated",
-    "UNPROVEN_ACTIVE_135",
     "RELEASED_ACTIVE_SLOT_136 | authority Orléans Métropole already treated",
     "RELEASED_SLOT_141_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_ACTIVE_SLOT_142 | alias ChargeFacile | FR*LUM | raw rank98 (same LUMI'IN ENERGIES authority)",
@@ -820,7 +826,8 @@
     "Z-E-N | raw rank138": "batch496 setAside: current Z-E-N first-party CGV makes the mobile-app tariff the only exact valid tariff at charge time; site also advertises contract and volume discounts. No anonymous public/guest station/EVSE -> current direct tariff resolver recovered.",
     "AUTORECHARGE SAS | raw rank140": "batch497 setAside: current first-party site confirms AUTORECHARGE operates charging infrastructure but publishes no current numeric public tariff; producer IRVE resources are stale at Dec 2024 and old 0.32 EUR/kWh Niort evidence is not 2026 authority.",
     "LUMI'IN / ChargeFacile | FR*LUM": "batch498 lineage: raw142 LUMI'IN is materialized as the same LUMI'IN ENERGIES authority as raw98 ChargeFacile | FR*LUM. Current official Charge Facile app provider/developer is LUMI'IN ENERGIES and supports QR charging/payment. Authority remains active pending exact current direct tariff mapping; no tariff inheritance.",
-    "ChargeFacile | FR*LUM | raw rank98": "batch499 setAside: official Charge Facile app (LUMI'IN ENERGIES) handles QR start, payment methods and invoices; no public deterministic FR*LUM station/EVSE -> current numeric tariff resolver was recovered. raw142 LUMI'IN remains a non-counting identity lineage."
+    "ChargeFacile | FR*LUM | raw rank98": "batch499 setAside: official Charge Facile app (LUMI'IN ENERGIES) handles QR start, payment methods and invoices; no public deterministic FR*LUM station/EVSE -> current numeric tariff resolver was recovered. raw142 LUMI'IN remains a non-counting identity lineage.",
+    "FAROAD | FR*EVE | raw rank135": "batch501 setAside: FAROAD first-party supervision lets managers define prices per kWh; current FR*EVE inventory is heterogeneous and no anonymous station/EVSE -> configured direct tariff resolver was recovered. raw177 remains non-counting identity lineage."
   },
   "history": [
     {
@@ -1400,9 +1407,19 @@
         "setAsideCpos": 37,
         "activeRemainingCpos": 158
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch501",
+      "change": "Moved FAROAD raw135 active->setAside. First-party FAROAD supervision proves host/site-configurable kWh pricing; no anonymous deterministic FR*EVE station/EVSE -> current configured direct tariff resolver recovered.",
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 38,
+        "activeRemainingCpos": 157
+      }
     }
   ],
-  "currentInvestigation": "FAROAD | raw rank135 | 19 stations / 70 PDC: inspect first-party app/backend/QR and producer inventory; avoid tariff extrapolation.",
+  "currentInvestigation": "GreenFlux Assets B.V. | FR*EVZ | raw rank121: inspect exact operator/tariff authority and current station-level direct-price path; remains distinct from treated Greenflux.",
   "coherenceControl": {
     "batch": "batch491",
     "result": "PASS",
@@ -1417,11 +1434,11 @@
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch500",
-    "result": "PASS_DELMONICOS_DIRECT_WITH_RESIDUAL",
+    "batch": "batch501",
+    "result": "PASS_FAROAD_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch500",
+  "latestBatch": "batch501",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2166,6 +2183,14 @@
       "category": "treated-authority",
       "decision": "active->treated: current producer CSV 63 stations/146 PDC; 60 stations/140 PDC deterministically mapped to Orne Transition 0.35 EUR/kWh; 3 Homécourt stations/6 PDC fail closed; separate Yutz first-party grid retained as territorial overlay.",
       "evidence": "docs/france-regional-cpo-delmonicos-batch500-2026-10-01.json"
+    },
+    {
+      "rawRank": 135,
+      "historicalOperator": "FAROAD",
+      "authority": "FAROAD | FR*EVE",
+      "category": "setAside-authority",
+      "decision": "active->setAside: first-party platform proves site/manager-configurable kWh pricing; no public deterministic EVSE->current configured direct tariff resolver recovered",
+      "evidence": "docs/france-regional-cpo-faroad-batch501-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
