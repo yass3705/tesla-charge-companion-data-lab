@@ -1,0 +1,28 @@
+name: Audit Electroverse FR post-DRV residual ranking
+on:
+  push:
+    branches:
+      - audit/electroverse-post-drv-residual-ranking
+    paths:
+      - "scripts/audit_electroverse_post_drv_residual_ranking.mjs"
+      - ".github/workflows/electroverse-post-drv-residual-ranking.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Rank residual operators
+        run: node scripts/audit_electroverse_post_drv_residual_ranking.mjs
+      - name: Persist report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse-fr-post-drv-residual-ranking.json
+          git commit -m "audit: publish post-DRV residual ranking" || exit 0
+          git push
