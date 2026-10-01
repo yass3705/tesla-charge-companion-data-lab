@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-01T15:18:44.440Z",
+  "dataset": "electroverse-france-final-residual-closure",
+  "status": "converged_for_current_deterministic_rules",
+  "canonical": {
+    "publishedEvses": 79372,
+    "publishedConnectorCount": 98162,
+    "physicalReferenceNotInLocalNationalPdcs": 9372,
+    "sourceEvseResidualCount": 12408,
+    "operatorBucketCount": 3495
+  },
+  "finalRecovery": {
+    "firstWaveAdded": 204,
+    "firstWaveAddedWithDurationBands": 44,
+    "firstWaveRemoved": 0,
+    "firstWaveUnexpectedChanged": 0,
+    "secondIterationAdded": 0,
+    "secondIterationRemoved": 0,
+    "secondIterationUnexpectedChanged": 0,
+    "secondIterationVerdict": "PASS"
+  },
+  "residualIdentityAudit": {
+    "identitySafeResidualSourceEvses": 554,
+    "uniqueSuffix": 405,
+    "commonTail": 144,
+    "homogeneousExactSet": 5,
+    "note": "These identities remain in the source residual audit because tariff publication still fails closed or they are already represented by cumulative plan entries that do not produce a safe new offer."
+  },
+  "tariffBlockers": {
+    "validatedResidualHeterogeneousConnectors": 548,
+    "validatedResidualCompileFailures": {
+      "multiple_unrestricted_rules": 4
+    },
+    "policy": "Do not flatten or choose among heterogeneous connector tariffs for one EVSE. Do not publish a mapping whose pricing compiler fails."
+  },
+  "otherFailClosedCounters": {
+    "parentPdcAmbiguous": 485,
+    "parentPdcHeterogeneousChildPricing": 592,
+    "heterogeneousConnectorsWithinEvse": 549,
+    "duplicateEvseConflictingPricing": 14,
+    "pricingMultipleUnrestrictedRules": 6,
+    "physicalReferenceNotGloballyUnique": 4,
+    "evseMissingPhysicalReference": 1
+  },
+  "convergenceRule": "No additional publication is allowed unless a future snapshot, official operator inventory, or pricing model resolves identity/pricing ambiguity. Current deterministic residual iteration produced zero net additions with zero removals and zero unexpected changes.",
+  "continuation": "On future refreshes, retain the cumulative final residual recovery plan and revalidate all stored mappings. Only add newly proven mappings; never discard validated mappings merely because they are no longer residual."
+}
