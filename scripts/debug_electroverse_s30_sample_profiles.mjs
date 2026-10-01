@@ -25,4 +25,6 @@ for(const sh of manifest.shards||[]){
     }
   }
 }
+await fs.mkdir('reports/electroverse',{recursive:true});
+await fs.writeFile('reports/electroverse/s30-sample-profiles.json',JSON.stringify({generatedAt:new Date().toISOString(),targetLocation,out},null,2)+'\n');
 console.log(JSON.stringify(out,null,2));
