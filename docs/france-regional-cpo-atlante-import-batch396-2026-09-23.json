@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": 396,
+  "generatedAt": "2026-09-23T13:18:00Z",
+  "purpose": "Import validated 2026-09-23 myAtlante France national extraction into the France CPO evidence ledger before further investigation.",
+  "canonicalBefore": {
+    "treated": 78,
+    "setAside": 12,
+    "active": 201,
+    "total": 291,
+    "pendingDedupe": 0
+  },
+  "cpo": {
+    "canonical": "Atlante",
+    "cpoCode": "FRATL",
+    "countryCode": "FR",
+    "partyId": "ATL",
+    "statusBefore": "treated",
+    "statusAfter": "treated",
+    "counterDelta": 0
+  },
+  "sourceAndChannel": {
+    "authority": "myAtlante operator-direct flow",
+    "access": "no user account; technical key required only for a fresh network extraction and never stored",
+    "rebuildFromRaw": "validated without a key",
+    "endpoints": [
+      "/map-locations",
+      "/locations/{id}",
+      "/locations/{id}/tariffs"
+    ],
+    "tariffJoin": "exact (evseId, connectorId)",
+    "tariffValue": "price.incl_vat TTC",
+    "powerValue": "max_electric_power already in kW",
+    "channel": "operator_direct_no_account",
+    "classificationGuard": "not automatically labelled anonymous_ad_hoc/TPE; Atlante Go and roaming excluded"
+  },
+  "coverage": {
+    "inventoryStations": 162,
+    "extractedStations": 162,
+    "connectors": 1416,
+    "tariffsMatched": 1416,
+    "unmatchedTariffs": 0,
+    "errors": 0,
+    "rankableConnectors": 1394,
+    "reviewHeldConnectors": 22,
+    "pricesEurPerKwh": {
+      "0.01": 22,
+      "0.30": 10,
+      "0.36": 230,
+      "0.41": 20,
+      "0.44": 46,
+      "0.54": 985,
+      "0.59": 103
+    },
+    "lowPriceReview": "22 connectors at 0.01 EUR/kWh on three named stations retained as evidence and excluded from ranking pending confirmation"
+  },
+  "inventoryDeltaVsAugust": {
+    "stationsBefore": 170,
+    "stationsNow": 162,
+    "absentIds": 12,
+    "newIds": 4,
+    "guard": "no closure conclusion and no blind deletion from other sources"
+  },
+  "canonicalDelta": {
+    "atlantePromotion": false,
+    "treatedDelta": 0,
+    "setAsideDelta": 0,
+    "activeDelta": 0,
+    "atlanteCpoCount": 1
+  },
+  "artifacts": {
+    "extractor": "scripts/atlante/extract_atlante.py",
+    "helper": "scripts/atlante/package_results.py",
+    "method": "docs/atlante/myatlante-extraction-method.md",
+    "report": "docs/atlante/france-2026-09-23-report.json",
+    "review": "docs/atlante/france-2026-09-23-low-price-review.json",
+    "comparison": "docs/atlante/france-2026-09-23-comparison-20260824.json",
+    "priceChanges": "docs/atlante/france-2026-09-23-price-changes-20260824.json",
+    "snapshot": "data/atlante/france/atlante-fr-stations-2026-09-23.json.gz",
+    "raw": "data/atlante/france/atlante-fr-raw-2026-09-23.tar.gz"
+  },
+  "limits": [
+    "API-published perimeter is not independent proof of every physical station",
+    "ENERGY-only snapshot does not prove absence of external/session/parking fees",
+    "prices are a point-in-time snapshot",
+    "France scope is metropolitan France plus Corsica"
+  ]
+}
