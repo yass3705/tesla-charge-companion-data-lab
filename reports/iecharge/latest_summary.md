@@ -7,5 +7,5 @@
 - Third-party RFID: **eMSP tariff may differ**.
 - Subscription required for direct price: **no**.
 - Network-wide idle/parking fee: **not asserted** from current official sources.
-- Live station counter observed: **151**.
-- Fingerprint: `90e0a41738a8ae876b0450ba47e5a27f6e10a3b9b8c80c484737f512a2a84980`
+- Live station counter observed: **156**.
+- Fingerprint: `7edee1672bfed3d26fbe01fed1ca48b58a692305ec182b825f4889a61ad56f23`
