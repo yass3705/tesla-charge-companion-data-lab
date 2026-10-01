@@ -71,10 +71,11 @@ jobs:
 
           # Diagnose actual v2.1.2 response shapes first, then collect.
           diag={}
-          def probe(path,params=None):
+          def probe(path,params=None,diag_key=None):
               url="https://api-test.shell.com/ev"+path
               if params:
                   url += "?" + urllib.parse.urlencode(params)
+              dkey=diag_key or path
               req=urllib.request.Request(url,headers={
                   "Authorization":"Bearer "+token,
                   "Accept":"application/json",
@@ -85,7 +86,7 @@ jobs:
                   with urllib.request.urlopen(req,timeout=60) as rr:
                       raw=rr.read().decode("utf-8")
                       jj=json.loads(raw)
-                      diag[path]={
+                      diag[dkey]={
                           "httpStatus":rr.status,
                           "topLevelType":type(jj).__name__,
                           "topLevelKeys":list(jj.keys())[:50] if isinstance(jj,dict) else None,
@@ -95,7 +96,7 @@ jobs:
                       return jj
               except urllib.error.HTTPError as e:
                   body=e.read().decode("utf-8","replace")
-                  diag[path]={"httpStatus":e.code,"errorBodyPrefix":body[:2000]}
+                  diag[dkey]={"httpStatus":e.code,"errorBodyPrefix":body[:2000]}
                   return None
 
           first=probe("/v2/locations")
@@ -146,9 +147,9 @@ jobs:
               for xi in range(len(lon_edges)-1):
                   west,east=lon_edges[xi],lon_edges[xi+1]
                   south,north=lat_edges[yi],lat_edges[yi+1]
-                  mm=probe(f"/v2/locations/markers?tile={yi}-{xi}",{
+                  mm=probe("/v2/locations/markers",{
                       "west":west,"south":south,"east":east,"north":north,"zoom":12
-                  })
+                  },diag_key=f"/v2/locations/markers tile {yi}-{xi}")
                   fine_markers.extend(extract_items(mm))
                   time.sleep(.05)
 
@@ -194,7 +195,7 @@ jobs:
                   coords=m.get("coordinates") or {}
                   lat,lon=coords.get("latitude"),coords.get("longitude")
                   if lat is None or lon is None: continue
-                  jj=probe(f"/v2/locations/nearby?marker={len(loc_by_id)}",{"latitude":lat,"longitude":lon})
+                  jj=probe("/v2/locations/nearby",{"latitude":lat,"longitude":lon},diag_key=f"/v2/locations/nearby marker {len(loc_by_id)}")
                   for loc in extract_items(jj):
                       if not isinstance(loc,dict): continue
                       lid=str(loc.get("uid") or loc.get("externalId") or "")
