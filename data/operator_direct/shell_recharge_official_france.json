@@ -1,27 +1,28 @@
 {
-  "schemaVersion": "1.2.0",
+  "schemaVersion": "1.3.0",
   "dataset": "shell-recharge-official-france",
-  "generatedAt": "2026-08-20T14:46:39.698526Z",
+  "generatedAt": "2026-10-01T16:17:14.698576Z",
   "operator": "Shell Recharge",
   "country": "FR",
   "classification": {
-    "singleNationalFastShellRechargeCardTariffRule": true,
-    "exactCurrentKwhAmountAutoExtracted": false,
-    "stationLevelLookupRecommendedForNonShellCardOrRoaming": true,
-    "reason": "Shell explicitly states that Shell Recharge card users pay the same tariff at all Shell Recharge fast chargers; the current numeric kWh tariff is exposed on the tariff/app or rendered station layer."
+    "singleNationalFastShellRechargeCardTariffRule": false,
+    "currentUniformRuleSourceStatus": "retired_support_article_api",
+    "representativeCurrentSamplesConsistent": true,
+    "exactCurrentKwhAmountAutoExtracted": true,
+    "stationLevelLookupRecommendedForExactSimulation": true,
+    "reason": "Current first-party station pages expose a consistent Shell App tariff across representative sites, while the former support-article API no longer exposes the national uniform-rule article."
   },
   "operatorDirect": {
-    "fastShellRechargeWithShellCard": {
-      "uniformAcrossFastShellRechargeStations": true,
+    "fastShellRechargeWithShellApp": {
+      "uniformAcrossFastShellRechargeStations": null,
       "representativeCurrentEurPerKwh": 0.64,
-      "representativePriceStatus": "observed_on_rendered_first_party_station_pages_2026-08-20",
-      "monthlySubscriptionFeeEur": 0.0,
-      "cardOrderFeeEur": 0.0
+      "representativePriceStatus": "auto_extracted_current_first_party_station_samples",
+      "exactStationLookupRecommended": true
     },
     "renderedFirstPartySamples": {
-      "count": 5,
+      "count": 4,
       "allObservedEurPerKwh": 0.64,
-      "allObservedSessionFeeEur": 0.35,
+      "allObservedSessionFeeEur": null,
       "powerClassesKw": [
         50,
         150,
@@ -31,19 +32,15 @@
   },
   "payment": {
     "shellApp": true,
-    "shellRechargeCard": true,
-    "adHocQrOnline": true,
-    "contactlessBankCardFastChargers": true,
-    "applePayFastChargers": true,
-    "googlePayFastChargers": true,
+    "shellRechargeCard": false,
     "preauthorization": {
-      "shellCardOrAppEur": 45.0,
-      "bankCardEur": 65.0,
-      "temporaryReservation": true
+      "status": "not_revalidated_after_support_article_api_retirement",
+      "shellCardOrAppEur": null,
+      "bankCardEur": null
     }
   },
   "fees": {
-    "representativeShellAppSessionFeeEur": 0.35,
+    "representativeShellAppSessionFeeEur": null,
     "networkWideIdleFee": null,
     "parking": {
       "status": "site_specific_unless_explicitly_published"
@@ -52,53 +49,49 @@
   "roaming": {
     "classification": "partner_cpo_layer",
     "operatorDirect": false,
-    "partnerCpoTariffApplies": true,
-    "shellTransactionFeePerSessionEur": 0.35,
     "exactPartnerPriceLookupRequired": true,
-    "priceDisplay": "Shell app / tariff layer"
+    "legacyTransactionFeeStatus": "not_revalidated_after_support_article_api_retirement"
   },
   "representativeStationChecks": [
     {
-      "key": "sommesous",
-      "shellAppEurPerKwh": 0.64,
-      "sessionFeeEur": 0.35,
-      "powerKwObserved": [
-        150,
-        300
-      ]
-    },
-    {
       "key": "roussillon",
-      "shellAppEurPerKwh": 0.64,
-      "sessionFeeEur": 0.35,
+      "url": "https://find.shell.com/fr/fuel/12166202-roussillon-a7/fr_TN",
+      "eurPerKwh": 0.64,
+      "sessionFeeEur": null,
       "powerKwObserved": [
         300
-      ]
+      ],
+      "evidenceMode": "current_rendered_first_party_station_page"
     },
     {
       "key": "cestas",
-      "shellAppEurPerKwh": 0.64,
-      "sessionFeeEur": 0.35,
+      "url": "https://find.shell.com/fr/fuel/10029643-cestas-ouest-a63/fr_MA",
+      "eurPerKwh": 0.64,
+      "sessionFeeEur": null,
       "powerKwObserved": [
         300
-      ]
+      ],
+      "evidenceMode": "current_rendered_first_party_station_page"
     },
     {
       "key": "lesSalles",
-      "shellAppEurPerKwh": 0.64,
-      "sessionFeeEur": 0.35,
+      "url": "https://find.shell.com/fr/fuel/11796090-les-salles-haut-forez-nord-a89/fr_LU",
+      "eurPerKwh": 0.64,
+      "sessionFeeEur": null,
       "powerKwObserved": [
-        50,
-        300
-      ]
+        50
+      ],
+      "evidenceMode": "current_rendered_first_party_station_page"
     },
     {
       "key": "criquetot",
-      "shellAppEurPerKwh": 0.64,
-      "sessionFeeEur": 0.35,
+      "url": "https://find.shell.com/fr/fuel/13078456-ev-criquetot-le-havre/fr_FR",
+      "eurPerKwh": 0.64,
+      "sessionFeeEur": null,
       "powerKwObserved": [
-        300
-      ]
+        150
+      ],
+      "evidenceMode": "current_rendered_first_party_station_page"
     }
   ],
   "technical": {
@@ -107,18 +100,18 @@
       150,
       300
     ],
-    "stationPagesReachable": true
+    "stationPagesReachable": true,
+    "retiredSupportArticleApiDetected": true,
+    "stationRenderErrors": [
+      {
+        "key": "sommesous",
+        "error": "RuntimeError: rendered Shell station page exposes no EUR/kWh tariff after DOM wait"
+      }
+    ]
   },
   "sourceEvidence": {
     "officialOnly": true,
-    "automatedRuleSources": [
-      "uniformFastRate",
-      "directCost",
-      "payment",
-      "preauthorization",
-      "roamingCost"
-    ],
-    "representativeStationTariffsCapturedFromRenderedFirstPartyPagesOn": "2026-08-20",
+    "supportArticleApiStatus": "retired_redirects_to_generic_help",
     "sources": [
       {
         "key": "uniformFastRate",
@@ -171,13 +164,12 @@
         "httpStatus": 200
       }
     ],
-    "relevantTariffFingerprintSha256": "561bd49d5f208101c2cfe2243221abe26e73713e9d519fda1842546c0fc28e71"
+    "relevantTariffFingerprintSha256": "12a9462bff31bd53fa86fc679c0124590c107399de0d65cbb013a4ba46f2d5ba"
   },
   "publicationStatus": "candidate_validated_source",
   "notes": [
-    "This validator intentionally does not build a national station database.",
-    "Shell's official support confirms a uniform tariff rule for Shell Recharge card users across fast Shell Recharge stations.",
-    "The current 0.64 EUR/kWh value is retained from five rendered first-party Shell station samples; automated plain-HTML checks validate the rule layer rather than client-rendered numeric tariff blocks.",
-    "Roaming remains separate: partner CPO tariff plus Shell transaction fee."
+    "Current numeric direct tariff is refreshed from rendered first-party Shell station pages.",
+    "The former support-article API no longer proves a nationwide uniform tariff, so exact station lookup remains recommended.",
+    "Preauthorization and legacy roaming-fee amounts are not carried forward as current facts without a current official source."
   ]
 }
