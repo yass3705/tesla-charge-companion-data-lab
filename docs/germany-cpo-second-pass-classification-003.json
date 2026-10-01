@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-classification",
+  "classificationBatch": 3,
+  "previousClassification": "docs/germany-cpo-second-pass-classification-002.json",
+  "sourceCheckpoints": [
+    "docs/germany-cpo-first-pass-automation176.json",
+    "docs/germany-cpo-first-pass-automation174.json",
+    "docs/germany-cpo-first-pass-automation173.json",
+    "docs/germany-cpo-first-pass-automation172.json",
+    "docs/germany-cpo-first-pass-automation171.json",
+    "docs/germany-cpo-first-pass-automation169.json",
+    "docs/germany-cpo-first-pass-automation168.json"
+  ],
+  "baseline": {
+    "partialTotal": 390,
+    "partialClassifiedBefore": 43,
+    "classifiedThisBatch": 8,
+    "partialClassifiedAfter": 51,
+    "partialQueued": 339
+  },
+  "classified": [
+    {
+      "name": "Stadtwerke Buchen GmbH & Co. KG public charging",
+      "primaryBlocker": "B2_FIRST_PARTY_ADHOC_EQUIVALENCE",
+      "reason": "Operator and direct/ad-hoc capability are established, but the direct price remains unknown and no current first-party numeric public-charging tariff was found.",
+      "nextAction": "Target the live direct checkout or a current first-party charging tariff; exclude household and roaming tariffs."
+    },
+    {
+      "name": "Stadtwerke Eberbach GmbH public charging",
+      "primaryBlocker": "B6_DYNAMIC_SURFACE_OR_APP",
+      "reason": "First-party material confirms anonymous QR/browser credit-card payment and says the cost is displayed before confirmation, but the accessible surface does not expose the numeric checkout tariff.",
+      "nextAction": "Inspect the live QR/browser tariff surface for DE*SDE EVSEs and persist exact anonymous values."
+    },
+    {
+      "name": "Stadtwerke Mosbach GmbH public charging",
+      "primaryBlocker": "B2_FIRST_PARTY_ADHOC_EQUIVALENCE",
+      "reason": "First-party evidence confirms online credit-card direct access, while current 0.49 EUR/kWh AC / 0.64 EUR/kWh DC plus time fee is only a ladenetz-attributed station observation without authoritative anonymous-payment mapping.",
+      "nextAction": "Verify current anonymous credit-card checkout tariff or first-party mapping for the active AC/DC estate."
+    },
+    {
+      "name": "Stadtwerke Sinsheim Versorgungs GmbH & Co. KG",
+      "primaryBlocker": "B2_FIRST_PARTY_ADHOC_EQUIVALENCE",
+      "reason": "Current first-party material confirms direct ad-hoc access but does not publish the numerical anonymous charging price.",
+      "nextAction": "Recover current direct checkout prices for the Dr.-Sieber-Halle and Grabengasse EVSEs or a first-party ad-hoc tariff statement."
+    },
+    {
+      "name": "Stadt Leimen public charging",
+      "primaryBlocker": "B2_FIRST_PARTY_ADHOC_EQUIVALENCE",
+      "reason": "BNetzA/Mobilithek-derived data establishes the operator and active EVSE identities, and direct capability is visible, but exact anonymous pricing is not proven.",
+      "nextAction": "Resolve exact direct checkout price per active Stadt Leimen EVSE from authoritative tariff evidence."
+    },
+    {
+      "name": "Energieversorgung Gera GmbH",
+      "primaryBlocker": "B6_DYNAMIC_SURFACE_OR_APP",
+      "reason": "First-party material confirms QR contract-free access and that all applicable costs are displayed after charge-point selection before PayPal payment, but the anonymous numeric tariff is not exposed on the accessible page.",
+      "nextAction": "Extract the station-selected QR checkout tariff; keep EGG card/customer prices separate."
+    },
+    {
+      "name": "Stadtwerke Altenburg GmbH",
+      "primaryBlocker": "B1_COVERAGE_EVSE_MATRIX",
+      "reason": "Station-level direct prices are observed and vary by site (AC 0.51/0.55/0.60 EUR/kWh; DC/HPC 0.80 EUR/kWh), but a complete authoritative mapping for all EVSEs is missing.",
+      "nextAction": "Build the complete EVSE-to-direct-price matrix; preserve legitimate site variation instead of inferring one network price."
+    },
+    {
+      "name": "Stadtwerke Eisenberg Energie GmbH",
+      "primaryBlocker": "B2_FIRST_PARTY_ADHOC_EQUIVALENCE",
+      "reason": "Operator activity and direct/ad-hoc access are confirmed, but no current authoritative numeric anonymous tariff is exposed.",
+      "nextAction": "Target current station checkout/QR pricing; do not substitute charging-card or roaming tariffs."
+    }
+  ],
+  "incidentalHighConfidenceLead": {
+    "name": "Stadtwerke Weinheim GmbH",
+    "currentLedgerStatus": "partial",
+    "lead": "Checkpoint 171 records decisive current first-party evidence: Ad-hoc Ladung 0.59 EUR/kWh AC and 0.69 EUR/kWh DC plus 0.07 EUR/min after 180/120 minutes, maximum 15 EUR.",
+    "action": "Place at the front of the second-pass promotion queue. Re-verify the current first-party page once, then promote if unchanged; do not re-run broad discovery."
+  },
+  "countsThisBatch": {
+    "B1_COVERAGE_EVSE_MATRIX": 1,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 5,
+    "B3_SITE_CONFIGURABLE_BACKEND": 0,
+    "B4_FEE_COMPONENT_COMPLETENESS": 0,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 0,
+    "B6_DYNAMIC_SURFACE_OR_APP": 2,
+    "B7_CONTRADICTORY_SOURCES": 0
+  },
+  "cumulativeCountsByPrimaryBlocker": {
+    "B1_COVERAGE_EVSE_MATRIX": 19,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 17,
+    "B3_SITE_CONFIGURABLE_BACKEND": 3,
+    "B4_FEE_COMPONENT_COMPLETENESS": 4,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 3,
+    "B6_DYNAMIC_SURFACE_OR_APP": 4,
+    "B7_CONTRADICTORY_SOURCES": 1
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "43 + 8 = 51 classified; 390 - 51 = 339 queued; 19 + 17 + 3 + 4 + 3 + 4 + 1 = 51",
+    "duplicateNamesInBatch": 0,
+    "statusChanges": 0,
+    "tariffPromotions": 0,
+    "note": "Stadtwerke Weinheim is recorded only as a high-confidence promotion lead, not counted as classified or promoted in this batch until its original canonical partial entry is reconciled and current first-party evidence is rechecked."
+  },
+  "nextSafeAction": "Continue classification backward through the nominative checkpoint chain while preparing the first execution queue: Weinheim re-verification, Allgaeuer six-EVSE gap, then other bounded B1 coverage gaps."
+}
