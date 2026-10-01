@@ -1,0 +1,28 @@
+name: Audit Electroverse FR post-generic residual
+on:
+  push:
+    branches:
+      - audit/electroverse-post-generic-residual
+    paths:
+      - "scripts/audit_electroverse_post_generic_residual.mjs"
+      - ".github/workflows/electroverse-post-generic-residual-audit.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run residual audit
+        run: node scripts/audit_electroverse_post_generic_residual.mjs
+      - name: Persist report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse-fr-post-generic-residual.json
+          git commit -m "audit: publish post-generic residual report" || exit 0
+          git push
