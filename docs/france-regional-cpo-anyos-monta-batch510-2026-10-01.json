@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "date": "2026-10-01",
+  "batch": "batch510",
+  "cpo": "ANYOS | FR*PAN",
+  "rawRank": 148,
+  "supersedesEvidenceLevel": "docs/france-regional-cpo-anyos-batch505-2026-10-01.json",
+  "decision": "KEEP_SET_ASIDE_DIRECT_FAIL_CLOSED",
+  "publicBulkEvidence": {
+    "portal": "https://app.monta.app/roaming/monta-as-a-cpo-pricing",
+    "export": "https://app.monta.app/roaming/monta-as-a-cpo-pricing/export/json",
+    "portalSemantics": "Pricing for internal Monta CPOs running on Monta Platform exposed to both external EMSPs and internal EMSPs.",
+    "workflowRun": 36882338234,
+    "workflowArtifactRun4": 11171712930,
+    "sourceRecords": 43752,
+    "anyosMatchedEvses": 67,
+    "uniqueSites": 12,
+    "uniqueTariffIds": 12,
+    "missingPricing": 0,
+    "energyRangeEurPerKwh": [
+      0.26,
+      0.468
+    ],
+    "idleFeeEurPerMinuteValues": [
+      0.08,
+      0.12
+    ]
+  },
+  "directDriverEvidence": {
+    "resolverTemplate": "https://app.monta.app/d/{EVSE}",
+    "methodReuse": "OZECAR batch440 public Monta driver deeplink method",
+    "checkedEvses": 67,
+    "privateChargePoint": 67,
+    "nonPrivateHttp200": 0,
+    "errors": 0,
+    "sample": {
+      "evse": "FR*PAN*E5678518",
+      "http": 200,
+      "visibleResult": "Private charge point"
+    }
+  },
+  "semanticsEvidence": [
+    {
+      "url": "https://monta.com/en/cpms/tariff-pricing/",
+      "finding": "Monta supports separate public/member/roaming/partner price groups; site/charge-point overrides are possible."
+    },
+    {
+      "url": "https://monta.com/help/en_US/monta-hub-roaming/roaming-pricing-fee-structure",
+      "finding": "Inbound roaming prices are CPO-set prices exposed to roaming; this does not prove the direct driver/ad-hoc price."
+    },
+    {
+      "url": "https://monta.com/help/en_US/create-additional-charging-fees",
+      "finding": "Idle fee is per minute after charging completes."
+    }
+  ],
+  "conclusion": "Bulk Monta pricing is useful exact roaming/CPO-to-eMSP evidence but cannot be promoted as ANYOS direct/ad-hoc authority. Exhaustive direct deeplink probe closes all 67 current exported FR*PAN EVSE as private for anonymous driver access.",
+  "reopenCondition": "Legitimate ANYOS/Monta direct app or QR guest tariff endpoint, a public driver page exposing a direct price, or first-party/AFIR/QualiCharge direct numeric tariff tied to exact FR*PAN EVSE.",
+  "counterTransition": {
+    "before": {
+      "treated": 96,
+      "setAside": 46,
+      "active": 149,
+      "total": 291
+    },
+    "after": {
+      "treated": 96,
+      "setAside": 46,
+      "active": 149,
+      "total": 291,
+      "pendingDedupe": 0
+    }
+  },
+  "result": "PASS_KEEP_SET_ASIDE"
+}
