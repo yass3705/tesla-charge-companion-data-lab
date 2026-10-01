@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-classification",
+  "classificationBatch": 2,
+  "previousClassification": "docs/germany-cpo-second-pass-classification-001.json",
+  "sourceCheckpoints": [
+    "docs/germany-cpo-first-pass-automation196.json",
+    "docs/germany-cpo-first-pass-automation195.json",
+    "docs/germany-cpo-first-pass-automation191.json",
+    "docs/germany-cpo-first-pass-automation185.json",
+    "docs/germany-cpo-first-pass-automation179.json"
+  ],
+  "baseline": {
+    "totalCpos": 591,
+    "complete": 201,
+    "partial": 390,
+    "blocked": 0,
+    "partialClassifiedBefore": 28,
+    "classifiedThisBatch": 15,
+    "partialClassifiedAfter": 43,
+    "partialQueued": 347
+  },
+  "taxonomyExtension": {
+    "B7_CONTRADICTORY_SOURCES": {
+      "description": "Current tariff sources disagree materially for the same operator/estate and the conflict cannot be resolved from authoritative first-party evidence.",
+      "nextAction": "Reconcile the conflicting station/EVSE records against first-party checkout, AFIR/DATEX II and source timestamps; retain fail-closed until one binding current price is established."
+    }
+  },
+  "classified": [
+    {
+      "name": "Gemeindewerke Wadgassen GmbH",
+      "primaryBlocker": "B7_CONTRADICTORY_SOURCES",
+      "reason": "Current LichtBlick/Mobilithek-derived data reports 0.34 EUR/kWh on 4 stations / 13 charge points while another current station-price surface reports 0.40-0.50 EUR/kWh; first-party material does not resolve the conflict.",
+      "nextAction": "Resolve by EVSE and timestamp using authoritative direct-payment/AFIR evidence before accepting any value."
+    },
+    {
+      "name": "Chargemaker GmbH",
+      "primaryBlocker": "B1_COVERAGE_EVSE_MATRIX",
+      "reason": "86 stations / 241 charge points identified but only 177 charge points expose direct prices.",
+      "nextAction": "Complete the missing 64 charge-point direct prices via Mobilithek/AFIR/backend reconciliation."
+    },
+    {
+      "name": "50five",
+      "primaryBlocker": "B1_COVERAGE_EVSE_MATRIX",
+      "reason": "Large German estate with site-variable direct prices and incomplete price coverage, about 90% for AC in the retrieved profile.",
+      "nextAction": "Enumerate all German EVSEs and close the uncovered direct-price tail rather than infer a network tariff."
+    },
+    {
+      "name": "energis GmbH",
+      "primaryBlocker": "B1_COVERAGE_EVSE_MATRIX",
+      "reason": "Sampled EVSEs expose 0.55 EUR/kWh plus site-specific time fees, but verified samples do not cover the current Saarland estate.",
+      "nextAction": "Build the full EVSE matrix and preserve station-specific time-fee conditions."
+    },
+    {
+      "name": "Allgaeuer Kraftwerke GmbH",
+      "primaryBlocker": "B1_COVERAGE_EVSE_MATRIX",
+      "reason": "25 stations / 67 charge points identified; direct prices cover 61 points, leaving six without exact verified direct price.",
+      "nextAction": "Target only the six uncovered charge points and reconcile them against the same operator/backend inventory."
+    },
+    {
+      "name": "BIDIREX GmbH",
+      "primaryBlocker": "B1_COVERAGE_EVSE_MATRIX",
+      "reason": "25 stations / 125 charge points are identified, but only aggregate observed ad-hoc pricing around 0.45 EUR/kWh was available, not a complete per-EVSE matrix.",
+      "nextAction": "Recover per-EVSE direct prices; do not promote the aggregate value."
+    },
+    {
+      "name": "WISAG Elektrotechnik Holding GmbH & Co. KG",
+      "primaryBlocker": "B1_COVERAGE_EVSE_MATRIX",
+      "reason": "26 stations / 247 charge points identified, but the retrieved evidence provides only aggregate observed pricing around 0.56 EUR/kWh.",
+      "nextAction": "Recover complete per-EVSE pricing from the underlying public feed/backend."
+    },
+    {
+      "name": "SWK Energie GmbH",
+      "primaryBlocker": "B1_COVERAGE_EVSE_MATRIX",
+      "reason": "25 stations / 35 charge points identified but only aggregate observed direct pricing around 0.60 EUR/kWh was retrieved.",
+      "nextAction": "Enumerate the 35 charge points and attach exact anonymous direct prices individually."
+    },
+    {
+      "name": "Staedtische Betriebswerke Luckenwalde GmbH",
+      "primaryBlocker": "B1_COVERAGE_EVSE_MATRIX",
+      "reason": "0.49 EUR/kWh direct pricing is verified on DE*ISE*E0022573/2574, but the complete active SBL estate is not covered.",
+      "nextAction": "Resolve the remaining SBL EVSE inventory and verify direct price/payment metadata for each active point."
+    },
+    {
+      "name": "EMB Energie Brandenburg GmbH",
+      "primaryBlocker": "B2_FIRST_PARTY_ADHOC_EQUIVALENCE",
+      "reason": "Sampled DE*EMB EVSEs expose 0.49 EUR/kWh AC and 0.65 EUR/kWh DC/HPC, while first-party tariff material focuses on registered Mobilstrom/Ladekarte products and does not establish anonymous equivalence across the estate.",
+      "nextAction": "Use QR/direct-payment or authoritative per-EVSE direct-price evidence to separate anonymous ad-hoc from Mobilstrom/Ladekarte pricing."
+    },
+    {
+      "name": "Energieversorgung Burghausen GmbH (EBG)",
+      "primaryBlocker": "B2_FIRST_PARTY_ADHOC_EQUIVALENCE",
+      "reason": "First-party material verifies 24 public charge points at nine locations but does not publish exact anonymous direct prices.",
+      "nextAction": "Recover current anonymous checkout prices per EBG EVSE or an authoritative first-party ad-hoc matrix."
+    },
+    {
+      "name": "Energie Suedbayern GmbH (ESB)",
+      "primaryBlocker": "B2_FIRST_PARTY_ADHOC_EQUIVALENCE",
+      "reason": "Registered FLEX mobil/Ladekarte prices are published separately; ad-hoc card payment is documented at Sulzemoos and sampled DE*ESB direct prices exist, but equivalence/coverage across the >2,000-point estate is not proven.",
+      "nextAction": "Separate FLEX contract pricing from anonymous checkout and reconcile current direct prices at EVSE level."
+    },
+    {
+      "name": "Stadtwerke Energie Jena-Poessneck public charging",
+      "primaryBlocker": "B2_FIRST_PARTY_ADHOC_EQUIVALENCE",
+      "reason": "Current 0.49 EUR/kWh AC / 0.59 EUR/kWh DC prices are explicitly tied to the Stadtwerke Ladekarte and cannot be extrapolated to anonymous charging.",
+      "nextAction": "Find a current QR/direct-payment surface, guest backend response or station-level anonymous tariff."
+    },
+    {
+      "name": "EMERGY / Stadtwerke Borken public charging",
+      "primaryBlocker": "B2_FIRST_PARTY_ADHOC_EQUIVALENCE",
+      "reason": "0.35 EUR/kWh AC / 0.45 EUR/kWh DC-HPC are verified contractual Mein Stadtwerke Strom Mobil prices with a monthly minimum, not anonymous ad-hoc.",
+      "nextAction": "Recover an EMERGY QR/direct-payment checkout or station-level anonymous backend price."
+    },
+    {
+      "name": "Aschaffenburger Versorgungs-GmbH / Stadtwerke Aschaffenburg public charging",
+      "primaryBlocker": "B6_DYNAMIC_SURFACE_OR_APP",
+      "reason": "First-party material verifies a 2026 ad-hoc tariff and QR/card access, but the numeric tariff table is image-rendered and accessible station-level discovery reports the direct price as unknown.",
+      "nextAction": "Target the direct checkout/QR or machine-readable tariff/backend surface; do not infer the numeric tariff from the published reduction."
+    }
+  ],
+  "countsThisBatch": {
+    "B1_COVERAGE_EVSE_MATRIX": 8,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 5,
+    "B3_SITE_CONFIGURABLE_BACKEND": 0,
+    "B4_FEE_COMPONENT_COMPLETENESS": 0,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 0,
+    "B6_DYNAMIC_SURFACE_OR_APP": 1,
+    "B7_CONTRADICTORY_SOURCES": 1
+  },
+  "cumulativeCountsByPrimaryBlocker": {
+    "B1_COVERAGE_EVSE_MATRIX": 18,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 12,
+    "B3_SITE_CONFIGURABLE_BACKEND": 3,
+    "B4_FEE_COMPONENT_COMPLETENESS": 4,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 3,
+    "B6_DYNAMIC_SURFACE_OR_APP": 2,
+    "B7_CONTRADICTORY_SOURCES": 1
+  },
+  "highYieldTargets": [
+    {"name":"Allgaeuer Kraftwerke GmbH","why":"Only six identified charge points remain without exact direct price."},
+    {"name":"Chargemaker GmbH","why":"Known gap is bounded to 64 of 241 charge points and can be attacked as one backend/inventory batch."},
+    {"name":"Staedtische Betriebswerke Luckenwalde GmbH","why":"Two exact direct-priced EVSEs already verified; remaining task is bounded estate completion."}
+  ],
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "28 + 15 = 43 classified; 390 - 43 = 347 queued; cumulative blocker counts 18 + 12 + 3 + 4 + 3 + 2 + 1 = 43",
+    "duplicateNamesInBatch": 0,
+    "statusChanges": 0,
+    "tariffPromotions": 0,
+    "note": "Classification only. The contradictory-source family was added because conflict resolution is materially different from missing coverage or missing first-party equivalence."
+  },
+  "nextSafeAction": "Continue nominative classification from older first-pass checkpoints. Once a sufficiently large B1 roster is assembled, start the bounded EVSE-gap batches in parallel with continued classification, beginning with Allgaeuer Kraftwerke and Chargemaker."
+}
