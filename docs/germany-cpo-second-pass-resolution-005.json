@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 5,
+  "date": "2026-09-17",
+  "canonicalBefore": {"totalNamedCpos":591,"complete":205,"partial":386,"blocked":0},
+  "promotions": [{
+    "name":"Stadtwerke Goettingen AG",
+    "previousStatus":"partial",
+    "newStatus":"complete",
+    "resolution":"Fresh Mobilithek/DATEX II records supplied by chargecloud resolve the previously missing anonymous ad-hoc fee matrix by power class: AC 0.46 EUR/kWh + 1.50 EUR start + 0.06 EUR/min after 240 min; DC 50 kW and HPC 150 kW 0.52 EUR/kWh + 2.50 EUR start + 0.06 EUR/min after 120 min. Mixed AC/DC station Am Geismartor independently exposes both fee classes on the same operator/backend dataset, and Gallus-Park confirms the HPC class.",
+    "anonymousAdHoc":{"AC":{"energyEurPerKwh":0.46,"startFeeEur":1.50,"blockingEurPerMin":0.06,"blockingAfterMin":240},"DC_HPC":{"energyEurPerKwh":0.52,"startFeeEur":2.50,"blockingEurPerMin":0.06,"blockingAfterMin":120}},
+    "sources":["Mobilithek/DATEX II via chargecloud, e-Stations snapshot 2026-09-11: Am Geismartor ACDC","Mobilithek/DATEX II via chargecloud, e-Stations snapshot 2026-09-11: Gallus-Park","Mobilithek/DATEX II via chargecloud, e-Stations snapshot 2026-09-11: Parkplatz Buergerstrasse"]
+  }],
+  "boundedProgress":[
+    {"name":"Allgaeuer Kraftwerke GmbH","result":"No promotion this batch. Existing residual task remains exact EVSE-to-zone/power/fee reconciliation; generic tariff research was not repeated."}
+  ],
+  "backendProgress":{"chargecloud":{"testedCpos":["Stadtwerke Goettingen AG"],"effectiveCoverageThisBatch":1,"result":"Mobilithek/DATEX II station-level records expose anonymous tariff components by EVSE/power class sufficiently to close Goettingen. This validates chargecloud-derived AFIR records as a reusable read-only evidence path for compatible B1/B3/B6 CPOs, subject to per-CPO coverage checks."}},
+  "canonicalAfter":{"totalNamedCpos":591,"complete":206,"partial":385,"blocked":0},
+  "statusChanges":1,
+  "consistencyCheck":{"status":"PASS","arithmetic":"206 + 385 + 0 = 591","promotions":1,"unsafeExtrapolations":0,"registeredOrRoamingTariffSubstituted":false,"duplicateOrAliasChange":0,"repeatInvestigationGuard":"PASS"},
+  "nextSafeAction":"Continue exact Allgaeuer residual reconciliation, then apply the validated chargecloud/Mobilithek fee-component pattern in batch to classified B1/B3/B6 CPOs before moving to the next backend family."
+}
