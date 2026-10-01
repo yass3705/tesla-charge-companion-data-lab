@@ -210,6 +210,9 @@ console.log(JSON.stringify({
   uniqueSuffixValidatedMappings:out.uniqueSuffixValidatedMappings,
   topRecoverable:operators.filter(x=>x.safelyRecoverableSourceEvses>0).slice(0,100).map(x=>({
     operator:x.operator,residual:x.residualSourceEvses,recoverable:x.safelyRecoverableSourceEvses,byMode:x.byMode
+  })),
+  topResidual:operators.slice(0,30).map(x=>({
+    operator:x.operator,residual:x.residualSourceEvses,locations:x.affectedLocations,byMode:x.byMode
   }))
 },null,2));
 
