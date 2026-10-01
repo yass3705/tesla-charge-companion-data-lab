@@ -1,0 +1,24 @@
+name: Audit Electroverse France current national PDC gap
+on:
+  push:
+    branches: [audit/electroverse-current-national-pdc-gap]
+    paths:
+      - "scripts/audit_electroverse_current_national_pdc_gap.mjs"
+      - ".github/workflows/electroverse-current-national-pdc-gap.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - run: node scripts/audit_electroverse_current_national_pdc_gap.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/current-national-pdc-gap.json
+          git commit -m "audit: publish current national PDC gap" || exit 0
+          git push
