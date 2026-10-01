@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 206,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-205.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Horb am Neckar",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; 100% current energy-price coverage achieved, fee stack is sole remaining blocker",
+      "evidence": {
+        "backend": "Vaylens via Mobilithek-derived current data",
+        "currentEstate": "4 stations / 12 EVSE",
+        "powerClass": "12/12 AC Type 2, 22 kW",
+        "anonymousEnergyCoverage": "12/12 at 0.70 EUR/kWh; min=max=average 0.70",
+        "sites": [
+          "Am Garnisonsplatz 2: 4 EVSE",
+          "Wintergasse 13: 4 EVSE",
+          "Neckarstrasse 34: 2 EVSE",
+          "Dammstrasse 8: 2 EVSE"
+        ],
+        "directPayment": "Public current charging evidence states charging without contract or charging card via direct credit/debit-card payment at 0.70 EUR/kWh."
+      },
+      "exactGap": "No authoritative source inspected in this pass explicitly closes start fee, time fee and blocking fee for the anonymous direct-payment channel. Absence of such fees must not be inferred from a kWh-only display.",
+      "resumeCondition": "Vaylens/Mobilithek raw anonymous tariff payload or first-party/direct checkout exposing start/time/blocking fields (including explicit zero values) for the 12 EVSEs. If all are zero or deterministically uniform, promote immediately."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "backendFamilyProgress": {
+    "vaylens_mobilithek": "Horb advanced from generic B1 coverage gap to 12/12 energy coverage; only fee-stack closure remains."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS; direct anonymous evidence kept separate from registered/roaming"
+  },
+  "nextSafeAction": "First try to obtain raw Vaylens/Mobilithek fee fields for Horb's 12 DE*ISE EVSEs. If unavailable after a distinct payload pass, park Horb with 100% energy coverage and move to another Vaylens/Mobilithek operator where fee fields are exposed."
+}
