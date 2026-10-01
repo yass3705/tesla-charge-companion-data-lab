@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 219,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-218.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 251,
+    "partial": 340,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Wunstorf GmbH & Co. KG / meerenergie",
+      "classification": "B5_OPERATOR_IDENTITY_RECONCILIATION",
+      "decision": "remain partial; identity reconciliation not proven",
+      "exactGap": "Need authoritative per-location physical CPO/backend lineage separating Stadtwerke Wunstorf/meerenergie, enercity and Westfalen Weser before attaching tariffs or collapsing aliases.",
+      "resumeCondition": "First-party ownership/operation statement or current AFIR/Mobilithek operator IDs for all listed locations."
+    },
+    {
+      "name": "Stadtwerke Holzminden GmbH",
+      "classification": "B5_OPERATOR_IDENTITY_RECONCILIATION",
+      "decision": "remain partial; no safe operator collapse",
+      "exactGap": "Need per-location current operator/backend identity versus Westfalen Weser before exact direct tariffs can be assigned.",
+      "resumeCondition": "Authoritative active EVSE operator IDs or first-party transfer/operation statement."
+    },
+    {
+      "name": "Stadtwerke Brilon Energie GmbH",
+      "classification": "B5_OPERATOR_IDENTITY_RECONCILIATION",
+      "decision": "remain partial; backend boundary unresolved",
+      "exactGap": "DE*STB estate must be reconciled against Westfalen Weser-backed exceptions; sampled direct prices cannot cross backend boundaries.",
+      "resumeCondition": "Current operator-ID/EVSE mapping for DE*STB and partner-operated exceptions."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 251,
+    "partial": 340,
+    "blocked": 0
+  },
+  "indicator": "221 -> 251 complete (+30)",
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "backendFamilyProgress": {
+    "B5": "Wunstorf, Holzminden and Brilon reduced to explicit operator-ID lineage requirements; no alias collapse performed without proof."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "251 + 340 + 0 = 591",
+    "classification": "CLASSIFICATION_NOMINATIVELY_COMPLETE retained",
+    "aliases": "No new alias/duplicate correction justified by current evidence",
+    "repeatInvestigationGuard": "PASS",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Return to a machine-readable backend family. Highest-value next work is an AFIR/Mobilithek operator-ID plus tariff extraction that can simultaneously solve B5 lineage and B1/B3/B6 price coverage; avoid further generic B4/B5 web passes."
+}
