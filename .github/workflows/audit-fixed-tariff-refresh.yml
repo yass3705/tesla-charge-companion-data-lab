@@ -1,0 +1,43 @@
+name: Audit fixed tariff refresh coverage
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/audit_fixed_tariff_refresh.py"
+      - ".github/workflows/audit-fixed-tariff-refresh.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audit-fixed-tariff-refresh
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Audit all fixed/direct tariff sources
+        run: python3 scripts/audit_fixed_tariff_refresh.py
+      - name: Publish audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/fixed-tariff-refresh-audit.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "audit: refresh fixed-tariff coverage [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
