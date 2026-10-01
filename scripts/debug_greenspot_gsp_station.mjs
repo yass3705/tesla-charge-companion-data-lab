@@ -10,4 +10,18 @@ const hits=(j.records||[]).filter(r=>
   pdcs.has(String(r?.irve?.id_pdc_itinerance||'')) ||
   pdcs.has(String(r?.evseKey||''))
 );
-console.log(JSON.stringify(hits,null,2));
+await fs.mkdir('reports/electroverse',{recursive:true});
+const report={
+  generatedAt:new Date().toISOString(),
+  source:'data/greenspot/france/greenspot-france-current.json.gz',
+  station,
+  requestedEvseKeys:[...pdcs],
+  hitCount:hits.length,
+  hits
+};
+await fs.writeFile(
+  'reports/electroverse/gsp-greenspot-debug.json',
+  JSON.stringify(report,null,2)+'\n',
+  'utf8'
+);
+console.log(JSON.stringify(report,null,2));
