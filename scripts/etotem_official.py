@@ -123,10 +123,12 @@ def main() -> None:
             raise RuntimeError(f"e-Totem mobility: missing current SEMOB numeric evidence {v}")
 
     home = pages["home"]
-    require(home, "250 000 points de charges compatibles", "e-Totem home")
+    # The 2026 homepage was redesigned for B2B infrastructure and no longer
+    # carries the consumer roaming-network list. Current consumer evidence is
+    # now on the users page, which still states 250,000 compatible points.
+    require(users, "250 000 points de charge", "e-Totem users roaming reach")
     partner_markers = ["ionity", "total energies", "freshmile", "shell recharge", "metropolis", "eborn"]
-    if sum(1 for x in partner_markers if x in home) < 4:
-        raise RuntimeError("e-Totem home: partner-network evidence incomplete")
+    current_partner_examples = [x for x in partner_markers if x in users or x in mobility]
 
     saint = pages["saintLouis"]
     require(saint, "politique tarifaire des bornes de recharge", "Saint-Louis Agglomération")
@@ -170,7 +172,8 @@ def main() -> None:
         "mobilityProviderLayer": {
             "badgeCompatiblePointsClaimed": 250000,
             "classification": "eTotem_eMSP_and_partner_network_access",
-            "partnerExamples": ["IONITY", "TotalEnergies", "Freshmile", "Shell Recharge", "Metropolis", "eborn"],
+            "partnerExamples": current_partner_examples,
+            "partnerExampleStatus": "only_currently_exposed_examples_retained",
             "exactCurrentPartnerTariffStatus": "do_not_promote_historical_2024_uniform_rates_without_current_first_party_reconfirmation",
         },
         "regionalOffers": {
