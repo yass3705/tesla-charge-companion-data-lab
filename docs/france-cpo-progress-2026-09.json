@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 132,
+  "schemaVersion": 133,
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 96,
-  "setAsideCpos": 46,
-  "activeRemainingCpos": 149,
-  "updatedAt": "2026-10-01T19:55:00+02:00",
+  "setAsideCpos": 47,
+  "activeRemainingCpos": 148,
+  "updatedAt": "2026-10-01T20:10:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -416,6 +416,13 @@
       "since": "2026-10-01",
       "lastChecked": "2026-10-01",
       "audit": "docs/france-regional-cpo-solveo-batch509-2026-10-01.json"
+    },
+    {
+      "name": "Properphi | raw rank155",
+      "reason": "batch512 fail-closed: current first-party ProperPhi supervision/CGU explicitly states recharge tariffs are decided by the customer/site operator and validated/applied by ProperPhi; the platform supports multiple billing modes including QR/app, roaming and direct bank-card payment. Current site-level prices are therefore configurable and heterogeneous. No deterministic anonymous station/EVSE -> current configured direct tariff resolver was recovered for the historical 8-station/33-PDC estate. No site-price extrapolation.",
+      "since": "2026-10-01",
+      "lastChecked": "2026-10-01",
+      "audit": "docs/france-regional-cpo-properphi-batch512-2026-10-01.json"
     }
   ],
   "activeNominative": [
@@ -507,7 +514,6 @@
     "RELEASED_ACTIVE_SLOT_147 | alias Greenspot | FR*GSP | raw rank50",
     "UNPROVEN_ACTIVE_RAW_SLOT_RELEASED_BY_EMOTUM_ALIAS",
     "RELEASED_ACTIVE_SLOT_154 | alias Sorégies / SOREGIES MOBILITES (Alterna énergie supplier/branding lineage; FRSRG EVSE)",
-    "UNPROVEN_ACTIVE_155",
     "RELEASED_ACTIVE_SLOT_156 | alias PARERA MOBILITE | FR*MW1 raw99 (same operator authority; separate technical estate FR*VIS)",
     "UNPROVEN_ACTIVE_157",
     "RELEASED_ACTIVE_SLOT_158 | alias Jerecharge.com | FR*JRC | raw rank158",
@@ -886,7 +892,8 @@
     "NVH | raw rank152": "batch508 setAside: first-party NVH site exposes installation/IRVE services, not a current public numeric charging tariff; producer dataset stale Dec 2024 and current estate diverges from historical 35/35 footprint.",
     "SOLVEO ENERGIES | raw rank153": "batch509 setAside: project-specific producer IRVE datasets and no current first-party network tariff surface; current exact station/EVSE direct tariff resolver not recovered.",
     "ANYOS | FR*PAN | raw rank148": "batch510 closure: Monta public CPO pricing export has 67/67 current FR*PAN EVSE priced across 12 sites / 12 tariff IDs, but it is explicitly an eMSP-facing CPO price surface. Exhaustive public driver deeplink test checked all 67: 67 Private charge point, 0 public direct, 0 errors. Keep setAside; never use Monta roaming export as ANYOS direct price.",
-    "Alterna Énergie | raw rank154": "batch511 lineage resolved: 6-station/34-PDC historical Alterna estate uses FRSRG EVSE identifiers and current hub identities overlap Sorégies Mobilités. Groupe Sorégies first-party sources distinguish Alterna energy supply from Sorégies charging-network operation. Raw154 is a non-counting treated-authority lineage alias; exact EVSE tariff remains governed by Sorégies method/rules, not Alterna retail energy offers."
+    "Alterna Énergie | raw rank154": "batch511 lineage resolved: 6-station/34-PDC historical Alterna estate uses FRSRG EVSE identifiers and current hub identities overlap Sorégies Mobilités. Groupe Sorégies first-party sources distinguish Alterna energy supply from Sorégies charging-network operation. Raw154 is a non-counting treated-authority lineage alias; exact EVSE tariff remains governed by Sorégies method/rules, not Alterna retail energy offers.",
+    "Properphi | raw rank155": "batch512 setAside: ProperPhi first-party CGU says recharge tariffs are decided by the customer/site operator; supervision supports QR/app, roaming and bank-card payment. Pricing is site-configurable and heterogeneous; no anonymous deterministic station/EVSE -> current direct tariff resolver recovered."
   },
   "history": [
     {
@@ -1585,9 +1592,19 @@
         "setAsideCpos": 46,
         "activeRemainingCpos": 149
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch512",
+      "change": "Moved Properphi raw155 active->setAside. First-party supervision/CGU proves customer/site-defined configurable tariffs with multiple billing modes; no deterministic anonymous station/EVSE current direct-tariff resolver recovered.",
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 47,
+        "activeRemainingCpos": 148
+      }
     }
   ],
-  "currentInvestigation": "Properphi | raw rank155 | 8 stations / 33 PDC: inspect first-party operator/payment model and direct tariff determinism.",
+  "currentInvestigation": "RECHARGE ACTIVE SOLUTIONS | raw rank163 | 21 stations / 21 PDC: inspect first-party operator/payment/tariff model and deterministic direct pricing.",
   "coherenceControl": {
     "batch": "batch491",
     "result": "PASS",
@@ -1602,11 +1619,11 @@
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch511",
-    "result": "PASS_ALTERNA_SOREGIES_LINEAGE",
-    "counterChange": false
+    "batch": "batch512",
+    "result": "PASS_PROPERPHI_FAIL_CLOSED",
+    "counterChange": true
   },
-  "latestBatch": "batch511",
+  "latestBatch": "batch512",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2424,6 +2441,14 @@
       "category": "treated-authority-alias",
       "decision": "materialized as non-counting Groupe Sorégies charging-estate lineage: all historical Alterna estate PDC use FRSRG identifiers and current hubs overlap Sorégies Mobilités estate; first-party group sources identify Sorégies as charging-network operator and Alterna as energy supplier. No new treated increment and no blind tariff inheritance.",
       "evidence": "docs/france-cpo-dual-ledger-lineage-batch511-2026-10-01.json"
+    },
+    {
+      "rawRank": 155,
+      "historicalOperator": "Properphi",
+      "authority": "ProperPhi",
+      "category": "setAside-authority",
+      "decision": "active->setAside: first-party supervision confirms customer/site-defined configurable tariffs and multiple payment modes; no deterministic anonymous current station/EVSE direct-tariff resolver recovered",
+      "evidence": "docs/france-regional-cpo-properphi-batch512-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
