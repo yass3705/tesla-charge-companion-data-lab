@@ -1,0 +1,40 @@
+name: Debug CUSTOMGYEVSE national profiles
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/debug_customgyevse_national_profiles.mjs"
+      - ".github/workflows/electroverse-customgyevse-national-debug.yml"
+permissions:
+  contents: write
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Inspect national profiles
+        run: node scripts/debug_customgyevse_national_profiles.mjs
+      - name: Persist sample
+        run: |
+          test -s reports/electroverse/customgyevse-national-sample.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/customgyevse-national-sample.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data: persist CUSTOMGYEVSE national profile sample"
+            for attempt in 1 2 3 4 5; do
+              git pull --rebase origin main || true
+              git push && break
+              sleep $((attempt*2))
+            done
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: electroverse-customgyevse-national-sample
+          path: reports/electroverse/customgyevse-national-sample.json
+          retention-days: 14
