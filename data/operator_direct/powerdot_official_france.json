@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.1.0",
   "dataset": "powerdot-official-france",
-  "generatedAt": "2026-08-19T21:41:00.742527Z",
+  "generatedAt": "2026-10-01T16:37:45.953993Z",
   "operator": "Powerdot",
   "country": "FR",
   "classification": {
@@ -18,7 +18,7 @@
     },
     "ownConsumerApp": {
       "status": "not_identified_on_current_powerdot_official_user_faq",
-      "note": "Current Powerdot FAQ directs drivers to QR payment or third-party mobility apps/badges."
+      "note": "Current Powerdot driver page states that ad-hoc QR payment is available and that the network is connected to 300+ mobility platforms."
     }
   },
   "mobilityProviders": {
@@ -37,7 +37,9 @@
       "operatorDirect": false,
       "monthlyFeeEur": 1.99,
       "franceDiscountPercent": 28.0,
-      "temporaryAugust2026CreditEur": 10.0,
+      "temporaryAugust2026CreditEur": null,
+      "historicalAugust2026CreditEur": 10.0,
+      "historicalPromotionStatus": "expired",
       "exactResultingEurPerKwh": null,
       "note": "Discount applies to the Electroverse price and must not be converted into a Powerdot CPO-direct national tariff."
     }
@@ -45,14 +47,13 @@
   "specialPrograms": {
     "leasingSocial": {
       "classification": "eligibility_limited_special_program",
-      "operatorDirect": true,
-      "eurPerKwh": 0.29,
-      "freeSubscriptionMonths": 3,
-      "monthlyFeeAfterFreePeriodEur": 9.99,
-      "commitment": "sans engagement",
       "generalPublicTariff": false,
-      "status": "published_on_current_official_leasing_social_page",
-      "note": "The same page still describes an older launch discount until July; only the current 0.29 EUR/kWh subscription terms are stored as the active published programme terms."
+      "status": "not_revalidated_on_current_powerdot_site",
+      "eurPerKwh": null,
+      "freeSubscriptionMonths": null,
+      "monthlyFeeAfterFreePeriodEur": null,
+      "commitment": null,
+      "note": "The former France Leasing Social page is no longer a current reachable first-party source, so historical programme terms are not promoted as current."
     }
   },
   "fees": {
@@ -65,17 +66,11 @@
       "note": "Parking rules are not modeled as a Powerdot-wide fee."
     },
     "paymentPreauthorization": {
-      "possibleAmountsEur": [
-        15.0,
-        25.0,
-        35.0
-      ],
-      "purpose": "payment method / sufficient-credit verification",
-      "unusedBalanceRefunded": true,
-      "statedRefundDelayDays": {
-        "min": 5,
-        "max": 10
-      }
+      "possibleAmountsEur": [],
+      "status": "not_revalidated_on_current_powerdot_site",
+      "purpose": null,
+      "unusedBalanceRefunded": null,
+      "statedRefundDelayDays": null
     }
   },
   "inventory": {
@@ -114,22 +109,18 @@
   },
   "sourceEvidence": {
     "cpoFactsFromPowerdotOfficial": true,
+    "currentCpoEvidenceScope": "QR payment, mobility-platform access, and static technical inventory; no national direct kWh tariff asserted",
     "emspFactsFromElectroverseOfficial": true,
     "technicalInventoryPublishedByPowerDotFranceOnDataGouv": true,
     "sources": [
       {
         "key": "faq",
-        "url": "https://www.powerdot.eu/fr/vos-questions",
+        "url": "https://www.powerdot.eu/faq",
         "httpStatus": 200
       },
       {
-        "key": "home",
-        "url": "https://www.powerdot.eu/fr",
-        "httpStatus": 200
-      },
-      {
-        "key": "leasingSocial",
-        "url": "https://www.powerdot.eu/fr/leasing-social",
+        "key": "driver",
+        "url": "https://www.powerdot.eu/why-charge-with-us",
         "httpStatus": 200
       },
       {
@@ -148,14 +139,14 @@
         "httpStatus": 200
       }
     ],
-    "relevantTariffFingerprintSha256": "33798b13248c1e5ee218a7f86701883d9299b0328847f5c990c843b59980a90d"
+    "relevantTariffFingerprintSha256": "a59d71a21b4d072daa76eafe949775d7dbefc6dd52aaf42ce0c70538705d64be"
   },
   "publicationStatus": "candidate_validated_source",
   "notes": [
     "Do not invent a national Powerdot direct kWh price: the current official FAQ requires exact connector lookup.",
     "Electroverse subscription is an eMSP/member layer and must remain separate from Powerdot direct/ad-hoc pricing.",
-    "Leasing Social 0.29 EUR/kWh is eligibility-limited and must not be shown as the default public tariff.",
-    "Powerdot currently states payment preauthorizations of 15, 25 or 35 EUR depending on the transaction flow.",
+    "Former Leasing Social terms are retained only as a non-current programme reference until a current first-party source reappears.",
+    "Former payment-preauthorization amounts are not carried forward as current without current first-party evidence.",
     "The Power Dot France publisher IRVE file is useful for static IDs/locations but is stale and must not be treated as live availability."
   ]
 }
