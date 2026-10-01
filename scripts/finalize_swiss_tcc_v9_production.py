@@ -51,7 +51,7 @@ expected_blocked={
 }
 blocked=[]
 # Some canonical dossiers are owner-scoped (not EVSE-prefix scoped), notably IWB.
-owner_scoped={"CH*IWB","CH*ECU"}
+owner_scoped={"CH*IWB","CH*ECU","CH*PAR"}
 for op,exp in expected_blocked.items():
     src=by_owner if op in owner_scoped else by_scope
     got={k:src[op].get(k,0) for k in ("resolved","no_public_direct_tariff","unresolved")}
