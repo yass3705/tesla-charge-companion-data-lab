@@ -1,0 +1,28 @@
+name: Audit Electroverse FR PD1 Powerdot technical groups
+on:
+  push:
+    branches:
+      - audit/electroverse-pd1-powerdot-power-groups
+    paths:
+      - "scripts/audit_electroverse_pd1_powerdot_technical_groups.mjs"
+      - ".github/workflows/electroverse-pd1-powerdot-technical-groups.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Audit PD1 technical groups
+        run: node scripts/audit_electroverse_pd1_powerdot_technical_groups.mjs
+      - name: Persist report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse-fr-pd1-powerdot-technical-group-audit.json
+          git commit -m "audit: publish PD1 Powerdot technical-group audit" || exit 0
+          git push
