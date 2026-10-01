@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": "batch177",
+  "date": "2026-09-10",
+  "mode": "major-process-coherence-correction",
+  "purpose": "Resolve the batch176 12-vs-15 historical-treated-slot question from the canonical commit lineage before any further counter mutation or broad tariff audit.",
+  "canonicalObserved": {
+    "schemaVersion": 64,
+    "latestBatch": "batch170",
+    "treatedCpos": 77,
+    "setAsideCpos": 12,
+    "activeRemainingCpos": 202,
+    "pendingDedupe": 0,
+    "historicalUnresolvedTreatedSlots": 15
+  },
+  "historicalSlotDecision": {
+    "status": "RESOLVED",
+    "currentCorrectPlaceholderCount": 15,
+    "formerPreReclassificationPlaceholderCount": 12,
+    "decision": "Do not delete three historical placeholders. The 15-slot state is the proven post-reclassification state.",
+    "proof": [
+      {
+        "audit": "docs/france-regional-cpo-recheck-2026-09-06-batch44.json",
+        "fact": "Batch44 explicitly restored treatedCpos=71 and expanded unresolved historical treated slots from 12 to 15 after proving that WAAT FR*WA2, Road FR*EFL and ChargePoint Austria FR*CG0 had been incorrectly used as historical treated names."
+      },
+      {
+        "commit": "5b3103bfae4d4dc1b3e626eae44a7d85a051bd38",
+        "fact": "WAAT FR*WA2 and Road FR*EFL moved from active to setAside while treatedCpos stayed unchanged; they were not proven treated entries."
+      },
+      {
+        "commit": "5736d09c03c442ef8a015e8327f816867cdd0df1",
+        "fact": "ChargePoint Austria FR*CG0 moved to setAside without a treated-counter decrement; it was likewise not a proven historical treated entry."
+      },
+      {
+        "audit": "docs/france-regional-cpo-recheck-2026-09-08-batch123.json",
+        "fact": "Batch123 independently restates that Road/E-Flux, ChargePoint Austria and WAAT account for the expansion from 12 to 15 unnamed historical treated slots and must remain setAside rather than naming historical treated slots."
+      }
+    ],
+    "supersedesBatch176Concern": "The batch176 statement that 15 physical placeholders versus 12 operationally expected placeholders required finding three later nominative replacements is superseded. The 12 value is the older pre-reclassification state; 15 is the safe current state."
+  },
+  "lidlDecision": {
+    "status": "PROVEN_BUT_CANONICAL_MUTATION_STILL_REQUIRED",
+    "releasedLabel": "LIDL France",
+    "canonicalLabel": "Lidl France",
+    "partyId": "FR*LDL",
+    "partyRegistryStationsObserved": 1405,
+    "targetActiveSlot": "UNPROVEN_ACTIVE_RAW_SLOT_RELEASED_BY_LIDL_CASE_ALIAS",
+    "targetCountersAfterCollapse": {
+      "treatedCpos": 76,
+      "setAsideCpos": 12,
+      "activeRemainingCpos": 203,
+      "totalCpos": 291
+    },
+    "safeTooling": "scripts/france_cpo_sync_canonical.py --collapse-treated-alias is available and validates the -1 treated/+1 active invariant."
+  },
+  "resolvedAuthoritiesRechecked": [
+    {"partyId":"FR*S56","decision":"still indeterminate","reason":"resolved authority but historical anonymous-slot membership cannot be excluded"},
+    {"partyId":"FR*S50","decision":"still indeterminate","reason":"resolved authority but historical anonymous-slot membership cannot be excluded"},
+    {"partyId":"FR*S52","decision":"still indeterminate","reason":"resolved authority but historical anonymous-slot membership cannot be excluded"},
+    {"partyId":"FR*S53","decision":"still indeterminate","reason":"resolved authority but historical anonymous-slot membership cannot be excluded"},
+    {"partyId":"FR*S61","decision":"still indeterminate","reason":"resolved authority but historical anonymous-slot membership cannot be excluded"}
+  ],
+  "pendingDedupeTouched": [],
+  "pendingDedupeDecisions": [],
+  "treatedPromoted": [],
+  "newlySetAside": [],
+  "aliasesResolvedSincePreviousPoint": [],
+  "yes55": {
+    "reopened": false,
+    "reason": "No genuinely new producer-side numeric FR*Y55 evidence appeared; previous Load Motion/QR/AFIR/QualiCharge paths were not replayed."
+  },
+  "coherence": {
+    "physicalArithmetic": "PASS: 77 + 12 + 202 = 291",
+    "targetAfterProvenLidlCollapse": "PASS: 76 + 12 + 203 = 291",
+    "historicalPlaceholderCount": 15,
+    "historicalPlaceholderCountProvenCurrent": true,
+    "pendingDedupeCount": 0,
+    "categoryOverlapDetected": false,
+    "result": "PASS_SLOT_PROVENANCE_RESOLVED_CANONICAL_LIDL_SYNC_REQUIRED_BATCH177"
+  },
+  "currentInvestigation": "Apply the already-proven Lidl/LIDL treated alias collapse losslessly to the physical canonical, then synchronize outstanding deterministic alias decisions from batches171-175 and resume raw-ledger nominative replay on new candidates.",
+  "blockedOn": "The GitHub contents writer replaces the complete canonical file; direct partial patch is unavailable in this runtime. Do not perform an incomplete 34kB reconstruction. Use the guarded helper in a repository execution context or a complete-content update only.",
+  "next": "Keep 15 historical treated placeholders. Do not reopen YES55/e-Totem/Ubitricity or other parked cases without genuinely new evidence. Canonical category mutation should be only the proven Lidl collapse: 77/12/202 -> 76/12/203."
+}
