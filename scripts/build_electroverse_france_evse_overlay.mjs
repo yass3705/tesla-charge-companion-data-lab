@@ -201,6 +201,8 @@ const stats={
   drvHomogeneousGroupCandidateEvses:0,drvHomogeneousGroupPublishedEvses:0,
   sigHomogeneousGroupCandidateEvses:0,sigHomogeneousGroupPublishedEvses:0,
   qovHomogeneousGroupCandidateEvses:0,qovHomogeneousGroupPublishedEvses:0,
+  genericHomogeneousGroupCandidateEvses:0,genericHomogeneousGroupPublishedEvses:0,
+  genericHomogeneousGroupByOperator:{},
   durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
@@ -983,9 +985,110 @@ for(const sh of manifest.shards||[]){
       }
     }
 
+    // Generic homogeneous exact-set fallback for all remaining single-operator families.
+    // This is intentionally later than every operator-specific rule. It only applies to the
+    // still-unresolved source set when ALL remaining national PDCs at the mapped location:
+    // 1) belong to one recognized operator family, 2) have identical cardinality to source,
+    // 3) are globally unique, and 4) all source EVSEs have identical pricing and connector count.
+    const genericExactSetTargets=new Map();
+    const genericGroupedSourceEvses=new Set();
+    {
+      const claimed=new Set();
+      const unresolved=[];
+      for(const e0 of row.tariff?.evses||[]){
+        const pr0=text(e0?.physicalReference);if(!pr0)continue;
+        const k0=norm(pr0);
+        if(local.has(k0)){claimed.add(k0);continue;}
+        const p0=[...local].filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\d{1,2}$/.test(k0.slice(p.length)));
+        if(p0.length===1){claimed.add(p0[0]);continue;}
+        if(ordinalTargets.has(e0)){claimed.add(ordinalTargets.get(e0));continue;}
+        if(genericTargets.has(e0)){claimed.add(genericTargets.get(e0));continue;}
+        if(suffixTargets.has(e0)){claimed.add(suffixTargets.get(e0));continue;}
+        if(trimmedSuffixTargets.has(e0)){claimed.add(trimmedSuffixTargets.get(e0));continue;}
+        if(pd1FinalOrdinalTargets.has(e0)){claimed.add(pd1FinalOrdinalTargets.get(e0));continue;}
+        if(viaFinalOrdinalTargets.has(e0)){claimed.add(viaFinalOrdinalTargets.get(e0));continue;}
+        if(izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0)||c55GroupedSourceEvses.has(e0)||hpcGroupedSourceEvses.has(e0)||operatorGroupedSourceEvses.has(e0))continue;
+        unresolved.push(e0);
+      }
+      const unclaimed=[...local].filter(p=>!claimed.has(p));
+      const opCode=p=>{
+        const m=String(p||'').match(/^FR([A-Z0-9]{1,6})E/);
+        return m?m[1]:null;
+      };
+      const opSet=new Set(unclaimed.map(opCode).filter(Boolean));
+      const recognizedSingleOperator=unclaimed.length>0 && opSet.size===1 && unclaimed.every(p=>opCode(p));
+      if(recognizedSingleOperator && unresolved.length===unclaimed.length &&
+         unclaimed.every(p=>(globalPdcOwners.get(p)?.size||0)===1)){
+        const compiledRows=[];
+        let valid=true;
+        for(const e0 of unresolved){
+          const connectors=e0?.connectors||[];
+          if(!connectors.length){valid=false;break;}
+          const compiled=[];
+          for(const c0 of connectors){
+            const x=compileConnector(c0);if(!x.ok){valid=false;break;}
+            compiled.push({pricing:x.pricing,connectorPk:c0.pk??null});
+          }
+          if(!valid)break;
+          const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
+          if(unique.length!==1){valid=false;break;}
+          compiledRows.push({e:e0,pricing:unique[0],connectorCount:connectors.length});
+        }
+        if(valid&&compiledRows.length===unresolved.length&&compiledRows.length){
+          const pricingSigs=new Set(compiledRows.map(x=>pricingSig(x.pricing)));
+          const connectorCounts=new Set(compiledRows.map(x=>x.connectorCount));
+          if(pricingSigs.size===1&&connectorCounts.size===1){
+            const operator=[...opSet][0];
+            const sharedPricing=compiledRows[0].pricing;
+            const connectorCount=compiledRows[0].connectorCount;
+            for(const p of unclaimed)genericExactSetTargets.set(p,{operator,pricing:sharedPricing,connectorCount,sourceEvses:unresolved});
+            for(const e0 of unresolved)genericGroupedSourceEvses.add(e0);
+          }
+        }
+      }
+    }
+
+    if(genericExactSetTargets.size){
+      for(const [targetNorm,g] of genericExactSetTargets.entries()){
+        const targetPdc=localByNorm.get(targetNorm);
+        const currency=g.pricing.rules?.[0]?.currency||'EUR';
+        const offer={
+          id:`electroverse-evse-generic-group:${row.electroverseLocationPk}:${targetNorm}`,
+          provider:'Electroverse',
+          countries:['FR'],
+          currency,
+          priority:80,
+          verifiedScope:'exact_evse_group',
+          evseIds:[targetPdc],
+          pricing:g.pricing,
+          metadata:{
+            verified:true,
+            identityMode:'strict_generic_single_operator_homogeneous_exact_set',
+            electroverseLocationPk:String(row.electroverseLocationPk),
+            electroverseEvsePks:g.sourceEvses.map(e=>e.pk??null),
+            physicalReferences:g.sourceEvses.map(e=>text(e?.physicalReference)),
+            connectorCount:g.connectorCount,
+            sourceGroupSize:g.sourceEvses.length,
+            targetGroupSize:g.sourceEvses.length,
+            operator:g.operator,
+            tariffHash:row.tariffHash||null,
+            fetchedAt:row.fetchedAt||null,
+            source:'Electroverse tariff cache'
+          }
+        };
+        const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
+        tiles.get(id).push(offer);
+        stats.genericHomogeneousGroupCandidateEvses++;
+        stats.genericHomogeneousGroupPublishedEvses++;
+        stats.genericHomogeneousGroupByOperator[g.operator]=(stats.genericHomogeneousGroupByOperator[g.operator]||0)+1;
+        stats.pricedExactEvses++;
+        stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=g.connectorCount;
+      }
+    }
+
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
-      if(izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e)||hpcGroupedSourceEvses.has(e)||operatorGroupedSourceEvses.has(e))continue;
+      if(izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e)||hpcGroupedSourceEvses.has(e)||operatorGroupedSourceEvses.has(e)||genericGroupedSourceEvses.has(e))continue;
       const pr=text(e?.physicalReference);
       if(!pr){rej('evse_missing_physical_reference');continue;}
       stats.physicalRefs++;
@@ -1280,6 +1383,12 @@ stats.hpcOrdinalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMo
 stats.drvHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_drv_homogeneous_exact_set').length;
 stats.sigHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_sig_homogeneous_exact_set').length;
 stats.qovHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_qov_homogeneous_exact_set').length;
+stats.genericHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_generic_single_operator_homogeneous_exact_set').length;
+stats.genericHomogeneousGroupByOperator={};
+for(const o of finalOffers.filter(o=>o.metadata?.identityMode==='strict_generic_single_operator_homogeneous_exact_set')){
+  const op=String(o.metadata?.operator||'UNKNOWN');
+  stats.genericHomogeneousGroupByOperator[op]=(stats.genericHomogeneousGroupByOperator[op]||0)+1;
+}
 stats.trimmedSuffixPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_trimmed_long_suffix_identity').length;
 stats.durationBandPublishedEvses=finalOffers.filter(o=>(o.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)).length;
 
@@ -1342,6 +1451,12 @@ const out={
     operatorExactSetRequiresHomogeneousPricing:true,
     operatorExactSetRequiresUniformConnectorCount:true,
     operatorExactSetRequiresGlobalPdcUniqueness:true,
+    strictGenericSingleOperatorHomogeneousExactSet:true,
+    genericExactSetRequiresRecognizedSingleOperator:true,
+    genericExactSetRequiresEqualCardinality:true,
+    genericExactSetRequiresHomogeneousPricing:true,
+    genericExactSetRequiresUniformConnectorCount:true,
+    genericExactSetRequiresGlobalPdcUniqueness:true,
     suffixIdentityRequiresGlobalUniqueness:true,
     suffixIdentityRequiresUnclaimedTarget:true,
     strictTrimmedLongSuffixIdentityMinLength:7,
