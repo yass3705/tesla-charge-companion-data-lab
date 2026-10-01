@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 192,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-191.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "MEGA Gruene Energien GmbH & Co. KG / Monheim am Rhein public charging",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "backend": "m8mit / Kraftwerk Software Systems public guest checkout",
+      "decision": "remain partial; bounded after exhaustive current operator-owned EVSE traversal",
+      "inventory": {
+        "publicGuestInventoryPages": 8,
+        "operatorOwnedEvse": 67,
+        "guestTariffResolved": 61,
+        "guestTariffMissing": 6,
+        "coveragePct": 91.04
+      },
+      "resolvedAnonymousAdHoc": {
+        "energyEurPerKwh": 0.52,
+        "directPayFeeEur": 0.58,
+        "blockingEurPerMinute": 0.1,
+        "blockingStartsAfterHours": 4,
+        "blockingMaxEur": 12,
+        "vatIncluded": true,
+        "connectorClasses": [
+          "Type 2 AC 11 kW",
+          "Type 2 AC 22 kW"
+        ],
+        "payment": [
+          "Visa",
+          "Mastercard",
+          "mobile billing where offered"
+        ]
+      },
+      "exactResidualEvse": [
+        "DE*003*ETE200004687*01",
+        "DE*003*ETE200004687*02",
+        "DE*003*ETE200004688*01",
+        "DE*003*ETE200004688*02",
+        "DE*003*ETE200004689*01",
+        "DE*003*ETE200004689*02"
+      ],
+      "residualReason": "Current first-party m8mit guest pages identify MEGA as operator but return 'Es wurde kein gültiger Tarif gefunden.' and status Nicht verfügbar for all six Kurt-Schumacher-Straße 2 EVSE. No tariff is inferred from the other 61 EVSE.",
+      "evidence": [
+        "https://mega.m8mit.de/stationslist?page=1",
+        "https://mega.m8mit.de/stationslist?page=2",
+        "https://mega.m8mit.de/stationslist?page=3",
+        "https://mega.m8mit.de/stationslist?page=4",
+        "https://mega.m8mit.de/stationslist?page=5",
+        "https://mega.m8mit.de/stationslist?page=6",
+        "https://mega.m8mit.de/stationslist?page=7",
+        "https://mega.m8mit.de/stationslist?page=8",
+        "https://mega.m8mit.de/station/mega/DE*003*ETE200004687*01"
+      ],
+      "channelSeparation": "Only anonymous_ad_hoc guest checkout is resolved. MEGA RFID/registered tariff, contract and roaming remain separate and are not used for this decision.",
+      "resumeCondition": "Reopen only when the six residual EVSE expose a valid guest tariff again, disappear from the current MEGA operator inventory, or a current first-party deterministic rule explicitly closes them."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "parked after two distinct evidence-led passes; not reopened",
+    "names": [
+      "solid GmbH / LadeVerbundPlus",
+      "NEW AG / NEW Energie",
+      "RhönEnergie Fulda GmbH",
+      "amperio GmbH",
+      "50five"
+    ]
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS",
+    "reAuditGuard": "PASS"
+  },
+  "nextSafeAction": "Move away from MEGA per anti-stagnation. Continue chargecloud -> Mobilithek/AFIR/DATEX II batch candidates, then another m8mit partial with a closable current denominator."
+}
