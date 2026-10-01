@@ -138,28 +138,6 @@ await fs.writeFile(
   },null,2)+'\n'
 );
 
-const validatedGroups=groups.filter(g=>g.mode==='homogeneous_exact_set').map(g=>({
-  electroverseLocationPk:g.electroverseLocationPk,
-  irveStationId:g.irveStationId,
-  electroverseEvsePks:g.refs.map(x=>x.evsePk),
-  availablePdcCount:g.availablePdcCount,
-  residualCount:g.residualCount,
-  evidence:{mode:'homogeneous_exact_set',homogeneousPricing:g.homogeneousPricing,uniformConnectorCount:g.uniformConnectorCount}
-}));
-await fs.mkdir('data/platforms/electroverse/validated-mappings',{recursive:true});
-await fs.writeFile(
-  'data/platforms/electroverse/validated-mappings/zero-homogeneous-exact-set.json',
-  JSON.stringify({
-    schemaVersion:1,
-    generatedAt:new Date().toISOString(),
-    dataset:'electroverse-france-zero-homogeneous-exact-set',
-    count:validatedGroups.reduce((n,g)=>n+g.residualCount,0),
-    groupCount:validatedGroups.length,
-    policy:'Only homogeneous exact-set groups with source residual count exactly equal to available national PDC count; no proximity inference.',
-    groups:validatedGroups
-  },null,2)+'\n'
-);
-
 const out={
  schemaVersion:1,generatedAt:new Date().toISOString(),
  residualSourceEvses:residual,affectedLocations:locations,byMode,
