@@ -73,9 +73,24 @@ for(const sh of cman.shards||[]){
       electroverseLocationPk:String(row.electroverseLocationPk),
       irveStationId:m?.irveStationId??row.irveStationId??null,
       numericResidualCount:numeric.length,
-      ordinals:numeric.map(e=>({evsePk:e.pk,physicalReference:String(e.physicalReference),n:Number(e.physicalReference),connectorCount:(e.connectors||[]).length})),
+      ordinals:numeric.map(e=>({
+        evsePk:e.pk,
+        physicalReference:String(e.physicalReference),
+        n:Number(e.physicalReference),
+        connectorCount:(e.connectors||[]).length,
+        connectors:(e.connectors||[]).map(c=>({
+          pk:c.pk??null,
+          kilowatts:c.kilowatts??null,
+          standard:c?.standard?.name??c?.standard??null,
+          isChargingFree:c?.isChargingFree??null,
+          priceComponents:c?.priceComponents??null,
+          complexPricingDetail:c?.complexPricingDetail??null
+        }))
+      })),
       localPdcCount:local.length,
       availablePdcCount:available.length,
+      localPdcSample:local.slice(0,40),
+      availablePdcSample:available.slice(0,40),
       duplicateSourceOrdinals,
       exactCandidateCount:exactCandidates.length,
       exactCandidates:exactCandidates.slice(0,3)
