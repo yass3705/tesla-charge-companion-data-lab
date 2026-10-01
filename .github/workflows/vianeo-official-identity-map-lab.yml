@@ -1,0 +1,28 @@
+name: Build Vianeo official identity map lab
+on:
+  push:
+    branches:
+      - electroverse-via-official-direct-lab
+    paths:
+      - "scripts/build_vianeo_official_identity_map.mjs"
+      - ".github/workflows/vianeo-official-identity-map-lab.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Extract Vianeo identity map and audit residual
+        run: node --max-old-space-size=4096 scripts/build_vianeo_official_identity_map.mjs
+      - name: Persist compact map and report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/vianeo_official_identity_map.json reports/electroverse-fr-via-official-identity-audit.json
+          git commit -m "lab: publish Vianeo official identity map" || exit 0
+          git push
