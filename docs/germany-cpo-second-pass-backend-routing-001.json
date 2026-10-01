@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-backend-routing",
+  "date": "2026-09-17",
+  "purpose": "Switch second-pass work from repeated unit investigations to reusable backend/source-family resolution queues. Only evidenced backend relationships are persisted; unknown relationships remain unassigned.",
+  "canonicalStatusAtStart": {"totalNamedCpos":591,"complete":202,"partial":389,"blocked":0},
+  "queues": [
+    {
+      "family":"chargecloud_plus_Mobilithek_AFIR",
+      "confirmedCpos":["Allgaeuer Kraftwerke GmbH"],
+      "evidence":"Targeted audits 003-005 recovered exact DE*738 EVSE identities and station-level price/fee records through chargecloud/Mobilithek-derived surfaces; first-party AUEW supplies the binding tariff-class matrix.",
+      "resolutionMode":"Reconcile exact EVSE identity -> site -> tariff zone/power class -> complete fee components. Do not infer class from nominal power alone because Johann-Althaus-Strasse demonstrates a mixed-power exception.",
+      "next":"Reconcile the residual six canonical Allgaeuer charge points against the expanded DE*738 matrix before any further broad discovery."
+    },
+    {
+      "family":"ChargePoint_plus_Mobilithek_EcoMovement",
+      "confirmedCpos":["GEW Wilhelmshaven GmbH"],
+      "evidence":"GEW first-party identifies ChargePoint as operating partner and direct contactless card payment. Current Mobilithek/Eco-Movement-derived station records expose per-EVSE ad-hoc values and fee fields.",
+      "resolutionMode":"Map only GEW official locations/EVSEs; normalize source-net 0.44 EUR/kWh plus 19% VAT to the binding gross checkout representation only when semantics are explicit; verify start/blocking fields per official site.",
+      "next":"Finish Marktstrasse/Bahnhofstrasse and Valoisplatz fee/mapping confirmation; do not generalize unrelated ChargePoint sites."
+    },
+    {
+      "family":"charge_it_easy_ChargeIT_LichtBlick",
+      "confirmedCpos":["Stadtwerke Greifswald GmbH","Stadtwerke Einbeck GmbH","Stadtwerke Bad Kissingen GmbH","FAMILA public charging network"],
+      "evidence":"Greifswald first-party explicitly identifies charge it easy / Charge-IT as direct spontaneous charging without registration, paid by credit card, and says conditions are shown after selecting the charge point. Current Einbeck municipal/tourism pages document the same app and anonymous credit-card flow. Current Bad Kissingen first-party page documents charge it easy without prior registration and credit-card payment, while warning its numeric tariff sheet is still dated 2021 and Parkhaus Zentrum is temporarily unavailable. Current FAMILA station evidence identifies chargeIT mobility / charge it easy and station-level AC/DC direct values; FAMILA remains an identity/coverage reconciliation case, so those values are not generalized. The current app publisher is LichtBlick eMobility GmbH and the app still selects charge points by map/list/short-code and exposes stored authentication options.",
+      "resolutionMode":"Treat the app/backend as a shared dynamic-price family. Identify a public/guest/read-only direct-payment or app data surface once, validate on at least two independently proven operators, then expand only to additional CPOs whose Charge-IT/LichtBlick relationship is independently proven. Preserve station-level pricing and operator ownership.",
+      "probeStatus":"Public web search confirms current app ownership and direct-price display semantics but did not expose a stable documented public tariff API in this pass. Do not guess private endpoints from the mobile app.",
+      "next":"Inspect public Online-Direktbezahlung links, app-linked public APIs/bundles and QR URL shapes. If no guest tariff endpoint is exposed after two distinct evidence-led probes, park backend extraction and use Mobilithek/AFIR per-EVSE records for this family."
+    },
+    {
+      "family":"ladenetz_ladeapp",
+      "confirmedCpos":["Stadtwerke Erft"],
+      "evidence":"Current first-party AGB states that spontaneous customers use ladenetz.de ladeapp and that each session has a base fee plus consumption-dependent charge, with current prices displayed in ladeapp before charging.",
+      "resolutionMode":"Resolve the live anonymous/ad-hoc base + energy price from the public/guest ladeapp/QR surface; keep the separate RFID/card tariff out of the anonymous layer.",
+      "next":"Capture current ladeapp/QR tariff for representative SWErft EVSEs, then test whether the same endpoint can cover the full 27-column cooperation estate deterministically."
+    },
+    {
+      "family":"becharged_native_backend",
+      "confirmedCpos":["becharged GmbH"],
+      "evidence":"First-party becharged documents its own cloud/OCPP backend and Charge & Share public QR/PayPal charging product.",
+      "resolutionMode":"Because customer/site pricing is configurable, seek a public per-charge-point QR/checkout price surface; never create a network-wide becharged tariff.",
+      "next":"Identify public Charge & Share QR URL shape and test read-only tariff retrieval on a known public charge point."
+    },
+    {
+      "family":"smopi_native_backend",
+      "confirmedCpos":["smopi – Multi Chargepoint Solution GmbH"],
+      "evidence":"First-party smopi documentation exposes its own OCPP backend relationship and confirms CPO/backend operation; classification already established charge-point-specific pricing.",
+      "resolutionMode":"Search only for public/guest direct-payment tariff surfaces. OCPP broker configuration is infrastructure evidence, not authorization to access private backend functions.",
+      "next":"Identify public payment/QR frontend and determine whether numeric tariff can be retrieved without authentication."
+    },
+    {
+      "family":"Leipzig_custom_adhoc_frontend",
+      "confirmedCpos":["Stadtwerke Leipzig GmbH"],
+      "evidence":"First-party FAQ explicitly directs the non-Hubject QR code to emobility.l.de/e-mobility-frontend/adhoc for anonymous ad-hoc charging.",
+      "resolutionMode":"Query only public frontend/guest resources to bind the 2026 ad-hoc tariff and enumerate post-2024 exceptions; never substitute registered L-Strom.drive 0.54/0.64 pricing.",
+      "next":"Bind post-2024 EVSEs to current ad-hoc 0.65 AC / 0.75 DC evidence and identify any site-specific fee exception before promotion."
+    }
+  ],
+  "sourceReferences": [
+    "docs/germany-cpo-second-pass-targeted-audit-003.json",
+    "docs/germany-cpo-second-pass-targeted-audit-004.json",
+    "docs/germany-cpo-second-pass-targeted-audit-005.json",
+    "docs/germany-cpo-second-pass-targeted-audit-007.json",
+    "https://auew.de/privatkunden/e-mobilitaet/allgaeustrom-stromtankstellen/",
+    "https://www.gew-wilhelmshaven.de/produkte/elektromobilitaet/unterwegs/",
+    "https://www.sw-greifswald.de/ihr-kundenzentrum/mobilitaet",
+    "https://www.einbeck-tourismus.de/poi/e-auto-ladestation-am-psspeicher",
+    "https://stwkiss.de/mobilitaet/e-tankstellen/",
+    "https://www.goingelectric.de/stromtankstellen/Deutschland/Weyhe/famila-Nordost-Ladestrasse-3/64680/",
+    "https://play.google.com/store/apps/details?id=com.chargeitmobility.easy.chargeit",
+    "https://stadtwerke-erft.de/wp-content/uploads/2023/07/AGB-Ladeinfrastruktur-SWErft.pdf",
+    "https://www.becharged.de/pages/funktionen-funktionsweise",
+    "https://smopi.de/information-center/faq/",
+    "https://kundenservice-stadtwerke.l.de/hc/de/articles/360022109880-Wie-starte-ich-einen-Ladevorgang"
+  ],
+  "safetyRules": ["read-only public/guest surfaces only","no authentication bypass","no eMSP/roaming substitution for direct CPO price","no network-wide inference from site-configurable backends","two failed identical attempts without new evidence => park method and move on"],
+  "nextSafeAction":"Continue exact Allgaeuer reconciliation and run one evidence-led public Online-Direktbezahlung/QR probe for the expanded charge-it-easy family. In parallel discover additional independently proven CPO members so a successful method can be applied in bulk."
+}
