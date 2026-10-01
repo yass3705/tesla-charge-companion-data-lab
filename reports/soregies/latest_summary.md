@@ -7,4 +7,4 @@
 - App/card access, bank-card payment in app and Gireve roaming are verified.
 - Power families documented: normal up to 18 kW, accelerated up to 50 kW, rapid 50-200 kW, ultra-rapid above 200 kW.
 - Official technical dataset rows: 807; three real station samples embedded.
-- Fingerprint: `de807c547279df85bf3fa5572f4d3d5a4658bcca22471ba64e4f454e9d75b647`
+- Fingerprint: `fa18893ed7e7794de21e234f0ac4b916ab18a2a0591eb40712a4fb9ffaa6c6e9`
