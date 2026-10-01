@@ -13,6 +13,7 @@ const VALIDATED_NUMERIC_MAP='data/platforms/electroverse/validated-mappings/nume
 const VALIDATED_S82_MAP='data/platforms/electroverse/validated-mappings/s82-residual.json';
 const VALIDATED_MGP_MAP='data/platforms/electroverse/validated-mappings/mgp-residual.json';
 const VALIDATED_LE2_MAP='data/platforms/electroverse/validated-mappings/le2-residual.json';
+const VALIDATED_P01_MAP='data/platforms/electroverse/validated-mappings/p01-structured-residual.json';
 const FINAL_RESIDUAL_PLAN='data/platforms/electroverse/validated-mappings/final-residual-recovery-plan.json';
 const OUT=process.argv[2]||'data/platforms/electroverse/france-evse';
 const TILE=.5;
@@ -205,6 +206,8 @@ const validatedNumericMap=JSON.parse(await fs.readFile(VALIDATED_NUMERIC_MAP,'ut
 const validatedS82Map=JSON.parse(await fs.readFile(VALIDATED_S82_MAP,'utf8'));
 const validatedMgpMap=JSON.parse(await fs.readFile(VALIDATED_MGP_MAP,'utf8'));
 const validatedLe2Map=JSON.parse(await fs.readFile(VALIDATED_LE2_MAP,'utf8'));
+let validatedP01Map={mappings:[]};
+try{validatedP01Map=JSON.parse(await fs.readFile(VALIDATED_P01_MAP,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
 const finalResidualPlan=JSON.parse(await fs.readFile(FINAL_RESIDUAL_PLAN,'utf8'));
 const powerdotByEvse=new Map((powerdotTech.evses||[]).map(x=>[norm(x.evseId),x]));
 const drivecoNative=[...(driveco.resolved||[]),...(driveco.unresolved||[])];
@@ -274,6 +277,12 @@ const validatedLe2ResidualTargets=new Map(
     norm(x.targetPdc)
   ])
 );
+const validatedP01ResidualTargets=new Map(
+  (validatedP01Map.mappings||[]).map(x=>[
+    String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk),
+    norm(x.targetPdc)
+  ])
+);
 const finalResidualIndividualTargets=new Map(
   (finalResidualPlan.individualMappings||[]).map(x=>[
     String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk),
@@ -291,6 +300,7 @@ const validatedResidualTargets=new Map([
   ...validatedS82ResidualTargets,
   ...validatedMgpResidualTargets,
   ...validatedLe2ResidualTargets,
+  ...validatedP01ResidualTargets,
   ...[...finalResidualIndividualTargets].map(([k,v])=>[k,v.target])
 ]);
 const isValidatedResidualSource=(row,e)=>validatedResidualTargets.has(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
@@ -329,6 +339,7 @@ const stats={
   validatedS82ResidualCandidateEvses:0,validatedS82ResidualPublishedEvses:0,
   validatedMgpResidualCandidateEvses:0,validatedMgpResidualPublishedEvses:0,
   validatedLe2ResidualCandidateEvses:0,validatedLe2ResidualPublishedEvses:0,
+  validatedP01ResidualCandidateEvses:0,validatedP01ResidualPublishedEvses:0,
   finalResidualUniqueSuffixCandidateEvses:0,finalResidualUniqueSuffixPublishedEvses:0,
   finalResidualCommonTailCandidateEvses:0,finalResidualCommonTailPublishedEvses:0,
   finalResidualHomogeneousGroupCandidateEvses:0,finalResidualHomogeneousGroupPublishedEvses:0,
@@ -1874,6 +1885,9 @@ for(const sh of manifest.shards||[]){
         }else if(validatedLe2ResidualTargets.has(validatedKey)){
           identityMode='validated_le2_residual_unique_suffix_bijection';
           stats.validatedLe2ResidualCandidateEvses++;
+        }else if(validatedP01ResidualTargets.has(validatedKey)){
+          identityMode='validated_p01_structured_parent_identity';
+          stats.validatedP01ResidualCandidateEvses++;
         }else{
           identityMode='validated_numeric_residual_unique_bijection';
           stats.validatedNumericResidualCandidateEvses++;
@@ -2168,6 +2182,7 @@ for(const sh of manifest.shards||[]){
       if(identityMode==='strict_vianeo_official_source_ref_identity')stats.viaOfficialIdentityPublishedEvses++;
       if(identityMode==='validated_final_residual_unique_suffix_bijection')stats.finalResidualUniqueSuffixPublishedEvses++;
       if(identityMode==='validated_final_residual_common_tail_bijection')stats.finalResidualCommonTailPublishedEvses++;
+      if(identityMode==='validated_p01_structured_parent_identity')stats.validatedP01ResidualPublishedEvses++;
       stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=compiled.length;
     }
   }
