@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": 429,
+  "generatedAt": "2026-09-24T21:55:00Z",
+  "purpose": "Normalize E-Motum historical alias lineage and persist current first-party direct-pricing semantics without extrapolating a national tariff.",
+  "canonicalBefore": {
+    "treated": 83,
+    "setAside": 9,
+    "active": 199,
+    "total": 291,
+    "pendingDedupe": 0
+  },
+  "identity": {
+    "authority": "sas e-motum / E-MOTUM",
+    "rawPrimary": {
+      "rank": 120,
+      "label": "sas e-motum"
+    },
+    "rawAlias": {
+      "rank": 151,
+      "label": "E-Motum",
+      "partyId": "FR*EMO",
+      "counting": false
+    },
+    "existingAliasDecision": "E-Motum | FR*EMO | raw rank151 -> sas e-motum | raw rank120 (identity alias; non-counting)"
+  },
+  "firstPartyEvidence": {
+    "termsUrl": "https://e-motum.net/conditions-generales-de-service/",
+    "termsDate": "2026-06-22",
+    "networkCoverage": "more than 400 AC/DC charging points across Haute-Corse, Corse-du-Sud and Paris",
+    "directPayment": [
+      "bank card / TPE",
+      "E-MOTUM card where applicable"
+    ],
+    "tariffSemantics": "price is specific to each charging point and published on e-motum.net; no national constant",
+    "parisHubUrl": "https://e-motum.net/hub-e-motum-parix-xiv/",
+    "parisHubExample": {
+      "standardEurPerKwh": 0.75,
+      "subscriptionEurPerKwh": 0.49,
+      "subscriptionMonthlyEur": 10,
+      "scope": "Paris XIV 200 kW hub only"
+    }
+  },
+  "accountingDecision": {
+    "promote": false,
+    "status": "active_method_identified_tariff_inventory_not_yet_mass_resolved",
+    "aliasNormalization": "UNPROVEN_ACTIVE_151 -> UNPROVEN_ACTIVE_RAW_SLOT_RELEASED_BY_EMOTUM_ALIAS",
+    "primarySlot": "UNPROVEN_ACTIVE_120 remains active",
+    "treatedDelta": 0,
+    "setAsideDelta": 0,
+    "activeDelta": 0,
+    "pendingDedupeCreated": false
+  },
+  "nextSafeAction": "Recover the E-Motum station inventory or app/site endpoint that exposes each station's published unit kWh price, then validate complete deterministic coverage before promotion.",
+  "guards": [
+    "Do not extrapolate the Paris XIV 0.75 EUR/kWh standard tariff to Corsica or the entire E-Motum network.",
+    "Do not count raw rank151 as a second CPO.",
+    "Do not use roaming/eMSP prices as E-Motum direct tariffs."
+  ],
+  "canonicalAfter": {
+    "treated": 83,
+    "setAside": 9,
+    "active": 199,
+    "total": 291,
+    "pendingDedupe": 0
+  }
+}
