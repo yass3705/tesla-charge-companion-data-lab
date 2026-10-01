@@ -99,7 +99,7 @@ def main() -> None:
     require_tokens(network, ("plenitude charging points", "other operators", "interoperability", "600.000"), "Plenitude network separation")
 
     promo = pages["travelPromo"]
-    require_tokens(promo, ("august26", "40%", "3 charging sessions", "france", "31st august 2026"), "Plenitude August 2026 promo")
+    august26_present = all(norm(x) in promo for x in ("august26", "40%", "3 charging sessions", "france", "31st august 2026"))
 
     bilateral = pages["bilateral"]
     require_tokens(bilateral, ("bilateral agreement pricing scheme", "mobility service providers", "france", "vat"), "Plenitude B2B tariff separation")
@@ -153,7 +153,8 @@ def main() -> None:
         },
         "temporaryPromotions": {
             "AUGUST26": {
-                "activeAsOfGeneratedDate": True,
+                "activeAsOfGeneratedDate": False,
+                "stillPresentOnCurrentPromoPage": august26_present,
                 "discountPercent": 40.0,
                 "maxChargingSessions": 3,
                 "countries": ["FR", "AT", "CH"],
@@ -162,6 +163,7 @@ def main() -> None:
                 "personal": True,
                 "combinable": False,
                 "defaultTariff": False,
+                "status": "expired_historical_promotion",
             },
         },
         "b2bInteroperability": {
@@ -211,7 +213,7 @@ def main() -> None:
         "- Plenitude-owned Pay Per Use France: **0.45 EUR/kWh AC <=22 kW**, **0.55 EUR/kWh DC** (published Fast/Fast+/UltraFast classes).\n"
         "- Third-party stations in the app: **separate roaming layer**, exact price must be read in the app.\n"
         "- Blocking fee after **60 min grace**: AC **0.12 EUR/min** (except 23:00-07:00), Fast DC **0.20 EUR/min**, Fast+/UltraFast **0.30 EUR/min**.\n"
-        "- Current temporary promo **AUGUST26**: **40% off up to 3 Pay Per Use sessions** in France/Austria/Switzerland through 31 Aug 2026; not a baseline tariff.\n"
+        "- AUGUST26 promotion: **expired 31 Aug 2026**; retained only as historical evidence and never as the current baseline.\n"
         "- Bilateral OCPI/operator pricing is **B2B wholesale, not consumer pricing**.\n"
         f"- Fingerprint: `{fingerprint}`\n"
     )
