@@ -231,3 +231,5 @@ console.log(JSON.stringify({
 // rerank after parent connector-power publication 2026-10-01
 
 // rerank after hardened zero integration 2026-10-01
+
+// rerank after P01 exact-reference donor publication 2026-10-01
