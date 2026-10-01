@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 129,
+  "schemaVersion": 130,
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 96,
-  "setAsideCpos": 45,
-  "activeRemainingCpos": 150,
-  "updatedAt": "2026-10-01T20:35:00+02:00",
+  "setAsideCpos": 46,
+  "activeRemainingCpos": 149,
+  "updatedAt": "2026-10-01T20:50:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -409,6 +409,13 @@
       "since": "2026-10-01",
       "lastChecked": "2026-10-01",
       "audit": "docs/france-regional-cpo-nvh-batch508-2026-10-01.json"
+    },
+    {
+      "name": "SOLVEO ENERGIES | raw rank153",
+      "reason": "batch509 fail-closed: current first-party SOLVEO Energies site presents project-specific renewable-energy solutions and no current public IRVE tariff grid. SOLVEO's producer IRVE datasets are split by individual projects/sites and their visible updates are from 2024-2025, not a current network tariff source. A 0.38 EUR/kWh observation at Sainte-Anastasie is site-specific and not first-party network-wide authority. No deterministic anonymous station/EVSE -> current direct tariff resolver was recovered for the historical 28-station/35-PDC estate.",
+      "since": "2026-10-01",
+      "lastChecked": "2026-10-01",
+      "audit": "docs/france-regional-cpo-solveo-batch509-2026-10-01.json"
     }
   ],
   "activeNominative": [
@@ -499,7 +506,6 @@
     "RELEASED_SLOT_145_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_ACTIVE_SLOT_147 | alias Greenspot | FR*GSP | raw rank50",
     "UNPROVEN_ACTIVE_RAW_SLOT_RELEASED_BY_EMOTUM_ALIAS",
-    "UNPROVEN_ACTIVE_153",
     "UNPROVEN_ACTIVE_154",
     "UNPROVEN_ACTIVE_155",
     "RELEASED_ACTIVE_SLOT_156 | alias PARERA MOBILITE | FR*MW1 raw99 (same operator authority; separate technical estate FR*VIS)",
@@ -876,7 +882,8 @@
     "ANYOS | raw rank148": "batch505 setAside: ANYOS first-party terms make the applicable pre-charge displayed price authoritative, with possible kWh/start/time/parking components; no public deterministic exact-tariff resolver recovered.",
     "LMS / Last Mile Solutions | raw rank146": "batch506 setAside: current LMS first-party roaming/CPO documentation says tariffs are per-charge-point, mutable daily, and should be pulled from the live EVSE-ID tariff feed. No reusable anonymous live tariff feed recovered for historical France estate.",
     "Idex | raw rank149": "batch507 setAside: current inventory still reconciles 3 stations/43 PDC, but first-party Idex model is customer/site-specific tariff configuration and billing. Exact site direct price requires station-specific resolver.",
-    "NVH | raw rank152": "batch508 setAside: first-party NVH site exposes installation/IRVE services, not a current public numeric charging tariff; producer dataset stale Dec 2024 and current estate diverges from historical 35/35 footprint."
+    "NVH | raw rank152": "batch508 setAside: first-party NVH site exposes installation/IRVE services, not a current public numeric charging tariff; producer dataset stale Dec 2024 and current estate diverges from historical 35/35 footprint.",
+    "SOLVEO ENERGIES | raw rank153": "batch509 setAside: project-specific producer IRVE datasets and no current first-party network tariff surface; current exact station/EVSE direct tariff resolver not recovered."
   },
   "history": [
     {
@@ -1540,9 +1547,19 @@
         "setAsideCpos": 45,
         "activeRemainingCpos": 150
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch509",
+      "change": "Moved SOLVEO ENERGIES raw153 active->setAside. First-party current site publishes no network IRVE tariff; producer datasets are site/project-specific and stale at 2024-2025; sampled 0.38 EUR/kWh not generalized.",
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 46,
+        "activeRemainingCpos": 149
+      }
     }
   ],
-  "currentInvestigation": "SOLVEO ENERGIES | raw rank153 | 28 stations / 35 PDC: inspect first-party operator/tariff authority and current direct pricing.",
+  "currentInvestigation": "Alterna Énergie | raw rank154 | 6 stations / 34 PDC: inspect first-party CPO/direct tariff scope and current station-level pricing.",
   "coherenceControl": {
     "batch": "batch491",
     "result": "PASS",
@@ -1557,11 +1574,11 @@
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch508",
-    "result": "PASS_NVH_FAIL_CLOSED",
+    "batch": "batch509",
+    "result": "PASS_SOLVEO_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch508",
+  "latestBatch": "batch509",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2363,6 +2380,14 @@
       "category": "setAside-authority",
       "decision": "active->setAside: current first-party NVH is installer/technical IRVE provider with no current numeric public direct tariff surface; producer inventory stale at Dec 2024 and current estate diverges from historical footprint",
       "evidence": "docs/france-regional-cpo-nvh-batch508-2026-10-01.json"
+    },
+    {
+      "rawRank": 153,
+      "historicalOperator": "SOLVEO ENERGIES",
+      "authority": "SOLVEO ENERGIES",
+      "category": "setAside-authority",
+      "decision": "active->setAside: first-party current site has no network numeric IRVE tariff; producer datasets are project-specific and stale 2024-2025; no deterministic anonymous current direct tariff resolver recovered",
+      "evidence": "docs/france-regional-cpo-solveo-batch509-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
