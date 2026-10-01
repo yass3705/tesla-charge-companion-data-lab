@@ -39,6 +39,7 @@ jobs:
           set -o pipefail
           mkdir -p out/allego
           python -m py_compile scripts/allego_official.py scripts/allego_static_wrapper.py
+          python -m pip install --disable-pip-version-check selenium
           python scripts/allego_static_wrapper.py --out out/allego 2> >(tee out/allego/error.log >&2)
           cat out/allego/SUMMARY.md >> "$GITHUB_STEP_SUMMARY"
 
@@ -100,7 +101,7 @@ jobs:
           assert p['roaming']['operatorDirect'] is False
           assert len(p['stationValidationSamples']) >= 3
           render=(p.get('sourceEvidence') or {}).get('pricingRender') or {}
-          assert render.get('accessMode') in ('official_static_html_country_index','official_static_html_country_link_index'), render
+          assert render.get('accessMode') in ('official_static_html_country_index','official_static_html_country_link_index','browser_render_visible_dom'), render
           assert render.get('selectedCountry') == 'France', render
           print('Validated Allego France static official tariff mapping')
           PY
