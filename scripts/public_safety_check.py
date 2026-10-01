@@ -19,7 +19,7 @@ ALWAYS_PATTERNS = [
 
 VALUE_PATTERNS = [
     (re.compile(rb"Authorization\s*:\s*Bearer\s+(?P<value>\S+)", re.I), "Authorization bearer header"),
-    (re.compile(rb"Cookie\s*:\s*(?P<value>\S+)", re.I), "Cookie header"),
+    (re.compile(rb"(?<![A-Za-z0-9_])Cookie\s*:\s*(?P<value>\S+)", re.I), "Cookie header"),
     (
         re.compile(
             rb"(?:client_secret|api_key|access_token|refresh_token)\s*[:=]\s*[\"'](?P<value>[^\"']{8,})[\"']",
