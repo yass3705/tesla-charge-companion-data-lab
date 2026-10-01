@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-01",
+  "project": "Tesla Charge Companion V9",
+  "decision": "exclude_emsp_tariffs_from_cpo_direct_pricing",
+  "rule": "Any tariff returned because a request is made with a provider/eMSP identifier (for example providerId=Shell_RP_2, Shell_RP_1 or Shell_RP) is an eMSP/driver tariff layer unless independent first-party evidence proves it is the CPO's own direct/ad-hoc tariff. Such tariffs must not be used to promote, price, complete or otherwise resolve a CPO in national canonical CPO datasets.",
+  "consequences": [
+    "Do not use Shell_RP_* tariffs for ChargePoint, InstaVolt, bp pulse, TotalEnergies or any other third-party CPO direct pricing.",
+    "Do not use providerId tariff coverage percentages as CPO completion evidence.",
+    "Keep historical Shell_RP_* reports only as rejected/provenance evidence; they are non-canonical for CPO pricing.",
+    "For Shell/ubitricity own-network cases, require independent CPO-direct/ad-hoc evidence before using a price in the CPO layer; providerId alone is insufficient.",
+    "Future investigations must stop once the only remaining path yields an eMSP tariff rather than a direct CPO/ad-hoc tariff."
+  ],
+  "rejectedArtifacts": [
+    "reports/uk/shell-cross-network-probe-latest.json",
+    "reports/cross-country/shell-cpo-scan-latest.json",
+    "reports/cross-country/shell-fr-be-exact-scan-latest.json",
+    "reports/belgium/shell-residual-exact-probe-latest.json",
+    "reports/cross-country/shell-de-it-es-exact-scan-latest.json",
+    "reports/cross-country/shell-de-es-provider-matrix-latest.json",
+    "reports/uk/chargepoint-shell-full-latest.json",
+    "reports/uk/chargepoint-shell-residual-matrix-latest.json",
+    "reports/uk/chargepoint-residual-classification-latest.json",
+    "data/national/uk_chargepoint_shell_tariffs.json.gz"
+  ],
+  "canonicalCorrection": {
+    "country": "UK",
+    "cpo": "ChargePoint",
+    "restoredStatus": "set_aside_external_request",
+    "validRoute": "official PCPR request via Eco-Movement"
+  }
+}
