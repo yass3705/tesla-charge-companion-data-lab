@@ -1,0 +1,28 @@
+name: Diagnose Electroverse France numeric final offers
+on:
+  push:
+    branches:
+      - audit/electroverse-numeric-final-offer-diagnostic
+    paths:
+      - "scripts/diagnose_electroverse_numeric_final_offers.mjs"
+      - ".github/workflows/electroverse-numeric-final-offer-diagnostic.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Diagnose final offers
+        run: node scripts/diagnose_electroverse_numeric_final_offers.mjs
+      - name: Persist report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/numeric-final-offer-diagnostic.json
+          git commit -m "audit: publish numeric final-offer diagnostic" || exit 0
+          git push
