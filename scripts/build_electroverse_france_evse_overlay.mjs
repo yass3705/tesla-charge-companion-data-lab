@@ -217,6 +217,15 @@ const pd1TechKeyFromEvse=e=>{
   return JSON.stringify({kw,plugs});
 };
 const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
+// Proven post-overlay numeric residuals from the strict residual audit.
+// Keys are Electroverse location PK + source EVSE PK. These are accepted only
+// when the target remains local and globally unique at build time.
+const validatedNumericResidualTargets=new Map([
+  ['1454880:3923163','FRY55EAE5044L1GS6C0011761'],
+  ['1454880:3923164','FRY55EAE5044L1GS6C0011762'],
+  ['1258861:3767759','FRY55EFR67450YESSTRASBOURGNORD1'],
+  ['1303241:3405443','FRY55EAE0022H1GR4C00179X1']
+]);
 const globalPdcOwners=new Map();
 for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
   const k=norm(p);if(!k)continue;
@@ -243,6 +252,7 @@ const stats={
   c55HomogeneousGroupCandidateEvses:0,c55HomogeneousGroupPublishedEvses:0,
   hpcOrdinalGroupCandidateEvses:0,hpcOrdinalGroupPublishedEvses:0,
   c55BIndexCandidateEvses:0,c55BIndexPublishedEvses:0,
+  validatedNumericResidualCandidateEvses:0,validatedNumericResidualPublishedEvses:0,
   drvPowerGroupCandidateEvses:0,drvPowerGroupPublishedEvses:0,drvPowerGroupByKw:{},
   pd1TechnicalGroupCandidateEvses:0,pd1TechnicalGroupPublishedEvses:0,pd1TechnicalGroupByKey:{},
   drvHomogeneousGroupCandidateEvses:0,drvHomogeneousGroupPublishedEvses:0,
@@ -1486,7 +1496,15 @@ for(const sh of manifest.shards||[]){
       stats.physicalRefs++;
       const k=norm(pr);
       let targetPdc=pr,identityMode='exact_unique_national_irve_pdc',parentMode=false,parentNorm='',ordinalMode=false;
-      if(local.has(k)){
+      const validatedResidualTarget=validatedNumericResidualTargets.get(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
+      if(validatedResidualTarget){
+        const targetNorm=norm(validatedResidualTarget);
+        const owners=globalPdcOwners.get(targetNorm);
+        if(!local.has(targetNorm)||!owners||owners.size!==1){rej('validated_numeric_residual_target_invalid');continue;}
+        targetPdc=localByNorm.get(targetNorm);
+        identityMode='validated_numeric_residual_unique_bijection';
+        stats.validatedNumericResidualCandidateEvses++;
+      }else if(local.has(k)){
         const owners=globalPdcOwners.get(k);
         if(!owners||owners.size!==1){rej('physical_reference_not_globally_unique');continue;}
         stats.exactUniqueNationalEvses++;
@@ -1781,6 +1799,7 @@ stats.viaHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identi
 stats.c55HomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_homogeneous_exact_set').length;
 stats.hpcOrdinalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_hpc_duplicate_ordinal_to_three_digit_pdc').length;
 stats.c55BIndexPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_bindex_zero_based_suffix').length;
+stats.validatedNumericResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_numeric_residual_unique_bijection').length;
 stats.pd1TechnicalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_pd1_official_technical_homogeneous_group').length;
 stats.pd1TechnicalGroupByKey={};
 for(const o of finalOffers.filter(o=>o.metadata?.identityMode==='strict_pd1_official_technical_homogeneous_group')){
@@ -1863,6 +1882,7 @@ const out={
     hpcOrdinalRequiresGlobalPdcUniqueness:true,
     hpcDuplicateOrdinalRequiresHomogeneousPricing:true,
     strict55cBIndexZeroBasedSuffix:true,
+    validatedNumericResidualUniqueBijection:true,
     c55BIndexRequiresExactResidualSet:true,
     c55BIndexRequiresGlobalPdcUniqueness:true,
     strictPd1OfficialTechnicalHomogeneousGroup:true,
