@@ -105,7 +105,6 @@ for(const sh of cman.shards||[]){
       homogeneousPricing,
       uniformConnectorCount:connectorCounts.size===1,
       commonPrefix:commonPrefix||null,
-      availablePdcs:available,
       refs:refs.slice(0,20).map(x=>({evsePk:x.e.pk,physicalReference:x.raw,connectorCount:(x.e.connectors||[]).length})),
       exactSuffix:exactSuffix.slice(0,20),
       commonTailMappings:commonTailBijection?tailMatches.slice(0,20):[]
@@ -114,27 +113,6 @@ for(const sh of cman.shards||[]){
 }
 const byMode={};
 for(const g of groups)byMode[g.mode]=(byMode[g.mode]||0)+g.residualCount;
-const validatedGroups=groups.filter(g=>g.mode==='homogeneous_exact_set').map(g=>({
-  electroverseLocationPk:g.electroverseLocationPk,
-  irveStationId:g.irveStationId,
-  electroverseEvsePks:g.refs.map(x=>x.evsePk),
-  physicalReferences:g.refs.map(x=>x.physicalReference),
-  targetPdcs:g.availablePdcs,
-  evidence:{mode:'homogeneous_exact_set',homogeneousPricing:true,uniformConnectorCount:true}
-}));
-await fs.mkdir('data/platforms/electroverse/validated-mappings',{recursive:true});
-await fs.writeFile(
-  'data/platforms/electroverse/validated-mappings/s27-residual-groups.json',
-  JSON.stringify({
-    schemaVersion:1,generatedAt:new Date().toISOString(),
-    dataset:'electroverse-france-s27-validated-residual-groups',
-    groupCount:validatedGroups.length,
-    sourceEvseCount:validatedGroups.reduce((n,g)=>n+g.electroverseEvsePks.length,0),
-    policy:'Homogeneous exact-set groups only; source count equals unpublished globally unique target count; no per-EVSE permutation invented.',
-    groups:validatedGroups
-  },null,2)+'\n'
-);
-
 const out={
  schemaVersion:1,generatedAt:new Date().toISOString(),
  residualSourceEvses:residual,affectedLocations:locations,byMode,
