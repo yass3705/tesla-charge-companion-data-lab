@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": 394,
+  "generatedAt": "2026-09-23T12:04:00Z",
+  "purpose": "WAAT V8 CPO-direct sharded pipeline revalidation after inventory-driven cardinality fix",
+  "canonicalBefore": {"treated":78,"setAside":12,"active":201,"total":291,"pendingDedupe":0},
+  "cpo": "WAAT SAS | FR*WA2",
+  "partyId": "FR*WA2",
+  "v8DirectReuse": {
+    "pipeline": "Monta public web-map guest browser sharded, read-only provider side",
+    "workflow": "yass3705/tesla-charge-companion-data-lab/.github/workflows/waat-monta-national-sharded.yml",
+    "fixCommit": "21f269c2b92a2bf4d742894832b2dc89dd55142e",
+    "successfulRun": 35852463272,
+    "publishedSnapshotCommit": "5a1281d2d60b477207e58ece5ed58c82a86f1805",
+    "directCpoOnly": true,
+    "roamingUsedAsAuthority": false,
+    "failClosedPreserved": true
+  },
+  "freshValidatedCounts": {
+    "inventoryStations": 590,
+    "queriedStations": 590,
+    "mapHttp200": 590,
+    "mapErrors": 0,
+    "stationsWithMontaGroup": 545,
+    "rankableStations": 484,
+    "unresolvedStations": 106,
+    "uniqueMontaGroups": 407,
+    "rankableMontaGroups": 367,
+    "rankablePhysicalConfigs": 545,
+    "unresolvedPhysicalConfigs": 151,
+    "priceRangeGroups": 29,
+    "dynamicGroups": 0,
+    "zeroPriceGroups": 7,
+    "ambiguousConnectorGroups": 0
+  },
+  "comparisonToBrokenRefresh": {
+    "previousInventoryStations": 590,
+    "previousMapErrors": 341,
+    "previousStationsWithMontaGroup": 216,
+    "previousRankableStations": 186,
+    "result": "regression fixed; full 590/590 read-only map coverage restored with zero map errors"
+  },
+  "classification": {
+    "technicalStatus": "complete_at_CPO_method_level_with_station_level_fail_closed_exceptions",
+    "reason": "The current direct provider-side pipeline now covers the complete 590-station inventory and deterministically ranks 484 stations while preserving 106 unresolved stations fail-closed. Existing treated CPOs use the same principle: unresolved individual EVSE/stations do not make the CPO method partial when national inventory and direct mapping are complete and unresolved cases are explicitly fail-closed.",
+    "canonicalPromotion": "WAAT is eligible to move setAside -> treated; no active slot is consumed because WAAT already occupies an original setAside authority slot.",
+    "counterTarget": {"treated":79,"setAside":11,"active":201,"total":291},
+    "pendingDedupeCreated": false
+  },
+  "antiStagnation": {
+    "identityAliasesAlreadyKnown": ["FR*WA1","FR*WA4","FR*WA5","FR*WA9","FR*WAT","FR*W11","WAAT Umbrella-Copro"],
+    "aliasRule": "identity lineage only; never inherit FR*WA2 tariff to another WAAT party ID without deterministic station-level mapping",
+    "noDoubleCount": true,
+    "invariantBefore": "78 + 12 + 201 = 291",
+    "invariantAfterPromotion": "79 + 11 + 201 = 291"
+  },
+  "nextV8DirectPriority": "IONITY raw-ledger attachment, then e-Vadea current numeric freshness/raw-slot lineage; do not re-audit WAAT unless the direct refresh regresses or new inventory appears."
+}
