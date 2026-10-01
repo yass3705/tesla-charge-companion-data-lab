@@ -1,0 +1,47 @@
+name: Shell Recharge UK official station tariffs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/shell_recharge_official_uk.py"
+      - ".github/workflows/shell-recharge-official-uk-tariffs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: shell-recharge-official-uk-tariffs
+  cancel-in-progress: true
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install --disable-pip-version-check selenium
+      - run: python scripts/shell_recharge_official_uk.py --out out/shell_recharge_uk
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data/operator_direct reports/shell_recharge_uk
+          cp out/shell_recharge_uk/shell_recharge_official_uk.json /tmp/shell_recharge_official_uk.json
+          cp out/shell_recharge_uk/SUMMARY.md /tmp/SUMMARY.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p data/operator_direct reports/shell_recharge_uk
+            cp /tmp/shell_recharge_official_uk.json data/operator_direct/shell_recharge_official_uk.json
+            cp /tmp/SUMMARY.md reports/shell_recharge_uk/latest_summary.md
+            git add data/operator_direct/shell_recharge_official_uk.json reports/shell_recharge_uk/latest_summary.md
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "data(uk): publish first-party Shell station tariffs [run ${GITHUB_RUN_ID}]"
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
