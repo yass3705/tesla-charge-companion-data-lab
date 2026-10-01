@@ -214,8 +214,20 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Preserve freshly generated outputs, fast-forward to latest main,
+          # then restore our outputs on top. This avoids add/add conflicts when
+          # an earlier long-running collector publishes the same paths.
+          cp data/national/uk_shell_tariffs.json.gz /tmp/uk_shell_tariffs.json.gz
+          cp reports/uk/shell-full-tariffs-latest.json /tmp/shell-full-tariffs-latest.json
+
+          git fetch origin main
+          git reset --hard origin/main
+
+          cp /tmp/uk_shell_tariffs.json.gz data/national/uk_shell_tariffs.json.gz
+          cp /tmp/shell-full-tariffs-latest.json reports/uk/shell-full-tariffs-latest.json
+
           git add data/national/uk_shell_tariffs.json.gz reports/uk/shell-full-tariffs-latest.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "data(uk): collect Shell and ubitricity tariffs [run ${GITHUB_RUN_ID}]"
-          git pull --rebase origin main
           git push origin HEAD:main
