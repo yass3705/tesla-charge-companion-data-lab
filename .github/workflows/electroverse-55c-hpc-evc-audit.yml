@@ -1,0 +1,28 @@
+name: Audit Electroverse FR 55C HPC EVC
+on:
+  push:
+    branches:
+      - audit/electroverse-55c-hpc-evc
+    paths:
+      - "scripts/audit_electroverse_55c_hpc_evc.mjs"
+      - ".github/workflows/electroverse-55c-hpc-evc-audit.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run audits
+        run: node scripts/audit_electroverse_55c_hpc_evc.mjs
+      - name: Persist reports
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse-fr-55c-unmatched.json reports/electroverse-fr-hpc-unmatched.json reports/electroverse-fr-evc-unmatched.json
+          git commit -m "audit: publish 55C HPC EVC unmatched reports" || exit 0
+          git push
