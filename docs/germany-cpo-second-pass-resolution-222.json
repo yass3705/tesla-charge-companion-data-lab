@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 222,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-221.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 251,
+    "partial": 340,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Stadtwerke Geesthacht GmbH",
+      "classification": "B1",
+      "backend": "eRound / AFIR national staging",
+      "source": "docs/germany-afir-geesthacht-closure-2026-10-01.json",
+      "coverage": {
+        "bnetzaSites": 20,
+        "matchedSafeSites": 20,
+        "rawTariffSites": 20,
+        "afirChargingPointObjects": 52,
+        "chargingPointObjectsWithAnonymousPayment": 52,
+        "bnetzaEvseIdsMaterialized": 32
+      },
+      "anonymousAdHoc": {
+        "closed": true,
+        "paymentEvidence": "52/52 charging-point objects expose qrCode and/or paymentCreditCard/paymentDebitCard tariff variants",
+        "taxIncluded": true,
+        "tariffSignatures": [
+          {
+            "energyEurPerKwh": 0.59,
+            "basePriceEur": 1.99,
+            "timeEurPerMinute": 0.1,
+            "timeFromMinute": 360,
+            "timeCapEur": 12
+          },
+          {
+            "energyEurPerKwh": 0.79,
+            "basePriceEur": 0,
+            "timeEurPerMinute": 0,
+            "timeFromMinute": 0,
+            "timeCapEur": 0
+          }
+        ]
+      },
+      "decision": "partial -> complete",
+      "rationale": "All 20 canonical BNetzA operator sites are matched_safe and all 20 carry raw AFIR tariff data. All 52 AFIR charging-point tariff objects are covered by an anonymous QR/card payment variant and one of two explicit tax-included fee signatures; no uncovered site/class remains."
+    }
+  ],
+  "promotions": [
+    "Stadtwerke Geesthacht GmbH"
+  ],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 252,
+    "partial": 339,
+    "blocked": 0
+  },
+  "indicator": "221 -> 252 complete (+31)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific deterministic closure"
+  },
+  "backendFamilyProgress": {
+    "AFIR_Mobilithek": "First promotion from operator-wide national raw-tariff ranking. Continue with other 100%-coverage operators that remain canonical partials."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "252 + 339 + 0 = 591",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Intersect remaining canonical partials with 100%-raw-coverage operators. Next high-value candidates from current ranking include SCHARR WAERME (39/39), ServiceSTADTwerke (22/22), then other exact 100% operators; skip already-complete/irrelevant operators."
+}
