@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts/suc_tracker'))
-from core import write, convert_station
+from core import write, read, convert_station
 from update import refresh
 from compare_mac import resolve_codes, compare_files, completed_lot
 
