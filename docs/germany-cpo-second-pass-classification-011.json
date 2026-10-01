@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-classification",
+  "classificationBatch": 11,
+  "previousClassification": "docs/germany-cpo-second-pass-classification-010.json",
+  "sourceCheckpointRange": "docs/germany-cpo-first-pass-automation99.json through docs/germany-cpo-first-pass-automation94.json",
+  "baseline": {
+    "originalPartialPool": 390,
+    "classifiedBefore": 187,
+    "classifiedThisBatch": 13,
+    "classifiedAfter": 200,
+    "currentPartials": 389,
+    "currentUnclassifiedPartials": 189
+  },
+  "classified": [
+    {"name":"Stadtwerke Feuchtwangen KU","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Capture current anonymous/direct checkout pricing and keep the 0.2979 EUR/kWh electricity-customer LadeVerbundPlus tariff strictly separate until equivalence is proven."},
+    {"name":"Stadtwerke Treuchtlingen KU","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Recover the binding anonymous SMS/app/direct tariff from an active Treuchtlingen EVSE or backend; do not substitute the discounted Autostrom contract/card product."},
+    {"name":"Stadtwerke Dinkelsbuehl","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Extract the current tariff displayed by the anonymous QR checkout for representative EVSEs and map energy plus blocking/session components."},
+    {"name":"Stadtwerke Bad Windsheim","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Obtain a current anonymous/direct public-charging tariff for the six active AC stations; residential electricity price sheets remain excluded."},
+    {"name":"Stadtwerke Neustadt a. d. Aisch","primaryBlocker":"B7_CONTRADICTORY_SOURCES","nextAction":"Replace or revalidate the 2023-10-01 historical ad-hoc tariff through current first-party material or live checkout before any 2026 certification."},
+    {"name":"Stadtwerk Hassfurt GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Capture ChargeIT anonymous checkout values or obtain first-party confirmation that Normalpreis 0.49 AC / 0.65 DC plus blocking is the direct end-user tariff."},
+    {"name":"Mobilitaets- und Verkehrs-GmbH Gunzenhausen (MVG)","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Build the station-by-station tariff matrix for all five MVG locations because payment paths differ; retain the verified 2 EUR/hour coin tariff only at Parkplatz Zentrum West until reconciled."},
+    {"name":"Bauer Energietechnik e.K. / Eichstaett public charging","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Enumerate the current Bauer charging footprint and map exact per-EVSE direct prices; preserve 0.45 EUR/kWh only for verified Eichstaett AC EVSEs because other Bauer DC locations differ."},
+    {"name":"REWAG / Regensburger Energie- und Wasserversorgung AG & Co KG","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Build the full r.charge/direct per-EVSE matrix across REWAG AC/DC sites; retain repeated 0.50 EUR/kWh AC observations only where currently evidenced."},
+    {"name":"Stadtwerke Kelheim GmbH & Co. KG","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Complete current EVSE coverage and verify whether the observed 0.50 EUR/kWh with no start/blocking fee applies beyond Finkenstrasse and Am Oberen Zweck."},
+    {"name":"Stadtwerke Cham GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Enumerate all current Stadtwerke Cham EVSEs and extend the verified 0.55 EUR/kWh HPC direct tariff only where authoritative station records confirm it."},
+    {"name":"badenova / Freiburg regional public charging","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Build authoritative per-EVSE coverage across the badenova regional estate; retain Schreiberstrasse 0.66 EUR/kWh HPC plus blocking only for the verified EVSEs until broader coverage is proven."},
+    {"name":"naturenergie holding AG / NaturEnergie Community","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Build the full DE*EDH/naturenergie per-EVSE direct-price matrix and preserve 0.51 EUR/kWh AC plus blocking only at verified sites until all active tariff classes reconcile."}
+  ],
+  "countsThisBatch": {
+    "B1_COVERAGE_EVSE_MATRIX": 7,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 3,
+    "B3_SITE_CONFIGURABLE_BACKEND": 0,
+    "B4_FEE_COMPONENT_COMPLETENESS": 0,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 0,
+    "B6_DYNAMIC_SURFACE_OR_APP": 2,
+    "B7_CONTRADICTORY_SOURCES": 1
+  },
+  "cumulativeCountsByPrimaryBlocker": {
+    "B1_COVERAGE_EVSE_MATRIX": 73,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 58,
+    "B3_SITE_CONFIGURABLE_BACKEND": 9,
+    "B4_FEE_COMPONENT_COMPLETENESS": 5,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 11,
+    "B6_DYNAMIC_SURFACE_OR_APP": 34,
+    "B7_CONTRADICTORY_SOURCES": 10
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "187 + 13 = 200 classified; 73 + 58 + 9 + 5 + 11 + 34 + 10 = 200; 389 current partials - 200 classified = 189 current unclassified partials",
+    "duplicateNamesInBatch": 0,
+    "statusChanges": 0,
+    "tariffPromotions": 0,
+    "completeEntriesSkipped": ["Stadtwerke Weissenburg GmbH","Licht-, Kraft- und Wasserwerke Kitzingen GmbH (LKW)","Stadtwerke Roth"],
+    "historicalCounterCorrectionsPreserved": "Checkpoint 97 duplicate-count reconciliation and checkpoint 94 Augsburg alias correction are historical counter repairs only; no duplicate partial was reclassified from those corrections.",
+    "note": "Classification only. Current station observations remain station-scoped unless authoritative full coverage exists; customer/app/roaming products and stale price sheets are not promoted to anonymous 2026 pricing."
+  },
+  "nextSafeAction": "Continue classification from checkpoint 93 backward. With 200 partials now classified, begin grouping the classified B1/B3/B6 queues by shared backend/source so resolution can be executed in bulk rather than CPO-by-CPO. Preserve bounded priority for GEW, Goettingen, Leipzig and Allgaeuer."
+}
