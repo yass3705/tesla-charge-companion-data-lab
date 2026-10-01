@@ -383,6 +383,8 @@ const stats={
   genericHomogeneousGroupByOperator:{},
   genericPriceOnlyGroupCandidateEvses:0,genericPriceOnlyGroupPublishedEvses:0,
   genericPriceOnlyGroupByOperator:{},
+  stationHomogeneousBroadcastAuditLocations:0,stationHomogeneousBroadcastAuditTargets:0,stationHomogeneousBroadcastAuditSources:0,
+  stationHomogeneousBroadcastAuditByOperator:{},
   durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
@@ -1795,6 +1797,40 @@ for(const sh of manifest.shards||[]){
       };
       const opSet=new Set(unclaimed.map(opCode).filter(Boolean));
       const recognizedSingleOperator=unclaimed.length>0 && opSet.size===1 && unclaimed.every(p=>opCode(p));
+
+      // Audit only: evaluate a broader station-homogeneous price broadcast without publishing it.
+      // This ignores source/target cardinality but still requires a single national operator family,
+      // globally unique unclaimed PDCs, compilable pricing on every residual source, and exactly one
+      // compiled pricing signature across the whole unresolved source set.
+      if(recognizedSingleOperator && unresolved.length>0 &&
+         unclaimed.every(p=>(globalPdcOwners.get(p)?.size||0)===1)){
+        const auditCompiled=[];
+        let auditValid=true;
+        for(const e0 of unresolved){
+          const connectors=e0?.connectors||[];
+          if(!connectors.length){auditValid=false;break;}
+          const compiled=[];
+          for(const c0 of connectors){
+            const x=compileConnector(c0);if(!x.ok){auditValid=false;break;}
+            compiled.push(x.pricing);
+          }
+          if(!auditValid)break;
+          const unique=[...new Map(compiled.map(p=>[pricingSig(p),p])).values()];
+          if(unique.length!==1){auditValid=false;break;}
+          auditCompiled.push(unique[0]);
+        }
+        if(auditValid&&auditCompiled.length===unresolved.length&&
+           new Set(auditCompiled.map(pricingSig)).size===1){
+          const operator=[...opSet][0];
+          stats.stationHomogeneousBroadcastAuditLocations++;
+          stats.stationHomogeneousBroadcastAuditTargets+=unclaimed.length;
+          stats.stationHomogeneousBroadcastAuditSources+=unresolved.length;
+          const a=stats.stationHomogeneousBroadcastAuditByOperator[operator]||{locations:0,targets:0,sources:0};
+          a.locations++;a.targets+=unclaimed.length;a.sources+=unresolved.length;
+          stats.stationHomogeneousBroadcastAuditByOperator[operator]=a;
+        }
+      }
+
       if(recognizedSingleOperator && unresolved.length===unclaimed.length &&
          unclaimed.every(p=>(globalPdcOwners.get(p)?.size||0)===1)){
         const compiledRows=[];
