@@ -1431,6 +1431,12 @@ for(const sh of manifest.shards||[]){
       for(const e0 of row.tariff?.evses||[]){
         const pr0=text(e0?.physicalReference);if(!pr0)continue;
         const k0=norm(pr0);
+        const validatedNumericTarget=validatedNumericResidualTargets.get(String(row.electroverseLocationPk)+':'+String(e0?.pk??''));
+        if(validatedNumericTarget){
+          const targetNorm=norm(validatedNumericTarget);
+          if(local.has(targetNorm)&&(globalPdcOwners.get(targetNorm)?.size||0)===1)claimed.add(targetNorm);
+          continue;
+        }
         if(local.has(k0)){claimed.add(k0);continue;}
         const p0=[...local].filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\d{1,2}$/.test(k0.slice(p.length)));
         if(p0.length===1){claimed.add(p0[0]);continue;}
