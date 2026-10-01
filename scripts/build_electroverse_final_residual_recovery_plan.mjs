@@ -103,7 +103,14 @@ for(const sh of cman.shards||[]){
         isChargingFree:c?.isChargingFree??null,priceComponents:c?.priceComponents??null,complexPricingDetail:c?.complexPricingDetail??null
       }))))).size===1;
       const connectorCounts=new Set(es.map(e=>(e.connectors||[]).length));
-      const exactSetSafe=es.length===available.length&&available.length>0&&available.every(p=>(owners.get(p)?.size||0)===1)&&homogeneousPricing;
+      const technicalProfiles=new Set(es.map(e=>JSON.stringify((e.connectors||[]).map(c=>({
+        kilowatts:c?.kilowatts??null,
+        standard:c?.standard?.name??c?.standard??null
+      })).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))))));
+      const exactSetSafe=es.length===available.length&&available.length>0&&
+        pending.length===es.length&&
+        available.every(p=>(owners.get(p)?.size||0)===1)&&
+        homogeneousPricing&&technicalProfiles.size===1;
       if(exactSetSafe){
         const mode=connectorCounts.size===1?'homogeneous_exact_set':'price_only_exact_set';
         groupMappings.push({
