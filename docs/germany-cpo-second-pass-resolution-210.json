@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 210,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-209.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Bad Nauheim GmbH / ensev GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; second reconciliation pass exhausted and parked",
+      "evidence": {
+        "firstPartyRule": "Anonymous ad-hoc AC <=22 kW and DC <=150 kW: 0.57 EUR/kWh gross + 3.00 EUR/session start fee; spontaneous smartphone/credit-card charging.",
+        "firstPartyEstate": "Current ensev description gives 58 AC public charge points plus public DC infrastructure; Taubenbaum contributes six public CCS connectors up to 150 kW.",
+        "canonicalObservedDenominator": "68 EVSE in current derived operator profile.",
+        "mobilithekSamples": "Multiple current chargecloud/Mobilithek records expose 0.57 EUR/kWh + 3.00 start + 0.00 EUR/min blocking.",
+        "residual": "Parkstrasse includes at least one record without populated ad-hoc tariff while neighboring records carry the rule."
+      },
+      "exactGap": "Inventory vintage/reconciliation remains ambiguous: canonical 68 EVSE cannot yet be proven identical to the current first-party ensev estate, and Parkstrasse contains missing tariff data. Do not apply the deterministic tariff rule beyond the authoritatively reconciled estate.",
+      "antiStagnation": "Two distinct evidence-led passes exhausted: first-party tariff+sample fee corroboration, then estate/Parkstrasse reconciliation. Park until a current raw operator export resolves denominator and residual records.",
+      "resumeCondition": "Single current raw ensev/chargecloud/Mobilithek EVSE export reconciling all active IDs and explicit anonymous tariff fields, including Parkstrasse."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "repeatInvestigationGuard": "PASS; Bad Nauheim now parked",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Move to another chargecloud/Mobilithek-native CPO with a stable current denominator and explicit anonymous fee fields; do not repeat Bad Nauheim absent a raw current operator export."
+}
