@@ -8,4 +8,4 @@
 - City AMP idle: **0.07 EUR/min** starting 30 min after charge end in daytime
 - Official Zen inventory rows parsed: **1939**
 - Validation station samples: **3**
-- Fingerprint: `d32db40a9981dacbf5f9f9f8f764d98bb53332fd134a8afd5e523149f1870f9d`
+- Fingerprint: `e25c3fa346f68701168558352f8d5ba1c886de7f4906e17ce4669a2fcc694dec`
