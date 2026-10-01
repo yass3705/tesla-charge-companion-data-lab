@@ -1,0 +1,29 @@
+name: Build Powerdot technical EVSE inventory
+on:
+  push:
+    branches:
+      - electroverse-pd1-powerdot-technical-lab
+    paths:
+      - "scripts/build_powerdot_evse_technical_inventory.mjs"
+      - ".github/workflows/build-powerdot-technical-inventory.yml"
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build compact Powerdot technical inventory
+        run: node scripts/build_powerdot_evse_technical_inventory.mjs
+      - name: Persist inventory
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/powerdot_evse_technical_inventory.json
+          git commit -m "data(powerdot): persist official technical EVSE inventory" || exit 0
+          git pull --rebase origin electroverse-pd1-powerdot-technical-lab
+          git push
