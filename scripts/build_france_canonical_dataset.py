@@ -131,7 +131,15 @@ def build() -> dict[str, Any]:
         exclude={OVERRIDES.name},
         include_payload=True,
     )
-    operator_direct = collect(ROOT / "data/operator_direct", include_payload=True)
+    # vianeo_official_identity_map.json is generated *from* this canonical dataset
+    # for Electroverse identity reconciliation. It is not an authoritative tariff
+    # source and including it here creates a circular dependency (and makes a
+    # transient empty generated file able to break the canonical build).
+    operator_direct = collect(
+        ROOT / "data/operator_direct",
+        exclude={"vianeo_official_identity_map.json"},
+        include_payload=True,
+    )
     station_verifications = collect(ROOT / "data/station_verifications", include_payload=True)
 
     if not regional:
