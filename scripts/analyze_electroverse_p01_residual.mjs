@@ -101,11 +101,20 @@ for(const sh of cman.shards||[]){
       irveStationId:m?.irveStationId??row.irveStationId??null,
       residualCount:es.length,
       availablePdcCount:available.length,
+      localPdcSample:available.slice(0,30),
       mode,
       homogeneousPricing,
       uniformConnectorCount:connectorCounts.size===1,
       commonPrefix:commonPrefix||null,
-      refs:refs.slice(0,20).map(x=>({evsePk:x.e.pk,physicalReference:x.raw,connectorCount:(x.e.connectors||[]).length})),
+      refs:refs.slice(0,20).map(x=>({
+        evsePk:x.e.pk,
+        physicalReference:x.raw,
+        connectorCount:(x.e.connectors||[]).length,
+        connectors:(x.e.connectors||[]).map(c=>({
+          kilowatts:c?.kilowatts??null,
+          standard:c?.standard?.name??c?.standard??null
+        }))
+      })),
       exactSuffix:exactSuffix.slice(0,20),
       commonTailMappings:commonTailBijection?tailMatches.slice(0,20):[]
     });
@@ -124,3 +133,5 @@ const out={
 await fs.mkdir('reports/electroverse',{recursive:true});
 await fs.writeFile(OUT,JSON.stringify(out,null,2)+'\n');
 console.log(JSON.stringify(out,null,2));
+
+// structured P01 residual diagnostic 2026-10-01
