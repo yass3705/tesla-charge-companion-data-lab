@@ -139,8 +139,12 @@ def main() -> None:
 
     require(texts["pricingFaq"], "les prix peuvent varier d'un site à l'autre", "IONITY pricing FAQ")
     require(texts["pricingFaq"], "fournisseurs de services de mobilité", "IONITY pricing FAQ")
-    require(texts["subscriptions"], "5,99", "IONITY subscriptions")
-    require(texts["subscriptions"], "11,99", "IONITY subscriptions")
+    require(texts["subscriptions"], "IONITY Motion", "IONITY subscriptions")
+    require(texts["subscriptions"], "IONITY Power", "IONITY subscriptions")
+    if not (0.0 < tariffs["motionMonthly"]["monthlyFeeEur"] < 100.0):
+        raise RuntimeError("IONITY Motion monthly fee missing/implausible on current pricing page")
+    if not (0.0 < tariffs["powerMonthly"]["monthlyFeeEur"] < 100.0):
+        raise RuntimeError("IONITY Power monthly fee missing/implausible on current pricing page")
     require(texts["terms"], "23 pays", "IONITY subscription terms")
     require(texts["preauth"], "40 EUR", "IONITY preauthorization")
     require(texts["priceChange"], "1er juillet 2026", "IONITY price change")
