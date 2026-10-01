@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 198,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-197.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Schwerte GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; current first-party network expansion invalidates sampled-estate inference",
+      "evidence": {
+        "currentFirstParty": "Stadtwerke Schwerte currently describes its own public charging network and states charging is possible via ladenetz.de roaming/charging-card paths; a 2026 expansion project adds further charging infrastructure.",
+        "previousDirectSample": "Bahnhofstrasse direct observation 0.38 EUR/kWh remains station-scoped only."
+      },
+      "exactGap": "No current first-party anonymous/direct numeric tariff matrix was established for the expanded active estate, and the single Bahnhofstrasse value cannot be extended to new or other sites.",
+      "resumeCondition": "Current public ladeapp/QR direct checkout prices per active Schwerte EVSE or a first-party estate-wide anonymous tariff statement."
+    },
+    {
+      "name": "Stadtwerke Luebbecke GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; current direct-payment route confirmed but estate-wide price matrix still missing",
+      "evidence": {
+        "currentFirstParty": "Public charging is available at Stadtwerke Luebbecke locations; spontaneous/direct charging is supported through the charging infrastructure/payment route.",
+        "previousSample": "0.49 EUR/kWh AC observations remain sampled, not estate-wide."
+      },
+      "exactGap": "No authoritative current per-EVSE anonymous matrix or deterministic rule was found that closes all active sites/power classes and fee components.",
+      "resumeCondition": "eCharge+/public backend per-EVSE direct-price export or first-party anonymous tariff rule with explicit scope and fees."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "repeatInvestigationGuard": "PASS"
+  },
+  "nextSafeAction": "Continue another small B1/B3/B6 candidate with an exhaustible public direct-payment surface; prefer a candidate with a known small fixed site count over expanded municipal estates."
+}
