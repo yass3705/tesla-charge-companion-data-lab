@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "date": "2026-10-01",
+  "batch": "batch550",
+  "rawRank": 215,
+  "historicalOperator": "Petite Borne",
+  "historicalFootprint": {
+    "stations": 3,
+    "pdc": 4
+  },
+  "authority": "Petite Borne platform + individual site operators",
+  "result": "PASS_FAIL_CLOSED_SITE_SPECIFIC",
+  "evidence": [
+    {
+      "type": "first-party",
+      "source": "https://www.petiteborne.fr/comment-ca-marche/",
+      "finding": "Each owner explicitly chooses its own billing model and tariff: per kWh, per hour, or fixed session amount; customer sells charging in its own name."
+    },
+    {
+      "type": "official-open-data",
+      "source": "https://www.data.gouv.fr/datasets/irve-statique-dynamique",
+      "finding": "Petite Borne publishes current static + dynamic IRVE data; dataset updated 2026-09-11."
+    },
+    {
+      "type": "current-IRVE-observation",
+      "finding": "Current declared site tariffs differ (e.g. 0.36 and 0.40 EUR/kWh), confirming no uniform CPO-wide tariff."
+    }
+  ],
+  "decision": "active->setAside; platform pricing is deterministically site-owner-configurable and current sites carry different prices. No national tariff extrapolation; exact station/EVSE tariff must come from current site declaration/QR.",
+  "tariffPolicy": "For V9, use exact current station/EVSE direct declaration where mapped; otherwise fallback Electra then Electroverse.",
+  "counterTransition": {
+    "treated": [
+      98,
+      98
+    ],
+    "setAside": [
+      76,
+      77
+    ],
+    "active": [
+      117,
+      116
+    ],
+    "total": 291
+  },
+  "pendingDedupeCreated": false
+}
