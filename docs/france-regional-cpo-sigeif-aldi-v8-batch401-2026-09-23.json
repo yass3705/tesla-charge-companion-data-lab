@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "batch": "batch401",
+  "date": "2026-09-23",
+  "country": "FR",
+  "subject": "SIGEIF V8-direct closure and ALDI V8 replay guard",
+  "sigeif": {
+    "decision": "covered_non_counting_regional_network_of_treated_izivia",
+    "promotion": false,
+    "pendingDedupeCreated": false,
+    "raw291Occurrence": false,
+    "identity": {
+      "network": "SIGEIF",
+      "partyId": "FRSIG",
+      "technicalOperator": "IZIVIA"
+    },
+    "coverageClass": "regional_public_network_ile_de_france",
+    "directAccess": {
+      "subscriptionRequired": false,
+      "specificCardRequired": false,
+      "iziviaApp": true,
+      "paynowBankCardAdHoc": true
+    },
+    "tariffGrid": [
+      {
+        "power": "<=7 kW",
+        "energyEurPerKwh": 0.39,
+        "freeMinutes": 180,
+        "occupationEurPerMinuteAfter": 0.05,
+        "nightWindow": "20:00-08:00",
+        "nightCapEur": 4
+      },
+      {
+        "power": "<=22 kW",
+        "energyEurPerKwh": 0.39,
+        "freeMinutes": 180,
+        "occupationEurPerMinuteAfter": 0.05,
+        "nightWindow": "20:00-08:00",
+        "nightCapEur": 4
+      },
+      {
+        "power": "<=24 kW",
+        "energyEurPerKwh": 0.45,
+        "freeMinutes": 120,
+        "occupationEurPerMinuteAfter": 0.2
+      },
+      {
+        "power": "<=50 kW",
+        "energyEurPerKwh": 0.49,
+        "freeMinutes": 60,
+        "occupationEurPerMinuteAfter": 0.3
+      },
+      {
+        "power": "<=100 kW",
+        "energyEurPerKwh": 0.49,
+        "freeMinutes": 60,
+        "occupationEurPerMinuteAfter": 0.3
+      }
+    ],
+    "roamingPolicy": "Mobility-provider retail prices remain separate and are never used as the SIGEIF direct tariff.",
+    "sourceArtifact": "yass3705/tesla-charge-companion-data-lab:data/operator_direct/sigeif_official_ile_de_france.json",
+    "sourceGeneratedAt": "2026-08-20T11:00:18.755839Z",
+    "officialEvidence": [
+      "https://sigeif.fr/index.php/comment-et-ou-recharger-votre-vehicule-electrique",
+      "https://www.sigeif.fr/sites/default/files/2025-10/GUIDE%20D%27UTILISATION%20IRVE%202025%20OCTOBRE_0.pdf",
+      "https://www.data.gouv.fr/datasets/bornes-de-recharges-sigeif-1"
+    ]
+  },
+  "aldi": {
+    "decision": "remain_active_fail_closed",
+    "v8Recovered": {
+      "partyId": "FRALN",
+      "runtime": "assets/v8-aldi-direct.js",
+      "dataset": "data/aldi_direct_france_20260826.json",
+      "registryStatus": "staged"
+    },
+    "historicalTariffs": [
+      {
+        "power": "AC <=22.5 kW",
+        "energyEurPerKwh": 0.29
+      },
+      {
+        "power": "DC 45-55 kW",
+        "energyEurPerKwh": 0.35
+      }
+    ],
+    "currentLimits": [
+      "The official ALDI France charging page is live but numeric prices are image-rendered and were not freshly recovered.",
+      "Current FR*ALN samples include 100 kW EVSEs; the historic 50 kW tariff must not be extrapolated.",
+      "ALDI-branded sites physically operated by Powerdot or another CPO remain under that physical CPO."
+    ],
+    "replayGuard": "Do not repeat generic ALDI page/V8 searches. Reopen only for new first-party numeric image, QR/backend/ad-hoc evidence, especially for 100 kW, plus deterministic raw-slot accounting.",
+    "promotion": false,
+    "pendingDedupeCreated": false
+  },
+  "canonicalDelta": {
+    "before": {
+      "treated": 79,
+      "setAside": 11,
+      "active": 201,
+      "total": 291
+    },
+    "after": {
+      "treated": 79,
+      "setAside": 11,
+      "active": 201,
+      "total": 291
+    },
+    "newlyTreated": [],
+    "networksClosed": [
+      "SIGEIF -> IZIVIA (non-counting)"
+    ],
+    "pendingDedupe": 0
+  },
+  "next": "YAWAY Connect: test the retained V8 Last Mile Solutions artifacts only against deterministic current direct evidence; Breteuil remains separately resolved and must not be generalized."
+}
