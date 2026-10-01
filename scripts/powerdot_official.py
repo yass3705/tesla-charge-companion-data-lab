@@ -26,8 +26,8 @@ from pathlib import Path
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/140 Safari/537.36"
 
 SOURCES = {
-    "faq": "https://www.powerdot.eu/en/faq",
-    "driver": "https://www.powerdot.eu/en/why-charge-with-us",
+    "faq": "https://www.powerdot.eu/faq",
+    "driver": "https://www.powerdot.eu/why-charge-with-us",
     "electroverseSubscription": "https://electroverse.com/fr-FR/community/electroverse-features/abonnements-electroverse-qu-est-ce-que-c-est-et-comment-s-inscrire",
     "powerdotInventoryDataset": "https://www.data.gouv.fr/datasets/bornes-de-recharge-pour-ve-du-reseau-power-dot-france-1",
     "powerdotInventoryCsv": "https://www.data.gouv.fr/api/1/datasets/r/1bf98bac-94a9-4909-8726-47a203038a40",
