@@ -1,10 +1,10 @@
 {
-  "updatedAt": "2026-09-28",
+  "updatedAt": "2026-10-01",
   "purpose": "Human/external-access queue for UK TCC CPOs after autonomous discovery. Use this instead of repeating web investigations.",
   "regulatoryNote": "UK PCPR requires reference and availability data to be publicly available free of charge and machine-readable, without requiring agreement to terms for use. Some operators nevertheless expose access through account/request/onboarding flows; treat these as access-path facts, not as proof the flows satisfy the regulation.",
   "ecoMovementConsolidationNote": "IONITY, evyve, Source EV, ubitricity and bp pulse routes all involve Eco-Movement. A single Eco-Movement technical identity may simplify integration, but operator grants may be scoped; verify scope before assuming one token covers all networks.",
   "counts": {
-    "total": 19
+    "total": 20
   },
   "groups": {
     "request_only": [
@@ -17,7 +17,6 @@
       "LEAP24 UK"
     ],
     "free_self_service_account": [
-      "Believ",
       "Weev"
     ],
     "api_key_form": [
@@ -31,7 +30,9 @@
       "evyve",
       "bp pulse / Chargemaster",
       "Source EV UK",
-      "ubitricity"
+      "ubitricity",
+      "Blink",
+      "ChargePoint CMS UK"
     ],
     "partner_onboarding": [
       "ChargePoint CMS UK"
@@ -43,9 +44,7 @@
     "support_endpoint_details": [
       "Smart Charge"
     ],
-    "free_account_credentials": [
-      "Believ"
-    ],
+    "free_account_credentials": [],
     "free_api_key_request": [
       "Weev"
     ],
@@ -59,7 +58,8 @@
       "Fastned UK",
       "IONITY UK",
       "Osprey Charging",
-      "3ti Energy Hubs"
+      "3ti Energy Hubs",
+      "Believ"
     ]
   },
   "items": [
@@ -95,13 +95,13 @@
     },
     {
       "name": "Believ",
-      "status": "blocked_free_account_credentials",
-      "group": "free_account_credentials",
-      "humanAction": "Create the free API account at https://api.believ.com/ and generate the API credentials exposed after registration.",
+      "status": "resolved",
+      "group": "resolved",
+      "humanAction": null,
       "cost": "free",
       "priority": "P1",
-      "blocker": "Official Believ Open Data portal requires account creation before API documentation and credential generation.",
-      "next": "Once credentials are available, ingest Believ locations/EVSE/status/tariff data without repeating endpoint discovery."
+      "blocker": null,
+      "next": "Resolved 2026-10-01 via official authenticated Believ API; daily rolling review configured."
     },
     {
       "name": "GRIDSERVE",
@@ -145,13 +145,13 @@
     },
     {
       "name": "ChargePoint CMS UK",
-      "status": "blocked_partner_onboarding",
-      "group": "partner_onboarding",
-      "humanAction": "Submit ChargePoint CMS open-data API request to ChargePoint's external partner.",
-      "cost": "unknown/free-request",
-      "priority": "P2",
-      "blocker": "ChargePoint explicitly routes PCPR open-data API access through an external partner/request workflow rather than publishing anonymous endpoints.",
-      "next": "complete partner open-data request with Network=ChargePoint CMS."
+      "status": "blocked_external_request",
+      "group": "eco_movement_request",
+      "humanAction": "Submit ChargePoint's official PCPR Google Form and select Network='ChargePoint platform CPOs'.",
+      "cost": "free-request",
+      "priority": "P1",
+      "blocker": "ChargePoint routes UK CMS PCPR access through Eco-Movement. The official form states a response within 5 working days.",
+      "next": "When access arrives, test with the generic Eco-Movement PCPR collector and verify scope, including whether InstaVolt Ltd is included."
     },
     {
       "name": "bp pulse / Chargemaster",
@@ -195,13 +195,13 @@
     },
     {
       "name": "Source EV UK",
-      "status": "blocked_eco_movement_token",
+      "status": "blocked_external_request",
       "group": "eco_movement_request",
-      "humanAction": "Request PCPR access/token through operator/Eco-Movement route; verify whether one Eco-Movement identity can consolidate multiple operator grants.",
-      "cost": "unknown/free-request",
+      "humanAction": "Submit Source EV's official PCPR Data Request form.",
+      "cost": "free-request",
       "priority": "P1",
-      "blocker": "Official compliance route goes via Eco-Movement/request agreement; Eco-Movement PCPR API returned HTTP 401 anonymously.",
-      "next": "obtain Eco-Movement/request credentials."
+      "blocker": "Source EV's official form is handled with Eco-Movement and states a response within 5 working days.",
+      "next": "When access arrives, test with the generic Eco-Movement PCPR collector."
     },
     {
       "name": "Weev",
@@ -225,13 +225,13 @@
     },
     {
       "name": "ubitricity",
-      "status": "blocked_eco_movement_token",
+      "status": "blocked_external_request",
       "group": "eco_movement_request",
-      "humanAction": "Request PCPR access/token through operator/Eco-Movement route; verify whether one Eco-Movement identity can consolidate multiple operator grants.",
-      "cost": "unknown/free-request",
+      "humanAction": "Submit ubitricity's official PCPR Data Request form.",
+      "cost": "free-request",
       "priority": "P1",
-      "blocker": "Eco-Movement PCPR endpoint requires Authorization; anonymous locations/tariffs test returned HTTP 401.",
-      "next": "obtain Eco-Movement PCPR token/onboarding if project access is approved."
+      "blocker": "ubitricity's official PCPR page routes requests through Eco-Movement; support contact is pcpr@eco-movement.com.",
+      "next": "When access arrives, test with the generic Eco-Movement PCPR collector."
     },
     {
       "name": "Smart Charge",
@@ -252,6 +252,16 @@
       "humanAction": "Contact FOR EV and request their Public Charge Point Regulations OCPI/open-data endpoint or access details.",
       "blocker": "FOR EV's official PCPR page says OCPI/open access is available upon request but does not publish a callable anonymous endpoint.",
       "next": "Once endpoint/access details arrive, add them to Data Lab and ingest locations/status/tariffs; do not repeat public endpoint discovery."
+    },
+    {
+      "name": "Blink",
+      "status": "blocked_external_request",
+      "group": "eco_movement_request",
+      "humanAction": "Submit Blink's official PCPR Data Request form.",
+      "cost": "free-request",
+      "priority": "P1",
+      "blocker": "Blink's official request is handled with Eco-Movement and the form states a response within 5 working days.",
+      "next": "When access arrives, test with the generic Eco-Movement PCPR collector."
     }
   ]
 }
