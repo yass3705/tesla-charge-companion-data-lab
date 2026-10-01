@@ -7,7 +7,7 @@ on:
       - "scripts/audit_electroverse_s30_duplicate_refs.mjs"
       - ".github/workflows/electroverse-s30-duplicate-ref-audit.yml"
 permissions:
-  contents: read
+  contents: write
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -19,6 +19,21 @@ jobs:
           node-version: 22
       - name: Audit S30 duplicate physical references
         run: node scripts/audit_electroverse_s30_duplicate_refs.mjs
+      - name: Persist S30 duplicate-reference analysis
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/s30-duplicate-physicalref-analysis.json
+          if git diff --cached --quiet; then
+            echo "No S30 analysis changes"
+          else
+            git commit -m "data: persist Electroverse S30 duplicate-reference analysis"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main && git push && break
+              git rebase --abort || true
+              sleep $((attempt * 2))
+            done
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: electroverse-france-s30-duplicate-ref-audit
