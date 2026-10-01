@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-10-02T00:00:00+02:00",
+  "updatedAt": "2026-10-02T01:30:00+02:00",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -306,13 +306,13 @@
     },
     {
       "name": "Roam",
-      "status": "set_aside_technical_pricing_layer",
-      "access": "anonymous_public_map",
-      "evidence": "Official anonymous Roam map feed remains usable for inventory/status (Data Lab snapshot 401 locations / 566 connectors), but contains no tariff fields. Deep app static analysis confirms station-specific tariff models (tariffsDetails, nightTariffId, kwhTariffEnergyDetails, PAYG/member pricing) yet exposes no business backend host; Firebase Installation and Remote Config both succeeded (HTTP 200) but yielded no endpoint/tariff configuration. Fresh 2026-09-30 search found no public PCPR/open-data tariff endpoint. Zapmap reports 960 chargers across 356 locations and no network pricing information, reinforcing that public pricing remains unresolved.",
-      "next": "Technically bounded on pricing layer. Preserve public map inventory/status; do not infer network-wide prices. Reopen only on new public tariff/backend evidence, official open-data feed, or legitimate app/backend access.",
+      "status": "complete",
+      "access": "anonymous_public_map_plus_official_direct_standard_pricing",
+      "evidence": "Validated 2026-10-01: Roam public map snapshot contains 401 locations and 566 connector/EVSE entries. Connector type field is complete: 504 Fast and 62 Rapid. Official Roam standard direct pricing is 0.54 GBP/kWh for Fast/destination AC and 0.69 GBP/kWh for Rapid/DC. Deterministic pricing overlay covers 566/566 connectors (100%) with zero fail-closed connectors.",
+      "next": "validated; include in scheduled UK aggregation. Refresh Roam inventory/status and official standard pricing independently; preserve the last validated tariff on refresh failure. Apply any future official station-specific tariff as an override for that station only.",
       "locationsEndpoint": "https://roam-map.marketing-207.workers.dev/",
-      "dataset": "data/national/uk_roam_public_map.json.gz",
-      "report": "reports/uk/roam-firebase-config-discovery-latest.json"
+      "dataset": "data/operator_direct/roam_uk_direct_pricing.json",
+      "report": "reports/uk/roam-direct-pricing-latest.json"
     },
     {
       "name": "RAW Charging",
