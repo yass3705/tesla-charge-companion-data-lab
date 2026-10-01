@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-10-01",
+  "updatedAt": "2026-10-01T19:01:00+02:00",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -462,18 +462,11 @@
     },
     {
       "name": "ChargePoint",
-      "status": "partial",
-      "access": "shell_ev_public_locations_sandbox_oauth2_partial_plus_official_pcpr_request_via_eco_movement",
-      "evidence": "Shell EV Public Locations + provider Shell_RP_2 yields 237/237 ChargePoint UK locations via HTTP 200, with exact tariffs on 152 locations (64.14%) and 85 public locations without tariffs. Alternate providers Shell_RP_1, Shell_RP and no providerId resolved 0/85 residuals. Residual classification shows all 85 are marked FreePublic in Shell metadata; 55 locations have at least one Available/Occupied/Charging EVSE, 30 have all EVSEs Unavailable, and 6 contain test-like metadata. Therefore the 85 residuals cannot be broadly excluded from public/rankable scope.",
-      "next": "Keep ChargePoint partial. Preserve 152 exact Shell-derived tariffs and 85 public fail-closed residuals. Do not retry Shell provider variants. Await official ChargePoint/Eco-Movement PCPR access to resolve the remaining public residuals and verify hosted CPO scope, including InstaVolt.",
-      "report": "reports/uk/chargepoint-shell-full-latest.json",
-      "completionMode": "partial_direct_api_with_public_residuals",
-      "dataset": "data/national/uk_chargepoint_shell_tariffs.json.gz",
-      "residualReport": "reports/uk/chargepoint-residual-classification-latest.json",
-      "locationCount": 237,
-      "tariffCoveredLocationCount": 152,
-      "tariffCoveragePct": 64.14,
-      "failClosedCount": 85
+      "status": "set_aside_external_request",
+      "access": "official_pcpr_request_via_eco_movement",
+      "evidence": "Resolved route 2026-10-01: ChargePoint's official UK PCPR article links to a Google request form handled with Eco-Movement. The form states a response within 5 working days and exposes network choices ChargePoint platform CPOs, RAW Charging, ev-point and Lidl Great Britain Limited. Selecting ChargePoint platform CPOs covers a published list of UK CPOs hosted on ChargePoint CMS, including InstaVolt Ltd. ChargePoint states the resulting API covers all public UK stations hosted on its CMS. Shell_RP_* tariff responses are explicitly excluded from CPO-direct tariff evidence because they are provider/eMSP driver tariffs, not proven ChargePoint direct/ad-hoc CPO tariffs.",
+      "next": "Submit the official PCPR form with Network=ChargePoint platform CPOs. When access is received, test via the generic Eco-Movement PCPR collector and verify whether InstaVolt Ltd is included in the granted scope before pursuing a separate InstaVolt integration. Do not use Shell providerId tariffs for ChargePoint CPO pricing.",
+      "report": "reports/uk/chargepoint-cms-eco-movement-pcpr-latest.json"
     },
     {
       "name": "char.gy",
