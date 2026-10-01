@@ -5,6 +5,7 @@ const CACHE='data/electroverse/tariff_cache';
 const MAP='data/electroverse/irve_location_mapping.json';
 const OVERLAY='data/platforms/electroverse/france-evse';
 const OUT='reports/electroverse/h01-residual-analysis.json';
+const VALIDATED='data/platforms/electroverse/validated-mappings/h01-structured-residual.json';
 const norm=x=>String(x??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
 const opFromRef=raw=>{
   const s=String(raw??'').trim();
@@ -41,6 +42,7 @@ for(const m of mapping.mappings||[]) for(const p of m.irvePdcIds||[]){
 
 const cman=JSON.parse(await fs.readFile(CACHE+'/manifest.json','utf8'));
 const groups=[];
+const validatedMappings=[];
 let residual=0,locations=0;
 for(const sh of cman.shards||[]){
   const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
@@ -96,6 +98,32 @@ for(const sh of cman.shards||[]){
     else if(commonTailBijection)mode='common_tail_bijection';
     else if(exactSetSafe)mode=connectorCounts.size===1?'homogeneous_exact_set':'price_only_exact_set';
 
+    // H01 structured parent identity:
+    // FR*H01*E59350*001*10*1 / *10*2 -> FRH01E5935000110.
+    // Final source segment is the connector branch.
+    const h01Structured=[];
+    for(const x of refs){
+      const mm=x.raw.match(/^FR\*H01\*(E[0-9A-Z]+)\*([0-9A-Z]+)\*([0-9A-Z]+)\*([0-9A-Z]+)$/i);
+      if(!mm)continue;
+      const target=norm('FRH01'+mm[1]+mm[2]+mm[3]);
+      if(!local.includes(target))continue;
+      if((owners.get(target)?.size||0)!==1)continue;
+      h01Structured.push({
+        electroverseLocationPk:String(row.electroverseLocationPk),
+        irveStationId:m?.irveStationId??row.irveStationId??null,
+        electroverseEvsePk:x.e.pk,
+        targetPdc:target,
+        physicalReference:x.raw,
+        connectorBranch:mm[4],
+        recoveryMode:'validated_h01_structured_parent',
+        evidence:'exact H01 structured parent identity; final source segment is connector branch; target local and globally unique; no proximity'
+      });
+    }
+    if(h01Structured.length===es.length){
+      mode='validated_h01_structured_parent';
+      validatedMappings.push(...h01Structured);
+    }
+
     groups.push({
       electroverseLocationPk:String(row.electroverseLocationPk),
       irveStationId:m?.irveStationId??row.irveStationId??null,
@@ -128,11 +156,20 @@ for(const g of groups)byMode[g.mode]=(byMode[g.mode]||0)+g.residualCount;
 const out={
  schemaVersion:1,generatedAt:new Date().toISOString(),
  residualSourceEvses:residual,affectedLocations:locations,byMode,
+ validatedStructuredSourceEvses:validatedMappings.length,
  safelyRecoverableSourceEvses:Object.entries(byMode).filter(([k])=>k!=='none').reduce((n,[,v])=>n+v,0),
  safeGroups:groups.filter(g=>g.mode!=='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,200),
  unresolvedSamples:groups.filter(g=>g.mode==='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,100),
  policy:'Diagnostic only. H01 bucket uses the exact same opFromRef classifier as the canonical unpublished-source ranking; local unpublished national targets; global target uniqueness; no proximity inference.'
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
+await fs.mkdir('data/platforms/electroverse/validated-mappings',{recursive:true});
 await fs.writeFile(OUT,JSON.stringify(out,null,2)+'\n');
+await fs.writeFile(VALIDATED,JSON.stringify({
+  schemaVersion:1,
+  generatedAt:out.generatedAt,
+  count:validatedMappings.length,
+  policy:'Strict H01 structured parent mapping. FR*H01*E<zone>*<station>*<point>*<connector> maps to FRH01E<zone><station><point>; final source segment is connector branch. Target must be local and globally unique. No proximity.',
+  mappings:validatedMappings
+},null,2)+'\n');
 console.log(JSON.stringify(out,null,2));
