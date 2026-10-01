@@ -194,6 +194,8 @@ const stats={
   trimmedSuffixCandidateRefs:0,trimmedSuffixPublishedEvses:0,
   pd1FinalOrdinalCandidateRefs:0,pd1FinalOrdinalPublishedEvses:0,
   izfHomogeneousGroupCandidateEvses:0,izfHomogeneousGroupPublishedEvses:0,
+  viaFinalOrdinalCandidateRefs:0,viaFinalOrdinalPublishedEvses:0,
+  viaHomogeneousGroupCandidateEvses:0,viaHomogeneousGroupPublishedEvses:0,
   durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
@@ -422,6 +424,71 @@ for(const sh of manifest.shards||[]){
       }
     }
 
+    // VIA lab: strict final-ordinal subgroup bijection for unresolved references.
+    const viaFinalOrdinalTargets=new Map();
+    const localListForVia=[...local];
+    if(localListForVia.some(p=>/^FRVIAE/.test(p))){
+      const alreadyClaimed=new Set();
+      for(const e0 of row.tariff?.evses||[]){
+        const pr0=text(e0?.physicalReference);if(!pr0)continue;
+        const k0=norm(pr0);
+        if(local.has(k0)){alreadyClaimed.add(k0);continue;}
+        const p0=localListForVia.filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\d{1,2}$/.test(k0.slice(p.length)));
+        if(p0.length===1){alreadyClaimed.add(p0[0]);continue;}
+        if(ordinalTargets.has(e0)){alreadyClaimed.add(ordinalTargets.get(e0));continue;}
+        if(genericTargets.has(e0)){alreadyClaimed.add(genericTargets.get(e0));continue;}
+        if(suffixTargets.has(e0)){alreadyClaimed.add(suffixTargets.get(e0));continue;}
+        if(trimmedSuffixTargets.has(e0)){alreadyClaimed.add(trimmedSuffixTargets.get(e0));continue;}
+        if(pd1FinalOrdinalTargets.has(e0)){alreadyClaimed.add(pd1FinalOrdinalTargets.get(e0));continue;}
+      }
+      const unresolved=[];
+      for(const e0 of row.tariff?.evses||[]){
+        const pr0=text(e0?.physicalReference);if(!pr0)continue;
+        const k0=norm(pr0);
+        if(local.has(k0)||ordinalTargets.has(e0)||genericTargets.has(e0)||suffixTargets.has(e0)||trimmedSuffixTargets.has(e0)||pd1FinalOrdinalTargets.has(e0))continue;
+        const p0=localListForVia.filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\d{1,2}$/.test(k0.slice(p.length)));
+        if(p0.length)continue;
+        const mm=pr0.match(/^(.*?)[\s_\-\/]*([0-9]{1,2})$/);
+        if(!mm||!mm[1])continue;
+        unresolved.push({e:e0,stem:norm(mm[1]),ord:Number(mm[2])});
+      }
+      const groups=new Map();
+      for(const x of unresolved){
+        const arr=groups.get(x.stem)||[];
+        arr.push(x);groups.set(x.stem,arr);
+      }
+      const available=localListForVia.filter(p=>!alreadyClaimed.has(p));
+      const claimedViaTargets=new Set();
+      for(const items of groups.values()){
+        if(!items.length||new Set(items.map(x=>x.ord)).size!==items.length)continue;
+        const wanted=new Set(items.map(x=>x.ord)),matches=[];
+        for(const width of [1,2]){
+          const byPrefix=new Map();
+          for(const p of available){
+            if(claimedViaTargets.has(p)||p.length<=width)continue;
+            const tail=p.slice(-width);if(!/^\d+$/.test(tail))continue;
+            const prefix=p.slice(0,-width),ord=Number(tail);
+            const arr=byPrefix.get(prefix)||[];
+            arr.push({p,ord});byPrefix.set(prefix,arr);
+          }
+          for(const rows of byPrefix.values()){
+            if(rows.length!==items.length)continue;
+            if(new Set(rows.map(r=>r.ord)).size!==rows.length)continue;
+            if(rows.some(r=>!wanted.has(r.ord)))continue;
+            if(rows.some(r=>(globalPdcOwners.get(r.p)?.size||0)!==1))continue;
+            matches.push(rows);
+          }
+        }
+        if(matches.length!==1)continue;
+        const byOrd=new Map(matches[0].map(r=>[r.ord,r.p]));
+        for(const x of items){
+          const target=byOrd.get(x.ord);if(!target)continue;
+          viaFinalOrdinalTargets.set(x.e,target);
+          claimedViaTargets.add(target);
+        }
+      }
+    }
+
     // IZF lab: exact unresolved-set mapping when individual MAT references are non-identifying.
     // Accept only when the unresolved EVSE set and unclaimed national PDC set have identical
     // cardinality, every PDC is globally unique, and every unresolved EVSE has identical
@@ -443,6 +510,7 @@ for(const sh of manifest.shards||[]){
         if(suffixTargets.has(e0)){alreadyClaimed.add(suffixTargets.get(e0));continue;}
         if(trimmedSuffixTargets.has(e0)){alreadyClaimed.add(trimmedSuffixTargets.get(e0));continue;}
         if(pd1FinalOrdinalTargets.has(e0)){alreadyClaimed.add(pd1FinalOrdinalTargets.get(e0));continue;}
+        if(viaFinalOrdinalTargets.has(e0)){alreadyClaimed.add(viaFinalOrdinalTargets.get(e0));continue;}
         unresolved.push(e0);
       }
       const unclaimed=localListForIzf.filter(p=>!alreadyClaimed.has(p));
@@ -516,9 +584,99 @@ for(const sh of manifest.shards||[]){
       izfGroupTargets.size ? [...izfGroupTargets.values()][0].sourceEvses : []
     );
 
+    // VIA lab: homogeneous exact-set fallback after strict ordinal mappings.
+    const viaGroupTargets=new Map();
+    if(localListForVia.some(p=>/^FRVIAE/.test(p))){
+      const alreadyClaimed=new Set();
+      const unresolved=[];
+      for(const e0 of row.tariff?.evses||[]){
+        const pr0=text(e0?.physicalReference);if(!pr0)continue;
+        const k0=norm(pr0);
+        if(local.has(k0)){alreadyClaimed.add(k0);continue;}
+        const p0=localListForVia.filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\d{1,2}$/.test(k0.slice(p.length)));
+        if(p0.length===1){alreadyClaimed.add(p0[0]);continue;}
+        if(ordinalTargets.has(e0)){alreadyClaimed.add(ordinalTargets.get(e0));continue;}
+        if(genericTargets.has(e0)){alreadyClaimed.add(genericTargets.get(e0));continue;}
+        if(suffixTargets.has(e0)){alreadyClaimed.add(suffixTargets.get(e0));continue;}
+        if(trimmedSuffixTargets.has(e0)){alreadyClaimed.add(trimmedSuffixTargets.get(e0));continue;}
+        if(pd1FinalOrdinalTargets.has(e0)){alreadyClaimed.add(pd1FinalOrdinalTargets.get(e0));continue;}
+        if(viaFinalOrdinalTargets.has(e0)){alreadyClaimed.add(viaFinalOrdinalTargets.get(e0));continue;}
+        unresolved.push(e0);
+      }
+      const unclaimed=localListForVia.filter(p=>!alreadyClaimed.has(p));
+      if(unresolved.length>=2 && unresolved.length===unclaimed.length &&
+         unclaimed.every(p=>(globalPdcOwners.get(p)?.size||0)===1)){
+        const compiledRows=[];
+        let valid=true;
+        for(const e0 of unresolved){
+          const connectors=e0?.connectors||[];
+          if(!connectors.length){valid=false;break;}
+          const compiled=[];
+          for(const c0 of connectors){
+            const x=compileConnector(c0);if(!x.ok){valid=false;break;}
+            compiled.push({pricing:x.pricing,connectorPk:c0.pk??null});
+          }
+          if(!valid)break;
+          const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
+          if(unique.length!==1){valid=false;break;}
+          compiledRows.push({e:e0,pricing:unique[0],connectorCount:connectors.length});
+        }
+        if(valid&&compiledRows.length===unresolved.length){
+          const pricingSigs=new Set(compiledRows.map(x=>pricingSig(x.pricing)));
+          const connectorCounts=new Set(compiledRows.map(x=>x.connectorCount));
+          if(pricingSigs.size===1&&connectorCounts.size===1){
+            const sharedPricing=compiledRows[0].pricing;
+            const connectorCount=compiledRows[0].connectorCount;
+            for(const p of unclaimed)viaGroupTargets.set(p,{pricing:sharedPricing,connectorCount,sourceEvses:unresolved});
+          }
+        }
+      }
+    }
+
+    if(viaGroupTargets.size){
+      const sourceEvses=[...new Set([...viaGroupTargets.values()].flatMap(x=>x.sourceEvses))];
+      const shared=[...viaGroupTargets.values()][0];
+      const currency=shared.pricing.rules?.[0]?.currency||'EUR';
+      for(const targetNorm of viaGroupTargets.keys()){
+        const targetPdc=localByNorm.get(targetNorm);
+        const offer={
+          id:`electroverse-evse-via-group:${row.electroverseLocationPk}:${targetNorm}`,
+          provider:'Electroverse',
+          countries:['FR'],
+          currency,
+          priority:80,
+          verifiedScope:'exact_evse_group',
+          evseIds:[targetPdc],
+          pricing:shared.pricing,
+          metadata:{
+            verified:true,
+            identityMode:'strict_via_homogeneous_exact_set',
+            electroverseLocationPk:String(row.electroverseLocationPk),
+            electroverseEvsePks:sourceEvses.map(e=>e.pk??null),
+            physicalReferences:sourceEvses.map(e=>text(e?.physicalReference)),
+            connectorCount:shared.connectorCount,
+            sourceGroupSize:sourceEvses.length,
+            targetGroupSize:viaGroupTargets.size,
+            tariffHash:row.tariffHash||null,
+            fetchedAt:row.fetchedAt||null,
+            source:'Electroverse tariff cache'
+          }
+        };
+        const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
+        tiles.get(id).push(offer);
+        stats.viaHomogeneousGroupCandidateEvses++;
+        stats.viaHomogeneousGroupPublishedEvses++;
+        stats.pricedExactEvses++;
+        stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=shared.connectorCount;
+      }
+    }
+    const viaGroupedSourceEvses=new Set(
+      viaGroupTargets.size ? [...viaGroupTargets.values()][0].sourceEvses : []
+    );
+
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
-      if(izfGroupedSourceEvses.has(e))continue;
+      if(izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e))continue;
       const pr=text(e?.physicalReference);
       if(!pr){rej('evse_missing_physical_reference');continue;}
       stats.physicalRefs++;
@@ -578,6 +736,13 @@ for(const sh of manifest.shards||[]){
           targetPdc=localByNorm.get(targetNorm);
           identityMode='strict_pd1_final_ordinal_subgroup_bijection';
           stats.pd1FinalOrdinalCandidateRefs++;
+        }else if(viaFinalOrdinalTargets.has(e)){
+          const targetNorm=viaFinalOrdinalTargets.get(e);
+          const owners=globalPdcOwners.get(targetNorm);
+          if(!owners||owners.size!==1){rej('via_final_ordinal_pdc_not_globally_unique');continue;}
+          targetPdc=localByNorm.get(targetNorm);
+          identityMode='strict_via_final_ordinal_subgroup_bijection';
+          stats.viaFinalOrdinalCandidateRefs++;
         }else{
           rej(candidates.length?'parent_pdc_ambiguous':'physical_reference_not_in_local_national_pdcs');continue;
         }
@@ -709,6 +874,7 @@ for(const sh of manifest.shards||[]){
       if(identityMode==='strict_unique_local_suffix_identity')stats.suffixIdentityPublishedEvses++;
       if(identityMode==='strict_trimmed_long_suffix_identity')stats.trimmedSuffixPublishedEvses++;
       if(identityMode==='strict_pd1_final_ordinal_subgroup_bijection')stats.pd1FinalOrdinalPublishedEvses++;
+      if(identityMode==='strict_via_final_ordinal_subgroup_bijection')stats.viaFinalOrdinalPublishedEvses++;
       stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=compiled.length;
     }
   }
@@ -798,6 +964,8 @@ stats.suffixIdentityPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMod
 stats.trimmedSuffixPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_trimmed_long_suffix_identity').length;
 stats.pd1FinalOrdinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_pd1_final_ordinal_subgroup_bijection').length;
 stats.izfHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_izf_homogeneous_exact_set').length;
+stats.viaFinalOrdinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_via_final_ordinal_subgroup_bijection').length;
+stats.viaHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_via_homogeneous_exact_set').length;
 stats.trimmedSuffixPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_trimmed_long_suffix_identity').length;
 stats.durationBandPublishedEvses=finalOffers.filter(o=>(o.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)).length;
 
@@ -837,6 +1005,12 @@ const out={
     izfExactSetRequiresHomogeneousPricing:true,
     izfExactSetRequiresUniformConnectorCount:true,
     izfExactSetRequiresGlobalPdcUniqueness:true,
+    strictViaFinalOrdinalSubgroupBijection:true,
+    strictViaHomogeneousExactSet:true,
+    viaExactSetRequiresEqualCardinality:true,
+    viaExactSetRequiresHomogeneousPricing:true,
+    viaExactSetRequiresUniformConnectorCount:true,
+    viaExactSetRequiresGlobalPdcUniqueness:true,
     suffixIdentityRequiresGlobalUniqueness:true,
     suffixIdentityRequiresUnclaimedTarget:true,
     strictTrimmedLongSuffixIdentityMinLength:7,
