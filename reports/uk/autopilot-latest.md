@@ -1,9 +1,15 @@
-# UK TCC zero-cost autopilot snapshot
+# UK TCC zero-cost autopilot
 
-- Generated: 2026-10-01T17:06:32Z
-- Canonical CPOs: **46**
-- Complete: **27**
+- Generated: 2026-10-01T17:07:06Z
+- AI/API cost: **£0 / €0**
+- Complete: **27 / 46**
 - Actionable partial: **0**
 - Set aside / external blocked: **19**
-- Worker state updated: **2026-09-29T11:14:03Z**
-- Global blocked: **False**
+- Canonical changes this cycle: **0**
+
+## Last deterministic run
+- Task: **lidl_uk_inventory_v2**
+- Return code: **0**
+
+## Remaining actionable partials
+- None
