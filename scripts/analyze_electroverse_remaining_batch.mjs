@@ -166,6 +166,36 @@ await fs.writeFile(VALIDATED,JSON.stringify({
   mappings:validatedMappings
 },null,2)+'\n');
 
+
+const debugSourcePks=new Set(['1028573','1036491','1214346','1214350','4179421','4179445']);
+const debugTargets=new Set(['FRMAPE000025001939','FRMAPE000025001863','FRMAPE000029973055','FRMAPE000030051219','FRGSPE12345958361','FRGSPE12345958371'].map(norm));
+const debugOffers=[];
+for(const t of oman.tiles||[]){
+  const tile=JSON.parse(zlib.gunzipSync(await fs.readFile(OVERLAY+'/'+t.file)));
+  for(const o of tile.emspOffers||[]){
+    const pks=[
+      ...(o?.metadata?.electroverseEvsePks||[]).map(String),
+      ...(o?.metadata?.electroverseEvsePk!=null?[String(o.metadata.electroverseEvsePk)]:[])
+    ];
+    const targets=(o.evseIds||[]).map(norm);
+    if(pks.some(x=>debugSourcePks.has(x))||targets.some(x=>debugTargets.has(x))){
+      debugOffers.push({
+        id:o.id,
+        evseIds:o.evseIds||[],
+        sourcePks:pks,
+        identityMode:o?.metadata?.identityMode||null,
+        offerGranularity:o?.metadata?.offerGranularity||null,
+        powerKw:o?.metadata?.powerKw??null
+      });
+    }
+  }
+}
+console.log('DEBUG_SIX_RESIDUALS '+JSON.stringify({
+  publishedSourcePks:[...debugSourcePks].filter(x=>publishedSourcePks.has(x)),
+  publishedTargets:[...debugTargets].filter(x=>publishedTargets.has(x)),
+  offers:debugOffers
+},null,2));
+
 console.log(JSON.stringify({
   generatedAt:out.generatedAt,
   sourceEvseResidualCount:out.sourceEvseResidualCount,
@@ -182,3 +212,5 @@ console.log(JSON.stringify({
 // rerun after connector-power overlay 2026-10-01
 
 // verify post-rebuild residual count 2026-10-01
+
+// debug six post-connector-power residuals 2026-10-01
