@@ -129,10 +129,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           cp reports/cross-country/shell-de-es-provider-matrix-latest.json /tmp/shell-de-es-provider-matrix-latest.json
-          git fetch origin main
-          git reset --hard origin/main
-          cp /tmp/shell-de-es-provider-matrix-latest.json reports/cross-country/shell-de-es-provider-matrix-latest.json
-          git add reports/cross-country/shell-de-es-provider-matrix-latest.json
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "data: probe alternate Shell provider IDs for DE-ES residuals [run ${GITHUB_RUN_ID}]"
-          git push origin HEAD:main
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/shell-de-es-provider-matrix-latest.json reports/cross-country/shell-de-es-provider-matrix-latest.json
+            git add reports/cross-country/shell-de-es-provider-matrix-latest.json
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "data: probe alternate Shell provider IDs for DE-ES residuals [run ${GITHUB_RUN_ID}]"
+            if git push origin HEAD:main; then exit 0; fi
+            echo "Push raced with another writer; retrying (${attempt}/5)"
+            sleep $((attempt * 2))
+          done
+          echo "Failed to publish after 5 retries" >&2
+          exit 1
