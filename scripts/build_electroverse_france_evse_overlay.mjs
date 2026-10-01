@@ -2411,3 +2411,5 @@ if(stats.publishedOffers<5000)throw new Error('too few safe Electroverse EVSE of
 // rebuild trigger after S63 validated residual mappings 2026-10-01
 
 // V9 connector-power offer model enabled 2026-10-01
+
+// rebuild trigger after post-connector-power MAP validation 2026-10-01
