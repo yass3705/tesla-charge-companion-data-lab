@@ -36,10 +36,26 @@ def refresh(output, country_codes, source_path=None):
             if key in refs:
                 raise ValueError('Duplicate previous station key')
             refs[key] = station
+        seed_path = output / 'access-seed.json'
+        seed_entries = (read(seed_path).get('entries') or {}) if seed_path.exists() else {}
+        def baseline_for(source_station):
+            key = (source_station['country'], source_station['id'].casefold())
+            base = refs.get(key)
+            seed = seed_entries.get(source_station['country'] + '|' + source_station['id'].casefold())
+            if base and seed and seed.get('accessSource') and seed.get('accessSource') != 'unknown':
+                current_source = (base.get('sucTracker') or {}).get('accessSource')
+                if not current_source or current_source == 'unknown':
+                    base = dict(base)
+                    base['access'] = seed.get('access')
+                    provenance = dict(base.get('sucTracker') or {})
+                    provenance['accessSource'] = seed.get('accessSource')
+                    provenance['accessReferenceAt'] = seed.get('accessReferenceAt')
+                    base['sucTracker'] = provenance
+            return base
         selected = [s for s in source['stations'] if s['country'] in country_codes]
         if not selected or set(country_codes) - {s['country'] for s in selected}:
             raise ValueError('Missing requested countries in SuC snapshot')
-        exported = [convert_station(s, refs.get((s['country'], s['id'].casefold())), source['generatedAt']) for s in selected]
+        exported = [convert_station(s, baseline_for(s), source['generatedAt']) for s in selected]
         ids = [s['id'] for s in exported]
         if len(ids) != len(set(ids)):
             raise ValueError('Duplicate output ID')
