@@ -198,6 +198,7 @@ const stats={
   viaHomogeneousGroupCandidateEvses:0,viaHomogeneousGroupPublishedEvses:0,
   c55HomogeneousGroupCandidateEvses:0,c55HomogeneousGroupPublishedEvses:0,
   hpcOrdinalGroupCandidateEvses:0,hpcOrdinalGroupPublishedEvses:0,
+  c55BIndexCandidateEvses:0,c55BIndexPublishedEvses:0,
   drvHomogeneousGroupCandidateEvses:0,drvHomogeneousGroupPublishedEvses:0,
   sigHomogeneousGroupCandidateEvses:0,sigHomogeneousGroupPublishedEvses:0,
   qovHomogeneousGroupCandidateEvses:0,qovHomogeneousGroupPublishedEvses:0,
@@ -886,6 +887,59 @@ for(const sh of manifest.shards||[]){
       }
     }
 
+    // 55C structured B-index identity: B01 -> suffix 0, B02 -> suffix 1, ...
+    // Apply only when every unresolved Bxx reference is unique, the full remaining
+    // 55C target set has the exact matching zero-based suffix set, and every target
+    // PDC is globally unique. This supports heterogeneous per-EVSE pricing safely.
+    const c55BIndexTargets=new Map();
+    const c55BIndexSourceEvses=new Set();
+    {
+      const local55=[...local].filter(p=>p.startsWith('FR55CE'));
+      if(local55.length){
+        const claimed=new Set();
+        const unresolved=[];
+        for(const e0 of row.tariff?.evses||[]){
+          const pr0=text(e0?.physicalReference);if(!pr0)continue;
+          const k0=norm(pr0);
+          if(local.has(k0)){claimed.add(k0);continue;}
+          const p0=[...local].filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\d{1,2}$/.test(k0.slice(p.length)));
+          if(p0.length===1){claimed.add(p0[0]);continue;}
+          if(ordinalTargets.has(e0)){claimed.add(ordinalTargets.get(e0));continue;}
+          if(genericTargets.has(e0)){claimed.add(genericTargets.get(e0));continue;}
+          if(suffixTargets.has(e0)){claimed.add(suffixTargets.get(e0));continue;}
+          if(trimmedSuffixTargets.has(e0)){claimed.add(trimmedSuffixTargets.get(e0));continue;}
+          if(pd1FinalOrdinalTargets.has(e0)){claimed.add(pd1FinalOrdinalTargets.get(e0));continue;}
+          if(viaFinalOrdinalTargets.has(e0)){claimed.add(viaFinalOrdinalTargets.get(e0));continue;}
+          if(izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0)||c55GroupedSourceEvses.has(e0)||hpcGroupedSourceEvses.has(e0))continue;
+          const mm=pr0.match(/^B(\d{2})(?:\b|\s|-)/i)||pr0.match(/^B(\d{2})$/i);
+          if(!mm)continue;
+          unresolved.push({e:e0,n:Number(mm[1]),raw:pr0});
+        }
+        const unclaimed55=local55.filter(p=>!claimed.has(p));
+        const uniqueNs=new Set(unresolved.map(x=>x.n));
+        const alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const bySuffixIndex=new Map();
+        let targetsOk=unclaimed55.length>0;
+        for(const p of unclaimed55){
+          const idx=alphabet.indexOf(p.slice(-1));
+          if(idx<0||bySuffixIndex.has(idx)||(globalPdcOwners.get(p)?.size||0)!==1){targetsOk=false;break;}
+          bySuffixIndex.set(idx,p);
+        }
+        const expected=[...uniqueNs].map(n=>n-1).sort((a,b)=>a-b);
+        const targetIdx=[...bySuffixIndex.keys()].sort((a,b)=>a-b);
+        const exactSet=targetsOk && unresolved.length===uniqueNs.size &&
+          expected.length===targetIdx.length && expected.every((v,i)=>v===targetIdx[i]);
+        if(exactSet){
+          for(const x of unresolved){
+            const targetNorm=bySuffixIndex.get(x.n-1);
+            if(!targetNorm)continue;
+            c55BIndexTargets.set(x.e,targetNorm);
+            c55BIndexSourceEvses.add(x.e);
+          }
+        }
+      }
+    }
+
     // DRV/SIG/QOV lab: operator-locked homogeneous exact-set fallback.
     // This never assigns an individual source reference to an individual PDC. It is used
     // only when the entire unresolved source set has the same size as the entire unclaimed
@@ -1172,6 +1226,13 @@ for(const sh of manifest.shards||[]){
           targetPdc=localByNorm.get(targetNorm);
           identityMode='strict_via_final_ordinal_subgroup_bijection';
           stats.viaFinalOrdinalCandidateRefs++;
+        }else if(c55BIndexTargets.has(e)){
+          const targetNorm=c55BIndexTargets.get(e);
+          const owners=globalPdcOwners.get(targetNorm);
+          if(!owners||owners.size!==1){rej('c55_bindex_pdc_not_globally_unique');continue;}
+          targetPdc=localByNorm.get(targetNorm);
+          identityMode='strict_55c_bindex_zero_based_suffix';
+          stats.c55BIndexCandidateEvses++;
         }else{
           rej(candidates.length?'parent_pdc_ambiguous':'physical_reference_not_in_local_national_pdcs');continue;
         }
@@ -1304,6 +1365,7 @@ for(const sh of manifest.shards||[]){
       if(identityMode==='strict_trimmed_long_suffix_identity')stats.trimmedSuffixPublishedEvses++;
       if(identityMode==='strict_pd1_final_ordinal_subgroup_bijection')stats.pd1FinalOrdinalPublishedEvses++;
       if(identityMode==='strict_via_final_ordinal_subgroup_bijection')stats.viaFinalOrdinalPublishedEvses++;
+      if(identityMode==='strict_55c_bindex_zero_based_suffix')stats.c55BIndexPublishedEvses++;
       stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=compiled.length;
     }
   }
@@ -1397,6 +1459,7 @@ stats.viaFinalOrdinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMo
 stats.viaHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_via_homogeneous_exact_set').length;
 stats.c55HomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_homogeneous_exact_set').length;
 stats.hpcOrdinalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_hpc_duplicate_ordinal_to_three_digit_pdc').length;
+stats.c55BIndexPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_bindex_zero_based_suffix').length;
 stats.drvHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_drv_homogeneous_exact_set').length;
 stats.sigHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_sig_homogeneous_exact_set').length;
 stats.qovHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_qov_homogeneous_exact_set').length;
@@ -1466,6 +1529,9 @@ const out={
     hpcOrdinalRequiresExactSourceTargetOrdinalSet:true,
     hpcOrdinalRequiresGlobalPdcUniqueness:true,
     hpcDuplicateOrdinalRequiresHomogeneousPricing:true,
+    strict55cBIndexZeroBasedSuffix:true,
+    c55BIndexRequiresExactResidualSet:true,
+    c55BIndexRequiresGlobalPdcUniqueness:true,
     strictDrvHomogeneousExactSet:true,
     strictSigHomogeneousExactSet:true,
     strictQovHomogeneousExactSet:true,
