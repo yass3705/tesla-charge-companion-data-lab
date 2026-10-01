@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 185,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-184.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 245,
+    "partial": 346,
+    "blocked": 0
+  },
+  "promotions": [],
+  "investigations": [
+    {
+      "name": "Stadtwerke Rostock AG",
+      "bucket": "B7 / m8mit",
+      "status": "partial",
+      "evidenceSummary": "Fresh m8mit operator inventory exposes sampled AC 22 kW guest tuple at 0.49 EUR/kWh + 1.49 EUR Direct-Pay + 0.10 EUR/min after 4h. Current first-party Stadtwerke Rostock page confirms multiple access channels (OSTSEE-STROM MOBIL QR/m8mit, RFID, E-Charging+, SMS) but does not publish a numeric anonymous guest tariff. A fresh HPC 150 kW direct-payment surface reports 0.59 EUR/kWh + 0.10 EUR/min after 90 min, so the historical B7 contradictory-sources blocker remains material.",
+      "exactGap": "Need authoritative anonymous_ad_hoc tariff matrix binding AC/DC/HPC classes and fee thresholds to current Stadtwerke Rostock EVSEs, or exhaustive m8mit/direct checkout coverage. Do not substitute the OSTSEE-STROM MOBIL contract tariff (0.38 AC / 0.48 DC + monthly fee) for guest pricing.",
+      "evidence": [
+        "https://wgw.m8mit.de/stationslist",
+        "https://www.swrag.de/privatkunden/oekomobilitaet/oeffentliches-laden",
+        "https://www.goingelectric.de/stromtankstellen/Deutschland/Rostock/Albrecht-Tischbein-Strasse-Albrecht-Tischbein-Strasse-48/100959/"
+      ]
+    }
+  ],
+  "priorityTop5": {
+    "status": "parked after two distinct evidence-led passes",
+    "names": [
+      "solid GmbH / LadeVerbundPlus",
+      "NEW AG / NEW Energie",
+      "RhönEnergie Fulda GmbH",
+      "amperio GmbH",
+      "50five"
+    ]
+  },
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 245,
+    "partial": 346,
+    "blocked": 0
+  },
+  "statusChanges": 0,
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "245 + 346 + 0 = 591",
+    "indicator": "221 -> 245 complete (+24)",
+    "promotions": 0,
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS",
+    "top5Guard": "PASS"
+  },
+  "nextSafeAction": "Keep Rostock partial under B7. Continue another m8mit partial with a current public guest tuple; if no clean candidate closes, move to ladenetz/ladeapp and LadeVerbundPlus station-exception mapping. No production merge."
+}
