@@ -265,6 +265,7 @@ const stats={
   hpcOrdinalGroupCandidateEvses:0,hpcOrdinalGroupPublishedEvses:0,
   c55BIndexCandidateEvses:0,c55BIndexPublishedEvses:0,
   validatedNumericResidualCandidateEvses:0,validatedNumericResidualPublishedEvses:0,
+  validatedNumericResidualDiagnostics:{noConnectors:0,compileReasons:{},heterogeneous:0,compiledHomogeneous:0},
   validatedS82ResidualCandidateEvses:0,validatedS82ResidualPublishedEvses:0,
   drvPowerGroupCandidateEvses:0,drvPowerGroupPublishedEvses:0,drvPowerGroupByKw:{},
   pd1TechnicalGroupCandidateEvses:0,pd1TechnicalGroupPublishedEvses:0,pd1TechnicalGroupByKey:{},
@@ -1663,7 +1664,10 @@ for(const sh of manifest.shards||[]){
       }
 
       const connectors=e?.connectors||[];
-      if(!connectors.length){rej('evse_no_connectors');continue;}
+      if(!connectors.length){
+        if(identityMode==='validated_numeric_residual_unique_bijection')stats.validatedNumericResidualDiagnostics.noConnectors++;
+        rej('evse_no_connectors');continue;
+      }
       const compiled=[];
       let bad=null;
       for(const c of connectors){
@@ -1672,6 +1676,10 @@ for(const sh of manifest.shards||[]){
         compiled.push({pricing:x.pricing,connectorPk:c.pk??null,powerKw:c.kilowatts??null,standard:c.standard??null});
       }
       if(bad){
+        if(identityMode==='validated_numeric_residual_unique_bijection'){
+          const d=stats.validatedNumericResidualDiagnostics.compileReasons;
+          d[bad]=(d[bad]||0)+1;
+        }
         rej('pricing_'+bad);
         if(bad==='date_restriction'){
           pricingDiagnostics.dateRestriction.evses++;
@@ -1742,7 +1750,11 @@ for(const sh of manifest.shards||[]){
       stats.pricedExactEvses++;
       if(compiled.some(x=>(x.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)))stats.durationBandCandidateEvses++;
       const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
-      if(unique.length!==1){rej('heterogeneous_connectors_within_evse');continue;}
+      if(unique.length!==1){
+        if(identityMode==='validated_numeric_residual_unique_bijection')stats.validatedNumericResidualDiagnostics.heterogeneous++;
+        rej('heterogeneous_connectors_within_evse');continue;
+      }
+      if(identityMode==='validated_numeric_residual_unique_bijection')stats.validatedNumericResidualDiagnostics.compiledHomogeneous++;
 
       const pricing=unique[0],currency=pricing.rules?.[0]?.currency||'EUR';
       if(parentMode){
