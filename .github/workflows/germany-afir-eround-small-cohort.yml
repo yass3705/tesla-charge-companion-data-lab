@@ -1,0 +1,46 @@
+name: Germany AFIR eRound 100pct small cohort closure
+on:
+  push:
+    paths: [".github/workflows/germany-afir-eround-small-cohort.yml"]
+  workflow_dispatch:
+permissions: {contents: write}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          import gzip,json,pathlib,collections
+          targets={"Schreinerhof Betriebs GmbH","ecoCharge GmbH","Grünstrom Ladepark A44 GmbH","PMP Energie GmbH"}
+          with gzip.open("data/national/germany_non_tesla_catalog_staging_direct_cpo.json.gz","rt",encoding="utf-8") as f:d=json.load(f)
+          out={"schemaVersion":1,"country":"DE","operators":[]}
+          for op in sorted(targets):
+            rows=[]
+            for s in d.get("sites",[]):
+              if str(s.get("operator") or "").strip()!=op: continue
+              af=s.get("afir") or {}; ad=af.get("data") or {}
+              rows.append({"siteId":s.get("id"),"powerKw":s.get("maxConnectionPowerKw"),"evseIds":s.get("evseIds"),"matchStatus":af.get("matchStatus"),"provider":ad.get("provider"),"rawTariffs":ad.get("rawTariffs"),"hasRawTariff":ad.get("hasRawTariff")})
+            sig=collections.Counter(); pay=collections.Counter(); tax=collections.Counter(); n=anon=0
+            for r in rows:
+              for t in r.get("rawTariffs") or []:
+                n+=1;p=t.get("payment");pay[json.dumps(p,sort_keys=True,ensure_ascii=False)]+=1
+                if any(k in json.dumps(p,ensure_ascii=False).lower() for k in ("qrcode","creditcard","debitcard","credit_card","debit_card","qr_code")):anon+=1
+                ps=[]
+                for x in t.get("prices") or []:
+                  tax[str(x.get("taxIncluded"))]+=1;ps.append({"priceType":x.get("priceType"),"value":x.get("value"),"taxIncluded":x.get("taxIncluded"),"timeBasedApplicability":x.get("timeBasedApplicability"),"overallPeriod":x.get("overallPeriod")})
+                sig[json.dumps({"payment":p,"prices":ps},sort_keys=True,ensure_ascii=False)]+=1
+            z={"operator":op,"sites":len(rows),"matchedSafe":sum(r["matchStatus"]=="matched_safe" for r in rows),"rawTariffSites":sum(bool(r["hasRawTariff"]) for r in rows),"uniqueEvseIds":len({e for r in rows for e in (r.get("evseIds") or [])}),"tariffObjects":n,"anonymousPaymentTariffObjects":anon,"paymentCounts":dict(pay),"taxIncludedCounts":dict(tax),"tariffSignatureCounts":dict(sig),"rows":rows}
+            out["operators"].append(z)
+            assert z["sites"]==z["matchedSafe"]==z["rawTariffSites"]==1
+          pathlib.Path("docs/germany-afir-eround-small-cohort-closure-2026-10-01.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps([{k:z[k] for k in ("operator","sites","uniqueEvseIds","tariffObjects","anonymousPaymentTariffObjects","paymentCounts","taxIncludedCounts","tariffSignatureCounts")} for z in out["operators"]],ensure_ascii=False,indent=2))
+          PY
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/germany-afir-eround-small-cohort-closure-2026-10-01.json
+          git diff --cached --quiet && exit 0
+          git commit -m "audit(de): close eRound small 100pct cohort"
+          for attempt in 1 2 3 4 5; do git pull --rebase origin main && git push origin HEAD:main && exit 0 || true; sleep $((attempt*2)); done
+          exit 1
