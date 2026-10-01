@@ -231,11 +231,18 @@
     },
     {
       "name": "Shell Recharge",
-      "status": "set_aside_external_request",
-      "access": "eco_movement_pcpr_request_or_professional_shell_developer_access",
-      "evidence": "Shell EV Public Locations Sandbox authentication was validated on 2026-10-01 with the user's developer credentials, but the Sandbox returned 0 UK locations/EVSE/connectors. Production access on the Shell Developer portal is restricted to professional/business users, so this route is not usable for the current user profile. Retain the validated workflow only as technical evidence. For actual UK PCPR data, use the external Eco-Movement/request route already identified for Shell/ubitricity.",
-      "next": "Do not pursue Shell Developer Production with the current personal account. Keep the Sandbox workflow as bounded evidence. Prefer the Eco-Movement PCPR access route for Shell Recharge/ubitricity and ingest through the generic Eco-Movement collector if access is granted.",
-      "report": "reports/uk/shell-ev-public-locations-latest.json"
+      "status": "complete",
+      "access": "shell_ev_public_locations_sandbox_oauth2_with_provider_tariffs",
+      "evidence": "Shell EV Public Locations v2.1.2 Sandbox is fully usable with the user's developer app. UK inventory and live EVSE/status/connectors are retrievable. Tariffs are returned from per-location detail calls when providerId=Shell_RP_2. Full tariff run 36861406490 completed successfully on 2026-10-01: 352/352 target locations HTTP 200, 347 with tariffs, 5 bounded no-tariff residuals, 464 tariff objects across 538 connectors, 98.58% location tariff coverage, 0 HTTP 429/other errors, and 3 automatic OAuth refreshes.",
+      "next": "Treat Shell Recharge/ubitricity as complete for UK V9 with five bounded fail-closed no-tariff locations. Keep OAuth refresh-on-401 and 8 req/min rate limiter. Only revisit residual UIDs if a new providerId or contradictory evidence appears.",
+      "report": "reports/uk/shell-full-tariffs-latest.json",
+      "completionMode": "complete_official_api_with_bounded_fail_closed_residuals",
+      "dataset": "data/national/uk_shell_tariffs.json.gz",
+      "locationCount": 352,
+      "tariffCoveredLocationCount": 347,
+      "tariffCoveragePct": 98.58,
+      "failClosedCount": 5,
+      "providerId": "Shell_RP_2"
     },
     {
       "name": "Allego",
