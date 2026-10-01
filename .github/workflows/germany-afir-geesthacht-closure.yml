@@ -1,0 +1,47 @@
+name: Germany AFIR Geesthacht closure
+on:
+  push:
+    paths: [".github/workflows/germany-afir-geesthacht-closure.yml"]
+  workflow_dispatch:
+permissions: {contents: write}
+concurrency: {group: germany-afir-geesthacht-closure, cancel-in-progress: false}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python - <<'PY'
+          import gzip,json,pathlib,collections
+          with gzip.open("data/national/germany_non_tesla_catalog_staging_direct_cpo.json.gz","rt",encoding="utf-8") as f:d=json.load(f)
+          rows=[]
+          for s in d.get("sites",[]):
+            if "stadtwerke geesthacht" not in str(s.get("operator") or "").lower(): continue
+            af=s.get("afir") or {}; ad=af.get("data") or {}
+            rows.append({"siteId":s.get("id"),"operator":s.get("operator"),"powerKw":s.get("maxConnectionPowerKw"),"evseIds":s.get("evseIds"),"sourceStationIds":s.get("sourceStationIds"),"matchStatus":af.get("matchStatus"),"provider":ad.get("provider"),"offerId":ad.get("offerId"),"sourceSiteId":ad.get("sourceSiteId"),"name":ad.get("name"),"stationCount":ad.get("stationCount"),"chargePointCount":ad.get("chargePointCount"),"maxConnectorPowerKw":ad.get("maxConnectorPowerKw"),"rawTariffs":ad.get("rawTariffs"),"hasRawTariff":ad.get("hasRawTariff")})
+          sig=collections.Counter()
+          price_types=collections.Counter()
+          payment=[]
+          tariff_objects=0
+          for r in rows:
+            for t in r.get("rawTariffs") or []:
+              tariff_objects+=1
+              prices=t.get("prices") or []
+              signature=[]
+              for x in prices:
+                price_types[str(x.get("priceType"))]+=1
+                signature.append((x.get("priceType"),x.get("value"),json.dumps(x.get("timeBasedApplicability"),sort_keys=True),json.dumps(x.get("overallPeriod"),sort_keys=True),x.get("taxIncluded")))
+              sig[json.dumps(signature,sort_keys=True,ensure_ascii=False)]+=1
+              if t.get("payment") is not None:payment.append(t.get("payment"))
+          out={"schemaVersion":1,"operator":"Stadtwerke Geesthacht GmbH","sites":len(rows),"matchedSafe":sum(r["matchStatus"]=="matched_safe" for r in rows),"rawTariffSites":sum(bool(r["hasRawTariff"]) for r in rows),"uniqueEvseIds":len({e for r in rows for e in (r.get("evseIds") or [])}),"tariffObjects":tariff_objects,"priceTypes":dict(price_types),"explicitPaymentObjects":payment,"tariffSignatureCounts":dict(sig),"rows":rows}
+          pathlib.Path("docs/germany-afir-geesthacht-closure-2026-10-01.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps({k:out[k] for k in ("sites","matchedSafe","rawTariffSites","uniqueEvseIds","tariffObjects","priceTypes","explicitPaymentObjects","tariffSignatureCounts")},ensure_ascii=False,indent=2))
+          PY
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/germany-afir-geesthacht-closure-2026-10-01.json
+          git diff --cached --quiet && exit 0
+          git commit -m "audit(de): close Geesthacht AFIR tariff matrix"
+          for attempt in 1 2 3 4 5; do git pull --rebase origin main && git push origin HEAD:main && exit 0 || true; sleep $((attempt*2)); done
+          exit 1
