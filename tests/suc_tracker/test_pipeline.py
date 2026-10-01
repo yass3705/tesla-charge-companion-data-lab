@@ -55,6 +55,33 @@ class PipelineTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 compare_files(root/'mac.json', snap, root/'report', {'FR'}, 'test', 'a'*40)
 
+    def test_access_seed_restores_known_legacy_access(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            raw = source()
+            write(root/'input.json', raw)
+            first = convert_station(raw['stations'][0], None, raw['generatedAt'])
+            self.assertEqual(first['sucTracker']['accessSource'], 'unknown')
+            out = root/'published'
+            out.mkdir()
+            write(out/'europe.json', raw)
+            write(out/'tesla_stations.json', [first])
+            key = 'FR|123'
+            write(out/'access-seed.json', {
+                'schemaVersion': 1,
+                'entries': {
+                    key: {
+                        'access': {'limited': False},
+                        'accessSource': 'Mac/TCC baseline',
+                        'accessReferenceAt': '2026-09-03'
+                    }
+                }
+            })
+            refresh(out, {'FR'}, root/'input.json')
+            rows = read(out/'tesla_stations.json')
+            self.assertEqual(rows[0]['sucTracker']['accessSource'], 'Mac/TCC baseline')
+            self.assertFalse(rows[0]['access']['limited'])
+
     def test_regressed_source_does_not_replace_published_files(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
