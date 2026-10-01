@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": 420,
+  "date": "2026-09-24",
+  "purpose": "Resolve the remaining Yaway canonical-lineage blocker using the historical 291-CPO ledger, without replaying the validated LMS mobile-backend investigation.",
+  "canonicalInput": {
+    "path": "docs/france-cpo-progress-2026-09.json",
+    "schemaVersionObserved": 88,
+    "treated": 79,
+    "setAside": 11,
+    "active": 201,
+    "total": 291,
+    "treatedListLength": 79,
+    "setAsideListLength": 11,
+    "activeListLength": 201,
+    "arithmeticOk": true,
+    "crossBucketExactOverlap": 0,
+    "pendingDedupeCreated": false
+  },
+  "atlanteHandoff": {
+    "status": "satisfied_no_replay",
+    "counterDelta": 0
+  },
+  "yawayLineage": {
+    "status": "deterministic_raw_slot_recovered",
+    "rawRank": 139,
+    "historicalOperator": "Yaway",
+    "historicalSize": "8 stations / 61 PDC",
+    "sourceCommit": "eb3ec6b81b315d890e9a1d79aba30720eda2be8b",
+    "sourceAudit": "docs/france-regional-cpo-batch197-audit-2026-09-11.json",
+    "historicalDecision": "active-first-pass-advanced",
+    "historicalEvidence": {
+      "authority": "Kallista Energy owns/operates YAWAY infrastructure.",
+      "breteuil": "First-party evidence already anchored Breteuil at 0.30 EUR/kWh and explicitly prohibited national transposition.",
+      "historicalNextRoute": "Map each YAWAY station/EVSE to first-party/app/QR price."
+    },
+    "validatedDirectMethodAudit": "docs/france-regional-cpo-yaway-lms-mobile-backend-batch419-2026-09-24.json",
+    "partyId": "FR*YAW",
+    "liveMethod": "yaway_lms_mobile_backend",
+    "fallback": "lms_station_list",
+    "fallbackCoverage20260917": "49 EVSE / 8 stations",
+    "lineageConclusion": "The historical 291 ledger contains Yaway explicitly at raw rank139. Yaway is therefore not a new 292nd authority and no pending-dedupe is needed. The previous batch419 lineage blocker is resolved.",
+    "promotionDecision": "treated_ready_after_atomic_canonical_rewrite",
+    "expectedCounterEffect": {
+      "treated": 80,
+      "setAside": 11,
+      "active": 200,
+      "total": 291
+    },
+    "canonicalMutationInThisCommit": false,
+    "mutationReason": "The current canonical is a large full-file JSON document and the available safe repository write primitive replaces whole files. This audit first persists the deterministic rank139 proof so a subsequent atomic canonical rewrite can replace exactly one active placeholder with Yaway without risking truncation or unrelated regressions."
+  },
+  "antiStagnation": {
+    "triggered": true,
+    "safeCorrection": "Recovered a named historical slot instead of creating a new pending-dedupe or appending a new authority.",
+    "pendingDedupeTouched": [],
+    "aliasesResolved": ["Yaway -> original raw rank139"],
+    "counterChangeThisCommit": false,
+    "nextAtomicChange": "Replace exactly one UNPROVEN_ACTIVE placeholder with treated entry 'Yaway | FR*YAW | raw rank139', yielding 80/11/200; do not append a 292nd slot."
+  },
+  "v8DirectReuse": {
+    "functional": [
+      "IONITY direct location endpoint lineage",
+      "Atlante/MyAtlante national extractor",
+      "Yaway LMS mobile-gateway guest backend"
+    ],
+    "yawayRecoverableBatch": "8 historical stations; 49 FR*YAW EVSE in LMS fallback snapshot, with live backend primary for current status/tariffId/tariff details.",
+    "relatedLmsCandidates": ["Greenspot", "ZEENCO"],
+    "constraint": "Shared LMS architecture does not imply shared profile, tenant, authority or tariff.",
+    "excludedAsDirectTariffAuthority": ["Electroverse", "Electra roaming/eMSP prices"],
+    "nextFamily": "After the rank139 canonical rewrite, use the proven LMS mobile-gateway pattern to test Greenspot/ZEENCO tenant-specific public guest profiles, while preserving host-specific tariff semantics."
+  },
+  "exit": {
+    "treated": 79,
+    "active": 201,
+    "setAsideCount": 11,
+    "newlyTreated": [],
+    "newlyResolvedLineage": ["Yaway raw rank139"],
+    "currentlyInvestigated": "Yaway atomic canonical promotion, then LMS-family reuse for Greenspot/ZEENCO",
+    "blocker": "Technical and historical Yaway evidence are now both complete; only the atomic full-file canonical rewrite remains.",
+    "coherence": "PASS before mutation: 79 + 11 + 201 = 291; target after one-for-one rank139 promotion: 80 + 11 + 200 = 291."
+  }
+}
