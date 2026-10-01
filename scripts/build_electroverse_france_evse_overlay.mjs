@@ -15,6 +15,7 @@ const VALIDATED_MGP_MAP='data/platforms/electroverse/validated-mappings/mgp-resi
 const VALIDATED_LE2_MAP='data/platforms/electroverse/validated-mappings/le2-residual.json';
 const VALIDATED_P01_MAP='data/platforms/electroverse/validated-mappings/p01-structured-residual.json';
 const VALIDATED_B_MAP='data/platforms/electroverse/validated-mappings/b-residual.json';
+const VALIDATED_SAE_MAP='data/platforms/electroverse/validated-mappings/sae-structured-residual.json';
 const FINAL_RESIDUAL_PLAN='data/platforms/electroverse/validated-mappings/final-residual-recovery-plan.json';
 const OUT=process.argv[2]||'data/platforms/electroverse/france-evse';
 const TILE=.5;
@@ -211,6 +212,8 @@ let validatedP01Map={mappings:[]};
 try{validatedP01Map=JSON.parse(await fs.readFile(VALIDATED_P01_MAP,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
 let validatedBMap={mappings:[]};
 try{validatedBMap=JSON.parse(await fs.readFile(VALIDATED_B_MAP,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
+let validatedSaeMap={mappings:[]};
+try{validatedSaeMap=JSON.parse(await fs.readFile(VALIDATED_SAE_MAP,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
 const finalResidualPlan=JSON.parse(await fs.readFile(FINAL_RESIDUAL_PLAN,'utf8'));
 const powerdotByEvse=new Map((powerdotTech.evses||[]).map(x=>[norm(x.evseId),x]));
 const drivecoNative=[...(driveco.resolved||[]),...(driveco.unresolved||[])];
@@ -292,6 +295,12 @@ const validatedBResidualTargets=new Map(
     norm(x.targetPdc)
   ])
 );
+const validatedSaeResidualTargets=new Map(
+  (validatedSaeMap.mappings||[]).map(x=>[
+    String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk),
+    norm(x.targetPdc)
+  ])
+);
 const validatedP01ResidualMetadata=new Map(
   (validatedP01Map.mappings||[]).map(x=>[
     String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk),
@@ -324,6 +333,7 @@ const validatedResidualTargets=new Map([
   ...validatedLe2ResidualTargets,
   ...validatedP01ResidualTargets,
   ...validatedBResidualTargets,
+  ...validatedSaeResidualTargets,
   ...[...finalResidualIndividualTargets].map(([k,v])=>[k,v.target])
 ]);
 const isValidatedResidualSource=(row,e)=>validatedResidualTargets.has(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
@@ -2067,6 +2077,11 @@ for(const sh of manifest.shards||[]){
         }else if(validatedBResidualTargets.has(validatedKey)){
           identityMode='validated_55c_bindex_duplicate_safe';
           stats.validatedBResidualCandidateEvses=(stats.validatedBResidualCandidateEvses||0)+1;
+        }else if(validatedSaeResidualTargets.has(validatedKey)){
+          identityMode='validated_sae_structured_parent';
+          parentMode=true;
+          parentNorm=targetNorm;
+          stats.validatedSaeResidualCandidateEvses=(stats.validatedSaeResidualCandidateEvses||0)+1;
         }else if(validatedP01ResidualTargets.has(validatedKey)){
           const p01Meta0=validatedP01ResidualMetadata.get(validatedKey);
           identityMode=p01Meta0?.recoveryMode==='station_point_ordinal_remap'
