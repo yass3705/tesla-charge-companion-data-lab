@@ -89,7 +89,8 @@ jobs:
                           "httpStatus":rr.status,
                           "topLevelType":type(jj).__name__,
                           "topLevelKeys":list(jj.keys())[:50] if isinstance(jj,dict) else None,
-                          "sample":jj if len(raw)<12000 else (list(jj)[:2] if isinstance(jj,list) else {k:jj[k] for k in list(jj)[:8]})
+                          "dataCount":len(jj.get("data") or []) if isinstance(jj,dict) and isinstance(jj.get("data"),list) else (len(jj) if isinstance(jj,list) else None),
+                          "firstDataItemKeys":list((jj.get("data") or [{}])[0].keys()) if isinstance(jj,dict) and isinstance(jj.get("data"),list) and jj.get("data") else None
                       }
                       return jj
               except urllib.error.HTTPError as e:
@@ -103,17 +104,24 @@ jobs:
           nearby=probe("/v2/locations/nearby",{"latitude":51.5074,"longitude":-0.1278})
 
           def extract_items(j):
-              if isinstance(j,list): return j
-              if not isinstance(j,dict): return []
+              if isinstance(j,list):
+                  return j
+              if not isinstance(j,dict):
+                  return []
+              # Shell EV Public Locations v2.1.2 observed shape:
+              # {"requestId": "...", "status": "SUCCESS", "data": [LocationV2, ...]}
+              if isinstance(j.get("data"),list):
+                  return j["data"]
               candidates=[j]
               for k in ("data","result","response"):
                   v=j.get(k)
-                  if isinstance(v,dict): candidates.append(v)
-                  elif isinstance(v,list): return v
+                  if isinstance(v,dict):
+                      candidates.append(v)
               for d in candidates:
                   for k in ("items","locations","content","results","records"):
                       v=d.get(k) if isinstance(d,dict) else None
-                      if isinstance(v,list): return v
+                      if isinstance(v,list):
+                          return v
               return []
 
           all_items=extract_items(first)
@@ -145,7 +153,13 @@ jobs:
               ]
               return " ".join(str(v) for v in vals if v).upper()
 
-          uk=[x for x in all_items if any(k in country_of(x) for k in ("GB","GBR","UNITED KINGDOM","UK"))]
+          # Exact country-code matching avoids accidental substring matches.
+          uk=[]
+          for x in all_items:
+              addr=x.get("address") if isinstance(x.get("address"),dict) else {}
+              cc=str(addr.get("country") or x.get("countryCode") or x.get("country_code") or x.get("country") or "").upper().strip()
+              if cc in ("GB","GBR","UK","UNITED KINGDOM"):
+                  uk.append(x)
           now=datetime.now(timezone.utc).isoformat()
           payload={"retrievedAt":now,"source":BASE,"locations":uk}
           with gzip.open("data/national/uk_shell_ev_public_locations.json.gz","wt",encoding="utf-8") as g:
@@ -156,7 +170,14 @@ jobs:
           tariffs=0
           evses=0
           connectors=0
+          operator_counts={}
+          location_tariff_signals=0
+          evse_tariff_signals=0
           for loc in uk:
+              op=str(loc.get("operatorName") or loc.get("subOperatorName") or loc.get("operatorId") or "UNKNOWN")
+              operator_counts[op]=operator_counts.get(op,0)+1
+              if any(loc.get(k) is not None for k in ("tariff","tariffs","price","pricing")):
+                  location_tariff_signals+=1
               for k in ("operatorName","networkName","providerName","operator","network","provider"):
                   v=loc.get(k)
                   if isinstance(v,str): names.add(v)
@@ -167,6 +188,8 @@ jobs:
               if isinstance(ev,list):
                   evses+=len(ev)
                   for e in ev:
+                      if any(e.get(k) is not None for k in ("tariff","tariffs","price","pricing")):
+                          evse_tariff_signals+=1
                       cs=e.get("connectors") or []
                       if isinstance(cs,list):
                           connectors+=len(cs)
@@ -181,6 +204,9 @@ jobs:
               "evseLikeCount":evses,
               "connectorLikeCount":connectors,
               "connectorsWithPricingSignal":tariffs,
+              "locationsWithPricingSignal":location_tariff_signals,
+              "evsesWithPricingSignal":evse_tariff_signals,
+              "operatorCounts":dict(sorted(operator_counts.items(),key=lambda kv:(-kv[1],kv[0]))),
               "operatorNetworkNames":sorted(names)[:200],
               "firstLocationKeys":list(uk[0].keys()) if uk else []
           }
