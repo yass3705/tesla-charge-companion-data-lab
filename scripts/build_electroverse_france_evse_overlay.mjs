@@ -11,6 +11,7 @@ const POWERDOT_TECH='data/operator_direct/powerdot_evse_technical_inventory.json
 const VALIDATED_NUMERIC_MAP='data/platforms/electroverse/validated-mappings/numeric-residual.json';
 const VALIDATED_S82_MAP='data/platforms/electroverse/validated-mappings/s82-residual.json';
 const VALIDATED_MGP_MAP='data/platforms/electroverse/validated-mappings/mgp-residual.json';
+const VALIDATED_LE2_MAP='data/platforms/electroverse/validated-mappings/le2-residual.json';
 const OUT=process.argv[2]||'data/platforms/electroverse/france-evse';
 const TILE=.5;
 // Rebuild marker: validate protected PD1 technical grouping on main.
@@ -183,6 +184,7 @@ const powerdotTech=JSON.parse(await fs.readFile(POWERDOT_TECH,'utf8'));
 const validatedNumericMap=JSON.parse(await fs.readFile(VALIDATED_NUMERIC_MAP,'utf8'));
 const validatedS82Map=JSON.parse(await fs.readFile(VALIDATED_S82_MAP,'utf8'));
 const validatedMgpMap=JSON.parse(await fs.readFile(VALIDATED_MGP_MAP,'utf8'));
+const validatedLe2Map=JSON.parse(await fs.readFile(VALIDATED_LE2_MAP,'utf8'));
 const powerdotByEvse=new Map((powerdotTech.evses||[]).map(x=>[norm(x.evseId),x]));
 const drivecoNative=[...(driveco.resolved||[]),...(driveco.unresolved||[])];
 const drivecoByEvse=new Map(drivecoNative.map(x=>[norm(x.evseId),x]));
@@ -244,10 +246,17 @@ const validatedMgpResidualTargets=new Map(
     norm(x.targetPdc)
   ])
 );
+const validatedLe2ResidualTargets=new Map(
+  (validatedLe2Map.mappings||[]).map(x=>[
+    String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk),
+    norm(x.targetPdc)
+  ])
+);
 const validatedResidualTargets=new Map([
   ...validatedNumericResidualTargets,
   ...validatedS82ResidualTargets,
-  ...validatedMgpResidualTargets
+  ...validatedMgpResidualTargets,
+  ...validatedLe2ResidualTargets
 ]);
 const isValidatedResidualSource=(row,e)=>validatedResidualTargets.has(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
 const globalPdcOwners=new Map();
@@ -280,6 +289,7 @@ const stats={
   validatedNumericResidualCandidateEvses:0,validatedNumericResidualPublishedEvses:0,
   validatedS82ResidualCandidateEvses:0,validatedS82ResidualPublishedEvses:0,
   validatedMgpResidualCandidateEvses:0,validatedMgpResidualPublishedEvses:0,
+  validatedLe2ResidualCandidateEvses:0,validatedLe2ResidualPublishedEvses:0,
   validatedResidualCompileFailures:{},validatedResidualHeterogeneousConnectors:0,validatedResidualOffersCreated:0,
   drvPowerGroupCandidateEvses:0,drvPowerGroupPublishedEvses:0,drvPowerGroupByKw:{},
   pd1TechnicalGroupCandidateEvses:0,pd1TechnicalGroupPublishedEvses:0,pd1TechnicalGroupByKey:{},
@@ -1607,6 +1617,9 @@ for(const sh of manifest.shards||[]){
         }else if(validatedMgpResidualTargets.has(validatedKey)){
           identityMode='validated_mgp_residual_unique_suffix_bijection';
           stats.validatedMgpResidualCandidateEvses++;
+        }else if(validatedLe2ResidualTargets.has(validatedKey)){
+          identityMode='validated_le2_residual_unique_suffix_bijection';
+          stats.validatedLe2ResidualCandidateEvses++;
         }else{
           identityMode='validated_numeric_residual_unique_bijection';
           stats.validatedNumericResidualCandidateEvses++;
@@ -1881,7 +1894,7 @@ for(const [target,items] of offersByTarget.entries()){
   if(items.length<2)continue;
   stats.duplicatePublishedEvseTargetsBeforeDedup+=items.length-1;
   const sigs=new Set(items.map(x=>x.pricingSig));
-  const validatedItems=items.filter(x=>['validated_numeric_residual_unique_bijection','validated_s82_residual_unique_suffix_bijection','validated_mgp_residual_unique_suffix_bijection'].includes(x.offer.metadata?.identityMode));
+  const validatedItems=items.filter(x=>['validated_numeric_residual_unique_bijection','validated_s82_residual_unique_suffix_bijection','validated_mgp_residual_unique_suffix_bijection','validated_le2_residual_unique_suffix_bijection'].includes(x.offer.metadata?.identityMode));
   if(validatedItems.length===1){
     // A strict individual post-overlay bijection is more specific than any grouped
     // attribution that happens to claim the same national target. Preserve it and
@@ -1938,6 +1951,7 @@ stats.c55BIndexPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='
 stats.validatedNumericResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_numeric_residual_unique_bijection').length;
 stats.validatedS82ResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_s82_residual_unique_suffix_bijection').length;
 stats.validatedMgpResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_mgp_residual_unique_suffix_bijection').length;
+stats.validatedLe2ResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_le2_residual_unique_suffix_bijection').length;
 stats.pd1TechnicalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_pd1_official_technical_homogeneous_group').length;
 stats.pd1TechnicalGroupByKey={};
 for(const o of finalOffers.filter(o=>o.metadata?.identityMode==='strict_pd1_official_technical_homogeneous_group')){
@@ -2031,6 +2045,8 @@ const out={
     validatedS82ResidualMappingCount:validatedS82ResidualTargets.size,
     validatedMgpResidualUniqueSuffixBijection:true,
     validatedMgpResidualMappingCount:validatedMgpResidualTargets.size,
+    validatedLe2ResidualUniqueSuffixBijection:true,
+    validatedLe2ResidualMappingCount:validatedLe2ResidualTargets.size,
     c55BIndexRequiresExactResidualSet:true,
     c55BIndexRequiresGlobalPdcUniqueness:true,
     strictPd1OfficialTechnicalHomogeneousGroup:true,
