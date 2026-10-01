@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-classification",
+  "classificationBatch": 6,
+  "previousClassification": "docs/germany-cpo-second-pass-classification-005.json",
+  "sourceCheckpointRange": "docs/germany-cpo-first-pass-automation141.json through docs/germany-cpo-first-pass-automation135.json",
+  "baseline": {
+    "originalPartialPool": 390,
+    "classifiedBefore": 93,
+    "classifiedThisBatch": 14,
+    "classifiedAfter": 107
+  },
+  "classified": [
+    {"name":"Wirtschaftsbetriebe der Stadt Norden GmbH / Stadtwerke Norden","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Capture the current ladeapp/QR credit-card checkout tariff per Norden/Norddeich EVSE; preserve any station-specific AC/DC variation."},
+    {"name":"Stadtwerke Aurich GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Recover a current 2026 anonymous/direct price from an authoritative station checkout or first-party tariff; do not reuse historical operator announcements."},
+    {"name":"Avacon AG","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Build the current per-EVSE matrix across Avacon AG sites and preserve observed regional/site variation including DC/HPC and time fees."},
+    {"name":"Avacon Natur GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Complete the Avacon Natur AC/DC/HPC EVSE-to-price matrix; retain the observed 0.77 AC and 0.94 DC values only where directly evidenced."},
+    {"name":"Stadtwerke Springe GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Obtain current anonymous checkout prices for operator AC and fast-charging EVSEs; reject ladenetz/MSP values unless direct equivalence is proven."},
+    {"name":"Energieversorgung Sehnde GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Extend the current 0.58 EUR/kWh Haydnstrasse observation into a complete EVSE matrix or prove a uniform first-party direct tariff."},
+    {"name":"Stadtwerke Wunstorf GmbH & Co. KG","primaryBlocker":"B5_OPERATOR_IDENTITY_RECONCILIATION","nextAction":"Resolve physical CPO/backend responsibility between Stadtwerke Wunstorf/meerenergie, enercity and Westfalen Weser before attaching prices."},
+    {"name":"Nienburg Energie GmbH","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Capture current anonymous Mer/web/app checkout pricing for the first-party listed Nienburg Energie locations."},
+    {"name":"Stadtwerke Holzminden GmbH","primaryBlocker":"B5_OPERATOR_IDENTITY_RECONCILIATION","nextAction":"Resolve Stadtwerke versus Westfalen Weser backend/operator ownership per listed location, then attach exact direct prices only to the canonical estate."},
+    {"name":"Stadtwerke Rinteln GmbH","primaryBlocker":"B7_CONTRADICTORY_SOURCES","nextAction":"Resolve the fresh 0.50 versus 0.39 EUR/kWh conflict through live checkout or authoritative timestamped feed and map the result per EVSE."},
+    {"name":"Stadtwerke Luebbecke GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Complete the eCharge+ direct-price matrix beyond sampled 0.49 EUR/kWh AC sites and identify all exceptions/power classes."},
+    {"name":"Stadtwerke Espelkamp AoeR","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Extract the current numeric eCharge/vaylens anonymous tariff from the public station/checkout backend."},
+    {"name":"Stadtwerke Lemgo GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Complete current AC/DC coverage, especially the new 150 kW Langenbruecker Tor and Bruchweg fast chargers; keep sampled 0.59 EUR/kWh AC station-scoped until reconciled."},
+    {"name":"Stadtwerke Bad Salzuflen GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Build the complete anonymous AC/DC/HPC EVSE matrix; preserve observed 0.70 EUR/kWh AC and 0.91 EUR/kWh HPC as site/power-specific until full coverage is proven."}
+  ],
+  "countsThisBatch": {
+    "B1_COVERAGE_EVSE_MATRIX": 6,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 2,
+    "B3_SITE_CONFIGURABLE_BACKEND": 0,
+    "B4_FEE_COMPONENT_COMPLETENESS": 0,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 2,
+    "B6_DYNAMIC_SURFACE_OR_APP": 3,
+    "B7_CONTRADICTORY_SOURCES": 1
+  },
+  "cumulativeCountsByPrimaryBlocker": {
+    "B1_COVERAGE_EVSE_MATRIX": 33,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 37,
+    "B3_SITE_CONFIGURABLE_BACKEND": 5,
+    "B4_FEE_COMPONENT_COMPLETENESS": 4,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 8,
+    "B6_DYNAMIC_SURFACE_OR_APP": 16,
+    "B7_CONTRADICTORY_SOURCES": 4
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "93 + 14 = 107 historical partial classifications; 33 + 37 + 5 + 4 + 8 + 16 + 4 = 107",
+    "duplicateNamesInBatch": 0,
+    "statusChanges": 0,
+    "tariffPromotions": 0,
+    "note": "Only partial entries from checkpoints 141 through 135 were classified. Complete entries were skipped. No stale, roaming, registered-card or sampled price was promoted during classification."
+  },
+  "nextSafeAction": "Continue classification from checkpoint 134 backward while resolving bounded execution targets in parallel."
+}
