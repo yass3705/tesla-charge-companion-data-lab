@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 217,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-216.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 251,
+    "partial": 340,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Uelzen GmbH / mycity",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "decision": "remain partial; first direct-tariff pass bounded",
+      "evidence": {
+        "estateClasses": "Current public charging estate includes AC and fast charging up to 150 kW.",
+        "channelSeparation": "mycity/EnBW registered-card pricing is a separate product and is not treated as anonymous ad-hoc.",
+        "directPath": "Anonymous app/web/QR charging path exists, but no authoritative current all-estate anonymous numeric matrix with complete fees was established in this pass."
+      },
+      "exactGap": "Current anonymous AC and 150-kW fast-charging energy prices plus start/time/blocking components for the active estate.",
+      "antiStagnation": "Do not repeat generic tariff search. A second pass requires a concrete anonymous checkout/backend payload or current first-party ad-hoc tariff artifact.",
+      "resumeCondition": "Binding anonymous tariff matrix for AC and 150-kW class with all fee components."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 251,
+    "partial": 340,
+    "blocked": 0
+  },
+  "indicator": "221 -> 251 complete (+30)",
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "backendFamilyProgress": {
+    "B6": "After EMERGY promotion, remaining tested B6 operators are predominantly checkout-rendered. Uelzen bounded to exact AC/150-kW anonymous matrix gap."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "251 + 340 + 0 = 591",
+    "channelSeparation": "PASS",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Switch from generic B6 checkout candidates to a family with directly published first-party anonymous tariff rules or concrete backend tokens. Revisit Nienburg/Rotenburg/Uelzen only with new payload evidence."
+}
