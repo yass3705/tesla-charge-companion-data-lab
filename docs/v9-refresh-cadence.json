@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "policy": "collection-only; never moves the Production development snapshot",
+  "timezone": "UTC",
+  "refreshes": [
+    {
+      "id": "tesla-suc",
+      "workflow": ".github/workflows/suc-tracker-weekly.yml",
+      "cron": "17 4 * * 0",
+      "cadence": "weekly",
+      "role": "Tesla catalogue"
+    },
+    {
+      "id": "electroverse-delta-fr",
+      "workflow": ".github/workflows/electroverse-france-daily-delta.yml",
+      "cron": "47 22 * * *",
+      "cadence": "daily",
+      "role": "Electroverse targeted delta"
+    },
+    {
+      "id": "electroverse-full-fr",
+      "workflow": ".github/workflows/electroverse-france-full-refresh.yml",
+      "cron": "17 0 * * 0",
+      "cadence": "weekly",
+      "role": "Electroverse full checkpoint"
+    },
+    {
+      "id": "electra-platform-fr",
+      "workflow": ".github/workflows/electra-france-platform-snapshot.yml",
+      "cron": "47 0 * * 1",
+      "cadence": "weekly",
+      "role": "Electra exact national-EVSE overlay"
+    },
+    {
+      "id": "loadmotion-fr",
+      "workflow": ".github/workflows/loadmotion-france-refresh.yml",
+      "cron": "17 2 * * 1",
+      "cadence": "weekly",
+      "role": "YES55/Load Stations/Reveo/MobiSDEC direct tariffs"
+    },
+    {
+      "id": "ionity-direct",
+      "workflow": ".github/workflows/ionity-direct-station-tariffs.yml",
+      "cron": "37 3 * * *",
+      "cadence": "daily",
+      "role": "IONITY FR/IT/DE direct tariffs"
+    },
+    {
+      "id": "atlante-direct",
+      "workflow": ".github/workflows/atlante-direct-station-tariffs.yml",
+      "cron": "11 4 * * *",
+      "cadence": "daily",
+      "role": "Atlante direct tariffs"
+    },
+    {
+      "id": "zewatt-fr",
+      "workflow": ".github/workflows/zewatt-france-refresh.yml",
+      "cron": "41 3 * * 3",
+      "cadence": "weekly",
+      "role": "Ze-Watt France direct data"
+    },
+    {
+      "id": "country-progress-guard",
+      "workflow": ".github/workflows/validate-v9-country-progress.yml",
+      "cron": "50 22 * * *",
+      "cadence": "daily",
+      "role": "country/CPO ledger consistency"
+    }
+  ],
+  "promotionRule": "Live Data Lab refreshes stay outside development until an explicit immutable snapshot cut pins one Data Lab SHA."
+}
