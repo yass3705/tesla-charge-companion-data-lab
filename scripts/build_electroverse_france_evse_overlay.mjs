@@ -1112,7 +1112,11 @@ for(const sh of manifest.shards||[]){
       .map(e0=>norm(text(e0?.physicalReference)))
       .filter(Boolean);
     const pd1HasDuplicatePhysicalRefs=new Set(pd1PhysicalRefs).size!==pd1PhysicalRefs.length;
-    if(!pd1BaselineGenericProtected && !pd1HasDuplicatePhysicalRefs){
+    // Duplicate physical references are allowed here only after the baseline generic
+    // exact-set protection above has ruled out consuming an already-valid legacy group.
+    // Technical groups still require exact source/target cardinality, global target
+    // uniqueness and homogeneous compiled pricing.
+    if(!pd1BaselineGenericProtected){
       const claimed=new Set();
       const unresolved=[];
       for(const e0 of row.tariff?.evses||[]){
