@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 202,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-201.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Peine GmbH",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "decision": "remain partial; second distinct residual pass exhausted and parked",
+      "newEvidence": {
+        "operatorProfile": "21 stations / 51 charge points; currently priced subset 34 AC at 0.64 EUR/kWh, 2 DC at 0.78, 2 HPC at 0.78",
+        "exactCurrentExamples": [
+          "DE*SPE*E43098*01 50 kW DC 0.78 EUR/kWh",
+          "DE*SPE*E43098*02 22 kW AC 0.64 EUR/kWh",
+          "DE*SPE*E43099*01 50 kW DC 0.78 EUR/kWh",
+          "DE*SPE*E43099*02 22 kW AC 0.64 EUR/kWh",
+          "DE*SPE*E43096*01/02 150 kW HPC 0.78 EUR/kWh"
+        ],
+        "conflict": "A separate current Rathaus/Kantstrasse surface still advertises 0.49 EUR/kWh direct for the site, conflicting with the connector-level 0.78 DC / 0.64 AC observations."
+      },
+      "exactGap": "13/51 points still lack exhaustive anonymous price/fee evidence, and Rathaus has unresolved current-source conflict. No first-party tariff page or authoritative checkout was found to resolve precedence.",
+      "antiStagnation": "Two distinct evidence-led residual passes are now exhausted. Park Peine until an authoritative QR checkout, AFIR/Mobilithek price+fee export, or first-party tariff artifact appears.",
+      "resumeCondition": "Authoritative current source that identifies the 13 residual EVSEs and resolves Rathaus 0.49 versus connector-level 0.64/0.78, including fee components."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS",
+    "repeatInvestigationGuard": "PASS; Peine parked after two distinct residual passes"
+  },
+  "nextSafeAction": "Move away from Peine. Select a new AFIR/Mobilithek or other machine-readable B1/B3/B6 candidate with a bounded denominator and explicit fee fields."
+}
