@@ -1,0 +1,302 @@
+{
+  "schemaVersion": 2,
+  "country": "FR",
+  "batch": "batch441",
+  "generatedAt": "2026-09-25",
+  "cpo": {
+    "name": "Zephyre SAS",
+    "rawRank": 68,
+    "operatorId": "FR*ZP1",
+    "decision": "treated"
+  },
+  "method": {
+    "authority": "Vaylens ePowerDirect first-party public BFF",
+    "bff": "https://api.services-emobility.com/pay/api",
+    "inventorySeed": "data.gouv.fr national IRVE consolidation, 2026-09-25",
+    "resolver": [
+      "dedupe FR*ZP1 EVSE identities from national IRVE by newest last_modified/date_maj",
+      "POST /stations/nearby with exact IRVE latitude/longitude",
+      "retain returned FR*ZP1 chargePoints and their current internal name",
+      "GET /stations/chargepoint/{internalName}",
+      "use chargePoint.tariff only when multitenantDirectPaymentAvailable=true",
+      "preserve all tariff components; never extrapolate a national constant"
+    ],
+    "extractor": "scripts/zephyre/extract_zephyre_epowerdirect.mjs",
+    "authentication": "none",
+    "tokenPolicy": "Binding Pricing Offer tokens are intentionally not persisted"
+  },
+  "evidence": [
+    {
+      "type": "current_spa_static_analysis",
+      "finding": "Current ePowerDirect production SPA resolves charge points through GET /stations/chargepoint/{id} and POST /stations/nearby on https://api.services-emobility.com/pay/api. Station detail exposes chargePoints[].tariff, evseId, status, power, payment methods and multitenantDirectPaymentAvailable before payment."
+    },
+    {
+      "type": "live_first_party_bulk_validation",
+      "snapshotDate": "2026-09-25",
+      "coverage": {
+        "irveUniqueEvse": 373,
+        "uniqueSeedCoordinates": 148,
+        "liveDirectEvse": 141,
+        "liveDetailSuccess": 141,
+        "liveDetailErrors": 0,
+        "tariffNull": 0,
+        "directPaymentDisabled": 0,
+        "providers": [
+          "Zephyre"
+        ],
+        "status": {
+          "AVAILABLE": 140,
+          "OCCUPIED": 1
+        },
+        "uniqueTariffSignatures": 15
+      },
+      "finding": "Every currently exposed FR*ZP1 EVSE found from the national seed was resolved to an exact Vaylens internal charge-point name and returned a non-null direct tariff."
+    },
+    {
+      "type": "live_example",
+      "evseId": "FR*ZP1*E12970687",
+      "internalName": "LF-9644-8",
+      "finding": "Current direct tariff returned by ePowerDirect: 0.42 EUR/kWh + 0.04 EUR/min, VAT 20%. This differs from older static Moulin des Ruats pricing and proves stale tariffs must not be reused."
+    },
+    {
+      "type": "residual_reconciliation",
+      "snapshotDate": "2026-09-25",
+      "coverage": {
+        "irveNotExposedByCurrentEpowerDirect": 232,
+        "historicalDataset2024": 201,
+        "recentDataset2026": 31,
+        "recentSameCoordinateReplacement": 22,
+        "recentNoLiveZephyreAtCoordinate": 9,
+        "recentLegacyLpLeCandidatesTested": 31,
+        "recentLegacyLpLeHttp404": 31
+      },
+      "failClosedRecentNoLive": [
+        "FRZP1E00016",
+        "FRZP1E00017",
+        "FRZP1E112253",
+        "FRZP1E130797",
+        "FRZP1E89528",
+        "FRZP1E94579",
+        "FRZP1E97456",
+        "FRZP1EAC49143",
+        "FRZP1EAC51953"
+      ],
+      "finding": "Residual IRVE identities are not assigned a direct price. Same-coordinate replacements are stale identities; the nine remaining recent identities have no current Zephyre result at their coordinate and remain terminal-level fail-closed with TCC fallback."
+    }
+  ],
+  "tariffSignatures": [
+    {
+      "id": "T1",
+      "count": 104,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_SESSION",
+          "price": 18,
+          "taxAmount": 20
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "count": 8,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_KWH",
+          "price": 0.42,
+          "taxAmount": 20
+        }
+      ]
+    },
+    {
+      "id": "T3",
+      "count": 2,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_SESSION",
+          "price": 24,
+          "taxAmount": 20
+        }
+      ]
+    },
+    {
+      "id": "T4",
+      "count": 11,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_TIME",
+          "price": 0.02,
+          "taxAmount": 20
+        }
+      ]
+    },
+    {
+      "id": "T5",
+      "count": 1,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_KWH",
+          "price": 0.24,
+          "taxAmount": 20
+        }
+      ]
+    },
+    {
+      "id": "T6",
+      "count": 2,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_SESSION",
+          "price": 30,
+          "taxAmount": 20
+        }
+      ]
+    },
+    {
+      "id": "T7",
+      "count": 1,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_KWH",
+          "price": 0.36,
+          "taxAmount": 20
+        }
+      ]
+    },
+    {
+      "id": "T8",
+      "count": 2,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_KWH",
+          "price": 0.42,
+          "taxAmount": 20
+        },
+        {
+          "priceUnit": "CHARGING_TIME",
+          "price": 0.04,
+          "taxAmount": 20
+        }
+      ]
+    },
+    {
+      "id": "T9",
+      "count": 1,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_KWH",
+          "price": 0.37,
+          "taxAmount": 20
+        }
+      ]
+    },
+    {
+      "id": "T10",
+      "count": 2,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_KWH",
+          "price": 0.46,
+          "taxAmount": 20
+        }
+      ]
+    },
+    {
+      "id": "T11",
+      "count": 1,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_KWH",
+          "price": 0.42,
+          "taxAmount": 20
+        },
+        {
+          "priceUnit": "CHARGING_TIME",
+          "price": 0.01,
+          "taxAmount": 20
+        }
+      ]
+    },
+    {
+      "id": "T12",
+      "count": 2,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_TIME",
+          "price": 0.04,
+          "taxAmount": 20
+        }
+      ]
+    },
+    {
+      "id": "T13",
+      "count": 2,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_KWH",
+          "price": 0.48,
+          "taxAmount": 20
+        }
+      ]
+    },
+    {
+      "id": "T14",
+      "count": 1,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_KWH",
+          "price": 0.54,
+          "taxAmount": 20
+        }
+      ]
+    },
+    {
+      "id": "T15",
+      "count": 1,
+      "currency": "EUR",
+      "currentType": "AC",
+      "components": [
+        {
+          "priceUnit": "CHARGING_KWH",
+          "price": 0.11,
+          "taxAmount": 20
+        }
+      ]
+    }
+  ],
+  "policy": {
+    "directRankable": "exact EVSE returned by current ePowerDirect + multitenantDirectPaymentAvailable=true + non-empty chargePoint.tariff",
+    "nationalConstantAllowed": false,
+    "sameSiteTariffExtrapolationAllowed": false,
+    "unresolved": "fail_closed_then_Electra_then_Electroverse",
+    "noTariffIsFree": false
+  },
+  "conclusion": "Treated at CPO method level. A deterministic anonymous national resolver is proven against the current first-party ePowerDirect BFF. 141 live direct-payment EVSEs were resolved with exact station/EVSE tariffs and zero detail failures. IRVE residuals remain explicitly fail-closed rather than inheriting another station's tariff."
+}
