@@ -1,0 +1,28 @@
+name: Analyze Electroverse France P01 H01 SIP residuals
+on:
+  push:
+    branches:
+      - audit/electroverse-p01-h01-sip-residual
+    paths:
+      - "scripts/analyze_electroverse_p01_h01_sip_residual.mjs"
+      - ".github/workflows/electroverse-p01-h01-sip-residual.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Analyze residuals
+        run: node scripts/analyze_electroverse_p01_h01_sip_residual.mjs
+      - name: Persist reports
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/p01-residual-analysis.json reports/electroverse/h01-residual-analysis.json reports/electroverse/sip-residual-analysis.json
+          git commit -m "audit: publish P01 H01 SIP residual analyses" || exit 0
+          git push
