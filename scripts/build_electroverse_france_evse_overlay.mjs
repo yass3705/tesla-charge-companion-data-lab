@@ -1047,7 +1047,15 @@ for(const sh of manifest.shards||[]){
     }
 
     // PD1/Powerdot official technical-group identity.
-    if(!pd1BaselineGenericProtected){
+    // Duplicate source physical references are not strong enough to let the
+    // technical fallback consume an otherwise unresolved group. Keep them for
+    // the later generic exact-set rule, which can publish only when the whole
+    // source/target set has identical pricing and exact cardinality.
+    const pd1PhysicalRefs=(row.tariff?.evses||[])
+      .map(e0=>norm(text(e0?.physicalReference)))
+      .filter(Boolean);
+    const pd1HasDuplicatePhysicalRefs=new Set(pd1PhysicalRefs).size!==pd1PhysicalRefs.length;
+    if(!pd1BaselineGenericProtected && !pd1HasDuplicatePhysicalRefs){
       const claimed=new Set();
       const unresolved=[];
       for(const e0 of row.tariff?.evses||[]){
