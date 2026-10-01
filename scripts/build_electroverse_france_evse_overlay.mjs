@@ -2232,6 +2232,8 @@ for(const [target,items] of offersByTarget.entries()){
           ...(x.offer.metadata?.electroverseEvsePks||[]).map(String),
           ...(x.offer.metadata?.electroverseEvsePk!=null?[String(x.offer.metadata.electroverseEvsePk)]:[])
         ],
+        physicalReferences:x.offer.metadata?.physicalReferences||[x.offer.metadata?.physicalReference].filter(Boolean),
+        connectorCount:x.offer.metadata?.connectorCount??null,
         pricing:x.offer.pricing
       })),
       pricingConflict:sigs.size>1,
@@ -2450,3 +2452,4 @@ if(stats.publishedOffers<5000)throw new Error('too few safe Electroverse EVSE of
 // merge compatible split all-day pricing components 2026-10-01
 
 // debug NUMERIC exact-set dedupe 2026-10-01
+// enrich NUMERIC dedupe debug 2026-10-01
