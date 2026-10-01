@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": 434,
+  "date": "2026-09-25",
+  "cpo": "Greenspot",
+  "purpose": "Reconcile and supersede batch433's single-point negative test using the completed national first-party LMS/EVC-net extraction, then classify Greenspot at CPO-method level with exact-live direct tariffs and fail-closed fallback exceptions.",
+  "supersedes": {
+    "audit": "docs/france-regional-cpo-greenspot-public-portal-backend-batch433-2026-09-25.json",
+    "reason": "batch433 tested one anonymous detail path and characterized the portal globally as roaming-only. Subsequent national extraction proved exact own-network FRGSP records expose live simpleTariff when the result set is filtered to Greenspot's own EVSE identity."
+  },
+  "canonicalBefore": {
+    "treated": 84,
+    "setAside": 8,
+    "active": 199,
+    "total": 291,
+    "pendingDedupe": 0
+  },
+  "identity": {
+    "primaryRawRank": 50,
+    "canonical": "Greenspot",
+    "aliases": [
+      "GREENSPOT | raw rank89 -> Greenspot (case identity alias; non-counting)",
+      "Greenspot Entreprise | raw rank147 -> Greenspot | raw rank50 (service/identity alias; non-counting)"
+    ],
+    "ownNetworkEvsePrefix": "FRGSPE"
+  },
+  "nationalMethod": {
+    "extractor": "scripts/greenspot/extract_greenspot.py",
+    "workflow": ".github/workflows/greenspot-france-extract.yml",
+    "report": "docs/france-greenspot-direct-report-current.json",
+    "snapshot": "data/greenspot/france/greenspot-france-current.json.gz",
+    "workflowRun": 36069358762,
+    "reportCommit": "eb0ae5638aadce6d6c8aeb876e439a30fcb6ca39",
+    "inventory": {
+      "authority": "data.gouv.fr national IRVE consolidated resource",
+      "resourceId": "eb76d20a-8501-400e-b336-d85724de5435",
+      "discoveryFilter": "id_pdc_itinerance contains FR*GSP",
+      "strictFilter": "normalized id_pdc_itinerance starts FRGSPE",
+      "uniqueEvses": 720,
+      "coordinateSites": 153,
+      "missingCoordinates": 0
+    },
+    "live": {
+      "authority": "Greenspot / Last Mile Solutions first-party public portal",
+      "base": "https://greenspot.evc-net.com",
+      "endpoint": "/api/ajax",
+      "handler": "\\LMS\\EV\\AsyncServices\\DashboardAsyncService",
+      "statusMethod": "spotsStatus",
+      "detailMethod": "spotsStatusPointData",
+      "tariffProvider": 422,
+      "directTariffField": "simpleTariff",
+      "authentication": "none"
+    }
+  },
+  "coverage": {
+    "uniqueInventoryEvses": 720,
+    "exactLiveMatches": 210,
+    "exactLiveWithStructuredTariff": 210,
+    "exactLiveWithoutTariff": 0,
+    "unmatchedFailClosed": 510,
+    "siteErrors": 0,
+    "tariffSignatures": 21,
+    "interpretation": "CPO-method complete with station/EVSE fail-closed exceptions. Exact FRGSP live matches use first-party structured simpleTariff; unmatched inventory does not receive an invented direct tariff and uses TCC fallback when relevant."
+  },
+  "sourceSemantics": {
+    "firstPartyGreenspotOwnNetwork": "Greenspot states that on its own network its badge adds no additional fee; the user pays the recharge cost displayed for the charger.",
+    "partnerRoaming": "Partner-network connection/roaming fees remain eMSP-only and are excluded.",
+    "tariffProviderRule": "tariffProvider=422 alone is not direct authority. A tariff is eligible only after exact own-network FRGSP EVSE filtering on the Greenspot tenant; non-FRGSP portal results are forbidden as Greenspot direct authority.",
+    "noNationalConstant": true,
+    "preserveComponents": [
+      "kwh",
+      "minute",
+      "minute_parking",
+      "start",
+      "timeslots",
+      "free flag",
+      "currency",
+      "exclServiceProviderCosts"
+    ]
+  },
+  "priorityExceptions": {
+    "aldiSaintCiers": {
+      "currentIrveEvses": [
+        "FRGSPE12345957221",
+        "FRGSPE12345957222",
+        "FRGSPE12345958591",
+        "FRGSPE12349454981",
+        "FRGSPE12349454982"
+      ],
+      "liveExactDetailRecovered": false,
+      "decision": "fail_closed_direct; do not convert IRVE HT text into a TTC live tariff; use fallback if TCC needs a current public price"
+    },
+    "rivesaltes": {
+      "currentIrveRows": [
+        "FRGSPE123459572621",
+        "FRGSPE123459572622",
+        "FRGSPE123459572623"
+      ],
+      "stationId": "FRGSPP1234595821",
+      "liveEvses": [
+        "FRGSPE1234595821*1",
+        "FRGSPE1234595821*2",
+        "FRGSPE1234595821*3"
+      ],
+      "liveTariffId": 423618923,
+      "liveTariff": "0.42 EUR/kWh with preserved time/minute_parking components",
+      "decision": "deterministic station-level reconciliation despite malformed/legacy PDC IDs"
+    },
+    "noPayAsYouGoExamples": [
+      "FRGSPE18985751 Parking MAQUIN",
+      "FRGSPE18986551 Hôtel Haïtza"
+    ]
+  },
+  "classification": {
+    "statusBefore": "setAside",
+    "statusAfter": "treated",
+    "model": "complete_at_CPO_method_level_with_station_level_fail_closed_exceptions",
+    "fallbackOrder": [
+      "Electra",
+      "Electroverse"
+    ],
+    "counterDelta": {
+      "treated": 1,
+      "setAside": -1,
+      "active": 0
+    },
+    "pendingDedupeCreated": false
+  },
+  "canonicalAfter": {
+    "treated": 85,
+    "setAside": 7,
+    "active": 199,
+    "total": 291,
+    "pendingDedupe": 0
+  },
+  "guards": [
+    "Never treat tariffProvider 422 by itself as proof of CPO-direct pricing.",
+    "Only exact own-network FRGSP records from the Greenspot tenant are rankable as direct Greenspot values.",
+    "Do not inherit Yaway tariff IDs, app profile or prices.",
+    "Do not extrapolate any national constant across Greenspot.",
+    "Unmatched or ambiguous EVSEs stay fail-closed and use fallback rather than inferred prices."
+  ]
+}
