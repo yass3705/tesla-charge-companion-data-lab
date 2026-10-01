@@ -258,6 +258,7 @@ const stats={
   validatedNumericResidualCandidateEvses:0,validatedNumericResidualPublishedEvses:0,
   drvPowerGroupCandidateEvses:0,drvPowerGroupPublishedEvses:0,drvPowerGroupByKw:{},
   pd1TechnicalGroupCandidateEvses:0,pd1TechnicalGroupPublishedEvses:0,pd1TechnicalGroupByKey:{},
+  parentFirstOrdinalGroupCandidateEvses:0,parentFirstOrdinalGroupPublishedEvses:0,parentFirstOrdinalByOperator:{},
   drvHomogeneousGroupCandidateEvses:0,drvHomogeneousGroupPublishedEvses:0,
   sigHomogeneousGroupCandidateEvses:0,sigHomogeneousGroupPublishedEvses:0,
   qovHomogeneousGroupCandidateEvses:0,qovHomogeneousGroupPublishedEvses:0,
@@ -1418,6 +1419,120 @@ for(const sh of manifest.shards||[]){
       }
     }
 
+    // P01/H01 exact parent + first-ordinal grouped identity.
+    // Source refs such as FR*P01*E21231*003*14*1 and *14*2 collapse onto
+    // the same national EVSE FRP01E2123100314. The target must be local,
+    // globally unique, still unclaimed by earlier identity rules, and every
+    // source entry in the group must compile to identical pricing.
+    const parentFirstOrdinalTargets=new Map();
+    const parentFirstOrdinalSourceEvses=new Set();
+    {
+      const claimed=new Set();
+      for(const e0 of row.tariff?.evses||[]){
+        const pr0=text(e0?.physicalReference);if(!pr0)continue;
+        const k0=norm(pr0);
+        const validatedNumericTarget=validatedNumericResidualTargets.get(String(row.electroverseLocationPk)+':'+String(e0?.pk??''));
+        if(validatedNumericTarget){claimed.add(norm(validatedNumericTarget));continue;}
+        if(local.has(k0)){claimed.add(k0);continue;}
+        const p0=[...local].filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\d{1,2}$/.test(k0.slice(p.length)));
+        if(p0.length===1){claimed.add(p0[0]);continue;}
+        if(ordinalTargets.has(e0)){claimed.add(ordinalTargets.get(e0));continue;}
+        if(genericTargets.has(e0)){claimed.add(genericTargets.get(e0));continue;}
+        if(suffixTargets.has(e0)){claimed.add(suffixTargets.get(e0));continue;}
+        if(trimmedSuffixTargets.has(e0)){claimed.add(trimmedSuffixTargets.get(e0));continue;}
+        if(pd1FinalOrdinalTargets.has(e0)){claimed.add(pd1FinalOrdinalTargets.get(e0));continue;}
+        if(viaFinalOrdinalTargets.has(e0)){claimed.add(viaFinalOrdinalTargets.get(e0));continue;}
+        if(c55BIndexTargets.has(e0)){claimed.add(c55BIndexTargets.get(e0));continue;}
+        if(viaStructuredBasePairTargets.has(e0)){claimed.add(viaStructuredBasePairTargets.get(e0));continue;}
+      }
+      const groups=new Map();
+      for(const e0 of row.tariff?.evses||[]){
+        if(izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0)||c55GroupedSourceEvses.has(e0)||hpcGroupedSourceEvses.has(e0)||pd1TechnicalSourceEvses.has(e0)||drvPowerSourceEvses.has(e0)||operatorGroupedSourceEvses.has(e0)||parentFirstOrdinalSourceEvses.has(e0))continue;
+        const pr0=text(e0?.physicalReference);if(!pr0)continue;
+        const mm=pr0.match(/^FR\*(P01|H01)\*E(.+?)\*(\d+)\*(\d+)$/i);
+        if(!mm)continue;
+        const op=mm[1].toUpperCase();
+        const parent=norm('FR'+op+'E'+mm[2]);
+        const first=Number(mm[3]);
+        if(!Number.isFinite(first))continue;
+        const target=parent+String(first);
+        if(!local.has(target)||claimed.has(target)||(globalPdcOwners.get(target)?.size||0)!==1)continue;
+        const key=target;
+        const arr=groups.get(key)||[];
+        arr.push({e:e0,op,target,raw:pr0});
+        groups.set(key,arr);
+      }
+      for(const items of groups.values()){
+        if(!items.length)continue;
+        const compiledAll=[];
+        let valid=true;
+        for(const x0 of items){
+          const connectors=x0.e?.connectors||[];
+          if(!connectors.length){valid=false;break;}
+          for(const c0 of connectors){
+            const x=compileConnector(c0);if(!x.ok){valid=false;break;}
+            compiledAll.push({pricing:x.pricing,connectorPk:c0.pk??null});
+          }
+          if(!valid)break;
+        }
+        if(!valid||!compiledAll.length)continue;
+        const unique=[...new Map(compiledAll.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
+        if(unique.length!==1)continue;
+        const g={
+          operator:items[0].op,
+          target:items[0].target,
+          pricing:unique[0],
+          connectorPks:compiledAll.map(x=>x.connectorPk),
+          sourceEvses:items.map(x=>x.e),
+          physicalReferences:items.map(x=>x.raw)
+        };
+        parentFirstOrdinalTargets.set(g.target,g);
+        for(const x0 of items)parentFirstOrdinalSourceEvses.add(x0.e);
+        claimed.add(g.target);
+      }
+    }
+
+    if(parentFirstOrdinalTargets.size){
+      for(const [targetNorm,g] of parentFirstOrdinalTargets.entries()){
+        const targetPdc=localByNorm.get(targetNorm);
+        const currency=g.pricing.rules?.[0]?.currency||'EUR';
+        const offer={
+          id:`electroverse-evse-parent-first-ordinal:${row.electroverseLocationPk}:${targetNorm}`,
+          provider:'Electroverse',
+          countries:['FR'],
+          currency,
+          priority:80,
+          verifiedScope:'exact_evse_group',
+          evseIds:[targetPdc],
+          pricing:g.pricing,
+          metadata:{
+            verified:true,
+            identityMode:'strict_parent_first_ordinal_group',
+            electroverseLocationPk:String(row.electroverseLocationPk),
+            electroverseEvsePks:g.sourceEvses.map(e=>e.pk??null),
+            physicalReferences:g.physicalReferences,
+            connectorPks:g.connectorPks,
+            connectorCount:null,
+            connectorCountKnown:false,
+            sourceConnectorCountTotal:g.connectorPks.length,
+            sourceGroupSize:g.sourceEvses.length,
+            targetGroupSize:1,
+            operator:g.operator,
+            tariffHash:row.tariffHash||null,
+            fetchedAt:row.fetchedAt||null,
+            source:'Electroverse tariff cache'
+          }
+        };
+        const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
+        tiles.get(id).push(offer);
+        stats.parentFirstOrdinalGroupCandidateEvses++;
+        stats.parentFirstOrdinalGroupPublishedEvses++;
+        stats.parentFirstOrdinalByOperator[g.operator]=(stats.parentFirstOrdinalByOperator[g.operator]||0)+1;
+        stats.pricedExactEvses++;
+        stats.publishedEvses++;stats.publishedOffers++;
+      }
+    }
+
     // Generic homogeneous exact-set fallback for all remaining single-operator families.
     // This is intentionally later than every operator-specific rule. It only applies to the
     // still-unresolved source set when ALL remaining national PDCs at the mapped location:
@@ -1543,7 +1658,7 @@ for(const sh of manifest.shards||[]){
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
       const validatedResidualTargetPre=validatedNumericResidualTargets.get(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
-      if(!validatedResidualTargetPre && (izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e)||hpcGroupedSourceEvses.has(e)||pd1TechnicalSourceEvses.has(e)||drvPowerSourceEvses.has(e)||operatorGroupedSourceEvses.has(e)||genericGroupedSourceEvses.has(e)))continue;
+      if(!validatedResidualTargetPre && (izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e)||hpcGroupedSourceEvses.has(e)||pd1TechnicalSourceEvses.has(e)||drvPowerSourceEvses.has(e)||operatorGroupedSourceEvses.has(e)||parentFirstOrdinalSourceEvses.has(e)||genericGroupedSourceEvses.has(e)))continue;
       const pr=text(e?.physicalReference);
       if(!pr){rej('evse_missing_physical_reference');continue;}
       stats.physicalRefs++;
@@ -1863,6 +1978,7 @@ stats.hpcOrdinalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMo
 stats.c55BIndexPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_bindex_zero_based_suffix').length;
 stats.validatedNumericResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_numeric_residual_unique_bijection').length;
 stats.pd1TechnicalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_pd1_official_technical_homogeneous_group').length;
+stats.parentFirstOrdinalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_parent_first_ordinal_group').length;
 stats.pd1TechnicalGroupByKey={};
 for(const o of finalOffers.filter(o=>o.metadata?.identityMode==='strict_pd1_official_technical_homogeneous_group')){
   const k=JSON.stringify({kw:o.metadata?.powerKwClass,plugs:o.metadata?.plugTypes||[]});
@@ -1953,6 +2069,10 @@ const out={
     c55BIndexRequiresExactResidualSet:true,
     c55BIndexRequiresGlobalPdcUniqueness:true,
     strictPd1OfficialTechnicalHomogeneousGroup:true,
+    strictParentFirstOrdinalGroup:true,
+    parentFirstOrdinalOperators:['P01','H01'],
+    parentFirstOrdinalRequiresGlobalPdcUniqueness:true,
+    parentFirstOrdinalRequiresHomogeneousPricing:true,
     pd1TechnicalUsesOfficialPowerdotInventory:true,
     pd1TechnicalRequiresExactPowerAndPlugGroup:true,
     pd1TechnicalRequiresExactGroupCardinality:true,
