@@ -82,3 +82,5 @@ with open(out,"w",encoding="utf-8") as f:
 print(json.dumps({k:res[k] for k in ("source_record_count","matched_record_count","unique_evses","unique_sites","unique_tariff_ids")}))
 
 # synchronize trigger: 2026-10-01
+
+# run trigger after workflow is on main
