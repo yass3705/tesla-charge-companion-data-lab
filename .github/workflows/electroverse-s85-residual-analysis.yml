@@ -1,0 +1,26 @@
+name: Analyze Electroverse France S85 residual
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/analyze_electroverse_s85_residual.mjs"
+      - ".github/workflows/electroverse-s85-residual-analysis.yml"
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Analyze S85 unpublished residual
+        run: node scripts/analyze_electroverse_s85_residual.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: electroverse-france-s85-residual-analysis
+          path: reports/electroverse/s85-residual-analysis.json
+          retention-days: 14
