@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-classification",
+  "classificationBatch": 9,
+  "previousClassification": "docs/germany-cpo-second-pass-classification-008.json",
+  "sourceCheckpointRange": "docs/germany-cpo-first-pass-automation114.json through docs/germany-cpo-first-pass-automation110.json",
+  "baseline": {
+    "originalPartialPool": 390,
+    "classifiedBefore": 153,
+    "classifiedThisBatch": 12,
+    "classifiedAfter": 165,
+    "currentPartials": 389,
+    "currentUnclassifiedPartials": 224
+  },
+  "classified": [
+    {"name":"CUBOS Service GmbH","primaryBlocker":"B3_SITE_CONFIGURABLE_BACKEND","nextAction":"Treat CUBOS as a station-configurable/backend estate after SWARCO/ChargeOne integration: extract current per-EVSE direct prices in bulk and preserve site/power-specific energy and blocking components."},
+    {"name":"Stadtwerke Garbsen GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Enumerate all current Stadtwerke Garbsen EVSEs and extend the sampled Badepark 0.40 EUR/kWh direct evidence only where checkout records confirm it."},
+    {"name":"Stadtwerke Lehrte GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Build the complete current per-EVSE anonymous matrix across the expanded Lehrte estate; retain sampled 0.57 EUR/kWh only for evidenced EVSEs."},
+    {"name":"Stadtwerke Neustadt a. Rbge. GmbH","primaryBlocker":"B4_FEE_COMPONENT_COMPLETENESS","nextAction":"Reconcile the repeated 0.63 EUR/kWh direct energy price with the 0.58 EUR/session fee observed at Rathaus and determine exact session/blocking-fee scope across all EVSEs."},
+    {"name":"LSW Energie GmbH & Co. KG","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Obtain a current anonymous/direct-payment tariff statement or checkout matrix; keep LSW AUTOSTROM 0.55 AC / 0.65 DC registered pricing separate."},
+    {"name":"Stadtwerke Wolfenbüttel GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Complete current per-EVSE AC/DC coverage and blocking-fee scope beyond sampled 0.49 AC / 0.64 DC observations before promotion."},
+    {"name":"Stadtwerke Celle GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Replace the first-party 'from 0.40 EUR/kWh' floor with exact per-EVSE direct prices across the 49-point estate; preserve Allerstrasse 0.56 EUR/kWh + 1.00 EUR start as station-scoped evidence."},
+    {"name":"Stadtwerke Peine GmbH","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Capture the price displayed in the QR/webbrowser or Girocard checkout for DE*SPE EVSEs, including the 150-kW site, and map any fee components."},
+    {"name":"Stadtwerke Burgdorf GmbH","primaryBlocker":"B3_SITE_CONFIGURABLE_BACKEND","nextAction":"Because the CPO states prices depend on the selected mobility/payment provider, extract binding direct-payment offers per EVSE/payment path and preserve AC versus 180-kW DC variation."},
+    {"name":"Erneuerbare fuer Marburg-Biedenkopf GmbH & Co. KG (EfMB) / Stadtwerke Marburg","primaryBlocker":"B7_CONTRADICTORY_SOURCES","nextAction":"Resolve the 2025 first-party 0.45 EUR/kWh + start/blocking tariff against differing 2026 station-level direct observations using current QR checkout or a newly dated authoritative tariff sheet."},
+    {"name":"Staedtische Werke AG Kassel","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Build the post-2026-09-01 anonymous AC/DC matrix across the approximately 300-point estate; retain the verified Frankfurter Strasse 0.59 EUR/kWh ad-hoc value only for that site until broader coverage is proven."},
+    {"name":"RhoenEnergie Fulda GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Obtain current anonymous/direct checkout pricing across RhönEnergie AC/DC/HPC EVSEs; keep registered charging-card prices separate."}
+  ],
+  "countsThisBatch": {
+    "B1_COVERAGE_EVSE_MATRIX": 5,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 2,
+    "B3_SITE_CONFIGURABLE_BACKEND": 2,
+    "B4_FEE_COMPONENT_COMPLETENESS": 1,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 0,
+    "B6_DYNAMIC_SURFACE_OR_APP": 1,
+    "B7_CONTRADICTORY_SOURCES": 1
+  },
+  "cumulativeCountsByPrimaryBlocker": {
+    "B1_COVERAGE_EVSE_MATRIX": 55,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 51,
+    "B3_SITE_CONFIGURABLE_BACKEND": 7,
+    "B4_FEE_COMPONENT_COMPLETENESS": 5,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 9,
+    "B6_DYNAMIC_SURFACE_OR_APP": 30,
+    "B7_CONTRADICTORY_SOURCES": 8
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "153 + 12 = 165 classified; 55 + 51 + 7 + 5 + 9 + 30 + 8 = 165; 389 current partials - 165 classified = 224 current unclassified partials",
+    "duplicateNamesInBatch": 0,
+    "statusChanges": 0,
+    "tariffPromotions": 0,
+    "completeEntriesSkipped": ["Stadtwerke Hameln Weserbergland GmbH","Stadtwerke Schaumburg-Lippe GmbH","BS|ENERGY / Braunschweiger Versorgungs-AG & Co. KG"],
+    "note": "Classification only. No station sample, registered tariff or stale first-party tariff was generalized. Stadtwerke Gifhorn remains rejected as a duplicate current CPO perimeter of already-counted BS|ENERGY."
+  },
+  "nextSafeAction": "Continue classification from checkpoint 109 backward. In parallel retain bounded resolution priority: GEW normalization/fees, Goettingen fee exhaustiveness, Leipzig post-13.04.2024 EVSEs and Allgaeuer six unpriced points."
+}
