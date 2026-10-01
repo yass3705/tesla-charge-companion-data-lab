@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 186,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-185.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 245,
+    "partial": 346,
+    "blocked": 0
+  },
+  "promotions": [],
+  "investigations": [
+    {
+      "name": "Stadtwerke Ribnitz-Damgarten GmbH",
+      "bucket": "B1",
+      "status": "partial",
+      "evidenceSummary": "Current first-party page closes operator estate at five named public sites and confirms Direct Payment without contract plus eCharge+ and RFID. Fresh EVSE surfaces expose sampled operator AC EVSEs at 0.77 EUR/kWh.",
+      "exactGap": "Need authoritative direct-payment tariff/fee tuple across all five sites/EVSEs; sampled energy price does not prove absence of start/time/blocking fees.",
+      "evidence": [
+        "https://www.stadtwerke-rd.de/e-mobilitaet/"
+      ]
+    },
+    {
+      "name": "Stadtwerke Wismar GmbH",
+      "bucket": "B1",
+      "status": "partial",
+      "evidenceSummary": "Current first-party page enumerates eight public charging locations.",
+      "exactGap": "First-party surface does not expose a current numeric anonymous_ad_hoc tariff and fee matrix for those locations.",
+      "evidence": [
+        "https://www.stadtwerke-wismar.de/de/Privatkunden/Elektromobilitaet/Laden-in-Wismar/"
+      ]
+    },
+    {
+      "name": "Stadtwerke Prenzlau GmbH",
+      "bucket": "B1",
+      "status": "partial",
+      "evidenceSummary": "A current local tourism surface attributes a Stadtwerke Prenzlau station to the operator and exposes QR/card payment at 4.99 EUR per charging session.",
+      "exactGap": "One site-specific per-session price is insufficient to establish a current operator-wide EVSE tariff matrix.",
+      "evidence": [
+        "https://www.prenzlau-tourismus.de/pois/stromtankstelle-parkplatz-vr-bank-uckermark-prenzlau/"
+      ]
+    },
+    {
+      "name": "Stadtwerke Burgdorf GmbH",
+      "bucket": "B3",
+      "status": "partial",
+      "evidenceSummary": "Current first-party page closes the estate at ten locations / 21 charge points, including 22 kW AC and four 180 kW fast charge points, and confirms QR Direct Payment. It explicitly states charging prices are set by the respective mobility provider. Current Mobilithek/Vaylens-derived surfaces show 0.70 EUR/kWh on AC and one 180 kW site, while another 180 kW site exposes 0.93 EUR/kWh.",
+      "exactGap": "Direct-payment tariff is site/provider configurable; need exhaustive EVSE-level direct-payment tuples including all fee components. No operator-wide price may be inferred.",
+      "evidence": [
+        "https://www.stadtwerke-burgdorf.de/lademoeglichkeiten-fuer-e-fahrzeuge/"
+      ]
+    },
+    {
+      "name": "Stadtwerke Kiel AG",
+      "bucket": "B3",
+      "status": "partial",
+      "evidenceSummary": "First-party material confirms QR ad-hoc at every public station and states checkout conditions including Fair-Use fee are displayed per charge point. Current AFIR/Mobilithek-derived pricing already varies across AC sites (0.46-0.48 EUR/kWh) with DC around 0.58 EUR/kWh.",
+      "exactGap": "Need exhaustive per-EVSE price plus Fair-Use/time-fee conditions; first-party explicitly makes conditions charge-point-specific.",
+      "evidence": [
+        "https://www.stadtwerke-kiel.de/hilfe-kontakt?category=71&question=382"
+      ]
+    },
+    {
+      "name": "CUBOS Service GmbH",
+      "bucket": "B3",
+      "status": "partial",
+      "evidenceSummary": "Current Mobilithek/backend-derived operator inventory exposes material site/power variation: AC roughly 0.40, DC 0.59-0.70, HPC 0.45 EUR/kWh, with some EVSEs missing price.",
+      "exactGap": "Need exhaustive per-EVSE direct-payment tuple and missing-price closure; operator-wide rule is invalid."
+    },
+    {
+      "name": "energielösung GmbH",
+      "bucket": "B3",
+      "status": "partial",
+      "evidenceSummary": "Current backend-derived inventory spans roughly 239 stations / 580 charge points and shows substantial site-specific tariff variation across AC/DC/HPC.",
+      "exactGap": "Need machine-readable exhaustive per-EVSE tariff extraction including fees; no uniform operator rule."
+    },
+    {
+      "name": "Stadtwerke Zeitz GmbH",
+      "bucket": "B1",
+      "status": "partial",
+      "evidenceSummary": "Current m8mit/Mobilithek-derived inventory closes 9 stations / 25 charge points (24 AC, 1 DC), all displaying 0.48 EUR/kWh.",
+      "exactGap": "Individual surfaces mark tariff as incomplete/conditional and sampled payment metadata shows RFID; need explicit anonymous_ad_hoc checkout/payment binding and closure of unknown fee components before promotion."
+    }
+  ],
+  "consistencyCorrection": {
+    "name": "Stadtwerke Greifswald GmbH",
+    "action": "exclude from active classification queue",
+    "reason": "Historical classification still shows B1, but resolution-002 already promoted it to complete; resolution ledger correctly takes precedence. Canonical counts unchanged."
+  },
+  "priorityTop5": {
+    "status": "parked after two distinct evidence-led passes",
+    "names": [
+      "solid GmbH / LadeVerbundPlus",
+      "NEW AG / NEW Energie",
+      "RhönEnergie Fulda GmbH",
+      "amperio GmbH",
+      "50five"
+    ]
+  },
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 245,
+    "partial": 346,
+    "blocked": 0
+  },
+  "statusChanges": 0,
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "245 + 346 + 0 = 591",
+    "indicator": "221 -> 245 complete (+24)",
+    "promotions": 0,
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS",
+    "top5Guard": "PASS",
+    "staleClassificationQueueCorrection": "Greifswald excluded; already complete in resolution-002"
+  },
+  "blocker": "Next meaningful progress requires richer direct-checkout or machine-readable AFIR/Mobilithek/backend tariff fields to close EVSE-level fees/payment mode. Public index surfaces are insufficient for safe promotion of the tested B1/B3 candidates.",
+  "nextSafeAction": "Acquire/read richer AFIR/Mobilithek/DATEX II or direct checkout payloads for a bounded candidate, starting with Stadtwerke Zeitz because its 9-station/25-EVSE inventory and 0.48 EUR/kWh energy rate are already closed. Do not infer anonymous payment or zero fees. No production merge."
+}
