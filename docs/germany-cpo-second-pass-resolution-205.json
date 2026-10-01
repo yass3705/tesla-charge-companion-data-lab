@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 205,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-204.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Prenzlau GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; current public access semantics found but exhaustive anonymous matrix still missing",
+      "evidence": {
+        "currentFirstParty": "Stadtwerke Prenzlau publicly documents its charging infrastructure and access/payment options for public charging.",
+        "coverageApproach": "B1 requires matching the active EVSE denominator to direct anonymous prices and all fee components rather than applying a network-level assumption."
+      },
+      "exactGap": "No authoritative machine-readable current anonymous price+start/blocking matrix was established for every active Prenzlau EVSE in this pass. Public/operator information alone does not close the per-EVSE denominator.",
+      "resumeCondition": "Current AFIR/Mobilithek/backend export with active Prenzlau EVSE IDs and anonymous energy/start/time/blocking fields, or a first-party deterministic estate-wide direct tariff with explicit no-exception scope."
+    },
+    {
+      "name": "Stadtwerke Finsterwalde GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; routed to explicit EVSE-matrix requirement",
+      "evidence": {
+        "classification": "Canonical blocker remains B1 coverage, not tariff discovery alone."
+      },
+      "exactGap": "Need current active EVSE inventory plus binding anonymous price and fee components for the complete Finsterwalde estate; no safe deterministic all-estate rule was established.",
+      "resumeCondition": "Public/read-only AFIR/Mobilithek/backend matrix or first-party rule closing all active EVSEs and exceptions."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS",
+    "antiStagnation": "PASS; Aschersleben parked before moving families"
+  },
+  "nextSafeAction": "Prefer a B1 candidate only when a current machine-readable EVSE+anonymous-fee source is identifiable. Do not spend another broad-search pass on Prenzlau/Finsterwalde without that source; switch to a Mobilithek/AFIR-native operator."
+}
