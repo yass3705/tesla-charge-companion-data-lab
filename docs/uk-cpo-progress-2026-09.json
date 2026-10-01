@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-10-02T01:55:00+02:00",
+  "updatedAt": "2026-10-02T02:05:00+02:00",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -405,10 +405,10 @@
     },
     {
       "name": "EZ-Charge",
-      "status": "set_aside_technical_public_index_only",
-      "access": "public_site_area_index_plus_hidden_runtime_cpms",
-      "evidence": "Deep recheck 2026-09-30 exhausted current public surfaces. Official web map exposes only ezchargesitedata.blob.core.windows.net/public/site-areas.json (28 site-area ids/names) and current general direct prices, while explicitly warning of site-specific pricing. Android 4.3.0 static analysis exposes CPMS/OCPI capabilities (CPI_CPO_GET_TARIFF, OcpiEmspGetTariff, connector pricing, tenantEndpoint, site-area routes) but no callable tenant base URL. Deeper domain/config scan found no EZ business API host; vev-iq-prod.appspot.com returns 404 on read-only location/site-area/OCPI/tariff probes. No exact per-site tariff feed recovered.",
-      "next": "Technically bounded. Keep 28-site seed plus official general pricing as reference only; do not mark priced/complete because site-specific exceptions are explicitly possible. Reopen only if the public map/app exposes a tenant endpoint or a legitimate PCPR/open-data feed appears.",
+      "status": "set_aside_station_specific_pricing_no_current_public_tariff",
+      "access": "official_public_site_index_plus_no_current_network_tariff",
+      "evidence": "Fresh 2026-10-02 verification: official EZ-Charge site exposes the network/support surfaces but no current general public tariff. A March 2026 promotion (49p day / 43p overnight) applied only to six selected 22kW AC sites and has expired; it must not be generalized. Zapmap's current network guide lists 262 chargers across 26 locations but reports no pricing information available. Existing 28-site seed therefore remains insufficient for exact current direct pricing.",
+      "next": "Set aside. No current official network-wide tariff is published and site-specific exceptions/pricing are possible. Do not reuse the expired March 2026 promotional rates or infer a network price. Reopen on official current pricing feed, PCPR/open-data station tariffs, or a legitimate public per-site pricing surface.",
       "locationsEndpoint": "https://ezchargesitedata.blob.core.windows.net/public/site-areas.json",
       "report": "reports/uk/ezcharge-domain-config-discovery-latest.json"
     },
