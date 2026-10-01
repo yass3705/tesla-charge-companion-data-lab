@@ -30,7 +30,7 @@ jobs:
           set -euo pipefail
           mkdir -p data/operator_direct reports/uk
           python3 - <<'PY'
-          import json,gzip,re
+          import json,gzip,re,urllib.request,urllib.error
           from pathlib import Path
           from collections import Counter
 
@@ -38,13 +38,61 @@ jobs:
               inv=json.load(g)
           rules=json.loads(Path("data/operator_direct/ubitricity_uk_official_payg_2026-10-01.json").read_text())
 
-          authorities=[x.lower() for x in rules["explicitlyAffectedLocalAuthorities"]]
-          exception_terms=["richmond","wandsworth","greenwich","tower hamlets"]
-
           def norm(s):
               return re.sub(r"[^a-z0-9 ]+"," ",str(s or "").lower()).strip()
 
+          authority_aliases={}
+          for raw in rules["explicitlyAffectedLocalAuthorities"]:
+              base=re.sub(r"\s*\([^)]*\)\s*$","",raw).strip()
+              authority_aliases[norm(base)]=raw
+
+          # Known spelling variants returned by UK administrative datasets.
+          aliases={
+              "city of westminster":"Westminster",
+              "royal borough of kensington and chelsea":"Kensington and Chelsea",
+              "royal borough of kingston upon thames":"Kingston upon Thames",
+              "royal borough of windsor and maidenhead":"Windsor and Maidenhead",
+              "london borough of hammersmith and fulham":"Hammersmith and Fulham"
+          }
+          for k,v in aliases.items():
+              authority_aliases[norm(k)]=v
+
+          multi_tariff={norm(x) for x in ("Richmond upon Thames","Wandsworth","Greenwich","Tower Hamlets")}
+          special_scope={norm("Waltham Forest")}
+
           ubi=[x for x in inv.get("locations",[]) if str(x.get("operatorName") or "")=="Migration Shell Recharge"]
+
+          # Resolve postcode -> administrative district in bulk using Postcodes.io / ONSPD data.
+          postcodes=[]
+          for loc in ubi:
+              pc=str((loc.get("address") or {}).get("postalCode") or "").strip().upper()
+              if pc and pc not in postcodes:
+                  postcodes.append(pc)
+
+          postcode_admin={}
+          for i in range(0,len(postcodes),100):
+              batch=postcodes[i:i+100]
+              body=json.dumps({"postcodes":batch}).encode()
+              req=urllib.request.Request(
+                  "https://api.postcodes.io/postcodes",
+                  data=body,method="POST",
+                  headers={"Content-Type":"application/json","User-Agent":"TeslaChargeCompanion/9 ubitricity-postcode-map"}
+              )
+              try:
+                  with urllib.request.urlopen(req,timeout=30) as r:
+                      payload=json.loads(r.read().decode("utf-8"))
+              except Exception as e:
+                  raise SystemExit(f"postcode lookup failed for batch {i//100}: {e}")
+              for item in payload.get("result") or []:
+                  query=str(item.get("query") or "").strip().upper()
+                  result=item.get("result") or {}
+                  postcode_admin[query]={
+                      "adminDistrict":result.get("admin_district"),
+                      "adminWard":result.get("admin_ward"),
+                      "region":result.get("region"),
+                      "country":result.get("country")
+                  }
+
           rows=[]
           auth_counts=Counter()
           fail_reasons=Counter()
@@ -55,15 +103,16 @@ jobs:
 
           for loc in ubi:
               addr=loc.get("address") or {}
-              hay=" ".join(norm(addr.get(k)) for k in ("city","streetAndNumber","postalCode"))
-              matched=[a for a in authorities if a in hay]
-              exception=next((e for e in exception_terms if e in hay),None)
+              pc=str(addr.get("postalCode") or "").strip().upper()
+              geo=postcode_admin.get(pc) or {}
+              admin=norm(geo.get("adminDistrict"))
+              matched_raw=authority_aliases.get(admin)
               evses=loc.get("evses") or []
               connector_count=sum(len(e.get("connectors") or []) for e in evses)
 
-              if len(matched)==1 and not exception:
+              if matched_raw and admin not in multi_tariff and admin not in special_scope:
                   status="priced_standard_time_bands"
-                  authority=matched[0]
+                  authority=matched_raw
                   auth_counts[authority]+=1
                   tariff={
                     "standardTimeBands":rules["standardTimeBands"],
@@ -76,14 +125,20 @@ jobs:
                   priced_connectors+=connector_count
               else:
                   status="fail_closed"
-                  authority=matched[0] if len(matched)==1 else None
+                  authority=matched_raw
                   tariff=None
-                  if exception:
+                  if not pc:
+                      reason="missing_postcode"
+                  elif not geo:
+                      reason="postcode_lookup_missing"
+                  elif admin in multi_tariff:
                       reason="known_multi_tariff_exception"
-                  elif len(matched)==0:
-                      reason="no_deterministic_local_authority_match"
+                  elif admin in special_scope:
+                      reason="special_scope_requires_site_proof"
+                  elif not matched_raw:
+                      reason="local_authority_not_in_official_affected_list"
                   else:
-                      reason="ambiguous_local_authority_match"
+                      reason="unresolved"
                   fail_reasons[reason]+=1
                   fail_evse+=len(evses)
                   fail_connectors+=connector_count
@@ -94,6 +149,7 @@ jobs:
                 "operatorId":loc.get("operatorId"),
                 "operatorName":loc.get("operatorName"),
                 "address":addr,
+                "postcodeAdministrativeGeography":geo,
                 "evseCount":len(evses),
                 "connectorCount":connector_count,
                 "matchedLocalAuthority":authority,
@@ -110,6 +166,7 @@ jobs:
             "operator":"Shell Recharge ubitricity",
             "sourceInventory":"data/national/uk_shell_ev_public_locations.json.gz",
             "sourceTariffRule":"data/operator_direct/ubitricity_uk_official_payg_2026-10-01.json",
+            "postcodeResolver":"Postcodes.io / ONS Postcode Directory",
             "locationCount":len(rows),
             "pricedLocationCount":len(priced),
             "failClosedLocationCount":len(fail),
