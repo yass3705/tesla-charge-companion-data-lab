@@ -178,3 +178,5 @@ console.log(JSON.stringify({
 },null,2));
 
 // rerun marker 2026-10-01 post-79373
+
+// rerun after connector-power overlay 2026-10-01
