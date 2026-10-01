@@ -1624,6 +1624,36 @@ for(const sh of manifest.shards||[]){
            hpcGroupedSourceEvses.has(e0)||pd1TechnicalSourceEvses.has(e0)||drvPowerSourceEvses.has(e0)||
            operatorGroupedSourceEvses.has(e0)){sourceConflict=true;break;}
       }
+      if(String(row.electroverseLocationPk)==='4456304'){
+        console.log('DEBUG4456304_GROUP', JSON.stringify({
+          targets,
+          sources:es.map(e0=>{
+            const pr0=text(e0?.physicalReference),k0=norm(pr0);
+            const parentNow=[...local].filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\\d{1,2}$/.test(k0.slice(p.length)));
+            return {
+              pk:e0?.pk??null,pr:pr0,k:k0,
+              local:local.has(k0),parentNow,
+              ordinal:ordinalTargets.get(e0)||null,
+              generic:genericTargets.get(e0)||null,
+              suffix:suffixTargets.get(e0)||null,
+              trimmed:trimmedSuffixTargets.get(e0)||null,
+              pd1:pd1FinalOrdinalTargets.get(e0)||null,
+              via:viaFinalOrdinalTargets.get(e0)||null,
+              c55:c55BIndexTargets.get(e0)||null,
+              viaBase:viaStructuredBasePairTargets.get(e0)||null,
+              viaOfficial:viaOfficialTargets.get(e0)||null,
+              izfGroup:izfGroupedSourceEvses.has(e0),
+              viaGroup:viaGroupedSourceEvses.has(e0),
+              c55Group:c55GroupedSourceEvses.has(e0),
+              hpcGroup:hpcGroupedSourceEvses.has(e0),
+              pd1Tech:pd1TechnicalSourceEvses.has(e0),
+              drvPower:drvPowerSourceEvses.has(e0),
+              operatorGroup:operatorGroupedSourceEvses.has(e0)
+            };
+          }),
+          sourceConflict
+        }));
+      }
       if(sourceConflict)continue;
 
       const compiledRows=[];let valid=true;
