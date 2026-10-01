@@ -1,0 +1,20 @@
+name: Debug NUMERIC national profiles
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/debug_numeric_national_profiles.mjs"
+      - ".github/workflows/electroverse-numeric-national-debug.yml"
+permissions:
+  contents: read
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/debug_numeric_national_profiles.mjs
