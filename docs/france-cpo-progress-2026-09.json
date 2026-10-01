@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 127,
+  "schemaVersion": 128,
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 96,
-  "setAsideCpos": 43,
-  "activeRemainingCpos": 152,
-  "updatedAt": "2026-10-01T20:12:00+02:00",
+  "setAsideCpos": 44,
+  "activeRemainingCpos": 151,
+  "updatedAt": "2026-10-01T20:20:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -395,6 +395,13 @@
       "since": "2026-10-01",
       "lastChecked": "2026-10-01",
       "audit": "docs/france-regional-cpo-lms-batch506-2026-10-01.json"
+    },
+    {
+      "name": "Idex | raw rank149",
+      "reason": "batch507 fail-closed: current first-party Idex IRVE guidance states site owners define authorised users, access rules and a specific tariff through the supervision system, while Idex handles supervision and billing. Current public inventory reconciles the historical 3-station/43-PDC Idex estate, but no first-party universal numeric direct tariff or anonymous deterministic station/EVSE -> site-configured tariff resolver was recovered. No site price extrapolation.",
+      "since": "2026-10-01",
+      "lastChecked": "2026-10-01",
+      "audit": "docs/france-regional-cpo-idex-batch507-2026-10-01.json"
     }
   ],
   "activeNominative": [
@@ -484,7 +491,6 @@
     "RELEASED_SLOT_143_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_SLOT_145_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_ACTIVE_SLOT_147 | alias Greenspot | FR*GSP | raw rank50",
-    "UNPROVEN_ACTIVE_149",
     "UNPROVEN_ACTIVE_RAW_SLOT_RELEASED_BY_EMOTUM_ALIAS",
     "UNPROVEN_ACTIVE_152",
     "UNPROVEN_ACTIVE_153",
@@ -862,7 +868,8 @@
     "Porsche Sales | raw rank109": "batch503 setAside: Porsche Sales/Marketplace estate mixes Porsche Centres and Destination Charging partner sites. Destination Charging can be free for eligible Porsche guests but partner/site fees may apply to others; Porsche Charging Service prices are eMSP/contract prices and not universal direct-CPO tariffs.",
     "PARERA MOBILITE | FR*MW1 / FR*VIS": "batch504: one PARERA MOBILITÉ authority across FR*MW1 and FR*VIS technical estates. First-party MobilyWeb supports customer/site-defined tariffs and monetization; no deterministic anonymous station/EVSE -> current direct tariff resolver recovered. raw99 setAside; raw156 released as non-counting alias.",
     "ANYOS | raw rank148": "batch505 setAside: ANYOS first-party terms make the applicable pre-charge displayed price authoritative, with possible kWh/start/time/parking components; no public deterministic exact-tariff resolver recovered.",
-    "LMS / Last Mile Solutions | raw rank146": "batch506 setAside: current LMS first-party roaming/CPO documentation says tariffs are per-charge-point, mutable daily, and should be pulled from the live EVSE-ID tariff feed. No reusable anonymous live tariff feed recovered for historical France estate."
+    "LMS / Last Mile Solutions | raw rank146": "batch506 setAside: current LMS first-party roaming/CPO documentation says tariffs are per-charge-point, mutable daily, and should be pulled from the live EVSE-ID tariff feed. No reusable anonymous live tariff feed recovered for historical France estate.",
+    "Idex | raw rank149": "batch507 setAside: current inventory still reconciles 3 stations/43 PDC, but first-party Idex model is customer/site-specific tariff configuration and billing. Exact site direct price requires station-specific resolver."
   },
   "history": [
     {
@@ -1506,9 +1513,19 @@
         "setAsideCpos": 43,
         "activeRemainingCpos": 152
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch507",
+      "change": "Moved Idex raw149 active->setAside. Current 3-station/43-PDC inventory reconciles historical estate; first-party Idex confirms site-specific tariff configuration and billing, with no universal numeric direct tariff or anonymous EVSE->site tariff resolver.",
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 44,
+        "activeRemainingCpos": 151
+      }
     }
   ],
-  "currentInvestigation": "Idex | raw rank149 | 3 stations / 43 PDC: inspect first-party operator/tariff authority and deterministic current direct pricing.",
+  "currentInvestigation": "NVH | raw rank152 | 35 stations / 35 PDC: inspect first-party identity/operator/tariff authority and current direct pricing.",
   "coherenceControl": {
     "batch": "batch491",
     "result": "PASS",
@@ -1523,11 +1540,11 @@
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch506",
-    "result": "PASS_LMS_FAIL_CLOSED",
+    "batch": "batch507",
+    "result": "PASS_IDEX_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch506",
+  "latestBatch": "batch507",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2313,6 +2330,14 @@
       "category": "setAside-authority",
       "decision": "active->setAside: first-party LMS tariff engine permits a different mutable tariff per charging point and requires EVSE-ID live tariff feed; no anonymous deterministic current feed recovered for historical estate",
       "evidence": "docs/france-regional-cpo-lms-batch506-2026-10-01.json"
+    },
+    {
+      "rawRank": 149,
+      "historicalOperator": "Idex",
+      "authority": "Idex",
+      "category": "setAside-authority",
+      "decision": "active->setAside: first-party Idex confirms site-specific tariff configuration under supervision and billing; no universal numeric direct tariff or deterministic anonymous EVSE->site tariff resolver recovered",
+      "evidence": "docs/france-regional-cpo-idex-batch507-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
