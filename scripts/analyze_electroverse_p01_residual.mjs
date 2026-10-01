@@ -48,6 +48,23 @@ for(const m of mapping.mappings||[]) for(const p of m.irvePdcIds||[]){
 }
 
 const cman=JSON.parse(await fs.readFile(CACHE+'/manifest.json','utf8'));
+const donorsByRef=new Map();
+for(const sh of cman.shards||[]){
+  const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
+  for(const row of Object.values(data.stations||{})){
+    for(const e of row?.tariff?.evses||[]){
+      const rk=norm(e?.physicalReference);
+      if(!rk||(e?.connectors||[]).length===0)continue;
+      const a=donorsByRef.get(rk)||[];
+      a.push({
+        electroverseLocationPk:String(row.electroverseLocationPk),
+        electroverseEvsePk:e.pk,
+        sourceSignature:sourceSig(e)
+      });
+      donorsByRef.set(rk,a);
+    }
+  }
+}
 const groups=[];
 const structuredCandidates=[];
 let residual=0,locations=0;
@@ -214,6 +231,34 @@ for(const [target,candidates] of byTarget){
     suppressedExactDuplicates+=Math.max(0,rows.length-1);
   }
 }
+const donorRecoverableMappings=[];
+const donorAmbiguities=[];
+for(const x of validatedMappings){
+  const donors=(donorsByRef.get(norm(x.physicalReference))||[])
+    .filter(d=>String(d.electroverseEvsePk)!==String(x.electroverseEvsePk));
+  if(!donors.length)continue;
+  const sigs=new Set(donors.map(d=>d.sourceSignature));
+  if(sigs.size!==1){
+    donorAmbiguities.push({
+      targetPdc:x.targetPdc,
+      physicalReference:x.physicalReference,
+      residualEvsePk:x.electroverseEvsePk,
+      donorEvsePks:donors.map(d=>d.electroverseEvsePk),
+      reason:'exact_physical_reference_has_conflicting_donor_profiles'
+    });
+    continue;
+  }
+  donors.sort((a,b)=>Number(a.electroverseEvsePk)-Number(b.electroverseEvsePk));
+  const donor=donors[0];
+  donorRecoverableMappings.push({
+    ...x,
+    donorElectroverseLocationPk:donor.electroverseLocationPk,
+    donorElectroverseEvsePk:donor.electroverseEvsePk,
+    donorSourceSignature:donor.sourceSignature,
+    donorCandidateCount:donors.length
+  });
+}
+
 const out={
  schemaVersion:1,generatedAt:new Date().toISOString(),
  residualSourceEvses:residual,affectedLocations:locations,byMode,
@@ -222,6 +267,8 @@ const out={
  structuredValidatedChildRefs:validatedMappings.length,
  structuredSuppressedExactDuplicates:suppressedExactDuplicates,
  structuredConflictedTargets:conflictedTargets.length,
+ exactReferenceDonorRecoverableSourceEvses:donorRecoverableMappings.length,
+ exactReferenceDonorAmbiguities:donorAmbiguities.length,
  safeGroups:groups.filter(g=>g.mode!=='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,200),
  unresolvedSamples:groups.filter(g=>g.mode==='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,100),
  policy:'Diagnostic only. P01 bucket uses exact structured parent reconstruction. Multiple distinct child references may map to one national parent PDC. Exact duplicate child references are deduplicated only when tariff and technical profiles are identical; conflicting duplicates fail closed. No proximity inference.'
@@ -230,15 +277,18 @@ const validated={
  schemaVersion:1,
  generatedAt:out.generatedAt,
  dataset:'electroverse-france-p01-structured-residual-mappings',
- count:validatedMappings.length,
+ count:donorRecoverableMappings.length,
+ identityCount:validatedMappings.length,
  policy:'Exact P01 child-to-parent identities only. Multiple distinct child references may share one globally unique local national parent PDC. Exact duplicate child references are deduplicated only when tariff and technical profiles are identical; any conflicting duplicate makes that parent fail closed. No proximity inference.',
- mappings:validatedMappings,
- conflictedTargets
+ mappings:donorRecoverableMappings,
+ identityMappings:validatedMappings,
+ conflictedTargets,
+ donorAmbiguities
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
 await fs.mkdir('data/platforms/electroverse/validated-mappings',{recursive:true});
 await fs.writeFile(OUT,JSON.stringify(out,null,2)+'\n');
 await fs.writeFile(VALIDATED_OUT,JSON.stringify(validated,null,2)+'\n');
-console.log(JSON.stringify({report:out,validatedCount:validatedMappings.length},null,2));
+console.log(JSON.stringify({report:out,identityValidatedCount:validatedMappings.length,donorRecoverableCount:donorRecoverableMappings.length},null,2));
 
 // structured P01 residual diagnostic 2026-10-01
