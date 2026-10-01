@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": "batch438",
+  "date": "2026-09-25",
+  "cpo": "ZEBORNE",
+  "rawRank": 84,
+  "historical": {
+    "stations": 244,
+    "pdc": 248
+  },
+  "decision": "setAside-zms-tariff-backend-auth-boundary",
+  "identity": {
+    "canonical": "ZEborne operating family",
+    "partyIds": [
+      "FR*ZPE",
+      "FR*ZSU"
+    ],
+    "nonCountingAliases": [
+      "ZEborne raw rank127",
+      "AMSOM HABITAT - MOUGINS raw rank199",
+      "AMSOM HABITAT HENSON raw rank211",
+      "AMSOM HABITAT ROSIERES EN SANTERRE raw rank228",
+      "GRIM AUTO raw rank230",
+      "GRIM SO - FORD BAYONNE raw rank231"
+    ]
+  },
+  "newEvidence": {
+    "officialApp": {
+      "name": "ZEborne Mobility Services",
+      "package": "com.zeborne.zms",
+      "webapp": "https://webapp.zeborne.com/",
+      "account": "https://myaccount.zeborne.com/"
+    },
+    "firstPartyModel": [
+      "ZEborne states ZMS manages and operates charging points remotely, including tariffs.",
+      "ZMS app states each recharge is invoiced based on the price of each charging point."
+    ],
+    "frontendContract": {
+      "stationDetail": "GET /stations/get/{id}",
+      "evseTariff": "evses[].tariff with id/name/currency/url/label/richLabel/rules",
+      "stationElectricityPrice": "electricityPrice[] with time/price/includesWeekend/includesPublicHoliday",
+      "otherExactRoutes": [
+        "GET /location/{id}",
+        "GET /location/evse/{id}"
+      ],
+      "note": "Current Flutter web bundle proves structured tariff fields and exact station/EVSE routes."
+    }
+  },
+  "blocker": "The current ZMS webapp requires registered-user authentication for operational charging access; no stable anonymous reusable base API + exact FR*ZPE/FR*ZSU tariff request was proven in this pass.",
+  "antiLoop": {
+    "doNotRepeat": [
+      "generic ZEborne web search",
+      "installation/product pricing",
+      "roaming/eMSP price inheritance",
+      "old V8 repository endpoint search"
+    ],
+    "reopenOn": [
+      "anonymous ZMS station/EVSE detail endpoint becomes reproducible",
+      "legitimate project ZMS account/token route is available",
+      "exact QR exposes station tariff without login",
+      "QualiCharge/AFIR exposes exact FR*ZPE/FR*ZSU numeric tariff"
+    ]
+  },
+  "conclusion": "Move raw rank84 from active to setAside. Tariff backend/data model is now identified exactly, but reusable anonymous direct extraction is not yet proven."
+}
