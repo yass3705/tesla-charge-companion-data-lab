@@ -67,7 +67,7 @@ def main():
     # GitHub receives a partially server-rendered version of the retail pages. Validate only
     # stable text that is actually present there; headline price cards are separately recorded
     # as dated public-web evidence and must not be treated as machine evidence.
-    require(offer,'Plus de 500 points de charge','950 000','application Sorégies Mobilités',label='current offer')
+    require(offer,'Plus de 700 points de charge','1 000 000','application Sorégies Mobilités',label='current offer')
     require_any(offer,[['tarif en vigueur','tarifs en vigueur'],['typologie de la borne','typologie des bornes']],label='current tariff lookup rule')
     require(plus,'-20%','application Sorégies Mobilités','sans engagement',label='mobilites plus')
     require(pro,'Sorégies Mobilités Pro','application Sorégies Mobilités','carte bancaire','Normale','Accéléré','Rapide','Ultra-rapide',label='pro offer')
@@ -84,6 +84,7 @@ def main():
         'scope':'Vienne',
         'operator':'Sorégies',
         'officialDatasetRows':len(rows),
+        'localPublicPointsClaimed':700,
         'currentRetailModelAmbiguous':True
       },
       'currentMarketingOffer':{
@@ -98,7 +99,7 @@ def main():
         'headlinePriceCardsSourceUrls':[PLUS_URL,OFFER_URL]
       },
       'access':{'app':True,'soregiesCard':True,'bankCardInApp':True},
-      'roaming':{'gireveIncomingSupported':True,'outgoingCardCoverageClaimedPoints':950000,'thirdPartyRetailMustRemainSeparate':True},
+      'roaming':{'gireveIncomingSupported':True,'outgoingCardCoverageClaimedPoints':1000000,'thirdPartyRetailMustRemainSeparate':True},
       'technical':{'normalMaxKw':18,'acceleratedMaxKw':50,'rapidRangeKw':'50-200','ultraRapidMinKw':200,'stationExamplesFromOfficialDataset':smp},
       'legacyDetailedGrid':{'sourceUrl':LEGACY_GRID_URL,'date':'2025-11-01','machineReachableInCurrentWorkflow':False,'doNotUseAsCurrentCalculatorTariff':True},
       'tccDecision':{
