@@ -1,0 +1,28 @@
+name: Audit Electroverse FR all remaining families
+on:
+  push:
+    branches:
+      - audit/electroverse-all-remaining-families
+    paths:
+      - "scripts/audit_electroverse_all_remaining_families.mjs"
+      - ".github/workflows/electroverse-all-remaining-families-audit.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run remaining-family audit
+        run: node scripts/audit_electroverse_all_remaining_families.mjs
+      - name: Persist report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse-fr-all-remaining-families.json
+          git commit -m "audit: publish all remaining Electroverse France families" || exit 0
+          git push
