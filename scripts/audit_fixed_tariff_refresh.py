@@ -44,6 +44,11 @@ for p in sorted(DATA.glob("*.json")):
         data=json.loads(raw)
     except Exception:
         continue
+    # Exclude station-specific / dynamic pricing artifacts from the fixed-tariff audit.
+    source_type=str(data.get("sourceType") or "") if isinstance(data,dict) else ""
+    pricing_model=str(data.get("pricingModel") or "") if isinstance(data,dict) else ""
+    if source_type=="official_public_station_exact_pricing" or "site_specific" in pricing_model.lower():
+        continue
     stats=walk(data)
     # Conservative candidate: tariff/pricing-ish filename OR >=2 price-like fields,
     # and at least one numeric value under a price-like key.
