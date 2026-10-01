@@ -180,3 +180,5 @@ console.log(JSON.stringify({
 // rerun marker 2026-10-01 post-79373
 
 // rerun after connector-power overlay 2026-10-01
+
+// verify post-rebuild residual count 2026-10-01
