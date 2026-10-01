@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 2,
+  "date": "2026-09-17",
+  "canonicalBefore": {"totalNamedCpos":591,"complete":202,"partial":389,"blocked":0},
+  "promotions": [
+    {
+      "name": "Stadtwerke Greifswald GmbH",
+      "previousStatus": "partial",
+      "newStatus": "complete",
+      "resolution": "Current first-party Stadtwerke Greifswald material explicitly separates spontaneous direct charging from registered customer-card and roaming layers. The public charging section states that charge it easy is used only for DIRECT charging, allows direct charging without prior registration, uses credit card for ad-hoc payment, and displays the conditions for the selected charge point before start. The same first-party page then publishes the Stadtwerke direct price for the complete named normal-charging public estate: 0.50 EUR/kWh AC. It also publishes the blocking fee: 0.10 EUR/min from minute 241 after four hours. The page names the covered normal-charging locations (Bahnhofstrasse/ZOB, Friedrich-Loeffler-Strasse/Hansering, M.-A.-Nexoe-Platz, Walther-Rathenau-Strasse, Freizeitbad, Markt/Rathaus, Karl-Liebknecht-Ring/Moewencenter and Salinenstrasse/Museumshafen). A separate customer-card layer is explicitly priced differently (0.4367 EUR/kWh AC plus card/monthly/start/blocking terms), and roaming prices are explicitly provider-dependent, so no registered or roaming tariff is substituted into anonymous ad-hoc.",
+      "anonymousAdHoc": {
+        "energy": {"acEurPerKwh":0.50},
+        "blocking": {"eurPerMinute":0.10,"startsAtMinute":241},
+        "payment": "charge it easy direct charging by credit card without prior registration",
+        "minimumBillingNote": "The direct-charge instructions state that sessions whose billed amount is below 0.50 EUR are rounded up to 0.50 EUR."
+      },
+      "scope": "Named Stadtwerke/Universitaets- und Hansestadt Greifswald normal public charging estate listed on the current first-party page.",
+      "sources": [
+        "https://www.sw-greifswald.de/ihr-kundenzentrum/mobilitaet",
+        "https://www.chargeit-mobility.com/ueber-uns/freischaltung-ladestation/",
+        "https://payments.lichtblick-emobility.de/de"
+      ],
+      "safety": "First-party direct/ad-hoc semantics and price matrix are explicit. Customer-card and roaming layers remain separate. No tariff extrapolation from another CPO or backend was used."
+    }
+  ],
+  "canonicalAfter": {"totalNamedCpos":591,"complete":203,"partial":388,"blocked":0},
+  "statusChanges": 1,
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "203 + 388 + 0 = 591",
+    "promotions": 1,
+    "unsafeExtrapolations": 0,
+    "registeredOrRoamingTariffSubstituted": false,
+    "duplicateOrAliasChange": 0
+  },
+  "nextSafeAction": "Remove Greifswald from the unresolved charge-it-easy queue. Continue shared-backend probing on Einbeck, Bad Kissingen and FAMILA, while keeping station-specific pricing fail-closed. Continue exact Allgaeuer residual EVSE reconciliation in parallel."
+}
