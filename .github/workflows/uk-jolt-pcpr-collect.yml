@@ -25,15 +25,19 @@ jobs:
 
       - name: Collect JOLT UK PCPR data
         shell: bash
+        env:
+          JOLT_UK_PCPR_API_KEY: ${{ secrets.JOLT_UK_PCPR_API_KEY }}
         run: |
           set -euo pipefail
           mkdir -p data/national reports/uk
           python - <<'PY'
-          import json, gzip, urllib.request, urllib.parse, time
+          import json, gzip, urllib.request, urllib.parse, time, os
           from datetime import datetime, timezone
           from pathlib import Path
 
-          API_KEY="890f53ea-e42c-469d-8e21-efdc6f30d6ba"
+          API_KEY=os.environ.get("JOLT_UK_PCPR_API_KEY","").strip()
+          if not API_KEY:
+              raise SystemExit("Missing JOLT_UK_PCPR_API_KEY Actions secret")
           LOC="https://api.joltcharge.com/v1/uk/public/locations?apiKey="+API_KEY
           UA="TeslaChargeCompanion/9 UK-JOLT-PCPR"
 
