@@ -122,6 +122,29 @@ def browser_select_country(url: str, country: str = "France") -> tuple[str, dict
         visible = body.text or ""
         nvisible = norm(visible)
 
+        # Current Allego markup exposes country tariff panels as #pricing-<id>.
+        # Prefer the panel that is actually visible in the localized page. This
+        # avoids depending on picker labels, which are no longer consistently
+        # present in Selenium's visible text.
+        panels = driver.find_elements(By.CSS_SELECTOR, "[id^='pricing-']")
+        visible_panels = []
+        for panel in panels:
+            try:
+                ptext = panel.text or ""
+                if panel.is_displayed() and "kwh" in norm(ptext):
+                    visible_panels.append((panel.get_attribute("id"), ptext))
+            except Exception:
+                continue
+        if country == "France" and "/fr/" in url and len(visible_panels) == 1:
+            panel_id, panel_text = visible_panels[0]
+            return panel_text, {
+                "accessMode": "browser_render_visible_dom",
+                "countrySelectionMethod": "localized_visible_panel",
+                "selectedCountry": country,
+                "pricingPanelId": panel_id,
+                "pricingPanelCount": len(panels),
+            }
+
         # Determine the *active* country from the first picker label.
         # Do not merely search for France anywhere because the opened menu also
         # contains France as one of its options.
