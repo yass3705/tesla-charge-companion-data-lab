@@ -19,6 +19,18 @@ jobs:
           node-version: 22
       - name: Analyze S27 unpublished residual
         run: node scripts/analyze_electroverse_s27_residual.mjs
+      - name: Persist S27 residual report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/s27-residual-analysis.json
+          if git diff --cached --quiet; then
+            echo "No S27 residual report changes"
+          else
+            git commit -m "data: persist Electroverse S27 residual analysis"
+            git pull --rebase origin main
+            git push
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: electroverse-france-s27-residual-analysis
