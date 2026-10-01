@@ -329,7 +329,7 @@ for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
   const set=globalPdcOwners.get(k)||new Set();set.add(m.irveStationId);globalPdcOwners.set(k,set);
 }
 
-const tiles=new Map(),rejected={},parentGroups=new Map();
+const tiles=new Map(),rejected={},parentGroups=new Map(),p01PriceOnlyGroups=new Map();
 const debugNumericSourcePks=new Set(['4179421','4179445','4132457','4132473']);
 const debugNumericProfiles=new Map();
 const pricingDiagnostics={
@@ -359,6 +359,7 @@ const stats={
   validatedMgpResidualCandidateEvses:0,validatedMgpResidualPublishedEvses:0,
   validatedLe2ResidualCandidateEvses:0,validatedLe2ResidualPublishedEvses:0,
   validatedP01ResidualCandidateEvses:0,validatedP01ResidualPublishedEvses:0,
+  validatedP01PriceOnlyCandidateEvses:0,validatedP01PriceOnlyPublishedEvses:0,
   finalResidualUniqueSuffixCandidateEvses:0,finalResidualUniqueSuffixPublishedEvses:0,
   finalResidualCommonTailCandidateEvses:0,finalResidualCommonTailPublishedEvses:0,
   finalResidualHomogeneousGroupCandidateEvses:0,finalResidualHomogeneousGroupPublishedEvses:0,
@@ -1905,10 +1906,14 @@ for(const sh of manifest.shards||[]){
           identityMode='validated_le2_residual_unique_suffix_bijection';
           stats.validatedLe2ResidualCandidateEvses++;
         }else if(validatedP01ResidualTargets.has(validatedKey)){
-          identityMode='validated_p01_structured_parent_identity';
+          const p01Meta0=validatedP01ResidualMetadata.get(validatedKey);
+          identityMode=p01Meta0?.recoveryMode==='same_parent_homogeneous_price_only'
+            ? 'validated_p01_same_parent_homogeneous_price_only'
+            : 'validated_p01_structured_parent_identity';
           parentMode=true;
           parentNorm=targetNorm;
           stats.validatedP01ResidualCandidateEvses++;
+          if(p01Meta0?.recoveryMode==='same_parent_homogeneous_price_only')stats.validatedP01PriceOnlyCandidateEvses++;
         }else{
           identityMode='validated_numeric_residual_unique_bijection';
           stats.validatedNumericResidualCandidateEvses++;
@@ -2086,6 +2091,26 @@ for(const sh of manifest.shards||[]){
       stats.pricedExactEvses++;
       if(compiled.some(x=>(x.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)))stats.durationBandCandidateEvses++;
       const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
+      if(p01Meta?.recoveryMode==='same_parent_homogeneous_price_only'){
+        if(unique.length!==1){rej('validated_p01_price_only_donor_heterogeneous');continue;}
+        const pricing=unique[0],sig=pricingSig(pricing);
+        const gk=String(row.electroverseLocationPk)+'|'+parentNorm;
+        let g=p01PriceOnlyGroups.get(gk);
+        if(!g){
+          g={
+            locationPk:String(row.electroverseLocationPk),parentPdc:targetPdc,parentNorm,lat,lon,
+            pricing,pricingSig:sig,sourcePks:new Set(),physicalReferences:new Set(),
+            donorPks:new Set(),invalid:false
+          };
+          p01PriceOnlyGroups.set(gk,g);
+        }else if(g.pricingSig!==sig){
+          g.invalid=true;
+        }
+        g.sourcePks.add(e.pk??null);
+        if(pr)g.physicalReferences.add(pr);
+        if(p01Meta?.donorElectroverseEvsePk!=null)g.donorPks.add(p01Meta.donorElectroverseEvsePk);
+        continue;
+      }
       if(unique.length!==1 && !parentMode){
         // V9 connector-power representation:
         // one national EVSE may legitimately expose several connector tariffs.
@@ -2212,6 +2237,41 @@ for(const sh of manifest.shards||[]){
       stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=compiled.length;
     }
   }
+}
+
+for(const g of p01PriceOnlyGroups.values()){
+  if(g.invalid){
+    rej('validated_p01_price_only_parent_conflict');
+    continue;
+  }
+  const pricing=g.pricing;
+  const currency=pricing.rules?.[0]?.currency||'EUR';
+  const offer={
+    id:`electroverse-evse-p01-price-only:${g.locationPk}:${g.parentNorm}`,
+    provider:'Electroverse',
+    countries:['FR'],
+    currency,
+    priority:80,
+    verifiedScope:'exact_evse',
+    evseIds:[g.parentPdc],
+    pricing,
+    metadata:{
+      verified:true,
+      identityMode:'validated_p01_same_parent_homogeneous_price_only',
+      offerGranularity:'evse_price_only',
+      electroverseLocationPk:g.locationPk,
+      electroverseEvsePks:[...g.sourcePks].filter(x=>x!=null),
+      physicalReferences:[...g.physicalReferences],
+      donorElectroverseEvsePks:[...g.donorPks],
+      connectorCountKnown:false,
+      source:'Electroverse tariff cache same-parent homogeneous sibling tariff'
+    }
+  };
+  const id=tileId(g.lat,g.lon);if(!tiles.has(id))tiles.set(id,[]);
+  tiles.get(id).push(offer);
+  stats.validatedP01PriceOnlyPublishedEvses+=g.sourcePks.size;
+  stats.validatedResidualOffersCreated++;
+  stats.publishedEvses++;stats.publishedOffers++;
 }
 
 stats.parentCandidateGroups=parentGroups.size;
