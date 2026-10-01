@@ -315,6 +315,7 @@ const stats={
   finalResidualCommonTailCandidateEvses:0,finalResidualCommonTailPublishedEvses:0,
   finalResidualHomogeneousGroupCandidateEvses:0,finalResidualHomogeneousGroupPublishedEvses:0,
   validatedResidualCompileFailures:{},validatedResidualHeterogeneousConnectors:0,validatedResidualOffersCreated:0,
+  connectorPowerVariantEvses:0,connectorPowerVariantOffers:0,connectorPowerVariantConnectors:0,
   drvPowerGroupCandidateEvses:0,drvPowerGroupPublishedEvses:0,drvPowerGroupByKw:{},
   pd1TechnicalGroupCandidateEvses:0,pd1TechnicalGroupPublishedEvses:0,pd1TechnicalGroupByKey:{},
   drvHomogeneousGroupCandidateEvses:0,drvHomogeneousGroupPublishedEvses:0,
@@ -2008,6 +2009,63 @@ for(const sh of manifest.shards||[]){
       stats.pricedExactEvses++;
       if(compiled.some(x=>(x.pricing?.rules||[]).some(r=>Array.isArray(r.ocpiDurationBands)&&r.ocpiDurationBands.length)))stats.durationBandCandidateEvses++;
       const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
+      if(unique.length!==1 && !parentMode){
+        // V9 connector-power representation:
+        // one national EVSE may legitimately expose several connector tariffs.
+        // Publish one offer line per power + pricing signature while keeping the
+        // same EVSE identity. This avoids flattening distinct connector prices.
+        const variants=new Map();
+        for(const x of compiled){
+          const powerKw=Number.isFinite(Number(x.powerKw))?Number(x.powerKw):null;
+          const key=String(powerKw??'UNKNOWN')+'|'+pricingSig(x.pricing);
+          let v=variants.get(key);
+          if(!v){
+            v={powerKw,pricing:x.pricing,connectors:[]};
+            variants.set(key,v);
+          }
+          v.connectors.push(x);
+        }
+        for(const [variantKey,v] of variants){
+          const pricing=v.pricing,currency=pricing.rules?.[0]?.currency||'EUR';
+          const standards=[...new Set(v.connectors.map(x=>String(x.standard?.name||x.standard||'')).filter(Boolean))];
+          const powerLabel=v.powerKw==null?'unknown':String(v.powerKw).replace(/[^0-9A-Za-z._-]/g,'_');
+          const sigHash=sha(pricingSig(pricing)).slice(0,10);
+          const offer={
+            id:`electroverse-evse-power:${row.electroverseLocationPk}:${e.pk??k}:${powerLabel}:${sigHash}`,
+            provider:'Electroverse',
+            countries:['FR'],
+            currency,
+            priority:80,
+            verifiedScope:'exact_evse_connector_power',
+            evseIds:[targetPdc],
+            pricing,
+            metadata:{
+              verified:true,
+              identityMode,
+              offerGranularity:'connector_power',
+              offerVariantKey:variantKey,
+              powerKw:v.powerKw,
+              standards,
+              electroverseLocationPk:String(row.electroverseLocationPk),
+              electroverseEvsePk:e.pk??null,
+              physicalReference:pr,
+              connectorPks:v.connectors.map(x=>x.connectorPk),
+              connectorCount:v.connectors.length,
+              tariffHash:row.tariffHash||null,
+              fetchedAt:row.fetchedAt||null,
+              source:'Electroverse tariff cache'
+            }
+          };
+          const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
+          tiles.get(id).push(offer);
+          stats.connectorPowerVariantOffers++;
+          stats.connectorPowerVariantConnectors+=v.connectors.length;
+          if(validatedResidualTarget)stats.validatedResidualOffersCreated++;
+        }
+        stats.connectorPowerVariantEvses++;
+        if(validatedResidualTarget)stats.validatedResidualHeterogeneousConnectors++;
+        continue;
+      }
       if(unique.length!==1){
         if(validatedResidualTarget)stats.validatedResidualHeterogeneousConnectors++;
         rej('heterogeneous_connectors_within_evse');continue;
@@ -2109,9 +2167,15 @@ const offersByTarget=new Map(),duplicateSamples=[];
 for(const [tileIdKey,offers] of tiles.entries()) for(const offer of offers){
   const target=norm(offer.evseIds?.[0]);
   if(!target)continue;
-  const arr=offersByTarget.get(target)||[];
+  // Connector-power offers intentionally share the same national EVSE.
+  // Deduplicate them only within the same power/tariff variant.
+  const variant=offer.metadata?.offerGranularity==='connector_power'
+    ? '|CONNECTOR_POWER|'+String(offer.metadata?.powerKw??'UNKNOWN')+'|'+pricingSig(offer.pricing)
+    : '';
+  const dedupeKey=target+variant;
+  const arr=offersByTarget.get(dedupeKey)||[];
   arr.push({tileIdKey,offer,pricingSig:pricingSig(offer.pricing)});
-  offersByTarget.set(target,arr);
+  offersByTarget.set(dedupeKey,arr);
 }
 const dropOfferIds=new Set();
 for(const [target,items] of offersByTarget.entries()){
@@ -2345,3 +2409,5 @@ console.log(JSON.stringify(out,null,2));
 if(stats.publishedOffers<5000)throw new Error('too few safe Electroverse EVSE offers: '+stats.publishedOffers);
 
 // rebuild trigger after S63 validated residual mappings 2026-10-01
+
+// V9 connector-power offer model enabled 2026-10-01
