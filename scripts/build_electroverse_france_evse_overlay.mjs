@@ -389,6 +389,8 @@ const stats={
   stationHomogeneousBroadcastMismatchByOperator:{},
   stationHomogeneousBroadcastStrictMismatchLocations:0,stationHomogeneousBroadcastStrictMismatchTargets:0,stationHomogeneousBroadcastStrictMismatchSources:0,
   stationHomogeneousBroadcastStrictMismatchByOperator:{},
+  stationHomogeneousBroadcastPublishedLocations:0,stationHomogeneousBroadcastPublishedTargets:0,stationHomogeneousBroadcastCoveredSources:0,
+  stationHomogeneousBroadcastPublishedByOperator:{},
   durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
@@ -1768,6 +1770,7 @@ for(const sh of manifest.shards||[]){
     // 1) belong to one recognized operator family, 2) have identical cardinality to source,
     // 3) are globally unique, and 4) all source EVSEs have identical pricing and connector count.
     const genericExactSetTargets=new Map();
+    const stationBroadcastTargets=new Map();
     const genericGroupedSourceEvses=new Set();
     {
       const claimed=new Set();
@@ -1865,6 +1868,16 @@ for(const sh of manifest.shards||[]){
               const q=stats.stationHomogeneousBroadcastStrictMismatchByOperator[operator]||{locations:0,targets:0,sources:0};
               q.locations++;q.targets+=unclaimed.length;q.sources+=unresolved.length;
               stats.stationHomogeneousBroadcastStrictMismatchByOperator[operator]=q;
+
+              // Publishable station-homogeneous price broadcast. Identity remains at the
+              // mapped national station level: no source EVSE is paired to a specific PDC.
+              // We only carry the one proven station-wide tariff to each still-unclaimed PDC.
+              const sharedPricing=allStationPricings[0];
+              for(const p of unclaimed)stationBroadcastTargets.set(p,{
+                operator,pricing:sharedPricing,sourceEvses:unresolved,
+                sourceTargetCardinalityMismatch:true
+              });
+              for(const e0 of unresolved)genericGroupedSourceEvses.add(e0);
             }
           }
         }
@@ -1904,6 +1917,59 @@ for(const sh of manifest.shards||[]){
             for(const e0 of unresolved)genericGroupedSourceEvses.add(e0);
           }
         }
+      }
+    }
+
+    if(stationBroadcastTargets.size){
+      const publishedLocations=new Set();
+      const coveredSources=new Set();
+      const byOp=new Map();
+      for(const [targetNorm,g] of stationBroadcastTargets.entries()){
+        const targetPdc=localByNorm.get(targetNorm);
+        if(!targetPdc)continue;
+        const currency=g.pricing.rules?.[0]?.currency||'EUR';
+        const offer={
+          id:`electroverse-evse-station-price-broadcast:${row.electroverseLocationPk}:${targetNorm}`,
+          provider:'Electroverse',
+          countries:['FR'],
+          currency,
+          priority:80,
+          verifiedScope:'exact_evse_station_homogeneous_tariff',
+          evseIds:[targetPdc],
+          pricing:g.pricing,
+          metadata:{
+            verified:true,
+            identityMode:'strict_station_homogeneous_price_broadcast',
+            offerGranularity:'evse_price_only',
+            electroverseLocationPk:String(row.electroverseLocationPk),
+            electroverseEvsePks:g.sourceEvses.map(e=>e.pk??null),
+            physicalReferences:g.sourceEvses.map(e=>text(e?.physicalReference)),
+            connectorCount:null,
+            connectorCountKnown:false,
+            sourceTargetCardinalityMismatch:true,
+            sourceGroupSize:g.sourceEvses.length,
+            targetGroupSize:stationBroadcastTargets.size,
+            operator:g.operator,
+            tariffHash:row.tariffHash||null,
+            fetchedAt:row.fetchedAt||null,
+            source:'Electroverse tariff cache; full-station homogeneous compiled tariff'
+          }
+        };
+        const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
+        tiles.get(id).push(offer);
+        publishedLocations.add(String(row.electroverseLocationPk));
+        for(const e0 of g.sourceEvses)if(e0?.pk!=null)coveredSources.add(String(e0.pk));
+        const o=byOp.get(g.operator)||{targets:0,sources:new Set()};
+        o.targets++;for(const e0 of g.sourceEvses)if(e0?.pk!=null)o.sources.add(String(e0.pk));byOp.set(g.operator,o);
+        stats.pricedExactEvses++;stats.publishedEvses++;stats.publishedOffers++;
+      }
+      stats.stationHomogeneousBroadcastPublishedLocations+=publishedLocations.size;
+      stats.stationHomogeneousBroadcastPublishedTargets+=stationBroadcastTargets.size;
+      stats.stationHomogeneousBroadcastCoveredSources+=coveredSources.size;
+      for(const [op,v] of byOp){
+        const q=stats.stationHomogeneousBroadcastPublishedByOperator[op]||{targets:0,sources:0};
+        q.targets+=v.targets;q.sources+=v.sources.size;
+        stats.stationHomogeneousBroadcastPublishedByOperator[op]=q;
       }
     }
 
