@@ -122,11 +122,42 @@ def browser_select_country(url: str, country: str = "France") -> tuple[str, dict
         visible = body.text or ""
         nvisible = norm(visible)
 
-        # Current Allego markup exposes every country as #pricing-<id> and marks
-        # the localized selection with class "active" (e.g. pricing-13890 for
-        # France on the current page). Read that active panel directly instead
-        # of relying on Selenium visibility heuristics or picker text.
+        # Current Allego markup exposes every country as #pricing-<id>.
+        # Resolve the requested country through the menu anchor itself, then
+        # read that panel's textContent even when CSS keeps it hidden because
+        # the runner's geolocation selected another country by default.
         panels = driver.find_elements(By.CSS_SELECTOR, "[id^='pricing-']")
+        country_links = driver.find_elements(By.CSS_SELECTOR, "a[href^='#pricing-']")
+        for link in country_links:
+            try:
+                label = " ".join(
+                    x for x in (
+                        link.get_attribute("textContent"),
+                        link.get_attribute("aria-label"),
+                        link.get_attribute("title"),
+                    ) if x
+                )
+                if norm(country) not in norm(label):
+                    continue
+                href = link.get_attribute("href") or ""
+                target_id = href.rsplit("#", 1)[-1]
+                if not target_id.startswith("pricing-"):
+                    continue
+                panel = driver.find_element(By.ID, target_id)
+                panel_text = panel.get_attribute("textContent") or panel.get_attribute("innerText") or panel.text or ""
+                if "kwh" in norm(panel_text):
+                    return panel_text, {
+                        "accessMode": "browser_render_country_anchor_panel",
+                        "countrySelectionMethod": "country_anchor_target",
+                        "selectedCountry": country,
+                        "pricingPanelId": target_id,
+                        "pricingPanelCount": len(panels),
+                    }
+            except Exception:
+                continue
+
+        # If the country anchor cannot be resolved, fall back to the active
+        # localized panel.
         active_panels = driver.find_elements(By.CSS_SELECTOR, ".columns.active[id^='pricing-']")
         if country == "France" and "/fr/" in url and len(active_panels) == 1:
             panel = active_panels[0]
