@@ -43,12 +43,23 @@ jobs:
           AUTH="https://api-test.shell.com/v1/oauth/token"
           BASE="https://api-test.shell.com/ev/v2/locations"
           UA="TeslaChargeCompanion/9 Shell-EV-Locations"
+          MIN_INTERVAL_SECONDS=7.5  # 8 requests/minute, safely below Shell default limit
+          _last_request_at=0.0
+
+          def throttle():
+              global _last_request_at
+              now=time.monotonic()
+              wait=MIN_INTERVAL_SECONDS-(now-_last_request_at)
+              if wait>0:
+                  time.sleep(wait)
+              _last_request_at=time.monotonic()
 
           form=urllib.parse.urlencode({
               "client_id":cid,
               "client_secret":secret,
               "grant_type":"client_credentials"
           }).encode()
+          throttle()
           req=urllib.request.Request(AUTH,data=form,method="POST",headers={
               "Content-Type":"application/x-www-form-urlencoded",
               "Accept":"application/json",
@@ -60,6 +71,7 @@ jobs:
 
           def get(params):
               url=BASE+"?"+urllib.parse.urlencode(params)
+              throttle()
               req=urllib.request.Request(url,headers={
                   "Authorization":"Bearer "+token,
                   "Accept":"application/json",
@@ -76,6 +88,7 @@ jobs:
               if params:
                   url += "?" + urllib.parse.urlencode(params)
               dkey=diag_key or path
+              throttle()
               req=urllib.request.Request(url,headers={
                   "Authorization":"Bearer "+token,
                   "Accept":"application/json",
@@ -151,7 +164,7 @@ jobs:
                       "west":west,"south":south,"east":east,"north":north,"zoom":12
                   },diag_key=f"/v2/locations/markers tile {yi}-{xi}")
                   fine_markers.extend(extract_items(mm))
-                  time.sleep(.05)
+                  pass
 
           # Dedupe marker objects by stable identity if present, else by coordinate+type.
           unique_markers=[]
@@ -185,7 +198,7 @@ jobs:
                       resolved.extend(di)
                   elif isinstance(detail.get("data"),dict):
                       resolved.append(detail["data"])
-              time.sleep(.05)
+              pass
 
           # If markers still do not expose ids, use nearby probes centered on each fine marker
           # and dedupe full LocationV2 records by uid/externalId.
@@ -201,7 +214,7 @@ jobs:
                       lid=str(loc.get("uid") or loc.get("externalId") or "")
                       if lid:
                           loc_by_id[lid]=loc
-                  time.sleep(.05)
+                  pass
               resolved=list(loc_by_id.values())
 
           if resolved:
