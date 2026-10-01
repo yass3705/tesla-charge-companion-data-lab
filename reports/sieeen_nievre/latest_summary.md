@@ -6,4 +6,4 @@
 - 50 kW daytime 06:00-24:00: 0.50 EUR per started kWh with the same 0.08/0.16 EUR/min duration tiers.
 - 50 kW night 00:00-06:00: 0.35 EUR per started kWh, with no time component published in the current grid.
 - Time surcharges are charging-duration fees, not post-charge occupancy fees; third-party roaming remains separate.
-- Fingerprint: `e2f4a35c21b546372fc995816fe6f479390408d9ad82e892c5cd34eab6c00671`
+- Fingerprint: `e3f19a978084c15c4da36e75fc7a3056ac1b474aeede3acfdf3dc054c4722651`
