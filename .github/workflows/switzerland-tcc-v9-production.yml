@@ -19,6 +19,15 @@ jobs:
           ref: main
           fetch-depth: 0
       - run: python3 scripts/finalize_swiss_tcc_v9_production.py
+      - name: Assert validation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          p=json.load(open('docs/switzerland-v9-production-validation-2026-09-28.json'))
+          assert p['overallOk'], p
+          PY
+
       - name: Persist production bundle and audit
         run: |
           set -euo pipefail
@@ -32,9 +41,3 @@ jobs:
             sleep $((attempt*2))
           done
           exit 1
-      - name: Assert validation
-        run: python3 - <<'PY'
-          import json
-          p=json.load(open('docs/switzerland-v9-production-validation-2026-09-28.json'))
-          assert p['overallOk'], p
-          PY
