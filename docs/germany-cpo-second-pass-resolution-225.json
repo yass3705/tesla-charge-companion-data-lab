@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 225,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-224.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "coherenceCorrection": {
+    "source": "docs/germany-afir-eround-small-cohort-closure-2026-10-01.json",
+    "candidates": [
+      "Grünstrom Ladepark A44 GmbH",
+      "PMP Energie GmbH",
+      "Schreinerhof Betriebs GmbH",
+      "ecoCharge GmbH"
+    ],
+    "evidence": "All four have deterministic eRound AFIR anonymous-payment/tax-included tariff closure in the national staging audit.",
+    "canonicalMembership": "None of the four is a named member of the canonical 591-CPO classification batches.",
+    "decision": "Do not count as partial->complete promotions and do not alter Germany canonical counters.",
+    "rationale": "The KPI denominator is the fixed named 591-CPO canonical set. Technically closed non-canonical operators can remain useful staging data but cannot increment complete."
+  },
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "indicator": "221 -> 253 complete (+32)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific source/backend proof"
+  },
+  "backendFamilyProgress": {
+    "AFIR_eRound": "Stadt Glücksburg remains the valid canonical promotion in resolution-224. Four additional eRound operators were technically closed but excluded from KPI because they are outside the named 591 canonical set."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "253 + 338 + 0 = 591",
+    "unsafeExtrapolations": 0,
+    "canonicalMembershipGuard": "PASS"
+  },
+  "nextSafeAction": "Resume canonical-only second pass. Before auditing any AFIR candidate, intersect operator identity with the named 591 canonical set; then continue ChargePoint/Mobilithek-EcoMovement, m8mit, ladenetz/ladeapp/LadeVerbundPlus and remaining backend families under anti-stagnation rules."
+}
