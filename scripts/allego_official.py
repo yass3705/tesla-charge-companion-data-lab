@@ -595,32 +595,52 @@ def parse_promo(text: str) -> dict:
     m = re.search(r"valeur de\s*(\d+(?:[.,]\d+)?)\s*€", n)
     if m:
         value = eur(m.group(1))
-    monthly = round(value / free_months, 2) if value is not None and free_months else None
+
+    monthly = None
+    m = re.search(r"(\d+(?:[.,]\d+)?)\s*€\s*/\s*mois", n)
+    if m:
+        monthly = eur(m.group(1))
+    elif value is not None and free_months:
+        monthly = round(value / free_months, 2)
+
     savings = None
     m = re.search(r"jusqu.?a\s*(\d+)\s*%\s*d.?econom", n)
     if m:
         savings = float(m.group(1))
+
+    promo_active = bool(free_months and signup_deadline)
     return {
-        "name": "Allego Plus summer 2026",
+        "name": "Allego Plus summer 2026" if promo_active else "Allego Plus current subscription",
         "signupDeadline": signup_deadline,
         "freeMonths": free_months,
         "statedPromotionValueEur": value,
         "derivedStandardMonthlyFeeEur": monthly,
         "savingsUpToPercent": savings,
-        "promotionEndAfterActivation": "2 months after activation",
+        "promotionEndAfterActivation": "2 months after activation" if promo_active else None,
+        "promotionStatus": "historical_or_expired" if signup_deadline and signup_deadline < "2026-10-01" else ("active" if promo_active else "no_current_promo_detected"),
     }
 
 
 def parse_roaming(faq_text: str) -> dict:
     n = norm(faq_text)
-    if "msp" not in n or "tarif final peut differer" not in n:
-        raise RuntimeError("Allego FAQ: MSP price-separation evidence missing")
+    evidence = (
+        "msp" in n
+        and (
+            "prix peut differer" in n
+            or "tarif final peut differer" in n
+            or "fixe le taux final" in n
+            or "peuvent appliquer leur propre tarification" in n
+            or "peut ajouter ses propres frais" in n
+        )
+    )
+    if not evidence:
+        raise RuntimeError("Allego FAQ/pricing: MSP price-separation evidence missing")
     return {
         "classification": "third_party_eMSP",
         "operatorDirect": False,
         "priceOwnedBy": "mobility service provider / MSP",
         "stationLevelPriceLookupRequired": True,
-        "note": "MSP final tariff may differ from Allego default tariff.",
+        "note": "MSP final tariff may differ from Allego direct/app pricing.",
     }
 
 
@@ -630,13 +650,13 @@ def parse_station(name: str, url: str, text: str) -> dict:
         raise RuntimeError(f"station {name}: France marker missing")
     powers = [int(x) for x in re.findall(r"(?:jusqu.?a|speeds up to)\s*(\d{2,3})\s*kw", n)]
     ids = sorted(set(re.findall(r"frallego\d+", n)))
-    if not ids:
-        raise RuntimeError(f"station {name}: no FRALLEGO EVSE IDs found")
     return {
         "key": name,
         "url": url,
         "powerKwObserved": sorted(set(powers)),
         "evseIdsSample": ids[:12],
+        "identityExposureStatus": "public_page_evse_ids_present" if ids else "public_page_evse_ids_not_exposed",
+        "validationScope": "official_station_page_exists_and_france_marker",
     }
 
 
@@ -671,13 +691,15 @@ def main() -> None:
     pricing_all = norm(pages["pricing"])
     variable_station_prices = (
         "tarifs des bornes de recharge peuvent varier" in pricing_all
+        or "les tarifs peuvent varier en fonction du type de chargeur" in pricing_all
+        or "le prix depend du type de chargeur, de son emplacement" in pricing_all
         or "prix que vous payez" in norm(pages["faq"])
     )
     if not variable_station_prices:
         raise RuntimeError("Allego: station-level price-variation caveat not found")
 
     promo = parse_promo(pages["pricing"])
-    roaming = parse_roaming(pages["faq"])
+    roaming = parse_roaming(pages["faq"] + " " + pages["pricing"])
 
     app_plans = {
         "status": "not_retrieved",
