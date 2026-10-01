@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-classification",
+  "classificationBatch": 7,
+  "previousClassification": "docs/germany-cpo-second-pass-classification-006.json",
+  "sourceCheckpointRange": "docs/germany-cpo-first-pass-automation134.json through docs/germany-cpo-first-pass-automation125.json",
+  "baseline": {
+    "originalPartialPool": 390,
+    "classifiedBefore": 107,
+    "classifiedThisBatch": 22,
+    "classifiedAfter": 129,
+    "currentPartials": 389,
+    "currentUnclassifiedPartials": 260
+  },
+  "classified": [
+    {"name":"HochsauerlandEnergie GmbH","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Capture a current numerical direct/ad-hoc tariff from the Compleo-backed HE payment flow; keep roaming-provider tariffs separate."},
+    {"name":"Stadtwerke Brilon Energie GmbH","primaryBlocker":"B5_OPERATOR_IDENTITY_RECONCILIATION","nextAction":"Reconcile DE*STB EVSEs against Westfalen Weser-backed exceptions, then complete the direct-price matrix without extending sampled 0.64 EUR/kWh values across backend boundaries."},
+    {"name":"Stadtwerke Iserlohn GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Build the per-EVSE AC/DC/HPC matrix preserving observed 0.59/0.64 AC and 0.79 fast-site variation."},
+    {"name":"Stadtwerke Arnsberg GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Recover a current numeric anonymous/direct checkout price from a Stadtwerke Arnsberg EVSE; do not substitute PlugSurfing roaming pricing."},
+    {"name":"Stadtwerke Unna GmbH","primaryBlocker":"B7_CONTRADICTORY_SOURCES","nextAction":"Resolve current first-party 0.59 EUR/kWh + 0.58 EUR/session versus fresh 0.62 EUR/kWh station records through live checkout/timestamped authoritative feed; include DC/HPC."},
+    {"name":"Stadtwerke Menden GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Verify whether the repeated 0.49 EUR/kWh direct value covers all six locations/twenty charge points, including the 150 kW hub, and capture any fee components."},
+    {"name":"Stadtwerke Soest GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Replace stale first-party numeric evidence with a current per-EVSE AC/DC matrix; preserve observed site/power variation and DC blocking fees."},
+    {"name":"Stadtwerke Witten Energieloesungen GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Complete anonymous AC/DC/HPC checkout mapping beyond sampled 0.55 EUR/kWh AC + blocking fee; keep Stadtwerkedrive registered tariffs separate."},
+    {"name":"Stadtwerke Schwerte GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Extend the current Bahnhofstrasse 0.38 EUR/kWh direct observation to a complete active-estate matrix or obtain a current first-party ad-hoc statement."},
+    {"name":"Stadtwerke Hattingen GmbH","primaryBlocker":"B7_CONTRADICTORY_SOURCES","nextAction":"Resolve current 0.53 EUR/kWh samples versus older 0.29 EUR/kWh Ruhrallee evidence and enumerate any DC/HPC direct prices before promotion."},
+    {"name":"Stadtwerke Haan GmbH","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Extract current anonymous prices from the Ladenetz app/backend per EVSE and preserve normal/fast-charging variation."},
+    {"name":"BEW Bergische Energie- und Wasser-GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Complete anonymous AC/DC/300-kW-HPC mapping; retain sampled 0.65 AC and 0.80 DC only where directly evidenced."},
+    {"name":"Stadtwerke Wuelfrath GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Recover exact current direct checkout values for active AC and 50 kW DC EVSEs; do not substitute Ladenetz roaming values."},
+    {"name":"Stadtwerke Velbert GmbH public charging / ladeBERT","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Capture spontaneous QR/app checkout pricing and compare it explicitly with the separate ladeBERT card tariff before any equivalence decision."},
+    {"name":"StadtWerke Roesrath Energie GmbH public charging","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Capture current ladepay QR/web checkout prices; registered/customer AC/DC tariff columns remain product-scoped."},
+    {"name":"Stadtwerke Heiligenhaus GmbH public charging","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Obtain a current anonymous/direct AC/DC price from operator checkout or current first-party tariff sheet; reject historical charging-key values."},
+    {"name":"Stadtwerke Erkrath GmbH public charging","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Capture the current direct-payment price on Ladenetz-connected Stadtwerke Erkrath EVSEs and keep card conditions separate."},
+    {"name":"MEGA Gruene Energien GmbH & Co. KG / Monheim am Rhein public charging","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Extract current MEGA/m8mit anonymous checkout pricing per active EVSE; historical 2021 eCharge+ pricing remains stale evidence only."},
+    {"name":"Stadtwerke Langenfeld GmbH public charging","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Determine whether the own public estate contains DC EVSEs; if yes recover their direct tariff, otherwise document AC-only exhaustiveness and promote the published ad-hoc matrix."},
+    {"name":"Stadtwerke Nortorf AoeR","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Complete the active public AC/DC EVSE matrix beyond the sampled 0.55 EUR/kWh direct site; keep domestic Nortorf Ladestrom separate."},
+    {"name":"SWN Stadtwerke Neumuenster GmbH public charging","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Build authoritative per-EVSE AC/DC/HPC pricing and time-component mapping because current direct prices vary materially by station/class."},
+    {"name":"Leitungstiefbau Dithmarschen GmbH public charging","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Complete DC/HPC direct-price coverage while retaining sampled AC 0.72 EUR/kWh + 0.06 EUR/min only for evidenced EVSEs."}
+  ],
+  "countsThisBatch": {
+    "B1_COVERAGE_EVSE_MATRIX": 10,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 3,
+    "B3_SITE_CONFIGURABLE_BACKEND": 0,
+    "B4_FEE_COMPONENT_COMPLETENESS": 0,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 1,
+    "B6_DYNAMIC_SURFACE_OR_APP": 6,
+    "B7_CONTRADICTORY_SOURCES": 2
+  },
+  "cumulativeCountsByPrimaryBlocker": {
+    "B1_COVERAGE_EVSE_MATRIX": 43,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 40,
+    "B3_SITE_CONFIGURABLE_BACKEND": 5,
+    "B4_FEE_COMPONENT_COMPLETENESS": 4,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 9,
+    "B6_DYNAMIC_SURFACE_OR_APP": 22,
+    "B7_CONTRADICTORY_SOURCES": 6
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "107 + 22 = 129 classified; 43 + 40 + 5 + 4 + 9 + 22 + 6 = 129; 389 current partials - 129 classified = 260 current unclassified partials",
+    "duplicateNamesInBatch": 0,
+    "statusChanges": 0,
+    "tariffPromotions": 0,
+    "completeEntriesSkipped": ["BIGGE ENERGIE GmbH & Co. KG","mwenergy GmbH / mw autostrom (Meerbusch-Willich)","evd energieversorgung dormagen gmbh / e-motion","Stadtwerke Ratingen GmbH public charging","Stadtwerke Neuss Energie und Wasser GmbH public charging"],
+    "note": "Classification only. Registered, roaming, stale and sampled station prices were not promoted."
+  },
+  "nextSafeAction": "Continue classification from checkpoint 124 backward. In parallel keep bounded residual work focused on Goettingen fee-class exhaustiveness, Leipzig post-13.04.2024 EVSEs, Allgaeuer six unpriced points, GEW gross/net and fee reconciliation, then Kempen and Erft live checkout."
+}
