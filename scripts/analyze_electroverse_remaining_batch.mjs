@@ -222,3 +222,5 @@ console.log(JSON.stringify({
 // debug six post-connector-power residuals 2026-10-01
 
 // verify residuals after split pricing merge 2026-10-01
+
+// verify hardened NUMERIC conflict resolution 2026-10-01
