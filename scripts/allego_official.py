@@ -490,37 +490,45 @@ def parse_country_direct(text: str) -> dict:
 
 
 def parse_fee_rules(pricing_text: str, overstay_text: str, direct: dict) -> dict:
-    p = norm(pricing_text)
     o = norm(overstay_text)
 
-    require(o, "Aucun frais de dépassement de durée n'est facturé tant que votre véhicule est en cours de recharge", "Allego overstay")
+    # Current official Allego overstay page (2026-09/10) states:
+    # - HPC: after 45 min from session start, only while no longer charging.
+    # - France HPC fee: 0.248 EUR/min.
+    # - AC 5h/0.05 EUR/min rule is explicitly Netherlands-only; Brussels has
+    #   its own 6h rule. Do not project either AC rule onto France.
     if "45 minutes" not in o:
-        raise RuntimeError("Allego overstay: 45-minute rule missing")
+        raise RuntimeError("Allego overstay: 45-minute HPC rule missing")
     if "france" not in o or "0,248" not in o:
         raise RuntimeError("Allego overstay: France HPC fee evidence missing")
+    if not (
+        "uniquement pour les minutes ou vous ne chargez pas" in o
+        or "ne facture jamais" in o
+        or "charge s'est effectivement arretee" in o
+    ):
+        raise RuntimeError("Allego overstay: HPC only-after-charging evidence missing")
 
-    regular_fee = direct["regularOverstayFeeEurPerMin"]
-    regular_rule_present = (
-        regular_fee is not None
-        and "5 hours" in p
-        and ("23:00-7:00" in p or "23:00 - 7:00" in p)
-        and "max 16 hours" in p
-    )
+    france_fee = 0.248
+    m = re.search(r"france\s*:\s*(\d+(?:[.,]\d+)?)\s*€", o, flags=re.I)
+    if m:
+        france_fee = eur(m.group(1))
 
     return {
         "hpcIdle": {
-            "eurPerMin": direct["hpcIdleFeeEurPerMin"],
+            "eurPerMin": france_fee,
             "onlyWhenChargingEnded": True,
             "gracePeriodFromSessionStartMinutes": 45,
-            "scope": "Allego-owned HPC chargers",
+            "scope": "Allego-owned HPC chargers in France",
+            "status": "validated_from_current_official_overstay_page",
         },
         "regularChargingOverstay": {
-            "eurPerMin": regular_fee,
-            "appliesAfterSessionStartMinutes": 300 if regular_rule_present else None,
-            "chargeWindowLocalTime": "07:00-23:00" if regular_rule_present else None,
-            "notApplicableWindowLocalTime": "23:00-07:00" if regular_rule_present else None,
-            "maximumChargedHours": 16 if regular_rule_present else None,
-            "status": "validated_from_current_france_pricing_page" if regular_rule_present else "not_confirmed",
+            "eurPerMin": None,
+            "appliesAfterSessionStartMinutes": None,
+            "chargeWindowLocalTime": None,
+            "notApplicableWindowLocalTime": None,
+            "maximumChargedHours": None,
+            "status": "not_applicable_to_france_from_current_official_page",
+            "note": "Current official AC overstay rules shown are Netherlands-specific (5h) and Brussels Tour & Taxis-specific (6h); neither is projected to France.",
         },
     }
 
