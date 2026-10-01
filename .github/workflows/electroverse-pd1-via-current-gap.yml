@@ -1,0 +1,23 @@
+name: Analyze Electroverse PD1 VIA current gap
+on:
+  push:
+    branches: [audit/electroverse-pd1-via-current-gap]
+    paths:
+      - "scripts/analyze_electroverse_pd1_via_current_gap.mjs"
+      - ".github/workflows/electroverse-pd1-via-current-gap.yml"
+permissions: {contents: write}
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 22}
+      - run: node scripts/analyze_electroverse_pd1_via_current_gap.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/pd1-via-current-gap.json
+          git commit -m "audit: publish current PD1 VIA gap analysis" || exit 0
+          git push
