@@ -105,8 +105,14 @@ for(const sh of cman.shards||[]){
         complexPricingDetail:c?.complexPricingDetail??null
       }))))).size===1;
       const connectorCounts=new Set(es.map(e=>(e.connectors||[]).length));
+      const technicalProfiles=new Set(es.map(e=>JSON.stringify((e.connectors||[]).map(c=>({
+        kilowatts:c?.kilowatts??null,
+        standard:c?.standard?.name??c?.standard??null
+      })).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))))));
       const exactSetSafe=es.length===available.length&&available.length>0&&
-        available.every(p=>(owners.get(p)?.size||0)===1)&&homogeneousPricing;
+        pending.length===es.length&&
+        available.every(p=>(owners.get(p)?.size||0)===1)&&
+        homogeneousPricing&&technicalProfiles.size===1;
 
       let mode='none';
       if(exactSuffix.length===es.length&&exactSuffixUniqueTargets)mode='unique_suffix_bijection';
