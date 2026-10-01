@@ -98,7 +98,6 @@ def main() -> None:
 
     require_any(help_text, ("entierement gratuits, sans abonnement ni frais mensuels", "entierement gratuit, sans abonnement"), "Freshmile account pricing")
     require_any(help_text, ("varient sur chaque reseau de bornes", "tarifs appliques sur une borne"), "Freshmile station/network pricing")
-    require_any(help_text, ("composante de temps de branchement", "temps de branchement"), "Freshmile connection-time component")
     require_any(help_text, ("stationnement peut etre payant", "politique de stationnement locale"), "Freshmile parking policy")
     require_any(help_text, ("carte des bornes en temps reel", "etat des bornes en temps reel"), "Freshmile live map")
     require_any(help_text, ("empreinte bancaire",), "Freshmile card preauthorization")
@@ -141,7 +140,7 @@ def main() -> None:
                 "nationalEurPerKwh": None,
                 "exactPriceLookupRequired": True,
                 "priceDefinedPerNetworkOrSite": True,
-                "validatedTariffComponents": ["energy_if_applicable", "connection_time_if_applicable"],
+                "validatedTariffComponents": ["energy_if_applicable"],
                 "otherComponentsRequireExactStationEvidence": True,
             },
             "appOrGuestPayment": {
@@ -179,10 +178,11 @@ def main() -> None:
         },
         "fees": {
             "connectionTime": {
-                "status": "station_tariff_specific",
+                "status": "not_asserted_network_wide_from_current_help_page",
                 "networkWideEurPerMin": None,
-                "canContinueAfterEnergyStops": True,
+                "canContinueAfterEnergyStops": None,
                 "exactStationLookupRequired": True,
+                "note": "Current official help requires checking the tariff shown for the exact station; no generic connection-time rule is projected across the network.",
             },
             "parking": {
                 "status": "local_parking_policy",
@@ -244,7 +244,7 @@ def main() -> None:
         "- Freshmile account: **free, no monthly fee**.\n"
         "- Freshmile Pass: **4.99 EUR**, no monthly subscription, **650,000** published interoperable points in Europe.\n"
         "- Bank-card preauthorization: **50 EUR**; only actual session amount captured.\n"
-        "- Connection-time component: **station-specific** and can continue after energy stops.\n"
+        "- Connection-time component: **not asserted network-wide**; check the exact station tariff.\n"
         "- Parking: **local policy**, not a Freshmile-wide fee.\n"
         "- Exact price / live availability source: **Freshmile app/map**.\n"
         f"- Partner-network subscriptions observed in official shop: **{len(partner_subscriptions)}**.\n"
