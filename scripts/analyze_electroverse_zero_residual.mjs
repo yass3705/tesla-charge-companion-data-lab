@@ -149,3 +149,5 @@ const out={
 await fs.mkdir('reports/electroverse',{recursive:true});
 await fs.writeFile(OUT,JSON.stringify(out,null,2)+'\n');
 console.log(JSON.stringify(out,null,2));
+
+// rerun after parent connector-power model 2026-10-01
