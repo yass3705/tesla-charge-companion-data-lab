@@ -369,16 +369,37 @@ for(const x of [
   if(!prev||recoveryRank(x)>recoveryRank(prev))canonicalMap.set(k,x);
 }
 const canonicalMappings=[...canonicalMap.values()];
+const previousAliases=previousValidated.aliasMappings||[];
+const aliasMap=new Map(previousAliases.map(x=>[
+  String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk),x
+]));
+for(const x of allLocalPublishedAliases){
+  const k=String(x.electroverseLocationPk)+':'+String(x.evsePk);
+  aliasMap.set(k,{
+    electroverseLocationPk:String(x.electroverseLocationPk),
+    irveStationId:x.irveStationId??null,
+    electroverseEvsePk:x.evsePk,
+    targetPdc:x.target,
+    physicalReference:x.raw,
+    parentBody:x.parentBody,
+    connectorOrdinal:x.connectorOrdinal,
+    evidence:'exact_structured_parent_to_already_published_global_unique_local_pdc'
+  });
+}
+const canonicalAliases=[...aliasMap.values()];
 const validated={
  schemaVersion:1,
  generatedAt:out.generatedAt,
  dataset:'electroverse-france-p01-structured-residual-mappings',
  count:canonicalMappings.length,
+ aliasCount:canonicalAliases.length,
  currentResidualIdentityCount:validatedMappings.length,
  newlyExactReferenceDonors:donorRecoverableMappings.length,
  newlySameParentHomogeneous:sameParentHomogeneousCandidates.length,
- policy:'Append-only canonical P01 residual ledger. Exact-reference donor mappings are strongest. Same-parent homogeneous price-only mappings are accepted only when all priced siblings under the exact reconstructed parent share one price profile. Station-wide fallback is not promoted. No proximity inference.',
+ newlyPublishedTargetAliases:allLocalPublishedAliases.length,
+ policy:'Append-only canonical P01 residual ledger. Exact-reference donor mappings are strongest. Same-parent homogeneous price-only mappings are accepted only when all priced siblings under the exact reconstructed parent share one price profile. Exact structured aliases to already-published globally unique local PDCs are recorded as provenance only; they do not create or alter tariffs. No station-wide fallback and no proximity inference.',
  mappings:canonicalMappings,
+ aliasMappings:canonicalAliases,
  identityMappings:validatedMappings,
  conflictedTargets,
  donorAmbiguities,
