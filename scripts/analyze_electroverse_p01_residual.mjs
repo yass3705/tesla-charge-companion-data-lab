@@ -85,6 +85,7 @@ for(const sh of cman.shards||[]){
 }
 const groups=[];
 const structuredCandidates=[];
+const unmatchedStructuredSamples=[];
 let residual=0,locations=0;
 for(const sh of cman.shards||[]){
   const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
@@ -115,6 +116,27 @@ for(const sh of cman.shards||[]){
         targetAlreadyPublished:publishedTargets.has(matches[0]),
         sourceHasConnectors:(x.e?.connectors||[]).length>0,
         sourceSignature:sourceSig(x.e)
+      });
+    }
+    const structuredAllLocalPk=new Set(structuredAllLocal.map(x=>String(x.evsePk)));
+    for(const x of refs){
+      if(structuredAllLocalPk.has(String(x.e.pk)))continue;
+      const parts=String(x.raw||'').split('*').map(v=>v.trim()).filter(Boolean);
+      const bodyParts=parts.length>=5?norm((parts[2]||'')+(parts[3]||'')+(parts[4]||'')).replace(/^E/,''):null;
+      const localBodies=local.map(p=>({p,body:evseBody(p)})).filter(x=>x.body);
+      const prefixMatches=bodyParts?localBodies.filter(y=>y.body.startsWith(bodyParts)||bodyParts.startsWith(y.body)): [];
+      unmatchedStructuredSamples.push({
+        electroverseLocationPk:String(row.electroverseLocationPk),
+        irveStationId:m?.irveStationId??row.irveStationId??null,
+        evsePk:x.e.pk,
+        physicalReference:x.raw,
+        parts,
+        bodyParts,
+        sourceConnectorCount:(x.e?.connectors||[]).length,
+        sourceSignature:sourceSig(x.e),
+        localPdcCount:local.length,
+        localPdcs:local.slice(0,60),
+        prefixMatches:prefixMatches.slice(0,30)
       });
     }
     const structuredParent=[];
@@ -349,6 +371,8 @@ const out={
  structuredAllLocalSourceEvses:allLocalStructured.length,
  structuredAliasToPublishedTargetSourceEvses:allLocalPublishedAliases.length,
  structuredAllLocalUnpublishedSourceEvses:allLocalUnpublished.length,
+ unmatchedStructuredSourceEvses:unmatchedStructuredSamples.length,
+ unmatchedStructuredSamples:unmatchedStructuredSamples.slice(0,250),
  stationHomogeneousPriceOnlyCandidates:stationHomogeneousCandidates.length,
  safeGroups:groups.filter(g=>g.mode!=='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,200),
  unresolvedSamples:groups.filter(g=>g.mode==='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,100),
