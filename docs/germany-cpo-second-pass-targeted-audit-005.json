@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-targeted-audit",
+  "auditBatch": 5,
+  "date": "2026-09-16",
+  "audited": [
+    {
+      "name": "Allgaeuer Kraftwerke GmbH",
+      "statusAfter": "partial",
+      "result": "Current first-party AllgaeuStrom/AUEW tariff matrix, valid from 2026-04-13, now establishes the operator's current anonymous ad-hoc tariff classes and fee components: AC tariff zones I and II 0.51 EUR/kWh with 1.00 EUR start fee; AC zone I blocking 0.05 EUR/min after 180 min between 07:00-22:00, AC zone II no blocking fee; DC <=50 kW 0.57 EUR/kWh, no start fee, blocking 0.06 EUR/min after 180 min between 07:00-22:00; DC >50 kW 0.66 EUR/kWh, no start fee, blocking 0.10 EUR/min after 45 min. Credit-card ad-hoc activation is explicitly first-party. This materially upgrades tariff-policy evidence but does not by itself assign each residual EVSE to an AC tariff zone, so the CPO remains partial until residual EVSE-to-zone/power mapping is exact.",
+      "sources": ["https://auew.de/privatkunden/e-mobilitaet/allgaeustrom-stromtankstellen/"],
+      "nextBlocker": "B1_RESIDUAL_EVSE_TO_TARIFF_ZONE_MAPPING",
+      "nextAction": "Map each residual EVSE to AC zone I/II or DC power class; once all residual points are mapped, promote without inferring zone membership."
+    },
+    {
+      "name": "Stadtwerke Leipzig GmbH",
+      "statusAfter": "partial",
+      "result": "Fresh first-party Leipzig evidence confirms ad-hoc access remains available through the station QR flow and identifies the public ad-hoc frontend. Current first-party L-Strom.drive prices valid from 2026-01-01 are 0.54 EUR/kWh AC and 0.64 EUR/kWh DC for the registered regular tariff, while a current secondary report explicitly based on Stadtwerke information gives distinct ad-hoc prices of 0.65 EUR/kWh AC and 0.75 EUR/kWh DC from 2026-01-01. A BNetzA-derived station record confirms a new 4x400 kW Stadtwerke Leipzig site at P+R Neue Messe entered service 2026-01-14 and supports direct terminal/app/website payment. This proves post-2024 infrastructure exists and gives strong current ad-hoc tariff evidence, but the CPO stays partial until the post-2024 EVSE set is exhaustively enumerated and the ad-hoc values are tied to those EVSEs/checkout surfaces or confirmed first-party as universally applicable.",
+      "sources": ["https://kundenservice-stadtwerke.l.de/hc/de/articles/360022131059-Wie-erhalte-ich-einen-Zugang-zu-den-Ladestationen-der-Leipziger-Stadtwerke", "https://www.l.de/stadtwerke/privatkunden/e-mobilitaet/unterwegs-laden/", "https://www.electrive.net/2025/11/06/leipziger-stadtwerke-senken-preis-fuer-ladestrom-um-rund-zehn-prozent/", "https://ladesaeulen.net/ladestation/leipzig-p-r-neue-messe-leipzig/"],
+      "nextBlocker": "B1_POST_2024_EVSE_ENUMERATION_AND_DIRECT_PRICE_BINDING",
+      "nextAction": "Enumerate Stadtwerke Leipzig EVSEs commissioned after 2024-04-13 from BNetzA/Mobilithek and bind direct-payment evidence per site; do not substitute registered L-Strom.drive prices for ad-hoc."
+    }
+  ],
+  "statusChanges": 0,
+  "canonicalCountsAfter": {"totalNamedCpos":591,"complete":202,"partial":389,"blocked":0},
+  "consistencyCheck": {
+    "status":"PASS",
+    "arithmetic":"202 + 389 + 0 = 591",
+    "promotions":0,
+    "unsafeExtrapolations":0,
+    "registeredOrRoamingTariffSubstituted":false,
+    "duplicateOrAliasChange":0,
+    "repeatInvestigationGuard":"PASS: both targets gained new decisive evidence dimensions (first-party Allgaeu tariff-class matrix; Leipzig current ad-hoc flow plus a newly commissioned 2026 BNetzA-derived site).",
+    "materialProgress":"Allgaeu tariff policy is now first-party complete by tariff class; Leipzig post-2024 existence and current ad-hoc tariff distinction are verified."
+  },
+  "nextSafeAction":"Finish Allgaeuer residual EVSE-to-zone mapping first, then enumerate Leipzig post-2024 EVSEs. Keep GEW/Goettingen dormant absent new fee-completeness evidence."
+}
