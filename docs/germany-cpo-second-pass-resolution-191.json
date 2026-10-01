@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 191,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-190.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 248,
+    "partial": 343,
+    "blocked": 0
+  },
+  "promotions": [
+    {
+      "name": "Stadtwerke Parchim GmbH",
+      "from": "partial",
+      "to": "complete",
+      "bucket": "B7 / m8mit exhaustive checkout",
+      "coverage": "Current m8mit operator inventory closed at 1 site / 2 EVSE AC 22 kW; 2/2 public guest tariff surfaces checked. Both expose 0.3985 EUR/kWh VAT-inclusive plus 1.99 EUR fixed Direct-Pay fee. Historical WW1/WW6 material is not part of the current operator inventory denominator.",
+      "denominator": {
+        "sites": 1,
+        "uniqueEvse": 2,
+        "checkoutFetched": 2,
+        "fetchErrors": 0
+      },
+      "anonymousAdHoc": {
+        "energyEurPerKwh": 0.3985,
+        "directPayFeeEur": 1.99,
+        "connector": "Type 2 AC 22 kW"
+      },
+      "guard": "Promotion based on closed current operator inventory and 100% EVSE-level guest tariff coverage; no inference to registered/app/contract/roaming."
+    },
+    {
+      "name": "Stadtwerke Bernburg GmbH",
+      "from": "partial",
+      "to": "complete",
+      "bucket": "B7 / m8mit exhaustive checkout",
+      "coverage": "Current m8mit inventory traversed exhaustively: 3 inventory pages, 39 unique EVSE, 39/39 public guest tariff surfaces checked with zero fetch errors. 35 EVSE, including four 50 kW DC CHAdeMO/CCS EVSE, expose 0.4629 EUR/kWh VAT-inclusive + 2.50 EUR fixed fee; four AC EVSE at EB2/EB4 expose 0.5939 EUR/kWh VAT-inclusive + 2.50 EUR fixed fee.",
+      "denominator": {
+        "inventoryPages": 3,
+        "uniqueEvse": 39,
+        "checkoutFetched": 39,
+        "fetchErrors": 0
+      },
+      "anonymousAdHocSignatures": [
+        {
+          "evse": 35,
+          "energyEurPerKwh": 0.4629,
+          "directPayFeeEur": 2.5,
+          "note": "includes 4 DC CHAdeMO/CCS 50 kW EVSE"
+        },
+        {
+          "evse": 4,
+          "energyEurPerKwh": 0.5939,
+          "directPayFeeEur": 2.5,
+          "note": "AC EVSE at EB2 and EB4"
+        }
+      ],
+      "guard": "Promotion based on 100% current EVSE-level guest tariff coverage; supersedes the prior 2024-sheet revalidation gap without extrapolating other payment channels."
+    }
+  ],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "statusChanges": 2,
+  "priorityTop5": {
+    "status": "parked after two distinct evidence-led passes; not reopened",
+    "names": [
+      "solid GmbH / LadeVerbundPlus",
+      "NEW AG / NEW Energie",
+      "RhönEnergie Fulda GmbH",
+      "amperio GmbH",
+      "50five"
+    ]
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "promotions": 2,
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS",
+    "reAuditGuard": "PASS"
+  },
+  "persistenceRecovery": "Created after diagnosing prior write-path failure; canonical pointer must be advanced only after this ledger commit succeeds.",
+  "nextSafeAction": "Continue m8mit on another nominative partial with exhaustively traversable current inventory, then chargecloud/Mobilithek batch candidates. No production merge."
+}
