@@ -1542,7 +1542,8 @@ for(const sh of manifest.shards||[]){
 
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
-      if(izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e)||hpcGroupedSourceEvses.has(e)||pd1TechnicalSourceEvses.has(e)||drvPowerSourceEvses.has(e)||operatorGroupedSourceEvses.has(e)||genericGroupedSourceEvses.has(e))continue;
+      const validatedResidualTargetPre=validatedNumericResidualTargets.get(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
+      if(!validatedResidualTargetPre && (izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e)||hpcGroupedSourceEvses.has(e)||pd1TechnicalSourceEvses.has(e)||drvPowerSourceEvses.has(e)||operatorGroupedSourceEvses.has(e)||genericGroupedSourceEvses.has(e)))continue;
       const pr=text(e?.physicalReference);
       if(!pr){rej('evse_missing_physical_reference');continue;}
       stats.physicalRefs++;
