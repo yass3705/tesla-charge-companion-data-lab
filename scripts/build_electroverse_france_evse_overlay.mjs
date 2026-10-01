@@ -2221,6 +2221,23 @@ for(const [target,items] of offersByTarget.entries()){
     stats.conflictingTargetsDropped++;
     rej('duplicate_evse_conflicting_pricing');
   }
+  const debugNumericTargets=new Set(['FRGSPE12345958361','FRGSPE12345958371']);
+  if(debugNumericTargets.has(target)){
+    console.log('DEBUG_NUMERIC_DEDUP '+JSON.stringify({
+      target,
+      items:items.map(x=>({
+        id:x.offer.id,
+        identityMode:x.offer.metadata?.identityMode||null,
+        sourcePks:[
+          ...(x.offer.metadata?.electroverseEvsePks||[]).map(String),
+          ...(x.offer.metadata?.electroverseEvsePk!=null?[String(x.offer.metadata.electroverseEvsePk)]:[])
+        ],
+        pricing:x.offer.pricing
+      })),
+      pricingConflict:sigs.size>1,
+      dropped:items.filter(x=>dropOfferIds.has(x.offer.id)).map(x=>x.offer.id)
+    },null,2));
+  }
   if(duplicateSamples.length<25)duplicateSamples.push({
     evseId:items[0].offer.evseIds?.[0],
     offerIds:items.map(x=>x.offer.id),
@@ -2431,3 +2448,5 @@ if(stats.publishedOffers<5000)throw new Error('too few safe Electroverse EVSE of
 // rebuild trigger after post-connector-power MAP validation 2026-10-01
 
 // merge compatible split all-day pricing components 2026-10-01
+
+// debug NUMERIC exact-set dedupe 2026-10-01
