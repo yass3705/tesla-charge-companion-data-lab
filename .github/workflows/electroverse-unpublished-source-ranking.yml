@@ -1,0 +1,26 @@
+name: Rank unpublished Electroverse France source EVSEs
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/rank_electroverse_unpublished_source_evses.mjs"
+      - ".github/workflows/electroverse-unpublished-source-ranking.yml"
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Rank true post-overlay residual
+        run: node scripts/rank_electroverse_unpublished_source_evses.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: electroverse-france-unpublished-source-ranking
+          path: reports/electroverse/unpublished-source-evse-ranking.json
+          retention-days: 14
