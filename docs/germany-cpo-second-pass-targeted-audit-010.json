@@ -1,0 +1,32 @@
+{
+  "schemaVersion":1,
+  "country":"DE",
+  "project":"Tesla Charge Companion V9",
+  "phase":"second-pass-targeted-audit",
+  "auditBatch":10,
+  "date":"2026-09-17",
+  "canonicalBefore":{"totalNamedCpos":591,"complete":203,"partial":388,"blocked":0},
+  "audited":[
+    {
+      "name":"Stadtwerke Einbeck GmbH",
+      "statusAfter":"partial",
+      "result":"Fresh Stadtwerke-attributed tourism records establish concrete public AC locations including PS.SPEICHER Jahnstrasse 1, Moencheplatz, Stadtwerke Grimsehlstrasse 17 and Kreiensen. The PS.SPEICHER record explicitly documents charge it easy ad-hoc use without prior registration and credit-card payment. No current numeric anonymous tariff is exposed in the public record, so no promotion is safe.",
+      "sources":["https://www.einbeck-tourismus.de/poi/e-auto-ladestation-am-psspeicher","https://www.einbeck-tourismus.de/poi/e-auto-ladestation-am-moencheplatz","https://www.einbeck-tourismus.de/poi/e-bike-e-auto-ladestation-stadtwerke-einbeck","https://www.einbeck-tourismus.de/poi/e-auto-ladestation-in-kreiensen"],
+      "nextBlocker":"B6_CURRENT_NUMERIC_GUEST_CHECKOUT_TARIFF",
+      "nextAction":"Use a concrete Einbeck EVSE/QR identifier against the known LichtBlick Online-Direktbezahlung public surface. This is the second evidence-led family probe; if no readable tariff is exposed, park generic Charge-IT extraction and fall back to Mobilithek/AFIR per-EVSE reconciliation."
+    },
+    {
+      "name":"Stadtwerke Erft",
+      "statusAfter":"partial",
+      "result":"Current first-party page states 27 stations in the Erft cooperation estate as of 02/2026, publishes the Stadtwerke-Erft RFID/base tariff at 0.49 EUR/kWh with zero order/monthly fee, and separately confirms browser QR charging without a card at all Stadtwerke Erft stations. It does not establish that the 0.49 RFID/base tariff equals the anonymous QR checkout tariff, so anonymous pricing remains fail-closed.",
+      "sources":["https://stadtwerke-erft.de/ladesaeulen/"],
+      "nextBlocker":"B6_QR_ANONYMOUS_PRICE",
+      "nextAction":"Capture a concrete public browser QR checkout and bind its anonymous base + energy price. Do not substitute the 0.49 EUR/kWh RFID/base tariff absent explicit equivalence."
+    }
+  ],
+  "statusChanges":0,
+  "canonicalAfter":{"totalNamedCpos":591,"complete":203,"partial":388,"blocked":0},
+  "backendBatchProgress":{"charge_it_easy_ChargeIT_LichtBlick":{"remainingConfirmedMembers":3,"newConcreteCpo":"Stadtwerke Einbeck GmbH","concretePublicSitesFound":4,"promotionsThisBatch":0,"guard":"After the next concrete EVSE/QR-led probe, park generic family extraction if tariff remains unreadable."},"ladenetz_ladeapp_or_qr":{"cpo":"Stadtwerke Erft","estateStations":27,"anonymousQrConfirmed":true,"numericAnonymousTariffResolved":false}},
+  "consistencyCheck":{"status":"PASS","arithmetic":"203 + 388 + 0 = 591","promotions":0,"unsafeExtrapolations":0,"registeredOrRoamingTariffSubstituted":false,"duplicateOrAliasChange":0,"repeatInvestigationGuard":"PASS: new concrete Einbeck locations and fresh Erft QR-vs-RFID separation were added; no completed question was reopened."},
+  "nextSafeAction":"Perform the final concrete Charge-IT/LichtBlick EVSE/QR probe for Einbeck, then park that generic method if unsuccessful; in parallel capture a concrete Stadtwerke Erft QR checkout. Move next to another reusable B1/B3/B6 backend family if neither yields a promotion."
+}
