@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 188,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-187.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 246,
+    "partial": 345,
+    "blocked": 0
+  },
+  "promotions": [],
+  "investigations": [
+    {
+      "name": "Stadtwerke Niesky GmbH",
+      "bucket": "B6 / m8mit / SachsenEnergie backend",
+      "status": "partial",
+      "evidenceSummary": "Current first-party page identifies one public SWN station at Zinzendorfplatz. Bundesnetzagentur-derived current registry closes that installation at 3 EVSE: 2 x CCS 150 kW (DE*SAE*E7020*01, *02) and 1 x Type 2 AC 22 kW (*03). Current m8mit checkout explicitly exposes anonymous/direct credit-card tariff 0.50 EUR/kWh gross on CCS *02 and AC *03.",
+      "exactGap": "Checkout for second CCS EVSE DE*SAE*E7020*01 could not be retrieved independently. Do not infer same tariff merely because it is the twin CCS connector on the same installation. Need explicit checkout/backend payload for *01 or an authoritative station-level tariff rule binding all 3 EVSE.",
+      "evidence": [
+        "https://www.stadtwerke-niesky.de/E-Mobilitaet.html",
+        "https://sae.m8mit.de/station/sae/DE%2ASAE%2AE7020%2A02",
+        "https://sae.m8mit.de/station/sae/DE%2ASAE%2AE7020%2A03?lang=en",
+        "https://chargemyride.live/station/1047426"
+      ]
+    },
+    {
+      "name": "Stadtwerke Parchim GmbH",
+      "bucket": "B6 / m8mit",
+      "status": "partial",
+      "evidenceSummary": "Current m8mit guest checkout for DE*MSU*EPCH*WW10*01 exposes Gasttarif - PCH at 39.85 ct/kWh gross + 1.99 EUR Direct-Pay fee. First-party FAQ points users to the m8mit station overview and mentions multiple fast/public locations.",
+      "exactGap": "Operator denominator is not closed: current public m8mit index is paginated/incomplete in the retrievable surface and first-party wording lists locations non-exhaustively ('u. a.'). Need exhaustive current operator EVSE inventory before promotion.",
+      "evidence": [
+        "https://pch.m8mit.de/station/pch/DE%2AMSU%2AEPCH%2AWW10%2A01?lang=en",
+        "https://www.stadtwerke-parchim.de/faq.html"
+      ]
+    },
+    {
+      "name": "Stadtwerke Bernburg GmbH",
+      "bucket": "B7 / m8mit",
+      "status": "partial",
+      "evidenceSummary": "First-party Stadtwerke Bernburg price sheet explicitly separates Direct-Pay from Basic/Premium card tariffs and states Direct-Pay AC gross price 70.39 ct/kWh plus 2.50 EUR start fee per session; billing is via m8mit/MSU. Current m8mit inventory exposes the operator's Bernburg AC estate.",
+      "exactGap": "The explicit price sheet found is valid from 2024-01-01 and no current 2026 confirmation/version was found. Historical numeric tariff cannot be treated as current without revalidation. Need current first-party price sheet or current checkout sample matrix covering the active estate.",
+      "evidence": [
+        "https://www.stadtwerke-bernburg.de/files/privatkunden/news/jahr_2024/mit-der-ladekarte-strom-tanken/2024_01_01_strom_bernburger_mobilstrom.pdf",
+        "https://swb.m8mit.de/stationslist"
+      ]
+    }
+  ],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 246,
+    "partial": 345,
+    "blocked": 0
+  },
+  "statusChanges": 0,
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "246 + 345 + 0 = 591",
+    "indicator": "221 -> 246 complete (+25)",
+    "promotions": 0,
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS"
+  },
+  "nextSafeAction": "Continue to another small m8mit/MSU candidate with a closed first-party denominator and current checkout. For Niesky, promote immediately only if E7020*01 direct checkout/backend payload is recovered and matches the explicit 0.50 EUR/kWh anonymous tariff. No production merge."
+}
