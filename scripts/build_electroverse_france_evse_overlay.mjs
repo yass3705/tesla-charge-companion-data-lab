@@ -259,6 +259,7 @@ const stats={
   drvPowerGroupCandidateEvses:0,drvPowerGroupPublishedEvses:0,drvPowerGroupByKw:{},
   pd1TechnicalGroupCandidateEvses:0,pd1TechnicalGroupPublishedEvses:0,pd1TechnicalGroupByKey:{},
   drvHomogeneousGroupCandidateEvses:0,drvHomogeneousGroupPublishedEvses:0,
+  bHomogeneousGroupCandidateEvses:0,bHomogeneousGroupPublishedEvses:0,
   sigHomogeneousGroupCandidateEvses:0,sigHomogeneousGroupPublishedEvses:0,
   qovHomogeneousGroupCandidateEvses:0,qovHomogeneousGroupPublishedEvses:0,
   genericHomogeneousGroupCandidateEvses:0,genericHomogeneousGroupPublishedEvses:0,
@@ -1331,9 +1332,12 @@ for(const sh of manifest.shards||[]){
     const exactSetOps=[
       {code:'DRV',prefix:'FRDRVE',mode:'strict_drv_homogeneous_exact_set',stat:'drvHomogeneousGroup'},
       {code:'SIG',prefix:'FRSIGE',mode:'strict_sig_homogeneous_exact_set',stat:'sigHomogeneousGroup'},
-      {code:'QOV',prefix:'FRQOVE',mode:'strict_qov_homogeneous_exact_set',stat:'qovHomogeneousGroup'}
+      {code:'QOV',prefix:'FRQOVE',mode:'strict_qov_homogeneous_exact_set',stat:'qovHomogeneousGroup'},
+      {code:'B',prefix:'FR55CE',mode:'strict_b_location_homogeneous_exact_set',stat:'bHomogeneousGroup',locationPk:'559069',sourcePred:pr=>/^B0[12]$/i.test(pr)},
+      {code:'B',prefix:'FRY55E',mode:'strict_b_location_homogeneous_exact_set',stat:'bHomogeneousGroup',locationPk:'4512230',sourcePred:pr=>/^B$/i.test(pr)}
     ];
     for(const cfg of exactSetOps){
+      if(cfg.locationPk && String(row.electroverseLocationPk)!==cfg.locationPk)continue;
       const localListOp=[...local];
       if(!localListOp.some(p=>p.startsWith(cfg.prefix)))continue;
       const alreadyClaimed=new Set();
@@ -1351,6 +1355,7 @@ for(const sh of manifest.shards||[]){
         if(pd1FinalOrdinalTargets.has(e0)){alreadyClaimed.add(pd1FinalOrdinalTargets.get(e0));continue;}
         if(viaFinalOrdinalTargets.has(e0)){alreadyClaimed.add(viaFinalOrdinalTargets.get(e0));continue;}
         if(izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0)||c55GroupedSourceEvses.has(e0)||hpcGroupedSourceEvses.has(e0)||pd1TechnicalSourceEvses.has(e0)||drvPowerSourceEvses.has(e0))continue;
+        if(cfg.sourcePred && !cfg.sourcePred(pr0))continue;
         unresolved.push(e0);
       }
       const allUnclaimed=localListOp.filter(p=>!alreadyClaimed.has(p));
@@ -1894,6 +1899,7 @@ for(const o of finalOffers.filter(o=>o.metadata?.identityMode==='strict_drv_nati
 stats.drvHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_drv_homogeneous_exact_set').length;
 stats.sigHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_sig_homogeneous_exact_set').length;
 stats.qovHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_qov_homogeneous_exact_set').length;
+stats.bHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_b_location_homogeneous_exact_set').length;
 stats.genericHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_generic_single_operator_homogeneous_exact_set').length;
 stats.genericPriceOnlyGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_generic_single_operator_price_only_exact_set').length;
 stats.genericHomogeneousGroupByOperator={};
@@ -1985,6 +1991,7 @@ const out={
     strictDrvHomogeneousExactSet:true,
     strictSigHomogeneousExactSet:true,
     strictQovHomogeneousExactSet:true,
+    strictBLocationHomogeneousExactSet:true,
     operatorExactSetRequiresEqualCardinality:true,
     operatorExactSetRequiresSingleOperatorUnclaimedTargets:true,
     operatorExactSetRequiresHomogeneousPricing:true,
