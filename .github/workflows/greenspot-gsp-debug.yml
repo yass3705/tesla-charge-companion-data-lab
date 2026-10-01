@@ -7,7 +7,7 @@ on:
       - "scripts/debug_greenspot_gsp_station.mjs"
       - ".github/workflows/greenspot-gsp-debug.yml"
 permissions:
-  contents: read
+  contents: write
 jobs:
   debug:
     runs-on: ubuntu-latest
@@ -18,3 +18,18 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/debug_greenspot_gsp_station.mjs
+      - name: Persist GSP Greenspot lookup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/gsp-greenspot-debug.json
+          if git diff --cached --quiet; then
+            echo "No GSP lookup changes"
+          else
+            git commit -m "data: persist GSP Greenspot lookup"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main && git push && break
+              git rebase --abort || true
+              sleep $((attempt * 2))
+            done
+          fi
