@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 211,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-210.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Lemgo GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; current AC/DC direct-price evidence found but exhaustive estate/fee matrix not yet closed",
+      "evidence": {
+        "currentStructure": "Public estate includes AC charging and newer high-power/DC infrastructure including 150-kW class.",
+        "directPriceEvidence": "Current station surfaces expose anonymous/direct numeric prices on sampled active Lemgo EVSEs rather than only contract/roaming pricing."
+      },
+      "exactGap": "Need current complete active EVSE denominator and per-class anonymous energy/start/time/blocking matrix, especially newer 150-kW DC/HPC points. Sampled AC pricing cannot be generalized.",
+      "resumeCondition": "AFIR/Mobilithek/backend export covering every active Lemgo EVSE with anonymous price and all fee fields, or first-party deterministic AC/DC rule explicitly covering the complete current estate."
+    },
+    {
+      "name": "Stadtwerke Bad Salzuflen GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; adjacent B1 retained without sampled-price extrapolation",
+      "exactGap": "Complete current EVSE inventory and anonymous price/fee matrix remain required; no safe estate-wide rule established.",
+      "resumeCondition": "Machine-readable current EVSE+anonymous tariff export or first-party deterministic all-estate rule."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "unsafeExtrapolations": 0,
+    "concurrencyGuard": "A transient 409 was handled by rereading main; no newer Germany ledger existed, so write retried from fresh head."
+  },
+  "nextSafeAction": "Prefer machine-readable AFIR/Mobilithek/backend sources for Lemgo/Bad Salzuflen before any second pass; otherwise move to another operator."
+}
