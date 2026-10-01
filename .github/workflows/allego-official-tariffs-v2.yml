@@ -100,7 +100,7 @@ jobs:
           assert p['roaming']['operatorDirect'] is False
           assert len(p['stationValidationSamples']) >= 3
           render=(p.get('sourceEvidence') or {}).get('pricingRender') or {}
-          assert render.get('accessMode') == 'official_static_html_country_index', render
+          assert render.get('accessMode') in ('official_static_html_country_index','official_static_html_country_link_index'), render
           assert render.get('selectedCountry') == 'France', render
           print('Validated Allego France static official tariff mapping')
           PY
