@@ -41,7 +41,9 @@ jobs:
           rows.sort(key=lambda x:(x["rawCoverage"],x["rawTariffSites"],x["sites"]),reverse=True)
           out={"schemaVersion":1,"country":"DE","source":"data/national/germany_non_tesla_catalog_staging_direct_cpo.json.gz","operatorsWithRawTariff":len(rows),"operators":rows}
           pathlib.Path("docs/germany-afir-operator-coverage-2026-10-01.json").write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n")
-          compact={"schemaVersion":1,"country":"DE","operatorsWithRawTariff":len(rows),"operators":[{k:r[k] for k in ("operator","sites","matchedSafe","rawTariffSites","rawCoverage","evseIdCount","providers")} for r in rows]}\n          pathlib.Path("docs/germany-afir-operator-coverage-compact-2026-10-01.json").write_text(json.dumps(compact,ensure_ascii=False,indent=2)+"\\n")\n          print(json.dumps([{k:r[k] for k in ("operator","sites","matchedSafe","rawTariffSites","rawCoverage","evseIdCount")} for r in rows[:80]],ensure_ascii=False,indent=2))
+          compact={"schemaVersion":1,"country":"DE","operatorsWithRawTariff":len(rows),"operators":[{k:r[k] for k in ("operator","sites","matchedSafe","rawTariffSites","rawCoverage","evseIdCount","providers")} for r in rows]}
+          pathlib.Path("docs/germany-afir-operator-coverage-compact-2026-10-01.json").write_text(json.dumps(compact,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps([{k:r[k] for k in ("operator","sites","matchedSafe","rawTariffSites","rawCoverage","evseIdCount")} for r in rows[:80]],ensure_ascii=False,indent=2))
           PY
       - name: Commit report
         run: |
