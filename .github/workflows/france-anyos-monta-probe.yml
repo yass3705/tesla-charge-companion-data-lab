@@ -1,0 +1,30 @@
+name: France ANYOS Monta public probe
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/france-anyos-monta-probe.yml"
+      - "scripts/france/probe_anyos_monta.py"
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download public Monta CPO pricing export
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          curl --fail --location --retry 3 --connect-timeout 20 \
+            'https://app.monta.app/roaming/monta-as-a-cpo-pricing/export/json' \
+            -o out/monta-as-a-cpo-pricing.json
+          python scripts/france/probe_anyos_monta.py \
+            out/monta-as-a-cpo-pricing.json \
+            out/anyos-monta-current.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: france-anyos-monta-probe
+          path: out/anyos-monta-current.json
+          if-no-files-found: error
