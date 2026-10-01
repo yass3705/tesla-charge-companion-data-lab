@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 204,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-203.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Aschersleben GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "decision": "remain partial; second distinct LichtBlick/direct-payment pass exhausted and parked",
+      "evidence": {
+        "estate": "Six-site / 18-point DE*BDO estate retained",
+        "registeredOrRfidEnergy": "0.36 EUR/kWh incl VAT repeated across current LichtBlick-derived EVSE records",
+        "anonymousPath": "Direct/ad-hoc charging exists on public surfaces, but no authoritative numeric direct-payment payload was exposed tying 0.36 EUR/kWh and complete fee stack to anonymous checkout."
+      },
+      "exactGap": "Channel equivalence remains unproven. Numeric 0.36 EUR/kWh evidence is RFID/LichtBlick-layer evidence; anonymous direct checkout exists but its numeric energy/start/time/blocking fields are not authoritatively exposed.",
+      "antiStagnation": "Two distinct evidence-led passes exhausted: estate/EVSE energy matrix and public direct-payment semantics. Park until new payload/artifact.",
+      "resumeCondition": "Public LichtBlick direct-payment/QR payload or first-party artifact explicitly proving anonymous 0.36 EUR/kWh plus all fee components for the six-site/18-point estate."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "channelSeparation": "PASS",
+    "repeatInvestigationGuard": "PASS; Aschersleben now parked",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Move away from LichtBlick/Aschersleben. Target a new B1/AFIR-Mobilithek candidate whose anonymous price and start/blocking fields are directly machine-readable."
+}
