@@ -7,7 +7,7 @@ on:
       - "scripts/analyze_electroverse_s63_residual.mjs"
       - ".github/workflows/electroverse-s63-residual-analysis.yml"
 permissions:
-  contents: read
+  contents: write
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -19,6 +19,21 @@ jobs:
           node-version: 22
       - name: Analyze S63 unpublished residual
         run: node scripts/analyze_electroverse_s63_residual.mjs
+      - name: Persist validated S63 mappings
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/platforms/electroverse/validated-mappings/s63-residual.json
+          if git diff --cached --quiet; then
+            echo "No S63 mapping changes"
+          else
+            git commit -m "data: publish validated Electroverse S63 mappings"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main && git push && break
+              git rebase --abort || true
+              sleep $((attempt * 2))
+            done
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: electroverse-france-s63-residual-analysis
