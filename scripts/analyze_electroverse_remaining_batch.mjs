@@ -227,3 +227,5 @@ console.log(JSON.stringify({
 // verify residuals after split pricing merge 2026-10-01
 
 // verify hardened NUMERIC conflict resolution 2026-10-01
+
+// rerank after parent connector-power publication 2026-10-01
