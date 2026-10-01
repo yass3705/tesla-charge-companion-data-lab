@@ -148,11 +148,24 @@ function compileConnector(c){
   }
 
   // Unrestricted complex rule overrides simple base when present.
+  const mergePlainRates=(items,seed,conflictReason)=>{
+    const rate={...seed},seen=new Map();
+    for(const item of items||[]){
+      for(const k of item.present||[]){
+        const v=Number(item.rate?.[k]||0);
+        if(seen.has(k) && Math.abs(seen.get(k)-v)>1e-9)return{ok:false,reason:conflictReason};
+        seen.set(k,v);
+        rate[k]=v;
+      }
+    }
+    return{ok:true,rate};
+  };
+
   const unrestricted=groups.get('00:00|24:00|');
   if(unrestricted?.plain?.length){
-    if(unrestricted.plain.length!==1)return{ok:false,reason:'multiple_unrestricted_rules'};
-    const p=unrestricted.plain[0];
-    for(const k of p.present)base[k]=p.rate[k];
+    const merged=mergePlainRates(unrestricted.plain,base,'conflicting_unrestricted_rules');
+    if(!merged.ok)return merged;
+    base=merged.rate;
     unrestricted.plain=[];
   }
 
@@ -164,8 +177,11 @@ function compileConnector(c){
     if(!db.ok)return db;
     const durationBands=db.bands;
 
-    if(g.plain.length>1)return{ok:false,reason:'multiple_plain_window_rules'};
-    if(g.plain.length===1)for(const k of g.plain[0].present)rate[k]=g.plain[0].rate[k];
+    if(g.plain.length){
+      const merged=mergePlainRates(g.plain,rate,'conflicting_plain_window_rules');
+      if(!merged.ok)return merged;
+      rate=merged.rate;
+    }
 
     const isAll=g.start==='00:00'&&g.end==='24:00';
     if(isAll&&!g.days?.length){
@@ -2413,3 +2429,5 @@ if(stats.publishedOffers<5000)throw new Error('too few safe Electroverse EVSE of
 // V9 connector-power offer model enabled 2026-10-01
 
 // rebuild trigger after post-connector-power MAP validation 2026-10-01
+
+// merge compatible split all-day pricing components 2026-10-01
