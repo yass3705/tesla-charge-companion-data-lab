@@ -1,0 +1,26 @@
+name: Analyze Electroverse France MGP residual
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/analyze_electroverse_mgp_residual.mjs"
+      - ".github/workflows/electroverse-mgp-residual-analysis.yml"
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Analyze MGP unpublished residual
+        run: node scripts/analyze_electroverse_mgp_residual.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: electroverse-france-mgp-residual-analysis
+          path: reports/electroverse/mgp-residual-analysis.json
+          retention-days: 14
