@@ -67,7 +67,7 @@ for(const sh of cman.shards||[]){
         const pb=evseBody(p);
         if(!pb||!sb.startsWith(pb)||sb.length<=pb.length)return false;
         const suffix=sb.slice(pb.length);
-        return /^\\d{1,2}$/.test(suffix)&&(owners.get(p)?.size||0)===1;
+        return /^\d{1,2}$/.test(suffix)&&(owners.get(p)?.size||0)===1;
       });
       if(matches.length===1)crossOperatorParent.push({evsePk:x.e.pk,target:matches[0],raw:x.raw});
     }
