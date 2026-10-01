@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 226,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-225.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "becharged GmbH",
+      "classification": "B3_SITE_CONFIGURABLE_BACKEND",
+      "sources": [
+        "https://www.becharged.de/pages/funktionen-funktionsweise",
+        "https://www.becharged.de/pages/allgemeine-features"
+      ],
+      "status": "bounded-no-promotion",
+      "newEvidence": "Current first-party becharged documentation confirms Charge & Share public charging via QR code with direct PayPal settlement, and confirms backend/EVSE-ID operation for public infrastructure.",
+      "exactGap": "The first-party surface does not expose a network-wide numeric anonymous tariff; Charge & Share is a configurable backend product. A site/EVSE-specific direct checkout price matrix is still required. No registered/roaming tariff may substitute."
+    },
+    {
+      "cpo": "smopi – Multi Chargepoint Solution GmbH",
+      "classification": "B3_SITE_CONFIGURABLE_BACKEND",
+      "sources": [
+        "https://smopi.de/dienstleistungen/abrechnung-von-ladestationen/"
+      ],
+      "status": "bounded-no-promotion",
+      "newEvidence": "Current first-party smopi documentation explicitly separates RFID, ad-hoc Direct Payment by QR/smartphone/card, and roaming, and states tariffs are flexibly configurable by time, kWh or power.",
+      "exactGap": "Because tariff management is operator/site configurable, no single smopi network tariff can be inferred. Canonical promotion requires the active canonical EVSE set plus each EVSE/site anonymous direct-payment tariff and fee components."
+    },
+    {
+      "cpo": "Stadtwerke Bad Harzburg GmbH",
+      "classification": "B5_OPERATOR_IDENTITY_RECONCILIATION",
+      "status": "bounded-no-promotion",
+      "newEvidence": "Current first-party Stadtwerke pages found in this pass expose utility contact/service material but no authoritative public-charging estate/direct-payment tariff capable of resolving the existing ChargePoint ownership ambiguity.",
+      "exactGap": "Physical CPO ownership must first be separated from nearby ChargePoint-operated stations; then direct anonymous tariffs are needed only for the Stadtwerke-operated EVSEs."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "indicator": "221 -> 253 complete (+32)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific source/backend proof"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "253 + 338 + 0 = 591",
+    "unsafeExtrapolations": 0,
+    "canonicalMembershipGuard": "PASS",
+    "antiStagnation": "becharged and smopi are now bounded on current first-party backend semantics; do not repeat generic backend searches without concrete EVSE/site checkout evidence."
+  },
+  "nextSafeAction": "Move to m8mit canonical partials with concrete EVSE/guest pages (starting MEGA Gruene Energien / Monheim if still partial), then ladenetz/ladeapp. For ChargePoint, do not reopen GEW; only proceed when a different canonical partial has concrete ownership plus station-level direct-payment evidence."
+}
