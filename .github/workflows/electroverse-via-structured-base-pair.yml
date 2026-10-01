@@ -1,0 +1,28 @@
+name: Audit Electroverse FR VIA structured base pair
+on:
+  push:
+    branches:
+      - audit/electroverse-via-structured-base-pair
+    paths:
+      - "scripts/audit_electroverse_via_structured_base_pair.mjs"
+      - ".github/workflows/electroverse-via-structured-base-pair.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Audit VIA structured base-pair identity
+        run: node scripts/audit_electroverse_via_structured_base_pair.mjs
+      - name: Persist report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse-fr-via-structured-base-pair.json
+          git commit -m "audit: publish VIA structured base-pair report" || exit 0
+          git push
