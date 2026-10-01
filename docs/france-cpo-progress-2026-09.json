@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 133,
+  "schemaVersion": 134,
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 96,
-  "setAsideCpos": 47,
-  "activeRemainingCpos": 148,
-  "updatedAt": "2026-10-01T20:10:00+02:00",
+  "setAsideCpos": 48,
+  "activeRemainingCpos": 147,
+  "updatedAt": "2026-10-01T20:25:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -423,6 +423,13 @@
       "since": "2026-10-01",
       "lastChecked": "2026-10-01",
       "audit": "docs/france-regional-cpo-properphi-batch512-2026-10-01.json"
+    },
+    {
+      "name": "RECHARGE ACTIVE SOLUTIONS | raw rank163",
+      "reason": "batch513 fail-closed: current first-party/producer evidence identifies Recharge Active Solutions (Evoltigo/Wewise) as installer/operator/supervisor of client public/private charging estates, with Virta-backed supervision and recharge billing. The current producer IRVE dataset (June 2026) provides station identity/technical data but no reusable anonymous current direct tariff surface was recovered, and the service is explicitly built as customer-specific infrastructure/supervision. No national direct tariff may be inferred.",
+      "since": "2026-10-01",
+      "lastChecked": "2026-10-01",
+      "audit": "docs/france-regional-cpo-recharge-active-solutions-batch513-2026-10-01.json"
     }
   ],
   "activeNominative": [
@@ -521,7 +528,6 @@
     "RELEASED_ACTIVE_SLOT_160 | alias CAR2PLUG | FR*C2N | raw rank160",
     "UNPROVEN_ACTIVE_161",
     "UNPROVEN_ACTIVE_162",
-    "UNPROVEN_ACTIVE_163",
     "UNPROVEN_ACTIVE_164",
     "UNPROVEN_ACTIVE_165",
     "UNPROVEN_ACTIVE_166",
@@ -893,7 +899,8 @@
     "SOLVEO ENERGIES | raw rank153": "batch509 setAside: project-specific producer IRVE datasets and no current first-party network tariff surface; current exact station/EVSE direct tariff resolver not recovered.",
     "ANYOS | FR*PAN | raw rank148": "batch510 closure: Monta public CPO pricing export has 67/67 current FR*PAN EVSE priced across 12 sites / 12 tariff IDs, but it is explicitly an eMSP-facing CPO price surface. Exhaustive public driver deeplink test checked all 67: 67 Private charge point, 0 public direct, 0 errors. Keep setAside; never use Monta roaming export as ANYOS direct price.",
     "Alterna Énergie | raw rank154": "batch511 lineage resolved: 6-station/34-PDC historical Alterna estate uses FRSRG EVSE identifiers and current hub identities overlap Sorégies Mobilités. Groupe Sorégies first-party sources distinguish Alterna energy supply from Sorégies charging-network operation. Raw154 is a non-counting treated-authority lineage alias; exact EVSE tariff remains governed by Sorégies method/rules, not Alterna retail energy offers.",
-    "Properphi | raw rank155": "batch512 setAside: ProperPhi first-party CGU says recharge tariffs are decided by the customer/site operator; supervision supports QR/app, roaming and bank-card payment. Pricing is site-configurable and heterogeneous; no anonymous deterministic station/EVSE -> current direct tariff resolver recovered."
+    "Properphi | raw rank155": "batch512 setAside: ProperPhi first-party CGU says recharge tariffs are decided by the customer/site operator; supervision supports QR/app, roaming and bank-card payment. Pricing is site-configurable and heterogeneous; no anonymous deterministic station/EVSE -> current direct tariff resolver recovered.",
+    "RECHARGE ACTIVE SOLUTIONS | raw rank163": "batch513 setAside: Recharge Active Solutions/Evoltigo/Wewise is a customer-site charging infrastructure operator/supervisor using Virta-backed billing; current producer IRVE dataset is June 2026 but no public deterministic EVSE -> direct tariff resolver or national grid was recovered."
   },
   "history": [
     {
@@ -1602,9 +1609,19 @@
         "setAsideCpos": 47,
         "activeRemainingCpos": 148
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch513",
+      "change": "Moved RECHARGE ACTIVE SOLUTIONS raw163 active->setAside. First-party/producer evidence shows customer-specific Evoltigo/Wewise charging estates with Virta-backed supervision/billing; no anonymous deterministic current station/EVSE direct tariff resolver or national grid recovered.",
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 48,
+        "activeRemainingCpos": 147
+      }
     }
   ],
-  "currentInvestigation": "RECHARGE ACTIVE SOLUTIONS | raw rank163 | 21 stations / 21 PDC: inspect first-party operator/payment/tariff model and deterministic direct pricing.",
+  "currentInvestigation": "Ecophi mobility | raw rank164 | 1 station / 21 PDC: inspect first-party operator/payment/tariff model and exact site pricing.",
   "coherenceControl": {
     "batch": "batch491",
     "result": "PASS",
@@ -1619,11 +1636,11 @@
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch512",
-    "result": "PASS_PROPERPHI_FAIL_CLOSED",
+    "batch": "batch513",
+    "result": "PASS_RAS_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch512",
+  "latestBatch": "batch513",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2449,6 +2466,14 @@
       "category": "setAside-authority",
       "decision": "active->setAside: first-party supervision confirms customer/site-defined configurable tariffs and multiple payment modes; no deterministic anonymous current station/EVSE direct-tariff resolver recovered",
       "evidence": "docs/france-regional-cpo-properphi-batch512-2026-10-01.json"
+    },
+    {
+      "rawRank": 163,
+      "historicalOperator": "RECHARGE ACTIVE SOLUTIONS",
+      "authority": "Recharge Active Solutions / Evoltigo / Wewise",
+      "category": "setAside-authority",
+      "decision": "active->setAside: first-party customer-specific IRVE installation/supervision/billing model; current producer inventory exists but no anonymous deterministic station/EVSE -> current direct tariff resolver recovered",
+      "evidence": "docs/france-regional-cpo-recharge-active-solutions-batch513-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
