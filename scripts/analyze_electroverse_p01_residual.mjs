@@ -86,6 +86,9 @@ for(const sh of cman.shards||[]){
 const groups=[];
 const structuredCandidates=[];
 const unmatchedStructuredSamples=[];
+const stationPointRemapMappings=[];
+const stationPointPublishedAliases=[];
+const nationalOrphanSources=[];
 let residual=0,locations=0;
 for(const sh of cman.shards||[]){
   const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
@@ -125,6 +128,38 @@ for(const sh of cman.shards||[]){
       const bodyParts=parts.length>=5?norm((parts[2]||'')+(parts[3]||'')+(parts[4]||'')).replace(/^E/,''):null;
       const localBodies=local.map(p=>({p,body:evseBody(p)})).filter(x=>x.body);
       const prefixMatches=bodyParts?localBodies.filter(y=>y.body.startsWith(bodyParts)||bodyParts.startsWith(y.body)): [];
+      const stationNorm=norm(m?.irveStationId??row.irveStationId??'');
+      const delim=stationNorm.lastIndexOf('P');
+      const stationBody=delim>=0?stationNorm.slice(delim+1):null;
+      const pointOrdinal=parts.length===6?norm(parts[4]):null;
+      const desiredBody=stationBody&&pointOrdinal?stationBody+pointOrdinal:null;
+      const pointTargets=desiredBody?local.filter(p=>evseBody(p)===desiredBody&&(owners.get(p)?.size||0)===1):[];
+      if(pointTargets.length===1){
+        const candidate={
+          electroverseLocationPk:String(row.electroverseLocationPk),
+          irveStationId:m?.irveStationId??row.irveStationId??null,
+          electroverseEvsePk:x.e.pk,
+          targetPdc:pointTargets[0],
+          physicalReference:x.raw,
+          pointOrdinal,
+          sourceSignature:sourceSig(x.e),
+          recoveryMode:'station_point_ordinal_remap',
+          evidence:'exact national station id body + Electroverse point ordinal; globally unique local PDC; no proximity'
+        };
+        if(publishedTargets.has(pointTargets[0])) stationPointPublishedAliases.push(candidate);
+        else stationPointRemapMappings.push(candidate);
+      }else{
+        nationalOrphanSources.push({
+          electroverseLocationPk:String(row.electroverseLocationPk),
+          irveStationId:m?.irveStationId??row.irveStationId??null,
+          electroverseEvsePk:x.e.pk,
+          physicalReference:x.raw,
+          pointOrdinal,
+          sourceSignature:sourceSig(x.e),
+          localPdcCount:local.length,
+          reason:pointTargets.length===0?'no_national_pdc_for_station_point':'ambiguous_national_pdc_for_station_point'
+        });
+      }
       unmatchedStructuredSamples.push({
         electroverseLocationPk:String(row.electroverseLocationPk),
         irveStationId:m?.irveStationId??row.irveStationId??null,
@@ -373,6 +408,10 @@ const out={
  structuredAllLocalUnpublishedSourceEvses:allLocalUnpublished.length,
  unmatchedStructuredSourceEvses:unmatchedStructuredSamples.length,
  unmatchedStructuredSamples:unmatchedStructuredSamples.slice(0,250),
+ stationPointRemapCandidateSourceEvses:stationPointRemapMappings.length,
+ stationPointPublishedAliasSourceEvses:stationPointPublishedAliases.length,
+ nationalOrphanSourceEvses:nationalOrphanSources.length,
+ nationalOrphanSources:nationalOrphanSources.slice(0,250),
  stationHomogeneousPriceOnlyCandidates:stationHomogeneousCandidates.length,
  safeGroups:groups.filter(g=>g.mode!=='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,200),
  unresolvedSamples:groups.filter(g=>g.mode==='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,100),
@@ -380,14 +419,16 @@ const out={
 };
 let previousValidated={mappings:[]};
 try{previousValidated=JSON.parse(await fs.readFile(VALIDATED_OUT,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
-const recoveryRank=x=>x?.recoveryMode==='exact_physical_reference_donor'?3:
+const recoveryRank=x=>x?.recoveryMode==='station_point_ordinal_remap'?4:
+  x?.recoveryMode==='exact_physical_reference_donor'?3:
   x?.recoveryMode==='same_parent_homogeneous_price_only'?2:
   x?.recoveryMode==='station_homogeneous_price_only'?1:0;
 const canonicalMap=new Map();
 for(const x of [
   ...(previousValidated.mappings||[]),
   ...donorRecoverableMappings,
-  ...sameParentHomogeneousCandidates
+  ...sameParentHomogeneousCandidates,
+  ...stationPointRemapMappings
 ]){
   const k=String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk);
   const prev=canonicalMap.get(k);
@@ -411,6 +452,18 @@ for(const x of allLocalPublishedAliases){
     evidence:'exact_structured_parent_to_already_published_global_unique_local_pdc'
   });
 }
+for(const x of stationPointPublishedAliases){
+  const k=String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk);
+  aliasMap.set(k,{
+    electroverseLocationPk:String(x.electroverseLocationPk),
+    irveStationId:x.irveStationId??null,
+    electroverseEvsePk:x.electroverseEvsePk,
+    targetPdc:x.targetPdc,
+    physicalReference:x.physicalReference,
+    pointOrdinal:x.pointOrdinal,
+    evidence:x.evidence
+  });
+}
 const canonicalAliases=[...aliasMap.values()];
 const validated={
  schemaVersion:1,
@@ -421,7 +474,9 @@ const validated={
  currentResidualIdentityCount:validatedMappings.length,
  newlyExactReferenceDonors:donorRecoverableMappings.length,
  newlySameParentHomogeneous:sameParentHomogeneousCandidates.length,
- newlyPublishedTargetAliases:allLocalPublishedAliases.length,
+ newlyPublishedTargetAliases:allLocalPublishedAliases.length+stationPointPublishedAliases.length,
+ newlyStationPointRemaps:stationPointRemapMappings.length,
+ nationalOrphanSources,
  policy:'Append-only canonical P01 residual ledger. Exact-reference donor mappings are strongest. Same-parent homogeneous price-only mappings are accepted only when all priced siblings under the exact reconstructed parent share one price profile. Exact structured aliases to already-published globally unique local PDCs are recorded as provenance only; they do not create or alter tariffs. No station-wide fallback and no proximity inference.',
  mappings:canonicalMappings,
  aliasMappings:canonicalAliases,
