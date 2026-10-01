@@ -1,0 +1,28 @@
+name: Audit Electroverse FR DRV technical samples
+on:
+  push:
+    branches:
+      - audit/electroverse-drv-technical-identity
+    paths:
+      - "scripts/audit_electroverse_drv_technical_samples.mjs"
+      - ".github/workflows/electroverse-drv-technical-samples.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Inspect DRV samples
+        run: node scripts/audit_electroverse_drv_technical_samples.mjs
+      - name: Persist report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse-fr-drv-technical-samples.json
+          git commit -m "audit: publish DRV technical samples" || exit 0
+          git push
