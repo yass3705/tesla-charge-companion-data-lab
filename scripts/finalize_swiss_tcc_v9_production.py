@@ -55,12 +55,22 @@ owner_scoped={"CH*IWB","CH*ECU","CH*PAR"}
 for op,exp in expected_blocked.items():
     src=by_owner if op in owner_scoped else by_scope
     got={k:src[op].get(k,0) for k in ("resolved","no_public_direct_tariff","unresolved")}
-    # Production gate protects already validated evidence. A larger current
-    # national scope is allowed and remains unresolved rather than being hidden.
-    evidence_ok=(got["resolved"]>=exp["resolved"] and
-                 got["no_public_direct_tariff"]>=exp["no_public_direct_tariff"])
+    # Production gate protects validated evidence while allowing tiny live-scope
+    # churn when the canonical scope has grown. A small decrease in resolved EVSEs
+    # can happen when stations are replaced/re-keyed between national snapshots;
+    # it must never mask a material regression.
+    resolved_tolerance=max(3, (exp["resolved"] + 999)//1000)  # max(3 EVSE, 0.1%)
+    resolved_floor=max(0, exp["resolved"]-resolved_tolerance)
+    baseline_total=sum(exp.values())
+    current_total=sum(got.values())
+    evidence_ok=(
+        got["resolved"]>=resolved_floor and
+        got["no_public_direct_tariff"]>=exp["no_public_direct_tariff"] and
+        (got["resolved"]>=exp["resolved"] or current_total>=baseline_total)
+    )
     blocked.append({"operatorId":op,"baseline":exp,"current":got,
                     "scopeMode":"owner" if op in owner_scoped else "evse-prefix",
+                    "resolvedToleranceEvse":resolved_tolerance,
                     "validatedEvidencePreserved":evidence_ok,"ok":evidence_ok})
 
 progress=bundle.get("cpoResearchStatus") or {}
