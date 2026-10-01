@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": 419,
+  "date": "2026-09-24",
+  "purpose": "Persist the validated Yaway operator-direct LMS mobile backend method and its verified live tariff coverage without replaying APK/API discovery.",
+  "canonicalInput": {
+    "path": "docs/france-cpo-progress-2026-09.json",
+    "schemaVersionObserved": 88,
+    "treated": 79,
+    "setAside": 11,
+    "active": 201,
+    "total": 291,
+    "arithmeticOk": true,
+    "treatedListLength": 79,
+    "setAsideListLength": 11,
+    "activeListLength": 201,
+    "pendingDedupeCreated": false
+  },
+  "atlanteHandoff": {
+    "status": "satisfied_no_replay",
+    "counterDelta": 0
+  },
+  "yaway": {
+    "status": "operator_direct_method_validated_lineage_slot_not_yet_recovered",
+    "sourcePrimary": "yaway_lms_mobile_backend",
+    "backend": "https://mobile-gateway.evc-net.com/api/v1",
+    "appProfile": "RECHARGE-YAWAY",
+    "providerAppIdentifier": "Yaway",
+    "appVersion": "2.7.0",
+    "apiVersion": "4.4.0",
+    "guestFlow": [
+      "POST /appConfig/getAppProfile",
+      "POST /user/guestLogin",
+      "POST /location/getLocationsByBounds",
+      "POST /tariff/details"
+    ],
+    "security": "Never persist guest tokens. Obtain a fresh guest token through guestLogin. Do not bypass authentication if the supported guest flow becomes unavailable.",
+    "selection": "Filter operator.name=Yaway / suboperator.name=Kallista-Yaway and FRYAW EVSE IDs.",
+    "verifiedLiveSamples": [
+      {
+        "site": "Rambouillet",
+        "stationId": 90960209,
+        "tariffId": "535345743",
+        "tariffName": "Yaway DC - 0,41€HT / 0,492€TTC",
+        "energyEurPerKwhHt": 0.41,
+        "vat": 0.20,
+        "commonEqualsPrepaidEqualsAnonymous": true,
+        "lastUpdatedObserved": "2026-09-24T10:00:31"
+      },
+      {
+        "site": "Étrelles VL",
+        "stationId": 90938288,
+        "tariffId": "535345743",
+        "tariffName": "Yaway DC - 0,41€HT / 0,492€TTC",
+        "energyEurPerKwhHt": 0.41,
+        "vat": 0.20,
+        "commonEqualsPrepaidEqualsAnonymous": true
+      },
+      {
+        "site": "Étrelles PL",
+        "stationId": 91246198,
+        "tariffId": "535345743",
+        "tariffName": "Yaway DC - 0,41€HT / 0,492€TTC",
+        "energyEurPerKwhHt": 0.41,
+        "vat": 0.20,
+        "commonEqualsPrepaidEqualsAnonymous": true
+      },
+      {
+        "site": "Breteuil",
+        "stationId": 91076231,
+        "tariffId": "475470326",
+        "tariffName": "Yaway DC - 0,25€HT / 0,30€TTC",
+        "energyEurPerKwhHt": 0.25,
+        "vat": 0.20,
+        "commonEqualsPrepaidEqualsAnonymous": true
+      }
+    ],
+    "fallback": {
+      "source": "https://roaming.lastmilesolutions.com/hubfs/Roaming/EVSEs-Roaming-List.xlsx",
+      "role": "fallback_and_consistency_only_when_live_backend_available",
+      "filter": "CPO eMI3 ID = FR*YAW",
+      "snapshotDate": "2026-09-17",
+      "evseCount": 49,
+      "stationCount": 8,
+      "sites": {
+        "Breteuil": {"evse": 4, "eurPerKwhHt": 0.25},
+        "Bretteville-sur-Odon": {"evse": 7, "eurPerKwhHt": 0.41},
+        "Douains": {"evse": 5, "eurPerKwhHt": 0.41},
+        "Étrelles PL": {"evse": 4, "eurPerKwhHt": 0.41},
+        "Étrelles VL": {"evse": 7, "eurPerKwhHt": 0.41},
+        "Pont-l’Évêque": {"evse": 7, "eurPerKwhHt": 0.41},
+        "Rambouillet": {"evse": 7, "eurPerKwhHt": 0.41},
+        "Saint-Junien": {"evse": 8, "eurPerKwhHt": 0.41}
+      },
+      "lastModified": "Thu, 17 Sep 2026 11:00:31 GMT",
+      "etag": "\"7d63cb6a9b7144b333924aefcd84f7fa\""
+    },
+    "decision": "The tariff channel is validated and automatable. Do not extrapolate one national tariff. Promote Yaway only after deterministic recovery of its original raw-291 slot / complete FRYAW inventory lineage; current canonical contains only anonymous active placeholders, so consuming a new slot would violate counter semantics.",
+    "staleEvidenceRejected": "Third-party Étrelles 0.55 EUR/kWh observation dated 2026-08-26 is superseded by the official live backend validation."
+  },
+  "decision": {
+    "counterChange": false,
+    "newlyTreated": [],
+    "newlySetAside": [],
+    "aliasesResolved": [],
+    "pendingDedupeTouched": [],
+    "safeProgress": "Persisted Yaway as a validated operator-direct LMS family with exact live station/tariff evidence; lineage remains the only blocker to canonical promotion.",
+    "next": [
+      "Recover Yaway/FR*YAW occurrence from historical raw-291/V8 inventory and replace the matching UNPROVEN_ACTIVE slot rather than append a 292nd authority.",
+      "Once lineage is deterministic, run national getLocationsByBounds coverage, compare all FRYAW EVSE against the 49-EVSE LMS fallback, persist station/EVSE/tariffId/status/lastUpdated, then promote treated if complete.",
+      "Reuse the now-proven LMS mobile gateway pattern as a bounded lead for Greenspot and ZEENCO, but discover each app profile/tenant independently and never inherit Yaway tariffs."
+    ]
+  },
+  "v8DirectReuse": {
+    "functionalAlreadyIntegrated": ["IONITY", "Atlante/MyAtlante"],
+    "newFunctionalFamily": "Yaway via LMS mobile-gateway guest backend",
+    "recoverableBatch": "49 FR*YAW EVSE / 8 stations in the 2026-09-17 LMS fallback; live backend is primary and can provide fresher status/tariff data.",
+    "relatedCandidates": ["Greenspot", "ZEENCO"],
+    "constraint": "Shared LMS architecture does not imply shared app profile, tenant, authority, or tariff."
+  },
+  "exit": {
+    "treated": 79,
+    "active": 201,
+    "setAsideCount": 11,
+    "setAside": ["AVIA/Picoty", "YES55", "Load Stations", "Ze-Watt", "RossiniEnergy", "Enerstock", "Greenspot", "Road | FR*EFL", "ChargeGuru", "ChargePoint Austria GmbH | FR*CG0", "SIEGE27 | FR*S27"],
+    "currentlyInvestigated": "Yaway/FR*YAW raw-291 lineage recovery, then LMS-family reuse",
+    "blocker": "Validated Yaway direct tariff method exists, but the current canonical active list is anonymized; the original raw slot must be recovered before promotion.",
+    "coherence": "PASS: 79 + 11 + 201 = 291; list lengths match counters; no new pending-dedupe."
+  }
+}
