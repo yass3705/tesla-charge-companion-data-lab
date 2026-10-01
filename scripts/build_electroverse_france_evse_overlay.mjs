@@ -8,6 +8,7 @@ const MANIFEST=CACHE+'/manifest.json';
 const MAP='data/electroverse/irve_location_mapping.json';
 const DRIVECO='data/operator_direct/driveco_evse_tariffs.json';
 const POWERDOT_TECH='data/operator_direct/powerdot_evse_technical_inventory.json';
+const VIANEO_IDENTITY='data/operator_direct/vianeo_official_identity_map.json';
 const VALIDATED_NUMERIC_MAP='data/platforms/electroverse/validated-mappings/numeric-residual.json';
 const VALIDATED_S82_MAP='data/platforms/electroverse/validated-mappings/s82-residual.json';
 const VALIDATED_MGP_MAP='data/platforms/electroverse/validated-mappings/mgp-residual.json';
@@ -180,12 +181,14 @@ const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
 const manifest=JSON.parse(await fs.readFile(MANIFEST,'utf8'));
 const driveco=JSON.parse(await fs.readFile(DRIVECO,'utf8'));
 const powerdotTech=JSON.parse(await fs.readFile(POWERDOT_TECH,'utf8'));
+const vianeoIdentity=JSON.parse(await fs.readFile(VIANEO_IDENTITY,'utf8'));
 const validatedNumericMap=JSON.parse(await fs.readFile(VALIDATED_NUMERIC_MAP,'utf8'));
 const validatedS82Map=JSON.parse(await fs.readFile(VALIDATED_S82_MAP,'utf8'));
 const validatedMgpMap=JSON.parse(await fs.readFile(VALIDATED_MGP_MAP,'utf8'));
 const powerdotByEvse=new Map((powerdotTech.evses||[]).map(x=>[norm(x.evseId),x]));
 const drivecoNative=[...(driveco.resolved||[]),...(driveco.unresolved||[])];
 const drivecoByEvse=new Map(drivecoNative.map(x=>[norm(x.evseId),x]));
+const vianeoBySource=new Map((vianeoIdentity.rows||[]).map(x=>[norm(x.sourceRef),x]));
 const kwClass=n=>{
   n=Number(n);if(!Number.isFinite(n))return null;
   if(Math.abs(n-22.08)<=1.0||Math.abs(n-22)<=1.0)return 22;
@@ -274,6 +277,7 @@ const stats={
   viaFinalOrdinalCandidateRefs:0,viaFinalOrdinalPublishedEvses:0,
   viaHomogeneousGroupCandidateEvses:0,viaHomogeneousGroupPublishedEvses:0,
   viaStructuredBasePairCandidateEvses:0,viaStructuredBasePairPublishedEvses:0,
+  viaOfficialIdentityCandidateEvses:0,viaOfficialIdentityPublishedEvses:0,
   c55HomogeneousGroupCandidateEvses:0,c55HomogeneousGroupPublishedEvses:0,
   hpcOrdinalGroupCandidateEvses:0,hpcOrdinalGroupPublishedEvses:0,
   c55BIndexCandidateEvses:0,c55BIndexPublishedEvses:0,
@@ -1026,6 +1030,32 @@ for(const sh of manifest.shards||[]){
       }
     }
 
+    // Vianeo official identity map from the France canonical direct inventory.
+    // The compact map is source-reference -> official national PDC, derived from
+    // stationName + evseId connector ordinal. Apply only to sources still unresolved
+    // by earlier identity families, with local and globally unique targets.
+    const viaOfficialTargets=new Map();
+    {
+      const proposals=[];
+      for(const e0 of row.tariff?.evses||[]){
+        const pr0=text(e0?.physicalReference);if(!pr0)continue;
+        const k0=norm(pr0);
+        if(local.has(k0)||ordinalTargets.has(e0)||genericTargets.has(e0)||suffixTargets.has(e0)||
+           trimmedSuffixTargets.has(e0)||pd1FinalOrdinalTargets.has(e0)||viaFinalOrdinalTargets.has(e0)||
+           viaStructuredBasePairTargets.has(e0))continue;
+        const d=vianeoBySource.get(k0);if(!d)continue;
+        const target=norm(d.targetPdc);if(!target||!local.has(target))continue;
+        if((globalPdcOwners.get(target)?.size||0)!==1)continue;
+        proposals.push({e:e0,target});
+      }
+      const targetUse=new Map();
+      for(const x of proposals)targetUse.set(x.target,(targetUse.get(x.target)||0)+1);
+      for(const x of proposals){
+        if((targetUse.get(x.target)||0)!==1)continue;
+        viaOfficialTargets.set(x.e,x.target);
+      }
+    }
+
     // 55C structured B-index identity: B01 -> suffix 0, B02 -> suffix 1, ...
     // Apply only when every unresolved Bxx reference is unique, the full remaining
     // 55C target set has the exact matching zero-based suffix set, and every target
@@ -1686,6 +1716,13 @@ for(const sh of manifest.shards||[]){
           targetPdc=localByNorm.get(targetNorm);
           identityMode='strict_via_structured_base_pair';
           stats.viaStructuredBasePairCandidateEvses++;
+        }else if(viaOfficialTargets.has(e)){
+          const targetNorm=viaOfficialTargets.get(e);
+          const owners=globalPdcOwners.get(targetNorm);
+          if(!owners||owners.size!==1){rej('vianeo_official_pdc_not_globally_unique');continue;}
+          targetPdc=localByNorm.get(targetNorm);
+          identityMode='strict_vianeo_official_source_ref_identity';
+          stats.viaOfficialIdentityCandidateEvses++;
         }else{
           rej(candidates.length?'parent_pdc_ambiguous':'physical_reference_not_in_local_national_pdcs');continue;
         }
@@ -1827,6 +1864,7 @@ for(const sh of manifest.shards||[]){
       if(identityMode==='strict_via_final_ordinal_subgroup_bijection')stats.viaFinalOrdinalPublishedEvses++;
       if(identityMode==='strict_55c_bindex_zero_based_suffix')stats.c55BIndexPublishedEvses++;
       if(identityMode==='strict_via_structured_base_pair')stats.viaStructuredBasePairPublishedEvses++;
+      if(identityMode==='strict_vianeo_official_source_ref_identity')stats.viaOfficialIdentityPublishedEvses++;
       stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=compiled.length;
     }
   }
@@ -1932,6 +1970,7 @@ stats.izfHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identi
 stats.viaFinalOrdinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_via_final_ordinal_subgroup_bijection').length;
 stats.viaHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_via_homogeneous_exact_set').length;
 stats.viaStructuredBasePairPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_via_structured_base_pair').length;
+stats.viaOfficialIdentityPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_vianeo_official_source_ref_identity').length;
 stats.c55HomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_homogeneous_exact_set').length;
 stats.hpcOrdinalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_hpc_duplicate_ordinal_to_three_digit_pdc').length;
 stats.c55BIndexPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_bindex_zero_based_suffix').length;
@@ -2007,6 +2046,10 @@ const out={
     izfExactSetRequiresGlobalPdcUniqueness:true,
     strictViaFinalOrdinalSubgroupBijection:true,
     strictViaHomogeneousExactSet:true,
+    strictVianeoOfficialSourceRefIdentity:true,
+    vianeoOfficialIdentityRequiresLocalTarget:true,
+    vianeoOfficialIdentityRequiresGlobalPdcUniqueness:true,
+    vianeoOfficialIdentityRequiresUniqueTargetUse:true,
     viaExactSetRequiresEqualCardinality:true,
     viaExactSetRequiresHomogeneousPricing:true,
     viaExactSetRequiresUniformConnectorCount:true,
