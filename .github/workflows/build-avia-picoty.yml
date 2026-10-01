@@ -1,0 +1,120 @@
+name: Build AVIA Picoty national base
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - feat/avia-picoty-national-base
+    paths:
+      - 'scripts/build_avia_picoty.py'
+      - 'tests/test_avia_picoty.py'
+      - 'config/avia_picoty.json'
+      - '.github/workflows/build-avia-picoty.yml'
+  schedule:
+    - cron: '25 4 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: avia-picoty-national-base
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install test dependency
+        run: python -m pip install --disable-pip-version-check pytest
+
+      - name: Run AVIA collector tests
+        run: pytest -q tests/test_avia_picoty.py
+
+      - name: Download consolidated national IRVE static dataset
+        run: |
+          curl --fail --location --retry 3 --retry-delay 5 \
+            'https://www.data.gouv.fr/api/1/datasets/r/4ca78c71-4ea4-475d-bd3a-d4aef88f7bf8' \
+            --output /tmp/irve-statique.csv
+          test -s /tmp/irve-statique.csv
+
+      - name: Build AVIA/Picoty dataset
+        run: |
+          python scripts/build_avia_picoty.py \
+            --input /tmp/irve-statique.csv \
+            --source-label 'https://www.data.gouv.fr/api/1/datasets/r/4ca78c71-4ea4-475d-bd3a-d4aef88f7bf8' \
+            --output data/avia_picoty_direct_france.json \
+            --gzip
+
+      - name: Validate output
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('data/avia_picoty_direct_france.json')
+          d = json.loads(p.read_text(encoding='utf-8'))
+          s = d['stats']
+          assert s['stations'] > 0, s
+          assert s['stations_with_coordinates'] == s['stations'], s
+          assert s['evses'] >= s['stations'], s
+          assert s['unique_evse_ids'] == s['evses'], s
+          assert d['operator']['cpo_id_prefix'] == 'FR*PY2'
+          assert d['source'].startswith('https://www.data.gouv.fr/'), d['source']
+          assert d['policy']['brand_alone_proves_cpo'] is False
+          assert d['policy']['roaming_tariffs_as_direct'] is False
+          assert d['policy']['avia_carte_deftpower_as_direct'] is False
+          assert d['policy']['unverified_0_59_fallback_published'] is False
+          print(json.dumps(s, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Write compact build report
+        run: |
+          python - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+          d = json.loads(Path('data/avia_picoty_direct_france.json').read_text(encoding='utf-8'))
+          report = {
+              'generated_at': datetime.now(timezone.utc).isoformat(),
+              'dataset': d['dataset'],
+              'source': d['source'],
+              'operator': d['operator'],
+              'stats': d['stats'],
+              'policy': d['policy'],
+          }
+          Path('reports/avia_picoty_latest.json').write_text(
+              json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8'
+          )
+          PY
+
+      - name: Commit generated AVIA data
+        if: github.ref_name == 'main' || github.ref_name == 'feat/avia-picoty-national-base'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/avia_picoty_direct_france.json data/avia_picoty_direct_france.json.gz reports/avia_picoty_latest.json
+          if git diff --cached --quiet; then
+            echo 'No generated-data changes.'
+          else
+            git commit -m 'data: refresh AVIA Picoty national base'
+            git push
+          fi
+
+      - name: Upload AVIA build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: avia-picoty-national-base
+          path: |
+            data/avia_picoty_direct_france.json
+            data/avia_picoty_direct_france.json.gz
+            reports/avia_picoty_latest.json
+          retention-days: 14
