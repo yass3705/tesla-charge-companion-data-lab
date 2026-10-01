@@ -5,6 +5,7 @@ const CACHE='data/electroverse/tariff_cache';
 const MAP='data/electroverse/irve_location_mapping.json';
 const OVERLAY='data/platforms/electroverse/france-evse';
 const OUT='reports/electroverse/b-residual-analysis.json';
+const VALIDATED='data/platforms/electroverse/validated-mappings/b-residual.json';
 const norm=x=>String(x??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
 const opFromRef=raw=>{
   const s=String(raw??'').trim();
@@ -41,6 +42,8 @@ for(const m of mapping.mappings||[]) for(const p of m.irvePdcIds||[]){
 
 const cman=JSON.parse(await fs.readFile(CACHE+'/manifest.json','utf8'));
 const groups=[];
+const validatedMappings=[];
+const validatedGroups=[];
 let residual=0,locations=0;
 for(const sh of cman.shards||[]){
   const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
@@ -96,6 +99,62 @@ for(const sh of cman.shards||[]){
     else if(commonTailBijection)mode='common_tail_bijection';
     else if(exactSetSafe)mode=connectorCounts.size===1?'homogeneous_exact_set':'price_only_exact_set';
 
+    // Reuse the already-validated 55C B-index identity from the V9 overlay builder:
+    // B01 -> final local suffix index 0, B02 -> 1, ... where the final suffix
+    // may be 0-9 or A-Z. For residuals, allow duplicate historical source rows
+    // only when every row for the same B ordinal has an identical technical+pricing
+    // signature. Different snapshots for one ordinal fail closed.
+    const alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const local55=available.filter(p=>p.startsWith('FR55CE')&&(owners.get(p)?.size||0)===1);
+    const byB=new Map();
+    for(const x of refs){
+      const mm=x.raw.match(/^B0*(\d+)(?:\b|\s|-)/i)||x.raw.match(/^B0*(\d+)$/i);
+      if(!mm)continue;
+      const n=Number(mm[1]);if(!Number.isFinite(n)||n<1||n>alphabet.length)continue;
+      const arr=byB.get(n)||[];arr.push(x);byB.set(n,arr);
+    }
+    const bTargets=new Map();
+    let strictBIndexSafe=byB.size>0;
+    for(const [n,arr] of byB){
+      const sigs=new Set(arr.map(x=>JSON.stringify((x.e.connectors||[]).map(c=>({
+        kilowatts:c?.kilowatts??null,
+        standard:c?.standard?.name??c?.standard??null,
+        isChargingFree:c?.isChargingFree??null,
+        priceComponents:c?.priceComponents??null,
+        complexPricingDetail:c?.complexPricingDetail??null
+      })))));
+      if(sigs.size!==1){strictBIndexSafe=false;break;}
+      const ch=alphabet[n-1];
+      const hits=local55.filter(p=>p.endsWith(ch));
+      if(hits.length!==1){strictBIndexSafe=false;break;}
+      bTargets.set(n,hits[0]);
+    }
+    if(strictBIndexSafe && new Set(bTargets.values()).size===bTargets.size){
+      mode='validated_55c_bindex_duplicate_safe';
+      for(const [n,arr] of byB){
+        const target=bTargets.get(n);
+        for(const x of arr){
+          validatedMappings.push({
+            electroverseLocationPk:String(row.electroverseLocationPk),
+            irveStationId:m?.irveStationId??row.irveStationId??null,
+            electroverseEvsePk:x.e.pk,
+            targetPdc:target,
+            physicalReference:x.raw,
+            bOrdinal:n,
+            recoveryMode:'validated_55c_bindex_duplicate_safe',
+            evidence:'existing strict_55c_bindex_zero_based_suffix identity + unique local/global target + identical duplicate technical/pricing signature; no proximity'
+          });
+        }
+      }
+      validatedGroups.push({
+        electroverseLocationPk:String(row.electroverseLocationPk),
+        irveStationId:m?.irveStationId??row.irveStationId??null,
+        ordinals:[...byB.keys()].sort((a,b)=>a-b),
+        sourceEvses:[...byB.values()].reduce((n,a)=>n+a.length,0),
+        targetPdcs:[...bTargets.values()]
+      });
+    }
+
     groups.push({
       electroverseLocationPk:String(row.electroverseLocationPk),
       irveStationId:m?.irveStationId??row.irveStationId??null,
@@ -127,11 +186,23 @@ for(const g of groups)byMode[g.mode]=(byMode[g.mode]||0)+g.residualCount;
 const out={
  schemaVersion:1,generatedAt:new Date().toISOString(),
  residualSourceEvses:residual,affectedLocations:locations,byMode,
+ validatedBIndexSourceEvses:validatedMappings.length,
+ validatedBIndexLocations:validatedGroups.length,
+ validatedGroups,
  safelyRecoverableSourceEvses:Object.entries(byMode).filter(([k])=>k!=='none').reduce((n,[,v])=>n+v,0),
  safeGroups:groups.filter(g=>g.mode!=='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,200),
  unresolvedSamples:groups.filter(g=>g.mode==='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,100),
  policy:'Diagnostic only. B bucket uses the exact same opFromRef classifier as the canonical unpublished-source ranking; local unpublished national targets; global target uniqueness; no proximity inference.'
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
+await fs.mkdir('data/platforms/electroverse/validated-mappings',{recursive:true});
 await fs.writeFile(OUT,JSON.stringify(out,null,2)+'\n');
+await fs.writeFile(VALIDATED,JSON.stringify({
+  schemaVersion:1,
+  generatedAt:out.generatedAt,
+  count:validatedMappings.length,
+  locationCount:validatedGroups.length,
+  policy:'Strict residual 55C B-index mapping. Reuses the validated V9 zero-based/alphanumeric suffix identity. Duplicate B ordinals are accepted only when their full technical and pricing signatures are identical. Local target must be unique, unpublished and globally owned by one station. No proximity.',
+  mappings:validatedMappings
+},null,2)+'\n');
 console.log(JSON.stringify(out,null,2));
