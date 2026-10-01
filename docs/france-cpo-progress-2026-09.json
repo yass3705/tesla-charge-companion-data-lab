@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 125,
+  "schemaVersion": 126,
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 96,
-  "setAsideCpos": 41,
-  "activeRemainingCpos": 154,
-  "updatedAt": "2026-10-01T19:25:00+02:00",
+  "setAsideCpos": 42,
+  "activeRemainingCpos": 153,
+  "updatedAt": "2026-10-01T19:35:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -381,6 +381,13 @@
       "since": "2026-10-01",
       "lastChecked": "2026-10-01",
       "audit": "docs/france-regional-cpo-parera-batch504-2026-10-01.json"
+    },
+    {
+      "name": "ANYOS | raw rank148",
+      "reason": "batch505 fail-closed: current first-party ANYOS material defines a highly configurable CPO/eMSP service and states that the applicable price is displayed before each charge and may include per-kWh, parking-duration, session-start and charging-time components. No public first-party national tariff grid or deterministic anonymous station/EVSE -> current configured tariff payload was recovered for the historical 44-station/44-PDC estate. Site-specific observations such as 0.42 EUR/kWh are not generalized.",
+      "since": "2026-10-01",
+      "lastChecked": "2026-10-01",
+      "audit": "docs/france-regional-cpo-anyos-batch505-2026-10-01.json"
     }
   ],
   "activeNominative": [
@@ -471,7 +478,6 @@
     "RELEASED_SLOT_145_TREATED_HISTORICALLY_PROVEN",
     "UNPROVEN_ACTIVE_146",
     "RELEASED_ACTIVE_SLOT_147 | alias Greenspot | FR*GSP | raw rank50",
-    "UNPROVEN_ACTIVE_148",
     "UNPROVEN_ACTIVE_149",
     "UNPROVEN_ACTIVE_RAW_SLOT_RELEASED_BY_EMOTUM_ALIAS",
     "UNPROVEN_ACTIVE_152",
@@ -848,7 +854,8 @@
     "FAROAD | FR*EVE | raw rank135": "batch501 setAside: FAROAD first-party supervision lets managers define prices per kWh; current FR*EVE inventory is heterogeneous and no anonymous station/EVSE -> configured direct tariff resolver was recovered. raw177 remains non-counting identity lineage.",
     "GreenFlux Assets B.V. | FR*EVZ | raw rank121": "batch502 setAside: current FR*EVZ spans multiple networks/site authorities (EVzen, CARF, Norauto and others). GreenFlux is the CPO software/platform layer; exact underlying network/site direct tariff must be resolved per EVSE. No national GreenFlux Assets tariff and no inheritance from treated Greenflux/EVzen.",
     "Porsche Sales | raw rank109": "batch503 setAside: Porsche Sales/Marketplace estate mixes Porsche Centres and Destination Charging partner sites. Destination Charging can be free for eligible Porsche guests but partner/site fees may apply to others; Porsche Charging Service prices are eMSP/contract prices and not universal direct-CPO tariffs.",
-    "PARERA MOBILITE | FR*MW1 / FR*VIS": "batch504: one PARERA MOBILITÉ authority across FR*MW1 and FR*VIS technical estates. First-party MobilyWeb supports customer/site-defined tariffs and monetization; no deterministic anonymous station/EVSE -> current direct tariff resolver recovered. raw99 setAside; raw156 released as non-counting alias."
+    "PARERA MOBILITE | FR*MW1 / FR*VIS": "batch504: one PARERA MOBILITÉ authority across FR*MW1 and FR*VIS technical estates. First-party MobilyWeb supports customer/site-defined tariffs and monetization; no deterministic anonymous station/EVSE -> current direct tariff resolver recovered. raw99 setAside; raw156 released as non-counting alias.",
+    "ANYOS | raw rank148": "batch505 setAside: ANYOS first-party terms make the applicable pre-charge displayed price authoritative, with possible kWh/start/time/parking components; no public deterministic exact-tariff resolver recovered."
   },
   "history": [
     {
@@ -1472,9 +1479,19 @@
         "setAsideCpos": 41,
         "activeRemainingCpos": 154
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch505",
+      "change": "Moved ANYOS raw148 active->setAside. First-party ANYOS confirms highly configurable session pricing with kWh/start/time/parking components and pre-charge display; no anonymous deterministic station/EVSE -> current configured tariff resolver recovered.",
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 42,
+        "activeRemainingCpos": 153
+      }
     }
   ],
-  "currentInvestigation": "ANYOS | raw rank148 | 44 stations / 44 PDC: inspect first-party charging/payment model and current direct tariff determinism.",
+  "currentInvestigation": "LMS | raw rank146 | 39 stations / 48 PDC: inspect First-party/backend Last Mile Solutions lineage and exact tariff authority; reuse existing LMS/AVIA-location artifacts before web.",
   "coherenceControl": {
     "batch": "batch491",
     "result": "PASS",
@@ -1489,11 +1506,11 @@
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch504",
-    "result": "PASS_PARERA_FAIL_CLOSED_AND_ALIAS",
+    "batch": "batch505",
+    "result": "PASS_ANYOS_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch504",
+  "latestBatch": "batch505",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2263,6 +2280,14 @@
       "category": "setAside-authority",
       "decision": "active->setAside: heterogeneous Porsche Centre + Destination Charging estate; direct price depends on site/eligibility, while Porsche Charging Service pricing is eMSP and cannot be used as CPO-direct authority",
       "evidence": "docs/france-regional-cpo-porsche-sales-batch503-2026-10-01.json"
+    },
+    {
+      "rawRank": 148,
+      "historicalOperator": "ANYOS",
+      "authority": "ANYOS",
+      "category": "setAside-authority",
+      "decision": "active->setAside: first-party ANYOS confirms configurable CPO/eMSP pricing with multiple possible price components and session-specific pre-charge display; no anonymous deterministic station/EVSE -> current configured direct tariff resolver recovered",
+      "evidence": "docs/france-regional-cpo-anyos-batch505-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
