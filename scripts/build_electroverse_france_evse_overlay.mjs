@@ -2117,7 +2117,14 @@ for(const sh of manifest.shards||[]){
           locationPk:String(row.electroverseLocationPk),parentPdc:targetPdc,parentNorm,
           lat,lon,entries:[],pricingBySig:new Map(),tariffHashes:new Set(),fetchedAts:new Set()
         };
-        g.entries.push({physicalReference:pr,evsePk:e.pk??null,connectorPks:compiled.map(x=>x.connectorPk),connectorCount:compiled.length});
+        g.entries.push({
+          physicalReference:pr,
+          evsePk:e.pk??null,
+          connectorPks:compiled.map(x=>x.connectorPk),
+          connectorCount:compiled.length,
+          compiled,
+          pricing
+        });
         g.pricingBySig.set(pricingSig(pricing),pricing);
         if(row.tariffHash)g.tariffHashes.add(row.tariffHash);
         if(row.fetchedAt)g.fetchedAts.add(row.fetchedAt);
@@ -2168,38 +2175,65 @@ for(const sh of manifest.shards||[]){
 
 stats.parentCandidateGroups=parentGroups.size;
 for(const g of parentGroups.values()){
-  if(g.pricingBySig.size!==1){rej('parent_pdc_heterogeneous_child_pricing');continue;}
-  const pricing=[...g.pricingBySig.values()][0];
-  const currency=pricing.rules?.[0]?.currency||'EUR';
-  const connectorPks=g.entries.flatMap(x=>x.connectorPks);
-  const offer={
-    id:`electroverse-evse-parent:${g.locationPk}:${g.parentNorm}`,
-    provider:'Electroverse',
-    countries:['FR'],
-    currency,
-    priority:80,
-    verifiedScope:'exact_evse',
-    evseIds:[g.parentPdc],
-    pricing,
-    metadata:{
-      verified:true,
-      identityMode:'exact_unique_national_irve_pdc_parent_connector_suffix',
-      electroverseLocationPk:g.locationPk,
-      physicalReferences:g.entries.map(x=>x.physicalReference),
-      electroverseEvsePks:g.entries.map(x=>x.evsePk),
-      connectorPks,
-      connectorCount:g.entries.reduce((n,x)=>n+x.connectorCount,0),
-      childReferenceCount:g.entries.length,
-      tariffHashes:[...g.tariffHashes],
-      fetchedAts:[...g.fetchedAts],
-      source:'Electroverse tariff cache'
+  // A national parent EVSE may expose child connector references with different
+  // powers and/or tariffs. Preserve every distinct power+pricing variant instead
+  // of flattening the parent to one tariff or rejecting heterogeneous children.
+  const variants=new Map();
+  for(const entry of g.entries){
+    for(const x of entry.compiled||[]){
+      const powerKw=Number.isFinite(Number(x.powerKw))?Number(x.powerKw):null;
+      const key=String(powerKw??'UNKNOWN')+'|'+pricingSig(x.pricing);
+      let v=variants.get(key);
+      if(!v){
+        v={powerKw,pricing:x.pricing,units:[],sourcePks:new Set(),physicalReferences:new Set(),standards:new Set()};
+        variants.set(key,v);
+      }
+      v.units.push({connectorPk:x.connectorPk,evsePk:entry.evsePk,physicalReference:entry.physicalReference});
+      if(entry.evsePk!=null)v.sourcePks.add(entry.evsePk);
+      if(entry.physicalReference)v.physicalReferences.add(entry.physicalReference);
+      const standard=String(x.standard?.name||x.standard||'').trim();
+      if(standard)v.standards.add(standard);
     }
-  };
-  const id=tileId(g.lat,g.lon);if(!tiles.has(id))tiles.set(id,[]);
-  tiles.get(id).push(offer);
-  stats.parentPublishedEvses++;
-  stats.parentPublishedChildRefs+=g.entries.length;
-  stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=offer.metadata.connectorCount;
+  }
+  for(const [variantKey,v] of variants){
+    const pricing=v.pricing;
+    const currency=pricing.rules?.[0]?.currency||'EUR';
+    const powerLabel=v.powerKw==null?'unknown':String(v.powerKw).replace(/[^0-9A-Za-z._-]/g,'_');
+    const sigHash=sha(pricingSig(pricing)).slice(0,10);
+    const connectorPks=v.units.map(x=>x.connectorPk).filter(x=>x!=null);
+    const offer={
+      id:`electroverse-evse-parent-power:${g.locationPk}:${g.parentNorm}:${powerLabel}:${sigHash}`,
+      provider:'Electroverse',
+      countries:['FR'],
+      currency,
+      priority:80,
+      verifiedScope:'exact_evse_connector_power',
+      evseIds:[g.parentPdc],
+      pricing,
+      metadata:{
+        verified:true,
+        identityMode:'exact_unique_national_irve_pdc_parent_connector_suffix',
+        offerGranularity:'connector_power',
+        offerVariantKey:variantKey,
+        powerKw:v.powerKw,
+        standards:[...v.standards],
+        electroverseLocationPk:g.locationPk,
+        physicalReferences:[...v.physicalReferences],
+        electroverseEvsePks:[...v.sourcePks],
+        connectorPks,
+        connectorCount:v.units.length,
+        childReferenceCount:v.physicalReferences.size,
+        tariffHashes:[...g.tariffHashes],
+        fetchedAts:[...g.fetchedAts],
+        source:'Electroverse tariff cache'
+      }
+    };
+    const id=tileId(g.lat,g.lon);if(!tiles.has(id))tiles.set(id,[]);
+    tiles.get(id).push(offer);
+    stats.parentPublishedEvses++;
+    stats.parentPublishedChildRefs+=v.physicalReferences.size;
+    stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=v.units.length;
+  }
 }
 
 const offersByTarget=new Map(),duplicateSamples=[];
