@@ -54,22 +54,31 @@ jobs:
                   time.sleep(wait)
               last=time.monotonic()
 
-          throttle()
-          form=urllib.parse.urlencode({
-              "client_id":cid,
-              "client_secret":secret,
-              "grant_type":"client_credentials"
-          }).encode()
-          req=urllib.request.Request(AUTH,data=form,method="POST",headers={
-              "Content-Type":"application/x-www-form-urlencoded",
-              "Accept":"application/json",
-              "User-Agent":UA
-          })
-          with urllib.request.urlopen(req,timeout=30) as rr:
-              tok=json.loads(rr.read().decode("utf-8"))
-          token=tok["access_token"]
+          token=None
+          token_refreshes=0
 
-          def fetch_detail(uid):
+          def refresh_token():
+              global token, token_refreshes
+              throttle()
+              form=urllib.parse.urlencode({
+                  "client_id":cid,
+                  "client_secret":secret,
+                  "grant_type":"client_credentials"
+              }).encode()
+              req=urllib.request.Request(AUTH,data=form,method="POST",headers={
+                  "Content-Type":"application/x-www-form-urlencoded",
+                  "Accept":"application/json",
+                  "User-Agent":UA
+              })
+              with urllib.request.urlopen(req,timeout=30) as rr:
+                  tok=json.loads(rr.read().decode("utf-8"))
+              token=tok["access_token"]
+              token_refreshes+=1
+              return tok
+
+          refresh_token()
+
+          def fetch_detail_once(uid):
               throttle()
               url=BASE+"/v2/locations/"+urllib.parse.quote(str(uid),safe="")+"?"+urllib.parse.urlencode({"providerId":PROVIDER_ID})
               req=urllib.request.Request(url,headers={
@@ -85,6 +94,14 @@ jobs:
                   return e.code,{"errorBody":e.read().decode("utf-8","replace")[:3000]}
               except Exception as e:
                   return 0,{"error":repr(e)}
+
+          def fetch_detail(uid):
+              status,body=fetch_detail_once(uid)
+              if status==401:
+                  # OAuth token can expire during a long national pass.
+                  refresh_token()
+                  status,body=fetch_detail_once(uid)
+              return status,body
 
           inv_path=Path("data/national/uk_shell_ev_public_locations.json.gz")
           if not inv_path.exists():
@@ -183,6 +200,7 @@ jobs:
               **stats,
               "coveragePct":round(100*stats["withTariff"]/len(targets),2) if targets else 0,
               "failClosedCount":stats["withoutTariff"]+stats["http429"]+stats["otherHttp"],
+              "tokenRefreshCount":token_refreshes,
               "noTariffUids":[x["uid"] for x in results if x["httpStatus"]==200 and not x["tariffs"]],
               "errorUids":[x["uid"] for x in results if x["httpStatus"]!=200]
           }
