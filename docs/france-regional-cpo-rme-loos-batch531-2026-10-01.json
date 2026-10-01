@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": "batch531",
+  "date": "2026-10-01",
+  "subject": "REGIE MUNICIPALE D'ELECTRICITE DE LOOS | raw rank188",
+  "result": "PASS_FAIL_CLOSED_SETASIDE",
+  "inventory": {
+    "historical": {
+      "stations": 2,
+      "pdc": 9
+    },
+    "current": {
+      "stations": 2,
+      "pdc": 9,
+      "match": "exact 9-PDC footprint"
+    }
+  },
+  "evidence": [
+    {
+      "type": "official_producer",
+      "finding": "RME Loos has its own data.gouv organisation and IRVE datasets for its charging infrastructure; producer files are stale (2024)."
+    },
+    {
+      "type": "current_irve",
+      "finding": "Current national IRVE-derived inventory reconciles 9 PDC across Parking de la Gare and Parking CIL/Salengro."
+    },
+    {
+      "type": "tariff_conflict",
+      "finding": "Recent station record indicates payment-at-act true while some IRVE aggregators label recharge free; no current RME numeric charging grid was recovered. Ambiguous free/paid semantics must fail closed."
+    }
+  ],
+  "decision": "active->setAside; exact 9/9 identity but contradictory access/tariff semantics and no authoritative current numeric direct tariff",
+  "reopenCondition": "Current RME charging tariff grid or exact QR/ad-hoc tariff payload mapped to FRFR1 EVSE.",
+  "fallback": "Electra then Electroverse only as roaming fallback where compatible",
+  "pendingDedupeCreated": false,
+  "next": "Mob-Energy | FR*MEI raw189; raw190 AUTORECHARGE already alias."
+}
