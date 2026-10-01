@@ -1,0 +1,47 @@
+name: Greenspot France read-only extraction
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "47 3 * * 4"
+  push:
+    paths:
+      - "scripts/greenspot/extract_greenspot.py"
+      - ".github/workflows/greenspot-france-extract.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Extract current FRGSP inventory and live direct tariffs
+        run: |
+          python scripts/greenspot/extract_greenspot.py             --workers 4             --out data/greenspot/france/greenspot-france-current.json             --report docs/france-greenspot-direct-report-current.json
+          rm -f data/greenspot/france/greenspot-france-current.json
+      - name: Persist compressed snapshot and report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/greenspot/france/greenspot-france-current.json.gz                   docs/france-greenspot-direct-report-current.json
+          if git diff --cached --quiet; then
+            echo "No Greenspot snapshot changes to commit."
+            exit 0
+          fi
+          git commit -m "data(france): refresh Greenspot direct snapshot"
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Unable to persist Greenspot snapshot after three safe rebase attempts."
+          exit 1
