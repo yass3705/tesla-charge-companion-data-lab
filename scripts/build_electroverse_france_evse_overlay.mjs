@@ -385,6 +385,8 @@ const stats={
   genericPriceOnlyGroupByOperator:{},
   stationHomogeneousBroadcastAuditLocations:0,stationHomogeneousBroadcastAuditTargets:0,stationHomogeneousBroadcastAuditSources:0,
   stationHomogeneousBroadcastAuditByOperator:{},
+  stationHomogeneousBroadcastMismatchLocations:0,stationHomogeneousBroadcastMismatchTargets:0,stationHomogeneousBroadcastMismatchSources:0,
+  stationHomogeneousBroadcastMismatchByOperator:{},
   durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
@@ -1828,6 +1830,14 @@ for(const sh of manifest.shards||[]){
           const a=stats.stationHomogeneousBroadcastAuditByOperator[operator]||{locations:0,targets:0,sources:0};
           a.locations++;a.targets+=unclaimed.length;a.sources+=unresolved.length;
           stats.stationHomogeneousBroadcastAuditByOperator[operator]=a;
+          if(unresolved.length!==unclaimed.length){
+            stats.stationHomogeneousBroadcastMismatchLocations++;
+            stats.stationHomogeneousBroadcastMismatchTargets+=unclaimed.length;
+            stats.stationHomogeneousBroadcastMismatchSources+=unresolved.length;
+            const b=stats.stationHomogeneousBroadcastMismatchByOperator[operator]||{locations:0,targets:0,sources:0};
+            b.locations++;b.targets+=unclaimed.length;b.sources+=unresolved.length;
+            stats.stationHomogeneousBroadcastMismatchByOperator[operator]=b;
+          }
         }
       }
 
