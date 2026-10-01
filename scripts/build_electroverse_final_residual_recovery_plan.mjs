@@ -7,6 +7,11 @@ const MAP='data/electroverse/irve_location_mapping.json';
 const OVERLAY='data/platforms/electroverse/france-evse';
 const OUT='data/platforms/electroverse/validated-mappings/final-residual-recovery-plan.json';
 
+let existingPlan={individualMappings:[],groupMappings:[]};
+try{
+  const raw=(await fs.readFile(OUT,'utf8')).trim();
+  if(raw)existingPlan=JSON.parse(raw);
+}catch{}
 const norm=x=>String(x??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
 const opFromRef=raw=>{
   const s=String(raw??'').trim();
@@ -113,12 +118,12 @@ for(const sh of cman.shards||[]){
 }
 
 const dedupeIndividual=new Map();
-for(const x of individualMappings){
+for(const x of [...(existingPlan.individualMappings||[]),...individualMappings]){
   const k=x.electroverseLocationPk+':'+x.electroverseEvsePk;
   if(!dedupeIndividual.has(k))dedupeIndividual.set(k,x);
 }
 const dedupeGroups=new Map();
-for(const g of groupMappings){
+for(const g of [...(existingPlan.groupMappings||[]),...groupMappings]){
   const k=g.electroverseLocationPk+'|'+g.operator+'|'+g.mode+'|'+[...g.sourceEvsePks].sort().join(',');
   if(!dedupeGroups.has(k))dedupeGroups.set(k,g);
 }
@@ -126,10 +131,15 @@ const out={
   schemaVersion:1,generatedAt:new Date().toISOString(),dataset:'electroverse-france-final-residual-recovery-plan',
   sourceManifestGeneratedAt:oman.generatedAt,
   policy:'Only residual mappings proven against the current overlay. Individual mappings require exact unique local/global target identity; group mappings require exact source/target cardinality, globally unique targets, and homogeneous raw pricing. No proximity inference.',
-  stats,
+  stats:{
+    ...stats,
+    newlyDiscovered:Object.values(stats).reduce((a,b)=>a+b,0),
+    cumulativeIndividualMappings:dedupeIndividual.size,
+    cumulativeGroupMappings:dedupeGroups.size
+  },
   individualMappings:[...dedupeIndividual.values()],
   groupMappings:[...dedupeGroups.values()]
 };
 await fs.mkdir('data/platforms/electroverse/validated-mappings',{recursive:true});
 await fs.writeFile(OUT,JSON.stringify(out,null,2)+'\n');
-console.log(JSON.stringify({generatedAt:out.generatedAt,stats:out.stats,individualMappings:out.individualMappings.length,groupMappings:out.groupMappings.length,totalRecoverable:Object.values(out.stats).reduce((a,b)=>a+b,0)},null,2));
+console.log(JSON.stringify({generatedAt:out.generatedAt,stats:out.stats,individualMappings:out.individualMappings.length,groupMappings:out.groupMappings.length},null,2));
