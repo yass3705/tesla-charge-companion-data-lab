@@ -203,6 +203,7 @@ const stats={
   qovHomogeneousGroupCandidateEvses:0,qovHomogeneousGroupPublishedEvses:0,
   genericHomogeneousGroupCandidateEvses:0,genericHomogeneousGroupPublishedEvses:0,
   genericHomogeneousGroupByOperator:{},
+  genericExactSetDiagnostics:{sites:{},pdcs:{},byOperator:{}},
   durationBandCandidateEvses:0,durationBandPublishedEvses:0,
   duplicatePublishedEvseTargetsBeforeDedup:0,conflictingPublishedEvseTargetsBeforeDedup:0,
   dedupedIdenticalOffers:0,conflictingTargetsDropped:0,
@@ -993,6 +994,13 @@ for(const sh of manifest.shards||[]){
     const genericExactSetTargets=new Map();
     const genericGroupedSourceEvses=new Set();
     {
+      const diag=(reason,pdcCount,op='UNKNOWN')=>{
+        stats.genericExactSetDiagnostics.sites[reason]=(stats.genericExactSetDiagnostics.sites[reason]||0)+1;
+        stats.genericExactSetDiagnostics.pdcs[reason]=(stats.genericExactSetDiagnostics.pdcs[reason]||0)+Number(pdcCount||0);
+        const x=stats.genericExactSetDiagnostics.byOperator[op]||(stats.genericExactSetDiagnostics.byOperator[op]={sites:{},pdcs:{}});
+        x.sites[reason]=(x.sites[reason]||0)+1;
+        x.pdcs[reason]=(x.pdcs[reason]||0)+Number(pdcCount||0);
+      };
       const claimed=new Set();
       const unresolved=[];
       for(const e0 of row.tariff?.evses||[]){
@@ -1017,28 +1025,44 @@ for(const sh of manifest.shards||[]){
       };
       const opSet=new Set(unclaimed.map(opCode).filter(Boolean));
       const recognizedSingleOperator=unclaimed.length>0 && opSet.size===1 && unclaimed.every(p=>opCode(p));
-      if(recognizedSingleOperator && unresolved.length===unclaimed.length &&
-         unclaimed.every(p=>(globalPdcOwners.get(p)?.size||0)===1)){
+      const operator=opSet.size===1?[...opSet][0]:'UNKNOWN';
+      if(!unclaimed.length){
+        // nothing left to diagnose
+      }else if(!recognizedSingleOperator){
+        diag('multi_or_unknown_operator',unclaimed.length,operator);
+      }else if(unresolved.length!==unclaimed.length){
+        diag(unresolved.length===0?'no_unresolved_source':'cardinality_mismatch',unclaimed.length,operator);
+      }else if(!unclaimed.every(p=>(globalPdcOwners.get(p)?.size||0)===1)){
+        diag('target_pdc_not_globally_unique',unclaimed.length,operator);
+      }else{
         const compiledRows=[];
-        let valid=true;
+        let failReason=null;
         for(const e0 of unresolved){
           const connectors=e0?.connectors||[];
-          if(!connectors.length){valid=false;break;}
+          if(!connectors.length){failReason='source_evse_no_connectors';break;}
           const compiled=[];
           for(const c0 of connectors){
-            const x=compileConnector(c0);if(!x.ok){valid=false;break;}
+            const x=compileConnector(c0);if(!x.ok){failReason='source_pricing_compile_'+x.reason;break;}
             compiled.push({pricing:x.pricing,connectorPk:c0.pk??null});
           }
-          if(!valid)break;
+          if(failReason)break;
           const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
-          if(unique.length!==1){valid=false;break;}
+          if(unique.length!==1){failReason='heterogeneous_connectors_within_source_evse';break;}
           compiledRows.push({e:e0,pricing:unique[0],connectorCount:connectors.length});
         }
-        if(valid&&compiledRows.length===unresolved.length&&compiledRows.length){
+        if(failReason){
+          diag(failReason,unclaimed.length,operator);
+        }else if(!compiledRows.length){
+          diag('no_compiled_source',unclaimed.length,operator);
+        }else{
           const pricingSigs=new Set(compiledRows.map(x=>pricingSig(x.pricing)));
           const connectorCounts=new Set(compiledRows.map(x=>x.connectorCount));
-          if(pricingSigs.size===1&&connectorCounts.size===1){
-            const operator=[...opSet][0];
+          if(pricingSigs.size!==1){
+            diag('heterogeneous_pricing_across_source_evses',unclaimed.length,operator);
+          }else if(connectorCounts.size!==1){
+            diag('heterogeneous_connector_count_across_source_evses',unclaimed.length,operator);
+          }else{
+            diag('published',unclaimed.length,operator);
             const sharedPricing=compiledRows[0].pricing;
             const connectorCount=compiledRows[0].connectorCount;
             for(const p of unclaimed)genericExactSetTargets.set(p,{operator,pricing:sharedPricing,connectorCount,sourceEvses:unresolved});
