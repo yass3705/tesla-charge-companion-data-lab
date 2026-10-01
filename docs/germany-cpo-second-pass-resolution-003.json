@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 3,
+  "date": "2026-09-17",
+  "canonicalBefore": {"totalNamedCpos":591,"complete":203,"partial":388,"blocked":0},
+  "promotions": [
+    {
+      "name":"Stadtwerke Kempen GmbH",
+      "previousStatus":"partial",
+      "newStatus":"complete",
+      "resolution":"Current first-party Stadtwerke Kempen FAQ explicitly defines ad-hoc as charging without prior registration through the QR sticker/web payment flow and states the current station tariff applies equally to registered LadeApp customers and ad-hoc sessions: 1.19 EUR start fee plus 0.45 EUR/kWh. It also warns prices can differ by location in the app, but immediately states the current price at Stadtwerke Kempen's own columns; therefore the direct CPO estate tariff is bound from first-party evidence rather than the separate 0.48 EUR/kWh wording on the public-loading overview. The 0.48 overview value is treated as contradictory/stale presentation and is not ingested.",
+      "anonymousAdHoc":{"energy":{"eurPerKwh":0.45},"startFeeEur":1.19,"payment":"QR web ad-hoc, at least credit card","parking":"free on designated EV spaces during charging"},
+      "sources":["https://www.stadtwerke-kempen.de/de/Strom/E-Mobilitaet/FAQ/","https://www.stadtwerke-kempen.de/de/Strom/E-Mobilitaet/Oeffentliches-Laden/"],
+      "safety":"First-party FAQ explicitly says the stated price applies both to registered LadeApp customers and ad-hoc charging. No roaming tariff substituted. The contradictory 0.48 overview wording is retained as a source-quality note rather than averaged or extrapolated."
+    }
+  ],
+  "boundedProgress":[
+    {"name":"Stadtwerke Goettingen AG","result":"Fresh chargecloud-derived station evidence confirms the already-bounded AC anonymous energy value 0.46 EUR/kWh. Independent station-level current records at Den-Haag-Strasse 54, Sandweg 9b and Hospitalstrasse 8 consistently expose 1.50 EUR start fee and 0.06 EUR/min blocking after 240 minutes. This materially strengthens AC fee-class evidence but does not prove DC/HPC fee exhaustiveness, so no promotion yet."},
+    {"name":"Stadtwerke Bad Kissingen GmbH","result":"Current first-party page still exposes charge it easy anonymous credit-card access but its numeric tariff table is explicitly dated 15.06.2021. It cannot be promoted as current 2026 pricing. Backend/QR extraction remains required."}
+  ],
+  "backendProgress":{"charge_it_easy_ChargeIT_LichtBlick":{"confirmedUnresolvedMembers":["Stadtwerke Einbeck GmbH","Stadtwerke Bad Kissingen GmbH","FAMILA public charging network"],"genericGuestApiStatus":"No stable documented public guest tariff API exposed; continue concrete EVSE/QR probes only, then park generic extraction after the bounded retry rule."},"chargecloud":{"testedCpos":["Stadtwerke Goettingen AG"],"effectiveCoverageThisBatch":1,"result":"Station-level read-only discovery corroborates AC energy; independent direct-payment station records add AC start/blocking fees. DC/HPC fee classes still unresolved."}},
+  "canonicalAfter":{"totalNamedCpos":591,"complete":204,"partial":387,"blocked":0},
+  "statusChanges":1,
+  "consistencyCheck":{"status":"PASS","arithmetic":"204 + 387 + 0 = 591","promotions":1,"unsafeExtrapolations":0,"registeredOrRoamingTariffSubstituted":false,"duplicateOrAliasChange":0,"repeatInvestigationGuard":"PASS: Kempen conflict resolved from first-party semantics; Goettingen work restricted to missing fee components; stale Bad Kissingen numeric table not reused as current."},
+  "nextSafeAction":"Continue Goettingen DC/HPC fee exhaustiveness and exact Allgaeuer residual EVSE reconciliation. In parallel use concrete EVSE/QR identifiers for Einbeck/Bad Kissingen charge-it-easy; if no readable guest tariff surface appears, park that generic backend route and move to the next B1/B3/B6 shared backend family."
+}
