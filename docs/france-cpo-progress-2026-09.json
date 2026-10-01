@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 131,
+  "schemaVersion": 132,
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 96,
   "setAsideCpos": 46,
   "activeRemainingCpos": 149,
-  "updatedAt": "2026-10-01T19:45:00+02:00",
+  "updatedAt": "2026-10-01T19:55:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -506,7 +506,7 @@
     "RELEASED_SLOT_145_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_ACTIVE_SLOT_147 | alias Greenspot | FR*GSP | raw rank50",
     "UNPROVEN_ACTIVE_RAW_SLOT_RELEASED_BY_EMOTUM_ALIAS",
-    "UNPROVEN_ACTIVE_154",
+    "RELEASED_ACTIVE_SLOT_154 | alias Sorégies / SOREGIES MOBILITES (Alterna énergie supplier/branding lineage; FRSRG EVSE)",
     "UNPROVEN_ACTIVE_155",
     "RELEASED_ACTIVE_SLOT_156 | alias PARERA MOBILITE | FR*MW1 raw99 (same operator authority; separate technical estate FR*VIS)",
     "UNPROVEN_ACTIVE_157",
@@ -814,7 +814,8 @@
     "ALDI MARCHE CESTAS SARL | raw rank111 -> ALDI France | FR*ALN (historical ALDI operating-family lineage; non-counting)",
     "ALDI MARCHE COLMAR SARL | raw rank114 -> ALDI France | FR*ALN (historical ALDI operating-family lineage; non-counting)",
     "ALDI MARCHE DAMMARTIN SARL | raw rank133 -> ALDI France | FR*ALN (historical ALDI operating-family lineage; non-counting)",
-    "LUMI'IN | raw rank142 -> ChargeFacile | FR*LUM | raw rank98 (same LUMI'IN ENERGIES authority; official Charge Facile app publisher/provider is LUMI'IN ENERGIES; non-counting identity lineage; no tariff inheritance)"
+    "LUMI'IN | raw rank142 -> ChargeFacile | FR*LUM | raw rank98 (same LUMI'IN ENERGIES authority; official Charge Facile app publisher/provider is LUMI'IN ENERGIES; non-counting identity lineage; no tariff inheritance)",
+    "Alterna Énergie | raw rank154 -> Sorégies / SOREGIES MOBILITES | raw ranks41/42 (same Groupe Sorégies charging-estate lineage; historical/current Alterna-labelled EVSE use FRSRG identifiers; first-party group evidence assigns charging-network operation to Sorégies while Alterna supplies energy; non-counting identity/branding lineage; no tariff inheritance beyond exact Sorégies EVSE mapping)"
   ],
   "pendingDedupe": [],
   "sourceRegistry": {
@@ -884,7 +885,8 @@
     "Idex | raw rank149": "batch507 setAside: current inventory still reconciles 3 stations/43 PDC, but first-party Idex model is customer/site-specific tariff configuration and billing. Exact site direct price requires station-specific resolver.",
     "NVH | raw rank152": "batch508 setAside: first-party NVH site exposes installation/IRVE services, not a current public numeric charging tariff; producer dataset stale Dec 2024 and current estate diverges from historical 35/35 footprint.",
     "SOLVEO ENERGIES | raw rank153": "batch509 setAside: project-specific producer IRVE datasets and no current first-party network tariff surface; current exact station/EVSE direct tariff resolver not recovered.",
-    "ANYOS | FR*PAN | raw rank148": "batch510 closure: Monta public CPO pricing export has 67/67 current FR*PAN EVSE priced across 12 sites / 12 tariff IDs, but it is explicitly an eMSP-facing CPO price surface. Exhaustive public driver deeplink test checked all 67: 67 Private charge point, 0 public direct, 0 errors. Keep setAside; never use Monta roaming export as ANYOS direct price."
+    "ANYOS | FR*PAN | raw rank148": "batch510 closure: Monta public CPO pricing export has 67/67 current FR*PAN EVSE priced across 12 sites / 12 tariff IDs, but it is explicitly an eMSP-facing CPO price surface. Exhaustive public driver deeplink test checked all 67: 67 Private charge point, 0 public direct, 0 errors. Keep setAside; never use Monta roaming export as ANYOS direct price.",
+    "Alterna Énergie | raw rank154": "batch511 lineage resolved: 6-station/34-PDC historical Alterna estate uses FRSRG EVSE identifiers and current hub identities overlap Sorégies Mobilités. Groupe Sorégies first-party sources distinguish Alterna energy supply from Sorégies charging-network operation. Raw154 is a non-counting treated-authority lineage alias; exact EVSE tariff remains governed by Sorégies method/rules, not Alterna retail energy offers."
   },
   "history": [
     {
@@ -1568,9 +1570,24 @@
         "setAsideCpos": 46,
         "activeRemainingCpos": 149
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch511",
+      "change": "Materialized Alterna Énergie raw154 as non-counting lineage of treated Sorégies / SOREGIES MOBILITES. Historical 6 stations / 34 PDC use FRSRG EVSE identifiers; current hubs overlap Sorégies Mobilités estate; first-party group evidence identifies Sorégies as charging-network operator and Alterna as energy supplier. No tariff inheritance and no counter change.",
+      "ranks": [
+        154,
+        41,
+        42
+      ],
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 46,
+        "activeRemainingCpos": 149
+      }
     }
   ],
-  "currentInvestigation": "Alterna Énergie | raw rank154 | 6 stations / 34 PDC: inspect first-party CPO/direct tariff scope and current station-level pricing.",
+  "currentInvestigation": "Properphi | raw rank155 | 8 stations / 33 PDC: inspect first-party operator/payment model and direct tariff determinism.",
   "coherenceControl": {
     "batch": "batch491",
     "result": "PASS",
@@ -1585,11 +1602,11 @@
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch510",
-    "result": "PASS_ANYOS_ROAMING_DIRECT_SEPARATION",
+    "batch": "batch511",
+    "result": "PASS_ALTERNA_SOREGIES_LINEAGE",
     "counterChange": false
   },
-  "latestBatch": "batch510",
+  "latestBatch": "batch511",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2399,6 +2416,14 @@
       "category": "setAside-authority",
       "decision": "active->setAside: first-party current site has no network numeric IRVE tariff; producer datasets are project-specific and stale 2024-2025; no deterministic anonymous current direct tariff resolver recovered",
       "evidence": "docs/france-regional-cpo-solveo-batch509-2026-10-01.json"
+    },
+    {
+      "rawRank": 154,
+      "historicalOperator": "Alterna Énergie",
+      "authority": "Sorégies / SOREGIES MOBILITES",
+      "category": "treated-authority-alias",
+      "decision": "materialized as non-counting Groupe Sorégies charging-estate lineage: all historical Alterna estate PDC use FRSRG identifiers and current hubs overlap Sorégies Mobilités estate; first-party group sources identify Sorégies as charging-network operator and Alterna as energy supplier. No new treated increment and no blind tariff inheritance.",
+      "evidence": "docs/france-cpo-dual-ledger-lineage-batch511-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
