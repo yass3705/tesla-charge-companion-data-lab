@@ -249,6 +249,7 @@ const stats={
   izfHomogeneousGroupCandidateEvses:0,izfHomogeneousGroupPublishedEvses:0,
   viaFinalOrdinalCandidateRefs:0,viaFinalOrdinalPublishedEvses:0,
   viaHomogeneousGroupCandidateEvses:0,viaHomogeneousGroupPublishedEvses:0,
+  viaStructuredBasePairCandidateEvses:0,viaStructuredBasePairPublishedEvses:0,
   c55HomogeneousGroupCandidateEvses:0,c55HomogeneousGroupPublishedEvses:0,
   hpcOrdinalGroupCandidateEvses:0,hpcOrdinalGroupPublishedEvses:0,
   c55BIndexCandidateEvses:0,c55BIndexPublishedEvses:0,
@@ -948,6 +949,49 @@ for(const sh of manifest.shards||[]){
       }
     }
 
+    // VIA structured base-pair identity.
+    // Example: 164006-01 -> FRVIAE20164006011, 164006-02 -> ...012,
+    // 164006-03 -> ...021. The source station stem must be embedded verbatim in the
+    // national PDC base (prefixed by VIA's leading "20"), every target must be globally
+    // unique, and the national connector suffix must be exactly a 1/2 pair.
+    const viaStructuredBasePairTargets=new Map();
+    {
+      const viaMissing=[...local].filter(p=>p.startsWith('FRVIAE'));
+      if(viaMissing.length){
+        const proposals=[];
+        for(const e0 of row.tariff?.evses||[]){
+          const pr0=text(e0?.physicalReference);if(!pr0)continue;
+          const k0=norm(pr0);
+          if(local.has(k0)||ordinalTargets.has(e0)||genericTargets.has(e0)||suffixTargets.has(e0)||trimmedSuffixTargets.has(e0)||pd1FinalOrdinalTargets.has(e0)||viaFinalOrdinalTargets.has(e0))continue;
+          const mm=pr0.match(/^(\d{5,8})-(\d{2})$/);
+          if(!mm)continue;
+          const stem=mm[1],n=Number(mm[2]);
+          if(!Number.isFinite(n)||n<1)continue;
+          const g=Math.ceil(n/2),connector=((n-1)%2)+1;
+          const suffix=String(g).padStart(2,'0')+String(connector);
+          const expectedBase='FRVIAE20'+stem;
+          const hits=viaMissing.filter(p=>p.startsWith(expectedBase)&&p.endsWith(suffix));
+          if(hits.length!==1)continue;
+          const target=hits[0];
+          if((globalPdcOwners.get(target)?.size||0)!==1)continue;
+          proposals.push({e:e0,target,stem});
+        }
+        const byStem=new Map();
+        for(const x of proposals){const a=byStem.get(x.stem)||[];a.push(x);byStem.set(x.stem,a);}
+        for(const [stem,items] of byStem){
+          if(new Set(items.map(x=>x.e)).size!==items.length||new Set(items.map(x=>x.target)).size!==items.length)continue;
+          const sameBase=viaMissing.filter(p=>p.startsWith('FRVIAE20'+stem));
+          if(!sameBase.length)continue;
+          const bad=sameBase.some(p=>{
+            const m=p.match(/(\d{2})(\d)$/);if(!m)return true;
+            const cc=Number(m[2]);return cc!==1&&cc!==2;
+          });
+          if(bad)continue;
+          for(const x of items)viaStructuredBasePairTargets.set(x.e,x.target);
+        }
+      }
+    }
+
     // 55C structured B-index identity: B01 -> suffix 0, B02 -> suffix 1, ...
     // Apply only when every unresolved Bxx reference is unique, the full remaining
     // 55C target set has the exact matching zero-based suffix set, and every target
@@ -1572,6 +1616,13 @@ for(const sh of manifest.shards||[]){
           targetPdc=localByNorm.get(targetNorm);
           identityMode='strict_55c_bindex_zero_based_suffix';
           stats.c55BIndexCandidateEvses++;
+        }else if(viaStructuredBasePairTargets.has(e)){
+          const targetNorm=viaStructuredBasePairTargets.get(e);
+          const owners=globalPdcOwners.get(targetNorm);
+          if(!owners||owners.size!==1){rej('via_structured_base_pair_pdc_not_globally_unique');continue;}
+          targetPdc=localByNorm.get(targetNorm);
+          identityMode='strict_via_structured_base_pair';
+          stats.viaStructuredBasePairCandidateEvses++;
         }else{
           rej(candidates.length?'parent_pdc_ambiguous':'physical_reference_not_in_local_national_pdcs');continue;
         }
@@ -1705,6 +1756,7 @@ for(const sh of manifest.shards||[]){
       if(identityMode==='strict_pd1_final_ordinal_subgroup_bijection')stats.pd1FinalOrdinalPublishedEvses++;
       if(identityMode==='strict_via_final_ordinal_subgroup_bijection')stats.viaFinalOrdinalPublishedEvses++;
       if(identityMode==='strict_55c_bindex_zero_based_suffix')stats.c55BIndexPublishedEvses++;
+      if(identityMode==='strict_via_structured_base_pair')stats.viaStructuredBasePairPublishedEvses++;
       stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=compiled.length;
     }
   }
@@ -1796,6 +1848,7 @@ stats.pd1FinalOrdinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMo
 stats.izfHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_izf_homogeneous_exact_set').length;
 stats.viaFinalOrdinalPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_via_final_ordinal_subgroup_bijection').length;
 stats.viaHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_via_homogeneous_exact_set').length;
+stats.viaStructuredBasePairPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_via_structured_base_pair').length;
 stats.c55HomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_homogeneous_exact_set').length;
 stats.hpcOrdinalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_hpc_duplicate_ordinal_to_three_digit_pdc').length;
 stats.c55BIndexPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_55c_bindex_zero_based_suffix').length;
@@ -1872,6 +1925,10 @@ const out={
     viaExactSetRequiresHomogeneousPricing:true,
     viaExactSetRequiresUniformConnectorCount:true,
     viaExactSetRequiresGlobalPdcUniqueness:true,
+    strictViaStructuredBasePair:true,
+    viaStructuredBasePairRequiresEmbeddedStationStem:true,
+    viaStructuredBasePairRequiresConnectorPairOneTwo:true,
+    viaStructuredBasePairRequiresGlobalPdcUniqueness:true,
     strict55cHomogeneousExactSet:true,
     c55ExactSetRequiresEqualCardinality:true,
     c55ExactSetRequiresHomogeneousPricing:true,
