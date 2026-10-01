@@ -1,0 +1,149 @@
+name: Shell BE residual exact probe
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/shell-be-residual-exact-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: shell-api-global
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SHELL_EV_CLIENT_ID: ${{ secrets.SHELL_EV_CLIENT_ID }}
+      SHELL_EV_CLIENT_SECRET: ${{ secrets.SHELL_EV_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe Jemappes and Boncelles exact residuals
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reports/belgium
+          python3 - <<'PY'
+          import os,json,time,uuid,urllib.parse,urllib.request,urllib.error
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          cid=os.environ["SHELL_EV_CLIENT_ID"]; secret=os.environ["SHELL_EV_CLIENT_SECRET"]
+          AUTH="https://api-test.shell.com/v1/oauth/token"; BASE="https://api-test.shell.com/ev"
+          UA="TeslaChargeCompanion/9 Shell-BE-Residual"; PROVIDER="Shell_RP_2"
+          last=0.0; token=None
+
+          def throttle():
+              global last
+              now=time.monotonic(); wait=7.5-(now-last)
+              if wait>0: time.sleep(wait)
+              last=time.monotonic()
+
+          def auth():
+              global token
+              throttle()
+              form=urllib.parse.urlencode({"client_id":cid,"client_secret":secret,"grant_type":"client_credentials"}).encode()
+              req=urllib.request.Request(AUTH,data=form,method="POST",headers={
+                  "Content-Type":"application/x-www-form-urlencoded","Accept":"application/json","User-Agent":UA})
+              with urllib.request.urlopen(req,timeout=30) as rr:
+                  token=json.loads(rr.read().decode())["access_token"]
+          auth()
+
+          def get(path,params=None):
+              global token
+              for attempt in range(2):
+                  throttle()
+                  url=BASE+path
+                  if params: url+="?"+urllib.parse.urlencode(params)
+                  req=urllib.request.Request(url,headers={
+                      "Authorization":"Bearer "+token,"Accept":"application/json",
+                      "RequestId":str(uuid.uuid4()),"User-Agent":UA})
+                  try:
+                      with urllib.request.urlopen(req,timeout=30) as rr:
+                          return rr.status,json.loads(rr.read().decode())
+                  except urllib.error.HTTPError as e:
+                      if e.code==401 and attempt==0:
+                          auth(); continue
+                      return e.code,{"errorBody":e.read().decode("utf-8","replace")[:2000]}
+              return 0,{}
+
+          targets=[
+            {"name":"Jemappes","lat":50.447948,"lon":3.904883,"expected":[
+              "BE*TNM*EGL3203003301*1","BE*TNM*EGL3203003303*2","BE*TNM*EGL3203003305*2","BE*TNM*EGL3203003303*1",
+              "BE*TNM*EGL3203003304*2","BE*TNM*EGL3203003302*2","BE*TNM*EGL3203003306*2","BE*TNM*EGL3203003302*1",
+              "BE*TNM*EGL3203003304*1","BE*TNM*EGL3203003305*1","BE*TNM*EGL3203003306*1","BE*TNM*EGL3203003301*2"]},
+            {"name":"Boncelles","lat":50.569318,"lon":5.551366,"expected":[
+              "BE*TNM*EGL3203002802*2","BE*TNM*EGL3203002803*1","BE*TNM*EGL3203002805*1","BE*TNM*EGL3203002803*2",
+              "BE*TNM*EGL3203002806*1","BE*TNM*EGL3203002804*1","BE*TNM*EGL3203002802*1","BE*TNM*EGL3203002801*1",
+              "BE*TNM*EGL3203002806*2","BE*TNM*EGL3203002804*2","BE*TNM*EGL3203002801*2","BE*TNM*EGL3203002805*2"]}
+          ]
+
+          out={"retrievedAt":datetime.now(timezone.utc).isoformat(),"providerId":PROVIDER,"targets":[]}
+          for t in targets:
+              st,body=get("/v2/locations/nearby",{"latitude":t["lat"],"longitude":t["lon"]})
+              data=body.get("data") if isinstance(body,dict) else []
+              if not isinstance(data,list): data=[]
+              candidates=[]
+              for loc in data:
+                  if not isinstance(loc,dict): continue
+                  op=str(loc.get("operatorName") or "")
+                  if "shell" not in op.lower() and "ubitricity" not in op.lower() and "newmotion" not in op.lower():
+                      continue
+                  uid=loc.get("uid") or loc.get("externalId")
+                  if not uid: continue
+                  st2,b2=get("/v2/locations/"+urllib.parse.quote(str(uid),safe=""),{"providerId":PROVIDER})
+                  d=b2.get("data") if isinstance(b2,dict) else None
+                  if isinstance(d,list) and d: d=d[0]
+                  if not isinstance(d,dict): continue
+                  evses=[]; tariffs=[]
+                  for ev in d.get("evses") or []:
+                      eid=ev.get("evseId")
+                      evses.append(eid)
+                      for conn in ev.get("connectors") or []:
+                          for tariff in conn.get("tariffs") or []:
+                              tariffs.append({"evseId":eid,"connectorUid":conn.get("uid"),"tariff":tariff})
+                  candidates.append({
+                      "uid":uid,"operatorId":d.get("operatorId"),"operatorName":d.get("operatorName"),
+                      "address":d.get("address"),"evseIds":evses,"tariffs":tariffs
+                  })
+              expected=set(t["expected"])
+              matched=[]
+              for c in candidates:
+                  for tr in c["tariffs"]:
+                      if tr["evseId"] in expected:
+                          matched.append(tr)
+              out["targets"].append({
+                  **t,"nearbyHttpStatus":st,"candidateCount":len(candidates),"candidates":candidates,
+                  "matchedTariffEvseIds":sorted(set(x["evseId"] for x in matched)),
+                  "unresolvedExpectedEvseIds":sorted(expected-set(x["evseId"] for x in matched))
+              })
+
+          Path("reports/belgium/shell-residual-exact-probe-latest.json").write_text(
+              json.dumps(out,ensure_ascii=False,indent=2)+"\n"
+          )
+          print(json.dumps([{
+              "name":x["name"],"candidateCount":x["candidateCount"],
+              "matched":len(x["matchedTariffEvseIds"]),
+              "unresolved":len(x["unresolvedExpectedEvseIds"])
+          } for x in out["targets"]],indent=2))
+          PY
+
+      - name: Publish report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp reports/belgium/shell-residual-exact-probe-latest.json /tmp/shell-residual-exact-probe-latest.json
+          git fetch origin main
+          git reset --hard origin/main
+          cp /tmp/shell-residual-exact-probe-latest.json reports/belgium/shell-residual-exact-probe-latest.json
+          git add reports/belgium/shell-residual-exact-probe-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(be): probe exact Shell residual tariffs [run ${GITHUB_RUN_ID}]"
+          git push origin HEAD:main
