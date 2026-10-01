@@ -22,15 +22,18 @@ jobs:
       - name: Persist H01 residual analysis
         run: |
           test -s reports/electroverse/h01-residual-analysis.json
-          node -e "JSON.parse(require('fs').readFileSync('reports/electroverse/h01-residual-analysis.json','utf8'))"
+          test -s data/platforms/electroverse/validated-mappings/h01-structured-residual.json
+          node -e "JSON.parse(require('fs').readFileSync('reports/electroverse/h01-residual-analysis.json','utf8')); JSON.parse(require('fs').readFileSync('data/platforms/electroverse/validated-mappings/h01-structured-residual.json','utf8'))"
           cp reports/electroverse/h01-residual-analysis.json /tmp/h01-residual-analysis.json
+          cp data/platforms/electroverse/validated-mappings/h01-structured-residual.json /tmp/h01-structured-residual.json
           git fetch origin main
           git reset --hard origin/main
-          mkdir -p reports/electroverse
+          mkdir -p reports/electroverse data/platforms/electroverse/validated-mappings
           cp /tmp/h01-residual-analysis.json reports/electroverse/h01-residual-analysis.json
+          cp /tmp/h01-structured-residual.json data/platforms/electroverse/validated-mappings/h01-structured-residual.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add reports/electroverse/h01-residual-analysis.json
+          git add reports/electroverse/h01-residual-analysis.json data/platforms/electroverse/validated-mappings/h01-structured-residual.json
           if ! git diff --cached --quiet; then
             git commit -m "data: persist Electroverse H01 residual analysis"
             for attempt in 1 2 3 4 5; do
@@ -44,5 +47,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: electroverse-france-h01-residual-analysis
-          path: reports/electroverse/h01-residual-analysis.json
+          path: |
+            reports/electroverse/h01-residual-analysis.json
+            data/platforms/electroverse/validated-mappings/h01-structured-residual.json
           retention-days: 14
