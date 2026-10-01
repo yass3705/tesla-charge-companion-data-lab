@@ -301,6 +301,8 @@ for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
 }
 
 const tiles=new Map(),rejected={},parentGroups=new Map();
+const debugNumericSourcePks=new Set(['4179421','4179445','4132457','4132473']);
+const debugNumericProfiles=new Map();
 const pricingDiagnostics={
   dateRestriction:{evses:0,restrictions:0,withStart:0,withEnd:0,withBoth:0,ranges:{},samples:[]},
   boundedDuration:{evses:0,restrictions:0,bands:{},componentTypes:{},samples:[]},
@@ -353,6 +355,18 @@ for(const sh of manifest.shards||[]){
   const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
   for(const row of Object.values(data.stations||{})){
     stats.cacheLocations++;
+    for(const e0 of row.tariff?.evses||[]){
+      if(debugNumericSourcePks.has(String(e0?.pk??''))){
+        debugNumericProfiles.set(String(e0.pk),{
+          physicalReference:text(e0?.physicalReference),
+          connectors:(e0?.connectors||[]).map(c0=>({
+            pk:c0?.pk??null,
+            powerKw:c0?.kilowatts??null,
+            standard:c0?.standard?.name||c0?.standard||null
+          }))
+        });
+      }
+    }
     const m=byPk.get(String(row.electroverseLocationPk));
     if(!m){rej('missing_location_mapping');continue;}
     const localRaw=(m.irvePdcIds||row.irvePdcIds||[]).filter(Boolean);
@@ -2232,6 +2246,10 @@ for(const [target,items] of offersByTarget.entries()){
           ...(x.offer.metadata?.electroverseEvsePks||[]).map(String),
           ...(x.offer.metadata?.electroverseEvsePk!=null?[String(x.offer.metadata.electroverseEvsePk)]:[])
         ],
+        sourceProfiles:[
+          ...(x.offer.metadata?.electroverseEvsePks||[]).map(String),
+          ...(x.offer.metadata?.electroverseEvsePk!=null?[String(x.offer.metadata.electroverseEvsePk)]:[])
+        ].map(pk=>({pk,profile:debugNumericProfiles.get(pk)||null})),
         physicalReferences:x.offer.metadata?.physicalReferences||[x.offer.metadata?.physicalReference].filter(Boolean),
         connectorCount:x.offer.metadata?.connectorCount??null,
         pricing:x.offer.pricing
@@ -2453,3 +2471,4 @@ if(stats.publishedOffers<5000)throw new Error('too few safe Electroverse EVSE of
 
 // debug NUMERIC exact-set dedupe 2026-10-01
 // enrich NUMERIC dedupe debug 2026-10-01
+// trace NUMERIC source connector profiles 2026-10-01
