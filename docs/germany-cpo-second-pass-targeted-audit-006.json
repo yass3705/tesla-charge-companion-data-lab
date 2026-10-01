@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-targeted-audit",
+  "auditBatch": 6,
+  "date": "2026-09-16",
+  "audited": [
+    {
+      "name": "Stadtwerke Leipzig GmbH",
+      "statusAfter": "partial",
+      "result": "Fresh evidence materially changes the Leipzig resolution path. First-party Stadtwerke Leipzig still confirms anonymous ad-hoc access through the station QR flow. Additional post-2024 sites are now evidenced: Kurt-Eisner-Strasse 100 (2x Type 2 22 kW; surfaced 2025) and Coppistrasse/Etkar-Andre-Strasse (2x CCS 50 kW plus 1x Type 2 22 kW; surfaced 2025), in addition to the first-party P+R Neue Messe deployment (2 HPC units / 4 points up to 400 kW plus 4 AC Duo / 8 points up to 22 kW). More importantly, a fresh secondary source states ad-hoc at Stadtwerke-owned points is 0.54 EUR/kWh AC and 0.64 EUR/kWh DC, conflicting with the previously captured secondary report of 0.65/0.75 EUR/kWh. Because the first-party tariff page explicitly labels 0.54/0.64 as the registered regular L-Strom.drive tariff rather than ad-hoc, neither secondary interpretation is promoted. Leipzig is therefore reclassified operationally as a B7 tariff-source conflict nested inside the existing B1 post-2024 coverage task. Fail-closed remains mandatory until the ad-hoc checkout/price surface or another explicit first-party ad-hoc price statement resolves the conflict.",
+      "sources": [
+        "https://kundenservice-stadtwerke.l.de/hc/de/articles/360022131059-Wie-erhalte-ich-einen-Zugang-zu-den-Ladestationen-der-Leipziger-Stadtwerke",
+        "https://www.l.de/stadtwerke/privatkunden/e-mobilitaet/unterwegs-laden/",
+        "https://de.linkedin.com/posts/leipziger-stadtwerke_elektromobilit%C3%A4t-ladeinfrastruktur-parkandride-activity-7422182958855245824-q1oM",
+        "https://www.electromaps.com/de/ladestationen/deutschland/sachsen/leipzig/leipziger-stadtwerke-kurt-eisner-str-kurt-eisner-strae",
+        "https://www.electromaps.com/de/ladestationen/deutschland/sachsen/leipzig/leipziger-stadtwerke-coppistr-etkar-andre-strae",
+        "https://www.autobild.de/artikel/stromkosten-e-auto-oeffentlich-laden-19438557.html"
+      ],
+      "nextBlocker": "B7_ADHOC_TARIFF_CONFLICT_PLUS_B1_POST_2024_ENUMERATION",
+      "nextAction": "Query the public ad-hoc checkout/QR surface for explicit current AC/DC price binding without initiating a charge or bypassing controls; continue enumerating post-2024 Stadtwerke Leipzig EVSEs from BNetzA/Mobilithek. Do not promote 0.54/0.64 or 0.65/0.75 until first-party ad-hoc semantics are explicit."
+    }
+  ],
+  "statusChanges": 0,
+  "canonicalCountsAfter": {"totalNamedCpos":591,"complete":202,"partial":389,"blocked":0},
+  "consistencyCheck": {
+    "status":"PASS",
+    "arithmetic":"202 + 389 + 0 = 591",
+    "promotions":0,
+    "unsafeExtrapolations":0,
+    "registeredOrRoamingTariffSubstituted":false,
+    "duplicateOrAliasChange":0,
+    "repeatInvestigationGuard":"PASS: Leipzig gained new post-2024 site evidence and, critically, a newly identified contradictory ad-hoc tariff claim; investigation path changes to direct checkout conflict resolution rather than repeating generic tariff search.",
+    "materialProgress":"Two additional post-2024 Leipzig sites are evidenced and an unsafe potential tariff substitution was caught before promotion."
+  },
+  "nextSafeAction":"Resolve Leipzig ad-hoc price semantics directly from its public QR/checkout surface, then return to Allgaeuer residual EVSE-to-zone mapping when a concrete EVSE identity/source is available. Keep GEW/Goettingen dormant absent new fee-completeness evidence."
+}
