@@ -1,0 +1,28 @@
+name: Inspect Electroverse homogeneous quickwin pricing
+on:
+  push:
+    branches:
+      - electroverse-residual-quickwins-lab
+    paths:
+      - "scripts/extract_electroverse_current_homogeneous_quickwins_raw.mjs"
+      - ".github/workflows/electroverse-homogeneous-quickwins-raw.yml"
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/extract_electroverse_current_homogeneous_quickwins_raw.mjs
+      - name: Persist
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/current-homogeneous-quickwins-raw.json
+          git commit -m "audit: publish quickwin connector pricing" || exit 0
+          git pull --rebase origin electroverse-residual-quickwins-lab
+          git push
