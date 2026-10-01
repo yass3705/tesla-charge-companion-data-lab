@@ -262,7 +262,7 @@ def main() -> int:
             ],
             "relevantTariffFingerprintSha256": fingerprint,
         },
-        "publicationStatus": "candidate_validated_source_with_fee_discrepancy",
+        "publicationStatus": "candidate_validated_source",
         "notes": [
             "The current live MobiSDEC site is used as the machine-validated tariff authority because the former SDEC PDF URL is no longer a stable PDF endpoint.",
             "The current public immobilization fee is 0.21 EUR/min, starting 15 minutes after charging ends and waived from 00:00 to 07:00 while energy remains billable.",
