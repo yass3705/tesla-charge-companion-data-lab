@@ -2143,6 +2143,22 @@ for(const [tileIdKey,offers] of tiles.entries()) for(const offer of offers){
   arr.push({tileIdKey,offer,pricingSig:pricingSig(offer.pricing)});
   offersByTarget.set(target,arr);
 }
+for(const debugTarget of ['FRGSPE12345958361','FRGSPE12345958371']){
+  const dbg=offersByTarget.get(debugTarget)||[];
+  console.log('DEBUG_GSP_PREDEDUPE', JSON.stringify({
+    target:debugTarget,
+    offers:dbg.map(x=>({
+      id:x.offer.id,
+      identityMode:x.offer.metadata?.identityMode||null,
+      electroverseLocationPk:x.offer.metadata?.electroverseLocationPk||null,
+      electroverseEvsePk:x.offer.metadata?.electroverseEvsePk||null,
+      electroverseEvsePks:x.offer.metadata?.electroverseEvsePks||null,
+      physicalReference:x.offer.metadata?.physicalReference||null,
+      physicalReferences:x.offer.metadata?.physicalReferences||null,
+      pricing:x.offer.pricing
+    }))
+  }));
+}
 const dropOfferIds=new Set();
 for(const [target,items] of offersByTarget.entries()){
   if(items.length<2)continue;
