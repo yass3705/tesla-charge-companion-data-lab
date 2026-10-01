@@ -1,0 +1,37 @@
+name: Build France Electroverse VIA partial base-pair lab
+on:
+  push:
+    branches:
+      - electroverse-via-partial-basepair-lab
+    paths:
+      - "scripts/build_electroverse_france_evse_overlay.mjs"
+      - ".github/workflows/electroverse-via-partial-basepair-lab.yml"
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build VIA partial base-pair lab
+        run: node scripts/build_electroverse_france_evse_overlay.mjs
+      - name: Fetch main ref
+        run: git fetch origin main:refs/remotes/origin/main
+      - name: Compare lab against main
+        run: node scripts/compare_electroverse_main_vs_duration_lab.mjs
+      - name: Persist lab overlay
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/platforms/electroverse/france-evse
+          if git diff --cached --quiet; then
+            echo "No data changes"
+          else
+            git commit -m "lab: publish VIA partial base-pair overlay"
+            git pull --rebase origin electroverse-via-partial-basepair-lab
+            git push
+          fi
