@@ -54,6 +54,29 @@ def fetch_bytes(url: str, attempts: int = 3) -> tuple[bytes, int]:
     raise RuntimeError(f"Unable to fetch {url} after {attempts} attempts: {last}")
 
 
+def render_html_bytes(url: str) -> tuple[bytes, int]:
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    opts = webdriver.ChromeOptions()
+    opts.add_argument("--headless=new")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--disable-gpu")
+    opts.add_argument("--lang=fr-FR")
+    opts.add_argument(f"--user-agent={UA}")
+    driver = webdriver.Chrome(options=opts)
+    try:
+        driver.get(url)
+        WebDriverWait(driver, 35).until(
+            lambda d: "0,42" in (d.find_element(By.TAG_NAME, "body").text or "")
+            and "MobiSDEC" in (d.find_element(By.TAG_NAME, "body").text or "")
+        )
+        return driver.page_source.encode("utf-8"), 200
+    finally:
+        driver.quit()
+
+
 def html_text(raw: bytes) -> str:
     s = raw.decode("utf-8", errors="replace")
     s = re.sub(r"<script\b[^>]*>.*?</script>", " ", s, flags=re.I | re.S)
@@ -121,6 +144,8 @@ def compact_station(row: dict[str, str] | None) -> dict | None:
 
 def main() -> int:
     mob_raw, mob_status = fetch_bytes(MOBISDEC_URL)
+    if "0,42" not in html_text(mob_raw):
+        mob_raw, mob_status = render_html_bytes(MOBISDEC_URL)
     sdec_raw, sdec_status = fetch_bytes(SDEC_MOBILITY_URL)
     try:
         pdf_raw, pdf_status = fetch_bytes(SDEC_2026_PDF)
