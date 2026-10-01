@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-backend-routing",
+  "routingBatch": 3,
+  "date": "2026-09-17",
+  "canonicalBefore": {"totalNamedCpos":591,"complete":203,"partial":388,"blocked":0},
+  "family": "charge_it_easy_ChargeIT_LichtBlick",
+  "membersChecked": [
+    {
+      "name":"Stadtwerke Bad Kissingen GmbH",
+      "statusAfter":"partial",
+      "result":"Current first-party page confirms three active named public locations and anonymous charging without prior registration through charge it easy with credit-card payment. Its numeric tariff table is explicitly dated 15.06.2021 and Parkhaus Zentrum is currently unavailable, so stale numeric values are not promoted.",
+      "next":"Use current Mobilithek/AFIR per-EVSE reconciliation unless a genuinely new concrete public QR/EVSE token appears."
+    },
+    {
+      "name":"Stadtwerke Einbeck GmbH",
+      "statusAfter":"partial",
+      "result":"Second evidence-led Charge-IT/LichtBlick pass used concrete current Einbeck locations (Moencheplatz, Grimsehlstrasse 17, PS.SPEICHER/Jahnstrasse 1 and Keene-Platz). Current municipal pages sourced to Stadtwerke Einbeck prove charge-it-easy anonymous use without registration and credit-card payment, but expose no public station QR token/EVSE identifier and no numeric checkout tariff. Current station-level discovery reports ChargeIT mobility 0.49 EUR/kWh AC and 0.64 EUR/kWh DC, but blocking fees are not authoritatively/exhaustively bound, so no promotion is safe.",
+      "next":"Switch to current Mobilithek/AFIR per-EVSE reconciliation. Re-open LichtBlick payment extraction only if a new concrete QR/EVSE token or documented guest API contract appears."
+    }
+  ],
+  "backendMethodStatus": {
+    "publicEntryPoint":"payments.lichtblick-emobility.de Online-Direktbezahlung",
+    "genericGuestTariffApi":"not established",
+    "genericProbeCount":2,
+    "genericExtraction":"PARKED",
+    "rule":"Two distinct evidence-led probes are exhausted: generic official entry-point discovery, then concrete Einbeck location-led discovery. Do not repeat endpoint/QR guessing without new evidence."
+  },
+  "batchCoverage": {"confirmedFamilyMembersBefore":3,"membersActivelyAdvanced":2,"promotions":0,"potentialRemainingMembers":3,"effectivelyResolvedByBatch":0},
+  "canonicalAfter": {"totalNamedCpos":591,"complete":203,"partial":388,"blocked":0},
+  "consistencyCheck": {"status":"PASS","arithmetic":"203 + 388 + 0 = 591","unsafeExtrapolations":0,"registeredOrRoamingTariffSubstituted":false,"duplicateOrAliasChange":0,"repeatInvestigationGuard":"PASS: generic Charge-IT extraction is now explicitly parked after two distinct unsuccessful evidence-led probes."},
+  "sources":["https://stwkiss.de/mobilitaet/e-tankstellen/","https://www.einbeck-tourismus.de/poi/e-auto-ladestation-am-moencheplatz","https://www.einbeck-tourismus.de/poi/e-bike-e-auto-ladestation-stadtwerke-einbeck","https://www.einbeck-tourismus.de/poi/e-auto-ladestation-am-psspeicher","https://www.einbeck-tourismus.de/poi/e-auto-ladestation-keene-platz-am-neuen-rathaus","https://evlade.de/niedersachsen/einbeck/moencheplatz-106937/","https://evlade.de/niedersachsen/einbeck/stadtwerke-107139/","https://payments.lichtblick-emobility.de/de"],
+  "nextSafeAction":"Return priority to exact Allgaeuer residual EVSE reconciliation and seed/probe a different reusable B1/B3/B6 backend family. Charge-IT generic extraction remains parked."
+}
