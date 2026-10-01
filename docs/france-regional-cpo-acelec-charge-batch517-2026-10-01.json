@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": "batch517",
+  "date": "2026-10-01",
+  "subject": "Acelec Charge | raw rank168",
+  "result": "PASS_FAIL_CLOSED_SETASIDE",
+  "inventory": {
+    "historical": {
+      "stations": 3,
+      "pdc": 20
+    },
+    "currentObserved": {
+      "stations": 3,
+      "pdc": 20,
+      "match": "exact current footprint count"
+    }
+  },
+  "directEvidence": [
+    {
+      "type": "producer",
+      "finding": "ACELEC Charge is installer, CPO and mobility operator; producer data.gouv dataset exists but was last updated 2024-12-06."
+    },
+    {
+      "type": "official_app",
+      "finding": "Acelec Charge Android app is published on Saascharge white-label platform (com.saascharge.mobile.acelec)."
+    },
+    {
+      "type": "backend_vendor_first_party",
+      "finding": "Saascharge CSO supports multiple pricing plans for site owners; APIs expose charging data/functions but access requires integration/test token."
+    }
+  ],
+  "observedHeterogeneity": "Current 3-station/20-PDC public inventory shows different station prices (e.g. 0.27 vs 0.30 EUR/kWh), confirming no safe national tariff rule.",
+  "decision": "active->setAside; deterministic identity/footprint recovered, but no anonymous first-party station/EVSE -> configured current direct tariff resolver",
+  "fallback": "Electra then Electroverse",
+  "pendingDedupeCreated": false,
+  "next": "Continue highest-value unresolved raw slots after rank168, with raw169 already ELECTROMAPS alias."
+}
