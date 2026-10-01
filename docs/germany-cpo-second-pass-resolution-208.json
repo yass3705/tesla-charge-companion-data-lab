@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 208,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-207.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Horb am Neckar",
+      "decision": "remain partial; distinct raw-fee-field pass exhausted",
+      "evidence": {
+        "energy": "12/12 EVSE at 0.70 EUR/kWh anonymous direct",
+        "backend": "Vaylens/Mobilithek",
+        "newPass": "Public/raw-accessible surfaces inspected for explicit start/time/blocking components; no authoritative machine-readable zero/nonzero fee fields were exposed."
+      },
+      "exactGap": "Only anonymous fee-stack closure remains: start fee, time fee, blocking fee. Energy and denominator are fully closed.",
+      "antiStagnation": "Second distinct pass (fee-field payload) produced no authoritative fee components. Park until Vaylens/Mobilithek exposes raw fee fields or first-party checkout explicitly states them.",
+      "resumeCondition": "Explicit authoritative start/time/blocking values, including explicit zeros, for all 12 EVSEs."
+    },
+    {
+      "name": "Stadtwerke Luebbecke GmbH",
+      "decision": "remain partial; distinct raw-fee-field pass exhausted",
+      "evidence": {
+        "energy": "30/30 EVSE at 0.49 EUR/kWh anonymous direct",
+        "backend": "Vaylens/Mobilithek",
+        "newPass": "Public/raw-accessible surfaces inspected for explicit start/time/blocking components; no authoritative machine-readable zero/nonzero fee fields were exposed."
+      },
+      "exactGap": "Only anonymous fee-stack closure remains: start fee, time fee, blocking fee. Energy and denominator are fully closed.",
+      "antiStagnation": "Second distinct pass (fee-field payload) produced no authoritative fee components. Park until new fee payload/checkout evidence appears.",
+      "resumeCondition": "Explicit authoritative start/time/blocking values, including explicit zeros, for all 30 EVSEs."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "backendFamilyProgress": {
+    "vaylens_mobilithek": "Horb and Luebbecke now parked at fee-only gaps after a distinct fee-field pass; do not repeat without new payload. Next candidate identified: Stadtwerke Bad Nauheim, 24 stations / 68 EVSE, 68/68 energy-priced but multiple tariff classes."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "250 + 341 + 0 = 591",
+    "indicator": "221 -> 250 complete (+29)",
+    "repeatInvestigationGuard": "PASS",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Investigate Stadtwerke Bad Nauheim first-party/current direct tariff rule against its 68/68 Vaylens EVSE matrix. Promote only if all tariff classes and fee exceptions can be deterministically mapped."
+}
