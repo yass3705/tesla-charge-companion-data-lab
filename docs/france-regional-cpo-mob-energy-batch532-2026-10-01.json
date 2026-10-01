@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": "batch532",
+  "date": "2026-10-01",
+  "subject": "Mob-Energy | FR*MEI | raw rank189",
+  "result": "PASS_FAIL_CLOSED_SETASIDE",
+  "inventory": {
+    "historical": {
+      "stations": 1,
+      "pdc": 9
+    },
+    "current": {
+      "site": "23 Boulevard des Droits de l'Homme, Vaulx-en-Velin",
+      "pdc": 9,
+      "evsePrefix": "FRMEI",
+      "match": "exact 9-PDC footprint"
+    }
+  },
+  "evidence": [
+    {
+      "type": "current_irve",
+      "finding": "Current IRVE-derived inventory exposes 9 FRMEI EVSE at the Vaulx-en-Velin Mob-Energy site with no numeric price."
+    },
+    {
+      "type": "direct_site_specific",
+      "finding": "ENPC board resolution sets 0.30 EUR HT/kWh for 7 Mob-Energy campus chargers, proving direct tariffs can be site/customer specific."
+    },
+    {
+      "type": "no_extrapolation",
+      "finding": "ENPC tariff is a different site and cannot be inherited by the 9-PDC FRMEI historical estate."
+    }
+  ],
+  "decision": "active->setAside; exact 9/9 FRMEI footprint recovered but no deterministic current numeric direct tariff for that estate; site-specific 0.30 HT evidence explicitly not extrapolated",
+  "fallback": "Electra then Electroverse only as roaming fallback where compatible",
+  "pendingDedupeCreated": false,
+  "next": "EKLEO raw192; raw190 AUTORECHARGE and raw191 GreenFlux are aliases, raw193 ENERJUMP treated, raw194 OBORNES alias."
+}
