@@ -99,8 +99,15 @@ jobs:
                   return None
 
           first=probe("/v2/locations")
-          markers=probe("/v2/locations/markers")
-          # Nearby requires coordinates in some deployments; use central London as a harmless read-only probe.
+          # UK-wide marker inventory using the parameters required by the documented v2.1.2 route.
+          markers=probe("/v2/locations/markers",{
+              "west":-8.7,
+              "south":49.8,
+              "east":1.9,
+              "north":60.9,
+              "zoom":5
+          })
+          # Nearby is retained as an independent London control sample.
           nearby=probe("/v2/locations/nearby",{"latitude":51.5074,"longitude":-0.1278})
 
           def extract_items(j):
@@ -125,24 +132,39 @@ jobs:
               return []
 
           all_items=extract_items(first)
-          # If paginated and first page is non-empty, follow common documented pagination fields.
-          if isinstance(first,dict):
-              data=first.get("data") if isinstance(first.get("data"),dict) else first
-              page=int(data.get("page") or data.get("pageNumber") or 0)
-              total_pages=data.get("totalPages") or data.get("total_pages")
-              page_size=int(data.get("size") or data.get("pageSize") or max(len(all_items),1))
-              while total_pages is not None and page+1<int(total_pages) and page<199:
-                  page+=1
-                  jj=probe("/v2/locations",{"page":page,"size":page_size})
-                  items=extract_items(jj)
-                  if not items: break
-                  all_items.extend(items)
-                  time.sleep(.2)
 
-          # Some Sandbox tenants expose marker payloads but not full paged locations.
+          # Prefer the UK-wide marker inventory as the canonical index when available.
           marker_items=extract_items(markers)
-          if not all_items and marker_items:
+          nearby_items=extract_items(nearby)
+
+          # Resolve marker IDs to full LocationV2 objects. Marker schemas may use id/uid/externalId/locationId.
+          resolved=[]
+          seen_ids=set()
+          for m in marker_items:
+              if not isinstance(m,dict):
+                  continue
+              mid=m.get("id") or m.get("locationId") or m.get("uid") or m.get("externalId")
+              if not mid:
+                  continue
+              mid=str(mid)
+              if mid in seen_ids:
+                  continue
+              seen_ids.add(mid)
+              detail=probe("/v2/locations/"+urllib.parse.quote(mid,safe=""))
+              if isinstance(detail,dict):
+                  di=extract_items(detail)
+                  if di:
+                      resolved.extend(di)
+                  elif isinstance(detail.get("data"),dict):
+                      resolved.append(detail["data"])
+              time.sleep(.05)
+
+          if resolved:
+              all_items=resolved
+          elif marker_items:
               all_items=marker_items
+          elif nearby_items:
+              all_items=nearby_items
 
           def country_of(x):
               vals=[
