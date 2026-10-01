@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "name": "TCC V9 fixed tariff refresh policy",
+  "scope": "all countries and all direct CPO fixed tariffs",
+  "rules": [
+    "Never hard-code a fixed tariff as a timeless V9 constant.",
+    "Separate station/EVSE inventory from tariff-source refresh.",
+    "Persist source URL or endpoint, retrievedAt, effectiveFrom/effectiveTo when available, and provenance.",
+    "Keep the last validated tariff if refresh parsing or source retrieval fails; mark the refresh anomalous instead of overwriting with null/garbage.",
+    "Preserve tariff history or auditable prior versions.",
+    "Apply refreshed tariffs to all deterministically compatible EVSE/connectors only.",
+    "Station-specific or exception tariffs remain fail-closed unless exact scope is proven.",
+    "Direct-CPO tariffs must not be replaced by third-party eMSP/roaming prices."
+  ],
+  "auditReport": "reports/fixed-tariff-refresh-audit.json",
+  "auditWorkflow": ".github/workflows/audit-fixed-tariff-refresh.yml"
+}
