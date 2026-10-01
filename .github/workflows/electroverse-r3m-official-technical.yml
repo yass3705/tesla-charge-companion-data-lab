@@ -1,0 +1,28 @@
+name: Audit Electroverse FR R3M official technical
+on:
+  push:
+    branches:
+      - audit/electroverse-r3m-official-technical
+    paths:
+      - "scripts/audit_electroverse_r3m_official_technical.mjs"
+      - ".github/workflows/electroverse-r3m-official-technical.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Audit R3M against official R3 open data
+        run: node scripts/audit_electroverse_r3m_official_technical.mjs
+      - name: Persist report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse-r3m-official-technical.json
+          git commit -m "audit: publish R3M official technical report" || exit 0
+          git push
