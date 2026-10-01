@@ -1,0 +1,35 @@
+{
+  "country": "DE",
+  "phase": "V9 second-pass targeted audit",
+  "audit": 7,
+  "date": "2026-09-17",
+  "canonicalStatus": {"treated": 591, "total": 591, "complete": 202, "partial": 389, "blocked": 0},
+  "targets": [
+    {
+      "cpo": "Stadtwerke Leipzig GmbH",
+      "status": "partial",
+      "finding": "Previous ad-hoc tariff conflict resolved. Current 2026 first-party registered L-Strom.drive regular tariff is 0.54 EUR/kWh AC and 0.64 EUR/kWh DC; this is not anonymous ad-hoc. The operator FAQ explicitly separates ad-hoc charging via the second non-Hubject QR code and public adhoc frontend. A dated 2025-11-06 report quoting Stadtwerke Leipzig states the ad-hoc tariff effective 2026-01-01 is 0.65 EUR/kWh AC and 0.75 EUR/kWh DC. Therefore 0.54/0.64 must not be ingested as ad-hoc.",
+      "evidence": [
+        "https://www.l.de/stadtwerke/privatkunden/e-mobilitaet/unterwegs-laden/",
+        "https://kundenservice-stadtwerke.l.de/hc/de/articles/360022109880-Wie-starte-ich-einen-Ladevorgang",
+        "https://www.electrive.net/2025/11/06/leipziger-stadtwerke-senken-preis-fuer-ladestrom-um-rund-zehn-prozent/"
+      ],
+      "next": "Enumerate post-2024 Leipzig EVSE coverage and verify whether the ad-hoc frontend exposes any station-specific exceptions/fee components before promoting CPO complete."
+    },
+    {
+      "cpo": "Allgaeuer Kraftwerke / AllgaeuStrom-AUEW",
+      "status": "partial",
+      "finding": "Current official AUEW ad-hoc matrix remains valid from 2026-04-13: AC zones I/II 0.51 EUR/kWh + 1 EUR start; DC <=50 kW 0.57 EUR/kWh no start fee; DC >50 kW 0.66 EUR/kWh no start fee. Idle-fee rules differ by class/zone. Do not infer EVSE class solely from neighbouring station or operator identity.",
+      "evidence": ["https://auew.de/privatkunden/e-mobilitaet/allgaeustrom-stromtankstellen/"],
+      "next": "Continue exact residual EVSE-to-zone/power mapping."
+    }
+  ],
+  "coherence": {
+    "result": "PASS",
+    "arithmetic": "202 + 389 + 0 = 591",
+    "newAliasesResolved": 0,
+    "duplicatePromotion": false,
+    "tariffExtrapolation": false,
+    "importantCorrection": "Leipzig 0.54/0.64 is registered regular tariff, not anonymous ad-hoc; retain 0.65/0.75 as evidenced ad-hoc pending coverage/fee exhaustiveness."
+  }
+}
