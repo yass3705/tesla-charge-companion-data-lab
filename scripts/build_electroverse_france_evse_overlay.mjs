@@ -1673,7 +1673,16 @@ for(const sh of manifest.shards||[]){
       if(!valid||compiledRows.length!==es.length)continue;
       const pricingSigs=new Set(compiledRows.map(x=>pricingSig(x.pricing)));
       const connectorCounts=new Set(compiledRows.map(x=>x.connectorCount));
-      if(pricingSigs.size!==1||connectorCounts.size!==1)continue;
+      const technicalProfiles=new Set(es.map(e0=>JSON.stringify((e0?.connectors||[]).map(c0=>({
+        kilowatts:c0?.kilowatts??null,
+        standard:c0?.standard?.name??c0?.standard??null
+      })).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))))));
+      const allUnresolvedAtLocation=(row.tariff?.evses||[]).filter(e0=>{
+        const key=String(row.electroverseLocationPk)+':'+String(e0?.pk??'');
+        return !validatedResidualTargets.has(key);
+      });
+      if(pricingSigs.size!==1||connectorCounts.size!==1||technicalProfiles.size!==1)continue;
+      if(allUnresolvedAtLocation.length>es.length)continue;
 
       const sharedPricing=compiledRows[0].pricing;
       const connectorCount=compiledRows[0].connectorCount;
