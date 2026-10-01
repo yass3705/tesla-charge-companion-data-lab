@@ -19,6 +19,10 @@ jobs:
           node-version: 22
       - name: Build PD1 lab overlay
         run: node scripts/build_electroverse_france_evse_overlay.mjs
+      - name: Fetch main ref
+        run: git fetch origin main:refs/remotes/origin/main
+      - name: Compare lab against main
+        run: node scripts/compare_electroverse_main_vs_duration_lab.mjs
       - name: Persist lab overlay
         run: |
           git config user.name "github-actions[bot]"
