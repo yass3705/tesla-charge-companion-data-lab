@@ -18,6 +18,7 @@ import html
 import io
 import json
 import re
+import subprocess
 import unicodedata
 import urllib.request
 from datetime import datetime, timezone
@@ -50,10 +51,22 @@ def fetch(url: str) -> tuple[int, str]:
             "Cache-Control": "no-cache",
         },
     )
-    with urllib.request.urlopen(req, timeout=40) as resp:
-        raw = resp.read()
-        charset = resp.headers.get_content_charset() or "utf-8"
-        return int(getattr(resp, "status", 200)), raw.decode(charset, errors="replace")
+    try:
+        with urllib.request.urlopen(req, timeout=40) as resp:
+            raw = resp.read()
+            charset = resp.headers.get_content_charset() or "utf-8"
+            return int(getattr(resp, "status", 200)), raw.decode(charset, errors="replace")
+    except Exception as first_exc:
+        cp = subprocess.run(
+            ["curl", "-fsSL", "--max-redirs", "12", "--connect-timeout", "20", "--max-time", "60",
+             "-A", UA, "-H", "Accept-Language: fr-FR,fr;q=0.9,en;q=0.6", url],
+            capture_output=True,
+        )
+        if cp.returncode != 0:
+            raise RuntimeError(
+                f"Powerdot fetch failed for {url}: urllib={type(first_exc).__name__}: {first_exc}; curl_exit={cp.returncode}"
+            )
+        return 200, cp.stdout.decode("utf-8", errors="replace")
 
 
 def text_from_html(raw: str) -> str:
