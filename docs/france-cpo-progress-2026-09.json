@@ -3,9 +3,9 @@
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 96,
-  "setAsideCpos": 49,
-  "activeRemainingCpos": 146,
-  "updatedAt": "2026-10-01T18:04:00+02:00",
+  "setAsideCpos": 50,
+  "activeRemainingCpos": 145,
+  "updatedAt": "2026-10-01T18:10:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -437,6 +437,13 @@
       "since": "2026-10-01",
       "lastChecked": "2026-10-01",
       "audit": "docs/france-regional-cpo-electricite-veit-hopla-batch515-2026-10-01.json"
+    },
+    {
+      "name": "OG Clean Fuels France | FR*PVD | raw rank166",
+      "reason": "batch516 fail-closed: first-party CGV states OG Clean Fuels sets prices, may modify them at any time, and only the continuously updated mobile-app tariff before charge is valid. Producer IRVE inventory is public but carries no deterministic numeric direct tariff grid; no anonymous station/EVSE -> current app tariff resolver recovered.",
+      "since": "2026-10-01",
+      "lastChecked": "2026-10-01",
+      "audit": "docs/france-regional-cpo-og-clean-fuels-batch516-2026-10-01.json"
     }
   ],
   "activeNominative": [
@@ -536,7 +543,6 @@
     "UNPROVEN_ACTIVE_161",
     "UNPROVEN_ACTIVE_162",
     "RELEASED_ACTIVE_SLOT_164 | alias ProperPhi | raw rank155 (same legal entity; ECOPHI MOBILITY renamed PROPERPHI; no tariff inheritance)",
-    "UNPROVEN_ACTIVE_166",
     "UNPROVEN_ACTIVE_168",
     "UNPROVEN_ACTIVE_169",
     "UNPROVEN_ACTIVE_RAW_SLOT_RELEASED_BY_OET_GREENSPOT_ALIAS",
@@ -909,7 +915,8 @@
     "Properphi | raw rank155": "batch512 setAside: ProperPhi first-party CGU says recharge tariffs are decided by the customer/site operator; supervision supports QR/app, roaming and bank-card payment. Pricing is site-configurable and heterogeneous; no anonymous deterministic station/EVSE -> current direct tariff resolver recovered.",
     "RECHARGE ACTIVE SOLUTIONS | raw rank163": "batch513 setAside: Recharge Active Solutions/Evoltigo/Wewise is a customer-site charging infrastructure operator/supervisor using Virta-backed billing; current producer IRVE dataset is June 2026 but no public deterministic EVSE -> direct tariff resolver or national grid was recovered.",
     "Ecophi mobility | raw rank164": "batch514 lineage resolved: same legal entity as ProperPhi raw155 (SIREN 891937641; ECOPHI MOBILITY renamed PROPERPHI). Current 21-PDC Mauffrey Academy footprint is labelled network PROPERPHI. Non-counting alias; ProperPhi remains setAside under batch512; no historical 0.22 tariff inheritance.",
-    "Electricité Veit | FR*HOP | raw rank165": "batch515 setAside: Hopla Power Charge is Electricité Veit first-party charging network; tariffs are configurable in supervision and exact payment is app/QR scoped. No anonymous deterministic current direct tariff resolver; VAB roaming tariff rejected."
+    "Electricité Veit | FR*HOP | raw rank165": "batch515 setAside: Hopla Power Charge is Electricité Veit first-party charging network; tariffs are configurable in supervision and exact payment is app/QR scoped. No anonymous deterministic current direct tariff resolver; VAB roaming tariff rejected.",
+    "OG Clean Fuels France | FR*PVD | raw rank166": "batch516 setAside: first-party CGV makes current mobile-app tariff authoritative and mutable at any time; producer IRVE dataset supplies identity only. No sampled or roaming tariff generalized."
   },
   "history": [
     {
@@ -1653,28 +1660,38 @@
         "setAsideCpos": 49,
         "activeRemainingCpos": 146
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch516",
+      "change": "Moved OG Clean Fuels France / FR*PVD raw166 active->setAside. First-party CGV makes app tariff authoritative and mutable; producer IRVE has no numeric direct grid; no anonymous deterministic resolver.",
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 50,
+        "activeRemainingCpos": 145
+      }
     }
   ],
-  "currentInvestigation": "OG Clean Fuels France | FR*PVD | raw rank166 | 6 stations / 20 PDC: inspect V8/V9/Data Lab direct evidence, first-party PitPoint/OG Clean Fuels lineage and exact direct tariff surface.",
+  "currentInvestigation": "Acelec Charge | raw rank168 | 3 stations / 20 PDC: inspect V8/V9/Data Lab direct evidence, current producer inventory, operator/backend and exact direct tariff surface.",
   "coherenceControl": {
-    "batch": "batch515",
+    "batch": "batch516",
     "result": "PASS",
-    "arithmetic": "96 + 49 + 146 = 291",
+    "arithmetic": "96 + 50 + 145 = 291",
     "treatedLength": 96,
-    "setAsideLength": 49,
-    "activeLength": 146,
+    "setAsideLength": 50,
+    "activeLength": 145,
     "pendingDedupeCount": 0,
-    "lastChecked": "2026-10-01T18:04:00+02:00",
+    "lastChecked": "2026-10-01T18:10:00+02:00",
     "arithmeticOk": true,
     "treatedPlusSetAsidePlusActive": 291
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch515",
-    "result": "PASS_HOPLA_FAIL_CLOSED",
+    "batch": "batch516",
+    "result": "PASS_OG_CLEAN_FUELS_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch515",
+  "latestBatch": "batch516",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2524,6 +2541,14 @@
       "category": "setAside-authority",
       "decision": "active->setAside: configurable first-party tariff model; exact direct price remains app/QR/backend scoped; no anonymous deterministic EVSE resolver recovered",
       "evidence": "docs/france-regional-cpo-electricite-veit-hopla-batch515-2026-10-01.json"
+    },
+    {
+      "rawRank": 166,
+      "historicalOperator": "OG Clean Fuels France | FR*PVD",
+      "authority": "OG Clean Fuels France",
+      "category": "setAside-authority",
+      "decision": "active->setAside: exact direct price is mutable and mobile-app scoped; producer IRVE identity is available but no anonymous deterministic current tariff resolver recovered",
+      "evidence": "docs/france-regional-cpo-og-clean-fuels-batch516-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
