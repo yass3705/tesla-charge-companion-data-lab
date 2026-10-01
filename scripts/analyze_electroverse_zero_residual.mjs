@@ -120,7 +120,7 @@ for(const g of groups.filter(g=>g.mode==='homogeneous_exact_set')){
     irveStationId:g.irveStationId,
     electroverseEvsePks:g.refs.map(x=>x.evsePk),
     physicalReferences:g.refs.map(x=>x.physicalReference),
-    targetPdcs:[...localPdcByLocation.get(String(g.electroverseLocationPk))||[]],
+    targetPdcs:[...new Set(((byPk.get(String(g.electroverseLocationPk))?.irvePdcIds)||[]).map(norm).filter(Boolean))].filter(p=>!publishedTargets.has(p)),
     evidence:{mode:'homogeneous_exact_set',homogeneousPricing:g.homogeneousPricing,uniformConnectorCount:g.uniformConnectorCount}
   });
 }
