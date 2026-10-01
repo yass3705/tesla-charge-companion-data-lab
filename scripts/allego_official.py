@@ -464,7 +464,8 @@ def parse_country_direct(text: str) -> dict:
     if missing:
         raise RuntimeError(
             f"Allego France pricing: missing {missing} in operator-direct section; "
-            f"ordered EUR/kWh values found={re.findall(r'(?:\\d+(?:[.,]\\d+)?)\\s*€\\s*/\\s*kwh', direct_section, flags=re.I)}"
+            f"ordered EUR/kWh values found={re.findall(r'(?:\\d+(?:[.,]\\d+)?)\\s*€\\s*/\\s*kwh', direct_section, flags=re.I)}; "
+            f"section_preview={direct_section[:1200]!r}"
         )
 
     # Idle/overstay fees can be outside the direct card; search full selected text.
