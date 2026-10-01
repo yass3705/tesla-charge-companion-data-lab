@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 189,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-188.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 246,
+    "partial": 345,
+    "blocked": 0
+  },
+  "promotions": [
+    {
+      "name": "Stadtwerke Niesky GmbH",
+      "from": "partial",
+      "to": "complete",
+      "bucket": "B6 / m8mit / SachsenEnergie backend",
+      "coverage": "Current first-party page identifies one public SWN station at Zinzendorfplatz. Current Bundesnetzagentur-derived registry closes that installation at exactly 3 EVSE: DE*SAE*E7020*01 CCS 150 kW, *02 CCS 150 kW, and *03 Type 2 AC 22 kW. Current public m8mit checkout was retrieved independently for all three EVSE classes/connectors: *01 DC 0.50 EUR/kWh gross, *02 DC 0.50 EUR/kWh gross, *03 AC 0.50 EUR/kWh gross. Checkout supports anonymous/direct credit-card payment and displays no additional start/time/blocking fee component.",
+      "anonymousAdHoc": {
+        "energyEurPerKwh": 0.5,
+        "startFeeEur": 0,
+        "timeFee": "none displayed",
+        "blockingFee": "none displayed",
+        "payment": "credit card direct-pay",
+        "vat": "included"
+      },
+      "evidence": [
+        "https://www.stadtwerke-niesky.de/E-Mobilitaet.html",
+        "https://chargemyride.live/station/1047426",
+        "https://sae.m8mit.de/station/sae/DE%2ASAE%2AE7020%2A01",
+        "https://sae.m8mit.de/station/sae/DE%2ASAE%2AE7020%2A02",
+        "https://sae.m8mit.de/station/sae/DE%2ASAE%2AE7020%2A03?lang=en"
+      ],
+      "guard": "Promotion is based on exhaustive current 3-EVSE denominator plus independently retrieved checkout for each EVSE/power class; no twin-connector inference used."
+    }
+  ],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 247,
+    "partial": 344,
+    "blocked": 0
+  },
+  "statusChanges": 1,
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "247 + 344 + 0 = 591",
+    "indicator": "221 -> 247 complete (+26)",
+    "promotions": 1,
+    "unsafeExtrapolations": 0,
+    "channelSeparation": "PASS"
+  },
+  "nextSafeAction": "Continue same exhaustive-denominator + per-EVSE checkout pattern on another small m8mit/MSU candidate. Parchim remains partial until denominator closure; Bernburg remains partial until current tariff revalidation. No production merge."
+}
