@@ -2515,3 +2515,5 @@ if(stats.publishedOffers<5000)throw new Error('too few safe Electroverse EVSE of
 // debug NUMERIC exact-set dedupe 2026-10-01
 // enrich NUMERIC dedupe debug 2026-10-01
 // trace NUMERIC source connector profiles 2026-10-01
+
+// rebuild trigger after hardened zero mapping 2026-10-01
