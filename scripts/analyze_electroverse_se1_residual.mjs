@@ -113,6 +113,31 @@ for(const sh of cman.shards||[]){
 }
 const byMode={};
 for(const g of groups)byMode[g.mode]=(byMode[g.mode]||0)+g.residualCount;
+const validatedMappings=[];
+for(const g of groups.filter(g=>g.mode==='unique_suffix_bijection')){
+  for(const x of g.exactSuffix){
+    validatedMappings.push({
+      electroverseLocationPk:g.electroverseLocationPk,
+      electroverseEvsePk:x.evsePk,
+      physicalReference:x.raw,
+      targetPdc:x.target,
+      evidence:{mode:'strict_unique_suffix_bijection',irveStationId:g.irveStationId}
+    });
+  }
+}
+await fs.mkdir('data/platforms/electroverse/validated-mappings',{recursive:true});
+await fs.writeFile(
+  'data/platforms/electroverse/validated-mappings/se1-residual.json',
+  JSON.stringify({
+    schemaVersion:1,
+    generatedAt:new Date().toISOString(),
+    dataset:'electroverse-france-se1-validated-residual-mappings',
+    count:validatedMappings.length,
+    policy:'Only unique suffix bijections against currently unpublished local national targets, each globally unique; no proximity inference.',
+    mappings:validatedMappings
+  },null,2)+'\n'
+);
+
 const out={
  schemaVersion:1,generatedAt:new Date().toISOString(),
  residualSourceEvses:residual,affectedLocations:locations,byMode,
