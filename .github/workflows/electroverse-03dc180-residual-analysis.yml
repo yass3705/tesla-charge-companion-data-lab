@@ -7,7 +7,7 @@ on:
       - "scripts/analyze_electroverse_03dc180_residual.mjs"
       - ".github/workflows/electroverse-03dc180-residual-analysis.yml"
 permissions:
-  contents: write
+  contents: read
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -19,21 +19,6 @@ jobs:
           node-version: 22
       - name: Analyze 03DC180 unpublished residual
         run: node scripts/analyze_electroverse_03dc180_residual.mjs
-      - name: Persist validated 03DC180 groups
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/platforms/electroverse/validated-mappings/03dc180-residual-groups.json
-          if git diff --cached --quiet; then
-            echo "No 03DC180 group changes"
-          else
-            git commit -m "data: publish validated Electroverse 03DC180 groups"
-            for attempt in 1 2 3; do
-              git pull --rebase origin main && git push && break
-              git rebase --abort || true
-              sleep $((attempt * 2))
-            done
-          fi
       - uses: actions/upload-artifact@v4
         with:
           name: electroverse-france-03dc180-residual-analysis
