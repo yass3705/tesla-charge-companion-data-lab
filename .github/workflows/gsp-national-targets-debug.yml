@@ -1,0 +1,21 @@
+name: Debug GSP national target metadata
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/debug_gsp_national_targets.mjs"
+      - ".github/workflows/gsp-national-targets-debug.yml"
+permissions:
+  contents: read
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Inspect national GSP targets
+        run: node scripts/debug_gsp_national_targets.mjs
