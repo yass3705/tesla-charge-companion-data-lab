@@ -1018,11 +1018,9 @@ for(const sh of manifest.shards||[]){
           if(new Set(items.map(x=>x.e)).size!==items.length||new Set(items.map(x=>x.target)).size!==items.length)continue;
           const sameBase=viaMissing.filter(p=>p.startsWith('FRVIAE20'+stem));
           if(!sameBase.length)continue;
-          const bad=sameBase.some(p=>{
-            const m=p.match(/(\d{2})(\d)$/);if(!m)return true;
-            const cc=Number(m[2]);return cc!==1&&cc!==2;
-          });
-          if(bad)continue;
+          // Partial strict mapping: additional national connectors (e.g. ...013)
+          // do not invalidate exact source-derived targets ...011/...012.
+          // Only the explicitly derivable targets are published; extras remain fail-closed.
           for(const x of items)viaStructuredBasePairTargets.set(x.e,x.target);
         }
       }
