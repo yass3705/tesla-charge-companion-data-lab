@@ -7,6 +7,16 @@ const OVERLAY='data/platforms/electroverse/france-evse';
 const OUT='reports/electroverse/p01-residual-analysis.json';
 const VALIDATED_OUT='data/platforms/electroverse/validated-mappings/p01-structured-residual.json';
 const norm=x=>String(x??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+const priceOnlySig=e=>JSON.stringify([...new Set((e?.connectors||[]).map(c=>JSON.stringify({
+  isChargingFree:c?.isChargingFree??null,
+  priceComponents:c?.priceComponents??null,
+  complexPricingDetail:c?.complexPricingDetail??null
+})))].sort());
+const p01ParentBody=raw=>{
+  const parts=String(raw||'').split('*').map(v=>v.trim()).filter(Boolean);
+  if(parts.length!==6||parts[0].toUpperCase()!=='FR'||parts[1].toUpperCase()!=='P01')return null;
+  return norm(parts[2]+parts[3]+parts[4]).replace(/^E/,'')||null;
+};
 const sourceSig=e=>JSON.stringify((e?.connectors||[]).map(c=>({
   kilowatts:c?.kilowatts??null,
   standard:c?.standard?.name??c?.standard??null,
@@ -49,19 +59,26 @@ for(const m of mapping.mappings||[]) for(const p of m.irvePdcIds||[]){
 
 const cman=JSON.parse(await fs.readFile(CACHE+'/manifest.json','utf8'));
 const donorsByRef=new Map();
+const donorsByParent=new Map();
+const donorsByLocation=new Map();
 for(const sh of cman.shards||[]){
   const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
   for(const row of Object.values(data.stations||{})){
     for(const e of row?.tariff?.evses||[]){
       const rk=norm(e?.physicalReference);
       if(!rk||(e?.connectors||[]).length===0)continue;
-      const a=donorsByRef.get(rk)||[];
-      a.push({
+      const donor={
         electroverseLocationPk:String(row.electroverseLocationPk),
         electroverseEvsePk:e.pk,
-        sourceSignature:sourceSig(e)
-      });
-      donorsByRef.set(rk,a);
+        physicalReference:String(e.physicalReference),
+        sourceSignature:sourceSig(e),
+        priceOnlySignature:priceOnlySig(e)
+      };
+      const a=donorsByRef.get(rk)||[];a.push(donor);donorsByRef.set(rk,a);
+      const pb=p01ParentBody(e.physicalReference);
+      if(pb){const b=donorsByParent.get(pb)||[];b.push(donor);donorsByParent.set(pb,b);}
+      const lk=String(row.electroverseLocationPk);
+      const c=donorsByLocation.get(lk)||[];c.push(donor);donorsByLocation.set(lk,c);
     }
   }
 }
@@ -252,11 +269,45 @@ for(const x of validatedMappings){
   const donor=donors[0];
   donorRecoverableMappings.push({
     ...x,
+    recoveryMode:'exact_physical_reference_donor',
     donorElectroverseLocationPk:donor.electroverseLocationPk,
     donorElectroverseEvsePk:donor.electroverseEvsePk,
     donorSourceSignature:donor.sourceSignature,
     donorCandidateCount:donors.length
   });
+}
+
+const exactRecoveredKeys=new Set(donorRecoverableMappings.map(x=>String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk)));
+const sameParentHomogeneousCandidates=[];
+const stationHomogeneousCandidates=[];
+for(const x of validatedMappings){
+  const key=String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk);
+  if(exactRecoveredKeys.has(key))continue;
+  const parentDonors=donorsByParent.get(x.parentBody)||[];
+  const parentPriceSigs=new Set(parentDonors.map(d=>d.priceOnlySignature).filter(Boolean));
+  if(parentDonors.length&&parentPriceSigs.size===1){
+    const donor=[...parentDonors].sort((a,b)=>Number(a.electroverseEvsePk)-Number(b.electroverseEvsePk))[0];
+    sameParentHomogeneousCandidates.push({
+      ...x,recoveryMode:'same_parent_homogeneous_price_only',
+      donorElectroverseLocationPk:donor.electroverseLocationPk,
+      donorElectroverseEvsePk:donor.electroverseEvsePk,
+      donorPriceOnlySignature:donor.priceOnlySignature,
+      donorCandidateCount:parentDonors.length
+    });
+    continue;
+  }
+  const stationDonors=donorsByLocation.get(String(x.electroverseLocationPk))||[];
+  const stationPriceSigs=new Set(stationDonors.map(d=>d.priceOnlySignature).filter(Boolean));
+  if(stationDonors.length&&stationPriceSigs.size===1){
+    const donor=[...stationDonors].sort((a,b)=>Number(a.electroverseEvsePk)-Number(b.electroverseEvsePk))[0];
+    stationHomogeneousCandidates.push({
+      ...x,recoveryMode:'station_homogeneous_price_only',
+      donorElectroverseLocationPk:donor.electroverseLocationPk,
+      donorElectroverseEvsePk:donor.electroverseEvsePk,
+      donorPriceOnlySignature:donor.priceOnlySignature,
+      donorCandidateCount:stationDonors.length
+    });
+  }
 }
 
 const out={
@@ -269,6 +320,8 @@ const out={
  structuredConflictedTargets:conflictedTargets.length,
  exactReferenceDonorRecoverableSourceEvses:donorRecoverableMappings.length,
  exactReferenceDonorAmbiguities:donorAmbiguities.length,
+ sameParentHomogeneousPriceOnlyCandidates:sameParentHomogeneousCandidates.length,
+ stationHomogeneousPriceOnlyCandidates:stationHomogeneousCandidates.length,
  safeGroups:groups.filter(g=>g.mode!=='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,200),
  unresolvedSamples:groups.filter(g=>g.mode==='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,100),
  policy:'Diagnostic only. P01 bucket uses exact structured parent reconstruction. Multiple distinct child references may map to one national parent PDC. Exact duplicate child references are deduplicated only when tariff and technical profiles are identical; conflicting duplicates fail closed. No proximity inference.'
@@ -283,12 +336,14 @@ const validated={
  mappings:donorRecoverableMappings,
  identityMappings:validatedMappings,
  conflictedTargets,
- donorAmbiguities
+ donorAmbiguities,
+ sameParentHomogeneousCandidates,
+ stationHomogeneousCandidates
 };
 await fs.mkdir('reports/electroverse',{recursive:true});
 await fs.mkdir('data/platforms/electroverse/validated-mappings',{recursive:true});
 await fs.writeFile(OUT,JSON.stringify(out,null,2)+'\n');
 await fs.writeFile(VALIDATED_OUT,JSON.stringify(validated,null,2)+'\n');
-console.log(JSON.stringify({report:out,identityValidatedCount:validatedMappings.length,donorRecoverableCount:donorRecoverableMappings.length},null,2));
+console.log(JSON.stringify({report:out,identityValidatedCount:validatedMappings.length,donorRecoverableCount:donorRecoverableMappings.length,sameParentHomogeneousCandidates:sameParentHomogeneousCandidates.length,stationHomogeneousCandidates:stationHomogeneousCandidates.length},null,2));
 
 // structured P01 residual diagnostic 2026-10-01
