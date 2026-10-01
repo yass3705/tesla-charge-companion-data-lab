@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-10-01T19:01:00+02:00",
+  "updatedAt": "2026-10-01T19:05:00+02:00",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -231,18 +231,11 @@
     },
     {
       "name": "Shell Recharge",
-      "status": "complete",
-      "access": "shell_ev_public_locations_sandbox_oauth2_with_provider_tariffs",
-      "evidence": "Shell EV Public Locations v2.1.2 Sandbox is fully usable with the user's developer app. UK inventory and live EVSE/status/connectors are retrievable. Tariffs are returned from per-location detail calls when providerId=Shell_RP_2. Full tariff run 36861406490 completed successfully on 2026-10-01: 352/352 target locations HTTP 200, 347 with tariffs, 5 bounded no-tariff residuals, 464 tariff objects across 538 connectors, 98.58% location tariff coverage, 0 HTTP 429/other errors, and 3 automatic OAuth refreshes.",
-      "next": "Treat Shell Recharge/ubitricity as complete for UK V9 with five bounded fail-closed no-tariff locations. Keep OAuth refresh-on-401 and 8 req/min rate limiter. Only revisit residual UIDs if a new providerId or contradictory evidence appears.",
-      "report": "reports/uk/shell-full-tariffs-latest.json",
-      "completionMode": "complete_official_api_with_bounded_fail_closed_residuals",
-      "dataset": "data/national/uk_shell_tariffs.json.gz",
-      "locationCount": 352,
-      "tariffCoveredLocationCount": 347,
-      "tariffCoveragePct": 98.58,
-      "failClosedCount": 5,
-      "providerId": "Shell_RP_2"
+      "status": "set_aside_external_request",
+      "access": "shell_ev_public_locations_sandbox_inventory_only_plus_eco_movement_pcpr_request",
+      "evidence": "Shell EV Public Locations Sandbox can provide UK inventory/status/connectors, but tariffs returned only when a provider/eMSP identifier such as Shell_RP_2 is supplied are provider/driver tariffs and are not accepted as proof of Shell Recharge's direct/ad-hoc CPO tariff. The earlier 347/352 tariff coverage result is therefore rejected for canonical CPO pricing.",
+      "next": "Keep Shell inventory/status extraction only if useful. For CPO-direct/ad-hoc pricing, use an official Shell/ubitricity direct tariff surface or the already identified Eco-Movement/PCPR route. Do not use Shell_RP_* provider tariffs as CPO pricing.",
+      "report": "reports/uk/shell-ev-public-locations-latest.json"
     },
     {
       "name": "Allego",
@@ -518,13 +511,10 @@
     },
     {
       "name": "Shell Recharge ubitricity",
-      "status": "complete",
-      "access": "shell_ev_public_locations_sandbox_oauth2_with_provider_tariffs",
-      "evidence": "Resolved through the same Shell EV Public Locations v2.1.2 integration as Shell Recharge. Full UK tariff pass: 352/352 HTTP 200, 347 tariff-covered, 5 bounded fail-closed residuals, providerId Shell_RP_2, automatic OAuth refresh on 401.",
-      "next": "Do not request Eco-Movement access for ubitricity unless contradictory evidence appears. Reuse the validated Shell API integration.",
-      "completionMode": "complete_official_api_with_bounded_fail_closed_residuals",
-      "dataset": "data/national/uk_shell_tariffs.json.gz",
-      "report": "reports/uk/shell-full-tariffs-latest.json"
+      "status": "set_aside_external_request",
+      "access": "request_or_eco_movement",
+      "evidence": "Shell/ubitricity inventory may be visible through Shell EV Public Locations, but Shell_RP_* tariff objects are eMSP/driver pricing and are excluded from direct CPO pricing evidence.",
+      "next": "Use the identified external/open-data or Eco-Movement PCPR route for direct CPO pricing. Do not use providerId tariffs."
     },
     {
       "name": "Blink",
