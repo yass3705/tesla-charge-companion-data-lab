@@ -35,27 +35,42 @@ jobs:
       - name: Persist canonical country pages and ledgers
         shell: bash
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # The old file contained only offset=0 and is misleading once full pagination is enabled.
-          git rm -f data/belgium/nap-belgium-full.json 2>/dev/null || true
+          tmpdir="$(mktemp -d)"
+          mkdir -p "$tmpdir/data/belgium/pages" "$tmpdir/data/belgium" "$tmpdir/reports" "$tmpdir/docs"
+          cp -p data/belgium/pages/*.json.gz "$tmpdir/data/belgium/pages/"
+          cp -p data/belgium/nap-belgium-manifest.json "$tmpdir/data/belgium/"
+          cp -p reports/belgium-national-full-extraction-2026-09-28.json "$tmpdir/reports/"
+          cp -p reports/belgium-missing-price-evses-2026-09-28.json "$tmpdir/reports/"
+          cp -p docs/belgium-cpo-progress-2026-09.json "$tmpdir/docs/"
 
-          git add data/belgium/pages/*.json.gz                   data/belgium/nap-belgium-manifest.json                   reports/belgium-national-full-extraction-2026-09-28.json                   reports/belgium-missing-price-evses-2026-09-28.json                   docs/belgium-cpo-progress-2026-09.json
-
-          if git diff --cached --quiet; then
-            echo "No Belgium country changes"
-            exit 0
-          fi
-
-          git commit -m "Extract complete paginated Belgium NAP dataset"
           for attempt in 1 2 3 4 5 6 7 8; do
-            git pull --rebase origin main
-            if git push; then
+            git fetch origin main
+            git reset --hard origin/main
+
+            rm -f data/belgium/nap-belgium-full.json
+            mkdir -p data/belgium/pages
+            rm -f data/belgium/pages/*.json.gz
+            cp -p "$tmpdir"/data/belgium/pages/*.json.gz data/belgium/pages/
+            cp -p "$tmpdir/data/belgium/nap-belgium-manifest.json" data/belgium/
+            cp -p "$tmpdir/reports/belgium-national-full-extraction-2026-09-28.json" reports/
+            cp -p "$tmpdir/reports/belgium-missing-price-evses-2026-09-28.json" reports/
+            cp -p "$tmpdir/docs/belgium-cpo-progress-2026-09.json" docs/
+
+            git add -A data/belgium reports/belgium-national-full-extraction-2026-09-28.json reports/belgium-missing-price-evses-2026-09-28.json docs/belgium-cpo-progress-2026-09.json
+            if git diff --cached --quiet; then
+              echo "No Belgium country changes"
+              exit 0
+            fi
+            git commit -m "Extract complete paginated Belgium NAP dataset [run ${GITHUB_RUN_ID}]"
+            if git push origin HEAD:main; then
               exit 0
             fi
             echo "Push race detected; retrying ($attempt/8)"
-            sleep 4
+            sleep $((attempt * 2))
           done
           echo "::error::Could not persist full Belgium extraction"
           exit 1
