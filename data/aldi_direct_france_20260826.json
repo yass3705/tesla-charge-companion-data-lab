@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "1.0.0",
+  "dataset": "aldi-direct-france",
+  "generatedAt": "2026-08-26T15:30:00+02:00",
+  "country": "FR",
+  "operator": {
+    "displayName": "ALDI Nord Charging",
+    "legalName": "ALDI SARL",
+    "cpoPartyId": "FRALN",
+    "backendOperator": "GREENFLUX Assets B.V"
+  },
+  "scope": {
+    "operatorDirectOnly": true,
+    "roamingIncluded": false,
+    "siteNameAloneIsSufficient": false,
+    "failClosedOnUnverifiedPower": true
+  },
+  "identityRules": {
+    "accepted": [
+      "CPO/EVSE namespace FRALN or FR*ALN*",
+      "explicit physical operator/cpo/network field naming ALDI, ALDI Nord or ALDI SARL"
+    ],
+    "rejected": [
+      "ALDI only appears in station name or address while physical CPO is another operator",
+      "Powerdot, R3/DBT, e-Totem, DRIVECO, Allego, Electra, Freshmile, IZIVIA, Bump or Qovoltis physical operator"
+    ]
+  },
+  "tariffs": [
+    {
+      "id": "aldi-fr-ac-direct",
+      "kind": "AC",
+      "minPowerKwExclusive": 0,
+      "maxPowerKw": 22.5,
+      "pricePerKwh": 0.29,
+      "currency": "EUR",
+      "connectionFee": 0,
+      "subscriptionRequired": false,
+      "source": "https://www.aldi.fr/services/borne-recharge.html",
+      "confidence": "official_aldi_direct_tariff_family"
+    },
+    {
+      "id": "aldi-fr-dc50-direct",
+      "kind": "DC",
+      "minPowerKw": 45,
+      "maxPowerKw": 55,
+      "nominalPowerKw": 50,
+      "pricePerKwh": 0.35,
+      "currency": "EUR",
+      "connectionFee": 0,
+      "subscriptionRequired": false,
+      "source": "https://www.aldi.fr/services/borne-recharge.html",
+      "secondarySource": "https://s7g10.scene7.com/is/image/aldinord/V2-text-media_bornes-35kWh",
+      "confidence": "official_aldi_france_tariff_visual"
+    }
+  ],
+  "deferred": [
+    {
+      "kind": "DC",
+      "condition": "powerKw outside the 50 kW class (45-55 kW tolerance)",
+      "reason": "Des sites ALDI directs sont référencés à 60 ou 100 kW, mais la grille ALDI France vérifiée ici documente explicitement la famille DC 50 kW. Aucun tarif n'est extrapolé aux puissances supérieures."
+    },
+    {
+      "kind": "ANY",
+      "condition": "physical CPO cannot be proven",
+      "reason": "Un parking de magasin ALDI peut être exploité par un CPO tiers; le nom du magasin ne suffit jamais à attribuer le tarif ALDI."
+    }
+  ],
+  "sources": [
+    "https://www.aldi.fr/services/borne-recharge.html",
+    "https://afirev.fr/en/list-of-assigned-identifiers/",
+    "https://www.data.gouv.fr/organizations/aldi/datasets",
+    "https://www.data.gouv.fr/datasets/irve-statique-organisation-aldi",
+    "https://www.data.gouv.fr/datasets/irve-statique-organisation-aldi-1",
+    "https://www.data.gouv.fr/datasets/irve-statique-organisation-aldi-2"
+  ]
+}
