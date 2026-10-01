@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-classification",
+  "classificationBatch": 5,
+  "previousClassification": "docs/germany-cpo-second-pass-classification-004.json",
+  "sourceCheckpointRange": "docs/germany-cpo-first-pass-automation154.json through docs/germany-cpo-first-pass-automation142.json",
+  "baseline": {
+    "partialTotal": 390,
+    "partialClassifiedBefore": 71,
+    "classifiedThisBatch": 22,
+    "partialClassifiedAfter": 93,
+    "partialQueued": 297
+  },
+  "classified": [
+    {"name":"EnergieSuedwest AG / Landau public charging","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Recover current anonymous/direct checkout prices per EnergieSuedwest EVSE or a first-party ad-hoc matrix; keep card/roaming pricing separate."},
+    {"name":"PfalzLader GmbH","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Capture the current QR/credit-card checkout tariff from a PfalzLader EVSE or public payment backend; do not infer from ladenetz roaming."},
+    {"name":"Stadtwerke Schifferstadt","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Complete the direct-price matrix for legacy/unknown EVSEs and any DC sites before generalizing the sampled 0.53 EUR/kWh AC value."},
+    {"name":"StadtWerke Roesrath - Energie GmbH","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Capture the current ladepay QR/browser numeric checkout tariff; keep the published registered-card tariff separate until equivalence is explicit."},
+    {"name":"e-regio GmbH & Co. KG","primaryBlocker":"B3_SITE_CONFIGURABLE_BACKEND","nextAction":"Enumerate the current station-specific direct prices from the QR/payment backend because first-party material explicitly allows price variation by station."},
+    {"name":"Bad Honnef AG public charging","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Extend the sampled 0.52 EUR/kWh AC evidence into a complete authoritative per-EVSE matrix for all 17 BHAG locations without extrapolation."},
+    {"name":"Stadtwerke Erft GmbH / Ladekooperation Erft","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Obtain one current anonymous QR/browser checkout or first-party statement proving whether the 0.49 EUR/kWh RFID value also applies to ad-hoc users."},
+    {"name":"Stadtwerke Kempen GmbH","primaryBlocker":"B7_CONTRADICTORY_SOURCES","nextAction":"Resolve the simultaneous first-party 0.45 versus 0.48 EUR/kWh conflict using a timestamped tariff artifact or live station checkout."},
+    {"name":"Stadtwerke Nettetal GmbH / morgenEnergie GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Prove through first-party wording or checkout that the published 0.48 AC / 0.55 DC Nettetal infrastructure values are the anonymous direct prices."},
+    {"name":"Stadtwerke Geldern GmbH","primaryBlocker":"B7_CONTRADICTORY_SOURCES","nextAction":"Resolve conflicting current station-level values and verify the reported 0.59 AC / 0.77 HPC spontaneous tariff across the canonical EVSE set."},
+    {"name":"Stadtwerke Goch GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Recover anonymous direct-payment evidence proving whether 0.49 normal / 0.67 fast applies without the vollmacherKarte contract."},
+    {"name":"stadtwerker Versorgungs GmbH / Stadtwerke Rhede","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Capture the numerical credit-card/PayPal direct checkout tariff from the current payment flow; do not substitute RHEGIO-E card pricing."},
+    {"name":"Stadtwerke Duelmen GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Prove the anonymous direct tariff per Stadtwerke Duelmen EVSE or explicit equivalence with the Westmuensterland/CUT customer tariff."},
+    {"name":"Stadtwerke Ahlen GmbH","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Capture the current Giro-E direct checkout price on operator-owned stations; registered Mein.Ahlen.e-Mobil tariffs remain separate."},
+    {"name":"Stadtwerke Ostmuensterland GmbH & Co. KG","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Complete AC/DC/HPC EVSE pricing coverage, especially Ennigerloh DC/HPC, before generalizing sampled 0.63 EUR/kWh AC evidence."},
+    {"name":"EMERGY public charging network (Borken / Coesfeld)","primaryBlocker":"B6_DYNAMIC_SURFACE_OR_APP","nextAction":"Extract numerical ADHOC AC/DC/HPC and time/base components from the current QR/direct checkout or first-party machine-readable surface."},
+    {"name":"Stadtwerke Gronau GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Recover current anonymous checkout pricing or explicit proof that the 0.40 AC / 0.50 DC own-station card tariff applies without contract."},
+    {"name":"Energie- und Wasserversorgung Rheine GmbH / Stadtwerke Rheine","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Replace or revalidate the stale 2023 ad-hoc sheet with a current 2026 first-party artifact or direct checkout."},
+    {"name":"Stadtwerke Greven GmbH","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Replace the explicitly 2023-dated 0.90 EUR/kWh ad-hoc value with current 2026 first-party or checkout evidence."},
+    {"name":"GEW Wilhelmshaven GmbH","primaryBlocker":"B1_COVERAGE_EVSE_MATRIX","nextAction":"Map all five GEW sites and verify whether the observed 0.44 EUR/kWh net ChargePoint value is uniform or station-specific."},
+    {"name":"Osnabruecker Parkstaetten-Betriebsgesellschaft mbH (OPG)","primaryBlocker":"B3_SITE_CONFIGURABLE_BACKEND","nextAction":"Retrieve representative anonymous QR checkout prices by EVSE/power class because first-party material makes effective pricing payment-provider dependent."},
+    {"name":"swb AG / Bremen public charging","primaryBlocker":"B2_FIRST_PARTY_ADHOC_EQUIVALENCE","nextAction":"Recover anonymous direct prices for representative swb AC/DC EVSEs or explicit first-party equivalence; keep Mobilstromkarte contract pricing separate."}
+  ],
+  "countsThisBatch": {
+    "B1_COVERAGE_EVSE_MATRIX": 4,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 9,
+    "B3_SITE_CONFIGURABLE_BACKEND": 2,
+    "B4_FEE_COMPONENT_COMPLETENESS": 0,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 0,
+    "B6_DYNAMIC_SURFACE_OR_APP": 5,
+    "B7_CONTRADICTORY_SOURCES": 2
+  },
+  "cumulativeCountsByPrimaryBlocker": {
+    "B1_COVERAGE_EVSE_MATRIX": 27,
+    "B2_FIRST_PARTY_ADHOC_EQUIVALENCE": 35,
+    "B3_SITE_CONFIGURABLE_BACKEND": 5,
+    "B4_FEE_COMPONENT_COMPLETENESS": 4,
+    "B5_OPERATOR_IDENTITY_RECONCILIATION": 6,
+    "B6_DYNAMIC_SURFACE_OR_APP": 13,
+    "B7_CONTRADICTORY_SOURCES": 3
+  },
+  "executionQueueAdditions": [
+    {"name":"Stadtwerke Kempen GmbH","route":"B7","why":"Only one authoritative live checkout/timestamp is needed to resolve a bounded 0.45 versus 0.48 first-party conflict."},
+    {"name":"Stadtwerke Erft GmbH / Ladekooperation Erft","route":"B2","why":"First-party QR access and a numeric RFID tariff already exist; one direct checkout can settle equivalence."},
+    {"name":"Stadtwerke Schifferstadt","route":"B1","why":"Multiple EVSEs already expose 0.53 EUR/kWh; remaining work is a bounded estate coverage gap."},
+    {"name":"GEW Wilhelmshaven GmbH","route":"B1","why":"Only five public sites and one exact station value are known, making complete reconciliation bounded."}
+  ],
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "71 + 22 = 93 classified; 390 - 93 = 297 queued; 27 + 35 + 5 + 4 + 6 + 13 + 3 = 93",
+    "duplicateNamesInBatch": 0,
+    "statusChanges": 0,
+    "tariffPromotions": 0,
+    "note": "Only partial entries from checkpoints 154 through 142 were classified. Complete entries were skipped. Classification remains fail-closed; stale, registered-card, roaming and sampled station prices were not promoted."
+  },
+  "nextSafeAction": "Continue classification into checkpoint 141 and older while executing bounded high-yield resolutions in parallel: Weinheim, Allgaeuer Kraftwerke, Goettingen, Leipzig, then Kempen/Erft/Schifferstadt/GEW."
+}
