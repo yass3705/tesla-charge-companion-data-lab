@@ -1,0 +1,22 @@
+name: Audit Electroverse France final convergence
+on:
+  push:
+    branches:
+      - audit/electroverse-final-convergence
+    paths:
+      - ".github/workflows/electroverse-final-convergence.yml"
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Recompute residual recovery plan
+        run: node scripts/build_electroverse_final_residual_recovery_plan.mjs
+      - name: Analyze every remaining residual bucket
+        run: node scripts/analyze_electroverse_remaining_batch.mjs
