@@ -283,6 +283,12 @@ const validatedP01ResidualTargets=new Map(
     norm(x.targetPdc)
   ])
 );
+const validatedP01ResidualMetadata=new Map(
+  (validatedP01Map.mappings||[]).map(x=>[
+    String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk),
+    x
+  ])
+);
 const finalResidualIndividualTargets=new Map(
   (finalResidualPlan.individualMappings||[]).map(x=>[
     String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk),
@@ -304,6 +310,19 @@ const validatedResidualTargets=new Map([
   ...[...finalResidualIndividualTargets].map(([k,v])=>[k,v.target])
 ]);
 const isValidatedResidualSource=(row,e)=>validatedResidualTargets.has(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
+const p01DonorPkSet=new Set((validatedP01Map.mappings||[]).map(x=>String(x.donorElectroverseEvsePk??'')).filter(Boolean));
+const p01DonorEvseByPk=new Map();
+if(p01DonorPkSet.size){
+  for(const sh of manifest.shards||[]){
+    const d=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
+    for(const row of Object.values(d.stations||{})){
+      for(const e of row?.tariff?.evses||[]){
+        const pk=String(e?.pk??'');
+        if(p01DonorPkSet.has(pk))p01DonorEvseByPk.set(pk,e);
+      }
+    }
+  }
+}
 const globalPdcOwners=new Map();
 for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
   const k=norm(p);if(!k)continue;
@@ -1887,6 +1906,8 @@ for(const sh of manifest.shards||[]){
           stats.validatedLe2ResidualCandidateEvses++;
         }else if(validatedP01ResidualTargets.has(validatedKey)){
           identityMode='validated_p01_structured_parent_identity';
+          parentMode=true;
+          parentNorm=targetNorm;
           stats.validatedP01ResidualCandidateEvses++;
         }else{
           identityMode='validated_numeric_residual_unique_bijection';
@@ -1979,8 +2000,11 @@ for(const sh of manifest.shards||[]){
         }
       }
 
-      const connectors=e?.connectors||[];
-      if(!connectors.length){rej('evse_no_connectors');continue;}
+      const p01Meta=validatedP01ResidualMetadata.get(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
+      const donorEvse=p01Meta?.donorElectroverseEvsePk!=null?p01DonorEvseByPk.get(String(p01Meta.donorElectroverseEvsePk)):null;
+      const pricingEvse=(p01Meta&&donorEvse)?donorEvse:e;
+      const connectors=pricingEvse?.connectors||[];
+      if(!connectors.length){rej(p01Meta?'validated_p01_donor_missing_connectors':'evse_no_connectors');continue;}
       const compiled=[];
       let bad=null;
       for(const c of connectors){
@@ -2137,7 +2161,9 @@ for(const sh of manifest.shards||[]){
           connectorPks:compiled.map(x=>x.connectorPk),
           connectorCount:compiled.length,
           compiled,
-          pricing
+          pricing,
+          donorElectroverseEvsePk:p01Meta?.donorElectroverseEvsePk??null,
+          donorElectroverseLocationPk:p01Meta?.donorElectroverseLocationPk??null
         });
         g.pricingBySig.set(pricingSig(pricing),pricing);
         if(row.tariffHash)g.tariffHashes.add(row.tariffHash);
@@ -2235,6 +2261,7 @@ for(const g of parentGroups.values()){
         electroverseLocationPk:g.locationPk,
         physicalReferences:[...v.physicalReferences],
         electroverseEvsePks:[...v.sourcePks],
+        donorElectroverseEvsePks:[...new Set(g.entries.map(x=>x.donorElectroverseEvsePk).filter(x=>x!=null))],
         connectorPks,
         connectorCount:v.units.length,
         childReferenceCount:v.physicalReferences.size,
