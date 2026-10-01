@@ -1,0 +1,21 @@
+name: Debug Electroverse six residual pricing
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/debug_electroverse_six_pricing.mjs"
+      - ".github/workflows/electroverse-six-pricing-debug.yml"
+permissions:
+  contents: read
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Inspect six residual tariffs
+        run: node scripts/debug_electroverse_six_pricing.mjs
