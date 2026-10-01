@@ -1,0 +1,28 @@
+name: Audit Electroverse final residual supersession
+on:
+  push:
+    branches:
+      - audit/electroverse-final-residual-supersession
+    paths:
+      - "scripts/audit_electroverse_final_residual_supersession.mjs"
+      - ".github/workflows/electroverse-final-residual-supersession.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Audit supersession
+        run: node scripts/audit_electroverse_final_residual_supersession.mjs
+      - name: Persist report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse-final-residual-supersession.json
+          git commit -m "audit: publish final residual supersession report" || exit 0
+          git push
