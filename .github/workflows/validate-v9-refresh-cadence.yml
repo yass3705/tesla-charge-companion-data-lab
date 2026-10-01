@@ -1,0 +1,30 @@
+name: Validate V9 refresh cadence contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/v9-refresh-cadence.json"
+      - "scripts/validate_v9_refresh_cadence.py"
+      - ".github/workflows/suc-tracker-weekly.yml"
+      - ".github/workflows/electroverse-france-daily-delta.yml"
+      - ".github/workflows/electroverse-france-full-refresh.yml"
+      - ".github/workflows/electra-france-platform-snapshot.yml"
+      - ".github/workflows/loadmotion-france-refresh.yml"
+      - ".github/workflows/ionity-direct-station-tariffs.yml"
+      - ".github/workflows/atlante-direct-station-tariffs.yml"
+      - ".github/workflows/zewatt-france-refresh.yml"
+      - ".github/workflows/validate-v9-country-progress.yml"
+      - ".github/workflows/validate-v9-refresh-cadence.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/validate_v9_refresh_cadence.py
