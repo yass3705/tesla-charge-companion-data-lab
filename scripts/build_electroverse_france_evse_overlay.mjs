@@ -13,6 +13,7 @@ const VALIDATED_NUMERIC_MAP='data/platforms/electroverse/validated-mappings/nume
 const VALIDATED_S82_MAP='data/platforms/electroverse/validated-mappings/s82-residual.json';
 const VALIDATED_MGP_MAP='data/platforms/electroverse/validated-mappings/mgp-residual.json';
 const VALIDATED_LE2_MAP='data/platforms/electroverse/validated-mappings/le2-residual.json';
+const FINAL_RESIDUAL_PLAN='data/platforms/electroverse/validated-mappings/final-residual-recovery-plan.json';
 const OUT=process.argv[2]||'data/platforms/electroverse/france-evse';
 const TILE=.5;
 // Rebuild marker: validate protected PD1 technical grouping on main.
@@ -187,6 +188,7 @@ const validatedNumericMap=JSON.parse(await fs.readFile(VALIDATED_NUMERIC_MAP,'ut
 const validatedS82Map=JSON.parse(await fs.readFile(VALIDATED_S82_MAP,'utf8'));
 const validatedMgpMap=JSON.parse(await fs.readFile(VALIDATED_MGP_MAP,'utf8'));
 const validatedLe2Map=JSON.parse(await fs.readFile(VALIDATED_LE2_MAP,'utf8'));
+const finalResidualPlan=JSON.parse(await fs.readFile(FINAL_RESIDUAL_PLAN,'utf8'));
 const powerdotByEvse=new Map((powerdotTech.evses||[]).map(x=>[norm(x.evseId),x]));
 const drivecoNative=[...(driveco.resolved||[]),...(driveco.unresolved||[])];
 const drivecoByEvse=new Map(drivecoNative.map(x=>[norm(x.evseId),x]));
@@ -255,11 +257,24 @@ const validatedLe2ResidualTargets=new Map(
     norm(x.targetPdc)
   ])
 );
+const finalResidualIndividualTargets=new Map(
+  (finalResidualPlan.individualMappings||[]).map(x=>[
+    String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk),
+    {target:norm(x.targetPdc),mode:String(x.mode||''),operator:String(x.operator||'UNKNOWN')}
+  ])
+);
+const finalResidualGroupsByLocation=new Map();
+for(const g of finalResidualPlan.groupMappings||[]){
+  const k=String(g.electroverseLocationPk);
+  const a=finalResidualGroupsByLocation.get(k)||[];
+  a.push(g);finalResidualGroupsByLocation.set(k,a);
+}
 const validatedResidualTargets=new Map([
   ...validatedNumericResidualTargets,
   ...validatedS82ResidualTargets,
   ...validatedMgpResidualTargets,
-  ...validatedLe2ResidualTargets
+  ...validatedLe2ResidualTargets,
+  ...[...finalResidualIndividualTargets].map(([k,v])=>[k,v.target])
 ]);
 const isValidatedResidualSource=(row,e)=>validatedResidualTargets.has(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
 const globalPdcOwners=new Map();
@@ -294,6 +309,9 @@ const stats={
   validatedS82ResidualCandidateEvses:0,validatedS82ResidualPublishedEvses:0,
   validatedMgpResidualCandidateEvses:0,validatedMgpResidualPublishedEvses:0,
   validatedLe2ResidualCandidateEvses:0,validatedLe2ResidualPublishedEvses:0,
+  finalResidualUniqueSuffixCandidateEvses:0,finalResidualUniqueSuffixPublishedEvses:0,
+  finalResidualCommonTailCandidateEvses:0,finalResidualCommonTailPublishedEvses:0,
+  finalResidualHomogeneousGroupCandidateEvses:0,finalResidualHomogeneousGroupPublishedEvses:0,
   validatedResidualCompileFailures:{},validatedResidualHeterogeneousConnectors:0,validatedResidualOffersCreated:0,
   drvPowerGroupCandidateEvses:0,drvPowerGroupPublishedEvses:0,drvPowerGroupByKw:{},
   pd1TechnicalGroupCandidateEvses:0,pd1TechnicalGroupPublishedEvses:0,pd1TechnicalGroupByKey:{},
@@ -1502,6 +1520,84 @@ for(const sh of manifest.shards||[]){
       }
     }
 
+    // Final residual recovery plan: exact homogeneous groups proven against the
+    // current canonical overlay. Revalidate every source and target at build time.
+    const finalResidualGroupedSourceEvses=new Set();
+    const finalResidualGroupTargets=new Map();
+    for(const g of finalResidualGroupsByLocation.get(String(row.electroverseLocationPk))||[]){
+      if(String(g.mode)!=='homogeneous_exact_set')continue;
+      const sourcePkSet=new Set((g.sourceEvsePks||[]).map(String));
+      const es=(row.tariff?.evses||[]).filter(e0=>sourcePkSet.has(String(e0?.pk??'')));
+      const targets=(g.targetPdcs||[]).map(norm).filter(Boolean);
+      if(!es.length||es.length!==sourcePkSet.size||targets.length!==es.length)continue;
+      if(new Set(targets).size!==targets.length)continue;
+      if(targets.some(p=>!local.has(p)||(globalPdcOwners.get(p)?.size||0)!==1))continue;
+
+      // Refuse the planned group if any source is now already resolved by a stronger rule.
+      let sourceConflict=false;
+      for(const e0 of es){
+        const pr0=text(e0?.physicalReference);const k0=norm(pr0);
+        const parentNow=[...local].filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\d{1,2}$/.test(k0.slice(p.length)));
+        if(local.has(k0)||parentNow.length===1||ordinalTargets.has(e0)||genericTargets.has(e0)||suffixTargets.has(e0)||
+           trimmedSuffixTargets.has(e0)||pd1FinalOrdinalTargets.has(e0)||viaFinalOrdinalTargets.has(e0)||
+           c55BIndexTargets.has(e0)||viaStructuredBasePairTargets.has(e0)||viaOfficialTargets.has(e0)||
+           izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0)||c55GroupedSourceEvses.has(e0)||
+           hpcGroupedSourceEvses.has(e0)||pd1TechnicalSourceEvses.has(e0)||drvPowerSourceEvses.has(e0)||
+           operatorGroupedSourceEvses.has(e0)){sourceConflict=true;break;}
+      }
+      if(sourceConflict)continue;
+
+      const compiledRows=[];let valid=true;
+      for(const e0 of es){
+        const connectors=e0?.connectors||[];if(!connectors.length){valid=false;break;}
+        const compiled=[];
+        for(const c0 of connectors){
+          const x=compileConnector(c0);if(!x.ok){valid=false;break;}
+          compiled.push({pricing:x.pricing,connectorPk:c0.pk??null});
+        }
+        if(!valid)break;
+        const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
+        if(unique.length!==1){valid=false;break;}
+        compiledRows.push({e:e0,pricing:unique[0],connectorCount:connectors.length});
+      }
+      if(!valid||compiledRows.length!==es.length)continue;
+      const pricingSigs=new Set(compiledRows.map(x=>pricingSig(x.pricing)));
+      const connectorCounts=new Set(compiledRows.map(x=>x.connectorCount));
+      if(pricingSigs.size!==1||connectorCounts.size!==1)continue;
+
+      const sharedPricing=compiledRows[0].pricing;
+      const connectorCount=compiledRows[0].connectorCount;
+      for(const p of targets)finalResidualGroupTargets.set(p,{
+        pricing:sharedPricing,connectorCount,sourceEvses:es,operator:String(g.operator||'UNKNOWN')
+      });
+      for(const e0 of es)finalResidualGroupedSourceEvses.add(e0);
+    }
+
+    if(finalResidualGroupTargets.size){
+      for(const [targetNorm,g] of finalResidualGroupTargets){
+        const targetPdc=localByNorm.get(targetNorm);
+        const currency=g.pricing.rules?.[0]?.currency||'EUR';
+        const offer={
+          id:`electroverse-evse-final-residual-group:${row.electroverseLocationPk}:${targetNorm}`,
+          provider:'Electroverse',countries:['FR'],currency,priority:80,
+          verifiedScope:'exact_evse_group',evseIds:[targetPdc],pricing:g.pricing,
+          metadata:{
+            verified:true,identityMode:'validated_final_residual_homogeneous_exact_set',
+            electroverseLocationPk:String(row.electroverseLocationPk),
+            electroverseEvsePks:g.sourceEvses.map(e=>e.pk??null),
+            physicalReferences:g.sourceEvses.map(e=>text(e?.physicalReference)),
+            connectorCount:g.connectorCount,sourceGroupSize:g.sourceEvses.length,targetGroupSize:g.sourceEvses.length,
+            operator:g.operator,tariffHash:row.tariffHash||null,fetchedAt:row.fetchedAt||null,
+            source:'Electroverse final residual recovery plan'
+          }
+        };
+        const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);tiles.get(id).push(offer);
+        stats.finalResidualHomogeneousGroupCandidateEvses++;
+        stats.finalResidualHomogeneousGroupPublishedEvses++;
+        stats.pricedExactEvses++;stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=g.connectorCount;
+      }
+    }
+
     // Generic homogeneous exact-set fallback for all remaining single-operator families.
     // This is intentionally later than every operator-specific rule. It only applies to the
     // still-unresolved source set when ALL remaining national PDCs at the mapped location:
@@ -1531,7 +1627,7 @@ for(const sh of manifest.shards||[]){
         if(trimmedSuffixTargets.has(e0)){claimed.add(trimmedSuffixTargets.get(e0));continue;}
         if(pd1FinalOrdinalTargets.has(e0)){claimed.add(pd1FinalOrdinalTargets.get(e0));continue;}
         if(viaFinalOrdinalTargets.has(e0)){claimed.add(viaFinalOrdinalTargets.get(e0));continue;}
-        if(izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0)||c55GroupedSourceEvses.has(e0)||hpcGroupedSourceEvses.has(e0)||pd1TechnicalSourceEvses.has(e0)||drvPowerSourceEvses.has(e0)||operatorGroupedSourceEvses.has(e0))continue;
+        if(izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0)||c55GroupedSourceEvses.has(e0)||hpcGroupedSourceEvses.has(e0)||pd1TechnicalSourceEvses.has(e0)||drvPowerSourceEvses.has(e0)||operatorGroupedSourceEvses.has(e0)||finalResidualGroupedSourceEvses.has(e0))continue;
         unresolved.push(e0);
       }
       const unclaimed=[...local].filter(p=>!claimed.has(p));
@@ -1641,7 +1737,16 @@ for(const sh of manifest.shards||[]){
         if(!local.has(targetNorm)||!owners||owners.size!==1){rej('validated_numeric_residual_target_invalid');continue;}
         targetPdc=localByNorm.get(targetNorm);
         const validatedKey=String(row.electroverseLocationPk)+':'+String(e?.pk??'');
-        if(validatedS82ResidualTargets.has(validatedKey)){
+        const finalResidualIndividual=finalResidualIndividualTargets.get(validatedKey);
+        if(finalResidualIndividual){
+          if(finalResidualIndividual.mode==='unique_suffix_bijection'){
+            identityMode='validated_final_residual_unique_suffix_bijection';
+            stats.finalResidualUniqueSuffixCandidateEvses++;
+          }else{
+            identityMode='validated_final_residual_common_tail_bijection';
+            stats.finalResidualCommonTailCandidateEvses++;
+          }
+        }else if(validatedS82ResidualTargets.has(validatedKey)){
           identityMode='validated_s82_residual_unique_suffix_bijection';
           stats.validatedS82ResidualCandidateEvses++;
         }else if(validatedMgpResidualTargets.has(validatedKey)){
@@ -1878,6 +1983,8 @@ for(const sh of manifest.shards||[]){
       if(identityMode==='strict_55c_bindex_zero_based_suffix')stats.c55BIndexPublishedEvses++;
       if(identityMode==='strict_via_structured_base_pair')stats.viaStructuredBasePairPublishedEvses++;
       if(identityMode==='strict_vianeo_official_source_ref_identity')stats.viaOfficialIdentityPublishedEvses++;
+      if(identityMode==='validated_final_residual_unique_suffix_bijection')stats.finalResidualUniqueSuffixPublishedEvses++;
+      if(identityMode==='validated_final_residual_common_tail_bijection')stats.finalResidualCommonTailPublishedEvses++;
       stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=compiled.length;
     }
   }
@@ -1932,7 +2039,7 @@ for(const [target,items] of offersByTarget.entries()){
   if(items.length<2)continue;
   stats.duplicatePublishedEvseTargetsBeforeDedup+=items.length-1;
   const sigs=new Set(items.map(x=>x.pricingSig));
-  const validatedItems=items.filter(x=>['validated_numeric_residual_unique_bijection','validated_s82_residual_unique_suffix_bijection','validated_mgp_residual_unique_suffix_bijection','validated_le2_residual_unique_suffix_bijection'].includes(x.offer.metadata?.identityMode));
+  const validatedItems=items.filter(x=>['validated_numeric_residual_unique_bijection','validated_s82_residual_unique_suffix_bijection','validated_mgp_residual_unique_suffix_bijection','validated_le2_residual_unique_suffix_bijection','validated_final_residual_unique_suffix_bijection','validated_final_residual_common_tail_bijection'].includes(x.offer.metadata?.identityMode));
   if(validatedItems.length===1){
     // A strict individual post-overlay bijection is more specific than any grouped
     // attribution that happens to claim the same national target. Preserve it and
@@ -1991,6 +2098,9 @@ stats.validatedNumericResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.i
 stats.validatedS82ResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_s82_residual_unique_suffix_bijection').length;
 stats.validatedMgpResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_mgp_residual_unique_suffix_bijection').length;
 stats.validatedLe2ResidualPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_le2_residual_unique_suffix_bijection').length;
+stats.finalResidualUniqueSuffixPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_final_residual_unique_suffix_bijection').length;
+stats.finalResidualCommonTailPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_final_residual_common_tail_bijection').length;
+stats.finalResidualHomogeneousGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='validated_final_residual_homogeneous_exact_set').length;
 stats.pd1TechnicalGroupPublishedEvses=finalOffers.filter(o=>o.metadata?.identityMode==='strict_pd1_official_technical_homogeneous_group').length;
 stats.pd1TechnicalGroupByKey={};
 for(const o of finalOffers.filter(o=>o.metadata?.identityMode==='strict_pd1_official_technical_homogeneous_group')){
