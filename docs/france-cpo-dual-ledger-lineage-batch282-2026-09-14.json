@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "date": "2026-09-14",
+  "batch": "batch282",
+  "purpose": "Continue deterministic raw-291 lineage reconstruction after the physical batch281 canonical repair, while correcting the SDE82 tariff-status interpretation from the repository's own batch99 evidence. No tariff extrapolation, placeholder assignment or category/counter mutation.",
+  "sources": [
+    "docs/france-cpo-progress-2026-09.json",
+    "docs/france-regional-cpo-recheck-2026-09-07-batch99.json",
+    "yass3705/tesla-charge-companion-data-lab:reports/france/cpo-operators-291.json"
+  ],
+  "canonicalInput": {
+    "treatedCpos": 76,
+    "setAsideCpos": 12,
+    "activeRemainingCpos": 203,
+    "pendingDedupe": 0,
+    "historicalAnonymousTreatedSlots": 12,
+    "rawOccurrencesMapped": 175
+  },
+  "newDeterministicRawLineage": [
+    {
+      "rawRanks": [90],
+      "historicalOperator": "Syndicat Départemental d'Énergie de Tarn-et-Garonne (SDE82) | FR*S82",
+      "authority": "SDE82 / Tarn-et-Garonne | FR*S82",
+      "category": "active-authority",
+      "evidence": [
+        "Historical 291-row inventory rank90 is exactly Syndicat Départemental d'Énergie de Tarn-et-Garonne (SDE82) | FR*S82, with 108 stations / 228 PDC.",
+        "Repository batch99 explicitly investigates SDE82 / FR*S82 as an active authority and confirms current direct occasional web/QR access with Freshmile technical management.",
+        "Batch99 also explicitly states that the exact current numeric 2026 tariff coefficients were not recovered: current first-party evidence proves a composite energy-plus-time formula, while the latest recovered numeric SDE82 tariff document was 2023-2024 and cannot be transposed to 2026."
+      ],
+      "decision": "deterministic active lineage mapped; no treated promotion",
+      "guard": "Do not interpret Freshmile technical management as a Freshmile tariff-authority alias. Do not use third-party 0.40 EUR/kWh observations or the historical 2023-2024 SDE82 grid as current 2026 tariff authority.",
+      "nextUsefulTariffRoute": "Exact SDE82 station Freshmile QR/payment payload, current SDE82 tariff annex/deliberation, or producer-side QualiCharge/AFIR tariff text tied to FR*S82."
+    }
+  ],
+  "tariffStatusCorrection": {
+    "authority": "SDE82 / FR*S82",
+    "previousWorkingInterpretation": "exact direct tariff already resolved",
+    "correctedInterpretation": "current 2026 exact numeric tariff remains unresolved",
+    "reason": "docs/france-regional-cpo-recheck-2026-09-07-batch99.json is explicit that current first-party evidence proves the tariff structure but omits current numeric coefficients, and that the latest numeric first-party grid recovered was historical 2023-2024.",
+    "counterImpact": 0
+  },
+  "coverage": {
+    "rawOccurrencesMappedBefore": 175,
+    "newRawOccurrencesMapped": 1,
+    "rawOccurrencesMappedAfter": 176,
+    "rawInventoryTotal": 291,
+    "remainingRawOccurrencesWithoutDeterministicAuthorityLineage": 115,
+    "rawCoveragePercentAfter": 60.48109965635739
+  },
+  "pendingDedupeTouched": [],
+  "categoryMutation": false,
+  "counterMutation": false,
+  "antiLoopControl": {
+    "arithmetic": "76 + 12 + 203 = 291",
+    "arithmeticOk": true,
+    "treatedCounterMatchesNominativeLength": true,
+    "pendingDedupeCount": 0,
+    "historicalAnonymousTreatedSlots": 12,
+    "newActiveTariffAuditsCreated": 0,
+    "setAsideReauditedWithoutNewEvidence": 0,
+    "firstPassAlreadyComplete": true,
+    "result": "PASS_BATCH282_76_12_203_PENDING_ZERO_176_OF_291_RAW_LINEAGE_S82_TARIFF_STATUS_CORRECTED"
+  },
+  "nextAction": "Continue nominative/raw-lineage reconstruction from the 115 remaining raw occurrences and second-pass only authorities with genuinely new exact evidence. SDE82 stays active and must not be replayed again unless a new exact producer-side numeric tariff source appears."
+}
