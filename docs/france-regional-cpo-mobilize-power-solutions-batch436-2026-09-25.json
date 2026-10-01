@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "batch": "batch436",
+  "date": "2026-09-25",
+  "cpo": "Mobilize Power Solutions",
+  "rawRank": 61,
+  "historical": {
+    "stations": 365,
+    "pdc": 480
+  },
+  "decision": "treated-direct-producer-with-fallback",
+  "evidence": {
+    "producer": "Mobilize Power Solutions",
+    "officialDataset": "https://www.data.gouv.fr/datasets/irve-statique-mobilize-power-solutions",
+    "resourceId": "dcf21265-b461-4de4-bb55-abae3281f35f",
+    "schema": "etalab/schema-irve-statique 2.3.1",
+    "resourceDate": "2026-08-13",
+    "namespace": "FRMBZ",
+    "currentResourceCoverage": {
+      "frmbzEvse": 344,
+      "frmbzStations": 259,
+      "numericTariffEvse": 311,
+      "nonNumericOrNullEvse": 33,
+      "nonNumericOrNullStations": 24
+    },
+    "tarificationExamples": [
+      "0.40€ / kwh",
+      "0,40€ / kwh pour les non abonnés.",
+      "Coût de l’énergie : 0.32€ / KWH Coût de la durée lorsque le véhicule est en charge : 0.1€ / Minute Coût de la durée lorsque le véhicule est chargé : 0.1€ / Minute",
+      "0.50 € par KWh + 0.025 € par minute la 1ère heure + 0.10 € par minute au-delà de 60 minutes",
+      "0.47€/kWh pour les non abonnés",
+      "0.39€/kWh pour les non abonnés"
+    ],
+    "weakCases": {
+      "countEvse": 33,
+      "countStations": 24,
+      "types": [
+        "tarification='Payant'",
+        "tarification=null"
+      ],
+      "note": "Some null rows have paiement_acte=false; some Payant/null rows have paiement_acte=true. No numeric value may be invented."
+    }
+  },
+  "policy": {
+    "primary": "Exact id_pdc_itinerance/id_station_itinerance match in current first-party Mobilize producer IRVE resource; parse tarification text including energy, time, launch and post-charge components.",
+    "fallbackOrder": [
+      "QualiCharge/AFIR exact FRMBZ station/EVSE if direct producer tarification is non-numeric/null",
+      "exact QR/ad-hoc payment flow if discoverable",
+      "Electra",
+      "Electroverse"
+    ],
+    "failClosed": true,
+    "doNotUse": "Mobilize Charge Pass roaming prices as CPO direct tariff; third-party mirror numeric prices as authority."
+  },
+  "conclusion": "Mobilize Power Solutions is sufficiently deterministic for TCC: 311/344 current FRMBZ EVSE expose numeric producer-side tariff formulas. Remaining 33 EVSE use strict per-EVSE fallback/fail-closed; this does not justify keeping the whole CPO active. Promote raw rank61 to treated."
+}
