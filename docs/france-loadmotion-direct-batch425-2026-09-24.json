@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "date": "2026-09-24",
+  "batch": "batch425",
+  "family": "Load Motion",
+  "resolver": "/v1/api/matching-pricing-definitions/resolve",
+  "priceField": "dimensions.*.price",
+  "rules": {
+    "noTariffIsFree": false,
+    "directAndRoamingSeparate": true,
+    "fallbackOrder": [
+      "Electra",
+      "Electroverse"
+    ],
+    "credentialsCommitted": false
+  },
+  "tenants": {
+    "YES55": {
+      "status": "treated",
+      "identity": {
+        "canonical": "YES55",
+        "countryCode": "FR",
+        "partyId": "Y55",
+        "aliases": [
+          "FR*Y55",
+          "Y55"
+        ]
+      },
+      "source": {
+        "authority": "Load Motion production tenant yes55.load-motion.com",
+        "resolver": "/v1/api/matching-pricing-definitions/resolve",
+        "inventory": "Search=Y55 with strict FR*Y55* filter",
+        "snapshotDate": "2026-09-24",
+        "resolvedPriceField": "dimensions.*.price",
+        "noTariffIsFree": false
+      },
+      "coverage": {
+        "stations": 1135,
+        "directTariffStations": 189,
+        "noTariff": 225,
+        "emptyPricing": 320,
+        "station404": 160,
+        "pricing404": 241,
+        "directCoveragePct": 16.65,
+        "fallbackStations": 946,
+        "uniqueDirectTariffSchemes": 26
+      },
+      "policy": {
+        "directScope": "exact station/EVSE only",
+        "sameSiteAreaCandidatesRankable": false,
+        "fallbackOrder": [
+          "Electra",
+          "Electroverse"
+        ]
+      }
+    },
+    "LoadStations": {
+      "status": "treated",
+      "identity": {
+        "canonical": "Load Stations",
+        "countryCode": "FR",
+        "partyId": "LST",
+        "aliases": [
+          "FR*LST",
+          "LoadStations"
+        ]
+      },
+      "source": {
+        "authority": "Load Motion production tenant loadstations.load-motion.com",
+        "resolver": "/v1/api/matching-pricing-definitions/resolve",
+        "inventory": "Search=LST with strict FR*LST* filter",
+        "snapshotDate": "2026-09-24"
+      },
+      "coverage": {
+        "stations": 77,
+        "stationSpecificDirect": 55,
+        "ambiguousGenericTenantDefaults": 20,
+        "emptyPricing": 1,
+        "persistentError": 1
+      },
+      "policy": {
+        "rankableDefinition": "station-specific issuer=false only",
+        "excludedGenericDefaults": [
+          "3F",
+          "Tarif Load Stations"
+        ],
+        "fallbackOrder": [
+          "Electra",
+          "Electroverse"
+        ]
+      }
+    },
+    "REVEO": {
+      "status": "treated",
+      "identity": {
+        "canonical": "REVEO",
+        "aliases": [
+          "FR*RVE",
+          "REVEO SYADEN",
+          "SYADEN",
+          "SDE09",
+          "TE46",
+          "SDE65",
+          "SYDEEL"
+        ]
+      },
+      "source": {
+        "authority": "Load Motion production tenant app.reveocharge.com",
+        "resolver": "/v1/api/matching-pricing-definitions/resolve",
+        "inventory": "Issuer=true internal inventory",
+        "snapshotDate": "2026-09-24"
+      },
+      "coverage": {
+        "stations": 1069,
+        "connectors": 1941,
+        "pricedConnectors": 1935,
+        "recoveredPass2": 246,
+        "persistentHttp500": 6,
+        "uniqueDefinitions": 19
+      },
+      "policy": {
+        "genericNationalTariffGeneralization": false,
+        "territorialPowerTimeRestrictionsPreserved": true,
+        "subscriberAlternativeDefault": false,
+        "publicAdhocWhenBoth": "Non Abonné",
+        "unresolvedFallback": [
+          "Electra",
+          "Electroverse"
+        ]
+      }
+    },
+    "MobiSDEC": {
+      "status": "treated",
+      "identity": {
+        "canonical": "MobiSDEC / SDEC Energie",
+        "aliases": [
+          "FR*S14",
+          "MobiSDEC",
+          "SDEC Energie",
+          "SDEC Énergie"
+        ]
+      },
+      "source": {
+        "authority": "Load Motion production tenant mobisdec.load-motion.com",
+        "resolver": "/v1/api/matching-pricing-definitions/resolve",
+        "inventory": "Issuer=true internal inventory",
+        "snapshotDate": "2026-09-24"
+      },
+      "coverage": {
+        "stations": 546,
+        "connectors": 1261,
+        "pricedConnectors": 1261,
+        "recoveredPass2": 175,
+        "persistentErrors": 0,
+        "uniqueDefinitions": 10
+      },
+      "tariffBands": [
+        {
+          "minKw": 0.1,
+          "maxKw": 8,
+          "energyEurPerKwh": 0.42
+        },
+        {
+          "minKw": 8.01,
+          "maxKw": 32,
+          "energyEurPerKwh": 0.46999992
+        },
+        {
+          "minKw": 32,
+          "maxKw": 52,
+          "energyEurPerKwh": 0.519996
+        },
+        {
+          "minKw": 53,
+          "maxKw": 122,
+          "energyEurPerKwh": 0.57
+        },
+        {
+          "minKw": 123,
+          "maxKw": 200,
+          "energyEurPerKwh": 0.619992
+        }
+      ],
+      "parkingPolicy": {
+        "dayWindow": "07:00-00:00",
+        "postChargeEurPerMinute": 0.21,
+        "graceMinutes": 15,
+        "nightParkingFee": false
+      }
+    },
+    "SITI11": {
+      "status": "covered-via-reveo",
+      "counting": "non-counting alias/supervision tenant",
+      "source": {
+        "tenant": "siti11.load-motion.com",
+        "issuerInventoryStations": 0,
+        "uiTotal": 0,
+        "snapshotDate": "2026-09-24"
+      },
+      "canonicalCoverage": "REVEO / SYADEN Aude / FR*S11",
+      "separateCpoImport": false
+    }
+  },
+  "tccIntegration": {
+    "repository": "yass3705/tesla-charge-companion-stable",
+    "pullRequest": 128,
+    "sourceId": "france-loadmotion-offers"
+  }
+}
