@@ -1,0 +1,81 @@
+name: France IRVE canonical (parallel)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/france_irve_canonical.py"
+      - "tests/test_france_irve_canonical.py"
+      - "config/france_irve_model.json"
+      - ".github/workflows/france-irve-canonical.yml"
+  schedule:
+    - cron: "23 3 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  build-canonical-irve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Unit tests
+        run: python -m unittest tests/test_france_irve_canonical.py -v
+
+      - name: Download national IRVE static consolidation
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 4 --retry-all-errors \
+            "https://www.data.gouv.fr/api/1/datasets/r/4ca78c71-4ea4-475d-bd3a-d4aef88f7bf8" \
+            --output /tmp/irve-france-static.csv
+          test -s /tmp/irve-france-static.csv
+          head -n 1 /tmp/irve-france-static.csv | grep -q "id_pdc_itinerance"
+
+      - name: Build non-Tesla canonical PDC base
+        run: |
+          python scripts/france_irve_canonical.py \
+            --input /tmp/irve-france-static.csv \
+            --output data/irve/france_irve_canonical.jsonl.gz \
+            --stats data/reports/france_irve_canonical_stats.json
+
+      - name: Guardrails
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("data/reports/france_irve_canonical_stats.json")
+          s = json.loads(p.read_text())
+          assert s["rows_written"] > 100000, s
+          assert s["rows_seen"] >= s["rows_written"], s
+          print(json.dumps(s, indent=2, ensure_ascii=False))
+          PY
+
+      - name: Job summary
+        if: always()
+        run: |
+          if [ -f data/reports/france_irve_canonical_stats.json ]; then
+            echo "## France IRVE canonical" >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat data/reports/france_irve_canonical_stats.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload candidate base
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: france-irve-canonical-candidate
+          path: |
+            data/irve/france_irve_canonical.jsonl.gz
+            data/reports/france_irve_canonical_stats.json
+          retention-days: 7
+          compression-level: 0
