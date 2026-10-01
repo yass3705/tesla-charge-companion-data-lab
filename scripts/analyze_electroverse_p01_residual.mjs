@@ -102,6 +102,20 @@ for(const sh of cman.shards||[]){
       const n=norm(v),mm=n.match(/^FR[A-Z0-9]{1,8}E(.+)$/);
       return mm?mm[1]:null;
     };
+    const structuredAllLocal=[];
+    for(const x of refs){
+      const parts=String(x.raw||'').split('*').map(v=>v.trim()).filter(Boolean);
+      if(parts.length!==6||parts[0].toUpperCase()!=='FR'||parts[1].toUpperCase()!=='P01')continue;
+      const parentBody=norm(parts[2]+parts[3]+parts[4]).replace(/^E/,'');
+      const matches=local.filter(p=>evseBody(p)===parentBody&&(owners.get(p)?.size||0)===1);
+      if(matches.length===1)structuredAllLocal.push({
+        evsePk:x.e.pk,target:matches[0],raw:x.raw,parentBody,
+        connectorOrdinal:parts[5],
+        targetAlreadyPublished:publishedTargets.has(matches[0]),
+        sourceHasConnectors:(x.e?.connectors||[]).length>0,
+        sourceSignature:sourceSig(x.e)
+      });
+    }
     const structuredParent=[];
     for(const x of refs){
       const parts=String(x.raw||'').split('*').map(v=>v.trim()).filter(Boolean);
@@ -196,6 +210,10 @@ for(const sh of cman.shards||[]){
       homogeneousPricing,
       uniformConnectorCount:connectorCounts.size===1,
       commonPrefix:commonPrefix||null,
+      structuredAllLocalCount:structuredAllLocal.length,
+      structuredAllLocalPublishedTargetCount:structuredAllLocal.filter(x=>x.targetAlreadyPublished).length,
+      structuredAllLocalUnpublishedTargetCount:structuredAllLocal.filter(x=>!x.targetAlreadyPublished).length,
+      structuredAllLocal:structuredAllLocal.slice(0,160),
       structuredParentCount:structuredParent.length,
       structuredParentUniqueTargets:new Set(structuredParent.map(x=>x.target)).size,
       structuredParentAllSourcesMatched:structuredParent.length===es.length,
@@ -310,6 +328,12 @@ for(const x of validatedMappings){
   }
 }
 
+const allLocalStructured=groups.flatMap(g=>(g.structuredAllLocal||[]).map(x=>({
+  ...x,electroverseLocationPk:g.electroverseLocationPk,irveStationId:g.irveStationId
+})));
+const allLocalPublishedAliases=allLocalStructured.filter(x=>x.targetAlreadyPublished);
+const allLocalUnpublished=allLocalStructured.filter(x=>!x.targetAlreadyPublished);
+
 const out={
  schemaVersion:1,generatedAt:new Date().toISOString(),
  residualSourceEvses:residual,affectedLocations:locations,byMode,
@@ -321,6 +345,9 @@ const out={
  exactReferenceDonorRecoverableSourceEvses:donorRecoverableMappings.length,
  exactReferenceDonorAmbiguities:donorAmbiguities.length,
  sameParentHomogeneousPriceOnlyCandidates:sameParentHomogeneousCandidates.length,
+ structuredAllLocalSourceEvses:allLocalStructured.length,
+ structuredAliasToPublishedTargetSourceEvses:allLocalPublishedAliases.length,
+ structuredAllLocalUnpublishedSourceEvses:allLocalUnpublished.length,
  stationHomogeneousPriceOnlyCandidates:stationHomogeneousCandidates.length,
  safeGroups:groups.filter(g=>g.mode!=='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,200),
  unresolvedSamples:groups.filter(g=>g.mode==='none').sort((a,b)=>b.residualCount-a.residualCount).slice(0,100),
