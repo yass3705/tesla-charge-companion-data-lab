@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 213,
+  "date": "2026-10-01",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-212.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 250,
+    "partial": 341,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "name": "Stadtwerke Neustadt a. Rbge. GmbH",
+      "classification": "B4_FEE_COMPONENT_COMPLETENESS",
+      "decision": "remain partial; no new authoritative scope proof for session fee",
+      "evidence": {
+        "knownEnergy": "0.63 EUR/kWh direct energy evidence retained",
+        "knownFee": "0.58 EUR/session observed at Rathaus"
+      },
+      "exactGap": "Scope of the 0.58 EUR/session fee across the active estate is not authoritatively established; no estate-wide rule or exhaustive EVSE fee matrix found.",
+      "resumeCondition": "First-party/direct checkout or machine-readable EVSE matrix proving session/blocking fee scope across all active points."
+    },
+    {
+      "name": "EMERGY public charging network (Borken / Coesfeld)",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "decision": "promote partial -> complete",
+      "evidence": {
+        "canonicalIdentity": "EMERGY Führungs- und Servicegesellschaft mbH network serving Stadtwerke Borken and Stadtwerke Coesfeld.",
+        "currentEstateCorroboration": "Bundesnetzagentur-derived 2026 register: 39 locations / 124 charge points attributed to EMERGY, including AC and 300-kW HPC.",
+        "firstPartyScope": "Both Stadtwerke Borken and Stadtwerke Coesfeld current public-charging pages state the ADHOC conditions for EMERGY charging stations and describe QR scan + credit-card payment without contract.",
+        "anonymousTariff": "AC 0.59 EUR/kWh gross; DC/HPC 0.69 EUR/kWh gross; 1.00 EUR gross per begun half-hour after 150 free minutes.",
+        "channelSeparation": "Registered Mein Stadtwerke Strom Mobil tariff (0.35 AC / 0.45 DC-HPC plus monthly minimum volume) remains separate and is not used for anonymous_ad_hoc."
+      },
+      "promotionBasis": "Current first-party deterministic anonymous tariff rule explicitly scoped to EMERGY charging stations closes AC and DC/HPC energy plus time fee and payment semantics; no station-level extrapolation required."
+    }
+  ],
+  "promotions": [
+    "EMERGY public charging network (Borken / Coesfeld)"
+  ],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 251,
+    "partial": 340,
+    "blocked": 0
+  },
+  "indicator": "221 -> 251 complete (+30)",
+  "priorityTop5": {
+    "status": "unchanged; parked; not reopened"
+  },
+  "backendFamilyProgress": {
+    "B6": "EMERGY resolved through current first-party deterministic ADHOC rule rather than opaque checkout extraction."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "251 + 340 + 0 = 591",
+    "channelSeparation": "PASS",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Continue B6 candidates with current first-party/direct anonymous tariff surfaces; prioritize a bounded estate or explicit all-network rule. Do not repeat Neustadt absent fee-scope evidence."
+}
