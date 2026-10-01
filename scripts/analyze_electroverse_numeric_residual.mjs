@@ -17,6 +17,7 @@ for(const t of oman.tiles||[]){
   const tile=JSON.parse(zlib.gunzipSync(gz));
   for(const o of tile.emspOffers||[]){
     for(const pk of o?.metadata?.electroverseEvsePks||[]) if(pk!=null) publishedSourcePks.add(String(pk));
+    if(o?.metadata?.electroverseEvsePk!=null) publishedSourcePks.add(String(o.metadata.electroverseEvsePk));
     for(const id of o.evseIds||[]) publishedTargets.add(norm(id));
   }
 }
