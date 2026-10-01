@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 1,
+  "date": "2026-09-16",
+  "baselineBefore": {
+    "totalNamedCpos": 591,
+    "complete": 201,
+    "partial": 390,
+    "blocked": 0
+  },
+  "resolved": [
+    {
+      "canonical": "Stadtwerke Weinheim GmbH",
+      "previousStatus": "partial",
+      "newStatus": "complete",
+      "resolution": "Current first-party Stadtwerke Weinheim tariff page was re-verified on 2026-09-16 and explicitly separates 'ohne Registrierung / Ad-hoc Ladung' from registered card/app and roaming products. Anonymous ad-hoc AC is 0.59 EUR/kWh with 0.07 EUR/min from minute 181; anonymous ad-hoc DC is 0.69 EUR/kWh with 0.07 EUR/min from minute 121. The time fee is capped at 15 EUR per charging session. No start/base fee is charged. This directly satisfies the anonymous-current-first-party tariff requirement and removes the prior uncertainty.",
+      "directTariff": {
+        "AC_EUR_per_kWh": 0.59,
+        "DC_EUR_per_kWh": 0.69,
+        "AC_timeFee_EUR_per_min": 0.07,
+        "AC_timeFeeStartsAfter_min": 180,
+        "DC_timeFee_EUR_per_min": 0.07,
+        "DC_timeFeeStartsAfter_min": 120,
+        "timeFeeCap_EUR_per_session": 15.00,
+        "startFee_EUR_per_session": 0.00,
+        "access": "anonymous ad-hoc without registration"
+      },
+      "sources": [
+        "https://sww.de/de/Produkte/Mobilitaet/Tarife.php",
+        "https://sww.de/downloads/strom/Preisblatt%20Elektrolades%C3%A4ulen%20SWW%20ab%2001.01.2025.pdf"
+      ],
+      "verification": "PASS"
+    }
+  ],
+  "baselineAfter": {
+    "totalNamedCpos": 591,
+    "complete": 202,
+    "partial": 389,
+    "blocked": 0
+  },
+  "classificationImpact": {
+    "classifiedFromOriginalPartialPool": 93,
+    "promotedOutsideClassifiedSet": 1,
+    "remainingUnclassifiedCurrentPartials": 296,
+    "note": "Weinheim was recorded as an incidental high-confidence lead in classification batch 3 but was deliberately not counted among classified partials. Its promotion therefore reduces the unclassified current-partial queue from 297 to 296 without changing the 93 classified count."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "202 + 389 + 0 = 591; original partial pool 390 - 1 promotion = 389 current partials; 389 - 93 classified = 296 unclassified current partials",
+    "tariffExtrapolation": false,
+    "registeredOrRoamingTariffSubstituted": false,
+    "nextSafeAction": "Continue classification from checkpoint 141 backward and execute the next bounded resolution targets: Allgaeuer Kraftwerke six-EVSE gap, Stadtwerke Goettingen estate/DC completion, Stadtwerke Leipzig authoritative ad-hoc confirmation, then Kempen/Erft/Schifferstadt/GEW."
+  }
+}
