@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 128,
+  "schemaVersion": 129,
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 96,
-  "setAsideCpos": 44,
-  "activeRemainingCpos": 151,
-  "updatedAt": "2026-10-01T20:20:00+02:00",
+  "setAsideCpos": 45,
+  "activeRemainingCpos": 150,
+  "updatedAt": "2026-10-01T20:35:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -402,6 +402,13 @@
       "since": "2026-10-01",
       "lastChecked": "2026-10-01",
       "audit": "docs/france-regional-cpo-idex-batch507-2026-10-01.json"
+    },
+    {
+      "name": "NVH | raw rank152",
+      "reason": "batch508 fail-closed: current first-party NVH site positions NVH as an IRVE installer/electrical specialist and does not publish a current direct public charging tariff grid or anonymous station/EVSE tariff resolver. NVH's producer IRVE dataset was last updated in December 2024, while current public inventory has materially changed from the historical 35-station/35-PDC footprint. A few current 0.40 EUR/kWh observations cover only specific sites and are not first-party/network-wide authority. No extrapolation.",
+      "since": "2026-10-01",
+      "lastChecked": "2026-10-01",
+      "audit": "docs/france-regional-cpo-nvh-batch508-2026-10-01.json"
     }
   ],
   "activeNominative": [
@@ -492,7 +499,6 @@
     "RELEASED_SLOT_145_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_ACTIVE_SLOT_147 | alias Greenspot | FR*GSP | raw rank50",
     "UNPROVEN_ACTIVE_RAW_SLOT_RELEASED_BY_EMOTUM_ALIAS",
-    "UNPROVEN_ACTIVE_152",
     "UNPROVEN_ACTIVE_153",
     "UNPROVEN_ACTIVE_154",
     "UNPROVEN_ACTIVE_155",
@@ -869,7 +875,8 @@
     "PARERA MOBILITE | FR*MW1 / FR*VIS": "batch504: one PARERA MOBILITÉ authority across FR*MW1 and FR*VIS technical estates. First-party MobilyWeb supports customer/site-defined tariffs and monetization; no deterministic anonymous station/EVSE -> current direct tariff resolver recovered. raw99 setAside; raw156 released as non-counting alias.",
     "ANYOS | raw rank148": "batch505 setAside: ANYOS first-party terms make the applicable pre-charge displayed price authoritative, with possible kWh/start/time/parking components; no public deterministic exact-tariff resolver recovered.",
     "LMS / Last Mile Solutions | raw rank146": "batch506 setAside: current LMS first-party roaming/CPO documentation says tariffs are per-charge-point, mutable daily, and should be pulled from the live EVSE-ID tariff feed. No reusable anonymous live tariff feed recovered for historical France estate.",
-    "Idex | raw rank149": "batch507 setAside: current inventory still reconciles 3 stations/43 PDC, but first-party Idex model is customer/site-specific tariff configuration and billing. Exact site direct price requires station-specific resolver."
+    "Idex | raw rank149": "batch507 setAside: current inventory still reconciles 3 stations/43 PDC, but first-party Idex model is customer/site-specific tariff configuration and billing. Exact site direct price requires station-specific resolver.",
+    "NVH | raw rank152": "batch508 setAside: first-party NVH site exposes installation/IRVE services, not a current public numeric charging tariff; producer dataset stale Dec 2024 and current estate diverges from historical 35/35 footprint."
   },
   "history": [
     {
@@ -1523,9 +1530,19 @@
         "setAsideCpos": 44,
         "activeRemainingCpos": 151
       }
+    },
+    {
+      "date": "2026-10-01",
+      "batch": "batch508",
+      "change": "Moved NVH raw152 active->setAside. First-party NVH is an IRVE installer/technical provider with no current direct tariff surface; producer dataset is stale at Dec 2024 and current estate no longer matches historical 35/35 footprint.",
+      "counters": {
+        "treatedCpos": 96,
+        "setAsideCpos": 45,
+        "activeRemainingCpos": 150
+      }
     }
   ],
-  "currentInvestigation": "NVH | raw rank152 | 35 stations / 35 PDC: inspect first-party identity/operator/tariff authority and current direct pricing.",
+  "currentInvestigation": "SOLVEO ENERGIES | raw rank153 | 28 stations / 35 PDC: inspect first-party operator/tariff authority and current direct pricing.",
   "coherenceControl": {
     "batch": "batch491",
     "result": "PASS",
@@ -1540,11 +1557,11 @@
   },
   "lastRun": {
     "date": "2026-10-01",
-    "batch": "batch507",
-    "result": "PASS_IDEX_FAIL_CLOSED",
+    "batch": "batch508",
+    "result": "PASS_NVH_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch507",
+  "latestBatch": "batch508",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2338,6 +2355,14 @@
       "category": "setAside-authority",
       "decision": "active->setAside: first-party Idex confirms site-specific tariff configuration under supervision and billing; no universal numeric direct tariff or deterministic anonymous EVSE->site tariff resolver recovered",
       "evidence": "docs/france-regional-cpo-idex-batch507-2026-10-01.json"
+    },
+    {
+      "rawRank": 152,
+      "historicalOperator": "NVH",
+      "authority": "NVH",
+      "category": "setAside-authority",
+      "decision": "active->setAside: current first-party NVH is installer/technical IRVE provider with no current numeric public direct tariff surface; producer inventory stale at Dec 2024 and current estate diverges from historical footprint",
+      "evidence": "docs/france-regional-cpo-nvh-batch508-2026-10-01.json"
     }
   ],
   "rawLineageCoverage": {
