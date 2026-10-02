@@ -20,6 +20,7 @@ const VALIDATED_H01_MAP='data/platforms/electroverse/validated-mappings/h01-stru
 const VALIDATED_ADP_MAP='data/platforms/electroverse/validated-mappings/adp-structured-residual.json';
 const VALIDATED_GENERIC_SMALL_MAP='data/platforms/electroverse/validated-mappings/generic-small-buckets.json';
 const VALIDATED_CUSTOMGY_PAIR_MAP='data/platforms/electroverse/validated-mappings/customgyevse-pair-groups.json';
+const VALIDATED_CUSTOMGY_PDC_EXTENSIONS='data/platforms/electroverse/validated-mappings/customgyevse-pdc-extensions.json';
 const FINAL_RESIDUAL_PLAN='data/platforms/electroverse/validated-mappings/final-residual-recovery-plan.json';
 const OUT=process.argv[2]||'data/platforms/electroverse/france-evse';
 const TILE=.5;
@@ -226,6 +227,16 @@ let validatedGenericSmallMap={mappings:[]};
 try{validatedGenericSmallMap=JSON.parse(await fs.readFile(VALIDATED_GENERIC_SMALL_MAP,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
 let validatedCustomGyPairMap={groups:[]};
 try{validatedCustomGyPairMap=JSON.parse(await fs.readFile(VALIDATED_CUSTOMGY_PAIR_MAP,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
+let validatedCustomGyPdcExtensions={extensions:[]};
+try{validatedCustomGyPdcExtensions=JSON.parse(await fs.readFile(VALIDATED_CUSTOMGY_PDC_EXTENSIONS,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
+for(const x of validatedCustomGyPdcExtensions.extensions||[]){
+  const m=(mapping.mappings||[]).find(r=>String(r.electroverseLocationPk)===String(x.electroverseLocationPk));
+  if(!m)continue;
+  if(x.irveStationId&&String(m.irveStationId)!==String(x.irveStationId))continue;
+  const set=new Set((m.irvePdcIds||[]).map(String));
+  for(const pdc of x.addedPdcs||[]) if(pdc?.pdc)set.add(String(pdc.pdc));
+  m.irvePdcIds=[...set];
+}
 const finalResidualPlan=JSON.parse(await fs.readFile(FINAL_RESIDUAL_PLAN,'utf8'));
 const powerdotByEvse=new Map((powerdotTech.evses||[]).map(x=>[norm(x.evseId),x]));
 const drivecoNative=[...(driveco.resolved||[]),...(driveco.unresolved||[])];
