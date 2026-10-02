@@ -1,0 +1,29 @@
+name: Audit final B FR55C against Electric55 base
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/audit_b_final_fr55c_electric55_base.mjs"
+      - ".github/workflows/electroverse-b-final-fr55c-electric55.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/audit_b_final_fr55c_electric55_base.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/b-final-fr55c-electric55-base-audit.json
+          if ! git diff --cached --quiet; then
+            git commit -m "audit: persist final B cross-check against Electric55 base"
+            git pull --rebase origin main || true
+            git push
+          fi
