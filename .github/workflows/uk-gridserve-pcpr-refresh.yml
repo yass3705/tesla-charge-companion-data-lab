@@ -1,0 +1,67 @@
+name: GRIDSERVE PCPR UK refresh
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/uk_gridserve_pcpr_collect.py"
+      - ".github/workflows/uk-gridserve-pcpr-refresh.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: uk-gridserve-pcpr-refresh
+  cancel-in-progress: true
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GRIDSERVE_PCPR_API_KEY: ${{ secrets.GRIDSERVE_PCPR_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Collect GRIDSERVE PCPR data
+        run: python scripts/uk_gridserve_pcpr_collect.py
+
+      - name: Validate output
+        run: |
+          python - <<'PY'
+          import gzip, json
+          r=json.load(open("reports/uk/gridserve-pcpr-latest.json",encoding="utf-8"))
+          assert r["provider"]=="GRIDSERVE"
+          assert r["country"]=="GB"
+          assert r["locations"]["count"]>0
+          assert r["tariffs"]["count"]>0
+          assert r["secretValuePersisted"] is False
+          l=json.load(gzip.open("data/national/uk_gridserve_pcpr_locations.json.gz","rt",encoding="utf-8"))
+          t=json.load(gzip.open("data/national/uk_gridserve_pcpr_tariffs.json.gz","rt",encoding="utf-8"))
+          assert len(l["locations"])==r["locations"]["count"]
+          assert len(t["tariffs"])==r["tariffs"]["count"]
+          print(json.dumps({
+            "locations":r["locations"]["count"],
+            "evses":r["locations"]["evses"],
+            "connectors":r["locations"]["connectors"],
+            "tariffs":r["tariffs"]["count"],
+            "missingTariffRefs":r["join"]["missingReferencedTariffIdsCount"],
+          },indent=2))
+          PY
+
+      - name: Publish snapshot
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add             data/national/uk_gridserve_pcpr_locations.json.gz             data/national/uk_gridserve_pcpr_tariffs.json.gz             reports/uk/gridserve-pcpr-latest.json
+          git commit -m "data(uk): publish GRIDSERVE PCPR snapshot [run ${GITHUB_RUN_ID}]" || exit 0
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
