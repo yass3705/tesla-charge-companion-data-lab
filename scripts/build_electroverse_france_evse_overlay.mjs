@@ -2703,8 +2703,11 @@ for(const [tileIdKey,offers] of tiles.entries()) for(const offer of offers){
   if(!target)continue;
   // Connector-power offers intentionally share the same national EVSE.
   // Deduplicate them only within the same power/tariff variant.
-  const variant=offer.metadata?.offerGranularity==='connector_power'
-    ? '|CONNECTOR_POWER|'+String(offer.metadata?.powerKw??'UNKNOWN')+'|'+pricingSig(offer.pricing)
+  const granularity=offer.metadata?.offerGranularity;
+  const isPowerVariant=granularity==='connector_power'||granularity==='connector_power_alias';
+  const powerKey=offer.metadata?.powerKw??offer.metadata?.sourcePowerKw??'UNKNOWN';
+  const variant=isPowerVariant
+    ? '|CONNECTOR_POWER|'+String(powerKey)+'|'+pricingSig(offer.pricing)
     : '';
   const dedupeKey=target+variant;
   const arr=offersByTarget.get(dedupeKey)||[];
