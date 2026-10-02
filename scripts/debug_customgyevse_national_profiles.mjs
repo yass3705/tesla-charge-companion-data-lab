@@ -101,3 +101,54 @@ const prev=JSON.parse(await fs.readFile(OUT,'utf8'));
 prev.structural=structural;
 await fs.writeFile(OUT,JSON.stringify(prev,null,2)+'\n');
 console.log(JSON.stringify({structuralLocations:structural.length, structural},null,2));
+
+
+// Full CUSTOMGYEVSE structural census 2026-10-02
+const allGymLocs=new Set();
+for(const m of mapping.mappings||[]){
+  if(String(m.irveStationId??'').toUpperCase().startsWith('FRGYM')) allGymLocs.add(String(m.electroverseLocationPk));
+}
+const allSource=[];
+for(const sh of cman.shards||[]){
+  const d=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
+  for(const row of Object.values(d.stations||{})){
+    const loc=String(row.electroverseLocationPk);
+    if(!allGymLocs.has(loc)) continue;
+    const evses=(row?.tariff?.evses||[]).filter(e=>String(e?.physicalReference??'').trim()==='Custom GY EVSEID');
+    if(!evses.length) continue;
+    const mm=(mapping.mappings||[]).find(x=>String(x.electroverseLocationPk)===loc);
+    const pdcs=(mm?.irvePdcIds||[]).map(String);
+    const pairs=new Map();
+    for(const pdc of pdcs){
+      const n=norm(pdc); const m=n.match(/^FRGYMEC([12])(\d+)$/); if(!m) continue;
+      const g=pairs.get(m[2])||{}; g[m[1]]=pdc; pairs.set(m[2],g);
+    }
+    const profile=e=>(e.connectors||[]).map(x=>String(x.kilowatts??'')+'|'+String(x?.standard?.name??x?.standard??'')).join('+');
+    const profiles=evses.map(profile);
+    const consecutivePairs=profiles.length%2===0 && profiles.every((v,i)=>i%2===1||profiles[i+1]===v);
+    allSource.push({
+      locationPk:loc,
+      stationId:mm?.irveStationId??row.irveStationId??null,
+      sourceCount:evses.length,
+      targetCount:pdcs.length,
+      pairCount:pairs.size,
+      completeTargetPairs:[...pairs.values()].filter(g=>g['1']&&g['2']).length,
+      profiles,
+      consecutivePairs,
+      exactPairCardinality:evses.length===pdcs.length && evses.length===pairs.size*2 && [...pairs.values()].every(g=>g['1']&&g['2'])
+    });
+  }
+}
+const fullSummary={
+  locations:allSource.length,
+  sourceEvses:allSource.reduce((n,x)=>n+x.sourceCount,0),
+  exactPairCardinalityLocations:allSource.filter(x=>x.exactPairCardinality).length,
+  consecutivePairProfileLocations:allSource.filter(x=>x.consecutivePairs).length,
+  both:allSource.filter(x=>x.exactPairCardinality&&x.consecutivePairs).length,
+  exceptions:allSource.filter(x=>!(x.exactPairCardinality&&x.consecutivePairs)),
+  samples:allSource.slice(0,100)
+};
+const prev2=JSON.parse(await fs.readFile(OUT,'utf8'));
+prev2.fullStructuralSummary=fullSummary;
+await fs.writeFile(OUT,JSON.stringify(prev2,null,2)+'\n');
+console.log(JSON.stringify(fullSummary,null,2));
