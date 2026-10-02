@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "date": "2026-10-02",
+  "status": "CANONICAL_WRITE_PROTOCOL",
+  "problem": "Repeated France persistence failures were caused by stale-base/ref races and unnecessary branch/update-ref/PR fallback complexity while main was advancing concurrently.",
+  "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
+  "canonicalBranch": "main",
+  "canonicalPath": "docs/france-cpo-progress-2026-09.json",
+  "protocol": [
+    "Before every canonical mutation, fetch the canonical file from main and parse/recalculate counters from that exact blob.",
+    "Persist a new immutable audit file on main with Contents API create_file.",
+    "Refetch the canonical from main after the audit write because main has advanced.",
+    "Apply only the semantic delta for the current decision to that freshly fetched canonical; never replace it with a full file built from an older base.",
+    "Write the canonical with Contents API update_file using the freshly fetched blob SHA as optimistic concurrency control.",
+    "If SHA conflict occurs, refetch main, reapply the semantic delta, and retry. Do not create a per-batch persistence branch merely for a stale SHA.",
+    "After successful write, refetch canonical and audit from main and verify counters, list lengths, total=291, overlaps/aliases policy, pendingDedupe, latestBatch and decision presence.",
+    "Use low-level blobs/trees/commits/update-ref or PR only for exceptional repository recovery, not routine France persistence. Never force-update main."
+  ],
+  "concurrencyRule": "One semantic delta at a time. A writer must rebase logically by refetching canonical after every other write to main. The blob SHA is the lock/version token.",
+  "prohibitedRoutinePatterns": [
+    "force update-ref on main",
+    "full canonical replacement from stale branch",
+    "per-batch persist/rebased/retry branch proliferation",
+    "continuing to another CPO before rereading the materialized canonical"
+  ],
+  "proof": {
+    "batch594AuditCommit": "e8256e70168eff9a5bb19e71354938a517696d88",
+    "batch594CanonicalCommit": "7af8107fba939b719ff69daa08f74a7b8efe2550",
+    "postWriteCanonicalBlob": "1749a52828dff47a05cbc8a8cb1d3c71404aa1b2",
+    "postWriteCounters": {
+      "treated": 99,
+      "setAside": 109,
+      "active": 83,
+      "total": 291,
+      "pendingDedupe": 0
+    },
+    "result": "PASS"
+  }
+}
