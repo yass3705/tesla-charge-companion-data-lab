@@ -40,6 +40,7 @@ for(const t of oman.tiles||[]){
   for(const o of tile.emspOffers||[]){
     offerCount++;
     for(const pk of o?.metadata?.electroverseEvsePks||[]) if(pk!=null) publishedSourcePks.add(String(pk));
+    for(const pk of o?.metadata?.electroverseAliasEvsePks||[]) if(pk!=null) publishedSourcePks.add(String(pk));
     if(o?.metadata?.electroverseEvsePk!=null) publishedSourcePks.add(String(o.metadata.electroverseEvsePk));
     for(const id of o.evseIds||[]) publishedTargets.add(norm(id));
   }
