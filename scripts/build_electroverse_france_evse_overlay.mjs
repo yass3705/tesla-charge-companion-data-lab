@@ -1865,7 +1865,7 @@ for(const sh of manifest.shards||[]){
         return true;
       });
       if(pricingSigs.size!==1||connectorCounts.size!==1||technicalProfiles.size!==1)continue;
-      if(allUnresolvedAtLocation.length>es.length)continue;
+      if(recoveryMode==='homogeneous_exact_set' && allUnresolvedAtLocation.length>es.length)continue;
       const expectedProfile=g.profile&&typeof g.profile==='object'?g.profile:null;
       if(expectedProfile){
         const actual=(es[0]?.connectors||[]).map(c0=>({
