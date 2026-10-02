@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 232,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-231.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Autostrom Einert GmbH & Co. KG",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "backend": "chargecloud / Mobilithek DATEX II",
+      "status": "reopened-new-evidence-no-promotion",
+      "previousCoverage": {
+        "sites": 19,
+        "evseIds": 38,
+        "tariffObjects": 38
+      },
+      "newEvidence": "Current Mobilithek/DATEX-derived station surfaces explicitly identify the direct tariff as Ad-Hoc and expose 0.50 EUR/kWh + 0.50 EUR start fee + 0.01 EUR/min blocking after 240 minutes at sampled EVSEs. Current chargecloud-derived surfaces also mark prices as VAT-inclusive.",
+      "denominatorChange": "Current discovery surfaces expose approximately 23 stations / 46 charge points, exceeding the 19 sites / 38 EVSE IDs in the 2026-10-01 100%-raw audit.",
+      "exactGap": "The previous 100% denominator is stale. Refresh canonical national staging/BNetzA-Mobilithek reconciliation and prove tariff coverage for all newly observed Autostrom Einert sites/EVSEs. Do not promote using the old 19/19 coverage."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "indicator": "221 -> 253 complete (+32)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific source/backend proof"
+  },
+  "backendFamilyProgress": {
+    "chargecloud": "Autostrom Einert payment class and VAT ambiguity substantially resolved by current DATEX/chargecloud-derived evidence, but denominator expanded from 19/38 to ~23/46. Requires refreshed national staging coverage."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "253 + 338 + 0 = 591",
+    "unsafeExtrapolations": 0,
+    "denominatorGuard": "PASS: stale 100% coverage rejected."
+  },
+  "nextSafeAction": "Refresh Autostrom Einert national staging/BNetzA-Mobilithek coverage to current ~23 sites/46 points and rerun tariff closure. In parallel seek first-party VAT evidence for SCHARR; do not infer tax."
+}
