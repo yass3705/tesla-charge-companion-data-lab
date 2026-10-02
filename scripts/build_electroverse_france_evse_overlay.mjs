@@ -19,6 +19,7 @@ const VALIDATED_SAE_MAP='data/platforms/electroverse/validated-mappings/sae-stru
 const VALIDATED_H01_MAP='data/platforms/electroverse/validated-mappings/h01-structured-residual.json';
 const VALIDATED_ADP_MAP='data/platforms/electroverse/validated-mappings/adp-structured-residual.json';
 const VALIDATED_GENERIC_SMALL_MAP='data/platforms/electroverse/validated-mappings/generic-small-buckets.json';
+const VALIDATED_CUSTOMGY_PAIR_MAP='data/platforms/electroverse/validated-mappings/customgyevse-pair-groups.json';
 const FINAL_RESIDUAL_PLAN='data/platforms/electroverse/validated-mappings/final-residual-recovery-plan.json';
 const OUT=process.argv[2]||'data/platforms/electroverse/france-evse';
 const TILE=.5;
@@ -223,6 +224,8 @@ let validatedAdpMap={mappings:[]};
 try{validatedAdpMap=JSON.parse(await fs.readFile(VALIDATED_ADP_MAP,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
 let validatedGenericSmallMap={mappings:[]};
 try{validatedGenericSmallMap=JSON.parse(await fs.readFile(VALIDATED_GENERIC_SMALL_MAP,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
+let validatedCustomGyPairMap={groups:[]};
+try{validatedCustomGyPairMap=JSON.parse(await fs.readFile(VALIDATED_CUSTOMGY_PAIR_MAP,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
 const finalResidualPlan=JSON.parse(await fs.readFile(FINAL_RESIDUAL_PLAN,'utf8'));
 const powerdotByEvse=new Map((powerdotTech.evses||[]).map(x=>[norm(x.evseId),x]));
 const drivecoNative=[...(driveco.resolved||[]),...(driveco.unresolved||[])];
@@ -347,6 +350,12 @@ const finalResidualIndividualTargets=new Map(
     {target:norm(x.targetPdc),mode:String(x.mode||''),operator:String(x.operator||'UNKNOWN')}
   ])
 );
+const customGyPairGroupsByLocation=new Map();
+for(const g of validatedCustomGyPairMap.groups||[]){
+  const k=String(g.electroverseLocationPk);
+  const a=customGyPairGroupsByLocation.get(k)||[];
+  a.push(g);customGyPairGroupsByLocation.set(k,a);
+}
 const finalResidualGroupsByLocation=new Map();
 for(const g of finalResidualPlan.groupMappings||[]){
   const k=String(g.electroverseLocationPk);
@@ -1727,6 +1736,71 @@ for(const sh of manifest.shards||[]){
       }
     }
 
+    // CUSTOMGYEVSE validated pair groups. Each source pair has identical technical
+    // profile and pricing. The pair maps to the two GYM EC1/EC2 PDCs sharing one tail,
+    // without inventing which source EVSE is branch 1 vs branch 2.
+    const customGyPairGroupedSourceEvses=new Set();
+    const customGyPairTargets=new Map();
+    for(const g of customGyPairGroupsByLocation.get(String(row.electroverseLocationPk))||[]){
+      const sourcePkSet=new Set((g.sourceEvsePks||[]).map(String));
+      const es=(row.tariff?.evses||[]).filter(e0=>sourcePkSet.has(String(e0?.pk??'')));
+      const targets=(g.targetPdcs||[]).map(norm).filter(Boolean);
+      if(es.length!==2||sourcePkSet.size!==2||targets.length!==2||new Set(targets).size!==2)continue;
+      if(targets.some(p=>!local.has(p)||(globalPdcOwners.get(p)?.size||0)!==1))continue;
+      const compiledRows=[];let valid=true;
+      for(const e0 of es){
+        const connectors=e0?.connectors||[];if(!connectors.length){valid=false;break;}
+        const compiled=[];
+        for(const c0 of connectors){
+          const x=compileConnector(c0);if(!x.ok){valid=false;break;}
+          compiled.push({pricing:x.pricing,connectorPk:c0.pk??null});
+        }
+        if(!valid)break;
+        const unique=[...new Map(compiled.map(x=>[pricingSig(x.pricing),x.pricing])).values()];
+        if(unique.length!==1){valid=false;break;}
+        compiledRows.push({e:e0,pricing:unique[0],connectorCount:connectors.length,tech:JSON.stringify(connectors.map(c0=>({kilowatts:c0?.kilowatts??null,standard:c0?.standard?.name??c0?.standard??null})).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))))});
+      }
+      if(!valid||compiledRows.length!==2)continue;
+      if(new Set(compiledRows.map(x=>pricingSig(x.pricing))).size!==1)continue;
+      if(new Set(compiledRows.map(x=>x.connectorCount)).size!==1)continue;
+      if(new Set(compiledRows.map(x=>x.tech)).size!==1)continue;
+      const expectedKw=Number(g?.profile?.kilowatts);
+      const expectedStd=String(g?.profile?.standard??'');
+      if(Number.isFinite(expectedKw)||expectedStd){
+        const cs=es.flatMap(e0=>e0?.connectors||[]);
+        if(Number.isFinite(expectedKw)&&cs.some(c0=>Math.abs(Number(c0?.kilowatts)-expectedKw)>0.5))continue;
+        if(expectedStd&&cs.some(c0=>String(c0?.standard?.name??c0?.standard??'')!==expectedStd))continue;
+      }
+      const sharedPricing=compiledRows[0].pricing,connectorCount=compiledRows[0].connectorCount;
+      for(const t of targets)customGyPairTargets.set(t,{pricing:sharedPricing,connectorCount,sourceEvses:es,stationId:g.irveStationId??null});
+      for(const e0 of es)customGyPairGroupedSourceEvses.add(e0);
+    }
+    if(customGyPairTargets.size){
+      for(const [targetNorm,g] of customGyPairTargets){
+        const targetPdc=localByNorm.get(targetNorm);
+        const currency=g.pricing.rules?.[0]?.currency||'EUR';
+        const offer={
+          id:`electroverse-evse-customgy-pair:${row.electroverseLocationPk}:${targetNorm}`,
+          provider:'Electroverse',countries:['FR'],currency,priority:80,
+          verifiedScope:'exact_evse_group',evseIds:[targetPdc],pricing:g.pricing,
+          metadata:{
+            verified:true,identityMode:'validated_customgyevse_pair_group',
+            electroverseLocationPk:String(row.electroverseLocationPk),
+            electroverseEvsePks:g.sourceEvses.map(e=>e.pk??null),
+            physicalReferences:g.sourceEvses.map(e=>text(e?.physicalReference)),
+            connectorCount:g.connectorCount,sourceGroupSize:2,targetGroupSize:2,
+            operator:'GYM',irveStationId:g.stationId,
+            tariffHash:row.tariffHash||null,fetchedAt:row.fetchedAt||null,
+            source:'Electroverse validated CUSTOMGYEVSE pair ledger'
+          }
+        };
+        const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);tiles.get(id).push(offer);
+        stats.customGyPairCandidateEvses=(stats.customGyPairCandidateEvses||0)+1;
+        stats.customGyPairPublishedEvses=(stats.customGyPairPublishedEvses||0)+1;
+        stats.pricedExactEvses++;stats.publishedEvses++;stats.publishedOffers++;stats.publishedConnectorCount+=g.connectorCount;
+      }
+    }
+
     // Final residual recovery plan: exact homogeneous groups proven against the
     // current canonical overlay. Revalidate every source and target at build time.
     const finalResidualGroupedSourceEvses=new Set();
@@ -1844,7 +1918,7 @@ for(const sh of manifest.shards||[]){
         if(trimmedSuffixTargets.has(e0)){claimed.add(trimmedSuffixTargets.get(e0));continue;}
         if(pd1FinalOrdinalTargets.has(e0)){claimed.add(pd1FinalOrdinalTargets.get(e0));continue;}
         if(viaFinalOrdinalTargets.has(e0)){claimed.add(viaFinalOrdinalTargets.get(e0));continue;}
-        if(izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0)||c55GroupedSourceEvses.has(e0)||hpcGroupedSourceEvses.has(e0)||pd1TechnicalSourceEvses.has(e0)||drvPowerSourceEvses.has(e0)||operatorGroupedSourceEvses.has(e0)||finalResidualGroupedSourceEvses.has(e0))continue;
+        if(izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0)||c55GroupedSourceEvses.has(e0)||hpcGroupedSourceEvses.has(e0)||pd1TechnicalSourceEvses.has(e0)||drvPowerSourceEvses.has(e0)||operatorGroupedSourceEvses.has(e0)||customGyPairGroupedSourceEvses.has(e0)||finalResidualGroupedSourceEvses.has(e0))continue;
         unresolved.push(e0);
       }
       const unclaimed=[...local].filter(p=>!claimed.has(p));
@@ -2073,7 +2147,7 @@ for(const sh of manifest.shards||[]){
     for(const e of row.tariff?.evses||[]){
       stats.cacheEvses++;
       const validatedResidualTargetPre=validatedResidualTargets.get(String(row.electroverseLocationPk)+':'+String(e?.pk??''));
-      if(!validatedResidualTargetPre && (izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e)||hpcGroupedSourceEvses.has(e)||s30StructuredSourceEvses.has(e)||pd1TechnicalSourceEvses.has(e)||drvPowerSourceEvses.has(e)||operatorGroupedSourceEvses.has(e)||genericGroupedSourceEvses.has(e)))continue;
+      if(!validatedResidualTargetPre && (izfGroupedSourceEvses.has(e)||viaGroupedSourceEvses.has(e)||c55GroupedSourceEvses.has(e)||hpcGroupedSourceEvses.has(e)||s30StructuredSourceEvses.has(e)||pd1TechnicalSourceEvses.has(e)||drvPowerSourceEvses.has(e)||operatorGroupedSourceEvses.has(e)||customGyPairGroupedSourceEvses.has(e)||genericGroupedSourceEvses.has(e)))continue;
       const pr=text(e?.physicalReference);
       if(!pr){rej('evse_missing_physical_reference');continue;}
       stats.physicalRefs++;
