@@ -3,9 +3,9 @@
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 99,
-  "setAsideCpos": 99,
-  "activeRemainingCpos": 93,
-  "updatedAt": "2026-10-02T03:49:00+02:00",
+  "setAsideCpos": 100,
+  "activeRemainingCpos": 92,
+  "updatedAt": "2026-10-02T03:54:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -790,6 +790,13 @@
       "since": "2026-10-02",
       "lastChecked": "2026-10-02",
       "audit": "docs/france-regional-cpo-swish-batch582-2026-10-02.json"
+    },
+    {
+      "name": "chm energy | raw rank258",
+      "reason": "batch583 fail-closed: first-party CHM Energy proves operator/network activity, >100 public/self-service charge points, billing and app/RFID/direct-payment capability, but no public deterministic current station/EVSE direct tariff was recovered.",
+      "since": "2026-10-02",
+      "lastChecked": "2026-10-02",
+      "audit": "docs/france-regional-cpo-chm-energy-batch583-2026-10-02.json"
     }
   ],
   "activeNominative": [
@@ -797,7 +804,6 @@
     "RELEASED_ACTIVE_SLOT_023 | authority ELECTRIC 55 CHARGING (E55C) already treated",
     "RELEASED_ACTIVE_SLOT_027 | authority Atlante already treated",
     "RELEASED_ACTIVE_SLOT_030 | authority REVEO already treated",
-    "RELEASED_SLOT_033_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_SLOT_035_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_SLOT_036_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_SLOT_037_TREATED_HISTORICALLY_PROVEN",
@@ -1977,16 +1983,16 @@
       }
     }
   ],
-  "currentInvestigation": "chm energy | raw rank258 | 1 station / 2 PDC; inspect first-party CHM Energy network/platform",
+  "currentInvestigation": "hagger | raw rank259 | 1 station / 2 PDC; resolve identity before tariff, then BIARS DISTRIBUTION raw260",
   "coherenceControl": {
-    "batch": "batch582",
+    "batch": "batch583",
     "result": "PASS",
-    "arithmetic": "99 + 99 + 93 = 291",
+    "arithmetic": "99 + 100 + 92 = 291",
     "treatedLength": 99,
-    "setAsideLength": 99,
-    "activeLength": 93,
+    "setAsideLength": 100,
+    "activeLength": 92,
     "pendingDedupeCount": 0,
-    "lastChecked": "2026-10-02T03:49:00+02:00",
+    "lastChecked": "2026-10-02T03:54:00+02:00",
     "arithmeticOk": true,
     "treatedPlusSetAsidePlusActive": 291
   },
@@ -1996,7 +2002,7 @@
     "result": "PASS_ACELEC_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch582",
+  "latestBatch": "batch583",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -3547,6 +3553,15 @@
       "decision": "active->setAside; current operator capability, stale IRVE producer dataset, no current numeric direct tariff",
       "evidence": "docs/france-regional-cpo-swish-batch582-2026-10-02.json",
       "replacedAnonymousSlot": "RELEASED_SLOT_032_TREATED_HISTORICALLY_PROVEN"
+    },
+    {
+      "rawRank": 258,
+      "historicalOperator": "chm energy",
+      "authority": "CHM Energy",
+      "category": "setAside-authority",
+      "decision": "active->setAside; first-party operator/network proven, pricing configuration-driven and no public deterministic tariff resolver",
+      "evidence": "docs/france-regional-cpo-chm-energy-batch583-2026-10-02.json",
+      "replacedAnonymousSlot": "RELEASED_SLOT_033_TREATED_HISTORICALLY_PROVEN"
     }
   ],
   "rawLineageCoverage": {
