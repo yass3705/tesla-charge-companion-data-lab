@@ -1,7 +1,7 @@
 name: Germany CPO canonical writer
 on:
   issues:
-    types: [opened]
+    types: [opened, labeled]
 permissions:
   contents: write
   issues: write
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   persist:
-    if: contains(github.event.issue.labels.*.name, 'germany-cpo-write')
+    if: startsWith(github.event.issue.title, 'Germany CPO canonical write:') && contains(github.event.issue.labels.*.name, 'germany-cpo-write')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
