@@ -1,0 +1,29 @@
+name: Deep audit final B residuals against PAN
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/audit_b_final13_pan_deep.py"
+      - ".github/workflows/electroverse-b-final13-pan-deep.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/audit_b_final13_pan_deep.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/b-final13-pan-deep-audit.json
+          if ! git diff --cached --quiet; then
+            git commit -m "audit: persist deep PAN evidence for final B residuals"
+            git pull --rebase origin main || true
+            git push
+          fi
