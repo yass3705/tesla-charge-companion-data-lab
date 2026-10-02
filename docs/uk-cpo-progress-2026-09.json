@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-10-02T12:31:00+02:00",
+  "updatedAt": "2026-10-02T16:23:00+02:00",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -151,7 +151,9 @@
       "status": "set_aside_external_request",
       "access": "official_open_data_agreement_credentials",
       "evidence": "InstaVolt's official Public Charge Point Regulation Data page requires an email request, signed Open Data Agreement, then access credentials.",
-      "next": "Set aside until external request/credentials are obtained; do not repeat public endpoint discovery."
+      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
+      "requestStatus": "submitted_2026-10-02",
+      "requestSubmittedAt": "2026-10-02"
     },
     {
       "name": "Fastned",
@@ -194,7 +196,9 @@
       "locationsEndpoint": "https://ocpi.podenergy.com/ocpi/cpo/2.2.1/locations",
       "tariffsEndpoint": "https://ocpi.podenergy.com/ocpi/cpo/2.2.1/tariffs",
       "evidence": "Current Pod/Pod Point OCPI 2.2.1 service is live at https://ocpi.podenergy.com/ocpi/cpo/. Version discovery is anonymous, but locations/tariffs/data modules return 401 without a bilaterally exchanged OCPI credentials token. Legacy api.pod-point.com v3/v5 surfaces are decommissioned, and legacy charge.pod-point.com public charger pages now redirect to go.podenergy.com.",
-      "next": "External OCPI onboarding/token exchange with Pod is required. Do not repeat anonymous route discovery unless Pod exposes a new PCPR endpoint."
+      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
+      "requestStatus": "submitted_2026-10-02",
+      "requestSubmittedAt": "2026-10-02"
     },
     {
       "name": "Applegreen Fast Charge",
@@ -212,14 +216,18 @@
       "status": "set_aside_external_request",
       "access": "eco_movement_operator_key",
       "evidence": "Targeted bp pulse public-map inspection confirmed no usable anonymous backend: the official network live-map host has a certificate hostname mismatch and, when fetched without TLS verification for public GET-only diagnostics, returns HTTP 403. Existing PCPR route requires an Eco-Movement operator key; anonymous endpoints return 401.",
-      "next": "Set aside until bp pulse/Eco-Movement PCPR API key is obtained; treat BPC/BPP/BPT identifiers as one family and do not repeat public-map discovery."
+      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
+      "requestStatus": "submitted_2026-10-02",
+      "requestSubmittedAt": "2026-10-02"
     },
     {
       "name": "FOR EV",
       "status": "set_aside_external_request",
       "access": "ocpi_access_on_request",
       "evidence": "FOR EV's official Public Charge Point Regulations page states that its OCPI data is accurate and that open access is available upon request; no public machine-readable endpoint is published on the site. Targeted public endpoint/Fuuse discovery did not yield a callable anonymous feed.",
-      "next": "User must request FOR EV OCPI/open-data access (or endpoint details) from FOR EV. Once provided, persist and ingest without repeating discovery."
+      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
+      "requestStatus": "submitted_2026-10-02",
+      "requestSubmittedAt": "2026-10-02"
     },
     {
       "name": "Wenea",
@@ -238,14 +246,18 @@
       "status": "set_aside_external_request",
       "access": "official_pcpr_request_via_eco_movement",
       "evidence": "Evyve's official location pages expose a PCPR Open Data Request form. Evyve states requests are reviewed and data is provided in a suitable format within 48 hours; support is pcpr@eco-movement.com. No anonymous machine-readable endpoint was surfaced.",
-      "next": "User must submit Evyve's PCPR Open Data form. Once data/API access is supplied, ingest it without repeating endpoint discovery."
+      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
+      "requestStatus": "submitted_2026-10-02",
+      "requestSubmittedAt": "2026-10-02"
     },
     {
       "name": "Source EV",
       "status": "set_aside_external_request",
       "access": "request_via_eco_movement",
       "evidence": "Source EV compliance page provides PCPR data by request via Eco-Movement.",
-      "next": "Set aside pending the already-identified external/open-data access route. test Eco-Movement PCPR route."
+      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
+      "requestStatus": "submitted_2026-10-02",
+      "requestSubmittedAt": "2026-10-02"
     },
     {
       "name": "Shell Recharge",
@@ -261,7 +273,9 @@
       "status": "set_aside_external_request",
       "access": "official_charge_point_data_request",
       "evidence": "Allego's official UK Charge Point Data page requires submission of name, company, email and planned use; it states UK PCPR charge-point data is supplied electronically after request.",
-      "next": "Set aside until external request is made; do not repeat endpoint discovery."
+      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
+      "requestStatus": "submitted_2026-10-02",
+      "requestSubmittedAt": "2026-10-02"
     },
     {
       "name": "Arnold Clark Charge",
@@ -275,8 +289,9 @@
       "status": "set_aside_user_followup",
       "access": "endpoint_details_via_support",
       "evidence": "Official Smart Charge FAQ states the PCPR open-access data endpoint details are provided by customer support on 0800 014 2141. Targeted public-web search did not surface the endpoint.",
-      "next": "Do not reinvestigate until user provides Smart Charge support endpoint details.",
-      "setAsideReason": "Awaiting user feedback from Smart Charge support."
+      "next": "Pending user phone follow-up with Smart Charge support for the PCPR/open-access endpoint details. Do not repeat public-web discovery.",
+      "setAsideReason": "Awaiting user feedback from Smart Charge support.",
+      "requestStatus": "not_submitted_phone_followup_pending"
     },
     {
       "name": "Believ",
@@ -389,16 +404,20 @@
       "status": "set_aside_station_specific_pricing_authenticated_backend",
       "access": "official_site_specific_tariffs_plus_authenticated_ampeco_backend",
       "evidence": "Connekt official FAQ states prices vary by energy costs and location; commercial pages explicitly advertise customised/bespoke tariff creation per site. The existing AMPECO tenant remains authenticated (401) for location/tariff data and no anonymous PCPR/open-data feed was found in a fresh 2026-10-02 search. Do not infer a network-wide price from app reviews or isolated sites.",
-      "next": "Set aside. Connekt pricing is bespoke/site-specific; no network-wide tariff may be inferred. Exact station tariffs remain behind the authenticated AMPECO tenant. Reopen on official PCPR/open-data access, a legitimate public station tariff surface, or authorized backend/API access.",
-      "report": "reports/uk/connekt-ampeco-public-route-probe-latest.json"
+      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
+      "report": "reports/uk/connekt-ampeco-public-route-probe-latest.json",
+      "requestStatus": "submitted_2026-10-02",
+      "requestSubmittedAt": "2026-10-02"
     },
     {
       "name": "Weev",
       "status": "set_aside_external_request",
       "access": "free_api_key_request",
       "evidence": "Final keyless audit of Weev first-party public map/app bundles and source maps found no anonymous station/tariff API. The first-party frontend explicitly contains the open-data request component and POST route /api/open-data-api/send. Official Open Data access therefore requires the free API key request.",
-      "next": "User/API requester must submit the Weev Open Data API-key form. Once key is received, ingest directly; do not repeat keyless discovery.",
-      "report": "reports/uk/weev-final-keyless-audit-latest.json"
+      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
+      "report": "reports/uk/weev-final-keyless-audit-latest.json",
+      "requestStatus": "submitted_2026-10-02",
+      "requestSubmittedAt": "2026-10-02"
     },
     {
       "name": "ParkRecharge",
@@ -477,8 +496,10 @@
       "status": "set_aside_external_request",
       "access": "official_pcpr_request_via_eco_movement",
       "evidence": "Resolved route 2026-10-01: ChargePoint's official UK PCPR article links to a Google request form handled with Eco-Movement. The form states a response within 5 working days and exposes network choices ChargePoint platform CPOs, RAW Charging, ev-point and Lidl Great Britain Limited. Selecting ChargePoint platform CPOs covers a published list of UK CPOs hosted on ChargePoint CMS, including InstaVolt Ltd. ChargePoint states the resulting API covers all public UK stations hosted on its CMS. Shell_RP_* tariff responses are explicitly excluded from CPO-direct tariff evidence because they are provider/eMSP driver tariffs, not proven ChargePoint direct/ad-hoc CPO tariffs.",
-      "next": "Submit the official PCPR form with Network=ChargePoint platform CPOs. When access is received, test via the generic Eco-Movement PCPR collector and verify whether InstaVolt Ltd is included in the granted scope before pursuing a separate InstaVolt integration. Do not use Shell providerId tariffs for ChargePoint CPO pricing.",
-      "report": "reports/uk/chargepoint-cms-eco-movement-pcpr-latest.json"
+      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
+      "report": "reports/uk/chargepoint-cms-eco-movement-pcpr-latest.json",
+      "requestStatus": "submitted_2026-10-02",
+      "requestSubmittedAt": "2026-10-02"
     },
     {
       "name": "char.gy",
@@ -514,7 +535,9 @@
       "access": "token_required",
       "versionsEndpoint": "https://cp.connectedkerb.com/ocpi/versions",
       "evidence": "Connected Kerb operates OCPI at https://cp.connectedkerb.com/ocpi/ and an AMPECO public API at /public-api/. Both return 401 anonymously; bearer tokens are issued from the operator back office and there is no public self-service credential path.",
-      "next": "External API/OCPI credential required; keep set aside until credentials/onboarding become available."
+      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
+      "requestStatus": "submitted_2026-10-02",
+      "requestSubmittedAt": "2026-10-02"
     },
     {
       "name": "Charge My Street",
@@ -542,8 +565,10 @@
       "status": "set_aside_external_request",
       "access": "official_pcpr_request_via_eco_movement",
       "evidence": "Resolved route 2026-10-01: Blink's official UK Open Data Request page states PCPR data is supplied in API format after request and that requests are shared with Eco-Movement. The linked Google form asks for email, name, organisation and planned use and states a response within 5 working days. Eco-Movement PCPR OCPI 2.2.1 locations and tariffs endpoints are documented at open-chargepoints.com and both return HTTP 401 anonymously, confirming token-gated access rather than a missing public route.",
-      "next": "Submit Blink PCPR Open Data form. Once token/API access is received, ingest locations/status/tariffs through Eco-Movement. Do not repeat anonymous endpoint discovery.",
-      "report": "reports/uk/blink-eco-movement-pcpr-latest.json"
+      "next": "Await response to the access/open-data request submitted by the user on 2026-10-02; do not repeat discovery or send a duplicate request unless the expected response window passes.",
+      "report": "reports/uk/blink-eco-movement-pcpr-latest.json",
+      "requestStatus": "submitted_2026-10-02",
+      "requestSubmittedAt": "2026-10-02"
     },
     {
       "name": "JOLT",
