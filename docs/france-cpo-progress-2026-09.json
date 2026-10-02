@@ -3,9 +3,9 @@
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 99,
-  "setAsideCpos": 101,
-  "activeRemainingCpos": 91,
-  "updatedAt": "2026-10-02T04:00:00+02:00",
+  "setAsideCpos": 102,
+  "activeRemainingCpos": 90,
+  "updatedAt": "2026-10-02T04:06:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -804,6 +804,13 @@
       "since": "2026-10-02",
       "lastChecked": "2026-10-02",
       "audit": "docs/france-regional-cpo-hagger-batch584-2026-10-02.json"
+    },
+    {
+      "name": "BIARS DISTRIBUTION | raw rank260",
+      "reason": "batch585 fail-closed: E.Leclerc Biars current IRVE estate expanded from historical 1 PDC to 4 PDC at 22 kW. 0.20 EUR/kWh appears in IRVE reuse but direct current producer/operator tariff authority was not recovered.",
+      "since": "2026-10-02",
+      "lastChecked": "2026-10-02",
+      "audit": "docs/france-regional-cpo-biars-distribution-batch585-2026-10-02.json"
     }
   ],
   "activeNominative": [
@@ -811,7 +818,6 @@
     "RELEASED_ACTIVE_SLOT_023 | authority ELECTRIC 55 CHARGING (E55C) already treated",
     "RELEASED_ACTIVE_SLOT_027 | authority Atlante already treated",
     "RELEASED_ACTIVE_SLOT_030 | authority REVEO already treated",
-    "RELEASED_SLOT_036_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_SLOT_037_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_SLOT_038_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_SLOT_039_TREATED_EXACT_IDENTITY",
@@ -1989,16 +1995,16 @@
       }
     }
   ],
-  "currentInvestigation": "BIARS DISTRIBUTION | raw rank260 | 1 station / 1 PDC; reconcile current Leclerc Biars estate",
+  "currentInvestigation": "ranks 262+ bulk aliases first: ELECTRA raw263, ENERGIE Eure-et-Loir raw264, Evbox raw266; then CTA LAVAGE raw262",
   "coherenceControl": {
-    "batch": "batch584",
+    "batch": "batch585",
     "result": "PASS",
-    "arithmetic": "99 + 101 + 91 = 291",
+    "arithmetic": "99 + 102 + 90 = 291",
     "treatedLength": 99,
-    "setAsideLength": 101,
-    "activeLength": 91,
+    "setAsideLength": 102,
+    "activeLength": 90,
     "pendingDedupeCount": 0,
-    "lastChecked": "2026-10-02T04:00:00+02:00",
+    "lastChecked": "2026-10-02T04:06:00+02:00",
     "arithmeticOk": true,
     "treatedPlusSetAsidePlusActive": 291
   },
@@ -2008,7 +2014,7 @@
     "result": "PASS_ACELEC_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch584",
+  "latestBatch": "batch585",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -3577,6 +3583,15 @@
       "decision": "active->setAside; do not alias to Hager without deterministic evidence; no tariff inference",
       "evidence": "docs/france-regional-cpo-hagger-batch584-2026-10-02.json",
       "replacedAnonymousSlot": "RELEASED_SLOT_035_TREATED_HISTORICALLY_PROVEN"
+    },
+    {
+      "rawRank": 260,
+      "historicalOperator": "BIARS DISTRIBUTION",
+      "authority": "BIARS DISTRIBUTION / E.Leclerc Biars",
+      "category": "setAside-authority",
+      "decision": "active->setAside; current footprint drift 1->4 PDC and tariff observation remains indirect",
+      "evidence": "docs/france-regional-cpo-biars-distribution-batch585-2026-10-02.json",
+      "replacedAnonymousSlot": "RELEASED_SLOT_036_TREATED_HISTORICALLY_PROVEN"
     }
   ],
   "rawLineageCoverage": {
