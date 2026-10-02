@@ -46,3 +46,58 @@ await fs.mkdir('reports/electroverse',{recursive:true});
 const out={generatedAt:new Date().toISOString(),targets,hits:hits.slice(0,200)};
 await fs.writeFile(OUT,JSON.stringify(out,null,2)+'\n');
 console.log(JSON.stringify(out,null,2));
+
+
+// Extended structural diagnostic 2026-10-02
+const CACHE='data/electroverse/tariff_cache';
+const cman=JSON.parse(await fs.readFile(CACHE+'/manifest.json','utf8'));
+const source=[];
+for(const sh of cman.shards||[]){
+  const d=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
+  for(const row of Object.values(d.stations||{})){
+    if(!targetLocations.has(String(row.electroverseLocationPk))) continue;
+    source.push({
+      locationPk:String(row.electroverseLocationPk),
+      stationId:row.irveStationId??null,
+      evses:(row?.tariff?.evses||[]).map(e=>({
+        evsePk:e.pk??null,
+        physicalReference:e.physicalReference??null,
+        connectors:(e.connectors||[]).map(x=>({
+          pk:x.pk??null,
+          kilowatts:x.kilowatts??null,
+          standard:x?.standard?.name??x?.standard??null,
+          isChargingFree:x.isChargingFree??null,
+          priceComponents:x.priceComponents??null,
+          complexPricingDetail:x.complexPricingDetail??null
+        }))
+      }))
+    });
+  }
+}
+const byLocTargets=new Map();
+for(const t of targets){
+  const a=byLocTargets.get(t.locationPk)||[];
+  a.push(t); byLocTargets.set(t.locationPk,a);
+}
+const structural=[];
+for(const s of source){
+  const tg=byLocTargets.get(s.locationPk)||[];
+  const groups=new Map();
+  for(const t of tg){
+    const m=t.norm.match(/^FRGYMEC([12])(\d+)$/);
+    if(!m) continue;
+    const branch=m[1], tail=m[2];
+    const g=groups.get(tail)||{};
+    g[branch]=t.pdc; groups.set(tail,g);
+  }
+  structural.push({
+    locationPk:s.locationPk,
+    stationId:s.stationId,
+    sourceEvses:s.evses,
+    targetPairs:[...groups.entries()].map(([tail,g])=>({tail,branch1:g['1']??null,branch2:g['2']??null}))
+  });
+}
+const prev=JSON.parse(await fs.readFile(OUT,'utf8'));
+prev.structural=structural;
+await fs.writeFile(OUT,JSON.stringify(prev,null,2)+'\n');
+console.log(JSON.stringify({structuralLocations:structural.length, structural},null,2));
