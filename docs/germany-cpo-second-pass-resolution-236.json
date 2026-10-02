@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 236,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-235.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Stadtwerke Menden",
+      "classification": "B1/B2_FIRST_PARTY_DETERMINISTIC",
+      "status": "promoted-complete",
+      "backend": "current national surface + first-party tariff rule",
+      "coverage": {
+        "sites": 6,
+        "chargePoints": 20
+      },
+      "evidenceSummary": "Current first-party tariff rule covers public Type 2 and CCS charging with contract-free direct payment and explicit gross 19% VAT pricing: 0.35 EUR start + 0.49 EUR/kWh + 0.50 EUR/hour. Current observed denominator reconciles to 6 sites / 20 charge points including the 150 kW site, with the energy component matching across the estate.",
+      "exactGap": null
+    },
+    {
+      "cpo": "Stadtwerke Langenfeld",
+      "status": "bounded-no-promotion",
+      "exactGap": "Current first-party Ad-hoc AC tariff is explicit and gross/19% VAT with blocking rules, but a current operator-owned two-CCS DC site is outside that published AC energy grid. Direct anonymous DC energy price remains unclosed."
+    },
+    {
+      "cpo": "MEGA Monheim",
+      "status": "bounded-no-promotion",
+      "backend": "m8mit guest pages",
+      "exactGap": "Guest pages are reachable per EVSE but current numeric tariff is dynamically loaded and not exposed in the accessible public evidence. Historical 2021/2022 prices must not substitute for current anonymous_ad_hoc pricing."
+    }
+  ],
+  "promotions": [
+    {
+      "cpo": "Stadtwerke Menden",
+      "from": "partial",
+      "to": "complete",
+      "coverage": "6 sites / 20 charge points"
+    }
+  ],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 254,
+    "partial": 337,
+    "blocked": 0
+  },
+  "indicator": "221 -> 254 complete (+33)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific source/backend proof"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "254 + 337 + 0 = 591",
+    "unsafeExtrapolations": 0
+  },
+  "persistenceArchitecture": {
+    "writer": ".github/workflows/germany-cpo-writer.yml",
+    "script": "scripts/germany_cpo_writer.py",
+    "transport": "labeled GitHub issue -> repository GitHub Actions writer",
+    "reason": "Scheduled runtime no longer needs direct contents mutation; repository validates expected ledger and counts then atomically commits ledger + pointer."
+  },
+  "nextSafeAction": "Continue canonical chargecloud B1/B3/B6 candidates with Ratingen-style first-party gross Ad-Hoc evidence, then move to ChargePoint/Mobilithek-EcoMovement after the chargecloud queue."
+}
