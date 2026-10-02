@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 233,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-232.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Autostrom Einert GmbH & Co. KG",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "backend": "chargecloud / Mobilithek DATEX II",
+      "status": "bounded-expanded-denominator",
+      "previousAudit": {
+        "sites": 19,
+        "evseIds": 38
+      },
+      "currentObservedDenominator": {
+        "sites": 23,
+        "chargePoints": 46
+      },
+      "newEvidence": "Current discovery/Mobilithek-chargecloud surfaces expose a larger active estate than the 2026-10-01 100%-raw audit. Prior Ad-Hoc/tax evidence remains useful but no longer establishes exhaustive coverage.",
+      "exactGap": "Refresh canonical national staging and reconcile all ~23 sites/~46 points. Promotion remains forbidden until every current operator-owned EVSE has direct anonymous tariff/payment/tax/fee coverage."
+    },
+    {
+      "cpo": "ib company GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "backend": "chargecloud / Mobilithek",
+      "status": "bounded-expanded-denominator",
+      "previousAudit": {
+        "sites": 12,
+        "evseIds": 25,
+        "tariffObjects": 62
+      },
+      "currentObservedDenominator": {
+        "sites": 20,
+        "chargePoints": 97
+      },
+      "newEvidence": "Current discovery surfaces expose a substantially larger estate than the old 100%-raw audit, with heterogeneous observed AC pricing. First-party ib company material confirms Ad-hoc transaction/receipt handling but does not close the expanded EVSE tariff matrix.",
+      "exactGap": "Refresh national staging against current ~20 sites/~97 points and map direct Ad-Hoc tariff/fees per active EVSE. Old 12/12 coverage must not be treated as exhaustive."
+    },
+    {
+      "cpo": "ServiceSTADTwerke",
+      "classification": "B3_SITE_CONFIGURABLE_BACKEND",
+      "backend": "chargecloud",
+      "status": "bounded-no-promotion",
+      "newEvidence": "Current first-party E-Tanken onboarding creates an Elektromobilitaetsvertrag with monthly billing.",
+      "exactGap": "This first-party flow is contractual/registered and cannot prove anonymous_ad_hoc equivalence. AFIR raw tariffs still lack payment classification and tax treatment; retain partial until direct anonymous evidence exists."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "indicator": "221 -> 253 complete (+32)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific source/backend proof"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "253 + 338 + 0 = 591",
+    "unsafeExtrapolations": 0,
+    "denominatorGuard": "PASS: stale 100% claims rejected for Einert and ib company."
+  },
+  "nextSafeAction": "Refresh national Mobilithek/chargecloud staging for Autostrom Einert and ib company before any promotion. Keep ServiceSTADTwerke partial until anonymous payment and tax classification are authoritative."
+}
