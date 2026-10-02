@@ -197,12 +197,19 @@ const out={
 await fs.mkdir('reports/electroverse',{recursive:true});
 await fs.mkdir('data/platforms/electroverse/validated-mappings',{recursive:true});
 await fs.writeFile(OUT,JSON.stringify(out,null,2)+'\n');
+let previousValidated={mappings:[]};
+try{previousValidated=JSON.parse(await fs.readFile(VALIDATED,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
+const vkey=x=>String(x.electroverseLocationPk)+':'+String(x.electroverseEvsePk)+':'+norm(x.targetPdc);
+const mergedValidated=new Map();
+for(const x of [...(previousValidated.mappings||[]),...validatedMappings])mergedValidated.set(vkey(x),x);
+const canonicalValidated=[...mergedValidated.values()];
 await fs.writeFile(VALIDATED,JSON.stringify({
   schemaVersion:1,
   generatedAt:out.generatedAt,
-  count:validatedMappings.length,
-  locationCount:validatedGroups.length,
-  policy:'Strict residual 55C B-index mapping. Reuses the validated V9 zero-based/alphanumeric suffix identity. Duplicate B ordinals are accepted only when their full technical and pricing signatures are identical. Local target must be unique, unpublished and globally owned by one station. No proximity.',
-  mappings:validatedMappings
+  count:canonicalValidated.length,
+  newlyValidatedCount:validatedMappings.length,
+  locationCount:new Set(canonicalValidated.map(x=>String(x.electroverseLocationPk))).size,
+  policy:'Append-only strict residual 55C B-index mapping. Reuses the validated V9 zero-based/alphanumeric suffix identity. Duplicate B ordinals are accepted only when their full technical and pricing signatures are identical. Local target must be unique, unpublished and globally owned by one station. No proximity.',
+  mappings:canonicalValidated
 },null,2)+'\n');
 console.log(JSON.stringify(out,null,2));
