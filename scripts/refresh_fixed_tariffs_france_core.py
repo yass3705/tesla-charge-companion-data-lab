@@ -39,11 +39,25 @@ def sanity(v,lo=0.01,hi=5.0):
     if not (lo<=v<=hi): raise ValueError(f"value out of range: {v}")
     return v
 
-def archive_if_changed(path,before,after,now):
-    if before==after: return False
+def archive_if_changed(path,before,after,now,keys):
+    def pick(d):
+        cur=d
+        out={}
+        for key in keys:
+            cur=d
+            for part in key.split("."):
+                if isinstance(cur,dict):
+                    cur=cur.get(part)
+                else:
+                    cur=None
+                    break
+            out[key]=cur
+        return out
+    b=pick(before); a=pick(after)
+    if b==a: return False
     hist=HIST/(path.stem+".jsonl")
     with hist.open("a",encoding="utf-8") as h:
-        h.write(json.dumps({"archivedAt":now,"previous":before},ensure_ascii=False)+"\n")
+        h.write(json.dumps({"archivedAt":now,"previousTariffState":b,"newTariffState":a},ensure_ascii=False)+"\n")
     return True
 
 now=datetime.now(timezone.utc).isoformat()
@@ -67,7 +81,11 @@ try:
             d["operatorDirect"]["standard"]["AC"]["eurPerKwh"]=ac; d["operatorDirect"]["standard"]["DC"]["eurPerKwh"]=dc
             d["generatedAt"]=now
             d["refresh"]={"mode":"automatic_official_page_parser","source":url,"refreshedAt":now,"lastResult":"validated"}
-        changed=archive_if_changed(p,before,d,now)
+        changed=archive_if_changed(p,before,d,now,[
+            "directPayment.AC.eurPerKwh","directPayment.DC.eurPerKwh"
+        ] if mode=="rules" else [
+            "operatorDirect.standard.AC.eurPerKwh","operatorDirect.standard.DC.eurPerKwh"
+        ])
         p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+"\n")
         results.append({"operator":"Lidl France","path":rel,"status":"changed" if changed else "unchanged","values":{"AC":ac,"DC":dc}})
 except Exception as e:
@@ -86,7 +104,9 @@ try:
     d["directPayment"]["dc50EurPerKwh"]=direct50
     d["retrievedAt"]=now
     d["refresh"]={"mode":"automatic_official_page_parser","source":url,"refreshedAt":now,"lastResult":"validated"}
-    changed=archive_if_changed(p,before,d,now)
+    changed=archive_if_changed(p,before,d,now,[
+        "directPayment.ac22OrDc24EurPerKwh","directPayment.dc50EurPerKwh"
+    ])
     p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+"\n")
     results.append({"operator":"STATIONS-E","path":str(p),"status":"changed" if changed else "unchanged","values":{"22AC_or_24DC":direct22,"50DC":direct50}})
 except Exception as e:
@@ -115,7 +135,10 @@ try:
     m["ultra_fast"]["aLaCarteEurPerKwh"]=vals["ultraCarte"]; m["ultra_fast"]["nonSubscriberEurPerKwh"]=vals["ultraNonSub"]
     d["generatedAt"]=now
     d["refresh"]={"mode":"automatic_official_page_parser","source":url,"refreshedAt":now,"lastResult":"validated"}
-    changed=archive_if_changed(p,before,d,now)
+    changed=archive_if_changed(p,before,d,now,[
+        "subscription.aLaCarteAnnualFeeEur","subscription.monthlyBundleFeeEur",
+        "powerClasses"
+    ])
     p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+"\n")
     results.append({"operator":"eborn","path":str(p),"status":"changed" if changed else "unchanged","values":vals})
 except Exception as e:
