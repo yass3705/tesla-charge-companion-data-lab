@@ -3,9 +3,9 @@
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 99,
-  "setAsideCpos": 93,
-  "activeRemainingCpos": 99,
-  "updatedAt": "2026-10-02T03:00:00+02:00",
+  "setAsideCpos": 94,
+  "activeRemainingCpos": 98,
+  "updatedAt": "2026-10-02T03:05:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -748,11 +748,17 @@
       "since": "2026-10-02",
       "lastChecked": "2026-10-02",
       "audit": "docs/france-regional-cpo-garage-aubree-batch573-2026-10-02.json"
+    },
+    {
+      "name": "Hostellerie | raw rank247",
+      "reason": "batch574 fail-closed: historical Hostellerie label resolves to Hostellerie des Ducs in Duras; site still advertises EV charging, but dedicated producer dataset is stale (2024-12-06) and no current numeric direct tariff/free policy is authoritative.",
+      "since": "2026-10-02",
+      "lastChecked": "2026-10-02",
+      "audit": "docs/france-regional-cpo-hostellerie-des-ducs-batch574-2026-10-02.json"
     }
   ],
   "activeNominative": [
     "RELEASED_ACTIVE_SLOT_243 | Espace Carrosserie Dijon host/aménageur -> EV MAP SAS raw144 setAside authority",
-    "RELEASED_SLOT_022_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_ACTIVE_SLOT_023 | authority ELECTRIC 55 CHARGING (E55C) already treated",
     "RELEASED_SLOT_025_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_SLOT_026_TREATED_HISTORICALLY_PROVEN",
@@ -1941,16 +1947,16 @@
       }
     }
   ],
-  "currentInvestigation": "Hostellerie | raw rank247 | 1 station / 2 PDC; then LAST MILES SOLUTIONS raw248",
+  "currentInvestigation": "LAST MILES SOLUTIONS | raw rank248 | 1 station / 2 PDC; materialize existing LMS/Last Mile Solutions raw146 lineage",
   "coherenceControl": {
-    "batch": "batch573",
+    "batch": "batch574",
     "result": "PASS",
-    "arithmetic": "99 + 93 + 99 = 291",
+    "arithmetic": "99 + 94 + 98 = 291",
     "treatedLength": 99,
-    "setAsideLength": 93,
-    "activeLength": 99,
+    "setAsideLength": 94,
+    "activeLength": 98,
     "pendingDedupeCount": 0,
-    "lastChecked": "2026-10-02T03:00:00+02:00",
+    "lastChecked": "2026-10-02T03:05:00+02:00",
     "arithmeticOk": true,
     "treatedPlusSetAsidePlusActive": 291
   },
@@ -1960,7 +1966,7 @@
     "result": "PASS_ACELEC_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch573",
+  "latestBatch": "batch574",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -3403,6 +3409,15 @@
       "decision": "active->setAside; footprint/operator drift across multiple sites; no network-wide tariff inheritance",
       "evidence": "docs/france-regional-cpo-garage-aubree-batch573-2026-10-02.json",
       "replacedAnonymousSlot": "RELEASED_SLOT_021_TREATED_HISTORICALLY_PROVEN"
+    },
+    {
+      "rawRank": 247,
+      "historicalOperator": "Hostellerie",
+      "authority": "Hostellerie des Ducs, Duras",
+      "category": "setAside-site-authority",
+      "decision": "active->setAside; current site identity retained but producer/tariff stale; no price/free carry-forward",
+      "evidence": "docs/france-regional-cpo-hostellerie-des-ducs-batch574-2026-10-02.json",
+      "replacedAnonymousSlot": "RELEASED_SLOT_022_TREATED_HISTORICALLY_PROVEN"
     }
   ],
   "rawLineageCoverage": {
