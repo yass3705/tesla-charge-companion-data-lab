@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 227,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-226.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "MEGA Gruene Energien GmbH & Co. KG / Monheim am Rhein public charging",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "backend": "m8mit",
+      "status": "bounded-no-promotion",
+      "sources": [
+        "https://www.mega-monheim.de/privatkunden/e-mobilitaet",
+        "https://mega.m8mit.de/",
+        "https://mega.m8mit.de/stations"
+      ],
+      "newEvidence": "Current first-party MEGA page exposes 49.00 ct/kWh gross from 2024 for its Ladestrompreis. Current m8mit/MEGA surfaces confirm spontaneous charging by QR/SMS and m8mit direct payment methods including card/PayPal/Apple Pay/Google Pay. Public station list exposes operator/connectors but dynamically loads tariff cells.",
+      "exactGap": "MEGA does not explicitly state that the 49.00 ct/kWh gross Ladestrompreis is the anonymous m8mit checkout price, and the m8mit station estate mixes MEGA public, employee and partner-operated points. Need direct checkout tariff response per active MEGA-public EVSE or an explicit first-party equivalence rule; do not infer equivalence."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "indicator": "221 -> 253 complete (+32)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific source/backend proof"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "253 + 338 + 0 = 591",
+    "unsafeExtrapolations": 0,
+    "antiStagnation": "MEGA/m8mit generic public-page pass now bounded; do not repeat without direct checkout/backend evidence."
+  },
+  "nextSafeAction": "Move to canonical ladenetz/ladeapp partials, prioritizing a case where current first-party ad-hoc equivalence plus estate coverage can be closed; then map blocking/site exceptions."
+}
