@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# National DIEMO/OICP accessibility census.
 import json
 from collections import Counter
 from pathlib import Path
