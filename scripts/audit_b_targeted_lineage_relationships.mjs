@@ -15,15 +15,16 @@ for(const t of man.tiles||[]){
   }
  }
 }
-const shardFiles=(await fs.readdir('data/platforms/electroverse/france-evse/source')).filter(x=>x.endsWith('.json'));
+const CACHE='data/electroverse/tariff_cache';
+const cacheMan=JSON.parse(await fs.readFile(CACHE+'/manifest.json','utf8'));
 const sourceRows=[];
-for(const file of shardFiles){
- const d=JSON.parse(await fs.readFile('data/platforms/electroverse/france-evse/source/'+file,'utf8'));
- for(const row of d.rows||d||[]){
-  if(!locs.has(String(row.electroverseLocationPk)))continue;
-  const evses=row?.tariff?.evses||row?.evses||[];
+for(const sh of cacheMan.shards||[]){
+ const d=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
+ for(const row of Object.values(d.stations||{})){
+  if(!locs.has(String(row?.electroverseLocationPk)))continue;
+  const evses=row?.tariff?.evses||[];
   sourceRows.push({
-   locationPk:String(row.electroverseLocationPk),file,
+   locationPk:String(row.electroverseLocationPk),file:sh.file,
    evses:evses.map(e=>({pk:e.pk,physicalReference:e.physicalReference,connectors:(e.connectors||[]).map(c=>({pk:c.pk,kilowatts:c.kilowatts,standard:typeof c.standard==='object'?c.standard?.name:c.standard})),offers:sourceToOffers.get(String(e.pk))||[]}))
   });
  }
