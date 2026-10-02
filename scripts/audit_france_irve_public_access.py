@@ -47,7 +47,6 @@ HIGH_PATTERNS = {
     "residents_only": [
         r"r[eé]serv[eé](?:e|es)? (?:aux )?r[eé]sidents?",
         r"r[eé]serv[eé](?:e|es)? (?:aux )?copropri[eé]taires?",
-        r"copropri[eé]t[eé]",
         r"r[eé]sidence priv[eé]e",
     ],
     "fleet_only": [
@@ -59,6 +58,10 @@ HIGH_PATTERNS = {
 }
 
 CONDITIONAL_PATTERNS = {
+    "shared_or_residential_context": [
+        r"copropri[eé]t[eé]",
+        r"r[eé]sidence",
+    ],
     "customers_only": [
         r"client[eè]le uniquement",
         r"clients? uniquement",
@@ -75,13 +78,13 @@ CONDITIONAL_PATTERNS = {
         r"sur demande",
     ],
     "hospitality": [
-        r"\\bh[oô]tel\\b",
-        r"\\bcamping\\b",
-        r"\\brestaurant\\b",
+        r"\bh[oô]tel\b",
+        r"\bcamping\b",
+        r"\brestaurant\b",
     ],
     "toll_or_paid_road": [
-        r"\\bp[eé]age\\b",
-        r"\\bautoroute\\b",
+        r"\bp[eé]age\b",
+        r"\bautoroute\b",
         r"aire de service",
     ],
 }
