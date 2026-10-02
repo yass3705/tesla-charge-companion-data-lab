@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 231,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-230.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "SCHARR WÄRME GmbH & Co. KG",
+      "classification": "B4_FEE_COMPONENT_COMPLETENESS",
+      "backend": "chargecloud / SCHARR-operated backend",
+      "status": "bounded-no-promotion",
+      "coverage": {
+        "sites": "39/39",
+        "evseIds": 96,
+        "tariffObjects": 123,
+        "rawTariffSites": "39/39"
+      },
+      "sources": [
+        "docs/germany-afir-100pct-chargecloud-closure-2026-10-01.json",
+        "https://scharr.de/waerme/elektromobilitaet/ladepark",
+        "https://scharr.de/waerme/elektromobilitaet/ladepark-sportanbieter",
+        "https://www.goingelectric.de/stromtankstellen/Deutschland/Moensheim/Stuttgarter-Golf-Club-Solitude-Schlossfeld-8/110633/"
+      ],
+      "newEvidence": "First-party SCHARR documentation confirms open guest AdHoc payment and SCHARR-managed backend billing. Current station evidence labels 0.59 EUR/kWh AC and 0.69 EUR/kWh DC plus 0.12 EUR/min from minute 120 as Ad-hoc, matching the two AFIR signatures. AFIR national staging already covers 39/39 canonical SCHARR sites, 96 EVSE IDs and 123 tariff objects.",
+      "exactGap": "All AFIR tariff components have taxIncluded=null and current first-party SCHARR pages found in this pass do not explicitly state that the charging amounts are gross/VAT-inclusive. Under strict tariff rules, VAT treatment cannot be inferred. Promotion requires authoritative gross/TTC confirmation applicable to the direct AdHoc tariff matrix."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "indicator": "221 -> 253 complete (+32)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific source/backend proof"
+  },
+  "backendFamilyProgress": {
+    "chargecloud": "SCHARR reduced from payment+tax ambiguity to tax treatment only. Payment class is now corroborated as AdHoc and coverage is 100%."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "253 + 338 + 0 = 591",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Do not repeat SCHARR generic search; reopen only with authoritative VAT/gross evidence. Test another canonical 100%-raw chargecloud candidate for first-party payment and tax closure."
+}
