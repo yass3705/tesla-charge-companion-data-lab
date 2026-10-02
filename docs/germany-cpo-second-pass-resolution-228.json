@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 228,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-227.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Stadtwerke Langenfeld GmbH public charging",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "backend": "ladenetz/ladeapp + direct card",
+      "status": "bounded-no-promotion",
+      "sources": [
+        "https://www.stw-langenfeld.de/mobilitaet/",
+        "https://www.stw-langenfeld.de/beitrag/erste-schnellladesaeule-der-stadtwerke-in-betrieb/"
+      ],
+      "coverageEvidence": "Current first-party page explicitly defines anonymous ad-hoc QR/app/card payment. Tariff table valid since 2025-10-01 gives own-station AC ad-hoc 0.72 EUR/kWh, 0.75 EUR/session start fee, and 0.10 EUR/min blocking after 180 min during 06:00-21:00; all prices include 19% VAT. First-party announcement states first own DC fast charger entered service 2026-09-01 at Rathausparkplatz, two connectors up to 75 kW, with ad-hoc charging supported.",
+      "exactGap": "Current tariff table has no own-station anonymous ad-hoc DC kWh row, while the newly commissioned DC site is now part of the active estate. Need the displayed/direct checkout tariff for the two 75 kW Rathausparkplatz connectors. Do not extend the 0.72 EUR/kWh AC value to DC."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "indicator": "221 -> 253 complete (+32)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific source/backend proof"
+  },
+  "backendFamilyProgress": {
+    "ladenetz_ladeapp": "Langenfeld reduced to one current residual tariff class: own DC ad-hoc at the first 2x75 kW site. AC anonymous matrix and fees are closed first-party."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "253 + 338 + 0 = 591",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Continue canonical ladenetz cases. Prefer a candidate with a current first-party all-estate anonymous tariff rule; for Langenfeld reopen only with Rathausparkplatz DC checkout evidence."
+}
