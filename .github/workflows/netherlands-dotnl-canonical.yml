@@ -1,0 +1,108 @@
+name: Netherlands DOT-NL canonical dataset
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/dotnl_netherlands_build.py"
+      - "scripts/dotnl_netherlands_runtime.py"
+      - "scripts/dotnl_netherlands_access_patch.py"
+      - ".github/workflows/netherlands-dotnl-canonical.yml"
+permissions:
+  contents: write
+concurrency:
+  group: netherlands-dotnl-canonical
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile scripts
+        run: python -m py_compile scripts/dotnl_netherlands_build.py scripts/dotnl_netherlands_runtime.py scripts/dotnl_netherlands_access_patch.py
+
+      - name: Download official DOT-NL snapshots
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/dotnl
+          curl -fsSL --retry 5 --retry-all-errors https://opendata.ndw.nu/charging_point_locations_ocpi.json.gz -o /tmp/dotnl/locations.json.gz
+          curl -fsSL --retry 5 --retry-all-errors https://opendata.ndw.nu/charging_point_tariffs_ocpi.json.gz -o /tmp/dotnl/tariffs.json.gz
+          test -s /tmp/dotnl/locations.json.gz
+          test -s /tmp/dotnl/tariffs.json.gz
+
+      - name: Normalize DOT-NL
+        run: |
+          set -euo pipefail
+          mkdir -p data/national/netherlands_dotnl docs
+          python scripts/dotnl_netherlands_build.py             /tmp/dotnl/locations.json.gz             /tmp/dotnl/tariffs.json.gz             data/national/netherlands_dotnl/normalized.json.gz             docs/netherlands-dotnl-build-report.json
+
+      - name: Build direct CPO runtime
+        run: |
+          set -euo pipefail
+          rm -rf data/national/netherlands_dotnl/runtime
+          mkdir -p data/national/netherlands_dotnl/runtime
+          python scripts/dotnl_netherlands_runtime.py             data/national/netherlands_dotnl/normalized.json.gz             data/national/netherlands_dotnl/runtime             docs/netherlands-dotnl-runtime-report.json
+
+      - name: Apply access metadata
+        run: |
+          set -euo pipefail
+          python scripts/dotnl_netherlands_access_patch.py             data/national/netherlands_dotnl/normalized.json.gz             data/national/netherlands_dotnl/runtime             docs/netherlands-dotnl-access-report.json
+
+      - name: Validate canonical scope
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          build=json.loads(Path("docs/netherlands-dotnl-build-report.json").read_text())
+          run=json.loads(Path("docs/netherlands-dotnl-runtime-report.json").read_text())
+          manifest=json.loads(Path("data/national/netherlands_dotnl/runtime/manifest.json").read_text())
+          assert build["stationCount"] > 70000, build["stationCount"]
+          assert run["stationCount"] > 70000, run["stationCount"]
+          assert manifest["scope"]["countryCode"]=="NL"
+          assert manifest["scope"]["teslaExcluded"] is True
+          assert manifest["scope"]["ocpiOpeningTimes"] is True
+          assert manifest["scope"]["ocpiParkingRestrictions"] is True
+          assert run["metrics"]["exactPricedConnectors"] > 0
+          assert run["metrics"]["connectors"] > run["metrics"]["exactPricedConnectors"]
+          assert run["metrics"]["unsupportedReasons"].get("non_direct_tariff_type:REGULAR",0) >= 0
+          with gzip.open("data/national/netherlands_dotnl/normalized.json.gz","rt",encoding="utf-8") as f:
+              data=json.load(f)
+          assert data["scope"]["publicOnly"] is True
+          assert data["scope"]["teslaExcluded"] is True
+          print(json.dumps({
+            "stations":run["stationCount"],
+            "connectors":run["metrics"]["connectors"],
+            "directPriced":run["metrics"]["exactPricedConnectors"],
+            "coveragePct":run["coveragePct"]["exactTariffConnectors"],
+            "regularExcluded":run["metrics"]["unsupportedReasons"].get("non_direct_tariff_type:REGULAR",0)
+          },indent=2))
+          PY
+
+      - name: Publish canonical NL dataset
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/national/netherlands_dotnl docs/netherlands-dotnl-*.json
+          if git diff --cached --quiet; then
+            echo "No NL changes"
+            exit 0
+          fi
+          git commit -m "data(nl): refresh canonical DOT-NL direct CPO dataset"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*3))
+          done
+          exit 1
