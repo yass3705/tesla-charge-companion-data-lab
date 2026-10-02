@@ -1,12 +1,14 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "dataset": "switzerland-public-charging-v9",
   "country": "CH",
-  "generatedAt": "2026-09-30T09:09:18.464496+00:00",
+  "generatedAt": "2026-10-02T22:56:16.426020+00:00",
   "sourceBundle": "data/tcc_v9/switzerland.json",
   "baseInventory": {
     "source": "https://data.geo.admin.ch/ch.bfe.ladestellen-elektromobilitaet/data/oicp/ch.bfe.ladestellen-elektromobilitaet.json",
-    "role": "authoritative physical EVSE/station inventory"
+    "role": "authoritative physical EVSE/station inventory",
+    "rawEvseCount": 19467,
+    "publicAccessPolicy": "Publish only OICP Free publicly accessible and Paying publicly accessible EVSEs; exclude Restricted access and Test Station from the public V9 inventory."
   },
   "overlayPolicy": {
     "joinSource": "prevalidated Switzerland TCC V9 bundle",
@@ -17,14 +19,27 @@
       "Electra",
       "Electroverse"
     ],
-    "teslaHandledSeparately": true
+    "teslaHandledSeparately": true,
+    "accessibilityFieldAuthoritative": true,
+    "publishedAccessibilityValues": [
+      "Free publicly accessible",
+      "Paying publicly accessible"
+    ],
+    "excludedAccessibilityValues": [
+      "Restricted access",
+      "Test Station"
+    ]
   },
   "summary": {
-    "nationalEvseCount": 19466,
-    "directPricedEvseCount": 17745,
-    "classifiedNoPublicDirectTariffCount": 401,
-    "directUnresolvedEvseCount": 1320,
-    "directResolvedEvseCount": 18146,
+    "nationalEvseCount": 14551,
+    "rawNationalEvseCount": 19467,
+    "excludedRestrictedAccessEvseCount": 4914,
+    "excludedTestStationEvseCount": 2,
+    "excludedNonPublicEvseCount": 4916,
+    "directPricedEvseCount": 13300,
+    "classifiedNoPublicDirectTariffCount": 43,
+    "directUnresolvedEvseCount": 1208,
+    "directResolvedEvseCount": 13343,
     "operatorStatusCounts": {
       "complete": 35,
       "handled-separately": 1,
@@ -465,8 +480,8 @@
     "data/switzerland/ccc-move-cpo-tariffs-national.json": 416,
     "data/switzerland/mmn-move-cpo-tariffs.json": 6,
     "data/switzerland/soc-move-cpo-tariffs-national.json": 144,
-    "data/switzerland/ecarup-owner-direct-tariffs.json": 3246,
-    "data/switzerland/ecarup-owner-coordinate-safe-overlay.json": 3224,
+    "data/switzerland/ecarup-owner-direct-tariffs.json": 3245,
+    "data/switzerland/ecarup-owner-coordinate-safe-overlay.json": 3222,
     "data/switzerland/fastned-official-direct-tariffs.json": 78,
     "data/switzerland/chevp-evpass-official-direct-tariffs.json": 40,
     "data/switzerland/tae-matterhorn-terminal-direct-tariffs.json": 16,
@@ -475,34 +490,23 @@
     "data/switzerland/ewd-official-direct-tariffs.json": 8,
     "data/switzerland/ewo-ecarup-direct-tariffs.json": 7,
     "data/switzerland/migrol-official-direct-tariffs.json": 1030,
-    "data/switzerland/saascharge-official-direct-tariffs.json": 226,
-    "data/switzerland/cpi-current-direct-tariffs.json": 35,
-    "data/switzerland/shell-evpass-official-direct-tariffs.json": 1166,
-    "data/switzerland/gofast-official-direct-tariffs.json": 546,
-    "data/switzerland/electra-direct-tariffs.json": 118,
-    "data/switzerland/electra-direct-tariffs-second-pass.json": 122,
+    "data/switzerland/saascharge-official-direct-tariffs.json": 222,
     "data/switzerland/autosense-amag-direct-tariffs.json": 10,
     "data/switzerland/powerup-monta-direct-tariffs.json": 235,
     "data/switzerland/agr-monta-direct-tariffs.json": 17,
-    "data/switzerland/plenitude-official-direct-tariffs.json": 180,
-    "data/switzerland/de-edh-direct-tariffs.json": 2,
-    "data/switzerland/edh-direct-tariffs.json": 16,
-    "data/switzerland/avia-guest-direct-tariffs.json": 583,
-    "data/switzerland/lidl-official-direct-tariffs.json": 173,
     "data/switzerland/partino-baden-direct-tariffs.json": 3,
     "data/switzerland/evt-official-site-partial-tariffs.json": 5,
-    "data/switzerland/energie360-direct-tariffs.json": 809,
-    "data/switzerland/energie360-direct-tariffs-second-pass.json": 816,
-    "docs/switzerland-energie360-finalization-2026-09-28.json": 4,
-    "data/switzerland/ionity-official-national-direct-tariffs.json": 168,
-    "data/swisscharge/swisscharge-tariffs.json": 2382,
-    "data/switzerland/ewz-direct-tariffs.json": 414,
-    "data/switzerland/ewz-direct-tariffs-second-pass.json": 394,
-    "data/switzerland/iwb-direct-tariffs-second-pass.json": 409,
+    "data/switzerland/energie360-direct-tariffs.json": 637,
+    "data/switzerland/energie360-direct-tariffs-second-pass.json": 649,
+    "docs/switzerland-energie360-finalization-2026-09-28.json": 2,
+    "data/swisscharge/swisscharge-tariffs.json": 1400,
+    "data/switzerland/ewz-direct-tariffs.json": 216,
+    "data/switzerland/ewz-direct-tariffs-second-pass.json": 196,
+    "data/switzerland/iwb-direct-tariffs-second-pass.json": 332,
     "data/switzerland/iwb-official-basel-overlay.json": 31,
     "data/switzerland/iwb-residual-dedicated-adhoc-overlay.json": 6,
     "data/switzerland/ail-emoti-official-direct-tariffs.json": 21
   },
   "output": "data/national/switzerland_public_charging_v9.json",
-  "outputBytes": 50292856
+  "outputBytes": 41224131
 }
