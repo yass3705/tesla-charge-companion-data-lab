@@ -72,6 +72,8 @@ def nested_stats(locations):
                 if not isinstance(conn,dict): continue
                 connectors+=1
                 if not ck: ck=keyset(conn)
+                tids=conn.get("tariff_ids")
+                if isinstance(tids,list): refs.update(str(x) for x in tids if x is not None)
                 if conn.get("tariff_id") is not None: refs.add(str(conn["tariff_id"]))
     return {"evses":evses,"connectors":connectors,"statuses":statuses,"distinctTariffReferences":len(refs),
             "sampleLocationKeys":lk,"sampleEvseKeys":ek,"sampleConnectorKeys":ck},refs
