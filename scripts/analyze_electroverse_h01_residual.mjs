@@ -105,6 +105,7 @@ for(const sh of cman.shards||[]){
     for(const x of refs){
       const mm=x.raw.match(/^FR\*H01\*(E[0-9A-Z]+)\*([0-9A-Z]+)\*([0-9A-Z]+)\*([0-9A-Z]+)$/i);
       if(!mm)continue;
+      if(!/^\d+$/.test(mm[4]))continue;
       const target=norm('FRH01'+mm[1]+mm[2]+mm[3]);
       if(!local.includes(target))continue;
       if((owners.get(target)?.size||0)!==1)continue;
