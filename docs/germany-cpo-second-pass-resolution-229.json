@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 229,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-228.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "StadtWerke Roesrath Energie GmbH public charging",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "backend": "ladepay/ladenetz",
+      "status": "bounded-no-promotion",
+      "sources": [
+        "https://www.stadtwerke-roesrath.de/energie/elektromobilitaet/"
+      ],
+      "newEvidence": "Current first-party page explicitly separates registered tariffs from card-based QR ladepay ad-hoc. Registered non-customer tariffs are AC 0.59 EUR/kWh + 0.05 EUR/min from minute 121 and DC 0.69 EUR/kWh + 0.05 EUR/min from minute 61; time fee is suspended 21:00-09:00 and prices are gross.",
+      "exactGap": "First-party page states current ad-hoc price is displayed in ladepay before charging, but does not expose that numeric checkout price in the static tariff table. Registered non-customer tariffs cannot be substituted for anonymous_ad_hoc."
+    },
+    {
+      "cpo": "Stadtwerke Erkrath GmbH public charging",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "backend": "ladenetz/ladeapp + direct credit card",
+      "status": "bounded-no-promotion",
+      "sources": [
+        "https://www.stadtwerke-erkrath.de/e-mobilitaet/e-ladekarte/",
+        "https://www.stadtwerke-erkrath.de/e-mobilitaet/"
+      ],
+      "newEvidence": "Current first-party pages explicitly identify Ad-Hoc-Laden as a separate tariff model, confirm direct credit-card payment, state tariffs apply at all Stadtwerke Erkrath charge points, and disclose blocking fee 0.05 EUR/min from minute 241.",
+      "exactGap": "Current first-party static surface does not expose the anonymous ad-hoc EUR/kWh value. Card/registered GuterStrom tariffs are product-scoped and cannot fill this gap."
+    },
+    {
+      "cpo": "Stadtwerke Haan GmbH",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "backend": "ladenetz",
+      "status": "bounded-no-promotion",
+      "sources": [
+        "https://www.stadtwerke-haan.de/mobilitaet/ladestationen/e-autos",
+        "https://www.stadtwerke-haan.de/neuigkeiten/artikel/stadtwerke-haan-stellen-vier-neue-e-ladesaeulen-im-stadtgebiet-auf"
+      ],
+      "newEvidence": "Current first-party estate is now enumerated with AC 11/22 kW and one 300 kW DC site; operator states Ladenetz app provides prices and payment options.",
+      "exactGap": "No current first-party numeric anonymous checkout tariff is exposed on the static operator surface, and AC/DC variation must be preserved. Need Ladenetz checkout/app prices for the active estate."
+    },
+    {
+      "cpo": "Stadtwerke Velbert GmbH public charging / ladeBERT",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "backend": "ladenetz/ladeapp",
+      "status": "bounded-no-promotion",
+      "sources": [
+        "https://www.stadtwerke-velbert.de/privatkunden/e-mobilitaet/unterwegs-laden",
+        "https://www.stadtwerke-velbert.de/privatkunden/e-mobilitaet/faq"
+      ],
+      "newEvidence": "Current first-party pages explicitly confirm spontaneous no-contract QR/app charging with credit card/PayPal and separately publish registered ladeBERT AC/DC tariffs.",
+      "exactGap": "The current static first-party surface does not state that spontaneous ad-hoc checkout uses the registered ladeBERT 0.48 AC / 0.58 DC EUR/kWh matrix. Do not infer equivalence; need checkout price evidence."
+    },
+    {
+      "cpo": "Stadtwerke Heiligenhaus GmbH public charging",
+      "classification": "B2_FIRST_PARTY_ADHOC_EQUIVALENCE",
+      "backend": "app/ladenetz-type roaming plus operator key",
+      "status": "bounded-no-promotion",
+      "sources": [
+        "https://www.stadtwerke-heiligenhaus.de/energiedienstleistungen/elektro-mobilitaet/oeffentliche-ladesaeulen/"
+      ],
+      "newEvidence": "Current first-party estate confirms operator-owned public AC 22 kW and DC 50 kW points and activation via smartphone apps or Stadtwerke charging key.",
+      "exactGap": "No current anonymous/direct numeric AC/DC tariff is published and app/direct equivalence is not established."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "indicator": "221 -> 253 complete (+32)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific source/backend proof"
+  },
+  "backendFamilyProgress": {
+    "ladenetz_ladeapp": "Five canonical residuals bounded with current first-party evidence. Roesrath/Erkrath/Velbert explicitly separate anonymous direct payment from registered products; Haan estate includes 300 kW DC; Heiligenhaus confirms AC/DC estate but no numeric direct tariff."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "253 + 338 + 0 = 591",
+    "unsafeExtrapolations": 0,
+    "duplicateAliasCheck": "No new aliases introduced; no counter/list mutation.",
+    "antiStagnation": "These five cases now require concrete checkout/app evidence; do not repeat static first-party searches."
+  },
+  "nextSafeAction": "Move away from static ladenetz searches. Use concrete checkout/backend evidence where obtainable; otherwise proceed to charge-it-easy/LichtBlick, then remaining becharged/smopi canonical EVSE-specific cases."
+}
