@@ -6,8 +6,9 @@
   "country": "FR",
   "classification": {
     "nationalTariffByCurrentType": true,
-    "expiredPromoNotRankable": true,
-    "reason": "Lidl currently publishes standard France tariffs by AC/DC type. The Lidl Plus DC 0.29 EUR/kWh promotion is explicitly described as ending 31 August 2026, so it is not applied after that date without newer official confirmation."
+    "expiredPromoNotRankable": false,
+    "reason": "Lidl publishes standard direct tariffs of 0.29 EUR/kWh AC and 0.39 EUR/kWh DC for card/QR/direct payment, while the official Lidl e-mobility FAQ currently publishes an exceptional extended Lidl Plus price of 0.18 EUR/kWh AC and 0.29 EUR/kWh DC. No current end date is stated on the FAQ; the promotional profile must be refreshed independently and must not overwrite the standard tariff.",
+    "activeLidlPlusPromotion": true
   },
   "operatorDirect": {
     "standard": {
@@ -27,17 +28,23 @@
     "roaming": {
       "finalPriceOwnedByEmsp": true,
       "lidlBaseTariffMayReceiveEmspCommission": true
+    },
+    "lidlPlusActiveOffer": {
+      "active": true,
+      "promotional": true,
+      "label": "prolongement exceptionnel du prix",
+      "AC": {
+        "eurPerKwh": 0.18
+      },
+      "DC": {
+        "eurPerKwh": 0.29
+      },
+      "endDate": null,
+      "validity": "until withdrawn or replaced on official Lidl Plus e-mobility source",
+      "source": "https://www.lidl.fr/c/e-mobilite-faq/s10037617"
     }
   },
-  "expiredOrUnconfirmedOffers": [
-    {
-      "name": "Lidl Plus DC 0.29 EUR/kWh 2026 promotion",
-      "eurPerKwh": 0.29,
-      "scope": "DC via Lidl Plus",
-      "officialEndDate": "2026-08-31",
-      "rankableAfterEndDate": false
-    }
-  ],
+  "expiredOrUnconfirmedOffers": [],
   "sourceEvidence": {
     "officialOnly": true,
     "sources": [
@@ -60,14 +67,18 @@
   },
   "publicationStatus": "candidate_validated_source",
   "notes": [
-    "Do not extend the expired Lidl Plus DC promotion beyond 31 August 2026 unless Lidl publishes a newer validity period.",
-    "No energy delivered means no charging invoice according to Lidl FAQ.",
+    "Standard direct/card/QR tariff remains 0.29 EUR/kWh AC and 0.39 EUR/kWh DC.",
+    "Current Lidl Plus promotional tariff is 0.18 EUR/kWh AC and 0.29 EUR/kWh DC and is explicitly described by Lidl as an exceptional extension.",
+    "No current end date is published on the official FAQ. If the offer disappears from a successfully parsed official Lidl Plus source, stop applying the promotional profile and fall back to standard direct tariffs.",
     "Third-party mobility-card commissions are not operator-direct Lidl pricing."
   ],
   "refresh": {
     "mode": "automatic_official_page_parser",
-    "source": "https://www.lidl.fr/c/tarifs-bornes/s10027299",
-    "refreshedAt": "2026-10-02T00:25:27.116554+00:00",
+    "sources": [
+      "https://www.lidl.fr/c/tarifs-bornes/s10027299",
+      "https://www.lidl.fr/c/e-mobilite-faq/s10037617"
+    ],
+    "refreshedAt": "2026-10-02T00:00:00Z",
     "lastResult": "validated"
   }
 }
