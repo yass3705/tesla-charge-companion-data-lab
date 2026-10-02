@@ -1889,15 +1889,22 @@ for(const sh of manifest.shards||[]){
 
       const sharedPricing=compiledRows[0].pricing;
       const connectorCount=compiledRows[0].connectorCount;
-      for(const p of targets)finalResidualGroupTargets.set(p,{
-        pricing:sharedPricing,connectorCount,sourceEvses:es,operator:String(g.operator||'UNKNOWN'),
-        recoveryMode,targetGroupSize:targets.length
-      });
+      for(const p of targets){
+        const operator=String(g.operator||'UNKNOWN');
+        const groupKey=operator==='B_FR55C_7KW_POWER_VARIANT'
+          ? p+'|POWER_ALIAS|7|'+pricingSig(sharedPricing)
+          : p;
+        finalResidualGroupTargets.set(groupKey,{
+          targetNorm:p,pricing:sharedPricing,connectorCount,sourceEvses:es,operator,
+          recoveryMode,targetGroupSize:targets.length
+        });
+      }
       for(const e0 of es)finalResidualGroupedSourceEvses.add(e0);
     }
 
     if(finalResidualGroupTargets.size){
-      for(const [targetNorm,g] of finalResidualGroupTargets){
+      for(const [,g] of finalResidualGroupTargets){
+        const targetNorm=g.targetNorm;
         const targetPdc=localByNorm.get(targetNorm);
         const currency=g.pricing.rules?.[0]?.currency||'EUR';
         const offer={
