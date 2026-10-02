@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = ROOT / "data/national/france_public_charging_canonical.json"
 OVERRIDES = ROOT / "data/regional_coverage/manual_status_overrides_2026_08_22.json"
 BOURGES = ROOT / "data/station_verifications/modulo_bourges_maurice_roy_adhoc_2026_08_22.json"
+PUBLIC_ACCESS_LEDGER = ROOT / "reports/france/irve-public-access-validation-ledger.json"
 
 EXPECTED_GAPS = [
     "Brest Métropole / Easy Charge Service live app price",
@@ -126,6 +127,31 @@ def build() -> dict[str, Any]:
     overrides = load_json(OVERRIDES)
     validate_inputs(overrides)
 
+    access_ledger = load_json(PUBLIC_ACCESS_LEDGER)
+    decisions = access_ledger.get("decisions")
+    if not isinstance(decisions, list):
+        raise SystemExit("Public-access validation ledger has no decisions list")
+    exclude_non_public_ids: set[str] = set()
+    keep_public_ids: set[str] = set()
+    needs_review_ids: set[str] = set()
+    for decision in decisions:
+        station_ids = decision.get("stationIds") or []
+        if not isinstance(station_ids, list):
+            raise SystemExit(f"Invalid stationIds in public-access ledger: {decision!r}")
+        state = decision.get("decision")
+        target = (
+            exclude_non_public_ids if state == "exclude_non_public"
+            else keep_public_ids if state == "keep_public"
+            else needs_review_ids if state == "needs_review"
+            else None
+        )
+        if target is None:
+            raise SystemExit(f"Unknown public-access decision: {state!r}")
+        target.update(str(x) for x in station_ids if x)
+    overlap = (exclude_non_public_ids & keep_public_ids) | (exclude_non_public_ids & needs_review_ids) | (keep_public_ids & needs_review_ids)
+    if overlap:
+        raise SystemExit(f"Conflicting public-access decisions for station IDs: {sorted(overlap)!r}")
+
     regional = collect(
         ROOT / "data/regional_coverage",
         exclude={OVERRIDES.name},
@@ -189,6 +215,8 @@ def build() -> dict[str, Any]:
         ],
         "policy": {
             "doNotInventDepartmentDefaults": True,
+            "excludeOnlyExternallyValidatedNonPublicStations": True,
+            "neverExcludeNeedsReviewStations": True,
             "preserveStationAndNetworkScope": True,
             "preservePowerCustomerProfileClockTimeDurationAndParking": True,
             "directCpoAndRoamingSeparate": True,
@@ -198,6 +226,14 @@ def build() -> dict[str, Any]:
         "manualStatusOverrides": {
             "sourcePath": rel(OVERRIDES),
             "payload": overrides,
+        },
+        "publicAccessValidation": {
+            "sourcePath": rel(PUBLIC_ACCESS_LEDGER),
+            "generatedAt": access_ledger.get("generatedAt"),
+            "excludeNonPublicStationIds": sorted(exclude_non_public_ids),
+            "keepPublicStationIds": sorted(keep_public_ids),
+            "needsReviewStationIds": sorted(needs_review_ids),
+            "summary": access_ledger.get("summary", {}),
         },
         "remainingTrueGaps": list(EXPECTED_GAPS),
         "appReadiness": {
@@ -211,6 +247,9 @@ def build() -> dict[str, Any]:
             "operatorDirectSources": len(operator_direct),
             "stationVerificationSources": len(station_verifications),
             "remainingTrueGaps": len(EXPECTED_GAPS),
+            "validatedNonPublicStationIds": len(exclude_non_public_ids),
+            "validatedKeepPublicStationIds": len(keep_public_ids),
+            "publicAccessNeedsReviewStationIds": len(needs_review_ids),
         },
         "regionalCoverageSources": regional,
         "operatorDirectSources": operator_direct,
