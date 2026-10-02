@@ -1,0 +1,57 @@
+name: France IRVE closed group second pass
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/audit_france_irve_closed_groups.py"
+      - "reports/france/irve-public-access-audit.json"
+      - ".github/workflows/france-irve-closed-groups.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: france-irve-closed-groups
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compile
+        run: python -m py_compile scripts/audit_france_irve_closed_groups.py
+      - name: Run closed-group second pass
+        run: python scripts/audit_france_irve_closed_groups.py
+      - name: Validate
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path("reports/france/irve-closed-group-second-pass.json").read_text())
+          assert p["dataset"]=="france-irve-closed-group-second-pass"
+          assert p["policy"]["nonDestructive"] is True
+          assert p["policy"]["automaticProductionExclusion"] is False
+          assert p["counts"]["uniquePhysicalSites"] > 0
+          PY
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/france/irve-closed-group-second-pass.json
+          if ! git diff --cached --quiet; then
+            git commit -m "audit(france): refresh IRVE closed-group second pass [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
