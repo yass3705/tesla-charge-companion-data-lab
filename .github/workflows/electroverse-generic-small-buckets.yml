@@ -1,0 +1,53 @@
+name: Analyze Electroverse generic small residual buckets
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/analyze_electroverse_generic_small_buckets.mjs"
+      - ".github/workflows/electroverse-generic-small-buckets.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Analyze generic small buckets
+        run: node scripts/analyze_electroverse_generic_small_buckets.mjs
+      - name: Persist results
+        run: |
+          test -s reports/electroverse/generic-small-buckets-analysis.json
+          test -s data/platforms/electroverse/validated-mappings/generic-small-buckets.json
+          node -e "JSON.parse(require('fs').readFileSync('reports/electroverse/generic-small-buckets-analysis.json','utf8'));JSON.parse(require('fs').readFileSync('data/platforms/electroverse/validated-mappings/generic-small-buckets.json','utf8'))"
+          cp reports/electroverse/generic-small-buckets-analysis.json /tmp/generic-small-buckets-analysis.json
+          cp data/platforms/electroverse/validated-mappings/generic-small-buckets.json /tmp/generic-small-buckets.json
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p reports/electroverse data/platforms/electroverse/validated-mappings
+          cp /tmp/generic-small-buckets-analysis.json reports/electroverse/generic-small-buckets-analysis.json
+          cp /tmp/generic-small-buckets.json data/platforms/electroverse/validated-mappings/generic-small-buckets.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/generic-small-buckets-analysis.json data/platforms/electroverse/validated-mappings/generic-small-buckets.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data: persist Electroverse generic small-bucket analysis"
+            for attempt in 1 2 3 4 5; do
+              if git push origin HEAD:main; then break; fi
+              git fetch origin main
+              git rebase origin/main
+              sleep $((attempt * 2))
+            done
+            git push origin HEAD:main
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: electroverse-generic-small-buckets
+          path: |
+            reports/electroverse/generic-small-buckets-analysis.json
+            data/platforms/electroverse/validated-mappings/generic-small-buckets.json
+          retention-days: 14
