@@ -1912,7 +1912,13 @@ for(const sh of manifest.shards||[]){
             electroverseEvsePks:g.sourceEvses.map(e=>e.pk??null),
             physicalReferences:g.sourceEvses.map(e=>text(e?.physicalReference)),
             connectorCount:g.connectorCount,sourceGroupSize:g.sourceEvses.length,targetGroupSize:g.targetGroupSize,
-            operator:g.operator,tariffHash:row.tariffHash||null,fetchedAt:row.fetchedAt||null,
+            operator:g.operator,
+            ...(g.operator==='B_FR55C_7KW_POWER_VARIANT'?{
+              offerGranularity:'connector_power_alias',
+              sourcePowerKw:7,
+              sourceStandard:'IEC_62196_T2'
+            }:{}),
+            tariffHash:row.tariffHash||null,fetchedAt:row.fetchedAt||null,
             source:'Electroverse final residual recovery plan'
           }
         };
