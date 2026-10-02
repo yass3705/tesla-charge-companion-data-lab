@@ -89,21 +89,27 @@ try:
 except Exception as e:
     results.append({"operator":"SICECO Côte-d'Or","status":"failed_keep_last_valid","error":str(e)})
 
-# SYDED: explicit conflict check, no auto-update
+# SYDED Doubs - official SYDED page is canonical
 try:
-    rs=sec(bfc,r"SYDED\s*\(Doubs\)",r"SIEEEN\s*\(Nièvre\)","SYDED regional")
     ds=fetch(SYDED)
-    regional=[one(rs,[r"22\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"regional 22"),
-              one(rs,[r"50\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"regional 50"),
-              one(rs,[r"100\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"regional 100")]
-    departmental=[one(ds,[r"22\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"dept 22"),
-                  one(ds,[r"50\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*[Kk]Wh"],"dept 50"),
-                  one(ds,[r"100\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*[Kk]Wh"],"dept 100")]
-    if regional!=departmental:
-        results.append({"operator":"SYDED Doubs","status":"conflict_keep_last_valid","regionalBfc":regional,"departmentalSyded":departmental,
-                        "sources":[BFC,SYDED],"note":"Two official sources disagree; no automatic overwrite."})
-    else:
-        results.append({"operator":"SYDED Doubs","status":"unchanged","values":regional})
+    vals={
+      "22kwh":one(ds,[r"([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh\s+Charge\s+acc[ée]l[ée]r[ée]e\s+22\s*kW"],"syded 22 kwh"),
+      "22min":one(ds,[r"22\s*kW.*?\+\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"syded 22 min"),
+      "50kwh":one(ds,[r"([0-9]+[,.][0-9]+)\s*€\s*/\s*[Kk][Ww]h\s+Charge\s+acc[ée]l[ée]r[ée]e\s+50\s*kW"],"syded 50 kwh"),
+      "50min":one(ds,[r"50\s*kW.*?\+\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"syded 50 min"),
+      "100kwh":one(ds,[r"([0-9]+[,.][0-9]+)\s*€\s*/\s*[Kk][Ww]h\s+Charge\s+acc[ée]l[ée]r[ée]e\s+100\s*kW"],"syded 100 kwh"),
+      "100min":one(ds,[r"100\s*kW.*?\+\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"syded 100 min")
+    }
+    path="data/operator_direct/syded_doubs_official.json"; p=ROOT/path; d=json.loads(p.read_text()); before=json.loads(json.dumps(d))
+    for key,kwh,mn in [("accelerated22Kw","22kwh","22min"),("rapid50Kw","50kwh","50min"),("rapid100Kw","100kwh","100min")]:
+        d["operatorDirect"][key]["eurPerKwh"]=vals[kwh]
+        d["operatorDirect"][key]["connectionDurationFee"]["eurPerMinute"]=vals[mn]
+    d["classification"]["tariffAuthority"]="official SYDED Doubs page"
+    save(path,d,before,[
+      "operatorDirect.accelerated22Kw.eurPerKwh","operatorDirect.accelerated22Kw.connectionDurationFee.eurPerMinute",
+      "operatorDirect.rapid50Kw.eurPerKwh","operatorDirect.rapid50Kw.connectionDurationFee.eurPerMinute",
+      "operatorDirect.rapid100Kw.eurPerKwh","operatorDirect.rapid100Kw.connectionDurationFee.eurPerMinute"
+    ],SYDED,now,results,"SYDED Doubs",vals)
 except Exception as e:
     results.append({"operator":"SYDED Doubs","status":"failed_keep_last_valid","error":str(e)})
 
