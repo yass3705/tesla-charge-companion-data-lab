@@ -8,13 +8,26 @@ ROOT=Path(__file__).resolve().parents[1]
 SRC=ROOT/"data/tcc_v9/switzerland.json"
 OUT=ROOT/"data/national/switzerland_public_charging_v9.json"
 REPORT=ROOT/"docs/switzerland-v9-canonical-integration-2026-09-28.json"
+PUBLIC_ACCESS={"Free publicly accessible","Paying publicly accessible"}
+EXCLUDED_ACCESS={"Restricted access","Test Station"}
 
 def main():
     src=json.loads(SRC.read_text(encoding="utf-8"))
+    raw_evses=src.get("evses",[])
     rows=[]
     priced=no_public=unresolved=0
+    excluded_access=excluded_test=0
     used={}
-    for ev in src.get("evses",[]):
+    for ev in raw_evses:
+        access=ev.get("accessibility")
+        if access=="Restricted access":
+            excluded_access+=1
+            continue
+        if access=="Test Station":
+            excluded_test+=1
+            continue
+        if access not in PUBLIC_ACCESS:
+            raise AssertionError(f"Unexpected Swiss OICP Accessibility value: {access!r}")
         status=ev.get("directTariffStatus") or "unresolved"
         overlays=ev.get("directTariffs") or []
         if status=="resolved":
@@ -36,7 +49,7 @@ def main():
           "coordinates":ev.get("coordinates"),
           "plugs":ev.get("plugs"),
           "chargingFacilities":ev.get("chargingFacilities"),
-          "accessibility":ev.get("accessibility"),
+          "accessibility":access,
           "authenticationModes":ev.get("authenticationModes"),
           "paymentOptions":ev.get("paymentOptions"),
           "isOpen24Hours":ev.get("isOpen24Hours"),
@@ -49,10 +62,11 @@ def main():
     progress=src.get("cpoResearchStatus") or {}
     status_counts={}
     for x in progress.values():
-        s=x.get("status","unknown"); status_counts[s]=status_counts.get(s,0)+1
+        s=x.get("status","unknown")
+        status_counts[s]=status_counts.get(s,0)+1
     now=datetime.now(timezone.utc).isoformat()
     payload={
-      "schemaVersion":2,
+      "schemaVersion":3,
       "dataset":"switzerland-public-charging-v9",
       "country":"CH",
       "generatedAt":now,
@@ -69,7 +83,10 @@ def main():
         "unresolvedPriceKeepsEvseVisible":True,
         "blockedCpoDoesNotHideResolvedEvses":True,
         "roamingLayersSeparate":["Electra","Electroverse"],
-        "teslaHandledSeparately":True
+        "teslaHandledSeparately":True,
+        "accessibilityFieldAuthoritative":True,
+        "publishedAccessibilityValues":sorted(PUBLIC_ACCESS),
+        "excludedAccessibilityValues":sorted(EXCLUDED_ACCESS)
       },
       "summary":{
         "nationalEvseCount":len(rows),
@@ -87,18 +104,17 @@ def main():
       "usedSourceCounts":used,
       "evses":rows
     }
-    assert payload["summary"]["nationalEvseCount"]==src["counts"]["nationalEvseCount"]
-    assert priced==src["counts"]["directTariffResolvedEvseCount"]
-    assert no_public==src["counts"]["noPublicDirectTariffEvseCount"]
-    assert unresolved==src["counts"]["directTariffUnresolvedEvseCount"]
+    assert len(raw_evses)==src["counts"]["nationalEvseCount"]
+    assert len(rows)+excluded_access+excluded_test==len(raw_evses)
+    assert priced+no_public+unresolved==len(rows)
+    assert all(e["accessibility"] in PUBLIC_ACCESS for e in rows)
     OUT.parent.mkdir(parents=True,exist_ok=True)
     OUT.write_text(json.dumps(payload,ensure_ascii=False,separators=(",",":"))+"\n",encoding="utf-8")
     rep={k:v for k,v in payload.items() if k!="evses"}
-    rep["output"]=str(OUT.relative_to(ROOT)); rep["outputBytes"]=OUT.stat().st_size
+    rep["output"]=str(OUT.relative_to(ROOT))
+    rep["outputBytes"]=OUT.stat().st_size
     REPORT.write_text(json.dumps(rep,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     print(json.dumps(payload["summary"],ensure_ascii=False))
 
 if __name__=="__main__":
     main()
-
-# refresh after final Swiss bundle
