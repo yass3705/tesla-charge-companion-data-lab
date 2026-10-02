@@ -1,0 +1,22 @@
+name: Germany public access schema probe
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/audit_germany_public_access_schema.py"
+      - ".github/workflows/germany-public-access-schema-probe.yml"
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m py_compile scripts/audit_germany_public_access_schema.py
+      - run: python scripts/audit_germany_public_access_schema.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-public-access-schema-probe
+          path: reports/germany/public-access-schema-probe.json
