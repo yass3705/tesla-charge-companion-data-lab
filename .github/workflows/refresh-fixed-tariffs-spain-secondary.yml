@@ -1,0 +1,39 @@
+name: Refresh fixed tariffs Spain secondary
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/refresh_fixed_tariffs_spain_secondary.py"
+      - ".github/workflows/refresh-fixed-tariffs-spain-secondary.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "31 3 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: python3 scripts/refresh_fixed_tariffs_spain_secondary.py
+      - name: Publish
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/emt_madrid_official_spain.json data/operator_direct/endesa_official_spain.json data/operator_direct/plenergy_official_spain.json reports/fixed-tariff-refresh-spain-secondary-latest.json
+          git diff --cached --quiet && exit 0
+          git commit -m "data(es): refresh secondary fixed tariffs [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
