@@ -2670,6 +2670,33 @@ for(const [tileIdKey,offers] of tiles.entries()) for(const offer of offers){
   arr.push({tileIdKey,offer,pricingSig:pricingSig(offer.pricing)});
   offersByTarget.set(dedupeKey,arr);
 }
+const mergeOfferProvenance=(keep,items)=>{
+  keep.metadata=keep.metadata||{};
+  const sourcePks=new Set();
+  const refs=new Set();
+  const aliasPks=new Set(keep.metadata.electroverseAliasEvsePks||[]);
+  const aliasRefs=new Set(keep.metadata.electroverseAliasPhysicalReferences||[]);
+  for(const x of items){
+    const m=x.offer.metadata||{};
+    for(const pk of m.electroverseEvsePks||[]) if(pk!=null) sourcePks.add(pk);
+    if(m.electroverseEvsePk!=null) sourcePks.add(m.electroverseEvsePk);
+    for(const r of m.physicalReferences||[]) if(r) refs.add(r);
+    if(m.physicalReference) refs.add(m.physicalReference);
+    for(const pk of m.electroverseAliasEvsePks||[]) if(pk!=null) aliasPks.add(pk);
+    for(const r of m.electroverseAliasPhysicalReferences||[]) if(r) aliasRefs.add(r);
+  }
+  if(sourcePks.size){
+    keep.metadata.electroverseEvsePks=[...sourcePks];
+    delete keep.metadata.electroverseEvsePk;
+  }
+  if(refs.size){
+    keep.metadata.physicalReferences=[...refs];
+    delete keep.metadata.physicalReference;
+  }
+  if(aliasPks.size) keep.metadata.electroverseAliasEvsePks=[...aliasPks];
+  if(aliasRefs.size) keep.metadata.electroverseAliasPhysicalReferences=[...aliasRefs];
+  keep.metadata.provenanceMergedFromIdenticalOffers=items.length;
+};
 const dropOfferIds=new Set();
 for(const [target,items] of offersByTarget.entries()){
   if(items.length<2)continue;
@@ -2681,6 +2708,7 @@ for(const [target,items] of offersByTarget.entries()){
     // attribution that happens to claim the same national target. Preserve it and
     // discard the competing group offers, even when their pricing differs.
     const keep=validatedItems[0];
+    if(sigs.size===1) mergeOfferProvenance(keep.offer,items);
     for(const x of items) if(x!==keep) dropOfferIds.add(x.offer.id);
     stats.dedupedIdenticalOffers+=sigs.size===1?items.length-1:0;
     if(sigs.size>1){
@@ -2690,6 +2718,7 @@ for(const [target,items] of offersByTarget.entries()){
     }
   }else if(sigs.size===1){
     const sorted=[...items].sort((a,b)=>String(a.offer.id).localeCompare(String(b.offer.id)));
+    mergeOfferProvenance(sorted[0].offer,items);
     for(const x of sorted.slice(1))dropOfferIds.add(x.offer.id);
     stats.dedupedIdenticalOffers+=items.length-1;
   }else{
