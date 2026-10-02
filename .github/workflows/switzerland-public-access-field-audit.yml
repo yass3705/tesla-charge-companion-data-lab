@@ -1,0 +1,25 @@
+name: Switzerland public access field audit
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/audit_switzerland_public_access_field.py"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/audit_switzerland_public_access_field.py
+      - name: Publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/switzerland-public-access-field-audit-2026-10-03.json
+          if ! git diff --cached --quiet; then
+            git commit -m "audit(ch): persist national accessibility census"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
