@@ -1,0 +1,17 @@
+name: Audit targeted B published siblings
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/audit_b_targeted_published_siblings.mjs"
+      - ".github/workflows/electroverse-b-targeted-siblings.yml"
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/audit_b_targeted_published_siblings.mjs
