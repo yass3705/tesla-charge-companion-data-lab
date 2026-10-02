@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 237,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-236.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 254,
+    "partial": 337,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "scope": "persistence-architecture",
+      "status": "validated-test-request",
+      "evidenceSummary": "Validation run for issue-triggered repository writer after adding safe fetch/rebase/revalidation retries for concurrent unrelated Data Lab pushes. No CPO status change."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 254,
+    "partial": 337,
+    "blocked": 0
+  },
+  "indicator": "221 -> 254 complete (+33)",
+  "priorityTop5": {
+    "status": "unchanged parked"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "254 + 337 + 0 = 591",
+    "unsafeExtrapolations": 0
+  },
+  "persistenceArchitecture": {
+    "writer": ".github/workflows/germany-cpo-writer.yml",
+    "script": "scripts/germany_cpo_writer.py",
+    "transport": "labeled issue -> GitHub Actions -> safe retry/rebase -> atomic ledger+pointer commit",
+    "concurrencyRule": "On non-fast-forward, fetch origin/main and retry only if remote Germany resolutionLedger still equals expected predecessor; abort if Germany advanced or rebase conflicts. Never force-push."
+  },
+  "nextSafeAction": "Resume chargecloud B1/B3/B6 resolution from 254 complete / 337 partial."
+}
