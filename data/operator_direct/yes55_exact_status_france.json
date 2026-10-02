@@ -4,18 +4,47 @@
   "operator": "YES55",
   "country": "FR",
   "classification": {
-    "treated": false,
-    "blocked": true,
-    "setAside": true,
-    "failClosed": true,
+    "treated": true,
+    "blocked": false,
+    "setAside": false,
+    "failClosed": false,
     "stationLevelPriceRequired": true,
-    "reason": "YES55 allows site owners to choose/customize monetization tariffs. The public Load Motion/YES55 web contract exposes station/pricing APIs, but exact guest station resolution is protected by reCAPTCHA and secured pricing routes require authentication. The current native YES55 app is published by SAS LOAD STATIONS and explicitly includes tariff display, but no anonymous public mobile endpoint or static tariff feed has been found. ChargePoint public exact-EVSE oracle found no YES55-attributed exact tariff rows."
+    "reason": "Superseded by validated Load Motion production resolver evidence on 2026-09-24. Exact station/EVSE direct tariffs are available for a subset; unresolved stations remain fail-closed to Electra then Electroverse fallback without tariff extrapolation."
   },
   "evidence": [
-    {"key":"tenantContract","path":"reports/france/yes55/loadstations-contract-extract.json"},
-    {"key":"chargepointOracle","path":"reports/france/chargepoint-oracle/yes55-summary.json"},
-    {"key":"officialPricingCustomization","url":"https://yes55.fr/entreprise-ou-collectivite/"},
-    {"key":"officialMobileApp","url":"https://play.google.com/store/apps/details?id=com.loadstations.yes55"}
+    {
+      "key": "tenantContract",
+      "path": "reports/france/yes55/loadstations-contract-extract.json"
+    },
+    {
+      "key": "chargepointOracle",
+      "path": "reports/france/chargepoint-oracle/yes55-summary.json"
+    },
+    {
+      "key": "officialPricingCustomization",
+      "url": "https://yes55.fr/entreprise-ou-collectivite/"
+    },
+    {
+      "key": "officialMobileApp",
+      "url": "https://play.google.com/store/apps/details?id=com.loadstations.yes55"
+    }
   ],
-  "unblockRequirement": "Authenticated/legitimate app capture or another public source that returns the exact direct tariff for a YES55 EVSE without extrapolation."
+  "unblockRequirement": null,
+  "supersededHistoricalState": {
+    "date": "2026-09-03",
+    "treated": false,
+    "setAside": true,
+    "reason": "Pre-batch425 state before Load Motion production resolver recovery."
+  },
+  "supersedingEvidence": {
+    "audit": "docs/france-loadmotion-direct-batch425-2026-09-24.json",
+    "runtime": "v9-production-runtime/data/v9/france-loadmotion-offers.json",
+    "reconciliationAudit": "docs/france-loadmotion-yes55-status-reconciliation-2026-10-03.json",
+    "resolver": "/v1/api/matching-pricing-definitions/resolve",
+    "coverage": {
+      "stations": 1135,
+      "directTariffs": 253,
+      "persistentErrors": 0
+    }
+  }
 }
