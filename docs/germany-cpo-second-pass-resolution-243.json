@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 243,
+  "date": "2026-10-03",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-242.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 255,
+    "partial": 336,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Barnimer Energiebeteiligungsgesellschaft mbH (BEBG)",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "family": "chargecloud/Mobilithek + first-party Ladenetz Barnim",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Fresh Mobilithek/chargecloud operator inventory closes 49 ad-hoc stations / 113 AC EVSE at 0.49 EUR/kWh. Multiple current station records expose anonymous ad-hoc 0.49 EUR/kWh + 2.00 EUR start fee + 0.05 EUR/min blocking from minute 241 and credit-card access. Current first-party Ladenetz Barnim page confirms QR credit-card direct access; current first-party AGB (valid since 2025-10-01) explicitly defines Direktladen via QR/chargecloud, requires per-EVSE tariff display before purchase, and states station tariffs include statutory VAT. The first-party public price table, however, labels 0.49 EUR/kWh and blocking as emobility-card customer pricing rather than anonymous direct pricing.",
+      "coverage": "49/49 AFIR stations; 113/113 AC EVSE energy-price matrix; direct-payment semantics and gross/VAT rule first-party; start/blocking components verified on multiple station-scoped chargecloud records",
+      "exactGap": "Close start fee and blocking-fee coverage for all 113 anonymous ad-hoc EVSE, or obtain a current first-party deterministic anonymous-ad-hoc network rule equating those components. Do not equate the first-party Ladekarte table with Direktladen."
+    },
+    {
+      "cpo": "Stadtwerke Ribnitz-Damgarten GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "family": "Vaylens/Mobilithek + first-party ePowerDirect",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Fresh first-party page lists exactly five public sites and explicitly supports Direct Payment without contract via ePowerDirect, but describes the network as 10 public 22-kW charge points. Fresh Vaylens/Mobilithek inventory for the same five named sites exposes 18 AC EVSE, all currently carrying 0.77 EUR/kWh incl. VAT and direct card/web payment.",
+      "coverage": "5/5 named sites; 18 AFIR EVSE priced; direct-payment semantics first-party",
+      "exactGap": "Reconcile first-party 10 charge points versus Vaylens/Mobilithek 18 EVSE before promotion, and obtain authoritative closure of any start/time/blocking components for anonymous direct payment."
+    },
+    {
+      "cpo": "Stadtwerke Horb am Neckar",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "family": "Vaylens/Mobilithek",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Fresh Vaylens/Mobilithek closes four operator sites and 12 AC EVSE (4+4+2+2). All 12 currently expose the same 0.79 EUR/kWh, direct credit-card/EC-card/website payment and VAT-inclusive semantics.",
+      "coverage": "4/4 stations; 12/12 EVSE energy price, direct-payment methods and gross/VAT semantics",
+      "exactGap": "Current tariff surface marks the tariff as conditional/incomplete and does not authoritatively close start/time/blocking fee absence. Obtain a first-party/Vaylens rule explicitly closing those fee components; do not infer zero fees from missing fields."
+    },
+    {
+      "cpo": "LEEA GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "family": "Eco-Movement/Mobilithek",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Fresh first-party LEEA page lists the current Neustrelitz/region site inventory, while fresh Eco-Movement/Mobilithek exposes 14 stations / 36 EVSE and a current 0.774 EUR/kWh + 1.785 EUR session-fee tariff incl. VAT on sampled sites. This supersedes older September observations around 0.60/0.65 EUR/kWh.",
+      "coverage": "14 AFIR stations / 36 EVSE inventory; current tariff observed across operator surface and sampled EVSE; first-party site inventory refreshed",
+      "exactGap": "Anonymous direct-payment semantics are not closed: current first-party page describes supported EMP charging and AFIR station records expose RFID as payment method. Obtain explicit anonymous ad-hoc payment/start path and verify all 36 EVSE tariff components before promotion."
+    },
+    {
+      "cpo": "Stadtwerke Bühl GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "family": "chargecloud/Mobilithek",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Fresh chargecloud/Mobilithek inventory still closes 10 stations / 47 EVSE. Earlier current records exposed AC 0.48 EUR/kWh with no start fee and 0.06 EUR/min blocking after 180 minutes, and DC/HPC around 0.59-0.60 EUR/kWh with 0.10 EUR/min blocking after 45 minutes. The newest operator surface now omits structured prices for the same 10/47 inventory.",
+      "coverage": "10/10 stations; 47/47 inventory denominator retained",
+      "exactGap": "Re-establish a current complete per-EVSE tariff matrix after the fresh feed stopped exposing structured prices. Do not promote from the older tariff snapshot while the current feed is price-empty."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 255,
+    "partial": 336,
+    "blocked": 0
+  },
+  "indicator": "221 -> 255 complete (+34)",
+  "priorityTop5": {
+    "status": "unchanged parked after two distinct evidence-led passes; no genuinely new concrete Top-5 source/backend proof found in this run"
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "255 + 336 + 0 = 591",
+    "totalNamedCpos": 591,
+    "countsVsLists": "No status mutation; predecessor counters retained.",
+    "duplicateAliasRisk": "No canonical alias mutation. All investigated names already exist in classification ledgers.",
+    "repeatGuard": "PASS: fresh backend/first-party evidence only. No bounded Top-5 case was re-run with the same method.",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Continue chargecloud/Mobilithek B1/B3/B6 with a fresh candidate not bounded in resolution-243; prioritize operators where AFIR closes energy+start+blocking for every EVSE and first-party terms close anonymous direct-payment/gross semantics. For BEBG, automate or otherwise enumerate the 113-EVSE start/blocking matrix before reopening. For Ribnitz reconcile 10-vs-18. Keep Top 5 parked absent new proof."
+}
