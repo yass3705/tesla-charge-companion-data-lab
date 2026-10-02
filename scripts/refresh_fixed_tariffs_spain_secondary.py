@@ -69,7 +69,10 @@ try:
         url=st["source"]
         try:
             t=fetch(url)
-            vals=sorted(set(float(x.replace(",",".")) for x in re.findall(r"(?:Precio\s*K[Ww]|Price\s*K[Ww])\s*[:\-]?\s*([0-9]+[,.][0-9]+)\s*€",t,re.I)))
+            vals=sorted(set(float(x.replace(",",".")) for x in re.findall(
+                r"(?:Precio|Price|Preu|Preço|Prezioa)[^0-9]{0,40}(?:per\s*)?K[Ww][^0-9]{0,40}([0-9]+[,.][0-9]+)\s*€",
+                t,re.I
+            )))
             if len(vals)!=1:
                 raise ValueError(f"expected one exact price, got {vals}")
             price=vals[0]
