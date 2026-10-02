@@ -44,11 +44,13 @@ HIGH = {
         r"parc automobile", r"vehicule(?:s)? societe",
     ],
     "residents_only": [
-        r"resident", r"coproprietaire", r"copropriete", r"residence",
+        r"\\bresident(?:s)?\\b", r"\\bcoproprietaire(?:s)?\\b",
+        r"\\bcopropriete\\b", r"\\bresidence\\b",
     ],
     "internal_corporate_site": [
-        r"data valley", r"site industriel", r"usine", r"entrepot", r"depot",
-        r"siege social", r"campus", r"centre logistique",
+        r"\\bdata valley\\b", r"\\bsite industriel\\b",
+        r"\\busine\\b", r"\\bentrepot\\b", r"\\bdepot\\b",
+        r"\\bsiege social\\b", r"\\bcampus\\b", r"\\bcentre logistique\\b",
     ],
 }
 
@@ -85,7 +87,8 @@ def main():
     for key, members in grouped.items():
         first=members[0]
         text=" | ".join(slug(m.get(k)) for m in members for k in
-            ["stationName","address","operator","brand","developer","conditionAccess","implantation","observations"])
+            ["stationName","operator","brand","developer","conditionAccess","implantation","observations"])
+        address_text=" | ".join(slug(m.get("address")) for m in members)
         high=find_matches(text,HIGH)
         medium=find_matches(text,MEDIUM)
         public_hits=[p for p in PUBLIC_COUNTER if re.search(p,text)]
