@@ -7,4 +7,4 @@
 - SEMOB local subscription: **45 EUR/month minimum for 100 kWh**, then **0.45 EUR/kWh**; page compares against **0.59 EUR/kWh**.
 - Saint-Louis sample: **0.30 / 0.39 / 0.45 / 0.49 EUR/kWh** depending power, with local post-charge rules.
 - Managed network IDs observed on data.gouv: **6**.
-- Fingerprint: `31f22d260da012e73a3c7fc03f713f551a746aa5dcb91ec087017ec4d6498d4a`
+- Fingerprint: `0dabff1a5619eb12bb15296f82e090db5b9beab416293ea6b6bf09f04ce4a4a2`
