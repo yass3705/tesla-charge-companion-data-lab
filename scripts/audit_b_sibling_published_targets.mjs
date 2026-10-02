@@ -13,6 +13,8 @@ for(const t of man.tiles||[]){
   for(const o of tile.emspOffers||[]){
     const pks=new Set((o?.metadata?.electroverseEvsePks||[]).map(String));
     if(o?.metadata?.electroverseEvsePk!=null)pks.add(String(o.metadata.electroverseEvsePk));
+    for(const pk of o?.metadata?.electroverseAliasEvsePks||[]) if(pk!=null)pks.add(String(pk));
+    for(const pk of o?.metadata?.aliasElectroverseEvsePks||[]) if(pk!=null)pks.add(String(pk));
     const overlap=[...pks].filter(pk=>sourcePks.has(pk));
     if(!overlap.length)continue;
     hits.push({
