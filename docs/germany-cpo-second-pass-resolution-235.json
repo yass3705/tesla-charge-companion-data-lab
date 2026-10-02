@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 235,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-234.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "ib company GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "backend": "chargecloud / Mobilithek",
+      "status": "bounded-no-promotion",
+      "currentObservedDenominator": {
+        "sites": 20,
+        "chargePoints": 97
+      },
+      "observedTariffRange": {
+        "acEurPerKwhMin": 0.4,
+        "acEurPerKwhMax": 0.58
+      },
+      "evidenceSummary": "Current Mobilithek/chargecloud-derived surface confirms 20 stations / 97 charge points and heterogeneous station-level Ad-Hoc energy pricing. At least one 6-EVSE site (Lahr Marktplatz 1) currently exposes no energy price while other sites expose numeric prices; therefore a network tariff must not be inferred.",
+      "exactGap": "Need authoritative tariff components for the EVSEs whose current feed lacks numeric energy price, plus complete fee/tax/payment classification across the heterogeneous estate. Retain partial."
+    },
+    {
+      "cpo": "SCHARR",
+      "classification": "B1/B4",
+      "backend": "chargecloud",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Current chargecloud-derived station surfaces expose 0.69 EUR/kWh on sampled 150-200 kW SCHARR WAERME HPC EVSEs, but this does not by itself close tax/gross qualification and full-estate fee coverage.",
+      "exactGap": "Require authoritative gross/TTC anonymous_ad_hoc qualification and exhaustive estate/fee coverage. Retain partial."
+    },
+    {
+      "candidate": "Stadtwerke Ratingen",
+      "backend": "chargecloud",
+      "status": "new-high-quality-method-candidate-not-promoted",
+      "evidenceSummary": "First-party page effective 2026-04-01 explicitly defines contract-free Ad-Hoc QR/credit-card charging, gross AC 0.53 EUR/kWh and DC 0.59 EUR/kWh, AC blocking 0.05 EUR/min after 241 min with 22:00-06:00 exemption, DC blocking 0.05 EUR/min after 61 min capped at 12 EUR, and states 19% VAT included.",
+      "exactGap": "Before any canonical promotion, reconcile this operator name/alias against the current 591 canonical partial list and prove its active EVSE denominator is fully covered. Do not create a new canonical CPO if it is absent/alias."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "indicator": "221 -> 253 complete (+32)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific source/backend proof"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "253 + 338 + 0 = 591",
+    "unsafeExtrapolations": 0,
+    "repeatGuard": "PASS"
+  },
+  "persistence": {
+    "method": "GitHub Contents API direct create + fresh-SHA pointer update",
+    "status": "used"
+  },
+  "nextSafeAction": "Use the Ratingen-style first-party tariff pattern to identify canonical chargecloud partials with explicit gross Ad-Hoc rules; reconcile aliases/EVSE denominator before promotion. Continue B1/B3 batch, leaving ib company and SCHARR bounded unless missing authoritative evidence appears."
+}
