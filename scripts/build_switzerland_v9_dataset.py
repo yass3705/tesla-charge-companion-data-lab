@@ -57,7 +57,12 @@ def main():
       "country":"CH",
       "generatedAt":now,
       "sourceBundle":"data/tcc_v9/switzerland.json",
-      "baseInventory":{"source":src.get("nationalSource"),"role":"authoritative physical EVSE/station inventory"},
+      "baseInventory":{
+        "source":src.get("nationalSource"),
+        "role":"authoritative physical EVSE/station inventory",
+        "rawEvseCount":len(raw_evses),
+        "publicAccessPolicy":"Publish only OICP Free publicly accessible and Paying publicly accessible EVSEs; exclude Restricted access and Test Station from the public V9 inventory."
+      },
       "overlayPolicy":{
         "joinSource":"prevalidated Switzerland TCC V9 bundle",
         "noCrossStationExtrapolation":True,
@@ -68,6 +73,10 @@ def main():
       },
       "summary":{
         "nationalEvseCount":len(rows),
+        "rawNationalEvseCount":len(raw_evses),
+        "excludedRestrictedAccessEvseCount":excluded_access,
+        "excludedTestStationEvseCount":excluded_test,
+        "excludedNonPublicEvseCount":excluded_access+excluded_test,
         "directPricedEvseCount":priced,
         "classifiedNoPublicDirectTariffCount":no_public,
         "directUnresolvedEvseCount":unresolved,
