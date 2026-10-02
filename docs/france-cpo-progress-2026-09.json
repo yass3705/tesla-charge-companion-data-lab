@@ -3,9 +3,9 @@
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 99,
-  "setAsideCpos": 98,
-  "activeRemainingCpos": 94,
-  "updatedAt": "2026-10-02T03:44:00+02:00",
+  "setAsideCpos": 99,
+  "activeRemainingCpos": 93,
+  "updatedAt": "2026-10-02T03:49:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -783,6 +783,13 @@
       "since": "2026-10-02",
       "lastChecked": "2026-10-02",
       "audit": "docs/france-regional-cpo-spim-energies-batch581-2026-10-02.json"
+    },
+    {
+      "name": "SWISH | raw rank256",
+      "reason": "batch582 fail-closed: SWISH is an active first-party charging operator/integrator with supervision and billing, but its official data.gouv IRVE dataset is stale (2024-12-06) and no current 2026 numeric CPO-direct tariff/resolver was recovered.",
+      "since": "2026-10-02",
+      "lastChecked": "2026-10-02",
+      "audit": "docs/france-regional-cpo-swish-batch582-2026-10-02.json"
     }
   ],
   "activeNominative": [
@@ -790,7 +797,6 @@
     "RELEASED_ACTIVE_SLOT_023 | authority ELECTRIC 55 CHARGING (E55C) already treated",
     "RELEASED_ACTIVE_SLOT_027 | authority Atlante already treated",
     "RELEASED_ACTIVE_SLOT_030 | authority REVEO already treated",
-    "RELEASED_SLOT_032_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_SLOT_033_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_SLOT_035_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_SLOT_036_TREATED_HISTORICALLY_PROVEN",
@@ -1971,16 +1977,16 @@
       }
     }
   ],
-  "currentInvestigation": "SWISH | raw rank256 | 1 station / 2 PDC; inspect current first-party + stale IRVE producer dataset",
+  "currentInvestigation": "chm energy | raw rank258 | 1 station / 2 PDC; inspect first-party CHM Energy network/platform",
   "coherenceControl": {
-    "batch": "batch581",
+    "batch": "batch582",
     "result": "PASS",
-    "arithmetic": "99 + 98 + 94 = 291",
+    "arithmetic": "99 + 99 + 93 = 291",
     "treatedLength": 99,
-    "setAsideLength": 98,
-    "activeLength": 94,
+    "setAsideLength": 99,
+    "activeLength": 93,
     "pendingDedupeCount": 0,
-    "lastChecked": "2026-10-02T03:44:00+02:00",
+    "lastChecked": "2026-10-02T03:49:00+02:00",
     "arithmeticOk": true,
     "treatedPlusSetAsidePlusActive": 291
   },
@@ -1990,7 +1996,7 @@
     "result": "PASS_ACELEC_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch581",
+  "latestBatch": "batch582",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -3532,6 +3538,15 @@
       "decision": "active->setAside; first-party operator capability proven, current direct tariff unresolved",
       "evidence": "docs/france-regional-cpo-spim-energies-batch581-2026-10-02.json",
       "replacedAnonymousSlot": "RELEASED_SLOT_031_TREATED_HISTORICALLY_PROVEN"
+    },
+    {
+      "rawRank": 256,
+      "historicalOperator": "SWISH",
+      "authority": "SWISH",
+      "category": "setAside-authority",
+      "decision": "active->setAside; current operator capability, stale IRVE producer dataset, no current numeric direct tariff",
+      "evidence": "docs/france-regional-cpo-swish-batch582-2026-10-02.json",
+      "replacedAnonymousSlot": "RELEASED_SLOT_032_TREATED_HISTORICALLY_PROVEN"
     }
   ],
   "rawLineageCoverage": {
