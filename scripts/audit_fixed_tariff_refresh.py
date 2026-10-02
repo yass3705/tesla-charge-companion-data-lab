@@ -44,6 +44,8 @@ for p in sorted(DATA.glob("*.json")):
         data=json.loads(raw)
     except Exception:
         continue
+    if isinstance(data,dict) and data.get("fixedTariffScope") is False:
+        continue
     # Exclude station-specific / dynamic pricing artifacts from the fixed-tariff audit.
     source_type=str(data.get("sourceType") or "") if isinstance(data,dict) else ""
     pricing_model=str(data.get("pricingModel") or "") if isinstance(data,dict) else ""
