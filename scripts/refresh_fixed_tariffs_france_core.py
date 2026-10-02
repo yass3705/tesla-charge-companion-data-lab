@@ -65,29 +65,64 @@ results=[]
 
 # Lidl
 try:
-    url="https://www.lidl.fr/c/tarifs-bornes/s10027299"
-    t=fetch(url)
-    ac=sanity(find_one(t,[r"AC\s*[:\-]?\s*([0-9]+[,.][0-9]+)\s*€\s*par\s*kWh",r"AC\s*[:\-]?\s*([0-9]+[,.][0-9]+)\s*€.*?kWh"],"lidl AC"))
-    dc=sanity(find_one(t,[r"DC\s*[:\-]?\s*([0-9]+[,.][0-9]+)\s*€\s*par\s*kWh",r"DC\s*[:\-]?\s*([0-9]+[,.][0-9]+)\s*€.*?kWh"],"lidl DC"))
+    standard_url="https://www.lidl.fr/c/tarifs-bornes/s10027299"
+    promo_url="https://www.lidl.fr/c/e-mobilite-faq/s10037617"
+    t=fetch(standard_url)
+    promo_t=fetch(promo_url)
+
+    ac=sanity(find_one(t,[r"AC\s*[:\-]?\s*([0-9]+[,.][0-9]+)\s*€\s*par\s*kWh",r"AC\s*[:\-]?\s*([0-9]+[,.][0-9]+)\s*€.*?kWh"],"lidl standard AC"))
+    dc=sanity(find_one(t,[r"DC\s*[:\-]?\s*([0-9]+[,.][0-9]+)\s*€\s*par\s*kWh",r"DC\s*[:\-]?\s*([0-9]+[,.][0-9]+)\s*€.*?kWh"],"lidl standard DC"))
+
+    promo_ac=sanity(find_one(promo_t,[
+        r"application\s+Lidl\s+Plus.*?borne\s+de\s+type\s+AC.*?([0-9]+[,.][0-9]+)\s*€\s*par\s*kW/?h",
+        r"type\s+AC\s*:.*?([0-9]+[,.][0-9]+)\s*€\s*par\s*kW/?h"
+    ],"lidl plus AC"))
+    promo_dc=sanity(find_one(promo_t,[
+        r"application\s+Lidl\s+Plus.*?borne\s+de\s+type\s+DC.*?([0-9]+[,.][0-9]+)\s*€\s*par\s*kW/?h",
+        r"type\s+DC\s*:.*?([0-9]+[,.][0-9]+)\s*€\s*par\s*kW/?h"
+    ],"lidl plus DC"))
+
+    promo_label="prolongement exceptionnel du prix" if re.search(r"prolongement\s+exceptionnel\s+du\s+prix",promo_t,re.I) else "official Lidl Plus promotional price"
+
     for rel,mode in [
       ("data/operator_direct/lidl_tariff_rules_france.json","rules"),
       ("data/operator_direct/lidl_official_france.json","official")
     ]:
         p=ROOT/rel; d=json.loads(p.read_text()); before=json.loads(json.dumps(d))
         if mode=="rules":
-            d["directPayment"]["AC"]["eurPerKwh"]=ac; d["directPayment"]["DC"]["eurPerKwh"]=dc
-            d["refresh"]={"mode":"automatic_official_page_parser","source":url,"refreshedAt":now,"lastResult":"validated"}
+            d["directPayment"]["AC"]["eurPerKwh"]=ac
+            d["directPayment"]["DC"]["eurPerKwh"]=dc
+            d["lidlPlusActiveOffer"]={
+                "active":True,"promotional":True,"label":promo_label,
+                "AC":{"eurPerKwh":promo_ac},"DC":{"eurPerKwh":promo_dc},
+                "endDate":None,"source":promo_url
+            }
+            d["refresh"]={"mode":"automatic_official_page_parser","sources":[standard_url,promo_url],"refreshedAt":now,"lastResult":"validated"}
+            keys=["directPayment.AC.eurPerKwh","directPayment.DC.eurPerKwh",
+                  "lidlPlusActiveOffer.AC.eurPerKwh","lidlPlusActiveOffer.DC.eurPerKwh",
+                  "lidlPlusActiveOffer.active"]
         else:
-            d["operatorDirect"]["standard"]["AC"]["eurPerKwh"]=ac; d["operatorDirect"]["standard"]["DC"]["eurPerKwh"]=dc
+            d["operatorDirect"]["standard"]["AC"]["eurPerKwh"]=ac
+            d["operatorDirect"]["standard"]["DC"]["eurPerKwh"]=dc
+            d["operatorDirect"]["lidlPlusActiveOffer"]={
+                "active":True,"promotional":True,"label":promo_label,
+                "AC":{"eurPerKwh":promo_ac},"DC":{"eurPerKwh":promo_dc},
+                "endDate":None,
+                "validity":"until withdrawn or replaced on official Lidl Plus e-mobility source",
+                "source":promo_url
+            }
             d["generatedAt"]=now
-            d["refresh"]={"mode":"automatic_official_page_parser","source":url,"refreshedAt":now,"lastResult":"validated"}
-        changed=archive_if_changed(p,before,d,now,[
-            "directPayment.AC.eurPerKwh","directPayment.DC.eurPerKwh"
-        ] if mode=="rules" else [
-            "operatorDirect.standard.AC.eurPerKwh","operatorDirect.standard.DC.eurPerKwh"
-        ])
+            d["refresh"]={"mode":"automatic_official_page_parser","sources":[standard_url,promo_url],"refreshedAt":now,"lastResult":"validated"}
+            keys=["operatorDirect.standard.AC.eurPerKwh","operatorDirect.standard.DC.eurPerKwh",
+                  "operatorDirect.lidlPlusActiveOffer.AC.eurPerKwh","operatorDirect.lidlPlusActiveOffer.DC.eurPerKwh",
+                  "operatorDirect.lidlPlusActiveOffer.active"]
+        changed=archive_if_changed(p,before,d,now,keys)
         p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+"\n")
-        results.append({"operator":"Lidl France","path":rel,"status":"changed" if changed else "unchanged","values":{"AC":ac,"DC":dc}})
+        results.append({
+            "operator":"Lidl France","path":rel,
+            "status":"changed" if changed else "unchanged",
+            "values":{"standard":{"AC":ac,"DC":dc},"lidlPlus":{"AC":promo_ac,"DC":promo_dc,"active":True}}
+        })
 except Exception as e:
     results.append({"operator":"Lidl France","status":"failed_keep_last_valid","error":str(e)})
 
