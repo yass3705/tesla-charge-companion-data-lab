@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-02T14:48:07.350Z",
+  "generatedAt": "2026-10-02T16:06:52.803Z",
   "dataset": "electroverse-france-final-residual-recovery-plan",
   "sourceManifestGeneratedAt": "2026-10-01T15:09:55.700Z",
   "policy": "Only residual mappings proven against the current overlay. Individual mappings require exact unique local/global target identity; group mappings require exact source/target cardinality, globally unique targets, and homogeneous raw pricing. No proximity inference.",
@@ -14,7 +14,8 @@
     "cumulativeGroupMappings": 122,
     "manualS63Added": 0,
     "postConnectorPowerAdded": 0,
-    "groupMappings": 191
+    "groupMappings": 193,
+    "individualMappings": 555
   },
   "individualMappings": [
     {
@@ -4984,6 +4985,48 @@
       "physicalReference": "3",
       "targetPdc": "FRV75E9018023",
       "irveStationId": "FRV75P901802"
+    },
+    {
+      "mode": "common_tail_bijection",
+      "operator": "B",
+      "electroverseLocationPk": "4510375",
+      "electroverseEvsePk": 4236031,
+      "physicalReference": "B212",
+      "targetPdc": "FRSRGE12347806143",
+      "irveStationId": "FRSRGP91146334",
+      "evidence": {
+        "source": "QualiCharge + previously validated same-physical-reference group",
+        "observed": "2026-10-02",
+        "note": "B212 has three source EVSEs: two 180 kW entries already validated to FRSRGE12347806141/2; the only remaining B212 22 kW source maps to the only remaining PDC in the same official 0614 hardware group, FRSRGE12347806143 (22.08 kW Type 2)."
+      }
+    },
+    {
+      "mode": "common_tail_bijection",
+      "operator": "B",
+      "electroverseLocationPk": "4564824",
+      "electroverseEvsePk": 4350166,
+      "physicalReference": "B422",
+      "targetPdc": "FRSRGE12348990653",
+      "irveStationId": "FRSRGP91378978",
+      "evidence": {
+        "source": "QualiCharge + previously validated same-physical-reference group",
+        "observed": "2026-10-02",
+        "note": "B422 has three source EVSEs: two 180 kW entries already validated to FRSRGE12348990651/2; the remaining B422 22 kW source maps to the only remaining PDC in that official 9065 hardware group, FRSRGE12348990653 (22.08 kW Type 2)."
+      }
+    },
+    {
+      "mode": "common_tail_bijection",
+      "operator": "B",
+      "electroverseLocationPk": "4564824",
+      "electroverseEvsePk": 4350545,
+      "physicalReference": "B421",
+      "targetPdc": "FRSRGE12347806151",
+      "irveStationId": "FRSRGP91378978",
+      "evidence": {
+        "source": "QualiCharge + physical-reference group exclusion",
+        "observed": "2026-10-02",
+        "note": "After assigning the complete B422 three-EVSE family to official 9065[1,2,3], the only other residual 22 kW source B421 maps to the only other residual official 22.08 kW Type 2 PDC FRSRGE12347806151."
+      }
     }
   ],
   "groupMappings": [
@@ -9267,6 +9310,63 @@
         "source": "PAN national consolidated IRVE static open data",
         "observed": "2026-10-02",
         "note": "Exact current official PDC technical profile group and exact source/target cardinality; Electroverse source group also has identical connector count and pricing. Builder must revalidate local/global target uniqueness."
+      }
+    },
+    {
+      "mode": "homogeneous_target_subset",
+      "operator": "B",
+      "electroverseLocationPk": "4510375",
+      "irveStationId": "FRSRGP91146334",
+      "sourceEvsePks": [
+        4325051,
+        4325052
+      ],
+      "physicalReferences": [
+        "B277",
+        "B277"
+      ],
+      "targetPdcs": [
+        "FRSRGE12347806131",
+        "FRSRGE12347806132"
+      ],
+      "uniformConnectorCount": true,
+      "profile": {
+        "kilowatts": 22,
+        "standard": "IEC_62196_T2"
+      },
+      "evidence": {
+        "source": "QualiCharge + same-reference exclusion",
+        "observed": "2026-10-02",
+        "note": "Both B277 residual sources are 22 kW Type 2 with identical pricing. The B212 family is fully assigned to official 0614[1,2,3], leaving exactly the official 0613[1,2] 22.08 kW Type 2 pair for B277; no branch identity is asserted within the pair."
+      }
+    },
+    {
+      "mode": "homogeneous_target_subset",
+      "operator": "B",
+      "electroverseLocationPk": "4304488",
+      "irveStationId": "FR55CP622150YEP2PGDC",
+      "sourceEvsePks": [
+        3674699,
+        3674700,
+        3700198
+      ],
+      "physicalReferences": [
+        "B01 - 22kW",
+        "B02 - 22kW",
+        "B01 - 22kW"
+      ],
+      "targetPdcs": [
+        "FR55CEFR62215P2PGDC0"
+      ],
+      "uniformConnectorCount": true,
+      "profile": {
+        "kilowatts": 22,
+        "standard": "IEC_62196_T2"
+      },
+      "evidence": {
+        "source": "PAN national IRVE + Electroverse homogeneous duplicate pricing",
+        "observed": "2026-10-02",
+        "note": "After the three 7.36 kW residual sources are validated to P2PGDC1/2/3, P2PGDC0 is the sole remaining official 22.08 kW Type 2 target. All three remaining Electroverse 22 kW sources have identical compiled pricing, so one shared target tariff is safe without choosing which duplicate source is canonical."
       }
     }
   ]
