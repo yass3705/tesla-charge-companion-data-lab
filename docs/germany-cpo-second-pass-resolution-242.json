@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 242,
+  "date": "2026-10-03",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-241.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 254,
+    "partial": 337,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Stadtwerke Bretten GmbH / KraichgauEnergie",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "family": "e-laden / first-party",
+      "status": "complete",
+      "evidenceSummary": "Current first-party KraichgauEnergie mobility page closes the published Stadtwerke Bretten network at 5 stations / 10 connectors (3 stations Technisches Rathaus + 1 Rathaus + 1 Badewelt, each station two connectors). It explicitly offers anonymous ad-hoc without a user account via QR/app and publishes gross ad-hoc prices: 1.00 EUR session fee + 0.54 EUR/kWh + 0.03 EUR/min. The registered-customer time-fee exception is explicitly stated to apply only to registered app customers, so it is not transferred to anonymous ad-hoc.",
+      "coverage": "5/5 published stations; 10/10 published connectors; anonymous_ad_hoc; energy+session+time+payment+gross semantics closed",
+      "promotionRationale": "Current first-party deterministic network-wide rule closes every published Bretten station/connector and all required ad-hoc price components without roaming/eMSP inference."
+    },
+    {
+      "cpo": "Stadtwerke Sigmaringen GmbH",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "family": "ladenetz/ladeapp",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Current first-party page publishes 10 stations / 20 points, states each station has two Type-2 22 kW connectors and QR ad-hoc availability, and publishes Ad-hoc-Laden 0.59 EUR/kWh plus blocking 0.05 EUR/min after 240 minutes, waived 20:00-08:00.",
+      "exactGap": "Obtain explicit gross/VAT semantics for the anonymous ad-hoc tariff and confirm that the displayed ad-hoc row is exhaustive for any start/session fee. Do not infer gross treatment or zero start fee from the table alone."
+    },
+    {
+      "cpo": "Stadtwerke Weinstadt",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "family": "ladenetz/ladeapp",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Current first-party page closes the operator inventory at 22 charging stations + 5 wallboxes / 54 charge points and explicitly documents ladeapp use without a charging card. The static numeric table, however, is explicitly the Ladekarte tariff (40 ct/kWh at SWW, DC parking fee after hour 2) and is gross incl. 19% VAT.",
+      "exactGap": "Resolve the current anonymous ladeapp/ad-hoc numeric tariff per relevant EVSE/class, including start/time/blocking components and gross semantics. Do not equate the Ladekarte tariff with anonymous ad-hoc."
+    },
+    {
+      "cpo": "Köthen Energie GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "family": "QR direct / roaming",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Current first-party page states 46 public charging stations, all 24/7, all supporting spontaneous ad-hoc via QR without prior operator registration; a first-party 2025 station publication additionally documents QR online credit-card payment and direct Girocard/debit/credit-card payment at a newer AC/DC site.",
+      "exactGap": "Obtain the current numeric anonymous ad-hoc energy/start/time/blocking tariff and explicit gross/VAT semantics across the 46-station denominator. Do not substitute roaming-card tariffs."
+    }
+  ],
+  "promotions": [
+    {
+      "cpo": "Stadtwerke Bretten GmbH / KraichgauEnergie",
+      "from": "partial",
+      "to": "complete"
+    }
+  ],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 255,
+    "partial": 336,
+    "blocked": 0
+  },
+  "indicator": "221 -> 255 complete (+34)",
+  "priorityTop5": {
+    "status": "unchanged parked after two distinct evidence-led passes; no genuinely new concrete Top-5 backend/source proof found"
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "255 + 336 + 0 = 591",
+    "totalNamedCpos": 591,
+    "countsVsLists": "Exactly one partial->complete promotion applied to predecessor counts.",
+    "duplicateAliasRisk": "Bretten promotion uses the existing canonical compound name from classification batch 012; no new alias row created.",
+    "repeatGuard": "PASS: Bretten was not present in resolution 182-241 scan; Sigmaringen and Weinstadt received fresh first-party evidence; Köthen received fresh first-party denominator/payment evidence.",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Continue fresh B1/B3/B6 and m8mit/ladenetz candidates; prioritize operators with current first-party network denominator plus explicit anonymous gross tariff. Reopen Sigmaringen only for VAT/start-fee closure, Weinstadt only for anonymous ladeapp numeric tariff, Köthen only for current numeric direct tariff. Keep Top 5 parked absent new backend/source proof."
+}
