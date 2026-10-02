@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-02T14:13:47.859Z",
+  "generatedAt": "2026-10-02T14:20:14.196Z",
   "dataset": "electroverse-france-customgyevse-validated-pair-groups",
   "policy": "Pair-level mapping only. Each group has two Electroverse source EVSEs with identical connector technical profile and identical compiled pricing, and two GYM PDC targets sharing the same tail as EC1/EC2. No arbitrary EC1-vs-EC2 source assignment is made; the shared pair tariff is broadcast to both targets.",
   "groups": [
@@ -1523,6 +1523,86 @@
         "mode": "validated_gym_partial_source_order_pair_sequence",
         "note": "Partial station mapping: source pair 2 maps to second complete EC1/EC2 tail. Rule observed 25/25 on validated GYM locations with 0 exceptions; exact technical+pricing homogeneity within pair; no inference for missing third pair."
       }
+    },
+    {
+      "electroverseLocationPk": "4221647",
+      "irveStationId": "FRGYMP735550",
+      "sourceEvsePks": [
+        3535140,
+        3535154
+      ],
+      "targetPdcs": [
+        "FRGYMEC12403042",
+        "FRGYMEC12403043"
+      ],
+      "profile": {
+        "kilowatts": 150,
+        "standard": "IEC_62196_T2_COMBO"
+      },
+      "evidence": {
+        "mode": "public_pdc_power_pair",
+        "note": "Current IRVE-derived public inventory lists Bayonne PDCs 2403042 and 2403043 as 150 kW CCS; the two residual Electroverse EVSEs are identical 150 kW CCS with identical pricing. Group mapping avoids inventing individual source-to-target identity."
+      }
+    },
+    {
+      "electroverseLocationPk": "4221832",
+      "irveStationId": "FRGYMP735589",
+      "sourceEvsePks": [
+        3537382,
+        3537393
+      ],
+      "targetPdcs": [
+        "FRGYMEC12309006",
+        "FRGYMEC22309006"
+      ],
+      "profile": {
+        "kilowatts": 150,
+        "standard": "IEC_62196_T2_COMBO"
+      },
+      "evidence": {
+        "mode": "public_pdc_power_pair",
+        "note": "Current IRVE-derived public inventory confirms both Guignen 2309006 branches are 150 kW CCS; source pair is identical 150 kW CCS with identical pricing."
+      }
+    },
+    {
+      "electroverseLocationPk": "4225816",
+      "irveStationId": "FRGYMP735587",
+      "sourceEvsePks": [
+        3552362,
+        3552370
+      ],
+      "targetPdcs": [
+        "FRGYMEC12309016",
+        "FRGYMEC22309016"
+      ],
+      "profile": {
+        "kilowatts": 150,
+        "standard": "IEC_62196_T2_COMBO"
+      },
+      "evidence": {
+        "mode": "public_pdc_power_pair",
+        "note": "Current IRVE-derived public inventory confirms both Dol-de-Bretagne 2309016 branches are 150 kW CCS; source pair is identical 150 kW CCS with identical pricing."
+      }
+    },
+    {
+      "electroverseLocationPk": "4225422",
+      "irveStationId": "FRGYMP735595",
+      "sourceEvsePks": [
+        3551829,
+        3551845
+      ],
+      "targetPdcs": [
+        "FRGYMEC12309023",
+        "FRGYMEC22309023"
+      ],
+      "profile": {
+        "kilowatts": 150,
+        "standard": "IEC_62196_T2_COMBO"
+      },
+      "evidence": {
+        "mode": "public_pdc_power_pair",
+        "note": "Current IRVE-derived public inventory confirms both Saint-Aubin-du-Cormier 2309023 branches are 150 kW CCS; source pair is identical 150 kW CCS with identical pricing."
+      }
     }
   ],
   "validationSummary": {
@@ -1548,6 +1628,16 @@
       ],
       "addedSourceEvses": 8,
       "unresolvedPairs": "150 kW source pairs intentionally left unresolved because the corresponding national EC1/EC2 pair is absent."
+    },
+    "finalPublicPdcClosure": {
+      "addedLocations": [
+        "4221647",
+        "4221832",
+        "4225816",
+        "4225422"
+      ],
+      "addedSourceEvses": 8,
+      "evidence": "Current IRVE-derived public inventories expose the 8 PDCs missing from Data Lab canonical France; all target groups match 150 kW CCS technical class and source-pair pricing exactly."
     }
   }
 }
