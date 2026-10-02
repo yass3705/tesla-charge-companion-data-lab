@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-02T16:06:52.803Z",
+  "generatedAt": "2026-10-02T16:22:14.502Z",
   "dataset": "electroverse-france-final-residual-recovery-plan",
   "sourceManifestGeneratedAt": "2026-10-01T15:09:55.700Z",
   "policy": "Only residual mappings proven against the current overlay. Individual mappings require exact unique local/global target identity; group mappings require exact source/target cardinality, globally unique targets, and homogeneous raw pricing. No proximity inference.",
@@ -14,7 +14,7 @@
     "cumulativeGroupMappings": 122,
     "manualS63Added": 0,
     "postConnectorPowerAdded": 0,
-    "groupMappings": 193,
+    "groupMappings": 195,
     "individualMappings": 555
   },
   "individualMappings": [
@@ -9367,6 +9367,62 @@
         "source": "PAN national IRVE + Electroverse homogeneous duplicate pricing",
         "observed": "2026-10-02",
         "note": "After the three 7.36 kW residual sources are validated to P2PGDC1/2/3, P2PGDC0 is the sole remaining official 22.08 kW Type 2 target. All three remaining Electroverse 22 kW sources have identical compiled pricing, so one shared target tariff is safe without choosing which duplicate source is canonical."
+      }
+    },
+    {
+      "mode": "homogeneous_target_subset",
+      "operator": "NUMERIC",
+      "electroverseLocationPk": "4548206",
+      "irveStationId": "FRSRGP91327019",
+      "sourceEvsePks": [
+        4321963,
+        4321964
+      ],
+      "physicalReferences": [
+        "1234650945",
+        "1234650945"
+      ],
+      "targetPdcs": [
+        "FRSRGE12346509451",
+        "FRSRGE12346509452"
+      ],
+      "uniformConnectorCount": true,
+      "profile": {
+        "kilowatts": 22,
+        "standard": "IEC_62196_T2"
+      },
+      "evidence": {
+        "source": "QualiCharge + exact source-reference base identity + Electroverse full-cache pricing",
+        "observed": "2026-10-02",
+        "note": "Both sources share physicalReference 1234650945, which is the exact local base of official PDCs 1234650945_1/_2. Both are 22 kW Type 2 and have identical compiled pricing; no branch identity is asserted within the pair."
+      }
+    },
+    {
+      "mode": "homogeneous_target_subset",
+      "operator": "B",
+      "electroverseLocationPk": "4548206",
+      "irveStationId": "FRSRGP91327019",
+      "sourceEvsePks": [
+        4583347,
+        4583348
+      ],
+      "physicalReferences": [
+        "B188",
+        "B188"
+      ],
+      "targetPdcs": [
+        "FRSRGE12348861801",
+        "FRSRGE12348861802"
+      ],
+      "uniformConnectorCount": true,
+      "profile": {
+        "kilowatts": 22,
+        "standard": "IEC_62196_T2"
+      },
+      "evidence": {
+        "source": "QualiCharge + exhausted technical-group exclusion + Electroverse full-cache pricing",
+        "observed": "2026-10-02",
+        "note": "At this location the 50 kW B319 pair is already validated to 1234886179_1/_2 and the numeric 1234650945 pair is validated to 1234650945_1/_2. The only remaining official 22.08 kW Type 2 pair is 1234886180_1/_2; both B188 sources are 22 kW Type 2 with identical pricing. No branch identity is asserted within the pair."
       }
     }
   ]
