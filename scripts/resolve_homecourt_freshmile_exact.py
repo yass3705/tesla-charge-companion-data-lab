@@ -31,16 +31,16 @@ def parse_desc(desc):
     t=" ".join(str(desc or "").replace("\r","\n").split())
     out={"rawDescription":desc}
     for pat in [
-      rf"(?:€|EUR)?\s*{NUM}\s*(?:€|EUR)?\s*(?:/|per)\s*(?:started\s*)?kwh",
-      rf"{NUM}\s*(?:€|EUR)\s*(?:/|per)\s*(?:started\s*)?kwh"
+      rf"(?:€|EUR)?\s*{NUM}\s*(?:€|EUR)?\s*(?:/|per|par)\s*(?:started\s*|entam[ée]\s*)?kwh",
+      rf"{NUM}\s*(?:€|EUR)\s*(?:/|per|par)\s*(?:started\s*|entam[ée]\s*)?kwh"
     ]:
       m=re.search(pat,t,re.I)
       if m:
         out["energyEurPerKwh"]=float(m.group(1).replace(",","."))
         break
     for pat in [
-      rf"(?:€|EUR)?\s*{NUM}\s*(?:€|EUR)?\s*(?:/|per)\s*(?:started\s*)?(?:min|minute)",
-      rf"{NUM}\s*(?:€|EUR)\s*(?:/|per)\s*(?:started\s*)?(?:min|minute)"
+      rf"(?:€|EUR)?\s*{NUM}\s*(?:€|EUR)?\s*(?:/|per|par)\s*(?:started\s*)?(?:min|minute)",
+      rf"{NUM}\s*(?:€|EUR)\s*(?:/|per|par)\s*(?:started\s*)?(?:min|minute)"
     ]:
       m=re.search(pat,t,re.I)
       if m:
@@ -57,9 +57,16 @@ for target in TARGETS:
         rows.append({**target,"status":"fail_closed","reason":f"expected one exact location, got {len(exact)}","url":url})
         continue
     loc=exact[0]
-    address=norm(loc.get("address"))
+    address_obj=loc.get("address") if isinstance(loc.get("address"),dict) else {}
+    address=norm(address_obj.get("fullname") if address_obj else loc.get("address"))
+    city=norm(address_obj.get("city"))
+    postal=norm(address_obj.get("postal_code"))
     name=norm(loc.get("name"))
-    if target["addressNeedle"] not in address and target["addressNeedle"] not in name:
+    legacy_name=norm(target["name"]).replace("parking ","")
+    identity_ok=(target["addressNeedle"] in address or target["addressNeedle"] in name)
+    if not identity_ok:
+        identity_ok=("homécourt" in city or "homecourt" in city) and postal=="54310" and all(tok in name for tok in legacy_name.split() if tok not in {"homécourt","homecourt"})
+    if not identity_ok:
         rows.append({**target,"status":"fail_closed","reason":"exact ref returned but address/name identity check failed","resolvedName":loc.get("name"),"resolvedAddress":loc.get("address"),"url":url})
         continue
     tariffs=[]
