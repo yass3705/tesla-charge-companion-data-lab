@@ -39,6 +39,22 @@ def sanity(v,lo=0.05,hi=2.0):
     if not (lo <= v <= hi): raise ValueError(f"value out of range: {v}")
     return v
 
+def section(text,start,end):
+    m=re.search(start+r"(.*?)"+end,text,re.I|re.S)
+    if not m:
+        raise ValueError(f"section not found: {start} -> {end}")
+    return m.group(1)
+
+def eranovum_extract(t):
+    s=section(t,r"España",r"Bélgica")
+    return {
+      "upTo22KwEurPerKwh":sanity(find_one(s,[r"Hasta\s*22\s*kW\s*([0-9]+[,.][0-9]+)\s*€"],"eranovum 22")),
+      "30KwEurPerKwh":sanity(find_one(s,[r"30\s*kW\s*([0-9]+[,.][0-9]+)\s*€"],"eranovum 30")),
+      "60KwEurPerKwh":sanity(find_one(s,[r"60\s*kW\s*([0-9]+[,.][0-9]+)\s*€"],"eranovum 60")),
+      "120KwEurPerKwh":sanity(find_one(s,[r"120\s*kW\s*([0-9]+[,.][0-9]+)\s*€"],"eranovum 120")),
+      "from150KwEurPerKwh":sanity(find_one(s,[r"partir\s+de\s+150\s*kW\s*([0-9]+[,.][0-9]+)\s*€"],"eranovum 150"))
+    }
+
 configs=[
   {
     "name":"Repsol","path":"data/operator_direct/repsol_official_spain.json",
@@ -53,13 +69,7 @@ configs=[
   {
     "name":"Eranovum","path":"data/operator_direct/eranovum_official_spain.json",
     "url":"https://eranovum.energy/es/nuestras-tarifas/",
-    "extract":lambda t:{
-      "upTo22KwEurPerKwh":sanity(find_one(t,[r"Hasta\s*22\s*kW.{0,80}?([0-9]+[,.][0-9]+)\s*€/kWh"],"eranovum 22")),
-      "30KwEurPerKwh":sanity(find_one(t,[r"30\s*kW\s*([0-9]+[,.][0-9]+)\s*€"],"eranovum 30")),
-      "60KwEurPerKwh":sanity(find_one(t,[r"60\s*kW\s*([0-9]+[,.][0-9]+)\s*€"],"eranovum 60")),
-      "120KwEurPerKwh":sanity(find_one(t,[r"120\s*kW\s*([0-9]+[,.][0-9]+)\s*€"],"eranovum 120")),
-      "from150KwEurPerKwh":sanity(find_one(t,[r"partir\s+de\s+150\s*kW\s*([0-9]+[,.][0-9]+)\s*€"],"eranovum 150"))
-    },
+    "extract":eranovum_extract,
     "apply":lambda d,v:d["publicTariffs"].update(v)
   },
   {
