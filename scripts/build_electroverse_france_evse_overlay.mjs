@@ -1806,11 +1806,14 @@ for(const sh of manifest.shards||[]){
     const finalResidualGroupedSourceEvses=new Set();
     const finalResidualGroupTargets=new Map();
     for(const g of finalResidualGroupsByLocation.get(String(row.electroverseLocationPk))||[]){
-      if(String(g.mode)!=='homogeneous_exact_set')continue;
+      const recoveryMode=String(g.mode||'');
+      if(!['homogeneous_exact_set','homogeneous_target_subset'].includes(recoveryMode))continue;
       const sourcePkSet=new Set((g.sourceEvsePks||[]).map(String));
       const es=(row.tariff?.evses||[]).filter(e0=>sourcePkSet.has(String(e0?.pk??'')));
       const targets=(g.targetPdcs||[]).map(norm).filter(Boolean);
-      if(!es.length||es.length!==sourcePkSet.size||targets.length!==es.length)continue;
+      if(!es.length||es.length!==sourcePkSet.size||!targets.length)continue;
+      if(recoveryMode==='homogeneous_exact_set' && targets.length!==es.length)continue;
+      if(recoveryMode==='homogeneous_target_subset' && es.length<targets.length)continue;
       if(new Set(targets).size!==targets.length)continue;
       if(targets.some(p=>!local.has(p)||(globalPdcOwners.get(p)?.size||0)!==1))continue;
 
@@ -1863,11 +1866,21 @@ for(const sh of manifest.shards||[]){
       });
       if(pricingSigs.size!==1||connectorCounts.size!==1||technicalProfiles.size!==1)continue;
       if(allUnresolvedAtLocation.length>es.length)continue;
+      const expectedProfile=g.profile&&typeof g.profile==='object'?g.profile:null;
+      if(expectedProfile){
+        const actual=(es[0]?.connectors||[]).map(c0=>({
+          kilowatts:c0?.kilowatts??null,
+          standard:c0?.standard?.name??c0?.standard??null
+        }));
+        if(expectedProfile.kilowatts!=null && !actual.every(x=>Number(x.kilowatts)===Number(expectedProfile.kilowatts)))continue;
+        if(expectedProfile.standard!=null && !actual.every(x=>String(x.standard||'')===String(expectedProfile.standard)))continue;
+      }
 
       const sharedPricing=compiledRows[0].pricing;
       const connectorCount=compiledRows[0].connectorCount;
       for(const p of targets)finalResidualGroupTargets.set(p,{
-        pricing:sharedPricing,connectorCount,sourceEvses:es,operator:String(g.operator||'UNKNOWN')
+        pricing:sharedPricing,connectorCount,sourceEvses:es,operator:String(g.operator||'UNKNOWN'),
+        recoveryMode,targetGroupSize:targets.length
       });
       for(const e0 of es)finalResidualGroupedSourceEvses.add(e0);
     }
@@ -1881,11 +1894,13 @@ for(const sh of manifest.shards||[]){
           provider:'Electroverse',countries:['FR'],currency,priority:80,
           verifiedScope:'exact_evse_group',evseIds:[targetPdc],pricing:g.pricing,
           metadata:{
-            verified:true,identityMode:'validated_final_residual_homogeneous_exact_set',
+            verified:true,identityMode:g.recoveryMode==='homogeneous_target_subset'
+              ?'validated_final_residual_homogeneous_target_subset'
+              :'validated_final_residual_homogeneous_exact_set',
             electroverseLocationPk:String(row.electroverseLocationPk),
             electroverseEvsePks:g.sourceEvses.map(e=>e.pk??null),
             physicalReferences:g.sourceEvses.map(e=>text(e?.physicalReference)),
-            connectorCount:g.connectorCount,sourceGroupSize:g.sourceEvses.length,targetGroupSize:g.sourceEvses.length,
+            connectorCount:g.connectorCount,sourceGroupSize:g.sourceEvses.length,targetGroupSize:g.targetGroupSize,
             operator:g.operator,tariffHash:row.tariffHash||null,fetchedAt:row.fetchedAt||null,
             source:'Electroverse final residual recovery plan'
           }
