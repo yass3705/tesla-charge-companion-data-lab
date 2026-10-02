@@ -1,0 +1,29 @@
+name: Audit FR55C 7kW power variants
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/audit_b_fr55c_7kw_power_variants.mjs"
+      - ".github/workflows/electroverse-b-fr55c-7kw-power-variants.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/audit_b_fr55c_7kw_power_variants.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/b-fr55c-7kw-power-variant-audit.json
+          if ! git diff --cached --quiet; then
+            git commit -m "audit: persist FR55C 7kW power variants"
+            git pull --rebase origin main || true
+            git push
+          fi
