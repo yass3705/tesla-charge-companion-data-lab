@@ -1,0 +1,20 @@
+name: Audit pre-extension GYM coverage
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/audit_preextension_gym.mjs"
+      - ".github/workflows/electroverse-gym-preextension-audit.yml"
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: git worktree add /tmp/pre 923c6debdcb5831bf969051519d4a5869ce92053
+      - run: node scripts/audit_preextension_gym.mjs /tmp/pre
