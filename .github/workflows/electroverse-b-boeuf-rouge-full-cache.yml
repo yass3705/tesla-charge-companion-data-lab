@@ -1,0 +1,29 @@
+name: Audit B Boeuf Rouge full cache
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/audit_b_boeuf_rouge_full_cache.mjs"
+      - ".github/workflows/electroverse-b-boeuf-rouge-full-cache.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/audit_b_boeuf_rouge_full_cache.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/b-boeuf-rouge-full-cache-audit.json
+          if ! git diff --cached --quiet; then
+            git commit -m "audit: persist B Boeuf Rouge full-cache evidence"
+            git pull --rebase origin main || true
+            git push
+          fi
