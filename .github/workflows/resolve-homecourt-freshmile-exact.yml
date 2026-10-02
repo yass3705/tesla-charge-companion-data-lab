@@ -1,0 +1,33 @@
+name: Resolve Homécourt Freshmile exact tariffs
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/resolve_homecourt_freshmile_exact.py"
+      - ".github/workflows/resolve-homecourt-freshmile-exact.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: python3 scripts/resolve_homecourt_freshmile_exact.py
+      - name: Publish report
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/france/homecourt_freshmile_exact_tariffs.json
+          git diff --cached --quiet && exit 0
+          git commit -m "data(fr): probe Homécourt Freshmile exact tariffs [run ${GITHUB_RUN_ID}]"
+          git pull --rebase origin main
+          git push origin HEAD:main
