@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 239,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-238.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 254,
+    "partial": 337,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Aschaffenburger Versorgungs-GmbH / Stadtwerke Aschaffenburg public charging",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "family": "ChargePoint/first-party candidate",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Current first-party page states that from 2026-06-01 an Ad-Hoc tariff exists for charging without contract via QR code/app/credit card, distinguishes AC and DC, publishes AC blocking after 240 min and DC blocking after 90 min, and explicitly says displayed prices are gross and include current VAT. Numeric tariff values are image-rendered on the public page.",
+      "exactGap": "Extract authoritative numeric Ad-Hoc AC/DC values from a machine-readable/current first-party surface or direct checkout, then reconcile the complete canonical station/EVSE denominator. Do not infer values from the stated 6 ct discount."
+    },
+    {
+      "cpo": "Stadtwerke Remscheid Verbund / EWR-SR-PSR",
+      "classification": "B2_FIRST_PARTY_ADHOC_EQUIVALENCE",
+      "family": "ChargePoint",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Current first-party Remscheid page confirms EWR uses ChargePoint, anonymous Ad-Hoc is possible without a ChargePoint account using credit card/phone flow, and current tariff/AGB documents are dated 2026-08-01. The public site lists named locations and says current fees are available on the EWR site/app.",
+      "exactGap": "Parse/bind the official 2026-08-01 tariff PDF to the complete EWR Remscheid public-site/EVSE denominator, including Ladeverfügbarkeitsentgelt applicability. Do not substitute similarly named EWR Worms/Rheinhessen tariffs or third-party station values."
+    },
+    {
+      "cpo": "ChargePoint/Mobilithek-EcoMovement family",
+      "status": "family-pass-bounded",
+      "evidenceSummary": "GEW Wilhelmshaven remains intentionally excluded as already bounded. Current discovery did not establish another canonical member with complete authoritative EVSE+energy+start/blocking+payment+gross semantics in this pass.",
+      "exactGap": "Move to m8mit public guest family after this second no-promotion pass; reopen ChargePoint only for a concrete new canonical member/source or once Remscheid's official 2026 PDF can be deterministically parsed."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 254,
+    "partial": 337,
+    "blocked": 0
+  },
+  "indicator": "221 -> 254 complete (+33)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new concrete Top-5 source/backend proof"
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "254 + 337 + 0 = 591",
+    "totalNamedCpos": 591,
+    "duplicateAliasRisk": "No canonical alias mutation made in this run; Remscheid kept under existing canonical compound name; Aschaffenburg kept under existing canonical name.",
+    "countsVsLists": "No status mutation, therefore canonical counters remain coherent with predecessor.",
+    "repeatGuard": "PASS: second consecutive no-promotion run persisted; ChargePoint family now leaves active queue per anti-stagnation.",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Proceed to m8mit public guest per-EVSE family, excluding already-bounded MEGA Monheim. Seek multiple canonical partials with public guest numeric price surfaces; then ladenetz/ladeapp/LadeVerbundPlus."
+}
