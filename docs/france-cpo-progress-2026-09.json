@@ -3,9 +3,9 @@
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 99,
-  "setAsideCpos": 109,
-  "activeRemainingCpos": 83,
-  "updatedAt": "2026-10-02T12:18:00+02:00",
+  "setAsideCpos": 110,
+  "activeRemainingCpos": 82,
+  "updatedAt": "2026-10-02T13:50:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -860,10 +860,16 @@
       "since": "2026-10-02",
       "lastChecked": "2026-10-02",
       "audit": "docs/france-regional-cpo-medico-social-batch594-2026-10-02.json"
+    },
+    {
+      "name": "PAS DITINERANCE / La Réserve de Rilhat | raw rank275",
+      "reason": "batch597 fail-closed: historical no-roaming/site label maps to exact station FRLARESERVEDERILHAT at La Réserve de Rilhat, Cognat-Lyonne; current public evidence confirms paid charging but no current first-party numeric direct tariff or deterministic anonymous resolver. Third-party numeric observations rejected as direct authority.",
+      "since": "2026-10-02",
+      "lastChecked": "2026-10-02",
+      "audit": "docs/france-regional-cpo-pas-ditinerance-rilhat-batch597-2026-10-02.json"
     }
   ],
   "activeNominative": [
-    "RELEASED_ACTIVE_SLOT_266 | alias Evbox -> EVBOX | raw rank60",
     "RELEASED_ACTIVE_SLOT_030 | authority REVEO already treated",
     "RELEASED_ACTIVE_SLOT_040 | authority RossiniEnergy | FR*ROS | raw rank40 already treated",
     "RELEASED_SLOT_043_TREATED_HISTORICALLY_PROVEN",
@@ -2037,14 +2043,14 @@
       }
     }
   ],
-  "currentInvestigation": "raw275 PAS DITINERANCE; then raw276+",
+  "currentInvestigation": "raw276 PLATEAU_YZERON; then raw278+",
   "coherenceControl": {
-    "batch": "batch596",
+    "batch": "batch597",
     "result": "PASS",
-    "arithmetic": "99 + 109 + 83 = 291",
+    "arithmetic": "99 + 110 + 82 = 291",
     "treatedLength": 99,
-    "setAsideLength": 109,
-    "activeLength": 83,
+    "setAsideLength": 110,
+    "activeLength": 82,
     "pendingDedupeCount": 0,
     "arithmeticOk": true,
     "treatedPlusSetAsidePlusActive": 291
@@ -2055,7 +2061,7 @@
     "result": "PASS_ACELEC_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch596",
+  "latestBatch": "batch597",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -3778,6 +3784,15 @@
       "category": "identity-lineage-existing-setAside-authority",
       "decision": "non-counting historical identity lineage to existing LODMI authority; no tariff inheritance",
       "evidence": "docs/france-regional-cpo-normatech-lodmi-batch596-2026-10-02.json"
+    },
+    {
+      "rawRank": 275,
+      "historicalOperator": "PAS DITINERANCE",
+      "authority": "La Réserve de Rilhat",
+      "category": "setAside-site-label-authority",
+      "decision": "active->setAside; exact site/station recovered, paid but no first-party numeric direct tariff",
+      "evidence": "docs/france-regional-cpo-pas-ditinerance-rilhat-batch597-2026-10-02.json",
+      "replacedAnonymousSlot": "RELEASED_ACTIVE_SLOT_266 | alias Evbox -> EVBOX | raw rank60"
     }
   ],
   "rawLineageCoverage": {
@@ -4670,6 +4685,12 @@
       "rawRank": 272,
       "audit": "docs/france-regional-cpo-medico-social-batch594-2026-10-02.json",
       "reason": "No current first-party numeric direct tariff authority; one historical Saint-Malo station retained fail-closed."
+    },
+    "PAS DITINERANCE / La Réserve de Rilhat | raw rank275": {
+      "status": "setAside",
+      "rawRank": 275,
+      "audit": "docs/france-regional-cpo-pas-ditinerance-rilhat-batch597-2026-10-02.json",
+      "reason": "Exact historical site recovered; paid charging but no first-party numeric direct tariff authority."
     }
   },
   "operatorResolutionRegistry": {
