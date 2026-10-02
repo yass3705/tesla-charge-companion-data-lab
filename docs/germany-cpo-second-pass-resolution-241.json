@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 241,
+  "date": "2026-10-03",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-240.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 254,
+    "partial": 337,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "m8mit/Mobilithek fresh-candidate sweep: Stadtwerke Zeitz GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "family": "m8mit/Mobilithek",
+      "status": "discovery-bounded-no-promotion",
+      "evidenceSummary": "Current public m8mit-via-Mobilithek surface exposes 9 stations / 25 charge points, with 24 AC and 1 DC point observed at 0.48 EUR/kWh.",
+      "exactGap": "Confirm this operator/alias exists in the current canonical partial list, then bind anonymous direct-payment semantics, start/time/blocking fees and gross/VAT authoritatively across all 25 points. Do not promote from aggregator-derived tariff alone."
+    },
+    {
+      "cpo": "m8mit/Mobilithek fresh-candidate sweep: Stadtwerke Blankenburg GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "family": "m8mit/Mobilithek",
+      "status": "discovery-bounded-no-promotion",
+      "evidenceSummary": "Current public m8mit-derived surface exposes 26 ad-hoc stations / 58 AC charge points at 0.59 EUR/kWh; sampled EVSEs expose IDs and VAT-inclusive price.",
+      "exactGap": "Confirm canonical operator/alias and reconcile the 26-vs-27 station presentation, then prove anonymous direct-payment method and all start/time/blocking components. RFID-only display on sampled station is insufficient to equate the 0.59 tariff with anonymous ad-hoc."
+    },
+    {
+      "cpo": "LichtBlick/Mobilithek fresh-candidate sweep: Stadtwerke Aschersleben",
+      "classification": "B3_PROVIDER_VS_CPO_TARIFF",
+      "family": "charge-it-easy/LichtBlick",
+      "status": "discovery-bounded-no-promotion",
+      "evidenceSummary": "Current Mobilithek-derived inventory exposes 6 stations / 18 AC points under Stadtwerke Aschersleben, but tariff provenance is LichtBlick and external current observations conflict on numeric price.",
+      "exactGap": "Confirm canonical operator/alias and obtain CPO-direct anonymous ad-hoc price semantics. Do not use LichtBlick/eMSP/provider pricing as CPO-direct tariff."
+    },
+    {
+      "cpo": "e-MOBI / Stadtwerke Oranienburg",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "family": "Mobilithek/gridco",
+      "status": "discovery-bounded-no-promotion",
+      "evidenceSummary": "Current public surfaces expose 14 stations / 36 charge points: 34 AC points at 0.55 EUR/kWh and 2 HPC points at 0.65 EUR/kWh. Sampled station DE*ORA*E*0015..0018 exposes per-EVSE AC/HPC prices and VAT-inclusive semantics; direct website/QR payment is indicated on public ad-hoc surfaces.",
+      "exactGap": "Confirm canonical operator/alias and close the full 36-EVSE matrix including authoritative start/time/blocking fees. Current surfaces disagree on completeness/additional fee semantics, so no absence-of-fee inference is allowed."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 254,
+    "partial": 337,
+    "blocked": 0
+  },
+  "indicator": "221 -> 254 complete (+33)",
+  "priorityTop5": {
+    "status": "unchanged parked after two evidence-led passes; no new concrete Top-5 evidence in this run"
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "254 + 337 + 0 = 591",
+    "totalNamedCpos": 591,
+    "countsVsLists": "No status mutation; counters unchanged from resolution-240.",
+    "duplicateAliasRisk": "No canonical alias mutation. Fresh discoveries explicitly require canonical alias confirmation before any promotion.",
+    "repeatGuard": "PASS: fresh family/candidate evidence only; no bounded CPO was re-audited.",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Continue m8mit public guest per-EVSE on confirmed canonical partials; prioritize candidates whose canonical alias can be closed, then ladenetz/ladeapp/LadeVerbundPlus. Reopen Top 5 only on genuinely new concrete evidence."
+}
