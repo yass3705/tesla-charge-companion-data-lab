@@ -173,7 +173,7 @@ def classify(row: dict[str, str]) -> tuple[str, list[str]]:
             reasons.append("structured_access_reserved")
         if customer_parking:
             reasons.append("customer_only_parking_type")
-        return "restricted_or_conditional_review", sorted(set(reasons))
+        return "restricted_or_conditional_access", sorted(set(reasons))
 
     return "public_or_no_private_signal", []
 
@@ -220,7 +220,7 @@ def main() -> int:
     priority = {
         "high_confidence_non_public": 3,
         "possible_non_public_schema_inconsistency": 2,
-        "restricted_or_conditional_review": 1,
+        "restricted_or_conditional_access": 1,
         "public_or_no_private_signal": 0,
     }
 
@@ -242,25 +242,30 @@ def main() -> int:
 
     suspects = [
         x for x in flattened
-        if x["status"] != "public_or_no_private_signal"
+        if x["status"] in {"high_confidence_non_public", "possible_non_public_schema_inconsistency"}
     ]
     suspects.sort(key=lambda x: (-priority[x["status"]], x["operator"].casefold(), x["stationName"].casefold()))
+    restricted = [
+        x for x in flattened
+        if x["status"] == "restricted_or_conditional_access"
+    ]
+    restricted.sort(key=lambda x: (x["operator"].casefold(), x["stationName"].casefold()))
 
     cpo_rows = []
     for cpo, counts in by_cpo.items():
-        total_flagged = sum(v for k, v in counts.items() if k != "public_or_no_private_signal")
+        total_flagged = counts["high_confidence_non_public"] + counts["possible_non_public_schema_inconsistency"]
         high = counts["high_confidence_non_public"]
         inconsistent = counts["possible_non_public_schema_inconsistency"]
-        restricted = counts["restricted_or_conditional_review"]
-        if total_flagged:
+        restricted_count = counts["restricted_or_conditional_access"]
+        if total_flagged or restricted_count:
             cpo_rows.append({
                 "operator": cpo,
-                "flaggedStations": total_flagged,
+                "suspectStations": total_flagged,
                 "highConfidenceNonPublic": high,
                 "schemaInconsistency": inconsistent,
-                "restrictedConditionalReview": restricted,
+                "restrictedConditionalAccess": restricted_count,
             })
-    cpo_rows.sort(key=lambda x: (-x["highConfidenceNonPublic"], -x["flaggedStations"], x["operator"].casefold()))
+    cpo_rows.sort(key=lambda x: (-x["highConfidenceNonPublic"], -x["schemaInconsistency"], -x["restrictedConditionalAccess"], x["operator"].casefold()))
 
     report = {
         "schemaVersion": "1.0.0",
@@ -277,13 +282,15 @@ def main() -> int:
         "counts": {
             "pdcRowsRead": pdc_rows,
             "uniqueStations": len(stations),
-            "flaggedStations": len(suspects),
+            "suspectStations": len(suspects),
+            "restrictedOrConditionalStations": len(restricted),
             "byStatusStations": dict(by_status),
             "byStatusPdcRows": dict(pdc_by_status),
-            "operatorsWithFlags": len(cpo_rows),
+            "operatorsWithSignals": len(cpo_rows),
         },
         "operatorRanking": cpo_rows,
-        "flaggedStations": suspects,
+        "suspectStations": suspects,
+        "restrictedOrConditionalStations": restricted,
     }
 
     json_out = Path(args.json_out)
