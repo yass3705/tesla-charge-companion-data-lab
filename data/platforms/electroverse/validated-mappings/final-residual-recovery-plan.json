@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-02T17:04:29.534Z",
+  "generatedAt": "2026-10-02T17:13:01.165Z",
   "dataset": "electroverse-france-final-residual-recovery-plan",
   "sourceManifestGeneratedAt": "2026-10-01T15:09:55.700Z",
   "policy": "Only residual mappings proven against the current overlay. Individual mappings require exact unique local/global target identity; group mappings require exact source/target cardinality, globally unique targets, and homogeneous raw pricing. No proximity inference.",
@@ -14,7 +14,7 @@
     "cumulativeGroupMappings": 122,
     "manualS63Added": 0,
     "postConnectorPowerAdded": 0,
-    "groupMappings": 203,
+    "groupMappings": 204,
     "individualMappings": 555
   },
   "individualMappings": [
@@ -9736,6 +9736,34 @@
         "source": "Electric55 direct station base + full Electroverse tariff cache",
         "observed": "2026-10-02",
         "note": "Gauche, Droite and B01 are all live/retained 22 kW Type 2 representations with one identical compiled tariff. Electric55 current direct inventory exposes exactly two 22.08 kW Type 2 PDCs. Group alias mapping preserves the tariff without asserting individual left/right identity."
+      }
+    },
+    {
+      "mode": "homogeneous_target_subset",
+      "operator": "CROSS_BUCKET_B_COMPLETION",
+      "electroverseLocationPk": "4220939",
+      "irveStationId": "FRDREP675400009",
+      "sourceEvsePks": [
+        3533655,
+        3737506
+      ],
+      "physicalReferences": [
+        "DEGVHSBG001-3",
+        "B24161020045"
+      ],
+      "targetPdcs": [
+        "FRDREE5264857",
+        "FRDREE5348094"
+      ],
+      "uniformConnectorCount": true,
+      "profile": {
+        "kilowatts": 22,
+        "standard": "IEC_62196_T2"
+      },
+      "evidence": {
+        "source": "current PAN national IRVE + full Electroverse tariff cache + public B241 station evidence",
+        "observed": "2026-10-02",
+        "note": "Exactly two current national PDCs are 22 kW at the station and exactly two Electroverse 22 kW Type 2 sources remain in the full cache. Both source tariffs are byte-identical at €0.42/kWh. Current PAN connector flags on the two 22 kW rows are inconsistent with public station evidence, so no source-to-target branch identity is asserted; only one homogeneous 2→2 tariff group is published."
       }
     }
   ]
