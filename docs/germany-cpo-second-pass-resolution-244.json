@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 244,
+  "date": "2026-10-03",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-243.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 255,
+    "partial": 336,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Freitaler Stadtwerke GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "family": "m8mit public guest",
+      "status": "complete",
+      "evidenceSummary": "Live m8mit operator-filtered station list currently exposes exactly three Freitaler Stadtwerke station IDs and six Type-2 22 kW EVSE. All six individual live guest/payment pages were fetched and each exposes the same anonymous 'Ad-hoc-Tarif 2024': 0.59 EUR/kWh + 0.99 EUR Direct-Pay fee, credit-card payment, and explicit statement that statutory VAT is included. The tariff name contains 2024, but the offer is being served now on every live EVSE payment page and is therefore treated as the current effective direct-payment offer, not as a historical document.",
+      "coverage": "3/3 current m8mit stations; 6/6 EVSE individually verified; anonymous_ad_hoc; energy + direct-pay fee + payment method + gross/VAT semantics closed",
+      "promotionRationale": "Current operator-scoped guest backend closes the full Freitaler m8mit denominator and every EVSE individually with the same payable anonymous offer. No roaming/eMSP tariff or cross-EVSE extrapolation is used."
+    },
+    {
+      "cpo": "Spreewald Energy GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "family": "Eco-Movement/Mobilithek public guest",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Fresh public guest inventory closes four sites / eight AC EVSE and confirms anonymous QR/card direct payment. Current tariff availability has degraded: only one of two Rathenow EVSE currently exposes 0.61 EUR/kWh plus 0.12 EUR/min after 240 minutes, while the second Rathenow EVSE and both EVSE at each Cottbus and Gollenberg site currently expose price unknown. Older observations carried site-varying values and therefore cannot fill the current gaps.",
+      "coverage": "4/4 sites; 8/8 EVSE inventory; direct-payment semantics; only 1/8 EVSE currently has complete numeric tariff",
+      "exactGap": "Recover current numeric energy and blocking/start components for the remaining 7 EVSE. Do not reuse older 0.51/0.55/0.72 values after the live feed became price-unknown."
+    }
+  ],
+  "promotions": [
+    {
+      "cpo": "Freitaler Stadtwerke GmbH",
+      "from": "partial",
+      "to": "complete"
+    }
+  ],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 256,
+    "partial": 335,
+    "blocked": 0
+  },
+  "indicator": "221 -> 256 complete (+35)",
+  "priorityTop5": {
+    "status": "unchanged parked after two distinct evidence-led passes; no genuinely new concrete Top-5 evidence in this run"
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "256 + 335 + 0 = 591",
+    "totalNamedCpos": 591,
+    "countsVsLists": "Exactly one partial->complete promotion applied to resolution-243 counters.",
+    "duplicateAliasRisk": "Freitaler Stadtwerke GmbH uses the existing canonical classification-batch-014 name; no alias row created.",
+    "repeatGuard": "PASS: fresh m8mit live guest EVSE pages were used; Spreewald received a fresh degraded-feed check rather than reuse of older prices.",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Continue m8mit public guest on another unresolved canonical B1 candidate with an operator-scoped station list and per-EVSE payment pages. Then return to chargecloud/Mobilithek candidates whose current feed exposes all tariff components. Keep BEBG, Ribnitz, Horb, LEEA, Bühl and Spreewald bounded exactly as resolution-243/244 unless new closing evidence appears; keep Top 5 parked absent new proof."
+}
