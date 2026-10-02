@@ -1,0 +1,33 @@
+name: Diagnose GRIDSERVE missing tariffs
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/uk_gridserve_missing_tariff_diagnostic.py"
+      - ".github/workflows/uk-gridserve-missing-tariff-diagnostic.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: python scripts/uk_gridserve_missing_tariff_diagnostic.py
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/uk/gridserve-missing-tariff-diagnostic-latest.json
+          git commit -m "audit(uk): diagnose GRIDSERVE missing tariff references [run ${GITHUB_RUN_ID}]" || exit 0
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
