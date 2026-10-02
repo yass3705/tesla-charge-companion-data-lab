@@ -1,0 +1,49 @@
+{
+  "provider": "EnergyVision",
+  "country": "BE",
+  "protocol": "DATEX II v3.7 / AFIR",
+  "status": "awaiting_api_key_after_use_case_reply",
+  "documentedAt": "2026-10-02",
+  "baseUrl": "https://datex.cpo.energyvision.be/datex",
+  "authentication": {
+    "header": "Authorization",
+    "scheme": "Bearer",
+    "secret": "ENERGYVISION_DATEX_API_KEY",
+    "rotation": "6 months"
+  },
+  "endpoints": {
+    "metadata": {
+      "path": "/metadata",
+      "purpose": "publisher/contact/version/coverage/feed URLs/update frequencies",
+      "cacheTtlSeconds": 86400
+    },
+    "static": {
+      "path": "/energy-infrastructure-table",
+      "purpose": "sites/stations/EVSE/connectors/address/coordinates/installed power",
+      "cacheTtlSeconds": 86400
+    },
+    "dynamic": {
+      "path": "/energy-infrastructure-status",
+      "purpose": "charging point/station availability and operational status plus ad-hoc price updates when available",
+      "cacheTtlSeconds": 60
+    },
+    "health": {
+      "path": "/health",
+      "purpose": "publishing health and last successful generation"
+    },
+    "schema": {
+      "path": "/schema",
+      "purpose": "DATEX II XSD"
+    }
+  },
+  "integrationPlan": [
+    "Validate /metadata and capture advertised update frequencies.",
+    "Fetch and parse static XML into stable station/EVSE/connector identifiers.",
+    "Fetch dynamic XML and join status/ad-hoc price updates by stable DATEX identifiers.",
+    "Preserve raw XML provenance and fail closed on schema/join ambiguity.",
+    "Use 24h static cadence and a bounded dynamic cadence appropriate for production/action-minute budget.",
+    "Track API-key expiry and request renewal before six months."
+  ],
+  "currentBlocker": "EnergyVision requested company name if applicable, technical contact and intended DATEX use case before issuing the key.",
+  "nextUserAction": "Reply to Jeroen Van Vaerenbergh / myevplatform@energyvision.be with the requested technical contact and use case."
+}
