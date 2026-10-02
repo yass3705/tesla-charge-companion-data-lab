@@ -75,13 +75,13 @@ CONDITIONAL_PATTERNS = {
         r"sur demande",
     ],
     "hospitality": [
-        r"h[oô]tel",
-        r"camping",
-        r"restaurant",
+        r"\\bh[oô]tel\\b",
+        r"\\bcamping\\b",
+        r"\\brestaurant\\b",
     ],
     "toll_or_paid_road": [
-        r"p[eé]age",
-        r"autoroute",
+        r"\\bp[eé]age\\b",
+        r"\\bautoroute\\b",
         r"aire de service",
     ],
 }
