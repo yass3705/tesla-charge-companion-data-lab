@@ -44,13 +44,16 @@ HIGH = {
         r"parc automobile", r"vehicule(?:s)? societe",
     ],
     "residents_only": [
-        r"\\bresident(?:s)?\\b", r"\\bcoproprietaire(?:s)?\\b",
-        r"\\bcopropriete\\b", r"\\bresidence\\b",
+        r"(?:^| )resident(?:s)?(?: |$)",
+        r"(?:^| )coproprietaire(?:s)?(?: |$)",
+        r"(?:^| )copropriete(?: |$)",
+        r"(?:^| )residence(?: |$)",
     ],
     "internal_corporate_site": [
-        r"\\bdata valley\\b", r"\\bsite industriel\\b",
-        r"\\busine\\b", r"\\bentrepot\\b", r"\\bdepot\\b",
-        r"\\bsiege social\\b", r"\\bcampus\\b", r"\\bcentre logistique\\b",
+        r"(?:^| )data valley(?: |$)", r"(?:^| )site industriel(?: |$)",
+        r"(?:^| )usine(?: |$)", r"(?:^| )entrepot(?: |$)",
+        r"(?:^| )depot(?: |$)", r"(?:^| )siege social(?: |$)",
+        r"(?:^| )campus(?: |$)", r"(?:^| )centre logistique(?: |$)",
     ],
 }
 
