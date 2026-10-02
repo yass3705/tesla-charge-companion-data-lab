@@ -1850,7 +1850,16 @@ for(const sh of manifest.shards||[]){
       })).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))))));
       const allUnresolvedAtLocation=(row.tariff?.evses||[]).filter(e0=>{
         const key=String(row.electroverseLocationPk)+':'+String(e0?.pk??'');
-        return !validatedResidualTargets.has(key);
+        if(validatedResidualTargets.has(key))return false;
+        const pr0=text(e0?.physicalReference);const k0=norm(pr0);
+        const parentNow=[...local].filter(p=>k0.startsWith(p)&&k0.length>p.length&&/^\\d{1,2}$/.test(k0.slice(p.length)));
+        if(local.has(k0)||parentNow.length===1||ordinalTargets.has(e0)||genericTargets.has(e0)||suffixTargets.has(e0)||
+           trimmedSuffixTargets.has(e0)||pd1FinalOrdinalTargets.has(e0)||viaFinalOrdinalTargets.has(e0)||
+           c55BIndexTargets.has(e0)||viaStructuredBasePairTargets.has(e0)||viaOfficialTargets.has(e0)||
+           izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0)||c55GroupedSourceEvses.has(e0)||
+           hpcGroupedSourceEvses.has(e0)||pd1TechnicalSourceEvses.has(e0)||drvPowerSourceEvses.has(e0)||
+           operatorGroupedSourceEvses.has(e0)||customGyPairGroupedSourceEvses.has(e0))return false;
+        return true;
       });
       if(pricingSigs.size!==1||connectorCounts.size!==1||technicalProfiles.size!==1)continue;
       if(allUnresolvedAtLocation.length>es.length)continue;
