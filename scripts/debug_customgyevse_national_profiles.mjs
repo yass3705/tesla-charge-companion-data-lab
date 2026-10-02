@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 const MAP='data/electroverse/irve_location_mapping.json';
 const NATIONAL='data/national/france_public_charging_canonical.json';
 const OUT='reports/electroverse/customgyevse-national-sample.json';
-const targetLocations=new Set(['4222135','4225537','4226165','4221133']);
+const targetLocations=new Set(['4222135','4225537','4226165','4221133','4225614','4225216','4225872','4225380']);
 const norm=x=>String(x??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
 
 const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
