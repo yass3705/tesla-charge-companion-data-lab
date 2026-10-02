@@ -1,0 +1,64 @@
+name: France IRVE public access audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "25 2 * * *"
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/audit_france_irve_public_access.py"
+      - ".github/workflows/france-irve-public-access-audit.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: france-irve-public-access-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compile audit
+        run: python -m py_compile scripts/audit_france_irve_public_access.py
+
+      - name: Run national IRVE public-access audit
+        run: python scripts/audit_france_irve_public_access.py
+
+      - name: Validate report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path("reports/france/irve-public-access-audit.json").read_text())
+          assert p["dataset"] == "france-irve-public-access-audit"
+          assert p["policy"]["nonDestructive"] is True
+          assert p["policy"]["automaticProductionExclusion"] is False
+          assert p["counts"]["pdcRowsRead"] > 0
+          assert p["counts"]["uniqueStations"] > 0
+          assert "operatorRanking" in p
+          PY
+
+      - name: Publish audit artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/france/irve-public-access-audit.json reports/france/irve-public-access-suspects.csv
+          if ! git diff --cached --quiet; then
+            git commit -m "audit(france): refresh IRVE public-access report [run ${GITHUB_RUN_ID}]"
+            for attempt in 1 2 3; do
+              git pull --rebase origin main
+              if git push origin HEAD:main; then exit 0; fi
+              sleep $((attempt * 2))
+            done
+            exit 1
+          fi
