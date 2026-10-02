@@ -1,0 +1,60 @@
+{
+  "provider": "GRIDSERVE",
+  "country": "GB",
+  "protocol": "OCPI-style PCPR Open Data API",
+  "status": "awaiting_subscription_key",
+  "documentedAt": "2026-10-02",
+  "baseUrl": "https://api.gridserve.com/ocpi/v1/",
+  "authentication": {
+    "header": "ec-subscription-key",
+    "secret": "GRIDSERVE_PCPR_API_KEY"
+  },
+  "endpoints": {
+    "locations": {
+      "path": "/locations",
+      "purpose": "all public charging locations"
+    },
+    "locationById": {
+      "path": "/locations/{location-id}",
+      "purpose": "single location detail"
+    },
+    "tariffs": {
+      "path": "/tariffs",
+      "purpose": "all available charging tariffs"
+    }
+  },
+  "documentedFields": {
+    "location": [
+      "country_code",
+      "party_id",
+      "id",
+      "publish",
+      "name",
+      "address",
+      "city",
+      "postal_code",
+      "country",
+      "coordinates"
+    ],
+    "tariff": [
+      "country_code",
+      "party_id",
+      "id",
+      "currency",
+      "type",
+      "elements.price_components.type",
+      "elements.price_components.price",
+      "elements.price_components.vat",
+      "elements.price_components.step_size"
+    ]
+  },
+  "integrationPlan": [
+    "Validate /locations and /tariffs with the issued subscription key.",
+    "Confirm EVSE/connector nesting and live-status fields from real responses before final parser mapping.",
+    "Join tariff references at EVSE/connector level without inferring missing prices.",
+    "Persist raw response provenance plus normalized UK canonical snapshot.",
+    "Add scheduled refresh only after a successful validation run."
+  ],
+  "currentBlocker": "Official subscription key not yet available in Data Lab.",
+  "nextUserAction": "Provide the GRIDSERVE key when received; store it as GRIDSERVE_PCPR_API_KEY."
+}
