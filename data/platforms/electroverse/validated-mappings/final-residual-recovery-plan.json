@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-02T17:02:37.775Z",
+  "generatedAt": "2026-10-02T17:04:29.534Z",
   "dataset": "electroverse-france-final-residual-recovery-plan",
   "sourceManifestGeneratedAt": "2026-10-01T15:09:55.700Z",
   "policy": "Only residual mappings proven against the current overlay. Individual mappings require exact unique local/global target identity; group mappings require exact source/target cardinality, globally unique targets, and homogeneous raw pricing. No proximity inference.",
@@ -14,7 +14,7 @@
     "cumulativeGroupMappings": 122,
     "manualS63Added": 0,
     "postConnectorPowerAdded": 0,
-    "groupMappings": 202,
+    "groupMappings": 203,
     "individualMappings": 555
   },
   "individualMappings": [
@@ -9706,6 +9706,36 @@
         "source": "full Electroverse tariff cache + current PAN national IRVE + final overlay exclusion",
         "observed": "2026-10-02",
         "note": "All currently unpublished source EVSEs in the technical class exactly match all currently unclaimed national PDCs in the same class, with identical compiled pricing across sources. Cross-bucket completion prevents operator-prefix classification from hiding siblings."
+      }
+    },
+    {
+      "mode": "homogeneous_target_subset",
+      "operator": "CROSS_BUCKET_B_COMPLETION",
+      "electroverseLocationPk": "1291235",
+      "irveStationId": "FR55CP84160LOUD943",
+      "sourceEvsePks": [
+        128820,
+        128821,
+        1600982
+      ],
+      "physicalReferences": [
+        "Gauche",
+        "Droite",
+        "B01 - 22kW"
+      ],
+      "targetPdcs": [
+        "FR55CE84160FUL1321",
+        "FR55CE84160FUL1322"
+      ],
+      "uniformConnectorCount": true,
+      "profile": {
+        "kilowatts": 22,
+        "standard": "IEC_62196_T2"
+      },
+      "evidence": {
+        "source": "Electric55 direct station base + full Electroverse tariff cache",
+        "observed": "2026-10-02",
+        "note": "Gauche, Droite and B01 are all live/retained 22 kW Type 2 representations with one identical compiled tariff. Electric55 current direct inventory exposes exactly two 22.08 kW Type 2 PDCs. Group alias mapping preserves the tariff without asserting individual left/right identity."
       }
     }
   ]
