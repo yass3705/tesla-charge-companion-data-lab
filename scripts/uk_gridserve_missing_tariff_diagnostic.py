@@ -15,7 +15,7 @@ missing_ids={"A0-GBP","GS1","GS3","GS9"}
 diag={mid:{
     "connectors":0,"evses":set(),"locations":set(),"standards":collections.Counter(),
     "powerTypes":collections.Counter(),"powersW":collections.Counter(),"statuses":collections.Counter(),
-    "samples":[]
+    "samples":[],"locationSummaries":{}
 } for mid in missing_ids}
 
 all_refs=collections.Counter()
@@ -36,6 +36,8 @@ for loc in locations:
                 d["powerTypes"][str(conn.get("power_type"))]+=1
                 d["powersW"][str(conn.get("max_electric_power"))]+=1
                 d["statuses"][str(status)]+=1
+                ls=d["locationSummaries"].setdefault(str(lid),{"name":lname,"city":city,"address":address,"connectors":0,"statuses":collections.Counter(),"powersW":collections.Counter()})
+                ls["connectors"]+=1; ls["statuses"][str(status)]+=1; ls["powersW"][str(conn.get("max_electric_power"))]+=1
                 if len(d["samples"])<25:
                     d["samples"].append({
                         "locationId":lid,"locationName":lname,"city":city,"address":address,
@@ -49,7 +51,9 @@ def conv(d):
     return {
         "connectors":d["connectors"],"evses":len(d["evses"]),"locations":len(d["locations"]),
         "standards":dict(d["standards"]),"powerTypes":dict(d["powerTypes"]),
-        "powersW":dict(d["powersW"]),"statuses":dict(d["statuses"]),"samples":d["samples"]
+        "powersW":dict(d["powersW"]),"statuses":dict(d["statuses"]),
+        "locationSummaries":{k:{**v,"statuses":dict(v["statuses"]),"powersW":dict(v["powersW"])} for k,v in d["locationSummaries"].items()},
+        "samples":d["samples"]
     }
 
 out={
