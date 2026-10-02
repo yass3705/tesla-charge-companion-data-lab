@@ -36,7 +36,7 @@ def one(text,patterns,label):
     if len(vals)!=1: raise ValueError(f"{label}: expected one value, got {vals}")
     return vals[0]
 
-def section(text,start,end,label):
+def sec(text,start,end,label):
     m=re.search(start+r"(.*?)"+end,text,re.I|re.S)
     if not m: raise ValueError(f"{label}: section not found")
     return m.group(1)
@@ -67,16 +67,16 @@ now=datetime.now(timezone.utc).isoformat()
 results=[]
 bfc=fetch(BFC)
 
-# SICECO Côte-d'Or
+# SICECO
 try:
-    s=section(bfc,r"SICECO\s+Territoire\s+d.?Energie\s+Côte-d.?Or",r"SYDED\s*\(Doubs\)","SICECO")
+    s=sec(bfc,r"SICECO\s+Territoire\s+d.?Energie\s+Côte-d.?Or.*?Côte\s+d.?Or",r"SYDED\s*\(Doubs\)","SICECO")
     vals={
-      "normalFixed":one(s,[r"Charge\s+lente.*?([0-9]+[,.][0-9]+)\s*€\s*par\s*p[ée]riode"],"siceco slow fixed"),
+      "normalFixed":one(s,[r"Charge\s+lente\s*:\s*([0-9]+[,.][0-9]+)\s*€\s*par\s*p[ée]riode"],"siceco slow fixed"),
       "normalKwh":one(s,[r"Charge\s+lente.*?\+\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"siceco slow kwh"),
-      "normalMin":one(s,[r"Charge\s+lente.*?\+\s*[0-9]+[,.][0-9]+\s*€\s*/\s*kWh\s*\+\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"siceco slow min"),
-      "rapidFixed":one(s,[r"Charge\s+rapide.*?([0-9]+[,.]?[0-9]*)\s*€\s*par\s*p[ée]riode"],"siceco rapid fixed"),
+      "normalMin":one(s,[r"Charge\s+lente.*?kWh\s*\+\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"siceco slow min"),
+      "rapidFixed":one(s,[r"Charge\s+rapide\s*:\s*([0-9]+(?:[,.][0-9]+)?)\s*€\s*par\s*p[ée]riode"],"siceco rapid fixed"),
       "rapidKwh":one(s,[r"Charge\s+rapide.*?\+\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"siceco rapid kwh"),
-      "rapidMin":one(s,[r"Charge\s+rapide.*?\+\s*[0-9]+[,.][0-9]+\s*€\s*/\s*kWh\s*\+\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"siceco rapid min")
+      "rapidMin":one(s,[r"Charge\s+rapide.*?kWh\s*\+\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"siceco rapid min")
     }
     path="data/operator_direct/siceco_cotedor_official.json"; p=ROOT/path; d=json.loads(p.read_text()); before=json.loads(json.dumps(d))
     n=d["operatorDirect"]["normalUpTo22Kva"]; r=d["operatorDirect"]["rapidUpTo50Kva"]
@@ -89,47 +89,36 @@ try:
 except Exception as e:
     results.append({"operator":"SICECO Côte-d'Or","status":"failed_keep_last_valid","error":str(e)})
 
-# SYDED Doubs
+# SYDED: explicit conflict check, no auto-update
 try:
-    try:
-        t=fetch(SYDED)
-        s=t
-    except Exception:
-        s=section(bfc,r"SYDED\s*\(Doubs\)",r"SIEEEN\s*\(Nièvre\)","SYDED")
-    vals={
-      "22kwh":one(s,[r"22\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"syded 22 kwh"),
-      "22min":one(s,[r"22\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"syded 22 min"),
-      "50kwh":one(s,[r"50\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"syded 50 kwh"),
-      "50min":one(s,[r"50\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"syded 50 min"),
-      "100kwh":one(s,[r"100\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"syded 100 kwh"),
-      "100min":one(s,[r"100\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"syded 100 min")
-    }
-    path="data/operator_direct/syded_doubs_official.json"; p=ROOT/path; d=json.loads(p.read_text()); before=json.loads(json.dumps(d))
-    for key,kwh,mn in [("accelerated22Kw","22kwh","22min"),("rapid50Kw","50kwh","50min"),("rapid100Kw","100kwh","100min")]:
-        d["operatorDirect"][key]["eurPerKwh"]=vals[kwh]
-        d["operatorDirect"][key]["connectionDurationFee"]["eurPerMinute"]=vals[mn]
-    save(path,d,before,[
-      "operatorDirect.accelerated22Kw.eurPerKwh","operatorDirect.accelerated22Kw.connectionDurationFee.eurPerMinute",
-      "operatorDirect.rapid50Kw.eurPerKwh","operatorDirect.rapid50Kw.connectionDurationFee.eurPerMinute",
-      "operatorDirect.rapid100Kw.eurPerKwh","operatorDirect.rapid100Kw.connectionDurationFee.eurPerMinute"
-    ],SYDED,now,results,"SYDED Doubs",vals)
+    rs=sec(bfc,r"SYDED\s*\(Doubs\)",r"SIEEEN\s*\(Nièvre\)","SYDED regional")
+    ds=fetch(SYDED)
+    regional=[one(rs,[r"22\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"regional 22"),
+              one(rs,[r"50\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"regional 50"),
+              one(rs,[r"100\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"regional 100")]
+    departmental=[one(ds,[r"22\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"dept 22"),
+                  one(ds,[r"50\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*[Kk]Wh"],"dept 50"),
+                  one(ds,[r"100\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*[Kk]Wh"],"dept 100")]
+    if regional!=departmental:
+        results.append({"operator":"SYDED Doubs","status":"conflict_keep_last_valid","regionalBfc":regional,"departmentalSyded":departmental,
+                        "sources":[BFC,SYDED],"note":"Two official sources disagree; no automatic overwrite."})
+    else:
+        results.append({"operator":"SYDED Doubs","status":"unchanged","values":regional})
 except Exception as e:
     results.append({"operator":"SYDED Doubs","status":"failed_keep_last_valid","error":str(e)})
 
-# SIEEEN Nièvre
+# SIEEEN
 try:
-    s=section(bfc,r"SIEEEN\s*\(Nièvre\)",r"SIED70\s*\(Haute-Saône\)","SIEEEN")
+    s=sec(bfc,r"SIEEEN\s*\(Nièvre\)",r"SIED70\s*\(Haute-Saône\)","SIEEEN")
     vals={
-      "22day":one(s,[r"22\s*kW.*?6h\s+[àa]\s+minuit\s*:\s*([0-9]+[,.][0-9]+)\s*€\s*/?\s*kWh"],"sieeen 22 day"),
-      "22night":one(s,[r"22\s*kW.*?minuit\s+[àa]\s+6h\s*:\s*([0-9]+[,.][0-9]+)\s*€\s*/?\s*kWh"],"sieeen 22 night"),
-      "50day":one(s,[r"50\s*kW.*?6h\s+[àa]\s+minuit\s*:\s*([0-9]+[,.][0-9]+)\s*€.*?kWh"],"sieeen 50 day"),
-      "50night":one(s,[r"50\s*kW.*?minuit\s+[àa]\s+6h\s*:\s*([0-9]+[,.][0-9]+)\s*€.*?kWh"],"sieeen 50 night")
+      "22day":one(s,[r"22\s*kW.*?De\s+6h\s+[àa]\s+minuit\s*:\s*([0-9]+[,.][0-9]+)\s*€\s*/?\s*kWh"],"sieeen 22 day"),
+      "22night":one(s,[r"22\s*kW.*?De\s+minuit\s+[àa]\s+6h\s*:\s*([0-9]+[,.][0-9]+)\s*€\s*/?\s*kWh"],"sieeen 22 night"),
+      "50day":one(s,[r"50\s*kW.*?De\s+6h\s+[àa]\s+minuit\s*:\s*([0-9]+[,.][0-9]+)\s*€\s*(?:par|/)?\s*kWh"],"sieeen 50 day"),
+      "50night":one(s,[r"50\s*kW.*?De\s+minuit\s+[àa]\s+6h\s*:\s*([0-9]+[,.][0-9]+)\s*€\s*(?:par|/)?\s*kWh"],"sieeen 50 night")
     }
     path="data/operator_direct/sieeen_nievre_official.json"; p=ROOT/path; d=json.loads(p.read_text()); before=json.loads(json.dumps(d))
-    d["operatorDirect"]["accelerated22Kw"]["day"]["eurPerStartedKwh"]=vals["22day"]
-    d["operatorDirect"]["accelerated22Kw"]["night"]["eurPerStartedKwh"]=vals["22night"]
-    d["operatorDirect"]["rapid50Kw"]["day"]["eurPerStartedKwh"]=vals["50day"]
-    d["operatorDirect"]["rapid50Kw"]["night"]["eurPerStartedKwh"]=vals["50night"]
+    d["operatorDirect"]["accelerated22Kw"]["day"]["eurPerStartedKwh"]=vals["22day"]; d["operatorDirect"]["accelerated22Kw"]["night"]["eurPerStartedKwh"]=vals["22night"]
+    d["operatorDirect"]["rapid50Kw"]["day"]["eurPerStartedKwh"]=vals["50day"]; d["operatorDirect"]["rapid50Kw"]["night"]["eurPerStartedKwh"]=vals["50night"]
     save(path,d,before,[
       "operatorDirect.accelerated22Kw.day.eurPerStartedKwh","operatorDirect.accelerated22Kw.night.eurPerStartedKwh",
       "operatorDirect.rapid50Kw.day.eurPerStartedKwh","operatorDirect.rapid50Kw.night.eurPerStartedKwh"
@@ -137,19 +126,17 @@ try:
 except Exception as e:
     results.append({"operator":"SIEEEN Nièvre","status":"failed_keep_last_valid","error":str(e)})
 
-# SIED70 Haute-Saône
+# SIED70
 try:
     t=fetch(SIED70)
     vals={
-      "accelerated":one(t,[r"(?:<\s*50\s*kW|22\s*kW).*?([0-9]+[,.][0-9]+)\s*€\s*/?\s*kWh"],"sied70 accelerated"),
-      "rapid":one(t,[r"(?:>=?\s*50\s*kW|150\s*kW).*?([0-9]+[,.][0-9]+)\s*€\s*/?\s*kWh"],"sied70 rapid"),
-      "occupancy":one(t,[r"([0-9]+[,.][0-9]+)\s*€\s*/\s*min"],"sied70 occupancy")
+      "accelerated":one(t,[r"puissance\s+inf[ée]rieure\s+[àa]\s+50\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*TTC\s*/\s*kWh"],"sied70 accelerated"),
+      "rapid":one(t,[r"puissance\s+sup[ée]rieure\s+ou\s+[ée]gale\s+[àa]\s+50\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*TTC\s*/\s*kWh"],"sied70 rapid"),
+      "occupancy":one(t,[r"p[ée]nalit[ée]\s+de\s+([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"sied70 occupancy")
     }
     path="data/operator_direct/sied70_official_haute_saone.json"; p=ROOT/path; d=json.loads(p.read_text()); before=json.loads(json.dumps(d))
-    d["operatorDirect"]["acceleratedBelow50Kw"]["eurPerKwh"]=vals["accelerated"]
-    d["operatorDirect"]["acceleratedBelow50Kw"]["postChargeFee"]["eurPerMinute"]=vals["occupancy"]
-    d["operatorDirect"]["rapid50KwOrMore"]["eurPerKwh"]=vals["rapid"]
-    d["operatorDirect"]["rapid50KwOrMore"]["postChargeFee"]["eurPerMinute"]=vals["occupancy"]
+    d["operatorDirect"]["acceleratedBelow50Kw"]["eurPerKwh"]=vals["accelerated"]; d["operatorDirect"]["acceleratedBelow50Kw"]["postChargeFee"]["eurPerMinute"]=vals["occupancy"]
+    d["operatorDirect"]["rapid50KwOrMore"]["eurPerKwh"]=vals["rapid"]; d["operatorDirect"]["rapid50KwOrMore"]["postChargeFee"]["eurPerMinute"]=vals["occupancy"]
     save(path,d,before,[
       "operatorDirect.acceleratedBelow50Kw.eurPerKwh","operatorDirect.acceleratedBelow50Kw.postChargeFee.eurPerMinute",
       "operatorDirect.rapid50KwOrMore.eurPerKwh","operatorDirect.rapid50KwOrMore.postChargeFee.eurPerMinute"
@@ -157,45 +144,36 @@ try:
 except Exception as e:
     results.append({"operator":"SIED70 Haute-Saône","status":"failed_keep_last_valid","error":str(e)})
 
-# SDEY Yonne
+# SDEY
 try:
-    s=section(bfc,r"SDEY\s*\(Yonne\)",r"Territoire\s+d.?Energie\s+90","SDEY")
+    s=sec(bfc,r"SDEY\s*\(Yonne\)",r"Territoire\s+d.?Energie\s+90","SDEY")
     vals={
-      "normal":one(s,[r"normale.*?<\s*25\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"sdey normal"),
-      "rapid":one(s,[r"rapide.*?>\s*25\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"sdey rapid"),
-      "ultra":one(s,[r"ultra-?rapide.*?>\s*100\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"sdey ultra"),
-      "normalSub":one(s,[r"normale.*?Tarif\s+abonn[ée]\s*:\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"sdey normal sub"),
-      "rapidSub":one(s,[r"rapide.*?>\s*25\s*kW.*?Tarif\s+abonn[ée]\s*:\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"sdey rapid sub"),
-      "ultraSub":one(s,[r"ultra-?rapide.*?>\s*100\s*kW.*?Tarif\s+abonn[ée]\s*:\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"sdey ultra sub")
+      "normal":one(s,[r"Recharge\s+normale\s*\(<\s*25\s*kW\).*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"sdey normal"),
+      "rapid":one(s,[r"Recharge\s+rapide\s*\(>\s*25\s*kW\).*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"sdey rapid"),
+      "ultra":one(s,[r"Recharge\s+ultra-?rapide\s*\(>\s*100\s*kW\).*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"sdey ultra")
     }
     path="data/operator_direct/sdey_official_yonne.json"; p=ROOT/path; d=json.loads(p.read_text()); before=json.loads(json.dumps(d))
-    d["operatorDirect"]["normalBelow25Kw"]["eurPerKwh"]=vals["normal"]
-    d["operatorDirect"]["rapidAbove25Kw"]["eurPerKwh"]=vals["rapid"]
-    d["operatorDirect"]["ultraRapidAbove100Kw"]["eurPerKwh"]=vals["ultra"]
-    m=d["membership"]["departmentalSubscription"]
-    m["normalBelow25KwEurPerKwh"]=vals["normalSub"]; m["rapidAbove25KwEurPerKwh"]=vals["rapidSub"]; m["ultraRapidAbove100KwEurPerKwh"]=vals["ultraSub"]
+    d["operatorDirect"]["normalBelow25Kw"]["eurPerKwh"]=vals["normal"]; d["operatorDirect"]["rapidAbove25Kw"]["eurPerKwh"]=vals["rapid"]; d["operatorDirect"]["ultraRapidAbove100Kw"]["eurPerKwh"]=vals["ultra"]
     save(path,d,before,[
-      "operatorDirect.normalBelow25Kw.eurPerKwh","operatorDirect.rapidAbove25Kw.eurPerKwh","operatorDirect.ultraRapidAbove100Kw.eurPerKwh",
-      "membership.departmentalSubscription.normalBelow25KwEurPerKwh","membership.departmentalSubscription.rapidAbove25KwEurPerKwh","membership.departmentalSubscription.ultraRapidAbove100KwEurPerKwh"
+      "operatorDirect.normalBelow25Kw.eurPerKwh","operatorDirect.rapidAbove25Kw.eurPerKwh","operatorDirect.ultraRapidAbove100Kw.eurPerKwh"
     ],BFC,now,results,"SDEY Yonne",vals)
 except Exception as e:
     results.append({"operator":"SDEY Yonne","status":"failed_keep_last_valid","error":str(e)})
 
-# TDE90 Belfort
+# TDE90
 try:
-    s=section(bfc,r"Territoire\s+d.?Energie\s+90",r"Op[ée]rateur\s+tiers","TDE90")
+    s=sec(bfc,r"Territoire\s+d.?Energie\s+90.*?Territoire\s+de\s+Belfort",r"Op[ée]rateur\s+tiers","TDE90")
     vals={
       "22kwh":one(s,[r"22\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"tde90 22"),
-      "22min":one(s,[r"22\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"tde90 22 min"),
+      "22min":one(s,[r"22\s*kW.*?\+\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"tde90 22 min"),
       "50kwh":one(s,[r"50\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"tde90 50"),
-      "50min":one(s,[r"50\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"tde90 50 min"),
+      "50min":one(s,[r"50\s*kW.*?\+\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"tde90 50 min"),
       "100kwh":one(s,[r"100\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*kWh"],"tde90 100"),
-      "100min":one(s,[r"100\s*kW.*?([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"tde90 100 min")
+      "100min":one(s,[r"100\s*kW.*?\+\s*([0-9]+[,.][0-9]+)\s*€\s*/\s*minute"],"tde90 100 min")
     }
     path="data/operator_direct/tde90_belfort_official.json"; p=ROOT/path; d=json.loads(p.read_text()); before=json.loads(json.dumps(d))
     for key,kwh,mn in [("accelerated22Kw","22kwh","22min"),("rapid50Kw","50kwh","50min"),("ultraRapid100Kw","100kwh","100min")]:
-        d["operatorDirect"][key]["eurPerKwh"]=vals[kwh]
-        d["operatorDirect"][key]["connectionTimeFee"]["eurPerMinuteAfter"]=vals[mn]
+        d["operatorDirect"][key]["eurPerKwh"]=vals[kwh]; d["operatorDirect"][key]["connectionTimeFee"]["eurPerMinuteAfter"]=vals[mn]
     save(path,d,before,[
       "operatorDirect.accelerated22Kw.eurPerKwh","operatorDirect.accelerated22Kw.connectionTimeFee.eurPerMinuteAfter",
       "operatorDirect.rapid50Kw.eurPerKwh","operatorDirect.rapid50Kw.connectionTimeFee.eurPerMinuteAfter",
