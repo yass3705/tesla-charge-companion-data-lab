@@ -16,11 +16,27 @@
   },
   "billingBasis": "kWh_only",
   "thirdPartyMobilityCard": "final price may include provider commission and must not be assumed from Lidl direct tariff",
-  "rule": "Apply 0.29 EUR/kWh only to Lidl direct AC points and 0.39 EUR/kWh only to Lidl direct DC points whose operator/scope and current type are established. Do not use Lidl direct prices for third-party mobility-card billing or non-Lidl partner sites. Any unclassifiable row remains fail-closed.",
+  "rule": "Apply standard Lidl direct prices (0.29 EUR/kWh AC, 0.39 EUR/kWh DC) to direct/card/QR payment. When the user selects or uses Lidl Plus and the official Lidl Plus promotional offer remains active, apply 0.18 EUR/kWh AC and 0.29 EUR/kWh DC. Never apply these prices to third-party mobility-card billing or non-Lidl partner sites. If the promotional offer can no longer be confirmed from a successfully fetched official Lidl Plus source, fall back to the standard direct tariff.",
   "refresh": {
     "mode": "automatic_official_page_parser",
-    "source": "https://www.lidl.fr/c/tarifs-bornes/s10027299",
-    "refreshedAt": "2026-10-02T00:25:27.116554+00:00",
+    "sources": [
+      "https://www.lidl.fr/c/tarifs-bornes/s10027299",
+      "https://www.lidl.fr/c/e-mobilite-faq/s10037617"
+    ],
+    "refreshedAt": "2026-10-02T00:00:00Z",
     "lastResult": "validated"
+  },
+  "lidlPlusActiveOffer": {
+    "active": true,
+    "promotional": true,
+    "label": "prolongement exceptionnel du prix",
+    "AC": {
+      "eurPerKwh": 0.18
+    },
+    "DC": {
+      "eurPerKwh": 0.29
+    },
+    "endDate": null,
+    "source": "https://www.lidl.fr/c/e-mobilite-faq/s10037617"
   }
 }
