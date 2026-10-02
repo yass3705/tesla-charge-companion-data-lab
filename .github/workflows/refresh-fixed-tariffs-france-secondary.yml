@@ -1,0 +1,48 @@
+name: Refresh fixed tariffs France secondary
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/refresh_fixed_tariffs_france_secondary.py"
+      - ".github/workflows/refresh-fixed-tariffs-france-secondary.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "37 2 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-fixed-tariffs-france-secondary
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Refresh secondary France fixed tariffs
+        run: python3 scripts/refresh_fixed_tariffs_france_secondary.py
+      - name: Publish validated changes
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/indigo_official_france.json \
+                  data/operator_direct/indigo_recharge_official_france.json \
+                  data/operator_direct/interparking_tariff_rules_france.json \
+                  data/operator_direct/seolis_alterbase_tariff_rules_france_2026.json \
+                  data/tariff_history reports/fixed-tariff-refresh-france-secondary-latest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(fr): refresh secondary fixed direct tariffs [run ${GITHUB_RUN_ID}]"
+          for attempt in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*2))
+          done
+          exit 1
