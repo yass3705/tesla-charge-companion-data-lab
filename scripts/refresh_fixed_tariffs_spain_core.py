@@ -54,7 +54,7 @@ configs=[
     "name":"Eranovum","path":"data/operator_direct/eranovum_official_spain.json",
     "url":"https://eranovum.energy/es/nuestras-tarifas/",
     "extract":lambda t:{
-      "upTo22KwEurPerKwh":sanity(find_one(t,[r"Hasta\s*22\s*kW\s*([0-9]+[,.][0-9]+)\s*€"],"eranovum 22")),
+      "upTo22KwEurPerKwh":sanity(find_one(t,[r"Hasta\s*22\s*kW.{0,80}?([0-9]+[,.][0-9]+)\s*€/kWh"],"eranovum 22")),
       "30KwEurPerKwh":sanity(find_one(t,[r"30\s*kW\s*([0-9]+[,.][0-9]+)\s*€"],"eranovum 30")),
       "60KwEurPerKwh":sanity(find_one(t,[r"60\s*kW\s*([0-9]+[,.][0-9]+)\s*€"],"eranovum 60")),
       "120KwEurPerKwh":sanity(find_one(t,[r"120\s*kW\s*([0-9]+[,.][0-9]+)\s*€"],"eranovum 120")),
