@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 238,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-237.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 254,
+    "partial": 337,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Stadtwerke Hof",
+      "classification": "B2/B5_OPERATOR_IDENTITY_RECONCILIATION",
+      "status": "bounded-no-promotion-operator-changed",
+      "evidenceSummary": "Current first-party Stadtwerke Hof page states it ended operation of its EV charging stations on 2025-07-31 and N-ERGIE AG took over operation from 2025-08-01. The legacy 2025 Stadtwerke Hof ad-hoc tariff must not be used as current direct-CPO pricing.",
+      "exactGap": "Reconcile the former Stadtwerke Hof canonical estate to current N-ERGIE ownership/operator identifiers before any tariff completion. Do not promote under the obsolete operator identity."
+    },
+    {
+      "cpo": "Stadtwerke Forchheim",
+      "classification": "B2/B4_FIRST_PARTY_ADHOC_PLUS_SITE_EXCEPTIONS",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Current first-party September 2026 table explicitly gives Ad-hoc AC 0.62 EUR/kWh, DC 0.82 EUR/kWh, AC blocking after 240 min during 08:00-20:00, DC blocking, and states gross prices include 19% VAT. It also states blocking is not charged in parking garages.",
+      "exactGap": "Bind every current canonical Forchheim site/EVSE to the parking-garage exception versus standard blocking rule. Energy/payment/gross semantics are closed; exact site exception matrix is not yet fully reconciled."
+    },
+    {
+      "cpo": "Stadtwerke Straubing",
+      "classification": "B2_FIRST_PARTY_ADHOC_EQUIVALENCE",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Current first-party page explicitly separates registered LADESTROM, anonymous Ad-hoc direct smartphone payment and roaming. Ad-hoc is 0.50 EUR/kWh gross for AC and DC. AC blocking is 0.02 EUR/min from minute 241 where applicable; DC page exposes 0.10 EUR/min blocking. The page enumerates five AC sites with blocking/no-blocking flags.",
+      "exactGap": "Reconcile the first-party five-site exception list and any DC assets against the full current canonical Straubing estate; do not assume the visible list is exhaustive."
+    },
+    {
+      "cpo": "Stadtwerke Weinstadt",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Current first-party page gives registered-card pricing and confirms ladeapp access, while canonical AFIR partial audit contains 22 sites with no matched raw tariff sites.",
+      "exactGap": "Anonymous Ad-hoc numeric tariff and EVSE binding remain unclosed; registered card tariff must not substitute for anonymous_ad_hoc."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 254,
+    "partial": 337,
+    "blocked": 0
+  },
+  "indicator": "221 -> 254 complete (+33)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific proof"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "254 + 337 + 0 = 591",
+    "unsafeExtrapolations": 0,
+    "antiStagnation": "PASS: bounded cases persisted and moved forward"
+  },
+  "nextSafeAction": "Move beyond the exhausted chargecloud/first-party batch to ChargePoint/Mobilithek-EcoMovement candidates other than already-bounded GEW; then m8mit public guest pages. Revisit Forchheim only when exact canonical site exception mapping is available."
+}
