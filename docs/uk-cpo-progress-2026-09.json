@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-10-02T02:05:00+02:00",
+  "updatedAt": "2026-10-02T11:19:00+02:00",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -105,8 +105,15 @@
       "name": "GRIDSERVE",
       "status": "set_aside_external_request",
       "access": "official_open_data_api_key_request",
-      "evidence": "GRIDSERVE official PCPR Open Data API is documented at https://api.gridserve.com/ocpi/v1/ and requires ec-subscription-key on every request. The official request form requires name, email, purpose and acceptance of API fair-use terms; support sends the key by email and targets delivery within 5 business days.",
-      "next": "User must submit the official GRIDSERVE Open Data form. Once the API key is received, store it as a GitHub secret and collect locations/EVSE/status/tariffs; do not repeat discovery."
+      "evidence": "Official GRIDSERVE PCPR Open Data API documentation confirmed 2026-10-02. Base URL https://api.gridserve.com/ocpi/v1/; every request requires ec-subscription-key. Documented endpoints include GET /locations, GET /locations/{location-id}, and GET /tariffs. Locations use OCPI-style country_code/party_id/id fields; tariffs expose GBP AD_HOC_PAYMENT price components.",
+      "next": "Wait for the official subscription key. Store it as GitHub secret GRIDSERVE_PCPR_API_KEY, then validate /locations and /tariffs, join tariff IDs to EVSE/connectors, persist canonical UK snapshot, and add scheduled refresh. Do not repeat endpoint discovery.",
+      "baseUrl": "https://api.gridserve.com/ocpi/v1/",
+      "locationsEndpoint": "https://api.gridserve.com/ocpi/v1/locations",
+      "tariffsEndpoint": "https://api.gridserve.com/ocpi/v1/tariffs",
+      "authHeader": "ec-subscription-key",
+      "plannedSecret": "GRIDSERVE_PCPR_API_KEY",
+      "documentation": "https://www.gridserve.com/wp-content/uploads/2024/11/GRIDSERVE-PCPR-API-Developer-Documentation.pdf",
+      "documentationVerifiedAt": "2026-10-02"
     },
     {
       "name": "MFG EV Power",
