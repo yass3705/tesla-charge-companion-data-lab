@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "country": "ES",
+  "date": "2026-10-03",
+  "decision": "NO_PRIVATE_PUBLIC_FILTERING_PROJECT_REQUIRED",
+  "canonicalV9Source": {
+    "name": "REVE / Red Electrica de Espana",
+    "apiBase": "https://www.mapareve.es/api/external/v1",
+    "localCollector": "scripts/reve_es_stream_collect.py",
+    "scope": "public charging points"
+  },
+  "officialCrossCheck": {
+    "name": "MITECO open-data / RIPREE public charging dataset",
+    "scope": "infraestructura de recarga electrica de vehiculos de acceso publico",
+    "lineage": "requests submitted by public-access CPOs and EMSPs to RIPREE"
+  },
+  "rationale": [
+    "Red Electrica explicitly describes REVE as the map/network of public EV charging points.",
+    "Spanish regulation requires publication and information transmission for public-access EV charging infrastructure.",
+    "The MITECO national open dataset independently defines its population as public-access EV charging infrastructure.",
+    "Private infrastructure restricted to a limited and determined group is legally distinguished from public-access infrastructure.",
+    "Therefore TCC V9 must not infer private/non-public status from private land, commercial parking, opening hours, or customer-site context when the station is present in the official public-access source."
+  ],
+  "v9Policy": {
+    "sourceMembershipImpliesPublicAccessByDefault": true,
+    "privateLandDoesNotImplyNonPublic": true,
+    "commercialParkingDoesNotImplyNonPublic": true,
+    "openingHoursDoNotImplyNonPublic": true,
+    "automaticPrivateSiteAudit": false,
+    "exceptionRule": "Only override/exclude a specific station when authoritative station-level evidence proves the source record is erroneous or access has changed to a restricted private group."
+  },
+  "references": [
+    "https://www.ree.es/es/transicion-ecologica/electrificacion/reve-puntos-de-recarga",
+    "https://catalogo.datosabiertos.miteco.gob.es/catalogo/es/dataset/6ee8d46f-93bd-478f-8e29-3ba4f6d8405c",
+    "https://www.boe.es/buscar/act.php?id=BOE-A-2022-4361",
+    "https://www.boe.es/buscar/act.php?id=BOE-A-2026-16011"
+  ]
+}
