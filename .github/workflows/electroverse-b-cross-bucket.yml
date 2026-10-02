@@ -1,0 +1,29 @@
+name: Audit targeted B cross-bucket completion
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/audit_b_targeted_cross_bucket.py"
+      - ".github/workflows/electroverse-b-cross-bucket.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/audit_b_targeted_cross_bucket.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/electroverse/b-targeted-cross-bucket-completion.json
+          if ! git diff --cached --quiet; then
+            git commit -m "audit: persist targeted B cross-bucket completion"
+            git pull --rebase origin main || true
+            git push
+          fi
