@@ -3,9 +3,9 @@
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 99,
-  "setAsideCpos": 96,
-  "activeRemainingCpos": 96,
-  "updatedAt": "2026-10-02T03:34:00+02:00",
+  "setAsideCpos": 97,
+  "activeRemainingCpos": 95,
+  "updatedAt": "2026-10-02T03:39:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -769,13 +769,19 @@
       "since": "2026-10-02",
       "lastChecked": "2026-10-02",
       "audit": "docs/france-regional-cpo-lanie02-batch578-2026-10-02.json"
+    },
+    {
+      "name": "SAS Miodis | raw rank254",
+      "reason": "batch580 fail-closed: Leclerc Mios remains exactly 1 station / 2 PDC at 22 kW under SAS Miodis with EVSE FRLE2ESTTM1/FRLE2ESTTM2. A detailed tariff appears in IRVE reuses, but the current producer declaration was not directly recovered, so it is not promoted as CPO-direct authority.",
+      "since": "2026-10-02",
+      "lastChecked": "2026-10-02",
+      "audit": "docs/france-regional-cpo-sas-miodis-batch580-2026-10-02.json"
     }
   ],
   "activeNominative": [
     "RELEASED_ACTIVE_SLOT_251 | alias MODULO -> Modulo raw26 treated authority",
     "RELEASED_ACTIVE_SLOT_023 | authority ELECTRIC 55 CHARGING (E55C) already treated",
     "RELEASED_ACTIVE_SLOT_027 | authority Atlante already treated",
-    "RELEASED_SLOT_028_TREATED_EXACT_IDENTITY",
     "RELEASED_ACTIVE_SLOT_030 | authority REVEO already treated",
     "RELEASED_SLOT_031_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_SLOT_032_TREATED_HISTORICALLY_PROVEN",
@@ -1959,16 +1965,16 @@
       }
     }
   ],
-  "currentInvestigation": "SAS Miodis | raw rank254 | 1 station / 2 PDC; then SPIM ENERGIES raw255",
+  "currentInvestigation": "SPIM ENERGIES | raw rank255 | 1 station / 2 PDC; then SWISH raw256",
   "coherenceControl": {
-    "batch": "batch579",
+    "batch": "batch580",
     "result": "PASS",
-    "arithmetic": "99 + 96 + 96 = 291",
+    "arithmetic": "99 + 97 + 95 = 291",
     "treatedLength": 99,
-    "setAsideLength": 96,
-    "activeLength": 96,
+    "setAsideLength": 97,
+    "activeLength": 95,
     "pendingDedupeCount": 0,
-    "lastChecked": "2026-10-02T03:34:00+02:00",
+    "lastChecked": "2026-10-02T03:39:00+02:00",
     "arithmeticOk": true,
     "treatedPlusSetAsidePlusActive": 291
   },
@@ -1978,7 +1984,7 @@
     "result": "PASS_ACELEC_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch579",
+  "latestBatch": "batch580",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -3502,6 +3508,15 @@
       "decision": "non-counting case alias of existing treated Modulo; no tariff inheritance without exact mapping",
       "evidence": "docs/france-cpo-dual-ledger-lineage-modulo-case-batch579-2026-10-02.json",
       "replacedAnonymousSlot": "RELEASED_ACTIVE_SLOT_252 | alias ProperPhi -> Properphi | raw rank155"
+    },
+    {
+      "rawRank": 254,
+      "historicalOperator": "SAS Miodis",
+      "authority": "SAS Miodis / MIODIS / E.Leclerc Mios",
+      "category": "setAside-authority",
+      "decision": "active->setAside; exact current 1/2 footprint and EVSE mapping, but current numeric tariff not directly authorized in this run",
+      "evidence": "docs/france-regional-cpo-sas-miodis-batch580-2026-10-02.json",
+      "replacedAnonymousSlot": "RELEASED_SLOT_028_TREATED_EXACT_IDENTITY"
     }
   ],
   "rawLineageCoverage": {
