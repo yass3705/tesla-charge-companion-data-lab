@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 240,
+  "date": "2026-10-03",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-239.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 254,
+    "partial": 337,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Stadtwerke Husum GmbH",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "First-party m8mit guest checkout now proves class-specific anonymous direct pricing and VAT semantics: sampled AC EVSEs DE*HUS*EHU003*02 and DE*HUS*EHU020*02 show Gasttarif AC 0.49 EUR/kWh + 1.99 EUR Direct-Pay fee with statutory VAT included; sampled DC EVSE DE*HUS*EHU005*01 shows Gasttarif DC 0.69 EUR/kWh with statutory VAT included and no 1.99 EUR fee displayed. Credit-card direct payment is exposed on the checkout.",
+      "exactGap": "Close the current canonical EVSE denominator across every power class, especially any >50 kW/HPC assets, and verify fee/time/blocking components per class. Do not generalize the AC 1.99 EUR Direct-Pay fee to DC/HPC."
+    },
+    {
+      "cpo": "Stadtwerke Ribnitz-Damgarten",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Current first-party page confirms Direct Payment without contract, eCharge+ and RFID as separate modes and names epowerdirect.com as the legitimate direct-payment domain across five named sites.",
+      "exactGap": "Reconcile the first-party site/point count against the larger current EVSE inventory before promotion, then obtain authoritative direct-payment numeric tariff/fees/VAT. Do not infer registered/app pricing equivalence."
+    },
+    {
+      "cpo": "Stadtwerke Finsterwalde",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Mobilithek/Eco Movement-derived current inventory exposes five Stadtwerke Finsterwalde AC sites / 12 charge points, all observed at 0.66 EUR/kWh; individual station surfaces expose the EVSE IDs and describe the values as VAT-inclusive, but the source also warns the tariff may be incomplete/conditional.",
+      "exactGap": "Close authoritative anonymous direct-payment semantics and any missing fee/time components from first-party/AFIR evidence; do not use nearby EA EnergieArchitektur DC assets as Stadtwerke Finsterwalde CPO tariff."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 254,
+    "partial": 337,
+    "blocked": 0
+  },
+  "indicator": "221 -> 254 complete (+33)",
+  "priorityTop5": {
+    "status": "unchanged parked after two evidence-led passes; no new concrete Top-5 evidence in this run"
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "254 + 337 + 0 = 591",
+    "totalNamedCpos": 591,
+    "unsafeExtrapolations": 0,
+    "repeatGuard": "PASS: exact new Husum class-level checkout evidence persisted; bounded Ribnitz/Finsterwalde gaps consolidated without promotion."
+  },
+  "nextSafeAction": "Continue with fresh canonical B1/B3/B6 candidates not already bounded. Reopen Husum only when current EVSE denominator/HPC class can be closed. Do not re-open Top 5 without new concrete evidence."
+}
