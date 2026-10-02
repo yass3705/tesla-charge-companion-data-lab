@@ -3,9 +3,9 @@
   "country": "FR",
   "totalCpos": 291,
   "treatedCpos": 99,
-  "setAsideCpos": 103,
-  "activeRemainingCpos": 89,
-  "updatedAt": "2026-10-02T04:18:00+02:00",
+  "setAsideCpos": 104,
+  "activeRemainingCpos": 88,
+  "updatedAt": "2026-10-02T04:24:00+02:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -818,6 +818,13 @@
       "since": "2026-10-02",
       "lastChecked": "2026-10-02",
       "audit": "docs/france-regional-cpo-cta-lavage-batch587-2026-10-02.json"
+    },
+    {
+      "name": "EPGML | raw rank265",
+      "reason": "batch588 fail-closed: exact EPGML public-institution identity and Longwy station/EVSE FRA68E0242120002 are resolved; current IRVE reuses report free charging, but no direct EPGML/municipal EVSE free-policy publication was recovered.",
+      "since": "2026-10-02",
+      "lastChecked": "2026-10-02",
+      "audit": "docs/france-regional-cpo-epgml-batch588-2026-10-02.json"
     }
   ],
   "activeNominative": [
@@ -825,7 +832,6 @@
     "RELEASED_ACTIVE_SLOT_264 | alias ENERGIE Eure-et-Loir -> ENERGIE EURE-ET-LOIR | raw rank197",
     "RELEASED_ACTIVE_SLOT_266 | alias Evbox -> EVBOX | raw rank60",
     "RELEASED_ACTIVE_SLOT_030 | authority REVEO already treated",
-    "RELEASED_SLOT_038_TREATED_HISTORICALLY_PROVEN",
     "RELEASED_SLOT_039_TREATED_EXACT_IDENTITY",
     "RELEASED_ACTIVE_SLOT_040 | authority RossiniEnergy | FR*ROS | raw rank40 already treated",
     "RELEASED_SLOT_041_TREATED_HISTORICALLY_PROVEN",
@@ -2001,16 +2007,16 @@
       }
     }
   ],
-  "currentInvestigation": "EPGML | raw rank265 | 1 station / 1 PDC; exact Longwy public-institution site, verify direct free policy",
+  "currentInvestigation": "GROUPE IRD | raw rank267 | 1 station / 1 PDC; then INDIGO PROPRETE raw268",
   "coherenceControl": {
-    "batch": "batch587",
+    "batch": "batch588",
     "result": "PASS",
-    "arithmetic": "99 + 103 + 89 = 291",
+    "arithmetic": "99 + 104 + 88 = 291",
     "treatedLength": 99,
-    "setAsideLength": 103,
-    "activeLength": 89,
+    "setAsideLength": 104,
+    "activeLength": 88,
     "pendingDedupeCount": 0,
-    "lastChecked": "2026-10-02T04:18:00+02:00",
+    "lastChecked": "2026-10-02T04:24:00+02:00",
     "arithmeticOk": true,
     "treatedPlusSetAsidePlusActive": 291
   },
@@ -2020,7 +2026,7 @@
     "result": "PASS_ACELEC_FAIL_CLOSED",
     "counterChange": true
   },
-  "latestBatch": "batch587",
+  "latestBatch": "batch588",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -3634,6 +3640,15 @@
       "decision": "active->setAside; exact current station, non-free flag only, no numeric direct tariff",
       "evidence": "docs/france-regional-cpo-cta-lavage-batch587-2026-10-02.json",
       "replacedAnonymousSlot": "RELEASED_SLOT_037_TREATED_HISTORICALLY_PROVEN"
+    },
+    {
+      "rawRank": 265,
+      "historicalOperator": "EPGML",
+      "authority": "ETABL PUBLIC GESTION MARGAINE LEVY (EPGML)",
+      "category": "setAside-public-institution-authority",
+      "decision": "active->setAside; exact institution/station/EVSE mapping but free status not promoted without direct public-owner confirmation",
+      "evidence": "docs/france-regional-cpo-epgml-batch588-2026-10-02.json",
+      "replacedAnonymousSlot": "RELEASED_SLOT_038_TREATED_HISTORICALLY_PROVEN"
     }
   ],
   "rawLineageCoverage": {
