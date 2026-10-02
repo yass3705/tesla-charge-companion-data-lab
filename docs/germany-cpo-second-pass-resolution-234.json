@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 234,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-233.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Autostrom Einert GmbH & Co. KG",
+      "classification": "B1_COVERAGE_EVSE_MATRIX",
+      "backend": "chargecloud / Mobilithek DATEX II",
+      "status": "bounded-expanded-coverage",
+      "currentObservedDenominator": {
+        "sites": 23,
+        "chargePoints": 46
+      },
+      "observedTariffCoverage": {
+        "chargePoints": 42
+      },
+      "anonymousAdHocObserved": {
+        "energyEurPerKwh": 0.5,
+        "startFeeEur": 0.5,
+        "blockingEurPerMinute": 0.01,
+        "blockingStartsAfterMinutes": 240
+      },
+      "exactGap": "4/46 current charge points remain without individually closed tariff coverage; authoritative gross/VAT qualification also remains unclosed. No extrapolation to those EVSE."
+    },
+    {
+      "cpo": "SCHARR",
+      "status": "bounded-no-promotion",
+      "exactGap": "First-party evidence confirms open AdHoc access, but the observed AFIR amounts are not yet explicitly qualified as gross/TTC anonymous_ad_hoc pricing. Retain partial."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "indicator": "221 -> 253 complete (+32)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific source/backend proof"
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "253 + 338 + 0 = 591",
+    "unsafeExtrapolations": 0
+  },
+  "persistenceFix": {
+    "rootCause": "Previous interactive runs used a patch-oriented mutation path that was rejected by its write-control layer even though GitHub repository writes were available.",
+    "permanentRule": "For Germany Data Lab persistence, use GitHub Contents API create_file/update_file directly on main. Before every update fetch the current blob SHA; never parallelize writes to the same path; create ledger first, then refetch progress and update it with its fresh SHA. A SHA conflict is treated as concurrent-state protection, not retried with stale content."
+  },
+  "nextSafeAction": "Continue chargecloud/Mobilithek family after closing this persistence transaction; do not reopen parked Top 5 without new evidence."
+}
