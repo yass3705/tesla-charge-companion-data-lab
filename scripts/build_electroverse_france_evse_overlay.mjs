@@ -21,6 +21,7 @@ const VALIDATED_ADP_MAP='data/platforms/electroverse/validated-mappings/adp-stru
 const VALIDATED_GENERIC_SMALL_MAP='data/platforms/electroverse/validated-mappings/generic-small-buckets.json';
 const VALIDATED_CUSTOMGY_PAIR_MAP='data/platforms/electroverse/validated-mappings/customgyevse-pair-groups.json';
 const VALIDATED_CUSTOMGY_PDC_EXTENSIONS='data/platforms/electroverse/validated-mappings/customgyevse-pdc-extensions.json';
+const VALIDATED_B_PDC_EXTENSIONS='data/platforms/electroverse/validated-mappings/b-pdc-extensions.json';
 const FINAL_RESIDUAL_PLAN='data/platforms/electroverse/validated-mappings/final-residual-recovery-plan.json';
 const OUT=process.argv[2]||'data/platforms/electroverse/france-evse';
 const TILE=.5;
@@ -233,6 +234,16 @@ for(const x of validatedCustomGyPdcExtensions.extensions||[]){
   const m=(mapping.mappings||[]).find(r=>String(r.electroverseLocationPk)===String(x.electroverseLocationPk));
   if(!m)continue;
   if(x.irveStationId&&String(m.irveStationId)!==String(x.irveStationId))continue;
+  const set=new Set((m.irvePdcIds||[]).map(String));
+  for(const pdc of x.addedPdcs||[]) if(pdc?.pdc)set.add(String(pdc.pdc));
+  m.irvePdcIds=[...set];
+}
+let validatedBPdcExtensions={extensions:[]};
+try{validatedBPdcExtensions=JSON.parse(await fs.readFile(VALIDATED_B_PDC_EXTENSIONS,'utf8'));}catch(e){if(e?.code!=='ENOENT')throw e;}
+for(const x of validatedBPdcExtensions.extensions||[]){
+  const m=(mapping.mappings||[]).find(r=>String(r.electroverseLocationPk)===String(x.electroverseLocationPk));
+  if(!m)continue;
+  if(x.primaryMappedStationId&&String(m.irveStationId)!==String(x.primaryMappedStationId))continue;
   const set=new Set((m.irvePdcIds||[]).map(String));
   for(const pdc of x.addedPdcs||[]) if(pdc?.pdc)set.add(String(pdc.pdc));
   m.irvePdcIds=[...set];
