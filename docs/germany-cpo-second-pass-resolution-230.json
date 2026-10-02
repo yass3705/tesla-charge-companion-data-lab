@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 230,
+  "date": "2026-10-02",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-229.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Stadtwerke Muehldorf GmbH & Co. KG",
+      "classification": "B6_DYNAMIC_SURFACE_OR_APP",
+      "backend": "charge-it-easy / ChargeIT",
+      "status": "bounded-no-promotion",
+      "sources": [
+        "https://stadtwerke-muehldorf.de/e-mobilitaet/",
+        "https://stadtwerke-muehldorf.de/oeffentliche-ladesaeulen/"
+      ],
+      "newEvidence": "Current first-party pages confirm ChargeIT SMS&Charge is discontinued; operator now directs users to charge it easy app or QR web flow. First-party estate separates Stadtwerke-operated Stadtwall (2x150 kW CCS + 4x22 kW Type 2) and Stadtplatz (2x22 kW) from Hallenbad, explicitly operated by Mer Germany.",
+      "exactGap": "Current first-party pages do not expose numeric charge-it-easy/QR anonymous checkout prices for Stadtwall or Stadtplatz. Mer Hallenbad is correctly outside the Stadtwerke canonical tariff matrix. Need concrete ChargeIT checkout response for the operator-owned AC/DC connectors; do not substitute household electricity or roaming tariffs."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 253,
+    "partial": 338,
+    "blocked": 0
+  },
+  "indicator": "221 -> 253 complete (+32)",
+  "priorityTop5": {
+    "status": "unchanged parked; no new Top-5-specific source/backend proof"
+  },
+  "backendFamilyProgress": {
+    "charge_it_easy": "Muehldorf operator identity/estate is now closed first-party: Stadtwall and Stadtplatz are canonical own sites; Hallenbad is Mer. Residual is only anonymous checkout pricing on own AC/DC connectors."
+  },
+  "consistencyCheck": {
+    "status": "PASS",
+    "arithmetic": "253 + 338 + 0 = 591",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "For charge-it-easy, reopen Muehldorf only with concrete checkout/backend tariff evidence. Einbeck and Hassfurt remain parked/bounded. Proceed to EVSE-specific becharged/smopi cases or another backend family with a deterministic current direct tariff source."
+}
