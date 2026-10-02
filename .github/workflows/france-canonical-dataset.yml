@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - "scripts/build_france_canonical_dataset.py"
+      - "reports/france/irve-public-access-validation-ledger.json"
       - "data/regional_coverage/**"
       - "data/operator_direct/**"
       - "data/station_verifications/**"
@@ -13,6 +14,7 @@ on:
     branches: ["main"]
     paths:
       - "scripts/build_france_canonical_dataset.py"
+      - "reports/france/irve-public-access-validation-ledger.json"
       - "data/regional_coverage/**"
       - "data/operator_direct/**"
       - "data/station_verifications/**"
@@ -55,6 +57,9 @@ jobs:
           assert len(p['remainingTrueGaps'])==5
           assert p['policy']['directCpoAndRoamingSeparate'] is True
           assert p['policy']['preserveStationAndNetworkScope'] is True
+          assert p['policy']['excludeOnlyExternallyValidatedNonPublicStations'] is True
+          assert p['policy']['neverExcludeNeedsReviewStations'] is True
+          assert p['counts']['validatedNonPublicStationIds'] > 0
           assert p['appReadiness']['safeToUseUniversalDepartmentDefaults'] is False
           assert p['sourcePrecedence'][0]['source']=='manual_station_verification'
           assert p['counts']['stationVerificationSources'] > 0
