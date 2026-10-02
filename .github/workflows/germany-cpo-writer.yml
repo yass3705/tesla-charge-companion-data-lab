@@ -1,0 +1,25 @@
+name: Germany CPO canonical writer
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: write
+  issues: write
+concurrency:
+  group: germany-cpo-canonical-writer
+  cancel-in-progress: false
+jobs:
+  persist:
+    if: contains(github.event.issue.labels.*.name, 'germany-cpo-write')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Persist validated Germany ledger
+        env:
+          REQUEST_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/germany_cpo_writer.py
