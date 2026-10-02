@@ -73,7 +73,10 @@ except Exception:
 
 if ala is not None:
     try:
-        session=sanity(find_one(t,[r"frais\s+de\s+session.*?([0-9]+[,.][0-9]+)\s*€",r"([0-9]+[,.][0-9]+)\s*€.*?frais\s+de\s+session"],"indigo session"))
+        session=sanity(find_one(t,[
+          r"[àa]\s+l.?acte.*?frais\s+de\s+session.*?([0-9]+[,.][0-9]+)\s*€",
+          r"frais\s+de\s+session.*?([0-9]+[,.][0-9]+)\s*€.*?[àa]\s+l.?acte"
+        ],"indigo a-la-carte session"))
         vals={"aLaCarteEurPerKwh":ala,"sessionFeeEur":session}
         for rel in ["data/operator_direct/indigo_official_france.json","data/operator_direct/indigo_recharge_official_france.json"]:
             p=ROOT/rel; d=json.loads(p.read_text()); before=json.loads(json.dumps(d))
