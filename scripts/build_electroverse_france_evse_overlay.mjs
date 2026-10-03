@@ -1849,7 +1849,7 @@ for(const sh of manifest.shards||[]){
            c55BIndexTargets.has(e0)||viaStructuredBasePairTargets.has(e0)||viaOfficialTargets.has(e0)||
            izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0)||c55GroupedSourceEvses.has(e0)||
            hpcGroupedSourceEvses.has(e0)||pd1TechnicalSourceEvses.has(e0)||drvPowerSourceEvses.has(e0)||
-           operatorGroupedSourceEvses.has(e0)){sourceConflict=true;break;}
+           ((!g || g.operator!=='ELECTROVERSE_IRVE_FINGERPRINT')&&operatorGroupedSourceEvses.has(e0))){sourceConflict=true;break;}
       }
       if(sourceConflict)continue;
 
@@ -1883,7 +1883,7 @@ for(const sh of manifest.shards||[]){
            c55BIndexTargets.has(e0)||viaStructuredBasePairTargets.has(e0)||viaOfficialTargets.has(e0)||
            izfGroupedSourceEvses.has(e0)||viaGroupedSourceEvses.has(e0)||c55GroupedSourceEvses.has(e0)||
            hpcGroupedSourceEvses.has(e0)||pd1TechnicalSourceEvses.has(e0)||drvPowerSourceEvses.has(e0)||
-           operatorGroupedSourceEvses.has(e0)||customGyPairGroupedSourceEvses.has(e0))return false;
+           ((!g || g.operator!=='ELECTROVERSE_IRVE_FINGERPRINT')&&operatorGroupedSourceEvses.has(e0))||customGyPairGroupedSourceEvses.has(e0))return false;
         return true;
       });
       if(pricingSigs.size!==1||connectorCounts.size!==1||technicalProfiles.size!==1)continue;
