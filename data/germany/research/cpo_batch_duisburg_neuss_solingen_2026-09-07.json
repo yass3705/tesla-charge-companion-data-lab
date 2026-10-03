@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "auditedAt": "2026-09-07",
+  "firstPassOnly": true,
+  "cpos": [
+    {
+      "operator": "Stadtwerke Duisburg AG",
+      "status": "complete",
+      "deferAfterFirstPass": false,
+      "aliases": ["Stadtwerke Duisburg", "SWDU", "Stadtwerke-Ladekarte Duisburg"],
+      "authoritativePrefix": null,
+      "directPricing": {
+        "channel": "ladeapp / QR / credit card, no charging card required",
+        "baseFeeEurPerSession": 1.0,
+        "acEurPerKwh": 0.58,
+        "dcEurPerKwh": 0.68,
+        "timeFeeEurPerMinute": 0.05,
+        "acTimeFeeFromMinute": 181,
+        "dcTimeFeeFromMinute": 61,
+        "timeFeeWindowLocal": "09:00-21:00",
+        "vatIncluded": true,
+        "priceSheetDate": "2025-05-01"
+      },
+      "evidence": [
+        {
+          "type": "official-current-web",
+          "url": "https://www.stadtwerke-duisburg.de/privatkunden/elektromobilitaet/stadtwerke-ladekarte",
+          "observed": "Current page publishes spontaneous charging without card through ladeapp/QR and credit card: 1 EUR/session, 0.58 EUR/kWh AC, 0.68 EUR/kWh DC and 0.05 EUR/min."
+        },
+        {
+          "type": "official-terms",
+          "url": "https://www.stadtwerke-duisburg.de/fileadmin/user_upload/Themen/Elektromobilitaet/SWDU_Ladekarte_AVB_gueltig-ab-01.09.2025.pdf",
+          "observed": "Section 3.3 defines ad-hoc pricing effective 2025-05-01: 1 EUR/session; 0.58 EUR/kWh AC; 0.68 EUR/kWh DC; 0.05 EUR/min from minute 181 AC or 61 DC, charged 09:00-21:00; applies to the Stadtwerke Duisburg stations covered by section 3.1."
+        },
+        {
+          "type": "official-network-current",
+          "url": "https://www.stadtwerke-duisburg.de/presse/medieninformationen/newsdetail/zahl-der-ladevorgaenge-an-ladepunkten-der-stadtwerke-waechst-um-mehr-als-70-prozent",
+          "observed": "As of 2026-08-10 Stadtwerke Duisburg reports 478 charge points at 191 sites, confirming the operator remains current and active."
+        }
+      ],
+      "conclusion": "Complete for direct/ad-hoc charging on Stadtwerke Duisburg-operated public stations under the official tariff contract. Roaming and subscriber-card prices remain separate."
+    },
+    {
+      "operator": "Stadtwerke Neuss Energie und Wasser GmbH",
+      "status": "complete",
+      "deferAfterFirstPass": false,
+      "aliases": ["Stadtwerke Neuss", "Stadtwerke Neuss GmbH", "SWN Neuss"],
+      "authoritativePrefix": null,
+      "directPricing": {
+        "channel": "QR ad-hoc without charging card",
+        "acEurPerKwh": 0.56,
+        "acBaseFeeEurPerSession": 5.90,
+        "dcEurPerKwh": 0.66,
+        "dcBaseFeeEurPerSession": 9.90,
+        "vatIncluded": true,
+        "publishedSince": "2023-01-01"
+      },
+      "evidence": [
+        {
+          "type": "official-current-web",
+          "url": "https://www.stadtwerke-neuss.de/geschaeftskunden/elektromobilitaet/ladekarte",
+          "observed": "Current official page publishes ad-hoc without card: AC 0.56 EUR/kWh + 5.90 EUR/session; DC 0.66 EUR/kWh + 9.90 EUR/session, gross including VAT; activation by scanning the station QR code. The page continues to present these as the operative Ladekarten-Tarife from 2023-01-01."
+        },
+        {
+          "type": "official-network",
+          "url": "https://www.stadtwerke-neuss.de/elektromobilitaet/ladestandorte",
+          "observed": "Official station overview embeds the smartlab/ladenetz map for Stadtwerke Neuss charging locations."
+        }
+      ],
+      "conclusion": "Complete for the currently published direct/ad-hoc tariff. No unverified time or blocking component is added. Subscriber-card and home-charging tariffs are excluded."
+    },
+    {
+      "operator": "Stadtwerke Solingen GmbH",
+      "status": "partial",
+      "deferAfterFirstPass": true,
+      "aliases": ["Stadtwerke Solingen", "SWS Solingen", "Stadtwerke Solingen Lade-App", "Klingen-TankE"],
+      "authoritativePrefix": null,
+      "evidence": [
+        {
+          "type": "official-current-web",
+          "url": "https://www.stadtwerke-solingen.de/privat-gewerbekunden/elektromobilitaet/stadtwerke-solingen-ladekarte/",
+          "observed": "Since 2026-09-01 the RFID card is only an authentication alternative, not a discount product. The operator explicitly states there are no separate public tariff models and that the valid price is station-specific and shown in the app before charging."
+        },
+        {
+          "type": "official-current-faq",
+          "url": "https://www.stadtwerke-solingen.de/privat-gewerbekunden/elektromobilitaet/faq-zur-elektromobilitaet/",
+          "observed": "Official FAQ says station costs can differ by location; app users must confirm the current price for the selected charge point, while ad-hoc users see and confirm tariff information on the station-specific ad-hoc page."
+        },
+        {
+          "type": "official-network",
+          "url": "https://www.stadtwerke-solingen.de/privat-gewerbekunden/elektromobilitaet/ladesaeulen-in-solingen/",
+          "observed": "Official page confirms Stadtwerke Solingen operates its own public charging stations and documents location-specific access conditions."
+        }
+      ],
+      "reason": "The current direct/ad-hoc price is explicitly station-specific and is only disclosed after selecting the EVSE in the app or station ad-hoc page. No safe network-wide amount exists.",
+      "neededToComplete": "Enumerate the Stadtwerke Solingen EVSE IDs and capture each exact current app/ad-hoc tariff payload, including any energy, session, time or blocking component and its validity. Do not infer one network tariff.",
+      "conclusion": "Partial/deferred after first pass; station-level exact-price harvesting is required."
+    }
+  ],
+  "guardrails": {
+    "noTariffExtrapolation": true,
+    "noSubscriberAsAdHoc": true,
+    "noRoamingAsPhysicalCpo": true,
+    "noInventedEmi3Prefix": true
+  }
+}

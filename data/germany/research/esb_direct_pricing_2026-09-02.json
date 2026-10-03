@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "capturedAt": "2026-09-02",
+  "prefix": "DEESB",
+  "operator": "Energie Südbayern GmbH",
+  "status": "partial",
+  "purpose": "Document verified public evidence without projecting subscriber or incomplete third-party pricing to all DEESB EVSEs.",
+  "officialSources": [
+    "https://www.esb.de/privatkunden/mobilitaet/ladekarte",
+    "https://www.esb.de/privatkunden/mobilitaet/ladesaeule-finden",
+    "https://www.esb.de/smartlab-mastercard"
+  ],
+  "officialFindings": {
+    "publicAccess": "ESB states that charging can be started by charging card, QR code or app; a Sulzemoos pilot also accepts contactless debit/credit card payment.",
+    "subscriberTariffNotAdHoc": {
+      "product": "FLEX mobil / ESB Ladekarte",
+      "monthlyFeeEur": 5.90,
+      "ownStations": {
+        "ac0700To2000EurPerKwh": 0.45,
+        "ac2000To0700EurPerKwh": 0.29,
+        "dc0700To2000EurPerKwh": 0.49,
+        "dc2000To0700EurPerKwh": 0.45
+      },
+      "blockingFee": {
+        "eurPerMinute": 0.10,
+        "acAfterMinutes": 240,
+        "dcAfterMinutes": 60,
+        "activeWindow": "07:00-20:00"
+      },
+      "warning": "These are authenticated ESB-card tariffs and must not be used as the direct/ad-hoc tariff."
+    }
+  },
+  "independentStationLevelSignal": {
+    "source": "https://ladestatistik.de/betreiber/deesb",
+    "observedAt": "2026-09-02",
+    "reportedAdHocEurPerKwh": 0.49,
+    "reportedPriceCoveragePct": 100.0,
+    "reportedPricedChargePoints": 86,
+    "stagingCatalogEvses": 1459,
+    "warning": "The public aggregator currently reports 0.49 EUR/kWh for its priced DEESB charge points, but its priced population is far smaller than the V9 BNetzA-derived DEESB population. It is therefore corroborating evidence only, not sufficient for a network-wide exact overlay."
+  },
+  "neededToComplete": "Resolve the direct QR/card-payment tariff contract for each ESB station/EVSE (for example via Ladenetz/Smartlab station payload, Mobilithek/AFIR tariff data, or the public checkout used by the QR flow), including any station-specific blocking/parking conditions. Only then apply exact ad-hoc pricing across DEESB."
+}

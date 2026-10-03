@@ -1,0 +1,34 @@
+name: Germany AFIR static schema probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["feature/germany-national-base"]
+    paths:
+      - "scripts/germany_afir_static_probe.py"
+      - ".github/workflows/germany-afir-static-schema-probe.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: germany-afir-static-schema-probe
+  cancel-in-progress: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Explore anonymous AFIR static schemas
+        run: python scripts/germany_afir_static_probe.py
+
+      - name: Upload schema report
+        uses: actions/upload-artifact@v4
+        with:
+          name: germany-afir-static-schema-${{ github.run_id }}
+          path: data/germany/afir_static_schema_probe.json
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,51 @@
+name: Germany AFIR tariff classification
+
+on:
+  push:
+    branches: [feature/germany-national-base]
+    paths:
+      - 'scripts/germany_afir_tariff_classify.py'
+      - '.github/workflows/germany-afir-tariff-classify.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  classify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Classify AFIR tariffs
+        run: python scripts/germany_afir_tariff_classify.py
+      - name: Validate classification
+        run: |
+          python - <<'PY'
+          import gzip,json
+          from pathlib import Path
+          p=Path('data/germany/afir_tariff_classification.json.gz')
+          with gzip.open(p,'rt',encoding='utf-8') as f: d=json.load(f)
+          assert d['dataset']=='germany-afir-tariff-classification'
+          assert d['scope']['stagedOnly'] is True
+          assert d['scope']['publishesToTcc'] is False
+          ps=d['providerStats']
+          assert ps['eround']['sitesWithPrice'] > 3000
+          assert ps['chargecloud']['sitesWithPrice'] > 5000
+          assert ps['qwello']['sitesWithPrice'] == 0
+          for s in d['sites']:
+              if s['rankable']:
+                  assert s['provider']=='eround', s
+                  assert s['classification']=='uniform_simple_kwh_rankable', s
+                  assert s['effectiveEurPerKwh'] is not None, s
+                  assert set(s['rateClassDistribution']) == {'simple_kwh_tax_included'}, s
+              else:
+                  assert s['effectiveEurPerKwh'] is None, s
+          print('TCC_AFIR_TARIFF_CLASSIFICATION_VALIDATED='+json.dumps(ps,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: germany-afir-tariff-classification
+          path: data/germany/afir_tariff_classification.json.gz
+          if-no-files-found: error
+          retention-days: 30

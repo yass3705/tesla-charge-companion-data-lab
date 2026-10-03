@@ -1,0 +1,21 @@
+name: Germany AFIR Qwello quick probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["feature/germany-national-base"]
+    paths:
+      - "scripts/germany_afir_qwello_quick.py"
+      - ".github/workflows/germany-afir-qwello-quick.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect Qwello AFIR schema
+        run: python scripts/germany_afir_qwello_quick.py

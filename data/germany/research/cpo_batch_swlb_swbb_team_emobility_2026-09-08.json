@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "0.2.1",
+  "countryCode": "DE",
+  "generatedAt": "2026-09-08",
+  "purpose": "Primary-source Germany V9 first-pass evidence. Direct/ad-hoc tariffs are kept separate from contract/card/roaming products; third-party station prices are discovery-only unless independently confirmed by the pricing authority.",
+  "entries": {
+    "SWLB_MOBILITAET": {
+      "operator": "SWLB Mobilität GmbH",
+      "classification": "complete",
+      "aliases": ["Stadtwerke Ludwigsburg-Kornwestheim GmbH", "SWLB", "SWLB LadeApp"],
+      "aliasNote": "SWLB (Ludwigsburg-Kornwestheim) is distinct from the previously processed SWL identity for Stadtwerke Lübeck Energie GmbH; do not collapse these aliases.",
+      "primaryEvidence": [
+        {
+          "url": "https://preise.swlb.de/",
+          "finding": "Official SWLB LadeApp price sheet valid from 2025-07-01 explicitly publishes Ad hoc – Direktbezahlfunktion prices at SWLB Mobilität charging stations: AC 0.59 EUR/kWh, AC-Parkhaus 0.49 EUR/kWh, DC 0.79 EUR/kWh. Standing fee: AC 0.08 EUR/min from minute 241 capped at 12 EUR; DC 0.10 EUR/min from minute 46 capped at 20 EUR; standing fees apply daily 08:00-20:00 and not in SWLB park garages. QR direct charging remains possible without the SWLB LadeApp. Prices include VAT."
+        },
+        {
+          "url": "https://www.swlb.de/de/SWLB-Navigation/Unternehmen/Presse/Pressemitteilungen/2026/",
+          "finding": "Official 2026 SWLB communications identify subsidiary SWLB Mobilität GmbH as the entity continuing public charging-infrastructure expansion, supporting the current operating authority/brand mapping."
+        }
+      ],
+      "scopeRule": "Preserve the official AC / AC-Parkhaus / DC classes and standing-fee windows; do not flatten AC parking-garage pricing into ordinary AC."
+    },
+    "SWBB": {
+      "operator": "Stadtwerke Bietigheim-Bissingen GmbH",
+      "classification": "partial",
+      "aliases": ["Stadtwerke Bietigheim-Bissingen", "SWBB", "SWBB eMobility"],
+      "primaryEvidence": [
+        {
+          "url": "https://deinladestandort.sw-bb.de/",
+          "finding": "Official SWBB public-charging surface confirms SWBB charging infrastructure and continued network expansion."
+        },
+        {
+          "url": "https://www.sw-bb.de/",
+          "finding": "Official SWBB e-mobility price sheet valid from 2025-02-01 publishes own-station prices for the SWBB Ladekarte/eMobility-App product: AC 0.5950 EUR/kWh plus 0.0595 EUR/min after 240 min capped at 14.28 EUR; DC 0.7140 EUR/kWh plus 0.0595 EUR/min after 60 min capped at 14.28 EUR. These values are contract/card/app pricing and are not promoted to ad-hoc direct payment."
+        }
+      ],
+      "discoveryEvidence": [
+        {
+          "source": "GoingElectric station pages",
+          "finding": "Multiple current SWBB stations indicate ad-hoc web/app/RFID capability but do not provide a verifiable current direct-payment price; other stations differ in reported payment methods. Used only to establish station/payment heterogeneity."
+        }
+      ],
+      "reason": "Current official numeric pricing found is explicitly the SWBB card/app product, not an authoritative contract-free QR/web checkout tariff. No network-wide direct price is inferred.",
+      "neededToComplete": "Obtain an official current QR/web/card direct checkout for representative SWBB EVSEs or an official station-level ad-hoc tariff table/feed, then map payment-method-specific prices to EVSEs."
+    },
+    "TEAM_EMOBILITY_GOEPPINGEN": {
+      "operator": "Team Emobility GmbH",
+      "classification": "partial",
+      "aliases": ["Team-Emobility GmbH", "Team Emobility HUB"],
+      "authorityRelations": [
+        "Team Emobility GmbH currently technically operates Stadtwerke Göppingen public charging infrastructure according to official EVF/Stadtwerke communications.",
+        "Stadtwerke Göppingen and Energieversorgung Filstal (EVF) are retained as infrastructure/source/legacy-brand relations, not asserted as the same legal entity."
+      ],
+      "primaryEvidence": [
+        {
+          "url": "https://evf.de/",
+          "finding": "Official EVF communication dated 2026-06-10 states Stadtwerke Göppingen expanded public charging at Barbarossa-Thermen; direct charging without prior registration is possible by credit/debit card, while Team Emobility card and TEcharge app are also supported. It states Team Emobility GmbH technically operates Stadtwerke Göppingen charging infrastructure."
+        },
+        {
+          "url": "https://evf.de/mobilitaet/ladesaeulen",
+          "finding": "Current official EVF mobility page states Göppingen charging stations are operated by partner Team Emobility GmbH."
+        },
+        {
+          "url": "https://evf.de/",
+          "finding": "Older official EVF material from 2021 published 0.38 EUR/kWh AC and 0.48 EUR/kWh DC direct charging; retained only as historical evidence and explicitly not reused as current 2026 pricing."
+        }
+      ],
+      "discoveryEvidence": [
+        {
+          "source": "Current station-level discovery surfaces",
+          "finding": "Several Team Emobility HUB AC sites currently surface 0.50 EUR/kWh and a Göppingen DC clue around 0.60 EUR/kWh, but these values are not backed by a current official pricing authority across all EVSEs and therefore are not generalized."
+        }
+      ],
+      "reason": "Official 2026 evidence confirms contract-free card payment and current operating authority, but no current official station/EVSE-level numeric direct tariff table was found. Historical and third-party values remain non-authoritative clues only.",
+      "neededToComplete": "Resolve a current official Team Emobility/TEcharge/direct-card checkout or tariff feed mapped to Team Emobility-operated EVSEs, including AC/DC and any site-specific standing/session fees."
+    }
+  }
+}

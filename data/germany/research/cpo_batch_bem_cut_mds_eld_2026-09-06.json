@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "generatedAt": "2026-09-06",
+  "sourceAuditRun": 34017914154,
+  "classifications": [
+    {
+      "prefix": "DEBEM",
+      "status": "partial",
+      "representedEvses": 234,
+      "representedSites": 82,
+      "alias": "Energielösung GmbH / shared physical-operator set",
+      "reason": "Certified audit shows 78/82 sites attributed to Energielösung GmbH plus additional physical operators. Current station-level direct-payment evidence varies materially (examples include 0.48, 0.55, 0.63, 0.79 and 0.94 EUR/kWh), so no network-wide tariff can be generalized.",
+      "neededToComplete": "Resolve every DEBEM EVSE to physical operator and exact current ad-hoc checkout/terminal tariff; keep fail-closed where no primary or directly verifiable station-level price is available.",
+      "evidence": [
+        "https://www.goingelectric.de/stromtankstellen/Deutschland/Muehldorf-am-Inn/energieloesung-Landratsamt-Toeginger-Strasse-18/88061/",
+        "https://www.ladeguru.de/ladestation/energiel%C3%B6sung-gmbh/84307-eggenfelden/15858",
+        "https://www.ladeguru.de/ladestation/energiel%C3%B6sung-gmbh/83735-bayrischzell/48182",
+        "https://www.goingelectric.de/stromtankstellen/Deutschland/Lichtenfels/Marktplatz-Marktplatz-24/76617/"
+      ]
+    },
+    {
+      "prefix": "DECUT",
+      "status": "partial",
+      "representedEvses": 224,
+      "representedSites": 71,
+      "alias": "CUT! Energy GmbH",
+      "reason": "CUT! Energy officially publishes its own-network registered/app tariff at 0.45 EUR/kWh AC and 0.56 EUR/kWh DC, with blocking fee 0.10 EUR/min between 07:00-18:00 after 240 min AC or 120 min DC, capped at 12 EUR. The source explicitly distinguishes partner/third-party pricing and does not establish that this tariff is the ad-hoc QR/card price for every DECUT EVSE.",
+      "neededToComplete": "Validate the direct ad-hoc tariff path for each canonical DECUT EVSE (QR/web/card terminal) and confirm whether the official own-network tariff is identical for non-registered charging before promoting to complete.",
+      "evidence": [
+        "https://www.cut-energy.de/",
+        "https://www.cut-energy.de/cut-energy-charge"
+      ]
+    },
+    {
+      "prefix": "DEMDS",
+      "status": "partial",
+      "representedEvses": 223,
+      "representedSites": 69,
+      "alias": "shared MENNEKES/charge-backend style prefix across many physical operators",
+      "reason": "Certified audit lists many different physical operators under DEMDS. Current EVSE-level observations show materially different ad-hoc prices under the same prefix, including BIO COMPANY sites at 0.40/0.55 EUR/kWh, a MENNEKES site at 0.46 EUR/kWh, and another site at 0.57 EUR/kWh. Therefore DEMDS is not a tariff authority and must be resolved EVSE-by-EVSE.",
+      "neededToComplete": "Map each DEMDS EVSE to its physical operator and exact station-level ad-hoc price; never apply a DEMDS-wide fallback.",
+      "evidence": [
+        "https://adhocladen.de/glienickenordbahn/mennekes-bio-company/",
+        "https://www.automatenwegweiser.de/automat/bio-company-se/falkensee/bio-company-poststr-40-falkensee",
+        "https://ladestau.de/helmstedt/mennekes-emmerstedter-strasse-18a/",
+        "https://www.automatenwegweiser.de/automat/paderborn/detmolderstrasse-204"
+      ]
+    },
+    {
+      "prefix": "DEELD",
+      "status": "partial",
+      "representedEvses": 221,
+      "representedSites": 37,
+      "alias": "Electra Germany GmbH",
+      "reason": "Electra officially states that Germany has no dynamic pricing, but its public pricing surface separates app, subscription and no-app/card payment and the exact current tariff must be read in the station/app context. The official page also documents an occupancy fee of 0.40 EUR/min after 80% SOC when the station is busy, with 5-minute grace and 50 EUR cap for Electra-app sessions. A historic 2025 promotional price was rejected as stale. No single exact ad-hoc amount is generalized from the mixed-locale public page without station-level confirmation.",
+      "neededToComplete": "Resolve the Germany-specific current no-app/card and/or QR direct tariff for all DEELD stations from Electra station pages/endpoints and encode the conditional occupancy fee precisely.",
+      "evidence": [
+        "https://www.go-electra.com/de/price/",
+        "https://stations.go-electra.com/de"
+      ]
+    }
+  ],
+  "guardrails": {
+    "thirdPartyEvidenceDiscoveryOnly": true,
+    "noTariffExtrapolation": true,
+    "sharedPrefixesFailClosed": true
+  }
+}

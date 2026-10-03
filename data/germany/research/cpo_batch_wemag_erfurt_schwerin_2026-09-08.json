@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "0.2.0",
+  "countryCode": "DE",
+  "researchedAt": "2026-09-08T07:52:00+01:00",
+  "policy": "Exact station/EVSE tariffs only; official CPO sources preferred; no extrapolation from roaming, subscription, historical or sampled tariffs.",
+  "cpos": [
+    {
+      "canonicalName": "WEMAG AG",
+      "aliases": ["WEMAG", "WEMAG-Ladesäulen", "WEMAG Lade-App"],
+      "emi3Prefix": null,
+      "status": "complete",
+      "deferred": false,
+      "classificationReason": "The current official WEMAG charging-card page explicitly publishes prices for ad-hoc charging at public WEMAG stations and states that they apply exclusively at WEMAG-branded stations. AC and DC prices plus start/blocking-fee semantics are all numeric and network-scoped.",
+      "verifiedDirectEvidence": {
+        "channel": "official WEMAG ad-hoc charging tariff",
+        "scope": "public WEMAG-branded charging stations",
+        "effectiveStatement": "page currently states these prices apply from 2023-01-01",
+        "AC": {"eurPerKwhGross": 0.69, "startFeeEur": 0.0, "blockingFeeEurPerMin": 0.0},
+        "DC": {"eurPerKwhGross": 0.79, "startFeeEur": 0.0, "blockingFeeEurPerMin": 0.0},
+        "source": "https://www.wemag.com/elektromobilitaet/ladekarte"
+      },
+      "guardrails": ["Do not apply WEMAG roaming/app partner prices to WEMAG CPO stations unless the station is confirmed WEMAG-operated.", "No eMI3 prefix inferred without authoritative mapping."]
+    },
+    {
+      "canonicalName": "SWE Energie GmbH",
+      "aliases": ["Stadtwerke Erfurt", "SWE Energie", "SWE Strom.laden"],
+      "emi3Prefix": null,
+      "status": "complete",
+      "deferred": false,
+      "classificationReason": "The current official SWE Strom.laden consumer page publishes a dedicated 'ohne Vertrag' matrix valid from 2026-03-01, including AC/DC energy prices and the blocking-fee rule. The QR/Ladenetz app flow is documented on the same page.",
+      "verifiedDirectEvidence": {
+        "channel": "SWE Strom.laden without-contract / QR-app flow",
+        "validFrom": "2026-03-01",
+        "taxIncluded": true,
+        "AC": {"eurPerKwh": 0.54},
+        "DC": {"eurPerKwh": 0.64},
+        "blockingFee": {"eurPerMin": 0.10, "startsAfterMinutes": 240, "chargedBetweenLocal": "08:00-20:00", "maxEurPerDay": 24.0, "nightDoesNotResetElapsedTime": true},
+        "source": "https://www.swe-energie.de/energie/home/produkte/swe-strom_laden"
+      },
+      "guardrails": ["Business net prices are not mixed into the consumer tariff.", "Roaming prices for other operators are not applied to SWE-operated EVSEs.", "No eMI3 prefix inferred without authoritative mapping."]
+    },
+    {
+      "canonicalName": "Stadtwerke Schwerin GmbH (SWS)",
+      "aliases": ["Stadtwerke Schwerin", "SWS Schwerin"],
+      "emi3Prefix": "DE*SSN",
+      "status": "complete",
+      "deferred": false,
+      "classificationReason": "The official SWS public-charging page identifies the operator's public site at Eckdrift 43-45 with four 49/50 kW DC points and publishes direct m8mit pricing. A current BNetzA-derived operator inventory independently shows exactly two charging devices / four charge points for SWS, matching the official site's four public points; therefore no uncovered SWS public EVSE scope remains in the current register snapshot.",
+      "verifiedDirectEvidence": {
+        "channel": "official SWS direct m8mit payment",
+        "site": "Eckdrift 43-45, 19061 Schwerin",
+        "connector": "CCS2 DC",
+        "chargePoints": 4,
+        "eurPerKwhGross": 0.702,
+        "blockingFee": {"eurPerMinGross": 0.10, "startsAfterMinutes": 240, "maxEur": 12.0},
+        "directMethods": ["m8mit QR", "SMS", "PayPal", "credit card"],
+        "officialSource": "https://www.stadtwerke-schwerin.de/e-mobilitaet",
+        "scopeCrossCheck": "BNetzA-derived inventory dated 2026-07-28 reports 2 charging devices / 4 charge points for Stadtwerke Schwerin GmbH (SWS)."
+      },
+      "authoritativeEvseIds": ["DE*SSN*ESWS001*01", "DE*SSN*ESWS001*02", "DE*SSN*ESWS002*01", "DE*SSN*ESWS002*02"],
+      "scopeEvidence": "https://www.chargemyride.live/betreiber/stadtwerke-schwerin-gmbh-sws",
+      "guardrails": ["The third-party page is used only as a BNetzA-derived scope cross-check, not as tariff authority.", "RFID/app roaming prices remain provider-specific and are not substituted for m8mit direct pricing."]
+    }
+  ],
+  "thisRun": {
+    "newFirstPasses": 3,
+    "complete": 3,
+    "partial": 0,
+    "blocked": 0,
+    "completedAfterFirstPass": ["WEMAG AG", "SWE Energie GmbH", "Stadtwerke Schwerin GmbH (SWS)"],
+    "deferredAfterFirstPass": [],
+    "aliasesResolved": {
+      "WEMAG AG": ["WEMAG", "WEMAG-Ladesäulen", "WEMAG Lade-App"],
+      "SWE Energie GmbH": ["Stadtwerke Erfurt", "SWE Energie", "SWE Strom.laden"],
+      "Stadtwerke Schwerin GmbH (SWS)": ["Stadtwerke Schwerin", "SWS Schwerin"]
+    },
+    "authoritativePrefixMappings": {
+      "WEMAG AG": null,
+      "SWE Energie GmbH": null,
+      "Stadtwerke Schwerin GmbH (SWS)": "DE*SSN"
+    }
+  },
+  "consistency": {
+    "reAuditedDeferredCpos": 0,
+    "prefixWideTariffExtrapolations": 0,
+    "duplicateAliasFindings": 0,
+    "identicalInvestigationOverTwoRuns": 0,
+    "denominator": 591,
+    "notes": [
+      "WEMAG official page gives complete network-scoped ad-hoc AC/DC price and explicitly zero start/blocking fees.",
+      "Erfurt uses the official consumer 'ohne Vertrag' matrix rather than business net or roaming prices.",
+      "Schwerin price authority is official SWS; BNetzA-derived inventory is used only to confirm the four-point CPO scope.",
+      "No unverified eMI3 prefix was invented for WEMAG or SWE Energie."
+    ]
+  }
+}

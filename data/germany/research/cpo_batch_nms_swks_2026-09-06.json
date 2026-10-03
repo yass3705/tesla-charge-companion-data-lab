@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "purpose": "First-pass CPO classification only; no prefix-wide tariff extrapolation.",
+  "cpos": [
+    {
+      "prefix": "DENMS",
+      "operator": "SWN Stadtwerke Neumünster",
+      "status": "partial",
+      "firstPass": true,
+      "deferAfterFirstPass": true,
+      "identityEvidence": [
+        "https://app.pumpapp.co/de/ladestation-swn-stadtwerke-neumunster-noldestrasse-1-neumunster/a78b0b74-ed78-11ee-ae64-2b89128a7f71",
+        "https://app.pumpapp.co/de/ladestation-swn-stadtwerke-neumunster-bismarckstrasse-51-neumunster/b7e099b9-fc17-11ec-9996-c1fe9b1cbae4"
+      ],
+      "verifiedEvseExamples": ["DE*NMS*E510189*001", "DE*NMS*E510190*001", "DE*NMS*E500020*001", "DE*NMS*E500051*001"],
+      "stationLevelObservations": [
+        {"scope": "sampled AC EVSE", "energyEurPerKwh": 0.72, "blockingEurPerMin": 0.11, "blockingAfterMin": 180},
+        {"scope": "sampled DC EVSE", "energyEurPerKwh": 0.86, "blockingEurPerMin": 0.14, "blockingAfterMin": 45}
+      ],
+      "failClosedReason": "Current values were obtained from station-level discovery evidence rather than an exhaustive current primary CPO tariff matrix. A roaming tariff table also exposes DENMS but is explicitly not direct-CPO evidence. No network-wide fallback is created.",
+      "nextUnlock": "Current SWN primary ad-hoc tariff page/checkout or exhaustive AFIR/Mobilithek tariff payload covering the DENMS EVSE set."
+    },
+    {
+      "prefix": "DESWKS",
+      "operator": "Stadtwerke Konstanz",
+      "status": "partial",
+      "firstPass": true,
+      "deferAfterFirstPass": true,
+      "identityEvidence": [
+        "https://www.lago-konstanz.de/en/green-electricity-filling-station/",
+        "https://www.stadtwerke-konstanz.de/bauen-wohnen/elektromobilitaet/unterwegs-laden/"
+      ],
+      "verifiedStationIdExamples": ["DESWKS0003"],
+      "officialContractTariff": {
+        "validFrom": "2025-03-01",
+        "ownNetworkEurPerKwh": 0.44,
+        "monthlyFeeEur": {"eligibleGreenElectricityTariffs": 3.00, "otherGreenElectricityTariffs": 6.00, "otherCustomers": 9.00},
+        "scope": "Stadtwerke Konstanz charging card; not ad-hoc"
+      },
+      "directAccessEvidence": "QR/web direct activation with credit-card payment is documented for a Stadtwerke Konstanz station, but no current universal ad-hoc numeric tariff was found in the official source during this first pass.",
+      "failClosedReason": "Contract-card pricing and ad-hoc direct payment are separate channels. The 0.44 EUR/kWh own-network card tariff is not propagated to QR/web direct payment.",
+      "nextUnlock": "Current Ladepay/ladenetz direct-payment checkout for canonical DESWKS EVSEs, or AFIR/Mobilithek tariff payload with direct-payment semantics."
+    }
+  ],
+  "policy": {
+    "noExtrapolation": true,
+    "aggregatorsDiscoveryOnly": true,
+    "roamingNotDirectCpo": true,
+    "deferUntilFirstTraversalComplete": true
+  }
+}

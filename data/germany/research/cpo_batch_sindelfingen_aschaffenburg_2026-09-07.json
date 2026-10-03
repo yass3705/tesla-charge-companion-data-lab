@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "0.2.0",
+  "countryCode": "DE",
+  "date": "2026-09-07",
+  "purpose": "First-pass exact direct-pricing research for previously undocumented German CPO identities; fail closed where exhaustive current EVSE pricing is not established.",
+  "cpos": [
+    {
+      "canonicalName": "Stadtwerke Sindelfingen GmbH",
+      "aliases": ["Stadtwerke Sindelfingen", "SW Sindelfingen", "Sindelfingen Card Stromtankkarte"],
+      "status": "partial",
+      "operatorScope": "Stadtwerke Sindelfingen GmbH-operated public charging stations",
+      "validatedDirectPricing": {
+        "scope": "official direct-payment product for charging up to 22 kW",
+        "currency": "EUR",
+        "validityEvidence": "Official page states Stand: Juli 2026",
+        "energyPricePerKwh": 0.56,
+        "sessionFee": 0.0,
+        "blocking": {"pricePerMinute": 0.05, "startsAfterMinutesFromChargeEnd": 30, "billingStartsMinute": 31}
+      },
+      "payment": ["charge it easy app", "online direct payment", "credit card"],
+      "evidence": [
+        {
+          "type": "official_cpo",
+          "url": "https://www.stadtwerke-sindelfingen.de/privatkunden/mobilitaet/elektromobilitaet/oeffentliche-ladesaeulen/",
+          "facts": "Official July 2026 table: direct/app charging up to 22 kW costs 0.56 EUR/kWh with no activation fee; blocking fee 0.05 EUR/min starts from minute 31 after charging ends. Third-party roaming prices are explicitly separate."
+        },
+        {
+          "type": "official_cpo",
+          "url": "https://www.stadtwerke-sindelfingen.de/service/news/artikel/elektromobilitaet-als-baustein-der-energiewende-bei-den-stadtwerken-sindelfingen/",
+          "facts": "Official 18 June 2026 network context states 37 public charging stations at 16 sites with power from 22 kW up to 180 kW."
+        }
+      ],
+      "reasonDeferred": "The exact July 2026 direct tariff is explicitly published for charging up to 22 kW, while the operator also runs public EVSEs up to 180 kW. No authoritative current numeric direct tariff for those higher-power EVSEs was established in this pass.",
+      "neededToComplete": "Resolve the exact direct price and any time/blocking components for every >22 kW Stadtwerke Sindelfingen station/EVSE from the official direct-payment surface, public QR checkout or authoritative station feed.",
+      "guardrail": "Do not extrapolate the <=22 kW 0.56 EUR/kWh tariff to higher-power EVSEs and do not substitute roaming prices."
+    },
+    {
+      "canonicalName": "Stadtwerke Aschaffenburg / Aschaffenburger Versorgungs-GmbH",
+      "aliases": ["Stadtwerke Aschaffenburg", "AVG Aschaffenburg", "Aschaffenburger Versorgungs-GmbH"],
+      "status": "partial",
+      "operatorScope": "Public Stadtwerke/AVG charging sites in Aschaffenburg",
+      "knownCurrentRules": {
+        "effectiveFrom": "2026-06-01",
+        "adHocAvailable": true,
+        "adHocMethods": ["QR code", "app", "credit/debit card"],
+        "acBlockingStartsAfterMinutes": 240,
+        "dcBlockingStartsAfterMinutes": 90,
+        "blockingTimeWindow": "08:00-22:00"
+      },
+      "evidence": [
+        {
+          "type": "official_cpo",
+          "url": "https://www.stwab.de/emobil",
+          "facts": "Official current page documents 23 public sites / 68 charge points, Ladenetz cooperation, new tariffs effective 2026-06-01, contract-free ad-hoc charging via QR/app/card, AC blocking after 240 min and DC blocking after 90 min; the numeric tariff tables are image-only in the accessible public page text."
+        },
+        {
+          "type": "official_cpo",
+          "url": "https://www.stwab.de/Fortschrittsbericht-2025-2026/",
+          "facts": "Official 2025/2026 report corroborates the June 2026 tariff revision, separate AC/DC products, ad-hoc without contract and the AC/DC blocking thresholds."
+        }
+      ],
+      "reasonDeferred": "The operator publishes the current numeric price matrix only as images on the public tariff page; the accessible official text confirms tariff structure and timing but does not expose the numeric EUR/kWh or EUR/min values. No numeric value is inferred from the stated 0.06 EUR/kWh reduction.",
+      "neededToComplete": "Extract a current official accessible tariff image/PDF or a public station/QR checkout payload that exposes the exact AC/DC ad-hoc EUR/kWh prices and blocking EUR/min amount, then map it to AVG-operated EVSEs."
+    }
+  ],
+  "consistencyNotes": [
+    "Neither operator name appeared in the PR #73 patch before this pass, so both are new first-pass identities in the active branch.",
+    "Sindelfingen was corrected from product-scope complete to CPO-scope partial immediately after detecting official >22 kW EVSEs.",
+    "No roaming/subscriber price was promoted to direct CPO pricing.",
+    "No eMI3 prefix was invented where an authoritative mapping was not established.",
+    "No image-only numeric tariff was guessed for Aschaffenburg."
+  ]
+}
