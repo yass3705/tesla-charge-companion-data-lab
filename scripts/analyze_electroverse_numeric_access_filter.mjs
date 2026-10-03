@@ -7,6 +7,9 @@ const TOTAL='reports/electroverse/total-tariff-coherence-candidates.json';
 
 const numeric=JSON.parse(await fs.readFile(NUMERIC,'utf8'));
 const ledger=JSON.parse(await fs.readFile(LEDGER,'utf8'));
+let cpoCoverage=null;
+try { cpoCoverage=JSON.parse(await fs.readFile('reports/france/irve-fallback/top-cpo-tariff-coverage.json','utf8')); } catch {}
+const cpoText=cpoCoverage?JSON.stringify(cpoCoverage):'';
 const decisions=Array.isArray(ledger.decisions)?ledger.decisions:[];
 const excluded=new Set();
 for(const d of decisions){
@@ -35,6 +38,7 @@ for(const bucket of numeric.buckets||[]){
         availablePdcCount:22,
         status:'candidate_tariff_coherence_only',
         cpo:'TotalEnergies',
+        cpoTariffInFrBase:cpoText.includes('FRTCBP05235')?'found_station_match':'not_found_use_electroverse_fallback',
         expectedGroups:[
           {connector:'Type 2',powerKw:7,count:16,electroverseTariffEurPerKwh:0.52},
           {connector:'CCS',powerKw:200,count:6,electroverseTariffEurPerKwh:0.65}
