@@ -22,6 +22,8 @@ const tariffKey=e=>JSON.stringify((e?.connectors||[]).map(c=>({free:c?.isChargin
 const hasSingleTariff=es=>new Set(es.map(tariffKey)).size===1;
 const DEALER_RE=/\b(concession|concessionnaire|garage|automobiles?|autohaus|bmw|hyundai|peugeot|renault|citro[eë]n|audi|volvo|toyota|nissan|opel|mercedes|ford|kia|porsche|jaguar|land rover|lexus|suzuki|honda|mitsubishi|mazda|alfa romeo|fiat|seat|skoda|groupe gueudet|by my car|car avenue)\b/i;
 
+const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
+const wantedStations=new Set((mapping.mappings||[]).map(m=>String(m.irveStationId??'')).filter(Boolean));
 const IRVE_SOURCE='https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435';
 // Stream the source; keep exactly one declaration and bounded in-memory indexes.
 const stationPdcs=new Map(),stationTexts=new Map();
@@ -34,6 +36,7 @@ function consumeRow(){
   row=[];
   const station=String(r.id_station_itinerance||r.id_station_local||'').trim();
   const pdc=String(r.id_pdc_itinerance||r.id_pdc_local||'').trim();
+  if(!wantedStations.has(station))return;
   const kw=power(r.puissance_nominale);
   if(!station||!pdc||kw==null)return;
   const dc=['prise_type_combo_ccs','prise_type_chademo'].some(k=>/^(1|true|oui|yes)$/i.test(String(r[k]??'')));
@@ -57,7 +60,6 @@ for await(const chunk of irveResponse.body){
   }
 }
 if(cell||row.length){row.push(cell);consumeRow();}
-const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
 const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
 const owners=new Map();
 for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
