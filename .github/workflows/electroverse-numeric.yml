@@ -1,0 +1,48 @@
+name: Analyze Electroverse NUMERIC residuals
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/analyze_electroverse_numeric.mjs"
+      - ".github/workflows/electroverse-numeric.yml"
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Analyze NUMERIC residuals
+        run: node scripts/analyze_electroverse_numeric.mjs
+      - name: Validate and persist NUMERIC results
+        run: |
+          test -s reports/electroverse/numeric-analysis.json
+          test -s data/platforms/electroverse/validated-mappings/numeric.json
+          node -e "JSON.parse(require('fs').readFileSync('reports/electroverse/numeric-analysis.json','utf8'));JSON.parse(require('fs').readFileSync('data/platforms/electroverse/validated-mappings/numeric.json','utf8'))"
+          cp reports/electroverse/numeric-analysis.json /tmp/numeric-analysis.json
+          cp data/platforms/electroverse/validated-mappings/numeric.json /tmp/numeric.json
+          git fetch origin main
+          git reset --hard origin/main
+          mkdir -p reports/electroverse data/platforms/electroverse/validated-mappings
+          cp /tmp/numeric-analysis.json reports/electroverse/numeric-analysis.json
+          cp /tmp/numeric.json data/platforms/electroverse/validated-mappings/numeric.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+users.noreply.github.com"
+          git add reports/electroverse/numeric-analysis.json data/platforms/electroverse/validated-mappings/numeric.json
+          if ! git diff --cached --quiet; then
+            git commit -m "data: persist Electroverse NUMERIC residual analysis"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: electroverse-numeric
+          path: |
+            reports/electroverse/numeric-analysis.json
+            data/platforms/electroverse/validated-mappings/numeric.json
+          retention-days: 14
