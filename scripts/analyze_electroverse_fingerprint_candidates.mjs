@@ -24,7 +24,7 @@ const DEALER_RE=/\b(concession|concessionnaire|garage|automobiles?|autohaus|bmw|
 
 const IRVE_SOURCE='https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435';
 // Stream the source; keep exactly one declaration and bounded in-memory indexes.
-const pdcIndex=new Map(),stationPdcs=new Map();
+const stationPdcs=new Map(),stationTexts=new Map();
 const irveResponse=await fetch(IRVE_SOURCE);
 if(!irveResponse.ok)throw new Error('IRVE source failed: '+irveResponse.status);
 let headers=null,row=[],cell='',quote=false;
@@ -37,10 +37,10 @@ function consumeRow(){
   const kw=power(r.puissance_nominale);
   if(!station||!pdc||kw==null)return;
   const dc=['prise_type_combo_ccs','prise_type_chademo'].some(k=>/^(1|true|oui|yes)$/i.test(String(r[k]??'')));
-  const item={pdcId:pdc,stationId:station,powers:[kw],modes:new Set([dc?'DC':'AC']),
-    text:[r.nom_station,r.adresse_station,r.nom_enseigne,r.nom_operateur,r.nom_amenageur,r.observations,r.implantation_station].join(' ').toUpperCase()};
-  pdcIndex.set(norm(pdc),item);
+  const item={pdcId:pdc,stationId:station,powers:[kw],modes:new Set([dc?'DC':'AC'])};
   const list=stationPdcs.get(station)||[];list.push(item);stationPdcs.set(station,list);
+  const stationText=[r.nom_station,r.adresse_station,r.nom_enseigne,r.nom_operateur,r.nom_amenageur,r.observations,r.implantation_station].join(' ').toUpperCase();
+  stationTexts.set(station,(stationTexts.get(station)||'')+' '+stationText);
 }
 for await(const chunk of irveResponse.body){
   const part=Buffer.from(chunk).toString('utf8');
@@ -98,10 +98,10 @@ for(const sh of cman.shards||[]){
     const source=(row.tariff?.evses||[]).filter(e=>e?.pk!=null&&!publishedSources.has(String(e.pk)));
     if(!source.length)continue;
     const mappedIds=[...new Set((m.irvePdcIds||row.irvePdcIds||[]).map(norm).filter(Boolean))];
-    const targetRows=stationPdcs.get(station)||mappedIds.map(p=>pdcIndex.get(p)).filter(Boolean);
+    const targetRows=stationPdcs.get(station)||[];
     const targetIds=targetRows.map(p=>norm(p.pdcId)).filter(Boolean);
     if(targetIds.some(p=>publishedTargets.has(p))){rejected.push({loc,station,reason:'station_has_published_target'});continue;}
-    const stationText=targetRows.map(x=>x.text).join(' ');
+    const stationText=stationTexts.get(station)||'';
     if(excluded.has(station)){excludedRows.push({loc,station,reason:'exclude_non_public',sourceCount:source.length});continue;}
     if(DEALER_RE.test(stationText)||DEALER_RE.test(station)){excludedRows.push({loc,station,reason:'exclude_dealership_heuristic',sourceCount:source.length});continue;}
     if(source.length!==targetRows.length){rejected.push({loc,station,reason:'cardinality_mismatch',sourceCount:source.length,targetCount:targetRows.length});continue;}
