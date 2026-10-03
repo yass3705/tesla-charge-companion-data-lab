@@ -6,6 +6,7 @@ on:
     paths:
       - "scripts/analyze_electroverse_actionable_gaps.mjs"
       - "scripts/analyze_electroverse_fingerprint_candidates.mjs"
+      - "scripts/build_electroverse_irve_fingerprint_index.py"
       - "data/national/france_public_charging_canonical.json"
       - ".github/workflows/electroverse-actionable-gaps.yml"
 permissions:
@@ -19,6 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Build compact current IRVE fingerprint index
+        run: python3 scripts/build_electroverse_irve_fingerprint_index.py
       - name: Generate durable IRVE fingerprint candidate ledger
         run: node scripts/analyze_electroverse_fingerprint_candidates.mjs
       - name: Analyze all actionable gaps in one pass
@@ -27,6 +30,7 @@ jobs:
         run: |
           test -s reports/electroverse/actionable-gaps-analysis.json
           test -s data/platforms/electroverse/validated-mappings/actionable-gaps.json
+          test -s reports/electroverse/irve-fingerprint-index.json
           test -s reports/electroverse/fingerprint-candidates.json
           test -s data/platforms/electroverse/validated-mappings/final-residual-recovery-plan.json
           node -e "JSON.parse(require('fs').readFileSync('reports/electroverse/actionable-gaps-analysis.json','utf8'));JSON.parse(require('fs').readFileSync('data/platforms/electroverse/validated-mappings/actionable-gaps.json','utf8'))"
