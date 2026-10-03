@@ -1768,7 +1768,7 @@ for(const sh of manifest.shards||[]){
       const es=(row.tariff?.evses||[]).filter(e0=>sourcePkSet.has(String(e0?.pk??'')));
       const targets=(g.targetPdcs||[]).map(norm).filter(Boolean);
       if(es.length!==2||sourcePkSet.size!==2||targets.length!==2||new Set(targets).size!==2)continue;
-      if(targets.some(p=>!local.has(p)||(globalPdcOwners.get(p)?.size||0)!==1){debugFinalResidualFail('target_not_local_or_unique');continue;}
+      if(targets.some(p=>!local.has(p)||(globalPdcOwners.get(p)?.size||0)!==1))continue;
       const compiledRows=[];let valid=true;
       for(const e0 of es){
         const connectors=e0?.connectors||[];if(!connectors.length){valid=false;break;}
@@ -1839,7 +1839,7 @@ for(const sh of manifest.shards||[]){
       if(recoveryMode==='homogeneous_exact_set' && targets.length!==es.length){debugFinalResidualFail('exact_cardinality');continue;}
       if(recoveryMode==='homogeneous_target_subset' && es.length<targets.length){debugFinalResidualFail('subset_cardinality');continue;}
       if(new Set(targets).size!==targets.length){debugFinalResidualFail('duplicate_targets');continue;}
-      if(targets.some(p=>!local.has(p)||(globalPdcOwners.get(p)?.size||0)!==1))continue;
+      if(targets.some(p=>!local.has(p)||(globalPdcOwners.get(p)?.size||0)!==1)){debugFinalResidualFail('target_not_local_or_unique');continue;}
 
       // Refuse the planned group if any source is now already resolved by a stronger rule.
       let sourceConflict=false;
