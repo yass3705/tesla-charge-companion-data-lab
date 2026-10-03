@@ -23,39 +23,40 @@ const hasSingleTariff=es=>new Set(es.map(tariffKey)).size===1;
 const DEALER_RE=/\b(concession|concessionnaire|garage|automobiles?|autohaus|bmw|hyundai|peugeot|renault|citro[eë]n|audi|volvo|toyota|nissan|opel|mercedes|ford|kia|porsche|jaguar|land rover|lexus|suzuki|honda|mitsubishi|mazda|alfa romeo|fiat|seat|skoda|groupe gueudet|by my car|car avenue)\b/i;
 
 const IRVE_SOURCE='https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435';
-function parseCsv(input){
-  const rows=[];let row=[],cell='',quote=false;
-  for(let i=0;i<input.length;i++){
-    const ch=input[i],next=input[i+1];
+const IRVE_SOURCE='https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435';
+const pdcIndex=new Map(),stationPdcs=new Map();
+const irveResponse=await fetch(IRVE_SOURCE);
+if(!irveResponse.ok)throw new Error('IRVE source failed: '+irveResponse.status);
+let headers=null,row=[],cell='',quote=false;
+function consumeRow(){
+  if(!headers){headers=row.map(x=>String(x).replace(/^\\uFEFF/,'').trim());row=[];return;}
+  const r=Object.fromEntries(headers.map((h,i)=>[h,String(row[i]??'').trim()]));
+  row=[];
+  const station=String(r.id_station_itinerance||r.id_station_local||'').trim();
+  const pdc=String(r.id_pdc_itinerance||r.id_pdc_local||'').trim();
+  const kw=power(r.puissance_nominale);
+  if(!station||!pdc||kw==null)return;
+  const dc=['prise_type_combo_ccs','prise_type_chademo'].some(k=>/^(1|true|oui|yes)$/i.test(String(r[k]??'')));
+  const item={pdcId:pdc,stationId:station,powers:[kw],modes:new Set([dc?'DC':'AC']),
+    text:[r.nom_station,r.adresse_station,r.nom_enseigne,r.nom_operateur,r.nom_amenageur,r.observations,r.implantation_station].join(' ').toUpperCase()};
+  pdcIndex.set(norm(pdc),item);
+  const list=stationPdcs.get(station)||[];list.push(item);stationPdcs.set(station,list);
+}
+for await(const chunk of irveResponse.body){
+  const part=Buffer.from(chunk).toString('utf8');
+  for(let i=0;i<part.length;i++){
+    const ch=part[i],next=part[i+1];
     if(ch==='"'&&quote&&next==='"'){cell+='"';i++;continue;}
     if(ch==='"'){quote=!quote;continue;}
     if(!quote&&ch===';'){row.push(cell);cell='';continue;}
     if(!quote&&(ch==='\\n'||ch==='\\r')){
       if(ch==='\\r'&&next==='\\n')i++;
-      row.push(cell);cell='';
-      if(row.some(x=>x!==''))rows.push(row);
-      row=[];continue;
+      row.push(cell);cell='';consumeRow();continue;
     }
     cell+=ch;
   }
-  if(cell||row.length){row.push(cell);rows.push(row);}
-  const headers=rows.shift().map(x=>String(x).replace(/^\\uFEFF/,'').trim());
-  return rows.map(r=>Object.fromEntries(headers.map((h,i)=>[h,String(r[i]??'').trim()])));
 }
-const irveResponse=await fetch(IRVE_SOURCE);
-if(!irveResponse.ok)throw new Error('IRVE source failed: '+irveResponse.status);
-const irveRows=parseCsv(await irveResponse.text());
-const pdcIndex=new Map(),stationPdcs=new Map();
-for(const r of irveRows){
-  const station=String(r.id_station_itinerance||r.id_station_local||'').trim();
-  const pdc=String(r.id_pdc_itinerance||r.id_pdc_local||'').trim();
-  const kw=power(r.puissance_nominale);
-  if(!station||!pdc||kw==null)continue;
-  const dc=['prise_type_combo_ccs','prise_type_chademo'].some(k=>/^(1|true|oui|yes)$/i.test(String(r[k]??'')));
-  const item={pdcId:pdc,stationId:station,powers:[kw],modes:new Set([dc?'DC':'AC']),text:JSON.stringify(r).toUpperCase()};
-  pdcIndex.set(norm(pdc),item);
-  const list=stationPdcs.get(station)||[];list.push(item);stationPdcs.set(station,list);
-}
+if(cell||row.length){row.push(cell);consumeRow();}
 const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
 const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
 const owners=new Map();
