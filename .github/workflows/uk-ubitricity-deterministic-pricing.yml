@@ -175,6 +175,25 @@ jobs:
                     "connectionFeeGbp":rules["connectionFeeGbp"]
                   }
                   reason=None
+              elif len(pvals)==1 and all(isinstance(v,(int,float)) for v in pvals) and (pshape.get("dimensions") or [])==["ENERGY"]:
+                  if status=="fail_closed":
+                      priced_evse+=len(evses)
+                      priced_connectors+=connector_count
+                      fail_evse-=len(evses)
+                      fail_connectors-=connector_count
+                      if reason:
+                          fail_reasons[reason]-=1
+                          if fail_reasons[reason] <= 0:
+                              del fail_reasons[reason]
+                  status="priced_portal_exact_flat"
+                  tariff={
+                    "pricingType":"flat",
+                    "gbpPerKwh":pvals[0],
+                    "fallbackWhenSmartChargingUnavailable":{"gbpPerKwh":pvals[0]},
+                    "idleFee":rules["idleFee"],
+                    "connectionFeeGbp":rules["connectionFeeGbp"]
+                  }
+                  reason=None
 
               rows.append({
                 "uid":loc.get("uid"),
