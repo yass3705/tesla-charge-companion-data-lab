@@ -24,42 +24,13 @@ const DEALER_RE=/\b(concession|concessionnaire|garage|automobiles?|autohaus|bmw|
 
 const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
 const wantedStations=new Set((mapping.mappings||[]).map(m=>String(m.irveStationId??'')).filter(Boolean));
-const IRVE_SOURCE='https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435';
-// Stream the source; keep exactly one declaration and bounded in-memory indexes.
+const IRVE_INDEX='reports/electroverse/irve-fingerprint-index.json';
+const irveIndex=JSON.parse(await fs.readFile(IRVE_INDEX,'utf8'));
 const stationPdcs=new Map(),stationTexts=new Map();
-const irveResponse=await fetch(IRVE_SOURCE);
-if(!irveResponse.ok)throw new Error('IRVE source failed: '+irveResponse.status);
-let headers=null,row=[],cell='',quote=false;
-function consumeRow(){
-  if(!headers){headers=row.map(x=>String(x).replace(/^\\uFEFF/,'').trim());row=[];return;}
-  const r=Object.fromEntries(headers.map((h,i)=>[h,String(row[i]??'').trim()]));
-  row=[];
-  const station=String(r.id_station_itinerance||r.id_station_local||'').trim();
-  const pdc=String(r.id_pdc_itinerance||r.id_pdc_local||'').trim();
-  if(!wantedStations.has(station))return;
-  const kw=power(r.puissance_nominale);
-  if(!station||!pdc||kw==null)return;
-  const dc=['prise_type_combo_ccs','prise_type_chademo'].some(k=>/^(1|true|oui|yes)$/i.test(String(r[k]??'')));
-  const item={pdcId:pdc,stationId:station,powers:[kw],modes:new Set([dc?'DC':'AC'])};
-  const list=stationPdcs.get(station)||[];list.push(item);stationPdcs.set(station,list);
-  const stationText=[r.nom_station,r.adresse_station,r.nom_enseigne,r.nom_operateur,r.nom_amenageur,r.observations,r.implantation_station].join(' ').toUpperCase();
-  stationTexts.set(station,(stationTexts.get(station)||'')+' '+stationText);
+for(const [station,v] of Object.entries(irveIndex.stations||{})){
+  stationPdcs.set(station,(v.pdcs||[]).map(p=>({pdcId:String(p.pdcId),stationId:station,powers:[Number(p.powerKw)],modes:new Set([String(p.mode)] )})));
+  stationTexts.set(station,String(v.text||''));
 }
-for await(const chunk of irveResponse.body){
-  const part=Buffer.from(chunk).toString('utf8');
-  for(let i=0;i<part.length;i++){
-    const ch=part[i],next=part[i+1];
-    if(ch==='"'&&quote&&next==='"'){cell+='"';i++;continue;}
-    if(ch==='"'){quote=!quote;continue;}
-    if(!quote&&ch===';'){row.push(cell);cell='';continue;}
-    if(!quote&&(ch==='\\n'||ch==='\\r')){
-      if(ch==='\\r'&&next==='\\n')i++;
-      row.push(cell);cell='';consumeRow();continue;
-    }
-    cell+=ch;
-  }
-}
-if(cell||row.length){row.push(cell);consumeRow();}
 const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
 const owners=new Map();
 for(const m of mapping.mappings||[])for(const p of m.irvePdcIds||[]){
