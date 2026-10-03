@@ -10,6 +10,7 @@ import re
 import subprocess
 import tempfile
 import unicodedata
+import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -48,6 +49,15 @@ def html_text(url: str) -> tuple[int, str]:
     s = re.sub(r"<style\b[^>]*>.*?</style>", " ", s, flags=re.I | re.S)
     s = re.sub(r"<[^>]+>", " ", s)
     return status, re.sub(r"\s+", " ", html.unescape(s)).strip()
+
+
+def optional_html_text(url: str) -> tuple[int, str]:
+    try:
+        return html_text(url)
+    except urllib.error.HTTPError as exc:
+        if exc.code in (403, 429):
+            return int(exc.code), ""
+        raise
 
 
 def json_get(url: str) -> tuple[int, dict]:
@@ -99,23 +109,35 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
 
     statuses: dict[str, int] = {}
-    statuses["offers"], offers = html_text(SOURCES["offers"])
+    statuses["offers"], offers = optional_html_text(SOURCES["offers"])
     statuses["faq"], faq = html_text(SOURCES["faq"])
     statuses["home"], home = html_text(SOURCES["home"])
     statuses["bookingPdf"], booking_pdf_text, booking_sha = pdf_text_and_sha(SOURCES["bookingPdf"])
     statuses["chargingPdf"], charging_pdf_text, charging_sha = pdf_text_and_sha(SOURCES["chargingPdf"])
     statuses["staticApi"], static_data = json_get(SOURCES["staticApi"])
     statuses["liveApi"], live_data = json_get(SOURCES["liveApi"])
-    if any(v != 200 for v in statuses.values()):
-        raise RuntimeError(f"Belib source HTTP failure: {statuses}")
+    required_200 = ("faq", "home", "bookingPdf", "chargingPdf", "staticApi", "liveApi")
+    if any(statuses[k] != 200 for k in required_200):
+        raise RuntimeError(f"Belib required source HTTP failure: {statuses}")
+    if statuses["offers"] not in (200, 403, 429):
+        raise RuntimeError(f"Belib offers source unexpected HTTP status: {statuses['offers']}")
 
-    # Current charging tariff sheet / offer page.
+    # Current charging tariff sheet / offer page. The HTML offer route can
+    # block GitHub-hosted runners; in that case the official tariff PDF remains
+    # the numeric authority and FAQ corroborates the subscription semantics.
+    offer_evidence = offers if statuses["offers"] == 200 else charging_pdf_text
     for value in (0.33, 0.22, 0.57, 2.30, 0.42, 0.17, 0.37, 2.00, 0.38, 0.25):
-        if not has_value(offers, value):
-            raise RuntimeError(f"Belib current offer value {value} missing")
-    require(offers, ("7,00 € / an", "7,00€/an"), "Belib annual subscription")
-    require(offers, ("20h - 23h", "20h-23h"), "Belib resident peak night window")
-    require(offers, ("23h - 08h", "23h-08h"), "Belib resident off-peak night window")
+        if not has_value(offer_evidence, value):
+            raise RuntimeError(f"Belib current tariff value {value} missing")
+    if statuses["offers"] == 200:
+        require(offers, ("7,00 € / an", "7,00€/an"), "Belib annual subscription")
+        require(offers, ("20h - 23h", "20h-23h"), "Belib resident peak night window")
+        require(offers, ("23h - 08h", "23h-08h"), "Belib resident off-peak night window")
+    else:
+        if not has_value(faq, 7.0):
+            raise RuntimeError("Belib annual subscription value missing from FAQ fallback")
+        require(charging_pdf_text, ("20h-23h", "20h - 23h"), "Belib resident peak night window PDF fallback")
+        require(charging_pdf_text, ("23h-08h", "23h - 08h"), "Belib resident off-peak night window PDF fallback")
 
     # PDF corroboration and long-connection fee.
     for value in (0.33, 0.22, 0.57, 2.30, 0.42, 0.17, 0.37, 2.00, 0.38, 0.25, 10.0, 14.0):
@@ -296,6 +318,7 @@ def main() -> None:
             "Resident night energy-only rates apply to Moto/Flex; Boost and Boost+ retain their time tariffs.",
             "Parking prices and parking credits are intentionally outside the TCC Belib pricing scope.",
             "Official Paris Open Data provides both static IRVE data and live EVSE availability; volatile live counts are excluded from the tariff fingerprint.",
+            "If the official HTML offers route returns 403/429 to GitHub Actions, numeric tariff validation falls back to the official charging PDF while FAQ semantics remain mandatory.",
         ],
     }
 
