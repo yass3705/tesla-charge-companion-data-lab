@@ -2,7 +2,7 @@
   "country": "United Kingdom",
   "countryCode": "GB",
   "project": "Tesla Charge Companion V9 - non-Tesla CPO collection",
-  "updatedAt": "2026-10-02T16:23:00+02:00",
+  "updatedAt": "2026-10-03T20:00:00Z",
   "phase": "first_pass",
   "rule": "Complete a first pass over all identified non-Tesla CPOs/networks before revisiting difficult cases.",
   "nationalBaseline": {
@@ -553,12 +553,22 @@
     },
     {
       "name": "Shell Recharge ubitricity",
-      "status": "set_aside_external_request",
-      "access": "official_ubitricity_pcpr_open_data_request",
-      "evidence": "Current Shell EV Public Locations snapshot exposes only 320 ubitricity/Migration Shell Recharge locations and is incomplete versus ubitricity's national estate. Deterministic pricing overlay reaches 149/320 locations (46.56%) but this is not sufficient for canonical national coverage. Official ubitricity PCPR/Open Data request has now been submitted; canonical inventory work should resume from that feed when received.",
+      "status": "complete",
+      "access": "official_direct_access_portal_api_exact_station_tariffs",
+      "evidence": "Validated official charge.ubitricity.com Direct Access backend on 2026-10-03: 320 inventory rows, 292 exact station tariff matches (91.25% final priced coverage after merge), 279 exact portal rows promoted directly (272 four-band + 7 flat), and 28 residual rows remain fail-closed. No eMSP tariffs used. Seven exact portal-linked rows have custom time-band shapes not represented by the current deterministic schema; 21 lack a safe exact crosswalk.",
+      "next": "Treat as complete for V9 with bounded fail-closed residual; refresh the exact portal overlay on schedule. Reopen only if the portal tariff schema is extended or a safe exact match appears for residuals.",
       "dataset": "data/operator_direct/ubitricity_uk_deterministic_pricing.json",
-      "next": "User submitted the official ubitricity PCPR/Open Data request on 2026-10-02. Set aside until the official feed/API access is received; do not continue reconstructing national inventory from Shell. Retain existing official PAYG tariff rules and current Shell-derived subset only as supplemental evidence.",
-      "report": "reports/uk/ubitricity-deterministic-pricing-latest.json"
+      "overlay": "data/operator_direct/ubitricity_uk_direct_access_exact_overlay_2026-10-03.json",
+      "report": "reports/uk/ubitricity-deterministic-pricing-latest.json",
+      "completionMode": "complete_with_bounded_fail_closed_station_pricing_residual",
+      "locationCount": 320,
+      "pricedLocationCount": 292,
+      "failClosedLocationCount": 28,
+      "coveragePct": 91.25,
+      "portalExactPromotedRows": 279,
+      "portalExactCustomShapeResidualRows": 7,
+      "noSafeExactCrosswalkResidualRows": 21,
+      "validatedAt": "2026-10-03"
     },
     {
       "name": "Blink",
@@ -2294,11 +2304,17 @@
         "operatorIds": [
           "GB*UB1"
         ],
-        "status": "blocked_eco_movement_token",
-        "access": "request-only via Eco-Movement",
-        "evidence": "Official PCPR page routes Open Data requests to Eco-Movement.",
-        "next": "obtain Eco-Movement PCPR token/onboarding if project access is approved.",
-        "blocker": "Eco-Movement PCPR endpoint requires Authorization; anonymous locations/tariffs test returned HTTP 401."
+        "status": "complete",
+        "access": "official_direct_access_portal_api_exact_station_tariffs",
+        "evidence": "Validated official charge.ubitricity.com Direct Access backend on 2026-10-03: 320 inventory rows, 292 exact station tariff matches (91.25% final priced coverage after merge), 279 exact portal rows promoted directly (272 four-band + 7 flat), and 28 residual rows remain fail-closed. No eMSP tariffs used. Seven exact portal-linked rows have custom time-band shapes not represented by the current deterministic schema; 21 lack a safe exact crosswalk.",
+        "next": "Treat as complete for V9 with bounded fail-closed residual; refresh the exact portal overlay on schedule. Reopen only if the portal tariff schema is extended or a safe exact match appears for residuals.",
+        "dataset": "data/operator_direct/ubitricity_uk_deterministic_pricing.json",
+        "report": "reports/uk/ubitricity-deterministic-pricing-latest.json",
+        "completionMode": "complete_with_bounded_fail_closed_station_pricing_residual",
+        "locationCount": 320,
+        "pricedLocationCount": 292,
+        "failClosedLocationCount": 28,
+        "coveragePct": 91.25
       }
     ],
     "investigated": 43,
@@ -2417,11 +2433,6 @@
         "name": "Zest Eco",
         "status": "blocked_request_only",
         "blocker": "Official Charge Point Open Data page exposes a request form rather than a public endpoint; data is licensed CC BY 4.0."
-      },
-      {
-        "name": "ubitricity",
-        "status": "blocked_eco_movement_token",
-        "blocker": "Eco-Movement PCPR endpoint requires Authorization; anonymous locations/tariffs test returned HTTP 401."
       }
     ],
     "dynamicInspectionRequired": [
@@ -2832,6 +2843,20 @@
       ],
       "anonymousPublicWebAccess": false,
       "report": "reports/uk/zest-anonymous-auth-retry-latest.json"
+    },
+    "ubitricityFinalization": {
+      "status": "complete_with_bounded_fail_closed_pricing_residual",
+      "validatedAt": "2026-10-03",
+      "locationCount": 320,
+      "pricedLocationCount": 292,
+      "failClosedLocationCount": 28,
+      "coveragePct": 91.25,
+      "portalExactPromotedRows": 279,
+      "portalExactCustomShapeResidualRows": 7,
+      "noSafeExactCrosswalkResidualRows": 21,
+      "dataset": "data/operator_direct/ubitricity_uk_deterministic_pricing.json",
+      "overlay": "data/operator_direct/ubitricity_uk_direct_access_exact_overlay_2026-10-03.json",
+      "report": "reports/uk/ubitricity-deterministic-pricing-latest.json"
     }
   },
   "canonicalRepository": "yass3705/tesla-charge-companion-data-lab",
@@ -2846,9 +2871,9 @@
     "canonicalReconciliation": "Persist successful source results even when another source in the same batch fails, then reconcile the canonical ledger from persisted evidence."
   },
   "currentStatusCounts": {
-    "asOf": "2026-09-30",
+    "asOf": "2026-10-03",
     "complete": 25,
-    "set_aside_external_request": 12,
+    "set_aside_external_request": 11,
     "blocked_external_ocpi_token": 1,
     "set_aside_user_followup": 1,
     "set_aside_external_free_api_account": 1,
