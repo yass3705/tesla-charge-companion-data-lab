@@ -196,6 +196,7 @@ const out={
   unpricedNationalPdcOccurrences:actionableGapLocations.reduce((n,x)=>n+x.unpricedNationalPdcCount,0),
   zeroNationalPdcLocations:actionableGapLocations.filter(x=>x.nationalPdcCount===0).length,
   zeroNationalPdcSourceEvses:actionableGapLocations.filter(x=>x.nationalPdcCount===0).reduce((n,x)=>n+x.sourceEvseCount,0),
+  actionableGapLocationRecords:actionableGapLocations.sort((a,b)=>b.unpricedNationalPdcCount-a.unpricedNationalPdcCount||b.sourceEvseCount-a.sourceEvseCount),
   gapLocationSamples:actionableGapLocations.sort((a,b)=>b.unpricedNationalPdcCount-a.unpricedNationalPdcCount||b.sourceEvseCount-a.sourceEvseCount).slice(0,250),
   schemaVersion:1,generatedAt:new Date().toISOString(),
   sourceEvseResidualCount:operators.reduce((n,x)=>n+x.residualSourceEvses,0),
