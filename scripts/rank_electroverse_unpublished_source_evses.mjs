@@ -47,7 +47,7 @@ for(const t of oman.tiles||[]){
 }
 
 const cman=JSON.parse(await fs.readFile(CACHE+'/manifest.json','utf8'));
-const byOperator={},byConnectorStatus={},samples=[];
+const byOperator={},byConnectorStatus={},samples=[],numericSamples=[],numericSampleLocations=new Set();
 let sourceEvses=0,unpublished=0,missingPk=0;
 for(const sh of cman.shards||[]){
   const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
@@ -72,6 +72,19 @@ for(const sh of cman.shards||[]){
         irveStationId:row.irveStationId??null,
         localPdcCount:(row.irvePdcIds||[]).length
       });
+      if(op==='NUMERIC' && numericSamples.length<50 && !numericSampleLocations.has(String(row.electroverseLocationPk))){
+        numericSampleLocations.add(String(row.electroverseLocationPk));
+        numericSamples.push({
+          electroverseLocationPk:String(row.electroverseLocationPk),
+          evsePk:pk,
+          physicalReference:e?.physicalReference??null,
+          operatorBucket:op,
+          connectorStatus:st,
+          connectorCount:(e?.connectors||[]).length,
+          irveStationId:row.irveStationId??null,
+          localPdcCount:(row.irvePdcIds||[]).length
+        });
+      }
     }
   }
 }
@@ -91,6 +104,7 @@ const out={
   byConnectorStatus:Object.fromEntries(Object.entries(byConnectorStatus).sort((a,b)=>b[1]-a[1])),
   residualRanking:ranking,
   top20:ranking.slice(0,20),
+  numericSamples,
   policy:'Counts source Electroverse EVSE PKs absent from every currently published France EVSE overlay offer. This is post-rule residual coverage, not a raw identity-pattern audit.',
   samples
 };
