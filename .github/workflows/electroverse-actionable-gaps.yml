@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "scripts/analyze_electroverse_actionable_gaps.mjs"
+      - "scripts/analyze_electroverse_fingerprint_candidates.mjs"
+      - "data/national/france_public_charging_canonical.json"
       - ".github/workflows/electroverse-actionable-gaps.yml"
 permissions:
   contents: write
@@ -17,23 +19,31 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Generate durable IRVE fingerprint candidate ledger
+        run: node scripts/analyze_electroverse_fingerprint_candidates.mjs
       - name: Analyze all actionable gaps in one pass
         run: node scripts/analyze_electroverse_actionable_gaps.mjs
       - name: Validate and persist global actionable-gap results
         run: |
           test -s reports/electroverse/actionable-gaps-analysis.json
           test -s data/platforms/electroverse/validated-mappings/actionable-gaps.json
+          test -s reports/electroverse/fingerprint-candidates.json
+          test -s data/platforms/electroverse/validated-mappings/final-residual-recovery-plan.json
           node -e "JSON.parse(require('fs').readFileSync('reports/electroverse/actionable-gaps-analysis.json','utf8'));JSON.parse(require('fs').readFileSync('data/platforms/electroverse/validated-mappings/actionable-gaps.json','utf8'))"
           cp reports/electroverse/actionable-gaps-analysis.json /tmp/actionable-gaps-analysis.json
           cp data/platforms/electroverse/validated-mappings/actionable-gaps.json /tmp/actionable-gaps.json
+          cp reports/electroverse/fingerprint-candidates.json /tmp/fingerprint-candidates.json
+          cp data/platforms/electroverse/validated-mappings/final-residual-recovery-plan.json /tmp/final-residual-recovery-plan.json
           git fetch origin main
           git reset --hard origin/main
           mkdir -p reports/electroverse data/platforms/electroverse/validated-mappings
           cp /tmp/actionable-gaps-analysis.json reports/electroverse/actionable-gaps-analysis.json
           cp /tmp/actionable-gaps.json data/platforms/electroverse/validated-mappings/actionable-gaps.json
+          cp /tmp/fingerprint-candidates.json reports/electroverse/fingerprint-candidates.json
+          cp /tmp/final-residual-recovery-plan.json data/platforms/electroverse/validated-mappings/final-residual-recovery-plan.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+users.noreply.github.com"
-          git add reports/electroverse/actionable-gaps-analysis.json data/platforms/electroverse/validated-mappings/actionable-gaps.json
+          git add reports/electroverse/actionable-gaps-analysis.json data/platforms/electroverse/validated-mappings/actionable-gaps.json reports/electroverse/fingerprint-candidates.json data/platforms/electroverse/validated-mappings/final-residual-recovery-plan.json
           if ! git diff --cached --quiet; then
             git commit -m "data: persist global Electroverse actionable-gap analysis"
             git pull --rebase origin main
