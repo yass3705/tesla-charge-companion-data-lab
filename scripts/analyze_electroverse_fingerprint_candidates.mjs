@@ -71,9 +71,12 @@ for(const sh of cman.shards||[]){
     const source=(row.tariff?.evses||[]).filter(e=>e?.pk!=null&&!publishedSources.has(String(e.pk)));
     if(!source.length)continue;
     const mappedIds=[...new Set((m.irvePdcIds||row.irvePdcIds||[]).map(norm).filter(Boolean))];
-    const targetRows=stationPdcs.get(station)||[];
-    const targetIds=targetRows.map(p=>norm(p.pdcId)).filter(Boolean);
-    if(targetIds.some(p=>publishedTargets.has(p))){rejected.push({loc,station,reason:'station_has_published_target'});continue;}
+    const allTargetRows=stationPdcs.get(station)||[];
+    // A station may be only partially published: compare the residual source EVSEs
+    // with the residual IRVE PDC subset instead of rejecting the whole station.
+    const targetRows=allTargetRows.filter(p=>!publishedTargets.has(norm(p.pdcId)));
+    const publishedTargetCount=allTargetRows.length-targetRows.length;
+    if(!targetRows.length){rejected.push({loc,station,reason:'no_unpublished_target',sourceCount:source.length,publishedTargetCount});continue;}
     const stationText=stationTexts.get(station)||'';
     if(excluded.has(station)){excludedRows.push({loc,station,reason:'exclude_non_public',sourceCount:source.length});continue;}
     if(DEALER_RE.test(stationText)||DEALER_RE.test(station)){excludedRows.push({loc,station,reason:'exclude_dealership_heuristic',sourceCount:source.length});continue;}
