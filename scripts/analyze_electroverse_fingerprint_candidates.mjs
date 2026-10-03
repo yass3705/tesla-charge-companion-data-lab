@@ -39,7 +39,11 @@ function walk(node,parentStation,index){
   for(const v of Object.values(node))if(v&&typeof v==='object')walk(v,station,index);
 }
 const canonical=JSON.parse(await fs.readFile(CANONICAL,'utf8'));
-const pdcIndex=new Map();walk(canonical,null,pdcIndex);
+const pdcIndex=new Map(),stationPdcs=new Map();
+const originalWalk=walk;
+walk=(node,parentStation,index)=>{ originalWalk(node,parentStation,index); };
+walk(canonical,null,pdcIndex);
+for(const p of pdcIndex.values()){const a=stationPdcs.get(String(p.stationId))||[];if(!a.some(x=>x.pdcId===p.pdcId))a.push(p);stationPdcs.set(String(p.stationId),a);}
 const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
 const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
 const owners=new Map();
@@ -80,8 +84,10 @@ for(const sh of cman.shards||[]){
     const station=String(m.irveStationId??row.irveStationId??'');
     const source=(row.tariff?.evses||[]).filter(e=>e?.pk!=null&&!publishedSources.has(String(e.pk)));
     if(!source.length)continue;
-    const targetIds=[...new Set((m.irvePdcIds||row.irvePdcIds||[]).map(norm).filter(Boolean))].filter(p=>!publishedTargets.has(p));
-    const targetRows=targetIds.map(p=>pdcIndex.get(p)).filter(Boolean);
+    const mappedIds=[...new Set((m.irvePdcIds||row.irvePdcIds||[]).map(norm).filter(Boolean))];
+    const targetRows=stationPdcs.get(station)||mappedIds.map(p=>pdcIndex.get(p)).filter(Boolean);
+    const targetIds=targetRows.map(p=>norm(p.pdcId)).filter(Boolean);
+    if(targetIds.some(p=>publishedTargets.has(p))){rejected.push({loc,station,reason:'station_has_published_target'});continue;}
     const stationText=targetRows.map(x=>x.text).join(' ');
     if(excluded.has(station)){excludedRows.push({loc,station,reason:'exclude_non_public',sourceCount:source.length});continue;}
     if(DEALER_RE.test(stationText)||DEALER_RE.test(station)){excludedRows.push({loc,station,reason:'exclude_dealership_heuristic',sourceCount:source.length});continue;}
