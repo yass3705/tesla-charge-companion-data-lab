@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "dataset": "driveco-official-france",
-  "generatedAt": "2026-08-19T21:55:10.557212Z",
+  "generatedAt": "2026-10-03T14:23:25.570043Z",
   "operator": "DRIVECO",
   "country": "FR",
   "classification": {
@@ -65,7 +65,12 @@
     }
   },
   "sessionRules": {
-    "billingStartsAfterEnergyDeliveredKwhExceeds": 0.1,
+    "shortSessionNotBilledIf": {
+      "durationMinutesLessThan": 2,
+      "energyWhLessThan": 500,
+      "conditionsCombined": true,
+      "exception": "abusive_or_misused_service"
+    },
     "sessionCanStopAt": [
       "cable_disconnection",
       "preauthorization_amount_reached",
@@ -146,7 +151,7 @@
         "httpStatus": 200
       }
     ],
-    "relevantTariffFingerprintSha256": "8e5025a030516c5a93ca1d0b1358196a66286e545554e6deeb8075070c049db2"
+    "relevantTariffFingerprintSha256": "244796de4f3d21632ae4661a7af8bc23023d95ce8b84881fafae8d98d4fa2213"
   },
   "publicationStatus": "candidate_validated_source",
   "notes": [
@@ -154,6 +159,7 @@
     "Exact DRIVECO direct price must be resolved from the selected charge point before simulation.",
     "Third-party badge pricing belongs to the eMSP and must remain separate from DRIVECO direct pricing.",
     "Extended-parking fees and local parking penalties require station/site-level resolution.",
+    "Sessions shorter than two minutes AND delivering less than 500 Wh are not billed, except abusive/misused service.",
     "The official static IRVE inventory is recent but is not live availability."
   ]
 }

@@ -8,4 +8,4 @@
 - Extended parking fee: **possible and station-specific**; local penalties can also apply.
 - Official DRIVECO static IRVE rows: **5442**.
 - Samples retained: **3**.
-- Fingerprint: `8e5025a030516c5a93ca1d0b1358196a66286e545554e6deeb8075070c049db2`
+- Fingerprint: `244796de4f3d21632ae4661a7af8bc23023d95ce8b84881fafae8d98d4fa2213`
