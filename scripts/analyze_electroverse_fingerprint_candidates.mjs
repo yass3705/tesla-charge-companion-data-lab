@@ -131,8 +131,13 @@ for(const g of candidates)unique.set(String(g.electroverseLocationPk)+'|'+g.sour
 const finalCandidates=[...unique.values()];
 let plan={schemaVersion:1,individualMappings:[],groupMappings:[]};
 try{plan=JSON.parse(await fs.readFile(PLAN,'utf8'));}catch{}
+const priorFingerprintGroups=(plan.groupMappings||[]).filter(g=>g.operator==='ELECTROVERSE_IRVE_FINGERPRINT');
+const fingerprintKey=g=>JSON.stringify([String(g.electroverseLocationPk||''),(g.sourceEvsePks||[]).map(String).sort(),(g.targetPdcs||[]).map(String).sort()]);
+const cumulativeFingerprintGroups=new Map();
+for(const g of priorFingerprintGroups)cumulativeFingerprintGroups.set(fingerprintKey(g),g);
+for(const g of finalCandidates)cumulativeFingerprintGroups.set(fingerprintKey(g),g);
 plan.groupMappings=(plan.groupMappings||[]).filter(g=>g.operator!=='ELECTROVERSE_IRVE_FINGERPRINT');
-plan.groupMappings.push(...finalCandidates);
+plan.groupMappings.push(...cumulativeFingerprintGroups.values());
 plan.generatedAt=new Date().toISOString();
 plan.policy='IRVE fingerprint groups: exact station cardinality, AC/DC mode equality, power tolerance <=10 kW, unique tariff per source power group; dealerships and explicitly non-public stations excluded.';
 await fs.mkdir('reports/electroverse',{recursive:true});
