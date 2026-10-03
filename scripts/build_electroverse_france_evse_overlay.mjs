@@ -1894,7 +1894,7 @@ for(const sh of manifest.shards||[]){
           kilowatts:c0?.kilowatts??null,
           standard:c0?.standard?.name??c0?.standard??null
         }));
-        if(expectedProfile.kilowatts!=null && !actual.every(x=>Number(x.kilowatts)===Number(expectedProfile.kilowatts))){debugFinalResidualFail('expected_power_profile');continue;}
+        if(expectedProfile.kilowatts!=null && !actual.every(x=>Number(x.kilowatts)===Number(expectedProfile.kilowatts))){continue;}
         if(expectedProfile.standard!=null && !actual.every(x=>String(x.standard||'')===String(expectedProfile.standard)))continue;
       }
 
