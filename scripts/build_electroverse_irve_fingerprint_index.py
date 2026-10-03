@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import csv, io, json, urllib.request
+from itertools import chain
 from pathlib import Path
 
 SOURCE="https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435"
