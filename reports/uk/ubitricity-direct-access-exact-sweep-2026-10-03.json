@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-10-03",
+  "operator": "ubitricity / Shell Recharge",
+  "source": "official charge.ubitricity.com backend Direct Access API",
+  "endpoint": "https://api.shell.com/ubitricity/direct-access/api/direct-access/locations/{GB*UBI*EVSE_ID}",
+  "exactInventoryRows": 292,
+  "detailRequests": 292,
+  "detailErrors": 0,
+  "portalTariffShapeCounts": {
+    "45/56/67/56 GBP/kWh": 179,
+    "44/55/66/55 GBP/kWh": 93,
+    "0.59/1.02/0.59 GBP/kWh": 8,
+    "0.29 GBP/kWh": 4,
+    "0.24 GBP/kWh": 3,
+    "0.56/0.68/0.56 GBP/kWh": 3,
+    "0.62/0.86/0.62 GBP/kWh": 1,
+    "0.52/0.72/0.52 GBP/kWh": 1
+  },
+  "portalStatusCounts": {
+    "AVAILABLE": 238,
+    "CHARGING": 24,
+    "UNKNOWN": 29,
+    "OUTOFORDER": 1
+  },
+  "safePromotion": {
+    "standardFourBandRows": 272,
+    "remainingExactButNonStandardRows": 20,
+    "unresolvedAddressRows": 28,
+    "rationale": "The portal detail is official station-level PAYG evidence. The 272 four-band rows can be represented losslessly by the current TCC tariff schema. The 20 other exact tariffs are retained as raw evidence but not promoted until the renderer supports their shape."
+  },
+  "canonicalPromotion": "workflow-updated-to-merge-four-band-exact-overlay",
+  "failClosedPolicy": "No promotion for ambiguous, non-exact, missing, or unsupported tariff shapes; portal status is recorded separately and does not alter pricing eligibility.",
+  "overlay": "data/operator_direct/ubitricity_uk_direct_access_exact_overlay_2026-10-03.json",
+  "workflowCommit": "dffc5b609031cc11f0c6d63dd0f31aff0d7b5776"
+}
