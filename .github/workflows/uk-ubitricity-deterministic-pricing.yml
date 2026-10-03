@@ -6,6 +6,7 @@ on:
     paths:
       - ".github/workflows/uk-ubitricity-deterministic-pricing.yml"
       - "data/operator_direct/ubitricity_uk_official_payg_2026-10-01.json"
+      - "data/operator_direct/ubitricity_uk_direct_access_exact_overlay_2026-10-03.json"
       - "data/national/uk_shell_ev_public_locations.json.gz"
   workflow_dispatch:
 
@@ -37,6 +38,9 @@ jobs:
           with gzip.open("data/national/uk_shell_ev_public_locations.json.gz","rt",encoding="utf-8") as g:
               inv=json.load(g)
           rules=json.loads(Path("data/operator_direct/ubitricity_uk_official_payg_2026-10-01.json").read_text())
+          portal_overlay_path=Path("data/operator_direct/ubitricity_uk_direct_access_exact_overlay_2026-10-03.json")
+          portal_overlay=json.loads(portal_overlay_path.read_text()) if portal_overlay_path.exists() else {}
+          portal_rows={r.get("uid"):r for r in portal_overlay.get("rows",[]) if r.get("canonicalPromotionEligible")}
 
           def norm(s):
               return re.sub(r"[^a-z0-9 ]+"," ",str(s or "").lower()).strip()
@@ -143,6 +147,35 @@ jobs:
                   fail_evse+=len(evses)
                   fail_connectors+=connector_count
 
+              # Exact first-party portal detail overrides borough inference when
+              # the portal exposes the standard four energy time bands. This is
+              # station-level CPO PAYG evidence, not Shell/eMSP pricing.
+              portal=portal_rows.get(loc.get("uid")) or {}
+              pshape=portal.get("tariffShape") or {}
+              pvals=pshape.get("pricesGbpPerKwh") or []
+              if len(pvals)==4 and all(isinstance(v,(int,float)) for v in pvals):
+                  if status=="fail_closed":
+                      priced_evse+=len(evses)
+                      priced_connectors+=connector_count
+                      fail_evse-=len(evses)
+                      fail_connectors-=connector_count
+                      if reason:
+                          fail_reasons[reason]-=1
+                          if fail_reasons[reason] <= 0:
+                              del fail_reasons[reason]
+                  status="priced_portal_exact"
+                  tariff={
+                    "standardTimeBands":[
+                      {"name":"off_peak","start":"00:00","end":"07:00","gbpPerKwh":pvals[0]},
+                      {"name":"standard","windows":["07:00-16:00","20:00-24:00"],"gbpPerKwh":pvals[1]},
+                      {"name":"peak","start":"16:00","end":"20:00","gbpPerKwh":pvals[2]}
+                    ],
+                    "fallbackWhenSmartChargingUnavailable":rules["fallbackWhenSmartChargingUnavailable"],
+                    "idleFee":rules["idleFee"],
+                    "connectionFeeGbp":rules["connectionFeeGbp"]
+                  }
+                  reason=None
+
               rows.append({
                 "uid":loc.get("uid"),
                 "externalId":loc.get("externalId"),
@@ -155,7 +188,11 @@ jobs:
                 "matchedLocalAuthority":authority,
                 "status":status,
                 "tariff":tariff,
-                "failClosedReason":reason
+                "failClosedReason":reason,
+                "portalEvseId":portal.get("evseId"),
+                "portalStatus":portal.get("status"),
+                "portalTariffId":(portal.get("tariff") or {}).get("id"),
+                "portalRetrievedAt":portal_overlay.get("generatedAt") if portal else None
               })
 
           priced=[r for r in rows if r["status"]!="fail_closed"]
@@ -166,6 +203,7 @@ jobs:
             "operator":"Shell Recharge ubitricity",
             "sourceInventory":"data/national/uk_shell_ev_public_locations.json.gz",
             "sourceTariffRule":"data/operator_direct/ubitricity_uk_official_payg_2026-10-01.json",
+            "sourcePortalOverlay":"data/operator_direct/ubitricity_uk_direct_access_exact_overlay_2026-10-03.json",
             "postcodeResolver":"Postcodes.io / ONS Postcode Directory",
             "locationCount":len(rows),
             "pricedLocationCount":len(priced),
