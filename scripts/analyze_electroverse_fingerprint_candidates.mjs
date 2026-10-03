@@ -19,7 +19,17 @@ const evsePower=e=>{
   return xs.length?Math.max(...xs):null;
 };
 const tariffKey=e=>JSON.stringify((e?.connectors||[]).map(c=>({free:c?.isChargingFree??null,prices:c?.priceComponents??null,complex:c?.complexPricingDetail??null})));
+const connectorTariffKey=c=>JSON.stringify({free:c?.isChargingFree??null,prices:c?.priceComponents??null,complex:c?.complexPricingDetail??null});
 const hasSingleTariff=es=>new Set(es.map(tariffKey)).size===1;
+const homogeneousConnectorProfile=e=>{
+  const cs=(e?.connectors||[]).filter(c=>!(/SCHUKO|DOMESTIC/.test(JSON.stringify(c).toUpperCase())));
+  if(!cs.length)return null;
+  const modes=cs.map(modeOfConnector), powers=cs.map(c=>num(c?.kilowatts)).filter(Boolean);
+  if(!powers.length||new Set(modes).size!==1)return null;
+  if(Math.max(...powers)-Math.min(...powers)>10)return null;
+  if(new Set(cs.map(connectorTariffKey)).size!==1)return null;
+  return {mode:modes[0],power:Math.max(...powers),connectorCount:cs.length};
+};
 const DEALER_RE=/\b(concession|concessionnaire|garage|automobiles?|autohaus|bmw|hyundai|peugeot|renault|citro[eë]n|audi|volvo|toyota|nissan|opel|mercedes|ford|kia|porsche|jaguar|land rover|lexus|suzuki|honda|mitsubishi|mazda|alfa romeo|fiat|seat|skoda|groupe gueudet|by my car|car avenue)\b/i;
 
 const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
@@ -91,7 +101,20 @@ for(const sh of cman.shards||[]){
       const p=t.powers.length?Math.max(...t.powers):null;if(p==null){rejected.push({loc,station,reason:'target_power_missing'});continue;}
       const mode=t.modes.has('DC')?'DC':'AC',k=mode+'|'+p,a=tgMap.get(k)||{mode,power:p,count:0,pdcs:[]};a.count++;a.pdcs.push(t);tgMap.set(k,a);
     }
-    const groups=matchGroups([...sgMap.values()],[...tgMap.values()]);
+    let groups=matchGroups([...sgMap.values()],[...tgMap.values()]);
+    let connectorRule=null;
+    // Connector-level fallback: an EVSE can aggregate several homogeneous
+    // connectors while IRVE publishes the corresponding physical PDC separately.
+    // Accept only a single residual source EVSE and a single residual target PDC,
+    // with one AC/DC mode, power spread <=10 kW, and one tariff across connectors.
+    if(!groups&&source.length===1&&targetRows.length===1){
+      const cp=homogeneousConnectorProfile(source[0]);
+      const tp=[...tgMap.values()][0];
+      if(cp&&tp&&tp.count===1&&cp.mode===tp.mode&&Math.abs(cp.power-tp.power)<=10){
+        groups=[{source:{mode:cp.mode,power:cp.power,count:1,evses:source},target:tp}];
+        connectorRule={sourceConnectorCount:cp.connectorCount,sourceConnectorMode:cp.mode,sourceConnectorPowerKw:cp.power};
+      }
+    }
     if(!groups||groups.some(g=>!hasSingleTariff(g.source.evses))){rejected.push({loc,station,reason:'mode_power_or_tariff_coherence_failed'});continue;}
     for(const g of groups)candidates.push({
       mode:'homogeneous_target_subset',operator:'ELECTROVERSE_IRVE_FINGERPRINT',
@@ -99,7 +122,7 @@ for(const sh of cman.shards||[]){
       sourceEvsePks:g.source.evses.map(e=>e.pk),physicalReferences:g.source.evses.map(e=>String(e.physicalReference??'')),
       targetPdcs:g.target.pdcs.map(p=>p.pdcId),profile:{kilowatts:g.source.power,mode:g.source.mode},
       targetPowerKws:g.target.pdcs.map(p=>p.powers[0]),
-      evidence:{rule:'same station cardinality, same AC/DC mode, power difference <=10 kW, one tariff per source power group',sourcePowerKw:g.source.power,targetPowerKw:g.target.power,tariffKey:tariffKey(g.source.evses[0])}
+      evidence:{rule:connectorRule?'same station residual subset, homogeneous connectors, same AC/DC mode, power difference <=10 kW, one tariff across connectors':'same station cardinality, same AC/DC mode, power difference <=10 kW, one tariff per source power group',sourcePowerKw:g.source.power,targetPowerKw:g.target.power,tariffKey:tariffKey(g.source.evses[0]),...(connectorRule?{connectorRule}: {})}
     });
   }
 }
