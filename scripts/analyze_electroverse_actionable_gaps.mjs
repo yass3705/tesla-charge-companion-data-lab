@@ -6,6 +6,7 @@ const MAP='data/electroverse/irve_location_mapping.json';
 const OVERLAY='data/platforms/electroverse/france-evse';
 const OUT='reports/electroverse/actionable-gaps-analysis.json';
 const VALIDATED='data/platforms/electroverse/validated-mappings/actionable-gaps.json';
+const TARGETS='reports/electroverse/remaining-batch-analysis.json';
 const norm=x=>String(x??'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
 const opFromRef=raw=>{
   const s=String(raw??'').trim();
@@ -20,6 +21,8 @@ const opFromRef=raw=>{
   return n.slice(0,12)||'MISSING';
 };
 const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
+const targetReport=JSON.parse(await fs.readFile(TARGETS,'utf8'));
+const targetPks=new Set((targetReport.actionableGapLocationRecords||[]).map(x=>String(x.electroverseLocationPk)));
 const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
 const oman=JSON.parse(await fs.readFile(OVERLAY+'/manifest.json','utf8'));
 const publishedSourcePks=new Set(),publishedTargets=new Set();
@@ -42,6 +45,7 @@ const validated=[];
 for(const sh of cman.shards||[]){
   const data=JSON.parse(await fs.readFile(CACHE+'/'+sh.file,'utf8'));
   for(const row of Object.values(data.stations||{})){
+    if(!targetPks.has(String(row.electroverseLocationPk))) continue;
     const candidates=(row?.tariff?.evses||[]).filter(e=>e?.pk!=null&&!publishedSourcePks.has(String(e.pk)));
     if(!candidates.length)continue;
     const byBucket=new Map();
