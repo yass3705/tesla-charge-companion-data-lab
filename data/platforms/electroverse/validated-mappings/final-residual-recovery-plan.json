@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-02T20:38:51.701Z",
+  "generatedAt": "2026-10-03T09:53:15.053Z",
   "dataset": "electroverse-france-final-residual-recovery-plan",
   "sourceManifestGeneratedAt": "2026-10-01T15:09:55.700Z",
   "policy": "Only residual mappings proven against the current overlay. Individual mappings require exact unique local/global target identity; group mappings require exact source/target cardinality, globally unique targets, and homogeneous raw pricing. No proximity inference.",
@@ -15,7 +15,9 @@
     "manualS63Added": 0,
     "postConnectorPowerAdded": 0,
     "groupMappings": 211,
-    "individualMappings": 555
+    "individualMappings": 555,
+    "numericTariffCoherenceGroups": 2,
+    "numericTariffCoherenceSourceEvses": 11
   },
   "individualMappings": [
     {
@@ -9970,6 +9972,83 @@
         "source": "PAN national consolidated IRVE + B043 target-owner audit",
         "observed": "2026-10-02",
         "note": "Current PAN station FRSRGP90119496 exposes exactly two B043-family EF PDCs at 3.68 kW, matching the two Electroverse B043 DOMESTIC_F sources at nominal 4 kW. Both targets are unowned by any existing Electroverse mapping; no branch identity asserted."
+      }
+    },
+    {
+      "mode": "homogeneous_target_subset",
+      "operator": "NUMERIC_TARIFF_COHERENCE",
+      "electroverseLocationPk": "1818592",
+      "irveStationId": "FRETIP17291A",
+      "sourceEvsePks": [
+        2652218,
+        2652222,
+        2652229,
+        2652234,
+        2652236,
+        2652237,
+        2652239,
+        2652241,
+        2652243,
+        2652245
+      ],
+      "physicalReferences": [
+        "1",
+        "1",
+        "2",
+        "1",
+        "2",
+        "2",
+        "1",
+        "2",
+        "2",
+        "1"
+      ],
+      "targetPdcs": [
+        "FRETIE17291A11",
+        "FRETIE17291A12",
+        "FRETIE17291B11",
+        "FRETIE17291B12",
+        "FRETIE17291C11",
+        "FRETIE17291C12",
+        "FRETIE17291D11",
+        "FRETIE17291D12",
+        "FRETIE17291E11",
+        "FRETIE17291E12"
+      ],
+      "uniformConnectorCount": true,
+      "profile": {
+        "kilowatts": 220
+      },
+      "evidence": {
+        "source": "current Electroverse tariff cache + current PAN national IRVE canonical",
+        "observed": "2026-10-03",
+        "rule": "Exact source/PDC cardinality and power multiset per station/power group; one Electroverse consumption tariff per power; no source-to-target permutation asserted.",
+        "tariffEurPerKwh": 0.49
+      }
+    },
+    {
+      "mode": "homogeneous_target_subset",
+      "operator": "NUMERIC_TARIFF_COHERENCE",
+      "electroverseLocationPk": "1818592",
+      "irveStationId": "FRETIP17291A",
+      "sourceEvsePks": [
+        2652225
+      ],
+      "physicalReferences": [
+        "3"
+      ],
+      "targetPdcs": [
+        "FRETIE17291E13"
+      ],
+      "uniformConnectorCount": true,
+      "profile": {
+        "kilowatts": 22
+      },
+      "evidence": {
+        "source": "current Electroverse tariff cache + current PAN national IRVE canonical",
+        "observed": "2026-10-03",
+        "rule": "Exact source/PDC cardinality and power multiset per station/power group; one Electroverse consumption tariff per power; no source-to-target permutation asserted.",
+        "tariffEurPerKwh": 0.45
       }
     }
   ]
