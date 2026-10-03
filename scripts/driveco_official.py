@@ -210,8 +210,16 @@ def main() -> None:
     require_any(terms, ("montant de la demande de pre-autorisation figure sur l'application driveco ou sur le portail web",), "DRIVECO variable preauthorization")
     require_any(terms, ("indemnite forfaitaire de stationnement prolongee",), "DRIVECO prolonged-parking fee")
     require_any(terms, ("penalites de stationnement",), "DRIVECO local parking penalties")
-    require_any(terms, ("service de recharge tiers", "badge tiers"), "DRIVECO third-party roaming")
-    require_any(terms, ("depasse 0,1 kwh",), "DRIVECO billing threshold")
+    require_any(
+        terms,
+        ("operateur de mobilite", "badge externe", "plateforme d'itinerance"),
+        "DRIVECO third-party roaming",
+    )
+    require_any(
+        terms,
+        ("duree inferieure a deux minutes", "moins de 500 wh"),
+        "DRIVECO short-session billing exemption",
+    )
 
     if inventory_raw is None:
         raise RuntimeError("DRIVECO inventory CSV not fetched")
@@ -259,7 +267,12 @@ def main() -> None:
             },
         },
         "sessionRules": {
-            "billingStartsAfterEnergyDeliveredKwhExceeds": 0.1,
+            "shortSessionNotBilledIf": {
+                "durationMinutesLessThan": 2,
+                "energyWhLessThan": 500,
+                "conditionsCombined": True,
+                "exception": "abusive_or_misused_service",
+            },
             "sessionCanStopAt": ["cable_disconnection", "preauthorization_amount_reached", "remote_stop_by_driveco"],
         },
         "inventory": inventory,
@@ -289,6 +302,7 @@ def main() -> None:
             "Exact DRIVECO direct price must be resolved from the selected charge point before simulation.",
             "Third-party badge pricing belongs to the eMSP and must remain separate from DRIVECO direct pricing.",
             "Extended-parking fees and local parking penalties require station/site-level resolution.",
+            "Sessions shorter than two minutes AND delivering less than 500 Wh are not billed, except abusive/misused service.",
             "The official static IRVE inventory is recent but is not live availability.",
         ],
     }
