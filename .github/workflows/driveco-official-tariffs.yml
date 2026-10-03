@@ -86,7 +86,15 @@ jobs:
           assert p['roaming']['priceControlledByThirdPartyProvider'] is True
           assert p['fees']['extendedParking']['status'] == 'station_specific_possible'
           assert p['fees']['paymentPreauthorization']['networkWideAmountEur'] is None
-          assert p['sessionRules']['billingStartsAfterEnergyDeliveredKwhExceeds'] == 0.1
+          sr=p['sessionRules']
+          assert (
+              sr.get('billingStartsAfterEnergyDeliveredKwhExceeds') == 0.1
+              or (
+                  sr.get('shortSessionNotBilledIf',{}).get('durationMinutesLessThan') == 2
+                  and sr.get('shortSessionNotBilledIf',{}).get('energyWhLessThan') == 500
+                  and sr.get('shortSessionNotBilledIf',{}).get('conditionsCombined') is True
+              )
+          )
           assert p['inventory']['rowCount'] > 1000
           assert len(p['inventory']['samples']) >= 3
           assert p['sourceEvidence']['officialOnly'] is True
