@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-10-03",
+  "operator": "ubitricity / Shell Recharge",
+  "scope": "UK direct-access portal API discovery",
+  "canonicalPromotion": false,
+  "endpoint": "https://api.shell.com/ubitricity/direct-access/api/direct-access/",
+  "discoveredRoutes": {
+    "paginatedLocations": "locations?pageNumber={n}&pageSize={<=1000}",
+    "stationDetail": "locations/{GB*UBI*EVSE_ID}",
+    "portalSource": "https://charge.ubitricity.com/"
+  },
+  "observations": {
+    "locationPages": 20,
+    "locationRecords": 19146,
+    "recordsWithGbEvseId": 15675,
+    "inventoryPostcodesMatched": 318,
+    "inventoryRowsExactStreetMatch": 292,
+    "inventoryRowsExactStreetAmbiguous": 5,
+    "inventoryRowsUnmatchedOrNonExact": 23
+  },
+  "joinMethod": "postcode plus normalized street/address; duplicate exact matches remain fail-closed",
+  "sampleStationDetails": [
+    {
+      "inventoryUid": "DE*UBI*5007",
+      "portalEvseId": "GB*UBI*E10045718",
+      "address": "30 Abercorn Place, NW8 9XP, London",
+      "status": "AVAILABLE",
+      "apiTariffObserved": [0.44, 0.55, 0.66, 0.55],
+      "apiTariffUnit": "GBP/kWh"
+    },
+    {
+      "inventoryUid": "DE*UBI*5035",
+      "portalEvseId": "GB*UBI*E10065475",
+      "address": "140 Loudoun Road, NW8 0ND, London",
+      "status": "AVAILABLE",
+      "apiTariffObserved": [0.44, 0.55, 0.66, 0.55],
+      "apiTariffUnit": "GBP/kWh"
+    },
+    {
+      "inventoryUid": "DE*UBI*4992",
+      "portalEvseId": "GB*UBI*E10009799",
+      "address": "4 Randolph Gardens, NW6 5EH, London",
+      "status": "AVAILABLE",
+      "apiTariffObserved": [0.44, 0.55, 0.66, 0.55],
+      "apiTariffUnit": "GBP/kWh"
+    }
+  ],
+  "decision": "Use this API as a technical station/address/GB-EVSE crosswalk and status evidence. Do not promote its tariff values over the official Ubitricity pricing rule or a current station-detail confirmation: sampled records expose the legacy 44/55/66/55 p/kWh grid while the official UK rule page states the current 45/56/67 p/kWh bands. Preserve fail-closed behavior for ambiguous, unmatched, offline, or tariff-conflicting rows.",
+  "security": "No credentials, cookies, payment data, or secrets used."
+}
