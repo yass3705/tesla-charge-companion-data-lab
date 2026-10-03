@@ -23,7 +23,6 @@ const hasSingleTariff=es=>new Set(es.map(tariffKey)).size===1;
 const DEALER_RE=/\b(concession|concessionnaire|garage|automobiles?|autohaus|bmw|hyundai|peugeot|renault|citro[eë]n|audi|volvo|toyota|nissan|opel|mercedes|ford|kia|porsche|jaguar|land rover|lexus|suzuki|honda|mitsubishi|mazda|alfa romeo|fiat|seat|skoda|groupe gueudet|by my car|car avenue)\b/i;
 
 const IRVE_SOURCE='https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435';
-const IRVE_SOURCE='https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435';
 const pdcIndex=new Map(),stationPdcs=new Map();
 const irveResponse=await fetch(IRVE_SOURCE);
 if(!irveResponse.ok)throw new Error('IRVE source failed: '+irveResponse.status);
