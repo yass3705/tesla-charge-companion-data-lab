@@ -32,6 +32,18 @@ with urllib.request.urlopen(request,timeout=180) as raw:
         stations.setdefault(station,{"pdcs":[],"text":""})["pdcs"].append(item)
         stations[station]["text"]+=" "+" ".join(str(row.get(k,"")) for k in ("nom_station","adresse_station","nom_enseigne","nom_operateur","nom_amenageur","observations","implantation_station")).upper()
 
+# The national export can repeat the same PDC row; deduplicate by station/PDC
+# before using cardinality or fingerprint matching.
+for value in stations.values():
+    seen=set()
+    unique=[]
+    for pdc in value["pdcs"]:
+        if pdc["pdcId"] in seen:
+            continue
+        seen.add(pdc["pdcId"])
+        unique.append(pdc)
+    value["pdcs"]=unique
+
 OUT.parent.mkdir(parents=True,exist_ok=True)
 OUT.write_text(json.dumps({"schemaVersion":1,"source":SOURCE,"stationCount":len(stations),"stations":stations},ensure_ascii=False),encoding="utf-8")
 print(json.dumps({"stations":len(stations),"pdcs":sum(len(x["pdcs"]) for x in stations.values()),"delimiter":delimiter}))
