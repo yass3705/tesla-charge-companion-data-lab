@@ -1493,7 +1493,7 @@ for(const sh of manifest.shards||[]){
               if(unique.length!==1){valid=false;break;}
               compiledRows.push({e:e0,pricing:unique[0],connectorCount:connectors.length});
             }
-            if(!valid||compiledRows.length!==es.length)continue;
+            if(!valid||compiledRows.length!==es.length){debugFinalResidualFail('compile_failed');continue;}
             const pricingSigs=new Set(compiledRows.map(x=>pricingSig(x.pricing)));
             if(pricingSigs.size!==1)continue;
             const sharedPricing=compiledRows[0].pricing;
@@ -1768,7 +1768,7 @@ for(const sh of manifest.shards||[]){
       const es=(row.tariff?.evses||[]).filter(e0=>sourcePkSet.has(String(e0?.pk??'')));
       const targets=(g.targetPdcs||[]).map(norm).filter(Boolean);
       if(es.length!==2||sourcePkSet.size!==2||targets.length!==2||new Set(targets).size!==2)continue;
-      if(targets.some(p=>!local.has(p)||(globalPdcOwners.get(p)?.size||0)!==1))continue;
+      if(targets.some(p=>!local.has(p)||(globalPdcOwners.get(p)?.size||0)!==1){debugFinalResidualFail('target_not_local_or_unique');continue;}
       const compiledRows=[];let valid=true;
       for(const e0 of es){
         const connectors=e0?.connectors||[];if(!connectors.length){valid=false;break;}
@@ -1829,14 +1829,16 @@ for(const sh of manifest.shards||[]){
     const finalResidualGroupTargets=new Map();
     for(const g of finalResidualGroupsByLocation.get(String(row.electroverseLocationPk))||[]){
       const recoveryMode=String(g.mode||'');
+      const debugFinalResidual=String(row.electroverseLocationPk)==='2355884'&&String(g.operator||'')==='ELECTROVERSE_IRVE_FINGERPRINT';
+      const debugFinalResidualFail=reason=>{if(debugFinalResidual)console.log(JSON.stringify({debugFinalResidual:reason,sourceEvsePks:g.sourceEvsePks,targetPdcs:g.targetPdcs}));};
       if(!['homogeneous_exact_set','homogeneous_target_subset'].includes(recoveryMode))continue;
       const sourcePkSet=new Set((g.sourceEvsePks||[]).map(String));
       const es=(row.tariff?.evses||[]).filter(e0=>sourcePkSet.has(String(e0?.pk??'')));
       const targets=(g.targetPdcs||[]).map(norm).filter(Boolean);
-      if(!es.length||es.length!==sourcePkSet.size||!targets.length)continue;
-      if(recoveryMode==='homogeneous_exact_set' && targets.length!==es.length)continue;
-      if(recoveryMode==='homogeneous_target_subset' && es.length<targets.length)continue;
-      if(new Set(targets).size!==targets.length)continue;
+      if(!es.length||es.length!==sourcePkSet.size||!targets.length){debugFinalResidualFail('source_or_target_shape');continue;}
+      if(recoveryMode==='homogeneous_exact_set' && targets.length!==es.length){debugFinalResidualFail('exact_cardinality');continue;}
+      if(recoveryMode==='homogeneous_target_subset' && es.length<targets.length){debugFinalResidualFail('subset_cardinality');continue;}
+      if(new Set(targets).size!==targets.length){debugFinalResidualFail('duplicate_targets');continue;}
       if(targets.some(p=>!local.has(p)||(globalPdcOwners.get(p)?.size||0)!==1))continue;
 
       // Refuse the planned group if any source is now already resolved by a stronger rule.
@@ -1851,7 +1853,7 @@ for(const sh of manifest.shards||[]){
            hpcGroupedSourceEvses.has(e0)||pd1TechnicalSourceEvses.has(e0)||drvPowerSourceEvses.has(e0)||
            ((!g || g.operator!=='ELECTROVERSE_IRVE_FINGERPRINT')&&operatorGroupedSourceEvses.has(e0))){sourceConflict=true;break;}
       }
-      if(sourceConflict)continue;
+      if(sourceConflict){debugFinalResidualFail('source_conflict');continue;}
 
       const compiledRows=[];let valid=true;
       for(const e0 of es){
@@ -1886,16 +1888,16 @@ for(const sh of manifest.shards||[]){
            ((!g || g.operator!=='ELECTROVERSE_IRVE_FINGERPRINT')&&operatorGroupedSourceEvses.has(e0))||customGyPairGroupedSourceEvses.has(e0))return false;
         return true;
       });
-      if(pricingSigs.size!==1||connectorCounts.size!==1||technicalProfiles.size!==1)continue;
-      if(recoveryMode==='homogeneous_exact_set' && allUnresolvedAtLocation.length>es.length)continue;
+      if(pricingSigs.size!==1||connectorCounts.size!==1||technicalProfiles.size!==1){debugFinalResidualFail('profile_or_pricing_mismatch');continue;}
+      if(recoveryMode==='homogeneous_exact_set' && allUnresolvedAtLocation.length>es.length){debugFinalResidualFail('exact_unresolved_count');continue;}
       const expectedProfile=g.profile&&typeof g.profile==='object'?g.profile:null;
       if(expectedProfile){
         const actual=(es[0]?.connectors||[]).map(c0=>({
           kilowatts:c0?.kilowatts??null,
           standard:c0?.standard?.name??c0?.standard??null
         }));
-        if(expectedProfile.kilowatts!=null && !actual.every(x=>Number(x.kilowatts)===Number(expectedProfile.kilowatts)))continue;
-        if(expectedProfile.standard!=null && !actual.every(x=>String(x.standard||'')===String(expectedProfile.standard)))continue;
+        if(expectedProfile.kilowatts!=null && !actual.every(x=>Number(x.kilowatts)===Number(expectedProfile.kilowatts))){debugFinalResidualFail('expected_power_profile');continue;}
+        if(expectedProfile.standard!=null && !actual.every(x=>String(x.standard||'')===String(expectedProfile.standard))){debugFinalResidualFail('expected_standard_profile');continue;}
       }
 
       const sharedPricing=compiledRows[0].pricing;
