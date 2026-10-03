@@ -12,7 +12,9 @@ stations={}
 request=urllib.request.Request(SOURCE,headers={"User-Agent":"TCC-Electroverse-fingerprint/1.0"})
 with urllib.request.urlopen(request,timeout=180) as raw:
     text=io.TextIOWrapper(raw,encoding="utf-8-sig",newline="")
-    reader=csv.DictReader(text,delimiter=";")
+    header=text.readline()
+    delimiter=max([",",";","\\t","|"],key=header.count)
+    reader=csv.DictReader(chain([header],text),delimiter=delimiter)
     for row in reader:
         station=(row.get("id_station_itinerance") or row.get("id_station_local") or "").strip()
         if station not in wanted:
@@ -31,4 +33,4 @@ with urllib.request.urlopen(request,timeout=180) as raw:
 
 OUT.parent.mkdir(parents=True,exist_ok=True)
 OUT.write_text(json.dumps({"schemaVersion":1,"source":SOURCE,"stationCount":len(stations),"stations":stations},ensure_ascii=False),encoding="utf-8")
-print(json.dumps({"stations":len(stations),"pdcs":sum(len(x["pdcs"]) for x in stations.values())}))
+print(json.dumps({"stations":len(stations),"pdcs":sum(len(x["pdcs"]) for x in stations.values()),"delimiter":delimiter}))
