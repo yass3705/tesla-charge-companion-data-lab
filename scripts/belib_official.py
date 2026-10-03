@@ -110,17 +110,32 @@ def main() -> None:
 
     statuses: dict[str, int] = {}
     statuses["offers"], offers = optional_html_text(SOURCES["offers"])
-    statuses["faq"], faq = html_text(SOURCES["faq"])
-    statuses["home"], home = html_text(SOURCES["home"])
+    statuses["faq"], faq = optional_html_text(SOURCES["faq"])
+    statuses["home"], home = optional_html_text(SOURCES["home"])
     statuses["bookingPdf"], booking_pdf_text, booking_sha = pdf_text_and_sha(SOURCES["bookingPdf"])
     statuses["chargingPdf"], charging_pdf_text, charging_sha = pdf_text_and_sha(SOURCES["chargingPdf"])
     statuses["staticApi"], static_data = json_get(SOURCES["staticApi"])
     statuses["liveApi"], live_data = json_get(SOURCES["liveApi"])
-    required_200 = ("faq", "home", "bookingPdf", "chargingPdf", "staticApi", "liveApi")
+    required_200 = ("bookingPdf", "chargingPdf", "staticApi", "liveApi")
     if any(statuses[k] != 200 for k in required_200):
         raise RuntimeError(f"Belib required source HTTP failure: {statuses}")
-    if statuses["offers"] not in (200, 403, 429):
-        raise RuntimeError(f"Belib offers source unexpected HTTP status: {statuses['offers']}")
+    for key in ("offers", "faq", "home"):
+        if statuses[key] not in (200, 403, 429):
+            raise RuntimeError(f"Belib {key} source unexpected HTTP status: {statuses[key]}")
+
+    previous_path = Path("data/operator_direct/belib_official_paris.json")
+    previous = json.loads(previous_path.read_text()) if previous_path.exists() else None
+    previous_evidence = (previous or {}).get("sourceEvidence") or {}
+    html_blocked = any(statuses[k] != 200 for k in ("offers", "faq", "home"))
+    pdfs_unchanged_from_last_valid = bool(
+        previous
+        and previous_evidence.get("bookingPdfSha256") == booking_sha
+        and previous_evidence.get("chargingPdfSha256") == charging_sha
+    )
+    if html_blocked and not pdfs_unchanged_from_last_valid:
+        raise RuntimeError(
+            "Belib HTML evidence blocked while official tariff PDFs differ from last validated artifact; fail closed"
+        )
 
     # Current charging tariff sheet / offer page. The HTML offer route can
     # block GitHub-hosted runners; in that case the official tariff PDF remains
@@ -133,11 +148,8 @@ def main() -> None:
         require(offers, ("7,00 € / an", "7,00€/an"), "Belib annual subscription")
         require(offers, ("20h - 23h", "20h-23h"), "Belib resident peak night window")
         require(offers, ("23h - 08h", "23h-08h"), "Belib resident off-peak night window")
-    else:
-        if not has_value(faq, 7.0):
-            raise RuntimeError("Belib annual subscription value missing from FAQ fallback")
-        require(charging_pdf_text, ("20h-23h", "20h - 23h"), "Belib resident peak night window PDF fallback")
-        require(charging_pdf_text, ("23h-08h", "23h - 08h"), "Belib resident off-peak night window PDF fallback")
+    elif not pdfs_unchanged_from_last_valid:
+        raise RuntimeError("Belib offers HTML blocked without unchanged validated PDF baseline")
 
     # PDF corroboration and long-connection fee.
     for value in (0.33, 0.22, 0.57, 2.30, 0.42, 0.17, 0.37, 2.00, 0.38, 0.25, 10.0, 14.0):
@@ -153,12 +165,18 @@ def main() -> None:
 
     # FAQ evidence: visitor access and roaming semantics. Parking is outside the
     # TCC Belib pricing scope by explicit project decision.
-    require(faq, ("carte bancaire directement sur le totem",), "Belib visitor bank-card access")
-    require(faq, ("qr code disponible sur la borne",), "Belib visitor QR access")
-    require(faq, ("1.49 €", "1,49 €"), "Belib outbound roaming fee")
-    require(faq, ("pre-autorisation", "pré-autorisation"), "Belib 1 EUR subscription preauthorization")
-    require(faq, ("14 heures",), "Belib long connection semantics") if "14 heures" in norm(faq) else None
-    require(home, ("temps branche = temps facture", "temps branché = temps facturé"), "Belib connected-time billing")
+    if statuses["faq"] == 200:
+        require(faq, ("carte bancaire directement sur le totem",), "Belib visitor bank-card access")
+        require(faq, ("qr code disponible sur la borne",), "Belib visitor QR access")
+        require(faq, ("1.49 €", "1,49 €"), "Belib outbound roaming fee")
+        require(faq, ("pre-autorisation", "pré-autorisation"), "Belib 1 EUR subscription preauthorization")
+        require(faq, ("14 heures",), "Belib long connection semantics") if "14 heures" in norm(faq) else None
+    elif not pdfs_unchanged_from_last_valid:
+        raise RuntimeError("Belib FAQ blocked without unchanged validated PDF baseline")
+    if statuses["home"] == 200:
+        require(home, ("temps branche = temps facture", "temps branché = temps facturé"), "Belib connected-time billing")
+    elif not pdfs_unchanged_from_last_valid:
+        raise RuntimeError("Belib home blocked without unchanged validated PDF baseline")
 
     static_count = int(static_data.get("total_count") or 0)
     live_count = int(live_data.get("total_count") or 0)
@@ -318,7 +336,7 @@ def main() -> None:
             "Resident night energy-only rates apply to Moto/Flex; Boost and Boost+ retain their time tariffs.",
             "Parking prices and parking credits are intentionally outside the TCC Belib pricing scope.",
             "Official Paris Open Data provides both static IRVE data and live EVSE availability; volatile live counts are excluded from the tariff fingerprint.",
-            "If the official HTML offers route returns 403/429 to GitHub Actions, numeric tariff validation falls back to the official charging PDF while FAQ semantics remain mandatory.",
+            "If official Belib HTML routes return 403/429 to GitHub Actions, the refresh succeeds only when both official tariff PDFs are byte-identical to the last validated artifact; changed PDFs with blocked HTML fail closed.",
         ],
     }
 
