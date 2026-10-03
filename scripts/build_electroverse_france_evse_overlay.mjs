@@ -1892,7 +1892,7 @@ for(const sh of manifest.shards||[]){
       if(recoveryMode==='homogeneous_exact_set' && allUnresolvedAtLocation.length>es.length){debugFinalResidualFail('exact_unresolved_count');continue;}
       const expectedProfile=g.profile&&typeof g.profile==='object'?g.profile:null;
       if(expectedProfile){
-        const actual=(es[0]?.connectors||[]).map(c0=>({
+        const actual=(es[0]?.connectors||[]).filter(c0=>!(/SCHUKO|DOMESTIC/.test(JSON.stringify(c0).toUpperCase()))).map(c0=>({
           kilowatts:c0?.kilowatts??null,
           standard:c0?.standard?.name??c0?.standard??null
         }));
