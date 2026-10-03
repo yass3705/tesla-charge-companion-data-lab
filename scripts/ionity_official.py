@@ -138,7 +138,7 @@ def main() -> None:
     tariffs = parse_france_tariffs(texts["access"])
 
     require(texts["pricingFaq"], "les prix peuvent varier d'un site à l'autre", "IONITY pricing FAQ")
-    require(texts["pricingFaq"], "fournisseurs de services de mobilité", "IONITY pricing FAQ")
+    require(texts["pricingFaq"], "fournisseur de services de mobilité", "IONITY pricing FAQ")
     require(texts["subscriptions"], "IONITY Motion", "IONITY subscriptions")
     require(texts["subscriptions"], "IONITY Power", "IONITY subscriptions")
     if not (0.0 < tariffs["motionMonthly"]["monthlyFeeEur"] < 100.0):
