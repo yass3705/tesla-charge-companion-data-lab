@@ -4,7 +4,6 @@ import zlib from 'node:zlib';
 const CACHE='data/electroverse/tariff_cache';
 const MAP='data/electroverse/irve_location_mapping.json';
 const OVERLAY='data/platforms/electroverse/france-evse';
-const CANONICAL='data/national/france_public_charging_canonical.json';
 const ACCESS='reports/france/irve-public-access-validation-ledger.json';
 const OUT='reports/electroverse/fingerprint-candidates.json';
 const PLAN='data/platforms/electroverse/validated-mappings/final-residual-recovery-plan.json';
@@ -23,27 +22,40 @@ const tariffKey=e=>JSON.stringify((e?.connectors||[]).map(c=>({free:c?.isChargin
 const hasSingleTariff=es=>new Set(es.map(tariffKey)).size===1;
 const DEALER_RE=/\b(concession|concessionnaire|garage|automobiles?|autohaus|bmw|hyundai|peugeot|renault|citro[eë]n|audi|volvo|toyota|nissan|opel|mercedes|ford|kia|porsche|jaguar|land rover|lexus|suzuki|honda|mitsubishi|mazda|alfa romeo|fiat|seat|skoda|groupe gueudet|by my car|car avenue)\b/i;
 
-function walk(node,parentStation,index){
-  if(Array.isArray(node)){for(const x of node)walk(x,parentStation,index);return;}
-  if(!node||typeof node!=='object')return;
-  const station=String(node.id_station_itinerance??node.id_station_local??node.irveStationId??node.stationId??node.station_id??parentStation??'');
-  const pdc=node.id_pdc_itinerance??node.id_pdc_local??node.pdcId??node.pdc_id??node.idPdc;
-  const kw=power(node.puissance_nominale??node.powerKw??node.power_kw??node.power??node.kilowatts??node.nominalPowerKw);
-  if(pdc!=null&&kw!=null){
-    const s=JSON.stringify(node).toUpperCase();
-    const mode=/CCS|CHADEMO|COMBO/.test(s)?'DC':'AC';
-    const prev=index.get(norm(pdc))||{pdcId:String(pdc),stationId:station,powers:[],modes:new Set(),text:''};
-    prev.powers.push(kw);prev.modes.add(mode);prev.text+=' '+s;
-    index.set(norm(pdc),prev);
+const IRVE_SOURCE='https://www.data.gouv.fr/api/1/datasets/r/eb76d20a-8501-400e-b336-d85724de5435';
+function parseCsv(input){
+  const rows=[];let row=[],cell='',quote=false;
+  for(let i=0;i<input.length;i++){
+    const ch=input[i],next=input[i+1];
+    if(ch==='"'&&quote&&next==='"'){cell+='"';i++;continue;}
+    if(ch==='"'){quote=!quote;continue;}
+    if(!quote&&ch===';'){row.push(cell);cell='';continue;}
+    if(!quote&&(ch==='\\n'||ch==='\\r')){
+      if(ch==='\\r'&&next==='\\n')i++;
+      row.push(cell);cell='';
+      if(row.some(x=>x!==''))rows.push(row);
+      row=[];continue;
+    }
+    cell+=ch;
   }
-  for(const v of Object.values(node))if(v&&typeof v==='object')walk(v,station,index);
+  if(cell||row.length){row.push(cell);rows.push(row);}
+  const headers=rows.shift().map(x=>String(x).replace(/^\\uFEFF/,'').trim());
+  return rows.map(r=>Object.fromEntries(headers.map((h,i)=>[h,String(r[i]??'').trim()])));
 }
-const canonical=JSON.parse(await fs.readFile(CANONICAL,'utf8'));
+const irveResponse=await fetch(IRVE_SOURCE);
+if(!irveResponse.ok)throw new Error('IRVE source failed: '+irveResponse.status);
+const irveRows=parseCsv(await irveResponse.text());
 const pdcIndex=new Map(),stationPdcs=new Map();
-const originalWalk=walk;
-walk=(node,parentStation,index)=>{ originalWalk(node,parentStation,index); };
-walk(canonical,null,pdcIndex);
-for(const p of pdcIndex.values()){const a=stationPdcs.get(String(p.stationId))||[];if(!a.some(x=>x.pdcId===p.pdcId))a.push(p);stationPdcs.set(String(p.stationId),a);}
+for(const r of irveRows){
+  const station=String(r.id_station_itinerance||r.id_station_local||'').trim();
+  const pdc=String(r.id_pdc_itinerance||r.id_pdc_local||'').trim();
+  const kw=power(r.puissance_nominale);
+  if(!station||!pdc||kw==null)continue;
+  const dc=['prise_type_combo_ccs','prise_type_chademo'].some(k=>/^(1|true|oui|yes)$/i.test(String(r[k]??'')));
+  const item={pdcId:pdc,stationId:station,powers:[kw],modes:new Set([dc?'DC':'AC']),text:JSON.stringify(r).toUpperCase()};
+  pdcIndex.set(norm(pdc),item);
+  const list=stationPdcs.get(station)||[];list.push(item);stationPdcs.set(station,list);
+}
 const mapping=JSON.parse(await fs.readFile(MAP,'utf8'));
 const byPk=new Map((mapping.mappings||[]).map(m=>[String(m.electroverseLocationPk),m]));
 const owners=new Map();
