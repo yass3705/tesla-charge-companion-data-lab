@@ -12,6 +12,7 @@ on:
       - "scripts/integrate_vattenfall_incharge_web_nl.py"
       - "scripts/integrate_ubitricity_nl_payg.py"
       - "scripts/integrate_electra_nl_graphql.py"
+      - "scripts/integrate_stellapower_nl_official.py"
       - ".github/workflows/netherlands-dotnl-canonical.yml"
 permissions:
   contents: write
@@ -33,7 +34,7 @@ jobs:
           python-version: '3.11'
 
       - name: Compile scripts
-        run: python -m py_compile scripts/dotnl_netherlands_build.py scripts/dotnl_netherlands_runtime.py scripts/dotnl_netherlands_access_patch.py scripts/integrate_vattenfall_incharge_web_nl.py scripts/integrate_ubitricity_nl_payg.py scripts/integrate_electra_nl_graphql.py
+        run: python -m py_compile scripts/dotnl_netherlands_build.py scripts/dotnl_netherlands_runtime.py scripts/dotnl_netherlands_access_patch.py scripts/integrate_vattenfall_incharge_web_nl.py scripts/integrate_ubitricity_nl_payg.py scripts/integrate_electra_nl_graphql.py scripts/integrate_stellapower_nl_official.py
 
       - name: Download official DOT-NL snapshots
         run: |
@@ -64,6 +65,11 @@ jobs:
         run: |
           set -euo pipefail
           python scripts/integrate_electra_nl_graphql.py
+
+      - name: Integrate exact official StellaPower NL direct-pay tariff
+        run: |
+          set -euo pipefail
+          python scripts/integrate_stellapower_nl_official.py
 
       - name: Build direct CPO runtime
         run: |
@@ -126,6 +132,7 @@ jobs:
           git add data/operator_direct/vattenfall_incharge_nl_web_exact_overlay.json reports/netherlands/vattenfall-incharge-web-live-integration.json
           git add data/operator_direct/ubitricity_nl_payg_exact_overlay.json reports/netherlands/ubitricity-direct-payg-integration-latest.json
           git add data/operator_direct/electra_nl_graphql_exact_overlay.json reports/netherlands/electra-direct-payg-integration-latest.json
+          git add data/operator_direct/stellapower_nl_official_exact_overlay.json reports/netherlands/stellapower-direct-payg-integration-latest.json
           if git diff --cached --quiet; then
             echo "No NL changes"
             exit 0
