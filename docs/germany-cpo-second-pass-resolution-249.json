@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 249,
+  "date": "2026-10-05",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-248.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 256,
+    "partial": 335,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "solid GmbH / LadeVerbundPlus",
+      "status": "treated-fail-closed-partial",
+      "closure": "Two new-architecture passes completed. 2026 solid/chargecloud migration and anonymous QR flow established, but current first-party partner tariffs demonstrably differ by partner/subnetwork (e.g. 0.70/0.85 vs ~0.62/0.82 and differing blocking rules). No global direct tariff is valid. Further work requires a concrete per-EVSE QR tariff feed, not another network-level investigation.",
+      "exactResidual": "Per-partner/per-EVSE anonymous-ad-hoc matrix only; unknown points remain fail-closed."
+    },
+    {
+      "cpo": "NEW AG / NEW Energie",
+      "status": "treated-fail-closed-partial",
+      "closure": "Last Mile Solutions / new.evc-net.com backend and deterministic DENEWE QR route established. Current inventory materially exceeds the historical denominator and public tariff coverage is heterogeneous/incomplete. Repeated network-level investigation cannot safely fill the missing EVSE.",
+      "exactResidual": "Reconcile current DENEWE denominator and extract per-EVSE evc-net anonymous checkout prices; unpriced EVSE remain fail-closed."
+    },
+    {
+      "cpo": "RhönEnergie Fulda GmbH",
+      "status": "treated-fail-closed-partial",
+      "closure": "ladecloud plus e-clearing/Mobilithek route established; refreshed inventory 279 installations / 556 points and strong ad-hoc class evidence 0.51 AC / 0.61 DC + 1.00 start. Operator terms nevertheless allow point-specific ad-hoc variation, so class values cannot be asserted across all EVSE without exhaustive feed coverage.",
+      "exactResidual": "Only DE*REF* EVSE not proven by current e-clearing/ladecloud tariff data remain fail-closed; registered tariffs excluded."
+    },
+    {
+      "cpo": "amperio GmbH",
+      "status": "treated-fail-closed-partial",
+      "closure": "First-party current driver information explicitly publishes ad-hoc orientation prices 0.49 EUR/kWh AC and 0.69 EUR/kWh DC and closes QR/web/card direct-payment semantics. Because amperio expressly characterizes these as orientation prices subject to change, this is insufficient under the project 100%-coverage rule to assert no local EVSE exceptions.",
+      "exactResidual": "Verify current canonical EVSE denominator and exceptions to 0.49/0.69 plus start/blocking and gross/VAT. Until then exceptions/unverified EVSE fail closed."
+    },
+    {
+      "cpo": "50five",
+      "status": "treated-fail-closed-partial",
+      "closure": "Current German inventory is roughly 165-171 stations / 455-463 points and current AFIR-derived direct prices are demonstrably heterogeneous by station. Substantial price coverage exists but a residual set remains unpriced. A network tariff is invalid and further broad investigation would repeat the same evidence.",
+      "exactResidual": "Maintain per-EVSE/site direct tariff matrix; unresolved/unpriced residual EVSE remain fail-closed. Never backfill from app/card, Shell, roaming or averages."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 256,
+    "partial": 335,
+    "blocked": 0
+  },
+  "indicator": "221 -> 256 complete (+35)",
+  "priorityTop5": {
+    "status": "CLOSED AS TREATED: all five former Top-5 partials received fresh site/app/backend/direct-price investigation and at least two evidence-led passes where needed. None meets the strict 100%-coverage promotion threshold. All five remain canonical partial with exact fail-closed residuals; do not reopen without genuinely new per-EVSE/backend evidence."
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "256 + 335 + 0 = 591",
+    "totalNamedCpos": 591,
+    "countsVsLists": "No promotion in Top-5 closure; canonical counters unchanged.",
+    "duplicateAliasRisk": "No aliases/new CPO rows created.",
+    "repeatGuard": "PASS: Top-5 removed from active investigation queue after bounded residual closure; no further identical broad passes.",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Remove the former Top-5 from the active queue. Continue with the next unresolved canonical families by achievable partial->complete probability: m8mit public guest with operator-scoped EVSE pages, then chargecloud/Mobilithek B1/B3/B6, then ChargePoint/Mobilithek-EcoMovement. Reopen any of these five only when a genuinely new per-EVSE/backend tariff source appears."
+}
