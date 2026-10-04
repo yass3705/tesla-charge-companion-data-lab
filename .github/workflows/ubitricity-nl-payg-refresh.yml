@@ -1,0 +1,66 @@
+name: Refresh Ubitricity NL direct PAYG tariffs
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 4 * * 1'
+permissions:
+  contents: write
+concurrency:
+  group: ubitricity-nl-payg-refresh
+  cancel-in-progress: true
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile exact-match tools
+        run: python -m py_compile scripts/dotnl_netherlands_build.py scripts/audit_nl_ubitricity_payg_portal.py scripts/reconcile_nl_ubitricity_payg_overlay.py
+      - name: Download official DOT-NL snapshots
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/dotnl
+          curl -fsSL --retry 5 --retry-all-errors https://opendata.ndw.nu/charging_point_locations_ocpi.json.gz -o /tmp/dotnl/locations.json.gz
+          curl -fsSL --retry 5 --retry-all-errors https://opendata.ndw.nu/charging_point_tariffs_ocpi.json.gz -o /tmp/dotnl/tariffs.json.gz
+      - name: Normalize and harvest official Ubitricity PAYG portal
+        run: |
+          set -euo pipefail
+          python scripts/dotnl_netherlands_build.py /tmp/dotnl/locations.json.gz /tmp/dotnl/tariffs.json.gz /tmp/dotnl/normalized.json.gz /tmp/dotnl/build-report.json
+          python scripts/audit_nl_ubitricity_payg_portal.py --normalized /tmp/dotnl/normalized.json.gz --out /tmp/dotnl/portal-audit.json --report /tmp/dotnl/portal-report.json --workers 10
+          python scripts/reconcile_nl_ubitricity_payg_overlay.py --normalized /tmp/dotnl/normalized.json.gz --audit /tmp/dotnl/portal-audit.json --out /tmp/dotnl/overlay-candidate.json --report /tmp/dotnl/reconcile-report.json
+          python - <<'PY'
+          import base64,gzip,json
+          from pathlib import Path
+          candidate=json.loads(Path("/tmp/dotnl/overlay-candidate.json").read_text())
+          report=json.loads(Path("/tmp/dotnl/reconcile-report.json").read_text())
+          assert candidate["policy"]["officialPortalOnly"] is True
+          assert candidate["policy"]["directCpoOnly"] is True
+          assert candidate["policy"]["shellProviderApiExcluded"] is True
+          assert report["exactPricedConnectorCount"] > 0
+          assert report["excludedReasons"].get("duplicate_evse_id_connector_ambiguity",0) >= 0
+          packed=gzip.compress(json.dumps(candidate,separators=(",",":"),ensure_ascii=False).encode(),compresslevel=9,mtime=0)
+          Path("data/operator_direct/ubitricity_nl_payg_exact_overlay_candidate.json.gz.b64").write_text(base64.b64encode(packed).decode()+"\\n")
+          print(json.dumps({"exactPricedConnectorCount":report["exactPricedConnectorCount"],"excludedConnectorCount":report["excludedConnectorCount"],"scheduleCount":report["overlayTariffScheduleCount"]}))
+          PY
+      - name: Publish refreshed official PAYG source snapshot
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/ubitricity_nl_payg_exact_overlay_candidate.json.gz.b64
+          if git diff --cached --quiet; then
+            echo "No Ubitricity direct tariff changes"
+            exit 0
+          fi
+          git commit -m "data(nl): refresh exact Ubitricity direct PAYG tariffs"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((attempt*3))
+          done
+          exit 1
