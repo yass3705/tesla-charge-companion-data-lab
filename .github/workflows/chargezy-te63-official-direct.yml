@@ -1,0 +1,35 @@
+name: France Chargezy TE63 official direct tariffs
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/chargezy_te63_official_direct.py"
+      - ".github/workflows/chargezy-te63-official-direct.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "19 4 * * 3"
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 scripts/chargezy_te63_official_direct.py
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/operator_direct/chargezy_te63_official_france.json reports/france/spie-citynetworks/chargezy-te63-summary.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "data(fr): refresh Chargezy TE63 official direct tariffs [run ${GITHUB_RUN_ID}]"
+          for i in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((i*2))
+          done
+          exit 1
