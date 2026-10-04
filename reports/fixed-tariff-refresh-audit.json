@@ -6,10 +6,11 @@
     "managedDefinition": "at least one GitHub Actions workflow references the tariff file path or filename",
     "note": "This is a conservative static audit. Unmanaged candidates require review; managed files can still need semantic refresh validation."
   },
-  "candidateCount": 150,
+  "candidateCount": 153,
   "riskCounts": {
-    "managed": 149,
-    "high_static_unmanaged": 1
+    "managed": 150,
+    "high_static_unmanaged": 2,
+    "high_unmanaged_no_source": 1
   },
   "byCountry": {
     "BE": {
@@ -20,10 +21,11 @@
     },
     "FR": {
       "managed": 133,
-      "high_static_unmanaged": 1
+      "high_static_unmanaged": 2,
+      "high_unmanaged_no_source": 1
     },
     "GB": {
-      "managed": 2
+      "managed": 3
     },
     "UK": {
       "managed": 2
@@ -33,6 +35,34 @@
     }
   },
   "unmanaged": [
+    {
+      "path": "data/operator_direct/bfc-territorial-official-tariffs-2026-10-03.json",
+      "country": "FR",
+      "bytes": 4990,
+      "priceLikeKeyCount": 19,
+      "numericPriceLikeCount": 54,
+      "hasSourceUrl": true,
+      "sourceUrlSamples": [
+        "https://www.territoiredenergie-bourgogne-franche-comte.com/nos-offres-et-tarifs/"
+      ],
+      "hasFreshnessMetadata": false,
+      "workflowManaged": false,
+      "workflowRefs": [],
+      "risk": "high_static_unmanaged"
+    },
+    {
+      "path": "data/operator_direct/ubitricity_fr_direct_access_exact_2026-10-04.json",
+      "country": "FR",
+      "bytes": 319383,
+      "priceLikeKeyCount": 13,
+      "numericPriceLikeCount": 904,
+      "hasSourceUrl": false,
+      "sourceUrlSamples": [],
+      "hasFreshnessMetadata": false,
+      "workflowManaged": false,
+      "workflowRefs": [],
+      "risk": "high_unmanaged_no_source"
+    },
     {
       "path": "data/operator_direct/yes55_exact_status_france.json",
       "country": "FR",
@@ -568,7 +598,7 @@
     {
       "path": "data/operator_direct/driveco_official_france.json",
       "country": "FR",
-      "bytes": 5164,
+      "bytes": 5418,
       "priceLikeKeyCount": 17,
       "numericPriceLikeCount": 5,
       "hasSourceUrl": true,
@@ -2658,15 +2688,33 @@
     {
       "path": "data/operator_direct/ubitricity_uk_deterministic_pricing.json",
       "country": "UK",
-      "bytes": 348693,
-      "priceLikeKeyCount": 14,
-      "numericPriceLikeCount": 1047,
+      "bytes": 515230,
+      "priceLikeKeyCount": 16,
+      "numericPriceLikeCount": 2034,
       "hasSourceUrl": false,
       "sourceUrlSamples": [],
-      "hasFreshnessMetadata": false,
+      "hasFreshnessMetadata": true,
       "workflowManaged": true,
       "workflowRefs": [
         ".github/workflows/uk-shell-ev-public-locations.yml",
+        ".github/workflows/uk-ubitricity-deterministic-pricing.yml"
+      ],
+      "risk": "managed"
+    },
+    {
+      "path": "data/operator_direct/ubitricity_uk_direct_access_exact_overlay_2026-10-03.json",
+      "country": "GB",
+      "bytes": 333670,
+      "priceLikeKeyCount": 10,
+      "numericPriceLikeCount": 1426,
+      "hasSourceUrl": true,
+      "sourceUrlSamples": [
+        "https://api.shell.com/ubitricity/direct-access/api/direct-access/locations/{GB*UBI*EVSE_ID}",
+        "https://charge.ubitricity.com/"
+      ],
+      "hasFreshnessMetadata": false,
+      "workflowManaged": true,
+      "workflowRefs": [
         ".github/workflows/uk-ubitricity-deterministic-pricing.yml"
       ],
       "risk": "managed"
