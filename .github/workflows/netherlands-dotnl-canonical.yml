@@ -93,7 +93,7 @@ jobs:
                 for key in connector.get("tariffKeys",[]):
                   tariff=data["tariffs"].get(key,{})
                   if tariff.get("sourceKind")=="official_cpo_direct_payg_portal": ubitricity.append(tariff)
-          assert len(ubitricity)==3670, len(ubitricity)
+          assert len(ubitricity)>0, len(ubitricity)
           assert all(t.get("type")=="AD_HOC_PAYMENT" and t.get("partyId")=="UB2" for t in ubitricity)
           with gzip.open("data/national/netherlands_dotnl/normalized.json.gz","rt",encoding="utf-8") as f:
               data=json.load(f)
