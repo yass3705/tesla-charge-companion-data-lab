@@ -83,7 +83,13 @@ def dimension_schedule(elements,dim,day_name,m):
         mn,mx=interval
         rate=component_gross(pc)
         if rate is None: return None,None,'missing_price'
-        if dim in ('TIME','PARKING_TIME'): rate/=60.0
+        if dim in ('TIME','PARKING_TIME'):
+            # Existing DOT-NL TIME/PARKING_TIME components with step 1 or
+            # 60 are represented as per-minute amounts.  Preserve that
+            # established convention, while honoring larger OCPI increments
+            # (notably StellaPower's 900-second parking increment).
+            step=fnum(pc.get('stepSize'))
+            rate/=(step if step and step>60 else 60.0)
         candidates.append((mn,mx,rate))
         boundaries.add(mn)
         if mx is not None: boundaries.add(mx)
@@ -137,7 +143,7 @@ def compile_tariff(t,today):
             # representation in dimension_schedule().  Keep the stricter
             # one-unit rule for ENERGY and FLAT so we never reinterpret a
             # monetary amount with the wrong billing unit.
-            if step not in (None,1.0) and not (typ in {'TIME','PARKING_TIME'} and step==60.0):
+            if step not in (None,1.0) and not (typ in {'TIME','PARKING_TIME'} and step in {60.0,900.0}):
                 return None,'step_size'
             if component_gross(pc) is None: return None,'missing_price'
 
@@ -252,41 +258,3 @@ def main():
     compile_cache={}; selection_cache={}; rows=[]
     for st in stations:
         co=st.get('coordinates') or {}; lat=fnum(co.get('latitude')); lon=fnum(co.get('longitude'))
-        if lat is None or lon is None: continue
-        if not in_nl_bounds(lat,lon):
-            stats['outOfBoundsStations']+=1; stats['outOfBoundsByParty'][str(st.get('partyId') or '')]+=1; continue
-        groups={}
-        for evse in st.get('evses') or []:
-            uid=str(evse.get('uid') or evse.get('evseId') or '')
-            for c in evse.get('connectors') or []:
-                stats['connectors']+=1; p=fnum(c.get('powerKw'))
-                if not p or p<=0: continue
-                tkey,rules,err=choose_tariff(c.get('tariffKeys') or [],tariffs,today,stats,compile_cache,selection_cache); priced=rules is not None
-                stats['exactPricedConnectors' if priced else 'unpricedConnectors']+=1
-                sig=json.dumps(rules,separators=(',',':')) if priced else 'UNPRICED'; gkey=(kind(c),round(p,1),sig)
-                g=groups.setdefault(gkey,{'kind':gkey[0],'power':gkey[1],'rules':rules,'tariffKey':tkey,'evses':set(),'count':0}); g['count']+=1
-                if uid: g['evses'].add(uid)
-        configs=[]
-        for i,g in enumerate(sorted(groups.values(),key=lambda x:(x['kind'],x['power'],x['tariffKey'] or ''))):
-            stalls=len(g['evses']) or g['count']; priced=g['rules'] is not None; label=('DOT-NL public' if priced else 'Tarif DOT-NL non calculable')+f" · {g['kind']} {g['power']:g} kW"
-            cid=f"dotnl-{i}-{g['kind'].lower()}-{str(g['power']).replace('.','_')}"; configs.append([cid,label,g['kind'],g['power'],stalls,g['rules'] or []]); stats['configs']+=1
-            if priced:
-                stats['pricedConfigs']+=1
-                if any(len(r)>12 and r[12] for r in g['rules']): stats['durationBandConfigs']+=1
-        if not configs: continue
-        name=str(st.get('name') or '').strip() or f"Borne {st.get('stationId')}"; address=', '.join(x for x in [str(st.get('address') or '').strip(),str(st.get('postalCode') or '').strip(),str(st.get('city') or '').strip()] if x); operator=str(st.get('operatorName') or '').strip() or str(st.get('partyId') or 'DOT-NL')
-        physical=len({str(e.get('uid') or e.get('evseId') or '') for e in st.get('evses') or [] if (e.get('uid') or e.get('evseId'))})
-        rows.append([st.get('stationId'),name,address,round(lat,6),round(lon,6),operator,physical,0,configs,generated[:10],st.get('serviceStatus') or 'UNKNOWN'])
-    args.out_dir.mkdir(parents=True,exist_ok=True); tiles=collections.defaultdict(list)
-    for row in rows:
-        tid,a,b=tile_id(row[3],row[4]); tiles[(tid,a,b)].append(row)
-    manifest_tiles=[]
-    for (tid,a,b),arr in sorted(tiles.items()):
-        arr.sort(key=lambda r:str(r[0])); path=args.out_dir/f'{tid}.json.gz'; _,gz_n=gz_write(path,arr); manifest_tiles.append({'id':tid,'file':path.name,'minLat':a,'maxLat':a+.5,'minLon':b,'maxLon':b+.5,'count':len(arr),'bytes':gz_n,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
-    rows.sort(key=lambda r:str(r[0])); raw_all,gz_all=gz_write(args.out_dir/'all.json.gz',rows)
-    manifest={'schemaVersion':2,'dataset':'netherlands-non-tesla-runtime-test','generatedAt':generated,'effectiveTariffDate':today.isoformat(),'stationCount':len(rows),'configurationCount':stats['configs'],'pricedConfigurationCount':stats['pricedConfigs'],'durationBandConfigurationCount':stats['durationBandConfigs'],'tileSizeDegrees':.5,'tileCount':len(manifest_tiles),'allFile':'all.json.gz','allBytes':gz_all,'tiles':manifest_tiles,'scope':{'countryCode':'NL','europeanNetherlandsBounds':list(NL_BOUNDS),'teslaExcluded':True,'strictTariffCompiler':True,'ocpiDurationBands':True,'publishedToTcc':False}}
-    (args.out_dir/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8')
-    report={'dataset':'dotnl-netherlands-runtime-report','generatedAt':generated,'effectiveTariffDate':today.isoformat(),'stationCount':len(rows),'tileCount':len(manifest_tiles),'allCompressedBytes':gz_all,'allUncompressedBytes':raw_all,'cache':{'compiledTariffs':len(compile_cache),'tariffSelections':len(selection_cache)},'metrics':{**{k:v for k,v in stats.items() if not isinstance(v,collections.Counter)},'unsupportedReasons':dict(stats['unsupportedReasons'].most_common()),'outOfBoundsByParty':dict(stats['outOfBoundsByParty'].most_common())},'coveragePct':{'exactTariffConnectors':round(100*stats['exactPricedConnectors']/stats['connectors'],3) if stats['connectors'] else 0,'pricedConfigs':round(100*stats['pricedConfigs']/stats['configs'],3) if stats['configs'] else 0},'publishedToTcc':False}
-    args.report_json.parent.mkdir(parents=True,exist_ok=True); args.report_json.write_text(json.dumps(report,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8'); print(json.dumps(report,ensure_ascii=False,indent=2))
-
-if __name__=='__main__': main()
