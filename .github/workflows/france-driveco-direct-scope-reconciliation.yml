@@ -1,0 +1,33 @@
+name: France DRIVECO direct scope reconciliation
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/driveco_direct_scope_reconciliation.py"
+      - "reports/driveco/inventory_tariffs_latest.json"
+      - ".github/workflows/france-driveco-direct-scope-reconciliation.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python3 scripts/driveco_direct_scope_reconciliation.py
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/france/driveco/direct-scope-reconciliation.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "audit(fr): reconcile DRIVECO direct network scope [run ${GITHUB_RUN_ID}]"
+          for i in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((i*2))
+          done
+          exit 1
