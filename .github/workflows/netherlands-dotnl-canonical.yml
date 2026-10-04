@@ -9,6 +9,8 @@ on:
       - "scripts/dotnl_netherlands_build.py"
       - "scripts/dotnl_netherlands_runtime.py"
       - "scripts/dotnl_netherlands_access_patch.py"
+      - "scripts/integrate_ubitricity_nl_payg.py"
+      - "data/operator_direct/ubitricity_nl_payg_exact_overlay_candidate.json.gz.b64"
       - ".github/workflows/netherlands-dotnl-canonical.yml"
 permissions:
   contents: write
@@ -30,7 +32,7 @@ jobs:
           python-version: '3.11'
 
       - name: Compile scripts
-        run: python -m py_compile scripts/dotnl_netherlands_build.py scripts/dotnl_netherlands_runtime.py scripts/dotnl_netherlands_access_patch.py
+        run: python -m py_compile scripts/dotnl_netherlands_build.py scripts/dotnl_netherlands_runtime.py scripts/dotnl_netherlands_access_patch.py scripts/integrate_ubitricity_nl_payg.py
 
       - name: Download official DOT-NL snapshots
         run: |
@@ -46,6 +48,11 @@ jobs:
           set -euo pipefail
           mkdir -p data/national/netherlands_dotnl docs
           python scripts/dotnl_netherlands_build.py             /tmp/dotnl/locations.json.gz             /tmp/dotnl/tariffs.json.gz             data/national/netherlands_dotnl/normalized.json.gz             docs/netherlands-dotnl-build-report.json
+
+      - name: Integrate exact official Ubitricity PAYG prices
+        run: |
+          set -euo pipefail
+          python scripts/integrate_ubitricity_nl_payg.py
 
       - name: Build direct CPO runtime
         run: |
@@ -78,6 +85,18 @@ jobs:
           assert run["metrics"]["unsupportedReasons"].get("non_direct_tariff_type:REGULAR",0) >= 0
           with gzip.open("data/national/netherlands_dotnl/normalized.json.gz","rt",encoding="utf-8") as f:
               data=json.load(f)
+          ubitricity=[]
+          for station in data["stations"]:
+            if station.get("partyId")!="UB2": continue
+            for evse in station.get("evses",[]):
+              for connector in evse.get("connectors",[]):
+                for key in connector.get("tariffKeys",[]):
+                  tariff=data["tariffs"].get(key,{})
+                  if tariff.get("sourceKind")=="official_cpo_direct_payg_portal": ubitricity.append(tariff)
+          assert len(ubitricity)>0, len(ubitricity)
+          assert all(t.get("type")=="AD_HOC_PAYMENT" and t.get("partyId")=="UB2" for t in ubitricity)
+          with gzip.open("data/national/netherlands_dotnl/normalized.json.gz","rt",encoding="utf-8") as f:
+              data=json.load(f)
           assert data["scope"]["publicOnly"] is True
           assert data["scope"]["teslaExcluded"] is True
           print(json.dumps({
@@ -95,6 +114,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/national/netherlands_dotnl docs/netherlands-dotnl-*.json
+          git add data/operator_direct/ubitricity_nl_payg_exact_overlay.json reports/netherlands/ubitricity-direct-payg-integration-latest.json
           if git diff --cached --quiet; then
             echo "No NL changes"
             exit 0
