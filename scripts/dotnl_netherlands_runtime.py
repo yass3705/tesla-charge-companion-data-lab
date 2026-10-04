@@ -131,7 +131,14 @@ def compile_tariff(t,today):
             typ=str(pc.get('type') or '').upper()
             if typ not in DIMS: return None,'unsupported_dimension:'+typ
             step=fnum(pc.get('stepSize'))
-            if step not in (None,1.0): return None,'step_size'
+            # OCPI expresses TIME and PARKING_TIME step_size in seconds.
+            # A 60-second step is therefore a normal per-minute component;
+            # the compiler converts its rate to the runtime's per-second
+            # representation in dimension_schedule().  Keep the stricter
+            # one-unit rule for ENERGY and FLAT so we never reinterpret a
+            # monetary amount with the wrong billing unit.
+            if step not in (None,1.0) and not (typ in {'TIME','PARKING_TIME'} and step==60.0):
+                return None,'step_size'
             if component_gross(pc) is None: return None,'missing_price'
 
     flat_components=[]
@@ -183,7 +190,13 @@ def compile_tariff(t,today):
 def tariff_rank(t):
     typ=str(t.get('type') or '').upper()
     if typ=='AD_HOC_PAYMENT': return 0
-    if typ=='': return 1
+    # DOT-NL carries the CPO owner's tariff objects (party_id is the CPO,
+    # not an eMSP).  OCPI REGULAR therefore cannot be rejected as roaming
+    # solely because of its type: the national CPO tariff remains usable for
+    # direct/app/QR presentation unless another explicit field says that it is
+    # a third-party or roaming tariff.  AD_HOC_PAYMENT remains preferred when
+    # both forms are present.
+    if typ in {'REGULAR', ''}: return 1
     return None
 
 def choose_tariff(keys,tariffs,today,stats,compile_cache,selection_cache):
