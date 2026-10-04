@@ -1,5 +1,5 @@
-# Reliability audit note: unmatched FRGSP EVSE stay fail-closed.
 #!/usr/bin/env python3
+# Reliability audit note: unmatched FRGSP EVSE stay fail-closed.
 """Read-only national Greenspot extractor for Tesla Charge Companion.
 
 Sources:
