@@ -42,7 +42,7 @@ treated=[str(x) for x in canon.get("treatedNominative",[])]
 treated_norm=[(x,norm(x)) for x in treated]
 
 # Explicitly released historical slots.
-slots=[str(x) for x in canon.get("activeNominative",[])]
+slots=[str(x) for x in (canon.get("historicalResolvedNominative") or canon.get("activeNominative",[]))]
 def slot_bucket(s):
     if "SETASIDE_EXACT_IDENTITY" in s: return "identityAlreadySetAside"
     if "TREATED_HISTORICALLY_PROVEN" in s: return "historicallyTreated"
@@ -161,7 +161,7 @@ add("reports/france/reveo/national-exact-coverage.json","REVEO",
 report={
  "schemaVersion":1,"country":"FR","generatedAt":datetime.now(timezone.utc).isoformat(),
  "type":"treated-and-released-slot-reliability-audit",
- "canonical":{"blobAccounting":{"treated":canon.get("treatedCpos"),"setAside":canon.get("setAsideCpos"),"active":canon.get("activeRemainingCpos"),"total":canon.get("totalCpos")},
+ "canonical":{"blobAccounting":{"treated":canon.get("treatedCpos"),"setAside":canon.get("setAsideCpos"),"activeBusiness":canon.get("activeRemainingCpos"),"historicalResolvedSlots":canon.get("historicalResolvedSlots",0),"total":canon.get("totalCpos")},
               "latestBatch":canon.get("latestBatch"),"businessUnresolvedAuthorities":canon.get("businessUnresolvedAuthorities",0),
               "pendingDedupeCount":len(canon.get("pendingDedupe",[]))},
  "releasedHistoricalSlots":{"count":len(slots),"allReleasedMarkers":all(s.startswith("RELEASED_") for s in slots),
