@@ -46,9 +46,9 @@ slots=[str(x) for x in canon.get("activeNominative",[])]
 def slot_bucket(s):
     if "SETASIDE_EXACT_IDENTITY" in s: return "identityAlreadySetAside"
     if "TREATED_HISTORICALLY_PROVEN" in s: return "historicallyTreated"
-    if re.search(r"\blineage\b",s,re.I): return "lineage"
     if re.search(r"\balias\b",s,re.I): return "alias"
     if re.search(r"authority .*already treated",s,re.I): return "authorityAlreadyTreated"
+    if re.search(r"lineage",s,re.I): return "lineage"
     return "unclassified"
 slot_counts={}
 for s in slots: slot_counts[slot_bucket(s)]=slot_counts.get(slot_bucket(s),0)+1
