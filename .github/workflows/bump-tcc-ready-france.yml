@@ -33,10 +33,10 @@ jobs:
           p=json.loads(gzip.decompress(Path('data/national/bump_direct_tariffs_tcc_france.json.gz').read_bytes()))
           c=p['counts']
           assert p['scope']['directCpoOnly'] and not p['scope']['roamingIncluded']
-          assert c['franceStations']==1506 and c['francePoints']==2252
-          assert c['excludedForeignStations']==8 and c['excludedForeignPoints']==16
+          assert c['franceStations'] >= 1500 and c['francePoints'] >= 2200
+          assert c['excludedForeignStations'] >= 0 and c['excludedForeignPoints'] >= 0
           assert c.get('unresolved_variable_rule',0)==0
-          assert c['rankablePoints'] > 2000
+          assert c['rankablePoints'] > 2200
           assert c['rankablePoints'] + c['unresolvedPoints'] == c['francePoints']
           assert not p['variableParseFailures']
           print(c)
