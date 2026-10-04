@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T13:49:37.851030Z",
+  "generatedAt": "2026-10-04T16:39:22.230Z",
   "dataset": "dotnl-netherlands-runtime-report",
   "runtime": "data/national/netherlands_dotnl/runtime/all.json.gz",
   "selection": "CPOs for which every in-bounds runtime connector currently has no exact calculated direct price",
@@ -12,9 +12,9 @@
   "runtimeMetrics": {
     "stationCount": 73467,
     "eligibleConnectorCount": 176726,
-    "pricedConnectorCount": 156697,
-    "unpricedConnectorCount": 20029,
-    "fullyUnpricedCpoCount": 10
+    "pricedConnectorCount": 165671,
+    "unpricedConnectorCount": 11055,
+    "fullyUnpricedCpoCount": 9
   },
   "operators": [
     {
@@ -62,30 +62,6 @@
         "officialPlay": "https://play.google.com/store/apps/details?id=com.agrisnellaad.app",
         "apkCandidate": "https://play.google.com/store/apps/details?id=com.agrisnellaad.app",
         "note": "Official app description confirms QR scan and direct session start; binary inspection remains a follow-up."
-      },
-      "binaryStaticInspection": "pending; source/app path identified, no APK-derived endpoint promoted yet"
-    },
-    {
-      "partyId": "EVT",
-      "operator": "e-VOLTT",
-      "connectors": 622,
-      "unpricedConnectors": 622,
-      "locationsWithUnpriced": 277,
-      "coverage": "100% missing",
-      "investigationPriority": "high",
-      "siteAndAppFinding": "e-VOLTT portal lets charging-point owners set the kWh/start/parking tariff by connector group; it is not one nationwide tariff. Public evidence indicates its app/portal is charger management and settlement, while roaming/pas tariffs must remain excluded.",
-      "officialSources": [
-        "https://e-voltt.nl/laadstation-registratie/",
-        "https://e-voltt.nl/laadstation-pasbeheer/",
-        "https://e-voltt.nl/"
-      ],
-      "nextInvestigation": "Inspect my-e-VOLTT/guest-payment direct pricing APIs and exact grouping; map the 278 currently missing connectors to owner-configured groups. Distinguish from e-VOLTT GO pass and roaming.",
-      "candidateResolutionPath": "owner_group_tariff_portal",
-      "status": "investigation_open",
-      "androidAppApkReview": {
-        "officialPlay": null,
-        "apkCandidate": null,
-        "note": "No driver APK identified in this first pass; my-e-VOLTT is described as owner/charge-card management."
       },
       "binaryStaticInspection": "pending; source/app path identified, no APK-derived endpoint promoted yet"
     },
@@ -260,10 +236,23 @@
   ],
   "resolvedSincePreviousReport": [
     {
-      "partyId": "ELD",
-      "operator": "Electra",
-      "promotedExactConnectors": 126,
-      "source": "reports/netherlands/electra-direct-payg-integration-latest.json"
+      "partyId": "EVT",
+      "operator": "e-VOLTT",
+      "connectors": 622,
+      "resolution": "Accepted exact DOT-NL CPO-owned REGULAR tariffs with valid OCPI TIME/PARKING_TIME stepSize=60 seconds; ENERGY and FLAT remain restricted to stepSize=1.",
+      "evidence": "partyId EVT, exact connector tariffKeys, owner-configured guest-use tariff model documented by e-VOLTT; no eMSP/roaming overlay used.",
+      "validation": "All 622 in-bounds EVT connectors compile to exact runtime tariff rules; one out-of-bounds EVT station remains excluded by geographic scope."
     }
-  ]
+  ],
+  "compilerChange": {
+    "acceptedTimeStepSizesSeconds": [
+      60
+    ],
+    "acceptedOnlyFor": [
+      "TIME",
+      "PARKING_TIME"
+    ],
+    "energyAndFlatRule": "stepSize=1 only",
+    "directCpoPolicy": "CPO-owned REGULAR tariffs remain eligible; AD_HOC_PAYMENT is preferred; eMSP/roaming/contract overlays remain excluded"
+  }
 }
