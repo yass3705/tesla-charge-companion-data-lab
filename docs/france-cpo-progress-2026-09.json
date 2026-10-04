@@ -2,10 +2,10 @@
   "schemaVersion": 134,
   "country": "FR",
   "totalCpos": 291,
-  "treatedCpos": 99,
-  "setAsideCpos": 118,
+  "treatedCpos": 100,
+  "setAsideCpos": 117,
   "activeRemainingCpos": 74,
-  "updatedAt": "2026-10-02T22:07:00+02:00",
+  "updatedAt": "2026-10-04T00:18:05.793+00:00",
   "counterSemantics": {
     "treatedCpos": "Unique resolved entries from the original 291-CPO raw inventory; proven historical reprocessing duplicates and proven identity aliases do not consume a second treated slot.",
     "setAsideCpos": "Original-inventory entries kept fail-closed after exhaustive evidence checks. Derived territorial overlays are retained as alias/evidence records and do not consume raw-inventory setAside slots.",
@@ -110,7 +110,8 @@
     "Delmonicos | raw rank78 | current producer direct mapping",
     "LANGON DISTRIBUTION | raw rank162",
     "PLAGECO DISTRIBUTION | raw rank180",
-    "LE REVE DE JANINE | raw rank226 | FRMAPP000000007777 | exact 3-EVSE current IRVE tariff 0,2"
+    "LE REVE DE JANINE | raw rank226 | FRMAPP000000007777 | exact 3-EVSE current IRVE tariff 0,2",
+    "Ubitricity | raw rank69 | Shell Direct Access exact PAYG; 392/392 FR*UBI EVSE resolved"
   ],
   "setAside": [
     {
@@ -258,13 +259,6 @@
       "since": "2026-09-29",
       "lastChecked": "2026-09-29",
       "audit": "docs/france-regional-cpo-emotum-direct-per-station-batch429-2026-09-24.json"
-    },
-    {
-      "name": "Ubitricity | raw rank69",
-      "reason": "batch479 fail-closed: first-party France FAQ explicitly states PAYG price varies by charge point and is shown only on the QR/NFC mobile page; Le Havre tariff page is local-only. No deterministic anonymous national station/EVSE tariff resolver proven; never extrapolate Le Havre pricing.",
-      "since": "2026-09-30",
-      "lastChecked": "2026-09-30",
-      "audit": "docs/france-regional-cpo-ubitricity-batch479-2026-09-30.json"
     },
     {
       "name": "FDE80 | FR*S80 | raw rank64",
@@ -985,7 +979,7 @@
     "RELEASED_ACTIVE_SLOT_222 | alias Load Stations",
     "RELEASED_SLOT_172_SETASIDE_EXACT_IDENTITY",
     "RELEASED_ACTIVE_SLOT_174 | alias ELECTROMAPS | raw rank169",
-    "RELEASED_ACTIVE_SLOT_175 | alias Ubitricity | raw rank69 (same authority; case/legal-suffix lineage; no tariff inheritance)",
+    "RELEASED_ACTIVE_SLOT_175 | alias Ubitricity | raw rank69 (treated authority alias; current direct PAYG resolved by exact FR*UBI EVSE IDs; no fuzzy tariff inheritance)",
     "RELEASED_ACTIVE_SLOT_177 | alias FAROAD | raw rank135",
     "RELEASED_ACTIVE_SLOT_178 | alias ChargePoint | raw rank173",
     "RELEASED_ACTIVE_SLOT_179 | alias ELECTROMAPS | raw rank169",
@@ -1271,7 +1265,7 @@
     "FR*S52": "first-party tariff effective 2026-08-01 resolved; historical slot identity ambiguous",
     "FR*S53": "first-party 2026 tariff resolved; TE53-specific Alize mapping only; historical slot identity ambiguous",
     "FR*S61": "exact first-party tariff resolved; historical slot identity ambiguous",
-    "FR*UBI": "all 139 source stations deterministically mapped to Le Havre Seine Metropole; rank69+225 identity family proven by exact 136+3=139 station count; rank175 UBITRICITY GMBH remains unresolved",
+    "FR*UBI": "Ubitricity ranks69/175/225 resolve as one authority family; 392/392 provider FR*UBI EVSEs have exact current direct-PAYG tariffs via Shell Direct Access API. Raw rank175/225 remain non-counting aliases; API location grouping (196) is not used to replace historic IRVE station/PDC totals (136/392).",
     "YES55": "set aside; reopen only on genuinely new producer-side numeric FR*Y55 evidence",
     "OBORNES": "Oreve/Obornes identity and 0.55 EUR/kWh first-party Oreve tariff known; raw ranks125/194 are now one identity, but exact historical treated-slot membership/fingerprint still requires reconciliation",
     "Petite Borne": "owner-configurable station tariff; exact producer data.gouv static resource 6971c066-e1c8-4daf-838c-f6dcda5e4d4e redirects to https://app.petiteborne.fr/exports/irve_statique.csv; direct live export route retried in batch158 and remains unreadable in the current retrieval environment; use alternate first-party/API/OCPI/QR route only",
@@ -2089,6 +2083,21 @@
         "setAsideCpos": 51,
         "activeRemainingCpos": 144
       }
+    },
+    {
+      "date": "2026-10-04",
+      "batch": "batch608",
+      "change": "Resolved Ubitricity raw69 with anonymous Shell Direct Access PAYG API; complete France API index 196 locations / 392 EVSE, exact detail tariffs on 392/392, two direct tariff profiles, 29 additional connector checks. Promoted setAside->treated; raw175/225 remain non-counting aliases. Historical station/PDC totals unchanged.",
+      "ranks": [
+        69,
+        175,
+        225
+      ],
+      "counters": {
+        "treatedCpos": 100,
+        "setAsideCpos": 117,
+        "activeRemainingCpos": 74
+      }
     }
   ],
   "currentInvestigation": "France CPO business coverage complete; no unresolved authority. Future runs: consistency/refresh checks only.",
@@ -2105,12 +2114,12 @@
     "treatedPlusSetAsidePlusActive": 291
   },
   "lastRun": {
-    "date": "2026-10-01",
-    "batch": "batch517",
-    "result": "PASS_ACELEC_FAIL_CLOSED",
+    "date": "2026-10-04",
+    "batch": "batch608",
+    "result": "PASS_UBITRICITY_FR_DIRECT_PAYG_392_OF_392",
     "counterChange": true
   },
-  "latestBatch": "batch607",
+  "latestBatch": "batch608",
   "categoryReconciliation291": {
     "status": "major-rebuild-required",
     "historicalInventoryCount": 291,
@@ -2341,9 +2350,9 @@
       "rawRank": 69,
       "historicalOperator": "Ubitricity",
       "authority": "Ubitricity",
-      "category": "setAside-authority",
-      "decision": "active->setAside; station-specific PAYG pricing only; no national tariff extrapolation",
-      "evidence": "docs/france-regional-cpo-ubitricity-batch479-2026-09-30.json"
+      "category": "treated-authority",
+      "decision": "active->setAside->treated; exact direct PAYG prices resolved for all 392 FR*UBI provider EVSEs; no local tariff extrapolation",
+      "evidence": "docs/france-regional-cpo-ubitricity-batch608-2026-10-04.json"
     },
     {
       "rawRank": 64,
@@ -2981,17 +2990,17 @@
       "rawRank": 175,
       "historicalOperator": "UBITRICITY GMBH",
       "authority": "Ubitricity | raw rank69",
-      "category": "setAside-authority-alias",
-      "decision": "materialized existing deterministic aliasRegistry identity; non-counting lineage only; no tariff inheritance",
-      "evidence": "docs/france-cpo-dual-ledger-lineage-batch518-2026-10-01.json"
+      "category": "treated-authority-alias",
+      "decision": "non-counting identity alias of treated Ubitricity raw69; pricing applies only through exact resolved EVSE IDs, with no fuzzy tariff inheritance",
+      "evidence": "docs/france-regional-cpo-ubitricity-batch608-2026-10-04.json"
     },
     {
       "rawRank": 225,
       "historicalOperator": "ubitricity",
       "authority": "Ubitricity | raw rank69",
-      "category": "setAside-authority-alias",
-      "decision": "materialized existing deterministic aliasRegistry identity; non-counting lineage only; no tariff inheritance",
-      "evidence": "docs/france-cpo-dual-ledger-lineage-batch518-2026-10-01.json"
+      "category": "treated-authority-alias",
+      "decision": "non-counting identity alias of treated Ubitricity raw69; pricing applies only through exact resolved EVSE IDs, with no fuzzy tariff inheritance",
+      "evidence": "docs/france-regional-cpo-ubitricity-batch608-2026-10-04.json"
     },
     {
       "rawRank": 157,
@@ -4881,16 +4890,16 @@
   "businessUnresolvedAuthorities": 0,
   "businessClosure": {
     "status": "COMPLETE",
-    "audit": "docs/france-cpo-post-tail-closure-batch607-2026-10-02.json",
+    "audit": "docs/france-regional-cpo-ubitricity-batch608-2026-10-04.json",
     "activeHistoricalSlots": 74,
     "classification": {
       "alias": 43,
-      "authorityAlreadyTreated": 18,
+      "authorityAlreadyTreated": 19,
       "lineage": 5,
       "historicallyTreated": 7,
-      "identityAlreadySetAside": 1,
+      "identityAlreadySetAside": 0,
       "unclassified": 0
     },
-    "note": "activeRemainingCpos remains a historical raw-accounting bucket, not unresolved business authorities"
+    "note": "Active historical slots remain an accounting bucket. Ubitricity raw175 alias now resolves to treated raw69; businessUnresolvedAuthorities remains 0."
   }
 }
