@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 248,
+  "date": "2026-10-05",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-247.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 256,
+    "partial": 335,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "amperio GmbH",
+      "classification": "priorityTop5 parked -> reopened for explicit site/app/backend pass",
+      "family": "amperio first-party / ladecloud / QR-web direct payment",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Current first-party amperio driver page now explicitly publishes ad-hoc prices of 0.49 EUR/kWh AC and 0.69 EUR/kWh DC. amperio charging terms describe spontaneous customers initiating by QR code, being redirected to the charging app or web flow, selecting a payment medium such as credit card, and accepting the displayed charging price before start. This closes direct-payment semantics and gives a strong current first-party AC/DC tariff profile. However amperio itself labels the published figures as orientation prices that can change, so they are not sufficient by themselves to prove every canonical EVSE has the same current tariff or no additional local exception.",
+      "coverage": "Current first-party anonymous_ad_hoc AC/DC energy prices + QR/web/card semantics closed; exhaustive canonical EVSE denominator, local exceptions, start/blocking fees and explicit gross/VAT semantics not yet fully closed.",
+      "exactGap": "Reconcile the canonical amperio EVSE denominator with current operator inventory and verify whether any QR/payment EVSE deviates from 0.49 AC / 0.69 DC. Close start/session/blocking components and gross/VAT semantics. If no exceptions exist and current denominator is fully covered, promote; otherwise retain per-EVSE exceptions."
+    },
+    {
+      "cpo": "50five",
+      "classification": "priorityTop5 parked -> reopened for explicit site/app/backend/AFIR pass",
+      "family": "50five / Eco-Movement-Mobilithek / site-specific ad-hoc",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Current German inventory is materially larger than the historical ~170-point estimate: public 2026 BNetzA/Mobilithek-derived views report roughly 165-171 German stations and about 455-463 charge points, overwhelmingly AC. Available AFIR-derived direct/ad-hoc prices are highly heterogeneous by site, with examples spanning roughly 0.29 to above 0.80 EUR/kWh and aggregate price coverage around 90% in one current feed. Therefore no network-wide 50five tariff can safely be inferred. 50five's consumer app/card surfaces are not substitutes for anonymous direct prices.",
+      "coverage": "Current German station/EVSE magnitude refreshed; site-specific ad-hoc heterogeneity proven; substantial but incomplete AFIR tariff coverage; no safe global tariff.",
+      "exactGap": "Build the German 50five EVSE matrix from Mobilithek/Eco-Movement and retain the actual direct price per EVSE/site. Resolve the remaining unpriced ~10% plus any start/blocking fees, payment method and gross/VAT semantics. Do not fill gaps with average, app/card, Shell or roaming prices."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 256,
+    "partial": 335,
+    "blocked": 0
+  },
+  "indicator": "221 -> 256 complete (+35)",
+  "priorityTop5": {
+    "status": "All five historical Top-5 are now reopened/investigated using new site/app/backend evidence. solid, NEW, RhönEnergie, amperio and 50five remain partial with materially narrower explicit gaps; none is safely promotable yet."
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "256 + 335 + 0 = 591",
+    "totalNamedCpos": 591,
+    "countsVsLists": "No promotion; counters unchanged.",
+    "duplicateAliasRisk": "No new CPO/alias created.",
+    "repeatGuard": "PASS: amperio current first-party ad-hoc publication and 50five current AFIR/site heterogeneity are new evidence.",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "For amperio, reconcile current EVSE denominator and sample QR/payment endpoints specifically for exceptions to the first-party 0.49/0.69 grid. For 50five, exploit Mobilithek/Eco-Movement as a per-EVSE matrix and target only the residual unpriced points; do not seek a global tariff."
+}
