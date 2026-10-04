@@ -122,9 +122,10 @@ def main() -> int:
     # Coverage and historical accounting are deliberately separate invariants.
     treated = int(canonical["treatedCpos"])
     set_aside = int(canonical["setAsideCpos"])
-    active = int(canonical["activeRemainingCpos"])
+    active = int(canonical.get("activeRemainingCpos", 0))
+    historical_resolved = int(canonical.get("historicalResolvedSlots", 0))
     total = int(canonical["totalCpos"])
-    arithmetic_ok = treated + set_aside + active == total
+    arithmetic_ok = treated + set_aside + active + historical_resolved == total
 
     report = {
         "schemaVersion": 1,
@@ -140,7 +141,8 @@ def main() -> int:
         "historical291Accounting": {
             "treated": treated,
             "setAside": set_aside,
-            "active": active,
+            "activeBusiness": active,
+            "historicalResolvedSlots": historical_resolved,
             "total": total,
             "arithmeticOk": arithmetic_ok,
         },
