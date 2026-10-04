@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "date": "2026-10-05",
+  "batch": "batch609",
+  "type": "treated-coverage-and-released-slot-reliability",
+  "canonicalBase": {
+    "latestBatch": "batch608",
+    "treated": 100,
+    "setAside": 117,
+    "activeHistoricalSlots": 74,
+    "total": 291,
+    "pendingDedupe": 0,
+    "businessUnresolvedAuthorities": 0
+  },
+  "releasedHistoricalSlots": {
+    "count": 74,
+    "allReleasedMarkers": true,
+    "classification": {
+      "alias": 43,
+      "authorityAlreadyTreated": 18,
+      "lineage": 5,
+      "historicallyTreated": 7,
+      "identityAlreadySetAside": 1,
+      "unclassified": 0
+    },
+    "decision": "Retire active as a business-backlog category without deleting any of the 74 historical raw-accounting slots. Preserve them explicitly as historicalResolvedSlots."
+  },
+  "treatedReliability": {
+    "report": "reports/france/cpo-treated-reliability-audit-latest.json",
+    "reportBlobSha": "36632bc0b2a7a7a56408265502f64e8101e58269",
+    "qwello": {
+      "evse": 584,
+      "priced": 584,
+      "unpriced": 0,
+      "failed": 0,
+      "status": "coverage-complete"
+    },
+    "ubitricity": {
+      "evse": 392,
+      "priced": 392,
+      "unpriced": 0,
+      "status": "coverage-complete",
+      "audit": "docs/france-regional-cpo-ubitricity-batch608-2026-10-04.json"
+    },
+    "loadMotionSnapshot": {
+      "generatedAt": "2026-09-24T21:26:11.382Z",
+      "yes55": {
+        "tested": 1135,
+        "priced": 253,
+        "noTariff": 361,
+        "empty": 521,
+        "persistentErrors": 0,
+        "status": "treated-partial-fail-closed"
+      },
+      "loadStations": {
+        "tested": 77,
+        "priced": 75,
+        "empty": 2,
+        "persistentErrors": 0,
+        "status": "treated-partial-fail-closed"
+      },
+      "reveo": {
+        "tested": 1942,
+        "priced": 1936,
+        "persistentErrors": 6,
+        "status": "treated-near-complete-fail-closed"
+      },
+      "mobisdec": {
+        "tested": 1261,
+        "priced": 1261,
+        "persistentErrors": 0,
+        "status": "coverage-complete"
+      }
+    },
+    "bump": {
+      "officialInventoryEvse": 2498,
+      "openDataTariffEvse": 0,
+      "olderPublicGraphqlHarvest": {
+        "officialPoints": 2268,
+        "pointsWithTariff": 2113,
+        "stationsWithTariff": 1423,
+        "officialStations": 1514
+      },
+      "status": "treated-method-valid-refresh-required"
+    },
+    "greenspot": {
+      "currentIrveEvse": 730,
+      "exactLiveMatches": 212,
+      "unmatchedIrveEvse": 518,
+      "status": "treated-partial-fail-closed",
+      "report": "docs/france-greenspot-direct-report-current.json"
+    },
+    "driveco": {
+      "officialInventoryRows": 5442,
+      "exactMatched": 1601,
+      "unresolvedFailClosed": 3841,
+      "status": "treated-partial-fail-closed",
+      "report": "reports/france/driveco/fail-closed-status.json"
+    },
+    "spieCityNetworks": {
+      "panRows": 4543,
+      "exactMatchedLegacy": 1651,
+      "unresolvedFailClosedLegacy": 2892,
+      "status": "treated-multi-network-partial-requires-current-overlay-reconciliation",
+      "report": "reports/france/spie-citynetworks/fail-closed-status.json"
+    },
+    "delmonicos": {
+      "currentProducerPdc": 146,
+      "directMappedPdc": 140,
+      "residualPdc": 6,
+      "status": "treated-partial-fail-closed"
+    },
+    "waat": {
+      "qualichargeWaatEvse": 0,
+      "status": "treated-maintenance-source-gap",
+      "report": "data/reports/waat_qualicharge_direct_tariffs_report.json"
+    },
+    "policy": "treated means a validated safe method/authority, not necessarily 100% priced. Residual EVSE remain fail-closed. Priority remains exact CPO-direct -> Electra -> Electroverse -> unpriced; no extrapolation."
+  },
+  "refreshWave": {
+    "loadMotionRun": 37244924567,
+    "bumpNationalRun": 37244929025,
+    "reveoExactRun": 37244934504,
+    "statusAtAudit": "started"
+  },
+  "canonicalMigration": {
+    "targetAccounting": {
+      "treated": 100,
+      "setAside": 117,
+      "activeBusiness": 0,
+      "historicalResolvedSlots": 74,
+      "total": 291
+    },
+    "arithmetic": "100 + 117 + 0 + 74 = 291",
+    "counterDeletion": false,
+    "historicalSlotsDeleted": false,
+    "businessAuthorityReopened": false
+  },
+  "reemploymentV8V9CpoDirect": "Reuse validated direct methods and exact EVSE/station mappings. Electra/Electroverse remain roaming fallback only and never prove CPO-direct coverage.",
+  "result": "PASS_ACTIVE_BUSINESS_CATEGORY_CAN_BE_RETIRED_WITH_74_SLOTS_PRESERVED"
+}
