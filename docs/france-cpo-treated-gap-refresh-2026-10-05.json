@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "country": "FR",
+  "date": "2026-10-05",
+  "type": "treated-maintenance-gap-refresh",
+  "parentAudit": "docs/france-cpo-treated-active-reliability-batch609-2026-10-05.json",
+  "runs": {
+    "loadMotion": {
+      "runId": 37244924567,
+      "conclusion": "success",
+      "effectiveRefresh": false,
+      "reason": "All four Data Lab secrets are missing; previous validated snapshot retained.",
+      "missingSecrets": [
+        "LOADMOTION_YES55_TOKEN",
+        "LOADMOTION_LOADSTATIONS_TOKEN",
+        "LOADMOTION_REVEO_TOKEN",
+        "LOADMOTION_MOBISDEC_TOKEN"
+      ]
+    },
+    "bump": {
+      "runId": 37244929025,
+      "conclusion": "success",
+      "commit": "17bc2a175fa37e24f6db7435f821aa9b69aceea4",
+      "current": {
+        "officialStations": 1599,
+        "officialPoints": 2496,
+        "matchedStations": 1441,
+        "stationsWithTariff": 1343,
+        "pointsWithTariff": 2078,
+        "unmatchedStations": 158,
+        "timeChangingPricedPoints": 619
+      },
+      "residual": {
+        "pointsWithoutExactDirectTariff": 418
+      },
+      "policy": "residual fail-closed"
+    },
+    "reveo": {
+      "runId": 37244934504,
+      "conclusion": "success",
+      "commit": "23ce3b48cd4ee85198818d8d29bd00e55977c07f",
+      "current": {
+        "locations": 507,
+        "connectors": 1710,
+        "pricedConnectors": 1708,
+        "missingTariffConnectors": 2,
+        "coverage": 0.9988304093567252
+      },
+      "policy": "2 residual connectors fail-closed"
+    }
+  },
+  "persistentPriorityGaps": [
+    {
+      "authority": "YES55",
+      "tested": 1135,
+      "priced": 253,
+      "noTariff": 361,
+      "empty": 521,
+      "blocker": "Data Lab Load Motion secret absent; validated snapshot retained"
+    },
+    {
+      "authority": "Load Stations",
+      "tested": 77,
+      "priced": 75,
+      "empty": 2,
+      "blocker": "Data Lab Load Motion secret absent; exact status artifact also stale and contradictory"
+    },
+    {
+      "authority": "Bump",
+      "currentPoints": 2496,
+      "priced": 2078,
+      "residual": 418,
+      "blocker": "public GraphQL does not deterministically cover every official point"
+    },
+    {
+      "authority": "Greenspot",
+      "currentEvse": 730,
+      "exactLiveMatches": 212,
+      "residual": 518,
+      "blocker": "first-party live exact mapping incomplete; no tariff inheritance"
+    },
+    {
+      "authority": "DRIVECO",
+      "officialInventoryRows": 5442,
+      "exactMatched": 1601,
+      "residual": 3841,
+      "blocker": "legacy exact-ID coverage partial; later tariff-rule refresh does not prove full EVSE mapping"
+    },
+    {
+      "authority": "SPIE CityNetworks",
+      "legacyPanRows": 4543,
+      "legacyExactMatched": 1651,
+      "legacyResidual": 2892,
+      "blocker": "multi-network overlays require current exact reconciliation"
+    },
+    {
+      "authority": "WAAT",
+      "qualichargeWaatEvse": 0,
+      "blocker": "current QualiCharge path ineffective for WAAT; keep separate from business classification"
+    },
+    {
+      "authority": "Delmonicos",
+      "currentPdc": 146,
+      "directMappedPdc": 140,
+      "residual": 6,
+      "blocker": "Homécourt residual fail-closed"
+    },
+    {
+      "authority": "REVEO",
+      "currentConnectors": 1710,
+      "priced": 1708,
+      "residual": 2,
+      "blocker": "official OCPI currently has no active tariff for 2 connectors"
+    }
+  ],
+  "policy": "These are maintenance coverage gaps inside treated authorities, not active CPO authorities. Never reintroduce them into the former active business category. Exact CPO-direct -> Electra -> Electroverse -> unpriced; no extrapolation.",
+  "result": "PASS_REFRESH_WAVE_WITH_RESIDUAL_MAINTENANCE_LEDGER"
+}
