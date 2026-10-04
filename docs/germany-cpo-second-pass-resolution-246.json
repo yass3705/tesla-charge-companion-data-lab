@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 246,
+  "date": "2026-10-05",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-245.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 256,
+    "partial": 335,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "NEW AG / NEW Energie",
+      "classification": "priorityTop5 parked -> reopened for explicit APK/site/backend pass",
+      "family": "Last Mile Solutions / evc-net / Mobilithek AFIR",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Fresh investigation identifies the actual NEW e-laden technical stack rather than generic NEW apps: Android package com.neweladen.app is a Last Mile Solutions application; first-party registration and location surfaces use new.evc-net.com; physical NEW QR identifiers resolve through deterministic new.evc-net.com/Redirect/Qr/channel/{channel}/chargepointId/{id}/evse/{DENEWE...} routes. NEW first-party pages explicitly distinguish registered charging from unregistered/ad-hoc charging and support credit-card/PayPal payment. Current AFIR/Mobilithek-derived discovery sees about 417 NEW Energie stations / 1126 charge points, while NEW reported 759 public charge points at year-end 2025, proving the older ~413-point denominator is stale/ambiguous. Current public AFIR tariff coverage is sparse and heterogeneous; observed direct prices cannot safely be extrapolated network-wide.",
+      "coverage": "Backend/vendor + Android package + deterministic per-EVSE QR route identified; anonymous/ad-hoc semantics confirmed; current denominator not reconciled; tariff matrix not exhaustive.",
+      "exactGap": "Reconcile canonical NEW CPO denominator against current NEW-operated public inventory, then obtain current anonymous_ad_hoc tariff payload from Last Mile Solutions evc-net QR/payment surfaces for every relevant EVSE/power class or prove deterministic tariff families. Close energy + start/session + blocking + payment + gross/VAT. Do not substitute registered NEW e-laden, roaming, or partner/eMSP tariffs."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 256,
+    "partial": 335,
+    "blocked": 0
+  },
+  "indicator": "221 -> 256 complete (+35)",
+  "priorityTop5": {
+    "status": "solid and NEW have both been reopened on genuinely new app/backend evidence and re-bounded without unsafe promotion. RhönEnergie Fulda is next for explicit site + APK + backend/API investigation; amperio and 50five remain parked pending their turns."
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "256 + 335 + 0 = 591",
+    "totalNamedCpos": 591,
+    "countsVsLists": "No promotion; counters unchanged.",
+    "duplicateAliasRisk": "No alias/new CPO created; NEW AG / NEW Energie retained as canonical identity.",
+    "repeatGuard": "PASS: new Last Mile Solutions/evc-net backend and physical QR route are materially new evidence, not repetition of previous generic app/site passes.",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Move to RhönEnergie Fulda and explicitly identify its charging app/backend/QR provider. Return to NEW only with direct evc-net tariff extraction or a reconciled current denominator."
+}
