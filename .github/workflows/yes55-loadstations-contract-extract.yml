@@ -18,7 +18,12 @@ jobs:
           set -euo pipefail
           mkdir -p reports/france/yes55 /tmp/yes55
           curl -fLsS 'https://yes55.load-motion.com/assets/config.json' -o /tmp/yes55/config.json
-          curl -fLsS 'https://yes55.load-motion.com/main.f31607260351ed46.js' -o /tmp/yes55/main.js
+          curl -fLsS 'https://yes55.load-motion.com/' -o /tmp/yes55/index.html
+          MAIN_JS="$(grep -oE 'src="[^"]*main\.[A-Za-z0-9]+\.js"' /tmp/yes55/index.html | head -1 | sed -E 's/^src="//;s/"$//' || true)"
+          if [ -z "$MAIN_JS" ]; then MAIN_JS="/main.f31607260351ed46.js"; fi
+          case "$MAIN_JS" in http*) JS_URL="$MAIN_JS";; *) JS_URL="https://yes55.load-motion.com/${MAIN_JS#/}";; esac
+          echo "current bundle: $JS_URL"
+          curl -fLsS "$JS_URL" -o /tmp/yes55/main.js
           python - <<'PY'
           import json,re,pathlib
           cfg=json.loads(pathlib.Path('/tmp/yes55/config.json').read_text())
@@ -50,8 +55,12 @@ jobs:
               p=i+len(term); n+=1
               if n>=8: break
           # literal domain-ish strings around loadstations
-          domains=sorted(set(re.findall(r'[A-Za-z0-9._-]{2,}\.(?:loadstations-api|load-motion)\.[A-Za-z0-9.-]+',js)))
-          out={'yes55Config':yes,'configRelevantValues':all_urls[:150],'domains':domains[:100],'endpointConstants':constants[:500],'snippets':snippets[:100]}
+          domains=sorted(set(
+              re.findall(r'(?:[A-Za-z0-9-]+\.)+[A-Za-z0-9-]*(?:loadstations-api\.com|load-motion\.com)',js,re.I)
+          ))
+          literal_urls=sorted(set(re.findall(r'https?://[^"\\\s<>]{4,500}',js)))
+          api_urls=[u for u in literal_urls if 'loadstations-api.com' in u.lower() or '/guest' in u.lower() or '/pricing' in u.lower()]
+          out={'yes55Config':yes,'configRelevantValues':all_urls[:150],'domains':domains[:200],'apiLiteralUrls':api_urls[:300],'endpointConstants':constants[:500],'snippets':snippets[:100]}
           pathlib.Path('reports/france/yes55/loadstations-contract-extract.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
           print(json.dumps(out,ensure_ascii=False)[:50000])
           PY
