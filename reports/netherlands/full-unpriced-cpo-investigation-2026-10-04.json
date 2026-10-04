@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T16:40:45.124Z",
+  "generatedAt": "2026-10-04T18:07:01.615Z",
   "dataset": "dotnl-netherlands-runtime-report",
   "runtime": "data/national/netherlands_dotnl/runtime/all.json.gz",
   "selection": "CPOs for which every in-bounds runtime connector currently has no exact calculated direct price",
@@ -14,7 +14,7 @@
     "eligibleConnectorCount": 176726,
     "pricedConnectorCount": 165671,
     "unpricedConnectorCount": 11055,
-    "fullyUnpricedCpoCount": 9
+    "fullyUnpricedCpoCount": 3
   },
   "operators": [
     {
@@ -67,30 +67,6 @@
       "binaryStaticInspection": "Official app confirmed; public web map and tariff page found. Exact QR endpoint/EVSE reconciliation remains open."
     },
     {
-      "partyId": "IPC",
-      "operator": "IP Charging",
-      "connectors": 982,
-      "unpricedConnectors": 982,
-      "locationsWithUnpriced": 155,
-      "coverage": "100% missing",
-      "investigationPriority": "high",
-      "siteAndAppFinding": "IP Charging public app (Nayax) advertises station price details before start and daily tariff display; official app store package com.nayax.ocpp.ip found. Operator-specific location owners may control prices.",
-      "officialSources": [
-        "https://ipcharging.nl/",
-        "https://play.google.com/store/apps/details?id=com.nayax.ocpp.ip",
-        "https://apps.apple.com/"
-      ],
-      "nextInvestigation": "Inspect APK and direct QR/web checkout, identify unauthenticated endpoint returning ad-hoc tariff by station/EVSE. Current 155 locations / 155 connectors.",
-      "candidateResolutionPath": "app_apk_qr_checkout",
-      "status": "investigation_open",
-      "androidAppApkReview": {
-        "officialPlay": "https://play.google.com/store/apps/details?id=com.nayax.ocpp.ip",
-        "apkCandidate": "https://play.google.com/store/apps/details?id=com.nayax.ocpp.ip",
-        "note": "Nayax IP EV package identified; inspect APK for price/map/QR endpoints."
-      },
-      "binaryStaticInspection": "pending; source/app path identified, no APK-derived endpoint promoted yet"
-    },
-    {
       "partyId": "SPA",
       "operator": "StellaPower",
       "connectors": 328,
@@ -111,54 +87,6 @@
         "officialPlay": null,
         "apkCandidate": null,
         "note": "No dedicated driver app identified; official direct QR payment is the primary route."
-      },
-      "binaryStaticInspection": "pending; source/app path identified, no APK-derived endpoint promoted yet"
-    },
-    {
-      "partyId": "BLK",
-      "operator": "Blink Charging",
-      "connectors": 199,
-      "unpricedConnectors": 199,
-      "locationsWithUnpriced": 27,
-      "coverage": "100% missing",
-      "investigationPriority": "high",
-      "siteAndAppFinding": "Official Blink app shows station/location pricing and allows guest/card direct charging; official EU direct payment QR portal exists. Past UK attempt used Eco-Movement PCPR API but returned 401 anonymously; UK report says request access needed.",
-      "officialSources": [
-        "https://dp.blinknetwork.eu/",
-        "https://play.google.com/store/apps/details?id=com.blinkcharging.mobility",
-        "https://blinkcharging.com/products/blink-app?locale=en"
-      ],
-      "nextInvestigation": "Strong path: test QR payment portal by station serial and inspect EU Blink Drive APK/backend; reuse UK API only if credential granted. 40 connectors / 27 locations. Do not substitute Blink Drive roaming rates.",
-      "candidateResolutionPath": "qr_direct_and_blink_drive_api",
-      "status": "investigation_open",
-      "androidAppApkReview": {
-        "officialPlay": "https://play.google.com/store/apps/details?id=com.blinkcharging.mobility",
-        "apkCandidate": "https://www.appbrain.com/app/blink-drive/com.blinkcharging.mobility",
-        "note": "Blink Drive package; public APK listing found. Inspect Blink Drive separately from older Blink Charging Mobile app."
-      },
-      "binaryStaticInspection": "pending; source/app path identified, no APK-derived endpoint promoted yet"
-    },
-    {
-      "partyId": "UFC",
-      "operator": "E.ON Drive Infrastructure",
-      "connectors": 42,
-      "unpricedConnectors": 42,
-      "locationsWithUnpriced": 10,
-      "coverage": "100% missing",
-      "investigationPriority": "high",
-      "siteAndAppFinding": "Official EDRI FAQ says direct credit/debit/QR rates are displayed on charger screen/QR or nl.pay.edri.com; separates this from charging-card provider tariffs. Official app is E.ON Drive Public (not consumer E.ON Drive roaming app).",
-      "officialSources": [
-        "https://www.edri.com/en-nl/faq",
-        "https://play.google.com/store/apps/details?id=com.eon.drive.ro",
-        "https://www.edri.com/en-dk/app"
-      ],
-      "nextInvestigation": "High-value: probe nl.pay.edri.com QR route and E.ON Drive Public app/API using exact IDs for all 10 EVSE. Reuse official direct QR URLs; avoid app-wide roaming fallback.",
-      "candidateResolutionPath": "qr_pay_edri_station_price",
-      "status": "investigation_open",
-      "androidAppApkReview": {
-        "officialPlay": "https://play.google.com/store/apps/details?id=com.edri.dk",
-        "apkCandidate": "https://apkpure.net/e-on-drive-public/com.edri.dk/download",
-        "note": "E.ON Drive Public package available; distinct from broad E.ON eMSP apps."
       },
       "binaryStaticInspection": "pending; source/app path identified, no APK-derived endpoint promoted yet"
     },
@@ -185,54 +113,6 @@
         "note": "Virta driver app identified; inspect whether WattHub sessions/prices are exposed for guest/direct payment."
       },
       "binaryStaticInspection": "pending; source/app path identified, no APK-derived endpoint promoted yet"
-    },
-    {
-      "partyId": "911",
-      "operator": "Porsche Sales & Marketplace",
-      "connectors": 8,
-      "unpricedConnectors": 8,
-      "locationsWithUnpriced": 4,
-      "coverage": "100% missing",
-      "investigationPriority": "high",
-      "siteAndAppFinding": "Official Porsche public-charge docs support ad-hoc credit-card payment, separate from Porsche Charging Service contract. My Porsche app exposes station prices. Current DOT-NL missing scope is 4 connectors at Porsche centres.",
-      "officialSources": [
-        "https://ask.porsche.com/nl/nl-NL/public-charging-process/",
-        "https://play.google.com/store/apps/details?id=com.porsche.one",
-        "https://ask.porsche.com/nl/nl-NL/charging-service-price-list/"
-      ],
-      "nextInvestigation": "Inspect dealer charger labels, My Porsche public price map, and QR/card direct-pay source; do not use Porsche Charging Service/partner tariff. 4 connectors at 4 centres.",
-      "candidateResolutionPath": "dealer_direct_qr_app_station_price",
-      "status": "investigation_open",
-      "androidAppApkReview": {
-        "officialPlay": "https://play.google.com/store/apps/details?id=com.porsche.one",
-        "apkCandidate": "https://www.apkmirror.com/apk/porsche-cars-north-america-inc/my-porsche/",
-        "note": "My Porsche APK listing found; app requires Porsche ID for some functions, so public direct-payment path may be separate."
-      },
-      "binaryStaticInspection": "pending; source/app path identified, no APK-derived endpoint promoted yet"
-    },
-    {
-      "partyId": "ENV",
-      "operator": "Enviem",
-      "connectors": 8,
-      "unpricedConnectors": 8,
-      "locationsWithUnpriced": 4,
-      "coverage": "100% missing",
-      "investigationPriority": "medium",
-      "siteAndAppFinding": "Official Enviem app found is a fuel-card/fuel-price product, not an EV charging app. Enviem operates retail fuel sites; DOT-NL has 4 connectors at 4 locations. No authoritative EV direct tariff source established yet.",
-      "officialSources": [
-        "https://www.enviem.nl/fuel-points",
-        "https://play.google.com/store/apps/details?id=nl.enviem.FUELCARD",
-        "https://www.enviem.nl/"
-      ],
-      "nextInvestigation": "Inspect each station site and physical QR/contactless payment; validate that ENV is the actual CPO rather than site host/retailer. Do not infer prices from fuel app or generic retailer tariffs.",
-      "candidateResolutionPath": "verify_operator_then_qr",
-      "status": "investigation_open",
-      "androidAppApkReview": {
-        "officialPlay": "https://play.google.com/store/apps/details?id=nl.enviem.FUELCARD",
-        "apkCandidate": "https://play.google.com/store/apps/details?id=nl.enviem.FUELCARD",
-        "note": "Identified app is a fuel-price/fuel-card tool, not evidence of an EV charging tariff app."
-      },
-      "binaryStaticInspection": "pending; source/app path identified, no APK-derived endpoint promoted yet"
     }
   ],
   "resolvedSincePreviousReport": [
@@ -243,6 +123,41 @@
       "resolution": "Accepted exact DOT-NL CPO-owned REGULAR tariffs with valid OCPI TIME/PARKING_TIME stepSize=60 seconds; ENERGY and FLAT remain restricted to stepSize=1.",
       "evidence": "partyId EVT, exact connector tariffKeys, owner-configured guest-use tariff model documented by e-VOLTT; no eMSP/roaming overlay used.",
       "validation": "All 622 in-bounds EVT connectors compile to exact runtime tariff rules; one out-of-bounds EVT station remains excluded by geographic scope."
+    },
+    {
+      "partyId": "IPC",
+      "operator": "IP Charging",
+      "connectors": 982,
+      "resolution": "CPO-owned national OCPI REGULAR tariffs compile exactly for all in-bounds connectors; partyId remains IPC.",
+      "validation": "982/982 exact connectors; no eMSP/roaming overlay."
+    },
+    {
+      "partyId": "BLK",
+      "operator": "Blink Charging",
+      "connectors": 199,
+      "resolution": "CPO-owned national tariff objects without a type compile exactly for all in-bounds connectors; accepted as the CPO generic fallback.",
+      "validation": "199/199 exact connectors; no roaming tariff used."
+    },
+    {
+      "partyId": "UFC",
+      "operator": "E.ON Drive Infrastructure",
+      "connectors": 42,
+      "resolution": "CPO-owned national tariff objects without a type compile exactly for all in-bounds connectors.",
+      "validation": "42/42 exact connectors; no eMSP tariff used."
+    },
+    {
+      "partyId": "911",
+      "operator": "Porsche Sales & Marketplace",
+      "connectors": 8,
+      "resolution": "CPO-owned national tariff objects without a type compile exactly for all in-bounds connectors.",
+      "validation": "8/8 exact connectors; no Porsche Charging Service contract tariff used."
+    },
+    {
+      "partyId": "ENV",
+      "operator": "Enviem",
+      "connectors": 8,
+      "resolution": "CPO-owned national OCPI REGULAR tariffs compile exactly for all in-bounds connectors; partyId remains ENV.",
+      "validation": "8/8 exact connectors; no eMSP/roaming overlay."
     }
   ],
   "compilerChange": {
@@ -254,6 +169,6 @@
       "PARKING_TIME"
     ],
     "energyAndFlatRule": "stepSize=1 only",
-    "directCpoPolicy": "CPO-owned REGULAR tariffs remain eligible; AD_HOC_PAYMENT is preferred; eMSP/roaming/contract overlays remain excluded"
+    "directCpoPolicy": "CPO-owned REGULAR and untyped tariffs remain eligible when partyId identifies the CPO and no explicit eMSP/roaming/contract field contradicts it; AD_HOC_PAYMENT remains preferred."
   }
 }
