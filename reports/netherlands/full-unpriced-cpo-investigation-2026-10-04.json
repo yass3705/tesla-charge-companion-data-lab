@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T13:55:00Z",
+  "generatedAt": "2026-10-04T13:49:37.851030Z",
   "dataset": "dotnl-netherlands-runtime-report",
   "runtime": "data/national/netherlands_dotnl/runtime/all.json.gz",
   "selection": "CPOs for which every in-bounds runtime connector currently has no exact calculated direct price",
@@ -12,9 +12,9 @@
   "runtimeMetrics": {
     "stationCount": 73467,
     "eligibleConnectorCount": 176726,
-    "pricedConnectorCount": 156571,
-    "unpricedConnectorCount": 20155,
-    "fullyUnpricedCpoCount": 11
+    "pricedConnectorCount": 156697,
+    "unpricedConnectorCount": 20029,
+    "fullyUnpricedCpoCount": 10
   },
   "operators": [
     {
@@ -162,30 +162,6 @@
       "binaryStaticInspection": "pending; source/app path identified, no APK-derived endpoint promoted yet"
     },
     {
-      "partyId": "ELD",
-      "operator": "Electra",
-      "connectors": 126,
-      "unpricedConnectors": 126,
-      "locationsWithUnpriced": 21,
-      "coverage": "100% missing",
-      "investigationPriority": "high",
-      "siteAndAppFinding": "Official Electra states contactless terminal and Electra app rates are direct for Electra network stations; exact station prices are shown in the app. Existing France static analysis found app map station IDs and a live GraphQL tariff endpoint, but host emsp.go-electra.com, so validate CPO-owned ELD rows and direct-pay price origin carefully.",
-      "officialSources": [
-        "https://intercom.help/go-electra/nl/articles/7987274-onze-tarieven",
-        "https://play.google.com/store/apps/details?id=com.electra.app",
-        "https://stations.go-electra.com/fr"
-      ],
-      "nextInvestigation": "Reuse existing France map/live price extraction if ELD stations resolve as owned Electra locations and connector identities match exactly; exclude partner/ChargeLeague or eMSP prices. 23 connectors/21 stations.",
-      "candidateResolutionPath": "cross_country_map_graphql_candidate",
-      "status": "investigation_open",
-      "androidAppApkReview": {
-        "officialPlay": "https://play.google.com/store/apps/details?id=com.electra.app",
-        "apkCandidate": "https://apkpure.net/electra-fast-ev-charging/com.electra.app/download",
-        "note": "Electra Android package available; reuse France live map/GraphQL findings after proving ownership/direct-pay scope."
-      },
-      "binaryStaticInspection": "pending; source/app path identified, no APK-derived endpoint promoted yet"
-    },
-    {
       "partyId": "UFC",
       "operator": "E.ON Drive Infrastructure",
       "connectors": 42,
@@ -280,6 +256,14 @@
         "note": "Identified app is a fuel-price/fuel-card tool, not evidence of an EV charging tariff app."
       },
       "binaryStaticInspection": "pending; source/app path identified, no APK-derived endpoint promoted yet"
+    }
+  ],
+  "resolvedSincePreviousReport": [
+    {
+      "partyId": "ELD",
+      "operator": "Electra",
+      "promotedExactConnectors": 126,
+      "source": "reports/netherlands/electra-direct-payg-integration-latest.json"
     }
   ]
 }
