@@ -86,17 +86,24 @@ for p in files:
             if opn==tn or (len(opn)>=5 and (opn in tn or tn in opn)):
                 matches.append(t)
     rel=str(p.relative_to(ROOT))
-    if matches:
+    source_type=""
+    if isinstance(x,dict) and isinstance(x.get("classification"),dict):
+        source_type=str(x["classification"].get("sourceType") or "")
+    third_party_probe="third_party" in source_type.lower() or "third-party" in source_type.lower()
+    if matches and not third_party_probe:
         evidence_index.append({"path":rel,"operator":op,"treatedMatches":matches[:5]})
-    # status contradictions only when evidence can be tied to a treated authority.
-    if matches and isinstance(x,dict):
+    # Status contradictions only from direct/first-party evidence.
+    if matches and isinstance(x,dict) and not third_party_probe:
         cls=x.get("classification")
         if isinstance(cls,dict):
             flags={k:v for k,v in cls.items() if k.lower() in ("treated","blocked","setaside","failclosed")}
             if flags.get("treated") is False or flags.get("blocked") is True or flags.get("setAside") is True or flags.get("setaside") is True:
                 contradictions.append({"path":rel,"operator":op,"treatedMatches":matches[:5],"classification":flags,
                                        "reason":cls.get("reason")})
-    # positive numeric gap metrics; evidence association retained but no automatic business decision.
+    # Positive numeric gap metrics; ignore historical third-party probes and non-France artifacts.
+    country=str(x.get("country") or "") if isinstance(x,dict) else ""
+    if third_party_probe or (country and country.upper() not in ("FR","FRA","FRANCE")):
+        continue
     for full,k,v in walk(x):
         if not gap_re.search(str(k)) or ignore_gap_re.search(full): continue
         positive=False
