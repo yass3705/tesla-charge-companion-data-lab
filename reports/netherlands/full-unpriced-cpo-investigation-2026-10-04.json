@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-04T16:39:22.230Z",
+  "generatedAt": "2026-10-04T16:40:45.124Z",
   "dataset": "dotnl-netherlands-runtime-report",
   "runtime": "data/national/netherlands_dotnl/runtime/all.json.gz",
   "selection": "CPOs for which every in-bounds runtime connector currently has no exact calculated direct price",
@@ -49,21 +49,22 @@
       "locationsWithUnpriced": 927,
       "coverage": "100% missing",
       "investigationPriority": "high",
-      "siteAndAppFinding": "Official AgriSnellaad Android/iOS app supports QR scan and immediate transaction; official page says current station-specific prices are in app/QR. Public map backend appears Last Mile Solutions and current browser bootstrap carries tariffProvider 359 with MODE_ROAMING; treat that feed as roaming until the direct QR path is isolated.",
+      "siteAndAppFinding": "Official Agri Go Charge (formerly AgriSnellaad) publishes CPO ad-hoc QR prices separately from roaming: the QR payment page shows the current station price. Published categories are €0.49/kWh AC residential, €0.52/kWh AC public parking, €0.56/kWh DC 22–60 kW, and €0.65/kWh DC >=60 kW, with location/time-dependent connection fees. The app and PowerGoodies map confirm the Agri Go network, but do not expose an exact EVSE tariff mapping in the public HTML.",
       "officialSources": [
-        "https://agrisnellaad.evc-net.com/Locations",
-        "https://play.google.com/store/apps/details?id=com.agrisnellaad.app",
-        "https://agrisnellaadapp.nl/"
+        "https://agrigo.nl/charge/tarieven/",
+        "https://agrigo.nl/charge/locaties/",
+        "https://rewards.powergoodies.com/charging-stations/map/netherlands",
+        "https://apps.apple.com/fr/app/agrisnellaad-app/id1613337450"
       ],
-      "nextInvestigation": "High-value candidate: replicate the already-used LMS public map/detail API with provider 359; prove returned prices belong to Agri CPO guest payment and not roaming before promotion. Exact stations 996 connectors / 927 locations.",
-      "candidateResolutionPath": "app_qr_station_rates_api_candidate",
+      "nextInvestigation": "Discover the QR payment-page URL/JSON endpoint for a representative set of exact Agri Go EVSEs, then reconcile EVSE IDs and current tariffs. Use the published categories only as validation, never as a bulk estimate; exclude the published roaming table and app/card provider surcharges.",
+      "candidateResolutionPath": "official_qr_direct_pay_exact_evse",
       "status": "investigation_open",
       "androidAppApkReview": {
         "officialPlay": "https://play.google.com/store/apps/details?id=com.agrisnellaad.app",
         "apkCandidate": "https://play.google.com/store/apps/details?id=com.agrisnellaad.app",
         "note": "Official app description confirms QR scan and direct session start; binary inspection remains a follow-up."
       },
-      "binaryStaticInspection": "pending; source/app path identified, no APK-derived endpoint promoted yet"
+      "binaryStaticInspection": "Official app confirmed; public web map and tariff page found. Exact QR endpoint/EVSE reconciliation remains open."
     },
     {
       "partyId": "IPC",
