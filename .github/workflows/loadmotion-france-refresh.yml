@@ -3,6 +3,10 @@ name: Load Motion France refresh
 on:
   schedule:
     - cron: "17 2 * * 1"
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/loadmotion-france-refresh.yml"
   workflow_dispatch:
     inputs:
       tenant:
@@ -30,7 +34,7 @@ jobs:
           node-version: '20'
 
       - name: Refresh YES55
-        if: ${{ github.event_name == 'schedule' || inputs.tenant == 'all' || inputs.tenant == 'yes55' }}
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.tenant == 'all' || inputs.tenant == 'yes55' }}
         env:
           LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_YES55_TOKEN }}
         run: |
@@ -38,7 +42,7 @@ jobs:
           node scripts/loadmotion/extract_loadmotion_france.mjs --tenant yes55 --out data/loadmotion/france/current/yes55.json.gz || echo "YES55 refresh failed: keeping previous snapshot"
 
       - name: Refresh Load Stations
-        if: ${{ github.event_name == 'schedule' || inputs.tenant == 'all' || inputs.tenant == 'loadstations' }}
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.tenant == 'all' || inputs.tenant == 'loadstations' }}
         env:
           LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_LOADSTATIONS_TOKEN }}
         run: |
@@ -46,7 +50,7 @@ jobs:
           node scripts/loadmotion/extract_loadmotion_france.mjs --tenant loadstations --out data/loadmotion/france/current/loadstations.json.gz || echo "Load Stations refresh failed: keeping previous snapshot"
 
       - name: Refresh Reveo
-        if: ${{ github.event_name == 'schedule' || inputs.tenant == 'all' || inputs.tenant == 'reveo' }}
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.tenant == 'all' || inputs.tenant == 'reveo' }}
         env:
           LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_REVEO_TOKEN }}
         run: |
@@ -54,7 +58,7 @@ jobs:
           node scripts/loadmotion/extract_loadmotion_france.mjs --tenant reveo --concurrency 2 --out data/loadmotion/france/current/reveo.json.gz || echo "Reveo refresh failed: keeping previous snapshot"
 
       - name: Refresh MobiSDEC
-        if: ${{ github.event_name == 'schedule' || inputs.tenant == 'all' || inputs.tenant == 'mobisdec' }}
+        if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.tenant == 'all' || inputs.tenant == 'mobisdec' }}
         env:
           LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_MOBISDEC_TOKEN }}
         run: |
