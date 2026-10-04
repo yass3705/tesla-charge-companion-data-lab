@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-04",
+  "country": "NL",
+  "partyId": "WAT",
+  "operator": "WattHub",
+  "dotnlScope": {
+    "stationCount": 3,
+    "connectorCount": 124,
+    "stationIds": ["NL:WAT:330103", "NL:WAT:339807", "NL:WAT:341191"]
+  },
+  "officialSources": [
+    {
+      "url": "https://watthub.nl/locaties/",
+      "evidence": ["WattHub-account required for guaranteed charging slot", "dynamic tariffs"]
+    },
+    {
+      "url": "https://watthub.nl/locaties-post/watthub-rotterdam/",
+      "evidence": ["WattHub Rotterdam", "24/7", "dynamic tariffs"]
+    },
+    {
+      "url": "https://hub.virta.global/",
+      "evidence": ["official WattHub login target"]
+    }
+  ],
+  "appInvestigation": {
+    "WattzHub": {
+      "status": "excluded",
+      "reason": "separate eMSP app, not the WattHub CPO direct-pay surface"
+    }
+  },
+  "result": {
+    "status": "not_compilable_as_exact_direct_tariff",
+    "reason": "official source exposes dynamic/account-scoped pricing, not a stable public EVSE-level PAYG price",
+    "emspExcluded": true,
+    "roamingExcluded": true,
+    "noGenericFallback": true,
+    "nextTrigger": "recheck official WattHub/Virta public location or QR/API surface when it becomes unauthenticated"
+  }
+}
