@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 245,
+  "date": "2026-10-05",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-244.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 256,
+    "partial": 335,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "solid GmbH / LadeVerbundPlus",
+      "classification": "priorityTop5 parked -> reopened on new backend evidence",
+      "family": "chargecloud / LadeVerbundPlus 2026 migration / QR anonymous ad-hoc",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Reopened because the September 2026 LadeVerbundPlus migration is genuinely new evidence: new B2C app de.ladeverbundplus.b2c, solid GmbH as central contract partner, chargecloud-backed platform, while anonymous ad-hoc remains explicitly separate and is initiated per charge point through QR/short URL chrg.me/CODE without registration. Current first-party partner pages prove that anonymous ad-hoc is not a single network-wide tariff after the migration. Examples effective/current in September-October 2026 include Stadtwerke Roth 0.70 EUR/kWh AC and 0.85 EUR/kWh DC; Stadtwerke Neumarkt 0.70/0.85; infra fuerth 0.6188 EUR/kWh for AC/DC<=50kW and 0.8144 EUR/kWh for DC>50kW; Stadtwerke Stein 0.6188/0.8144; Stadtwerke Ebermannstadt, Lauf and Weissenburg approximately 0.62/0.82. Blocking rules also differ in first-party partner material (e.g. 5 ct/min vs 10 ct/min AC and 45 vs 60 min DC thresholds). Therefore registered-app tariffs 0.55 AC / 0.68 DC cannot be substituted for anonymous ad-hoc and no global solid tariff may be inferred.",
+      "coverage": "New 2026 app/backend architecture identified; anonymous QR flow semantics confirmed; multiple current first-party partner tariff families sampled across AC/DC and blocking components; full ~1439-point denominator not tariff-closed.",
+      "exactGap": "Resolve anonymous_ad_hoc at operator/subnetwork or EVSE level from QR/chargecloud surfaces. Build deterministic partner-to-tariff groups only where current first-party evidence closes every relevant class/exception; otherwise retain per-EVSE fail-closed. Revalidate the canonical denominator before any promotion. Do not use registered LadeVerbundPlus/partner/eMSP tariffs as direct anonymous prices."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 256,
+    "partial": 335,
+    "blocked": 0
+  },
+  "indicator": "221 -> 256 complete (+35)",
+  "priorityTop5": {
+    "status": "solid GmbH / LadeVerbundPlus reopened due to genuinely new September 2026 app/backend evidence, investigated twice on the new architecture, and re-bounded without promotion because current first-party anonymous ad-hoc tariffs are heterogeneous. NEW AG, RhoenEnergie Fulda, amperio and 50five remain parked until new source/backend/proof."
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "256 + 335 + 0 = 591",
+    "totalNamedCpos": 591,
+    "countsVsLists": "No promotion in resolution-245; canonical counters unchanged from resolution-244.",
+    "duplicateAliasRisk": "No new CPO or alias created.",
+    "repeatGuard": "PASS: solid was reopened only because the September 2026 app/backend migration is new concrete evidence; two distinct new-architecture passes now bound the residual gap.",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Move from solid after two new-architecture passes unless a concrete QR/chargecloud tariff extraction path appears. Investigate the next Top-5 only if APK/site/backend evidence is genuinely new; otherwise continue unresolved canonical m8mit/chargecloud B1/B3/B6 candidates. Keep solid partial and preserve the exact heterogeneous anonymous-ad-hoc gap."
+}
