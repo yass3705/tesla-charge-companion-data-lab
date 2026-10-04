@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 247,
+  "date": "2026-10-05",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-246.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 256,
+    "partial": 335,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "RhönEnergie Fulda GmbH",
+      "classification": "priorityTop5 parked -> reopened for explicit backend/AFIR pass",
+      "family": "ladecloud / e-clearing.net / Mobilithek AFIR",
+      "status": "bounded-no-promotion",
+      "evidenceSummary": "Fresh pass identifies ladecloud as a relevant RhönEnergie charging backend and current AFIR/e-clearing tariff evidence. Public BNetzA-derived inventory at 2026-09-01 reports 279 charging installations / 556 charge points, of which 538 are below 50 kW and 18 are DC >=50 kW, so the former ~300-point denominator is stale. Mobilithek/e-clearing reporting integrated in 2026 exposes RhönEnergie-dominated direct/ad-hoc prices of 0.51 EUR/kWh AC and 0.61 EUR/kWh DC plus 1.00 EUR start fee. Current registered RhönEnergie card tariffs show the same 0.51/0.61 preferred-network energy rates for Gelegenheits-Lader but registered/contract pricing is not used as anonymous proof. Operator terms indicate unregistered/ad-hoc pricing is surfaced via app/web and can vary by charge point, so the AFIR class values cannot yet be extrapolated blindly to all 556 points.",
+      "coverage": "Current operator denominator materially improved: 279 installations / 556 points; AC/DC class profile and AFIR/e-clearing numeric ad-hoc evidence identified; exhaustive EVSE tariff coverage and gross/VAT/blocking semantics not yet closed.",
+      "exactGap": "Reconcile all current DE*REF* EVSE against e-clearing/ladecloud/Mobilithek and prove that 0.51 AC / 0.61 DC + 1.00 start applies to every relevant anonymous_ad_hoc EVSE or enumerate exceptions. Close blocking/time fees and explicit gross/VAT semantics for the anonymous flow. Do not use registered Viel-Lader/Gelegenheits-Lader or roaming prices as substitute evidence."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 256,
+    "partial": 335,
+    "blocked": 0
+  },
+  "indicator": "221 -> 256 complete (+35)",
+  "priorityTop5": {
+    "status": "solid, NEW and RhönEnergie have now each been reopened on genuinely new backend evidence and re-bounded without unsafe promotion. amperio is next for explicit site + APK + backend/API investigation; 50five follows."
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "256 + 335 + 0 = 591",
+    "totalNamedCpos": 591,
+    "countsVsLists": "No promotion; counters unchanged.",
+    "duplicateAliasRisk": "No new CPO/alias created.",
+    "repeatGuard": "PASS: ladecloud plus 2026 e-clearing/AFIR evidence and refreshed BNetzA denominator are materially new evidence.",
+    "unsafeExtrapolations": 0
+  },
+  "nextSafeAction": "Move to amperio and explicitly identify its direct charging frontend/backend/QR provider. Return to RhönEnergie only with exhaustive DE*REF* tariff coverage or deterministic first-party/AFIR class rule including fees and tax semantics."
+}
