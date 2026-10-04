@@ -1,0 +1,219 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-04T13:55:00Z",
+  "dataset": "dotnl-netherlands-runtime-report",
+  "runtime": "data/national/netherlands_dotnl/runtime/all.json.gz",
+  "selection": "CPOs for which every in-bounds runtime connector currently has no exact calculated direct price",
+  "scope": {
+    "directCpoAdHocOnly": true,
+    "excludeEmspAndRoaming": true,
+    "exactPhysicalConnectorMatchRequired": true
+  },
+  "runtimeMetrics": {
+    "stationCount": 73467,
+    "eligibleConnectorCount": 176726,
+    "pricedConnectorCount": 156571,
+    "unpricedConnectorCount": 20155,
+    "fullyUnpricedCpoCount": 11
+  },
+  "operators": [
+    {
+      "partyId": "LNT",
+      "operator": "Laadnet",
+      "connectors": 5878,
+      "unpricedConnectors": 5878,
+      "locationsWithUnpriced": 1467,
+      "coverage": "100% missing",
+      "investigationPriority": "high",
+      "siteAndAppFinding": "Operator portal/app, QR guest charging, but the rate is set by each charging-point owner. The group is 1,747 connectors across 1,467 locations; no universal CPO price. Reuse exact QR/payment portal resolution and owner-configured tariff extraction.",
+      "officialSources": [
+        "https://laadnet.nl/veelgestelde-vragen/",
+        "https://apps.apple.com/nl/app/laadnet/id1589909891",
+        "https://laadnet.nl/klant-worden-en-laadstations-activeren/"
+      ],
+      "nextInvestigation": "Potential exact per-point path: identify each physical QR portal and query the attached tariff; reconcile exact EVSE IDs. Owner-only app access can obstruct bulk pricing.",
+      "candidateResolutionPath": "dynamic_station_owner_price",
+      "status": "investigation_open"
+    },
+    {
+      "partyId": "AGO",
+      "operator": "AgriSnellaad",
+      "connectors": 2578,
+      "unpricedConnectors": 2578,
+      "locationsWithUnpriced": 927,
+      "coverage": "100% missing",
+      "investigationPriority": "high",
+      "siteAndAppFinding": "Official AgriSnellaad Android/iOS app supports QR scan and immediate transaction; official page says current station-specific prices are in app/QR. Public map backend appears Last Mile Solutions and current browser bootstrap carries tariffProvider 359 with MODE_ROAMING; treat that feed as roaming until the direct QR path is isolated.",
+      "officialSources": [
+        "https://agrisnellaad.evc-net.com/Locations",
+        "https://play.google.com/store/apps/details?id=com.agrisnellaad.app",
+        "https://agrisnellaadapp.nl/"
+      ],
+      "nextInvestigation": "High-value candidate: replicate the already-used LMS public map/detail API with provider 359; prove returned prices belong to Agri CPO guest payment and not roaming before promotion. Exact stations 996 connectors / 927 locations.",
+      "candidateResolutionPath": "app_qr_station_rates_api_candidate",
+      "status": "investigation_open"
+    },
+    {
+      "partyId": "EVT",
+      "operator": "e-VOLTT",
+      "connectors": 622,
+      "unpricedConnectors": 622,
+      "locationsWithUnpriced": 277,
+      "coverage": "100% missing",
+      "investigationPriority": "high",
+      "siteAndAppFinding": "e-VOLTT portal lets charging-point owners set the kWh/start/parking tariff by connector group; it is not one nationwide tariff. Public evidence indicates its app/portal is charger management and settlement, while roaming/pas tariffs must remain excluded.",
+      "officialSources": [
+        "https://e-voltt.nl/laadstation-registratie/",
+        "https://e-voltt.nl/laadstation-pasbeheer/",
+        "https://e-voltt.nl/"
+      ],
+      "nextInvestigation": "Inspect my-e-VOLTT/guest-payment direct pricing APIs and exact grouping; map the 278 currently missing connectors to owner-configured groups. Distinguish from e-VOLTT GO pass and roaming.",
+      "candidateResolutionPath": "owner_group_tariff_portal",
+      "status": "investigation_open"
+    },
+    {
+      "partyId": "IPC",
+      "operator": "IP Charging",
+      "connectors": 982,
+      "unpricedConnectors": 982,
+      "locationsWithUnpriced": 155,
+      "coverage": "100% missing",
+      "investigationPriority": "high",
+      "siteAndAppFinding": "IP Charging public app (Nayax) advertises station price details before start and daily tariff display; official app store package com.nayax.ocpp.ip found. Operator-specific location owners may control prices.",
+      "officialSources": [
+        "https://ipcharging.nl/",
+        "https://play.google.com/store/apps/details?id=com.nayax.ocpp.ip",
+        "https://apps.apple.com/"
+      ],
+      "nextInvestigation": "Inspect APK and direct QR/web checkout, identify unauthenticated endpoint returning ad-hoc tariff by station/EVSE. Current 155 locations / 155 connectors.",
+      "candidateResolutionPath": "app_apk_qr_checkout",
+      "status": "investigation_open"
+    },
+    {
+      "partyId": "SPA",
+      "operator": "StellaPower",
+      "connectors": 328,
+      "unpricedConnectors": 328,
+      "locationsWithUnpriced": 152,
+      "coverage": "100% missing",
+      "investigationPriority": "high",
+      "siteAndAppFinding": "Official FAQ says exact kWh price is posted on the charger, prices differ by location, and public charging can be paid by scanning station QR with bank/credit card. No consumer charging card or obvious dedicated app.",
+      "officialSources": [
+        "https://stellapower.eu/faq-items/wat-kost-opladen-bij-de-openbare-laadpaal/",
+        "https://stellapower.eu/faq-items/heeft-stellapower-ook-laadpassen/",
+        "https://stellapower.eu/"
+      ],
+      "nextInvestigation": "Inspect dynamic QR target and card-acquiring checkout endpoint for all exact EVSE IDs (153 connectors/152 stations); use exact QR tariff API, not flat estimate.",
+      "candidateResolutionPath": "dynamic_qr_direct_payment",
+      "status": "investigation_open"
+    },
+    {
+      "partyId": "BLK",
+      "operator": "Blink Charging",
+      "connectors": 199,
+      "unpricedConnectors": 199,
+      "locationsWithUnpriced": 27,
+      "coverage": "100% missing",
+      "investigationPriority": "high",
+      "siteAndAppFinding": "Official Blink app shows station/location pricing and allows guest/card direct charging; official EU direct payment QR portal exists. Past UK attempt used Eco-Movement PCPR API but returned 401 anonymously; UK report says request access needed.",
+      "officialSources": [
+        "https://dp.blinknetwork.eu/",
+        "https://play.google.com/store/apps/details?id=com.blinkcharging.mobility",
+        "https://blinkcharging.com/products/blink-app?locale=en"
+      ],
+      "nextInvestigation": "Strong path: test QR payment portal by station serial and inspect EU Blink Drive APK/backend; reuse UK API only if credential granted. 40 connectors / 27 locations. Do not substitute Blink Drive roaming rates.",
+      "candidateResolutionPath": "qr_direct_and_blink_drive_api",
+      "status": "investigation_open"
+    },
+    {
+      "partyId": "ELD",
+      "operator": "Electra",
+      "connectors": 126,
+      "unpricedConnectors": 126,
+      "locationsWithUnpriced": 21,
+      "coverage": "100% missing",
+      "investigationPriority": "high",
+      "siteAndAppFinding": "Official Electra states contactless terminal and Electra app rates are direct for Electra network stations; exact station prices are shown in the app. Existing France static analysis found app map station IDs and a live GraphQL tariff endpoint, but host emsp.go-electra.com, so validate CPO-owned ELD rows and direct-pay price origin carefully.",
+      "officialSources": [
+        "https://intercom.help/go-electra/nl/articles/7987274-onze-tarieven",
+        "https://play.google.com/store/apps/details?id=com.electra.app",
+        "https://stations.go-electra.com/fr"
+      ],
+      "nextInvestigation": "Reuse existing France map/live price extraction if ELD stations resolve as owned Electra locations and connector identities match exactly; exclude partner/ChargeLeague or eMSP prices. 23 connectors/21 stations.",
+      "candidateResolutionPath": "cross_country_map_graphql_candidate",
+      "status": "investigation_open"
+    },
+    {
+      "partyId": "UFC",
+      "operator": "E.ON Drive Infrastructure",
+      "connectors": 42,
+      "unpricedConnectors": 42,
+      "locationsWithUnpriced": 10,
+      "coverage": "100% missing",
+      "investigationPriority": "high",
+      "siteAndAppFinding": "Official EDRI FAQ says direct credit/debit/QR rates are displayed on charger screen/QR or nl.pay.edri.com; separates this from charging-card provider tariffs. Official app is E.ON Drive Public (not consumer E.ON Drive roaming app).",
+      "officialSources": [
+        "https://www.edri.com/en-nl/faq",
+        "https://play.google.com/store/apps/details?id=com.eon.drive.ro",
+        "https://www.edri.com/en-dk/app"
+      ],
+      "nextInvestigation": "High-value: probe nl.pay.edri.com QR route and E.ON Drive Public app/API using exact IDs for all 10 EVSE. Reuse official direct QR URLs; avoid app-wide roaming fallback.",
+      "candidateResolutionPath": "qr_pay_edri_station_price",
+      "status": "investigation_open"
+    },
+    {
+      "partyId": "WAT",
+      "operator": "WattHub",
+      "connectors": 124,
+      "unpricedConnectors": 124,
+      "locationsWithUnpriced": 3,
+      "coverage": "100% missing",
+      "investigationPriority": "medium",
+      "siteAndAppFinding": "WattHub confirms dynamic prices, booking/time slots and heavy-transport use; official Virta partnership covers platform pricing/payments. Three national locations (6 connectors) include Rotterdam heavy-duty hub and Geldermalsen.",
+      "officialSources": [
+        "https://watthub.nl/locaties/",
+        "https://www.virta.global/news/watthub-opens-the-netherlands-largest-public-heavy-duty-fast-charging-site-at-the-port-of-rotterdam-the-result-of-dutch-finnish-collaboration-with-virta-and-kempower",
+        "https://watthub.nl/"
+      ],
+      "nextInvestigation": "Investigate Virta EV Driver web/app and charger QR direct-pay endpoints; request/no-account flow first. Dynamic rates require current exact station tariffs; account/reservation prices alone may not represent ad-hoc guest payment.",
+      "candidateResolutionPath": "virta_dynamic_site_tariffs",
+      "status": "investigation_open"
+    },
+    {
+      "partyId": "911",
+      "operator": "Porsche Sales & Marketplace",
+      "connectors": 8,
+      "unpricedConnectors": 8,
+      "locationsWithUnpriced": 4,
+      "coverage": "100% missing",
+      "investigationPriority": "high",
+      "siteAndAppFinding": "Official Porsche public-charge docs support ad-hoc credit-card payment, separate from Porsche Charging Service contract. My Porsche app exposes station prices. Current DOT-NL missing scope is 4 connectors at Porsche centres.",
+      "officialSources": [
+        "https://ask.porsche.com/nl/nl-NL/public-charging-process/",
+        "https://play.google.com/store/apps/details?id=com.porsche.one",
+        "https://ask.porsche.com/nl/nl-NL/charging-service-price-list/"
+      ],
+      "nextInvestigation": "Inspect dealer charger labels, My Porsche public price map, and QR/card direct-pay source; do not use Porsche Charging Service/partner tariff. 4 connectors at 4 centres.",
+      "candidateResolutionPath": "dealer_direct_qr_app_station_price",
+      "status": "investigation_open"
+    },
+    {
+      "partyId": "ENV",
+      "operator": "Enviem",
+      "connectors": 8,
+      "unpricedConnectors": 8,
+      "locationsWithUnpriced": 4,
+      "coverage": "100% missing",
+      "investigationPriority": "medium",
+      "siteAndAppFinding": "Official Enviem app found is a fuel-card/fuel-price product, not an EV charging app. Enviem operates retail fuel sites; DOT-NL has 4 connectors at 4 locations. No authoritative EV direct tariff source established yet.",
+      "officialSources": [
+        "https://www.enviem.nl/fuel-points",
+        "https://play.google.com/store/apps/details?id=nl.enviem.FUELCARD",
+        "https://www.enviem.nl/"
+      ],
+      "nextInvestigation": "Inspect each station site and physical QR/contactless payment; validate that ENV is the actual CPO rather than site host/retailer. Do not infer prices from fuel app or generic retailer tariffs.",
+      "candidateResolutionPath": "verify_operator_then_qr",
+      "status": "investigation_open"
+    }
+  ]
+}
