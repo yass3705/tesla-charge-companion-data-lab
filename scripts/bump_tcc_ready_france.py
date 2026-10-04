@@ -57,9 +57,8 @@ def main() -> None:
     stations = [s for s in raw.get('stations', []) if not is_foreign_current_snapshot(s)]
     foreign_points = sum(len(s.get('points') or []) for s in foreign)
 
-    # Snapshot guard: audit established 8 Luxembourg stations / 16 PDC on 2026-08-26.
-    if len(foreign) != 8 or foreign_points != 16:
-        raise RuntimeError(f'Unexpected foreign boundary drift: {len(foreign)} stations / {foreign_points} points')
+    # Foreign boundary is data-driven. Current confirmed foreign Bump records use the
+    # Luxembourg L-#### postal marker; never freeze historical station/PDC counts.
 
     out_stations=[]
     point_counts=Counter()
@@ -191,8 +190,12 @@ def main() -> None:
     }
     if variable_parse_failures:
         raise RuntimeError(f'Variable tariff parser failures: {len(variable_parse_failures)}')
-    if total_points != 2252 or len(out_stations) != 1506:
-        raise RuntimeError(f'Unexpected France snapshot size: {len(out_stations)} stations / {total_points} points')
+    source_stations=len(raw.get('stations') or [])
+    source_points=sum(len(s.get('points') or []) for s in raw.get('stations') or [])
+    if len(out_stations)+len(foreign) != source_stations or total_points+foreign_points != source_points:
+        raise RuntimeError(f'France/foreign accounting mismatch: source={source_stations}/{source_points}, france={len(out_stations)}/{total_points}, foreign={len(foreign)}/{foreign_points}')
+    if len(out_stations) < 1500 or total_points < 2200:
+        raise RuntimeError(f'Unexpected current France snapshot shrink: {len(out_stations)} stations / {total_points} points')
 
     OUT.parent.mkdir(parents=True,exist_ok=True)
     REPORT_JSON.parent.mkdir(parents=True,exist_ok=True)
