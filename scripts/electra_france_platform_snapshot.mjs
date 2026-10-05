@@ -6,6 +6,7 @@ import path from 'node:path';
 
 const OUT=process.argv[2]||'data/platforms/electra/france';
 const NATIONAL=process.argv[3]||'stable/v9-production-runtime/data/v9/france-static/all.json.gz';
+const ASSOCIATIONS=process.argv[4]||'data/platforms/electra/irve-associations-batch-01.json';
 const URL='https://emsp.go-electra.com/graphql';
 const PAGE_SIZE=100,CONCURRENCY=8,MAX_RETRIES=5,TILE=.5;
 await fs.mkdir(OUT,{recursive:true});
@@ -113,15 +114,43 @@ async function worker(){while(true){const i=next++;if(i>=totalPages)return;const
 await Promise.all(Array.from({length:CONCURRENCY},worker));
 if(failures.length)throw new Error(`Electra extraction has ${failures.length} failed pages; refusing snapshot`);
 
-const tiles=new Map(),residualLocations=[],reasons={},cpoSummary=new Map(),stats={franceCompatibleLocations:locations.length,locationsWithNationalEvse:0,publishedLocations:0,publishedEvseIds:0,publishedOffers:0};
+const associationDocument=JSON.parse(fss.readFileSync(ASSOCIATIONS,'utf8'));
+if(associationDocument.schemaVersion!==1||!Array.isArray(associationDocument.associations))throw new Error('Invalid curated IRVE association document');
+const curatedAssociations=new Map(associationDocument.associations.map(a=>[String(a[0]),a]));
+const exactClaims=new Map();
+for(const loc of locations)for(const evse of loc.evses||[]){
+  const id=norm(evse?.evseId);
+  if(!id||!nationalEvse.has(id))continue;
+  if(!exactClaims.has(id))exactClaims.set(id,new Set());
+  exactClaims.get(id).add(String(loc.id));
+}
+
+const tiles=new Map(),residualLocations=[],reasons={},cpoSummary=new Map(),stats={franceCompatibleLocations:locations.length,locationsWithNationalEvse:0,curatedLocationAssociations:0,manualAssociationConflicts:0,publishedLocations:0,publishedEvseIds:0,publishedOffers:0};
 for(const x of locations){
   const cpo=String(x.cpo?.name||'CPO inconnu');
-  if(!cpoSummary.has(cpo))cpoSummary.set(cpo,{cpo,totalCompatibleLocations:0,locationsWithNationalEvse:0,matchedEvseIds:0,publishedLocations:0,publishedEvseIds:0,rejected:{}});
+  if(!cpoSummary.has(cpo))cpoSummary.set(cpo,{cpo,totalCompatibleLocations:0,locationsWithNationalEvse:0,curatedLocationAssociations:0,matchedEvseIds:0,publishedLocations:0,publishedEvseIds:0,rejected:{}});
   const cs=cpoSummary.get(cpo);cs.totalCompatibleLocations++;
   const reject=reason=>{reasons[reason]=(reasons[reason]||0)+1;cs.rejected[reason]=(cs.rejected[reason]||0)+1;residualLocations.push({electraLocationId:String(x.id),name:x.name||null,address:x.address||null,city:x.city||null,postalCode:x.postalCode||null,country:x.country||null,coordinates:x.coordinates||null,connectorTypes:x.connectorTypes||[],maxPower:x.maxPower??null,cpo,operator:x.operator?.name||null,reason,evses:(x.evses||[]).map(e=>({id:e.id||null,evseId:e.evseId||null,status:e.status||null,physicalReference:e.physicalReference||null}))});};
   const exact=[...new Set((x.evses||[]).map(e=>e?.evseId).filter(Boolean).filter(id=>nationalEvse.has(norm(id))))];
-  if(!exact.length){reject('no_national_evse');continue;}
-  stats.locationsWithNationalEvse++;cs.locationsWithNationalEvse++;cs.matchedEvseIds+=exact.length;
+  const override=curatedAssociations.get(String(x.id));
+  let associatedIds=exact,identityMode='exact_national_irve_evse',associationEvidence=null;
+  if(!exact.length&&override){
+    const candidateIds=Array.isArray(override[1])?[...new Set(override[1].map(String))]:[];
+    const evidenceValid=Number.isFinite(Number(override[2]))&&Number(override[2])<=15&&Number(override[3])>=.70;
+    const exactConflict=candidateIds.some(id=>[...(exactClaims.get(norm(id))||[])].some(owner=>owner!==String(x.id)));
+    const cpoValid=associationDocument.cpo===cpo&&associationDocument.status==='curated_location_associations';
+    const idsValid=candidateIds.length>0&&candidateIds.every(id=>nationalEvse.has(norm(id)));
+    if(cpoValid&&idsValid&&evidenceValid&&!exactConflict){
+      associatedIds=candidateIds;identityMode='curated_irve_location';
+      associationEvidence={batch:associationDocument.batch,distanceMeters:Number(override[2]),nameAddressSimilarity:Number(override[3])};
+      stats.curatedLocationAssociations++;cs.curatedLocationAssociations++;
+    }else{
+      stats.manualAssociationConflicts++;
+      if(exactConflict){reject('manual_irve_association_conflict');continue;}
+    }
+  }
+  if(!associatedIds.length){reject('no_national_evse');continue;}
+  stats.locationsWithNationalEvse++;cs.locationsWithNationalEvse++;cs.matchedEvseIds+=associatedIds.length;
   const compiled=(x.chargeTariffs||[]).map(compileTariff);
   if(!compiled.length){reject('no_tariff');continue;}
   if(compiled.some(v=>!v)){reject('unsupported_tariff');continue;}
@@ -131,7 +160,7 @@ for(const x of locations){
   if(!Number.isFinite(lat)||!Number.isFinite(lon)){reject('no_coordinates');continue;}
   const offer={
     id:`electra-platform:${x.id}`,provider:'Electra',countries:['FR'],currency:uniq[0].rules?.[0]?.currency||'EUR',priority:82,
-    evseIds:exact,pricing:uniq[0],metadata:{verified:true,identityMode:'exact_national_irve_evse',electraLocationId:String(x.id),cpo:x.cpo?.name||null,operator:x.operator?.name||null,source:'Electra eMSP GraphQL'}
+    evseIds:associatedIds,pricing:uniq[0],metadata:{verified:true,identityMode,associationEvidence,electraLocationId:String(x.id),cpo:x.cpo?.name||null,operator:x.operator?.name||null,source:identityMode==='exact_national_irve_evse'?'Electra eMSP GraphQL':'Electra eMSP GraphQL + curated national IRVE location crosswalk'}
   };
   const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
   tiles.get(id).push(offer);stats.publishedLocations++;stats.publishedEvseIds+=exact.length;stats.publishedOffers++;cs.publishedLocations++;cs.publishedEvseIds+=exact.length;
@@ -144,7 +173,7 @@ for(const [id,offers] of [...tiles.entries()].sort((a,b)=>a[0].localeCompare(b[0
   const [a,b]=id.slice(2).split('_').map(Number);
   manifestTiles.push({id,file,minLat:a*TILE,maxLat:(a+1)*TILE,minLon:b*TILE,maxLon:(b+1)*TILE,count:offers.length,bytes:gz.length,sha256:sha(gz)});
 }
-const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,cpoSummary:Object.fromEntries([...cpoSummary.entries()].sort((a,b)=>a[0].localeCompare(b[0]))),policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,unsupportedComponentsFailClosed:true},tiles:manifestTiles};
+const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,cpoSummary:Object.fromEntries([...cpoSummary.entries()].sort((a,b)=>a[0].localeCompare(b[0]))),associationBatches:[{batch:associationDocument.batch,cpo:associationDocument.cpo,candidateCount:associationDocument.candidateCount,ambiguousExcluded:associationDocument.ambiguousExcluded,applied:stats.curatedLocationAssociations,conflicts:stats.manualAssociationConflicts}],policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:false,acceptedIdentityModes:['exact_national_irve_evse','curated_irve_location'],curatedMatchRequiresValidatedDistanceNameAddressPowerAndConnectorEvidence:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,unsupportedComponentsFailClosed:true},tiles:manifestTiles};
 await fs.writeFile(path.join(OUT,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 const residualGz=zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:1,country:'FR',generatedAt:manifest.generatedAt,locations:residualLocations})),{level:9});
 await fs.writeFile(path.join(OUT,'residuals.json.gz'),residualGz);
