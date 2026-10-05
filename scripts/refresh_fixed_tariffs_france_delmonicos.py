@@ -47,21 +47,28 @@ for url in SOURCES:
         failed=True
         watch.append({"url":url,"status":"fetch_failed_keep_last_valid","error":str(e)})
 
+direct_stations=len((d.get("directMapped") or {}).get("stations") or [])
+migrated_stations=len((d.get("migratedFreshmileHomecourt") or {}).get("stations") or [])
+residual_stations=int((d.get("residualFailClosed") or {}).get("stations") or 0)
 d["refresh"]={
   "mode":"official_source_semantic_watch_keep_last_valid",
   "refreshedAt":now,
   "sourceHashes":current if not failed else previous,
   "lastResult":"fetch_failed_keep_last_valid" if failed else ("source_context_changed_review_required" if any(x["status"]=="source_context_changed_review_required" for x in watch) else "validated"),
-  "failClosedResidualStations":3
+  "failClosedResidualStations":residual_stations,
+  "coverageAccounting":{"delmonicosOrneStations":direct_stations,"freshmileMigratedHomecourtStations":migrated_stations,
+                        "resolvedStations":direct_stations+migrated_stations,"residualStations":residual_stations}
 }
 DATA.write_text(json.dumps(d,ensure_ascii=False,indent=2)+"\n")
 REPORT.parent.mkdir(parents=True,exist_ok=True)
 REPORT.write_text(json.dumps({
   "generatedAt":now,
   "operator":"Delmonicos",
-  "mappedStations":60,
-  "mappedTariffEurPerKwh":0.35,
-  "residualFailClosedStations":3,
+  "delmonicosOrneMappedStations":direct_stations,
+  "delmonicosOrneTariffEurPerKwh":0.35,
+  "freshmileMigratedHomecourtStations":migrated_stations,
+  "resolvedStations":direct_stations+migrated_stations,
+  "residualFailClosedStations":residual_stations,
   "sources":watch
 },ensure_ascii=False,indent=2)+"\n")
 print(REPORT.read_text())
