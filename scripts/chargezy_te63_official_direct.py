@@ -110,5 +110,5 @@ runtime={'schemaVersion':'1.0.0','country':'FR','generatedAt':out['generatedAt']
          'directOffers':offers,'subscriptionOffers':[],
          'sourceEvidence':{'panRows':len(target),'exactRows':len(exact),'specialPaymentModeRows':len(special),'gaps':len(gaps)}}
 rp=ROOT/'v9-production-runtime/data/v9/france-chargezy-te63-offers.json'; rp.parent.mkdir(parents=True,exist_ok=True)
-rp.write_text(json.dumps(runtime,ensure_ascii=False,indent=2)+'\\n',encoding='utf-8')
+rp.write_text(json.dumps(runtime,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 print(json.dumps({'coverage':out['coverage'],'runtimeOffers':len(offers),'runtimeEvse':sum(len(x['evseIds']) for x in offers),'special':special,'gaps':gaps},ensure_ascii=False,indent=2))
