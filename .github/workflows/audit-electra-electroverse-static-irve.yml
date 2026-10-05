@@ -1,0 +1,36 @@
+name: Audit Electra and Electroverse against refreshed IRVE
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/audit-electra-electroverse-static-irve.yml"
+      - "scripts/france/audit_electra_electroverse_static_irve.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: audit-electra-electroverse-static-irve
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare EVSE IDs with refreshed national static IRVE
+        run: python scripts/france/audit_electra_electroverse_static_irve.py
+      - name: Persist detailed match and near-match audit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/france/irve/electra-electroverse-static-match-audit.json
+          if git diff --cached --quiet; then
+            echo 'Audit report unchanged.'
+            exit 0
+          fi
+          git commit -m 'audit(france): verify Electra and Electroverse IRVE matches'
+          git push origin HEAD:main
