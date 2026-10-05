@@ -42,6 +42,14 @@ def lev_cutoff(a, b, limit=2):
     return prev[len(b)]
 
 
+def is_subsequence(shorter, longer):
+    pos = 0
+    for ch in longer:
+        if pos < len(shorter) and shorter[pos] == ch:
+            pos += 1
+    return pos == len(shorter)
+
+
 def read_json_gz(path):
     with gzip.open(path, "rt", encoding="utf-8") as fh:
         return json.load(fh)
@@ -66,7 +74,7 @@ def main():
         "generatedAt": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
         "method": {
             "strict": "uppercase alphanumeric normalization only (case/separator formatting ignored)",
-            "near": "Levenshtein distance 1 or 2 after normalization; accepted only when one-to-one and unique on both bases; Electra also requires CPO name agreement when available",
+            "near": "one or two inserted characters after normalization (the shorter ID must be a subsequence of the longer); accepted only when one-to-one and unique on both bases; Electra also requires CPO name agreement when available",
             "coverageUnit": "distinct normalized EVSE identifiers in each published France eMSP overlay",
             "staticSourceSha256": manifest.get("sourceSha256"),
             "staticSourceRetrievedAt": manifest.get("sourceRetrievedAt"),
@@ -111,10 +119,11 @@ def main():
                 possible = national_ids
             matches = []
             for other in possible:
-                if abs(len(key) - len(other)) not in (1, 2):
+                distance = abs(len(key) - len(other))
+                if distance not in (1, 2):
                     continue
-                distance = lev_cutoff(key, other, 2)
-                if distance in (1, 2):
+                shorter, longer = (key, other) if len(key) < len(other) else (other, key)
+                if is_subsequence(shorter, longer):
                     matches.append((other, distance))
             if matches:
                 near_candidates[key] = matches
