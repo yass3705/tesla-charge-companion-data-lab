@@ -1,0 +1,21 @@
+name: Export Electra France residual JSON
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/electra-residuals-export.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decompress residual locations
+        run: gzip -dc data/platforms/electra/france/residuals.json.gz > electra-france-residuals.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: electra-france-residuals-json
+          path: electra-france-residuals.json
+          retention-days: 1
