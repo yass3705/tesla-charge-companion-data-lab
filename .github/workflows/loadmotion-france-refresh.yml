@@ -39,6 +39,8 @@ jobs:
           node-version: '20'
 
       - name: Refresh YES55
+        id: yes55
+        continue-on-error: true
         if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.tenant == 'all' || inputs.tenant == 'yes55' }}
         env:
           LOADMOTION_ID: ${{ secrets.LOADMOTION_ID }}
@@ -53,6 +55,8 @@ jobs:
           node scripts/loadmotion/extract_loadmotion_france.mjs --tenant yes55 --out data/loadmotion/france/current/yes55.json.gz
 
       - name: Refresh Load Stations
+        id: loadstations
+        continue-on-error: true
         if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.tenant == 'all' || inputs.tenant == 'loadstations' }}
         env:
           LOADMOTION_ID: ${{ secrets.LOADMOTION_ID }}
@@ -67,6 +71,8 @@ jobs:
           node scripts/loadmotion/extract_loadmotion_france.mjs --tenant loadstations --out data/loadmotion/france/current/loadstations.json.gz
 
       - name: Refresh Reveo
+        id: reveo
+        continue-on-error: true
         if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.tenant == 'all' || inputs.tenant == 'reveo' }}
         env:
           LOADMOTION_ID: ${{ secrets.LOADMOTION_ID }}
@@ -81,6 +87,8 @@ jobs:
           node scripts/loadmotion/extract_loadmotion_france.mjs --tenant reveo --concurrency 2 --out data/loadmotion/france/current/reveo.json.gz
 
       - name: Refresh MobiSDEC
+        id: mobisdec
+        continue-on-error: true
         if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.tenant == 'all' || inputs.tenant == 'mobisdec' }}
         env:
           LOADMOTION_ID: ${{ secrets.LOADMOTION_ID }}
@@ -94,7 +102,22 @@ jobs:
           fi
           node scripts/loadmotion/extract_loadmotion_france.mjs --tenant mobisdec --out data/loadmotion/france/current/mobisdec.json.gz
 
+      - name: Check tenant refresh results
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          failed=0
+          for pair in             "YES55:${{ steps.yes55.outcome }}"             "LoadStations:${{ steps.loadstations.outcome }}"             "REVEO:${{ steps.reveo.outcome }}"             "MobiSDEC:${{ steps.mobisdec.outcome }}"; do
+            echo "$pair"
+            case "$pair" in *:failure) failed=1;; esac
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::One or more Load Motion tenants failed. See individual step logs."
+            exit 1
+          fi
+
       - name: Compile V9 Load Motion offers
+        if: ${{ success() }}
         run: |
           node scripts/loadmotion/compile_loadmotion_v9_offers.mjs \
             --current data/loadmotion/france/current \
