@@ -135,14 +135,17 @@ for(const x of locations){
   const override=curatedAssociations.get(String(x.id));
   let associatedIds=exact,identityMode='exact_national_irve_evse',associationEvidence=null;
   if(!exact.length&&override){
-    const candidateIds=Array.isArray(override[1])?[...new Set(override[1].map(String))]:[];
-    const evidenceValid=Number.isFinite(Number(override[2]))&&Number(override[2])<=15&&Number(override[3])>=.70;
+    const legacyShape=Array.isArray(override[1]);
+    const idsIndex=legacyShape?1:2,distanceIndex=legacyShape?2:3,similarityIndex=legacyShape?3:4;
+    const overrideCpo=legacyShape?String(associationDocument.cpo||''):String(override[1]||'');
+    const candidateIds=Array.isArray(override[idsIndex])?[...new Set(override[idsIndex].map(String))]:[];
+    const evidenceValid=Number.isFinite(Number(override[distanceIndex]))&&Number(override[distanceIndex])<=15&&Number(override[similarityIndex])>=.70;
     const exactConflict=candidateIds.some(id=>[...(exactClaims.get(norm(id))||[])].some(owner=>owner!==String(x.id)));
-    const cpoValid=associationDocument.cpo===cpo&&associationDocument.status==='curated_location_associations';
+    const cpoValid=overrideCpo===cpo&&associationDocument.status==='curated_location_associations';
     const idsValid=candidateIds.length>0&&candidateIds.every(id=>nationalEvse.has(norm(id)));
     if(cpoValid&&idsValid&&evidenceValid&&!exactConflict){
       associatedIds=candidateIds;identityMode='curated_irve_location';
-      associationEvidence={batch:associationDocument.batch,distanceMeters:Number(override[2]),nameAddressSimilarity:Number(override[3])};
+      associationEvidence={batch:associationDocument.batch,distanceMeters:Number(override[distanceIndex]),nameAddressSimilarity:Number(override[similarityIndex])};
       stats.curatedLocationAssociations++;cs.curatedLocationAssociations++;
     }else{
       stats.manualAssociationConflicts++;
@@ -173,7 +176,7 @@ for(const [id,offers] of [...tiles.entries()].sort((a,b)=>a[0].localeCompare(b[0
   const [a,b]=id.slice(2).split('_').map(Number);
   manifestTiles.push({id,file,minLat:a*TILE,maxLat:(a+1)*TILE,minLon:b*TILE,maxLon:(b+1)*TILE,count:offers.length,bytes:gz.length,sha256:sha(gz)});
 }
-const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,cpoSummary:Object.fromEntries([...cpoSummary.entries()].sort((a,b)=>a[0].localeCompare(b[0]))),associationBatches:[{batch:associationDocument.batch,cpo:associationDocument.cpo,candidateCount:associationDocument.candidateCount,ambiguousExcluded:associationDocument.ambiguousExcluded,applied:stats.curatedLocationAssociations,conflicts:stats.manualAssociationConflicts}],policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:false,acceptedIdentityModes:['exact_national_irve_evse','curated_irve_location'],curatedMatchRequiresValidatedDistanceNameAddressPowerAndConnectorEvidence:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,unsupportedComponentsFailClosed:true},tiles:manifestTiles};
+const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,cpoSummary:Object.fromEntries([...cpoSummary.entries()].sort((a,b)=>a[0].localeCompare(b[0]))),associationBatches:[{batch:associationDocument.batch,cpoCounts:associationDocument.cpoCounts||{},candidateCount:associationDocument.candidateCount,ambiguousExcluded:associationDocument.ambiguousExcluded,collisionExcluded:associationDocument.collisionExcluded||0,applied:stats.curatedLocationAssociations,conflicts:stats.manualAssociationConflicts}],policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:false,acceptedIdentityModes:['exact_national_irve_evse','curated_irve_location'],curatedMatchRequiresValidatedDistanceNameAddressPowerAndConnectorEvidence:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,unsupportedComponentsFailClosed:true},tiles:manifestTiles};
 await fs.writeFile(path.join(OUT,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 const residualGz=zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:1,country:'FR',generatedAt:manifest.generatedAt,locations:residualLocations})),{level:9});
 await fs.writeFile(path.join(OUT,'residuals.json.gz'),residualGz);
