@@ -85,4 +85,30 @@ p=ROOT/'data/operator_direct/chargezy_te63_official_france.json'; p.parent.mkdir
 p.write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 q=ROOT/'reports/france/spie-citynetworks/chargezy-te63-summary.json'; q.parent.mkdir(parents=True,exist_ok=True)
 q.write_text(json.dumps({'generatedAt':out['generatedAt'],'coverage':out['coverage'],'specialPaymentMode':special,'gaps':gaps},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-print(json.dumps({'coverage':out['coverage'],'special':special,'gaps':gaps},ensure_ascii=False,indent=2))
+groups={}
+for row in exact:
+    groups.setdefault(row['rule'],[]).append(row['id_pdc_itinerance'])
+offers=[]
+for idx,(rule,ids) in enumerate(sorted(groups.items()),1):
+    sample=next(x for x in exact if x['rule']==rule)
+    pricing_rule={'scope':'allDay','start':'00:00','end':'24:00','billing':'kwh','currency':'EUR',
+                  'pricePerKwh':sample['energyEurPerKwh'],'sessionFeeEur':sample['sessionFeeEur']}
+    offers.append({
+      'id':f'chargezy-te63-{idx:02d}','selectionId':f'chargezy-te63-{idx:02d}',
+      'provider':'Chargezy TE63 direct','countries':['FR'],'currency':'EUR','priority':132,
+      'pricing':{'type':'rules','rules':[pricing_rule],
+                 'postChargeFee':{'eurPerMinute':sample['postChargeEurPerMinute'],'graceMinutes':sample['postChargeGraceMinutes']}},
+      'source':'TE63 official mobility tariff + exact current PAN EVSE mapping',
+      'directOperatorOnly':True,'verifiedScope':'exact_evse','defaultSelected':False,
+      'evseIds':sorted(ids),'operatorAliases':['CHARGEZY - TE63','Chargezy','TE63','SPIE CityNetworks'],
+      'metadata':{'network':'CHARGEZY - TE63','rule':rule,'exactEvseCount':len(ids),
+                  'postChargeWaived':sample.get('postChargeWaived'),'sourceUrl':SOURCE,
+                  'fallback':'Electra then Electroverse'}
+    })
+runtime={'schemaVersion':'1.0.0','country':'FR','generatedAt':out['generatedAt'],
+         'mode':'operator-direct-exact-evse','policy':{'failClosed':True,'roamingIncluded':False},
+         'directOffers':offers,'subscriptionOffers':[],
+         'sourceEvidence':{'panRows':len(target),'exactRows':len(exact),'specialPaymentModeRows':len(special),'gaps':len(gaps)}}
+rp=ROOT/'v9-production-runtime/data/v9/france-chargezy-te63-offers.json'; rp.parent.mkdir(parents=True,exist_ok=True)
+rp.write_text(json.dumps(runtime,ensure_ascii=False,indent=2)+'\\n',encoding='utf-8')
+print(json.dumps({'coverage':out['coverage'],'runtimeOffers':len(offers),'runtimeEvse':sum(len(x['evseIds']) for x in offers),'special':special,'gaps':gaps},ensure_ascii=False,indent=2))
