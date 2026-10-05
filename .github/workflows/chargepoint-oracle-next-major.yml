@@ -24,8 +24,10 @@ jobs:
             echo 'Latest PAN endpoint failed; using the last pinned public consolidation as fallback'
             curl -fL --retry 3 --max-time 300 --output national-irve.csv 'https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
           fi
+          DYN_URL='https://proxy.transport.data.gouv.fr/resource/qualicharge-irve-dynamique'
+          curl -fL --retry 3 --max-time 180 --output national-irve-dynamic.csv "$DYN_URL" || :
           gzip -dc data/platforms/electra/france/residuals.json.gz > electra-residuals.json
-          wc -c national-irve.csv electra-residuals.json
+          wc -c national-irve.csv national-irve-dynamic.csv electra-residuals.json
       - name: Crosswalk ChargePoint residuals against PAN
         shell: bash
         run: |
@@ -59,10 +61,14 @@ jobs:
           residual=json.load(open('electra-residuals.json'))['locations']
           targets=[r for r in residual if str(r.get('cpo') or '').strip()=='ChargePoint']
           national=[]
-          with open('national-irve.csv',encoding='utf-8-sig',errors='replace',newline='') as fh:
-            for r in csv.DictReader(fh):
-              c=coord(r)
-              if c: national.append((r,c))
+          for source in ('national-irve.csv','national-irve-dynamic.csv'):
+            try:
+              with open(source,encoding='utf-8-sig',errors='replace',newline='') as fh:
+                for r in csv.DictReader(fh):
+                  c=coord(r)
+                  if c: national.append((r,c))
+            except FileNotFoundError:
+              pass
           by_evse=defaultdict(list); by_station=defaultdict(list)
           for r,c in national:
             eid=val(r,'id_pdc_itinerance','id_pdc_itinerance')
@@ -102,7 +108,7 @@ jobs:
                 allnear.append({'stationId':sid,'distanceMeters':round(d,2),'similarity':round(sim((e.get('name') or '')+' '+(e.get('address') or ''),val(r,'nom_station','nom_amenageur','nom_enseigne')+' '+val(r,'adresse_station','adresse2_station')),3),'nationalCpo':val(r,'nom_operateur','nom_amenageur'),'nationalName':val(r,'nom_station','nom_amenageur'),'nationalEvseIds':[val(x,'id_pdc_itinerance') for x,_ in rows]})
             if allnear:
               nearby.append({'electraLocationId':e['electraLocationId'],'name':e.get('name'),'operator':e.get('operator'),'nearest':sorted(allnear,key=lambda x:(x['distanceMeters'],-x['similarity']))[:3]})
-          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'source':{'national':'QualiCharge/PAN latest endpoint with pinned fallback','electraResidualSnapshot':residual and json.load(open('electra-residuals.json')).get('generatedAt'),'matching':'exact normalized EVSE ID first; then single station <=15m and name/address similarity >=0.70; no automatic publication'},'coverage':{'chargePointResidualLocations':len(targets),'exactIdLocations':len(exact),'strictUniqueCandidates':len(candidates),'ambiguous':len(ambiguities),'nearbyLeadLocations':len(nearby),'unresolved':len(targets)-len(exact)-len(candidates)},'exact':exact,'strictCandidates':candidates,'ambiguous':ambiguities,'nearbyLeads':nearby}
+          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'source':{'national':'QualiCharge/PAN latest static + dynamic endpoints with pinned static fallback','electraResidualSnapshot':residual and json.load(open('electra-residuals.json')).get('generatedAt'),'matching':'exact normalized EVSE ID first; then single station <=15m and name/address similarity >=0.70; no automatic publication'},'coverage':{'chargePointResidualLocations':len(targets),'exactIdLocations':len(exact),'strictUniqueCandidates':len(candidates),'ambiguous':len(ambiguities),'nearbyLeadLocations':len(nearby),'unresolved':len(targets)-len(exact)-len(candidates)},'exact':exact,'strictCandidates':candidates,'ambiguous':ambiguities,'nearbyLeads':nearby}
           pathlib.Path('data/operator_direct/chargepoint_electra_crosswalk_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
           pathlib.Path('reports/france/chargepoint/electra-crosswalk-summary.json').write_text(json.dumps({'source':out['source'],'coverage':out['coverage'],'sampleExact':exact[:10],'sampleCandidates':candidates[:10],'sampleAmbiguous':ambiguities[:5],'sampleNearbyLeads':nearby[:20]},ensure_ascii=False,indent=2)+'\n')
           print(json.dumps(out['coverage'],ensure_ascii=False))
