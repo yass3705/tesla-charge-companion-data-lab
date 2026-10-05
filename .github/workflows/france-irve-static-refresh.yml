@@ -78,7 +78,7 @@ jobs:
             --source-retrieved-at "$(cat "$RUNNER_TEMP/france-irve/static.retrieved-at")"
 
       - name: Download latest dynamic snapshot for exact-ID verification
-        if: steps.static.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        if: steps.static.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'schedule'
         shell: bash
         run: |
           set -euo pipefail
@@ -94,7 +94,7 @@ jobs:
             --out reports/france/irve/irve-residual-crosswalk-latest.json
 
       - name: Publish refreshed Data Lab base and CPO manifest
-        if: steps.static.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        if: steps.static.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event_name == 'schedule'
         shell: bash
         run: |
           set -euo pipefail
