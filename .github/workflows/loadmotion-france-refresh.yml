@@ -41,34 +41,58 @@ jobs:
       - name: Refresh YES55
         if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.tenant == 'all' || inputs.tenant == 'yes55' }}
         env:
+          LOADMOTION_ID: ${{ secrets.LOADMOTION_ID }}
+          LOADMOTION_PASS: ${{ secrets.YES55_PASS }}
           LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_YES55_TOKEN }}
         run: |
-          if [ -z "$LOADMOTION_TOKEN" ]; then echo "YES55 token missing: keeping previous snapshot"; exit 0; fi
-          node scripts/loadmotion/extract_loadmotion_france.mjs --tenant yes55 --out data/loadmotion/france/current/yes55.json.gz || echo "YES55 refresh failed: keeping previous snapshot"
+          set -euo pipefail
+          if [ -z "${LOADMOTION_TOKEN:-}" ] && { [ -z "${LOADMOTION_ID:-}" ] || [ -z "${LOADMOTION_PASS:-}" ]; }; then
+            echo "::error::Missing YES55 credentials: LOADMOTION_ID + YES55_PASS"
+            exit 1
+          fi
+          node scripts/loadmotion/extract_loadmotion_france.mjs --tenant yes55 --out data/loadmotion/france/current/yes55.json.gz
 
       - name: Refresh Load Stations
         if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.tenant == 'all' || inputs.tenant == 'loadstations' }}
         env:
+          LOADMOTION_ID: ${{ secrets.LOADMOTION_ID }}
+          LOADMOTION_PASS: ${{ secrets.LOADSTATIONS_PASS }}
           LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_LOADSTATIONS_TOKEN }}
         run: |
-          if [ -z "$LOADMOTION_TOKEN" ]; then echo "Load Stations token missing: keeping previous snapshot"; exit 0; fi
-          node scripts/loadmotion/extract_loadmotion_france.mjs --tenant loadstations --out data/loadmotion/france/current/loadstations.json.gz || echo "Load Stations refresh failed: keeping previous snapshot"
+          set -euo pipefail
+          if [ -z "${LOADMOTION_TOKEN:-}" ] && { [ -z "${LOADMOTION_ID:-}" ] || [ -z "${LOADMOTION_PASS:-}" ]; }; then
+            echo "::error::Missing Load Stations credentials: LOADMOTION_ID + LOADSTATIONS_PASS"
+            exit 1
+          fi
+          node scripts/loadmotion/extract_loadmotion_france.mjs --tenant loadstations --out data/loadmotion/france/current/loadstations.json.gz
 
       - name: Refresh Reveo
         if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.tenant == 'all' || inputs.tenant == 'reveo' }}
         env:
+          LOADMOTION_ID: ${{ secrets.LOADMOTION_ID }}
+          LOADMOTION_PASS: ${{ secrets.REVEO_PASS }}
           LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_REVEO_TOKEN }}
         run: |
-          if [ -z "$LOADMOTION_TOKEN" ]; then echo "Reveo token missing: keeping previous snapshot"; exit 0; fi
-          node scripts/loadmotion/extract_loadmotion_france.mjs --tenant reveo --concurrency 2 --out data/loadmotion/france/current/reveo.json.gz || echo "Reveo refresh failed: keeping previous snapshot"
+          set -euo pipefail
+          if [ -z "${LOADMOTION_TOKEN:-}" ] && { [ -z "${LOADMOTION_ID:-}" ] || [ -z "${LOADMOTION_PASS:-}" ]; }; then
+            echo "::error::Missing REVEO credentials: LOADMOTION_ID + REVEO_PASS"
+            exit 1
+          fi
+          node scripts/loadmotion/extract_loadmotion_france.mjs --tenant reveo --concurrency 2 --out data/loadmotion/france/current/reveo.json.gz
 
       - name: Refresh MobiSDEC
         if: ${{ github.event_name == 'schedule' || github.event_name == 'push' || inputs.tenant == 'all' || inputs.tenant == 'mobisdec' }}
         env:
+          LOADMOTION_ID: ${{ secrets.LOADMOTION_ID }}
+          LOADMOTION_PASS: ${{ secrets.MOBISDEC_PASS }}
           LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_MOBISDEC_TOKEN }}
         run: |
-          if [ -z "$LOADMOTION_TOKEN" ]; then echo "MobiSDEC token missing: keeping previous snapshot"; exit 0; fi
-          node scripts/loadmotion/extract_loadmotion_france.mjs --tenant mobisdec --out data/loadmotion/france/current/mobisdec.json.gz || echo "MobiSDEC refresh failed: keeping previous snapshot"
+          set -euo pipefail
+          if [ -z "${LOADMOTION_TOKEN:-}" ] && { [ -z "${LOADMOTION_ID:-}" ] || [ -z "${LOADMOTION_PASS:-}" ]; }; then
+            echo "::error::Missing MobiSDEC credentials: LOADMOTION_ID + MOBISDEC_PASS"
+            exit 1
+          fi
+          node scripts/loadmotion/extract_loadmotion_france.mjs --tenant mobisdec --out data/loadmotion/france/current/mobisdec.json.gz
 
       - name: Compile V9 Load Motion offers
         run: |
