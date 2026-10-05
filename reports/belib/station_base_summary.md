@@ -1,7 +1,7 @@
 # Base Belib directe pour TCC V8
 
 - Stations strictement Belib / TotalEnergies : **381**
-- Points Tesla-compatibles : **1734**
+- Points Tesla-compatibles : **1731**
 - Profils tarifaires directs : **9**
 - Lignes fictives sans identifiant exclues : **3**
 - Points moto exclus : **80**
