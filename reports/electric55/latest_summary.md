@@ -7,4 +7,4 @@
 - E55C publishes indicative **wholesale** minute rates to mobility operators: day 07:00-23:00 and night 23:00-07:00, for 3/7/11/22 kW; these are **not consumer tariffs**.
 - Legacy FAQ conflict detected: **yes**.
 - Official E55C data.gouv static IRVE resource confirmed; dynamic resource presence is tracked only as inventory evidence.
-- Fingerprint: `aa0c57d935228d30703bb44216cbdde622d590bb7e4e7d691271890328d4da1b`
+- Fingerprint: `228f13342e5bc55ea5fb3026f8fe79947cd4947f92fa2ee77426b3814b16d9a3`
