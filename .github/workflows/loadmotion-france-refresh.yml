@@ -15,6 +15,11 @@ on:
         type: choice
         default: all
         options: [all, yes55, loadstations, reveo, mobisdec]
+      publish:
+        description: Commit refreshed snapshots and V9 offers
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -97,6 +102,7 @@ jobs:
           NODE
 
       - name: Commit refreshed snapshots and V9 offers
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.publish == true }}
         shell: bash
         run: |
           if git diff --quiet -- data/loadmotion/france/current v9-production-runtime/data/v9/france-loadmotion-offers.json; then
