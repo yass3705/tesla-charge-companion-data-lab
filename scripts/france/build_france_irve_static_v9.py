@@ -139,7 +139,8 @@ def main():
         normalized_headers = {key(name) for name in reader.fieldnames}
         if "idpd c itinerance".replace(" ", "") not in normalized_headers and "idpdcitinerance" not in normalized_headers:
             raise SystemExit(f"Static CSV does not contain id_pdc_itinerance; headers={reader.fieldnames[:20]}")
-        for row in reader:
+        for raw_row in reader:
+            row = {key(name): value for name, value in raw_row.items() if name}
             source_rows += 1
             evse = get(row, "id_pdc_itinerance")
             if not evse:
