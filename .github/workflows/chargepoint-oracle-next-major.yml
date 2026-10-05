@@ -31,6 +31,9 @@ jobs:
           echo 'DYNAMIC_HEAD'
           head -c 1200 national-irve-dynamic.csv || :
           echo
+          echo 'CHARGEPOINT_ID_COUNT'
+          grep -o 'FRCPIE6887515[^,;]*' national-irve-dynamic.csv | head -20 || :
+          echo
       - name: Crosswalk ChargePoint residuals against PAN
         shell: bash
         run: |
