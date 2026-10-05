@@ -113,6 +113,6 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add data/operator_direct/chargepoint_electra_crosswalk_france.json reports/france/chargepoint/electra-crosswalk-summary.json
-          git commit -m 'France: crosswalk ChargePoint Electra residuals against latest PAN'
+          git commit -m 'France: crosswalk ChargePoint Electra residuals against latest PAN' || exit 0
           for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
           exit 1
