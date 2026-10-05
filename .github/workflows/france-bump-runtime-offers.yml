@@ -1,0 +1,35 @@
+name: France Bump runtime offers
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "scripts/compile_bump_runtime_offers.py"
+      - "data/national/bump_direct_tariffs_tcc_france.json.gz"
+      - ".github/workflows/france-bump-runtime-offers.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: france-bump-runtime-offers
+  cancel-in-progress: true
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: python3 scripts/compile_bump_runtime_offers.py
+      - name: Publish
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add v9-production-runtime/data/v9/france-bump-offers.json
+          git diff --cached --quiet && exit 0
+          git commit -m "data(v9): publish Bump exact direct runtime offers [run ${GITHUB_RUN_ID}]"
+          for i in 1 2 3 4; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            sleep $((i*2))
+          done
+          exit 1
