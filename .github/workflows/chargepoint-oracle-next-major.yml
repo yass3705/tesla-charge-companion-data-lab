@@ -66,7 +66,7 @@ jobs:
               with open(source,encoding='utf-8-sig',errors='replace',newline='') as fh:
                 for r in csv.DictReader(fh):
                   c=coord(r)
-                  if c: national.append((r,c))
+                  national.append((r,c))
             except FileNotFoundError:
               pass
           by_evse=defaultdict(list); by_station=defaultdict(list)
@@ -92,7 +92,9 @@ jobs:
             if not ec: continue
             opts=[]
             for sid,rows in by_station.items():
-              r,c=rows[0]; d=dist(ec,c)
+              r,c=rows[0]
+              if c is None: continue
+              d=dist(ec,c)
               if d>15: continue
               score=sim((e.get('name') or '')+' '+(e.get('address') or ''),val(r,'nom_station','nom_amenageur','nom_enseigne')+' '+val(r,'adresse_station','adresse2_station'))
               if score>=.70: opts.append({'stationId':sid,'distanceMeters':round(d,2),'similarity':round(score,3),'nationalCpo':val(r,'nom_operateur','nom_amenageur'),'nationalName':val(r,'nom_station','nom_amenageur'),'nationalEvseIds':[val(x,'id_pdc_itinerance') for x,_ in rows]})
@@ -103,7 +105,9 @@ jobs:
             # Keep the nearest <=250 m station as an exploration lead even when it fails the strict gate.
             allnear=[]
             for sid,rows in by_station.items():
-              r,c=rows[0]; d=dist(ec,c)
+              r,c=rows[0]
+              if c is None: continue
+              d=dist(ec,c)
               if d<=250:
                 allnear.append({'stationId':sid,'distanceMeters':round(d,2),'similarity':round(sim((e.get('name') or '')+' '+(e.get('address') or ''),val(r,'nom_station','nom_amenageur','nom_enseigne')+' '+val(r,'adresse_station','adresse2_station')),3),'nationalCpo':val(r,'nom_operateur','nom_amenageur'),'nationalName':val(r,'nom_station','nom_amenageur'),'nationalEvseIds':[val(x,'id_pdc_itinerance') for x,_ in rows]})
             if allnear:
