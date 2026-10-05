@@ -47,7 +47,7 @@ async function loginWithCredentials(){
   const response=await fetch(url,{
     method:'POST',
     headers:{'Content-Type':'application/json','Accept':'application/json','Tenant':tenant},
-    body:JSON.stringify({email:loginId,password:loginPassword,tenant})
+    body:JSON.stringify({email:loginId,password:loginPassword,tenant,acceptEula:true})
   });
   const txt=await response.text();
   let body; try{body=JSON.parse(txt);}catch{body=txt;}
