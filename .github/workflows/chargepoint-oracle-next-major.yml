@@ -64,7 +64,10 @@ jobs:
           for source in ('national-irve.csv','national-irve-dynamic.csv'):
             try:
               with open(source,encoding='utf-8-sig',errors='replace',newline='') as fh:
-                for r in csv.DictReader(fh):
+                sample=fh.read(8192); fh.seek(0)
+                try: dialect=csv.Sniffer().sniff(sample,delimiters=',;\\t|')
+                except csv.Error: dialect=csv.excel
+                for r in csv.DictReader(fh,dialect=dialect):
                   c=coord(r)
                   national.append((r,c))
             except FileNotFoundError:
