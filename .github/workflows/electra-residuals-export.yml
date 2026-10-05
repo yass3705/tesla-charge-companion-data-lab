@@ -12,10 +12,22 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Decompress residual locations
-        run: gzip -dc data/platforms/electra/france/residuals.json.gz > electra-france-residuals.json
+      - uses: actions/checkout@v4
+        with:
+          repository: yass3705/tesla-charge-companion-stable
+          ref: 0a6d2c3415504397310d3dc92fae40be843b2435
+          path: stable
+          persist-credentials: false
+          sparse-checkout: v9-production-runtime/data/v9/france-static/all.json.gz
+          sparse-checkout-cone-mode: false
+      - name: Decompress residual locations and inspect national schema
+        run: |
+          gzip -dc data/platforms/electra/france/residuals.json.gz > electra-france-residuals.json
+          python -c 'import gzip,json; rows=json.load(gzip.open("stable/v9-production-runtime/data/v9/france-static/all.json.gz","rt")); open("national-row-sample.json","w").write(json.dumps({"rows":len(rows),"sample":rows[0]},ensure_ascii=False))'
       - uses: actions/upload-artifact@v4
         with:
           name: electra-france-residuals-json
-          path: electra-france-residuals.json
+          path: |
+            electra-france-residuals.json
+            national-row-sample.json
           retention-days: 1
