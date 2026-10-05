@@ -28,6 +28,9 @@ jobs:
           curl -fL --retry 3 --max-time 180 --output national-irve-dynamic.csv "$DYN_URL" || :
           gzip -dc data/platforms/electra/france/residuals.json.gz > electra-residuals.json
           wc -c national-irve.csv national-irve-dynamic.csv electra-residuals.json
+          echo 'DYNAMIC_HEAD'
+          head -c 1200 national-irve-dynamic.csv || :
+          echo
       - name: Crosswalk ChargePoint residuals against PAN
         shell: bash
         run: |
