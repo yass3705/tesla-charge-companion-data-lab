@@ -46,7 +46,7 @@ async function loginWithCredentials(){
   const url=`${base}/v1/auth/signin`;
   const response=await fetch(url,{
     method:'POST',
-    headers:{'Content-Type':'application/json','Accept':'application/json','Tenant':tenant},
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
     body:JSON.stringify({email:loginId,password:loginPassword})
   });
   const txt=await response.text();
@@ -60,8 +60,10 @@ async function loginWithCredentials(){
   return jwt;
 }
 
-if(!token){
+if(loginId && loginPassword){
   token=await loginWithCredentials();
+} else if(token){
+  console.log(`authenticated tenant=${tenant} via legacy LOADMOTION_TOKEN fallback`);
 }
 if(!token) throw new Error('Missing authentication: provide LOADMOTION_ID + LOADMOTION_PASS (preferred) or legacy LOADMOTION_TOKEN');
 
