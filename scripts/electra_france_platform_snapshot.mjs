@@ -113,24 +113,28 @@ async function worker(){while(true){const i=next++;if(i>=totalPages)return;const
 await Promise.all(Array.from({length:CONCURRENCY},worker));
 if(failures.length)throw new Error(`Electra extraction has ${failures.length} failed pages; refusing snapshot`);
 
-const tiles=new Map(),reasons={},stats={franceCompatibleLocations:locations.length,locationsWithNationalEvse:0,publishedLocations:0,publishedEvseIds:0,publishedOffers:0};
+const tiles=new Map(),reasons={},cpoSummary=new Map(),stats={franceCompatibleLocations:locations.length,locationsWithNationalEvse:0,publishedLocations:0,publishedEvseIds:0,publishedOffers:0};
 for(const x of locations){
+  const cpo=String(x.cpo?.name||'CPO inconnu');
+  if(!cpoSummary.has(cpo))cpoSummary.set(cpo,{cpo,totalCompatibleLocations:0,locationsWithNationalEvse:0,matchedEvseIds:0,publishedLocations:0,publishedEvseIds:0,rejected:{}});
+  const cs=cpoSummary.get(cpo);cs.totalCompatibleLocations++;
+  const reject=reason=>{reasons[reason]=(reasons[reason]||0)+1;cs.rejected[reason]=(cs.rejected[reason]||0)+1;};
   const exact=[...new Set((x.evses||[]).map(e=>e?.evseId).filter(Boolean).filter(id=>nationalEvse.has(norm(id))))];
-  if(!exact.length){reasons.no_national_evse=(reasons.no_national_evse||0)+1;continue;}
-  stats.locationsWithNationalEvse++;
+  if(!exact.length){reject('no_national_evse');continue;}
+  stats.locationsWithNationalEvse++;cs.locationsWithNationalEvse++;cs.matchedEvseIds+=exact.length;
   const compiled=(x.chargeTariffs||[]).map(compileTariff);
-  if(!compiled.length){reasons.no_tariff=(reasons.no_tariff||0)+1;continue;}
-  if(compiled.some(v=>!v)){reasons.unsupported_tariff=(reasons.unsupported_tariff||0)+1;continue;}
+  if(!compiled.length){reject('no_tariff');continue;}
+  if(compiled.some(v=>!v)){reject('unsupported_tariff');continue;}
   const uniq=[...new Map(compiled.map(v=>[signature(v),v])).values()];
-  if(uniq.length!==1){reasons.heterogeneous_location_tariffs=(reasons.heterogeneous_location_tariffs||0)+1;continue;}
+  if(uniq.length!==1){reject('heterogeneous_location_tariffs');continue;}
   const lat=Number(x.coordinates?.latitude),lon=Number(x.coordinates?.longitude);
-  if(!Number.isFinite(lat)||!Number.isFinite(lon)){reasons.no_coordinates=(reasons.no_coordinates||0)+1;continue;}
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)){reject('no_coordinates');continue;}
   const offer={
     id:`electra-platform:${x.id}`,provider:'Electra',countries:['FR'],currency:uniq[0].rules?.[0]?.currency||'EUR',priority:82,
     evseIds:exact,pricing:uniq[0],metadata:{verified:true,identityMode:'exact_national_irve_evse',electraLocationId:String(x.id),cpo:x.cpo?.name||null,operator:x.operator?.name||null,source:'Electra eMSP GraphQL'}
   };
   const id=tileId(lat,lon);if(!tiles.has(id))tiles.set(id,[]);
-  tiles.get(id).push(offer);stats.publishedLocations++;stats.publishedEvseIds+=exact.length;stats.publishedOffers++;
+  tiles.get(id).push(offer);stats.publishedLocations++;stats.publishedEvseIds+=exact.length;stats.publishedOffers++;cs.publishedLocations++;cs.publishedEvseIds+=exact.length;
 }
 const manifestTiles=[];
 for(const [id,offers] of [...tiles.entries()].sort((a,b)=>a[0].localeCompare(b[0]))){
@@ -140,7 +144,7 @@ for(const [id,offers] of [...tiles.entries()].sort((a,b)=>a[0].localeCompare(b[0
   const [a,b]=id.slice(2).split('_').map(Number);
   manifestTiles.push({id,file,minLat:a*TILE,maxLat:(a+1)*TILE,minLon:b*TILE,maxLon:(b+1)*TILE,count:offers.length,bytes:gz.length,sha256:sha(gz)});
 }
-const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,unsupportedComponentsFailClosed:true},tiles:manifestTiles};
+const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,cpoSummary:Object.fromEntries([...cpoSummary.entries()].sort((a,b)=>a[0].localeCompare(b[0]))),policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,unsupportedComponentsFailClosed:true},tiles:manifestTiles};
 await fs.writeFile(path.join(OUT,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 console.log(JSON.stringify(manifest,null,2));
 if(stats.publishedOffers<1000)throw new Error(`too few safe Electra platform offers: ${stats.publishedOffers}`);
