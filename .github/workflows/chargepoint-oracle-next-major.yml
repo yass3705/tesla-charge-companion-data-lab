@@ -1,97 +1,110 @@
-name: France ChargePoint oracle next major CPOs
+name: France ChargePoint Electra residual crosswalk
 on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/chargepoint-oracle-next-major.yml']
+    paths:
+      - '.github/workflows/chargepoint-oracle-next-major.yml'
+      - 'data/platforms/electra/france/residuals.json.gz'
 permissions:
   contents: write
 jobs:
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Probe exact public EVSE tariffs
+      - name: Download latest national IRVE consolidation
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p reports/france/chargepoint-oracle-next data/operator_direct
+          mkdir -p reports/france/chargepoint data/operator_direct
+          PAN_URL='https://proxy.transport.data.gouv.fr/resource/qualicharge-irve-statique'
+          if ! curl -fL --retry 3 --max-time 300 --output national-irve.csv "$PAN_URL"; then
+            echo 'Latest PAN endpoint failed; using the last pinned public consolidation as fallback'
+            curl -fL --retry 3 --max-time 300 --output national-irve.csv 'https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
+          fi
+          gzip -dc data/platforms/electra/france/residuals.json.gz > electra-residuals.json
+          wc -c national-irve.csv electra-residuals.json
+      - name: Crosswalk ChargePoint residuals against PAN
+        shell: bash
+        run: |
+          set -euo pipefail
           python - <<'PY'
-          import csv,io,json,re,requests,pathlib,urllib.parse,concurrent.futures
+          import csv,json,math,re,unicodedata,difflib,pathlib
+          from collections import defaultdict,Counter
           from datetime import datetime,timezone
-          PAN='https://static.data.gouv.fr/resources/base-nationale-des-irve-data-gouv-infrastructures-de-recharge-pour-vehicules-electriques-donnees-statiques/20260902-033409/consolidation-etalab-schema-irve-statique-v-2.3.1-20260902.csv'
-          S=requests.Session(); S.headers.update({'User-Agent':'Mozilla/5.0 TeslaChargeCompanion/1.0','Accept':'application/json,*/*'})
-          rows=list(csv.DictReader(io.StringIO(S.get(PAN,timeout=90).content.decode('utf-8-sig',errors='replace'))))
-          def v(r,*ns):
-            for n in ns:
-              if r.get(n): return str(r[n]).strip()
+          def val(r,*names):
+            for n in names:
+              x=r.get(n)
+              if x not in (None,''): return str(x).strip()
             return ''
-          def nrm(s):return re.sub('[^A-Z0-9]','',str(s).upper())
+          def norm(s): return re.sub(r'[^A-Z0-9]','',str(s or '').upper())
+          def text(s):
+            return re.sub(r'[^A-Z0-9 ]',' ',unicodedata.normalize('NFKD',str(s or '')).encode('ascii','ignore').decode().upper()).strip()
+          def sim(a,b): return difflib.SequenceMatcher(None,text(a),text(b)).ratio()
           def coord(r):
-            z=re.findall(r'-?\d+(?:\.\d+)?',v(r,'coordonneesXY','coordonnees_xy'))
+            raw=val(r,'coordonneesXY','coordonnees_xy','coordonnees')
+            z=re.findall(r'-?\d+(?:\.\d+)?',raw)
             if len(z)>=2:
               a,b=map(float,z[:2])
-              if abs(a)<=10 and 40<=b<=52:return b,a
-              if abs(b)<=10 and 40<=a<=52:return a,b
-          specs={
-            'greenflux':{'label':'Greenflux','target':['greenflux'],'attrib':['greenflux']},
-            'qovoltis':{'label':'QOVOLTIS','target':['qovoltis'],'attrib':['qovoltis']},
-            'eleclerc':{'label':'E.Leclerc','target':['e.leclerc','leclerc'],'attrib':['leclerc']},
-            'easycharge':{'label':'EASYCHARGE','target':['easycharge'],'attrib':['easycharge']}
-          }
-          targets={k:[] for k in specs}
-          for r in rows:
-            hay=' | '.join([v(r,'nom_amenageur'),v(r,'nom_operateur'),v(r,'nom_enseigne'),v(r,'contact_amenageur')]).lower()
-            for k,s in specs.items():
-              if any(a in hay for a in s['target']):targets[k].append(r)
-          allc={}
-          for k,rs in targets.items():
-            for r in rs:
-              c=coord(r)
-              if c:allc.setdefault((round(c[0],6),round(c[1],6)),set()).add(k)
-          MAP='https://mc.chargepoint.com/map-prod/v2?';INFO='https://mc.chargepoint.com/map-prod/v3/station/info?deviceId='
-          filt={x:False for x in ['price_free','status_available','dc_fast_charging','disabled_parking','van_accessible','network_chargepoint','network_mercedes','connector_l1','connector_l2','connector_l2_nema_1450','connector_l2_tesla','connector_chademo','connector_combo','connector_tesla']}
-          def near(c):
-            lat,lon=c;d=.003;q={'station_list':{'screen_width':800,'screen_height':800,'ne_lat':lat+d,'ne_lon':lon+d,'sw_lat':lat-d,'sw_lon':lon-d,'page_size':60,'page_offset':'','sort_by':'distance','reference_lat':lat,'reference_lon':lon,'include_map_bound':True,'filter':filt,'bound_output':True}}
-            u=MAP+urllib.parse.quote(json.dumps(q,separators=(',',':')),safe='{}:,"')
+              if abs(a)<=10 and 40<=b<=52: return b,a
+              if abs(b)<=10 and 40<=a<=52: return a,b
             try:
-              r=S.post(u,timeout=18);j=r.json() if r.ok else {};return c,[x.get('device_id') for x in ((j.get('station_list')or{}).get('stations')or[]) if x.get('device_id')]
-            except:return c,[]
-          cds={}
-          with concurrent.futures.ThreadPoolExecutor(max_workers=48) as ex:
-            for c,ds in ex.map(near,allc):cds[c]=ds
-          devs=sorted({d for ds in cds.values() for d in ds})
-          def inf(d):
-            try:r=S.get(INFO+str(d),timeout=18);return d,(r.json() if r.ok else None)
-            except:return d,None
-          infos={}
-          with concurrent.futures.ThreadPoolExecutor(max_workers=56) as ex:
-            for d,j in ex.map(inf,devs):infos[d]=j
-          for k,s in specs.items():
-            idx={}
-            for d,j in infos.items():
-              if not j:continue
-              attr=' '.join([str(j.get('hostName')or''),str((j.get('network')or{}).get('displayName')or''),str((j.get('network')or{}).get('name')or'')]).lower()
-              if not any(a in attr for a in s['attrib']):continue
-              for p in ((j.get('portsInfo')or{}).get('ports')or[]):
-                if p.get('evseId'):idx[nrm(p['evseId'])]=(p['evseId'],d,j,p)
-            exact=[];gaps=[]
-            for r in targets[k]:
-              pid=v(r,'id_pdc_itinerance');x=idx.get(nrm(pid))
-              if x and x[2].get('stationPrice') is not None:
-                eid,d,j,p=x;exact.append({'id_pdc_itinerance':pid,'id_station_itinerance':v(r,'id_station_itinerance'),'deviceId':d,'evseId':eid,'stationName':(j.get('name')or[None])[0],'hostName':j.get('hostName'),'network':j.get('network'),'stationPrice':j.get('stationPrice'),'sourceUrl':INFO+str(d)})
-              else:gaps.append({'id_pdc_itinerance':pid,'reason':'no_exact_attributed_chargepoint_evse_price'})
-            out={'generatedAt':datetime.now(timezone.utc).isoformat(),'operator':s['label'],'classification':{'sourceType':'public_third_party_station_detail','source':'ChargePoint public driver map','exactEvseMatchRequired':True,'operatorAttributionRequired':True,'failClosed':True,'treated':bool(exact)},'coverage':{'panRows':len(targets[k]),'exactRows':len(exact),'missingRows':len(gaps),'coveragePct':round(100*len(exact)/len(targets[k]),2) if targets[k] else 0,'attributedVisibleEvseIds':len(idx)},'exact':exact,'gaps':gaps}
-            pathlib.Path(f'data/operator_direct/{k}_chargepoint_exact_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
-            pathlib.Path(f'reports/france/chargepoint-oracle-next/{k}-summary.json').write_text(json.dumps({'classification':out['classification'],'coverage':out['coverage'],'sampleExact':exact[:5]},ensure_ascii=False,indent=2)+'\n')
-            print(k,json.dumps(out['coverage']))
+              return float(val(r,'latitude')),float(val(r,'longitude'))
+            except: return None
+          def dist(a,b):
+            p=math.pi/180; x=(b[1]-a[1])*p*math.cos((a[0]+b[0])*p/2); y=(b[0]-a[0])*p
+            return 6371000*math.hypot(x,y)
+          residual=json.load(open('electra-residuals.json'))['locations']
+          targets=[r for r in residual if str(r.get('cpo') or '').strip()=='ChargePoint']
+          national=[]
+          with open('national-irve.csv',encoding='utf-8-sig',errors='replace',newline='') as fh:
+            for r in csv.DictReader(fh):
+              c=coord(r)
+              if c: national.append((r,c))
+          by_evse=defaultdict(list); by_station=defaultdict(list)
+          for r,c in national:
+            eid=val(r,'id_pdc_itinerance','id_pdc_itinerance')
+            sid=val(r,'id_station_itinerance','id_station_itinerance') or eid
+            if eid: by_evse[norm(eid)].append((r,c))
+            by_station[sid].append((r,c))
+          exact=[]; exact_locations=set(); candidates=[]; ambiguities=[]
+          for e in targets:
+            eids=[norm(x.get('evseId')) for x in e.get('evses',[]) if x.get('evseId')]
+            hits=[]; seen=set()
+            for eid in eids:
+              for r,c in by_evse.get(eid,[]):
+                key=(val(r,'id_station_itinerance'),val(r,'id_pdc_itinerance'))
+                if key not in seen: hits.append((r,c));seen.add(key)
+            if hits:
+              exact_locations.add(e['electraLocationId'])
+              exact.append({'electraLocationId':e['electraLocationId'],'name':e.get('name'),'operator':e.get('operator'),'electraEvseIds':[x.get('evseId') for x in e.get('evses',[])],'nationalEvseIds':[val(r,'id_pdc_itinerance') for r,c in hits],'nationalStationIds':sorted({val(r,'id_station_itinerance') for r,c in hits}),'source':'PAN exact normalized EVSE ID'})
+          for e in targets:
+            if e['electraLocationId'] in exact_locations: continue
+            ec=coord({'latitude':str((e.get('coordinates') or {}).get('latitude','')),'longitude':str((e.get('coordinates') or {}).get('longitude',''))})
+            if not ec: continue
+            opts=[]
+            for sid,rows in by_station.items():
+              r,c=rows[0]; d=dist(ec,c)
+              if d>15: continue
+              score=sim((e.get('name') or '')+' '+(e.get('address') or ''),val(r,'nom_station','nom_amenageur','nom_enseigne')+' '+val(r,'adresse_station','adresse2_station'))
+              if score>=.70: opts.append({'stationId':sid,'distanceMeters':round(d,2),'similarity':round(score,3),'nationalCpo':val(r,'nom_operateur','nom_amenageur'),'nationalName':val(r,'nom_station','nom_amenageur'),'nationalEvseIds':[val(x,'id_pdc_itinerance') for x,_ in rows]})
+            unique={x['stationId']:x for x in opts}
+            opts=sorted(unique.values(),key=lambda x:(x['distanceMeters'],-x['similarity']))
+            if len(opts)==1: candidates.append({'electraLocationId':e['electraLocationId'],'name':e.get('name'),'address':e.get('address'),'city':e.get('city'),'postalCode':e.get('postalCode'),'operator':e.get('operator'),'candidate':opts[0]})
+            elif len(opts)>1: ambiguities.append({'electraLocationId':e['electraLocationId'],'name':e.get('name'),'candidates':opts})
+          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'source':{'national':'QualiCharge/PAN latest endpoint with pinned fallback','electraResidualSnapshot':residual and json.load(open('electra-residuals.json')).get('generatedAt'),'matching':'exact normalized EVSE ID first; then single station <=15m and name/address similarity >=0.70; no automatic publication'},'coverage':{'chargePointResidualLocations':len(targets),'exactIdLocations':len(exact),'strictUniqueCandidates':len(candidates),'ambiguous':len(ambiguities),'unresolved':len(targets)-len(exact)-len(candidates)},'exact':exact,'strictCandidates':candidates,'ambiguous':ambiguities}
+          pathlib.Path('data/operator_direct/chargepoint_electra_crosswalk_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('reports/france/chargepoint/electra-crosswalk-summary.json').write_text(json.dumps({'source':out['source'],'coverage':out['coverage'],'sampleExact':exact[:10],'sampleCandidates':candidates[:10],'sampleAmbiguous':ambiguities[:5]},ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(out['coverage'],ensure_ascii=False))
           PY
-      - name: Publish
+      - name: Publish report
+        shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/operator_direct/*_chargepoint_exact_france.json reports/france/chargepoint-oracle-next/*.json
-          git commit -m 'France: publish ChargePoint exact probes for next major CPOs' || exit 0
+          git add data/operator_direct/chargepoint_electra_crosswalk_france.json reports/france/chargepoint/electra-crosswalk-summary.json
+          git commit -m 'France: crosswalk ChargePoint Electra residuals against latest PAN'
           for i in 1 2 3; do git pull --rebase origin main && git push && exit 0; sleep $((i*2)); done
           exit 1
