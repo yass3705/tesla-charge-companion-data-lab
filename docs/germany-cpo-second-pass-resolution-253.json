@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 253,
+  "date": "2026-10-05",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-252.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 258,
+    "partial": 333,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Carl Knauber Holding GmbH & Co. KG",
+      "status": "partial",
+      "exactResidual": "5/5 sites have explicit first-party AdHoc credit-card tariffs (AC 0.49 EUR/kWh +0.50 start +0.05/min from 181; DC 0.59 +0.50 +0.10/min from 61). chargecloud taxIncluded remains null; no tariff-specific authoritative gross/VAT closure, so no promotion."
+    },
+    {
+      "cpo": "ServiceSTADTwerke GmbH & Co. KG",
+      "status": "partial",
+      "exactResidual": "100% raw chargecloud site coverage but payment/tax fields unresolved and current direct prices are heterogeneous across municipalities; no network-wide extrapolation."
+    },
+    {
+      "cpo": "Stadtwerke Ratingen / Energieservice Ratingen",
+      "status": "mapping-gap",
+      "exactResidual": "First-party proof closes ad-hoc without contract, QR/card, AC 0.53, DC 0.59, blocking and 19% VAT included, but no safe mapping to an existing canonical partial/alias; do not create a 592nd CPO."
+    },
+    {
+      "cpo": "Stadtwerke Lemgo",
+      "status": "partial",
+      "exactResidual": "21 canonical sites including AC/DC/HPC; customer-card 0.38 EUR/kWh is contract tariff, not anonymous CPO ad-hoc. Direct anonymous tariff not closed."
+    },
+    {
+      "cpo": "Stadtwerke Iserlohn",
+      "status": "partial",
+      "exactResidual": "78 canonical sites with AC/DC/HPC up to 200 kW, 0/78 AFIR matched in current audit. SauerlandFahrstrom evidence is customer tariff; direct anonymous backend/tariff unresolved."
+    },
+    {
+      "cpo": "Stadtwerke Schifferstadt",
+      "status": "partial",
+      "exactResidual": "Virta DE*VIR backend identified; direct examples show 0.53 EUR/kWh +0.49 start via web/card, but remaining EVSE checkout variants and VAT/start-fee applicability are not exhaustively closed."
+    },
+    {
+      "cpo": "Stadtwerke Garbsen",
+      "status": "partial",
+      "exactResidual": "Direct card/NFC charging confirmed on canonical sites and one site exposes 0.40 EUR/kWh, but current anonymous price is not closed for every site; no network extrapolation."
+    },
+    {
+      "cpo": "Stadtwerke Kempen",
+      "status": "partial",
+      "exactResidual": "Current first-party ad-hoc is QR/mobile web + card, 1.19 EUR start +0.48 EUR/kWh. Historical denominator evidence is stale; reconcile current 2026 public EVSE denominator before promotion."
+    },
+    {
+      "cpo": "Stadtwerke Wesel",
+      "status": "mapping-gap",
+      "exactResidual": "First-party direct ad-hoc is strongly closed (QR/ladeapp, card/PayPal, AC 0.50 with blocking, DC 0.59 with blocking, VAT included), but canonical alias/EVSE mapping and current denominator must be reconciled before promotion."
+    }
+  ],
+  "promotions": [],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 258,
+    "partial": 333,
+    "blocked": 0
+  },
+  "indicator": "221 -> 258 complete (+37)",
+  "top5": {
+    "status": "parked/treated-fail-closed; unchanged"
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "258 + 333 + 0 = 591",
+    "unsafeExtrapolations": 0,
+    "aliasesCreated": 0
+  },
+  "nextSafeAction": "Continue Mobilithek/AFIR/DATEX candidates with identifiable direct backend; prioritize safe alias/EVSE mapping for Wesel and Ratingen and current denominator closure for Kempen."
+}
