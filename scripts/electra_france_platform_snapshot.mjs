@@ -113,12 +113,12 @@ async function worker(){while(true){const i=next++;if(i>=totalPages)return;const
 await Promise.all(Array.from({length:CONCURRENCY},worker));
 if(failures.length)throw new Error(`Electra extraction has ${failures.length} failed pages; refusing snapshot`);
 
-const tiles=new Map(),reasons={},cpoSummary=new Map(),stats={franceCompatibleLocations:locations.length,locationsWithNationalEvse:0,publishedLocations:0,publishedEvseIds:0,publishedOffers:0};
+const tiles=new Map(),residualLocations=[],reasons={},cpoSummary=new Map(),stats={franceCompatibleLocations:locations.length,locationsWithNationalEvse:0,publishedLocations:0,publishedEvseIds:0,publishedOffers:0};
 for(const x of locations){
   const cpo=String(x.cpo?.name||'CPO inconnu');
   if(!cpoSummary.has(cpo))cpoSummary.set(cpo,{cpo,totalCompatibleLocations:0,locationsWithNationalEvse:0,matchedEvseIds:0,publishedLocations:0,publishedEvseIds:0,rejected:{}});
   const cs=cpoSummary.get(cpo);cs.totalCompatibleLocations++;
-  const reject=reason=>{reasons[reason]=(reasons[reason]||0)+1;cs.rejected[reason]=(cs.rejected[reason]||0)+1;};
+  const reject=reason=>{reasons[reason]=(reasons[reason]||0)+1;cs.rejected[reason]=(cs.rejected[reason]||0)+1;residualLocations.push({electraLocationId:String(x.id),name:x.name||null,address:x.address||null,city:x.city||null,postalCode:x.postalCode||null,country:x.country||null,coordinates:x.coordinates||null,cpo,operator:x.operator?.name||null,reason,evses:(x.evses||[]).map(e=>({id:e.id||null,evseId:e.evseId||null,status:e.status||null,physicalReference:e.physicalReference||null}))});};
   const exact=[...new Set((x.evses||[]).map(e=>e?.evseId).filter(Boolean).filter(id=>nationalEvse.has(norm(id))))];
   if(!exact.length){reject('no_national_evse');continue;}
   stats.locationsWithNationalEvse++;cs.locationsWithNationalEvse++;cs.matchedEvseIds+=exact.length;
@@ -146,5 +146,7 @@ for(const [id,offers] of [...tiles.entries()].sort((a,b)=>a[0].localeCompare(b[0
 }
 const manifest={schemaVersion:1,dataset:'electra-france-platform-national-evse-overlay',generatedAt:new Date().toISOString(),source:{endpoint:URL,globalTotalCount:total,totalPages},country:'FR',tileSizeDegrees:TILE,tileCount:manifestTiles.length,stats,rejected:reasons,cpoSummary:Object.fromEntries([...cpoSummary.entries()].sort((a,b)=>a[0].localeCompare(b[0]))),policy:{nationalFranceIsIdentityHub:true,exactNationalEvseOnly:true,electroverseDependency:false,heterogeneousLocationTariffsFailClosed:true,unsupportedComponentsFailClosed:true},tiles:manifestTiles};
 await fs.writeFile(path.join(OUT,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
+const residualGz=zlib.gzipSync(Buffer.from(JSON.stringify({schemaVersion:1,country:'FR',generatedAt:manifest.generatedAt,locations:residualLocations})),{level:9});
+await fs.writeFile(path.join(OUT,'residuals.json.gz'),residualGz);
 console.log(JSON.stringify(manifest,null,2));
 if(stats.publishedOffers<1000)throw new Error(`too few safe Electra platform offers: ${stats.publishedOffers}`);
