@@ -46,10 +46,9 @@ jobs:
         env:
           LOADMOTION_ID: ${{ secrets.LOADMOTION_ID }}
           LOADMOTION_PASS: ${{ secrets.YES55_PASS }}
-          LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_YES55_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "${LOADMOTION_TOKEN:-}" ] && { [ -z "${LOADMOTION_ID:-}" ] || [ -z "${LOADMOTION_PASS:-}" ]; }; then
+          if [ -z "${LOADMOTION_ID:-}" ] || [ -z "${LOADMOTION_PASS:-}" ]; then
             echo "::error::Missing YES55 credentials: LOADMOTION_ID + YES55_PASS"
             exit 1
           fi
@@ -62,10 +61,9 @@ jobs:
         env:
           LOADMOTION_ID: ${{ secrets.LOADMOTION_ID }}
           LOADMOTION_PASS: ${{ secrets.LOADSTATIONS_PASS }}
-          LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_LOADSTATIONS_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "${LOADMOTION_TOKEN:-}" ] && { [ -z "${LOADMOTION_ID:-}" ] || [ -z "${LOADMOTION_PASS:-}" ]; }; then
+          if [ -z "${LOADMOTION_ID:-}" ] || [ -z "${LOADMOTION_PASS:-}" ]; then
             echo "::error::Missing Load Stations credentials: LOADMOTION_ID + LOADSTATIONS_PASS"
             exit 1
           fi
@@ -78,10 +76,9 @@ jobs:
         env:
           LOADMOTION_ID: ${{ secrets.LOADMOTION_ID }}
           LOADMOTION_PASS: ${{ secrets.REVEO_PASS }}
-          LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_REVEO_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "${LOADMOTION_TOKEN:-}" ] && { [ -z "${LOADMOTION_ID:-}" ] || [ -z "${LOADMOTION_PASS:-}" ]; }; then
+          if [ -z "${LOADMOTION_ID:-}" ] || [ -z "${LOADMOTION_PASS:-}" ]; then
             echo "::error::Missing REVEO credentials: LOADMOTION_ID + REVEO_PASS"
             exit 1
           fi
@@ -94,10 +91,9 @@ jobs:
         env:
           LOADMOTION_ID: ${{ secrets.LOADMOTION_ID }}
           LOADMOTION_PASS: ${{ secrets.MOBISDEC_PASS }}
-          LOADMOTION_TOKEN: ${{ secrets.LOADMOTION_MOBISDEC_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "${LOADMOTION_TOKEN:-}" ] && { [ -z "${LOADMOTION_ID:-}" ] || [ -z "${LOADMOTION_PASS:-}" ]; }; then
+          if [ -z "${LOADMOTION_ID:-}" ] || [ -z "${LOADMOTION_PASS:-}" ]; then
             echo "::error::Missing MobiSDEC credentials: LOADMOTION_ID + MOBISDEC_PASS"
             exit 1
           fi
