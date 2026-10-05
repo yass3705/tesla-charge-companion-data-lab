@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "0.2.0",
+  "countryCode": "DE",
+  "runDate": "2026-09-08",
+  "scope": "first-pass-only",
+  "guardrails": {
+    "noTariffExtrapolation": true,
+    "thirdPartyDiscoveryOnlyUnlessStationScoped": true,
+    "noInventedEmi3Prefix": true
+  },
+  "cpos": [
+    {
+      "operator": "Dortmunder Energie- und Wasserversorgung GmbH (DEW21)",
+      "aliases": ["DEW21", "fahr-e", "fahr-e LadeApp"],
+      "classification": "complete",
+      "authoritativePrefix": null,
+      "evidence": [
+        {
+          "type": "official-current-direct-tariff",
+          "source": "DEW21",
+          "url": "https://www.dew21.de/privatkunden/elektromobilitaet/lademoeglichkeiten",
+          "observed": "Official page states current prices are valid for AdHoc charging and the fahr-e LadeApp on DEW21-operated infrastructure: AC 0.54 EUR/kWh, DC 0.64 EUR/kWh, incl. VAT. Blocking fee 0.03 EUR/min, triggered 30 minutes after charging ends; AC only in the published daytime window, DC continuously; exemptions include lantern charging points and certain paid-parking locations. External roaming in fahr-e ended 2026-07-31, so the current scope is DEW21-operated points."
+        }
+      ],
+      "conclusion": "Complete at the operator tariff-policy level because the primary operator explicitly states that the numeric grid applies to AdHoc charging on DEW21-operated infrastructure. Preserve published blocking-fee exceptions and do not infer an eMI3 prefix."
+    },
+    {
+      "operator": "Stadtwerke Osnabrück AG",
+      "aliases": ["Stadtwerke Osnabrück", "SWO", "Ich fahr Strom"],
+      "classification": "partial",
+      "authoritativePrefix": null,
+      "evidence": [
+        {
+          "type": "official-ownership-and-network-context",
+          "source": "Stadtwerke Osnabrück",
+          "url": "https://www.stadtwerke-osnabrueck.de/mobilitaet/parken",
+          "observed": "Official current page documents public charging in Osnabrück, OPG parking facilities and ladenetz access, but does not expose a current numeric contract-free direct-payment tariff matrix for the Stadtwerke-operated public EVSEs."
+        },
+        {
+          "type": "official-current-product-context",
+          "source": "Stadtwerke Osnabrück",
+          "url": "https://www.stadtwerke-osnabrueck.de/energie/vorteilswelt/542bc8a2-c854-4403-ac4e-f76281171405",
+          "observed": "Official page promotes the OPG E-LadeCard with billing by direct debit or credit card and no blocking fee for that product; this is a card/product channel and is not treated as proof of the ad-hoc price at every EVSE."
+        },
+        {
+          "type": "station-level-discovery",
+          "source": "GoingElectric",
+          "url": "https://www.goingelectric.de/stromtankstellen/Deutschland/Osnabrueck/Parkplatz-Stadtwerke-Alte-Poststrasse-9/662/",
+          "observed": "Current station listing confirms ad-hoc direct payment is possible at the Stadtwerke site but reports the ad-hoc price as unknown."
+        }
+      ],
+      "conclusion": "Partial/deferred. Public direct charging exists, but no exact current primary station/EVSE tariff authority was verified. Keep fail-closed until a QR checkout payload, current official ad-hoc price sheet, or other primary station-level price is available."
+    },
+    {
+      "operator": "RheinEnergie AG",
+      "aliases": ["RheinEnergie", "TankE", "TankE Netzwerk"],
+      "classification": "partial",
+      "authoritativePrefix": null,
+      "evidence": [
+        {
+          "type": "current-third-party-discovery",
+          "source": "Ladekarten-Vergleichen.de",
+          "url": "https://ladekarten-vergleichen.de/regionale-ladekarten/ladekarte-koln/",
+          "observed": "Current August 2026 discovery source reports TankE ad-hoc values of 0.49 EUR/kWh AC and 0.59 EUR/kWh DC with time-based blocking rules. This is retained only as a discovery lead because a matching current primary RheinEnergie/TankE tariff authority was not verified in this pass."
+        },
+        {
+          "type": "station-level-current-discovery",
+          "source": "EVLADE",
+          "url": "https://evlade.de/nordrhein-westfalen/bornheim/donnerbachweg-51560/",
+          "observed": "Current RheinEnergie station-level listing shows 0.49 EUR/kWh AC and separate DC/blocking values, but it is not primary operator evidence and therefore is not generalized network-wide."
+        }
+      ],
+      "conclusion": "Partial/deferred. Multiple current discovery sources support a TankE/RheinEnergie ad-hoc price pattern, but no primary operator or checkout authority was verified in this pass. Do not promote the sampled/discovery tariff as a network fallback."
+    }
+  ],
+  "runSummary": {
+    "newFirstPasses": 3,
+    "complete": 1,
+    "partial": 2,
+    "blocked": 0,
+    "completed": ["Dortmunder Energie- und Wasserversorgung GmbH (DEW21)"],
+    "deferredAfterFirstPass": ["Stadtwerke Osnabrück AG", "RheinEnergie AG"]
+  },
+  "consistency": {
+    "reAuditedDeferredCpos": 0,
+    "canonicalRebuildRetried": false,
+    "prefixWideTariffExtrapolations": 0,
+    "duplicateAliasFindings": 0,
+    "identicalInvestigationOverTwoRuns": 0,
+    "notes": [
+      "DEW21 is complete only because the primary operator explicitly binds the current numeric grid to AdHoc charging on its own infrastructure.",
+      "Osnabrück card/product conditions are not used as ad-hoc tariff evidence.",
+      "RheinEnergie/TankE third-party 2026 values remain discovery-only pending primary authority.",
+      "No eMI3 prefix was invented."
+    ]
+  }
+}

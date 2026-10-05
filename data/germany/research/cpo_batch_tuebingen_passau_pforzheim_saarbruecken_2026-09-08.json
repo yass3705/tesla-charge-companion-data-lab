@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "date": "2026-09-08",
+  "policy": "Exact station/EVSE or explicitly network-scoped direct pricing only; no subscription/roaming/historical extrapolation.",
+  "cpos": [
+    {
+      "operator": "ecowerk e-charge / Stadtwerke Tübingen",
+      "aliases": ["Stadtwerke Tübingen", "swt", "ecowerk e-charge", "e-charge"],
+      "status": "complete",
+      "directTariff": {
+        "effectiveFrom": "2026-04-01",
+        "AC_EUR_per_kWh": 0.42,
+        "DC50_EUR_per_kWh": 0.49,
+        "DC300_EUR_per_kWh": 0.58,
+        "blocking": [
+          "AC: 0.08 EUR/min from minute 241; suspended 00:00-08:00",
+          "DC <=50 kW: 0.10 EUR/min after 180 minutes; max 18 EUR/session",
+          "DC >50 kW to 300 kW: 0.10 EUR/min from minute 91; no night suspension"
+        ]
+      },
+      "evidence": [
+        "https://www.electrive.net/2026/03/30/stadtwerke-tuebingen-senken-ladepreise/"
+      ],
+      "reason": "A detailed 2026 tariff table quotes the Stadtwerke Tübingen/ecowerk e-charge price change effective 2026-04-01 and explicitly distinguishes Adhoc-Tarif AC, DC-50 and DC up to 300 kW plus blocking rules. No roaming or subscriber price is substituted."
+    },
+    {
+      "operator": "Stadtwerke Passau GmbH",
+      "aliases": ["Stadtwerke Passau", "SWP Passau", "SWP-Ladestationen"],
+      "status": "complete",
+      "directTariff": {
+        "AC_EUR_per_kWh": 0.65,
+        "activationFee_EUR": 0.0,
+        "baseFee_EUR": 0.0,
+        "timeFee_EUR_per_min": 0.0,
+        "scope": "all public AC charging stations operated by Stadtwerke Passau"
+      },
+      "evidence": [
+        "https://www.stadtwerke-passau.de/e-mobilitaet"
+      ],
+      "reason": "The current official CPO page explicitly states ad-hoc web charging by QR/card at 0.65 EUR/kWh at all SWP AC stations, without activation, base, minute or other additional charging fees. The page notes the tariff effective since 2023 but continues to present it as the current charging price."
+    },
+    {
+      "operator": "SWP Stadtwerke Pforzheim GmbH & Co. KG",
+      "aliases": ["Stadtwerke Pforzheim", "SWP Stadtwerke Pforzheim", "SWP Pforzheim"],
+      "status": "partial",
+      "verifiedStationEvidence": {
+        "sampleEVSEs": ["DE*SPF*E10009*001", "DE*SPF*E10009*002", "DE*SPF*E20015*001", "DE*SPF*E20015*002"],
+        "sampleAC_EUR_per_kWh": 0.48
+      },
+      "evidence": [
+        "https://adhocladen.de/pforzheim/swp-stadtwerke-pforzheim-kiehnlestrasse-26/",
+        "https://ladestau.de/neuenbuerg/swp-stadtwerke-pforzheim-kirchplatz-0/"
+      ],
+      "reason": "Multiple current station-level sources verify 0.48 EUR/kWh direct AC pricing on specific DE*SPF EVSEs, but other SWP-associated sites show differing prices and no current official network-wide tariff contract was found. A prefix-wide tariff would be unsafe.",
+      "neededToComplete": "Resolve an official/public SWP station or QR tariff endpoint and map every represented SWP EVSE, including any DC/HPC and site-specific conditions."
+    },
+    {
+      "operator": "Stadtwerke Saarbrücken GmbH",
+      "aliases": ["Stadtwerke Saarbrücken", "SW Saarbrücken"],
+      "status": "partial",
+      "verifiedStationEvidence": {
+        "site": "Hohenzollernstraße 75, Saarbrücken",
+        "evses": ["DE*BDO*E295485957*1", "DE*BDO*E295485957*2", "DE*BDO*E765730308*1", "DE*BDO*E765730308*2"],
+        "observedDirectPriceConflict": ["0.29 EUR/kWh", "0.35 EUR/kWh"]
+      },
+      "evidence": [
+        "https://ladestau.de/saarbruecken/stadtwerke-saarbruecken-hohenzollernstrasse-75/",
+        "https://ladesofort.de/betreiber/stadtwerke-saarbruecken",
+        "https://www.goingelectric.de/stromtankstellen/Deutschland/Saarbruecken/Stadtwerke-Hohenzollernstrasse-75/3705/"
+      ],
+      "reason": "Current public sources agree that ad-hoc access exists but disagree on the exact price for the same site (0.29 vs 0.35 EUR/kWh), while GoingElectric reports the direct price as unknown. The DE*BDO identifier is retained only as station evidence, not treated as a Saarbrücken-wide tariff authority.",
+      "neededToComplete": "Capture the official QR/payment checkout or another authoritative current station payload for each represented Stadtwerke Saarbrücken EVSE and resolve the observed price conflict."
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "generatedAt": "2026-09-06",
+  "purpose": "Evidence-gated classification of four high-coverage Germany CPO prefixes from the certified 568-prefix audit. Aggregators are discovery/support evidence only; no sampled tariff is generalized.",
+  "entries": {
+    "DEONE": {
+      "status": "partial",
+      "operator": "reev platform prefix / multiple physical operators",
+      "audit": {"representedSites": 275, "representedEvses": 1415},
+      "finding": "reev officially documents DE*ONE*EXXXX as the EVSE-ID format assigned by its platform. The certified Germany audit shows many distinct physical operators under DEONE, so DEONE is a technical/shared platform prefix rather than a single tariff authority.",
+      "sources": [
+        "https://support.reev.com/de/articles/300410-monitoring-ladestationen-hinzufugen",
+        "https://support.reev.com/de/articles/301046-nutzergruppen-aktivierung-fehlgeschlagen",
+        "https://support.reev.com/de/articles/288513-reev-app-ladevorgang-starten"
+      ],
+      "neededToComplete": "Resolve each DEONE EVSE to its physical CPO and exact public ad-hoc/app tariff shown after EVSE/QR selection. Never apply a DEONE-wide tariff."
+    },
+    "DEISE": {
+      "status": "partial",
+      "operator": "shared Compleo/legacy platform prefix / multiple physical operators",
+      "audit": {"representedSites": 507, "representedEvses": 1341},
+      "finding": "The certified audit contains many physical operators under DEISE (including enviaM, LEW Natur, Ladestationen Südwest and ENNI). Public station evidence confirms DE*ISE EVSEs assigned to different operators, and sampled exact station tariffs vary; therefore no prefix-wide tariff is defensible.",
+      "discoverySources": [
+        "https://www.preisstation.de/ladestation/105883-kp01224-bad-muskau/",
+        "https://app.pumpapp.co/de/ladestation-vaylens-bachstrasse-peiting/9aa1e860-9ed8-11ed-877c-47eac9817186",
+        "https://www.zapmap.com/charge-points/rheinberg/CSBE6CN"
+      ],
+      "neededToComplete": "Resolve each DEISE EVSE to the physical operator and obtain exact station/EVSE direct pricing from operator checkout, Mobilithek/AFIR/DATEX II or another verifiable station-level source. Aggregator prices remain discovery-only."
+    },
+    "DEEZE": {
+      "status": "partial",
+      "operator": "eze.network GmbH",
+      "audit": {"representedSites": 309, "representedEvses": 726},
+      "finding": "eze.network's official public charging page publishes 0.38 EUR/kWh plus a time component selected by session start time: 0.60 EUR/hour for starts 20:00-04:00 and 1.20 EUR/hour for starts 04:00-20:00, with no subscription. The tariff is exact, but the current V9 exact-tariff coverage does not yet encode/validate this start-time-dependent component across every DEEZE EVSE.",
+      "sources": ["https://app.eze.network/"],
+      "neededToComplete": "Represent the start-time-dependent hourly component exactly in the V9 billing/tariff model and attach the official rule to validated DEEZE EVSEs without flattening it to a kWh-only price."
+    },
+    "DECTP": {
+      "status": "partial",
+      "operator": "Servipark Deutschland GmbH / Contipark Germany",
+      "audit": {"representedSites": 30, "representedEvses": 684},
+      "finding": "Contipark publishes exact direct-payment electricity prices on official individual car-park pages, but they are not uniform: multiple sites publish 0.55 EUR/kWh while Braunschweig Wallstrasse and Duesseldorf Momentum publish 0.66 EUR/kWh. A DECTP-wide fallback would therefore be false.",
+      "sources": [
+        "https://www.contipark.de/de/parken/bielefeld/parkhaus-ritterstrasse/",
+        "https://www.contipark.de/de/parken/speyer/parkhaus-zentrum-speyer/",
+        "https://www.contipark.de/de/parken/braunschweig/parkhaus-wallstrasse/",
+        "https://www.contipark.de/de/parken/duesseldorf/tiefgarage-momentum/"
+      ],
+      "neededToComplete": "Map the 30 audited DECTP sites/684 EVSEs to Contipark facility pages or public direct-payment payloads and attach each exact site price; preserve any site-specific roaming/payment differences."
+    }
+  },
+  "safety": {
+    "noExtrapolation": true,
+    "aggregatorTariffsPromoted": false,
+    "blockedReauditWithoutNewEvidence": false
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "0.1.0",
+  "countryCode": "DE",
+  "generatedAt": "2026-09-06",
+  "purpose": "Primary-source evidence for the next Germany V9 CPO coverage batch. No sampled or roaming tariff is generalized beyond the exact scope published by the tariff authority.",
+  "entries": {
+    "DEALD": {
+      "operator": "ALDI SÜD Immobilienverwaltungs-GmbH & Co. oHG",
+      "classification": "partial",
+      "catalogScope": {"representedSites": 259, "representedEvses": 590},
+      "primaryEvidence": [
+        {
+          "url": "https://www.e-ladestation.aldi-sued.de/inapp/how-to",
+          "finding": "ALDI SÜD publishes direct card prices by charging-station class: normal stations max 22 kW 0.29 EUR/kWh; fast stations max 50 kW 0.44 EUR/kWh; ultra-fast stations at least 150 kW 0.47 EUR/kWh. ALDI explicitly states the classification is by station type rather than AC/DC connector, including AC connectors on ultra-fast stations at 0.47 EUR/kWh."
+        }
+      ],
+      "reason": "The tariff rules are exact, primary and station-class based, but the current staging catalog has not yet validated every DEALD site/EVSE against ALDI's published station class. Completing it requires a deterministic station-class mapping rather than inferring solely from connector type.",
+      "neededToComplete": "Validate all 259 DEALD sites against the ALDI station-class taxonomy (normal <=22 kW, fast <=50 kW, ultra-fast >=150 kW), explicitly handle any catalog station outside those published bands, then attach the corresponding exact direct tariff to every site/EVSE."
+    },
+    "DE451": {
+      "operator": "Stadtwerke Lübeck Energie GmbH",
+      "classification": "partial",
+      "catalogScope": {"representedSites": 133, "representedEvses": 568},
+      "primaryEvidence": [
+        {
+          "url": "https://www.swhl.de/energie/emobil/ladesaeulen-luebeck/",
+          "finding": "Stadtwerke Lübeck publishes ad-hoc pricing without contract: AC 0.55 EUR/kWh; DC 0.65 EUR/kWh. Stand-time surcharge is 0.10 EUR/min from minute 241 AC or minute 181 DC, only 08:00-20:00; no surcharge 20:00-08:00. Payment can be Girocard, QR or terminal."
+        },
+        {
+          "url": "https://www.swhl.de/hilfe/e-mobilitaet/",
+          "finding": "Official FAQ confirms the ad-hoc surcharge windows and that QR/Giro-e prices are shown before the session; card-terminal payments can have additional fees displayed at the terminal."
+        }
+      ],
+      "reason": "The official QR/Giro-e ad-hoc energy and stand-time rules are exact network-wide, but the official FAQ warns that card-terminal payments can add fees shown at the terminal. Current V9 staging has not yet encoded payment-method-specific terminal fees or validated the AC/DC rule on every DE451 site.",
+      "neededToComplete": "Attach the exact QR/Giro-e AC/DC energy plus time-window surcharge rule to all validated DE451 sites and resolve whether each payment terminal has an additional fee; preserve payment-method specificity rather than flattening terminal fees into the network tariff."
+    },
+    "DESWD": {
+      "operator": "Stadtwerke Düsseldorf AG",
+      "classification": "partial",
+      "catalogScope": {"representedSites": 169, "representedEvses": 528},
+      "primaryEvidence": [
+        {
+          "url": "https://www.swd-ag.de/pk/elektromobilitaet/unterwegs-laden/ladekarte-e-auto/",
+          "finding": "From 2026-04-01 Düsselstrom mobil own-network tariff is AC 0.44 EUR/kWh and DC 0.56 EUR/kWh. Selected rapid parks have time-of-day special prices (Fährstraße 11:00-15:00 0.52 EUR/kWh; Fährstraße, Mercedesstraße and Pariser Straße 21:00-08:00 0.46 EUR/kWh). Usage fee after 4 h AC / 1 h DC is 0.10 EUR/min during 08:00-21:00."
+        },
+        {
+          "url": "https://www.swd-ag.de/pk/elektromobilitaet/unterwegs-laden/lade-app/",
+          "finding": "Stadtwerke Düsseldorf states the ladenetz.de app displays per-station tariffs and supports direct credit-card payment after station selection/QR scan."
+        }
+      ],
+      "reason": "Exact own-network card prices are published, but selected sites have explicit time-of-day special tariffs and the direct app/card checkout is station-specific. A flat DESWD tariff would miss these location/time rules.",
+      "neededToComplete": "Map the three special rapid parks and all other DESWD sites/EVSEs to the applicable current tariff and blocking rule; capture station-specific direct app/card prices where they differ from Düsselstrom mobil."
+    },
+    "DETCB": {
+      "operator": "TotalEnergies Charging Solutions Deutschland GmbH",
+      "classification": "partial",
+      "catalogScope": {"representedSites": 105, "representedEvses": 508},
+      "primaryEvidence": [
+        {
+          "url": "https://totalenergies.de/elektromobilitaet/faq_alternative/ladevorgang-starten-stoppen-und-bezahlen/was-genau-kostet-ein",
+          "finding": "TotalEnergies explicitly states there is no uniform network price; prices vary by location and charging card, and the exact per-kWh price is shown for each station in Charge Europe / Find a Charger. Some stations also have a blocking fee shown in the app."
+        },
+        {
+          "url": "https://totalenergies.de/elektromobilitaet/sommeraktion",
+          "finding": "Official 2026 summer promotion confirms station-scoped pricing: 0.59 EUR/kWh ad-hoc through 2026-08-31 at ten named fast-charging hubs only. This expired promotion is evidence of station/time variability and must not be applied as a current fallback."
+        }
+      ],
+      "reason": "The operator itself says current prices and some blocking fees are station-specific. Therefore no DETCB-wide tariff is valid; exact prices must be harvested from the operator's public station surface per EVSE/site.",
+      "neededToComplete": "Resolve the Charge Europe / Find a Charger station identifier-to-DETCB EVSE mapping and capture the current exact per-kWh price, blocking fee and validity interval for every represented site."
+    }
+  }
+}
