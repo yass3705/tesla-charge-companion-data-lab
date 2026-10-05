@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "country": "DE",
+  "project": "Tesla Charge Companion V9",
+  "phase": "second-pass-resolution",
+  "resolutionBatch": 250,
+  "date": "2026-10-05",
+  "previousLedger": "docs/germany-cpo-second-pass-resolution-249.json",
+  "canonicalBefore": {
+    "totalNamedCpos": 591,
+    "complete": 256,
+    "partial": 335,
+    "blocked": 0
+  },
+  "investigations": [
+    {
+      "cpo": "Stadtwerke Geesthacht GmbH",
+      "status": "complete",
+      "promotion": "partial->complete",
+      "coverage": {
+        "sites": "20/20",
+        "evse": "32 identified",
+        "rawTariffSites": "20/20"
+      },
+      "evidenceSummary": "eRound/AFIR coverage closes the current site denominator; anonymous direct QR/card payment semantics are explicit, tariff components are explicit and taxIncluded=true. Registered/card contract tariff is kept separate from anonymous ad-hoc evidence.",
+      "tariffProfile": "anonymous direct profile closed for relevant classes; no inference from registered/roaming tariffs."
+    },
+    {
+      "cpo": "SCHARR WÄRME GmbH & Co. KG",
+      "status": "partial",
+      "coverage": {
+        "sites": "39/39",
+        "evse": "96 identified"
+      },
+      "exactResidual": "Raw chargecloud tariff coverage is complete at site level, but payment semantics and taxIncluded/gross fields are not closed exhaustively. Preserve bounded partial; no network extrapolation."
+    }
+  ],
+  "promotions": [
+    "Stadtwerke Geesthacht GmbH"
+  ],
+  "canonicalAfter": {
+    "totalNamedCpos": 591,
+    "complete": 257,
+    "partial": 334,
+    "blocked": 0
+  },
+  "indicator": "221 -> 257 complete (+36)",
+  "top5": {
+    "status": "parked/treated-fail-closed",
+    "names": [
+      "solid GmbH / LadeVerbundPlus",
+      "NEW AG / NEW Energie",
+      "RhönEnergie Fulda",
+      "amperio",
+      "50five"
+    ]
+  },
+  "coherenceCheck": {
+    "status": "PASS",
+    "arithmetic": "257 + 334 + 0 = 591",
+    "totalNamedCpos": 591,
+    "unsafeExtrapolations": 0,
+    "completeReaudit": "none"
+  },
+  "nextSafeAction": "Continue the 100%-raw-AFIR partial cohort, prioritizing eRound entries with explicit anonymous payment, taxIncluded and complete fee components, then chargecloud entries where payment/tax semantics can be closed."
+}
