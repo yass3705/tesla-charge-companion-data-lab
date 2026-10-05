@@ -5,10 +5,12 @@ import zlib from 'node:zlib';
 
 const args = Object.fromEntries(process.argv.slice(2).map((v,i,a)=>v.startsWith('--')?[v.slice(2), a[i+1] && !a[i+1].startsWith('--') ? a[i+1] : true]:null).filter(Boolean));
 const tenant = String(args.tenant || process.env.LOADMOTION_TENANT || '').trim().toLowerCase();
-const token = String(process.env.LOADMOTION_TOKEN || '').trim();
+let token = String(process.env.LOADMOTION_TOKEN || '').trim();
+const loginId = String(process.env.LOADMOTION_ID || '').trim();
+const loginPassword = String(process.env.LOADMOTION_PASS || '').trim();
 const out = String(args.out || `data/loadmotion/france/current/${tenant}.json.gz`);
 const concurrency = Math.max(1, Math.min(6, Number(args.concurrency || 4)));
-if (!tenant || !token) throw new Error('Usage: LOADMOTION_TOKEN=... node extract_loadmotion_france.mjs --tenant <yes55|loadstations|reveo|mobisdec> [--out path]');
+if (!tenant) throw new Error('Usage: node extract_loadmotion_france.mjs --tenant <yes55|loadstations|reveo|mobisdec> [--out path]');
 
 const CONFIG = {
   yes55: {host:'yes55.load-motion.com', inventory:'search', search:'Y55', accept:s=>String(s?.id||'').toUpperCase().startsWith('FR*Y55*')},
@@ -19,6 +21,49 @@ const CONFIG = {
 const cfg = CONFIG[tenant];
 if (!cfg) throw new Error(`Unsupported tenant: ${tenant}`);
 const base = `https://${cfg.host}`;
+
+function extractJwt(body){
+  if(typeof body === 'string'){
+    const trimmed=body.trim().replace(/^"|"$/g,'');
+    if(trimmed.split('.').length===3) return trimmed;
+    try{return extractJwt(JSON.parse(body));}catch{}
+  }
+  if(body && typeof body === 'object'){
+    for(const key of ['token','accessToken','access_token','jwt','id_token']){
+      const candidate=body[key];
+      if(typeof candidate==='string' && candidate.split('.').length===3) return candidate;
+    }
+    for(const key of ['data','result','response']){
+      const candidate=extractJwt(body[key]);
+      if(candidate) return candidate;
+    }
+  }
+  return '';
+}
+
+async function loginWithCredentials(){
+  if(!loginId || !loginPassword) return '';
+  const url=`${base}/v1/auth/signin`;
+  const response=await fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json','Tenant':tenant},
+    body:JSON.stringify({email:loginId,password:loginPassword})
+  });
+  const txt=await response.text();
+  let body; try{body=JSON.parse(txt);}catch{body=txt;}
+  const jwt=extractJwt(body);
+  if(!response.ok || !jwt){
+    const detail=typeof body==='string' ? body.slice(0,300) : JSON.stringify(body).slice(0,300);
+    throw new Error(`Load Motion signin failed tenant=${tenant} HTTP ${response.status}: ${detail}`);
+  }
+  console.log(`authenticated tenant=${tenant} via LOADMOTION_ID/LOADMOTION_PASS`);
+  return jwt;
+}
+
+if(!token){
+  token=await loginWithCredentials();
+}
+if(!token) throw new Error('Missing authentication: provide LOADMOTION_ID + LOADMOTION_PASS (preferred) or legacy LOADMOTION_TOKEN');
 
 function decodeJwtPayload(jwt){
   const parts=jwt.split('.');
