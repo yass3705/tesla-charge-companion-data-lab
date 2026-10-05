@@ -64,6 +64,7 @@ def main():
             if item:
                 dynamic_ids.add(item)
 
+    residual_sha = hashlib.sha256(Path(args.residuals).read_bytes()).hexdigest()
     residual_payload = open_json(args.residuals)
     locations = residual_payload.get("locations", [])
     by_cpo = defaultdict(lambda: {
@@ -119,7 +120,8 @@ def main():
         "sources": {
             "static": {"url": manifest.get("sourceUrl"), "sourceRetrievedAt": manifest.get("sourceRetrievedAt"), "sourceSha256": manifest.get("sourceSha256"), "stationCount": manifest.get("stationCount"), "pdcCount": manifest.get("pdcCount")},
             "dynamic": {"url": DYNAMIC_URL, "rows": dynamic_rows, "uniqueIds": len(dynamic_ids), "sha256": dynamic_sha},
-            "residualSnapshotGeneratedAt": residual_payload.get("generatedAt")
+            "residualSnapshotGeneratedAt": residual_payload.get("generatedAt"),
+            "residualSnapshotSha256": residual_sha
         },
         "totals": total,
         "byCpo": dict(sorted(by_cpo.items(), key=lambda item: (-item[1]["evses"], item[0].casefold())))
