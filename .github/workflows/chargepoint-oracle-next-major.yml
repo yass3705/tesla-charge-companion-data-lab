@@ -67,7 +67,7 @@ jobs:
             p=math.pi/180; x=(b[1]-a[1])*p*math.cos((a[0]+b[0])*p/2); y=(b[0]-a[0])*p
             return 6371000*math.hypot(x,y)
           residual=json.load(open('electra-residuals.json'))['locations']
-          targets=[r for r in residual if str(r.get('cpo') or '').strip()=='ChargePoint']
+          targets=[r for r in residual if str(r.get('cpo') or '').strip().casefold()=='electra']
           national=[]
           for source in ('national-irve.csv','national-irve-dynamic.csv'):
             try:
@@ -123,7 +123,7 @@ jobs:
                 allnear.append({'stationId':sid,'distanceMeters':round(d,2),'similarity':round(sim((e.get('name') or '')+' '+(e.get('address') or ''),val(r,'nom_station','nom_amenageur','nom_enseigne')+' '+val(r,'adresse_station','adresse2_station')),3),'nationalCpo':val(r,'nom_operateur','nom_amenageur'),'nationalName':val(r,'nom_station','nom_amenageur'),'nationalEvseIds':[val(x,'id_pdc_itinerance') for x,_ in rows]})
             if allnear:
               nearby.append({'electraLocationId':e['electraLocationId'],'name':e.get('name'),'operator':e.get('operator'),'nearest':sorted(allnear,key=lambda x:(x['distanceMeters'],-x['similarity']))[:3]})
-          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'source':{'national':'data.gouv.fr IRVE dataset: refreshed static consolidation + live dynamic resource endpoints (pinned static fallback only)','electraResidualSnapshot':residual and json.load(open('electra-residuals.json')).get('generatedAt'),'matching':'exact normalized EVSE ID first; then single station <=15m and name/address similarity >=0.70; no automatic publication'},'coverage':{'chargePointResidualLocations':len(targets),'exactIdLocations':len(exact),'strictUniqueCandidates':len(candidates),'ambiguous':len(ambiguities),'nearbyLeadLocations':len(nearby),'unresolved':len(targets)-len(exact)-len(candidates)},'exact':exact,'strictCandidates':candidates,'ambiguous':ambiguities,'nearbyLeads':nearby}
+          out={'generatedAt':datetime.now(timezone.utc).isoformat(),'source':{'national':'data.gouv.fr IRVE dataset: refreshed static consolidation + live dynamic resource endpoints (pinned static fallback only)','electraResidualSnapshot':residual and json.load(open('electra-residuals.json')).get('generatedAt'),'matching':'exact normalized EVSE ID first; then single station <=15m and name/address similarity >=0.70; no automatic publication'},'coverage':{'electraResidualLocations':len(targets),'exactIdLocations':len(exact),'strictUniqueCandidates':len(candidates),'ambiguous':len(ambiguities),'nearbyLeadLocations':len(nearby),'unresolved':len(targets)-len(exact)-len(candidates)},'exact':exact,'strictCandidates':candidates,'ambiguous':ambiguities,'nearbyLeads':nearby}
           pathlib.Path('data/operator_direct/chargepoint_electra_crosswalk_france.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n')
           pathlib.Path('reports/france/chargepoint/electra-crosswalk-summary.json').write_text(json.dumps({'source':out['source'],'coverage':out['coverage'],'sampleExact':exact[:10],'sampleCandidates':candidates[:10],'sampleAmbiguous':ambiguities[:5],'sampleNearbyLeads':nearby[:20]},ensure_ascii=False,indent=2)+'\n')
           print(json.dumps(out['coverage'],ensure_ascii=False))
