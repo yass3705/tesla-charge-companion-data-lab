@@ -5,7 +5,7 @@ import zlib from 'node:zlib';
 
 const args = Object.fromEntries(process.argv.slice(2).map((v,i,a)=>v.startsWith('--')?[v.slice(2), a[i+1] && !a[i+1].startsWith('--') ? a[i+1] : true]:null).filter(Boolean));
 const tenant = String(args.tenant || process.env.LOADMOTION_TENANT || '').trim().toLowerCase();
-let token = String(process.env.LOADMOTION_TOKEN || '').trim();
+let token = "";
 const loginId = String(process.env.LOADMOTION_ID || '').trim();
 const loginPassword = String(process.env.LOADMOTION_PASS || '').trim();
 const out = String(args.out || `data/loadmotion/france/current/${tenant}.json.gz`);
@@ -60,16 +60,12 @@ async function loginWithCredentials(){
   return jwt;
 }
 
-if(loginId && loginPassword){
-  token=await loginWithCredentials();
-} else if(token){
-  console.log(`authenticated tenant=${tenant} via legacy LOADMOTION_TOKEN fallback`);
-}
-if(!token) throw new Error('Missing authentication: provide LOADMOTION_ID + LOADMOTION_PASS (preferred) or legacy LOADMOTION_TOKEN');
+if(!loginId || !loginPassword) throw new Error('Missing authentication: LOADMOTION_ID + LOADMOTION_PASS are required');
+token=await loginWithCredentials();
 
 function decodeJwtPayload(jwt){
   const parts=jwt.split('.');
-  if(parts.length!==3) throw new Error('LOADMOTION_TOKEN is not a JWT');
+  if(parts.length!==3) throw new Error('Load Motion signin did not return a valid JWT');
   const b64=parts[1].replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(parts[1].length/4)*4,'=');
   return JSON.parse(Buffer.from(b64,'base64').toString('utf8'));
 }
